@@ -132,8 +132,12 @@ as its own repo.
 
 - [x] Own GitHub repo + published page — [caio-camargo/explorations](https://github.com/caio-camargo/explorations), live at [caio-camargo.github.io/explorations](https://caio-camargo.github.io/explorations/)
 
+- [x] Dots reached V2.3 and is **paused, not finished** — documented to be resumed cold. Start
+      from "Picking this up cold" in [`NOTES.md`](explorations/dots-friend-enemy/NOTES.md).
+
 ### Up Next
-- [ ] Follow-ups listed at the bottom of `dots-friend-enemy/NOTES.md`
+- [ ] Exploration 2 — subject TBD
+- [ ] Dots open threads, best-specified first, at the bottom of `dots-friend-enemy/NOTES.md`
 
 ---
 

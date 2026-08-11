@@ -38,6 +38,50 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — "Sticky basins" investigated (not a bug); docs made resumable
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+User saw two spatially separate groups sharing a basin colour and suspected the basin recompute
+was "too sticky". Measured: it isn't. Then did a documentation pass so the exploration can be
+picked up cold in a later session.
+
+### The investigation
+Two hypotheses ruled out by measurement:
+- **Staleness** — perturbed a settled run with 12 forced re-rolls, stepped one frame: `graphDirty`
+  cleared and membership had already changed within that frame. Recompute is immediate.
+- **Palette collision** (`slot = rank % 8`) — over 300 random graphs at n=500 the basin count
+  peaked at 7. Distribution: 1 basin 14%, 2 30%, 3 31%, 4 17%, 5+ 8%. Never collides.
+
+What's real: **a basin is a graph property, not a spatial one.** Flood-filling into spatial
+clusters and cross-tabbing on a settled 500-dot run, basin 0 spanned three clusters (277 / 103 / 9
+dots) and its *cycle* — the 11 anchor dots — sat in the 103-dot cluster, not the 277-dot one. The
+big blob is coloured by a cycle living elsewhere. Correct: those dots share a destiny, they just
+haven't arrived. Written up in NOTES.md as "A basin is not a cluster".
+
+Offered but **not built**: lightness by hop-distance from the cycle (anchor bright, tributary
+dim), because lightness currently encodes speed and that's a real trade. User's call.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | added | `.../NOTES.md` | "Picking this up cold" — code map, controls list, and the three traps already fallen into |
+| 2 | added | `.../NOTES.md` | "A basin is not a cluster" — the investigation above, with the crosstab |
+| 3 | edited | `.../NOTES.md` | Consolidated open threads into "Things worth trying next", ordered by readiness; deduped; refreshed Last Updated |
+| 4 | edited | `PROJECT.md` | Current Focus reflects a paused, documented exploration |
+
+### State at close
+Working tree clean, pushed, Pages live. `explorations/dots-friend-enemy/` is self-contained:
+`index.html` (V2.3, no build), `NOTES.md` (idea → findings → open threads), `archive/v1-*.html`.
+Nothing in flight; nothing parked mid-edit.
+
+### Next Steps
+- [ ] User is moving to a new exploration; dots is paused, not finished
+- [ ] Open threads live at the bottom of `dots-friend-enemy/NOTES.md`, best-specified first
+
 ## Session 2026-08-11 — V2.3: stable basin identity, eased hues, hue drift
 **Source**: Claude Code
 **User**: Caio

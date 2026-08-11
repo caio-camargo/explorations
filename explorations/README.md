@@ -19,4 +19,4 @@ when it's interesting, not when it's finished. Nothing here needs to become a pr
 
 | Exploration | Started | What it is | Status |
 |---|---|---|---|
-| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | V2 — 5 looks, velocity streaks, friend-graph basins |
+| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | **v2.3, paused** — ribbon trails, 5 looks, friend-graph basins. Resume from "Picking this up cold" in the notes |

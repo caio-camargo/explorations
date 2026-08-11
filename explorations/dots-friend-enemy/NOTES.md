@@ -1,7 +1,7 @@
 # Dots: friends & enemies
 **Version**: v2.3.0
 **Date Created**: 2026-08-10
-**Last Updated**: 2026-08-10
+**Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
 **Status**: Active — V2.3 (eased, driftable basin hues). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
@@ -24,9 +24,45 @@ Run it: open [`index.html`](index.html) in any browser. No build, no server, no 
 
 ---
 
+## Picking this up cold
+
+Everything is one file, [`index.html`](index.html), ~1000 lines, no build and no dependencies.
+Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering and UI.
+
+**Code map** (line numbers drift, names don't):
+
+| Where | What |
+|---|---|
+| `const P` | every tunable in one object — the UI only ever writes here |
+| `PRESETS`, `LOOKS`, `BASIN_HUES` | preset physics, the five looks, basin hue wheel |
+| `step()` | **the actual simulation** — the three rules, unchanged since V1 |
+| `assign()`, `analyseGraph()` | friend/enemy ties; the O(n) walk that finds cycles and basins |
+| `sampleSpeeds()`, `updateHues()` | per-*step* quantities — never call these per frame (see below) |
+| `pushHistory()`, `resetHistory()` | the ribbon ring buffer, `HIST` slots deep |
+| `draw()` → `drawRibbons()` / `drawStreaks()` | the two trail engines |
+| `frame()` | the loop: fractional stepping, then draw |
+| `SLIDERS`, `syncUI()` | control wiring; `data-model` / `data-trail` / `data-needslook` hide rows |
+
+**Controls**, in panel order: look (5), skeleton emphasis, hue drift (basins only), trail style
+(ribbons/bloom), trail length, stroke weight, speed→brightness, pulse depth + period, physics
+presets, step model + rule sliders, dot count, steps/frame, links and floor overlays.
+Keys: `space` pause, `r` scatter, `t` reroll ties, `l` links, `1`–`5` looks.
+
+**Three traps this file has already fallen into**, all documented in full below — don't re-derive
+them:
+
+1. A multiplicative fade on an 8-bit canvas **never reaches the background**; it freezes a few
+   levels above it, permanently. That's what `bloom` does at long trail lengths.
+2. Anything derived from motion must be sampled **per step, not per frame**, or it breaks the
+   moment steps and frames stop being 1:1.
+3. Basin *ids* come from scan order and renumber freely; identity must come from the cycle
+   itself.
+
+---
+
 ## How the rules map to code
 
-Roughly 40 lines of the file are the simulation; the rest is UI and rendering.
+All of it lives in `step()`.
 
 ```js
 px.set(x); py.set(y);              // snapshot — everyone reacts to the same instant
@@ -247,6 +283,45 @@ buckets, and each occupied bucket is a `stroke()` call, so heavy churn at n=1200
 at 48 hue steps. Dropping to 32 steps (11.25°) brought that to 5.3 ms with no visible difference
 in the sweep.
 
+## A basin is not a cluster (this looks like a bug and isn't)
+
+You will see two spatially separate groups sharing one basin colour, sometimes on opposite sides
+of the floor, joined by a thread of dots. It reads as a stale assignment. It isn't.
+
+Ruled out first, by measurement:
+
+- **Not stale.** Perturbing a settled run with 12 forced re-rolls and stepping one frame:
+  `graphDirty` is cleared and membership has already changed *in that frame*. Basins are recomputed
+  from scratch the moment any tie changes.
+- **Not a palette collision.** `slot = rank % 8`, so >8 basins would reuse a hue. Over 300 random
+  graphs at n=500 the count peaked at **7**. Distribution: 1 basin 14%, 2 30%, 3 31%, 4 17%,
+  5+ 8%. Collisions never occurred.
+
+What's actually happening — flood-filling dots into spatial clusters and cross-tabbing against
+basin, on a settled 500-dot run:
+
+| | basin 0 | basin 1 |
+|---|---|---|
+| cluster 0 | **277** | 3 |
+| cluster 1 | 103 | 3 |
+| cluster 2 | — | **100** |
+| cluster 3 | 9 | — |
+
+Basin 0 spans three spatial clusters, and the decisive detail: **its cycle — the 11 anchor dots —
+sits in cluster 1, not in the 277-dot cluster 0.** The big blob is coloured by a cycle living
+somewhere else entirely.
+
+That is correct. A basin is "everything whose chase path eventually drains into this cycle" — a
+property of the graph, not of space. Those distant dots genuinely share a destiny with the small
+group; they are partway along a chase chain and haven't arrived, held apart meanwhile by enemy
+repulsion. Same colour really does mean shared destiny, even across the floor. The small group is
+the anchor; the far one is a tributary feeding into it.
+
+**If that ever needs to read differently**, the suggested fix is to shade *lightness* by hop
+distance from the cycle while hue stays the basin — anchor bright, tributary dim, meaning
+preserved. It's an O(n) pass alongside the existing walk. Not built, because lightness currently
+encodes speed and that's a real trade, not a free addition.
+
 ## Presets
 
 All measured for "stays on the floor, stays in motion, doesn't collapse to a dot".
@@ -265,10 +340,18 @@ Centre pull is 0.5% everywhere, as stated in the tweet.
 
 ## Things worth trying next
 
+Open threads, in rough order of how ready they are to pick up:
+
+- [ ] **Lightness by hop-distance from the cycle** (see "A basin is not a cluster"). Best-specified
+      item here; trades away speed→lightness.
+- [ ] **`HUE_EASE` as a slider.** It's a constant at 0.035/step (~1s). Fine in practice, but the
+      transition speed is the sort of thing worth feeling out rather than fixing.
+- [ ] **Sub-step position interpolation.** At low steps/frame the geometry updates only on frames
+      a step lands, so ribbons hold still then jump. Honest, but smoothable.
+- [ ] An "artifact" mode: no fade, thousands of dots, very low per-stroke alpha, export to PNG.
+      Everything since V2 optimises for *watching*; accumulation makes a different thing.
 - [x] ~~Colour by which friend-graph cycle a dot drains into~~ — done in V2, the `basins` look.
 - [ ] Two enemies, or a friend-of-friend term.
-- [ ] An "artifact" mode: no fade at all, thousands of dots, very low per-stroke alpha, and an
-      export-to-PNG button. V2 optimises for watching; accumulation makes a different thing.
 - [ ] Asymmetric: let popularity be uneven (some dots chosen as friend by many).
 - [ ] 3D, or on a torus (wrap the floor) so there is no centre pull at all.
 - [ ] Record the friend graph's cycle census alongside the visual — does cycle count predict
