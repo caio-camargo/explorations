@@ -19,5 +19,5 @@ when it's interesting, not when it's finished. Nothing here needs to become a pr
 
 | Exploration | Started | What it is | Status |
 |---|---|---|---|
-| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | **v2.3, paused** — ribbon trails, 5 looks, friend-graph basins. Resume from "Picking this up cold" in the notes |
+| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | **v2.4** — ribbon trails, 5 looks, friend-graph basins, influences (attractor + predator). Resume from "Picking this up cold" in the notes |
 | [`fireflies/`](fireflies/) | 2026-08-11 | Pulse-coupled fireflies — sync emerging from flashes alone (Mirollo–Strogatz) — [notes](fireflies/NOTES.md), [run it](fireflies/index.html) | v1 — 5 regimes measured, sync meter, 3 looks |

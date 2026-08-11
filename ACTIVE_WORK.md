@@ -25,10 +25,10 @@
 |----------|---------|-------|---------------|
 | *(empty — no active work)* | | | |
 
-> ⚠️ Standing note (2026-08-11): `explorations/dots-friend-enemy/index.html` has uncommitted
-> local changes (an "Influences" group — attractor/predator) from outside any logged session,
-> with no claim row. The fireflies session deliberately left it untouched and uncommitted.
-> Whoever owns it: commit it or claim it. Remove this note once resolved.
+> Resolved 2026-08-11: the unclaimed `dots-friend-enemy` changes were the V2.4 influences work
+> (wandering attractor + predator). Committed by that session. The miss was real — it edited a
+> shared-workspace file without filing a claim row first, which is exactly what left the fireflies
+> session guessing. Claim before writing, even when you expect to be the only one working.
 
 ---
 

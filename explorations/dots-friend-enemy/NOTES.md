@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.3.0
+**Version**: v2.4.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.3 (eased, driftable basin hues). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.4 (influences: wandering attractor + predator). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -37,6 +37,7 @@ Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering
 | `PRESETS`, `LOOKS`, `BASIN_HUES` | preset physics, the five looks, basin hue wheel |
 | `step()` | **the actual simulation** — the three rules, unchanged since V1 |
 | `assign()`, `analyseGraph()` | friend/enemy ties; the O(n) walk that finds cycles and basins |
+| `updateAgents()` | moves the point fields (attractor path, predator hunt) — per step |
 | `sampleSpeeds()`, `updateHues()` | per-*step* quantities — never call these per frame (see below) |
 | `pushHistory()`, `resetHistory()` | the ribbon ring buffer, `HIST` slots deep |
 | `draw()` → `drawRibbons()` / `drawStreaks()` | the two trail engines |
@@ -44,8 +45,9 @@ Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering
 | `SLIDERS`, `syncUI()` | control wiring; `data-model` / `data-trail` / `data-needslook` hide rows |
 
 **Controls**, in panel order: look (5), skeleton emphasis, hue drift (basins only), trail style
-(ribbons/bloom), trail length, stroke weight, speed→brightness, pulse depth + period, physics
-presets, step model + rule sliders, dot count, steps/frame, links and floor overlays.
+(ribbons/bloom), trail length, stroke weight, speed→brightness, pulse depth + period,
+**influences** (wandering attractor, predator), physics presets, step model + rule sliders,
+dot count, steps/frame, links and floor overlays.
 Keys: `space` pause, `r` scatter, `t` reroll ties, `l` links, `1`–`5` looks.
 
 **Three traps this file has already fallen into**, all documented in full below — don't re-derive
@@ -322,6 +324,46 @@ distance from the cycle while hue stays the basin — anchor bright, tributary d
 preserved. It's an O(n) pass alongside the existing walk. Not built, because lightness currently
 encodes speed and that's a real trade, not a free addition.
 
+## Influences — the centre pull was always a field
+
+The centre pull is not really part of the dot rule; it's an *external field*, the one force that
+isn't another dot. Generalise that term and several ideas collapse into one feature:
+
+| | what it is |
+|---|---|
+| centre | static point attractor — what the tweet describes |
+| wandering attractor | the same, with its own position update (an open Lissajous path) |
+| predator | a point *repeller*, optionally one that hunts |
+| an image (not built) | a *sampled* field instead of an analytic one |
+
+The dot rule is now `friend + enemy + Σ(fields)`, and fields compose.
+
+**The predator hunts by mass, not by nearest dot.** A single nearest target makes it flip-flop
+between neighbours; weighting every dot by `1/(1 + d²/r²)` and steering at the weighted centroid
+is O(n), needs no sorting, and moves smoothly. The dots flee, so the mass it's chasing keeps
+sliding away — that feedback *is* the chase. Measured: starting 361 px from the swarm centroid it
+closes to 2 px within ~500 frames and stays locked on.
+
+It really does carve. With the default reach, only **1 dot of 500** sat within half the predator's
+radius while all 500 were within two radii — 0.2% where a uniform distribution would give 6.25%,
+a 30× depletion. Leave "Show them" off and you read the predator entirely from that hole and the
+wake behind it, which is more interesting than drawing a circle.
+
+**Repulsion falls off linearly to zero at the radius**, so it's capped. That matters: the centre
+pull grows with distance and the repulsion doesn't, which is the whole reason the system stays
+bounded. Verified at maximum settings — attractor at max pull and speed, predator at max push,
+reach and speed, both together — nothing pinned to the floor edge, no NaN.
+
+**One degenerate combination**, and the panel warns about it: centre pull at zero, predator on,
+attractor off. Nothing is left holding the swarm in, so the repeller drives everything outward
+and **52% of dots jam against the floor edge**. Either field restores the leash. The attractor
+alone is enough — with the centre pull at zero it gathers the swarm to a mean radius of 134 px,
+and dots collect on it (mean distance 23 px to the attractor versus 127 px to the centre).
+
+Cost at the worst case measured (n=1200, K=128): 8.64 ms without agents, 9.88 ms with both, and
+`updateAgents()` itself is 0.03 ms/step. The difference is stroke calls, not the hunt loop —
+agents make dots more varied, so occupied colour buckets go from 43 to 62 per frame.
+
 ## Presets
 
 All measured for "stays on the floor, stays in motion, doesn't collapse to a dot".
@@ -341,6 +383,18 @@ Centre pull is 0.5% everywhere, as stated in the tweet.
 ## Things worth trying next
 
 Open threads, in rough order of how ready they are to pick up:
+
+- [ ] **Image as a sampled field** — the other half of the influences idea, and the next thing up.
+      Dots attracted to dark regions of an image that is never drawn, so the picture is only
+      *suggested* by where they pool. The approach: rasterise to an offscreen canvas (a generated
+      shape and a real upload go through byte-identical code), build a ~5-level pyramid, and take
+      the potential as a coarse-weighted sum across levels — a dot in a large empty region has no
+      gradient at full resolution and would never find the shape, but at the coarsest level a
+      gradient exists everywhere. Precompute `∇Φ` into two Float32Arrays; per dot it's a bilinear
+      lookup, O(1). Two things known in advance: dots pool in dark areas and additive blending
+      makes pooled dots bright, so the image renders *inverted* (offer a polarity toggle); and the
+      interesting regime is where the image is barely legible, which means friend/enemy churn has
+      to stay strong enough to keep smearing it. Everything stays client-side.
 
 - [ ] **Lightness by hop-distance from the cycle** (see "A basin is not a cluster"). Best-specified
       item here; trades away speed→lightness.

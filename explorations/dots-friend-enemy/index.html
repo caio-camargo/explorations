@@ -143,6 +143,39 @@
     </div>
 
     <div class="group">
+      <div class="glabel">Influences</div>
+      <label class="check"><input type="checkbox" id="attractorOn"> Wandering attractor</label>
+      <div class="row" data-needs="attractorOn">
+        <label>Attractor pull</label><span class="val" id="v_ak"></span>
+        <input type="range" id="ak" min="0" max="0.06" step="0.001">
+      </div>
+      <div class="row" data-needs="attractorOn">
+        <label>Attractor speed</label><span class="val" id="v_as"></span>
+        <input type="range" id="as" min="0.1" max="4" step="0.05">
+      </div>
+
+      <label class="check"><input type="checkbox" id="predatorOn"> Predator</label>
+      <div class="row" data-needs="predatorOn">
+        <label>Predator push</label><span class="val" id="v_pk"></span>
+        <input type="range" id="pk" min="0" max="20" step="0.25">
+      </div>
+      <div class="row" data-needs="predatorOn">
+        <label>Predator reach</label><span class="val" id="v_pr"></span>
+        <input type="range" id="pr" min="0.04" max="0.6" step="0.01">
+      </div>
+      <div class="row" data-needs="predatorOn">
+        <label>Predator speed</label><span class="val" id="v_ps"></span>
+        <input type="range" id="ps" min="0.2" max="10" step="0.1">
+      </div>
+      <label class="check" data-needs="predatorOn"><input type="checkbox" id="predatorHunts">
+        It hunts (else it orbits)</label>
+
+      <div class="regime" id="leashnote"></div>
+      <label class="check"><input type="checkbox" id="showAgents"> Show them</label>
+      <div class="note">Leave hidden and you read the predator from the hole it carves.</div>
+    </div>
+
+    <div class="group">
       <div class="glabel">Presets</div>
       <div class="btns" id="presets"></div>
     </div>
@@ -258,6 +291,20 @@ const P = {
   pulseDepth: 0,       // 0 = off — deliberate brightness pulse
   pulsePeriod: 24,     // steps per pulse cycle
   hueDrift: 0,         // degrees per step, 0 = fixed basin hues
+
+  /* Influences — point fields, the same slot in the rule the centre pull
+     occupies. The centre is the leash that makes the system bounded (repulsion
+     is capped, the centre term grows with distance), so these are additions to
+     it rather than replacements. */
+  attractorOn: false,
+  attractorPull: 0.012,   // fraction of the gap per step, like the centre
+  attractorSpeed: 1.0,    // how fast it travels its path
+  predatorOn: false,
+  predatorPush: 7.0,      // px/step at point blank, on an 800px floor
+  predatorRadius: 0.22,   // fraction of the floor it reaches
+  predatorSpeed: 2.4,     // px/step
+  predatorHunts: true,    // steer toward nearby mass, rather than orbit
+  showAgents: false,      // off by default: infer them from the wake
   links: false,
   floor: false,
   paused: false,
@@ -348,6 +395,8 @@ let basin, onCycle, basinRep, basinSlot, basinCount = 0, graphDirty = true;
 let dotHue = null, hueOffset = 0;          // per-dot eased hue, and global drift
 const HUE_EASE = 0.035;                    // per step — a change lands in ~1s at 60fps
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
+let atX = 0, atY = 0, atPhase = 0;         // attractor
+let prX = 0, prY = 0, prPhase = 0;         // predator
 let speedRef = 1;                          // adaptive normaliser for "fast"
 
 const cv = document.getElementById("c");
@@ -366,9 +415,57 @@ function resize() {
   cx = W / 2; cy = H / 2;
   maxR = Math.min(W, H) * 0.75;
   wipe();
+  if (atX === 0 && atY === 0) {            // first real layout — place the agents
+    atX = cx + Math.min(W, H) * 0.28; atY = cy;
+    prX = cx - Math.min(W, H) * 0.25; prY = cy;
+  }
   // Booting into a zero-size canvas (hidden tab, collapsed pane) clamps every
   // dot onto one point. Give them a floor to spread out on.
   if (!hadFloor && maxR > 1 && x) scatter();
+}
+
+/* Move the point fields. Runs per step, like everything else derived from
+   simulation time, so slowing the sim slows them with it. */
+function updateAgents() {
+  const unit = Math.min(W, H) / 800;
+
+  if (P.attractorOn) {
+    atPhase += P.attractorSpeed * 0.006;
+    const R = Math.min(W, H) * 0.28;
+    atX = cx + Math.cos(atPhase) * R;
+    atY = cy + Math.sin(atPhase * 1.37) * R * 0.72;   // open path, not a circle
+  }
+
+  if (P.predatorOn) {
+    const r = Math.min(W, H) * P.predatorRadius;
+    let tx = cx, ty = cy;
+
+    if (P.predatorHunts) {
+      /* Steer toward nearby mass rather than toward one nearest dot: a single
+         target makes it flip-flop between neighbours. Weighting by 1/(1+d²/r²)
+         is O(n), needs no sorting, and moves smoothly. The dots flee, so the
+         mass it is chasing keeps sliding away — that feedback is the chase. */
+      let sw = 0, sX = 0, sY = 0;
+      for (let i = 0; i < P.n; i++) {
+        const dx = x[i] - prX, dy = y[i] - prY;
+        const w = 1 / (1 + (dx * dx + dy * dy) / (r * r));
+        sw += w; sX += w * x[i]; sY += w * y[i];
+      }
+      if (sw > 1e-9) { tx = sX / sw; ty = sY / sw; }
+    } else {
+      prPhase += 0.004;
+      const R2 = Math.min(W, H) * 0.30;
+      tx = cx + Math.cos(-prPhase) * R2;
+      ty = cy + Math.sin(-prPhase * 1.19) * R2 * 0.7;
+    }
+
+    const dx = tx - prX, dy = ty - prY, d = Math.hypot(dx, dy);
+    const sp = P.predatorSpeed * unit;
+    if (d > 1e-6) { prX += Math.min(sp, d) * dx / d; prY += Math.min(sp, d) * dy / d; }
+
+    const ox = prX - cx, oy = prY - cy, od = Math.hypot(ox, oy), lim = maxR * 0.9;
+    if (od > lim) { prX = cx + ox / od * lim; prY = cy + oy / od * lim; }
+  }
 }
 
 function wipe() {
@@ -552,6 +649,8 @@ function step() {
   rechooseAcc += P.rechoosePerSec / 60;
   while (rechooseAcc >= 1) { rechooseAcc -= 1; assign(randInt(n)); }
 
+  updateAgents();
+
   // Snapshot: every dot reacts to where everyone was, not to half-updated
   // neighbours. "At each step EVERY dot moves" — simultaneous, not sequential.
   px.set(x); py.set(y);
@@ -564,6 +663,11 @@ function step() {
   const kFf = P.friendFixed * unit, kEf = P.enemyFixed * unit;
   const kFp = P.friendProp, kEp = P.enemyProp;
   const cp = P.centerPull;
+
+  const atOn = P.attractorOn, atK = P.attractorPull;
+  const prOn = P.predatorOn;
+  const prR = Math.min(W, H) * P.predatorRadius, prR2 = prR * prR;
+  const prK = P.predatorPush * unit;
 
   for (let i = 0; i < n; i++) {
     const xi = px[i], yi = py[i];
@@ -583,6 +687,18 @@ function step() {
     } else {
       X += kFp * fdx; Y += kFp * fdy;
       X += kEp * edx; Y += kEp * edy;
+    }
+
+    // 4. point fields — same slot in the rule as the centre pull
+    if (atOn) { X += atK * (atX - xi); Y += atK * (atY - yi); }
+    if (prOn) {
+      const rdx = xi - prX, rdy = yi - prY, r2 = rdx * rdx + rdy * rdy;
+      if (r2 < prR2 && r2 > 1e-12) {
+        // Linear falloff to zero at the radius: capped, so the centre pull
+        // still wins far out and the system stays bounded.
+        const rd = Math.sqrt(r2), f = prK * (1 - rd / prR);
+        X += f * rdx / rd; Y += f * rdy / rd;
+      }
     }
 
     const dx = X - cx, dy = Y - cy, d = Math.hypot(dx, dy);
@@ -627,6 +743,22 @@ function draw() {
     ctx.strokeStyle = L.floor; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = L.floor; ctx.fill();
+  }
+
+  // Off by default — the point of an invisible predator is the hole it leaves.
+  if (P.showAgents) {
+    ctx.lineWidth = 1; ctx.strokeStyle = L.floor;
+    if (P.attractorOn) {
+      ctx.beginPath(); ctx.arc(atX, atY, 6, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(atX, atY, 2, 0, Math.PI * 2);
+      ctx.fillStyle = L.floor; ctx.fill();
+    }
+    if (P.predatorOn) {
+      ctx.beginPath(); ctx.arc(prX, prY, Math.min(W, H) * P.predatorRadius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.beginPath(); ctx.arc(prX, prY, 4, 0, Math.PI * 2);
+      ctx.fillStyle = L.floor; ctx.fill();
+    }
   }
 
   if (P.links) {
@@ -849,6 +981,11 @@ const SLIDERS = [
   ["pp", "pulsePeriod",    (v) => v + " steps"],
   ["hd", "hueDrift",       (v) => v === 0 ? "fixed"
                                           : Math.round(360 / (v * 60)) + " s / turn"],
+  ["ak", "attractorPull",  (v) => (v * 100).toFixed(1) + "%"],
+  ["as", "attractorSpeed", (v) => v.toFixed(2) + " ×"],
+  ["pk", "predatorPush",   (v) => v.toFixed(2) + " px"],
+  ["pr", "predatorRadius", (v) => (v * 100).toFixed(0) + "% of floor"],
+  ["ps", "predatorSpeed",  (v) => v.toFixed(1) + " px"],
 ];
 
 // The proportional model is a linear system with only two fates. Say which.
@@ -868,6 +1005,20 @@ function updateRegime() {
   }
 }
 
+/* The centre pull is the leash: repulsion is capped, the centre term grows with
+   distance. Turn it off and leave only a repeller and there is nothing holding
+   the swarm in — measured, 52% of dots end up jammed on the floor edge. */
+function updateLeashNote() {
+  const el = $("leashnote");
+  const noLeash = P.centerPull < 0.001 && P.predatorOn && !P.attractorOn;
+  el.style.display = noLeash ? "" : "none";
+  if (noLeash) {
+    el.textContent = "Nothing is holding the swarm in. The centre pull is off and the only "
+      + "field is a repeller, so the predator drives everything onto the floor edge "
+      + "(measured: 52% pinned). Raise the centre pull, or switch the attractor on.";
+  }
+}
+
 function syncUI() {
   for (const [id, key, fmt] of SLIDERS) {
     $(id).value = P[key];
@@ -878,6 +1029,15 @@ function syncUI() {
   $("floor").checked = P.floor;
   $("skeleton").checked = P.skeleton;
   $("streaks").checked = P.streaks;
+  $("attractorOn").checked = P.attractorOn;
+  $("predatorOn").checked = P.predatorOn;
+  $("predatorHunts").checked = P.predatorHunts;
+  $("showAgents").checked = P.showAgents;
+  // dataset.needs is unique to these rows — do NOT reuse an attribute name that
+  // a dynamically-created element already sets (that hid the look buttons once).
+  document.querySelectorAll("[data-needs]").forEach((el) => {
+    el.style.display = P[el.dataset.needs] ? "" : "none";
+  });
   $("pause").classList.toggle("on", P.paused);
   $("pause").textContent = P.paused ? "resume" : "pause";
   $("looknote").textContent = look().note;
@@ -901,6 +1061,7 @@ function syncUI() {
       + "above the background, so old paths fossilise into a haze. Ribbons don't."
     : "Accumulates onto the previous frame instead of redrawing history.";
   updateRegime();
+  updateLeashNote();
 }
 
 for (const [id, key, fmt] of SLIDERS) {
@@ -910,6 +1071,7 @@ for (const [id, key, fmt] of SLIDERS) {
     else P[key] = v;
     $("v_" + id).textContent = fmt(P[key]);
     if (key === "enemyProp" || key === "centerPull") updateRegime();
+    if (key === "centerPull") updateLeashNote();
   });
 }
 
@@ -951,6 +1113,9 @@ $("links").addEventListener("change", (e) => { P.links = e.target.checked; });
 $("floor").addEventListener("change", (e) => { P.floor = e.target.checked; });
 $("skeleton").addEventListener("change", (e) => { P.skeleton = e.target.checked; });
 $("streaks").addEventListener("change", (e) => { P.streaks = e.target.checked; });
+["attractorOn", "predatorOn", "predatorHunts", "showAgents"].forEach((key) => {
+  $(key).addEventListener("change", (e) => { P[key] = e.target.checked; syncUI(); });
+});
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("scatter").addEventListener("click", () => scatter());
 $("reroll").addEventListener("click", () => { for (let i = 0; i < P.n; i++) assign(i); });
