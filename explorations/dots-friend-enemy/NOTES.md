@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.2.0
+**Version**: v2.3.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-10
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.2 (stable ribbons + deliberate pulse). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.3 (eased, driftable basin hues). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -216,6 +216,36 @@ period 20 swings drawn ink from 0.38× to 1.65× of mean; depth 0.4 at period 60
 One thing that is *not* a bug: at very low steps/frame the geometry genuinely updates only on the
 frames a step lands, so the ribbon holds still and then jumps. That's the simulation being slow,
 not the renderer stuttering. Smoothing it would mean interpolating positions between steps.
+
+## Basin colour: stable identity, eased hue, optional drift
+
+Basin colours changed abruptly, worst of all when a cluster split in two. Part of that was a
+dot genuinely changing basin — but most of it was something dumber.
+
+**Basin ids came from scan order.** `analyseGraph` walks nodes 0…n−1 and numbers cycles in the
+order it finds them. Change the graph slightly and the numbering can shift wholesale, so a basin
+that was id 0 becomes id 1 and every dot in it changes colour at once — even though the partition
+barely moved. Splitting a cluster is exactly the case that renumbers everything after it.
+
+Basins are now ranked by **the smallest node index on their cycle**, which is a property of the
+cycle itself rather than of how it was discovered. The giant basin keeps its colour while ties
+churn, and distinct basins still always get distinct hues. Verified by recomputing an unchanged
+graph 25 times and confirming the slot assignment never moves.
+
+**Colour is a hue angle now, eased per dot.** Each dot carries its own hue and eases toward its
+basin's, the short way round the wheel, at ~3.5% per step — a change lands in about a second.
+Measured: from 150° away it converges to within 2° in 120 steps with a maximum single-step jump
+of 5°, and it takes the short way in both directions including the 179° edge case.
+
+**Hue drift** rotates every basin hue together, in degrees per simulation step, displayed as
+seconds per full turn. Zero is the fixed palette. Like the pulse, it advances per *step* rather
+than per frame, so slowing the simulation slows the drift.
+
+Cost: settled dots all share their basin's hue, so hue bucketing normally costs nothing — at
+defaults only ~5 hue buckets are occupied and it runs at 3.9 ms. Dots mid-transition spread across
+buckets, and each occupied bucket is a `stroke()` call, so heavy churn at n=1200/K=128 hit 17 ms
+at 48 hue steps. Dropping to 32 steps (11.25°) brought that to 5.3 ms with no visible difference
+in the sweep.
 
 ## Presets
 

@@ -38,6 +38,48 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — V2.3: stable basin identity, eased hues, hue drift
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+User likes the basins look but found colour transitions abrupt, "especially when a cluster splits
+into two basins", and asked for slowly cycling hues with a speed slider where zero is the current
+behaviour. Most of the abruptness turned out not to be dots changing basin at all.
+
+### The finding
+Basin **ids come from scan order** — `analyseGraph` numbers cycles in the order the 0…n−1 walk
+finds them. Any graph change can renumber wholesale, so an entire basin's colour flips even when
+the partition barely moved; splitting a cluster renumbers everything after it, which is exactly
+the case the user noticed. Basins are now ranked by the smallest node index **on their cycle**, a
+property of the cycle rather than of discovery order.
+
+### Decisions Made
+- Basin colour is a **hue angle**, not a palette entry — which is what makes both easing and
+  drift expressible. `BASIN_PALETTE` (hex) → `BASIN_HUES` (degrees); basins look emits `hsla()`.
+- Per-dot eased hue at 3.5%/step (~1s), shortest way round the wheel.
+- `Hue drift` in degrees per *simulation step*, shown as seconds per turn, 0 = fixed. Advances
+  per step like the pulse, so slowing the sim slows the drift.
+- Ribbon bucketing keys on quantised hue instead of basin id.
+
+### Verification
+Slot assignment distinct per basin, and unchanged across 25 recomputes of an identical graph —
+the renumbering bug. Easing measured deterministically from ±150° and +179° offsets: max single
+step 5–6°, converges within 2° in 120 steps, takes the short way in both directions. Drift exact
+(9° over 30 steps at 0.3°/step); drift 0 leaves the offset untouched. Fossil test still 0. All 5
+looks × both trail modes × drift + pulse + 40 re-rolls/sec + fractional stepping: no exceptions.
+
+Perf, each measured in its own call: defaults 3.89 ms with only ~5 hue buckets occupied (settled
+dots share their basin's hue, so hue bucketing is normally free). Churn at n=1200/K=128 hit
+17.4 ms at 48 hue steps because each occupied bucket is a `stroke()` call; HQ 48 → 32 brought it
+to 5.33 ms, back to parity with V2.2, with no visible change to the sweep.
+
+### Next Steps
+- [ ] `HUE_EASE` (0.035/step) is a constant — promote to a slider if the transition speed wants tuning
+- [ ] Sub-step interpolation and accumulation/artifact mode both still parked
+
 ## Session 2026-08-11 — V2.2: ribbon flicker was three bugs; strobe promoted to a control
 **Source**: Claude Code
 **User**: Caio

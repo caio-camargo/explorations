@@ -104,6 +104,10 @@
         Emphasise the skeleton</label>
       <label class="check" data-trail="bloom"><input type="checkbox" id="streaks">
         Draw motion as streaks</label>
+      <div class="row" data-look="basins">
+        <label>Hue drift</label><span class="val" id="v_hd"></span>
+        <input type="range" id="hd" min="0" max="0.5" step="0.005">
+      </div>
       <div class="note" id="looknote"></div>
     </div>
 
@@ -252,6 +256,7 @@ const P = {
   streaks: true,       // draw was→is segments instead of dots
   pulseDepth: 0,       // 0 = off — deliberate brightness pulse
   pulsePeriod: 24,     // steps per pulse cycle
+  hueDrift: 0,         // degrees per step, 0 = fixed basin hues
   links: false,
   floor: false,
   paused: false,
@@ -277,12 +282,12 @@ const PRESETS = {
    the dot sits on a cycle, and basin is its component id.
 --------------------------------------------------------------------------- */
 
-// Ordered so the FIRST entries contrast hardest, not so the wheel runs in
-// order — a random functional graph usually yields only 2–3 basins, and the
-// old hue-wheel order handed those to red-orange and amber, which read as one
-// colour. Cyan/amber/violet separate at a glance.
-const BASIN_PALETTE = ["#4fd0e0","#ffb03a","#c07af0","#8ce07a",
-                       "#ff6b5e","#6f95f5","#f56fae","#d9c14a"];
+/* Basin colour is a hue angle rather than a fixed swatch, which is what lets
+   it be both eased and drifted. Ordered so the FIRST entries contrast hardest,
+   not so the wheel runs in order — a random functional graph usually yields
+   only 2–3 basins, and hue-wheel order handed those to red-orange and amber,
+   which read as one colour. Cyan/amber/violet separate at a glance. */
+const BASIN_HUES = [187, 38, 279, 105, 5, 222, 330, 55];
 
 const LOOKS = {
   graphite: {
@@ -323,25 +328,24 @@ const LOOKS = {
     note: "The one look where colour earns its place: hue = which friend-graph cycle a dot " +
           "eventually drains into. Same colour means shared destiny.",
     link: ["rgba(255,255,255,.09)", "rgba(255,120,120,.07)"], floor: "rgba(255,255,255,.11)",
-    color: (t, cyc, b) => {
-      const c = BASIN_RGB[b % BASIN_RGB.length];
-      return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," +
-             (0.10 + 0.34*t + (cyc ? 0.16 : 0)).toFixed(3) + ")";
-    },
+    // third argument is a hue angle here, not a palette index
+    color: (t, cyc, hue) => "hsla(" + hue.toFixed(0) + ",85%," + (48 + 22 * t).toFixed(0)
+                          + "%," + (0.10 + 0.34 * t + (cyc ? 0.16 : 0)).toFixed(3) + ")",
     width: (t, cyc) => 0.45 + 1.4*t + (cyc ? 0.55 : 0),
   },
 };
 
 const LOOK_KEYS = Object.keys(LOOKS);
 const hexToRgb = (h) => { const v = parseInt(h.slice(1), 16); return [v>>16 & 255, v>>8 & 255, v & 255]; };
-const BASIN_RGB = BASIN_PALETTE.map(hexToRgb);
 for (const k of LOOK_KEYS) LOOKS[k].bgRGB = hexToRgb(LOOKS[k].bg);
 
 // ---- state -----------------------------------------------------------------
 const HIST = 130;                          // ring capacity for ribbon history
 let hx, hy, hs, hHead = 0, hFilled = 0;    // [slot][dot] layout, stride = P.n
 let x, y, px, py, rx, ry, sx, sy, friend, enemy;   // rx/ry = last draw, sx/sy = last speed sample
-let basin, onCycle, basinCount = 0, graphDirty = true;
+let basin, onCycle, basinRep, basinSlot, basinCount = 0, graphDirty = true;
+let dotHue = null, hueOffset = 0;          // per-dot eased hue, and global drift
+const HUE_EASE = 0.035;                    // per step — a change lands in ~1s at 60fps
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
 let speedRef = 1;                          // adaptive normaliser for "fast"
 
@@ -396,6 +400,8 @@ function analyseGraph() {
   const path = new Int32Array(n);
   basin = new Int32Array(n).fill(-1);
   onCycle = new Uint8Array(n);
+  basinRep = new Int32Array(n);
+  basinSlot = new Int32Array(n);
   let nb = 0;
 
   for (let s = 0; s < n; s++) {
@@ -404,7 +410,13 @@ function analyseGraph() {
     while (state[v] === 0) { state[v] = 1; order[v] = len; path[len++] = v; v = friend[v]; }
     if (state[v] === 1) {                // closed a new cycle inside this path
       const id = nb++;
-      for (let k = order[v]; k < len; k++) { basin[path[k]] = id; onCycle[path[k]] = 1; }
+      let rep = n;
+      for (let k = order[v]; k < len; k++) {
+        const u = path[k];
+        basin[u] = id; onCycle[u] = 1;
+        if (u < rep) rep = u;
+      }
+      basinRep[id] = rep;                // smallest node ON the cycle
     }
     const id = basin[v];                 // the tail drains into whatever v belongs to
     for (let k = 0; k < len; k++) {
@@ -413,8 +425,24 @@ function analyseGraph() {
       if (basin[u] < 0) basin[u] = id;
     }
   }
+  /* Basin *ids* come from scan order, so they renumber wholesale whenever the
+     graph changes — which made colours swap abruptly on a re-roll even when the
+     partition barely moved, and especially when a cluster split in two. Rank
+     basins instead by the smallest node on their cycle: that's a property of
+     the cycle itself, not of how it was found, so the giant basin keeps its
+     colour while ties churn. Distinct basins still always get distinct hues. */
+  const ids = [];
+  for (let i = 0; i < nb; i++) ids.push(i);
+  ids.sort((a, b) => basinRep[a] - basinRep[b]);
+  for (let r = 0; r < ids.length; r++) basinSlot[ids[r]] = r % BASIN_HUES.length;
+
   basinCount = nb;
   graphDirty = false;
+}
+
+// Absolute target hue for a dot: its basin's slot, plus the global drift.
+function targetHue(i) {
+  return (BASIN_HUES[basinSlot[basin[i]]] + hueOffset) % 360;
 }
 
 function scatter() {
@@ -474,6 +502,30 @@ function sampleSpeeds() {
   speedRef += (target - speedRef) * 0.05;
 }
 
+/* Ease each dot's hue toward its basin's, the short way round the wheel, and
+   advance the global drift. Called once per frame but compounded for the k
+   steps that actually ran, so easing and drift stay tied to simulation time
+   rather than to frame rate. */
+function updateHues(k) {
+  const n = P.n;
+  if (!dotHue || dotHue.length !== n) return;
+  hueOffset = (hueOffset + P.hueDrift * k) % 360;
+  const ease = 1 - Math.pow(1 - HUE_EASE, k);
+  for (let i = 0; i < n; i++) {
+    let d = targetHue(i) - dotHue[i];
+    if (d > 180) d -= 360; else if (d < -180) d += 360;
+    let h = dotHue[i] + d * ease;
+    if (h < 0) h += 360; else if (h >= 360) h -= 360;
+    dotHue[i] = h;
+  }
+}
+
+function seedHues() {
+  const n = P.n;
+  dotHue = new Float32Array(n);
+  for (let i = 0; i < n; i++) dotHue[i] = targetHue(i);   // start settled, don't fade in
+}
+
 function rebuild() {
   const n = P.n;
   x = new Float64Array(n); y = new Float64Array(n);
@@ -487,6 +539,7 @@ function rebuild() {
   scatter();
   for (let i = 0; i < n; i++) assign(i);
   analyseGraph();
+  seedHues();
 }
 
 // ---- the simulation (unchanged from V1) ------------------------------------
@@ -604,13 +657,15 @@ function draw() {
 // Bloom: one segment per dot per frame, laid onto whatever survived the veil.
 function drawStreaks(L, n) {
   const resp = P.speedResponse, inv = 1 / speedRef;
+  const useBasin = !!L.usesBasin;
   ctx.globalAlpha = pulseAmount();
   for (let i = 0; i < n; i++) {
     let t = spd[i] * inv; if (t > 1) t = 1;
     t = 1 - resp + resp * t;                       // 0 response = everything equal
     const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
+    const hue = useBasin ? dotHue[i] : 0;
 
-    ctx.strokeStyle = L.color(t, cyc, basin[i]);
+    ctx.strokeStyle = L.color(t, cyc, hue);
     ctx.lineWidth = L.width(t, cyc) * P.weight;
 
     if (P.streaks) {
@@ -620,7 +675,7 @@ function drawStreaks(L, n) {
       ctx.stroke();
     } else {
       const r = L.width(t, cyc) * P.weight;
-      ctx.fillStyle = L.color(t, cyc, basin[i]);
+      ctx.fillStyle = L.color(t, cyc, hue);
       ctx.beginPath(); ctx.arc(x[i], y[i], r, 0, Math.PI * 2); ctx.fill();
     }
   }
@@ -634,6 +689,11 @@ function drawStreaks(L, n) {
    a wash. Drawn in a few age bands so opacity and weight taper with age. */
 const BANDS = 3;
 const QT = 6;                      // speed quantisation, for batching
+/* Hue quantisation (11.25°). Settled dots all share their basin's hue, so this
+   normally costs nothing — only dots mid-transition spread across buckets, and
+   each occupied bucket is a stroke() call. Fine enough that an easing dot still
+   reads as a smooth sweep; finer than this only bought cost during churn. */
+const HQ = 32;
 let keyOf = null, order = null, bkAt = null, bkCur = null;
 
 function drawRibbons(L, n) {
@@ -649,8 +709,8 @@ function drawRibbons(L, n) {
      speed, on-cycle, and basin where the look uses it — and emit one path per
      bucket holding every dot in it. Same pixels, ~10× fewer calls. */
   const useBasin = !!L.usesBasin;
-  const nb = useBasin ? Math.max(basinCount, 1) : 1;
-  const nKeys = nb * 2 * QT;
+  const nHue = useBasin ? HQ : 1;        // bucket by eased hue, not basin id
+  const nKeys = nHue * 2 * QT;
 
   if (!keyOf || keyOf.length < n) { keyOf = new Int32Array(n); order = new Int32Array(n); }
   if (!bkAt || bkAt.length < nKeys + 1) { bkAt = new Int32Array(nKeys + 1); bkCur = new Int32Array(nKeys); }
@@ -684,8 +744,9 @@ function drawRibbons(L, n) {
       t = 1 - resp + resp * t;
       let tq = (t * QT) | 0; if (tq >= QT) tq = QT - 1; if (tq < 0) tq = 0;
       const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
-      const b = useBasin ? basin[i] % nb : 0;
-      const k = (b * 2 + cyc) * QT + tq;
+      let hq = useBasin ? (dotHue[i] * HQ / 360) | 0 : 0;
+      if (hq >= HQ) hq = HQ - 1; if (hq < 0) hq = 0;
+      const k = (hq * 2 + cyc) * QT + tq;
       keyOf[i] = k;
       bkAt[k + 1]++;
     }
@@ -700,9 +761,9 @@ function drawRibbons(L, n) {
       const s = bkAt[k], e = bkAt[k + 1];
       if (e <= s) continue;
       const tq = k % QT, rest = (k / QT) | 0;
-      const t = (tq + 0.5) / QT, cyc = rest & 1, b = rest >> 1;
+      const t = (tq + 0.5) / QT, cyc = rest & 1, hq = rest >> 1;
 
-      ctx.strokeStyle = L.color(t, cyc, b);
+      ctx.strokeStyle = L.color(t, cyc, (hq + 0.5) * (360 / HQ));
       ctx.lineWidth = L.width(t, cyc) * P.weight * (0.35 + 0.65 * fresh);
 
       ctx.beginPath();
@@ -749,6 +810,8 @@ function frame(t) {
       if (k > 40) k = 40;                 // don't replay a backgrounded tab
       for (let s = 0; s < k; s++) step();
       sampleSpeeds();                     // only meaningful when dots moved
+      if (graphDirty) analyseGraph();     // hues need current basins to ease toward
+      updateHues(k);
       pushHistory();                      // one ribbon vertex per drawn frame
       pulsePhase += k / Math.max(P.pulsePeriod, 1);
     }
@@ -783,6 +846,8 @@ const SLIDERS = [
   ["sr", "speedResponse",  (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
   ["pd", "pulseDepth",     (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
   ["pp", "pulsePeriod",    (v) => v + " steps"],
+  ["hd", "hueDrift",       (v) => v === 0 ? "fixed"
+                                          : Math.round(360 / (v * 60)) + " s / turn"],
 ];
 
 // The proportional model is a linear system with only two fates. Say which.
@@ -823,6 +888,9 @@ function syncUI() {
   });
   document.querySelectorAll("[data-trail]").forEach((el) => {
     el.style.display = (el.dataset.trail === P.trail) ? "" : "none";
+  });
+  document.querySelectorAll("[data-look]").forEach((el) => {
+    el.style.display = (el.dataset.look === P.look) ? "" : "none";
   });
   document.querySelectorAll("#trails .act").forEach((b) => {
     b.classList.toggle("on", b.dataset.trail2 === P.trail);
