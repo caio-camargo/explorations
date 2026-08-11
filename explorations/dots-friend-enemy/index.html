@@ -355,7 +355,7 @@ const LOOKS = {
     label: "graphite", swatch: "#e9e5dc", bg: "#f4f1ea", blend: "multiply", fade: 6,
     note: "Ink on paper. Multiply blending, so overlapping strokes darken the way ink pools.",
     link: ["rgba(30,26,22,.16)", "rgba(30,26,22,.09)"], floor: "rgba(30,26,22,.14)",
-    glow: ["120,70,50", "60,95,135"],
+    glow: ["120,70,50", "60,95,135"], corona: "90,60,140",
     color: (t, cyc, _, u) => {
       let a = 0.07 + 0.34*t + (cyc ? 0.16 : 0);
       a *= u > 0 ? 1 + 1.1*u : 1 + 0.45*u;
@@ -367,7 +367,7 @@ const LOOKS = {
     label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter", fade: 7,
     note: "Pure white on pure black, additive. Where strokes cross, light accumulates.",
     link: ["rgba(255,255,255,.10)", "rgba(255,255,255,.06)"], floor: "rgba(255,255,255,.13)",
-    glow: ["255,120,90", "110,200,255"],
+    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
     color: (t, cyc, _, u) => {
       let a = 0.06 + 0.34*t + (cyc ? 0.16 : 0);
       a *= u > 0 ? 1 + 1.1*u : 1 + 0.45*u;
@@ -379,7 +379,7 @@ const LOOKS = {
     label: "phosphor", swatch: "#4fd0e0", bg: "#04070b", blend: "lighter", fade: 8,
     note: "Oscilloscope. Fast dots run hot toward white; slow ones sink into deep cyan.",
     link: ["rgba(120,210,240,.13)", "rgba(240,120,120,.09)"], floor: "rgba(150,220,240,.12)",
-    glow: ["255,120,90", "110,200,255"],
+    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
     color: (t, cyc, _, u) => {
       let r = 50 + 205*t*t, g = 170 + 85*t, a = 0.09 + 0.36*t + (cyc ? 0.14 : 0);
       if (u > 0) { r += (255 - r) * u; g -= 45 * u; a *= 1 + 0.5*u; }
@@ -392,7 +392,7 @@ const LOOKS = {
     label: "ember", swatch: "#ffb03a", bg: "#0a0603", blend: "lighter", fade: 9,
     note: "Same idea, warm. Amber core burning to pale yellow at speed.",
     link: ["rgba(255,190,110,.12)", "rgba(255,110,90,.09)"], floor: "rgba(255,200,140,.12)",
-    glow: ["255,140,90", "120,190,255"],
+    glow: ["255,140,90", "120,190,255"], corona: "200,130,255",
     color: (t, cyc, _, u) => {
       let g = 120 + 125*t, b = 30 + 165*t*t, a = 0.09 + 0.36*t + (cyc ? 0.14 : 0);
       if (u > 0) { g += (255 - g) * 0.85*u; b += (255 - b) * 0.85*u; a *= 1 + 0.5*u; }
@@ -407,7 +407,7 @@ const LOOKS = {
     note: "The one look where colour earns its place: hue = which friend-graph cycle a dot " +
           "eventually drains into. Same colour means shared destiny.",
     link: ["rgba(255,255,255,.09)", "rgba(255,120,120,.07)"], floor: "rgba(255,255,255,.11)",
-    glow: ["255,120,90", "110,200,255"],
+    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
     // third argument is a hue angle here, not a palette index
     color: (t, cyc, hue, u) => {
       let s = 85, l = 48 + 22*t, a = 0.10 + 0.34*t + (cyc ? 0.16 : 0);
@@ -442,7 +442,8 @@ let prX = 0, prY = 0, prPhase = 0;         // predator
    predator commits to one cluster at a time, approaches it with variable speed
    and wander, coils, lunges past where it was, and recovers before choosing
    another — biased away from the attractor when one is on. */
-const PRED = { state: "prowl", tx: 0, ty: 0, timer: 0, phase: 0, refresh: 0, calm: 0 };
+const PRED = { state: "prowl", tx: 0, ty: 0, timer: 0, phase: 0, refresh: 0, calm: 0,
+               vx: 0, vy: 0, lockAng: 0 };
 const LUNGE_MULT = 4.5, WINDUP_STEPS = 14, LUNGE_STEPS = 22, RECOVER_STEPS = 50;
 
 /* Agent path history, for the comet style. One ring each, far smaller than the
@@ -522,17 +523,22 @@ function updateAgents() {
           // variable pace + lateral wander: a route, not a beeline. The calm
           // counter is a minimum stalking time — without it the whole cycle
           // collapsed into windup/lunge/recover and it lunged every 1.6s.
-          sp = base * (0.35 + 0.3 * (1 + Math.sin(PRED.phase * 1.7)));
+          sp = Math.min(base * (0.35 + 0.3 * (1 + Math.sin(PRED.phase * 1.7))), d);
           ang += 0.6 * Math.sin(PRED.phase * 2.3);
           if (--PRED.calm <= 0 && d < lungeRange) { PRED.state = "windup"; PRED.timer = WINDUP_STEPS; }
           break;
         case "windup":                      // the coil — nearly still
-          sp = base * 0.12;
-          if (--PRED.timer <= 0) { PRED.state = "lunge"; PRED.timer = LUNGE_STEPS; }
+          sp = Math.min(base * 0.12, d);
+          if (--PRED.timer <= 0) {
+            PRED.state = "lunge"; PRED.timer = LUNGE_STEPS;
+            PRED.lockAng = ang;             // commit: no re-aiming mid-flight
+          }
           break;
         case "lunge":                       // straight through where they were
           sp = base * LUNGE_MULT;
-          if (--PRED.timer <= 0 || d < 6) { PRED.state = "recover"; PRED.timer = RECOVER_STEPS; }
+          ang = PRED.lockAng;               // locked heading also kills the
+                                            // atan2 flip when passing the mark
+          if (--PRED.timer <= 0) { PRED.state = "recover"; PRED.timer = RECOVER_STEPS; }
           break;
         case "recover":                     // spent — drift, then choose anew
           sp = base * 0.4;
@@ -540,8 +546,12 @@ function updateAgents() {
           if (--PRED.timer <= 0) retarget();
           break;
       }
-      prX += Math.min(sp, d) * Math.cos(ang);
-      prY += Math.min(sp, d) * Math.sin(ang);
+      // Velocity is eased, not set: the lunge was a 0.12× → 4.5× step change,
+      // which read as a jerk. ~4 steps to 90% keeps it explosive but embodied.
+      PRED.vx += (sp * Math.cos(ang) - PRED.vx) * 0.4;
+      PRED.vy += (sp * Math.sin(ang) - PRED.vy) * 0.4;
+      prX += PRED.vx;
+      prY += PRED.vy;
     } else {
       prPhase += 0.004;
       const R2 = Math.min(W, H) * 0.30;
@@ -819,6 +829,7 @@ function rebuild() {
   analyseGraph();
   seedHues();
   PRED.state = "prowl"; PRED.refresh = 0; PRED.tx = cx; PRED.ty = cy;
+  PRED.vx = 0; PRED.vy = 0;
   resetAgentTrails();
 }
 
@@ -982,12 +993,17 @@ function drawAgents(L) {
     ctx.globalCompositeOperation = "source-over";
 
   } else if (P.agentStyle === "void") {
-    // The predator is an absence — a soft hole gliding through the light,
-    // drawn in the background's own colour so it occludes on every ground.
+    // The predator is an absence with a corona — the dark core occludes
+    // whatever light it crosses, but over empty black it's nothing, so a thin
+    // violet ring gives the black hole an event horizon you can see anywhere.
     // The attractor is a pinprick star.
     if (P.predatorOn) {
       const r = Math.min(W, H) * P.predatorRadius * 0.55;
       ctx.drawImage(voidSprite(L.bgRGB.join(",")), prX - r, prY - r, r * 2, r * 2);
+      ctx.globalCompositeOperation = L.blend;
+      const rc = r * 1.12;
+      ctx.drawImage(coronaSprite(L.corona), prX - rc, prY - rc, rc * 2, rc * 2);
+      ctx.globalCompositeOperation = "source-over";
     }
     if (P.attractorOn) {
       ctx.globalCompositeOperation = L.blend;
@@ -1020,6 +1036,26 @@ function drawComet(tr, tint, wBase, peak) {
     ctx.stroke();
   }
   ctx.globalAlpha = 1;
+}
+
+/* A thin luminous band just outside the core — transparent centre so the
+   absence stays absent, peak at ~0.72 of the radius, gone by the edge. */
+const coronaCache = {};
+function coronaSprite(tint) {
+  let sp = coronaCache[tint];
+  if (!sp) {
+    sp = document.createElement("canvas"); sp.width = sp.height = 128;
+    const g2 = sp.getContext("2d");
+    const gr = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, "rgba(" + tint + ",0)");
+    gr.addColorStop(0.60, "rgba(" + tint + ",0)");
+    gr.addColorStop(0.72, "rgba(" + tint + ",0.55)");
+    gr.addColorStop(0.84, "rgba(" + tint + ",0.18)");
+    gr.addColorStop(1, "rgba(" + tint + ",0)");
+    g2.fillStyle = gr; g2.fillRect(0, 0, 128, 128);
+    coronaCache[tint] = sp;
+  }
+  return sp;
 }
 
 const voidCache = {};
