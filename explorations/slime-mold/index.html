@@ -116,6 +116,24 @@
     </div>
 
     <div class="group">
+      <div class="glabel">Food</div>
+      <div class="row">
+        <label title="How strongly food sources emit attractant into the trail field. The emission diffuses into a long-range gradient agents climb from anywhere. Zero ignores food entirely. Self-calibrating against the network's own peak.">Appetite</label><span class="val" id="v_ap"></span>
+        <input type="range" id="ap" min="0" max="5" step="0.1">
+      </div>
+      <div class="row">
+        <label title="How fast agents eat the food they stand on. Zero makes sources eternal (the network converges and freezes). Higher rates mean sources exhaust, their veins starve, and the network rewires — depletion is what generates change.">Meal size</label><span class="val" id="v_ml"></span>
+        <input type="range" id="ml" min="0" max="0.012" step="0.0002">
+      </div>
+      <div class="row">
+        <label title="New food sources appearing at random, per 1000 steps. With depletion on, rain keeps the resource landscape shifting so the network never settles.">Food rain</label><span class="val" id="v_rn"></span>
+        <input type="range" id="rn" min="0" max="20" step="0.5">
+      </div>
+      <div class="note"><b>Click the canvas</b> to drop food by hand — pause the rain and
+        lay out your own cities.</div>
+    </div>
+
+    <div class="group">
       <div class="glabel">Trail field</div>
       <div class="row">
         <label title="Half-life of the deposited trail, in steps. Long memory lets thick stable veins form; short memory keeps the network nervous and rewiring.">Evaporation</label><span class="val" id="v_hl"></span>
@@ -153,8 +171,10 @@
         <button class="act" id="pause">pause</button>
         <button class="act" id="scatter">scatter</button>
         <button class="act" id="clear">clear trail</button>
+        <button class="act" id="clearfood">clear food</button>
       </div>
-      <div class="note">space pause · r scatter · c clear · 1–3 looks</div>
+      <div class="note">space pause · r scatter · c clear trail · x clear food · 1–3 looks
+        · click = drop food</div>
     </div>
   </div>
 </aside>
@@ -198,6 +218,9 @@ const P = {
   speed: 1.0,          // field px per step
   halfLife: 60,        // trail half-life in steps
   diffuse: 0.6,        // 0..1 blend toward the 3×3 mean per step
+  appetite: 1.5,       // food attraction, in units of the current peak trail
+  meal: 0.004,         // fraction of a food cell eaten per agent-visit
+  rain: 3,             // new food sources per 1000 steps (0 = off)
   stepsPerFrame: 1,
   look: "organism",
   paused: false,
@@ -214,18 +237,21 @@ const PRESETS = {
 const LOOKS = {
   organism: {
     label: "organism", swatch: "#e8a33d", bg: "#070604",
-    note: "The classic: amber protoplasm on darkness.",
+    note: "The classic: amber protoplasm on darkness. Food glows green.",
     stops: [[0,[7,6,4]],[0.30,[74,44,13]],[0.65,[210,140,50]],[1,[255,240,200]]],
+    foodRGB: [70, 190, 110], foodMix: 0.55,
   },
   ink: {
     label: "ink", swatch: "#f4f1ea", bg: "#f4f1ea",
-    note: "Dark veins on warm paper — the network as a drawing.",
+    note: "Dark veins on warm paper — the network as a drawing. Food is a red stain.",
     stops: [[0,[244,241,234]],[0.25,[210,200,182]],[0.6,[110,95,72]],[1,[30,24,16]]],
+    foodRGB: [180, 70, 50], foodMix: 0.45,
   },
   noir: {
     label: "noir", swatch: "#ffffff", bg: "#000000",
-    note: "White light on black. Just the structure.",
+    note: "White light on black. Just the structure. Food is a dim halo.",
     stops: [[0,[0,0,0]],[0.5,[110,110,110]],[1,[255,255,255]]],
+    foodRGB: [90, 90, 90], foodMix: 0.6,
   },
 };
 const LOOK_KEYS = Object.keys(LOOKS);
@@ -248,7 +274,14 @@ for (const k of LOOK_KEYS) {
 let trail = new Float32Array(FN);
 let tmp = new Float32Array(FN);
 let occ = new Uint8Array(FN);            // one agent per cell — the crowding rule
+let food = new Float32Array(FN);         // attractant, 0..1 — sensed, eaten, doesn't evaporate
+let rainAcc = 0;
 let ax, ay, ah;                          // agent position + heading
+let sat;                                 // satiation countdown — full agents dash outward
+// 45 steps ≈ 45px: enough to clear the plume, not enough to emigrate. At 130
+// the round trip took ~300 steps for ~20 steps of eating (7% duty cycle) and
+// sources took ~10k steps to die.
+const SAT_STEPS = 45, SAT_CHANCE = 0.02;
 let W = 0, H = 0, dpr = 1;
 
 let exposure = 1;                        // auto-exposure reference (high-water EMA)
@@ -283,6 +316,7 @@ function clearTrail() { trail.fill(0); exposure = 1; }
 
 function rebuild() {
   ax = new Float32Array(P.n); ay = new Float32Array(P.n); ah = new Float32Array(P.n);
+  sat = new Uint16Array(P.n);
   scatter();
 }
 
@@ -299,6 +333,24 @@ function sample(x, y) {
   return trail[yi * FW + xi];
 }
 
+// A soft-edged disc of food, radius r field-px, stamped at (fx, fy) on the torus
+function dropFood(fx, fy, r) {
+  const r2 = r * r;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 > r2) continue;
+      let xx = (fx + dx) | 0, yy = (fy + dy) | 0;
+      if (xx < 0) xx += FW; else if (xx >= FW) xx -= FW;
+      if (yy < 0) yy += FH; else if (yy >= FH) yy -= FH;
+      const t = 1 - d2 / r2;
+      const i = yy * FW + xx;
+      const v = food[i] + t * t;
+      food[i] = v > 1 ? 1 : v;
+    }
+  }
+}
+
 function stepSim() {
   const n = P.n;
   const sa = P.sensorAngle * Math.PI / 180;
@@ -309,23 +361,46 @@ function stepSim() {
   occ.fill(0);
   for (let i = 0; i < n; i++) occ[(ay[i] | 0) * FW + (ax[i] | 0)] = 1;
 
+  // food rain: new sources at random
+  if (P.rain > 0) {
+    rainAcc += P.rain / 1000;
+    while (rainAcc >= 1) {
+      rainAcc -= 1;
+      dropFood(Math.random() * FW, Math.random() * FH, 9);
+    }
+  }
+  const meal = P.meal;
+
   // agents: sense → steer → move → deposit. They interact only through the
   // field, and diffusion delays that by a step anyway, so per-agent sequential
   // order injects no meaningful bias here (unlike the dots sim, where direct
   // agent→agent forces demanded a simultaneous snapshot).
   for (let i = 0; i < n; i++) {
-    const h = ah[i];
-    const cF = Math.cos(h),      sF = Math.sin(h);
-    const cL = Math.cos(h - sa), sL = Math.sin(h - sa);
-    const cR = Math.cos(h + sa), sR = Math.sin(h + sa);
-    const f = sample(ax[i] + cF * sd, ay[i] + sF * sd);
-    const l = sample(ax[i] + cL * sd, ay[i] + sL * sd);
-    const r = sample(ax[i] + cR * sd, ay[i] + sR * sd);
+    /* Satiation: a fed agent ignores all gradients and dashes STRAIGHT out,
+       still depositing. Without this, food sources are pure agent traps —
+       every whisker near one points inward, agents orbit, and the region
+       between two sources actually EMPTIES (measured: corridor at 0.19× the
+       background). Corridors are built by these outbound commuters: dashes
+       radiating from one source get captured by the next plume, and the
+       double-laid trail between them seeds a vein the normal agents then
+       reinforce. */
+    if (sat[i] > 0) {
+      sat[i]--;
+    } else {
+      const h = ah[i];
+      const sa2 = sa;
+      const cL = Math.cos(h - sa2), sL = Math.sin(h - sa2);
+      const cF = Math.cos(h),       sF = Math.sin(h);
+      const cR = Math.cos(h + sa2), sR = Math.sin(h + sa2);
+      const f = sample(ax[i] + cF * sd, ay[i] + sF * sd);
+      const l = sample(ax[i] + cL * sd, ay[i] + sL * sd);
+      const r = sample(ax[i] + cR * sd, ay[i] + sR * sd);
 
-    if (f >= l && f >= r) { /* straight */ }
-    else if (l > f && r > f) ah[i] += (Math.random() < 0.5 ? -tr : tr);
-    else if (l > r) ah[i] -= tr;
-    else ah[i] += tr;
+      if (f >= l && f >= r) { /* straight */ }
+      else if (l > f && r > f) ah[i] += (Math.random() < 0.5 ? -tr : tr);
+      else if (l > r) ah[i] -= tr;
+      else ah[i] += tr;
+    }
 
     /* CROWDING (Jones's original rule, and the thing that sustains network
        complexity): an agent may only move into an unoccupied cell. A blocked
@@ -348,6 +423,27 @@ function stepSim() {
     } else {
       ah[i] = Math.random() * TAU;              // blocked: re-orient, no deposit
     }
+
+    /* Eating happens where the agent STANDS, whatever the move outcome. The
+       first version ate only on successful moves — but a packed source disc
+       blocks every move (crowding), so the agents sitting ON the food were
+       exactly the ones that could never eat or satiate. Measured: 1 satiated
+       agent in a 6000-agent run. Sources deplete under exploitation, so veins
+       starve and the network rewires; eating also occasionally satiates,
+       launching the outbound commuters that build corridors. */
+    const cur = (ay[i] | 0) * FW + (ax[i] | 0);
+    if (food[cur] > 0) {
+      // eat whatever is left — an eat-threshold froze the disc's low skirt,
+      // which is most of its mass, and sources stalled at ~70% forever
+      food[cur] -= meal; if (food[cur] < 0.003) food[cur] = 0;
+      if (food[cur] > 0.05 && sat[i] === 0 && Math.random() < SAT_CHANCE) {
+        sat[i] = SAT_STEPS;
+        // keep the current heading: through-traffic. The agent barrels straight
+        // through the source and out the far side, along the vein structure it
+        // arrived on — a random bearing here just sprays spokes everywhere
+        // (measured: background up 3.3×, corridor unchanged).
+      }
+    }
   }
 
   // Field: separable 3×3 mean (torus), blended in by `diffuse`, then decay.
@@ -357,6 +453,15 @@ function stepSim() {
   const decay = Math.pow(0.5, 1 / P.halfLife);
   const a = (1 - P.diffuse) * decay;         // weight of the cell's own value
   const b = P.diffuse * decay / 9;           // weight of each 3×3 sum term
+  /* Food works by EMISSION, not by being sensed directly: sources inject
+     attractant into the diffusing trail field every step, and diffusion builds
+     a long-range gradient agents can climb from anywhere. (A merely-sensed
+     food field is invisible beyond whisker reach — measured: two sources 320px
+     apart produced a corridor/background trail ratio of 1.1, i.e. nothing.)
+     The injection is scaled by exposure so its pull tracks the network's own
+     units — and the exposure scan below EXCLUDES emitting cells, otherwise
+     exposure chases the plume it feeds and the loop diverges. */
+  const inj = P.appetite * 0.05 * exposure;
   // horizontal pass: tmp = sum of 3 horizontal neighbours (wrapped)
   for (let y = 0; y < FH; y++) {
     const row = y * FW, last = row + FW - 1;
@@ -371,7 +476,8 @@ function stepSim() {
     const row = y * FW;
     const up = (y === 0 ? FH - 1 : y - 1) * FW, dn = (y === FH - 1 ? 0 : y + 1) * FW;
     for (let x = 0; x < FW; x++) {
-      trail[row + x] = trail[row + x] * a + (tmp[up + x] + tmp[row + x] + tmp[dn + x]) * b;
+      trail[row + x] = trail[row + x] * a + (tmp[up + x] + tmp[row + x] + tmp[dn + x]) * b
+                     + inj * food[row + x];
     }
   }
 
@@ -380,7 +486,7 @@ function stepSim() {
     let mx = 0, hits = 0, cells = 0;
     for (let i = 0; i < FN; i += 7) {
       const v = trail[i];
-      if (v > mx) mx = v;
+      if (food[i] < 0.01 && v > mx) mx = v;   // veins only — never the food plume
       if (v > exposure * 0.15) hits++;
       cells++;
     }
@@ -393,12 +499,20 @@ function stepSim() {
 function draw() {
   const L = LOOKS[P.look], lut = L.lut, d = img.data;
   const inv = 1 / Math.max(exposure, 1e-6);
+  const fr = L.foodRGB[0], fg = L.foodRGB[1], fb = L.foodRGB[2];
+  const fmix = L.foodMix;
   for (let i = 0; i < FN; i++) {
     let t = trail[i] * inv;
     if (t > 1) t = 1;
     const q = (Math.sqrt(t) * 255) | 0;        // sqrt lifts the faint filigree
     const o = i * 4, l3 = q * 3;
-    d[o] = lut[l3]; d[o + 1] = lut[l3 + 1]; d[o + 2] = lut[l3 + 2];
+    let R = lut[l3], G = lut[l3 + 1], B = lut[l3 + 2];
+    const fv = food[i];
+    if (fv > 0.01) {                           // food: lerp toward the look's food colour
+      const m = fv * fmix;
+      R += (fr - R) * m; G += (fg - G) * m; B += (fb - B) * m;
+    }
+    d[o] = R; d[o + 1] = G; d[o + 2] = B;
   }
   offCtx.putImageData(img, 0, 0);
 
@@ -408,6 +522,12 @@ function draw() {
   ctx.fillStyle = L.bg;
   ctx.fillRect(0, 0, W, H);
   ctx.drawImage(off, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+// screen → field coordinates: the exact inverse of the cover-fit above
+function screenToField(px, py) {
+  const s = Math.max(W / FW, H / FH);
+  return [(px - (W - FW * s) / 2) / s, (py - (H - FH * s) / 2) / s];
 }
 
 // ---- loop ------------------------------------------------------------------
@@ -442,6 +562,9 @@ const SLIDERS = [
   ["sa", "sensorAngle",  (v) => v + "°"],
   ["sd", "sensorDist",   (v) => v.toFixed(1) + " px"],
   ["tr", "turnRate",     (v) => v + "°/step"],
+  ["ap", "appetite",     (v) => v === 0 ? "indifferent" : v.toFixed(1) + "× peak trail"],
+  ["ml", "meal",         (v) => v === 0 ? "eternal sources" : (v * 1000).toFixed(1) + "‰/visit"],
+  ["rn", "rain",         (v) => v === 0 ? "off" : v.toFixed(1) + " per 1000 steps"],
   ["hl", "halfLife",     (v) => v + "-step ½-life"],
   ["df", "diffuse",      (v) => v === 0 ? "none" : (v * 100).toFixed(0) + "%"],
   ["n",  "n",            (v) => String(v)],
@@ -504,6 +627,12 @@ Object.keys(PRESETS).forEach((name) => {
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("scatter").addEventListener("click", () => scatter());
 $("clear").addEventListener("click", () => clearTrail());
+$("clearfood").addEventListener("click", () => { food.fill(0); });
+
+cv.addEventListener("pointerdown", (e) => {
+  const [fx, fy] = screenToField(e.clientX, e.clientY);
+  if (fx >= 0 && fx < FW && fy >= 0 && fy < FH) dropFood(fx, fy, 11);
+});
 $("toggle").addEventListener("click", () => {
   const ui = $("ui"); ui.classList.toggle("collapsed");
   $("toggle").textContent = ui.classList.contains("collapsed") ? "show" : "hide";
@@ -514,6 +643,7 @@ addEventListener("keydown", (e) => {
   if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
   else if (e.key === "r") scatter();
   else if (e.key === "c") clearTrail();
+  else if (e.key === "x") food.fill(0);
   else if (e.key >= "1" && e.key <= String(LOOK_KEYS.length)) setLook(LOOK_KEYS[+e.key - 1]);
 });
 
@@ -522,6 +652,8 @@ addEventListener("resize", resize);
 // ---- go --------------------------------------------------------------------
 resize();
 rebuild();
+// seed a few sources so the default load is alive from the first minute
+for (let i = 0; i < 3; i++) dropFood(Math.random() * FW, Math.random() * FH, 11);
 syncUI();
 requestAnimationFrame(frame);
 </script>

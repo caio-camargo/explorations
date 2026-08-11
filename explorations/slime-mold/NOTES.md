@@ -1,9 +1,9 @@
 # Slime Mold — Physarum transport networks
-**Version**: v1.1.0
+**Version**: v1.2.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Organic vein networks from three whiskers and a scent trail — the Jones (2010) Physarum model, built for watching
-**Status**: Active — v1.1 (crowding rule: complexity is sustained now)
+**Status**: Active — v1.2 (food: depletion + rain keep the network rewiring)
 
 ---
 
@@ -102,6 +102,50 @@ reaching 40,000 (~16% occupancy). Measured at t=1200 under `veins` settings: n=6
 coverage, ~16k junctions (distinct veins); n=15,000 → 41%, ~26k (dense foam, nearly too much).
 The `filigree` preset now runs 14,000 agents to exploit this.
 
+## Food (v1.2) — changes that generate change
+
+User feedback on v1.1: the sustained lace "ends up pretty static after a while — changes that
+generate change are good." The food system is that engine: sources anchor the network, deplete
+under exploitation, and rain replaces them elsewhere — discover, exploit, exhaust, rewire,
+forever. Click the canvas to drop food by hand; `x` clears it.
+
+Getting it working took four measured iterations, each one a wrong assumption caught by a
+number:
+
+1. **Sensed food is invisible beyond whisker reach.** First build added food to the whisker
+   readings. Two sources 320px apart: corridor/background trail ratio **1.1** — nothing. A
+   9px whisker can't smell across a field. Fix: sources **emit into the diffusing trail
+   field** (folded into the existing field pass at zero extra cost), building a real gradient.
+   Corollary: with a 60-step half-life, the plume's diffusion length is √(0.4·86) ≈ **6px** —
+   long-range gradients are physically impossible here, so food anchors at plume range and
+   large-scale structure follows from anchoring, not smelling.
+2. **Emission + auto-exposure = feedback loop.** Injection scaled by exposure while exposure
+   tracked the plume it fed → divergence for appetite > ~0.6. The exposure scan now excludes
+   emitting cells; it tracks veins, never plume.
+3. **Sources were agent traps.** With emission working, trail at sources hit 60× background —
+   and the corridor between two sources measured **0.19×** background: emptier than nowhere.
+   Every whisker near a source points inward; agents orbit and the surroundings evacuate. Fix:
+   **satiation** — an agent that eats has a small chance per step to go full, ignore all
+   gradients, and dash straight through and out (still depositing). Corridor ratio 0.19 → 0.96,
+   ~90 commuters live at steady state.
+4. **Two timescale bugs in the eating itself.** Eating only fired on successful moves — but a
+   packed source blocks every move (crowding), so the agents ON the food were exactly the ones
+   that couldn't eat: 1 satiated agent in a 6000-agent run. And a 130-step dash exiled
+   commuters 130px (7% eating duty cycle, ~10k-step source lifetimes). Eat-where-you-stand +
+   45-step dashes: a source now lives **~2,000 steps** under exploitation (78% eaten by
+   t=1200, dead by 2400) and its hub cools back to network baseline after.
+
+At the default rain (3 sources/1000 steps) and lifetime (~2000 steps), the equilibrium is
+**~6 concurrent sources** — enough that somewhere is always igniting and somewhere always
+starving.
+
+**A metric limitation, logged honestly**: whole-field churn (|Δ|/mass) could not distinguish
+food-on from food-off at any window length — it saturates on filigree flicker, and a
+brightness-thresholded "backbone" variant collapses onto the plume cells instead. The
+lifecycle is verified piecewise (anchor / deplete / die / cool / commute / rain); a layout-
+level metric (tracking vein topology, not pixels) is an open thread. The visible judgment —
+green blobs igniting, veins snapping to them, hubs starving out — is the user's.
+
 ## Verification
 
 - All four presets: agents in bounds after thousands of steps on the torus, no NaN anywhere.
@@ -117,8 +161,11 @@ The `filigree` preset now runs 14,000 agents to exploit this.
 
 ## Things worth trying next
 
-- [ ] **Food**: click to drop attractant sources the field can't evaporate — the Tokyo-rail
-      experiment. Needs a second field summed into sensing only.
+- [x] ~~Food~~ — done in v1.2 (emission-based, with depletion + rain). The full Tokyo-rail
+      *corridor selection* between distant sources remains out of reach at these diffusion
+      lengths; a dedicated long-range chemoattractant field (long half-life, multiple blur
+      passes) is the upgrade path if we ever want true Steiner behaviour.
+- [ ] A layout-level change metric (vein topology, not pixel churn) — the food A/B needs it.
 - [ ] Spatial-autocorrelation length as the third metric — separates filigree from veins, and
       would complete a proper parameter atlas (the fireflies method) over sensor angle × reach.
 - [ ] Obstacle masks — walls the agents bounce off and the trail can't cross.

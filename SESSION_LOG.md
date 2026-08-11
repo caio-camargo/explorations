@@ -38,6 +38,52 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Slime mold v1.2: food — changes that generate change
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: the sustained lace "ends up pretty static after a while — changes that generate change are
+good. we can do the food sources." Built the food system as a perpetual-change engine: sources
+anchor the network, deplete under exploitation, rain replaces them elsewhere. Click to drop food;
+`x` clears. Four measured iterations, each a wrong assumption caught by a number.
+
+### The four iterations (full detail in NOTES)
+1. Sensed food is invisible beyond whisker reach (corridor ratio 1.1 = nothing) → sources **emit
+   into the diffusing trail field**, folded into the field pass at zero cost. Plume diffusion
+   length is √(0.4·86) ≈ 6px, so anchoring, not long-range smelling, is the physics.
+2. Emission × auto-exposure = divergence (exposure chased the plume it fed) → exposure scan
+   excludes emitting cells.
+3. Sources were agent traps — corridor at **0.19×** background, surroundings evacuated →
+   **satiation**: fed agents dash straight through and out, still depositing. 0.19 → 0.96,
+   ~90 commuters live.
+4. Eating fired only on successful moves, but crowding blocks every move on a packed source —
+   the agents ON food couldn't eat (1 satiated in 6000). Plus 130-step dashes = 7% duty cycle
+   and ~10k-step source lives. Eat-where-you-stand + 45-step dashes → **~2000-step lifetimes**
+   (78% at t=1200, dead by 2400), hub cools to baseline after.
+
+At default rain 3/1000 steps: equilibrium ≈ 6 concurrent sources.
+
+### Honest limitation
+Whole-field churn couldn't distinguish food-on/off at any window (saturated by filigree
+flicker); backbone-thresholded churn collapses onto plume cells. Lifecycle verified piecewise;
+a vein-topology metric is the open thread. Also: true corridor *selection* between distant
+sources (Tokyo rail) is physically out of reach at 6px plume range — long-range chemo field is
+the documented upgrade path.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/slime-mold/index.html` | food field, emission in field pass, eating+satiation, rain, click-to-drop, clear-food, 3 tooltipped sliders, per-look food colours, seeded load |
+| 2 | edited | `explorations/slime-mold/NOTES.md` | v1.2 — "Food: changes that generate change", 4 iterations, limitation |
+| 3 | edited | `explorations/README.md` | Row → v1.2 |
+
+### Next Steps
+- [ ] Watch: green sources ignite, veins snap to them, hubs starve — the default load seeds 3
+- [ ] Layout-level change metric; long-range chemo field for true Steiner corridors
+
 ## Session 2026-08-11 — v2.6.3: the strike becomes one continuous envelope
 **Source**: Claude Code
 **User**: Caio
