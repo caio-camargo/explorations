@@ -43,6 +43,7 @@
   .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
          margin-bottom: 9px; }
   .row label { font-size: 12px; }
+  .row label[title] { cursor: help; border-bottom: 1px dotted rgba(255,255,255,.28); }
   .row .val { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--accent); }
   .row input[type=range] { grid-column: 1 / -1; width: 100%; height: 3px; -webkit-appearance: none;
                            appearance: none; background: rgba(255,255,255,.14); border-radius: 2px; }
@@ -105,11 +106,11 @@
     <div class="group">
       <div class="glabel">Clocks</div>
       <div class="row">
-        <label>Blink period</label><span class="val" id="v_per"></span>
+        <label title="Steps per clock cycle — the base rhythm. Everything else is relative to it.">Blink period</label><span class="val" id="v_per"></span>
         <input type="range" id="per" min="40" max="400" step="5">
       </div>
       <div class="row">
-        <label>Clock diversity</label><span class="val" id="v_sp"></span>
+        <label title="How much natural rates differ fly to fly. Diversity resists sync; identical clocks agree easily. This is the force the nudge has to beat.">Clock diversity</label><span class="val" id="v_sp"></span>
         <input type="range" id="sp" min="0" max="0.30" step="0.005">
       </div>
     </div>
@@ -117,29 +118,30 @@
     <div class="group">
       <div class="glabel">Coupling</div>
       <div class="row">
-        <label>Nudge per flash seen</label><span class="val" id="v_ng"></span>
-        <input type="range" id="ng" min="0" max="0.20" step="0.002">
+        <label title="How far seeing a flash advances a clock. Log-scaled: the entire sync transition lives between 0.4% and 3%, so most of the slider is spent there. Cascades amplify small nudges far beyond their face value.">Nudge per flash seen</label><span class="val" id="v_ng"></span>
+        <input type="range" id="ng" min="0" max="1" step="0.01">
       </div>
       <div class="row">
-        <label>Sight radius</label><span class="val" id="v_rd"></span>
-        <input type="range" id="rd" min="0.02" max="0.45" step="0.005">
+        <label title="How far a flash can be seen. Small keeps agreement local — waves. Large makes it global — unison. The wall between them sits around two-thirds of this slider.">Sight radius</label><span class="val" id="v_rd"></span>
+        <input type="range" id="rd" min="0.02" max="0.30" step="0.005">
       </div>
       <div class="note">A flash advances the clock of every neighbour that sees it. A clock
-        pushed past midnight fires immediately — cascades are the mechanism, not a glitch.</div>
+        pushed past midnight fires immediately — cascades are the mechanism, not a glitch.
+        The regime label (bottom left) says which side of the sync boundary you're on.</div>
     </div>
 
     <div class="group">
       <div class="glabel">Motion &amp; light</div>
       <div class="row">
-        <label>Wander speed</label><span class="val" id="v_wd"></span>
+        <label title="Drift speed. Movement stirs the neighbourhoods, carrying local agreement across the field. Zero freezes the network in place.">Wander speed</label><span class="val" id="v_wd"></span>
         <input type="range" id="wd" min="0" max="1.5" step="0.05">
       </div>
       <div class="row">
-        <label>Afterglow</label><span class="val" id="v_ag"></span>
+        <label title="How long a flash lingers. Cosmetic only — no effect on the clocks.">Afterglow</label><span class="val" id="v_ag"></span>
         <input type="range" id="ag" min="0.70" max="0.97" step="0.005">
       </div>
       <div class="row">
-        <label>Dot size</label><span class="val" id="v_ds"></span>
+        <label title="Cosmetic only.">Dot size</label><span class="val" id="v_ds"></span>
         <input type="range" id="ds" min="0.8" max="4" step="0.1">
       </div>
     </div>
@@ -147,11 +149,11 @@
     <div class="group">
       <div class="glabel">World</div>
       <div class="row">
-        <label>Fireflies</label><span class="val" id="v_n"></span>
+        <label title="Population. More flies at the same radius means denser neighbourhoods, which makes sync easier.">Fireflies</label><span class="val" id="v_n"></span>
         <input type="range" id="n" min="20" max="2500" step="10">
       </div>
       <div class="row">
-        <label>Steps / frame</label><span class="val" id="v_sf"></span>
+        <label title="Simulation speed. Below 1× it runs one step every few frames — slow motion.">Steps / frame</label><span class="val" id="v_sf"></span>
         <input type="range" id="sf" min="0.05" max="8" step="0.05">
       </div>
       <label class="check"><input type="checkbox" id="mt"> Sync meter</label>
@@ -272,6 +274,44 @@ let gridStart = null, gridCur = null, gridOrder = null, cellOf = null;
 let orderR = 0, rShow = 0;
 const rHist = new Float32Array(480);
 let rHead = 0, rFill = 0;
+
+/* Live regime classifier. Thresholds calibrated against the measured parameter
+   maps in NOTES.md (7×7 sweeps of radius × nudge at two diversities), so the
+   label names the same regimes the atlas does. Uses a slow EMA of global order
+   plus a periodic sample of LOCAL order — waves are precisely the state where
+   neighbourhoods agree and the field doesn't. */
+let rSlow = 0, rVarSlow = 0, locSlow = 0, sinceLoc = 0, regime = "…";
+
+function measureLocalOrder() {
+  const n = P.n, Rpx = P.radius * Math.min(W, H), R2 = Rpx * Rpx;
+  const stride = Math.max(1, (n / 40) | 0);
+  let sum = 0, c = 0;
+  for (let i = 0; i < n; i += stride) {
+    let sc = 0, ss = 0, m = 0;
+    for (let j = 0; j < n; j++) {
+      const dx = x[j] - x[i], dy = y[j] - y[i];
+      if (dx * dx + dy * dy <= R2) { const a = theta[j] * TAU; sc += Math.cos(a); ss += Math.sin(a); m++; }
+    }
+    if (m > 3) { sum += Math.hypot(sc, ss) / m; c++; }
+  }
+  return c ? sum / c : 0;
+}
+
+function classify() {
+  const Rpx = P.radius * Math.min(W, H);
+  const swing = Math.sqrt(rVarSlow);
+  if (P.nudge <= 0 || Rpx <= 1)                    regime = "no coupling";
+  // High order with high variance is a metastable regime caught mid-swing, not
+  // unison — "stubborn" spends real time above r 0.9 and then collapses.
+  else if (rSlow > 0.85 && swing < 0.06)           regime = "unison";
+  else if (locSlow - rSlow > 0.25 && locSlow > 0.45) regime = "waves";
+  else if (rSlow > 0.30 || swing > 0.09)           regime = "partial sync";
+  else                                             regime = "incoherent";
+}
+
+function resetRegime() {
+  rSlow = orderR; rVarSlow = 0; locSlow = 0; sinceLoc = 0; regime = "…";
+}
 
 const cv = document.getElementById("c");
 const ctx = cv.getContext("2d", { alpha: false });
@@ -402,6 +442,16 @@ function stepSim() {
   rShow += (orderR - rShow) * 0.04;
   rHist[rHead] = orderR; rHead = (rHead + 1) % rHist.length;
   if (rFill < rHist.length) rFill++;
+
+  // regime tracking: slow stats + an occasional local-order sample
+  rSlow += (orderR - rSlow) * 0.006;
+  const dv = orderR - rSlow;
+  rVarSlow += (dv * dv - rVarSlow) * 0.006;
+  if (++sinceLoc >= 60) {
+    sinceLoc = 0;
+    locSlow += (measureLocalOrder() - locSlow) * 0.35;
+    classify();
+  }
 }
 
 // ---- rendering -------------------------------------------------------------
@@ -450,7 +500,7 @@ function drawMeter() {
   }
   ctx.fillStyle = "rgba(255,255,255,0.5)";
   ctx.font = "10px ui-sans-serif,system-ui,sans-serif";
-  ctx.fillText("sync " + rShow.toFixed(2), x0 + 6, y0 + 13);
+  ctx.fillText("sync " + rShow.toFixed(2) + " · " + regime, x0 + 6, y0 + 13);
 }
 
 // ---- loop ------------------------------------------------------------------
@@ -470,7 +520,7 @@ function frame(t) {
   draw();
 
   document.getElementById("stats").textContent =
-    P.n + " fireflies · sync " + rShow.toFixed(2)
+    P.n + " fireflies · sync " + rShow.toFixed(2) + " · " + regime
     + " · " + P.stepsPerFrame.toFixed(2) + " steps/frame"
     + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
 
@@ -480,10 +530,24 @@ function frame(t) {
 // ---- controls --------------------------------------------------------------
 const $ = (id) => document.getElementById(id);
 
+/* The nudge slider is LOG-scaled. Measured (see NOTES.md), the whole sync
+   transition happens between a 0.4% and a 3% nudge — on a linear 0–20% slider
+   that's 5% of the travel, which is why tuning felt finicky. The log mapping
+   spends most of the travel inside the transition. Slider position 0 is a true
+   off; the scale then runs 0.3% → 20%. */
+const NG_MIN = 0.003, NG_MAX = 0.20;
+// Position 0 is a true off-detent; the log scale starts at the next step (0.01)
+// so that NG_MIN survives a round-trip instead of collapsing into the detent.
+const ngTo   = (p) => p < 0.01 ? 0 :
+  NG_MIN * Math.pow(NG_MAX / NG_MIN, (p - 0.01) / 0.99);
+const ngFrom = (v) => v <= 0 ? 0 :
+  Math.min(1, Math.max(0.01, 0.01 + 0.99 * Math.log(v / NG_MIN) / Math.log(NG_MAX / NG_MIN)));
+
+// [id, key, format, sliderToValue?, valueToSlider?]
 const SLIDERS = [
   ["per", "period",       (v) => v + " steps"],
   ["sp",  "spread",       (v) => v === 0 ? "identical" : "±" + (v * 100).toFixed(1) + "%"],
-  ["ng",  "nudge",        (v) => v === 0 ? "off" : (v * 100).toFixed(1) + "% of cycle"],
+  ["ng",  "nudge",        (v) => v === 0 ? "off" : (v * 100).toFixed(1) + "% of cycle", ngTo, ngFrom],
   ["rd",  "radius",       (v) => (v * 100).toFixed(0) + "% of floor"],
   ["wd",  "wander",       (v) => v === 0 ? "still" : v.toFixed(2) + " px/step"],
   ["ag",  "afterglow",    (v) => Math.round(Math.log(0.5) / Math.log(v)) + "-step ½-life"],
@@ -494,8 +558,8 @@ const SLIDERS = [
 ];
 
 function syncUI() {
-  for (const [id, key, fmt] of SLIDERS) {
-    $(id).value = P[key];
+  for (const [id, key, fmt, toV, fromV] of SLIDERS) {
+    $(id).value = fromV ? fromV(P[key]) : P[key];
     $("v_" + id).textContent = fmt(P[key]);
   }
   $("mt").checked = P.meter;
@@ -507,9 +571,9 @@ function syncUI() {
   });
 }
 
-for (const [id, key, fmt] of SLIDERS) {
+for (const [id, key, fmt, toV] of SLIDERS) {
   $(id).addEventListener("input", (e) => {
-    const v = parseFloat(e.target.value);
+    const v = toV ? toV(parseFloat(e.target.value)) : parseFloat(e.target.value);
     if (key === "n") { P.n = v | 0; rebuild(); }
     else P[key] = v;
     $("v_" + id).textContent = fmt(P[key]);
@@ -540,6 +604,7 @@ Object.keys(PRESETS).forEach((name) => {
     Object.assign(P, PRESETS[name]);
     if (x && wantN !== x.length) rebuild(); else desync();
     rFill = 0; rHead = 0;                // restart the meter trace for this regime
+    resetRegime();
     syncUI();
   });
   presetBar.appendChild(b);
@@ -547,7 +612,7 @@ Object.keys(PRESETS).forEach((name) => {
 
 $("mt").addEventListener("change", (e) => { P.meter = e.target.checked; });
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
-$("desync").addEventListener("click", () => { desync(); rFill = 0; rHead = 0; });
+$("desync").addEventListener("click", () => { desync(); rFill = 0; rHead = 0; resetRegime(); });
 $("scatter").addEventListener("click", () => scatter());
 $("clocks").addEventListener("click", () => newClocks());
 $("toggle").addEventListener("click", () => {
@@ -558,7 +623,7 @@ $("toggle").addEventListener("click", () => {
 addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
-  else if (e.key === "d") { desync(); rFill = 0; rHead = 0; }
+  else if (e.key === "d") { desync(); rFill = 0; rHead = 0; resetRegime(); }
   else if (e.key === "r") scatter();
   else if (e.key === "m") { P.meter = !P.meter; syncUI(); }
   else if (e.key >= "1" && e.key <= String(LOOK_KEYS.length)) setLook(LOOK_KEYS[+e.key - 1]);

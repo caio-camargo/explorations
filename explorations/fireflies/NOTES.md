@@ -1,9 +1,9 @@
 # Fireflies — pulse-coupled sync
-**Version**: v1.0.0
+**Version**: v1.1.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Synchrony emerging from flashes alone — Mirollo–Strogatz pulse-coupled oscillators, built for watching
-**Status**: Active — v1
+**Status**: Active — v1.1 (parameter atlas, log nudge, live regime label)
 
 ---
 
@@ -83,6 +83,76 @@ everyone agrees; globally the field can't — so agreement propagates as fronts 
 - DOM asserted, not assumed (dots lesson #10): all 3 look buttons, 5 presets, 9 sliders, and
   6 buttons visible under every look; presets apply parameters and desync; no empty value labels.
 - Not visually confirmed this session — the preview pane never composited. Numbers only.
+
+## The parameter atlas (v1.1)
+
+User feedback after playing: finding interesting patterns took finicky fiddling, and roughly the
+upper half of the sight-radius slider produced nothing but unison — "something I think you can
+measure with metrics, not requiring visual rendering." Correct. So: sweep the space headless,
+classify every cell, and let the map drive the controls.
+
+Two 7×7 sweeps of radius × nudge (n=400, period 140, 1500 settle + 900 measure steps per cell;
+global order mean/sd + local order per cell). Legend: `·` incoherent, `~` waves, `◐` partial /
+metastable, `●` unison.
+
+**Clock diversity ±3%:**
+
+| radius \ nudge | 0.4% | 0.8% | 1.5% | 3% | 6% | 12% | 20% |
+|---|---|---|---|---|---|---|---|
+| 4%  | · | ~ | ~ | · | · | ~ | ~ |
+| 8%  | · | · | · | · | ~ | ~ | ~ |
+| 12% | · | · | · | ~ | ~ | ~ | ● |
+| 18% | · | · | ◐ | ● | ● | ● | ● |
+| 26% | · | ◐ | ● | ● | ● | ● | ● |
+| 36% | ◐ | ● | ● | ● | ● | ● | ● |
+| 45% | ◐ | ● | ● | ● | ● | ● | ● |
+
+**Clock diversity ±12%:**
+
+| radius \ nudge | 0.4% | 0.8% | 1.5% | 3% | 6% | 12% | 20% |
+|---|---|---|---|---|---|---|---|
+| 4%  | · | ~ | ~ | ~ | ~ | ~ | ~ |
+| 8%  | · | · | · | · | ~ | ~ | ~ |
+| 12% | · | · | · | · | ~ | ● | ● |
+| 18% | · | · | · | ◐ | ● | ● | ● |
+| 26% | · | ◐ | ● | ● | ● | ● | ● |
+| 36% | · | ● | ● | ● | ● | ● | ● |
+| 45% | · | ● | ● | ● | ● | ● | ● |
+
+Two structural facts fall out:
+
+1. **Everything above radius ~25% is a unison wall** (except the very weakest nudges). The user's
+   "half the upper range of sight radius produces unison" is exactly right — nearly half the
+   slider's travel was spent past the boundary.
+2. **Nudge is perceptually logarithmic.** The entire transition — incoherent to waves to unison —
+   happens between 0.4% and ~3%. On a linear 0–20% slider that's 5% of the travel, which is
+   precisely why tuning felt finicky: the interesting region was a sliver.
+
+### What changed because of the map
+
+- **Sight radius now runs 2–30%** instead of 2–45%. The unison wall sits at about two-thirds of
+  the travel — still reachable on purpose, no longer half the slider.
+- **Nudge is log-scaled**: position 0 is a true off-detent, then the scale runs 0.3% → 20%.
+  Mid-travel lands at ~2.4%, inside the transition, where before it landed at 10% (deep unison).
+- **A live regime label** — the same classifier that read the sweep runs continuously (slow-EMA
+  global order + variance, plus a periodic local-order sample) and names the current state in
+  the stats line and the sync meter: *no coupling / incoherent / waves / partial sync / unison*.
+  Verified against all five presets: twinkle reads "no coupling", waves reads "waves"
+  throughout, unison passes through "partial sync" while forming (true) then locks, and
+  stubborn narrates its own metastability — mostly "partial sync" with honest excursions to
+  "unison" at the peak of each swing. The unison label requires *low variance as well as high
+  order*, otherwise metastable peaks masquerade as lock.
+- **Tooltips on every slider** (hover the dotted labels), stating what each knob does physically
+  and, where it matters, where its interesting range lives.
+
+### On freedom vs steering
+
+The resolution this exploration settled on: **recalibrate the ranges so slider travel is spent
+where the physics is, and instrument the state rather than fencing the input.** Nothing is
+forbidden — you can still drive into the unison wall, and sometimes you want to — but the ranges
+stop wasting half their travel inside it, the label tells you which regime you're in the moment
+you cross a boundary, presets are named landmarks, and this atlas is the map. Steering by
+information, not by constraint.
 
 ## Things worth trying next
 

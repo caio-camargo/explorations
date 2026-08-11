@@ -38,6 +38,59 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Fireflies v1.1: parameter atlas, log nudge, live regime label
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User feedback: interesting patterns needed finicky fiddling, ~half the sight-radius range was all
+unison, sliders needed tooltips — and "you can measure this with metrics, not visual rendering."
+Did exactly that: two 7×7 headless sweeps of radius × nudge (at ±3% and ±12% clock diversity),
+classified every cell, and let the map drive the controls.
+
+### The findings
+- **The unison wall starts at radius ~25%** (at any nudge ≥ 0.8%) — the user's estimate was
+  exactly right; nearly half the old 2–45% slider sat past the boundary.
+- **Nudge is perceptually logarithmic**: the whole incoherent→waves→unison transition lives
+  between 0.4% and 3% — a 5% sliver of the old linear 0–20% slider. *That* was the finicky
+  feeling, more than the radius.
+
+### Decisions Made (freedom vs steering)
+Recalibrate ranges so travel is spent where the physics is; **instrument the state instead of
+fencing the input**. Radius now 2–30% (wall at ~⅔ travel, still reachable on purpose). Nudge
+log-scaled with a true off-detent (mid-travel = 2.4%, inside the transition; was 10%, deep
+unison). A live regime classifier — same thresholds that read the sweep — names the current
+state in the stats line and meter: no coupling / incoherent / waves / partial sync / unison.
+Tooltips on every slider. Atlas published in NOTES.md.
+
+### Verification
+Log mapping round-trips at all test values including the NG_MIN boundary (first cut collapsed
+0.3% into the off-detent — off-by-one at the detent edge, fixed by starting the scale at the
+next step). Classifier census over all five presets: twinkle "no coupling", waves "waves"
+throughout, unison passes "partial sync" while forming then locks, stubborn narrates its
+metastability (mostly partial, honest excursions to unison at swing peaks — which required the
+unison label to demand low variance as well as high order). DOM asserted: 9/9 sliders carry
+real tooltips, new ranges live, drag simulation confirms slider→P wiring through the transforms,
+off-detent works.
+
+### Concurrency
+Claimed before writing; dots V2.5 session ran concurrently with overlapping claims on
+SESSION_LOG.md and explorations/README.md — checked diffs for foreign hunks before staging.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/fireflies/index.html` | Log nudge slider + off-detent, radius 2–30%, regime classifier + label, tooltips, slider transform machinery |
+| 2 | edited | `explorations/fireflies/NOTES.md` | v1.1 — "The parameter atlas" with both maps, what changed and why, the freedom-vs-steering position |
+| 3 | edited | `explorations/README.md` | Fireflies row → v1.1 |
+
+### Next Steps
+- [ ] Feel the difference live — nudge mid-travel should now sit in the transition, and the
+      regime label should flip as you cross boundaries
+- [ ] Open threads unchanged: chimera hunting, Kuramoto coupling, obstacles, sound
+
 ## Session 2026-08-11 — V2.5: bow-shock disturbance rendering + tooltips
 **Source**: Claude Code
 **User**: Caio
