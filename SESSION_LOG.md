@@ -38,7 +38,7 @@
 
 <!-- New entries go here, above the line below -->
 
-## Session 2026-08-10 — Project setup + exploration 1 (friend/enemy dots)
+## Session 2026-08-10 — Project setup, exploration 1, and publication
 **Source**: Claude Code
 **User**: Caio
 **AI Model**: claude-opus-5
@@ -51,10 +51,13 @@ canvas simulation of dots that each chase one friend and flee one enemy, from a 
 stable, interesting regime.
 
 ### Decisions Made
-- **Template instantiated into `fun/` root**, framework clone (`template/`, `shared/`, root
-  `README.md`) left in place alongside. Chosen by the user over a sibling folder.
-  ⚠️ Consequence: the git remote still points at `caio-camargo/claude-project-framework`.
-  Not touched — pushing project work from here would push into the framework repo.
+- **Template instantiated into `fun/` root**, framework clone (`template/`, `shared/`) left in
+  place alongside. Chosen by the user over a sibling folder.
+- **Own public repo**: [`caio-camargo/explorations`](https://github.com/caio-camargo/explorations),
+  published at [caio-camargo.github.io/explorations](https://caio-camargo.github.io/explorations/).
+  `template/` and `shared/` are gitignored — they already have their own repo, and a second
+  copy would drift. Root `README.md` was replaced with a project README (the framework one is
+  still canonical in `../claude-project-framework/`).
 - **Coordination Profile A** (file-based) recorded in `docs/coordination.md`.
 - **`playbooks/`, `standards/`, `skills/` left dormant.** The template is heavier than a toy
   workshop needs; the rule is written into `PROJECT.md` § Ground Rules so future sessions
@@ -72,6 +75,10 @@ stable, interesting regime.
 | 6 | edited | `INDEX.md` | Added explorations / archive / framework-clone rows |
 | 7 | edited | `docs/coordination.md` | Recorded Profile A |
 | 8 | moved | `SETUP_CHECKLIST.md` → `archive/` | Setup complete |
+| 9 | archived | `.git` → `../ARCHIVE/fun-framework-clone-git-2026-08-10/` | Was a clone of the framework repo. Verified byte-identical to `../claude-project-framework/` (same HEAD `40b1044`, all 8 dirty/untracked files identical) before moving. `WHAT_THIS_IS.md` written alongside. |
+| 10 | created | `.gitignore`, `README.md`, `index.html` | Gitignored `template/` + `shared/`; project README; Pages landing page |
+| 11 | edited | `skills/README.md`, `INDEX.md` | Replaced local `G:\Meu Drive\...` paths with repo links before going public |
+| 12 | created | repo `caio-camargo/explorations` | Public, `main`, 24 files, Pages from root |
 
 ### Finding worth keeping
 "Large step toward friend / small step away from enemy" has two readings, and they are not
@@ -96,8 +103,14 @@ invariants hold after 2000 steps at 60 re-rolls/sec. Render path exercised direc
 pixels, no exceptions across `step`/`draw`/links/floor/UI handlers/presets. Size-invariance
 confirmed — same preset reaches the same fraction of the floor at 600×400, 1200×800, 3400×1800.
 
+Pre-publication scan for secrets, emails and local paths: first attempt silently matched nothing
+(broken shell expansion) and was re-run with a control test. The corrected scan found local Drive
+paths in `INDEX.md` and `skills/README.md` — fixed before the repo was created. No credentials.
+
+Post-publish: both URLs return 200, landing-page link resolves, and the sim runs from the live
+origin with no console errors.
+
 ### Next Steps
-- [ ] **Look at it.** Open `explorations/dots-friend-enemy/index.html` — visual confirmation is
-      the one thing this session could not do.
-- [ ] Decide the git situation: detach the framework remote, or keep commits local
+- [ ] **Look at it.** Neither the local file nor the published page was ever visually confirmed —
+      the preview pane never composited frames, so verification was numeric only.
 - [ ] Follow-up ideas listed at the bottom of `dots-friend-enemy/NOTES.md`
