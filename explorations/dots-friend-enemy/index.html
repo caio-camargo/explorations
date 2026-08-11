@@ -171,8 +171,9 @@
         It hunts (else it orbits)</label>
 
       <div class="regime" id="leashnote"></div>
-      <label class="check"><input type="checkbox" id="showAgents"> Show them</label>
-      <div class="note">Leave hidden and you read the predator from the hole it carves.</div>
+      <div class="glabel" style="margin-top:10px">Their appearance</div>
+      <div class="btns" id="agentstyle"></div>
+      <div class="note">Hidden is the purist setting — you read them from what the dots do.</div>
     </div>
 
     <div class="group">
@@ -303,8 +304,8 @@ const P = {
   predatorPush: 7.0,      // px/step at point blank, on an 800px floor
   predatorRadius: 0.22,   // fraction of the floor it reaches
   predatorSpeed: 2.4,     // px/step
-  predatorHunts: true,    // steer toward nearby mass, rather than orbit
-  showAgents: false,      // off by default: infer them from the wake
+  predatorHunts: true,    // stalk clusters (prowl → windup → lunge), else orbit
+  agentStyle: "hidden",   // hidden | glow | comet | void — how the agents appear
   links: false,
   floor: false,
   paused: false,
@@ -434,6 +435,31 @@ const HUE_EASE = 0.035;                    // per step — a change lands in ~1s
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
 let atX = 0, atY = 0, atPhase = 0;         // attractor
 let prX = 0, prY = 0, prPhase = 0;         // predator
+
+/* The hunt is a state machine, not a steering law. The old hunt steered at the
+   soft centroid of ALL dots — and with the attractor on, that centroid IS the
+   attractor's pile, which is why the two agents glued together. Now the
+   predator commits to one cluster at a time, approaches it with variable speed
+   and wander, coils, lunges past where it was, and recovers before choosing
+   another — biased away from the attractor when one is on. */
+const PRED = { state: "prowl", tx: 0, ty: 0, timer: 0, phase: 0, refresh: 0, calm: 0 };
+const LUNGE_MULT = 4.5, WINDUP_STEPS = 14, LUNGE_STEPS = 22, RECOVER_STEPS = 50;
+
+/* Agent path history, for the comet style. One ring each, far smaller than the
+   dots' buffer. */
+const AH = 110;
+const pTrail = { x: new Float32Array(AH), y: new Float32Array(AH), head: 0, filled: 0 };
+const aTrail = { x: new Float32Array(AH), y: new Float32Array(AH), head: 0, filled: 0 };
+
+function pushAgentTrail(tr, X, Y) {
+  tr.x[tr.head] = X; tr.y[tr.head] = Y;
+  tr.head = (tr.head + 1) % AH;
+  if (tr.filled < AH) tr.filled++;
+}
+function resetAgentTrails() {
+  pTrail.head = 0; pTrail.filled = 0;
+  aTrail.head = 0; aTrail.filled = 0;
+}
 let speedRef = 1;                          // adaptive normaliser for "fast"
 
 const cv = document.getElementById("c");
@@ -474,35 +500,118 @@ function updateAgents() {
   }
 
   if (P.predatorOn) {
-    const r = Math.min(W, H) * P.predatorRadius;
-    let tx = cx, ty = cy;
+    const base = P.predatorSpeed * unit;
 
     if (P.predatorHunts) {
-      /* Steer toward nearby mass rather than toward one nearest dot: a single
-         target makes it flip-flop between neighbours. Weighting by 1/(1+d²/r²)
-         is O(n), needs no sorting, and moves smoothly. The dots flee, so the
-         mass it is chasing keeps sliding away — that feedback is the chase. */
-      let sw = 0, sX = 0, sY = 0;
-      for (let i = 0; i < P.n; i++) {
-        const dx = x[i] - prX, dy = y[i] - prY;
-        const w = 1 / (1 + (dx * dx + dy * dy) / (r * r));
-        sw += w; sX += w * x[i]; sY += w * y[i];
+      PRED.phase += 0.013;
+
+      // Keep the aim on the committed cluster as it drifts; if it has
+      // evaporated (fled, been eaten through), pick another. O(n), every 12
+      // steps — strictly cheaper than the old every-step global centroid.
+      if (PRED.state !== "lunge" && --PRED.refresh <= 0) {
+        PRED.refresh = 12;
+        if (!refineTarget()) retarget();
       }
-      if (sw > 1e-9) { tx = sX / sw; ty = sY / sw; }
+
+      const dx = PRED.tx - prX, dy = PRED.ty - prY, d = Math.hypot(dx, dy) || 1e-6;
+      const lungeRange = Math.min(W, H) * (P.predatorRadius * 0.7 + 0.04);
+      let sp = 0, ang = Math.atan2(dy, dx);
+
+      switch (PRED.state) {
+        case "prowl":
+          // variable pace + lateral wander: a route, not a beeline. The calm
+          // counter is a minimum stalking time — without it the whole cycle
+          // collapsed into windup/lunge/recover and it lunged every 1.6s.
+          sp = base * (0.35 + 0.3 * (1 + Math.sin(PRED.phase * 1.7)));
+          ang += 0.6 * Math.sin(PRED.phase * 2.3);
+          if (--PRED.calm <= 0 && d < lungeRange) { PRED.state = "windup"; PRED.timer = WINDUP_STEPS; }
+          break;
+        case "windup":                      // the coil — nearly still
+          sp = base * 0.12;
+          if (--PRED.timer <= 0) { PRED.state = "lunge"; PRED.timer = LUNGE_STEPS; }
+          break;
+        case "lunge":                       // straight through where they were
+          sp = base * LUNGE_MULT;
+          if (--PRED.timer <= 0 || d < 6) { PRED.state = "recover"; PRED.timer = RECOVER_STEPS; }
+          break;
+        case "recover":                     // spent — drift, then choose anew
+          sp = base * 0.4;
+          ang += 0.9 * Math.sin(PRED.phase * 1.1);
+          if (--PRED.timer <= 0) retarget();
+          break;
+      }
+      prX += Math.min(sp, d) * Math.cos(ang);
+      prY += Math.min(sp, d) * Math.sin(ang);
     } else {
       prPhase += 0.004;
       const R2 = Math.min(W, H) * 0.30;
-      tx = cx + Math.cos(-prPhase) * R2;
-      ty = cy + Math.sin(-prPhase * 1.19) * R2 * 0.7;
+      const tx = cx + Math.cos(-prPhase) * R2;
+      const ty = cy + Math.sin(-prPhase * 1.19) * R2 * 0.7;
+      const dx = tx - prX, dy = ty - prY, d = Math.hypot(dx, dy);
+      if (d > 1e-6) { prX += Math.min(base, d) * dx / d; prY += Math.min(base, d) * dy / d; }
     }
-
-    const dx = tx - prX, dy = ty - prY, d = Math.hypot(dx, dy);
-    const sp = P.predatorSpeed * unit;
-    if (d > 1e-6) { prX += Math.min(sp, d) * dx / d; prY += Math.min(sp, d) * dy / d; }
 
     const ox = prX - cx, oy = prY - cy, od = Math.hypot(ox, oy), lim = maxR * 0.9;
     if (od > lim) { prX = cx + ox / od * lim; prY = cy + oy / od * lim; }
   }
+
+  if (P.attractorOn) pushAgentTrail(aTrail, atX, atY);
+  if (P.predatorOn) pushAgentTrail(pTrail, prX, prY);
+}
+
+/* Pick a cluster to stalk: bin the dots into a coarse grid, then choose among
+   the dense cells — weighted by population and, when the attractor is on, by
+   distance from it, so the predator often hunts elsewhere. That bias is what
+   decouples the two agents. */
+const GX = 14, GY = 10;
+let gridCounts = new Int32Array(GX * GY);
+
+function retarget() {
+  const n = P.n;
+  gridCounts.fill(0);
+  for (let i = 0; i < n; i++) {
+    let gx = (x[i] / W * GX) | 0, gy = (y[i] / H * GY) | 0;
+    if (gx < 0) gx = 0; if (gx >= GX) gx = GX - 1;
+    if (gy < 0) gy = 0; if (gy >= GY) gy = GY - 1;
+    gridCounts[gy * GX + gx]++;
+  }
+  let max = 0;
+  for (let c = 0; c < GX * GY; c++) if (gridCounts[c] > max) max = gridCounts[c];
+  if (max === 0) { PRED.tx = cx; PRED.ty = cy; PRED.state = "prowl"; return; }
+
+  const diag = Math.hypot(W, H);
+  let total = 0; const cand = [];
+  for (let c = 0; c < GX * GY; c++) {
+    if (gridCounts[c] < max * 0.35) continue;
+    const gcx = ((c % GX) + 0.5) * W / GX, gcy = (((c / GX) | 0) + 0.5) * H / GY;
+    let wgt = gridCounts[c];
+    // Squared distance bias: with the attractor on it owns most of the mass,
+    // so a mild bias still handed the predator the same pile every time.
+    if (P.attractorOn) { const b = 0.15 + 0.85 * Math.hypot(gcx - atX, gcy - atY) / diag; wgt *= b * b; }
+    cand.push([gcx, gcy, wgt]); total += wgt;
+  }
+  let pick = Math.random() * total;
+  for (const [gcx, gcy, wgt] of cand) {
+    pick -= wgt;
+    if (pick <= 0) { PRED.tx = gcx; PRED.ty = gcy; break; }
+  }
+  PRED.state = "prowl"; PRED.refresh = 12;
+  PRED.calm = 80 + (Math.random() * 140) | 0;      // stalk before striking
+}
+
+/* Track the committed cluster as it drifts: re-centre the aim on the dots near
+   it. Returns false when the cluster has dissolved. */
+function refineTarget() {
+  const reach = Math.min(W, H) * 0.16;
+  let sX = 0, sY = 0, m = 0;
+  for (let i = 0; i < P.n; i++) {
+    if (Math.abs(x[i] - PRED.tx) < reach && Math.abs(y[i] - PRED.ty) < reach) {
+      sX += x[i]; sY += y[i]; m++;
+    }
+  }
+  if (m < 5) return false;
+  PRED.tx = sX / m; PRED.ty = sY / m;
+  return true;
 }
 
 function wipe() {
@@ -709,6 +818,8 @@ function rebuild() {
   for (let i = 0; i < n; i++) assign(i);
   analyseGraph();
   seedHues();
+  PRED.state = "prowl"; PRED.refresh = 0; PRED.tx = cx; PRED.ty = cy;
+  resetAgentTrails();
 }
 
 // ---- the simulation (unchanged from V1) ------------------------------------
@@ -816,24 +927,9 @@ function draw() {
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = L.floor; ctx.fill();
   }
 
-  // Off by default — the point of an invisible predator is the hole it leaves.
-  // When shown, they're soft radial fields in the look's own blend mode, not
-  // wireframe circles: the one hairline geometry in a piece made of strokes
-  // was the thing that made them read as a debug overlay.
-  if (P.showAgents) {
-    // Rendered once into a small sprite and drawImage'd scaled — building the
-    // radial gradient fresh every frame cost ~30 ms at full screen.
-    ctx.globalCompositeOperation = L.blend;
-    if (P.predatorOn) {
-      const r = Math.min(W, H) * P.predatorRadius;
-      ctx.drawImage(glowSprite(L.glow[0]), prX - r, prY - r, r * 2, r * 2);
-    }
-    if (P.attractorOn) {
-      const r = Math.min(W, H) * 0.14;
-      ctx.drawImage(glowSprite(L.glow[1]), atX - r, atY - r, r * 2, r * 2);
-    }
-    ctx.globalCompositeOperation = "source-over";
-  }
+  // "hidden" is the purist setting — the agents exist only as what they do to
+  // the dots. The others give them a body, each in the piece's own vocabulary.
+  if (P.agentStyle !== "hidden") drawAgents(L);
 
   if (P.links) {
     ctx.lineWidth = 0.6;
@@ -859,6 +955,87 @@ function draw() {
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   rx.set(x); ry.set(y);
+}
+
+function drawAgents(L) {
+  if (P.agentStyle === "glow") {
+    // Soft radial fields in the look's own light. Sprite-cached — building the
+    // gradient fresh every frame cost ~30 ms at full screen.
+    ctx.globalCompositeOperation = L.blend;
+    if (P.predatorOn) {
+      const r = Math.min(W, H) * P.predatorRadius;
+      ctx.drawImage(glowSprite(L.glow[0]), prX - r, prY - r, r * 2, r * 2);
+    }
+    if (P.attractorOn) {
+      const r = Math.min(W, H) * 0.14;
+      ctx.drawImage(glowSprite(L.glow[1]), atX - r, atY - r, r * 2, r * 2);
+    }
+    ctx.globalCompositeOperation = "source-over";
+
+  } else if (P.agentStyle === "comet") {
+    // The agents inhabit the same vocabulary as the dots: their own ribbon.
+    // A lunge stretches the predator's comet into a dash by itself.
+    ctx.globalCompositeOperation = L.blend;
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (P.attractorOn) drawComet(aTrail, L.glow[1], 5.0, 0.30);
+    if (P.predatorOn) drawComet(pTrail, L.glow[0], 2.6, 0.55);
+    ctx.globalCompositeOperation = "source-over";
+
+  } else if (P.agentStyle === "void") {
+    // The predator is an absence — a soft hole gliding through the light,
+    // drawn in the background's own colour so it occludes on every ground.
+    // The attractor is a pinprick star.
+    if (P.predatorOn) {
+      const r = Math.min(W, H) * P.predatorRadius * 0.55;
+      ctx.drawImage(voidSprite(L.bgRGB.join(",")), prX - r, prY - r, r * 2, r * 2);
+    }
+    if (P.attractorOn) {
+      ctx.globalCompositeOperation = L.blend;
+      const r = 14;
+      ctx.drawImage(glowSprite(L.glow[1]), atX - r, atY - r, r * 2, r * 2);
+      ctx.beginPath(); ctx.arc(atX, atY, 1.6, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(" + L.glow[1] + ",0.9)"; ctx.fill();
+      ctx.globalCompositeOperation = "source-over";
+    }
+  }
+}
+
+function drawComet(tr, tint, wBase, peak) {
+  const m = tr.filled;
+  if (m < 2) return;
+  const NB = 3;
+  for (let b = 0; b < NB; b++) {
+    const a0 = (b * m / NB) | 0, a1 = Math.min((((b + 1) * m / NB) | 0), m - 1);
+    if (a1 <= a0) continue;
+    const fresh = 1 - (b + 0.5) / NB;              // 1 = the head
+    ctx.globalAlpha = 0.04 + peak * fresh * fresh;
+    ctx.strokeStyle = "rgba(" + tint + ",1)";
+    ctx.lineWidth = wBase * (0.25 + 0.75 * fresh);
+    ctx.beginPath();
+    for (let a = a1; a >= a0; a--) {               // oldest → newest
+      const idx = (tr.head - 1 - a + AH + AH) % AH;
+      if (a === a1) ctx.moveTo(tr.x[idx], tr.y[idx]);
+      else ctx.lineTo(tr.x[idx], tr.y[idx]);
+    }
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+}
+
+const voidCache = {};
+function voidSprite(bgTint) {
+  let sp = voidCache[bgTint];
+  if (!sp) {
+    sp = document.createElement("canvas"); sp.width = sp.height = 128;
+    const g2 = sp.getContext("2d");
+    const gr = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
+    gr.addColorStop(0, "rgba(" + bgTint + ",0.92)");
+    gr.addColorStop(0.55, "rgba(" + bgTint + ",0.5)");
+    gr.addColorStop(1, "rgba(" + bgTint + ",0)");
+    g2.fillStyle = gr; g2.fillRect(0, 0, 128, 128);
+    voidCache[bgTint] = sp;
+  }
+  return sp;
 }
 
 const glowCache = {};
@@ -1061,7 +1238,9 @@ function frame(t) {
   st.style.color = look().bg === "#f4f1ea" ? "rgba(30,26,22,.45)" : "rgba(255,255,255,.32)";
   st.textContent = P.n + " dots · " + basinCount + " basin" + (basinCount === 1 ? "" : "s")
     + " · " + P.stepsPerFrame.toFixed(2) + " steps/frame"
-    + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
+    + " · " + fps.toFixed(0) + " fps"
+    + (P.predatorOn && P.predatorHunts ? " · predator: " + PRED.state : "")
+    + (P.paused ? " · paused" : "");
 
   requestAnimationFrame(frame);
 }
@@ -1138,7 +1317,9 @@ function syncUI() {
   $("attractorOn").checked = P.attractorOn;
   $("predatorOn").checked = P.predatorOn;
   $("predatorHunts").checked = P.predatorHunts;
-  $("showAgents").checked = P.showAgents;
+  document.querySelectorAll("#agentstyle .act").forEach((b) => {
+    b.classList.toggle("on", b.dataset.style === P.agentStyle);
+  });
   // dataset.needs is unique to these rows — do NOT reuse an attribute name that
   // a dynamically-created element already sets (that hid the look buttons once).
   document.querySelectorAll("[data-needs]").forEach((el) => {
@@ -1199,9 +1380,8 @@ const TIPS = {
   predatorOn: "A moving point that shoves dots away. Watch the hole it carves, the hot rim pinned around it, and the warm wake behind.",
   pk: "Shove strength at point-blank range, fading to nothing at its reach.",
   pr: "How far the shove is felt, as a fraction of the floor.",
-  ps: "The predator's top speed. Fast scatters the swarm; slow herds it.",
-  predatorHunts: "Steer toward the densest nearby group of dots. Off = patrol a fixed looping path instead.",
-  showAgents: "Reveal the attractor and predator as soft glows. Off, you infer them from what the dots do — which is the point.",
+  ps: "Prowling pace. Lunges burst at ~4.5× this; the coil before one is nearly still.",
+  predatorHunts: "Stalk one cluster at a time — prowl in, coil, lunge through it, recover, choose another (biased away from the attractor). Off = patrol a fixed loop.",
   model: "Fixed = constant step size; bounded, where all the structure lives. Proportional = % of the gap; provably collapses or explodes (see the readout).",
   ff: "Distance each dot moves toward its friend, every step.",
   ef: "Distance each dot moves away from its enemy, every step.",
@@ -1273,8 +1453,22 @@ $("links").addEventListener("change", (e) => { P.links = e.target.checked; });
 $("floor").addEventListener("change", (e) => { P.floor = e.target.checked; });
 $("skeleton").addEventListener("change", (e) => { P.skeleton = e.target.checked; });
 $("streaks").addEventListener("change", (e) => { P.streaks = e.target.checked; });
-["attractorOn", "predatorOn", "predatorHunts", "showAgents"].forEach((key) => {
+["attractorOn", "predatorOn", "predatorHunts"].forEach((key) => {
   $(key).addEventListener("change", (e) => { P[key] = e.target.checked; syncUI(); });
+});
+
+const AGENT_STYLES = [
+  ["hidden", "Nothing drawn. You read the agents from the hole, the hot rim, and the warm wake — the purist setting."],
+  ["glow",   "Soft radial fields in the look's own light."],
+  ["comet",  "The agents draw their own ribbon, like the dots do. A lunge stretches the predator's comet into a dash."],
+  ["void",   "The predator is an absence — a soft hole gliding through the light. The attractor is a pinprick star."],
+];
+const styleBar = $("agentstyle");
+AGENT_STYLES.forEach(([key, tip]) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.style = key; b.textContent = key; b.title = tip;
+  b.addEventListener("click", () => { P.agentStyle = key; syncUI(); });
+  styleBar.appendChild(b);
 });
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("scatter").addEventListener("click", () => scatter());

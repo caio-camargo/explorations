@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.5.0
+**Version**: v2.6.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.5 (bow-shock disturbance rendering + tooltips). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.6 (stalking predator + agent appearance styles). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -37,7 +37,8 @@ Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering
 | `PRESETS`, `LOOKS`, `BASIN_HUES` | preset physics, the five looks, basin hue wheel |
 | `step()` | **the actual simulation** — the three rules, unchanged since V1 |
 | `assign()`, `analyseGraph()` | friend/enemy ties; the O(n) walk that finds cycles and basins |
-| `updateAgents()` | moves the point fields (attractor path, predator hunt) — per step |
+| `updateAgents()`, `PRED`, `retarget()` | agent movement — the predator's prowl/windup/lunge/recover state machine and cluster targeting |
+| `drawAgents()` | the four agent appearance styles (hidden / glow / comet / void) |
 | `sampleSpeeds()`, `updateHues()` | per-*step* quantities — never call these per frame (see below) |
 | `pushHistory()`, `resetHistory()` | the ribbon ring buffer, `HIST` slots deep |
 | `draw()` → `drawRibbons()` / `drawStreaks()` | the two trail engines |
@@ -404,6 +405,39 @@ as a 128px sprite and drawImage-scaled it costs ~1.6 ms.
 
 Every control also carries a hover tooltip now — the panel had accumulated sliders whose names
 only make sense if you already know the internals.
+
+## The predator learns to stalk (and the agents get bodies)
+
+**Why the two agents moved together:** the old hunt steered at the soft centroid of *all* dots
+(`1/(1+d²/r²)` weights). With the attractor on, it owns most of the mass — so that centroid *is*
+the attractor's pile, and the predator parks on it. Structural, not incidental.
+
+**The hunt is a state machine now.** The predator commits to one *cluster* at a time:
+
+- **prowl** — variable pace (0.35–0.95× the slider) with lateral wander; a route, not a beeline
+- **windup** — the coil: nearly still for ~a quarter second
+- **lunge** — 4.5× burst straight through where the cluster *was* (the aim is locked at the coil,
+  so fleeing dots make it overshoot — which reads predatory)
+- **recover** — spent; drifts, then chooses a new cluster
+
+Cluster choice: bin dots into a coarse 14×10 grid (O(n)), pick among cells ≥35% of the densest,
+weighted by population × *squared* distance from the attractor — a mild bias still handed it the
+same pile every time. A minimum-prowl counter (80–220 steps) stops the cycle collapsing into
+windup/lunge/recover; the first tune lunged every 1.6 s with 1% of time spent stalking.
+
+Measured after tuning: 70% prowl / 6% coil / 5% lunge / 19% recover, a lunge every ~4 s, step
+size p10 0.8 px → lunge 10 px (strongly bimodal, as intended), and median predator–attractor
+distance 0.21 of the floor (p10 0.09 — decoupled, not glued). The current state shows in the
+stats line. **Cost went down**: O(n) binning every 12 steps replaces O(n) weighting every step.
+
+**Agent appearance is a four-way workshop** (`Their appearance` in the panel):
+
+| Style | What it is |
+|---|---|
+| `hidden` | The purist setting — the hole, the hot rim, and the warm wake are the predator |
+| `glow` | Soft radial fields in the look's own light (sprite-cached) |
+| `comet` | The agents draw their own ribbon, like the dots. A lunge stretches into a dash |
+| `void` | The predator is an *absence* — a bg-coloured soft hole gliding through the light (verified: centre luminance 27 vs 54 on its rim). The attractor is a pinprick star |
 
 ## Presets
 

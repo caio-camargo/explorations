@@ -38,6 +38,55 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — V2.6: stalking predator + agent appearance workshop
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: agents co-move too much, hunt is too static — wants variable speed, lunges, cluster
+targeting ("not sure how mathematically costly that is" — answer: cheaper than what it replaced),
+and to workshop agent looks. Rebuilt the hunt as a state machine; agent appearance is now a
+four-way switch (hidden / glow / comet / void).
+
+### Why they co-moved
+The hunt steered at the soft centroid of ALL dots; the attractor owns most of the mass, so that
+centroid IS the attractor's pile. Structural. Fix: commit to one *cluster* (coarse 14×10 grid,
+O(n) binning every 12 steps — replaces O(n) weighting every step, so net cheaper), chosen with a
+*squared* attractor-distance bias (mild bias still handed it the same pile).
+
+### The state machine
+prowl (variable pace + wander) → windup (the coil, near-still) → lunge (4.5×, aim locked at the
+coil so fleeing dots make it overshoot) → recover → retarget. First tune collapsed into
+lunge-every-1.6s with 1% prowling; a minimum-prowl counter (80–220 steps) restored the stalk.
+Final rhythm: 70/6/5/19% across states, lunge every ~4s, step size bimodal (p10 0.8 px → 10 px),
+predator–attractor distance median 0.21 of floor (p10 0.09, was glued at ~0.06 before the bias).
+State shows in the stats line.
+
+### Agent styles
+`hidden` (purist default), `glow` (sprite fields), `comet` (agents get their own ribbons — a
+lunge stretches into a dash), `void` (predator as a bg-coloured absence — verified occlusion,
+centre luminance 27 vs 54 at its rim; attractor as a pinprick star). All 4 × all 5 looks: no
+exceptions. showAgents checkbox replaced by the style row; no stale references (grepped).
+
+### Verification
+Behaviour measured headless via step() (3000–4000 steps): states, lunge cadence, bimodal speeds,
+decoupling, boundedness, no NaN. One measured "bug" was a harness artifact: a 137px max step was
+the leash-snap of a stale corner position after page reload, not a real jump (real max = lunge
+10px). DOM: 4 style buttons visible+titled, looks 5/5, stats line shows predator state (verified
+via a manual frame() call — draw()-driven harnesses never exercise frame()). Perf first-bench:
+17.8 ms worst case (n=1200, K=128, hunt + comet), in line with the ~15–17 ms session baseline.
+
+### Note
+Built on top of the wall-clock stepping fix (9c24532) from the concurrent session; read its diff
+before editing. Claimed scope first; no overlap conflicts this time.
+
+### Next Steps
+- [ ] User workshops the four agent styles by eye — that's the point of the switch
+- [ ] Image as a sampled field — still specced, still next
+- [ ] If the lunge cadence feels wrong live, the constants are all in one place (PRED block)
+
 ## Session 2026-08-11 — Hotfix both sims: render cost was leaking into physics speed
 **Source**: Claude Code
 **User**: Caio
