@@ -38,6 +38,43 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Slime mold v1.2.1: the fade while feeding was real economics
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: "the mold seems to fade the more it eats… returns to normal once depleted." Investigated;
+two plausible hypotheses died against measurements before the real one held. Rebalanced defaults
+so the lace and the food economy coexist. First session where the pane composited — the result
+was confirmed by eye as well as by number.
+
+### The investigation
+1. **Exposure-artifact hypothesis (mine): dead.** Suspected auto-exposure chasing the plume
+   skirt. Measured: exposure 14.8 → 14.6 with a live source, argmax 406px away.
+2. **Local-thinning hypothesis: dead.** One source: far quadrant slightly *brighter* during
+   feeding (1.62 vs 1.40).
+3. **Systemic economics: confirmed.** One source garrisons ~444 agents; the ~6-source rain
+   equilibrium costs the lace **67% of its junctions** (13,574 → 4,523). Direct capture is only
+   17%, so most is plume steering competition across the catchments. Source death refunds the
+   workforce — exactly the recovery the user saw.
+
+### Fix
+Pay the tax with density (the lever crowding gave us): defaults n 6,000 → **11,000**, appetite
+1.5 → **1.2** (veins preset likewise). Measured with the full food lifecycle running: 16,029
+junctions at 25.3% coverage — **richer than the foodless baseline** (13,574 / 21.4%). The ebb
+around a hungry hub remains visible, as it should — it's real dynamics, no longer a collapse.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/slime-mold/index.html` | Defaults n=11000, appetite=1.2; veins preset n=11000 |
+| 2 | edited | `explorations/slime-mold/NOTES.md` | v1.2.1 — "The fade while feeding" investigation |
+
+### Next Steps
+- [ ] Open threads unchanged: vein-topology metric, long-range chemo field, obstacles, relief look
+
 ## Session 2026-08-11 — Slime mold v1.2: food — changes that generate change
 **Source**: Claude Code
 **User**: Caio

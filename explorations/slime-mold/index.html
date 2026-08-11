@@ -211,14 +211,15 @@ const FW = 640, FH = 400, FN = FW * FH;
 const TAU = Math.PI * 2;
 
 const P = {
-  n: 6000,
+  n: 11000,            // high enough that the food economy's ~40% workforce tax
+                       // still leaves a dense free-roaming lace — see NOTES
   sensorAngle: 25,     // degrees
   sensorDist: 9,       // field px
   turnRate: 30,        // degrees per step
   speed: 1.0,          // field px per step
   halfLife: 60,        // trail half-life in steps
   diffuse: 0.6,        // 0..1 blend toward the 3×3 mean per step
-  appetite: 1.5,       // food attraction, in units of the current peak trail
+  appetite: 1.2,       // food attraction, in units of the current peak trail
   meal: 0.004,         // fraction of a food cell eaten per agent-visit
   rain: 3,             // new food sources per 1000 steps (0 = off)
   stepsPerFrame: 1,
@@ -228,7 +229,7 @@ const P = {
 
 // Named network anatomies. Verified measurably distinct — see NOTES.
 const PRESETS = {
-  "veins":    { n: 6000,  sensorAngle: 25, sensorDist: 9,  turnRate: 30, speed: 1.0, halfLife: 60,  diffuse: 0.6 },
+  "veins":    { n: 11000, sensorAngle: 25, sensorDist: 9,  turnRate: 30, speed: 1.0, halfLife: 60,  diffuse: 0.6 },
   "filigree": { n: 14000, sensorAngle: 45, sensorDist: 4,  turnRate: 60, speed: 1.0, halfLife: 25,  diffuse: 0.35 },
   "cells":    { n: 5000,  sensorAngle: 15, sensorDist: 16, turnRate: 20, speed: 1.2, halfLife: 140, diffuse: 0.8 },
   "storm":    { n: 10000, sensorAngle: 35, sensorDist: 7,  turnRate: 80, speed: 1.8, halfLife: 15,  diffuse: 0.2 },

@@ -1,9 +1,9 @@
 # Slime Mold — Physarum transport networks
-**Version**: v1.2.0
+**Version**: v1.2.1
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Organic vein networks from three whiskers and a scent trail — the Jones (2010) Physarum model, built for watching
-**Status**: Active — v1.2 (food: depletion + rain keep the network rewiring)
+**Status**: Active — v1.2.1 (food economics balanced: lace and hubs coexist)
 
 ---
 
@@ -145,6 +145,32 @@ brightness-thresholded "backbone" variant collapses onto the plume cells instead
 lifecycle is verified piecewise (anchor / deplete / die / cool / commute / rain); a layout-
 level metric (tracking vein topology, not pixels) is an open thread. The visible judgment —
 green blobs igniting, veins snapping to them, hubs starving out — is the user's.
+
+## The fade while feeding (v1.2.1) — real economics, not a bug
+
+User: "the mold seems to fade the more it eats… I guess it returns to normal once it's
+depleted." Correct on both counts, and finding out *why* killed two plausible hypotheses first:
+
+1. **Not an exposure artifact.** Suspected auto-exposure chasing the plume skirt (cells just
+   outside the food disc carry huge injected trail but aren't excluded from the scan). Measured:
+   exposure held 14.8 → 14.6 with a live source, and its argmax sat 406px away. Dead.
+2. **Not local thinning either.** With one source, the far quadrant was slightly *brighter*
+   during feeding (mean trail 1.62 vs 1.40 after). Dead.
+
+The real mechanism is **systemic and economic**. One source garrisons ~444 agents (7.4% of
+6,000) within 70px. The default rain equilibrium runs ~6 sources — and measured at the default
+config, the lace loses **67% of its junctions** (13,574 → 4,523) and two-thirds of its coverage
+(21.4% → 7.2%). Direct capture is only 17% of agents, so the rest is steering competition:
+every whisker that clips a plume edge gets funneled sourceward, and the lace loses its
+self-reinforcement across the plumes' whole catchment. Sources tax the workforce; a source
+dying refunds it — which is exactly the "returns to normal once depleted" the user saw.
+
+**The fix is the density lever we already own.** Crowding made population the reticulation
+knob, so pay the tax up front: defaults are now **n = 11,000 with appetite 1.2** (was 6,000 /
+1.5). Measured at equilibrium with the full food lifecycle running: **16,029 junctions at
+25.3% coverage — richer than the foodless n=6,000 baseline** (13,574 / 21.4%). The lace and
+the hub economy coexist; the ebb around a hungry hub is still visible, as it should be — it's
+real dynamics, just no longer a collapse.
 
 ## Verification
 

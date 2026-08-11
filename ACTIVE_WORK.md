@@ -23,7 +23,7 @@
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
-| *(empty — no active work)* | | | |
+| Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html`, `README.md` |
 
 > Resolved 2026-08-11: the unclaimed `dots-friend-enemy` changes were the V2.4 influences work
 > (wandering attractor + predator). Committed by that session. The miss was real — it edited a
