@@ -76,6 +76,18 @@ dots share their basin's hue, so hue bucketing is normally free). Churn at n=120
 17.4 ms at 48 hue steps because each occupied bucket is a `stroke()` call; HQ 48 → 32 brought it
 to 5.33 ms, back to parity with V2.2, with no visible change to the sweep.
 
+### Shipped broken, then fixed (same day)
+The hue-drift row was tagged `data-look="basins"`, and `syncUI` hid every `[data-look]` element
+not matching the current look. The look *buttons* already use `dataset.look` for their identity —
+set in JS, so it never appears as `data-look=` in the source and grep wouldn't have caught it —
+so the selector hid four of the five look buttons. With phosphor as default, phosphor became the
+only reachable look, and hue drift (basins-only) was therefore unreachable too. Renamed to
+`data-needslook`.
+
+**The gap**: every verification round tested physics, rendering, graph correctness and perf, and
+all of them passed on a build whose control panel was broken. Canvas output is not app output.
+Now assert on the DOM — which controls are visible under each look and trail mode.
+
 ### Next Steps
 - [ ] `HUE_EASE` (0.035/step) is a constant — promote to a slider if the transition speed wants tuning
 - [ ] Sub-step interpolation and accumulation/artifact mode both still parked
