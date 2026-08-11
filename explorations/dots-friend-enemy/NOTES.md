@@ -1,5 +1,5 @@
 # Dots: friends & enemies
-**Version**: v2.6.2
+**Version**: v2.6.3
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
@@ -438,6 +438,14 @@ stats line. **Cost went down**: O(n) binning every 12 steps replaces O(n) weight
 | `glow` | Soft radial fields in the look's own light (sprite-cached) |
 | `comet` | The agents draw their own ribbon, like the dots. A lunge stretches into a dash |
 | `void` | The predator is an *absence* — a bg-coloured soft hole gliding through the light, with a thin dark-violet **corona** — crisp on the inside (the horizon is an edge, not a haze), fading only outward — so the black hole exists even over empty black (measured on noir: 0 luminance to 65% of radius, 215 at the rim, 0 outside). The attractor is a pinprick star |
+
+The strike is one continuous speed envelope (v2.6.3): the windup glides from prowl pace down
+to 0.30× (never stopping — the old coil braked to 0.12× and read as a stall), the lunge
+smoothsteps from exactly 0.30× up to 4.5× by ~45% of the flight and back down by its end, and
+recover picks up where it lands. Measured max per-step speed change across three passes:
+9.9 px (v2.6.0, instant jumps) → 4.46 (v2.6.1, eased velocity) → **1.6** (v2.6.3, shaped
+envelope), at the same 10 px lunge peak. Each pass moved the discontinuity rather than removing
+it — first from the ramp-in to the ramp-out, then the envelope closed both ends.
 
 Two v2.6.1 refinements from watching it live: the corona (a bg-coloured hole is invisible where
 there is no light to occlude — the event horizon fixes that), and **eased predator velocity** —

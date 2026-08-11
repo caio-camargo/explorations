@@ -527,19 +527,33 @@ function updateAgents() {
           ang += 0.6 * Math.sin(PRED.phase * 2.3);
           if (--PRED.calm <= 0 && d < lungeRange) { PRED.state = "windup"; PRED.timer = WINDUP_STEPS; }
           break;
-        case "windup":                      // the coil — nearly still
-          sp = Math.min(base * 0.12, d);
+        case "windup": {                    // the gather — slow down, never stop
+          // The old coil braked to 0.12× in one target change and read as a
+          // stall. Now speed glides from prowl pace down to 0.30× across the
+          // windup — and the lunge ramp STARTS at 0.30×, so the whole strike
+          // is one continuous speed envelope with no seam anywhere.
+          const p = 1 - PRED.timer / WINDUP_STEPS;
+          sp = Math.min(base * (0.55 - 0.25 * p), d);
           if (--PRED.timer <= 0) {
             PRED.state = "lunge"; PRED.timer = LUNGE_STEPS;
             PRED.lockAng = ang;             // commit: no re-aiming mid-flight
           }
           break;
-        case "lunge":                       // straight through where they were
-          sp = base * LUNGE_MULT;
+        }
+        case "lunge": {                     // straight through where they were
+          // Smoothstepped in AND out: 0.30× → 4.5× by ~45% of the flight,
+          // sustained, then back down by the end — the measured jerk had
+          // simply moved to the lunge's end, where the target used to drop
+          // 4.5× → 0.4× in a single change.
+          const q = 1 - PRED.timer / LUNGE_STEPS;
+          const r0 = Math.min(1, q * 2.2), up = r0 * r0 * (3 - 2 * r0);
+          const r1 = Math.min(1, (1 - q) * 2.8), down = r1 * r1 * (3 - 2 * r1);
+          sp = base * (0.3 + (LUNGE_MULT - 0.3) * up * down);
           ang = PRED.lockAng;               // locked heading also kills the
                                             // atan2 flip when passing the mark
           if (--PRED.timer <= 0) { PRED.state = "recover"; PRED.timer = RECOVER_STEPS; }
           break;
+        }
         case "recover":                     // spent — drift, then choose anew
           sp = base * 0.4;
           ang += 0.9 * Math.sin(PRED.phase * 1.1);

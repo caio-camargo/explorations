@@ -38,6 +38,28 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — v2.6.3: the strike becomes one continuous envelope
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: the stop before the lunge still jerks — "maybe it just slows down" — and the lunge could be
+smoother. Correct on both. The windup now glides from prowl pace to 0.30× (never stalling; old
+coil braked to 0.12×), and the lunge smoothsteps from exactly 0.30× to 4.5× and *back down* by
+its end — the first fix moved the measured jerk to the lunge's exit (target dropped 4.5×→0.4× in
+one change), which the down-ramp closed.
+
+### Measured
+Max per-step speed change: 9.9 (v2.6.0) → 4.46 (v2.6.1) → **1.6 px** (now), same 10 px lunge
+peak, min speed during the whole strike 0.74 px, rhythm intact (69/5/8/18, 15 lunges/4000 steps).
+Lesson shape worth noting: each smoothing pass relocated the discontinuity rather than removing
+it, and only measuring max Δ|v| per pass exposed that.
+
+### Next Steps
+- [ ] Image as a sampled field — still specced, still next
+
 ## Session 2026-08-11 — Fireflies v1.3: depth-of-field + pond reflection
 **Source**: Claude Code
 **User**: Caio
