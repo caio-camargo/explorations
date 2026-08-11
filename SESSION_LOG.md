@@ -38,6 +38,46 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Fireflies v1.3: depth-of-field + pond reflection
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User happy with the soft glow, asked what else aesthetically. Pitched four directions (depth /
+water / silhouettes / glints); user picked depth + water. Built both.
+
+### Decisions Made
+- **Depth is visual only.** Fixed z per fly (biased far, `random()^1.4`), painter's order sorted
+  once at rebuild. Near: up to 2.2× size, brighter, 1.45× drift (parallax); far: 0.5× pinpricks.
+  Coupling stays 2D so the parameter atlas remains exactly valid; depth-aware coupling parked as
+  an open thread that would require a re-sweep. Slider 0 = old flat field (verified multipliers
+  collapse to 1).
+- **Pond**: mirror-blit about a 70%-height waterline — ×0.38 dimming fading with distance, 1.3×
+  vertical stretch, per-step ripple phase. Waterline doubles as the bottom wall, so flies caught
+  in the water steer out organically. Reflections below α 0.03 skipped.
+- Both orthogonal to presets; controls live in Motion & light (slider + checkbox, tooltipped).
+
+### Verification
+Containment: 93/300 flies forced below the line → 0 after 1200 steps. Reflection pixel-tested:
+mirrored point 253 luminance vs source 674 (intended ×0.38); pond off → zero reflection pixels
+(after accounting for the meter overlay sitting in the sampled strip — test artifact, caught).
+Depth flatness at 0 exact; draw order verified sorted. DOM: both controls visible with real
+tooltips. Perf: default scale with depth+pond+full sync 6.5 ms/frame; maxed extreme ~44 ms in
+the throttling harness — honest number is the ~2.2× ratio over the no-pond baseline (lesson 12).
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/fireflies/index.html` | z + painter's order, parallax wander, pond wall, blitFly with mirrored/rippled reflection, water tint per look, 2 new controls |
+| 2 | edited | `explorations/fireflies/NOTES.md` | "Depth and water (v1.3)"; unpicked aesthetics + depth-aware coupling parked |
+| 3 | edited | `explorations/README.md` | Fireflies row → v1.3 |
+
+### Next Steps
+- [ ] Judge by eye: pond on, depth ~70%, meadow look — the composition shot
+- [ ] Unpicked aesthetics (silhouettes, glints+vignette) parked in NOTES
+
 ## Session 2026-08-11 — Slime mold v1.1: the crowding rule sustains the lace
 **Source**: Claude Code
 **User**: Caio

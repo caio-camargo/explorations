@@ -20,5 +20,5 @@ when it's interesting, not when it's finished. Nothing here needs to become a pr
 | Exploration | Started | What it is | Status |
 |---|---|---|---|
 | [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | **v2.6** — ribbon trails, 5 looks, friend-graph basins, bow-shock influences, stalking predator, 4 agent styles. Resume from "Picking this up cold" in the notes |
-| [`fireflies/`](fireflies/) | 2026-08-11 | Pulse-coupled fireflies — sync emerging from flashes alone (Mirollo–Strogatz) — [notes](fireflies/NOTES.md), [run it](fireflies/index.html) | v1.2 — parameter atlas, log-scaled nudge, live regime label, soft glow sprites |
+| [`fireflies/`](fireflies/) | 2026-08-11 | Pulse-coupled fireflies — sync emerging from flashes alone (Mirollo–Strogatz) — [notes](fireflies/NOTES.md), [run it](fireflies/index.html) | v1.3 — parameter atlas, live regime label, soft glow, depth-of-field + pond |
 | [`slime-mold/`](slime-mold/) | 2026-08-11 | Physarum transport networks — veins from three whiskers and a scent trail (Jones 2010) — [notes](slime-mold/NOTES.md), [run it](slime-mold/index.html) | v1.1 — crowding rule sustains the lace (junctions 105 → 11,856 at t≈7000), 4 anatomies, 3 looks |

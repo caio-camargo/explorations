@@ -1,9 +1,9 @@
 # Fireflies — pulse-coupled sync
-**Version**: v1.2.0
+**Version**: v1.3.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Synchrony emerging from flashes alone — Mirollo–Strogatz pulse-coupled oscillators, built for watching
-**Status**: Active — v1.2 (parameter atlas + soft glow sprites)
+**Status**: Active — v1.3 (depth-of-field + pond reflection)
 
 ---
 
@@ -176,6 +176,30 @@ sync — is 19.6 ms/frame; the default n=700 fully synced runs 4.35 ms. First cu
 blits per glowing fly and hit 27 ms, hence the consolidation. And because the sims now advance
 by wall-clock time, even a heavy frame slows only the frame rate, never the physics.
 
+## Depth and water (v1.3)
+
+Chosen from a four-way aesthetics brainstorm (depth / water / silhouettes / lens glints) — the
+user took the first two.
+
+**Depth of field.** Each fly gets a fixed z ∈ [0,1], biased toward far (`random()^1.4`) so the
+field reads deep with a few large near bokehs. Near flies render up to 2.2× size and brighter;
+far ones shrink to 0.5× pinpricks; near ones drift up to 1.45× faster (parallax). Drawn in
+painter's order, far first, sorted once at rebuild since z never changes. **The coupling stays
+strictly 2D** — depth is visual only, so the parameter atlas above still applies exactly. The
+slider at 0 reproduces the old flat field bit-for-bit (multipliers collapse to 1, verified).
+
+**Pond.** The bottom 30% of the frame becomes still water: each fly's blit gains a mirrored
+copy about the waterline — dimmed to ~0.38× fading with apparent distance, stretched 1.3×
+vertically, wobbled sideways by a ripple whose phase advances per *step* (so slowing the sim
+slows the water). The waterline doubles as the bottom wall: flies caught in the water when the
+pond switches on steer up and out organically (93/300 forced below → 0 within 1200 steps).
+Reflections fainter than α 0.03 are skipped — invisible, and it trims the extra blits.
+
+Measured: mirrored point reads 253 luminance against the source's 674 (the intended ×0.38);
+default scale with depth + pond + full sync runs 6.5 ms/frame; the everything-maxed extreme
+(n=2000 all glowing, depth 1, pond) is ~44 ms *in a harness known to throttle* — the honest
+number is the ratio, ~2.2× the no-pond baseline, consistent with doubled blits.
+
 ## Things worth trying next
 
 - [ ] **Chimera hunting**: with a mid-size radius, look for stable coexisting synced + desynced
@@ -186,3 +210,7 @@ by wall-clock time, even a heavy frame slows only the frame rate, never the phys
 - [ ] Obstacles / masks the light can't cross — waves should diffract around them.
 - [ ] Sound: a click per flash, sync made audible (Web Audio, quantised to avoid 500 clicks/frame).
 - [ ] A "frequency = hue" look — would show whether fast clocks end up leading the synced flash.
+- [ ] The two unpicked aesthetics: foreground silhouettes (grass/treeline occluders, meadow only)
+      and lens glints + vignette.
+- [ ] Depth-aware coupling (sight radius in 3D) — would layer the sync itself, but invalidates
+      the atlas; if built, make it a mode and re-sweep.

@@ -54,6 +54,7 @@
 
   .check { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer;
            font-size: 12px; }
+  .check[title] { cursor: help; }
   .check input { accent-color: var(--accent); }
 
   .btns { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -144,6 +145,11 @@
         <label title="Cosmetic only.">Dot size</label><span class="val" id="v_ds"></span>
         <input type="range" id="ds" min="0.8" max="4" step="0.1">
       </div>
+      <div class="row">
+        <label title="Each fly has a fixed depth: near ones render large, soft and bright, and drift faster; far ones are pinpricks. Purely visual — the coupling stays flat, so the parameter atlas still applies. Zero = the old flat field.">Depth of field</label><span class="val" id="v_dp"></span>
+        <input type="range" id="dp" min="0" max="1" step="0.05">
+      </div>
+      <label class="check" title="The bottom third becomes still water: flies mirrored, dimmed, and rippled. The waterline also becomes the bottom wall, so flies drift up out of it."><input type="checkbox" id="pond"> Pond</label>
     </div>
 
     <div class="group">
@@ -214,11 +220,23 @@ const P = {
   turn: 0.22,          // heading jitter, radians per step
   afterglow: 0.88,     // glow decay per step
   dotSize: 1.6,
+  depth: 0.7,          // depth-of-field strength: 0 = flat field
+  pond: false,         // bottom of the frame becomes still water
   stepsPerFrame: 1,
   look: "meadow",
   meter: true,
   paused: false,
 };
+
+/* Depth is VISUAL ONLY. Each fly gets a fixed z in [0,1] (0 far, 1 near):
+   near flies render larger, brighter, and drift faster (parallax); far ones
+   are pinpricks. The coupling stays 2D — the parameter atlas in NOTES.md
+   still applies exactly. Curves give far 0.5× / near 2.2× size, and
+   0.55× / 1.45× wander. */
+const zSize  = (zi) => 0.5 + 1.7 * Math.pow(zi, 1.3);
+const zAlpha = (zi) => 0.65 + 0.55 * zi;
+const zSpeed = (zi) => 0.55 + 0.9 * zi;
+const waterY = () => H * 0.70;
 
 // Each preset is a regime, not just numbers. Applying one also desyncs the
 // clocks so you watch the regime re-form from scratch.
@@ -241,7 +259,7 @@ const PRESETS = {
    arc fills (v1.0/1.1) read as hard-rimmed coins, not light. */
 const LOOKS = {
   meadow: {
-    label: "meadow", swatch: "#ffd28a", bg: "#04080b", blend: "lighter",
+    label: "meadow", swatch: "#ffd28a", bg: "#04080b", water: "#050e18", blend: "lighter",
     note: "Warm flashes in a dark field. The classic.",
     idleA: 0.30,
     stops: () => [[0, "rgba(255,244,214,1)"], [0.09, "rgba(255,236,190,0.95)"],
@@ -249,7 +267,7 @@ const LOOKS = {
                   [0.70, "rgba(255,160,50,0.07)"], [1, "rgba(255,160,50,0)"]],
   },
   phase: {
-    label: "phase", swatch: "#8ce07a", bg: "#05060a", blend: "lighter", usesPhase: true,
+    label: "phase", swatch: "#8ce07a", bg: "#05060a", water: "#070b14", blend: "lighter", usesPhase: true,
     note: "Hue = clock phase, so you can watch a wave arrive as a colour gradient " +
           "before it flashes. Unison = the whole field cycling through one colour.",
     idleA: 0.60,
@@ -258,7 +276,7 @@ const LOOKS = {
                    [0.72, "hsla(" + h + ",95%,55%,0.06)"], [1, "hsla(" + h + ",95%,55%,0)"]],
   },
   noir: {
-    label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter",
+    label: "noir", swatch: "#ffffff", bg: "#000000", water: "#04040a", blend: "lighter",
     note: "White light on black. Just the rhythm.",
     idleA: 0.22,
     stops: () => [[0, "rgba(255,255,255,1)"], [0.10, "rgba(255,255,255,0.90)"],
@@ -295,6 +313,8 @@ function glowSprite(lookKey, hueBucket) {
 
 // ---- state -----------------------------------------------------------------
 let x, y, heading, theta, u, glow;         // u = per-fly frequency offset in [-1,1]
+let z, drawOrder;                          // fixed depth per fly; painter's order (far first)
+let ripplePhase = 0;                       // advances per step, so ripples slow with the sim
 let flashedNow, queue = [];
 let W = 0, H = 0, dpr = 1;
 
@@ -378,8 +398,14 @@ function rebuild() {
   heading = new Float64Array(n);
   theta = new Float64Array(n); u = new Float64Array(n);
   glow = new Float64Array(n);
+  z = new Float64Array(n);
   flashedNow = new Uint8Array(n);
   cellOf = new Int32Array(n); gridOrder = new Int32Array(n);
+  // depth: biased toward far, so the field reads deep with a few near bokehs.
+  // Sorted once into painter's order — z never changes after this.
+  for (let i = 0; i < n; i++) z[i] = Math.pow(Math.random(), 1.4);
+  drawOrder = Int32Array.from({ length: n }, (_, i) => i)
+    .sort((a, b) => z[a] - z[b]);
   scatter(); desync(); newClocks();
 }
 
@@ -438,21 +464,26 @@ function stepSim() {
   const n = P.n, unit = Math.min(W, H);
   const spd = P.wander * unit / 800, m = 0.05 * unit;
 
-  // gentle wander with soft walls
+  // gentle wander with soft walls; with the pond on, the waterline is the
+  // bottom wall, so flies drift up out of the water over a few seconds
+  const bottom = P.pond ? waterY() : H;
+  const dep = P.depth;
   for (let i = 0; i < n; i++) {
     heading[i] += (Math.random() - 0.5) * P.turn;
     let wx = 0, wy = 0;
     if (x[i] < m) wx = 1; else if (x[i] > W - m) wx = -1;
-    if (y[i] < m) wy = 1; else if (y[i] > H - m) wy = -1;
+    if (y[i] < m) wy = 1; else if (y[i] > bottom - m) wy = -1;
     if (wx || wy) {
       const want = Math.atan2(wy, wx);
       let d = want - heading[i];
       while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
       heading[i] += d * 0.12;
     }
-    x[i] += Math.cos(heading[i]) * spd;
-    y[i] += Math.sin(heading[i]) * spd;
+    const si = spd * (1 + (zSpeed(z[i]) - 1) * dep);   // parallax: near drifts faster
+    x[i] += Math.cos(heading[i]) * si;
+    y[i] += Math.sin(heading[i]) * si;
   }
+  ripplePhase += 0.06;
 
   // clocks tick; natural flashes keep their remainder for accuracy
   const inv = 1 / P.period, sp = P.spread;
@@ -487,35 +518,59 @@ function stepSim() {
 }
 
 // ---- rendering -------------------------------------------------------------
+
+/* One blit, plus its reflection when the pond is on: mirrored about the
+   waterline, dimmed, stretched a little vertically, and wobbled sideways by a
+   slow ripple whose amplitude grows with apparent distance into the water. */
+function blitFly(spr, fx, fy, r, a) {
+  ctx.globalAlpha = a;
+  ctx.drawImage(spr, fx - r, fy - r, r * 2, r * 2);
+  if (P.pond && fy < waterY()) {
+    const wy = waterY();
+    const my = 2 * wy - fy;
+    const depth = (my - wy) / Math.max(H - wy, 1);   // 0 at the line → 1 at frame bottom
+    if (depth < 1 && my - r * 1.3 < H) {
+      const fade = 0.38 * (1 - depth * 0.85);
+      const ra = a * fade;
+      if (ra > 0.03) {                     // skip reflections too faint to see
+        const wob = Math.sin(ripplePhase * 0.9 + fy * 0.11 + depth * 5) * (1 + 3 * depth);
+        const rh = r * 1.3;
+        ctx.globalAlpha = ra;
+        ctx.drawImage(spr, fx - r + wob, my - rh, r * 2, rh * 2);
+      }
+    }
+  }
+}
+
 function draw() {
   const L = LOOKS[P.look], n = P.n;
   ctx.globalCompositeOperation = "source-over";
   ctx.fillStyle = L.bg;
   ctx.fillRect(0, 0, W, H);              // full clear — nothing accumulates
 
+  if (P.pond) {
+    const wy = waterY();
+    ctx.fillStyle = L.water;
+    ctx.fillRect(0, wy, W, H - wy);
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillRect(0, wy, W, 1);
+  }
+
   ctx.globalCompositeOperation = L.blend;
-  const ds = P.dotSize, lk = P.look, usesPhase = !!L.usesPhase;
-  for (let i = 0; i < n; i++) {
+  const ds = P.dotSize, lk = P.look, usesPhase = !!L.usesPhase, dep = P.depth;
+  for (let oi = 0; oi < n; oi++) {
+    const i = drawOrder[oi];               // painter's order: far flies first
     let hb = null;
     if (usesPhase) { hb = (theta[i] * HUE_BUCKETS) | 0; if (hb >= HUE_BUCKETS) hb = HUE_BUCKETS - 1; }
     const spr = glowSprite(lk, hb);
+    const zm = 1 + (zSize(z[i]) - 1) * dep;
+    const am = Math.min(1, 1 + (zAlpha(z[i]) - 1) * dep);
 
-    // idle body: the same soft sprite, small and dim — no rim by construction.
-    // Skipped when a strong flash is on top of it; invisible there anyway.
-    let r;
-    if (glow[i] < 0.5) {
-      ctx.globalAlpha = L.idleA;
-      r = ds * 2.2;
-      ctx.drawImage(spr, x[i] - r, y[i] - r, r * 2, r * 2);
-    }
+    // idle body: skipped when a strong flash is on top of it — invisible there
+    if (glow[i] < 0.5) blitFly(spr, x[i], y[i], ds * 2.2 * zm, L.idleA * am);
 
     const g = glow[i];
-    if (g > 0.02) {
-      // one blit per flash — the sprite carries its own hot centre
-      ctx.globalAlpha = 0.95 * g;
-      r = ds * (3 + 10 * g);
-      ctx.drawImage(spr, x[i] - r, y[i] - r, r * 2, r * 2);
-    }
+    if (g > 0.02) blitFly(spr, x[i], y[i], ds * (3 + 10 * g) * zm, 0.95 * g * am);
   }
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
@@ -600,6 +655,7 @@ const SLIDERS = [
   ["wd",  "wander",       (v) => v === 0 ? "still" : v.toFixed(2) + " px/step"],
   ["ag",  "afterglow",    (v) => Math.round(Math.log(0.5) / Math.log(v)) + "-step ½-life"],
   ["ds",  "dotSize",      (v) => v.toFixed(1)],
+  ["dp",  "depth",        (v) => v === 0 ? "flat" : (v * 100).toFixed(0) + "%"],
   ["n",   "n",            (v) => String(v)],
   ["sf",  "stepsPerFrame",(v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
                                        : v.toFixed(2) + " ×"],
@@ -611,6 +667,7 @@ function syncUI() {
     $("v_" + id).textContent = fmt(P[key]);
   }
   $("mt").checked = P.meter;
+  $("pond").checked = P.pond;
   $("pause").classList.toggle("on", P.paused);
   $("pause").textContent = P.paused ? "resume" : "pause";
   $("looknote").textContent = LOOKS[P.look].note;
@@ -659,6 +716,7 @@ Object.keys(PRESETS).forEach((name) => {
 });
 
 $("mt").addEventListener("change", (e) => { P.meter = e.target.checked; });
+$("pond").addEventListener("change", (e) => { P.pond = e.target.checked; });
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("desync").addEventListener("click", () => { desync(); rFill = 0; rHead = 0; resetRegime(); });
 $("scatter").addEventListener("click", () => scatter());
