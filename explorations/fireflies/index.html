@@ -235,31 +235,63 @@ const PRESETS = {
   "avalanche": { nudge: 0.140, radius: 0.10,  spread: 0.06, period: 180, n: 900 },
 };
 
+/* Each look defines gradient stops for a glow sprite: a hot centre easing
+   through the look's colour to fully transparent at the rim. The tail keeps
+   the same RGB with alpha → 0 so the fade never passes through grey. Flat
+   arc fills (v1.0/1.1) read as hard-rimmed coins, not light. */
 const LOOKS = {
   meadow: {
     label: "meadow", swatch: "#ffd28a", bg: "#04080b", blend: "lighter",
     note: "Warm flashes in a dark field. The classic.",
-    idle: () => "rgba(255,214,150,0.10)",
-    halo: (g) => "rgba(255,178,70," + (0.32 * g).toFixed(3) + ")",
-    core: (g) => "rgba(255,240,205," + (0.95 * g).toFixed(3) + ")",
+    idleA: 0.30,
+    stops: () => [[0, "rgba(255,244,214,1)"], [0.09, "rgba(255,236,190,0.95)"],
+                  [0.20, "rgba(255,208,120,0.62)"], [0.42, "rgba(255,178,70,0.24)"],
+                  [0.70, "rgba(255,160,50,0.07)"], [1, "rgba(255,160,50,0)"]],
   },
   phase: {
     label: "phase", swatch: "#8ce07a", bg: "#05060a", blend: "lighter", usesPhase: true,
     note: "Hue = clock phase, so you can watch a wave arrive as a colour gradient " +
           "before it flashes. Unison = the whole field cycling through one colour.",
-    idle: (h) => "hsla(" + h + ",90%,45%,0.45)",
-    halo: (g, h) => "hsla(" + h + ",95%,62%," + (0.40 * g).toFixed(3) + ")",
-    core: (g, h) => "hsla(" + h + ",55%," + (60 + 30 * g).toFixed(0) + "%," + (0.95 * g).toFixed(3) + ")",
+    idleA: 0.60,
+    stops: (h) => [[0, "hsla(" + h + ",50%,92%,1)"], [0.10, "hsla(" + h + ",75%,75%,0.92)"],
+                   [0.22, "hsla(" + h + ",95%,62%,0.58)"], [0.44, "hsla(" + h + ",95%,58%,0.22)"],
+                   [0.72, "hsla(" + h + ",95%,55%,0.06)"], [1, "hsla(" + h + ",95%,55%,0)"]],
   },
   noir: {
     label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter",
     note: "White light on black. Just the rhythm.",
-    idle: () => "rgba(255,255,255,0.08)",
-    halo: (g) => "rgba(255,255,255," + (0.25 * g).toFixed(3) + ")",
-    core: (g) => "rgba(255,255,255," + (0.95 * g).toFixed(3) + ")",
+    idleA: 0.22,
+    stops: () => [[0, "rgba(255,255,255,1)"], [0.10, "rgba(255,255,255,0.90)"],
+                  [0.22, "rgba(255,255,255,0.52)"], [0.44, "rgba(255,255,255,0.20)"],
+                  [0.72, "rgba(255,255,255,0.05)"], [1, "rgba(255,255,255,0)"]],
   },
 };
 const LOOK_KEYS = Object.keys(LOOKS);
+
+/* Sprite cache. Gradients are built ONCE per (look, hue-bucket) into a 64px
+   offscreen canvas and blitted from then on — per-fly per-frame gradients are
+   the expensive way to do this; cached sprites are cheaper than the arc fills
+   they replace. The phase look gets 32 hue buckets (11.25°), measured invisible
+   as banding in the dots exploration. */
+const SPR_R = 32, HUE_BUCKETS = 32;
+const SPRITES = {};
+
+function glowSprite(lookKey, hueBucket) {
+  const key = hueBucket == null ? lookKey : lookKey + ":" + hueBucket;
+  let s = SPRITES[key];
+  if (!s) {
+    s = document.createElement("canvas");
+    s.width = s.height = SPR_R * 2;
+    const g = s.getContext("2d");
+    const hue = hueBucket == null ? 0 : (hueBucket + 0.5) * (360 / HUE_BUCKETS);
+    const grad = g.createRadialGradient(SPR_R, SPR_R, 0, SPR_R, SPR_R, SPR_R);
+    for (const [t, c] of LOOKS[lookKey].stops(hue)) grad.addColorStop(t, c);
+    g.fillStyle = grad;
+    g.fillRect(0, 0, SPR_R * 2, SPR_R * 2);
+    SPRITES[key] = s;
+  }
+  return s;
+}
 
 // ---- state -----------------------------------------------------------------
 let x, y, heading, theta, u, glow;         // u = per-fly frequency offset in [-1,1]
@@ -462,19 +494,30 @@ function draw() {
   ctx.fillRect(0, 0, W, H);              // full clear — nothing accumulates
 
   ctx.globalCompositeOperation = L.blend;
-  const ds = P.dotSize;
+  const ds = P.dotSize, lk = P.look, usesPhase = !!L.usesPhase;
   for (let i = 0; i < n; i++) {
-    const h = L.usesPhase ? (theta[i] * 360) | 0 : 0;
-    ctx.fillStyle = L.idle(h);
-    ctx.beginPath(); ctx.arc(x[i], y[i], ds, 0, TAU); ctx.fill();
+    let hb = null;
+    if (usesPhase) { hb = (theta[i] * HUE_BUCKETS) | 0; if (hb >= HUE_BUCKETS) hb = HUE_BUCKETS - 1; }
+    const spr = glowSprite(lk, hb);
+
+    // idle body: the same soft sprite, small and dim — no rim by construction.
+    // Skipped when a strong flash is on top of it; invisible there anyway.
+    let r;
+    if (glow[i] < 0.5) {
+      ctx.globalAlpha = L.idleA;
+      r = ds * 2.2;
+      ctx.drawImage(spr, x[i] - r, y[i] - r, r * 2, r * 2);
+    }
+
     const g = glow[i];
     if (g > 0.02) {
-      ctx.fillStyle = L.halo(g, h);
-      ctx.beginPath(); ctx.arc(x[i], y[i], ds * (2.5 + 9 * g), 0, TAU); ctx.fill();
-      ctx.fillStyle = L.core(g, h);
-      ctx.beginPath(); ctx.arc(x[i], y[i], ds * (1 + 2.2 * g), 0, TAU); ctx.fill();
+      // one blit per flash — the sprite carries its own hot centre
+      ctx.globalAlpha = 0.95 * g;
+      r = ds * (3 + 10 * g);
+      ctx.drawImage(spr, x[i] - r, y[i] - r, r * 2, r * 2);
     }
   }
+  ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = "source-over";
   if (P.meter) drawMeter();
 }

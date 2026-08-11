@@ -23,7 +23,8 @@
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
-| *(empty — no active work)* | | | |
+| Claude (w/ Caio) | 2026-08-11 | Exploration 3: slime mold (Physarum) — new folder `explorations/slime-mold/` + index rows + landing page | `explorations/slime-mold/*`; `explorations/README.md` (new row); `index.html` (new card); `SESSION_LOG.md` (append); `PROJECT.md` (focus) |
+| Claude (w/ Caio) | 2026-08-11 | Dots V2.6.1: void corona (visible on black) + lunge smoothing | `explorations/dots-friend-enemy/*`; `SESSION_LOG.md` (append own entry only) |
 
 > Resolved 2026-08-11: the unclaimed `dots-friend-enemy` changes were the V2.4 influences work
 > (wandering attractor + predator). Committed by that session. The miss was real — it edited a

@@ -20,4 +20,4 @@ when it's interesting, not when it's finished. Nothing here needs to become a pr
 | Exploration | Started | What it is | Status |
 |---|---|---|---|
 | [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | **v2.6** — ribbon trails, 5 looks, friend-graph basins, bow-shock influences, stalking predator, 4 agent styles. Resume from "Picking this up cold" in the notes |
-| [`fireflies/`](fireflies/) | 2026-08-11 | Pulse-coupled fireflies — sync emerging from flashes alone (Mirollo–Strogatz) — [notes](fireflies/NOTES.md), [run it](fireflies/index.html) | v1.1 — measured parameter atlas, log-scaled nudge, live regime label, tooltips |
+| [`fireflies/`](fireflies/) | 2026-08-11 | Pulse-coupled fireflies — sync emerging from flashes alone (Mirollo–Strogatz) — [notes](fireflies/NOTES.md), [run it](fireflies/index.html) | v1.2 — parameter atlas, log-scaled nudge, live regime label, soft glow sprites |

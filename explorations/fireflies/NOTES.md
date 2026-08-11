@@ -1,9 +1,9 @@
 # Fireflies — pulse-coupled sync
-**Version**: v1.1.0
+**Version**: v1.2.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Synchrony emerging from flashes alone — Mirollo–Strogatz pulse-coupled oscillators, built for watching
-**Status**: Active — v1.1 (parameter atlas, log nudge, live regime label)
+**Status**: Active — v1.2 (parameter atlas + soft glow sprites)
 
 ---
 
@@ -153,6 +153,28 @@ forbidden — you can still drive into the unison wall, and sometimes you want t
 stop wasting half their travel inside it, the label tells you which regime you're in the moment
 you cross a boundary, presets are named landmarks, and this atlas is the map. Steering by
 information, not by constraint.
+
+## Soft glow (v1.2)
+
+User feedback: the blink radius was too sharply marked — and it was. Flashes were drawn as
+flat-alpha filled circles, which read as hard-rimmed coins, not light.
+
+Each look now defines gradient *stops* — a hot centre easing through the look's colour to fully
+transparent at the rim, keeping the same RGB throughout so the fade never passes through grey.
+The gradient is rendered **once** per (look, hue-bucket) into a 64px offscreen sprite and blitted
+from then on; per-fly per-frame gradients are the expensive way to get this effect. The `phase`
+look, where every fly carries its own hue, gets a bank of 32 hue-bucketed sprites (11.25° —
+measured invisible as banding back in the dots exploration). Cache tops out at 34 canvases.
+
+Measured radial luminance profile of a full flash after the change: 674 → 547 → 345 → … → 34 →
+24 → background, a smooth glide with no step at any rim (the only steep gradient is the hot core,
+which is the point). Idle bodies use the same sprite small and dim, so they lost their rims too.
+
+Cost: one blit per flash (the sprite carries its own hot centre) plus one for the idle body,
+skipped when a strong flash sits on top of it. Worst case — n=2000, *every* fly glowing at
+sync — is 19.6 ms/frame; the default n=700 fully synced runs 4.35 ms. First cut used three
+blits per glowing fly and hit 27 ms, hence the consolidation. And because the sims now advance
+by wall-clock time, even a heavy frame slows only the frame rate, never the physics.
 
 ## Things worth trying next
 

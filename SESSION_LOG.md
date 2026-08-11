@@ -38,6 +38,46 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Fireflies v1.2: soft glow sprites
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: the blink radius is too sharply marked, wants diffuse edges, unsure of the perf cost.
+Flashes were flat-alpha filled circles — hard-rimmed coins, not light. Replaced with cached
+radial-gradient sprites; the perf answer is that done right it's *cheap*, not costly.
+
+### Decisions Made
+- Gradient stops per look, hot centre → look colour → transparent, same RGB throughout (no grey
+  in the fade). Rendered once per (look, hue-bucket) into a 64px sprite, blitted thereafter.
+- `phase` look gets 32 hue-bucketed sprites (11.25°, the banding-invisible quantum from dots).
+  Cache tops out at 34 canvases.
+- First cut: 3 blits per glowing fly → 27 ms at the n=2000 all-glowing extreme. Consolidated to
+  one blit per flash (hot centre baked into the sprite, stops re-tuned hotter) + idle body
+  skipped under a strong flash → 19.6 ms extreme, **4.35 ms at default n=700 fully synced**.
+- Wall-clock stepping (previous session) means heavy frames now cost smoothness only, never
+  physics speed — the two fixes compose.
+
+### Verification
+Radial luminance profile of a full flash: 674→547→345→…→34→24→bg, smooth glide, no rim step
+anywhere (steepest gradient is the hot core, as intended). Idle profile likewise (131→56→32→bg).
+All 3 looks render clean post-change; sprite cache bounded at 34. Perf first-bench per call.
+No screenshot — pane never composited; profiles are pixel-measured, so edge softness is
+verified numerically even without eyes on it.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/fireflies/index.html` | LOOKS → gradient stops; sprite cache + blit rendering; idle-skip; v1.2 |
+| 2 | edited | `explorations/fireflies/NOTES.md` | "Soft glow (v1.2)" section with profiles and costs |
+| 3 | edited | `explorations/README.md` | Fireflies row → v1.2 |
+
+### Next Steps
+- [ ] Judge the softness by eye — stops are trivially tunable if the skirt is too wide/narrow
+- [ ] Open threads unchanged (chimeras, Kuramoto coupling, obstacles, sound)
+
 ## Session 2026-08-11 — V2.6: stalking predator + agent appearance workshop
 **Source**: Claude Code
 **User**: Caio
