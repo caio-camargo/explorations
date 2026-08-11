@@ -1,0 +1,27 @@
+# Skill Registry
+# Source of truth for all Claude skills in this project.
+# Used by /skill-status and /skill-health meta-skills.
+#
+# Manifest path (Claude Desktop, Windows):
+#   %APPDATA%\Claude\local-agent-mode-sessions\skills-plugin\<session-id>\<id>\manifest.json
+
+version: "1.0"
+manifest_hint: ""  # Optional: set to the known manifest.json path to skip auto-discovery
+
+skills: []
+
+# --- Template entry (copy and populate for each skill) ---
+#
+# - id: my-skill-name              # Must match manifest skillId and SKILL.md name field
+#   name: my-skill-name
+#   version: "1.0.0"               # Semantic versioning: MAJOR.MINOR.PATCH
+#   status: active                 # active | deprecated | experimental
+#   category: content              # content | automation | meta | research | ops | other
+#   description: "One line — what this skill does and when it runs"
+#   last_updated: "YYYY-MM-DD"
+#   author: "email or name"
+#   path: "skills/my-skill-name"  # Relative path to the skill directory (containing SKILL.md)
+#   changelog:
+#     - version: "1.0.0"
+#       date: "YYYY-MM-DD"
+#       notes: "Initial version"

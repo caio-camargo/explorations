@@ -1,0 +1,25 @@
+# The claude-project-framework clone this project was instantiated from.
+# It lives here locally, but it already has its own repo — don't republish it.
+# Canonical: https://github.com/caio-camargo/claude-project-framework
+template/
+shared/
+
+# Logs (project-specific, not committed)
+logs/
+*.jsonl
+
+# Output files
+output/
+
+# Credentials and secrets
+resources/
+*.env
+.env*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.pyc

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>explorations</title>
+<meta name="description" content="Small self-contained experiments — simulations, toys, visual things.">
+<style>
+  :root { color-scheme: dark; --bg:#0a0b0f; --text:#e6e8ef; --dim:#8e93a6; --accent:#7dd3fc; --line:rgba(255,255,255,.10); }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); min-height:100vh;
+         font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         display:flex; align-items:center; justify-content:center; padding:32px 20px; }
+  main { width:100%; max-width:620px; }
+  h1 { font-size:13px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+       color:var(--dim); margin:0 0 6px; }
+  .lede { color:var(--dim); font-size:15px; margin:0 0 34px; }
+  a.card { display:block; text-decoration:none; color:inherit; border:1px solid var(--line);
+           border-radius:12px; padding:18px 20px; margin-bottom:12px; transition:.15s; }
+  a.card:hover { border-color:var(--accent); background:rgba(125,211,252,.05); }
+  .card h2 { font-size:17px; margin:0 0 5px; color:var(--accent); font-weight:600; }
+  .card p { margin:0; color:var(--dim); font-size:14px; }
+  .meta { margin-top:11px; font-size:12px; color:var(--dim); }
+  .meta a { color:var(--dim); }
+  footer { margin-top:30px; font-size:13px; color:var(--dim); }
+  footer a { color:var(--accent); text-decoration:none; }
+  footer a:hover { text-decoration:underline; }
+</style>
+</head>
+<body>
+<main>
+  <h1>explorations</h1>
+  <p class="lede">Small self-contained experiments — simulations, toys, visual things. Built
+  because they're interesting, not because they're needed.</p>
+
+  <a class="card" href="explorations/dots-friend-enemy/">
+    <h2>Dots: friends &amp; enemies →</h2>
+    <p>Every dot picks one friend and one enemy, then chases one and flees the other while
+    drifting toward the centre. Three rules, no physics engine, and a surprising amount of
+    structure.</p>
+  </a>
+  <p class="meta">
+    <a href="https://github.com/caio-camargo/explorations/blob/main/explorations/dots-friend-enemy/NOTES.md">notes &amp; findings</a>
+  </p>
+
+  <footer>
+    Source on <a href="https://github.com/caio-camargo/explorations">GitHub</a>.
+  </footer>
+</main>
+</body>
+</html>
