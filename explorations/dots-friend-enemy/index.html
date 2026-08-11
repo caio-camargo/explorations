@@ -127,6 +127,14 @@
         <label>Speed → brightness</label><span class="val" id="v_sr"></span>
         <input type="range" id="sr" min="0" max="1" step="0.05">
       </div>
+      <div class="row">
+        <label>Pulse depth</label><span class="val" id="v_pd"></span>
+        <input type="range" id="pd" min="0" max="1" step="0.02">
+      </div>
+      <div class="row">
+        <label>Pulse period</label><span class="val" id="v_pp"></span>
+        <input type="range" id="pp" min="2" max="240" step="1">
+      </div>
     </div>
 
     <div class="group">
@@ -242,6 +250,8 @@ const P = {
   speedResponse: 0.7,  // how much speed drives brightness/width
   skeleton: true,      // emphasise dots sitting on a friend-graph cycle
   streaks: true,       // draw was→is segments instead of dots
+  pulseDepth: 0,       // 0 = off — deliberate brightness pulse
+  pulsePeriod: 24,     // steps per pulse cycle
   links: false,
   floor: false,
   paused: false,
@@ -329,8 +339,8 @@ for (const k of LOOK_KEYS) LOOKS[k].bgRGB = hexToRgb(LOOKS[k].bg);
 
 // ---- state -----------------------------------------------------------------
 const HIST = 130;                          // ring capacity for ribbon history
-let hx, hy, hHead = 0, hFilled = 0;        // [slot][dot] layout, stride = P.n
-let x, y, px, py, rx, ry, friend, enemy;   // rx/ry = position at the last draw
+let hx, hy, hs, hHead = 0, hFilled = 0;    // [slot][dot] layout, stride = P.n
+let x, y, px, py, rx, ry, sx, sy, friend, enemy;   // rx/ry = last draw, sx/sy = last speed sample
 let basin, onCycle, basinCount = 0, graphDirty = true;
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
 let speedRef = 1;                          // adaptive normaliser for "fast"
@@ -415,6 +425,8 @@ function scatter() {
     y[i] = cy + Math.sin(a) * r;
   }
   rx.set(x); ry.set(y);
+  sx.set(x); sy.set(y);
+  spd.fill(0);
   resetHistory();
 }
 
@@ -425,15 +437,41 @@ function scatter() {
 // otherwise the first frames read an unwritten slot and streak from (0,0).
 function resetHistory() {
   if (!hx) return;
-  for (let i = 0; i < P.n; i++) { hx[i] = x[i]; hy[i] = y[i]; }
+  for (let i = 0; i < P.n; i++) { hx[i] = x[i]; hy[i] = y[i]; hs[i] = 0; }
   hHead = 1; hFilled = 1;
 }
 
 function pushHistory() {
   const n = P.n, base = hHead * n;
-  for (let i = 0; i < n; i++) { hx[base + i] = x[i]; hy[base + i] = y[i]; }
+  // Speed rides along with the position: each vertex remembers how fast the
+  // dot was when it was laid down, so a ribbon can be shaded by its own past
+  // rather than by whatever the dot happens to be doing right now.
+  for (let i = 0; i < n; i++) { hx[base + i] = x[i]; hy[base + i] = y[i]; hs[base + i] = spd[i]; }
   hHead = (hHead + 1) % HIST;
   if (hFilled < HIST) hFilled++;
+}
+
+/* Sampled once per *step*, never per frame.
+   These are only meaningful when the dots actually moved. Measuring them every
+   frame meant that at fractional step rates — where most frames run no step —
+   every dot read as motionless, the whole field dropped to minimum brightness,
+   and then flared on the frame a step landed. That was the strobe, and its
+   amplitude scaled with Speed → brightness exactly as you'd expect from
+   t = 1 - resp + resp*t_raw. */
+function sampleSpeeds() {
+  const n = P.n;
+  if (spd.length !== n) spd = new Float64Array(n);
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    const s = Math.hypot(x[i] - sx[i], y[i] - sy[i]);
+    spd[i] = s; sum += s;
+  }
+  sx.set(x); sy.set(y);
+  // Normalise against the mean, not the max. The max is a single dot, so
+  // letting it set the scale modulated the brightness of the entire field
+  // every time that one dot changed — half of the "lightning".
+  const target = Math.max((sum / n) * 2.2, 0.35);
+  speedRef += (target - speedRef) * 0.05;
 }
 
 function rebuild() {
@@ -441,7 +479,10 @@ function rebuild() {
   x = new Float64Array(n); y = new Float64Array(n);
   px = new Float64Array(n); py = new Float64Array(n);
   rx = new Float64Array(n); ry = new Float64Array(n);
+  sx = new Float64Array(n); sy = new Float64Array(n);
+  spd = new Float64Array(n);
   hx = new Float32Array(HIST * n); hy = new Float32Array(HIST * n);
+  hs = new Float32Array(HIST * n);
   friend = new Int32Array(n); enemy = new Int32Array(n);
   scatter();
   for (let i = 0; i < n; i++) assign(i);
@@ -546,16 +587,8 @@ function draw() {
     ctx.stroke();
   }
 
-  // Pass 1 — how far did each dot travel since the last frame? An adaptive
-  // reference keeps "fast" meaningful whatever the parameters are set to.
-  let peak = 0;
-  for (let i = 0; i < n; i++) {
-    const s = Math.hypot(x[i] - rx[i], y[i] - ry[i]);
-    spd[i] = s; if (s > peak) peak = s;
-  }
-  speedRef += (Math.max(peak, 0.35) - speedRef) * 0.06;
-
-  // Pass 2 — draw. Speed drives brightness and weight, so motion is the signal.
+  // Speeds come from sampleSpeeds(), which runs per step rather than per frame.
+  // Draw. Speed drives brightness and weight, so motion is the signal.
   ctx.globalCompositeOperation = L.blend;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -571,6 +604,7 @@ function draw() {
 // Bloom: one segment per dot per frame, laid onto whatever survived the veil.
 function drawStreaks(L, n) {
   const resp = P.speedResponse, inv = 1 / speedRef;
+  ctx.globalAlpha = pulseAmount();
   for (let i = 0; i < n; i++) {
     let t = spd[i] * inv; if (t > 1) t = 1;
     t = 1 - resp + resp * t;                       // 0 response = everything equal
@@ -620,29 +654,47 @@ function drawRibbons(L, n) {
 
   if (!keyOf || keyOf.length < n) { keyOf = new Int32Array(n); order = new Int32Array(n); }
   if (!bkAt || bkAt.length < nKeys + 1) { bkAt = new Int32Array(nKeys + 1); bkCur = new Int32Array(nKeys); }
-  bkAt.fill(0, 0, nKeys + 1);
 
-  for (let i = 0; i < n; i++) {
-    let t = spd[i] * inv; if (t > 1) t = 1;
-    t = 1 - resp + resp * t;
-    let tq = (t * QT) | 0; if (tq >= QT) tq = QT - 1; if (tq < 0) tq = 0;
-    const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
-    const b = useBasin ? basin[i] % nb : 0;
-    const k = (b * 2 + cyc) * QT + tq;
-    keyOf[i] = k;
-    bkAt[k + 1]++;
-  }
-  for (let k = 0; k < nKeys; k++) { bkAt[k + 1] += bkAt[k]; bkCur[k] = bkAt[k]; }
-  for (let i = 0; i < n; i++) order[bkCur[keyOf[i]]++] = i;
+  const pulse = pulseAmount();
 
   for (let band = 0; band < BANDS; band++) {
     const a0 = Math.floor(band * K / BANDS), a1 = Math.floor((band + 1) * K / BANDS);
     if (a1 <= a0) continue;
     const fresh = 1 - (band + 0.5) / BANDS;        // 1 = nearest the dot
+    const span = a1 - a0 + 1;
+
+    /* Bucket by the speed the dot was travelling *during this band*, averaged
+       over the band's frames — not by its speed right now. Colouring a whole
+       ribbon from one instantaneous sample made every trail flash as a unit on
+       frame-to-frame noise, which was the rest of the "lightning". Averaging
+       over ~K/3 frames is both steadier and truer: the ribbon now shades by
+       its own history, so you can read where a dot sped up. */
+    // Averaging is a smoothing step, so it does not need every sample —
+    // ~4 spread across the band is indistinguishable and keeps this from
+    // doubling the age traversal at long trail lengths.
+    const stride = span > 8 ? (span >> 2) : 1;
+    bkAt.fill(0, 0, nKeys + 1);
+    for (let i = 0; i < n; i++) {
+      let sum = 0, cnt = 0;
+      for (let a = a0; a <= a1; a += stride) {
+        const slot = (hHead - 1 - a + HIST + HIST) % HIST;
+        sum += hs[slot * n + i]; cnt++;
+      }
+      let t = (sum / cnt) * inv; if (t > 1) t = 1;
+      t = 1 - resp + resp * t;
+      let tq = (t * QT) | 0; if (tq >= QT) tq = QT - 1; if (tq < 0) tq = 0;
+      const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
+      const b = useBasin ? basin[i] % nb : 0;
+      const k = (b * 2 + cyc) * QT + tq;
+      keyOf[i] = k;
+      bkAt[k + 1]++;
+    }
+    for (let k = 0; k < nKeys; k++) { bkAt[k + 1] += bkAt[k]; bkCur[k] = bkAt[k]; }
+    for (let i = 0; i < n; i++) order[bkCur[keyOf[i]]++] = i;
 
     // globalAlpha does the age ramp, so the look's own colour maths is
     // untouched and this works the same under every blend mode.
-    ctx.globalAlpha = 0.12 + 0.88 * fresh * fresh;
+    ctx.globalAlpha = (0.12 + 0.88 * fresh * fresh) * pulse;
 
     for (let k = 0; k < nKeys; k++) {
       const s = bkAt[k], e = bkAt[k + 1];
@@ -672,7 +724,15 @@ function drawRibbons(L, n) {
 }
 
 // ---- loop ------------------------------------------------------------------
-let lastT = performance.now(), fps = 0, stepAcc = 0;
+let lastT = performance.now(), fps = 0, stepAcc = 0, pulsePhase = 0;
+
+/* The strobe, but on purpose. Phase advances per simulation step rather than
+   per frame, so the beat stays tied to the motion instead of to the monitor —
+   slow the sim and the pulse slows with it. Depth 0 leaves everything alone. */
+function pulseAmount() {
+  if (P.pulseDepth <= 0) return 1;
+  return 1 - P.pulseDepth * 0.5 * (1 - Math.cos(pulsePhase * Math.PI * 2));
+}
 
 function frame(t) {
   const dt = t - lastT; lastT = t;
@@ -688,7 +748,9 @@ function frame(t) {
     if (k > 0) {
       if (k > 40) k = 40;                 // don't replay a backgrounded tab
       for (let s = 0; s < k; s++) step();
+      sampleSpeeds();                     // only meaningful when dots moved
       pushHistory();                      // one ribbon vertex per drawn frame
+      pulsePhase += k / Math.max(P.pulsePeriod, 1);
     }
   }
   draw();
@@ -719,6 +781,8 @@ const SLIDERS = [
   ["fade", "fade",         (v) => v === 0 ? "never fades" : String(100 - v)],
   ["wt", "weight",         (v) => v.toFixed(1) + "×"],
   ["sr", "speedResponse",  (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
+  ["pd", "pulseDepth",     (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
+  ["pp", "pulsePeriod",    (v) => v + " steps"],
 ];
 
 // The proportional model is a linear system with only two fates. Say which.

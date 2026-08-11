@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.1.0
+**Version**: v2.2.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-10
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.1 (ribbon trails). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.2 (stable ribbons + deliberate pulse). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -174,6 +174,48 @@ invisible and the glow is the point.
 `stroke()` calls per frame, since canvas stroke overhead is per *call*, not per segment. Bucketing
 dots by everything that determines their appearance (quantised speed, on-cycle, basin) and
 emitting one path per bucket cut it to 3.9 ms, with the worst case (n=1200, K=128) at 9.6 ms.
+
+## The lightning was three bugs, and one of them is now a feature
+
+The first ribbons build flickered — jagged, unstable, lightning-ish, with a visible strobe when
+the simulation was slowed down. Three separate causes, all of them mine:
+
+**1. The strobe: speed sampled per frame instead of per step.** Speed was measured as distance
+moved since the last *draw*. At fractional step rates most frames run no step at all, so every dot
+read as motionless, the whole field dropped to minimum brightness, and then flared on the frame a
+step landed. The giveaway was that the strobe vanished at low Speed → brightness — brightness is
+`t = 1 − resp + resp·t_raw`, so at `resp = 0` the speed term drops out entirely and the artifact
+has nothing to modulate. Speeds are now sampled inside the step loop and simply persist across
+draw-only frames.
+
+**2. The scale was set by a single dot.** `speedRef`, which everything is normalised against, was
+an EMA of the *maximum* speed in the field. One dot changing rescaled the brightness of all 500.
+It now tracks the mean, which is enormously steadier.
+
+**3. Every ribbon was coloured by its dot's instantaneous speed**, so an entire trail flashed as
+one unit on frame-to-frame noise. Each history vertex now stores the speed it was laid down at,
+and each age band is shaded by the *average speed during that band*. Steadier, and truer — a
+ribbon now shades by its own past, so you can read where a dot sped up.
+
+Measured as frame-to-frame variation in drawn ink, at the settings that exposed the strobe
+(0.25 steps/frame):
+
+| | speed→brightness 0% | speed→brightness 100% |
+|---|---|---|
+| coefficient of variation | 9.7% | 11.4% |
+
+Before, the variation was strongly coupled to that slider — that's exactly what the strobe was.
+Now the two are within noise of each other, so what's left is just a swarm being a swarm.
+
+**And the strobe is now a control.** `Pulse depth` and `Pulse period` modulate brightness
+deliberately. The phase advances per *simulation step*, not per frame, so the beat stays tied to
+the motion instead of to the monitor — slow the sim and the pulse slows with it. Depth 0.8 at
+period 20 swings drawn ink from 0.38× to 1.65× of mean; depth 0.4 at period 60 gives a gentler
+0.59×–1.27×. Default is off.
+
+One thing that is *not* a bug: at very low steps/frame the geometry genuinely updates only on the
+frames a step lands, so the ribbon holds still and then jumps. That's the simulation being slow,
+not the renderer stuttering. Smoothing it would mean interpolating positions between steps.
 
 ## Presets
 

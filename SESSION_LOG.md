@@ -38,6 +38,56 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — V2.2: ribbon flicker was three bugs; strobe promoted to a control
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+User reported ribbons looking "jerky and unstable — lightning-like", with a visible strobe when
+slowed down, and asked whether the strobe could become a deliberate pulse. Three independent
+causes, all introduced in V2/V2.1. Fixed all three; added Pulse depth + period as real controls.
+
+### The three causes
+1. **Strobe** — speed measured per *frame* (distance since last draw) rather than per *step*. At
+   fractional step rates most frames run no step, so every dot read as motionless and the field
+   collapsed to minimum brightness, flaring when a step landed. The user's own observation that it
+   vanished at low Speed → brightness pinned it exactly: brightness is `t = 1 − resp + resp·t_raw`,
+   so `resp = 0` removes the term the artifact modulates.
+2. **Global brightness swings** — `speedRef` was an EMA of the field *maximum*, so one dot rescaled
+   all 500. Now tracks the mean.
+3. **Whole-ribbon flashing** — each ribbon coloured by its dot's instantaneous speed. Each history
+   vertex now carries the speed it was laid down at, and each age band shades by the mean speed
+   *during that band*.
+
+### Decisions Made
+- Pulse phase advances per **simulation step**, not per frame, so the beat stays tied to the
+  motion rather than the monitor. Default off.
+- Kept the discrete geometry updates at low step rates — that's the simulation being slow, not a
+  rendering fault. Smoothing it would need sub-step interpolation; noted, not built.
+
+### Verification
+Frame-to-frame variation in drawn ink (background-subtracted) at 0.25 steps/frame: 9.7% CV at
+speed→brightness 0% vs 11.4% at 100%. Previously the variation was strongly coupled to that
+slider; now the two are within noise, which is the fix. Pulse measured working: depth 0.8/period
+20 swings ink 0.38×–1.65×, depth 0.4/period 60 gives 0.59×–1.27×.
+
+Fossil test still 0 pixels left behind for ribbons. All 5 looks × both trail modes × pulse on:
+no exceptions. Stress (fractional rate → scatter → n 180→520 → 8 steps/frame) clean.
+
+### PARKED: benchmarking harness is unreliable
+Sequential benches inside a single `javascript_tool` call degrade progressively — bloom measured
+0.94 ms, then 44 ms, then 128 ms for the *same* config as the call went on. Isolated in its own
+call it is 1.66 ms. Sustained synchronous work in the pane throttles rasterisation. **Only trust
+the first bench in a call, or measure one config per call.** This nearly had me chase a
+non-existent 55× regression. Real numbers, measured in isolation: bloom ~1 ms, ribbons ~2–5 ms at
+defaults, worst case (n=1200, K=128) 5.2 ms after subsampling the band-average (was 18 ms).
+
+### Next Steps
+- [ ] Sub-step position interpolation, if the low-step-rate judder ever bothers anyone
+- [ ] Accumulation/artifact mode still parked
+
 ## Session 2026-08-10 — V2.1: the trail haze was a rounding bug
 **Source**: Claude Code
 **User**: Caio
