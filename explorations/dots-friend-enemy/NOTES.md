@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.4.0
+**Version**: v2.5.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.4 (influences: wandering attractor + predator). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.5 (bow-shock disturbance rendering + tooltips). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -363,6 +363,47 @@ and dots collect on it (mean distance 23 px to the attractor versus 127 px to th
 Cost at the worst case measured (n=1200, K=128): 8.64 ms without agents, 9.88 ms with both, and
 `updateAgents()` itself is 0.03 ms/step. The difference is stroke calls, not the hunt loop —
 agents make dots more varied, so occupied colour buckets go from 43 to 62 per frame.
+
+## The bow shock — disturbance as a colour axis
+
+The agents worked but looked like nothing: hairline wireframe circles in a piece that contains no
+other hard edges. The fix follows the rule everything else here already obeys — **things are
+visible through what they do to the dots**, never drawn directly.
+
+**Measured before designing.** The density at the predator's rim is ~500× the far field, with the
+interior completely empty — the front is razor-sharp, no physics change needed. But the decisive
+detail: dots *at* the front have near-zero radial velocity (mean cos ≈ 0.03) — they are **pinned**
+against the shock, not fleeing — while dots behind stream back in at cos ≈ −0.30. So a naive
+"colour by flee velocity" would leave the most dramatic dots unmarked. Proximity has to carry the
+signal; velocity only modulates it.
+
+**One axis, u ∈ [−1, +1]:** +1 = overwhelmed by the predator, −1 = settled on the attractor.
+Per-step, eased asymmetrically — fast attack (0.5/step), slow decay (0.035/step) — so heat
+lingers on dots the predator has passed: **the warm wake draws itself** out of the easing, no
+extra logic. Predator warmth uses quadratic falloff (`1 − (d/r)²`), because linear gave the
+pinned front dots — at ~0.75 of the felt radius — the least heat; quadratic nearly doubled it
+(mean u 0.25 → 0.48).
+
+**Each look defines what disturbance means**, because hue is already spoken for in `basins`
+(same colour = shared destiny) and doesn't exist in the monochromes:
+
+| Look | hot (predator) | cold (attractor) |
+|---|---|---|
+| graphite / noir | ink pressure — presses harder, wider | lightens, settles |
+| phosphor | flares through pink to white | sinks into deep blue |
+| ember | burns white | banks down to deep red |
+| basins | **hue unchanged** — blows out toward white | deepens, darkens |
+
+`u = 0` is the exact identity — verified against the pre-change colour strings — so with no
+agents on, nothing changes, and the ribbon bucketing gains a disturbance dimension (DQ = 7, odd
+so one bin centre is exactly 0) at zero cost when the field is undisturbed.
+
+The "Show them" diagnostic is now a soft radial glow in the look's own blend mode instead of
+wireframe. First implementation rebuilt the radial gradient every frame and cost ~30 ms; cached
+as a 128px sprite and drawImage-scaled it costs ~1.6 ms.
+
+Every control also carries a hover tooltip now — the panel had accumulated sliders whose names
+only make sense if you already know the internals.
 
 ## Presets
 

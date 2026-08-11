@@ -38,6 +38,56 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — V2.5: bow-shock disturbance rendering + tooltips
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User said the agents "don't look like much" — correct: they were wireframe debug circles in a
+piece with no other hard edges. Brainstormed four directions, chose bow shock (agents visible
+only through what they do to the dots), measured before designing, built it. Also added hover
+tooltips to every control (user request mid-session).
+
+### The measurement that shaped the design
+Density at the predator's rim is ~500× the far field with an empty interior — the front is
+razor-sharp already. But dots AT the front have near-zero radial velocity (cos 0.03): they're
+**pinned**, not fleeing; the returning wake behind runs cos −0.30. So colouring by flee-velocity
+would leave the most dramatic dots unmarked. Design: proximity carries the heat, velocity
+modulates, and an asymmetric ease (attack 0.5/step, decay 0.035/step) makes the warm wake draw
+itself. Quadratic falloff instead of linear because the pinned front sits at ~0.75 of the felt
+radius — heat there nearly doubled (mean u 0.25 → 0.48).
+
+### Decisions Made
+- One signed axis u ∈ [−1, +1]: predator = hot, attractor = cold. Expressed **per look** because
+  hue is spoken for in `basins` — there, hot blows out toward white with hue unchanged (shock
+  without lying about identity); monochromes use ink pressure; phosphor/ember shift temperature.
+- u = 0 is the exact identity (verified against pre-change colour strings) and sits at a bin
+  centre (DQ = 7, odd), so undisturbed fields cost nothing extra in the ribbon bucketing.
+- "Show them" redone as soft radial glows in the look's blend mode. First cut rebuilt gradients
+  per frame: ~30 ms. Cached 128px sprite + drawImage: ~1.6 ms.
+- Tooltips via one TIPS map assigned to rows/labels in a single pass; dynamic buttons (looks,
+  trails, presets) get titles at creation. First draft assigned titles before the buttons
+  existed — caught by checking creation order, moved to creation sites.
+
+### Verification
+Identity: agents off → max|dst| = 0, colour strings byte-match the old formulas. Channel: hot
+mean +0.48 inside the felt zone, cold −0.52 on the attractor, ~0 far field (measured with each
+agent alone — the first combined scenario was degenerate: attractor gathers everyone, predator
+parks on top, all 400 dots in one zone). All 5 looks × both trails × glow: no exceptions. DOM:
+all 31 controls + 12 buttons carry non-empty titles; look buttons still 5/5 visible. Perf, first
+bench per call only: 17.1 ms worst case with glow vs 15.2 baseline in the same environment
+(cross-session absolutes drifted ~5 ms; deltas are what count).
+
+### Concurrency
+Claimed scope in ACTIVE_WORK **before** editing this time. A concurrent fireflies session is
+active with its own claim; shared files checked for foreign hunks before staging.
+
+### Next Steps
+- [ ] Image as a sampled field — still the specced next thing
+- [ ] Look at the shock live: predator on, hunts on, `basins` or `ember`, Show them off
+
 ## Session 2026-08-11 — Exploration 2: fireflies (pulse-coupled sync)
 **Source**: Claude Code
 **User**: Caio
