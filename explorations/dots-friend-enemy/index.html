@@ -1036,7 +1036,13 @@ function frame(t) {
     // Fractional rate: below 1 this runs a step every 1/rate frames, which is
     // where the interesting slow-motion lives — whole steps jumped far too
     // coarsely at the bottom of the range.
-    stepAcc += P.stepsPerFrame;
+    //
+    // Advance by wall-clock time, not by frame. Stepping per frame couples
+    // render cost into the physics: heavier strokes → more pixels → lower
+    // fps → slower world ("dot size changes movement speed"). Steps are
+    // defined per 60fps-frame, so the sim holds its wall-clock rate whatever
+    // the renderer costs (up to the stall clamp).
+    stepAcc += P.stepsPerFrame * Math.min(dt, 100) / (1000 / 60);
     let k = Math.floor(stepAcc);
     stepAcc -= k;
     if (k > 0) {

@@ -511,7 +511,12 @@ function frame(t) {
   fps += ((1000 / Math.max(dt, 1)) - fps) * 0.1;
 
   if (!P.paused) {
-    stepAcc += P.stepsPerFrame;
+    // Advance by wall-clock time, not by frame. Stepping per frame couples
+    // render cost into the physics: bigger dots → more pixels → lower fps →
+    // slower world, which read as "dot size changes movement speed". Steps
+    // are defined per 60fps-frame, so the sim runs at the same wall-clock
+    // rate whatever the renderer costs (up to the stall clamp).
+    stepAcc += P.stepsPerFrame * Math.min(dt, 100) / (1000 / 60);
     let k = Math.floor(stepAcc);
     stepAcc -= k;
     if (k > 40) k = 40;                  // don't replay a backgrounded tab

@@ -38,6 +38,40 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Hotfix both sims: render cost was leaking into physics speed
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: "dot size changes the movement speed. this also happened in the other one." Real, and the
+mechanism is shared: both sims advanced the simulation per *frame*, so anything that raises draw
+cost (dot size, stroke weight, population) lowers fps and slows the whole world in wall-clock
+terms. Measured: fireflies draw cost spans 8–30 ms across the dot-size range — right across the
+16.7 ms frame budget, so fps (and therefore world speed) genuinely tracked dot size.
+
+### Fix
+Advance by wall-clock time: `stepAcc += stepsPerFrame · min(dt,100)/16.7ms` in both frame loops.
+"Steps/frame" semantics preserved at 60 fps; a 100 ms stall clamp prevents backgrounded-tab
+replay. Applied identically to `fireflies/index.html` and `dots-friend-enemy/index.html`.
+
+### Verification
+Monkey-patched the step functions and drove `frame()` with synthetic timings in both sims:
+2 s of wall-clock yields 119–120 steps at 60, 30, and 20 fps alike (was 120/60/40 before);
+fractional 0.25× over 4 s yields exactly 60; a single 5-second stall frame runs 6 steps, not 300.
+No console errors on either page after the patch.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/fireflies/index.html` | dt-based stepping |
+| 2 | edited | `explorations/dots-friend-enemy/index.html` | dt-based stepping (frame loop only — V2.5 code untouched otherwise) |
+| 3 | edited | `LESSONS_LEARNED.md` | Lesson 11: per-frame stepping couples render cost into physics |
+
+### Next Steps
+- [ ] Confirm by feel: dot size / stroke weight should no longer change apparent speed
+
 ## Session 2026-08-11 — Fireflies v1.1: parameter atlas, log nudge, live regime label
 **Source**: Claude Code
 **User**: Caio
