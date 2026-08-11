@@ -1,9 +1,9 @@
 # Slime Mold — Physarum transport networks
-**Version**: v1.0.0
+**Version**: v1.1.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Organic vein networks from three whiskers and a scent trail — the Jones (2010) Physarum model, built for watching
-**Status**: Active — v1
+**Status**: Active — v1.1 (crowding rule: complexity is sustained now)
 
 ---
 
@@ -71,6 +71,36 @@ to. A spatial-autocorrelation length would separate them; parked below.
 **Network formation is itself measurable**: from a cleared field under `veins`, coverage
 collapses 9.5% → 2.5% while contrast climbs 20 → 71 over ~1800 steps. That trajectory — mass
 concentrating into thin bright structure — *is* vein formation, before you ever see it.
+
+## The collapse, and the rule that stops it (v1.1)
+
+User feedback on v1: "it starts off wonderfully complex, but it simplifies rather quickly."
+Correct, and it's the classic Physarum failure mode — rich-get-richer. The strongest trail
+recruits more agents, who deposit more, while every competitor evaporates, until the whole
+lace collapses into one glowing river.
+
+Measured with a junction count (bright cells with ≥3 bright neighbours — a cheap branching
+metric) under `veins`:
+
+| | t=1000 | t=3500 | t=7000+ |
+|---|---|---|---|
+| **v1 (no crowding)** — junctions | 2,448 | **105** | 2,256 |
+| **v1.1 (crowding)** — junctions | 15,966 | 14,534 | 11,856 |
+
+The v1 numbers also reveal the collapse isn't even stable — it oscillates between river and
+partial recovery. The v1.1 network coarsens gently (15.9k → 11.9k over 7000 steps), which is
+what mature Physarum networks genuinely do, but it never collapses.
+
+**The fix is not a patch — it's the missing piece of the original model.** Jones's agents may
+only move into an *unoccupied* cell; a blocked agent stays put, re-orients randomly, and
+deposits nothing. That one constraint (`occ`, a Uint8 grid rebuilt per step) is what sustains
+reticulation: a trunk cannot absorb every agent, because there is no room on it. v1 left it
+out; the user's eye found exactly the consequence.
+
+Crowding also promotes **population to the main density lever** — hence the agents slider now
+reaching 40,000 (~16% occupancy). Measured at t=1200 under `veins` settings: n=6,000 → 25%
+coverage, ~16k junctions (distinct veins); n=15,000 → 41%, ~26k (dense foam, nearly too much).
+The `filigree` preset now runs 14,000 agents to exploit this.
 
 ## Verification
 

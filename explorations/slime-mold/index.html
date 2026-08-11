@@ -133,8 +133,8 @@
     <div class="group">
       <div class="glabel">World</div>
       <div class="row">
-        <label title="Population. More agents visit each cell more often, thickening trails relative to evaporation — denser, more connected networks.">Agents</label><span class="val" id="v_n"></span>
-        <input type="range" id="n" min="500" max="16000" step="250">
+        <label title="Population, the main density lever. More agents = more crowding = more reticulation: trunks can't absorb everyone when there's no room on them. The world is 256k cells; 25k agents is ~10% occupancy, in the territory of Jones's original.">Agents</label><span class="val" id="v_n"></span>
+        <input type="range" id="n" min="500" max="40000" step="500">
       </div>
       <div class="row">
         <label title="Distance moved per step, in field pixels.">Move speed</label><span class="val" id="v_sp"></span>
@@ -206,7 +206,7 @@ const P = {
 // Named network anatomies. Verified measurably distinct — see NOTES.
 const PRESETS = {
   "veins":    { n: 6000,  sensorAngle: 25, sensorDist: 9,  turnRate: 30, speed: 1.0, halfLife: 60,  diffuse: 0.6 },
-  "filigree": { n: 9000,  sensorAngle: 45, sensorDist: 4,  turnRate: 60, speed: 1.0, halfLife: 25,  diffuse: 0.35 },
+  "filigree": { n: 14000, sensorAngle: 45, sensorDist: 4,  turnRate: 60, speed: 1.0, halfLife: 25,  diffuse: 0.35 },
   "cells":    { n: 5000,  sensorAngle: 15, sensorDist: 16, turnRate: 20, speed: 1.2, halfLife: 140, diffuse: 0.8 },
   "storm":    { n: 10000, sensorAngle: 35, sensorDist: 7,  turnRate: 80, speed: 1.8, halfLife: 15,  diffuse: 0.2 },
 };
@@ -247,6 +247,7 @@ for (const k of LOOK_KEYS) {
 // ---- state -----------------------------------------------------------------
 let trail = new Float32Array(FN);
 let tmp = new Float32Array(FN);
+let occ = new Uint8Array(FN);            // one agent per cell — the crowding rule
 let ax, ay, ah;                          // agent position + heading
 let W = 0, H = 0, dpr = 1;
 
@@ -304,6 +305,10 @@ function stepSim() {
   const tr = P.turnRate * Math.PI / 180;
   const sd = P.sensorDist, sp = P.speed;
 
+  // occupancy snapshot for the crowding rule
+  occ.fill(0);
+  for (let i = 0; i < n; i++) occ[(ay[i] | 0) * FW + (ax[i] | 0)] = 1;
+
   // agents: sense → steer → move → deposit. They interact only through the
   // field, and diffusion delays that by a step anyway, so per-agent sequential
   // order injects no meaningful bias here (unlike the dots sim, where direct
@@ -322,10 +327,27 @@ function stepSim() {
     else if (l > r) ah[i] -= tr;
     else ah[i] += tr;
 
+    /* CROWDING (Jones's original rule, and the thing that sustains network
+       complexity): an agent may only move into an unoccupied cell. A blocked
+       agent stays put, re-orients randomly, and deposits nothing. Without
+       this, the strongest trail recruits everyone — rich-get-richer — and
+       the whole lace collapses into one glowing river within a few thousand
+       steps (measured: junction count 2448 → 105). Trunks can't absorb every
+       agent when there's no room on them. */
     const nx = wrapX(ax[i] + Math.cos(ah[i]) * sp);
     const ny = wrapY(ay[i] + Math.sin(ah[i]) * sp);
-    ax[i] = nx; ay[i] = ny;
-    trail[(ny | 0) * FW + (nx | 0)] += 1;      // deposit — unit is arbitrary, see panel note
+    const from = (ay[i] | 0) * FW + (ax[i] | 0);
+    const to = (ny | 0) * FW + (nx | 0);
+    if (to === from) {                          // sub-cell move: always allowed
+      ax[i] = nx; ay[i] = ny;
+      trail[to] += 1;
+    } else if (!occ[to]) {
+      occ[to] = 1; occ[from] = 0;
+      ax[i] = nx; ay[i] = ny;
+      trail[to] += 1;                           // deposit only on successful moves
+    } else {
+      ah[i] = Math.random() * TAU;              // blocked: re-orient, no deposit
+    }
   }
 
   // Field: separable 3×3 mean (torus), blended in by `diffuse`, then decay.

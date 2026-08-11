@@ -38,6 +38,44 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Slime mold v1.1: the crowding rule sustains the lace
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: "starts off wonderfully complex, but it simplifies rather quickly." Classic Physarum
+rich-get-richer collapse — and the cause was that v1 omitted the one piece of Jones's original
+model that prevents it: agents may only move into an *unoccupied* cell; blocked agents stay,
+re-orient randomly, deposit nothing. A trunk can't absorb every agent when there's no room on it.
+
+### Measured
+Junction count (bright cells with ≥3 bright neighbours) under `veins`:
+- v1: 2,448 (t=1000) → **105** (t=3500) → 2,256 (t=7000) — collapse, and unstable oscillation
+  between river and partial recovery.
+- v1.1: 15,966 → 14,534 → 11,856 (t=7100) — gentle coarsening, no collapse. Two orders of
+  magnitude at the point the user's screenshot was taken.
+Crowding makes population the density lever: n=6,000 → 25% coverage / 16k junctions (distinct
+veins); n=15,000 → 41% / 26k (dense foam). Agents slider extended to 40,000; filigree preset
+now 14,000.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/slime-mold/index.html` | Occupancy grid + crowding rule; agents slider to 40k; filigree n=14k; tooltip explains density |
+| 2 | edited | `explorations/slime-mold/NOTES.md` | v1.1 — "The collapse, and the rule that stops it" with the before/after table |
+| 3 | edited | `explorations/README.md` | Row → v1.1 |
+
+### Concurrency
+Fireflies v1.3 session (bokeh + reflection) concurrently active with claims on SESSION_LOG and
+explorations/README — disjoint hunks verified before staging, again.
+
+### Next Steps
+- [ ] Watch it hold: `veins` for several minutes should stay lace, never river
+- [ ] Density taste test: the agents slider is now the main character
+- [ ] Open threads unchanged (food/Tokyo-rail is the next fun one)
+
 ## Session 2026-08-11 — v2.6.2: corona tune (darker, crisp inner edge)
 **Source**: Claude Code
 **User**: Caio

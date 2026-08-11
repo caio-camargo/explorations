@@ -23,6 +23,7 @@
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Claude (w/ Caio) | 2026-08-11 | Fireflies v1.3: depth-of-field bokeh + pond reflection | `explorations/fireflies/*`; `SESSION_LOG.md` (append own entry only); `explorations/README.md` (fireflies row only) |
 
 > Resolved 2026-08-11: the unclaimed `dots-friend-enemy` changes were the V2.4 influences work
 > (wandering attractor + predator). Committed by that session. The miss was real — it edited a
