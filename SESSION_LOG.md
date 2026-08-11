@@ -38,6 +38,66 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-10 — V2.1: the trail haze was a rounding bug
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+User reported long trails collapsing into "an undifferentiated blob in the background", and asked
+for a fractional steps/frame slider. The blob turned out to be a fixed-point artifact of 8-bit
+compositing, not an aesthetic property of long trails. Replaced the trail engine.
+
+### The finding
+The bloom veil is multiplicative — `V ← V − (V − bg)·a` — on an 8-bit canvas. Once
+`(V − bg)·a < 0.5` the decrement rounds to zero and the pixel freezes permanently. Measured with
+**nothing being drawn at all**, just the veil applied 3,400 times: 100,088 pixels (27% of canvas)
+stuck at red=11 against bg=6, identical at 400 and 3,400 passes. That fossil — every path ever
+taken — was the grey web. It also explains the user's own observation that it vanishes near trail
+length 30: there `a = 0.70` and the floor drops below one level.
+
+### Decisions Made
+- **Ribbons as the new default trail engine.** Per-dot ring buffer of the last K positions,
+  redrawn as real polylines onto a fully cleared canvas in 3 age bands. Nothing accumulates, so
+  nothing fossilises; trail length is exact; overlapping streaks stay legible as overlaps.
+- **Bloom kept**, because it's genuinely better at short trail lengths where the floor is
+  invisible. The panel now says plainly why long bloom trails haze.
+- **Fractional steps/frame** via an accumulator: below 1 it runs a step every 1/rate frames.
+- **Basin palette reordered** so the first entries contrast hardest. Random functional graphs
+  usually have 2–3 cycles, and hue-wheel order gave those red-orange + amber, reading as one
+  colour. Caught by finally seeing a screenshot.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/dots-friend-enemy/index.html` | Ring-buffer history, `drawRibbons`/`drawStreaks` split, bucketed batching, fractional stepping, trail-style switch, palette reorder |
+| 2 | edited | `.../NOTES.md` | v2.1.0; "The haze was a bug, not a trail" with the measurements |
+
+### Verification
+Fossil test (render, teleport every dot into a corner, render 150 more frames, count what's left
+in the vacated area): bloom leaves 34,876 of 35,742 lit pixels; **ribbons leave 0**. Re-run after
+the batching refactor: bloom 25,839, ribbons 0.
+
+Fractional stepping exact at 0.05/0.25/1/2.5/8 (5, 10, 40, 100, 320 steps per 40 frames). No
+origin streak in the first 10 frames (ring-buffer head off-by-one caught and fixed before
+testing). Basins still multi-hued after batching (50 distinct quantised colours); noir still
+perfectly monochrome (0 chroma pixels). All 5 looks render under ribbons; heavy rerolling at
+60/sec with a changing basin count doesn't over-index the bucket arrays.
+
+Perf: ribbons were a real regression at 14.2 ms/frame vs bloom's 1.0 — 1,500 `stroke()` calls,
+and canvas stroke cost is per-call. Bucketing dots by quantised speed × on-cycle × basin and
+emitting one path per bucket brought defaults to **3.9 ms** and worst case (n=1200, K=128) to
+**9.6 ms**.
+
+**Saw it this time.** The preview pane composited, so the result was confirmed visually as well
+as numerically — which is how the palette problem was spotted.
+
+### Next Steps
+- [ ] Bloom's floor could be pushed below visibility by clamping its minimum fade; currently just
+      documented in the panel instead.
+- [ ] Accumulation/artifact mode still parked (see `NOTES.md`)
+
 ## Session 2026-08-10 — Dots V2: rendering rewrite
 **Source**: Claude Code
 **User**: Caio

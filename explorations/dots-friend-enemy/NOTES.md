@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.0.0
+**Version**: v2.1.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-10
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2 (rendering rewrite). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.1 (ribbon trails). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -124,9 +124,56 @@ expected ½·ln(n) cycles of a random functional graph.
 | `basins` | near-black | additive | **which cycle a dot drains into** — same colour, shared destiny |
 
 `basins` is the one look where colour beats monochrome, because hue finally carries structure.
+Its palette is ordered so the *first* entries contrast hardest rather than following the hue
+wheel — a random functional graph usually has only 2–3 cycles, and hue-wheel order handed those
+to red-orange and amber, which read as a single colour. Expect one basin to dominate: giant
+components are the norm in these graphs, so a mostly-one-hue picture is the structure, not a bug.
 `graphite` and `noir` are the two monochromes, one on each ground, which is the comparison worth
 making: on paper the trails behave subtractively like ink, on black they behave additively like
 light.
+
+## The haze was a bug, not a trail
+
+V2's first trail engine accumulated onto the previous frame and veiled it back toward the
+background each frame. At long trail lengths that produced a grey web across the whole floor —
+which looked like "trails piling up" but wasn't.
+
+The veil is *multiplicative*: `V ← V − (V − bg)·a`. The canvas is 8-bit. So the moment
+`(V − bg)·a < 0.5`, the decrement rounds to zero and **the pixel is frozen permanently**. At
+trail length 91 (`a = 0.09`) that traps anything within ~5 levels of the background.
+
+Measured, with nothing being drawn at all — just the veil applied 3,400 times:
+
+| | pixels > bg+2 | pixels > bg+8 |
+|---|---|---|
+| after drawing | 100,091 | 99,965 |
+| after 400 veils | 100,088 | 0 |
+| after 3,400 veils | 100,088 | 0 |
+
+27% of the canvas stuck at exactly red=11 against a background of 6, and it never moved again.
+Every path the dots had ever taken, fossilised. It also explains why the haze vanished around
+trail length 30 — there `a = 0.70`, so the floor sits below one level and is invisible.
+
+**Ribbons** fix it by not using the framebuffer as memory at all. Each dot's last K positions are
+kept in a ring buffer and redrawn as a real polyline onto a fully cleared canvas, in three age
+bands so opacity and weight taper. Nothing accumulates, so nothing can fossilise, and a trail is
+exactly K frames long and then gone. Crossing ribbons still brighten each other through the blend
+mode — but only within a single frame, so overlaps read as overlaps instead of silting up.
+
+Same teleport test, moving every dot into a corner and rendering 150 more frames:
+
+| | lit while busy | left behind in the vacated area |
+|---|---|---|
+| bloom | 35,742 | 34,876 |
+| ribbons | 5,186 | **0** |
+
+Bloom is kept as an option — it's genuinely nicer at short trail lengths, where the floor is
+invisible and the glow is the point.
+
+**Cost, and how it came down.** Ribbons started at 14.2 ms/frame against bloom's 1.0 — 1,500
+`stroke()` calls per frame, since canvas stroke overhead is per *call*, not per segment. Bucketing
+dots by everything that determines their appearance (quantised speed, on-cycle, basin) and
+emitting one path per bucket cut it to 3.9 ms, with the worst case (n=1200, K=128) at 9.6 ms.
 
 ## Presets
 

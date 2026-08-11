@@ -102,16 +102,23 @@
       <div id="looks"></div>
       <label class="check" style="margin-top:9px"><input type="checkbox" id="skeleton">
         Emphasise the skeleton</label>
-      <label class="check"><input type="checkbox" id="streaks"> Draw motion as streaks</label>
+      <label class="check" data-trail="bloom"><input type="checkbox" id="streaks">
+        Draw motion as streaks</label>
       <div class="note" id="looknote"></div>
     </div>
 
     <div class="group">
       <div class="glabel">Motion</div>
-      <div class="row">
+      <div class="btns" id="trails" style="margin-bottom:10px"></div>
+      <div class="row" data-trail="ribbons">
+        <label>Trail length</label><span class="val" id="v_tf"></span>
+        <input type="range" id="tf" min="1" max="128" step="1">
+      </div>
+      <div class="row" data-trail="bloom">
         <label>Trail length</label><span class="val" id="v_fade"></span>
         <input type="range" id="fade" min="0" max="100" step="1">
       </div>
+      <div class="note" data-trail="bloom" id="bloomnote"></div>
       <div class="row">
         <label>Stroke weight</label><span class="val" id="v_wt"></span>
         <input type="range" id="wt" min="0.3" max="4" step="0.1">
@@ -171,7 +178,7 @@
       </div>
       <div class="row">
         <label>Steps / frame</label><span class="val" id="v_sf"></span>
-        <input type="range" id="sf" min="1" max="20" step="1">
+        <input type="range" id="sf" min="0.05" max="8" step="0.05">
       </div>
       <label class="check"><input type="checkbox" id="links"> Show friend / enemy links</label>
       <label class="check"><input type="checkbox" id="floor"> Show floor + centre</label>
@@ -225,10 +232,12 @@ const P = {
   enemyProp: 0.010,    // fraction of gap
   centerPull: 0.005,   // the 0.5%
   rechoosePerSec: 2,
-  stepsPerFrame: 1,
+  stepsPerFrame: 1,    // fractional: <1 runs a step every 1/n frames
 
   look: "phosphor",
-  fade: 8,             // 0 = trails never fade, 100 = no trails
+  trail: "ribbons",    // "ribbons" (geometry) | "bloom" (accumulate + fade)
+  trailFrames: 45,     // ribbons: exact trail length, in frames
+  fade: 8,             // bloom: 0 = never fades, 100 = no trails
   weight: 1.0,         // stroke weight multiplier
   speedResponse: 0.7,  // how much speed drives brightness/width
   skeleton: true,      // emphasise dots sitting on a friend-graph cycle
@@ -258,8 +267,12 @@ const PRESETS = {
    the dot sits on a cycle, and basin is its component id.
 --------------------------------------------------------------------------- */
 
-const BASIN_PALETTE = ["#ff6b5e","#ffb03a","#8ce07a","#4fd0e0","#6f95f5",
-                       "#c07af0","#f56fae","#d9c14a"];
+// Ordered so the FIRST entries contrast hardest, not so the wheel runs in
+// order — a random functional graph usually yields only 2–3 basins, and the
+// old hue-wheel order handed those to red-orange and amber, which read as one
+// colour. Cyan/amber/violet separate at a glance.
+const BASIN_PALETTE = ["#4fd0e0","#ffb03a","#c07af0","#8ce07a",
+                       "#ff6b5e","#6f95f5","#f56fae","#d9c14a"];
 
 const LOOKS = {
   graphite: {
@@ -296,6 +309,7 @@ const LOOKS = {
   },
   basins: {
     label: "basins", swatch: "#c07af0", bg: "#06070c", blend: "lighter", fade: 11,
+    usesBasin: true,
     note: "The one look where colour earns its place: hue = which friend-graph cycle a dot " +
           "eventually drains into. Same colour means shared destiny.",
     link: ["rgba(255,255,255,.09)", "rgba(255,120,120,.07)"], floor: "rgba(255,255,255,.11)",
@@ -314,6 +328,8 @@ const BASIN_RGB = BASIN_PALETTE.map(hexToRgb);
 for (const k of LOOK_KEYS) LOOKS[k].bgRGB = hexToRgb(LOOKS[k].bg);
 
 // ---- state -----------------------------------------------------------------
+const HIST = 130;                          // ring capacity for ribbon history
+let hx, hy, hHead = 0, hFilled = 0;        // [slot][dot] layout, stride = P.n
 let x, y, px, py, rx, ry, friend, enemy;   // rx/ry = position at the last draw
 let basin, onCycle, basinCount = 0, graphDirty = true;
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
@@ -399,6 +415,25 @@ function scatter() {
     y[i] = cy + Math.sin(a) * r;
   }
   rx.set(x); ry.set(y);
+  resetHistory();
+}
+
+// Ribbons keep real geometry instead of a smeared image, so the history has to
+// be dropped whenever positions jump — otherwise the next frame draws a stripe
+// across the floor from the old location to the new one.
+// Newest sample lives at hHead-1, so seeding slot 0 means hHead must be 1 —
+// otherwise the first frames read an unwritten slot and streak from (0,0).
+function resetHistory() {
+  if (!hx) return;
+  for (let i = 0; i < P.n; i++) { hx[i] = x[i]; hy[i] = y[i]; }
+  hHead = 1; hFilled = 1;
+}
+
+function pushHistory() {
+  const n = P.n, base = hHead * n;
+  for (let i = 0; i < n; i++) { hx[base + i] = x[i]; hy[base + i] = y[i]; }
+  hHead = (hHead + 1) % HIST;
+  if (hFilled < HIST) hFilled++;
 }
 
 function rebuild() {
@@ -406,6 +441,7 @@ function rebuild() {
   x = new Float64Array(n); y = new Float64Array(n);
   px = new Float64Array(n); py = new Float64Array(n);
   rx = new Float64Array(n); ry = new Float64Array(n);
+  hx = new Float32Array(HIST * n); hy = new Float32Array(HIST * n);
   friend = new Int32Array(n); enemy = new Int32Array(n);
   scatter();
   for (let i = 0; i < n; i++) assign(i);
@@ -470,9 +506,23 @@ function draw() {
   if (graphDirty) analyseGraph();
   if (spd.length !== n) spd = new Float64Array(n);
 
-  // Trails: don't clear, veil. Alpha 0 leaves the canvas untouched forever.
   ctx.globalCompositeOperation = "source-over";
-  if (P.fade > 0) {
+  if (P.trail === "ribbons") {
+    // Full clear. Ribbons carry their own history as geometry, so nothing has
+    // to survive in the framebuffer — and nothing can accumulate in it either.
+    ctx.fillStyle = L.bg;
+    ctx.fillRect(0, 0, W, H);
+  } else if (P.fade > 0) {
+    // Bloom: veil instead of clearing, so old frames decay in place.
+    //
+    // Careful — this can never actually reach the background. The veil is
+    // multiplicative (V -= (V-bg)*a) and the canvas is 8-bit, so as soon as
+    // (V-bg)*a < 0.5 the decrement rounds to zero and the pixel is frozen for
+    // good. Measured: at a=0.09, ~27% of the canvas sticks 5 levels above the
+    // background and never moves again, no matter how long you wait. That
+    // fossilised web of every path ever taken is what makes long bloom trails
+    // read as an undifferentiated haze. Short trails hide it (at a=0.70 the
+    // floor is under one level); ribbons avoid it entirely.
     const b = L.bgRGB;
     ctx.fillStyle = "rgba(" + b[0] + "," + b[1] + "," + b[2] + "," + (P.fade / 100) + ")";
     ctx.fillRect(0, 0, W, H);
@@ -508,8 +558,19 @@ function draw() {
   // Pass 2 — draw. Speed drives brightness and weight, so motion is the signal.
   ctx.globalCompositeOperation = L.blend;
   ctx.lineCap = "round";
-  const resp = P.speedResponse, inv = 1 / speedRef;
+  ctx.lineJoin = "round";
 
+  if (P.trail === "ribbons") drawRibbons(L, n);
+  else drawStreaks(L, n);
+
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = "source-over";
+  rx.set(x); ry.set(y);
+}
+
+// Bloom: one segment per dot per frame, laid onto whatever survived the veil.
+function drawStreaks(L, n) {
+  const resp = P.speedResponse, inv = 1 / speedRef;
   for (let i = 0; i < n; i++) {
     let t = spd[i] * inv; if (t > 1) t = 1;
     t = 1 - resp + resp * t;                       // 0 response = everything equal
@@ -529,24 +590,113 @@ function draw() {
       ctx.beginPath(); ctx.arc(x[i], y[i], r, 0, Math.PI * 2); ctx.fill();
     }
   }
+}
 
-  ctx.globalCompositeOperation = "source-over";
-  rx.set(x); ry.set(y);
+/* Ribbons: each dot's last K positions redrawn every frame as a real polyline,
+   onto a cleared canvas. Nothing accumulates, so there is no haze and no
+   fossil residue — a trail is exactly K frames long and then it is gone.
+   Crossing ribbons still brighten each other through the blend mode, but only
+   within a single frame, so overlaps read as overlaps instead of smearing into
+   a wash. Drawn in a few age bands so opacity and weight taper with age. */
+const BANDS = 3;
+const QT = 6;                      // speed quantisation, for batching
+let keyOf = null, order = null, bkAt = null, bkCur = null;
+
+function drawRibbons(L, n) {
+  const K = Math.min(P.trailFrames | 0, hFilled - 1);
+  if (K < 1) { drawStreaks(L, n); return; }
+
+  const resp = P.speedResponse, inv = 1 / speedRef;
+  const maxSeg = Math.min(W, H) * 0.3;   // a longer hop is a clamp or a respawn
+
+  /* One stroke() per dot per band was 1500 canvas calls a frame and cost 14×
+     what bloom does. Stroke overhead is per-call, not per-segment, so instead
+     bucket the dots by everything that decides their appearance — quantised
+     speed, on-cycle, and basin where the look uses it — and emit one path per
+     bucket holding every dot in it. Same pixels, ~10× fewer calls. */
+  const useBasin = !!L.usesBasin;
+  const nb = useBasin ? Math.max(basinCount, 1) : 1;
+  const nKeys = nb * 2 * QT;
+
+  if (!keyOf || keyOf.length < n) { keyOf = new Int32Array(n); order = new Int32Array(n); }
+  if (!bkAt || bkAt.length < nKeys + 1) { bkAt = new Int32Array(nKeys + 1); bkCur = new Int32Array(nKeys); }
+  bkAt.fill(0, 0, nKeys + 1);
+
+  for (let i = 0; i < n; i++) {
+    let t = spd[i] * inv; if (t > 1) t = 1;
+    t = 1 - resp + resp * t;
+    let tq = (t * QT) | 0; if (tq >= QT) tq = QT - 1; if (tq < 0) tq = 0;
+    const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
+    const b = useBasin ? basin[i] % nb : 0;
+    const k = (b * 2 + cyc) * QT + tq;
+    keyOf[i] = k;
+    bkAt[k + 1]++;
+  }
+  for (let k = 0; k < nKeys; k++) { bkAt[k + 1] += bkAt[k]; bkCur[k] = bkAt[k]; }
+  for (let i = 0; i < n; i++) order[bkCur[keyOf[i]]++] = i;
+
+  for (let band = 0; band < BANDS; band++) {
+    const a0 = Math.floor(band * K / BANDS), a1 = Math.floor((band + 1) * K / BANDS);
+    if (a1 <= a0) continue;
+    const fresh = 1 - (band + 0.5) / BANDS;        // 1 = nearest the dot
+
+    // globalAlpha does the age ramp, so the look's own colour maths is
+    // untouched and this works the same under every blend mode.
+    ctx.globalAlpha = 0.12 + 0.88 * fresh * fresh;
+
+    for (let k = 0; k < nKeys; k++) {
+      const s = bkAt[k], e = bkAt[k + 1];
+      if (e <= s) continue;
+      const tq = k % QT, rest = (k / QT) | 0;
+      const t = (tq + 0.5) / QT, cyc = rest & 1, b = rest >> 1;
+
+      ctx.strokeStyle = L.color(t, cyc, b);
+      ctx.lineWidth = L.width(t, cyc) * P.weight * (0.35 + 0.65 * fresh);
+
+      ctx.beginPath();
+      for (let idx = s; idx < e; idx++) {
+        const i = order[idx];
+        let lx = 0, ly = 0, started = false;
+        for (let a = a1; a >= a0; a--) {           // oldest → newest
+          const slot = (hHead - 1 - a + HIST + HIST) % HIST;
+          const h = slot * n + i;
+          const X = hx[h], Y = hy[h];
+          if (!started || Math.abs(X - lx) + Math.abs(Y - ly) > maxSeg) ctx.moveTo(X, Y);
+          else ctx.lineTo(X, Y);
+          lx = X; ly = Y; started = true;
+        }
+      }
+      ctx.stroke();
+    }
+  }
 }
 
 // ---- loop ------------------------------------------------------------------
-let lastT = performance.now(), fps = 0;
+let lastT = performance.now(), fps = 0, stepAcc = 0;
 
 function frame(t) {
   const dt = t - lastT; lastT = t;
   fps += ((1000 / Math.max(dt, 1)) - fps) * 0.1;
 
-  if (!P.paused) for (let s = 0; s < P.stepsPerFrame; s++) step();
+  if (!P.paused) {
+    // Fractional rate: below 1 this runs a step every 1/rate frames, which is
+    // where the interesting slow-motion lives — whole steps jumped far too
+    // coarsely at the bottom of the range.
+    stepAcc += P.stepsPerFrame;
+    let k = Math.floor(stepAcc);
+    stepAcc -= k;
+    if (k > 0) {
+      if (k > 40) k = 40;                 // don't replay a backgrounded tab
+      for (let s = 0; s < k; s++) step();
+      pushHistory();                      // one ribbon vertex per drawn frame
+    }
+  }
   draw();
 
   const st = document.getElementById("stats");
   st.style.color = look().bg === "#f4f1ea" ? "rgba(30,26,22,.45)" : "rgba(255,255,255,.32)";
   st.textContent = P.n + " dots · " + basinCount + " basin" + (basinCount === 1 ? "" : "s")
+    + " · " + P.stepsPerFrame.toFixed(2) + " steps/frame"
     + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
 
   requestAnimationFrame(frame);
@@ -563,7 +713,9 @@ const SLIDERS = [
   ["cp", "centerPull",     (v) => (v * 100).toFixed(2) + "%"],
   ["rc", "rechoosePerSec", (v) => v.toFixed(1)],
   ["n",  "n",              (v) => String(v)],
-  ["sf", "stepsPerFrame",  (v) => String(v)],
+  ["sf", "stepsPerFrame",  (v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
+                                        : v.toFixed(2) + " ×"],
+  ["tf", "trailFrames",    (v) => v + (v === 1 ? " frame" : " frames")],
   ["fade", "fade",         (v) => v === 0 ? "never fades" : String(100 - v)],
   ["wt", "weight",         (v) => v.toFixed(1) + "×"],
   ["sr", "speedResponse",  (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
@@ -605,6 +757,16 @@ function syncUI() {
   document.querySelectorAll("[data-model]").forEach((el) => {
     el.style.display = (el.dataset.model === (P.model === "fixed" ? "fixed" : "prop")) ? "" : "none";
   });
+  document.querySelectorAll("[data-trail]").forEach((el) => {
+    el.style.display = (el.dataset.trail === P.trail) ? "" : "none";
+  });
+  document.querySelectorAll("#trails .act").forEach((b) => {
+    b.classList.toggle("on", b.dataset.trail2 === P.trail);
+  });
+  $("bloomnote").textContent = P.fade > 0 && P.fade < 20
+    ? "Long bloom trails never fully clear — the 8-bit veil freezes a few levels "
+      + "above the background, so old paths fossilise into a haze. Ribbons don't."
+    : "Accumulates onto the previous frame instead of redrawing history.";
   updateRegime();
 }
 
@@ -633,6 +795,14 @@ LOOK_KEYS.forEach((k) => {
               + LOOKS[k].label;
   b.addEventListener("click", () => setLook(k));
   lookBar.appendChild(b);
+});
+
+const trailBar = $("trails");
+[["ribbons", "ribbons"], ["bloom", "bloom"]].forEach(([key, label]) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.trail2 = key; b.textContent = label;
+  b.addEventListener("click", () => { P.trail = key; wipe(); syncUI(); });
+  trailBar.appendChild(b);
 });
 
 const presetBar = $("presets");
