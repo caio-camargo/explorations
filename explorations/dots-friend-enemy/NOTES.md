@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v1.0.0
+**Version**: v2.0.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-10
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active
+**Status**: Active — V2 (rendering rewrite). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -91,6 +91,43 @@ preset, same floor: mean radius came out anywhere from 6% to 36% of the floor ac
 
 ---
 
+## V2 — the rendering, with an aesthetic eye
+
+The physics didn't change. Everything below is about how it's drawn.
+
+**The starting observation: V1's colour encoded nothing.** Dots were coloured `hue = index/n`.
+Index has no relationship to anything in the system — dot 7 and dot 8 are neighbours in the
+array and nowhere else — and at n=400 the hues sit ~1° apart, so it rendered as a uniform smear
+of every hue at once. Going monochrome costs zero information. Every V2 look either drops colour
+or spends it on something real.
+
+**Motion is the signal now.** Instead of drawing a dot at a position, V2 draws the segment from
+where each dot *was* at the last frame to where it *is* — a velocity streak. Speed then drives
+both brightness and stroke weight, against an adaptive reference that tracks the current peak, so
+"fast" stays meaningful whatever the sliders say. Measured across the presets, normalised speed
+sits at a median of 0.28–0.60 with only 0.1% of dots pinned at the ceiling — real dynamic range,
+not a saturated white blob.
+
+**The skeleton.** Because each dot points at exactly one friend, the friend graph is a random
+*functional graph*: follow the chase far enough and you always fall into a cycle. An O(n) walk
+labels every dot with the cycle it drains into and whether it sits on that cycle. Dots on a cycle
+are the attractors the whole picture organises around, so they're drawn brighter and heavier.
+`basinCount` is in the corner readout — typically 2–3 for a few hundred dots, matching the
+expected ½·ln(n) cycles of a random functional graph.
+
+| Look | Ground | Blend | What colour means |
+|---|---|---|---|
+| `graphite` | warm paper | multiply | nothing — ink darkening as strokes overlap |
+| `noir` | pure black | additive | nothing — white light accumulating |
+| `phosphor` | near-black | additive | speed, cyan → white |
+| `ember` | near-black | additive | speed, amber → pale yellow |
+| `basins` | near-black | additive | **which cycle a dot drains into** — same colour, shared destiny |
+
+`basins` is the one look where colour beats monochrome, because hue finally carries structure.
+`graphite` and `noir` are the two monochromes, one on each ground, which is the comparison worth
+making: on paper the trails behave subtractively like ink, on black they behave additively like
+light.
+
 ## Presets
 
 All measured for "stays on the floor, stays in motion, doesn't collapse to a dot".
@@ -109,9 +146,10 @@ Centre pull is 0.5% everywhere, as stated in the tweet.
 
 ## Things worth trying next
 
-- [ ] Colour by which friend-graph cycle a dot drains into, instead of by index — should make
-      the cluster structure visible directly rather than inferring it from hue bands.
+- [x] ~~Colour by which friend-graph cycle a dot drains into~~ — done in V2, the `basins` look.
 - [ ] Two enemies, or a friend-of-friend term.
+- [ ] An "artifact" mode: no fade at all, thousands of dots, very low per-stroke alpha, and an
+      export-to-PNG button. V2 optimises for watching; accumulation makes a different thing.
 - [ ] Asymmetric: let popularity be uneven (some dots chosen as friend by many).
 - [ ] 3D, or on a torus (wrap the floor) so there is no centre pull at all.
 - [ ] Record the friend graph's cycle census alongside the visual — does cycle count predict

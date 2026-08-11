@@ -6,42 +6,43 @@
 <title>Friends &amp; Enemies — dot simulation</title>
 <style>
   :root {
-    --bg: #0a0b0f;
-    --panel: rgba(20,22,30,.82);
-    --line: rgba(255,255,255,.10);
+    --panel: rgba(18,20,27,.80);
+    --line: rgba(255,255,255,.11);
     --text: #e6e8ef;
     --dim: #8e93a6;
     --accent: #7dd3fc;
   }
   * { box-sizing: border-box; }
-  html, body { height: 100%; margin: 0; background: var(--bg); }
+  html, body { height: 100%; margin: 0; background: #05070a; }
   body {
     font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    color: var(--text);
-    overflow: hidden;
+    color: var(--text); overflow: hidden;
   }
   canvas { display: block; width: 100vw; height: 100vh; }
 
   #ui {
-    position: fixed; top: 14px; right: 14px; width: 268px;
+    position: fixed; top: 14px; right: 14px; width: 274px;
     max-height: calc(100vh - 28px); overflow-y: auto;
-    background: var(--panel); backdrop-filter: blur(12px);
+    background: var(--panel); backdrop-filter: blur(14px);
     border: 1px solid var(--line); border-radius: 12px;
     padding: 12px 14px 14px;
   }
   #ui.collapsed .body { display: none; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  h1 { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; margin: 0; color: var(--dim); }
+  h1 { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+       margin: 0; color: var(--dim); }
   #toggle { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 6px;
             cursor: pointer; font-size: 11px; padding: 2px 7px; }
   #toggle:hover { color: var(--text); }
 
   .group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
-  .group:first-of-type { border-top: 0; }
-  .glabel { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--dim); margin-bottom: 8px; }
+  .group:first-of-type { border-top: 0; margin-top: 10px; padding-top: 0; }
+  .glabel { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+            margin-bottom: 8px; }
 
-  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px; margin-bottom: 9px; }
-  .row label { font-size: 12px; color: var(--text); }
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+         margin-bottom: 9px; }
+  .row label { font-size: 12px; }
   .row .val { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--accent); }
   .row input[type=range] { grid-column: 1 / -1; width: 100%; height: 3px; -webkit-appearance: none;
                            appearance: none; background: rgba(255,255,255,.14); border-radius: 2px; }
@@ -50,14 +51,27 @@
   input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%;
     background: var(--accent); cursor: pointer; }
 
-  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer; }
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer;
+           font-size: 12px; }
   .check input { accent-color: var(--accent); }
 
   .btns { display: flex; flex-wrap: wrap; gap: 6px; }
   button.act { flex: 1 1 auto; background: rgba(255,255,255,.06); border: 1px solid var(--line);
-               color: var(--text); border-radius: 7px; padding: 6px 8px; cursor: pointer; font-size: 12px; }
-  button.act:hover { background: rgba(255,255,255,.12); }
-  button.act.on { background: var(--accent); border-color: var(--accent); color: #06121a; }
+               color: var(--text); border-radius: 7px; padding: 6px 8px; cursor: pointer;
+               font-size: 12px; }
+  button.act:hover { background: rgba(255,255,255,.13); }
+  button.act.on { background: var(--accent); border-color: var(--accent); color: #06121a;
+                  font-weight: 600; }
+
+  /* look swatches */
+  #looks { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  button.look { display: flex; align-items: center; gap: 8px; text-align: left;
+                background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text);
+                border-radius: 8px; padding: 7px 8px; cursor: pointer; font-size: 12px; }
+  button.look:hover { background: rgba(255,255,255,.12); }
+  button.look.on { border-color: var(--accent); background: rgba(125,211,252,.13); }
+  button.look .sw { width: 15px; height: 15px; border-radius: 4px; flex: 0 0 auto;
+                    border: 1px solid rgba(255,255,255,.22); }
 
   select { width: 100%; background: rgba(255,255,255,.06); color: var(--text);
            border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; font-size: 12px; }
@@ -65,10 +79,10 @@
   .regime { font-size: 11px; line-height: 1.4; padding: 6px 8px; border-radius: 6px;
             margin: -2px 0 9px; background: rgba(251,191,36,.10); color: #fcd34d;
             border: 1px solid rgba(251,191,36,.22); }
+  .note { font-size: 11px; line-height: 1.4; color: var(--dim); margin-top: 7px; }
 
-  #stats { position: fixed; left: 14px; bottom: 12px; color: var(--dim); font-size: 11px;
-           font-variant-numeric: tabular-nums; }
-  .hint { color: var(--dim); font-size: 11px; margin-top: 8px; }
+  #stats { position: fixed; left: 14px; bottom: 12px; font-size: 11px;
+           font-variant-numeric: tabular-nums; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -83,6 +97,31 @@
   </header>
 
   <div class="body">
+    <div class="group">
+      <div class="glabel">Look</div>
+      <div id="looks"></div>
+      <label class="check" style="margin-top:9px"><input type="checkbox" id="skeleton">
+        Emphasise the skeleton</label>
+      <label class="check"><input type="checkbox" id="streaks"> Draw motion as streaks</label>
+      <div class="note" id="looknote"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Motion</div>
+      <div class="row">
+        <label>Trail length</label><span class="val" id="v_fade"></span>
+        <input type="range" id="fade" min="0" max="100" step="1">
+      </div>
+      <div class="row">
+        <label>Stroke weight</label><span class="val" id="v_wt"></span>
+        <input type="range" id="wt" min="0.3" max="4" step="0.1">
+      </div>
+      <div class="row">
+        <label>Speed → brightness</label><span class="val" id="v_sr"></span>
+        <input type="range" id="sr" min="0" max="1" step="0.05">
+      </div>
+    </div>
+
     <div class="group">
       <div class="glabel">Presets</div>
       <div class="btns" id="presets"></div>
@@ -134,18 +173,6 @@
         <label>Steps / frame</label><span class="val" id="v_sf"></span>
         <input type="range" id="sf" min="1" max="20" step="1">
       </div>
-    </div>
-
-    <div class="group">
-      <div class="glabel">Look</div>
-      <div class="row">
-        <label>Trail length</label><span class="val" id="v_fade"></span>
-        <input type="range" id="fade" min="0" max="100" step="1">
-      </div>
-      <div class="row">
-        <label>Dot size</label><span class="val" id="v_ds"></span>
-        <input type="range" id="ds" min="0.5" max="6" step="0.1">
-      </div>
       <label class="check"><input type="checkbox" id="links"> Show friend / enemy links</label>
       <label class="check"><input type="checkbox" id="floor"> Show floor + centre</label>
     </div>
@@ -156,7 +183,7 @@
         <button class="act" id="scatter">scatter</button>
         <button class="act" id="reroll">reroll ties</button>
       </div>
-      <div class="hint">space = pause · r = scatter · t = reroll ties · l = links</div>
+      <div class="note">space pause · r scatter · t reroll · l links · 1–5 looks</div>
     </div>
   </div>
 </aside>
@@ -174,69 +201,130 @@
      3. takes a SMALL step away from its enemy.
    At random intervals, one dot re-rolls its friend and enemy.
 
-   "Large step" / "small step" is ambiguous, so both readings are here:
+   Two readings of "large step / small step":
 
-     fixed — a constant distance per step (a stride). Bounded by construction:
-             the repulsion can never outrun the centre pull, which grows with
-             distance. This is where all the interesting structure lives.
+     fixed — a constant distance per step. Bounded by construction: repulsion is
+             capped while the centre pull grows with distance. All the structure
+             lives here.
 
-     prop  — a fraction of the current gap. Measured, this reading is a dead
-             end, and it's worth knowing why. Each dot's update is linear:
-               p' = (1 - c - kF + kE)·p + c·C + kF·friend - kE·enemy
-             so the whole system is one matrix, and it has exactly two fates.
-             Repulsion is destabilising (the -kE·enemy term feeds outward), the
-             centre pull is stabilising. Roughly, when 2·kE > c it inflates
-             until everything jams against the floor edge; otherwise it's a
-             contraction and every dot collapses onto the centre point. There
-             is no bounded, structured middle — just a knife edge between the
-             two. That's strong evidence the original uses fixed-size steps.
-             Kept as a mode because watching it fail is instructive; the panel
-             tells you which of the two regimes you're in.
+     prop  — a fraction of the current gap. Measured, a dead end. The update is
+             linear, so the whole system is one matrix with exactly two fates:
+             when 2·kE > c it inflates until everything jams on the floor edge,
+             otherwise it contracts to a single point. No bounded middle. Kept
+             because watching it fail explains why fixed is the right reading.
 
-   Everything below is just that, plus rendering.
+   V2 is a rendering rewrite. The physics below is unchanged from V1.
 --------------------------------------------------------------------------- */
 
 const P = {
-  n: 400,
+  n: 500,
   model: "fixed",
   friendFixed: 4.00,   // px per step, on an 800px-tall floor
-  enemyFixed: 1.50,    // px per step, on an 800px-tall floor
+  enemyFixed: 2.60,    // px per step, on an 800px-tall floor
   friendProp: 0.030,   // fraction of gap
   enemyProp: 0.010,    // fraction of gap
   centerPull: 0.005,   // the 0.5%
   rechoosePerSec: 2,
   stepsPerFrame: 1,
-  fade: 12,            // 0 = infinite trails, 100 = none
-  dotSize: 2.0,
+
+  look: "phosphor",
+  fade: 8,             // 0 = trails never fade, 100 = no trails
+  weight: 1.0,         // stroke weight multiplier
+  speedResponse: 0.7,  // how much speed drives brightness/width
+  skeleton: true,      // emphasise dots sitting on a friend-graph cycle
+  streaks: true,       // draw was→is segments instead of dots
   links: false,
   floor: false,
   paused: false,
 };
 
-// Measured, not guessed — each of these was swept for "stays on the floor,
-// stays in motion, doesn't collapse to a dot".
 const PRESETS = {
-  "tweet": { model:"fixed", friendFixed:4.00, enemyFixed:1.50, centerPull:0.005,
-             rechoosePerSec:2, n:400, fade:12, dotSize:2.0, stepsPerFrame:1 },
-  "orbits": { model:"fixed", friendFixed:4.00, enemyFixed:2.60, centerPull:0.005,
-              rechoosePerSec:2, n:500, fade:6, dotSize:1.6, stepsPerFrame:1 },
-  "swarm": { model:"fixed", friendFixed:2.50, enemyFixed:1.90, centerPull:0.005,
-             rechoosePerSec:25, n:800, fade:20, dotSize:1.4, stepsPerFrame:1 },
-  "knot": { model:"fixed", friendFixed:1.30, enemyFixed:0.90, centerPull:0.005,
-            rechoosePerSec:0, n:600, fade:4, dotSize:1.5, stepsPerFrame:1 },
-  "linear": { model:"prop", friendProp:0.030, enemyProp:0.010, centerPull:0.005,
-              rechoosePerSec:2, n:400, fade:25, dotSize:2.0, stepsPerFrame:1 },
+  "tweet":  { model:"fixed", friendFixed:4.00, enemyFixed:1.50, centerPull:0.005, rechoosePerSec:2,  n:400, stepsPerFrame:1 },
+  "orbits": { model:"fixed", friendFixed:4.00, enemyFixed:2.60, centerPull:0.005, rechoosePerSec:2,  n:500, stepsPerFrame:1 },
+  "swarm":  { model:"fixed", friendFixed:2.50, enemyFixed:1.90, centerPull:0.005, rechoosePerSec:25, n:800, stepsPerFrame:1 },
+  "knot":   { model:"fixed", friendFixed:1.30, enemyFixed:0.90, centerPull:0.005, rechoosePerSec:0,  n:600, stepsPerFrame:1 },
+  "linear": { model:"prop",  friendProp:0.030, enemyProp:0.010, centerPull:0.005, rechoosePerSec:2,  n:400, stepsPerFrame:1 },
 };
 
+/* ---------------------------------------------------------------------------
+   LOOKS
+
+   Colour in V1 was hue = index/n, which encoded nothing — index has no relation
+   to anything in the system, so it was a uniform smear of noise. Every look here
+   either drops colour entirely or spends it on something real: how fast a dot is
+   moving, or which basin of the friend graph it drains into.
+
+   Each look gets (t, cyc, basin) where t is normalised speed 0..1, cyc is 1 if
+   the dot sits on a cycle, and basin is its component id.
+--------------------------------------------------------------------------- */
+
+const BASIN_PALETTE = ["#ff6b5e","#ffb03a","#8ce07a","#4fd0e0","#6f95f5",
+                       "#c07af0","#f56fae","#d9c14a"];
+
+const LOOKS = {
+  graphite: {
+    label: "graphite", swatch: "#e9e5dc", bg: "#f4f1ea", blend: "multiply", fade: 6,
+    note: "Ink on paper. Multiply blending, so overlapping strokes darken the way ink pools.",
+    link: ["rgba(30,26,22,.16)", "rgba(30,26,22,.09)"], floor: "rgba(30,26,22,.14)",
+    color: (t, cyc) => "rgba(26,23,20," + (0.07 + 0.34*t + (cyc ? 0.16 : 0)).toFixed(3) + ")",
+    width: (t, cyc) => 0.45 + 1.5*t + (cyc ? 0.5 : 0),
+  },
+  noir: {
+    label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter", fade: 7,
+    note: "Pure white on pure black, additive. Where strokes cross, light accumulates.",
+    link: ["rgba(255,255,255,.10)", "rgba(255,255,255,.06)"], floor: "rgba(255,255,255,.13)",
+    color: (t, cyc) => "rgba(255,255,255," + (0.06 + 0.34*t + (cyc ? 0.16 : 0)).toFixed(3) + ")",
+    width: (t, cyc) => 0.4 + 1.4*t + (cyc ? 0.5 : 0),
+  },
+  phosphor: {
+    label: "phosphor", swatch: "#4fd0e0", bg: "#04070b", blend: "lighter", fade: 8,
+    note: "Oscilloscope. Fast dots run hot toward white; slow ones sink into deep cyan.",
+    link: ["rgba(120,210,240,.13)", "rgba(240,120,120,.09)"], floor: "rgba(150,220,240,.12)",
+    color: (t, cyc) => "rgba(" + Math.round(50 + 205*t*t) + "," +
+                       Math.round(170 + 85*t) + ",255," +
+                       (0.09 + 0.36*t + (cyc ? 0.14 : 0)).toFixed(3) + ")",
+    width: (t, cyc) => 0.4 + 1.5*t + (cyc ? 0.55 : 0),
+  },
+  ember: {
+    label: "ember", swatch: "#ffb03a", bg: "#0a0603", blend: "lighter", fade: 9,
+    note: "Same idea, warm. Amber core burning to pale yellow at speed.",
+    link: ["rgba(255,190,110,.12)", "rgba(255,110,90,.09)"], floor: "rgba(255,200,140,.12)",
+    color: (t, cyc) => "rgba(255," + Math.round(120 + 125*t) + "," +
+                       Math.round(30 + 165*t*t) + "," +
+                       (0.09 + 0.36*t + (cyc ? 0.14 : 0)).toFixed(3) + ")",
+    width: (t, cyc) => 0.4 + 1.5*t + (cyc ? 0.55 : 0),
+  },
+  basins: {
+    label: "basins", swatch: "#c07af0", bg: "#06070c", blend: "lighter", fade: 11,
+    note: "The one look where colour earns its place: hue = which friend-graph cycle a dot " +
+          "eventually drains into. Same colour means shared destiny.",
+    link: ["rgba(255,255,255,.09)", "rgba(255,120,120,.07)"], floor: "rgba(255,255,255,.11)",
+    color: (t, cyc, b) => {
+      const c = BASIN_RGB[b % BASIN_RGB.length];
+      return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," +
+             (0.10 + 0.34*t + (cyc ? 0.16 : 0)).toFixed(3) + ")";
+    },
+    width: (t, cyc) => 0.45 + 1.4*t + (cyc ? 0.55 : 0),
+  },
+};
+
+const LOOK_KEYS = Object.keys(LOOKS);
+const hexToRgb = (h) => { const v = parseInt(h.slice(1), 16); return [v>>16 & 255, v>>8 & 255, v & 255]; };
+const BASIN_RGB = BASIN_PALETTE.map(hexToRgb);
+for (const k of LOOK_KEYS) LOOKS[k].bgRGB = hexToRgb(LOOKS[k].bg);
+
 // ---- state -----------------------------------------------------------------
-let x, y, px, py, friend, enemy;   // typed arrays, length P.n
+let x, y, px, py, rx, ry, friend, enemy;   // rx/ry = position at the last draw
+let basin, onCycle, basinCount = 0, graphDirty = true;
 let W = 0, H = 0, cx = 0, cy = 0, maxR = 0, dpr = 1;
+let speedRef = 1;                          // adaptive normaliser for "fast"
 
 const cv = document.getElementById("c");
 const ctx = cv.getContext("2d", { alpha: false });
 
 const rnd = (a, b) => a + Math.random() * (b - a);
 const randInt = (m) => (Math.random() * m) | 0;
+const look = () => LOOKS[P.look];
 
 function resize() {
   const hadFloor = maxR > 0;
@@ -245,22 +333,62 @@ function resize() {
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   cx = W / 2; cy = H / 2;
-  maxR = Math.min(W, H) * 0.75;          // soft edge of the floor
-  ctx.fillStyle = "#0a0b0f";
-  ctx.fillRect(0, 0, W, H);
-  // If we booted into a zero-size canvas (hidden tab, collapsed pane), every
-  // dot got clamped onto a single point. Give them a floor to spread out on.
+  maxR = Math.min(W, H) * 0.75;
+  wipe();
+  // Booting into a zero-size canvas (hidden tab, collapsed pane) clamps every
+  // dot onto one point. Give them a floor to spread out on.
   if (!hadFloor && maxR > 1 && x) scatter();
 }
 
-// One dot re-rolls its friend and its enemy. Never itself, never the same dot
-// for both — a dot chasing and fleeing the same target just cancels out.
+function wipe() {
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = look().bg;
+  ctx.fillRect(0, 0, W, H);
+  document.body.style.background = look().bg;
+}
+
+// ---- ties ------------------------------------------------------------------
+// Never itself, never the same dot for both — a dot chasing and fleeing the
+// same target just cancels out.
 function assign(i) {
   const n = P.n;
-  if (n < 3) { friend[i] = i; enemy[i] = i; return; }
+  if (n < 3) { friend[i] = i; enemy[i] = i; graphDirty = true; return; }
   let f = randInt(n); while (f === i) f = randInt(n);
   let e = randInt(n); while (e === i || e === f) e = randInt(n);
-  friend[i] = f; enemy[i] = e;
+  friend[i] = f; enemy[i] = e; graphDirty = true;
+}
+
+/* Each dot points at exactly one friend, so the friend graph is a random
+   *functional graph*: follow the chase far enough and you always fall into a
+   cycle. This walks it in O(n) and labels every dot with the cycle it drains
+   into, plus whether it sits on that cycle. Those cycles are the skeleton the
+   whole picture is organised around. */
+function analyseGraph() {
+  const n = P.n;
+  const state = new Uint8Array(n);      // 0 unseen, 1 on current path, 2 resolved
+  const order = new Int32Array(n);
+  const path = new Int32Array(n);
+  basin = new Int32Array(n).fill(-1);
+  onCycle = new Uint8Array(n);
+  let nb = 0;
+
+  for (let s = 0; s < n; s++) {
+    if (state[s]) continue;
+    let len = 0, v = s;
+    while (state[v] === 0) { state[v] = 1; order[v] = len; path[len++] = v; v = friend[v]; }
+    if (state[v] === 1) {                // closed a new cycle inside this path
+      const id = nb++;
+      for (let k = order[v]; k < len; k++) { basin[path[k]] = id; onCycle[path[k]] = 1; }
+    }
+    const id = basin[v];                 // the tail drains into whatever v belongs to
+    for (let k = 0; k < len; k++) {
+      const u = path[k];
+      state[u] = 2;
+      if (basin[u] < 0) basin[u] = id;
+    }
+  }
+  basinCount = nb;
+  graphDirty = false;
 }
 
 function scatter() {
@@ -270,29 +398,26 @@ function scatter() {
     x[i] = cx + Math.cos(a) * r;
     y[i] = cy + Math.sin(a) * r;
   }
+  rx.set(x); ry.set(y);
 }
 
-function rebuild(keepTies) {
+function rebuild() {
   const n = P.n;
-  const oldF = friend, oldE = enemy, oldN = x ? x.length : 0;
   x = new Float64Array(n); y = new Float64Array(n);
   px = new Float64Array(n); py = new Float64Array(n);
+  rx = new Float64Array(n); ry = new Float64Array(n);
   friend = new Int32Array(n); enemy = new Int32Array(n);
   scatter();
-  for (let i = 0; i < n; i++) {
-    if (keepTies && i < oldN && oldF[i] < n && oldE[i] < n) {
-      friend[i] = oldF[i]; enemy[i] = oldE[i];
-    } else assign(i);
-  }
+  for (let i = 0; i < n; i++) assign(i);
+  analyseGraph();
 }
 
-// ---- the simulation --------------------------------------------------------
+// ---- the simulation (unchanged from V1) ------------------------------------
 let rechooseAcc = 0;
 
 function step() {
   const n = P.n;
 
-  // "At random intervals one dot re-chooses friend and enemy."
   rechooseAcc += P.rechoosePerSec / 60;
   while (rechooseAcc >= 1) { rechooseAcc -= 1; assign(randInt(n)); }
 
@@ -301,10 +426,9 @@ function step() {
   px.set(x); py.set(y);
 
   const fixed = P.model === "fixed";
-  // Fixed strides are in px, but the centre pull is a *fraction* of distance,
-  // so the equilibrium radius is roughly stride/pull — which would shrink to a
-  // speck on a big monitor. Scale the stride with the floor so the picture
-  // looks the same everywhere. Slider values are px on an 800px-tall floor.
+  // Fixed strides are px but the centre pull is a fraction of distance, so the
+  // equilibrium radius is ~stride/pull — which would shrink to a speck on a big
+  // monitor. Scale the stride with the floor. Slider values are px at 800px tall.
   const unit = Math.min(W, H) / 800;
   const kFf = P.friendFixed * unit, kEf = P.enemyFixed * unit;
   const kFp = P.friendProp, kEp = P.enemyProp;
@@ -314,14 +438,11 @@ function step() {
     const xi = px[i], yi = py[i];
     let X = xi, Y = yi;
 
-    // 1. 0.5% of the way to the centre of the floor
-    X += cp * (cx - xi);
+    X += cp * (cx - xi);                                   // 1. toward the centre
     Y += cp * (cy - yi);
 
-    // 2. toward the friend
-    const fdx = px[friend[i]] - xi, fdy = py[friend[i]] - yi;
-    // 3. away from the enemy
-    const edx = xi - px[enemy[i]], edy = yi - py[enemy[i]];
+    const fdx = px[friend[i]] - xi, fdy = py[friend[i]] - yi;  // 2. toward the friend
+    const edx = xi - px[enemy[i]],  edy = yi - py[enemy[i]];   // 3. away from the enemy
 
     if (fixed) {
       const fd = Math.hypot(fdx, fdy);
@@ -333,8 +454,6 @@ function step() {
       X += kEp * edx; Y += kEp * edy;
     }
 
-    // Keep everyone on the floor. With proportional steps the enemy term can
-    // out-pull the centre term and slowly inflate, so this is the backstop.
     const dx = X - cx, dy = Y - cy, d = Math.hypot(dx, dy);
     if (d > maxR) { X = cx + dx / d * maxR; Y = cy + dy / d * maxR; }
 
@@ -343,41 +462,76 @@ function step() {
 }
 
 // ---- rendering -------------------------------------------------------------
-function draw() {
-  // Trails: instead of clearing, paint a translucent veil over the last frame.
-  ctx.fillStyle = "rgba(10,11,15," + (P.fade / 100) + ")";
-  ctx.fillRect(0, 0, W, H);
+let spd = new Float64Array(0);
 
-  if (P.floor) {
-    ctx.strokeStyle = "rgba(255,255,255,.09)";
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
-    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2);
-    ctx.fillStyle = "rgba(255,255,255,.35)"; ctx.fill();
+function draw() {
+  const L = look();
+  const n = P.n;
+  if (graphDirty) analyseGraph();
+  if (spd.length !== n) spd = new Float64Array(n);
+
+  // Trails: don't clear, veil. Alpha 0 leaves the canvas untouched forever.
+  ctx.globalCompositeOperation = "source-over";
+  if (P.fade > 0) {
+    const b = L.bgRGB;
+    ctx.fillStyle = "rgba(" + b[0] + "," + b[1] + "," + b[2] + "," + (P.fade / 100) + ")";
+    ctx.fillRect(0, 0, W, H);
   }
 
-  const n = P.n;
+  if (P.floor) {
+    ctx.strokeStyle = L.floor; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = L.floor; ctx.fill();
+  }
 
   if (P.links) {
     ctx.lineWidth = 0.6;
-    ctx.strokeStyle = "rgba(125,211,252,.16)";       // friend
+    ctx.strokeStyle = L.link[0];
     ctx.beginPath();
     for (let i = 0; i < n; i++) { ctx.moveTo(x[i], y[i]); ctx.lineTo(x[friend[i]], y[friend[i]]); }
     ctx.stroke();
-    ctx.strokeStyle = "rgba(248,113,113,.10)";       // enemy
+    ctx.strokeStyle = L.link[1];
     ctx.beginPath();
     for (let i = 0; i < n; i++) { ctx.moveTo(x[i], y[i]); ctx.lineTo(x[enemy[i]], y[enemy[i]]); }
     ctx.stroke();
   }
 
-  // Hue by index, so you can see which dots ended up travelling together.
-  const r = P.dotSize;
+  // Pass 1 — how far did each dot travel since the last frame? An adaptive
+  // reference keeps "fast" meaningful whatever the parameters are set to.
+  let peak = 0;
   for (let i = 0; i < n; i++) {
-    ctx.fillStyle = "hsl(" + ((i * 360 / n) | 0) + " 85% 62%)";
-    ctx.beginPath();
-    ctx.arc(x[i], y[i], r, 0, Math.PI * 2);
-    ctx.fill();
+    const s = Math.hypot(x[i] - rx[i], y[i] - ry[i]);
+    spd[i] = s; if (s > peak) peak = s;
   }
+  speedRef += (Math.max(peak, 0.35) - speedRef) * 0.06;
+
+  // Pass 2 — draw. Speed drives brightness and weight, so motion is the signal.
+  ctx.globalCompositeOperation = L.blend;
+  ctx.lineCap = "round";
+  const resp = P.speedResponse, inv = 1 / speedRef;
+
+  for (let i = 0; i < n; i++) {
+    let t = spd[i] * inv; if (t > 1) t = 1;
+    t = 1 - resp + resp * t;                       // 0 response = everything equal
+    const cyc = (P.skeleton && onCycle[i]) ? 1 : 0;
+
+    ctx.strokeStyle = L.color(t, cyc, basin[i]);
+    ctx.lineWidth = L.width(t, cyc) * P.weight;
+
+    if (P.streaks) {
+      ctx.beginPath();
+      ctx.moveTo(rx[i], ry[i]);
+      ctx.lineTo(x[i], y[i]);
+      ctx.stroke();
+    } else {
+      const r = L.width(t, cyc) * P.weight;
+      ctx.fillStyle = L.color(t, cyc, basin[i]);
+      ctx.beginPath(); ctx.arc(x[i], y[i], r, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+
+  ctx.globalCompositeOperation = "source-over";
+  rx.set(x); ry.set(y);
 }
 
 // ---- loop ------------------------------------------------------------------
@@ -390,9 +544,10 @@ function frame(t) {
   if (!P.paused) for (let s = 0; s < P.stepsPerFrame; s++) step();
   draw();
 
-  document.getElementById("stats").textContent =
-    P.n + " dots · " + P.stepsPerFrame + "×/frame · " + fps.toFixed(0) + " fps" +
-    (P.paused ? " · paused" : "");
+  const st = document.getElementById("stats");
+  st.style.color = look().bg === "#f4f1ea" ? "rgba(30,26,22,.45)" : "rgba(255,255,255,.32)";
+  st.textContent = P.n + " dots · " + basinCount + " basin" + (basinCount === 1 ? "" : "s")
+    + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
 
   requestAnimationFrame(frame);
 }
@@ -401,16 +556,17 @@ function frame(t) {
 const $ = (id) => document.getElementById(id);
 
 const SLIDERS = [
-  ["ff", "friendFixed",     (v) => v.toFixed(2) + " px"],
-  ["ef", "enemyFixed",      (v) => v.toFixed(2) + " px"],
-  ["fp", "friendProp",      (v) => (v * 100).toFixed(1) + "%"],
-  ["ep", "enemyProp",       (v) => (v * 100).toFixed(1) + "%"],
-  ["cp", "centerPull",      (v) => (v * 100).toFixed(2) + "%"],
-  ["rc", "rechoosePerSec",  (v) => v.toFixed(1)],
-  ["n",  "n",               (v) => String(v)],
-  ["sf", "stepsPerFrame",   (v) => String(v)],
-  ["fade", "fade",          (v) => v === 0 ? "infinite" : String(100 - v)],
-  ["ds", "dotSize",         (v) => v.toFixed(1)],
+  ["ff", "friendFixed",    (v) => v.toFixed(2) + " px"],
+  ["ef", "enemyFixed",     (v) => v.toFixed(2) + " px"],
+  ["fp", "friendProp",     (v) => (v * 100).toFixed(1) + "%"],
+  ["ep", "enemyProp",      (v) => (v * 100).toFixed(1) + "%"],
+  ["cp", "centerPull",     (v) => (v * 100).toFixed(2) + "%"],
+  ["rc", "rechoosePerSec", (v) => v.toFixed(1)],
+  ["n",  "n",              (v) => String(v)],
+  ["sf", "stepsPerFrame",  (v) => String(v)],
+  ["fade", "fade",         (v) => v === 0 ? "never fades" : String(100 - v)],
+  ["wt", "weight",         (v) => v.toFixed(1) + "×"],
+  ["sr", "speedResponse",  (v) => v === 0 ? "off" : (v * 100).toFixed(0) + "%"],
 ];
 
 // The proportional model is a linear system with only two fates. Say which.
@@ -418,15 +574,15 @@ function updateRegime() {
   const el = $("regime");
   const margin = P.centerPull - 2 * P.enemyProp;
   if (Math.abs(margin) < 0.002) {
-    el.textContent = "Knife edge — barely bounded. Nudge either slider and it "
-      + "tips into inflating or collapsing.";
+    el.textContent = "Knife edge — barely bounded. Nudge either slider and it tips into "
+      + "inflating or collapsing.";
   } else if (margin < 0) {
     el.textContent = "Inflating: 2 × enemy (" + (2 * P.enemyProp * 100).toFixed(1)
       + "%) beats the centre pull (" + (P.centerPull * 100).toFixed(2)
       + "%). Everything drifts out and jams against the floor edge.";
   } else {
-    el.textContent = "Collapsing: the centre pull wins, so every dot converges "
-      + "onto the centre point. Structure dies out.";
+    el.textContent = "Collapsing: the centre pull wins, so every dot converges onto the "
+      + "centre point. Structure dies out.";
   }
 }
 
@@ -438,8 +594,14 @@ function syncUI() {
   $("model").value = P.model;
   $("links").checked = P.links;
   $("floor").checked = P.floor;
+  $("skeleton").checked = P.skeleton;
+  $("streaks").checked = P.streaks;
   $("pause").classList.toggle("on", P.paused);
   $("pause").textContent = P.paused ? "resume" : "pause";
+  $("looknote").textContent = look().note;
+  document.querySelectorAll("#looks .look").forEach((b) => {
+    b.classList.toggle("on", b.dataset.look === P.look);
+  });
   document.querySelectorAll("[data-model]").forEach((el) => {
     el.style.display = (el.dataset.model === (P.model === "fixed" ? "fixed" : "prop")) ? "" : "none";
   });
@@ -449,16 +611,43 @@ function syncUI() {
 for (const [id, key, fmt] of SLIDERS) {
   $(id).addEventListener("input", (e) => {
     const v = parseFloat(e.target.value);
-    if (key === "n") { P.n = v | 0; rebuild(false); }
+    if (key === "n") { P.n = v | 0; rebuild(); }
     else P[key] = v;
     $("v_" + id).textContent = fmt(P[key]);
     if (key === "enemyProp" || key === "centerPull") updateRegime();
   });
 }
 
+function setLook(k) {
+  P.look = k;
+  P.fade = LOOKS[k].fade;
+  wipe();
+  syncUI();
+}
+
+const lookBar = $("looks");
+LOOK_KEYS.forEach((k) => {
+  const b = document.createElement("button");
+  b.className = "look"; b.dataset.look = k;
+  b.innerHTML = '<span class="sw" style="background:' + LOOKS[k].swatch + '"></span>'
+              + LOOKS[k].label;
+  b.addEventListener("click", () => setLook(k));
+  lookBar.appendChild(b);
+});
+
+const presetBar = $("presets");
+Object.keys(PRESETS).forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.textContent = name;
+  b.addEventListener("click", () => { Object.assign(P, PRESETS[name]); rebuild(); wipe(); syncUI(); });
+  presetBar.appendChild(b);
+});
+
 $("model").addEventListener("change", (e) => { P.model = e.target.value; syncUI(); });
 $("links").addEventListener("change", (e) => { P.links = e.target.checked; });
 $("floor").addEventListener("change", (e) => { P.floor = e.target.checked; });
+$("skeleton").addEventListener("change", (e) => { P.skeleton = e.target.checked; });
+$("streaks").addEventListener("change", (e) => { P.streaks = e.target.checked; });
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("scatter").addEventListener("click", () => scatter());
 $("reroll").addEventListener("click", () => { for (let i = 0; i < P.n; i++) assign(i); });
@@ -467,31 +656,21 @@ $("toggle").addEventListener("click", () => {
   $("toggle").textContent = ui.classList.contains("collapsed") ? "show" : "hide";
 });
 
-const presetBar = $("presets");
-for (const name of Object.keys(PRESETS)) {
-  const b = document.createElement("button");
-  b.className = "act"; b.textContent = name;
-  b.addEventListener("click", () => {
-    Object.assign(P, PRESETS[name]);
-    rebuild(false); syncUI();
-    ctx.fillStyle = "#0a0b0f"; ctx.fillRect(0, 0, W, H);
-  });
-  presetBar.appendChild(b);
-}
-
 addEventListener("keydown", (e) => {
   if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
   else if (e.key === "r") scatter();
   else if (e.key === "t") { for (let i = 0; i < P.n; i++) assign(i); }
   else if (e.key === "l") { P.links = !P.links; syncUI(); }
+  else if (e.key >= "1" && e.key <= String(LOOK_KEYS.length)) setLook(LOOK_KEYS[+e.key - 1]);
 });
 
 addEventListener("resize", resize);
 
 // ---- go --------------------------------------------------------------------
 resize();
-rebuild(false);
+rebuild();
+wipe();
 syncUI();
 requestAnimationFrame(frame);
 </script>

@@ -38,6 +38,65 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-10 — Dots V2: rendering rewrite
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+Rebuilt the rendering layer of the dots simulation around motion, after the user asked for a V2
+with "a more aesthetic eye — maybe black and white even". Physics untouched. Five switchable
+looks so the aesthetic call can be made by looking rather than by argument.
+
+### Decisions Made
+- **V1's colour encoded nothing** (`hue = index/n`; index relates to nothing in the system, and
+  at n=400 hues sit ~1° apart, so it read as a uniform smear). Monochrome therefore costs zero
+  information — the user's instinct was right. Every V2 look either drops colour or spends it on
+  speed or graph structure.
+- **Velocity streaks, not dots.** Draw the segment from last-frame position to current, with
+  speed driving brightness and weight. Motion becomes the primary signal, which is what the user
+  asked for ("definitely watch, movement is key").
+- **Adaptive speed reference** rather than a fixed constant, so "fast" stays meaningful across
+  any parameter set.
+- **Friend-graph basins.** O(n) walk labels each dot with the cycle it drains into. Cycle members
+  drawn brighter — they're the attractors the picture is organised around.
+- **V1 archived**, not deleted, per the project's archive-over-delete rule.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | archived | `explorations/dots-friend-enemy/archive/v1-rainbow-dots.html` | V1 preserved before rewrite |
+| 2 | rewrote | `explorations/dots-friend-enemy/index.html` | Looks system, velocity streaks, `analyseGraph()`, skeleton emphasis, speed→brightness, keys 1–5 |
+| 3 | edited | `.../NOTES.md` | v2.0.0; new "V2 — the rendering" section; basins follow-up checked off; artifact-mode idea added |
+| 4 | edited | `explorations/README.md` | Status row |
+
+### Verification
+`analyseGraph()` tested against hand-built graphs (single 2-cycle with tails, two disjoint cycles,
+self-loop, pure cycle) plus 40 random trials asserting structural invariants: every dot shares a
+basin with its friend, no unlabelled dots, every basin contains ≥1 cycle member, and following
+`friend` from any cycle member returns to itself. All pass. `basinCount` ≈ 2–3 for n≈200–1400,
+matching the expected ½·ln(n) for a random functional graph.
+
+Rendering exercised across all 5 looks plus streaks-off / skeleton-off / flat-speed / no-fade /
+heavy-weight variants, plus n changed mid-flight (450→37→1400) and 400 frames at 60 re-rolls/sec:
+no exceptions, no array desync, basin labelling stayed consistent. Speed distribution has real
+dynamic range (median 0.28–0.60, 0.1% at ceiling). Perf: 800 dots at 5.9 ms/frame (2.8× headroom
+at 60 fps), 2000 at 12.7 ms.
+
+### PARKED / not done
+- **No visual confirmation, again.** The preview pane never composites frames in this environment.
+  I tried rendering a 5-look contact sheet offscreen and extracting it as base64 to look at
+  directly; the transport truncated the string twice (13.3 KB of an expected 19.9 KB, then both
+  split chunks short on write) and I stopped rather than keep paying for it. Parked at: numeric
+  and structural verification complete, appearance unjudged. If this comes up again, write the
+  image from the page via a download or a local server rather than piping base64 through tool
+  output.
+
+### Next Steps
+- [ ] Pick a look (keys 1–5 switch live). `graphite` vs `noir` is the monochrome comparison.
+- [ ] Follow-ups at the bottom of `dots-friend-enemy/NOTES.md`, incl. the accumulation/artifact mode
+
 ## Session 2026-08-10 — Project setup, exploration 1, and publication
 **Source**: Claude Code
 **User**: Caio

@@ -19,4 +19,4 @@ when it's interesting, not when it's finished. Nothing here needs to become a pr
 
 | Exploration | Started | What it is | Status |
 |---|---|---|---|
-| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | Working, tuned |
+| [`dots-friend-enemy/`](dots-friend-enemy/) | 2026-08-10 | Dots that chase one friend and flee one enemy — [notes](dots-friend-enemy/NOTES.md), [run it](dots-friend-enemy/index.html) | V2 — 5 looks, velocity streaks, friend-graph basins |
