@@ -38,6 +38,101 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — V2.6.1: void corona + eased lunge
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User feedback on V2.6: the void is invisible on black backgrounds ("maybe a black hole with a
+purple corona"), and the lunge is a little jerky. Both fixed.
+
+### Decisions Made
+- **Corona**: the bg-coloured core only occludes light, so over empty black it's nothing. Added a
+  thin violet ring sprite (transparent centre, peak at 0.72 of radius) drawn in the look's blend
+  mode over the core; per-look tints (violet family on dark grounds, dark ink on graphite).
+  Measured on noir over an emptied region: centre 0, ring 301, outside 0 — the event horizon
+  exists everywhere now.
+- **Lunge jerk had two sources**: velocity stepped 0.12×→4.5× in one frame, and the heading was
+  recomputed every step, so it flipped 180° when passing the mark. Now: velocity eases at
+  0.4/step (~4 steps to 90%, still explosive) and the lunge heading locks at the coil. Max
+  per-step speed change halved (9.9 → 4.46 px) with the same 10.2 px peak; rhythm intact
+  (64/6/9/21, 17 lunges per 4000 steps).
+
+### Verification
+Jerk + rhythm measured headless over 4000 steps; corona pixel-tested on noir over pure black;
+all 5 looks × void render clean; bounded, no NaN. No screenshot — pane didn't composite.
+
+### Concurrency
+Slime-mold session active concurrently (new exploration); its hunks in `explorations/README.md`
+and `index.html` left unstaged, dots files committed surgically.
+
+### Next Steps
+- [ ] Judge corona width/brightness by eye — the sprite stops are one block to tune
+- [ ] Image as a sampled field — still specced, still next
+
+## Session 2026-08-11 — Exploration 3: slime mold (Physarum)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+Third exploration, chosen from the remaining brainstorm options (over RPS swarm and gravity).
+Jones (2010) Physarum: agents sense a trail field with three whiskers, steer toward the
+strongest reading, move, deposit; the field diffuses and evaporates. Networks emerge by
+stigmergy. New infrastructure: a continuous Float32 field alongside point agents.
+
+### Decisions Made
+- **Fixed 640×400 Float32 torus field.** Fixed → monitor-independent physics (lesson 3);
+  Float32 → evaporation reaches zero, the 8-bit fossil trap is impossible by construction
+  (lesson 6); torus → networks wrap instead of hitting walls. Canvas is a pure view, cover-fit.
+- **No deposit-strength slider, on purpose**: agents steer by comparing readings, so scaling all
+  deposits cancels — the system is scale-free in trail units. Panel says so.
+- **Sequential agent updates** are safe here (unlike dots): interaction is only through a field
+  that diffusion delays by a step, so order bias is negligible. Noted in code.
+- All prior lessons applied from day one: dt-based stepping, per-step sampling, tooltips,
+  auto-exposure display, DOM assertions.
+- Field pass rewritten branch-free/division-free (edge columns peeled, /9 folded into the blend
+  constant) after profiling showed it at ~85% of step cost.
+
+### Verification
+Network formation measured, not eyeballed: from a cleared field under `veins`, coverage
+collapses 9.5%→2.5% while contrast climbs 20→71 over 1800 steps. Four presets measurably
+distinct: storm churns 53% more than veins at 3× the contrast; cells is 12× storm's coverage
+at an eighth of its contrast. (Honest gap: veins vs filigree differ in structure *scale*,
+which these metrics can't see — autocorrelation length parked as next.) Torus containment and
+NaN checks clean across all presets. dt arithmetic exact at 60/20 fps and fractional rates.
+DOM: 3 looks, 4 presets, 8 tooltipped sliders all live.
+
+### PARKED: harness CPU throttling, now confirmed
+The hidden pane throttles JS ~10× — a branch-free 512k-op loop benched at 65 Mops/s, which is
+not a real number. This retro-explains every "perf regression" scare in earlier sessions
+(lesson 8's degradation was throttling, not JIT decay). Absolute costs from this harness are
+unusable; only ratios (field ≈ 2× agents at n=6000) and deltas within a call carry information.
+Real frame cost needs a visible page. Levers if heavy live: half-res field, or diffusion every
+other step — both documented in NOTES.
+
+### Concurrency
+Claimed before writing. Fireflies v1.2 session ran concurrently (soft glow sprites) with
+overlapping claims on SESSION_LOG.md and explorations/README.md; checked its committed state
+and diffs before staging — my hunks are disjoint (new row, new entry).
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/slime-mold/index.html` | The sim — one file, no deps |
+| 2 | created | `explorations/slime-mold/NOTES.md` | Mechanism, design decisions, measured anatomies, perf caveat, open threads |
+| 3 | edited | `explorations/README.md` | Slime-mold row |
+| 4 | edited | `index.html` | Landing-page card |
+| 5 | edited | `PROJECT.md` | Current Focus |
+
+### Next Steps
+- [ ] **Look at it** — `veins` from a cleared field for two minutes, then `ink`
+- [ ] Report real fps from a visible page; apply the documented levers if heavy
+- [ ] Open threads: food sources (Tokyo rail), autocorrelation metric, obstacles, relief look
+
 ## Session 2026-08-11 — Fireflies v1.2: soft glow sprites
 **Source**: Claude Code
 **User**: Caio

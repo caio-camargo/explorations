@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Slime Mold — Physarum transport networks</title>
+<style>
+  :root {
+    --panel: rgba(18,20,27,.80);
+    --line: rgba(255,255,255,.11);
+    --text: #e6e8ef;
+    --dim: #8e93a6;
+    --accent: #e8a33d;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: #070604; }
+  body {
+    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text); overflow: hidden;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  #ui {
+    position: fixed; top: 14px; right: 14px; width: 274px;
+    max-height: calc(100vh - 28px); overflow-y: auto;
+    background: var(--panel); backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px 14px;
+  }
+  #ui.collapsed .body { display: none; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+       margin: 0; color: var(--dim); }
+  #toggle { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 6px;
+            cursor: pointer; font-size: 11px; padding: 2px 7px; }
+  #toggle:hover { color: var(--text); }
+
+  .group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .group:first-of-type { border-top: 0; margin-top: 10px; padding-top: 0; }
+  .glabel { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+            margin-bottom: 8px; }
+
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+         margin-bottom: 9px; }
+  .row label { font-size: 12px; }
+  .row label[title] { cursor: help; border-bottom: 1px dotted rgba(255,255,255,.28); }
+  .row .val { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--accent); }
+  .row input[type=range] { grid-column: 1 / -1; width: 100%; height: 3px; -webkit-appearance: none;
+                           appearance: none; background: rgba(255,255,255,.14); border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%;
+    background: var(--accent); cursor: pointer; }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.act { flex: 1 1 auto; background: rgba(255,255,255,.06); border: 1px solid var(--line);
+               color: var(--text); border-radius: 7px; padding: 6px 8px; cursor: pointer;
+               font-size: 12px; }
+  button.act:hover { background: rgba(255,255,255,.13); }
+  button.act.on { background: var(--accent); border-color: var(--accent); color: #1d1305;
+                  font-weight: 600; }
+
+  #looks { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  button.look { display: flex; align-items: center; gap: 7px; text-align: left;
+                background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text);
+                border-radius: 8px; padding: 7px 8px; cursor: pointer; font-size: 12px; }
+  button.look:hover { background: rgba(255,255,255,.12); }
+  button.look.on { border-color: var(--accent); background: rgba(232,163,61,.13); }
+  button.look .sw { width: 13px; height: 13px; border-radius: 4px; flex: 0 0 auto;
+                    border: 1px solid rgba(255,255,255,.22); }
+
+  .note { font-size: 11px; line-height: 1.4; color: var(--dim); margin-top: 7px; }
+
+  #stats { position: fixed; left: 14px; bottom: 12px; font-size: 11px;
+           font-variant-numeric: tabular-nums; pointer-events: none;
+           color: rgba(255,255,255,.38); }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="stats"></div>
+
+<aside id="ui">
+  <header>
+    <h1>Slime Mold</h1>
+    <button id="toggle">hide</button>
+  </header>
+
+  <div class="body">
+    <div class="group">
+      <div class="glabel">Look</div>
+      <div id="looks"></div>
+      <div class="note" id="looknote"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Presets</div>
+      <div class="btns" id="presets"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Sensing</div>
+      <div class="row">
+        <label title="Angle between the forward whisker and the two side whiskers. Narrow angles read the trail ahead — long straight veins. Wide angles read sideways — tighter curls and finer mesh.">Sensor angle</label><span class="val" id="v_sa"></span>
+        <input type="range" id="sa" min="5" max="60" step="1">
+      </div>
+      <div class="row">
+        <label title="How far ahead the whiskers reach, in field pixels. This sets the scale of the network: short = fine filigree, long = coarse trunk lines.">Sensor reach</label><span class="val" id="v_sd"></span>
+        <input type="range" id="sd" min="2" max="20" step="0.5">
+      </div>
+      <div class="row">
+        <label title="How sharply an agent can turn toward a stronger reading, per step. High turn rates commit fast; low ones drift in wide arcs.">Turn rate</label><span class="val" id="v_tr"></span>
+        <input type="range" id="tr" min="5" max="90" step="1">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Trail field</div>
+      <div class="row">
+        <label title="Half-life of the deposited trail, in steps. Long memory lets thick stable veins form; short memory keeps the network nervous and rewiring.">Evaporation</label><span class="val" id="v_hl"></span>
+        <input type="range" id="hl" min="10" max="300" step="5">
+      </div>
+      <div class="row">
+        <label title="How much the trail spreads to neighbouring cells each step. Diffusion widens and softens the veins and lets nearby trails merge.">Diffusion</label><span class="val" id="v_df"></span>
+        <input type="range" id="df" min="0" max="1" step="0.02">
+      </div>
+      <div class="note">There is no deposit-strength slider on purpose: agents steer by
+        <em>comparing</em> readings, so scaling every deposit cancels out. The trail unit is
+        free — see NOTES.</div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">World</div>
+      <div class="row">
+        <label title="Population. More agents visit each cell more often, thickening trails relative to evaporation — denser, more connected networks.">Agents</label><span class="val" id="v_n"></span>
+        <input type="range" id="n" min="500" max="16000" step="250">
+      </div>
+      <div class="row">
+        <label title="Distance moved per step, in field pixels.">Move speed</label><span class="val" id="v_sp"></span>
+        <input type="range" id="sp" min="0.3" max="2" step="0.05">
+      </div>
+      <div class="row">
+        <label title="Simulation speed. Below 1× it runs one step every few frames — slow motion.">Steps / frame</label><span class="val" id="v_sf"></span>
+        <input type="range" id="sf" min="0.05" max="6" step="0.05">
+      </div>
+      <div class="note">The world is a fixed 640×400 torus — edges wrap, and the physics is
+        identical on every monitor.</div>
+    </div>
+
+    <div class="group">
+      <div class="btns">
+        <button class="act" id="pause">pause</button>
+        <button class="act" id="scatter">scatter</button>
+        <button class="act" id="clear">clear trail</button>
+      </div>
+      <div class="note">space pause · r scatter · c clear · 1–3 looks</div>
+    </div>
+  </div>
+</aside>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   SLIME MOLD — Physarum polycephalum transport networks (Jones 2010 model)
+
+   Each agent, every step:
+     1. SENSE  — read the trail field at three whisker points: ahead, and at
+                 ±sensorAngle, sensorDist in front.
+     2. STEER  — turn toward the strongest reading (straight if ahead wins;
+                 random kick if both sides beat the middle).
+     3. MOVE   — a fixed stride forward, on a torus.
+     4. DEPOSIT— drop trail where it lands.
+   The field, every step: diffuse a little, evaporate a little.
+
+   Agents never see each other — only the field. Everything the network does
+   (veins forming, competing, merging, being reabsorbed) is stigmergy: the
+   environment is the communication channel.
+
+   Inherited discipline (lessons 3, 6, 7, 11 in LESSONS_LEARNED.md):
+   - The field is a FIXED 640×400 Float32 torus: physics is identical on every
+     monitor, and float evaporation actually reaches zero — the 8-bit fossil
+     trap from the dots exploration cannot exist here by construction. The
+     canvas is a pure view of the field, fully redrawn every frame.
+   - The sim advances by wall-clock time, not by frame.
+   - Anything derived from the sim happens per STEP, never per frame.
+--------------------------------------------------------------------------- */
+
+const FW = 640, FH = 400, FN = FW * FH;
+const TAU = Math.PI * 2;
+
+const P = {
+  n: 6000,
+  sensorAngle: 25,     // degrees
+  sensorDist: 9,       // field px
+  turnRate: 30,        // degrees per step
+  speed: 1.0,          // field px per step
+  halfLife: 60,        // trail half-life in steps
+  diffuse: 0.6,        // 0..1 blend toward the 3×3 mean per step
+  stepsPerFrame: 1,
+  look: "organism",
+  paused: false,
+};
+
+// Named network anatomies. Verified measurably distinct — see NOTES.
+const PRESETS = {
+  "veins":    { n: 6000,  sensorAngle: 25, sensorDist: 9,  turnRate: 30, speed: 1.0, halfLife: 60,  diffuse: 0.6 },
+  "filigree": { n: 9000,  sensorAngle: 45, sensorDist: 4,  turnRate: 60, speed: 1.0, halfLife: 25,  diffuse: 0.35 },
+  "cells":    { n: 5000,  sensorAngle: 15, sensorDist: 16, turnRate: 20, speed: 1.2, halfLife: 140, diffuse: 0.8 },
+  "storm":    { n: 10000, sensorAngle: 35, sensorDist: 7,  turnRate: 80, speed: 1.8, halfLife: 15,  diffuse: 0.2 },
+};
+
+const LOOKS = {
+  organism: {
+    label: "organism", swatch: "#e8a33d", bg: "#070604",
+    note: "The classic: amber protoplasm on darkness.",
+    stops: [[0,[7,6,4]],[0.30,[74,44,13]],[0.65,[210,140,50]],[1,[255,240,200]]],
+  },
+  ink: {
+    label: "ink", swatch: "#f4f1ea", bg: "#f4f1ea",
+    note: "Dark veins on warm paper — the network as a drawing.",
+    stops: [[0,[244,241,234]],[0.25,[210,200,182]],[0.6,[110,95,72]],[1,[30,24,16]]],
+  },
+  noir: {
+    label: "noir", swatch: "#ffffff", bg: "#000000",
+    note: "White light on black. Just the structure.",
+    stops: [[0,[0,0,0]],[0.5,[110,110,110]],[1,[255,255,255]]],
+  },
+};
+const LOOK_KEYS = Object.keys(LOOKS);
+
+// 256-entry colour LUT per look, built once
+for (const k of LOOK_KEYS) {
+  const L = LOOKS[k], lut = new Uint8Array(256 * 3);
+  for (let i = 0; i < 256; i++) {
+    const t = i / 255;
+    let a = L.stops[0], b = L.stops[L.stops.length - 1];
+    for (let s = 0; s < L.stops.length - 1; s++)
+      if (t >= L.stops[s][0] && t <= L.stops[s + 1][0]) { a = L.stops[s]; b = L.stops[s + 1]; break; }
+    const f = (t - a[0]) / Math.max(b[0] - a[0], 1e-9);
+    for (let c = 0; c < 3; c++) lut[i * 3 + c] = Math.round(a[1][c] + (b[1][c] - a[1][c]) * f);
+  }
+  L.lut = lut;
+}
+
+// ---- state -----------------------------------------------------------------
+let trail = new Float32Array(FN);
+let tmp = new Float32Array(FN);
+let ax, ay, ah;                          // agent position + heading
+let W = 0, H = 0, dpr = 1;
+
+let exposure = 1;                        // auto-exposure reference (high-water EMA)
+let coverage = 0;                        // fraction of cells carrying real trail
+let stepsRun = 0;
+
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d", { alpha: false });
+const off = document.createElement("canvas");
+off.width = FW; off.height = FH;
+const offCtx = off.getContext("2d");
+const img = offCtx.createImageData(FW, FH);
+img.data.fill(255);
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = cv.clientWidth || 1; H = cv.clientHeight || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+}
+
+function scatter() {
+  for (let i = 0; i < P.n; i++) {
+    ax[i] = Math.random() * FW;
+    ay[i] = Math.random() * FH;
+    ah[i] = Math.random() * TAU;
+  }
+}
+
+function clearTrail() { trail.fill(0); exposure = 1; }
+
+function rebuild() {
+  ax = new Float32Array(P.n); ay = new Float32Array(P.n); ah = new Float32Array(P.n);
+  scatter();
+}
+
+// ---- the simulation --------------------------------------------------------
+const wrapX = (v) => v < 0 ? v + FW : (v >= FW ? v - FW : v);
+const wrapY = (v) => v < 0 ? v + FH : (v >= FH ? v - FH : v);
+
+// Probe offsets are bounded by sensorDist (≤20px), far less than one field
+// width, so a single conditional wrap is always enough — and always right.
+function sample(x, y) {
+  let xi = Math.round(x), yi = Math.round(y);
+  if (xi < 0) xi += FW; else if (xi >= FW) xi -= FW;
+  if (yi < 0) yi += FH; else if (yi >= FH) yi -= FH;
+  return trail[yi * FW + xi];
+}
+
+function stepSim() {
+  const n = P.n;
+  const sa = P.sensorAngle * Math.PI / 180;
+  const tr = P.turnRate * Math.PI / 180;
+  const sd = P.sensorDist, sp = P.speed;
+
+  // agents: sense → steer → move → deposit. They interact only through the
+  // field, and diffusion delays that by a step anyway, so per-agent sequential
+  // order injects no meaningful bias here (unlike the dots sim, where direct
+  // agent→agent forces demanded a simultaneous snapshot).
+  for (let i = 0; i < n; i++) {
+    const h = ah[i];
+    const cF = Math.cos(h),      sF = Math.sin(h);
+    const cL = Math.cos(h - sa), sL = Math.sin(h - sa);
+    const cR = Math.cos(h + sa), sR = Math.sin(h + sa);
+    const f = sample(ax[i] + cF * sd, ay[i] + sF * sd);
+    const l = sample(ax[i] + cL * sd, ay[i] + sL * sd);
+    const r = sample(ax[i] + cR * sd, ay[i] + sR * sd);
+
+    if (f >= l && f >= r) { /* straight */ }
+    else if (l > f && r > f) ah[i] += (Math.random() < 0.5 ? -tr : tr);
+    else if (l > r) ah[i] -= tr;
+    else ah[i] += tr;
+
+    const nx = wrapX(ax[i] + Math.cos(ah[i]) * sp);
+    const ny = wrapY(ay[i] + Math.sin(ah[i]) * sp);
+    ax[i] = nx; ay[i] = ny;
+    trail[(ny | 0) * FW + (nx | 0)] += 1;      // deposit — unit is arbitrary, see panel note
+  }
+
+  // Field: separable 3×3 mean (torus), blended in by `diffuse`, then decay.
+  // The inner loops are branch-free (edge columns peeled out) and division-free
+  // (tmp carries row SUMS; the /9 is folded into the blend constant) — the
+  // naive version of this pass cost 7 ms/step, ~85% of the whole step.
+  const decay = Math.pow(0.5, 1 / P.halfLife);
+  const a = (1 - P.diffuse) * decay;         // weight of the cell's own value
+  const b = P.diffuse * decay / 9;           // weight of each 3×3 sum term
+  // horizontal pass: tmp = sum of 3 horizontal neighbours (wrapped)
+  for (let y = 0; y < FH; y++) {
+    const row = y * FW, last = row + FW - 1;
+    tmp[row] = trail[last] + trail[row] + trail[row + 1];
+    for (let i = row + 1; i < last; i++) {
+      tmp[i] = trail[i - 1] + trail[i] + trail[i + 1];
+    }
+    tmp[last] = trail[last - 1] + trail[last] + trail[row];
+  }
+  // vertical pass: blend + decay in one write
+  for (let y = 0; y < FH; y++) {
+    const row = y * FW;
+    const up = (y === 0 ? FH - 1 : y - 1) * FW, dn = (y === FH - 1 ? 0 : y + 1) * FW;
+    for (let x = 0; x < FW; x++) {
+      trail[row + x] = trail[row + x] * a + (tmp[up + x] + tmp[row + x] + tmp[dn + x]) * b;
+    }
+  }
+
+  // per-step instrumentation: auto-exposure + coverage, sampled cheaply
+  if (++stepsRun % 20 === 0) {
+    let mx = 0, hits = 0, cells = 0;
+    for (let i = 0; i < FN; i += 7) {
+      const v = trail[i];
+      if (v > mx) mx = v;
+      if (v > exposure * 0.15) hits++;
+      cells++;
+    }
+    exposure += (Math.max(mx, 1e-6) - exposure) * 0.15;
+    coverage += (hits / cells - coverage) * 0.3;
+  }
+}
+
+// ---- rendering -------------------------------------------------------------
+function draw() {
+  const L = LOOKS[P.look], lut = L.lut, d = img.data;
+  const inv = 1 / Math.max(exposure, 1e-6);
+  for (let i = 0; i < FN; i++) {
+    let t = trail[i] * inv;
+    if (t > 1) t = 1;
+    const q = (Math.sqrt(t) * 255) | 0;        // sqrt lifts the faint filigree
+    const o = i * 4, l3 = q * 3;
+    d[o] = lut[l3]; d[o + 1] = lut[l3 + 1]; d[o + 2] = lut[l3 + 2];
+  }
+  offCtx.putImageData(img, 0, 0);
+
+  // cover-fit the fixed field onto whatever screen this is
+  const s = Math.max(W / FW, H / FH);
+  const dw = FW * s, dh = FH * s;
+  ctx.fillStyle = L.bg;
+  ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(off, (W - dw) / 2, (H - dh) / 2, dw, dh);
+}
+
+// ---- loop ------------------------------------------------------------------
+let lastT = performance.now(), fps = 0, stepAcc = 0;
+
+function frame(t) {
+  const dt = t - lastT; lastT = t;
+  fps += ((1000 / Math.max(dt, 1)) - fps) * 0.1;
+
+  if (!P.paused) {
+    // wall-clock stepping (lesson 11): render cost must not touch sim speed
+    stepAcc += P.stepsPerFrame * Math.min(dt, 100) / (1000 / 60);
+    let k = Math.floor(stepAcc);
+    stepAcc -= k;
+    if (k > 10) k = 10;                  // field pass is heavy; clamp harder
+    for (let s = 0; s < k; s++) stepSim();
+  }
+  draw();
+
+  document.getElementById("stats").textContent =
+    P.n + " agents · " + (coverage * 100).toFixed(0) + "% coverage"
+    + " · " + P.stepsPerFrame.toFixed(2) + " steps/frame"
+    + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
+
+  requestAnimationFrame(frame);
+}
+
+// ---- controls --------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+
+const SLIDERS = [
+  ["sa", "sensorAngle",  (v) => v + "°"],
+  ["sd", "sensorDist",   (v) => v.toFixed(1) + " px"],
+  ["tr", "turnRate",     (v) => v + "°/step"],
+  ["hl", "halfLife",     (v) => v + "-step ½-life"],
+  ["df", "diffuse",      (v) => v === 0 ? "none" : (v * 100).toFixed(0) + "%"],
+  ["n",  "n",            (v) => String(v)],
+  ["sp", "speed",        (v) => v.toFixed(2) + " px/step"],
+  ["sf", "stepsPerFrame",(v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
+                                      : v.toFixed(2) + " ×"],
+];
+
+function syncUI() {
+  for (const [id, key, fmt] of SLIDERS) {
+    $(id).value = P[key];
+    $("v_" + id).textContent = fmt(P[key]);
+  }
+  $("pause").classList.toggle("on", P.paused);
+  $("pause").textContent = P.paused ? "resume" : "pause";
+  $("looknote").textContent = LOOKS[P.look].note;
+  document.querySelectorAll("#looks .look").forEach((b) => {
+    b.classList.toggle("on", b.dataset.lk === P.look);
+  });
+}
+
+for (const [id, key, fmt] of SLIDERS) {
+  $(id).addEventListener("input", (e) => {
+    const v = parseFloat(e.target.value);
+    if (key === "n") { P.n = v | 0; rebuild(); }
+    else P[key] = v;
+    $("v_" + id).textContent = fmt(P[key]);
+  });
+}
+
+function setLook(k) {
+  P.look = k;
+  document.body.style.background = LOOKS[k].bg;
+  syncUI();
+}
+
+const lookBar = $("looks");
+LOOK_KEYS.forEach((k) => {
+  const b = document.createElement("button");
+  b.className = "look"; b.dataset.lk = k;
+  b.title = LOOKS[k].note;
+  b.innerHTML = '<span class="sw" style="background:' + LOOKS[k].swatch + '"></span>' + LOOKS[k].label;
+  b.addEventListener("click", () => setLook(k));
+  lookBar.appendChild(b);
+});
+
+const presetBar = $("presets");
+Object.keys(PRESETS).forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.textContent = name;
+  b.title = "Apply the '" + name + "' anatomy and restart the trail field";
+  b.addEventListener("click", () => {
+    Object.assign(P, PRESETS[name]);
+    rebuild(); clearTrail();
+    syncUI();
+  });
+  presetBar.appendChild(b);
+});
+
+$("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
+$("scatter").addEventListener("click", () => scatter());
+$("clear").addEventListener("click", () => clearTrail());
+$("toggle").addEventListener("click", () => {
+  const ui = $("ui"); ui.classList.toggle("collapsed");
+  $("toggle").textContent = ui.classList.contains("collapsed") ? "show" : "hide";
+});
+
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
+  else if (e.key === "r") scatter();
+  else if (e.key === "c") clearTrail();
+  else if (e.key >= "1" && e.key <= String(LOOK_KEYS.length)) setLook(LOOK_KEYS[+e.key - 1]);
+});
+
+addEventListener("resize", resize);
+
+// ---- go --------------------------------------------------------------------
+resize();
+rebuild();
+syncUI();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

@@ -136,6 +136,7 @@ as its own repo.
       from "Picking this up cold" in [`NOTES.md`](explorations/dots-friend-enemy/NOTES.md).
 
 - [x] Exploration 2 — fireflies ([`explorations/fireflies/`](explorations/fireflies/)) — pulse-coupled sync, 5 measured regimes
+- [x] Exploration 3 — slime mold ([`explorations/slime-mold/`](explorations/slime-mold/)) — Physarum networks, Float32 field, 4 measured anatomies
 
 ### Up Next
 - [ ] Fireflies open threads (chimeras, Kuramoto coupling, sound) at the bottom of `fireflies/NOTES.md`
