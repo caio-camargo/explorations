@@ -38,6 +38,106 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Exploration 2: fireflies (pulse-coupled sync)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User wanted a second exploration reusing the dots infrastructure. Chose fireflies from four
+pitched options (fireflies / rock-paper-scissors / slime mold / gravity). Built
+`explorations/fireflies/` — Mirollo–Strogatz pulse-coupled oscillators: clocks flash at
+midnight, flashes nudge neighbours' clocks, nudges past midnight cascade. Sync emerges from
+flashes alone. Reuses the dots discipline (fractional stepping, per-step sampling, full-clear
+rendering, panel) but is a fresh single file, not a fork.
+
+### Decisions Made
+- **Concave nudge** `ε·(0.25+0.75θ)` — the M–S condition that makes absorption stick.
+- **Spatial grid** (counting sort) for flash propagation — at full sync every fly flashes in one
+  step, so naive neighbour checks would be n² in that step.
+- **Sync meter** shows the Kuramoto order parameter r with a scrolling trace; presets restart it.
+- **Presets tuned by measurement**: unison at ~1600 steps to r>0.9 (first attempt synced in <600 —
+  too fast to watch); "stubborn" needed nudge cut to 0.6%/flash after 3%-with-18%-spread synced
+  anyway. Finding: **cascades make effective coupling far stronger than per-flash arithmetic
+  suggests**; the partial-sync boundary lives at much weaker coupling than intuition puts it.
+- Default load tuned to a ~50s twinkle→struggle→lock arc (r: 0.52, 0.26, 0.71, 0.75, 1.0).
+
+### Verification
+Control (nudge 0) stays at r≈0.034≈1/√n. Waves: local order 0.56 vs global 0.18 — the
+travelling-front signature, measured. Cascade at nudge 0.5: queue peaks at exactly n, terminates,
+no NaN. Perf isolated: n=2000 with all 2000 glowing = 1.7 ms/frame. DOM asserted per dots lesson
+#10: 3 looks × 5 presets × 9 sliders × 6 buttons all visible under every look; presets apply and
+desync. Degenerate 1×1 canvas disables coupling (radius guard) and re-scatters on real resize.
+**Not visually confirmed** — pane never composited; numbers only.
+
+### Concurrency note
+`dots-friend-enemy/index.html` had uncommitted changes from outside this session (an "Influences"
+group: attractor/predator) with no ACTIVE_WORK claim. Claimed fireflies scope in ACTIVE_WORK.md,
+left the dots file untouched and **uncommitted**, and committed surgically (fireflies + doc rows
+only, no `git add -A`).
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/fireflies/index.html` | The sim — one file, no deps |
+| 2 | created | `explorations/fireflies/NOTES.md` | Mechanism, measured regimes, cascade finding, open threads |
+| 3 | edited | `explorations/README.md` | Fireflies row |
+| 4 | edited | `index.html` | Landing-page card |
+| 5 | edited | `PROJECT.md` | Current Focus |
+| 6 | edited | `ACTIVE_WORK.md` | Claim + note about unclaimed dots changes; cleared at close |
+
+### Next Steps
+- [ ] **Look at it** — the ~50s default arc, then `waves` in the `phase` look
+- [ ] Open threads in `fireflies/NOTES.md`: chimera hunting, Kuramoto coupling, obstacles, sound
+- [ ] The dots "Influences" work is still uncommitted on disk — whoever owns it should commit or claim it
+
+## Session 2026-08-11 — V2.4: influences (wandering attractor + hunting predator)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+User proposed two extensions: extra entities (predator, a movable version of the centre
+attractor), and an image the dots trace without it being drawn. Observed that **both are the same
+feature** — the centre pull is already an external field — so built one generalised influences
+layer and the two entities on top of it. Image field is specced and next, not built.
+
+### Decisions Made
+- Dot rule is now `friend + enemy + Σ(fields)`. The centre stays as the leash rather than being
+  replaced, because boundedness depends on it (repulsion capped, centre term grows with distance).
+- Predator steers toward **nearby mass**, weighting every dot by `1/(1 + d²/r²)` — O(n), no
+  sorting, no flip-flopping between nearest neighbours. Dots flee, so the target slides away;
+  that feedback is the chase.
+- Predator repulsion falls off **linearly to zero** at its radius, so it stays capped.
+- Agents **invisible by default** — the hole and the wake are more interesting than a circle.
+
+### Verification
+Predator hunts: closes from 361 px to 2 px from the swarm centroid over ~500 frames and stays
+locked. Carves: 1 dot of 500 within half its radius vs all 500 within two radii — 0.2% observed
+against 6.25% for a uniform distribution, a 30× depletion. Attractor gathers: mean distance 23 px
+to the attractor vs 127 px to the centre. Orbit mode travels 173 px.
+
+Boundedness held at maximum settings for attractor, predator, and both together — nothing pinned,
+no NaN. **One degenerate case found**: centre pull 0 + predator on + attractor off leaves nothing
+holding the swarm in and pins 52% on the floor edge. Now warned in the panel (same pattern as the
+`linear` regime readout); either field restores the leash.
+
+DOM checked alongside physics this time — agent rows appear/disappear with their toggles, all
+five look buttons remain visible in every state. That was the regression from last session.
+
+### PARKED: perf harness bit again
+First measurement said agents cost 15.4 ms vs 5.3 ms — a 3× regression. Stroke-call counts only
+went 43 → 62, which couldn't explain it, so I re-measured one config per call: **8.64 ms agents
+off, 9.88 ms on**, with `updateAgents()` itself at 0.03 ms/step. The 15.4 ms was harness drift.
+Absolute timings are not comparable across calls; only same-call, same-methodology ones are.
+
+### Next Steps
+- [ ] **Image as a sampled field** — specced in full at the top of NOTES.md's "Things worth
+      trying next", including the pyramid approach and the two things known in advance (inverted
+      rendering; the interesting regime is barely-legible)
+
 ## Session 2026-08-11 — "Sticky basins" investigated (not a bug); docs made resumable
 **Source**: Claude Code
 **User**: Caio

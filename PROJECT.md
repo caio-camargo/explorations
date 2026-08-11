@@ -135,8 +135,10 @@ as its own repo.
 - [x] Dots reached V2.3 and is **paused, not finished** — documented to be resumed cold. Start
       from "Picking this up cold" in [`NOTES.md`](explorations/dots-friend-enemy/NOTES.md).
 
+- [x] Exploration 2 — fireflies ([`explorations/fireflies/`](explorations/fireflies/)) — pulse-coupled sync, 5 measured regimes
+
 ### Up Next
-- [ ] Exploration 2 — subject TBD
+- [ ] Fireflies open threads (chimeras, Kuramoto coupling, sound) at the bottom of `fireflies/NOTES.md`
 - [ ] Dots open threads, best-specified first, at the bottom of `dots-friend-enemy/NOTES.md`
 
 ---

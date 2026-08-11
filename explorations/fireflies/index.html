@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fireflies — pulse-coupled sync</title>
+<style>
+  :root {
+    --panel: rgba(18,20,27,.80);
+    --line: rgba(255,255,255,.11);
+    --text: #e6e8ef;
+    --dim: #8e93a6;
+    --accent: #ffd28a;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: #04080b; }
+  body {
+    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text); overflow: hidden;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  #ui {
+    position: fixed; top: 14px; right: 14px; width: 274px;
+    max-height: calc(100vh - 28px); overflow-y: auto;
+    background: var(--panel); backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px 14px;
+  }
+  #ui.collapsed .body { display: none; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+       margin: 0; color: var(--dim); }
+  #toggle { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 6px;
+            cursor: pointer; font-size: 11px; padding: 2px 7px; }
+  #toggle:hover { color: var(--text); }
+
+  .group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .group:first-of-type { border-top: 0; margin-top: 10px; padding-top: 0; }
+  .glabel { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+            margin-bottom: 8px; }
+
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+         margin-bottom: 9px; }
+  .row label { font-size: 12px; }
+  .row .val { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--accent); }
+  .row input[type=range] { grid-column: 1 / -1; width: 100%; height: 3px; -webkit-appearance: none;
+                           appearance: none; background: rgba(255,255,255,.14); border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%;
+    background: var(--accent); cursor: pointer; }
+
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer;
+           font-size: 12px; }
+  .check input { accent-color: var(--accent); }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.act { flex: 1 1 auto; background: rgba(255,255,255,.06); border: 1px solid var(--line);
+               color: var(--text); border-radius: 7px; padding: 6px 8px; cursor: pointer;
+               font-size: 12px; }
+  button.act:hover { background: rgba(255,255,255,.13); }
+  button.act.on { background: var(--accent); border-color: var(--accent); color: #1a1206;
+                  font-weight: 600; }
+
+  #looks { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  button.look { display: flex; align-items: center; gap: 7px; text-align: left;
+                background: rgba(255,255,255,.05); border: 1px solid var(--line); color: var(--text);
+                border-radius: 8px; padding: 7px 8px; cursor: pointer; font-size: 12px; }
+  button.look:hover { background: rgba(255,255,255,.12); }
+  button.look.on { border-color: var(--accent); background: rgba(255,210,138,.13); }
+  button.look .sw { width: 13px; height: 13px; border-radius: 4px; flex: 0 0 auto;
+                    border: 1px solid rgba(255,255,255,.22); }
+
+  .note { font-size: 11px; line-height: 1.4; color: var(--dim); margin-top: 7px; }
+
+  #stats { position: fixed; left: 14px; bottom: 12px; font-size: 11px;
+           font-variant-numeric: tabular-nums; pointer-events: none;
+           color: rgba(255,255,255,.38); }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="stats"></div>
+
+<aside id="ui">
+  <header>
+    <h1>Fireflies</h1>
+    <button id="toggle">hide</button>
+  </header>
+
+  <div class="body">
+    <div class="group">
+      <div class="glabel">Look</div>
+      <div id="looks"></div>
+      <div class="note" id="looknote"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Presets</div>
+      <div class="btns" id="presets"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Clocks</div>
+      <div class="row">
+        <label>Blink period</label><span class="val" id="v_per"></span>
+        <input type="range" id="per" min="40" max="400" step="5">
+      </div>
+      <div class="row">
+        <label>Clock diversity</label><span class="val" id="v_sp"></span>
+        <input type="range" id="sp" min="0" max="0.30" step="0.005">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Coupling</div>
+      <div class="row">
+        <label>Nudge per flash seen</label><span class="val" id="v_ng"></span>
+        <input type="range" id="ng" min="0" max="0.20" step="0.002">
+      </div>
+      <div class="row">
+        <label>Sight radius</label><span class="val" id="v_rd"></span>
+        <input type="range" id="rd" min="0.02" max="0.45" step="0.005">
+      </div>
+      <div class="note">A flash advances the clock of every neighbour that sees it. A clock
+        pushed past midnight fires immediately — cascades are the mechanism, not a glitch.</div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Motion &amp; light</div>
+      <div class="row">
+        <label>Wander speed</label><span class="val" id="v_wd"></span>
+        <input type="range" id="wd" min="0" max="1.5" step="0.05">
+      </div>
+      <div class="row">
+        <label>Afterglow</label><span class="val" id="v_ag"></span>
+        <input type="range" id="ag" min="0.70" max="0.97" step="0.005">
+      </div>
+      <div class="row">
+        <label>Dot size</label><span class="val" id="v_ds"></span>
+        <input type="range" id="ds" min="0.8" max="4" step="0.1">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">World</div>
+      <div class="row">
+        <label>Fireflies</label><span class="val" id="v_n"></span>
+        <input type="range" id="n" min="20" max="2500" step="10">
+      </div>
+      <div class="row">
+        <label>Steps / frame</label><span class="val" id="v_sf"></span>
+        <input type="range" id="sf" min="0.05" max="8" step="0.05">
+      </div>
+      <label class="check"><input type="checkbox" id="mt"> Sync meter</label>
+      <div class="note">sync = length of the mean phase vector: 0 is scattered blinking,
+        1 is perfect unison.</div>
+    </div>
+
+    <div class="group">
+      <div class="btns">
+        <button class="act" id="pause">pause</button>
+        <button class="act" id="desync">desync</button>
+        <button class="act" id="scatter">scatter</button>
+        <button class="act" id="clocks">new clocks</button>
+      </div>
+      <div class="note">space pause · d desync · r scatter · m meter · 1–3 looks</div>
+    </div>
+  </div>
+</aside>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   FIREFLIES — pulse-coupled oscillators (Mirollo–Strogatz flavour)
+
+   Every firefly has an internal clock (phase 0..1) ticking at its own natural
+   rate. When the clock strikes 1 it FLASHES and resets. Every neighbour within
+   sight of a flash gets its own clock nudged forward — and if the nudge pushes
+   a clock past 1, that firefly fires immediately too, which can cascade.
+
+   That's the entire mechanism. Nobody is told the time; synchrony (or waves,
+   or stubborn dissent) emerges from flashes alone.
+
+   The nudge is slightly concave — ε·(0.25 + 0.75·θ) — so a fly late in its
+   cycle jumps further than one that just fired. That's the Mirollo–Strogatz
+   condition that makes absorption stick instead of clocks endlessly circling
+   each other.
+
+   Discipline carried over from the dots exploration:
+   - anything derived from the simulation advances per STEP, never per frame
+     (fractional step rates otherwise strobe);
+   - the canvas is fully cleared every frame — no multiplicative fade, so no
+     8-bit fossil residue;
+   - identity is never taken from scan order.
+--------------------------------------------------------------------------- */
+
+const TAU = Math.PI * 2;
+
+const P = {
+  n: 700,
+  period: 140,         // steps per blink cycle (base)
+  spread: 0.04,        // ± fraction of natural rate, per fly
+  nudge: 0.02,         // phase advance on seeing a flash (fraction of cycle)
+  radius: 0.15,        // sight radius, fraction of min(W,H)
+  // ^ first load: twinkle → struggle → lock at ~step 3000 (~50s). Measured
+  //   r every 750 steps: 0.52, 0.26, 0.71, 0.75, then 1.0.
+  wander: 0.35,        // px per step on an 800px floor
+  turn: 0.22,          // heading jitter, radians per step
+  afterglow: 0.88,     // glow decay per step
+  dotSize: 1.6,
+  stepsPerFrame: 1,
+  look: "meadow",
+  meter: true,
+  paused: false,
+};
+
+// Each preset is a regime, not just numbers. Applying one also desyncs the
+// clocks so you watch the regime re-form from scratch.
+const PRESETS = {
+  // Measured, not guessed. unison reaches r>0.9 in ~1600 steps — slow enough to
+  // watch. stubborn hovers at r≈0.7 swinging 0.3–0.95: sync that keeps forming
+  // and collapsing, which is the Kuramoto transition made visible. At the first
+  // tuning pass stubborn used nudge 0.03 and synced anyway — cascades are far
+  // stronger than per-flash arithmetic suggests.
+  "twinkle":   { nudge: 0,     radius: 0.12,  spread: 0.10, period: 140, n: 700 },   // control: no coupling
+  "unison":    { nudge: 0.020, radius: 0.20,  spread: 0.03, period: 140, n: 500 },
+  "waves":     { nudge: 0.060, radius: 0.055, spread: 0.02, period: 160, n: 1200 },
+  "stubborn":  { nudge: 0.006, radius: 0.30,  spread: 0.20, period: 140, n: 600 },
+  "avalanche": { nudge: 0.140, radius: 0.10,  spread: 0.06, period: 180, n: 900 },
+};
+
+const LOOKS = {
+  meadow: {
+    label: "meadow", swatch: "#ffd28a", bg: "#04080b", blend: "lighter",
+    note: "Warm flashes in a dark field. The classic.",
+    idle: () => "rgba(255,214,150,0.10)",
+    halo: (g) => "rgba(255,178,70," + (0.32 * g).toFixed(3) + ")",
+    core: (g) => "rgba(255,240,205," + (0.95 * g).toFixed(3) + ")",
+  },
+  phase: {
+    label: "phase", swatch: "#8ce07a", bg: "#05060a", blend: "lighter", usesPhase: true,
+    note: "Hue = clock phase, so you can watch a wave arrive as a colour gradient " +
+          "before it flashes. Unison = the whole field cycling through one colour.",
+    idle: (h) => "hsla(" + h + ",90%,45%,0.45)",
+    halo: (g, h) => "hsla(" + h + ",95%,62%," + (0.40 * g).toFixed(3) + ")",
+    core: (g, h) => "hsla(" + h + ",55%," + (60 + 30 * g).toFixed(0) + "%," + (0.95 * g).toFixed(3) + ")",
+  },
+  noir: {
+    label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter",
+    note: "White light on black. Just the rhythm.",
+    idle: () => "rgba(255,255,255,0.08)",
+    halo: (g) => "rgba(255,255,255," + (0.25 * g).toFixed(3) + ")",
+    core: (g) => "rgba(255,255,255," + (0.95 * g).toFixed(3) + ")",
+  },
+};
+const LOOK_KEYS = Object.keys(LOOKS);
+
+// ---- state -----------------------------------------------------------------
+let x, y, heading, theta, u, glow;         // u = per-fly frequency offset in [-1,1]
+let flashedNow, queue = [];
+let W = 0, H = 0, dpr = 1;
+
+// spatial grid (rebuilt per step when flashes need propagating)
+let cell = 0, cols = 0, rows = 0;
+let gridStart = null, gridCur = null, gridOrder = null, cellOf = null;
+
+// order parameter + display
+let orderR = 0, rShow = 0;
+const rHist = new Float32Array(480);
+let rHead = 0, rFill = 0;
+
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d", { alpha: false });
+
+function resize() {
+  const had = W > 1 && H > 1;
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = cv.clientWidth || 1; H = cv.clientHeight || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.fillStyle = LOOKS[P.look].bg;
+  ctx.fillRect(0, 0, W, H);
+  // Booting into a zero-size canvas (hidden pane) piles everything at a point.
+  if (!had && W > 1 && x) scatter();
+}
+
+function scatter() {
+  const m = 0.04 * Math.min(W, H);
+  for (let i = 0; i < P.n; i++) {
+    x[i] = m + Math.random() * (W - 2 * m);
+    y[i] = m + Math.random() * (H - 2 * m);
+    heading[i] = Math.random() * TAU;
+  }
+}
+
+function desync() { for (let i = 0; i < P.n; i++) theta[i] = Math.random(); }
+function newClocks() { for (let i = 0; i < P.n; i++) u[i] = Math.random() * 2 - 1; }
+
+function rebuild() {
+  const n = P.n;
+  x = new Float64Array(n); y = new Float64Array(n);
+  heading = new Float64Array(n);
+  theta = new Float64Array(n); u = new Float64Array(n);
+  glow = new Float64Array(n);
+  flashedNow = new Uint8Array(n);
+  cellOf = new Int32Array(n); gridOrder = new Int32Array(n);
+  scatter(); desync(); newClocks();
+}
+
+// ---- the simulation --------------------------------------------------------
+function fire(i) { flashedNow[i] = 1; glow[i] = 1; queue.push(i); }
+
+function buildGrid(R) {
+  cell = Math.max(R, 12);
+  cols = Math.max(1, Math.ceil(W / cell));
+  rows = Math.max(1, Math.ceil(H / cell));
+  const nc = cols * rows;
+  if (!gridStart || gridStart.length < nc + 1) {
+    gridStart = new Int32Array(nc + 1); gridCur = new Int32Array(nc);
+  }
+  gridStart.fill(0, 0, nc + 1);
+  for (let i = 0; i < P.n; i++) {
+    let gx = (x[i] / cell) | 0; if (gx < 0) gx = 0; else if (gx >= cols) gx = cols - 1;
+    let gy = (y[i] / cell) | 0; if (gy < 0) gy = 0; else if (gy >= rows) gy = rows - 1;
+    cellOf[i] = gy * cols + gx;
+    gridStart[cellOf[i] + 1]++;
+  }
+  for (let c = 0; c < nc; c++) { gridStart[c + 1] += gridStart[c]; gridCur[c] = gridStart[c]; }
+  for (let i = 0; i < P.n; i++) gridOrder[gridCur[cellOf[i]]++] = i;
+}
+
+/* Flash propagation. Each flasher nudges every un-flashed neighbour in sight;
+   a nudge past midnight fires that fly too, so the queue can grow as it is
+   walked — that's an avalanche. A fly flashes at most once per step
+   (flashedNow), which is both the refractory period and the loop bound. */
+function propagate(R) {
+  buildGrid(R);
+  const R2 = R * R, k = P.nudge;
+  let qi = 0;
+  while (qi < queue.length) {
+    const f = queue[qi++];
+    let gx = (x[f] / cell) | 0, gy = (y[f] / cell) | 0;
+    if (gx < 0) gx = 0; else if (gx >= cols) gx = cols - 1;
+    if (gy < 0) gy = 0; else if (gy >= rows) gy = rows - 1;
+    for (let cy = Math.max(gy - 1, 0); cy <= Math.min(gy + 1, rows - 1); cy++) {
+      for (let cx = Math.max(gx - 1, 0); cx <= Math.min(gx + 1, cols - 1); cx++) {
+        const c = cy * cols + cx;
+        for (let s = gridStart[c]; s < gridStart[c + 1]; s++) {
+          const j = gridOrder[s];
+          if (flashedNow[j]) continue;
+          const dx = x[j] - x[f], dy = y[j] - y[f];
+          if (dx * dx + dy * dy > R2) continue;
+          theta[j] += k * (0.25 + 0.75 * theta[j]);   // concave: late clocks jump further
+          if (theta[j] >= 1) { theta[j] = 0; fire(j); }
+        }
+      }
+    }
+  }
+}
+
+function stepSim() {
+  const n = P.n, unit = Math.min(W, H);
+  const spd = P.wander * unit / 800, m = 0.05 * unit;
+
+  // gentle wander with soft walls
+  for (let i = 0; i < n; i++) {
+    heading[i] += (Math.random() - 0.5) * P.turn;
+    let wx = 0, wy = 0;
+    if (x[i] < m) wx = 1; else if (x[i] > W - m) wx = -1;
+    if (y[i] < m) wy = 1; else if (y[i] > H - m) wy = -1;
+    if (wx || wy) {
+      const want = Math.atan2(wy, wx);
+      let d = want - heading[i];
+      while (d > Math.PI) d -= TAU; while (d < -Math.PI) d += TAU;
+      heading[i] += d * 0.12;
+    }
+    x[i] += Math.cos(heading[i]) * spd;
+    y[i] += Math.sin(heading[i]) * spd;
+  }
+
+  // clocks tick; natural flashes keep their remainder for accuracy
+  const inv = 1 / P.period, sp = P.spread;
+  queue.length = 0; flashedNow.fill(0);
+  for (let i = 0; i < n; i++) {
+    theta[i] += inv * (1 + sp * u[i]);
+    if (theta[i] >= 1) { theta[i] -= 1; fire(i); }
+  }
+
+  const Rpx = P.radius * unit;
+  if (queue.length && P.nudge > 0 && Rpx > 1) propagate(Rpx);
+
+  for (let i = 0; i < n; i++) { glow[i] *= P.afterglow; if (glow[i] < 0.01) glow[i] = 0; }
+
+  // Kuramoto order parameter: length of the mean phase vector
+  let sc = 0, ss = 0;
+  for (let i = 0; i < n; i++) { const a = theta[i] * TAU; sc += Math.cos(a); ss += Math.sin(a); }
+  orderR = Math.hypot(sc, ss) / n;
+  rShow += (orderR - rShow) * 0.04;
+  rHist[rHead] = orderR; rHead = (rHead + 1) % rHist.length;
+  if (rFill < rHist.length) rFill++;
+}
+
+// ---- rendering -------------------------------------------------------------
+function draw() {
+  const L = LOOKS[P.look], n = P.n;
+  ctx.globalCompositeOperation = "source-over";
+  ctx.fillStyle = L.bg;
+  ctx.fillRect(0, 0, W, H);              // full clear — nothing accumulates
+
+  ctx.globalCompositeOperation = L.blend;
+  const ds = P.dotSize;
+  for (let i = 0; i < n; i++) {
+    const h = L.usesPhase ? (theta[i] * 360) | 0 : 0;
+    ctx.fillStyle = L.idle(h);
+    ctx.beginPath(); ctx.arc(x[i], y[i], ds, 0, TAU); ctx.fill();
+    const g = glow[i];
+    if (g > 0.02) {
+      ctx.fillStyle = L.halo(g, h);
+      ctx.beginPath(); ctx.arc(x[i], y[i], ds * (2.5 + 9 * g), 0, TAU); ctx.fill();
+      ctx.fillStyle = L.core(g, h);
+      ctx.beginPath(); ctx.arc(x[i], y[i], ds * (1 + 2.2 * g), 0, TAU); ctx.fill();
+    }
+  }
+  ctx.globalCompositeOperation = "source-over";
+  if (P.meter) drawMeter();
+}
+
+function drawMeter() {
+  const w = Math.min(260, W - 28), h = 44, x0 = 14, y0 = H - h - 34;
+  ctx.fillStyle = "rgba(8,10,16,0.55)";
+  ctx.fillRect(x0, y0, w, h);
+  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, h - 1);
+  if (rFill > 1) {
+    ctx.strokeStyle = "rgba(255,210,138,0.85)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    const start = (rHead - rFill + rHist.length * 2) % rHist.length;
+    for (let s = 0; s < rFill; s++) {
+      const v = rHist[(start + s) % rHist.length];
+      const px = x0 + 3 + (w - 6) * (s / (rHist.length - 1));
+      const py = y0 + h - 4 - (h - 12) * v;
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.font = "10px ui-sans-serif,system-ui,sans-serif";
+  ctx.fillText("sync " + rShow.toFixed(2), x0 + 6, y0 + 13);
+}
+
+// ---- loop ------------------------------------------------------------------
+let lastT = performance.now(), fps = 0, stepAcc = 0;
+
+function frame(t) {
+  const dt = t - lastT; lastT = t;
+  fps += ((1000 / Math.max(dt, 1)) - fps) * 0.1;
+
+  if (!P.paused) {
+    stepAcc += P.stepsPerFrame;
+    let k = Math.floor(stepAcc);
+    stepAcc -= k;
+    if (k > 40) k = 40;                  // don't replay a backgrounded tab
+    for (let s = 0; s < k; s++) stepSim();
+  }
+  draw();
+
+  document.getElementById("stats").textContent =
+    P.n + " fireflies · sync " + rShow.toFixed(2)
+    + " · " + P.stepsPerFrame.toFixed(2) + " steps/frame"
+    + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
+
+  requestAnimationFrame(frame);
+}
+
+// ---- controls --------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+
+const SLIDERS = [
+  ["per", "period",       (v) => v + " steps"],
+  ["sp",  "spread",       (v) => v === 0 ? "identical" : "±" + (v * 100).toFixed(1) + "%"],
+  ["ng",  "nudge",        (v) => v === 0 ? "off" : (v * 100).toFixed(1) + "% of cycle"],
+  ["rd",  "radius",       (v) => (v * 100).toFixed(0) + "% of floor"],
+  ["wd",  "wander",       (v) => v === 0 ? "still" : v.toFixed(2) + " px/step"],
+  ["ag",  "afterglow",    (v) => Math.round(Math.log(0.5) / Math.log(v)) + "-step ½-life"],
+  ["ds",  "dotSize",      (v) => v.toFixed(1)],
+  ["n",   "n",            (v) => String(v)],
+  ["sf",  "stepsPerFrame",(v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
+                                       : v.toFixed(2) + " ×"],
+];
+
+function syncUI() {
+  for (const [id, key, fmt] of SLIDERS) {
+    $(id).value = P[key];
+    $("v_" + id).textContent = fmt(P[key]);
+  }
+  $("mt").checked = P.meter;
+  $("pause").classList.toggle("on", P.paused);
+  $("pause").textContent = P.paused ? "resume" : "pause";
+  $("looknote").textContent = LOOKS[P.look].note;
+  document.querySelectorAll("#looks .look").forEach((b) => {
+    b.classList.toggle("on", b.dataset.lk === P.look);
+  });
+}
+
+for (const [id, key, fmt] of SLIDERS) {
+  $(id).addEventListener("input", (e) => {
+    const v = parseFloat(e.target.value);
+    if (key === "n") { P.n = v | 0; rebuild(); }
+    else P[key] = v;
+    $("v_" + id).textContent = fmt(P[key]);
+  });
+}
+
+function setLook(k) {
+  P.look = k;
+  document.body.style.background = LOOKS[k].bg;
+  syncUI();
+}
+
+const lookBar = $("looks");
+LOOK_KEYS.forEach((k) => {
+  const b = document.createElement("button");
+  b.className = "look"; b.dataset.lk = k;
+  b.innerHTML = '<span class="sw" style="background:' + LOOKS[k].swatch + '"></span>' + LOOKS[k].label;
+  b.addEventListener("click", () => setLook(k));
+  lookBar.appendChild(b);
+});
+
+const presetBar = $("presets");
+Object.keys(PRESETS).forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.textContent = name;
+  b.addEventListener("click", () => {
+    const wantN = PRESETS[name].n;
+    Object.assign(P, PRESETS[name]);
+    if (x && wantN !== x.length) rebuild(); else desync();
+    rFill = 0; rHead = 0;                // restart the meter trace for this regime
+    syncUI();
+  });
+  presetBar.appendChild(b);
+});
+
+$("mt").addEventListener("change", (e) => { P.meter = e.target.checked; });
+$("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
+$("desync").addEventListener("click", () => { desync(); rFill = 0; rHead = 0; });
+$("scatter").addEventListener("click", () => scatter());
+$("clocks").addEventListener("click", () => newClocks());
+$("toggle").addEventListener("click", () => {
+  const ui = $("ui"); ui.classList.toggle("collapsed");
+  $("toggle").textContent = ui.classList.contains("collapsed") ? "show" : "hide";
+});
+
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
+  else if (e.key === "d") { desync(); rFill = 0; rHead = 0; }
+  else if (e.key === "r") scatter();
+  else if (e.key === "m") { P.meter = !P.meter; syncUI(); }
+  else if (e.key >= "1" && e.key <= String(LOOK_KEYS.length)) setLook(LOOK_KEYS[+e.key - 1]);
+});
+
+addEventListener("resize", resize);
+
+// ---- go --------------------------------------------------------------------
+resize();
+rebuild();
+syncUI();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

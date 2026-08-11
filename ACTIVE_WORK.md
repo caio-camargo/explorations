@@ -25,6 +25,11 @@
 |----------|---------|-------|---------------|
 | *(empty — no active work)* | | | |
 
+> ⚠️ Standing note (2026-08-11): `explorations/dots-friend-enemy/index.html` has uncommitted
+> local changes (an "Influences" group — attractor/predator) from outside any logged session,
+> with no claim row. The fireflies session deliberately left it untouched and uncommitted.
+> Whoever owns it: commit it or claim it. Remove this note once resolved.
+
 ---
 
 ## Unresolved (mid-flight work from interrupted sessions)
