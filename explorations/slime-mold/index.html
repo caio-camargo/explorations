@@ -213,12 +213,17 @@ const TAU = Math.PI * 2;
 const P = {
   n: 11000,            // high enough that the food economy's ~40% workforce tax
                        // still leaves a dense free-roaming lace — see NOTES
-  sensorAngle: 25,     // degrees
+  // Default geometry is the user-discovered "tendrils" regime: narrow sensor
+  // angle + speed 1.25 + low diffusion reaches dead-zone food ~3× faster than
+  // the classic veins geometry (measured: 3,900 → ~1,150 steps), with no loss
+  // of lace complexity. The speed optimum is genuinely non-monotonic:
+  // 1.0 → 3,900 · 1.25 → ~1,150 · 1.5 → 2,900.
+  sensorAngle: 12,     // degrees
   sensorDist: 9,       // field px
   turnRate: 30,        // degrees per step
-  speed: 1.0,          // field px per step
+  speed: 1.25,         // field px per step
   halfLife: 60,        // trail half-life in steps
-  diffuse: 0.6,        // 0..1 blend toward the 3×3 mean per step
+  diffuse: 0.35,       // 0..1 blend toward the 3×3 mean per step
   appetite: 1.2,       // food attraction, in units of the current peak trail
   meal: 0.004,         // fraction of a food cell eaten per agent-visit
   rain: 3,             // new food sources per 1000 steps (0 = off)
@@ -228,7 +233,11 @@ const P = {
 };
 
 // Named network anatomies. Verified measurably distinct — see NOTES.
+// "tendrils" is the user-discovered explorer regime (and the default): narrow
+// sensing, speed at the measured 1.25 optimum, low diffusion — ~3× faster at
+// reaching dead-zone food, same lace complexity.
 const PRESETS = {
+  "tendrils": { n: 11000, sensorAngle: 12, sensorDist: 9,  turnRate: 30, speed: 1.25, halfLife: 60, diffuse: 0.35 },
   "veins":    { n: 11000, sensorAngle: 25, sensorDist: 9,  turnRate: 30, speed: 1.0, halfLife: 60,  diffuse: 0.6 },
   "filigree": { n: 14000, sensorAngle: 45, sensorDist: 4,  turnRate: 60, speed: 1.0, halfLife: 25,  diffuse: 0.35 },
   "cells":    { n: 5000,  sensorAngle: 15, sensorDist: 16, turnRate: 20, speed: 1.2, halfLife: 140, diffuse: 0.8 },

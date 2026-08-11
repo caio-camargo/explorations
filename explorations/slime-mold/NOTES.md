@@ -1,9 +1,9 @@
 # Slime Mold — Physarum transport networks
-**Version**: v1.2.1
+**Version**: v1.3.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Organic vein networks from three whiskers and a scent trail — the Jones (2010) Physarum model, built for watching
-**Status**: Active — v1.2.1 (food economics balanced: lace and hubs coexist)
+**Status**: Active — v1.3 (tendrils regime default; drift understood as emergent)
 
 ---
 
@@ -171,6 +171,41 @@ knob, so pay the tax up front: defaults are now **n = 11,000 with appetite 1.2**
 25.3% coverage — richer than the foodless n=6,000 baseline** (13,574 / 21.4%). The lace and
 the hub economy coexist; the ebb around a hungry hub is still visible, as it should be — it's
 real dynamics, just no longer a collapse.
+
+## The drift, and the tendrils regime (v1.3)
+
+Two more field reports from play, one of each kind: a suspected bug that turned out to be
+physics, and a hand-tuned discovery that measurement confirmed and promoted to the default.
+
+**"Strands slowly drift to the left" — spontaneous symmetry breaking, not a bug.** A fixed
+leftward bias would have been an indexing defect (and there was a real suspect: sensing rounds
+while deposits truncate). Measured across three independent runs, the drift vector came out
+(−0.17, +0.02), (+0.05, −0.06), (−0.01, +0.07) px/step — **direction is random per run and
+wanders within a run**. The pattern spontaneously elects a travelling direction and persists;
+one long session just happened to elect left. This is genuine collective motion of the kind
+active-matter systems produce, so it stays.
+
+**The tendrils regime — user-discovered, measured, now the default.** Playing found that a low
+sensor angle produces "adventurous tendrils" that seek food out instead of waiting to drift
+into it, helped by more agents, *specifically* move speed ≈ 1.25, and lower diffusion. All
+confirmed with a food-discovery-latency protocol (mature a network at n=6,000, drop a source
+into the *emptiest* region, count steps until 40% eaten):
+
+| geometry | steps to find & eat a dead-zone source |
+|---|---|
+| veins (25°, speed 1.0, diffusion 0.6) | 3,900 |
+| **tendrils (12°, speed 1.25, diffusion 0.35)** | **~1,150** |
+| tendrils but speed 1.5 | 2,900 |
+
+~3× faster discovery, with no complexity cost (15,093 junctions — same range as ever). And the
+user's speed sweet spot is *genuinely non-monotonic*: both 1.0 and 1.5 are 2.5–3× worse than
+1.25. Hypothesis (unproven): a growing tendril's tip must follow its own just-laid, ~1px-wide
+filament — too slow and crowding jams the tip, too fast and it overshoots its own trail and
+the tendril dissolves. The narrow sensor angle points the whiskers *along* the filament rather
+than across it, which is why it explores instead of thickening.
+
+`tendrils` is now the first preset and the load default; `veins` remains for the classic
+thick-trunk look.
 
 ## Verification
 

@@ -38,6 +38,43 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Slime mold v1.3: drift is emergent; user's tendrils regime measured in
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User play-report: strands drift left and only engage food when they wander into it; a low sensor
+angle, more agents, move speed ≈1.25, and lower diffusion produce "adventurous tendrils".
+Investigated the drift (suspected my own round-vs-floor indexing mismatch); measured the recipe;
+both resolved.
+
+### Findings
+- **Drift: spontaneous symmetry breaking, not a bug.** Three independent runs gave drift vectors
+  (−0.17,+0.02), (+0.05,−0.06), (−0.01,+0.07) px/step — direction random per run, wandering
+  within a run. The pattern elects a travelling direction; the user's session elected left. The
+  indexing-mismatch hypothesis predicted equal x/y bias and died against a clean y-axis.
+- **Tendrils regime confirmed and quantified.** Food-discovery-latency protocol (source dropped
+  in the emptiest region of a mature n=6,000 network, steps to 40% eaten): veins geometry 3,900;
+  user's recipe (12°, speed 1.25, diffusion 0.35) ~1,150; same but speed 1.5 → 2,900. The 1.25
+  sweet spot is genuinely non-monotonic, exactly as the user reported from feel. No complexity
+  cost (15,093 junctions). Hypothesis for the optimum (unproven, in NOTES): tendril tips must
+  follow their own ~1px filament — too slow jams, too fast overshoots.
+
+### Decisions
+`tendrils` added as first preset and made the load default (12°/1.25/0.35 at n=11,000); `veins`
+kept for the classic look. Defaults block in `P` documents the numbers.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/slime-mold/index.html` | tendrils preset + defaults |
+| 2 | edited | `explorations/slime-mold/NOTES.md` | v1.3 — "The drift, and the tendrils regime" |
+
+### Next Steps
+- [ ] Open threads unchanged; drift could get a fun overlay (velocity arrow) if ever wanted
+
 ## Session 2026-08-11 — Slime mold v1.2.1: the fade while feeding was real economics
 **Source**: Claude Code
 **User**: Caio
