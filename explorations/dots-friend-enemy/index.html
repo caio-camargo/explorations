@@ -355,7 +355,7 @@ const LOOKS = {
     label: "graphite", swatch: "#e9e5dc", bg: "#f4f1ea", blend: "multiply", fade: 6,
     note: "Ink on paper. Multiply blending, so overlapping strokes darken the way ink pools.",
     link: ["rgba(30,26,22,.16)", "rgba(30,26,22,.09)"], floor: "rgba(30,26,22,.14)",
-    glow: ["120,70,50", "60,95,135"], corona: "90,60,140",
+    glow: ["120,70,50", "60,95,135"], corona: "60,40,110",
     color: (t, cyc, _, u) => {
       let a = 0.07 + 0.34*t + (cyc ? 0.16 : 0);
       a *= u > 0 ? 1 + 1.1*u : 1 + 0.45*u;
@@ -367,7 +367,7 @@ const LOOKS = {
     label: "noir", swatch: "#ffffff", bg: "#000000", blend: "lighter", fade: 7,
     note: "Pure white on pure black, additive. Where strokes cross, light accumulates.",
     link: ["rgba(255,255,255,.10)", "rgba(255,255,255,.06)"], floor: "rgba(255,255,255,.13)",
-    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
+    glow: ["255,120,90", "110,200,255"], corona: "120,70,200",
     color: (t, cyc, _, u) => {
       let a = 0.06 + 0.34*t + (cyc ? 0.16 : 0);
       a *= u > 0 ? 1 + 1.1*u : 1 + 0.45*u;
@@ -379,7 +379,7 @@ const LOOKS = {
     label: "phosphor", swatch: "#4fd0e0", bg: "#04070b", blend: "lighter", fade: 8,
     note: "Oscilloscope. Fast dots run hot toward white; slow ones sink into deep cyan.",
     link: ["rgba(120,210,240,.13)", "rgba(240,120,120,.09)"], floor: "rgba(150,220,240,.12)",
-    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
+    glow: ["255,120,90", "110,200,255"], corona: "120,70,200",
     color: (t, cyc, _, u) => {
       let r = 50 + 205*t*t, g = 170 + 85*t, a = 0.09 + 0.36*t + (cyc ? 0.14 : 0);
       if (u > 0) { r += (255 - r) * u; g -= 45 * u; a *= 1 + 0.5*u; }
@@ -392,7 +392,7 @@ const LOOKS = {
     label: "ember", swatch: "#ffb03a", bg: "#0a0603", blend: "lighter", fade: 9,
     note: "Same idea, warm. Amber core burning to pale yellow at speed.",
     link: ["rgba(255,190,110,.12)", "rgba(255,110,90,.09)"], floor: "rgba(255,200,140,.12)",
-    glow: ["255,140,90", "120,190,255"], corona: "200,130,255",
+    glow: ["255,140,90", "120,190,255"], corona: "130,75,205",
     color: (t, cyc, _, u) => {
       let g = 120 + 125*t, b = 30 + 165*t*t, a = 0.09 + 0.36*t + (cyc ? 0.14 : 0);
       if (u > 0) { g += (255 - g) * 0.85*u; b += (255 - b) * 0.85*u; a *= 1 + 0.5*u; }
@@ -407,7 +407,7 @@ const LOOKS = {
     note: "The one look where colour earns its place: hue = which friend-graph cycle a dot " +
           "eventually drains into. Same colour means shared destiny.",
     link: ["rgba(255,255,255,.09)", "rgba(255,120,120,.07)"], floor: "rgba(255,255,255,.11)",
-    glow: ["255,120,90", "110,200,255"], corona: "185,130,255",
+    glow: ["255,120,90", "110,200,255"], corona: "120,70,200",
     // third argument is a hue angle here, not a palette index
     color: (t, cyc, hue, u) => {
       let s = 85, l = 48 + 22*t, a = 0.10 + 0.34*t + (cyc ? 0.16 : 0);
@@ -1046,11 +1046,14 @@ function coronaSprite(tint) {
   if (!sp) {
     sp = document.createElement("canvas"); sp.width = sp.height = 128;
     const g2 = sp.getContext("2d");
+    // Crisp on the inside — the horizon is an edge, not a haze — and only the
+    // outward skirt fades.
     const gr = g2.createRadialGradient(64, 64, 0, 64, 64, 64);
     gr.addColorStop(0, "rgba(" + tint + ",0)");
-    gr.addColorStop(0.60, "rgba(" + tint + ",0)");
-    gr.addColorStop(0.72, "rgba(" + tint + ",0.55)");
-    gr.addColorStop(0.84, "rgba(" + tint + ",0.18)");
+    gr.addColorStop(0.695, "rgba(" + tint + ",0)");
+    gr.addColorStop(0.71, "rgba(" + tint + ",0.6)");
+    gr.addColorStop(0.80, "rgba(" + tint + ",0.28)");
+    gr.addColorStop(0.92, "rgba(" + tint + ",0.07)");
     gr.addColorStop(1, "rgba(" + tint + ",0)");
     g2.fillStyle = gr; g2.fillRect(0, 0, 128, 128);
     coronaCache[tint] = sp;

@@ -1,5 +1,5 @@
 # Dots: friends & enemies
-**Version**: v2.6.1
+**Version**: v2.6.2
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
@@ -437,7 +437,7 @@ stats line. **Cost went down**: O(n) binning every 12 steps replaces O(n) weight
 | `hidden` | The purist setting — the hole, the hot rim, and the warm wake are the predator |
 | `glow` | Soft radial fields in the look's own light (sprite-cached) |
 | `comet` | The agents draw their own ribbon, like the dots. A lunge stretches into a dash |
-| `void` | The predator is an *absence* — a bg-coloured soft hole gliding through the light, with a thin violet **corona** so the black hole exists even over empty black (measured on noir: centre 0, ring 301, outside 0). The attractor is a pinprick star |
+| `void` | The predator is an *absence* — a bg-coloured soft hole gliding through the light, with a thin dark-violet **corona** — crisp on the inside (the horizon is an edge, not a haze), fading only outward — so the black hole exists even over empty black (measured on noir: 0 luminance to 65% of radius, 215 at the rim, 0 outside). The attractor is a pinprick star |
 
 Two v2.6.1 refinements from watching it live: the corona (a bg-coloured hole is invisible where
 there is no light to occlude — the event horizon fixes that), and **eased predator velocity** —

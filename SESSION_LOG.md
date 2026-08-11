@@ -38,6 +38,22 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — v2.6.2: corona tune (darker, crisp inner edge)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: corona purple should be darker, and it shouldn't be diffuse on the inside. Sprite stops
+reshaped — hard step at 0.695→0.71 of radius, skirt only outward — and tints dropped from
+185,130,255-family to 120,70,200-family (60,40,110 ink on graphite). Measured radial profile on
+noir over empty black: 0 luminance through 65% of radius, 215 at the rim (was 301), 74 at 85%,
+0 outside. The horizon is an edge now.
+
+### Next Steps
+- [ ] Image as a sampled field — still specced, still next
+
 ## Session 2026-08-11 — V2.6.1: void corona + eased lunge
 **Source**: Claude Code
 **User**: Caio
