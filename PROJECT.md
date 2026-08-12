@@ -138,6 +138,7 @@ as its own repo.
 - [x] Exploration 2 — fireflies ([`explorations/fireflies/`](explorations/fireflies/)) — pulse-coupled sync, 5 measured regimes
 - [x] Exploration 3 — slime mold ([`explorations/slime-mold/`](explorations/slime-mold/)) — Physarum networks, Float32 field, 4 measured anatomies
 - [x] Exploration 4 — evolution arena ([`explorations/evolution/`](explorations/evolution/)) — heritable genomes, live selection, measured r/K divergence
+- [x] Exploration 5 — Journey Gravity ([`explorations/journey-markov/`](explorations/journey-markov/)) — absorbing Markov chain over real anonymized journeys; **publishing needs Caio's sign-off** (aggregate work data)
 
 ### Up Next
 - [ ] Fireflies open threads (chimeras, Kuramoto coupling, sound) at the bottom of `fireflies/NOTES.md`

@@ -38,6 +38,63 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Exploration 5: Journey Gravity (Markov chain over real journeys)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+The workshop's first utilitarian turn: an absorbing Markov chain fitted over real (anonymized)
+ICP lead journeys across retellai.com properties, visualized as an interactive force graph.
+Each page gets a "gravity" — P(the visitor's story ends in a booked meeting) — plus expected
+remaining pages/time, with a shrinkage slider as the honesty control for n=53.
+
+### Decisions Made
+- **Data never enters the repo raw.** `build_data.py` reads the private CSVs (in
+  `..\..\RetellAI\reports\`) and injects an aggregate-only JSON (paths, counts, dwell sums)
+  into `index.html`; the emitted artifact is PII-scanned at build time.
+- **Fate labeling**: every session's end absorbs into the visitor's eventual outcome
+  (booked/lost). Over-credits early sessions — documented as caveat #2 and the top open thread.
+- Palette per the dataviz skill: categorical trio (all-pairs validated on `#0b0d12`),
+  blue↔red diverging for gravity, status green/red reserved for the absorbing states.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/journey-markov/build_data.py` | Anonymized aggregate builder (117 pages, 442 edges from 1,199 pageviews) |
+| 2 | created | `explorations/journey-markov/index.html` | Self-contained viz: force graph, live Jacobi solver, κ slider, detail panel, sortable table |
+| 3 | created | `explorations/journey-markov/NOTES.md` | Model math, measured findings, caveats, open threads |
+| 4 | edited | `explorations/README.md`, `INDEX.md` | Index rows |
+| 5 | edited | `LESSONS_LEARNED.md` | #13 headless-Chrome screenshot escape hatch; workflow lesson on build-time anonymization |
+
+### Finding worth keeping
+Depth of product engagement predicts booking far better than marketing attention: call-history
+83%, live-monitoring/knowledgeBase 81% vs base 75.1% — while billing (62%), dashboard root
+(63%) and the homepage (71%) sit below base. Survives shrinkage to κ≈10. Session-weighted base
+(75.1%) < visitor-level base (81%) because booked visitors browse more sessions.
+
+### Verification
+Model: no NaNs, gravities bounded [0.50, 0.88], κ-shrinkage monotone toward base,
+start-of-session prediction ≈ base rate. UI exercised via scripted DOM checks. Visuals
+verified from headless-Chrome screenshots (preview pane wouldn't composite again) — caught
+anchors hidden behind the panel, label collisions, and a too-tight layout.
+
+### v1.1 (same session, after user review)
+Caio reviewed v1 and asked for legibility + publication. Shipped: fate layout (height =
+gravity — the vertical center-gravity had to be disabled while it's on, they fought), hover
+focus mode, ghost rendering for the sub-threshold long tail, sqrt contrast easing on colors
+and edges, label decollision, 300-tick boot pre-settle. Debugged the weak fate force
+numerically in the live page (targets vs positions) after two screenshot rounds misled.
+**Publication signed off by Caio** ("push to github, I want to share it") — committed and
+pushed selectively, excluding the other session's uncommitted landing-page `index.html`.
+
+### Next Steps
+- [ ] Open threads in `journey-markov/NOTES.md`: proper credit assignment, per-channel chains,
+      edge fate-coloring, betweenness.
+- [ ] Pre-existing: uncommitted `index.html` landing-page work from the 2026-08-11 session is
+      still in the working tree (its claim row is still active in `ACTIVE_WORK.md`).
+
 ## Session 2026-08-11 — Exploration 4: evolution arena
 **Source**: Claude Code
 **User**: Caio

@@ -26,7 +26,7 @@ Examples:
 
 | # | Date | Lesson | Source |
 |---|------|--------|--------|
-| 1 | | | |
+| 1 | 2026-08-12 | When bringing sensitive work data into a public-repo exploration, do the anonymization in a build script that emits aggregates only, and PII-scan (emails, IDs) the emitted artifact at build time — the repo then can't leak by construction | journey-markov |
 
 ## Tools & Techniques
 
@@ -38,6 +38,7 @@ Examples:
 
 | # | Date | Lesson | Source |
 |---|------|--------|--------|
+| 13 | 2026-08-12 | When the preview pane won't composite (screenshots time out), headless Chrome is the visual-verification escape hatch: `chrome --headless=new --window-size=WxH --virtual-time-budget=8000 --screenshot=out.png file:///…` renders rAF-driven canvas pages for real. It caught three layout bugs (anchors hidden behind the UI panel, label collisions, hairball) that all the DOM/model assertions passed right over. Supersedes the base64 route lesson 5 warns about. | journey-markov |
 | 1 | 2026-08-10 | Sweep simulation parameters programmatically instead of eyeballing the canvas — drive `step()` in a loop and report mean radius / max radius / % pinned at the boundary / px-of-motion-per-step. Caught a preset that silently pinned 62% of dots to the wall and another that froze to a point. | dots-friend-enemy |
 | 2 | 2026-08-10 | Guard the zero-size canvas at boot. A hidden or collapsed pane gives `clientWidth === 0`, so every position clamps onto one point and the sim is dead even after the pane opens. Re-scatter on the first resize that yields a real floor. | dots-friend-enemy |
 | 12 | 2026-08-11 | The hidden preview pane CPU-throttles JavaScript ~10× (a branch-free 512k-op loop benched at 65 Mops/s). This, not JIT decay, explains lesson 8's progressive degradation. Absolute timings from a hidden pane are unusable — only ratios and same-call deltas carry information. Real perf needs a visible page. | slime-mold |
