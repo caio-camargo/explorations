@@ -38,6 +38,39 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Slime mold v1.3.1: the meal made visible
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: food blends in with the mold, and should visibly shrink as consumed ("maybe it already
+does but I can't tell"). It did shrink — eating is per-cell, discs always eroded raggedly —
+but the rendering hid it: a weak fv-proportional tint under a blazing plume made a half-eaten
+source read as dimmer mold rather than a smaller object.
+
+### Fix
+Food renders as a near-solid body with a steep response (vivid until a cell zeroes out), value
+ramp for a rich core / paler nibbled edge, punchier per-look identities: emerald morsel
+(organism), red wax seal (ink), warm gold coin (noir).
+
+### Verification
+Organism: fresh source = 253 green-dominant pixels, **zero** green-dominant pixels elsewhere in
+the frame; count tracks area 253→231→207→96→5→0 over the ~600-step life under the default
+swarm. All three looks show 450–500 food-coloured pixels for fresh sources, no exceptions.
+(Also learned: at n=11,000 tendrils, a source lives only ~600–1,200 steps — the economy runs
+hot at the new defaults.)
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/slime-mold/index.html` | Steep food response + boost ramp + per-look colours |
+| 2 | edited | `explorations/slime-mold/NOTES.md` | v1.3.1 — "The meal made visible" |
+
+### Next Steps
+- [ ] Judge by eye; if sources die too fast at the hot defaults, meal size is the dial
+
 ## Session 2026-08-11 — Slime mold v1.3: drift is emergent; user's tendrils regime measured in
 **Source**: Claude Code
 **User**: Caio

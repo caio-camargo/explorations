@@ -247,21 +247,21 @@ const PRESETS = {
 const LOOKS = {
   organism: {
     label: "organism", swatch: "#e8a33d", bg: "#070604",
-    note: "The classic: amber protoplasm on darkness. Food glows green.",
+    note: "The classic: amber protoplasm on darkness. Food is an emerald morsel.",
     stops: [[0,[7,6,4]],[0.30,[74,44,13]],[0.65,[210,140,50]],[1,[255,240,200]]],
-    foodRGB: [70, 190, 110], foodMix: 0.55,
+    foodRGB: [60, 235, 130], foodMix: 0.92,
   },
   ink: {
     label: "ink", swatch: "#f4f1ea", bg: "#f4f1ea",
-    note: "Dark veins on warm paper — the network as a drawing. Food is a red stain.",
+    note: "Dark veins on warm paper — the network as a drawing. Food is a red wax seal.",
     stops: [[0,[244,241,234]],[0.25,[210,200,182]],[0.6,[110,95,72]],[1,[30,24,16]]],
-    foodRGB: [180, 70, 50], foodMix: 0.45,
+    foodRGB: [198, 44, 32], foodMix: 0.88,
   },
   noir: {
     label: "noir", swatch: "#ffffff", bg: "#000000",
-    note: "White light on black. Just the structure. Food is a dim halo.",
+    note: "White light on black. Just the structure. Food is a warm gold coin.",
     stops: [[0,[0,0,0]],[0.5,[110,110,110]],[1,[255,255,255]]],
-    foodRGB: [90, 90, 90], foodMix: 0.6,
+    foodRGB: [235, 200, 130], foodMix: 0.85,
   },
 };
 const LOOK_KEYS = Object.keys(LOOKS);
@@ -518,9 +518,20 @@ function draw() {
     const o = i * 4, l3 = q * 3;
     let R = lut[l3], G = lut[l3 + 1], B = lut[l3 + 2];
     const fv = food[i];
-    if (fv > 0.01) {                           // food: lerp toward the look's food colour
-      const m = fv * fmix;
-      R += (fr - R) * m; G += (fg - G) * m; B += (fb - B) * m;
+    if (fv > 0.004) {
+      /* Food renders as a near-SOLID body, not a tint. The old fv-proportional
+         lerp faded with remaining value, so a half-eaten source looked dimmer
+         instead of smaller and blended into the plume. The steep curve keeps a
+         cell vividly food-coloured until it zeroes out — so eating reads as
+         the disc shrinking raggedly (which the per-cell physics really does),
+         and the morsel stands apart from the mold at any bite count. A mild
+         value ramp keeps a rich core and a paler nibbled edge. */
+      let m = fv * 4; if (m > 1) m = 1;
+      m *= fmix;
+      const boost = 0.72 + 0.42 * fv;
+      let FR = fr * boost, FG = fg * boost, FB = fb * boost;
+      if (FR > 255) FR = 255; if (FG > 255) FG = 255; if (FB > 255) FB = 255;
+      R += (FR - R) * m; G += (FG - G) * m; B += (FB - B) * m;
     }
     d[o] = R; d[o + 1] = G; d[o + 2] = B;
   }

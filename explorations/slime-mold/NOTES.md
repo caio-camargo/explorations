@@ -1,9 +1,9 @@
 # Slime Mold — Physarum transport networks
-**Version**: v1.3.0
+**Version**: v1.3.1
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-11
 **Purpose**: Organic vein networks from three whiskers and a scent trail — the Jones (2010) Physarum model, built for watching
-**Status**: Active — v1.3 (tendrils regime default; drift understood as emergent)
+**Status**: Active — v1.3.1 (food renders as a solid morsel that visibly shrinks)
 
 ---
 
@@ -206,6 +206,26 @@ than across it, which is why it explores instead of thickening.
 
 `tendrils` is now the first preset and the load default; `veins` remains for the classic
 thick-trunk look.
+
+## The meal made visible (v1.3.1)
+
+User: food "blends in with the mold… it would also be cool if it shrunk as it was consumed
+(maybe it already does but I can't tell)." It *did* shrink — eating is per-cell, so discs
+always eroded raggedly — but the rendering hid it: food was a weak tint (max 55% mix, scaled
+by remaining value) applied under a blazing plume, so a half-eaten source read as *dimmer
+mold*, not a smaller object.
+
+Food now renders as a near-solid body with a steep response: a cell stays vividly
+food-coloured until it zeroes out, so consumption reads as area loss — the disc being bitten
+away — instead of colour fade. A mild value ramp keeps a rich core and a paler nibbled edge,
+and each look gets a proper object identity: an **emerald morsel** on organism, a **red wax
+seal** on ink, a **warm gold coin** on noir.
+
+Measured on organism: a fresh source renders 253 green-dominant pixels with **zero**
+green-dominant pixels anywhere else in the frame (perfect separation from the mold), and the
+count falls 253 → 231 → 207 → 96 → 5 → 0 across its ~600-step life under the default swarm —
+the shrink is now the visible signal. Distinctness verified in all three looks (450–500
+food-coloured pixels per pair of fresh sources).
 
 ## Verification
 
