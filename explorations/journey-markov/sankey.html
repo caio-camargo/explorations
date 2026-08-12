@@ -75,6 +75,10 @@
 <header>
   <h1>Journey Funnel</h1>
   <a href="index.html">← gravity graph</a>
+  <label style="font-size:11px;color:var(--dim);cursor:pointer">
+    <input type="checkbox" id="collapseApp" checked style="accent-color:var(--accent);vertical-align:-1px">
+    collapse app pages
+  </label>
   <span style="font-size:11px;color:var(--dim)" id="meta"></span>
 </header>
 <div id="sub">
@@ -83,7 +87,10 @@
   <b style="color:var(--booked)">BOOKED</b> (meeting scheduled) vs
   <b style="color:#9aa0b0">EXIT</b> vs still browsing. Green ribbons carry bookings from the
   gate at the step where they happen (count printed at each departure); strict booking-event
-  semantics — green exists only where the demo-request form is. Hover anything for counts.
+  semantics — green exists only where the demo-request form is. The product console is
+  collapsed to one <b>dashboard app</b> lane — this is a marketing view, so who enters and
+  leaves the app matters more than where they go inside it (untick to expand). Hover
+  anything for counts.
 </div>
 <div id="wrap"></div>
 <div id="tip"></div>
@@ -113,7 +120,10 @@ const BOOKED_C = CSS.getPropertyValue("--booked").trim();
 const EXIT_C = CSS.getPropertyValue("--exit").trim();
 const GATES = new Set(["/enterprise-plan"]);
 
+const APP_ID = "dashboard app";
+const isApp = id => id.startsWith("dashboard.") || id === "(other dashboard)";
 const propOf = id => {
+  if (id === APP_ID) return "dashboard";
   if (id.startsWith("(other")) return id.includes("dashboard") ? "dashboard" : id.includes("docs") ? "docs" : "www";
   if (id.startsWith("dashboard.")) return "dashboard";
   if (id.startsWith("docs.")) return "docs";
@@ -121,28 +131,39 @@ const propOf = id => {
 };
 const isOther = id => id.startsWith("(other");
 
-/* ---------- assemble per-column nodes ---------- */
-// node key: `${col}|${id}` — columns: 0 START, 1..MAX pages, MAX+1 continues
-const nodes = new Map();
+/* ---------- build (re-runs when the app-collapse toggle changes) ---------- */
+// Collapsing maps every dashboard.* page onto one "dashboard app" node per column:
+// the marketing question keeps who enters/leaves the app; movement inside it merges
+// into a single straight lane.
+const TERM = MAX + 1; // the outcome column: BOOKED / still browsing / EXIT as real
+// terminal nodes, so outcome magnitudes are comparable by height
+let nodes, links, cols, scale;
+function build(collapseApp) {
+const mapId = id => collapseApp && isApp(id) ? APP_ID : id;
+// node key: `${col}|${id}` — columns: 0 START, 1..MAX pages, MAX+1 outcome
+nodes = new Map();
 function node(col, id) {
   const k = col + "|" + id;
   if (!nodes.has(k)) nodes.set(k, { col, id, in: 0, out: 0, srcOff: 0, dstOff: 0 });
   return nodes.get(k);
 }
-const TERM = MAX + 1; // the outcome column: BOOKED / still browsing / EXIT as real
-// terminal nodes, so outcome magnitudes are comparable by height
-const links = []; // {src, dst, n, kind: 'flow'|'booked'|'exit'}
-for (const f of SK.flows) {
-  const s = node(f.c, f.from === "__START__" ? "START" : f.from);
-  const d = node(f.c + 1, f.to === "__CONTINUES__" ? "still browsing" : f.to);
-  s.out += f.n; d.in += f.n;
-  links.push({ src: s, dst: d, n: f.n, kind: "flow" });
-}
-for (const e of SK.ends) {
-  const s = node(e.c, e.from);
-  const d = node(TERM, e.end === "booked" ? "BOOKED" : "EXIT");
-  s.out += e.n; d.in += e.n;
-  links.push({ src: s, dst: d, n: e.n, kind: e.end });
+// accumulate first: after collapsing, many raw rows merge into one link
+links = [];
+const acc = new Map();
+const addL = (sCol, sId, dCol, dId, n, kind) => {
+  const k = sCol + "|" + sId + "|" + dId + "|" + kind;
+  if (acc.has(k)) acc.get(k).n += n;
+  else acc.set(k, { sCol, sId, dCol, dId, n, kind });
+};
+for (const f of SK.flows)
+  addL(f.c, f.from === "__START__" ? "START" : mapId(f.from),
+       f.c + 1, f.to === "__CONTINUES__" ? "still browsing" : mapId(f.to), f.n, "flow");
+for (const e of SK.ends)
+  addL(e.c, mapId(e.from), TERM, e.end === "booked" ? "BOOKED" : "EXIT", e.n, e.end);
+for (const a of acc.values()) {
+  const s = node(a.sCol, a.sId), d = node(a.dCol, a.dId);
+  s.out += a.n; d.in += a.n;
+  links.push({ src: s, dst: d, n: a.n, kind: a.kind });
 }
 const totBooked = SK.ends.filter(e => e.end === "booked").reduce((a, e) => a + e.n, 0);
 const sessions = DATA.meta.sessions;
@@ -166,7 +187,7 @@ const groupRank = n =>
   n.id === "EXIT" ? 9 :
   ({ www: 2, docs: 4, dashboard: 6 })[propOf(n.id)] + (isOther(n.id) ? 1 : 0);
 
-const cols = [];
+cols = [];
 for (let c = 0; c < NCOLS; c++) {
   const list = [...nodes.values()].filter(n => n.col === c);
   list.sort((a, b) => groupRank(a) - groupRank(b) || Math.max(b.in, b.out) - Math.max(a.in, a.out));
@@ -174,7 +195,7 @@ for (let c = 0; c < NCOLS; c++) {
 }
 const usableH = Hv - M.t - M.b;
 // per-column: value budget = usable height minus this column's gaps; global scale = tightest
-const scale = Math.min(...cols.map(list => {
+scale = Math.min(...cols.map(list => {
   const sum = list.reduce((a, n) => a + Math.max(n.in, n.out), 0);
   return sum ? (usableH - GAP * Math.max(0, list.length - 1)) / sum : Infinity;
 })) * 0.98;
@@ -249,6 +270,8 @@ for (const list of cols) for (const n of list) {
   const gate = GATES.has(n.id);
   const tip = term
     ? `${esc(n.id)}|${n.in} of ${sessions} sessions${n.id === "BOOKED" ? " — meeting scheduled (held-rate not measured)" : n.id === "EXIT" ? " end without booking" : " are still going past step " + MAX}`
+    : n.id === APP_ID
+    ? `${esc(n.id)}|${Math.max(n.in, n.out)} sessions in the product console at step ${n.col} — pages collapsed; untick "collapse app pages" to expand`
     : `${esc(n.id)}|${Math.max(n.in, n.out)} sessions pass through (${n.col === 0 ? "start" : "step " + n.col})`;
   S.push(`<rect class="node" x="${n.x}" y="${n.y}" width="${NW}" height="${n.h}" rx="3"
     fill="${col}" opacity="${op}" ${gate ? `stroke="${BOOKED_C}" stroke-width="1.6" stroke-dasharray="4 3"` : ""}
@@ -281,7 +304,8 @@ svg.addEventListener("mouseleave", () => { tip.style.display = "none"; dim(null)
 /* ---------- table-view twin ---------- */
 (() => {
   const endAt = (c, id, kind) =>
-    SK.ends.filter(e => e.c === c && e.from === id && e.end === kind).reduce((a, e) => a + e.n, 0);
+    links.filter(l => l.src.col === c && l.src.id === id && l.kind === kind)
+         .reduce((a, l) => a + l.n, 0);
   let t1 = `<table><caption>Per step</caption><tr><th>step</th><th>sessions</th><th>book</th><th>exit</th><th>continue</th></tr>`;
   for (let c = 1; c <= MAX; c++) {
     const list = cols[c];
@@ -310,6 +334,11 @@ function dim(active) {
       p.style.opacity = (p.dataset.src === id || p.dataset.dst === id) ? 0.85 : 0.08);
   }
 }
+} // end build()
+
+const collapseBox = document.getElementById("collapseApp");
+build(collapseBox.checked);
+collapseBox.onchange = e => build(e.target.checked);
 </script>
 </body>
 </html>

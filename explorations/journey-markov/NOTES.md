@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.6.0
+**Version**: 1.7.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -131,6 +131,15 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v1.7 — the app as one lane** (Caio: this is a marketing view; who enters and leaves the
+dashboard matters, where they go inside it doesn't). All `dashboard.*` pages collapse into a
+single "dashboard app" node per column — the app becomes one calm river along the bottom
+(narrowing as sessions exit, feeding "still browsing"), marketing↔app crossovers stay
+visible as strands between the lanes, and the marketing story owns the top half. A header
+toggle expands the detail (51 nodes/155 ribbons collapsed ↔ 91/297 expanded; conservation
+verified at 245 both ways). Audience framing beats completeness: the collapsed default is
+the honest chart *for the question being asked*.
 
 **v1.6 — terminal outcome column** (Caio: "shouldn't book aggregate into one band at the
 end? The vertical aggregate height lets us compare that to other outcomes"). Correct, and
