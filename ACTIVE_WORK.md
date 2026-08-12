@@ -24,6 +24,8 @@
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
 | Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html`, `README.md` |
+> Note for the landing-page session: `explorations/journey-markov/` shipped 2026-08-12 and is
+> live but not yet linked from the landing page — add its card when rebuilding.
 
 > Resolved 2026-08-11: the unclaimed `dots-friend-enemy` changes were the V2.4 influences work
 > (wandering attractor + predator). Committed by that session. The miss was real — it edited a
@@ -35,3 +37,7 @@
 ## Unresolved (mid-flight work from interrupted sessions)
 
 *Nothing currently unresolved.*
+
+> Resolved 2026-08-12: the sankey v1.5 NOTES/SESSION_LOG entries were written by the
+> graph-spacing session that held those files (NOTES bumped to 1.5.0, §"The funnel view"
+> extended, SESSION_LOG "v1.5" entry covers both pages).

@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.4.0
+**Version**: 1.5.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -117,12 +117,20 @@ inspect) that shapes *who* books. Product sessions rarely end at the form — pe
 separate, shorter, marketing-shaped session. Neither lens alone tells the truth; the toggle
 is the insight.
 
-### The funnel view ([sankey.html](sankey.html), v1.4)
+### The funnel view ([sankey.html](sankey.html), v1.4 → v1.5)
 
 The same aggregate, step-indexed: each Sankey column is one step into a session (consecutive
-reloads collapsed), ribbons flow left to right, bookings rise into a green band (event
-semantics — green exists only at the gate), everything else sinks to EXIT or pools into
-"still browsing" past the last column.
+reloads collapsed), ribbons flow left to right, bookings leave as green stubs at the step
+where they happen (event semantics — green exists only at the gate), everything else exits
+or pools into "still browsing" past the last column.
+
+**v1.5 best-practice pass** (per the research doc, applied by the parallel Sankey session):
+the full-width terminal BOOKED/EXIT bands were replaced with **per-column stubs** — the
+convention for drop-off funnels, and the fix for the arcs that were manufacturing crossings;
+node ordering became gate-anchored to cut crossings further; the non-booking mass was
+softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
+the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
+header.)
 
 What the step indexing adds that the graph can't show: **the modal booked session is two
 steps long** — of 37 booking sessions, 16 book at step 2 and 9 more at step 3; it's
@@ -209,6 +217,25 @@ sortable full-data table for accessibility.
 - Visual: verified from headless-Chrome screenshots (the preview pane wouldn't composite
   again); layout fixes (panel-aware anchors, label halos, stronger repulsion) came from
   actually looking, which numeric checks would never have caught.
+
+**v1.5** — spacing pass on the graph, applying
+[`docs/research/dataviz-sankey-best-practices.md`](../../docs/research/dataviz-sankey-best-practices.md)
+Part 1 to the force layout (the research was produced for the Sankey; its general
+principles transfer):
+
+- **Fold minors into "Other"** (§2.2, the anti-spaghetti rule): pages below the threshold no
+  longer float as ghost dots — they collapse into one dashed `(other www / dashboard / docs)`
+  node per property that **carries their traffic with it**, so edge weight is conserved
+  (verified: 1,199 in = 1,199 out). At the default threshold that's 67 pages folded into 3
+  nodes; 117 pages → 56 visible marks, 442 → 341 drawn transitions. The slider unfolds them.
+- **Rank-spaced fate axis**: height now encodes gravity *rank*, evenly spaced, instead of the
+  raw value. The event-mode distribution is heavily skewed (a long low tail, a few leaders),
+  so a linear axis piled two-thirds of the pages into one band — the ranking was invisible
+  precisely where it mattered. Colour still carries the true value, so the pair reads as
+  "order by height, magnitude by hue".
+- **Pairwise collision resolution**: no two visible nodes may overlap, and nodes big enough to
+  carry a label claim extra room. Verified 0 overlapping pairs after settling.
+- Legend gained the "height = gravity rank · colour = gravity" caption and an `(other …)` key.
 
 **v1.3.1** (design notes from Caio): the layout pre-settles ~1200 ticks and boots cold, so
 the first paint is a still map instead of a settling scramble. Dragging became meaningful:

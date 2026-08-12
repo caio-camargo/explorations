@@ -151,6 +151,21 @@ enters the doorway corridor. Verified with synthetic mouse events + headless ren
 NOTE: `build_data.py` gained an uncommitted step-indexed Sankey flow computation from
 outside this session (mentions a future `sankey.html`); deliberately left unstaged.
 
+### v1.5 (same session) — research-driven spacing pass, both pages
+Caio ran best-practice research (`docs/research/dataviz-sankey-best-practices.md`, produced
+while iterating the Sankey) and asked whether its general principles apply to the graph's
+clustering. They did:
+- **Graph** (this session): tail pages fold into three dashed `(other <prop>)` nodes that
+  carry their traffic — anti-spaghetti rule; edge weight conserved 1,199 = 1,199; 117 pages →
+  56 visible marks. Fate axis switched to **rank spacing** (the skewed event-mode
+  distribution had piled 2/3 of pages into one band under a linear axis; colour still carries
+  the true value). Pairwise collision resolution with extra room for labeled nodes — 0
+  overlapping pairs after settling.
+- **Sankey** (parallel session, shipped as its own commit): per-column booked/exit stubs
+  replacing the terminal bands, gate-anchored ordering, softened mass, table twin, gap-aware
+  scale. Its NOTES/SESSION_LOG entries were handed to this session via `ACTIVE_WORK.md`
+  because this session held those files — recorded here and in NOTES §"The funnel view".
+
 ### v1.4 (same session)
 Fork per Caio: a Sankey funnel as a sibling page (`journey-markov/sankey.html`). Build script
 now emits step-indexed flows (6 steps, reloads collapsed, tail folded per property, event-

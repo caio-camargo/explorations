@@ -199,7 +199,7 @@
         <input type="range" id="mv" min="1" max="30" step="1">
       </div>
       <div class="row">
-        <label title="Pages with fewer visits than this become faint ghost dots with no edges or labels — the site's long tail, visible but quiet.">Min visits (map)</label><span class="val" id="v_mm"></span>
+        <label title="Pages with fewer visits than this fold into one dashed '(other …)' node per property, carrying their traffic with them. Display only — the model always uses every page.">Fold tail below</label><span class="val" id="v_mm"></span>
         <input type="range" id="mm" min="1" max="20" step="1">
       </div>
       <label class="check"><input type="checkbox" id="fate" checked> fate layout
@@ -339,8 +339,17 @@ const GATES = new Set(["/enterprise-plan"]);
 const START = { id: "session start", pseudo: "start" };
 const BOOKED = { id: "BOOKED", pseudo: "booked" };
 const LOST = { id: "LOST", pseudo: "lost" };
-const nodes = [...pages, START, BOOKED, LOST];
-const IX_START = N, IX_BOOKED = N + 1, IX_LOST = N + 2;
+// The long tail folds into one aggregate node per property ("fold minors into
+// Other" — docs/research/dataviz-sankey-best-practices.md). Display-only: the
+// model always runs on every real page.
+const OTHERS = [
+  { id: "(other www)", other: "www" },
+  { id: "(other dashboard)", other: "dashboard" },
+  { id: "(other docs)", other: "docs" },
+];
+const nodes = [...pages, START, BOOKED, LOST, ...OTHERS];
+const IX_START = N, IX_BOOKED = N + 1, IX_LOST = N + 2, IX_OTHER0 = N + 3;
+const otherIx = prop => IX_OTHER0 + (prop === "www" ? 0 : prop === "dashboard" ? 1 : 2);
 
 let rngS = 1234;
 const rng = () => (rngS = (rngS * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
@@ -351,8 +360,9 @@ for (let i = 0; i < nodes.length; i++) {
   n.ix = i;
   n.x = (rng() - .5) * 900; n.y = (rng() - .5) * 600;
   n.vx = 0; n.vy = 0; n.pin = false; n.anchor = false;
-  n.gate = !n.pseudo && GATES.has(n.id);
-  n.r = n.pseudo ? 14 : 3.5 + 11 * Math.sqrt(n.visits / maxVisits);
+  n.gate = !n.pseudo && !n.other && GATES.has(n.id);
+  n.folded = false; n.fateR = 0.5;
+  n.r = n.pseudo ? 14 : n.other ? 8 : 3.5 + 11 * Math.sqrt(n.visits / maxVisits);
 }
 
 // display edges — rebuilt per mode, because the semantics decide where an
@@ -360,14 +370,17 @@ for (let i = 0; i < nodes.length; i++) {
 let allEdges = [], maxEdge = 1;
 let neighbors = nodes.map(() => new Set());
 function buildGraphEdges(mode) {
+  // fold: pages under the map threshold collapse into their property's "(other)" node
+  for (let i = 0; i < N; i++) nodes[i].folded = !nodes[i].gate && pages[i].visits < S.mapMin;
+  const mapIx = i => nodes[i].folded ? otherIx(pages[i].prop) : i;
   const merged = new Map();
   for (const e of DATA.edges) {
-    const a = e.from === "__START__" ? IX_START : pageIx.get(e.from);
+    const a = e.from === "__START__" ? IX_START : mapIx(pageIx.get(e.from));
     let b;
     if (e.to === "__BOOKED__")
       b = (mode === "fate" || GATES.has(e.from)) ? IX_BOOKED : IX_LOST;
     else if (e.to === "__LOST__") b = IX_LOST;
-    else b = pageIx.get(e.to);
+    else b = mapIx(pageIx.get(e.to));
     const key = a * 100000 + b;
     merged.set(key, (merged.get(key) || 0) + e.n);
   }
@@ -378,6 +391,17 @@ function buildGraphEdges(mode) {
   maxEdge = Math.max(...allEdges.map(e => e.n));
   neighbors = nodes.map(() => new Set());
   for (const e of allEdges) if (!e.self) { neighbors[e.a].add(e.b); neighbors[e.b].add(e.a); }
+  // aggregate stats for the three "(other)" nodes
+  for (const o of OTHERS) { o.visits = 0; o.dwell = 0; o.count = 0; o.gSum = 0; }
+  for (let i = 0; i < N; i++) if (nodes[i].folded) {
+    const o = nodes[otherIx(pages[i].prop)];
+    o.visits += pages[i].visits; o.dwell += pages[i].dwell;
+    o.count++; o.gSum += model.g[i] * pages[i].visits;
+  }
+  for (const o of OTHERS) {
+    o.gMean = o.visits ? o.gSum / o.visits : BASE;
+    o.r = o.count ? 5 + 6 * Math.sqrt(o.visits / maxVisits) : 0; // r=0 → hidden
+  }
 }
 
 /* ---------- force layout ---------- */
@@ -401,7 +425,7 @@ pinAnchors();
 
 let heat = 1;
 function tick() {
-  const rep = 5600, spring = 0.010, cgrav = 0.009, damp = 0.86;
+  const rep = 7000, spring = 0.010, cgrav = 0.007, damp = 0.86;
   for (let i = 0; i < nodes.length; i++) {
     const a = nodes[i];
     if (a.pin) continue;
@@ -428,12 +452,12 @@ function tick() {
     if (!a.pin) { a.vx += f * dx * heat; a.vy += f * dy * heat; }
     if (!b.pin) { b.vx -= f * dx * heat; b.vy -= f * dy * heat; }
   }
-  // fate layout: height encodes gravity (up = booked, down = lost)
+  // fate layout: height encodes gravity RANK (evenly spaced — a linear scale
+  // stacked the skewed event-mode distribution into one crowded band)
   if (S.fateLayout) {
-    for (let i = 0; i < N; i++) {
-      const n = nodes[i];
-      const gn = (model.g[i] - gLo) / Math.max(1e-9, gHi - gLo);
-      const ty = LOST.y + (BOOKED.y - LOST.y) * gn;
+    for (const n of nodes) {
+      if (n.pseudo || n.folded || (n.other && !n.count)) continue;
+      const ty = LOST.y + (BOOKED.y - LOST.y) * n.fateR;
       n.vy += (ty - n.y) * 0.06;
     }
   }
@@ -443,6 +467,29 @@ function tick() {
   for (const n of nodes) if (!n.pin) {
     n.x += n.vx; n.y += n.vy;
     if (!n.pseudo && n.x > gxMax) n.x = gxMax;
+  }
+  // collision: no two visible nodes overlap — labels need the breathing room
+  for (let pass = 0; pass < 2; pass++) {
+    for (let i = 0; i < nodes.length; i++) {
+      const a = nodes[i];
+      if (a.folded || (a.other && !a.count)) continue;
+      for (let j = i + 1; j < nodes.length; j++) {
+        const b = nodes[j];
+        if (b.folded || (b.other && !b.count)) continue;
+        // big nodes carry labels, so they claim more room than their radius
+        const minD = a.r + b.r + 10 + (a.r > 8 ? 8 : 0) + (b.r > 8 ? 8 : 0);
+        let dx = b.x - a.x, dy = b.y - a.y;
+        let d = Math.hypot(dx, dy);
+        if (d >= minD) continue;
+        if (d < 1e-3) { dx = 1; dy = 0; d = 1; }
+        const push = (minD - d) / d * 0.5;
+        if (!a.pin && !b.pin) {
+          a.x -= dx * push; a.y -= dy * push;
+          b.x += dx * push; b.y += dy * push;
+        } else if (!a.pin) { a.x -= dx * push * 2; a.y -= dy * push * 2; }
+        else if (!b.pin) { b.x += dx * push * 2; b.y += dy * push * 2; }
+      }
+    }
   }
   heat = Math.max(0.05, heat * 0.9985);
 }
@@ -499,9 +546,9 @@ function nodeColor(n) {
   if (n.pseudo === "booked") return COL.booked;
   if (n.pseudo === "lost") return S.mode === "event" ? "#8e93a6" : COL.lost;
   if (n.pseudo === "start") return "#b8bdcc";
-  if (S.colorby === "prop") return COL[n.prop];
+  if (S.colorby === "prop") return COL[n.other || n.prop];
   if (S.colorby === "dwell") return seqColor((n.visits ? n.dwell / n.visits : 0) / maxDwellMean());
-  return gravColor(model.g[n.ix]);
+  return gravColor(n.other ? n.gMean : model.g[n.ix]);
 }
 
 const MODES = [["event", "Booking event"], ["fate", "Visitor fate"]];
@@ -546,6 +593,10 @@ function renderLegend() {
     item(COL.dashboard, "dashboard — the product");
     item(COL.docs, "docs");
   } else if (S.colorby === "gravity") {
+    const cap = document.createElement("div");
+    cap.style.cssText = "font-size:10px;color:var(--dim);margin-bottom:2px";
+    cap.textContent = "height = gravity rank · colour = gravity";
+    L.appendChild(cap);
     const bar = document.createElement("div"); bar.className = "bar";
     bar.style.background = `linear-gradient(90deg, ${COL.lo}, ${COL.mid}, ${COL.hi})`;
     L.appendChild(bar);
@@ -567,6 +618,10 @@ function renderLegend() {
   g.innerHTML = `<span class="sw" style="background:transparent;border:1.5px dashed rgba(12,163,12,.8)"></span>` +
     `<span>gate — the demo-request form; every booking passes through it</span>`;
   L.appendChild(g);
+  const o = document.createElement("div"); o.className = "item";
+  o.innerHTML = `<span class="sw" style="background:rgba(142,147,166,.35);border-style:dashed"></span>` +
+    `<span>(other …) — the long tail, folded per property</span>`;
+  L.appendChild(o);
 }
 
 function bindRange(id, valId, key, fmt, after) {
@@ -579,11 +634,17 @@ function bindRange(id, valId, key, fmt, after) {
 
 function refit() {
   buildCounts(S.mode);
-  buildGraphEdges(S.mode);
   LOST.id = S.mode === "event" ? "EXIT" : "LOST";
   solve(S.kappa);
+  buildGraphEdges(S.mode); // after solve: the "(other)" aggregates average model.g
   const gs = pages.map((p, i) => model.g[i]);
   gLo = Math.min(...gs); gHi = Math.max(...gs);
+  // fate-axis targets by RANK: evenly spaced top-to-bottom, ties broken by g
+  const ranked = [];
+  for (let i = 0; i < N; i++) if (!nodes[i].folded) ranked.push([nodes[i], model.g[i]]);
+  for (const o of OTHERS) if (o.count) ranked.push([o, o.gMean]);
+  ranked.sort((a, b) => a[1] - b[1]);
+  ranked.forEach(([n], k) => { n.fateR = ranked.length > 1 ? 0.03 + 0.94 * k / (ranked.length - 1) : 0.5; });
   $("modenote").textContent = modeNotes[S.mode];
   $("lowLabel").textContent = S.mode === "event"
     ? "Lowest pull — the product lane" : "Lowest pull — attention sinks";
@@ -600,7 +661,7 @@ function refit() {
 bindRange("k", "v_k", "kappa", v => v.toFixed(1), refit);
 bindRange("e", "v_e", "minEdge", v => "≥ " + v);
 bindRange("mv", "v_mv", "minVisits", v => "≥ " + v, () => renderRanks());
-bindRange("mm", "v_mm", "mapMin", v => "≥ " + v);
+bindRange("mm", "v_mm", "mapMin", v => "≥ " + v, () => { refit(); heat = Math.max(heat, 0.5); });
 $("fate").checked = S.fateLayout;
 $("fate").onchange = e => { S.fateLayout = e.target.checked; heat = Math.max(heat, 0.6); };
 $("loops").checked = S.loops; $("loops").onchange = e => S.loops = e.target.checked;
@@ -738,12 +799,12 @@ function draw(now) {
   // focus: hovering or selecting a node dims everything outside its neighborhood
   const focusIx = (hover >= 0 && hover < N) ? hover : (selected >= 0 ? selected : -1);
   const inFocus = ix => focusIx < 0 || ix === focusIx || neighbors[focusIx].has(ix);
-  const ghost = ix => ix < N && pages[ix].visits < S.mapMin; // long-tail pages: faint, edgeless
+  const hidden = ix => nodes[ix].folded || (nodes[ix].other && !nodes[ix].count);
 
   // edges
   for (const e of allEdges) {
     if (e.n < S.minEdge) continue;
-    if (ghost(e.a) || ghost(e.b)) continue;
+    if (hidden(e.a) || hidden(e.b)) continue;
     const a = nodes[e.a], b = nodes[e.b];
     const dim = !(inFocus(e.a) && inFocus(e.b)) ||
                 (focusIx >= 0 && e.a !== focusIx && e.b !== focusIx);
@@ -798,19 +859,19 @@ function draw(now) {
 
   const labelQueue = [];
   for (const n of nodes) {
+    if (!n.pseudo && hidden(n.ix)) continue;
     const [sx, sy] = toScreen(n.x, n.y);
-    const isGhost = !n.pseudo && ghost(n.ix);
     const dimmed = !n.pseudo && !inFocus(n.ix);
-    const r = n.r * cam.z * (isGhost ? 0.6 : 1);
-    ctx.globalAlpha = isGhost ? 0.22 : dimmed ? 0.25 : 1;
+    const r = n.r * cam.z;
+    ctx.globalAlpha = dimmed ? 0.25 : n.other ? 0.8 : 1;
     ctx.beginPath(); ctx.arc(sx, sy, r, 0, 7);
     ctx.fillStyle = nodeColor(n);
     ctx.fill();
-    if (!isGhost) {
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = "rgba(255,255,255,.22)"; // 1px ring separates overlapping marks
-      ctx.stroke();
-    }
+    ctx.lineWidth = 1;
+    if (n.other) { ctx.setLineDash([3, 2.5]); ctx.strokeStyle = "rgba(255,255,255,.45)"; }
+    else ctx.strokeStyle = "rgba(255,255,255,.22)"; // 1px ring separates overlapping marks
+    ctx.stroke();
+    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
     if (n.pin && !n.anchor) { // user-pinned: a small pin head at the node's shoulder
       ctx.beginPath(); ctx.arc(sx + r * 0.8, sy - r * 0.8, 2.6, 0, 7);
@@ -844,7 +905,7 @@ function draw(now) {
       ctx.strokeText(lbl, sx, sy - r - 9);
       ctx.fillText(lbl, sx, sy - r - 9);
       ctx.textAlign = "left";
-    } else if (labelSet.has(n.ix) && !isGhost && !dimmed) {
+    } else if ((labelSet.has(n.ix) || n.other) && !dimmed) {
       labelQueue.push({ n, sx, sy, r });
     }
   }
@@ -877,6 +938,7 @@ function hit(sx, sy) {
   const [wx, wy] = toWorld(sx, sy);
   let best = -1, bd = 1e9;
   for (const n of nodes) {
+    if (n.folded || (n.other && !n.count)) continue;
     const d = Math.hypot(n.x - wx, n.y - wy);
     if (d < Math.max(n.r + 4, 8) / 1 && d < bd) { bd = d; best = n.ix; }
   }
@@ -909,6 +971,23 @@ cv.addEventListener("mousemove", ev => {
       `<div class="d">${p.visits} visits · ${p.visitors} visitors · ${fmtTime(p.visits ? p.dwell / p.visits : 0)}/visit<br>` +
       `gravity ${(model.g[hover] * 100).toFixed(1)}% (base ${(BASE * 100).toFixed(1)}%) · ` +
       `${model.steps[hover].toFixed(1)} pages, ${fmtTime(model.time[hover])} to go</div>`;
+  } else if (hover >= 0 && nodes[hover].other) {
+    const n = nodes[hover];
+    tip.style.display = "block";
+    tip.style.left = Math.min(W - 310, ev.clientX + 14) + "px";
+    tip.style.top = (ev.clientY + 14) + "px";
+    tip.innerHTML = `<div class="t">${n.id}</div><div class="d">` +
+      `${n.count} low-traffic ${n.other} pages folded together (&lt; ${S.mapMin} visits each)<br>` +
+      `${n.visits} visits combined · mean gravity ${(n.gMean * 100).toFixed(1)}%</div>`;
+  } else if (hover >= 0 && nodes[hover].other) {
+    const n = nodes[hover];
+    tip.style.display = "block";
+    tip.style.left = Math.min(W - 310, ev.clientX + 14) + "px";
+    tip.style.top = (ev.clientY + 14) + "px";
+    tip.innerHTML = `<div class="t">${n.id}</div><div class="d">` +
+      `${n.count} pages under the map threshold, folded into one<br>` +
+      `${n.visits} visits total · mean gravity ${(n.gMean * 100).toFixed(1)}%<br>` +
+      `Lower "min visits (map)" to unfold them.</div>`;
   } else if (hover >= 0) {
     const n = nodes[hover];
     tip.style.display = "block";
