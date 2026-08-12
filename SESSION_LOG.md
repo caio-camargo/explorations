@@ -151,6 +151,14 @@ enters the doorway corridor. Verified with synthetic mouse events + headless ren
 NOTE: `build_data.py` gained an uncommitted step-indexed Sankey flow computation from
 outside this session (mentions a future `sankey.html`); deliberately left unstaged.
 
+### v1.4 (same session)
+Fork per Caio: a Sankey funnel as a sibling page (`journey-markov/sankey.html`). Build script
+now emits step-indexed flows (6 steps, reloads collapsed, tail folded per property, event-
+semantics ends) and injects into every marker-bearing HTML. Hand-rolled SVG sankey, hover
+highlighting, cross-linked with the graph. Conservation verified (245 = 37 booked + 180 exit
++ 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
+(16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
+
 ### Next Steps
 - [ ] Open threads in `journey-markov/NOTES.md`: session-level credit assignment, per-channel
       chains, edge fate-coloring, betweenness.

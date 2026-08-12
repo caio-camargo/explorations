@@ -100,6 +100,35 @@ def main():
     booked_visitors = sum(1 for e in {r["email"] for r in rows} if outcome.get(e) == "booked")
     all_visitors = len({r["email"] for r in rows})
 
+    # ---- step-indexed flows for the Sankey (sankey.html) ----
+    # Column 0 = START, columns 1..MAXSTEP = journey steps (consecutive repeats
+    # of the same page collapsed — a reload is not a step). Top pages by visits
+    # keep their name; the tail folds into "(other <prop>)". Ends use the
+    # booking-event semantics: BOOKED only when a scheduled visitor's session
+    # ends at the gate; everything else EXITs.
+    MAXSTEP = 6
+    TOPN = 12
+    GATE_PAGES = {"/enterprise-plan"}
+    top_pages = set(sorted(pages, key=lambda p: -pages[p]["visits"])[:TOPN]) | GATE_PAGES
+    collapse = lambda p: p if p in top_pages else f"(other {prop_of(p)})"
+
+    flows = collections.Counter()   # (col_from, from, to)
+    ends = collections.Counter()    # (col_from, from, "booked"|"exit")
+    for (email, _sid), evs in sessions.items():
+        seq = []
+        for ev in evs:
+            if not seq or seq[-1] != ev["page"]:
+                seq.append(ev["page"])
+        oc = "booked" if (outcome.get(email) == "booked" and seq[-1] in GATE_PAGES) else "exit"
+        seq_c = [collapse(p) for p in seq[:MAXSTEP]]
+        flows[(0, "__START__", seq_c[0])] += 1
+        for k in range(1, len(seq_c)):
+            flows[(k, seq_c[k - 1], seq_c[k])] += 1
+        if len(seq) > MAXSTEP:
+            flows[(MAXSTEP, seq_c[-1], "__CONTINUES__")] += 1
+        else:
+            ends[(len(seq_c), seq_c[-1], oc)] += 1
+
     out = {
         "meta": {
             "source": "ICP lead journeys, retellai.com properties (anonymized aggregate)",
@@ -126,6 +155,17 @@ def main():
             {"from": a, "to": b, "n": n}
             for (a, b), n in sorted(edges.items(), key=lambda kv: -kv[1])
         ],
+        "sankey": {
+            "maxstep": MAXSTEP,
+            "flows": [
+                {"c": c, "from": a, "to": b, "n": n}
+                for (c, a, b), n in sorted(flows.items())
+            ],
+            "ends": [
+                {"c": c, "from": a, "end": e, "n": n}
+                for (c, a, e), n in sorted(ends.items())
+            ],
+        },
     }
 
     js = json.dumps(out, separators=(",", ":"))
@@ -133,13 +173,16 @@ def main():
         print(js)
         return
 
-    html_path = HERE / "index.html"
-    html = html_path.read_text(encoding="utf-8")
     start, end = "/*DATA-START*/", "/*DATA-END*/"
-    i, j = html.index(start) + len(start), html.index(end)
-    html_path.write_text(html[:i] + js + html[j:], encoding="utf-8")
-    print(f"injected {len(js)} bytes into index.html — "
-          f"{len(out['pages'])} pages, {len(out['edges'])} edges, "
+    for html_path in sorted(HERE.glob("*.html")):
+        html = html_path.read_text(encoding="utf-8")
+        if start not in html:
+            continue
+        i, j = html.index(start) + len(start), html.index(end)
+        html_path.write_text(html[:i] + js + html[j:], encoding="utf-8")
+        print(f"injected {len(js)} bytes into {html_path.name}")
+    print(f"{len(out['pages'])} pages, {len(out['edges'])} edges, "
+          f"{len(out['sankey']['flows'])} sankey flows, {len(out['sankey']['ends'])} ends, "
           f"{n_sessions} sessions, {all_visitors} visitors ({booked_visitors} booked)")
 
 if __name__ == "__main__":

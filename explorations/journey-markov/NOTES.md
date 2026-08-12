@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.3.1
+**Version**: 1.4.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -117,6 +117,23 @@ inspect) that shapes *who* books. Product sessions rarely end at the form — pe
 separate, shorter, marketing-shaped session. Neither lens alone tells the truth; the toggle
 is the insight.
 
+### The funnel view ([sankey.html](sankey.html), v1.4)
+
+The same aggregate, step-indexed: each Sankey column is one step into a session (consecutive
+reloads collapsed), ribbons flow left to right, bookings rise into a green band (event
+semantics — green exists only at the gate), everything else sinks to EXIT or pools into
+"still browsing" past the last column.
+
+What the step indexing adds that the graph can't show: **the modal booked session is two
+steps long** — of 37 booking sessions, 16 book at step 2 and 9 more at step 3; it's
+land → form → book, not a wander. Meanwhile the sessions that survive to step 6+ are almost
+entirely dashboard sessions heading for "still browsing", not for the form. The funnel and
+the two-lens finding agree: booking is a short marketing-lane errand, often by people whose
+long sessions happened elsewhere.
+
+Conservation checked programmatically: 245 sessions in; 37 booked + 180 exits +
+28 still-browsing out; every column's inflow equals its outflow.
+
 ### The gate (domain datum from Caio, v1.2)
 
 `/enterprise-plan` is not just another page — it hosts the demo-request form, so it is the
@@ -198,6 +215,12 @@ the first paint is a still map instead of a settling scramble. Dragging became m
 **dropping a node pins it** (small white pin dot; double-click releases one, re-layout
 releases all) — the map is customizable. And the gate moved flush against BOOKED with an
 x-clamp on free pages, so **nothing stands between the form and the meeting**.
+
+**v1.4**: sibling page [`sankey.html`](sankey.html) — hand-rolled SVG Sankey over
+step-indexed flows (`build_data.py` now emits `sankey.flows`/`sankey.ends` and injects into
+every marker-bearing HTML in the folder). Top pages keep names; the tail folds into
+"(other <prop>)" per property; ends use event semantics. Hover highlights a node's ribbons
+(matched by column+id, not substring). Cross-linked with the graph page.
 
 **v1.3**: absorption-semantics toggle (booking event vs visitor fate — see The model),
 human page meanings on tooltips and the detail panel, mode-aware legends and ranked-list
