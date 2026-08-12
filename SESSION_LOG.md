@@ -38,6 +38,47 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Evolution v2: co-evolving predators
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: "add a selection pressure for speed: predators. let's also model their evolution."
+Predators are a full second species — same four genes, same economy, income from kills (55%
+transfer + carcass), own mutation/lineages/extinction counter. Prey flee on detection (fear
+beats hunger). Rings vs dots; white histogram outline; red sparkline (live Lotka–Volterra pair).
+Spatial grids (counting sort, cell 40px) for both directions of nearest-neighbour queries.
+
+### Three ecological collapses, each fixed by the honest mechanism
+1. Two kills funded a division → 826 predators on 92 prey. Fix: **lean trophic economy**
+   (transfer 55%, handling 45) — real food chains transfer ~10%.
+2. Perfect-information pursuit never closes at near-equal speed; prey out-evolve the gap in
+   ~1,500 steps (faster generations) → predators bust 257 → 2. Fix: **surprise** — imperfect
+   vigilance (12%/step notice, 45-step alarm). Stalking exists because watching is hard.
+3. Surprise unbounded the numerical response → 900 predators, then 1. Fix: **interference** —
+   an energy tax per neighbouring predator within 26px. Territory caps carnivores.
+Result: coexistence through 7,000 steps, zero extinctions, oscillations on both ecological and
+evolutionary timescales; predator speed climbs 2.25 → 2.45 against hardening prey.
+
+### The headline, measured clean (same build, same meadow, t=4,700)
+Prey mean speed: predators OFF **1.72** (replicates the v1.1 plateau) vs ON **2.00** —
+predation shifts the speed optimum ~17% above the foraging plateau. Honest negative: sense was
+NOT rescued (6.0 vs 7.0) — flat notice probability means longer whiskers don't pay; "notice ∝
+sense" parked as the lever.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/evolution/index.html` | Predator species end-to-end, grids, fear/notice, interference, rings, two-line sparkline, histogram overlay, checkbox |
+| 2 | edited | `explorations/evolution/NOTES.md` | v2 — "Predators: a selection pressure for speed, itself evolving" |
+| 3 | edited | `explorations/README.md` | Evolution row → v2 |
+
+### Next Steps
+- [ ] Watch: colour by speed, predators on — rings herd the fast reds; sparkline shows the chase
+- [ ] Parked levers: notice ∝ sense; patchy worlds; phylogeny strip
+
 ## Session 2026-08-12 — Evolution v1.1: the engine gene discovers its own theorem
 **Source**: Claude Code
 **User**: Caio

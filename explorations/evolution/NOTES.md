@@ -1,9 +1,9 @@
 # Evolution Arena — selection in real time
-**Version**: v1.1.0
+**Version**: v2.0.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-12
 **Purpose**: Natural selection, watchable — foragers with heritable mutating genomes on a regrowing field
-**Status**: Active — v1.1 (engine gene; quantile colouring)
+**Status**: Active — v2 (co-evolving predators: pursuit, surprise, interference)
 
 ---
 
@@ -115,12 +115,58 @@ The population walks toward the analytic optimum and *builds the predicted corre
 nothing* — selection discovering a theorem. Population stable throughout (≈1,470, zero
 extinctions), and the r-strategy drift continues alongside (patience 104 in the meadow).
 
+## Predators (v2) — a selection pressure for speed, itself evolving
+
+User request: "add a selection pressure for speed: predators. let's also model their
+evolution." Predators are a full second species: the **same four genes under the same
+economy** (so cross-species trait comparisons mean something), income from kills instead of
+grass (a kill transfers the prey's energy at 55% + a carcass value — plump dots are literally
+more nutritious), and their own mutation, lineage hues (seeded red vs prey's green), division,
+and extinction counter. Prey that detect a predator within their *own* sense radius flee —
+fear beats hunger — so speed prices escape and sense prices early warning. Rings are
+predators; the white histogram outline and the red sparkline are theirs (the sparkline pair is
+a live Lotka–Volterra chase).
+
+**Three ecological collapses, each fixed by the honest mechanism:**
+
+1. **Two kills funded a division** → predators boomed 200 → 826 on 92 prey. Fixed with a
+   leaner trophic economy (transfer 55%, longer digestion) — energy transfer in real food
+   chains is ~10%, and lean is what keeps the chase gentle.
+2. **Perfect-information pursuit never closes** on fleeing prey of near-equal speed — prey
+   out-evolved the gap in ~1,500 steps (their generations are faster) and predators busted
+   257 → 2. Fixed with **surprise**: vigilance is imperfect (notice probability 12%/step, then
+   45 steps of alarm). Stalking exists because watching is hard.
+3. **Surprise made the numerical response unbounded** — 900 predators on 720 prey, then
+   collapse to 1. Fixed with **interference**: each neighbouring predator within 26px levies
+   an energy tax. Territory caps a carnivore population even when prey are everywhere.
+
+With all three: prey ~1,300–1,700 and predators 20–200 coexist through 7,000 steps, zero
+extinctions, oscillating on both ecological and evolutionary timescales.
+
+**The headline, measured clean** (same build, same meadow, t=4,700):
+
+| | prey mean speed |
+|---|---|
+| predators OFF | 1.72 (replicates the v1.1 plateau) |
+| predators ON | **2.00** |
+
+Predation shifts the speed optimum ~17% above the foraging plateau — the requested selection
+pressure, isolated from the confound that grazing alone also buys speed. The arms race is
+visible on the other side too: predator speed climbs 2.25 → 2.45 while their prey harden.
+
+**An honest negative:** predation did *not* rescue `sense` (6.0 with predators vs 7.0
+without at t=4,700). Fleeing helps whoever flees, but longer whiskers don't buy enough extra
+warning at a flat notice probability to pay their per-step bill. The obvious lever — making
+notice probability scale with sense, so vigilance quality is the gene — is parked below.
+
 ## Things worth trying next
 
+- [ ] **Notice ∝ sense** — make vigilance quality the gene (notice probability scaling with
+      sense radius), the missing lever for predation to finally price early warning.
 - [ ] **Patchy worlds** — regrowth varying by region (or food dropped in clumps) should make
       `sense` finally worth buying; the meadow/desert sense-selloff is begging for this control.
-- [ ] **Predators as a second evolving species** — closes the loop into co-evolution; prey
-      speed would stop being a pure foraging trait.
+- [x] ~~Predators as a second evolving species~~ — done in v2, with three measured ecological
+      collapses on the way (lean trophic economy, surprise, interference).
 - [ ] Speciation watch: with two resource types and a diet gene, lineage hues should split
       bimodally instead of drifting as one cloud.
 - [ ] Click-to-paint fertile/barren ground (the participatory lever the other sims have).

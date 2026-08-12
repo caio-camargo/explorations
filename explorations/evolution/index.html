@@ -132,6 +132,7 @@
 
     <div class="group">
       <div class="glabel">World</div>
+      <label class="check" title="A second evolving species. Predators carry the same four genes under the same economy; they hunt through space, prey flee on sight. Rings are predators; the white histogram outline and red sparkline are theirs."><input type="checkbox" id="pred"> Predators (co-evolving)</label>
       <div class="row">
         <label title="Simulation speed. Below 1× it runs one step every few frames — slow motion.">Steps / frame</label><span class="val" id="v_sf"></span>
         <input type="range" id="sf" min="0.05" max="8" step="0.05">
@@ -190,6 +191,7 @@ const P = {
   season: 0,           // 0..1 amplitude of regrowth oscillation
   metabolism: 0.55,    // base energy cost per step
   mutation: 0.07,      // log-normal sigma per trait at birth
+  predators: true,     // the second species
   stepsPerFrame: 1,
   colorBy: "lineage",
   showHist: true,
@@ -229,25 +231,126 @@ const T = {
 
 const SEASON_PERIOD = 2400;
 const POP_CAP = 6000;
+const PRED_CAP = 1200;
+const CAPTURE_R = 5;               // world px — you have to actually catch it
+// The trophic economy is deliberately lean: at 60% transfer + 30-step handling
+// the first ecology swung prey 688 → 92 → 1720 with 826 predators at the peak —
+// two kills funded a division. Ecological energy transfer is ~10% in nature;
+// leaner transfer + longer digestion is what keeps the chase gentle.
+const HANDLING = 45;               // steps a predator digests after a kill
+const EAT_EFF = 0.55;              // fraction of prey energy transferred
+const CARCASS = 20;                // fixed body value on top
 const BITE = 0.12;                 // grass units per step, if available
 const SPEED_COST = 0.055;          // × speed²
 const SENSE_COST = 0.011;          // × sense
 const BIRTH_KEEP = 0.45;           // parent and child each keep this share
 const WHISK = 0.7;                 // whisker half-angle, rad
 const TURN = 0.28, JITTER = 0.10;  // steering, rad per step
+/* Vigilance is imperfect: a prey with a predator inside its sense radius only
+   NOTICES it with probability NOTICE_P per step, then stays alarmed FEAR_STEPS.
+   Without this, evasion is perfect-information — and pursuit against a fleeing
+   target of near-equal speed mathematically never closes, so predators boom on
+   naive founders and then bust to nothing as prey speed evolves up (measured:
+   257 → 2 predators inside 1,200 steps). Surprise is what real stalking is. */
+const NOTICE_P = 0.12, FEAR_STEPS = 45;
+/* Predator interference: each neighbouring predator within INTERFERE_R levies
+   an energy tax. Without it the numerical response is unbounded — surprise
+   hunting boomed predators to 900 on 720 prey, ate the world, and collapsed to
+   1. Territory is what caps a carnivore population even when prey are
+   everywhere. */
+const INTERFERE_R = 26, INTERFERE_COST = 0.4;
 
 // ---- state -----------------------------------------------------------------
 let grass = new Float32Array(GN);
 let n = 0;                                   // live population
 let ax, ay, ah, en, gSpeed, gSense, gRepro, gMeta, hue;
 let alive;                                   // Uint8 mask for compaction
+let fear;                                    // steps of alarm remaining
 let stepsRun = 0, births = 0, deaths = 0, extinctions = 0;
 let birthRate = 0, deathRate = 0;            // EMA per 100 steps
 let W = 0, H = 0, dpr = 1;
 
+// predators — same genome, same economy, different income
+let m = 0;
+let bx, by, bh, ben, bSpeed, bSense, bRepro, bMeta, bHue, bHandle, bAlive;
+let predExtinctions = 0, kills = 0, killRate = 0;
+
 // population history (for the sparkline) — one sample per 6 steps
 const popHist = new Float32Array(400);
+const predHist = new Float32Array(400);
 let popHead = 0, popFill = 0;
+
+// torus-wrapped displacement (shortest way round)
+const wdx = (d) => d > WW / 2 ? d - WW : (d < -WW / 2 ? d + WW : d);
+const wdy = (d) => d > WH / 2 ? d - WH : (d < -WH / 2 ? d + WH : d);
+
+/* Coarse spatial grid (counting sort, cell 40px = the max sense radius) so
+   nearest-neighbour queries scan a 3×3 neighbourhood instead of everyone.
+   One instance for prey (predators hunt through it), one for predators
+   (prey watch for death through it). */
+const GC = 40, GCX = Math.ceil(WW / GC), GCY = Math.ceil(WH / GC);
+function makeGrid(cap) {
+  return { start: new Int32Array(GCX * GCY + 1), cur: new Int32Array(GCX * GCY),
+           order: new Int32Array(cap), n: 0 };
+}
+let preyGrid, predGrid;
+
+function buildGrid(g, xs, ys, count) {
+  const nc = GCX * GCY;
+  g.n = count;
+  g.start.fill(0, 0, nc + 1);
+  for (let i = 0; i < count; i++) {
+    const c = ((ys[i] / GC) | 0) * GCX + ((xs[i] / GC) | 0);
+    g.start[c + 1]++;
+  }
+  for (let c = 0; c < nc; c++) { g.start[c + 1] += g.start[c]; g.cur[c] = g.start[c]; }
+  for (let i = 0; i < count; i++) {
+    const c = ((ys[i] / GC) | 0) * GCX + ((xs[i] / GC) | 0);
+    g.order[g.cur[c]++] = i;
+  }
+}
+
+// count members of grid g within radius R of (x, y), excluding index `self`
+function countNear(g, xs, ys, x, y, R, self) {
+  const R2 = R * R;
+  const cx2 = (x / GC) | 0, cy2 = (y / GC) | 0;
+  let c2 = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    let gy = cy2 + dy; if (gy < 0) gy += GCY; else if (gy >= GCY) gy -= GCY;
+    for (let dx = -1; dx <= 1; dx++) {
+      let gx = cx2 + dx; if (gx < 0) gx += GCX; else if (gx >= GCX) gx -= GCX;
+      const c = gy * GCX + gx;
+      for (let s = g.start[c]; s < g.start[c + 1]; s++) {
+        const j = g.order[s];
+        if (j === self) continue;
+        const ddx = wdx(xs[j] - x), ddy = wdy(ys[j] - y);
+        if (ddx * ddx + ddy * ddy < R2) c2++;
+      }
+    }
+  }
+  return c2;
+}
+
+// nearest member of grid g within radius R of (x, y); returns index or -1
+function nearest(g, xs, ys, x, y, R) {
+  const R2 = R * R;
+  const cx2 = (x / GC) | 0, cy2 = (y / GC) | 0;
+  let best = -1, bd = R2;
+  for (let dy = -1; dy <= 1; dy++) {
+    let gy = cy2 + dy; if (gy < 0) gy += GCY; else if (gy >= GCY) gy -= GCY;
+    for (let dx = -1; dx <= 1; dx++) {
+      let gx = cx2 + dx; if (gx < 0) gx += GCX; else if (gx >= GCX) gx -= GCX;
+      const c = gy * GCX + gx;
+      for (let s = g.start[c]; s < g.start[c + 1]; s++) {
+        const j = g.order[s];
+        const ddx = wdx(xs[j] - x), ddy = wdy(ys[j] - y);
+        const d2 = ddx * ddx + ddy * ddy;
+        if (d2 < bd) { bd = d2; best = j; }
+      }
+    }
+  }
+  return best;
+}
 
 const cv = document.getElementById("c");
 const ctx = cv.getContext("2d", { alpha: false });
@@ -291,6 +394,50 @@ function allocPop(cap) {
   gRepro = new Float32Array(cap); gMeta = new Float32Array(cap);
   hue = new Float32Array(cap);
   alive = new Uint8Array(cap);
+  fear = new Uint16Array(cap);
+  preyGrid = makeGrid(cap);
+}
+
+function allocPred(cap) {
+  bx = new Float32Array(cap); by = new Float32Array(cap);
+  bh = new Float32Array(cap); ben = new Float32Array(cap);
+  bSpeed = new Float32Array(cap); bSense = new Float32Array(cap);
+  bRepro = new Float32Array(cap); bMeta = new Float32Array(cap);
+  bHue = new Float32Array(cap); bHandle = new Float32Array(cap);
+  bAlive = new Uint8Array(cap);
+  predGrid = makeGrid(cap);
+}
+
+function seedPredators(k) {
+  for (let i = 0; i < k && m < PRED_CAP; i++) {
+    const j = m++;
+    bx[j] = Math.random() * WW; by[j] = Math.random() * WH;
+    bh[j] = Math.random() * TAU;
+    ben[j] = 120;
+    // Predators start fast and far-sighted: pursuit must CLOSE on fleeing prey,
+    // and a chaser without a speed edge never does. Their calorie-dense income
+    // is what makes the expensive body affordable.
+    bSpeed[j] = 2.3 * Math.exp((Math.random() - 0.5) * 0.2);
+    bSense[j] = 26 * Math.exp((Math.random() - 0.5) * 0.2);
+    bRepro[j] = 220 * Math.exp((Math.random() - 0.5) * 0.2);
+    bMeta[j] = 1.0 * Math.exp((Math.random() - 0.5) * 0.2);
+    bHue[j] = 0;                       // one ancestral predator colour: red
+    bHandle[j] = 0;
+    bAlive[j] = 1;
+  }
+}
+
+function compactPred() {
+  let i = 0;
+  while (i < m) {
+    if (bAlive[i]) { i++; continue; }
+    const l = m - 1;
+    bx[i] = bx[l]; by[i] = by[l]; bh[i] = bh[l]; ben[i] = ben[l];
+    bSpeed[i] = bSpeed[l]; bSense[i] = bSense[l]; bRepro[i] = bRepro[l];
+    bMeta[i] = bMeta[l]; bHue[i] = bHue[l]; bHandle[i] = bHandle[l];
+    bAlive[i] = bAlive[l];
+    m = l;
+  }
 }
 
 function seedFounders(k) {
@@ -309,16 +456,19 @@ function seedFounders(k) {
 }
 
 function eden() {
-  n = 0; births = 0; deaths = 0; stepsRun = 0;
+  n = 0; m = 0; births = 0; deaths = 0; kills = 0; stepsRun = 0;
   allocPop(POP_CAP);
+  allocPred(PRED_CAP);
   seedFounders(350);
+  seedPredators(40);
   for (let i = 0; i < GN; i++) grass[i] = 0.55 + Math.random() * 0.1;
   popHead = 0; popFill = 0;
 }
 
 function meteor() {
   for (let i = 0; i < n; i++) if (Math.random() < 0.9) alive[i] = 0;
-  compact();
+  for (let i = 0; i < m; i++) if (Math.random() < 0.9) bAlive[i] = 0;
+  compact(); compactPred();
 }
 
 // remove the dead by swapping from the end — order is not meaningful
@@ -330,6 +480,7 @@ function compact() {
     ax[i] = ax[l]; ay[i] = ay[l]; ah[i] = ah[l]; en[i] = en[l];
     gSpeed[i] = gSpeed[l]; gSense[i] = gSense[l]; gRepro[i] = gRepro[l];
     gMeta[i] = gMeta[l]; hue[i] = hue[l]; alive[i] = alive[l];
+    fear[i] = fear[l];
     n = l;
   }
 }
@@ -353,17 +504,37 @@ function stepSim() {
 
   let stepDeaths = 0, stepBirths = 0;
 
+  const hunting = P.predators && m > 0;
+  if (hunting) buildGrid(predGrid, bx, by, m);
+
   for (let i = 0; i < n; i++) {
     const sp = gSpeed[i], se = gSense[i];
 
-    // sense: three whiskers over the grass, steer toward the richest
-    const h = ah[i];
-    const f = grass[gcell(ax[i] + Math.cos(h) * se,        ay[i] + Math.sin(h) * se)];
-    const l = grass[gcell(ax[i] + Math.cos(h - WHISK) * se, ay[i] + Math.sin(h - WHISK) * se)];
-    const rr = grass[gcell(ax[i] + Math.cos(h + WHISK) * se, ay[i] + Math.sin(h + WHISK) * se)];
-    if (l > f && l >= rr) ah[i] -= TURN;
-    else if (rr > f && rr > l) ah[i] += TURN;
-    ah[i] += (Math.random() - 0.5) * 2 * JITTER;
+    /* Fear beats hunger. A prey that spots a predator within its OWN sense
+       radius turns tail — so `sense` is early warning as well as food-finding,
+       and `speed` is escape as well as foraging. Predation prices both genes;
+       without it, both worlds sold them off. */
+    let fleeing = false;
+    if (hunting) {
+      const pj = nearest(predGrid, bx, by, ax[i], ay[i], se);
+      if (pj >= 0 && (fear[i] > 0 || Math.random() < NOTICE_P)) {
+        fear[i] = FEAR_STEPS;
+        ah[i] = Math.atan2(wdy(ay[i] - by[pj]), wdx(ax[i] - bx[pj]));
+        fleeing = true;
+      }
+    }
+    if (fear[i] > 0) fear[i]--;
+
+    if (!fleeing) {
+      // sense: three whiskers over the grass, steer toward the richest
+      const h = ah[i];
+      const f = grass[gcell(ax[i] + Math.cos(h) * se,        ay[i] + Math.sin(h) * se)];
+      const l = grass[gcell(ax[i] + Math.cos(h - WHISK) * se, ay[i] + Math.sin(h - WHISK) * se)];
+      const rr = grass[gcell(ax[i] + Math.cos(h + WHISK) * se, ay[i] + Math.sin(h + WHISK) * se)];
+      if (l > f && l >= rr) ah[i] -= TURN;
+      else if (rr > f && rr > l) ah[i] += TURN;
+      ah[i] += (Math.random() - 0.5) * 2 * JITTER;
+    }
 
     // move
     ax[i] = wrapX(ax[i] + Math.cos(ah[i]) * sp);
@@ -413,6 +584,74 @@ function stepSim() {
     }
   }
 
+  // ---- predators: hunt through the prey grid ----
+  let stepKills = 0;
+  if (P.predators) {
+    buildGrid(preyGrid, ax, ay, n);
+    if (m > 1) buildGrid(predGrid, bx, by, m);   // fresh, for interference
+    for (let i = 0; i < m; i++) {
+      const sp = bSpeed[i], se = bSense[i], mt = bMeta[i];
+      let moved = sp;
+
+      if (bHandle[i] > 0) {
+        // digesting: drift slowly, no hunting
+        bHandle[i]--;
+        bh[i] += (Math.random() - 0.5) * 2 * JITTER;
+        moved = sp * 0.4;
+      } else {
+        const t = nearest(preyGrid, ax, ay, bx[i], by[i], se);
+        if (t >= 0 && alive[t]) {
+          bh[i] = Math.atan2(wdy(ay[t] - by[i]), wdx(ax[t] - bx[i]));
+          const ddx = wdx(ax[t] - bx[i]), ddy = wdy(ay[t] - by[i]);
+          if (ddx * ddx + ddy * ddy < CAPTURE_R * CAPTURE_R) {
+            // the kill: prey energy flows up the chain
+            ben[i] += en[t] * EAT_EFF + CARCASS;
+            alive[t] = 0; stepDeaths++; stepKills++;
+            bHandle[i] = HANDLING;
+          }
+        } else {
+          // prowl: cheaper than pursuit
+          bh[i] += (Math.random() - 0.5) * 2 * JITTER;
+          moved = sp * 0.55;
+        }
+      }
+
+      bx[i] = wrapX(bx[i] + Math.cos(bh[i]) * moved);
+      by[i] = wrapY(by[i] + Math.sin(bh[i]) * moved);
+
+      // same economy as prey: engine trade-off, costs on the speed actually used
+      // — plus the interference tax that makes territory the real predator cap
+      const crowd = m > 1 ? countNear(predGrid, bx, by, bx[i], by[i], INTERFERE_R, i) : 0;
+      ben[i] -= mt * P.metabolism + SPEED_COST * moved * moved / mt + SENSE_COST * se
+              + INTERFERE_COST * crowd;
+
+      if (ben[i] <= 0) { bAlive[i] = 0; continue; }
+
+      if (ben[i] >= bRepro[i] && m < PRED_CAP) {
+        const j = m++;
+        const e = ben[i];
+        ben[i] = e * BIRTH_KEEP;
+        bx[j] = wrapX(bx[i] + (Math.random() - 0.5) * 6);
+        by[j] = wrapY(by[i] + (Math.random() - 0.5) * 6);
+        bh[j] = Math.random() * TAU;
+        ben[j] = e * BIRTH_KEEP;
+        bSpeed[j] = mut(bSpeed[i], T.speed.min, T.speed.max);
+        bSense[j] = mut(bSense[i], T.sense.min, T.sense.max);
+        bRepro[j] = mut(bRepro[i], T.patience.min, T.patience.max);
+        bMeta[j] = mut(bMeta[i], T.engine.min, T.engine.max);
+        let hh = bHue[i] + (Math.random() - 0.5) * 20 * (P.mutation / 0.07 + 0.15);
+        if (hh < 0) hh += 360; else if (hh >= 360) hh -= 360;
+        bHue[j] = hh;
+        bHandle[j] = 0;
+        bAlive[j] = 1;
+      }
+    }
+    compactPred();
+    if (m === 0) { predExtinctions++; seedPredators(25); }
+  }
+  kills += stepKills;
+  killRate += (stepKills * 100 - killRate) * 0.01;
+
   if (stepDeaths > 0) compact();
   births += stepBirths; deaths += stepDeaths;
   birthRate += (stepBirths * 100 - birthRate) * 0.01;
@@ -422,7 +661,9 @@ function stepSim() {
   if (n === 0) { extinctions++; seedFounders(60); }
 
   if (stepsRun % 6 === 0) {
-    popHist[popHead] = n; popHead = (popHead + 1) % popHist.length;
+    popHist[popHead] = n;
+    predHist[popHead] = P.predators ? m : 0;
+    popHead = (popHead + 1) % popHist.length;
     if (popFill < popHist.length) popFill++;
   }
   if (stepsRun % 30 === 0) updateQuantiles();
@@ -464,6 +705,15 @@ function agentColor(i, a) {
   return "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%," + a + ")";
 }
 
+const PRED_GENE = { speed: () => bSpeed, sense: () => bSense, patience: () => bRepro,
+                    engine: () => bMeta };
+function predColor(i, a) {
+  if (P.colorBy === "lineage") return "hsla(" + (bHue[i] | 0) + ",85%,60%," + a + ")";
+  const q = Q[P.colorBy];   // shared scale with prey, so cross-species colour compares
+  const t = clamp((PRED_GENE[P.colorBy]()[i] - q.lo) / (q.hi - q.lo), 0, 1);
+  return "hsla(" + ((210 - 200 * t) | 0) + ",85%,62%," + a + ")";
+}
+
 function draw() {
   fitWorld();
   // ground: dark green luminance from the grass field
@@ -483,6 +733,17 @@ function draw() {
     const r = (1.1 + 1.6 * Math.min(en[i] / gRepro[i], 1)) * Math.max(scr.s, 1) * 0.9;
     ctx.fillStyle = agentColor(i, 0.85);
     ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+  }
+
+  // predators: rings, not dots — species read by glyph, traits still by colour
+  if (P.predators) {
+    ctx.lineWidth = 1.6;
+    for (let i = 0; i < m; i++) {
+      const px = scr.ox + bx[i] * scr.s, py = scr.oy + by[i] * scr.s;
+      const r = (2.4 + 1.8 * Math.min(ben[i] / bRepro[i], 1)) * Math.max(scr.s, 1) * 0.9;
+      ctx.strokeStyle = predColor(i, 0.95);
+      ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.stroke();
+    }
   }
 
   if (P.showHist) drawOverlay();
@@ -522,9 +783,35 @@ function drawOverlay() {
     }
     ctx.fillRect(x0 + 6 + b * bw, y0 + 16 + (hTop - 4 - bh), bw - 1, bh);
   }
+  // predator distribution: an outline over the same axes
+  if (P.predators && m > 3) {
+    const pc = new Float32Array(bins);
+    if (P.colorBy === "lineage") {
+      for (let i = 0; i < m; i++) pc[(bHue[i] / 360 * bins) | 0]++;
+    } else {
+      const ax2 = traitAxis(), g = PRED_GENE[P.colorBy]();
+      for (let i = 0; i < m; i++) {
+        const t = clamp((g[i] - ax2.min) / (ax2.max - ax2.min), 0, 0.999);
+        pc[(t * bins) | 0]++;
+      }
+    }
+    let pmx = 1; for (let b = 0; b < bins; b++) if (pc[b] > pmx) pmx = pc[b];
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let b = 0; b < bins; b++) {
+      const yv = y0 + 16 + (hTop - 4) * (1 - pc[b] / pmx);
+      const xa = x0 + 6 + b * bw;
+      if (b === 0) ctx.moveTo(xa, yv); else ctx.lineTo(xa, yv);
+      ctx.lineTo(xa + bw - 1, yv);
+    }
+    ctx.stroke();
+  }
+
   ctx.fillStyle = "rgba(255,255,255,0.55)";
   if (P.colorBy === "lineage") {
-    ctx.fillText("lineage hues", x0 + 6, y0 + 12);
+    ctx.fillText("lineage hues" + (P.predators ? " · white line = predators" : ""),
+                 x0 + 6, y0 + 12);
   } else {
     const q = Q[P.colorBy];
     const dp = P.colorBy === "patience" ? 0 : (P.colorBy === "sense" ? 1 : 2);
@@ -532,23 +819,29 @@ function drawOverlay() {
       + q.lo.toFixed(dp) + " – p95 " + q.hi.toFixed(dp), x0 + 6, y0 + 12);
   }
 
-  // bottom: population sparkline
+  // bottom: two-species population sparkline (each normalised to its own peak —
+  // shapes and phase lag are the point, the classic Lotka–Volterra chase)
   const yb = y0 + hTop + 18;
-  let pmax = 1; for (let s = 0; s < popFill; s++) if (popHist[s] > pmax) pmax = popHist[s];
-  ctx.strokeStyle = "rgba(163,224,108,0.9)";
-  ctx.lineWidth = 1;
-  ctx.beginPath();
   const start = (popHead - popFill + popHist.length * 2) % popHist.length;
-  for (let s = 0; s < popFill; s++) {
-    const v = popHist[(start + s) % popHist.length];
-    const px = x0 + 6 + (w - 12) * (s / (popHist.length - 1));
-    const py = yb + 24 - 22 * (v / pmax);
-    if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  function spark(hist, style) {
+    let mx2 = 1; for (let s = 0; s < popFill; s++) if (hist[s] > mx2) mx2 = hist[s];
+    ctx.strokeStyle = style; ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let s = 0; s < popFill; s++) {
+      const v = hist[(start + s) % popHist.length];
+      const px = x0 + 6 + (w - 12) * (s / (popHist.length - 1));
+      const py = yb + 24 - 22 * (v / mx2);
+      if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
   }
-  ctx.stroke();
+  spark(popHist, "rgba(163,224,108,0.9)");
+  if (P.predators) spark(predHist, "rgba(255,110,90,0.9)");
   ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.fillText("population " + n + (extinctions ? " · extinctions " + extinctions : ""),
-               x0 + 6, yb + 8);
+  ctx.fillText("prey " + n + (P.predators ? " · predators " + m : "")
+    + (extinctions ? " · ext " + extinctions : "")
+    + (predExtinctions ? " · pred-ext " + predExtinctions : ""),
+    x0 + 6, yb + 8);
 }
 
 // ---- loop --------------------------------------------------------------------
@@ -567,14 +860,16 @@ function frame(t) {
   }
   draw();
 
-  let ms = 0, mse = 0, msr = 0;
-  for (let i = 0; i < n; i++) { ms += gSpeed[i]; mse += gSense[i]; msr += gRepro[i]; }
+  let ms = 0, mse = 0;
+  for (let i = 0; i < n; i++) { ms += gSpeed[i]; mse += gSense[i]; }
+  let ps = 0;
+  for (let i = 0; i < m; i++) ps += bSpeed[i];
   const inv = n ? 1 / n : 0;
   document.getElementById("stats").textContent =
-    n + " alive · speed " + (ms * inv).toFixed(2)
-    + " · sense " + (mse * inv).toFixed(1)
-    + " · patience " + (msr * inv).toFixed(0)
-    + " · births " + birthRate.toFixed(1) + "/100 · deaths " + deathRate.toFixed(1) + "/100"
+    n + " prey (spd " + (ms * inv).toFixed(2) + ", sense " + (mse * inv).toFixed(1) + ")"
+    + (P.predators ? " · " + m + " predators (spd " + (m ? ps / m : 0).toFixed(2) + ")"
+                     + " · kills " + killRate.toFixed(1) + "/100"
+                   : "")
     + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
 
   requestAnimationFrame(frame);
@@ -599,6 +894,7 @@ function syncUI() {
     $("v_" + id).textContent = fmt(P[key]);
   }
   $("hist").checked = P.showHist;
+  $("pred").checked = P.predators;
   $("pause").classList.toggle("on", P.paused);
   $("pause").textContent = P.paused ? "resume" : "pause";
   $("cbnote").textContent = COLOR_MODES[P.colorBy].note;
@@ -633,6 +929,10 @@ Object.keys(PRESETS).forEach((name) => {
 });
 
 $("hist").addEventListener("change", (e) => { P.showHist = e.target.checked; });
+$("pred").addEventListener("change", (e) => {
+  P.predators = e.target.checked;
+  if (P.predators && m === 0) seedPredators(40);
+});
 $("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
 $("meteor").addEventListener("click", () => meteor());
 $("eden").addEventListener("click", () => eden());
