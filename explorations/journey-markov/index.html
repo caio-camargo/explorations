@@ -206,8 +206,9 @@
       <label class="check"><input type="checkbox" id="labels" checked> page labels</label>
       <div class="btns" style="margin-top:6px">
         <button class="act" id="tableBtn">data table</button>
-        <button class="act" id="reheat">re-layout</button>
+        <button class="act" id="reheat" title="Re-run the layout and release every pinned node">re-layout</button>
       </div>
+      <div class="note">Drag a node to pin it where you drop it — a small white dot marks it pinned. Double-click releases one; re-layout releases all.</div>
     </div>
 
     <div class="group">
@@ -346,7 +347,7 @@ for (let i = 0; i < nodes.length; i++) {
   const n = nodes[i];
   n.ix = i;
   n.x = (rng() - .5) * 900; n.y = (rng() - .5) * 600;
-  n.vx = 0; n.vy = 0; n.pin = false;
+  n.vx = 0; n.vy = 0; n.pin = false; n.anchor = false;
   n.gate = !n.pseudo && GATES.has(n.id);
   n.r = n.pseudo ? 14 : 3.5 + 11 * Math.sqrt(n.visits / maxVisits);
 }
@@ -382,14 +383,15 @@ const PANEL = 330; // right control panel width incl. margin
 function pinAnchors() {
   const usable = Math.max(400, W - PANEL);
   START.pin = BOOKED.pin = LOST.pin = true;
+  START.anchor = BOOKED.anchor = LOST.anchor = true;
   START.x = -usable * 0.42; START.y = 0;
   BOOKED.x = usable * 0.42; BOOKED.y = -H * 0.26;
   LOST.x = usable * 0.42; LOST.y = H * 0.26;
-  // gates stand in the doorway to BOOKED: pinned between the graph and the outcome
+  // gates sit right beside BOOKED — nothing stands between the form and the meeting
   for (const n of nodes) if (n.gate) {
-    n.pin = true;
-    n.x = BOOKED.x - usable * 0.16;
-    n.y = BOOKED.y + H * 0.11;
+    n.pin = true; n.anchor = true;
+    n.x = BOOKED.x - usable * 0.07;
+    n.y = BOOKED.y + H * 0.06;
   }
 }
 pinAnchors();
@@ -432,7 +434,13 @@ function tick() {
       n.vy += (ty - n.y) * 0.06;
     }
   }
-  for (const n of nodes) if (!n.pin) { n.x += n.vx; n.y += n.vy; }
+  // the doorway corridor is the gate's alone: no free page drifts past it
+  let gxMax = Infinity;
+  for (const n of nodes) if (n.gate) gxMax = Math.min(gxMax, n.x - 70);
+  for (const n of nodes) if (!n.pin) {
+    n.x += n.vx; n.y += n.vy;
+    if (!n.pseudo && n.x > gxMax) n.x = gxMax;
+  }
   heat = Math.max(0.05, heat * 0.9985);
 }
 
@@ -596,7 +604,10 @@ $("loops").checked = S.loops; $("loops").onchange = e => S.loops = e.target.chec
 $("labels").checked = S.labels; $("labels").onchange = e => S.labels = e.target.checked;
 $("toggle").onclick = () => { const u = $("ui"); u.classList.toggle("collapsed");
   $("toggle").textContent = u.classList.contains("collapsed") ? "show" : "hide"; };
-$("reheat").onclick = () => { heat = 1; };
+$("reheat").onclick = () => {
+  for (const n of nodes) if (n.pin && !n.anchor) n.pin = false; // release user pins
+  heat = 1;
+};
 
 /* ---------- ranked lists ---------- */
 let selected = -1;
@@ -798,6 +809,11 @@ function draw(now) {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+    if (n.pin && !n.anchor) { // user-pinned: a small pin head at the node's shoulder
+      ctx.beginPath(); ctx.arc(sx + r * 0.8, sy - r * 0.8, 2.6, 0, 7);
+      ctx.fillStyle = "#e6e8ef"; ctx.fill();
+      ctx.strokeStyle = "rgba(11,13,18,.9)"; ctx.lineWidth = 1; ctx.stroke();
+    }
     if (n.gate) { // the doorway: a dashed portal ring in BOOKED's green
       ctx.globalAlpha = dimmed ? 0.3 : 1;
       ctx.beginPath(); ctx.arc(sx, sy, r + 5 * cam.z, 0, 7);
@@ -851,8 +867,9 @@ function draw(now) {
   requestAnimationFrame(draw);
 }
 
-/* ---------- interaction: hover / drag / pan / zoom ---------- */
-let hover = -1, dragNode = null, panning = false, px = 0, py = 0;
+/* ---------- interaction: hover / drag-to-pin / pan / zoom ---------- */
+let hover = -1, dragNode = null, dragMoved = false, dsx = 0, dsy = 0,
+    panning = false, px = 0, py = 0;
 function hit(sx, sy) {
   const [wx, wy] = toWorld(sx, sy);
   let best = -1, bd = 1e9;
@@ -864,9 +881,12 @@ function hit(sx, sy) {
 }
 cv.addEventListener("mousemove", ev => {
   if (dragNode) {
-    const [wx, wy] = toWorld(ev.clientX, ev.clientY);
-    dragNode.x = wx; dragNode.y = wy; dragNode.vx = dragNode.vy = 0;
-    heat = Math.max(heat, 0.35);
+    if (!dragMoved && Math.hypot(ev.clientX - dsx, ev.clientY - dsy) > 4) dragMoved = true;
+    if (dragMoved) {
+      const [wx, wy] = toWorld(ev.clientX, ev.clientY);
+      dragNode.x = wx; dragNode.y = wy; dragNode.vx = dragNode.vy = 0;
+      heat = Math.max(heat, 0.25);
+    }
     return;
   }
   if (panning) {
@@ -903,26 +923,30 @@ cv.addEventListener("mousemove", ev => {
 });
 cv.addEventListener("mousedown", ev => {
   const h = hit(ev.clientX, ev.clientY);
-  if (h >= 0 && !nodes[h].pin) { dragNode = nodes[h]; }
-  else { panning = true; px = ev.clientX; py = ev.clientY; cv.classList.add("dragging"); }
+  if (h >= 0 && !nodes[h].anchor) {
+    dragNode = nodes[h]; dragMoved = false; dsx = ev.clientX; dsy = ev.clientY;
+  } else if (h < 0) {
+    panning = true; px = ev.clientX; py = ev.clientY; cv.classList.add("dragging");
+  }
 });
 addEventListener("mouseup", ev => {
   if (dragNode) {
-    const h = hit(ev.clientX, ev.clientY);
-    if (h >= 0 && h < N && nodes[h] === dragNode &&
-        Math.abs(dragNode.vx) + Math.abs(dragNode.vy) < 1) select(h);
+    if (dragMoved) dragNode.pin = true; // dropping a node pins it — the map is yours
+    else if (dragNode.ix < N) select(dragNode.ix);
     dragNode = null;
-  }
-  if (panning && Math.hypot(ev.clientX - px, ev.clientY - py) < 3) {
-    // click on empty space: also allow selecting via plain click
+  } else {
     const h = hit(ev.clientX, ev.clientY);
-    if (h >= 0 && h < N) select(h);
+    if (h >= 0 && h < N && (!panning || Math.hypot(ev.clientX - px, ev.clientY - py) < 3))
+      select(h); // covers anchored pages like the gate
   }
   panning = false; cv.classList.remove("dragging");
 });
-cv.addEventListener("click", ev => {
+cv.addEventListener("dblclick", ev => {
   const h = hit(ev.clientX, ev.clientY);
-  if (h >= 0 && h < N) select(h);
+  if (h >= 0 && nodes[h].pin && !nodes[h].anchor) {
+    nodes[h].pin = false;
+    heat = Math.max(heat, 0.3);
+  }
 });
 cv.addEventListener("wheel", ev => {
   ev.preventDefault();
@@ -942,7 +966,9 @@ $("datanote").innerHTML =
   `Every session end feeds the visitor's eventual fate (booked / lost) into the chain.`;
 refit();
 $("stats").textContent = `${N} pages · ${allEdges.length} transitions`;
-for (let i = 0; i < 300; i++) tick(); // pre-settle so the first paint is a formed map
+// pre-settle fully and start cold: the first paint is a still, formed map
+for (let i = 0; i < 1200; i++) tick();
+heat = 0.06;
 requestAnimationFrame(draw);
 </script>
 </body>

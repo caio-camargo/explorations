@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.3.0
+**Version**: 1.3.1
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -192,6 +192,12 @@ sortable full-data table for accessibility.
 - Visual: verified from headless-Chrome screenshots (the preview pane wouldn't composite
   again); layout fixes (panel-aware anchors, label halos, stronger repulsion) came from
   actually looking, which numeric checks would never have caught.
+
+**v1.3.1** (design notes from Caio): the layout pre-settles ~1200 ticks and boots cold, so
+the first paint is a still map instead of a settling scramble. Dragging became meaningful:
+**dropping a node pins it** (small white pin dot; double-click releases one, re-layout
+releases all) — the map is customizable. And the gate moved flush against BOOKED with an
+x-clamp on free pages, so **nothing stands between the form and the meeting**.
 
 **v1.3**: absorption-semantics toggle (booking event vs visitor fate — see The model),
 human page meanings on tooltips and the detail panel, mode-aware legends and ranked-list

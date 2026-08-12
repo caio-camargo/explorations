@@ -143,9 +143,19 @@ stay out of the repo): human page meanings on tooltips/detail, BOOKED = "meeting
 documented), qualitative caveats (gate technical losses, right-edge truncation, short-bounce
 under-representation, heard_about unreliability).
 
+### v1.3.1 (same session — design notes from Caio)
+Calm boot (pre-settle 1200 ticks, heat 0.06 at first paint — no settling jerk), drag-to-pin
+(drop pins with a white dot marker; dblclick releases one, re-layout all; click still
+selects via a 4px drag threshold), gate flush against BOOKED with an x-clamp so no free page
+enters the doorway corridor. Verified with synthetic mouse events + headless render.
+NOTE: `build_data.py` gained an uncommitted step-indexed Sankey flow computation from
+outside this session (mentions a future `sankey.html`); deliberately left unstaged.
+
 ### Next Steps
 - [ ] Open threads in `journey-markov/NOTES.md`: session-level credit assignment, per-channel
       chains, edge fate-coloring, betweenness.
+- [ ] `build_data.py` has mid-flight Sankey/flows code (uncommitted, computes but doesn't
+      emit yet) — belongs to whoever is building `sankey.html`.
 - [ ] Pre-existing: uncommitted `index.html` landing-page work from the 2026-08-11 session is
       still in the working tree (its claim row is still active in `ACTIVE_WORK.md`).
 
