@@ -197,6 +197,16 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v2.3 (same session) — content-group colors, confirmation signal, handoff caveat
+Caio asked about exits-to-dashboard and page color-coding. Measured: zero app pageviews in
+the all-traffic export (handoff unobservable — printed on chart; ICP funnel remains the only
+measured handoff). Content groups colored in both funnels (core blue / blog yellow / landing
+violet / careers+other gray / docs aqua / app orange) with legend; stacking order = the
+adjacency order that passed the palette validator. Census also surfaced the form's
+confirmation page: all-traffic green redefined to include observed submissions — 556 reach
+form, 179 confirmed (old proxy miscounted past-form sessions as EXITs). Green departure
+labels thresholded (≥5) in the big dataset.
+
 ### v2.1 (same session) — refinements write-up + all-traffic funnel
 Two deliverables. (1) `docs/research/journey-viz-refinements.md`: all 13 sankey refinements
 v1.4→v2.0 with principles and per-item applicability to the gravity graph (suggested order:
@@ -213,8 +223,10 @@ journey data map predated the inventory. Added `user-journey-data-map.md` §8 (p
 Databricks location + verification state; the exception: `web_form_submissions` is NOT in
 Databricks) + a work-log entry there. Caio corrected the exception same day: form
 submissions live natively in Webflow and, since ~early Aug, an automation records them in
-HubSpot (→ Fivetran → Databricks transitively; three verifications open, documented in the
-map). On this side: `build_data.py` docstring + NOTES now
+HubSpot (→ Fivetran → Databricks transitively). All three verifications then done live
+against Databricks (web-form-receiver integration, contacts not form objects, forward-only
+from 08-03) — details in the RetellAI map §8 + work-log. On this side: `build_data.py`
+docstring + NOTES now
 state the CSVs are point-in-time exports (→07-20) whose refresh should regenerate from
 Databricks. Fun-side changes left uncommitted deliberately — a parallel session is mid-flight
 on the same files; these ride with its next commit.

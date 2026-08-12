@@ -42,6 +42,27 @@ def prop_of(page: str) -> str:
     if page.startswith("docs."): return "docs"
     return "www"
 
+# Content groups for the marketing site — drives node color and stacking order
+# in the funnels (keep in sync with siteGroup() in sankey.html)
+SUCCESS_CONFIRM = "/thank-you-demo-call"  # the form's post-submit confirmation page
+
+def site_group(p: str) -> str:
+    if p in ("/", "homepage", "/pricing", "/enterprise-plan", SUCCESS_CONFIRM):
+        return "core"
+    if p.startswith(("/blog", "/glossary")):
+        return "blog"
+    if p.startswith(("/features", "/industry", "/use-cases", "/comparisons",
+                     "/integrations", "/partner", "/app-partner", "/case-study",
+                     "/solutions", "/ai-")):
+        return "landing"
+    if p.startswith("/careers"):
+        return "careers"
+    return "other"
+
+SITE_BUCKET = {"blog": "(blog & content)", "landing": "(landing pages)",
+               "careers": "(careers)", "core": "(other site pages)",
+               "other": "(other site pages)"}
+
 def build_all_traffic():
     """All-traffic funnel from identified-visitor exports (sankey-all.html).
 
@@ -106,19 +127,34 @@ def build_all_traffic():
             excluded += 1
 
     freq = collections.Counter(p for s, _o in seqs for p in s)
-    top = {p for p, _n in freq.most_common(TOPN)} | {GATE}
-    coll = lambda p: "homepage" if p == "/" else (p if p in top else "(other site pages)")
+    top = ({p for p, _n in freq.most_common(TOPN)} | {GATE}) - {SUCCESS_CONFIRM}
+    coll = lambda p: "homepage" if p == "/" else (p if p in top else SITE_BUCKET[site_group(p)])
 
     flows, ends = collections.Counter(), collections.Counter()
+    n_confirmed = 0
     for s, org in seqs:
+        # reaching the confirmation page = an observed submission; the session
+        # absorbs green at the step where it happens
+        oc_forced = None
+        if SUCCESS_CONFIRM in s:
+            n_confirmed += 1
+            i = s.index(SUCCESS_CONFIRM)
+            if i == 0:  # landed straight on the confirmation page
+                ends[(0, org, "booked")] += 1
+                continue
+            s = s[:i]
+            oc_forced = "booked"
         sc = [coll(p) for p in s[:MAXSTEP]]
         flows[(0, org, sc[0])] += 1
         for k in range(1, len(sc)):
             flows[(k, sc[k - 1], sc[k])] += 1
         if len(s) > MAXSTEP:
-            flows[(MAXSTEP, sc[-1], "__CONTINUES__")] += 1
+            if oc_forced:
+                ends[(MAXSTEP, sc[-1], "booked")] += 1
+            else:
+                flows[(MAXSTEP, sc[-1], "__CONTINUES__")] += 1
         else:
-            ends[(len(sc), sc[-1], "booked" if s[-1] == GATE else "exit")] += 1
+            ends[(len(sc), sc[-1], oc_forced or ("booked" if s[-1] == GATE else "exit"))] += 1
 
     return {
         "meta": {
@@ -132,6 +168,7 @@ def build_all_traffic():
             "origins": sorted({o for (c, o, _t) in flows if c == 0}),
             "included": len(seqs),
             "excluded": {"empty or off-site": excluded, "duplicate export rows": dup_rows},
+            "confirmed": n_confirmed,
             "appHopsElided": 0,
             "flows": [{"c": c, "from": a, "to": b, "n": n} for (c, a, b), n in sorted(flows.items())],
             "ends": [{"c": c, "from": a, "end": e, "n": n} for (c, a, e), n in sorted(ends.items())],
@@ -258,11 +295,12 @@ def main():
     is_www = lambda p: prop_of(p) == "www"
     top_pages = set(sorted((p for p in pages if not is_app(p)),
                            key=lambda p: -pages[p]["visits"])[:TOPN]) | GATE_PAGES
-    OTHER_LBL = {"www": "(other site pages)", "docs": "(other docs pages)"}
     def collapse(p):
         if p == "/":
             return "homepage"
-        return p if p in top_pages else OTHER_LBL[prop_of(p)]
+        if p in top_pages:
+            return p
+        return "(other docs pages)" if prop_of(p) == "docs" else SITE_BUCKET[site_group(p)]
 
     flows = collections.Counter()   # (col_from, from, to)
     ends = collections.Counter()    # (col_from, from, "booked"|"exit"|"app")

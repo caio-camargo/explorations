@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.2.0
+**Version**: 2.3.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -167,6 +167,28 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v2.3 — content groups, the confirmation page, and the handoff caveat** (Caio: exits to
+the dashboard? and color-code the site pages). Three results:
+
+- **Exits to the app are not observable in the all-traffic data** — a full scan found zero
+  product-console pageviews (the identified-visitor tooling covers the marketing site
+  only). Printed on the chart so EXIT isn't misread; the ICP funnel, which sees both
+  properties, is the only measured handoff (its outcome node).
+- **Content groups now carry color in both funnels**: core site (homepage/pricing/form)
+  blue, blog & content yellow, landing pages violet, careers & other gray, docs aqua, app
+  orange — with a legend, and the *stacking order equals the color order* because that
+  adjacency sequence is what passed the palette validator (all-pairs cannot pass at six
+  hues; a Sankey column is a stacked bar, so adjacent is the honest gate, plus direct
+  labels everywhere as the secondary encoding). `site_group()` in `build_data.py` and
+  `siteGroup()` in the page must stay in sync.
+- **The census surfaced the form's confirmation page** — an *observed submission* signal
+  the ends-on-form proxy was missing, and it was miscounting sessions that continued past
+  the form as EXITs. All-traffic green is now "confirmed submission (confirmation page
+  reached) or ends on the form": 556 of 22,804 sessions (2.4%), **179 of them confirmed
+  submissions**. Which of the site's forms redirect there is worth confirming with the
+  Retell-side session (the demo form reportedly lacks a visible acknowledgement, so the
+  confirmation page may belong to a specific flow).
 
 **v2.1 — the all-traffic funnel** ([sankey-all.html](sankey-all.html)). Same page code as
 the ICP funnel — `build_data.py` byte-copies `sankey.html` and injects a different dataset;
