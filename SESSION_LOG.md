@@ -38,6 +38,49 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Evolution v3: adaptive radiation + the phylogeny strip
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User chose speciation + strip from the options menu. Built both: a phylogeny strip (deep time
+as lineage-hue strata, one 1px column per 20 steps, scrolling offscreen canvas) and the split
+machinery — a second resource (teal B alongside green A, both rendered in the ground), a
+heritable diet gene, and a "specialist advantage" slider (γ): efficiency (1−d)^γ on A, d^γ on
+B. γ=1 is the phase boundary between generalists-win and disruptive selection, crossable live.
+Whiskers weight resources by the individual's own efficiencies (each morph steers to its own
+food); diet mutates additively; diet colouring is absolute (blue A ↔ red B).
+
+### The build bug, caught by its own stall
+Efficiency was first applied inside the availability cap (min(avail, BITE·eff)) — so in the
+grazed-down stubble world the ecosystem actually lives at, a generalist harvested TWO stubbles
+while a specialist got one, inverting the advantage precisely at equilibrium. Split stalled at
+91% middlers. Efficiency belongs on what's ingested: min(avail, BITE)·eff. 
+
+### Measured
+From generalist founders at γ=1.8: middlers 89% (t=2.1k) → 49% (t=4.3k) → **22%** (t=6.7k),
+with morphs at 42% (mean diet 0.19) and 36% (0.88) — clean bimodal split, full predator
+ecology running, zero extinctions. Morph lineage hues drifted 35° apart — **the strip visibly
+forks** (no shared descendants → independent hue drift). Control at γ=0.6: 84% middlers,
+unimodal. Both sides of the phase boundary behave. Strip verified data-level (19 distinct
+colours in the last 60 columns); DOM: 6 colour modes, key 6, γ slider live; no NaN.
+Precision note in NOTES: clonal reproduction → this is evolutionary branching / adaptive
+radiation, not full speciation (no gene flow to isolate); assortative mating is the parked
+step that would make it real speciation.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/evolution/index.html` | grassB, diet gene + cached efficiencies, γ slider, per-morph steering, ingestion fix, diet colour mode, phylogeny strip + overlay layout |
+| 2 | edited | `explorations/evolution/NOTES.md` | v3 — "Adaptive radiation: the split, on demand" |
+| 3 | edited | `explorations/README.md` | Evolution row → v3 |
+
+### Next Steps
+- [ ] Watch: colour by diet (key 6), γ at 1.8, eden — the histogram hollows out and the strip forks
+- [ ] Parked: assortative mating (true speciation); soften interference (sense rescue); patchy worlds
+
 ## Session 2026-08-12 — Evolution v2.1: vigilance heritable, sprint escape
 **Source**: Claude Code
 **User**: Caio

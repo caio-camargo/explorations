@@ -1,9 +1,9 @@
 # Evolution Arena — selection in real time
-**Version**: v2.1.0
+**Version**: v3.0.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-12
 **Purpose**: Natural selection, watchable — foragers with heritable mutating genomes on a regrowing field
-**Status**: Active — v2.1 (vigilance heritable, sprint escape; sense punishment resolved to neutrality)
+**Status**: Active — v3 (adaptive radiation: two resources, diet gene, speciation dial; phylogeny strip)
 
 ---
 
@@ -185,6 +185,46 @@ Spectacular side effect: the sprint escalated the arms race — predator speed n
 **2.71** (was 2.45) as they counter prey that can briefly match them. Fear made everyone
 faster.
 
+## Adaptive radiation (v3) — the split, on demand
+
+Two additions that belong together: the **phylogeny strip** (deep time as strata — every 20
+steps, one pixel column of prey lineage hues stacked by abundance; takeovers, bottlenecks, and
+the meteor read like a geological core), and a reason for the tree to fork: a **second
+resource** and a heritable **diet gene**.
+
+The mechanism: two resources grow everywhere (green A, teal B — the ground shows which pantry
+is stocked). Eating efficiency is `(1−diet)^γ` on A and `diet^γ` on B, with γ as the
+**speciation dial**: below 1 the payoff is concave and a jack-of-all-trades out-earns
+specialists; above 1 the middle of the diet axis is the worst place on it — disruptive
+selection. γ = 1 is the phase boundary, and the slider crosses it live. Whiskers weight the
+two resources by the individual's own efficiencies, so each morph steers toward *its own*
+food; diet mutates additively (log-normal would trap it at the ends); diet colouring is
+absolute (blue = A-eater, red = B-eater — a split shows as two fixed colours, not a
+recalibrating ramp).
+
+**One build bug caught by its own stall**: efficiency was first applied inside the
+availability cap (`min(avail, BITE·eff)`), which let a generalist harvest *two* stubbles in a
+grazed-down world while a specialist got one — inverting the advantage exactly at the
+equilibrium the ecosystem lives at. The split stalled at 91% middlers. Efficiency belongs on
+what's ingested: `min(avail, BITE)·eff`. After the fix, from generalist founders (diet 0.5)
+at γ = 1.8:
+
+| t | A-eaters | middlers | B-eaters |
+|---|---|---|---|
+| 2,100 | 5% | 89% | 6% |
+| 4,300 | 26% | 49% | 25% |
+| 6,700 | **42%** | 22% | **36%** |
+
+Morph means at t=6,700: diet 0.19 and 0.88 — a clean bimodal split, coexisting with the full
+predator ecology, zero extinctions. And because the two morphs no longer share descendants,
+their lineage hues drift apart independently — **35° of hue separation, so the phylogeny strip
+visibly forks**. The control at γ = 0.6 stays 84% generalist: the phase boundary is real on
+both sides.
+
+(Precision note: with clonal reproduction this is adaptive radiation / evolutionary branching
+— there's no gene flow to isolate, so "speciation" in the full biological sense doesn't
+apply. The branching is real either way, and measurably so.)
+
 ## Things worth trying next
 
 - [x] ~~Notice ∝ sense~~ — done in v2.1 (plus the sprint it turned out to require). Result:
@@ -196,8 +236,9 @@ faster.
       `sense` finally worth buying; the meadow/desert sense-selloff is begging for this control.
 - [x] ~~Predators as a second evolving species~~ — done in v2, with three measured ecological
       collapses on the way (lean trophic economy, surprise, interference).
-- [ ] Speciation watch: with two resource types and a diet gene, lineage hues should split
-      bimodally instead of drifting as one cloud.
+- [x] ~~Speciation watch~~ — done in v3: the diet split completes in ~6,000 steps at γ=1.8,
+      morph hues fork on the strip, and the γ dial crosses the phase boundary live.
+- [ ] Sexual reproduction + mate choice — with the diet split in place, assortative mating by
+      morph would turn this branching into true reproductive isolation (actual speciation).
 - [ ] Click-to-paint fertile/barren ground (the participatory lever the other sims have).
-- [ ] A phylogeny strip — time on x, lineage hues stacked by abundance; extinctions and
-      takeovers would read like geological strata.
+- [x] ~~A phylogeny strip~~ — done in v3; the overlay's middle band, and it forks at the split.

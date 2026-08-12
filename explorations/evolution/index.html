@@ -112,6 +112,10 @@
         <label title="Seasonal swing of the regrowth rate (period 2,400 steps). Booms select one strategy, busts cull it — the population breathes.">Seasons</label><span class="val" id="v_se"></span>
         <input type="range" id="se" min="0" max="1" step="0.05">
       </div>
+      <div class="row">
+        <label title="The speciation dial. Two resources grow everywhere (green A, teal B); eating efficiency is (1−diet)^γ and diet^γ. Below 1, generalists win — one morph. Above 1, the middle of the diet axis is the worst place to be — disruptive selection splits the population in two. γ=1 is the phase boundary.">Specialist advantage</label><span class="val" id="v_ga"></span>
+        <input type="range" id="ga" min="0.5" max="3" step="0.05">
+      </div>
     </div>
 
     <div class="group">
@@ -146,8 +150,8 @@
         <button class="act" id="meteor">☄ meteor</button>
         <button class="act" id="eden">eden</button>
       </div>
-      <div class="note">space pause · m meteor (kills 90%) · e eden (restart) · h histogram
-        · 1–5 colour modes</div>
+      <div class="note">space pause · m meteor (kills 90%) · e eden (restart) · h overlays
+        · 1–6 colour modes</div>
     </div>
   </div>
 </aside>
@@ -192,6 +196,12 @@ const P = {
   metabolism: 0.55,    // base energy cost per step
   mutation: 0.07,      // log-normal sigma per trait at birth
   predators: true,     // the second species
+  /* The speciation dial. Eating efficiency on resource A is (1−diet)^γ and on
+     B is diet^γ. Below γ=1 a generalist out-earns specialists (concave —
+     jack-of-all-trades wins, one morph). Above γ=1 the penalty is convex —
+     disruptive selection, and the population should SPLIT into two morphs.
+     γ=1 is the phase boundary. */
+  gamma: 1.8,
   stepsPerFrame: 1,
   colorBy: "lineage",
   showHist: true,
@@ -218,6 +228,9 @@ const COLOR_MODES = {
   engine:  { label: "engine",  note: "Metabolic rate. A big engine burns more at rest (hunger) " +
              "but makes movement cheaper — theory says engine should track speed, and the " +
              "population gets to discover that." },
+  diet:    { label: "diet",    note: "0 = pure A-eater (green plants), 1 = pure B-eater (teal). " +
+             "With specialist advantage above 1, the middle is the worst place to be — watch " +
+             "the histogram split in two. That split is adaptive radiation." },
 };
 const MODE_KEYS = Object.keys(COLOR_MODES);
 
@@ -227,6 +240,7 @@ const T = {
   sense:    { min: 3,   max: 40 },
   patience: { min: 60,  max: 400 },
   engine:   { min: 0.4, max: 3.0 },
+  diet:     { min: 0,   max: 1 },
 };
 
 const SEASON_PERIOD = 2400;
@@ -275,11 +289,19 @@ const SPRINT = 1.4;
 const INTERFERE_R = 26, INTERFERE_COST = 0.4;
 
 // ---- state -----------------------------------------------------------------
-let grass = new Float32Array(GN);
+let grass = new Float32Array(GN);          // resource A
+let grassB = new Float32Array(GN);         // resource B — the second niche
 let n = 0;                                   // live population
-let ax, ay, ah, en, gSpeed, gSense, gRepro, gMeta, hue;
+let ax, ay, ah, en, gSpeed, gSense, gRepro, gMeta, gDiet, hue;
+let effA, effB;                              // eating efficiencies, cached per life
 let alive;                                   // Uint8 mask for compaction
 let fear;                                    // steps of alarm remaining
+
+function setEff(i) {
+  effA[i] = Math.pow(1 - gDiet[i], P.gamma);
+  effB[i] = Math.pow(gDiet[i], P.gamma);
+}
+function reEffAll() { for (let i = 0; i < n; i++) setEff(i); }
 let stepsRun = 0, births = 0, deaths = 0, extinctions = 0;
 let birthRate = 0, deathRate = 0;            // EMA per 100 steps
 let W = 0, H = 0, dpr = 1;
@@ -293,6 +315,32 @@ let predExtinctions = 0, kills = 0, killRate = 0;
 const popHist = new Float32Array(400);
 const predHist = new Float32Array(400);
 let popHead = 0, popFill = 0;
+
+/* The phylogeny strip: deep time as strata. Every 20 steps, one 1px column —
+   prey lineage hues binned and stacked by abundance, in hue order. Takeovers,
+   bottlenecks, the meteor, and a diet split (once morph hues drift apart) all
+   read like a geological core sample. */
+const PH_W = 420, PH_H = 46, PH_BINS = 36, PH_EVERY = 20;
+const phCan = document.createElement("canvas");
+phCan.width = PH_W; phCan.height = PH_H;
+const phCtx = phCan.getContext("2d");
+
+function phyloColumn() {
+  const counts = new Float32Array(PH_BINS);
+  for (let i = 0; i < n; i++) counts[(hue[i] / 360 * PH_BINS) | 0]++;
+  phCtx.drawImage(phCan, -1, 0);                 // scroll left one column
+  phCtx.fillStyle = "#000";
+  phCtx.fillRect(PH_W - 1, 0, 1, PH_H);
+  if (n === 0) return;
+  let y = 0;
+  for (let b = 0; b < PH_BINS; b++) {
+    if (!counts[b]) continue;
+    const hgt = counts[b] / n * PH_H;
+    phCtx.fillStyle = "hsl(" + ((b + 0.5) / PH_BINS * 360 | 0) + ",72%,55%)";
+    phCtx.fillRect(PH_W - 1, y, 1, Math.max(hgt, 0.5));
+    y += hgt;
+  }
+}
 
 // torus-wrapped displacement (shortest way round)
 const wdx = (d) => d > WW / 2 ? d - WW : (d < -WW / 2 ? d + WW : d);
@@ -406,6 +454,8 @@ function allocPop(cap) {
   ah = new Float32Array(cap); en = new Float32Array(cap);
   gSpeed = new Float32Array(cap); gSense = new Float32Array(cap);
   gRepro = new Float32Array(cap); gMeta = new Float32Array(cap);
+  gDiet = new Float32Array(cap);
+  effA = new Float32Array(cap); effB = new Float32Array(cap);
   hue = new Float32Array(cap);
   alive = new Uint8Array(cap);
   fear = new Uint16Array(cap);
@@ -464,6 +514,8 @@ function seedFounders(k) {
     gSense[j] = 14 * Math.exp((Math.random() - 0.5) * 0.2);
     gRepro[j] = 160 * Math.exp((Math.random() - 0.5) * 0.2);
     gMeta[j] = 1.0 * Math.exp((Math.random() - 0.5) * 0.2);
+    gDiet[j] = clamp(0.5 + (Math.random() - 0.5) * 0.08, 0.02, 0.98);  // generalist ancestors
+    setEff(j);
     hue[j] = 120;                      // one ancestral colour; divergence is earned
     alive[j] = 1;
   }
@@ -475,8 +527,12 @@ function eden() {
   allocPred(PRED_CAP);
   seedFounders(350);
   seedPredators(40);
-  for (let i = 0; i < GN; i++) grass[i] = 0.55 + Math.random() * 0.1;
+  for (let i = 0; i < GN; i++) {
+    grass[i] = 0.55 + Math.random() * 0.1;
+    grassB[i] = 0.55 + Math.random() * 0.1;
+  }
   popHead = 0; popFill = 0;
+  phCtx.fillStyle = "#000"; phCtx.fillRect(0, 0, PH_W, PH_H);
 }
 
 function meteor() {
@@ -493,7 +549,8 @@ function compact() {
     const l = n - 1;
     ax[i] = ax[l]; ay[i] = ay[l]; ah[i] = ah[l]; en[i] = en[l];
     gSpeed[i] = gSpeed[l]; gSense[i] = gSense[l]; gRepro[i] = gRepro[l];
-    gMeta[i] = gMeta[l]; hue[i] = hue[l]; alive[i] = alive[l];
+    gMeta[i] = gMeta[l]; gDiet[i] = gDiet[l]; effA[i] = effA[l]; effB[i] = effB[l];
+    hue[i] = hue[l]; alive[i] = alive[l];
     fear[i] = fear[l];
     n = l;
   }
@@ -506,13 +563,15 @@ const mut = (v, lo, hi) =>
 function stepSim() {
   stepsRun++;
 
-  // grass: logistic regrowth, optionally seasonal
+  // both resources: logistic regrowth, optionally seasonal
   let r = P.regrow;
   if (P.season > 0) r *= 1 + P.season * Math.sin(TAU * stepsRun / SEASON_PERIOD);
   if (r > 0) {
     for (let i = 0; i < GN; i++) {
       const v = grass[i];
       grass[i] = v + r * (v + 0.02) * (1 - v);
+      const w = grassB[i];
+      grassB[i] = w + r * (w + 0.02) * (1 - w);
     }
   }
 
@@ -541,11 +600,16 @@ function stepSim() {
     if (fear[i] > 0) fear[i]--;
 
     if (!fleeing) {
-      // sense: three whiskers over the grass, steer toward the richest
+      // sense: three whiskers, steering by what THIS individual can digest —
+      // an A-specialist smells only A, so each morph steers toward its own food
+      const eA = effA[i], eB = effB[i];
       const h = ah[i];
-      const f = grass[gcell(ax[i] + Math.cos(h) * se,        ay[i] + Math.sin(h) * se)];
-      const l = grass[gcell(ax[i] + Math.cos(h - WHISK) * se, ay[i] + Math.sin(h - WHISK) * se)];
-      const rr = grass[gcell(ax[i] + Math.cos(h + WHISK) * se, ay[i] + Math.sin(h + WHISK) * se)];
+      let c1 = gcell(ax[i] + Math.cos(h) * se,        ay[i] + Math.sin(h) * se);
+      let c2 = gcell(ax[i] + Math.cos(h - WHISK) * se, ay[i] + Math.sin(h - WHISK) * se);
+      let c3 = gcell(ax[i] + Math.cos(h + WHISK) * se, ay[i] + Math.sin(h + WHISK) * se);
+      const f  = grass[c1] * eA + grassB[c1] * eB;
+      const l  = grass[c2] * eA + grassB[c2] * eB;
+      const rr = grass[c3] * eA + grassB[c3] * eB;
       if (l > f && l >= rr) ah[i] -= TURN;
       else if (rr > f && rr > l) ah[i] += TURN;
       ah[i] += (Math.random() - 0.5) * 2 * JITTER;
@@ -560,10 +624,26 @@ function stepSim() {
     // Grazing can't strip a cell below a small refugium — a seed bank always
     // survives. Without it, boom-bust limit cycles bottom out in mass
     // starvation (measured: desert crashed 1,852 → 90 twice in 6k steps).
+    // Intake from each resource scales with this individual's efficiency at
+    // it, so a generalist above γ=1 takes a poor bite of both — the middle of
+    // the diet axis is the disruptive-selection valley.
+    // Efficiency applies to what is INGESTED (min(avail, BITE) · eff), not to
+    // the availability cap. The first version capped at BITE·eff, which let a
+    // generalist harvest TWO stubbles in a grazed-down world while a
+    // specialist got one — inverting the specialist advantage exactly at the
+    // equilibrium the ecosystem lives at, and stalling the split at 91%
+    // middlers.
     const c = gcell(ax[i], ay[i]);
-    const avail = grass[c] - 0.03;
-    const bite = avail < BITE ? avail : BITE;
-    if (bite > 0) { grass[c] -= bite; en[i] += bite * P.richness; }
+    const availA = grass[c] - 0.03;
+    if (availA > 0) {
+      const tA = (availA < BITE ? availA : BITE) * effA[i];
+      grass[c] -= tA; en[i] += tA * P.richness;
+    }
+    const availB = grassB[c] - 0.03;
+    if (availB > 0) {
+      const tB = (availB < BITE ? availB : BITE) * effB[i];
+      grassB[c] -= tB; en[i] += tB * P.richness;
+    }
 
     // Pay for existing. The engine gene is the metabolic trade-off: idle burn
     // scales UP with engine size (hunger rate), movement cost scales DOWN
@@ -589,6 +669,9 @@ function stepSim() {
       gSense[j] = mut(gSense[i], T.sense.min, T.sense.max);
       gRepro[j] = mut(gRepro[i], T.patience.min, T.patience.max);
       gMeta[j] = mut(gMeta[i], T.engine.min, T.engine.max);
+      // diet mutates additively (log-normal would trap it at the ends)
+      gDiet[j] = clamp(gDiet[i] + (Math.random() * 2 - 1) * P.mutation * 0.9, 0.02, 0.98);
+      setEff(j);
       // lineage hue drift scales with the mutation slider (±10° at the default
       // σ=7%) — a fixed small drift left lineage mode near-monotone, and
       // coalescence (families taking over) prunes what little variance there is
@@ -683,14 +766,14 @@ function stepSim() {
     if (popFill < popHist.length) popFill++;
   }
   if (stepsRun % 30 === 0) updateQuantiles();
+  if (stepsRun % PH_EVERY === 0) phyloColumn();
 }
 
 // ---- rendering ---------------------------------------------------------------
 const GENE = { speed: () => gSpeed, sense: () => gSense, patience: () => gRepro,
-               engine: () => gMeta };
+               engine: () => gMeta, diet: () => gDiet };
 const traitOf = (i) => GENE[P.colorBy]()[i];
-const traitAxis = () => P.colorBy === "engine" ? T.engine :
-  (P.colorBy === "speed" ? T.speed : (P.colorBy === "sense" ? T.sense : T.patience));
+const traitAxis = () => T[P.colorBy === "patience" ? "patience" : P.colorBy] || T.patience;
 
 /* Dot colour maps the population's OWN p5–p95, not the trait's legal range.
    The population usually occupies a sliver of the axis (sense lived in 10% of
@@ -698,12 +781,12 @@ const traitAxis = () => P.colorBy === "engine" ? T.engine :
    the full ramp in use; the histogram keeps fixed axes so absolute movement
    stays honest, and prints the current p5–p95 so both views stay connected. */
 const Q = { speed:{lo:0.5,hi:2}, sense:{lo:5,hi:20}, patience:{lo:100,hi:250},
-            engine:{lo:0.7,hi:1.4} };
+            engine:{lo:0.7,hi:1.4}, diet:{lo:0.2,hi:0.8} };
 
 function updateQuantiles() {
   if (n < 10) return;
   const stride = Math.max(1, (n / 160) | 0);
-  for (const k of ["speed","sense","patience","engine"]) {
+  for (const k of ["speed","sense","patience","engine","diet"]) {
     const g = GENE[k]();
     const s = [];
     for (let i = 0; i < n; i += stride) s.push(g[i]);
@@ -716,8 +799,10 @@ function updateQuantiles() {
 
 function agentColor(i, a) {
   if (P.colorBy === "lineage") return "hsla(" + (hue[i] | 0) + ",75%,62%," + a + ")";
-  const q = Q[P.colorBy];
-  const t = clamp((traitOf(i) - q.lo) / (q.hi - q.lo), 0, 1);
+  // diet is absolute — 0 is blue (A-eater), 1 is red (B-eater), always —
+  // so a split reads as two fixed colours, not a recalibrating ramp
+  const t = P.colorBy === "diet" ? gDiet[i]
+    : clamp((traitOf(i) - Q[P.colorBy].lo) / (Q[P.colorBy].hi - Q[P.colorBy].lo), 0, 1);
   return "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%," + a + ")";
 }
 
@@ -725,6 +810,7 @@ const PRED_GENE = { speed: () => bSpeed, sense: () => bSense, patience: () => bR
                     engine: () => bMeta };
 function predColor(i, a) {
   if (P.colorBy === "lineage") return "hsla(" + (bHue[i] | 0) + ",85%,60%," + a + ")";
+  if (P.colorBy === "diet") return "rgba(235,235,235," + a + ")";  // predators have no diet gene
   const q = Q[P.colorBy];   // shared scale with prey, so cross-species colour compares
   const t = clamp((PRED_GENE[P.colorBy]()[i] - q.lo) / (q.hi - q.lo), 0, 1);
   return "hsla(" + ((210 - 200 * t) | 0) + ",85%,62%," + a + ")";
@@ -732,11 +818,12 @@ function predColor(i, a) {
 
 function draw() {
   fitWorld();
-  // ground: dark green luminance from the grass field
+  // ground: resource A as green, resource B as teal-blue — a cell's colour
+  // shows which pantry is stocked there
   const d = img.data;
   for (let i = 0; i < GN; i++) {
-    const v = grass[i], o = i * 4;
-    d[o] = 8 + 14 * v; d[o + 1] = 12 + 46 * v; d[o + 2] = 8 + 16 * v;
+    const va = grass[i], vb = grassB[i], o = i * 4;
+    d[o] = 8 + 10 * va; d[o + 1] = 12 + 40 * va + 16 * vb; d[o + 2] = 8 + 42 * vb;
   }
   offCtx.putImageData(img, 0, 0);
   ctx.fillStyle = "#060906";
@@ -766,7 +853,7 @@ function draw() {
 }
 
 function drawOverlay() {
-  const w = Math.min(280, W - 28), hh = 92, x0 = 14, y0 = H - hh - 34;
+  const w = Math.min(280, W - 28), hh = 152, x0 = 14, y0 = H - hh - 34;
   ctx.fillStyle = "rgba(8,12,8,0.6)";
   ctx.fillRect(x0, y0, w, hh);
   ctx.strokeStyle = "rgba(255,255,255,0.14)";
@@ -791,16 +878,18 @@ function drawOverlay() {
     if (P.colorBy === "lineage") {
       ctx.fillStyle = "hsla(" + ((b + 0.5) / bins * 360 | 0) + ",75%,60%,0.9)";
     } else {
-      // bars share the dots' quantile ramp, so bar colour = dot colour
+      // bars share the dots' ramp: absolute for diet, quantile for the rest
       const ax2 = traitAxis(), q = Q[P.colorBy];
       const val = ax2.min + (b + 0.5) / bins * (ax2.max - ax2.min);
-      const t = clamp((val - q.lo) / (q.hi - q.lo), 0, 1);
+      const t = P.colorBy === "diet" ? val
+        : clamp((val - q.lo) / (q.hi - q.lo), 0, 1);
       ctx.fillStyle = "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%,0.9)";
     }
     ctx.fillRect(x0 + 6 + b * bw, y0 + 16 + (hTop - 4 - bh), bw - 1, bh);
   }
-  // predator distribution: an outline over the same axes
-  if (P.predators && m > 3) {
+  // predator distribution: an outline over the same axes (not in diet mode —
+  // predators carry no diet gene)
+  if (P.predators && m > 3 && P.colorBy !== "diet") {
     const pc = new Float32Array(bins);
     if (P.colorBy === "lineage") {
       for (let i = 0; i < m; i++) pc[(bHue[i] / 360 * bins) | 0]++;
@@ -835,9 +924,16 @@ function drawOverlay() {
       + q.lo.toFixed(dp) + " – p95 " + q.hi.toFixed(dp), x0 + 6, y0 + 12);
   }
 
+  // middle: the phylogeny strip — deep time, lineage hues as strata
+  const ys = y0 + hTop + 18;
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillText("phylogeny (last " + (PH_W * PH_EVERY / 1000).toFixed(1) + "k steps)",
+               x0 + 6, ys - 3);
+  ctx.drawImage(phCan, x0 + 6, ys, w - 12, PH_H);
+
   // bottom: two-species population sparkline (each normalised to its own peak —
   // shapes and phase lag are the point, the classic Lotka–Volterra chase)
-  const yb = y0 + hTop + 18;
+  const yb = ys + PH_H + 14;
   const start = (popHead - popFill + popHist.length * 2) % popHist.length;
   function spark(hist, style) {
     let mx2 = 1; for (let s = 0; s < popFill; s++) if (hist[s] > mx2) mx2 = hist[s];
@@ -898,6 +994,8 @@ const SLIDERS = [
   ["rg", "regrow",       (v) => (v * 1000).toFixed(1) + "‰/step"],
   ["rc", "richness",     (v) => v + " energy/unit"],
   ["se", "season",       (v) => v === 0 ? "constant" : "±" + (v * 100).toFixed(0) + "%"],
+  ["ga", "gamma",        (v) => "γ " + v.toFixed(2) + (v < 1 ? " (generalists win)"
+                                : v > 1 ? " (specialists win)" : " (boundary)")],
   ["mb", "metabolism",   (v) => v.toFixed(2) + "/step"],
   ["mu", "mutation",     (v) => v === 0 ? "frozen" : "σ " + (v * 100).toFixed(1) + "%"],
   ["sf", "stepsPerFrame",(v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
@@ -923,6 +1021,7 @@ for (const [id, key, fmt] of SLIDERS) {
   $(id).addEventListener("input", (e) => {
     P[key] = parseFloat(e.target.value);
     $("v_" + id).textContent = fmt(P[key]);
+    if (key === "gamma") reEffAll();     // efficiencies are cached per life
   });
 }
 
@@ -963,7 +1062,7 @@ addEventListener("keydown", (e) => {
   else if (e.key === "m") meteor();
   else if (e.key === "e") eden();
   else if (e.key === "h") { P.showHist = !P.showHist; syncUI(); }
-  else if (e.key >= "1" && e.key <= "5") { P.colorBy = MODE_KEYS[+e.key - 1]; syncUI(); }
+  else if (e.key >= "1" && e.key <= "6") { P.colorBy = MODE_KEYS[+e.key - 1]; syncUI(); }
 });
 
 addEventListener("resize", resize);
