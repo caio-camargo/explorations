@@ -80,6 +80,7 @@
   <h1 id="h1">Journey Funnel</h1>
   <a href="index.html">← gravity graph</a>
   <a href="sankey-all.html" id="siblink">all-traffic funnel →</a>
+  <a href="sankey-lakehouse.html" id="siblink2">warehouse funnel →</a>
   <span style="font-size:11px;color:var(--dim)" id="meta"></span>
 </header>
 <div id="sub">
@@ -110,7 +111,11 @@ const DATA = /*DATA-START*/{"meta":{"source":"Identified-visitor sessions, retel
 
 const SK = DATA.sankey, MAX = SK.maxstep;
 const ALL = SK.mode === "all"; // all-traffic variant: same code, different data + wording
-const BOOK_VERB = ALL ? "reach form" : "book";
+const LAKE = SK.mode === "lakehouse"; // warehouse-sourced all-traffic variant
+// both all-traffic datasets end at the form, not at a booking — booking is not
+// observable at that grain, so every "booked" affordance changes verb
+const FORMEND = ALL || LAKE;
+const BOOK_VERB = FORMEND ? "reach form" : "book";
 const CSS = getComputedStyle(document.documentElement);
 const PCOL = {
   www: CSS.getPropertyValue("--www").trim(),
@@ -187,7 +192,9 @@ for (const a of acc.values()) {
 const totBooked = SK.ends.filter(e => e.end === "booked").reduce((a, e) => a + e.n, 0);
 const sessions = SK.included ?? DATA.meta.sessions;
 const excluded = Object.values(SK.excluded || {}).reduce((a, b) => a + b, 0);
-document.getElementById("meta").textContent = ALL
+document.getElementById("meta").textContent = LAKE
+  ? `${sessions.toLocaleString()} sessions · ${totBooked.toLocaleString()} reach the form (${(totBooked / sessions * 100).toFixed(2)}%) · ${DATA.meta.pageviews.toLocaleString()} pageviews · ${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}`
+  : ALL
   ? `${sessions} identified sessions · ${totBooked} reach the form (${SK.confirmed || 0} confirmed submissions) · ${excluded} duplicate/empty export rows dropped · ${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}`
   : `${sessions} marketing sessions · ${totBooked} book · ${excluded} sessions never touch the site (excluded) · ${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}`;
 
@@ -264,7 +271,7 @@ for (const l of ordered) {
   let col, op, tip;
   if (l.kind === "booked") {
     col = BOOKED_C; op = 0.55;
-    tip = `${esc(l.src.id)} → ${ALL ? "FORM" : "BOOKED"}|${l.n} session${l.n > 1 ? "s" : ""} ${ALL ? "end on the demo-request form here" : "book here"}`;
+    tip = `${esc(l.src.id)} → ${FORMEND ? "FORM" : "BOOKED"}|${l.n} session${l.n > 1 ? "s" : ""} ${FORMEND ? "end on the demo-request form here" : "book here"}`;
   } else if (l.kind === "exit") {
     col = EXIT_C; op = (0.10 + Math.min(0.10, l.n / 60)).toFixed(2);
     tip = `${esc(l.src.id)} → EXIT|${l.n} session${l.n > 1 ? "s" : ""} end here without booking`;
@@ -285,7 +292,7 @@ for (const l of ordered) {
     data-src="${l.src.col}|${esc(l.src.id)}" data-dst="${l.dst.col}|${esc(l.dst.id)}"
     data-tip="${tip}"/>`);
   // the per-step counts stay printed at the departure point — the stub labels' job
-  if (l.kind === "booked" && l.n >= (ALL ? 5 : 1)) // in the big dataset, label only the major green departures
+  if (l.kind === "booked" && l.n >= (FORMEND ? 5 : 1)) // in the big dataset, label only the major green departures
     S.push(`<text class="band" x="${x1 + 6}" y="${y1 - w / 2 - 5}" style="fill:${BOOKED_C}">${l.n} ${BOOK_VERB}</text>`);
   li++;
 }
@@ -302,13 +309,15 @@ for (const list of cols) for (const n of list) {
   const gate = GATES.has(n.id);
   const tip = term
     ? `${esc(termLbl(n.id))}|${n.in} of ${sessions} sessions${
-        n.id === "BOOKED" ? (ALL ? ` end on the demo-request form or hit its confirmation page (${SK.confirmed || 0} confirmed submissions; booking itself not observable)` : " — meeting scheduled (held-rate not measured)")
-        : n.id === "EXIT" ? (ALL ? " end elsewhere" : " end without booking")
+        n.id === "BOOKED" ? (LAKE ? " end on the demo-request form — submission and booking are not observable at this grain" : ALL ? ` end on the demo-request form or hit its confirmation page (${SK.confirmed || 0} confirmed submissions; booking itself not observable)` : " — meeting scheduled (held-rate not measured)")
+        : n.id === "EXIT" ? (FORMEND ? " end elsewhere" : " end without booking")
         : n.id === APP_ID ? " end in the product — handed off or living there"
         : " are still going past step " + MAX}`
     : isOrigin
     ? (n.id === APP_ID
         ? `${esc(n.id)}|${n.out} sessions start inside the product — returning users; some surface into marketing and book`
+        : LAKE
+        ? `${esc(n.id)}|${n.out} sessions whose first attributed source this session was ${esc(n.id)} — measured by the analytics platform, not self-reported`
         : ALL
         ? `${esc(n.id)}|${n.out} sessions arriving ${n.id === "untagged / direct" ? "with no campaign tag — direct, untagged organic, or untracked" : "tagged utm_source " + esc(n.id)}`
         : `${esc(n.id)}|${n.out} sessions by visitors who said they heard about Retell via ${esc(n.id)} — self-reported, known to under-attribute`)
@@ -340,7 +349,7 @@ document.getElementById("wrap").innerHTML = S.join("\n");
 }
 
 function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;"); }
-function termLbl(id) { return id === "BOOKED" && ALL ? "REACHES FORM" : id; }
+function termLbl(id) { return id === "BOOKED" && FORMEND ? "REACHES FORM" : id; }
 
 /* ---------- hover ---------- */
 const tip = document.getElementById("tip");
@@ -392,11 +401,41 @@ function dim(active) {
 }
 } // end build()
 
-if (ALL) {
+// every variant links to the other two, so no page is reachable only by URL
+if (LAKE) {
+  document.title = "Journey Funnel — all traffic, from the warehouse";
+  document.getElementById("h1").textContent = "Journey Funnel — All Traffic (warehouse)";
+  const sl = document.getElementById("siblink");
+  sl.href = "sankey.html"; sl.textContent = "← ICP funnel";
+  const s2 = document.getElementById("siblink2");
+  s2.href = "sankey-all.html"; s2.textContent = "← identified traffic";
+  document.getElementById("sub").innerHTML =
+    `<b>Every</b> marketing-site session in the analytics warehouse — not a sample, not an ` +
+    `identified subset — one column per step. ` +
+    `<b style="color:var(--booked)">Green</b> = the session ended on the demo-request form. ` +
+    `<b>Whether anyone submitted it, or booked, is not observable at this grain</b> (the ` +
+    `platform records a tiny fraction of real submissions on that page), so this chart ` +
+    `measures reach, not conversion — the <a href="sankey.html" style="color:var(--accent)">ICP ` +
+    `funnel</a> is where booking outcomes live. Origins are measured attribution, not ` +
+    `self-reported.`;
+  document.getElementById("foot").innerHTML =
+    `Aggregate only — page paths and session counts, reduced inside the warehouse; no ` +
+    `identifier is read or emitted. Marketing-site host only (the same property also ` +
+    `collects the product and auth subdomains, which are <b>over 90% of pageviews</b> — an ` +
+    `unfiltered version of this chart would be a product metric wearing a marketing label). ` +
+    `<code>/careers</code> and <code>/about-us</code> excluded: job-seeker traffic ` +
+    `over-indexes on large companies and pollutes buying-funnel numbers. Locale-prefixed ` +
+    `paths are normalised onto their canonical page, so the funnel doesn't fragment across ` +
+    `ten locales. The window starts when the raw-event export was first connected and ` +
+    `<b>cannot be backfilled</b>; it ends at the last fully-loaded day, so it trails ` +
+    `real time by a day or two. Regenerate with <code>build_data_lakehouse.py</code>.`;
+} else if (ALL) {
   document.title = "Journey Funnel — all identified traffic";
   document.getElementById("h1").textContent = "Journey Funnel — All Traffic";
   const sl = document.getElementById("siblink");
   sl.href = "sankey.html"; sl.textContent = "← ICP funnel";
+  const s2 = document.getElementById("siblink2");
+  s2.href = "sankey-lakehouse.html"; s2.textContent = "warehouse funnel →";
   document.getElementById("sub").innerHTML =
     `All <b>identified visitor sessions</b> on the marketing site, one column per step. ` +
     `<b style="color:var(--booked)">Green</b> = observed form submission (confirmation ` +

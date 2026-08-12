@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.3.0
+**Version**: 2.4.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -205,6 +205,53 @@ finding: ICP leads convert ~39%; full identified traffic reaches the form 1.8% o
 (411/22,804, still peaking at steps 2–3), with a 22,020-session EXIT wall of single-page
 visits. Same site, same weeks — the difference between the two charts is what
 "qualified" means.
+
+### The warehouse funnel ([sankey-lakehouse.html](sankey-lakehouse.html), v2.4)
+
+The third dataset, and the first sourced from the company's canonical warehouse rather than a
+file export — built by [`build_data_lakehouse.py`](build_data_lakehouse.py), which reduces to
+step transitions *inside* the warehouse and returns counts only (no identifier is ever read
+or emitted). **225,466 marketing-site sessions, 2026-07-19 → 08-10.** Sample size stops
+being the limiting factor: this is ~920× the ICP file's session count.
+
+Its outcome is **"reached the form", not a booking** — and that is forced, not chosen: the
+analytics platform records 32 submit events on the gate page against 4,709 sessions that
+reached it, so submission and booking are unobservable at this grain. The honest response was
+to rename the outcome, not to estimate the number. Booking outcomes stay in the ICP dataset.
+
+What the scale reveals that neither smaller dataset could:
+
+- **89.9% of sessions never see a second page** (202,697 of 225,466). The funnel is one wide
+  step and then a cliff: 225,466 → 22,769 → 7,958 → 3,751 → 2,083 → 1,219.
+- **1.54% reach the form.** The identified-visitor dataset reaches it at **2.4%**
+  (556/22,804) — so reverse-IP identification skews **~1.6× more buyer-heavy** than real
+  traffic. That's the selection bias of the identified subset, quantified rather than assumed.
+- **Self-reported attribution is off by an order of magnitude, in a measurable direction.**
+  ChatGPT is 1.7% of measured sessions (3,830) but 27% of ICP sessions self-report it. The
+  internal brief predicted this direction; this is the size of it. Measured origins: direct /
+  untagged 110,064 · google organic 89,980 · other referral 11,133 · google ads 8,932 ·
+  chatgpt 3,830 · linkedin 1,527.
+
+Two documented traps are honoured in the query rather than rediscovered: the marketing-site
+host filter (the same property also collects the product and auth subdomains — **over 90% of
+pageviews**, so an unfiltered chart is a product metric wearing a marketing label), and the
+exclusion of `/careers` + `/about-us` (job-seeker traffic over-indexes on large companies).
+Locale-prefixed paths normalise onto their canonical page so the funnel doesn't fragment
+across ten locales.
+
+**Window caveat, and why streaming didn't help.** The warehouse's raw-event history starts
+when the export was first connected and **cannot be backfilled**, which is why this dataset
+barely overlaps the ICP file's June–July window rather than extending it. Streaming export
+was switched on at the source the same day this was built, and it made **no difference here**:
+the managed connector consumes only whole-day tables, so both raw and gold still ended at
+08-10 while the source had same-day data. Freshness gained at the source does not
+automatically reach the warehouse — verify with `MAX(event_date)` rather than trusting a
+green pipeline.
+
+All three pages share one code path (the siblings are byte copies; `SK.mode` drives wording),
+so a layout fix lands everywhere at once. Verified: origin and outcome columns both sum to
+225,466, every intermediate column balances in=out, and no page node leaks into the outcome
+column.
 
 **v2.0 — the inclusion rule** (Caio: every user shown must have passed through at least one
 www page). The funnel's population is now defined, not inherited: 97 marketing sessions;

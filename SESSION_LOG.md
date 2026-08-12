@@ -216,6 +216,27 @@ byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup 
 re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
 411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.
 
+### v2.4 (same session) — the warehouse funnel (3rd dataset)
+Caio asked whether the Sankey was updated with the newly-verified data (it wasn't — the
+verification proved the pipe, not the payload) and approved building it as another version.
+New `build_data_lakehouse.py` queries the warehouse directly (reduction happens in-warehouse;
+counts only leave it) → `sankey-lakehouse.html`, a byte copy of `sankey.html` on a new
+`SK.mode`. **225,466 sessions, 07-19 → 08-10, 1.54% reach the form.**
+- Outcome had to be renamed, not estimated: 32 observed submit events vs 4,709 sessions
+  reaching the gate → submission/booking unobservable at this grain.
+- Findings the smaller datasets couldn't reach: 89.9% single-page sessions; identified-visitor
+  traffic reaches the form 2.4% vs 1.54% all-traffic, so reverse-IP skews ~1.6× buyer-heavy;
+  ChatGPT is 1.7% of measured sessions vs 27% self-reported in the ICP file.
+- **Streaming export made no difference to the warehouse** — the managed connector takes
+  whole-day tables only; raw and gold both still ended 08-10 while the source had same-day
+  data. Freshness at the source ≠ freshness downstream.
+- Two bugs caught by rendering: flows from the last step leaked page nodes into the outcome
+  column; and copying `sankey.html` verbatim inherited provenance claims (reverse-IP, export
+  caps) that are false for warehouse data — fixed with an additive third mode branch
+  (`FORMEND` shares the reached-form semantics; provenance copy stays per-mode).
+Shared-file edits were additive only (`sankey.html` gained a mode branch + a third header
+link so no page is URL-only); existing ICP/all branches verified unregressed.
+
 ### Data provenance (same session) — Databricks documented as upstream
 Caio: journey data should now live in Databricks; document it if it isn't. It mostly is, and
 mostly was documented (RetellAI's `docs/notes/databricks-inventory-2026-08-07.md`) — but the
