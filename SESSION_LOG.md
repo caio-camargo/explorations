@@ -174,6 +174,15 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v2.1 (same session) — refinements write-up + all-traffic funnel
+Two deliverables. (1) `docs/research/journey-viz-refinements.md`: all 13 sankey refinements
+v1.4→v2.0 with principles and per-item applicability to the gravity graph (suggested order:
+inclusion rule → APP absorbing state → origin split → sized terminals → renames). (2)
+`sankey-all.html`: all-traffic funnel from Warmly identified-visitor exports (intake/) —
+byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup rows across
+re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
+411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.
+
 ### v2.0 (same session) — the inclusion rule
 Caio's rule: every session shown must touch ≥1 www page. 97 marketing sessions remain (132
 pure-app + 16 docs-only excluded, counted on chart); all 38 bookings retained. Renames:

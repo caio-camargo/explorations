@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.0.0
+**Version**: 2.1.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -24,6 +24,10 @@ This is the first utilitarian exploration — the data is real work data, the ma
   (per-visitor outcome: Meeting Scheduled / Cancelled / Not Scheduled), both in a private
   workspace outside this repo (`JOURNEY_DATA_DIR` — see `build_data.py`).
   **Neither file is in this repo.**
+- These CSVs are **point-in-time exports**; since 2026-08-12 the upstream source of truth
+  is the company's Databricks lakehouse, and refreshes should be regenerated from there
+  (the source→table mapping is documented in the private workspace, not here). The chart
+  header always shows the window the current data actually covers.
 - [`build_data.py`](build_data.py) reads them and injects an aggregate JSON into
   [`index.html`](index.html) between `/*DATA-START*/ … /*DATA-END*/` markers. The aggregate
   contains **page paths, transition counts, dwell sums, and fate-labeled counts only** — no
@@ -131,6 +135,22 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v2.1 — the all-traffic funnel** ([sankey-all.html](sankey-all.html)). Same page code as
+the ICP funnel — `build_data.py` byte-copies `sankey.html` and injects a different dataset;
+`SK.mode` drives the wording, so the two can never drift. Data: Warmly identified-visitor
+exports from the private intake (row-level deduped — the folder holds re-exports of the
+same window in different byte order plus a week file inside a month file; 10,085 duplicate
+rows dropped, and the 10k-row export cap is printed as a caveat). 22,804 identified
+sessions across two windows; marketing site only (all Warmly instruments); `Pages Viewed`
+order treated as chronological (59% of multi-page rows start at the homepage; sequences
+read narratively). **Green here means "session's last page is the demo-request form" —
+submission/booking is not observable at this scale**, and the page says so. Origins from
+UTM tags (85% untagged/direct — the attribution hole, printed). The pair of funnels is the
+finding: ICP leads convert ~39%; full identified traffic reaches the form 1.8% of the time
+(411/22,804, still peaking at steps 2–3), with a 22,020-session EXIT wall of single-page
+visits. Same site, same weeks — the difference between the two charts is what
+"qualified" means.
 
 **v2.0 — the inclusion rule** (Caio: every user shown must have passed through at least one
 www page). The funnel's population is now defined, not inherited: 97 marketing sessions;

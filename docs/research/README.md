@@ -7,3 +7,4 @@ design guidelines, method surveys, tooling comparisons. One file per topic.
 | Topic | File | Produced for | Date |
 |---|---|---|---|
 | Data-viz + Sankey best practices | [`dataviz-sankey-best-practices.md`](dataviz-sankey-best-practices.md) | `explorations/journey-markov/` | 2026-08-12 |
+| Journey-viz refinement log (v1.4→v2.0), written for transfer | [`journey-viz-refinements.md`](journey-viz-refinements.md) | `explorations/journey-markov/` | 2026-08-12 |
