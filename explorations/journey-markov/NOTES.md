@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.8.0
+**Version**: 1.9.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -131,6 +131,20 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v1.9 — the app is an origin and an outcome, never a middle step** (Caio's structural
+insight, checked against the data first). Bounce-back is the minority he suspected: of 245
+sessions, 132 are pure-app, 71 never touch the app, 13 dive in and stay, and only 29 return
+from app to marketing — but 19 of those simply *start* in the app, and 11 of the 29 end at
+the gate (the product-lane booking path), so returns are preserved structurally rather than
+spliced: leading app-runs become the **app dashboard origin** (151 sessions), trailing runs
+the **app dashboard outcome** (153), pure-app sessions one direct origin→outcome ribbon,
+and only 23 interior marketing→app→marketing hops are elided (counted on the chart). Side
+effects that made the model better: BOOKED found a 38th session and "still browsing"
+dropped 28→10 — most "long" journeys were only long inside the app; their marketing part is
+short. EXIT shrank to 44: the marketing funnel leaks far less than the app-blind view
+implied. The v1.7 expand-toggle retired (the restructure needs session sequences, so it
+lives in `build_data.py`, not the page).
 
 **v1.8 — origins replace the mute START bar** (Caio: "the big START bar gives us no
 information"). Column 0 now splits sessions by the visitor's self-reported discovery

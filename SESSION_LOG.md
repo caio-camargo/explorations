@@ -174,6 +174,13 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v1.9 (same session) — app as origin/outcome
+Measured Caio's hypothesis first: only 29/245 sessions return from app to marketing (19 of
+them start in-app; 11 end at the gate — the product-lane booking path). Restructure in
+build_data.py: leading app-run → origin (151), trailing → outcome (153), pure-app → direct
+ribbon (132), 23 interior hops spliced (printed caveat). BOOKED 37→38, still-browsing 28→10,
+EXIT 44 — the marketing funnel leaks less than the app-blind view implied. Toggle retired.
+
 ### v1.8 (same session) — origins, rename, gate air
 START bar replaced by self-reported origin nodes (google 57 / chatgpt 38 / recommendation 11
 / other-unlisted 139 sessions; caveat printed — heard_about under-attributes). "dashboard

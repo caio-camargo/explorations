@@ -108,30 +108,57 @@ def main():
     all_visitors = len({r["email"] for r in rows})
 
     # ---- step-indexed flows for the Sankey (sankey.html) ----
-    # Column 0 = START, columns 1..MAXSTEP = journey steps (consecutive repeats
-    # of the same page collapsed — a reload is not a step). Top pages by visits
-    # keep their name; the tail folds into "(other <prop>)". Ends use the
-    # booking-event semantics: BOOKED only when a scheduled visitor's session
-    # ends at the gate; everything else EXITs.
+    # A marketing funnel: the app dashboard is an ORIGIN (session starts in the
+    # product) and an OUTCOME (marketing hands the visitor to the product), never
+    # a middle step. Leading app-runs become the "app dashboard" origin; trailing
+    # app-runs the "app dashboard" outcome; pure-app sessions one direct
+    # origin→outcome ribbon; rare interior hops (marketing→app→marketing) are
+    # spliced out and counted. Columns 1..MAXSTEP are marketing/docs steps only.
+    # Ends use booking-event semantics: BOOKED only when a scheduled visitor's
+    # session ends at the gate.
     MAXSTEP = 6
     TOPN = 12
     GATE_PAGES = {"/enterprise-plan"}
-    top_pages = set(sorted(pages, key=lambda p: -pages[p]["visits"])[:TOPN]) | GATE_PAGES
+    APP_ORIGIN = "app dashboard"
+    is_app = lambda p: p.startswith("dashboard.")
+    top_pages = set(sorted((p for p in pages if not is_app(p)),
+                           key=lambda p: -pages[p]["visits"])[:TOPN]) | GATE_PAGES
     collapse = lambda p: p if p in top_pages else f"(other {prop_of(p)})"
 
     flows = collections.Counter()   # (col_from, from, to)
-    ends = collections.Counter()    # (col_from, from, "booked"|"exit")
+    ends = collections.Counter()    # (col_from, from, "booked"|"exit"|"app")
+    app_hops_elided = 0
     for (email, _sid), evs in sessions.items():
         seq = []
         for ev in evs:
             if not seq or seq[-1] != ev["page"]:
                 seq.append(ev["page"])
-        oc = "booked" if (outcome.get(email) == "booked" and seq[-1] in GATE_PAGES) else "exit"
-        seq_c = [collapse(p) for p in seq[:MAXSTEP]]
-        flows[(0, origin.get(email, "other / unlisted"), seq_c[0])] += 1
+        starts_app = is_app(seq[0])
+        ends_app = is_app(seq[-1])
+        mid = [p for p in seq if not is_app(p)]  # marketing/docs steps only
+        # interior hop = an app run that is neither the leading nor the trailing run
+        i = 0
+        while i < len(seq):
+            if is_app(seq[i]):
+                j = i
+                while j + 1 < len(seq) and is_app(seq[j + 1]):
+                    j += 1
+                if i > 0 and j < len(seq) - 1:
+                    app_hops_elided += 1
+                i = j + 1
+            else:
+                i += 1
+        org = APP_ORIGIN if starts_app else origin.get(email, "other / unlisted")
+        if not mid:  # pure app session: one direct origin→outcome ribbon
+            ends[(0, APP_ORIGIN, "app")] += 1
+            continue
+        oc = ("booked" if (outcome.get(email) == "booked" and mid[-1] in GATE_PAGES and not ends_app)
+              else "app" if ends_app else "exit")
+        seq_c = [collapse(p) for p in mid[:MAXSTEP]]
+        flows[(0, org, seq_c[0])] += 1
         for k in range(1, len(seq_c)):
             flows[(k, seq_c[k - 1], seq_c[k])] += 1
-        if len(seq) > MAXSTEP:
+        if len(mid) > MAXSTEP:
             flows[(MAXSTEP, seq_c[-1], "__CONTINUES__")] += 1
         else:
             ends[(len(seq_c), seq_c[-1], oc)] += 1
@@ -164,7 +191,8 @@ def main():
         ],
         "sankey": {
             "maxstep": MAXSTEP,
-            "origins": sorted({o for (c, o, _t) in flows if c == 0}),
+            "origins": sorted({o for (c, o, _t) in flows if c == 0} | {APP_ORIGIN}),
+            "appHopsElided": app_hops_elided,
             "flows": [
                 {"c": c, "from": a, "to": b, "n": n}
                 for (c, a, b), n in sorted(flows.items())
