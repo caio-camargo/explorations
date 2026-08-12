@@ -159,7 +159,19 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### Research pass (same session)
+Caio flagged the Sankey's BOOKED band as weird and asked for best-practices research with a
+durable home. Created `docs/research/` (branch index + add-a-row contract, pointer in
+INDEX.md) and wrote `docs/research/dataviz-sankey-best-practices.md`: general principles
+(condensed from the bundled dataviz skill), Sankey-specific guidance (5 classic mistakes,
+journey-funnel Exit-stub convention, alluvial framing, scale limits), a checklist critique
+of our sankey.html v1 (main violation: the full-width BOOKED band with cross-chart arcs —
+not a convention anywhere; also within-column ordering and mass/story color balance), and
+four prioritized v1.5 recommendations. Not yet applied.
+
 ### Next Steps
+- [ ] Apply sankey v1.5 recommendations (kill the top band → per-column stubs; reorder
+      within columns; soften the mass; table-view twin) per `docs/research/`.
 - [ ] Open threads in `journey-markov/NOTES.md`: session-level credit assignment, per-channel
       chains, edge fate-coloring, betweenness.
 - [ ] `build_data.py` has mid-flight Sankey/flows code (uncommitted, computes but doesn't

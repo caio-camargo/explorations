@@ -31,6 +31,7 @@
 | [`output/`](output/) | AI-generated files for retrieval |
 | [`logs/`](logs/) | Skill execution logs (`skill-executions.jsonl`, append-only) |
 | [`docs/`](docs/) | Reference material and skill framework docs |
+| [`docs/research/`](docs/research/) | Best-practice research that outlives one exploration — [`docs/research/README.md`](docs/research/README.md) is its branch index |
 | [`playbooks/`](playbooks/) | Reusable workflow SOPs |
 | [`standards/`](standards/) | Project standards and conventions |
 | [`skills/`](skills/) | Project-specific skill definitions |
