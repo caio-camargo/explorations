@@ -24,6 +24,11 @@
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
 | Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html`, `README.md` |
+> Cleared 2026-08-12: the warehouse funnel shipped (`53891ed`). Its `sankey.html` change was
+> an additive third `SK.mode` branch plus one header link; the ICP and identified-traffic
+> branches were re-verified unregressed (conservation + rendered labels) before pushing.
+> Note for any session regenerating data: `build_data_lakehouse.py` now requires
+> `LAKEHOUSE_WAREHOUSE_ID` in the environment — the compute id is deliberately not committed.
 > Note for the landing-page session: `explorations/journey-markov/` shipped 2026-08-12 and is
 > live but not yet linked from the landing page — add its card when rebuilding.
 
