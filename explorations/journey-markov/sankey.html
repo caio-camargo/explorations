@@ -78,11 +78,12 @@
   <span style="font-size:11px;color:var(--dim)" id="meta"></span>
 </header>
 <div id="sub">
-  Each column is one step into a session (reloads collapsed). Ribbons flow left to right;
-  at every step, <b style="color:var(--booked)">bookings</b> rise out of the gate as short
-  green stubs and sessions that end without booking sink out as
-  <b style="color:#9aa0b0">gray stubs</b> — stub width is the count. Strict booking-event
-  semantics: green exists only where the demo-request form is. Hover anything for counts.
+  Each column is one step into a session (reloads collapsed); every session ends in the
+  <b>outcome</b> column, so the three final heights compare directly —
+  <b style="color:var(--booked)">BOOKED</b> (meeting scheduled) vs
+  <b style="color:#9aa0b0">EXIT</b> vs still browsing. Green ribbons carry bookings from the
+  gate at the step where they happen (count printed at each departure); strict booking-event
+  semantics — green exists only where the demo-request form is. Hover anything for counts.
 </div>
 <div id="wrap"></div>
 <div id="tip"></div>
@@ -128,6 +129,8 @@ function node(col, id) {
   if (!nodes.has(k)) nodes.set(k, { col, id, in: 0, out: 0, srcOff: 0, dstOff: 0 });
   return nodes.get(k);
 }
+const TERM = MAX + 1; // the outcome column: BOOKED / still browsing / EXIT as real
+// terminal nodes, so outcome magnitudes are comparable by height
 const links = []; // {src, dst, n, kind: 'flow'|'booked'|'exit'}
 for (const f of SK.flows) {
   const s = node(f.c, f.from === "__START__" ? "START" : f.from);
@@ -137,8 +140,9 @@ for (const f of SK.flows) {
 }
 for (const e of SK.ends) {
   const s = node(e.c, e.from);
-  s.out += e.n;
-  links.push({ src: s, dst: null, n: e.n, kind: e.end });
+  const d = node(TERM, e.end === "booked" ? "BOOKED" : "EXIT");
+  s.out += e.n; d.in += e.n;
+  links.push({ src: s, dst: d, n: e.n, kind: e.end });
 }
 const totBooked = SK.ends.filter(e => e.end === "booked").reduce((a, e) => a + e.n, 0);
 const sessions = DATA.meta.sessions;
@@ -152,13 +156,14 @@ const NCOLS = MAX + 2;
 const colX = c => M.l + c * ((Wv - M.l - M.r) / (NCOLS - 1));
 const NW = 14, GAP = 7;
 
-// column order: the gate is pinned top (its stubs rise), and its feeder lane (www)
-// stays adjacent to it — with a fixed top anchor, keeping the story lane together
-// beats raw size-sorting for crossings; size sorts within each group
+// column order: the gate is pinned top with BOOKED top-right, so the story lane
+// (gate + www) stays adjacent to its destination; EXIT is pinned bottom-right.
+// Keeping an anchor's feeder group adjacent beats raw size-sorting for crossings
 // (see docs/research/dataviz-sankey-best-practices.md § node order)
 const groupRank = n =>
-  GATES.has(n.id) ? 0 :
+  GATES.has(n.id) || n.id === "BOOKED" ? 0 :
   n.id === "START" || n.id === "still browsing" ? 1 :
+  n.id === "EXIT" ? 9 :
   ({ www: 2, docs: 4, dashboard: 6 })[propOf(n.id)] + (isOther(n.id) ? 1 : 0);
 
 const cols = [];
@@ -185,96 +190,74 @@ for (let c = 0; c < NCOLS; c++) {
 }
 
 /* ---------- link routing ---------- */
-// order outgoing by destination y, incoming by source y, then assign offsets
-const flowLinks = links.filter(l => l.kind === "flow");
-flowLinks.sort((a, b) => a.src.col - b.src.col || a.dst.y - b.dst.y);
-for (const l of flowLinks) { l.sy = l.src.y + l.src.srcOff; l.src.srcOff += l.n * scale; }
-flowLinks.sort((a, b) => a.src.col - b.src.col || a.src.y - b.src.y);
-for (const l of flowLinks) { l.dy = l.dst.y + l.dst.dstOff; l.dst.dstOff += l.n * scale; }
-// end links leave after the flow offsets (bottom of the node's outgoing stack for exit, top for booked)
-const endLinks = links.filter(l => l.kind !== "flow");
-for (const l of endLinks) { l.sy = l.src.y + l.src.srcOff; l.src.srcOff += l.n * scale; }
-
-// stub x-allocation: each end leaves as a SHORT LOCAL STUB near its own column
-// (the journey-funnel Exit convention) — never an arc across the chart
-const stubTipY = { booked: 42, exit: Hv - 24 };
-let bx = 0, ex = 0;
-const colStub = { booked: {}, exit: {} }; // per-column stub extent for labels
-endLinks.sort((a, b) => a.src.col - b.src.col || a.sy - b.sy);
-for (const l of endLinks) {
-  const w = l.n * scale;
-  if (l.kind === "booked") { l.bx = Math.max(bx, l.src.x + 34); bx = l.bx + w; }
-  else { l.bx = Math.max(ex, l.src.x - 26); ex = l.bx + w; }
-  const reg = colStub[l.kind === "booked" ? "booked" : "exit"];
-  const r = reg[l.src.col] || (reg[l.src.col] = { x0: l.bx, x1: l.bx, n: 0 });
-  r.x0 = Math.min(r.x0, l.bx); r.x1 = Math.max(r.x1, l.bx + w); r.n += l.n;
-}
+// every link — including outcome links — is node-to-node; outgoing stacks order
+// by destination y (booked ribbons leave the top of a node's stack, exits the
+// bottom), incoming stacks by source column then y (early steps arrive on top)
+links.sort((a, b) => a.src.col - b.src.col || a.dst.y - b.dst.y);
+for (const l of links) { l.sy = l.src.y + l.src.srcOff; l.src.srcOff += l.n * scale; }
+links.sort((a, b) => a.dst.col - b.dst.col || a.src.col - b.src.col || a.src.y - b.src.y);
+for (const l of links) { l.dy = l.dst.y + l.dst.dstOff; l.dst.dstOff += l.n * scale; }
 
 /* ---------- render ---------- */
 const S = [];
 S.push(`<svg viewBox="0 0 ${Wv} ${Hv}" xmlns="http://www.w3.org/2000/svg">`);
 
-// cumulative totals, fixed corners — the stubs carry the per-step counts
-S.push(`<text class="band" x="${Wv - 14}" y="20" text-anchor="end" style="fill:${BOOKED_C}">BOOKED ${totBooked} — meeting scheduled</text>`);
-S.push(`<text class="band" x="${Wv - 14}" y="${Hv - 8}" text-anchor="end" style="fill:#9aa0b0">EXIT ${sessions - totBooked - ([...nodes.values()].find(n => n.id === "still browsing")?.in || 0)} — no booking</text>`);
-
-// column headers
-const heads = ["START", ...Array.from({ length: MAX }, (_, i) => "step " + (i + 1)), "beyond"];
+// column headers — the last column is the outcome distribution, comparable by height
+const heads = ["START", ...Array.from({ length: MAX }, (_, i) => "step " + (i + 1)), "outcome"];
 heads.forEach((h, c) => S.push(`<text class="head" x="${colX(c) + NW / 2}" y="${M.t - 8}" text-anchor="middle">${h}</text>`));
 
-// links (flows first, ends above them)
+// links, painted in z-order: exit mass at the back, page flows, booked story on top
 let li = 0;
-for (const l of flowLinks) {
+const zRank = { exit: 0, flow: 1, booked: 2 };
+const ordered = [...links].sort((a, b) => zRank[a.kind] - zRank[b.kind]);
+for (const l of ordered) {
   const w = Math.max(1.2, l.n * scale);
   const x1 = l.src.x + NW, x2 = l.dst.x;
   const y1 = l.sy + w / 2, y2 = l.dy + w / 2;
   const mx = (x1 + x2) / 2;
-  const col = isOther(l.src.id) || l.src.id === "START" ? "#8e93a6" : PCOL[propOf(l.src.id)];
-  // emphasis: the marketing lane (www) is the booking story — the rest is soft mass
-  const story = !isOther(l.src.id) && l.src.id !== "START" && propOf(l.src.id) === "www";
-  const op = ((story ? 0.26 : 0.12) + Math.min(story ? 0.3 : 0.16, l.n / 30)).toFixed(2);
+  let col, op, tip;
+  if (l.kind === "booked") {
+    col = BOOKED_C; op = 0.55;
+    tip = `${esc(l.src.id)} → BOOKED|${l.n} session${l.n > 1 ? "s" : ""} book here`;
+  } else if (l.kind === "exit") {
+    col = EXIT_C; op = (0.10 + Math.min(0.10, l.n / 60)).toFixed(2);
+    tip = `${esc(l.src.id)} → EXIT|${l.n} session${l.n > 1 ? "s" : ""} end here without booking`;
+  } else {
+    col = isOther(l.src.id) || l.src.id === "START" ? "#8e93a6" : PCOL[propOf(l.src.id)];
+    // emphasis: the marketing lane (www) is the booking story — the rest is soft mass
+    const story = !isOther(l.src.id) && l.src.id !== "START" && propOf(l.src.id) === "www";
+    op = ((story ? 0.26 : 0.12) + Math.min(story ? 0.3 : 0.16, l.n / 30)).toFixed(2);
+    tip = `${esc(l.src.id)} → ${esc(l.dst.id)}|${l.n} session${l.n > 1 ? "s" : ""}`;
+  }
   S.push(`<path class="flow" id="L${li}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"
     stroke="${col}" stroke-width="${w}" opacity="${op}"
     data-src="${l.src.col}|${esc(l.src.id)}" data-dst="${l.dst.col}|${esc(l.dst.id)}"
-    data-tip="${esc(l.src.id)} → ${esc(l.dst.id)}|${l.n} session${l.n > 1 ? "s" : ""}"/>`);
+    data-tip="${tip}"/>`);
+  // the per-step counts stay printed at the departure point — the stub labels' job
+  if (l.kind === "booked")
+    S.push(`<text class="band" x="${x1 + 6}" y="${y1 - w / 2 - 5}" style="fill:${BOOKED_C}">${l.n} book</text>`);
   li++;
-}
-for (const l of endLinks) {
-  const w = Math.max(1.2, l.n * scale);
-  const x1 = l.src.x + NW, y1 = l.sy + w / 2;
-  const toB = l.kind === "booked";
-  const x2 = l.bx + (l.n * scale) / 2, y2 = toB ? stubTipY.booked : stubTipY.exit;
-  const col = toB ? BOOKED_C : EXIT_C;
-  S.push(`<path class="flow" id="L${li}" d="M${x1},${y1} C${x1 + 42},${y1} ${x2},${(y1 + y2) / 2} ${x2},${y2}"
-    stroke="${col}" stroke-width="${w}" opacity="${toB ? 0.85 : 0.22}"
-    data-src="${l.src.col}|${esc(l.src.id)}" data-dst="${toB ? "BOOKED" : "EXIT"}"
-    data-tip="${esc(l.src.id)} → ${toB ? "BOOKED" : "EXIT"}|${l.n} session${l.n > 1 ? "s" : ""} end here${toB ? " with a booking" : ""}"/>`);
-  li++;
-}
-// per-column stub labels: the count at the tip, right where the flow leaves
-for (const [kind, reg] of Object.entries(colStub)) {
-  const toB = kind === "booked";
-  for (const r of Object.values(reg)) {
-    const mid = (r.x0 + r.x1) / 2;
-    if (!toB && r.n < 6) continue; // label only the major exit stubs
-    S.push(`<text class="band" x="${mid}" y="${toB ? stubTipY.booked - 8 : stubTipY.exit + 14}"
-      text-anchor="middle" style="fill:${toB ? BOOKED_C : "#9aa0b0"}">${r.n} ${toB ? "book" : "exit"}</text>`);
-  }
 }
 
 // nodes + labels
 for (const list of cols) for (const n of list) {
+  const term = n.col === TERM;
   const special = n.id === "START" || n.id === "still browsing";
-  const col = special ? "#b8bdcc" : PCOL[propOf(n.id)];
+  const col = n.id === "BOOKED" ? BOOKED_C : n.id === "EXIT" ? EXIT_C
+            : special ? "#b8bdcc" : PCOL[propOf(n.id)];
   const op = isOther(n.id) ? 0.45 : 1;
   const gate = GATES.has(n.id);
+  const tip = term
+    ? `${esc(n.id)}|${n.in} of ${sessions} sessions${n.id === "BOOKED" ? " — meeting scheduled (held-rate not measured)" : n.id === "EXIT" ? " end without booking" : " are still going past step " + MAX}`
+    : `${esc(n.id)}|${Math.max(n.in, n.out)} sessions pass through (${n.col === 0 ? "start" : "step " + n.col})`;
   S.push(`<rect class="node" x="${n.x}" y="${n.y}" width="${NW}" height="${n.h}" rx="3"
     fill="${col}" opacity="${op}" ${gate ? `stroke="${BOOKED_C}" stroke-width="1.6" stroke-dasharray="4 3"` : ""}
     data-id="${n.col}|${esc(n.id)}"
-    data-tip="${esc(n.id)}|${Math.max(n.in, n.out)} sessions pass through (${n.col === 0 ? "start" : n.col === NCOLS - 1 ? "beyond step " + MAX : "step " + n.col})"/>`);
-  const lbl = n.id.length > 26 ? n.id.slice(0, 25) + "…" : n.id;
-  if (n.h >= 7 || gate || special)
-    S.push(`<text x="${n.x + NW + 5}" y="${n.y + n.h / 2 + 3.5}">${esc(lbl)}${gate ? " ⟡" : ""}</text>`);
+    data-tip="${tip}"/>`);
+  const lbl = term ? `${n.id} · ${n.in}` : n.id.length > 26 ? n.id.slice(0, 25) + "…" : n.id;
+  if (n.h >= 7 || gate || special || term)
+    S.push(`<text ${term ? 'class="band"' : ""} x="${n.x + NW + 5}" y="${n.y + n.h / 2 + 3.5}"
+      ${term ? `style="fill:${n.id === "BOOKED" ? BOOKED_C : "#9aa0b0"}"` : ""}>${esc(lbl)}${gate ? " ⟡" : ""}</text>`);
 }
 S.push(`</svg>`);
 document.getElementById("wrap").innerHTML = S.join("\n");

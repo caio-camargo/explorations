@@ -78,6 +78,27 @@ design-system-agnostic method; cross-checked against the external sources in Par
   category color), and the conversion path may use the bold/status color as the one
   emphasized flow.
 
+### Per-stage stubs vs. terminal aggregation (both are conventions — pick by question)
+
+Two legitimate treatments of outcomes exist in the surveyed material, and they answer
+different questions:
+
+- **Per-stage stubs** (GA-behavior-flow style): each step's endings leave locally, width =
+  that step's count. Answers *"where do we lose them?"* — but fragments the totals, so the
+  reader cannot visually compare how much ended in each outcome.
+- **Terminal outcome nodes** (the classic Sankey/alluvial framing — flows run "from an
+  initial node to a terminal point", and alluvials exist to compare final-state magnitudes
+  by node height): every session ends in a final outcomes column; the stacked terminal
+  heights ARE the outcome distribution. Answers *"how much ends where?"*
+
+**The hybrid keeps both answers** (adopted in journey-markov v1.6 after Caio asked why the
+outcome totals weren't comparable): terminal nodes on the right for magnitude comparison,
+with per-departure count labels printed where each outcome ribbon leaves its step. Key
+distinction from the rejected v1.4 top band: outcomes must be *nodes in the flow's grain*
+(rightward ribbons into a final column), never floating chrome that ribbons arc across the
+chart to reach. Z-order matters: exit mass at the back at low opacity, page flows above it,
+the conversion story on top.
+
 ## Part 3 — Critique of `journey-markov/sankey.html` v1 against this
 
 | Check | Verdict |

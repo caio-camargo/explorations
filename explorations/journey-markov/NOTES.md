@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.5.0
+**Version**: 1.6.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -131,6 +131,16 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v1.6 — terminal outcome column** (Caio: "shouldn't book aggregate into one band at the
+end? The vertical aggregate height lets us compare that to other outcomes"). Correct, and
+the research supports it: stubs answer *where* sessions end but fragment the totals; the
+classic Sankey/alluvial answer to *how much ends where* is terminal nodes whose heights
+compare directly. Now the last column is the outcome distribution — BOOKED·37,
+still browsing·28, EXIT·180 stacked — while per-departure counts stay printed on each green
+ribbon, keeping both answers (the hybrid is written up in the research doc §"Per-stage
+stubs vs. terminal aggregation"). Unlike the rejected v1.4 band, outcomes are nodes in the
+flow's grain: rightward ribbons, exit mass painted at the back, the green story on top.
 
 What the step indexing adds that the graph can't show: **the modal booked session is two
 steps long** — of 37 booking sessions, 16 book at step 2 and 9 more at step 3; it's

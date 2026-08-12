@@ -174,6 +174,14 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v1.6 (same session) — terminal outcome column
+Caio challenged the v1.5 stubs: fragmented ends can't be compared as totals. Research agrees
+— stubs answer *where*, terminal nodes answer *how much*; the hybrid keeps both (documented
+in `docs/research/dataviz-sankey-best-practices.md` §"Per-stage stubs vs. terminal
+aggregation"). Sankey's last column is now the outcome distribution (BOOKED·37,
+still browsing·28, EXIT·180 — heights directly comparable) with per-departure green counts
+retained. Verified: terminal sum 245, BOOKED hover isolates its 6 ribbons, tables intact.
+
 ### Research pass (same session)
 Caio flagged the Sankey's BOOKED band as weird and asked for best-practices research with a
 durable home. Created `docs/research/` (branch index + add-a-row contract, pointer in
