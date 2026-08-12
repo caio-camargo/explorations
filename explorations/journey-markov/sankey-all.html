@@ -79,20 +79,10 @@
   <span style="font-size:11px;color:var(--dim)" id="meta"></span>
 </header>
 <div id="sub">
-  Each column is one step into a session (reloads collapsed); every session ends in the
-  <b>outcome</b> column, so the three final heights compare directly —
-  <b style="color:var(--booked)">BOOKED</b> (meeting scheduled) vs
-  <b style="color:#9aa0b0">EXIT</b> vs still browsing. Green ribbons carry bookings from the
-  gate at the step where they happen (count printed at each departure); strict booking-event
-  semantics — green exists only where the demo-request form is. <b>Inclusion rule: every
-  session shown touches at least one page of the marketing site</b>; pure app-dashboard and
-  docs-only sessions are excluded (count in the header). The <b>app dashboard</b> is an
-  origin and an outcome, never a middle step: sessions starting in the product enter from
-  the left, sessions that dive into it end on the right (<span id="elided"></span> interior
-  marketing→app→marketing hops are spliced out). Docs pages stay as steps — where journeys
-  pick them up and where they lead is part of the story.
-  *Origins are self-reported ("how did you hear about us") and known to under-attribute —
-  treat the split as directional. Hover anything for counts.
+  Sessions that touch the marketing site, one column per step. The <b>app dashboard</b> is
+  an origin and an outcome, not a step. <b style="color:var(--booked)">Green</b> = meeting
+  booked — mechanically possible only at the demo-request form (the gate&nbsp;⟡).
+  *Origins are self-reported.
 </div>
 <div id="wrap"></div>
 <div id="tip"></div>
@@ -101,10 +91,12 @@
   <div id="tables"></div>
 </details>
 <div id="foot">
-  Anonymized aggregate — page paths and session counts only. Long-tail pages are folded into
-  “(other …)” per property; journeys longer than the last column pool into “still browsing”.
-  Same data and provenance as the <a href="index.html" style="color:var(--accent)">gravity
-  graph</a>; model details and caveats in NOTES.md.
+  Anonymized aggregate — page paths and session counts only. Reloads collapsed; long-tail
+  pages fold into “(other …)”; journeys past the last column pool into “still browsing”;
+  <span id="elided"></span> interior marketing→app→marketing hops spliced out. BOOKED means
+  meeting scheduled (held-rate not measured). Same data and provenance as the
+  <a href="index.html" style="color:var(--accent)">gravity graph</a>; full caveats in
+  NOTES.md.
 </div>
 
 <script>
@@ -370,15 +362,17 @@ if (ALL) {
   const sl = document.getElementById("siblink");
   sl.href = "sankey.html"; sl.textContent = "← ICP funnel";
   document.getElementById("sub").innerHTML =
-    `Every <b>identified visitor session</b> on the marketing site (two export windows). ` +
-    `Identification is reverse-IP based — this is a fraction of true traffic, biased toward ` +
-    `identifiable companies, and person-level identity is not trusted or used. Export windows ` +
-    `are capped at 10k rows each, so totals undercount. Most sessions are single-page: that ` +
-    `is the honest shape of full traffic. ` +
-    `<b style="color:var(--booked)">Green</b> marks sessions whose <b>last page is the ` +
-    `demo-request form</b> — form submission and booking are not observable in this dataset. ` +
-    `Page order within a session is as exported (chronology assumed). Origins come from ` +
-    `campaign tags; the untagged mass is direct + untracked. Hover anything for counts.`;
+    `All <b>identified visitor sessions</b> on the marketing site, one column per step. ` +
+    `<b style="color:var(--booked)">Green</b> = session ends on the demo-request form — ` +
+    `submission and booking are not observable here. *Origins from campaign tags; most ` +
+    `traffic is untagged.`;
+  document.getElementById("foot").innerHTML =
+    `Anonymized aggregate — page paths and session counts only. Reverse-IP identification ` +
+    `covers a fraction of true traffic, biased toward identifiable companies; person-level ` +
+    `identity is neither trusted nor used. Export windows cap at 10k rows (totals ` +
+    `undercount); duplicate rows across re-exports dropped; page order as exported ` +
+    `(chronology assumed). Sibling of the <a href="sankey.html" ` +
+    `style="color:var(--accent)">ICP funnel</a>; full caveats in NOTES.md.`;
 } else {
   const el = document.getElementById("elided");
   if (el) el.textContent = SK.appHopsElided || 0;
