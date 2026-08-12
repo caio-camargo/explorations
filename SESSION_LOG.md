@@ -38,6 +38,43 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Evolution v2.1: vigilance heritable, sprint escape
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+Applied the parked sense fix. Three iterations, each failure explained by measurement:
+1. Flat notice (v2 baseline): predation punished sense — 6.0 vs 7.0 control.
+2. Notice ∝ sense alone: still punished (5.9). Pursuit geometry explains it: against a strictly
+   faster predator, fleeing only delays capture, so early warning buys nothing worth its bill.
+   **Early warning is worthless if escape is impossible.**
+3. Notice ∝ sense + SPRINT (alarm converts to a 1.4× flight burst, billed quadratically on the
+   speed actually used): sense 7.1 vs 7.0 — punishment gone. Neutrality, not rescue.
+
+### The residual constraint, identified
+With 50–150 predators field-wide, prey encounter one in ~1% of steps — benefit-per-encounter
+can't lift sense above the foraging equilibrium regardless of vigilance quality. Encounter rate
+binds, and predator density is capped by the interference tax. "Soften interference" parked as
+the next lever (with its boom-stability risk noted).
+
+### Side effect worth the ticket
+The sprint escalated the arms race: predator speed now evolves to 2.71 (was 2.45) countering
+prey that can briefly match them. Fear made everyone faster. Coexistence intact throughout
+(zero extinctions; prey ~1,400, predators 50–160).
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/evolution/index.html` | noticeP = base·sense/14 (capped); SPRINT=1.4 with cost on moved speed |
+| 2 | edited | `explorations/evolution/NOTES.md` | v2.1 — "The sense fix: three iterations to neutrality, and the real constraint" |
+| 3 | edited | `explorations/README.md` | Evolution row → v2.1 |
+
+### Next Steps
+- [ ] Soften interference and re-run the sense A/B (boom-stability check required)
+- [ ] Patchy worlds and phylogeny strip still parked
+
 ## Session 2026-08-12 — Evolution v2: co-evolving predators
 **Source**: Claude Code
 **User**: Caio

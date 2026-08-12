@@ -1,9 +1,9 @@
 # Evolution Arena — selection in real time
-**Version**: v2.0.0
+**Version**: v2.1.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-12
 **Purpose**: Natural selection, watchable — foragers with heritable mutating genomes on a regrowing field
-**Status**: Active — v2 (co-evolving predators: pursuit, surprise, interference)
+**Status**: Active — v2.1 (vigilance heritable, sprint escape; sense punishment resolved to neutrality)
 
 ---
 
@@ -159,10 +159,39 @@ without at t=4,700). Fleeing helps whoever flees, but longer whiskers don't buy 
 warning at a flat notice probability to pay their per-step bill. The obvious lever — making
 notice probability scale with sense, so vigilance quality is the gene — is parked below.
 
+## The sense fix (v2.1) — three iterations to neutrality, and the real constraint
+
+Applying the parked lever — notice ∝ sense — turned into a three-step lesson in what early
+warning is actually worth:
+
+1. **Flat notice (v2)**: predation *punished* sense — 6.0 with predators vs 7.0 without.
+2. **Notice ∝ sense alone**: still punished (5.9). The mechanistic reason fell out of the
+   pursuit geometry: against a strictly faster predator on open ground, fleeing only delays
+   capture — so no amount of vigilance quality buys anything worth its per-step bill.
+   **Early warning is worthless if escape is impossible.**
+3. **Notice ∝ sense + sprint** (alarm converts to a 1.4× flight burst, billed quadratically on
+   the speed actually used): sense lands at **7.1 with predators vs 7.0 without** — the
+   punishment is gone. Alert prey now genuinely escape; unaware prey still die; vigilance
+   finally does something.
+
+Neutrality, not rescue — and the reason is measurable too: with 50–150 predators on the whole
+field, a prey meets one in ~1% of steps, so the benefit-per-encounter can't lift sense *above*
+the foraging equilibrium regardless of quality. **Encounter rate is the binding constraint**,
+and predator density is capped by the interference tax. Softening interference (denser
+predators, stronger vigilance selection) is the next lever, with the boom-stability risk that
+implies.
+
+Spectacular side effect: the sprint escalated the arms race — predator speed now evolves to
+**2.71** (was 2.45) as they counter prey that can briefly match them. Fear made everyone
+faster.
+
 ## Things worth trying next
 
-- [ ] **Notice ∝ sense** — make vigilance quality the gene (notice probability scaling with
-      sense radius), the missing lever for predation to finally price early warning.
+- [x] ~~Notice ∝ sense~~ — done in v2.1 (plus the sprint it turned out to require). Result:
+      neutrality, not rescue; the binding constraint is now encounter rate.
+- [ ] **Soften predator interference** — denser predators mean more encounters, which is what
+      vigilance selection needs to push sense above the foraging equilibrium. Boom-stability
+      risk to re-verify.
 - [ ] **Patchy worlds** — regrowth varying by region (or food dropped in clumps) should make
       `sense` finally worth buying; the meadow/desert sense-selloff is begging for this control.
 - [x] ~~Predators as a second evolving species~~ — done in v2, with three measured ecological

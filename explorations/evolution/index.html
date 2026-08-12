@@ -247,12 +247,26 @@ const BIRTH_KEEP = 0.45;           // parent and child each keep this share
 const WHISK = 0.7;                 // whisker half-angle, rad
 const TURN = 0.28, JITTER = 0.10;  // steering, rad per step
 /* Vigilance is imperfect: a prey with a predator inside its sense radius only
-   NOTICES it with probability NOTICE_P per step, then stays alarmed FEAR_STEPS.
+   NOTICES it with some probability per step, then stays alarmed FEAR_STEPS.
    Without this, evasion is perfect-information — and pursuit against a fleeing
    target of near-equal speed mathematically never closes, so predators boom on
    naive founders and then bust to nothing as prey speed evolves up (measured:
-   257 → 2 predators inside 1,200 steps). Surprise is what real stalking is. */
-const NOTICE_P = 0.12, FEAR_STEPS = 45;
+   257 → 2 predators inside 1,200 steps). Surprise is what real stalking is.
+
+   v2.1: notice probability SCALES WITH THE SENSE GENE — vigilance quality is
+   heritable, not just detection radius. At a flat probability, predation
+   failed to rescue sense (6.0 with predators vs 7.0 without): longer whiskers
+   couldn't buy enough warning to pay their bill. Now sense buys both range
+   and reaction. noticeP = NOTICE_BASE · sense/14 (founder-normalised), capped. */
+const NOTICE_BASE = 0.12, NOTICE_REF = 14, NOTICE_CAP = 0.5;
+const FEAR_STEPS = 45;
+/* Alarm converts to SPRINT: fleeing prey move at 1.4× gene speed, paying the
+   quadratic cost on the speed actually used. Without this, notice ∝ sense
+   still failed to rescue the sense gene (5.9 with predators vs 7.0 without) —
+   because against a strictly faster predator, fleeing only delays capture, so
+   early warning bought nothing worth its bill. Escape has to be POSSIBLE for
+   vigilance to be worth paying for. */
+const SPRINT = 1.4;
 /* Predator interference: each neighbouring predator within INTERFERE_R levies
    an energy tax. Without it the numerical response is unbounded — surprise
    hunting boomed predators to 900 on 720 prey, ate the world, and collapsed to
@@ -517,7 +531,8 @@ function stepSim() {
     let fleeing = false;
     if (hunting) {
       const pj = nearest(predGrid, bx, by, ax[i], ay[i], se);
-      if (pj >= 0 && (fear[i] > 0 || Math.random() < NOTICE_P)) {
+      const noticeP = Math.min(NOTICE_CAP, NOTICE_BASE * se / NOTICE_REF);
+      if (pj >= 0 && (fear[i] > 0 || Math.random() < noticeP)) {
         fear[i] = FEAR_STEPS;
         ah[i] = Math.atan2(wdy(ay[i] - by[pj]), wdx(ax[i] - bx[pj]));
         fleeing = true;
@@ -536,9 +551,10 @@ function stepSim() {
       ah[i] += (Math.random() - 0.5) * 2 * JITTER;
     }
 
-    // move
-    ax[i] = wrapX(ax[i] + Math.cos(ah[i]) * sp);
-    ay[i] = wrapY(ay[i] + Math.sin(ah[i]) * sp);
+    // move — alarm buys a sprint, billed at the speed actually used
+    const mv = fleeing ? sp * SPRINT : sp;
+    ax[i] = wrapX(ax[i] + Math.cos(ah[i]) * mv);
+    ay[i] = wrapY(ay[i] + Math.sin(ah[i]) * mv);
 
     // eat where you stand (slime-mold lesson: never gate eating on movement).
     // Grazing can't strip a cell below a small refugium — a seed bank always
@@ -556,7 +572,7 @@ function stepSim() {
     //   engine* = speed · sqrt(SPEED_COST / metabolism)
     // so fast lineages should evolve big engines. Nobody tells them that.
     const mt = gMeta[i];
-    en[i] -= mt * P.metabolism + SPEED_COST * sp * sp / mt + SENSE_COST * se;
+    en[i] -= mt * P.metabolism + SPEED_COST * mv * mv / mt + SENSE_COST * se;
 
     if (en[i] <= 0) { alive[i] = 0; stepDeaths++; continue; }
 
