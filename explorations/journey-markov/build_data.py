@@ -121,18 +121,31 @@ def main():
     GATE_PAGES = {"/enterprise-plan"}
     APP_ORIGIN = "app dashboard"
     is_app = lambda p: p.startswith("dashboard.")
+    is_www = lambda p: prop_of(p) == "www"
     top_pages = set(sorted((p for p in pages if not is_app(p)),
                            key=lambda p: -pages[p]["visits"])[:TOPN]) | GATE_PAGES
-    collapse = lambda p: p if p in top_pages else f"(other {prop_of(p)})"
+    OTHER_LBL = {"www": "(other site pages)", "docs": "(other docs pages)"}
+    def collapse(p):
+        if p == "/":
+            return "homepage"
+        return p if p in top_pages else OTHER_LBL[prop_of(p)]
 
     flows = collections.Counter()   # (col_from, from, to)
     ends = collections.Counter()    # (col_from, from, "booked"|"exit"|"app")
     app_hops_elided = 0
+    n_included = 0
+    excluded = collections.Counter()  # sessions that never touch the marketing site
     for (email, _sid), evs in sessions.items():
         seq = []
         for ev in evs:
             if not seq or seq[-1] != ev["page"]:
                 seq.append(ev["page"])
+        # inclusion rule: a session belongs to the marketing funnel only if it
+        # touches at least one www page; pure app / docs-only sessions are out
+        if not any(is_www(p) for p in seq):
+            excluded["pure app" if all(is_app(p) for p in seq) else "docs, no site"] += 1
+            continue
+        n_included += 1
         starts_app = is_app(seq[0])
         ends_app = is_app(seq[-1])
         mid = [p for p in seq if not is_app(p)]  # marketing/docs steps only
@@ -149,9 +162,6 @@ def main():
             else:
                 i += 1
         org = APP_ORIGIN if starts_app else origin.get(email, "other / unlisted")
-        if not mid:  # pure app session: one direct origin→outcome ribbon
-            ends[(0, APP_ORIGIN, "app")] += 1
-            continue
         oc = ("booked" if (outcome.get(email) == "booked" and mid[-1] in GATE_PAGES and not ends_app)
               else "app" if ends_app else "exit")
         seq_c = [collapse(p) for p in mid[:MAXSTEP]]
@@ -193,6 +203,8 @@ def main():
             "maxstep": MAXSTEP,
             "origins": sorted({o for (c, o, _t) in flows if c == 0} | {APP_ORIGIN}),
             "appHopsElided": app_hops_elided,
+            "included": n_included,
+            "excluded": dict(excluded),
             "flows": [
                 {"c": c, "from": a, "to": b, "n": n}
                 for (c, a, b), n in sorted(flows.items())

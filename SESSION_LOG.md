@@ -174,6 +174,13 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v2.0 (same session) — the inclusion rule
+Caio's rule: every session shown must touch ≥1 www page. 97 marketing sessions remain (132
+pure-app + 16 docs-only excluded, counted on chart); all 38 bookings retained. Renames:
+`/`→homepage, "(other www)"→"(other site pages)". Headline reframe: BOOKED·38 vs EXIT·36 —
+the marketing funnel converts ~39% of its true sessions; earlier "leakiness" was app traffic
+that was never the funnel's to lose.
+
 ### v1.9 (same session) — app as origin/outcome
 Measured Caio's hypothesis first: only 29/245 sessions return from app to marketing (19 of
 them start in-app; 11 end at the gate — the product-lane booking path). Restructure in

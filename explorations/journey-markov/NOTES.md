@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.9.0
+**Version**: 2.0.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -131,6 +131,17 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v2.0 — the inclusion rule** (Caio: every user shown must have passed through at least one
+www page). The funnel's population is now defined, not inherited: 97 marketing sessions;
+132 pure-app and 16 docs-only sessions excluded (counted in the header). All 38 bookings
+retained by construction — booking requires the gate, a www page. Docs pages stay as steps
+inside qualifying journeys (which pages feed them, where they lead). Also: `/` renamed
+**homepage**, "(other www)" → **"(other site pages)"** ("(other docs pages)" likewise).
+The reframe this produced is the strongest single finding of the series: **BOOKED·38 vs
+EXIT·36 — the marketing funnel converts ~39% of its true sessions.** The "leak" in every
+earlier version was app traffic that was never the marketing funnel's to lose. A funnel's
+denominator is a modeling decision, and it was hiding the conclusion.
 
 **v1.9 — the app is an origin and an outcome, never a middle step** (Caio's structural
 insight, checked against the data first). Bounce-back is the minority he suspected: of 245
