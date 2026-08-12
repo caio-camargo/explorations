@@ -37,8 +37,12 @@ def prop_of(page: str) -> str:
     return "www"
 
 def main():
-    # outcome per visitor
-    outcome = {}
+    # outcome + self-reported origin per visitor
+    def origin_of(s):
+        return {"google_search": "google", "chatgpt": "chatgpt",
+                "recommendation": "recommendation"}.get((s or "").strip(), "other / unlisted")
+
+    outcome, origin = {}, {}
     with open(BASE / "icp-journeys-full.csv", encoding="utf-8-sig") as f:
         for r in csv.DictReader(f):
             e = (r.get("email") or "").strip().lower()
@@ -48,6 +52,9 @@ def main():
             # event happened, so it counts as booked. BOOKED = "meeting scheduled",
             # nothing stronger (held-rate is not measured in the source data).
             outcome[e] = "booked" if s in ("Meeting Scheduled", "Cancelled") else "lost"
+            # heard_about is self-reported and incomplete (known under-attribution);
+            # it still beats an information-free START bar
+            origin[e] = origin_of(r.get("heard_about"))
 
     # journeys
     rows = []
@@ -121,7 +128,7 @@ def main():
                 seq.append(ev["page"])
         oc = "booked" if (outcome.get(email) == "booked" and seq[-1] in GATE_PAGES) else "exit"
         seq_c = [collapse(p) for p in seq[:MAXSTEP]]
-        flows[(0, "__START__", seq_c[0])] += 1
+        flows[(0, origin.get(email, "other / unlisted"), seq_c[0])] += 1
         for k in range(1, len(seq_c)):
             flows[(k, seq_c[k - 1], seq_c[k])] += 1
         if len(seq) > MAXSTEP:
@@ -157,6 +164,7 @@ def main():
         ],
         "sankey": {
             "maxstep": MAXSTEP,
+            "origins": sorted({o for (c, o, _t) in flows if c == 0}),
             "flows": [
                 {"c": c, "from": a, "to": b, "n": n}
                 for (c, a, b), n in sorted(flows.items())

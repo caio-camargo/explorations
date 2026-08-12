@@ -174,6 +174,13 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 + 28 still-browsing). New finding: the modal booked session is 2 steps — land → form → book
 (16/37 book at step 2, 9 at step 3); long sessions belong to the product lane.
 
+### v1.8 (same session) — origins, rename, gate air
+START bar replaced by self-reported origin nodes (google 57 / chatgpt 38 / recommendation 11
+/ other-unlisted 139 sessions; caveat printed — heard_about under-attributes). "dashboard
+app" → "app dashboard". Investigated Caio's gate→gate question: no such flow exists — it was
+the homepage→gate ribbon (31 sessions) emerging under the tiny step-1 gate node; added
+vertical air below gates. Conservation verified 245 at origin and outcome columns.
+
 ### v1.7 (same session) — the app as one lane
 Caio: the dashboard subdomain took half the chart, but this is a marketing view — entries
 and exits from the app matter, internal app movement doesn't. All `dashboard.*` pages now

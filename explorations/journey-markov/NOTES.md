@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.7.0
+**Version**: 1.8.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -131,6 +131,19 @@ node ordering became gate-anchored to cut crossings further; the non-booking mas
 softened so the story flows stay loudest; a **table twin** closed the accessibility gap; and
 the scale became gap-aware. (Both pages now cross-link — a "funnel"/"graph" button in the
 header.)
+
+**v1.8 — origins replace the mute START bar** (Caio: "the big START bar gives us no
+information"). Column 0 now splits sessions by the visitor's self-reported discovery
+channel: google · 57, chatgpt · 38, recommendation · 11, other/unlisted · 139
+(session-weighted; per-visitor it's 16/16/6/15). Directional only — `heard_about` is
+self-reported and known to under-attribute (caveat printed on the chart and in tooltips).
+What it shows immediately: google/chatgpt sessions feed the marketing lane, while the
+other/unlisted mass is dominated by returning app sessions — the heavy product users are
+exactly the ones attribution can't see. Also in v1.8: "dashboard app" renamed to
+**app dashboard**; extra air below gate nodes after Caio mis-read the homepage→gate ribbon
+(31 sessions, the biggest marketing transition) as a gate→gate self-flow — verified no
+same-page step-transitions exist (reload-collapsing holds; only "(other …)" buckets
+self-flow, which is different tail pages sharing a bucket).
 
 **v1.7 — the app as one lane** (Caio: this is a marketing view; who enters and leaves the
 dashboard matters, where they go inside it doesn't). All `dashboard.*` pages collapse into a
