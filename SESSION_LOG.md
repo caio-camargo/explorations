@@ -89,6 +89,13 @@ numerically in the live page (targets vs positions) after two screenshot rounds 
 **Publication signed off by Caio** ("push to github, I want to share it") — committed and
 pushed selectively, excluding the other session's uncommitted landing-page `index.html`.
 
+### v1.2 (same session)
+Caio supplied a domain datum: `/enterprise-plan` hosts the demo-request form — the gate to
+booking. Measured: 22.3% of booked session-ends happen there (largest absorbing edge, 41:8
+booked:lost when sessions end on it; a destination — 74/78 visits arrive from other pages).
+Layout now pins it in the doorway to BOOKED with a dashed green ring and GATE label; domain
+gates live in a `GATES` set. Pushed.
+
 ### Next Steps
 - [ ] Open threads in `journey-markov/NOTES.md`: proper credit assignment, per-channel chains,
       edge fate-coloring, betweenness.

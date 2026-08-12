@@ -308,6 +308,10 @@ function solve(kappa) {
 }
 
 /* ---------- graph nodes ---------- */
+// Domain knowledge: pages that ARE the conversion mechanism, not just on the way.
+// /enterprise-plan hosts the demo-request form — the gate every booking passes through.
+const GATES = new Set(["/enterprise-plan"]);
+
 const START = { id: "session start", pseudo: "start" };
 const BOOKED = { id: "BOOKED", pseudo: "booked" };
 const LOST = { id: "LOST", pseudo: "lost" };
@@ -323,6 +327,7 @@ for (let i = 0; i < nodes.length; i++) {
   n.ix = i;
   n.x = (rng() - .5) * 900; n.y = (rng() - .5) * 600;
   n.vx = 0; n.vy = 0; n.pin = false;
+  n.gate = !n.pseudo && GATES.has(n.id);
   n.r = n.pseudo ? 14 : 3.5 + 11 * Math.sqrt(n.visits / maxVisits);
 }
 
@@ -348,6 +353,12 @@ function pinAnchors() {
   START.x = -usable * 0.42; START.y = 0;
   BOOKED.x = usable * 0.42; BOOKED.y = -H * 0.26;
   LOST.x = usable * 0.42; LOST.y = H * 0.26;
+  // gates stand in the doorway to BOOKED: pinned between the graph and the outcome
+  for (const n of nodes) if (n.gate) {
+    n.pin = true;
+    n.x = BOOKED.x - usable * 0.16;
+    n.y = BOOKED.y + H * 0.11;
+  }
 }
 pinAnchors();
 
@@ -478,6 +489,10 @@ function renderLegend() {
   }
   item(COL.booked, "BOOKED (absorbing)");
   item(COL.lost, "LOST (absorbing)");
+  const g = document.createElement("div"); g.className = "item";
+  g.innerHTML = `<span class="sw" style="background:transparent;border:1.5px dashed rgba(12,163,12,.8)"></span>` +
+    `<span>gate — the demo-request form; every booking passes through it</span>`;
+  L.appendChild(g);
 }
 
 function bindRange(id, valId, key, fmt, after) {
@@ -541,7 +556,7 @@ function renderDetail() {
   if (selected < 0 || selected >= N) { D.style.display = "none"; return; }
   D.style.display = "block";
   const p = pages[selected], i = selected;
-  $("dprop").textContent = p.prop;
+  $("dprop").textContent = p.prop + (GATES.has(p.id) ? " · GATE — the demo-request form" : "");
   $("dtitle").textContent = p.id;
   const emp = p.visitsBooked + p.visitsLost ? p.visitsBooked / (p.visitsBooked + p.visitsLost) : 0;
   const rows = [
@@ -689,6 +704,7 @@ function draw(now) {
   }
   if (selected >= 0) labelSet.add(selected);
   if (hover >= 0 && hover < N) labelSet.add(hover);
+  for (const n of nodes) if (n.gate) labelSet.add(n.ix);
 
   const labelQueue = [];
   for (const n of nodes) {
@@ -706,6 +722,20 @@ function draw(now) {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+    if (n.gate) { // the doorway: a dashed portal ring in BOOKED's green
+      ctx.globalAlpha = dimmed ? 0.3 : 1;
+      ctx.beginPath(); ctx.arc(sx, sy, r + 5 * cam.z, 0, 7);
+      ctx.setLineDash([4 * cam.z, 3 * cam.z]);
+      ctx.strokeStyle = "rgba(12,163,12,.75)"; ctx.lineWidth = 1.6;
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.font = "600 9px ui-sans-serif, system-ui, sans-serif";
+      ctx.fillStyle = "rgba(12,163,12,.9)";
+      ctx.textAlign = "center";
+      ctx.fillText("GATE", sx, sy + r + 13 * cam.z);
+      ctx.textAlign = "left";
+      ctx.globalAlpha = 1;
+    }
     if (n.ix === selected || n.ix === hover) {
       ctx.beginPath(); ctx.arc(sx, sy, r + 3.5, 0, 7);
       ctx.strokeStyle = "rgba(230,232,239,.85)"; ctx.lineWidth = 1.5; ctx.stroke();

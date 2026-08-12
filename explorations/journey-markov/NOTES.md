@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 1.1.0
+**Version**: 1.2.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -88,6 +88,22 @@ The single sentence the picture earns: **depth of product engagement predicts bo
 better than marketing-page attention — and the billing page is where intent goes to die.**
 Directionally unsurprising; the value is that it's now *quantified per page* with a model
 whose knobs are visible, rather than a hunch.
+
+### The gate (domain datum from Caio, v1.2)
+
+`/enterprise-plan` is not just another page — it hosts the demo-request form, so it is the
+mechanical gate every booking passes through. The data agrees it's special:
+
+- `/enterprise-plan → BOOKED` is the **largest single absorbing edge**: 41 of 184 booked
+  session-ends (22.3%) happen there.
+- When a session ends on it, it ends booked 41:8 (84%) — far above its 80% gravity.
+- It is a destination, not a landing page: 74 of its 78 visits arrive from other pages
+  (only 4 session entries).
+
+The layout now encodes this: the gate is **pinned in the doorway** between the graph and
+BOOKED (exempt from the fate force — its position states its role), drawn with a dashed
+ring in BOOKED's green and a permanent GATE label. Domain gates live in a one-line
+`GATES` set at the top of the script.
 
 ## Caveats — read before believing
 
