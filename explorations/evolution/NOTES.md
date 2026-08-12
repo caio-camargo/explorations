@@ -1,9 +1,9 @@
 # Evolution Arena — selection in real time
-**Version**: v1.0.0
+**Version**: v1.1.0
 **Date Created**: 2026-08-11
-**Last Updated**: 2026-08-11
+**Last Updated**: 2026-08-12
 **Purpose**: Natural selection, watchable — foragers with heritable mutating genomes on a regrowing field
-**Status**: Active — v1
+**Status**: Active — v1.1 (engine gene; quantile colouring)
 
 ---
 
@@ -73,6 +73,47 @@ Also verified: variance holds at mutation-selection balance (speed CV ≈ 0.13 �
 collapsing nor exploding); meteor recovery 1,219 → 96 → 1,045 within 1,500 steps, zero
 extinctions in meadow/desert/seasons post-refugium; first meadow run shows the classic
 boom–overgraze–crash–recover arc (2,463 → 1,068 → stabilising ~1,400) before settling.
+
+## The engine gene, and the correlation nobody programmed (v1.1)
+
+User feedback: lineage and sense colours were near-monotone even at high mutation, and
+"maybe metabolism itself can be an inherited trait that trades off against hunger rate and
+speed."
+
+**The colour problems were two separate defects.** Sense mapped the trait's *legal* range
+[3,40] to the ramp while the population lived in a ~10% sliver of it — every dot the same
+blue. Dots (and histogram bars) now map the population's own running p5–p95, so the full ramp
+is always in use; the histogram keeps fixed axes for absolute truth and prints the current
+p5–p95 to connect the two views. Lineage hue drift was small and — as the user suspected —
+**not connected to the mutation slider at all**; it now scales with it (±10° per birth at the
+default σ). The residual monotony that remains is honest: coalescence. Successful families
+take over, and hue diversity is pruned exactly the way surnames die out. When lineage mode
+looks like one colour, that IS the finding — somebody recently won.
+
+**The engine gene (metabolism as heredity).** Framed as engine size: idle burn scales *up*
+with it (hunger rate), movement cost scales *down* (`speed²/engine` — a bigger engine makes
+locomotion cheaper). Real physiology, and it makes a falsifiable prediction: minimising total
+cost gives an interior optimum
+
+```
+engine* = speed · √(SPEED_COST / metabolism)
+```
+
+so fast lineages should evolve big engines — a gene–gene correlation that exists nowhere in
+the code, only in the economics.
+
+**Measured, meadow, founders at engine 1.0** (over-engined for their speed; predicted optimum
+≈ 0.54):
+
+| t | mean engine | corr(speed, engine) |
+|---|---|---|
+| 2,500 | 0.82 | 0.08 |
+| 5,000 | 0.72 | 0.45 |
+| 7,500 | **0.64** | **0.57** |
+
+The population walks toward the analytic optimum and *builds the predicted correlation out of
+nothing* — selection discovering a theorem. Population stable throughout (≈1,470, zero
+extinctions), and the r-strategy drift continues alongside (patience 104 in the meadow).
 
 ## Things worth trying next
 

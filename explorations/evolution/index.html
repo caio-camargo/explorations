@@ -124,8 +124,9 @@
         <label title="How much each trait mutates at birth (log-normal, per trait). Zero freezes evolution; high values blur species into noise.">Mutation</label><span class="val" id="v_mu"></span>
         <input type="range" id="mu" min="0" max="0.20" step="0.005">
       </div>
-      <div class="note">Heritable traits: <b>speed</b> (cost ∝ speed²), <b>sense</b> (whisker
-        reach, cost ∝ sense), and <b>patience</b> (energy hoarded before dividing). There is no
+      <div class="note">Heritable traits: <b>speed</b> (cost ∝ speed²/engine), <b>sense</b>
+        (whisker reach, cost ∝ sense), <b>patience</b> (energy hoarded before dividing), and
+        <b>engine</b> (metabolic rate: burns more at rest, makes movement cheaper). There is no
         population slider — population is an outcome, not a setting.</div>
     </div>
 
@@ -145,7 +146,7 @@
         <button class="act" id="eden">eden</button>
       </div>
       <div class="note">space pause · m meteor (kills 90%) · e eden (restart) · h histogram
-        · 1–4 colour modes</div>
+        · 1–5 colour modes</div>
     </div>
   </div>
 </aside>
@@ -203,14 +204,18 @@ const PRESETS = {
 };
 
 const COLOR_MODES = {
-  lineage: { label: "lineage", note: "Hue is inherited with a small drift at each birth — " +
-             "colour clusters are families. Watch one shade slowly take over, or split." },
-  speed:   { label: "speed",   note: "Blue = slow, red = fast. Movement costs speed², so red " +
-             "lives dangerously." },
+  lineage: { label: "lineage", note: "Hue is inherited with a drift at each birth (scaled by " +
+             "the mutation slider) — colour clusters are families. When it looks monotone, " +
+             "that's coalescence: one family has recently taken over." },
+  speed:   { label: "speed",   note: "Blue = slow, red = fast. Movement costs speed²/engine, " +
+             "so red lives dangerously — unless it grows the engine to match." },
   sense:   { label: "sense",   note: "Blue = short whiskers, red = long. Longer senses find " +
              "food sooner and bill you every step." },
   patience:{ label: "patience", note: "Blue = divides early and cheap, red = hoards a big " +
              "endowment first. Two whole life strategies on one axis." },
+  engine:  { label: "engine",  note: "Metabolic rate. A big engine burns more at rest (hunger) " +
+             "but makes movement cheaper — theory says engine should track speed, and the " +
+             "population gets to discover that." },
 };
 const MODE_KEYS = Object.keys(COLOR_MODES);
 
@@ -219,6 +224,7 @@ const T = {
   speed:    { min: 0.2, max: 4.0 },
   sense:    { min: 3,   max: 40 },
   patience: { min: 60,  max: 400 },
+  engine:   { min: 0.4, max: 3.0 },
 };
 
 const SEASON_PERIOD = 2400;
@@ -233,7 +239,7 @@ const TURN = 0.28, JITTER = 0.10;  // steering, rad per step
 // ---- state -----------------------------------------------------------------
 let grass = new Float32Array(GN);
 let n = 0;                                   // live population
-let ax, ay, ah, en, gSpeed, gSense, gRepro, hue;
+let ax, ay, ah, en, gSpeed, gSense, gRepro, gMeta, hue;
 let alive;                                   // Uint8 mask for compaction
 let stepsRun = 0, births = 0, deaths = 0, extinctions = 0;
 let birthRate = 0, deathRate = 0;            // EMA per 100 steps
@@ -282,7 +288,8 @@ function allocPop(cap) {
   ax = new Float32Array(cap); ay = new Float32Array(cap);
   ah = new Float32Array(cap); en = new Float32Array(cap);
   gSpeed = new Float32Array(cap); gSense = new Float32Array(cap);
-  gRepro = new Float32Array(cap); hue = new Float32Array(cap);
+  gRepro = new Float32Array(cap); gMeta = new Float32Array(cap);
+  hue = new Float32Array(cap);
   alive = new Uint8Array(cap);
 }
 
@@ -295,6 +302,7 @@ function seedFounders(k) {
     gSpeed[j] = 1.2 * Math.exp((Math.random() - 0.5) * 0.2);
     gSense[j] = 14 * Math.exp((Math.random() - 0.5) * 0.2);
     gRepro[j] = 160 * Math.exp((Math.random() - 0.5) * 0.2);
+    gMeta[j] = 1.0 * Math.exp((Math.random() - 0.5) * 0.2);
     hue[j] = 120;                      // one ancestral colour; divergence is earned
     alive[j] = 1;
   }
@@ -321,7 +329,7 @@ function compact() {
     const l = n - 1;
     ax[i] = ax[l]; ay[i] = ay[l]; ah[i] = ah[l]; en[i] = en[l];
     gSpeed[i] = gSpeed[l]; gSense[i] = gSense[l]; gRepro[i] = gRepro[l];
-    hue[i] = hue[l]; alive[i] = alive[l];
+    gMeta[i] = gMeta[l]; hue[i] = hue[l]; alive[i] = alive[l];
     n = l;
   }
 }
@@ -370,8 +378,14 @@ function stepSim() {
     const bite = avail < BITE ? avail : BITE;
     if (bite > 0) { grass[c] -= bite; en[i] += bite * P.richness; }
 
-    // pay for existing
-    en[i] -= P.metabolism + SPEED_COST * sp * sp + SENSE_COST * se;
+    // Pay for existing. The engine gene is the metabolic trade-off: idle burn
+    // scales UP with engine size (hunger rate), movement cost scales DOWN
+    // (speed²/engine — a bigger engine makes locomotion cheaper). Minimising
+    // total cost over engine size gives an interior optimum
+    //   engine* = speed · sqrt(SPEED_COST / metabolism)
+    // so fast lineages should evolve big engines. Nobody tells them that.
+    const mt = gMeta[i];
+    en[i] -= mt * P.metabolism + SPEED_COST * sp * sp / mt + SENSE_COST * se;
 
     if (en[i] <= 0) { alive[i] = 0; stepDeaths++; continue; }
 
@@ -387,7 +401,11 @@ function stepSim() {
       gSpeed[j] = mut(gSpeed[i], T.speed.min, T.speed.max);
       gSense[j] = mut(gSense[i], T.sense.min, T.sense.max);
       gRepro[j] = mut(gRepro[i], T.patience.min, T.patience.max);
-      let hh = hue[i] + (Math.random() - 0.5) * 7;
+      gMeta[j] = mut(gMeta[i], T.engine.min, T.engine.max);
+      // lineage hue drift scales with the mutation slider (±10° at the default
+      // σ=7%) — a fixed small drift left lineage mode near-monotone, and
+      // coalescence (families taking over) prunes what little variance there is
+      let hh = hue[i] + (Math.random() - 0.5) * 20 * (P.mutation / 0.07 + 0.15);
       if (hh < 0) hh += 360; else if (hh >= 360) hh -= 360;
       hue[j] = hh;
       alive[j] = 1;
@@ -407,18 +425,42 @@ function stepSim() {
     popHist[popHead] = n; popHead = (popHead + 1) % popHist.length;
     if (popFill < popHist.length) popFill++;
   }
+  if (stepsRun % 30 === 0) updateQuantiles();
 }
 
 // ---- rendering ---------------------------------------------------------------
-const traitOf = (i) =>
-  P.colorBy === "speed" ? gSpeed[i] : (P.colorBy === "sense" ? gSense[i] : gRepro[i]);
-const traitAxis = () =>
-  P.colorBy === "speed" ? T.speed : (P.colorBy === "sense" ? T.sense : T.patience);
+const GENE = { speed: () => gSpeed, sense: () => gSense, patience: () => gRepro,
+               engine: () => gMeta };
+const traitOf = (i) => GENE[P.colorBy]()[i];
+const traitAxis = () => P.colorBy === "engine" ? T.engine :
+  (P.colorBy === "speed" ? T.speed : (P.colorBy === "sense" ? T.sense : T.patience));
+
+/* Dot colour maps the population's OWN p5–p95, not the trait's legal range.
+   The population usually occupies a sliver of the axis (sense lived in 10% of
+   [3,40]), which rendered every dot the same blue. Relative colouring keeps
+   the full ramp in use; the histogram keeps fixed axes so absolute movement
+   stays honest, and prints the current p5–p95 so both views stay connected. */
+const Q = { speed:{lo:0.5,hi:2}, sense:{lo:5,hi:20}, patience:{lo:100,hi:250},
+            engine:{lo:0.7,hi:1.4} };
+
+function updateQuantiles() {
+  if (n < 10) return;
+  const stride = Math.max(1, (n / 160) | 0);
+  for (const k of ["speed","sense","patience","engine"]) {
+    const g = GENE[k]();
+    const s = [];
+    for (let i = 0; i < n; i += stride) s.push(g[i]);
+    s.sort((a, b) => a - b);
+    const lo = s[(s.length * 0.05) | 0], hi = s[(s.length * 0.95) | 0];
+    Q[k].lo += (lo - Q[k].lo) * 0.25;
+    Q[k].hi += (Math.max(hi, lo + 1e-3) - Q[k].hi) * 0.25;
+  }
+}
 
 function agentColor(i, a) {
   if (P.colorBy === "lineage") return "hsla(" + (hue[i] | 0) + ",75%,62%," + a + ")";
-  const ax2 = traitAxis();
-  const t = clamp((traitOf(i) - ax2.min) / (ax2.max - ax2.min), 0, 1);
+  const q = Q[P.colorBy];
+  const t = clamp((traitOf(i) - q.lo) / (q.hi - q.lo), 0, 1);
   return "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%," + a + ")";
 }
 
@@ -469,14 +511,26 @@ function drawOverlay() {
   const bw = (w - 12) / bins, hTop = 44;
   for (let b = 0; b < bins; b++) {
     const bh = counts[b] / mx * (hTop - 4);
-    ctx.fillStyle = P.colorBy === "lineage"
-      ? "hsla(" + ((b + 0.5) / bins * 360 | 0) + ",75%,60%,0.9)"
-      : "hsla(" + ((210 - 200 * (b + 0.5) / bins) | 0) + ",80%,58%,0.9)";
+    if (P.colorBy === "lineage") {
+      ctx.fillStyle = "hsla(" + ((b + 0.5) / bins * 360 | 0) + ",75%,60%,0.9)";
+    } else {
+      // bars share the dots' quantile ramp, so bar colour = dot colour
+      const ax2 = traitAxis(), q = Q[P.colorBy];
+      const val = ax2.min + (b + 0.5) / bins * (ax2.max - ax2.min);
+      const t = clamp((val - q.lo) / (q.hi - q.lo), 0, 1);
+      ctx.fillStyle = "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%,0.9)";
+    }
     ctx.fillRect(x0 + 6 + b * bw, y0 + 16 + (hTop - 4 - bh), bw - 1, bh);
   }
   ctx.fillStyle = "rgba(255,255,255,0.55)";
-  ctx.fillText(P.colorBy === "lineage" ? "lineage hues" : P.colorBy + " distribution",
-               x0 + 6, y0 + 12);
+  if (P.colorBy === "lineage") {
+    ctx.fillText("lineage hues", x0 + 6, y0 + 12);
+  } else {
+    const q = Q[P.colorBy];
+    const dp = P.colorBy === "patience" ? 0 : (P.colorBy === "sense" ? 1 : 2);
+    ctx.fillText(P.colorBy + " distribution · colour spans p5 "
+      + q.lo.toFixed(dp) + " – p95 " + q.hi.toFixed(dp), x0 + 6, y0 + 12);
+  }
 
   // bottom: population sparkline
   const yb = y0 + hTop + 18;
@@ -593,7 +647,7 @@ addEventListener("keydown", (e) => {
   else if (e.key === "m") meteor();
   else if (e.key === "e") eden();
   else if (e.key === "h") { P.showHist = !P.showHist; syncUI(); }
-  else if (e.key >= "1" && e.key <= "4") { P.colorBy = MODE_KEYS[+e.key - 1]; syncUI(); }
+  else if (e.key >= "1" && e.key <= "5") { P.colorBy = MODE_KEYS[+e.key - 1]; syncUI(); }
 });
 
 addEventListener("resize", resize);

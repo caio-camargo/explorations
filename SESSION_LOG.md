@@ -38,6 +38,46 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Evolution v1.1: the engine gene discovers its own theorem
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User: lineage and sense colour variance too low even at high mutation ("not sure if that would
+affect lineage actually" — it didn't; correctly suspected), and proposed metabolism as a
+heritable trait trading off against hunger rate and speed. All three shipped.
+
+### The colour fixes (two separate defects)
+- Sense mapped the trait's *legal* range to the ramp while the population occupied ~10% of it.
+  Dots and histogram bars now map the population's running p5–p95 (full ramp always in use);
+  the histogram keeps fixed axes and prints the current p5–p95 to connect the views. Measured:
+  sense ramp usage went from a sliver to [0, 1].
+- Lineage hue drift was fixed-size and disconnected from the mutation slider. Now ±10°/birth at
+  default σ, scaling with the slider. Residual monotony is honest coalescence (families take
+  over; hue diversity prunes like surnames dying out) — the mode note says so.
+
+### The engine gene
+Metabolism as engine size: idle burn ∝ engine, movement cost ∝ speed²/engine. Falsifiable
+prediction: engine* = speed·√(SPEED_COST/metabolism), i.e., fast lineages should evolve big
+engines — a gene–gene correlation existing only in the economics, not the code.
+**Measured (meadow, founders over-engined at 1.0, predicted optimum ≈0.54):** mean engine
+0.82 → 0.72 → 0.64 across 7,500 steps, corr(speed,engine) 0.08 → 0.45 → **0.57**. The
+population walks to the analytic optimum and builds the predicted correlation out of nothing.
+Stable throughout (pop ≈1,470, zero extinctions). DOM: 5 colour modes, key `5`, all clean.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/evolution/index.html` | gMeta gene end-to-end, engine cost model, quantile colouring + histogram consistency, lineage drift × mutation, engine colour mode |
+| 2 | edited | `explorations/evolution/NOTES.md` | v1.1 — "The engine gene, and the correlation nobody programmed" |
+| 3 | edited | `explorations/README.md` | Evolution row → v1.1 |
+
+### Next Steps
+- [ ] Colour by engine (key 5) and watch corr build after an eden
+- [ ] Open threads unchanged: patchy worlds, co-evolving predators, phylogeny strip
+
 ## Session 2026-08-12 — Journey Gravity: domain-context brief authored (cross-session handoff)
 **Source**: Claude Code
 **User**: Caio
