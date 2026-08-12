@@ -1,0 +1,608 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Evolution Arena — selection in real time</title>
+<style>
+  :root {
+    --panel: rgba(18,20,27,.80);
+    --line: rgba(255,255,255,.11);
+    --text: #e6e8ef;
+    --dim: #8e93a6;
+    --accent: #a3e06c;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; background: #060906; }
+  body {
+    font: 13px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--text); overflow: hidden;
+  }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  #ui {
+    position: fixed; top: 14px; right: 14px; width: 276px;
+    max-height: calc(100vh - 28px); overflow-y: auto;
+    background: var(--panel); backdrop-filter: blur(14px);
+    border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px 14px 14px;
+  }
+  #ui.collapsed .body { display: none; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  h1 { font-size: 12px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+       margin: 0; color: var(--dim); }
+  #toggle { background: none; border: 1px solid var(--line); color: var(--dim); border-radius: 6px;
+            cursor: pointer; font-size: 11px; padding: 2px 7px; }
+  #toggle:hover { color: var(--text); }
+
+  .group { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .group:first-of-type { border-top: 0; margin-top: 10px; padding-top: 0; }
+  .glabel { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; color: var(--dim);
+            margin-bottom: 8px; }
+
+  .row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 4px 8px;
+         margin-bottom: 9px; }
+  .row label { font-size: 12px; }
+  .row label[title] { cursor: help; border-bottom: 1px dotted rgba(255,255,255,.28); }
+  .row .val { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--accent); }
+  .row input[type=range] { grid-column: 1 / -1; width: 100%; height: 3px; -webkit-appearance: none;
+                           appearance: none; background: rgba(255,255,255,.14); border-radius: 2px; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px;
+    border-radius: 50%; background: var(--accent); cursor: pointer; }
+  input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border: 0; border-radius: 50%;
+    background: var(--accent); cursor: pointer; }
+
+  .check { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; cursor: pointer;
+           font-size: 12px; }
+  .check input { accent-color: var(--accent); }
+
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  button.act { flex: 1 1 auto; background: rgba(255,255,255,.06); border: 1px solid var(--line);
+               color: var(--text); border-radius: 7px; padding: 6px 8px; cursor: pointer;
+               font-size: 12px; }
+  button.act:hover { background: rgba(255,255,255,.13); }
+  button.act.on { background: var(--accent); border-color: var(--accent); color: #12200a;
+                  font-weight: 600; }
+
+  #colorby { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+  .note { font-size: 11px; line-height: 1.4; color: var(--dim); margin-top: 7px; }
+
+  #stats { position: fixed; left: 14px; bottom: 12px; font-size: 11px;
+           font-variant-numeric: tabular-nums; pointer-events: none;
+           color: rgba(255,255,255,.40); }
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="stats"></div>
+
+<aside id="ui">
+  <header>
+    <h1>Evolution Arena</h1>
+    <button id="toggle">hide</button>
+  </header>
+
+  <div class="body">
+    <div class="group">
+      <div class="glabel">Colour by</div>
+      <div id="colorby"></div>
+      <div class="note" id="cbnote"></div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Environments</div>
+      <div class="btns" id="presets"></div>
+      <div class="note">Presets set the <em>environment</em> only. Nobody tunes the creatures —
+        selection does, live.</div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Environment</div>
+      <div class="row">
+        <label title="How fast grazed ground grows back (logistic). Rich worlds select lazy grazers; sparse worlds make movement and long senses pay for themselves.">Regrowth</label><span class="val" id="v_rg"></span>
+        <input type="range" id="rg" min="0.001" max="0.03" step="0.0005">
+      </div>
+      <div class="row">
+        <label title="Energy extracted per unit of grass eaten. The size of the whole economy — carrying capacity scales with it.">Richness</label><span class="val" id="v_rc"></span>
+        <input type="range" id="rc" min="8" max="50" step="1">
+      </div>
+      <div class="row">
+        <label title="Seasonal swing of the regrowth rate (period 2,400 steps). Booms select one strategy, busts cull it — the population breathes.">Seasons</label><span class="val" id="v_se"></span>
+        <input type="range" id="se" min="0" max="1" step="0.05">
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">Life</div>
+      <div class="row">
+        <label title="Baseline energy burned per step just for being alive, before movement and senses. The tax death collects.">Metabolism</label><span class="val" id="v_mb"></span>
+        <input type="range" id="mb" min="0.2" max="1.5" step="0.05">
+      </div>
+      <div class="row">
+        <label title="How much each trait mutates at birth (log-normal, per trait). Zero freezes evolution; high values blur species into noise.">Mutation</label><span class="val" id="v_mu"></span>
+        <input type="range" id="mu" min="0" max="0.20" step="0.005">
+      </div>
+      <div class="note">Heritable traits: <b>speed</b> (cost ∝ speed²), <b>sense</b> (whisker
+        reach, cost ∝ sense), and <b>patience</b> (energy hoarded before dividing). There is no
+        population slider — population is an outcome, not a setting.</div>
+    </div>
+
+    <div class="group">
+      <div class="glabel">World</div>
+      <div class="row">
+        <label title="Simulation speed. Below 1× it runs one step every few frames — slow motion.">Steps / frame</label><span class="val" id="v_sf"></span>
+        <input type="range" id="sf" min="0.05" max="8" step="0.05">
+      </div>
+      <label class="check"><input type="checkbox" id="hist"> Trait histogram + population</label>
+    </div>
+
+    <div class="group">
+      <div class="btns">
+        <button class="act" id="pause">pause</button>
+        <button class="act" id="meteor">☄ meteor</button>
+        <button class="act" id="eden">eden</button>
+      </div>
+      <div class="note">space pause · m meteor (kills 90%) · e eden (restart) · h histogram
+        · 1–4 colour modes</div>
+    </div>
+  </div>
+</aside>
+
+<script>
+"use strict";
+
+/* ---------------------------------------------------------------------------
+   EVOLUTION ARENA — natural selection, watchable
+
+   Foragers graze a regrowing field. Each carries a three-gene genome:
+     speed    — px per step; movement costs energy ∝ speed²
+     sense    — whisker reach; attention costs energy ∝ sense
+     patience — how much energy to hoard before dividing in two
+
+   Eat → energy up. Live, move, sense → energy down. Energy gone → death.
+   Energy past `patience` → divide, each gene nudged by log-normal mutation,
+   and the child inherits its parent's hue ± a small drift, so lineages are
+   visible as colour.
+
+   That's all. Nobody tunes the creatures: the environment sets the prices
+   (regrowth, richness, metabolism) and selection does the tuning, live. The
+   trait histogram is the main instrument — watch it slide when the world
+   changes, and watch the meteor button prove that recovery re-runs selection.
+
+   Inherited discipline: fixed logical world on a torus (monitor-independent),
+   Float32 field (no 8-bit fossils), dt-based stepping (render cost never
+   touches physics), everything sampled per step.
+--------------------------------------------------------------------------- */
+
+const TAU = Math.PI * 2;
+
+// fixed logical world + coarse grass field (1 cell = 4 world px)
+const WW = 960, WH = 600;
+const GW = 240, GH = 150, GN = GW * GH;
+const CELL = 4;
+
+const P = {
+  regrow: 0.010,       // logistic regrowth rate per step
+  richness: 25,        // energy per unit of grass eaten
+  season: 0,           // 0..1 amplitude of regrowth oscillation
+  metabolism: 0.55,    // base energy cost per step
+  mutation: 0.07,      // log-normal sigma per trait at birth
+  stepsPerFrame: 1,
+  colorBy: "lineage",
+  showHist: true,
+  paused: false,
+};
+
+// environments, not genomes
+const PRESETS = {
+  "meadow":  { regrow: 0.014, richness: 25, season: 0 },
+  "desert":  { regrow: 0.005, richness: 34, season: 0 },
+  "seasons": { regrow: 0.010, richness: 25, season: 0.9 },
+};
+
+const COLOR_MODES = {
+  lineage: { label: "lineage", note: "Hue is inherited with a small drift at each birth — " +
+             "colour clusters are families. Watch one shade slowly take over, or split." },
+  speed:   { label: "speed",   note: "Blue = slow, red = fast. Movement costs speed², so red " +
+             "lives dangerously." },
+  sense:   { label: "sense",   note: "Blue = short whiskers, red = long. Longer senses find " +
+             "food sooner and bill you every step." },
+  patience:{ label: "patience", note: "Blue = divides early and cheap, red = hoards a big " +
+             "endowment first. Two whole life strategies on one axis." },
+};
+const MODE_KEYS = Object.keys(COLOR_MODES);
+
+// trait clamps (also the histogram axes)
+const T = {
+  speed:    { min: 0.2, max: 4.0 },
+  sense:    { min: 3,   max: 40 },
+  patience: { min: 60,  max: 400 },
+};
+
+const SEASON_PERIOD = 2400;
+const POP_CAP = 6000;
+const BITE = 0.12;                 // grass units per step, if available
+const SPEED_COST = 0.055;          // × speed²
+const SENSE_COST = 0.011;          // × sense
+const BIRTH_KEEP = 0.45;           // parent and child each keep this share
+const WHISK = 0.7;                 // whisker half-angle, rad
+const TURN = 0.28, JITTER = 0.10;  // steering, rad per step
+
+// ---- state -----------------------------------------------------------------
+let grass = new Float32Array(GN);
+let n = 0;                                   // live population
+let ax, ay, ah, en, gSpeed, gSense, gRepro, hue;
+let alive;                                   // Uint8 mask for compaction
+let stepsRun = 0, births = 0, deaths = 0, extinctions = 0;
+let birthRate = 0, deathRate = 0;            // EMA per 100 steps
+let W = 0, H = 0, dpr = 1;
+
+// population history (for the sparkline) — one sample per 6 steps
+const popHist = new Float32Array(400);
+let popHead = 0, popFill = 0;
+
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d", { alpha: false });
+const off = document.createElement("canvas");
+off.width = GW; off.height = GH;
+const offCtx = off.getContext("2d");
+const img = offCtx.createImageData(GW, GH);
+img.data.fill(255);
+
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  W = cv.clientWidth || 1; H = cv.clientHeight || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+}
+
+// world → screen (cover-fit), plus its scale for dot sizes
+let scr = { s: 1, ox: 0, oy: 0 };
+function fitWorld() {
+  const s = Math.max(W / WW, H / WH);
+  scr = { s: s, ox: (W - WW * s) / 2, oy: (H - WH * s) / 2 };
+}
+
+const clamp = (v, a, b) => v < a ? a : (v > b ? b : v);
+const wrapX = (v) => v < 0 ? v + WW : (v >= WW ? v - WW : v);
+const wrapY = (v) => v < 0 ? v + WH : (v >= WH ? v - WH : v);
+
+function gcell(x, y) {
+  let cx2 = (x / CELL) | 0, cy2 = (y / CELL) | 0;
+  if (cx2 < 0) cx2 += GW; else if (cx2 >= GW) cx2 -= GW;
+  if (cy2 < 0) cy2 += GH; else if (cy2 >= GH) cy2 -= GH;
+  return cy2 * GW + cx2;
+}
+
+// ---- population management --------------------------------------------------
+function allocPop(cap) {
+  ax = new Float32Array(cap); ay = new Float32Array(cap);
+  ah = new Float32Array(cap); en = new Float32Array(cap);
+  gSpeed = new Float32Array(cap); gSense = new Float32Array(cap);
+  gRepro = new Float32Array(cap); hue = new Float32Array(cap);
+  alive = new Uint8Array(cap);
+}
+
+function seedFounders(k) {
+  for (let i = 0; i < k && n < POP_CAP; i++) {
+    const j = n++;
+    ax[j] = Math.random() * WW; ay[j] = Math.random() * WH;
+    ah[j] = Math.random() * TAU;
+    en[j] = 80;
+    gSpeed[j] = 1.2 * Math.exp((Math.random() - 0.5) * 0.2);
+    gSense[j] = 14 * Math.exp((Math.random() - 0.5) * 0.2);
+    gRepro[j] = 160 * Math.exp((Math.random() - 0.5) * 0.2);
+    hue[j] = 120;                      // one ancestral colour; divergence is earned
+    alive[j] = 1;
+  }
+}
+
+function eden() {
+  n = 0; births = 0; deaths = 0; stepsRun = 0;
+  allocPop(POP_CAP);
+  seedFounders(350);
+  for (let i = 0; i < GN; i++) grass[i] = 0.55 + Math.random() * 0.1;
+  popHead = 0; popFill = 0;
+}
+
+function meteor() {
+  for (let i = 0; i < n; i++) if (Math.random() < 0.9) alive[i] = 0;
+  compact();
+}
+
+// remove the dead by swapping from the end — order is not meaningful
+function compact() {
+  let i = 0;
+  while (i < n) {
+    if (alive[i]) { i++; continue; }
+    const l = n - 1;
+    ax[i] = ax[l]; ay[i] = ay[l]; ah[i] = ah[l]; en[i] = en[l];
+    gSpeed[i] = gSpeed[l]; gSense[i] = gSense[l]; gRepro[i] = gRepro[l];
+    hue[i] = hue[l]; alive[i] = alive[l];
+    n = l;
+  }
+}
+
+const mut = (v, lo, hi) =>
+  clamp(v * Math.exp((Math.random() * 2 - 1) * P.mutation * 1.73), lo, hi);
+
+// ---- the simulation ----------------------------------------------------------
+function stepSim() {
+  stepsRun++;
+
+  // grass: logistic regrowth, optionally seasonal
+  let r = P.regrow;
+  if (P.season > 0) r *= 1 + P.season * Math.sin(TAU * stepsRun / SEASON_PERIOD);
+  if (r > 0) {
+    for (let i = 0; i < GN; i++) {
+      const v = grass[i];
+      grass[i] = v + r * (v + 0.02) * (1 - v);
+    }
+  }
+
+  let stepDeaths = 0, stepBirths = 0;
+
+  for (let i = 0; i < n; i++) {
+    const sp = gSpeed[i], se = gSense[i];
+
+    // sense: three whiskers over the grass, steer toward the richest
+    const h = ah[i];
+    const f = grass[gcell(ax[i] + Math.cos(h) * se,        ay[i] + Math.sin(h) * se)];
+    const l = grass[gcell(ax[i] + Math.cos(h - WHISK) * se, ay[i] + Math.sin(h - WHISK) * se)];
+    const rr = grass[gcell(ax[i] + Math.cos(h + WHISK) * se, ay[i] + Math.sin(h + WHISK) * se)];
+    if (l > f && l >= rr) ah[i] -= TURN;
+    else if (rr > f && rr > l) ah[i] += TURN;
+    ah[i] += (Math.random() - 0.5) * 2 * JITTER;
+
+    // move
+    ax[i] = wrapX(ax[i] + Math.cos(ah[i]) * sp);
+    ay[i] = wrapY(ay[i] + Math.sin(ah[i]) * sp);
+
+    // eat where you stand (slime-mold lesson: never gate eating on movement).
+    // Grazing can't strip a cell below a small refugium — a seed bank always
+    // survives. Without it, boom-bust limit cycles bottom out in mass
+    // starvation (measured: desert crashed 1,852 → 90 twice in 6k steps).
+    const c = gcell(ax[i], ay[i]);
+    const avail = grass[c] - 0.03;
+    const bite = avail < BITE ? avail : BITE;
+    if (bite > 0) { grass[c] -= bite; en[i] += bite * P.richness; }
+
+    // pay for existing
+    en[i] -= P.metabolism + SPEED_COST * sp * sp + SENSE_COST * se;
+
+    if (en[i] <= 0) { alive[i] = 0; stepDeaths++; continue; }
+
+    // divide
+    if (en[i] >= gRepro[i] && n < POP_CAP) {
+      const j = n++;
+      const e = en[i];
+      en[i] = e * BIRTH_KEEP;
+      ax[j] = wrapX(ax[i] + (Math.random() - 0.5) * 6);
+      ay[j] = wrapY(ay[i] + (Math.random() - 0.5) * 6);
+      ah[j] = Math.random() * TAU;
+      en[j] = e * BIRTH_KEEP;
+      gSpeed[j] = mut(gSpeed[i], T.speed.min, T.speed.max);
+      gSense[j] = mut(gSense[i], T.sense.min, T.sense.max);
+      gRepro[j] = mut(gRepro[i], T.patience.min, T.patience.max);
+      let hh = hue[i] + (Math.random() - 0.5) * 7;
+      if (hh < 0) hh += 360; else if (hh >= 360) hh -= 360;
+      hue[j] = hh;
+      alive[j] = 1;
+      stepBirths++;
+    }
+  }
+
+  if (stepDeaths > 0) compact();
+  births += stepBirths; deaths += stepDeaths;
+  birthRate += (stepBirths * 100 - birthRate) * 0.01;
+  deathRate += (stepDeaths * 100 - deathRate) * 0.01;
+
+  // extinction is data, not an error — reseed and count it
+  if (n === 0) { extinctions++; seedFounders(60); }
+
+  if (stepsRun % 6 === 0) {
+    popHist[popHead] = n; popHead = (popHead + 1) % popHist.length;
+    if (popFill < popHist.length) popFill++;
+  }
+}
+
+// ---- rendering ---------------------------------------------------------------
+const traitOf = (i) =>
+  P.colorBy === "speed" ? gSpeed[i] : (P.colorBy === "sense" ? gSense[i] : gRepro[i]);
+const traitAxis = () =>
+  P.colorBy === "speed" ? T.speed : (P.colorBy === "sense" ? T.sense : T.patience);
+
+function agentColor(i, a) {
+  if (P.colorBy === "lineage") return "hsla(" + (hue[i] | 0) + ",75%,62%," + a + ")";
+  const ax2 = traitAxis();
+  const t = clamp((traitOf(i) - ax2.min) / (ax2.max - ax2.min), 0, 1);
+  return "hsla(" + ((210 - 200 * t) | 0) + ",80%,58%," + a + ")";
+}
+
+function draw() {
+  fitWorld();
+  // ground: dark green luminance from the grass field
+  const d = img.data;
+  for (let i = 0; i < GN; i++) {
+    const v = grass[i], o = i * 4;
+    d[o] = 8 + 14 * v; d[o + 1] = 12 + 46 * v; d[o + 2] = 8 + 16 * v;
+  }
+  offCtx.putImageData(img, 0, 0);
+  ctx.fillStyle = "#060906";
+  ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(off, scr.ox, scr.oy, WW * scr.s, WH * scr.s);
+
+  // creatures: dot size grows with energy (well-fed = plump)
+  for (let i = 0; i < n; i++) {
+    const px = scr.ox + ax[i] * scr.s, py = scr.oy + ay[i] * scr.s;
+    const r = (1.1 + 1.6 * Math.min(en[i] / gRepro[i], 1)) * Math.max(scr.s, 1) * 0.9;
+    ctx.fillStyle = agentColor(i, 0.85);
+    ctx.beginPath(); ctx.arc(px, py, r, 0, TAU); ctx.fill();
+  }
+
+  if (P.showHist) drawOverlay();
+}
+
+function drawOverlay() {
+  const w = Math.min(280, W - 28), hh = 92, x0 = 14, y0 = H - hh - 34;
+  ctx.fillStyle = "rgba(8,12,8,0.6)";
+  ctx.fillRect(x0, y0, w, hh);
+  ctx.strokeStyle = "rgba(255,255,255,0.14)";
+  ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, hh - 1);
+  ctx.font = "10px ui-sans-serif,system-ui,sans-serif";
+
+  // top half: histogram of the selected trait (or hue census for lineage)
+  const bins = 36, counts = new Float32Array(bins);
+  if (P.colorBy === "lineage") {
+    for (let i = 0; i < n; i++) counts[(hue[i] / 360 * bins) | 0]++;
+  } else {
+    const ax2 = traitAxis();
+    for (let i = 0; i < n; i++) {
+      const t = clamp((traitOf(i) - ax2.min) / (ax2.max - ax2.min), 0, 0.999);
+      counts[(t * bins) | 0]++;
+    }
+  }
+  let mx = 1; for (let b = 0; b < bins; b++) if (counts[b] > mx) mx = counts[b];
+  const bw = (w - 12) / bins, hTop = 44;
+  for (let b = 0; b < bins; b++) {
+    const bh = counts[b] / mx * (hTop - 4);
+    ctx.fillStyle = P.colorBy === "lineage"
+      ? "hsla(" + ((b + 0.5) / bins * 360 | 0) + ",75%,60%,0.9)"
+      : "hsla(" + ((210 - 200 * (b + 0.5) / bins) | 0) + ",80%,58%,0.9)";
+    ctx.fillRect(x0 + 6 + b * bw, y0 + 16 + (hTop - 4 - bh), bw - 1, bh);
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillText(P.colorBy === "lineage" ? "lineage hues" : P.colorBy + " distribution",
+               x0 + 6, y0 + 12);
+
+  // bottom: population sparkline
+  const yb = y0 + hTop + 18;
+  let pmax = 1; for (let s = 0; s < popFill; s++) if (popHist[s] > pmax) pmax = popHist[s];
+  ctx.strokeStyle = "rgba(163,224,108,0.9)";
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  const start = (popHead - popFill + popHist.length * 2) % popHist.length;
+  for (let s = 0; s < popFill; s++) {
+    const v = popHist[(start + s) % popHist.length];
+    const px = x0 + 6 + (w - 12) * (s / (popHist.length - 1));
+    const py = yb + 24 - 22 * (v / pmax);
+    if (s === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  }
+  ctx.stroke();
+  ctx.fillStyle = "rgba(255,255,255,0.55)";
+  ctx.fillText("population " + n + (extinctions ? " · extinctions " + extinctions : ""),
+               x0 + 6, yb + 8);
+}
+
+// ---- loop --------------------------------------------------------------------
+let lastT = performance.now(), fps = 0, stepAcc = 0;
+
+function frame(t) {
+  const dt = t - lastT; lastT = t;
+  fps += ((1000 / Math.max(dt, 1)) - fps) * 0.1;
+
+  if (!P.paused) {
+    stepAcc += P.stepsPerFrame * Math.min(dt, 100) / (1000 / 60);
+    let k = Math.floor(stepAcc);
+    stepAcc -= k;
+    if (k > 10) k = 10;
+    for (let s = 0; s < k; s++) stepSim();
+  }
+  draw();
+
+  let ms = 0, mse = 0, msr = 0;
+  for (let i = 0; i < n; i++) { ms += gSpeed[i]; mse += gSense[i]; msr += gRepro[i]; }
+  const inv = n ? 1 / n : 0;
+  document.getElementById("stats").textContent =
+    n + " alive · speed " + (ms * inv).toFixed(2)
+    + " · sense " + (mse * inv).toFixed(1)
+    + " · patience " + (msr * inv).toFixed(0)
+    + " · births " + birthRate.toFixed(1) + "/100 · deaths " + deathRate.toFixed(1) + "/100"
+    + " · " + fps.toFixed(0) + " fps" + (P.paused ? " · paused" : "");
+
+  requestAnimationFrame(frame);
+}
+
+// ---- controls ------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+
+const SLIDERS = [
+  ["rg", "regrow",       (v) => (v * 1000).toFixed(1) + "‰/step"],
+  ["rc", "richness",     (v) => v + " energy/unit"],
+  ["se", "season",       (v) => v === 0 ? "constant" : "±" + (v * 100).toFixed(0) + "%"],
+  ["mb", "metabolism",   (v) => v.toFixed(2) + "/step"],
+  ["mu", "mutation",     (v) => v === 0 ? "frozen" : "σ " + (v * 100).toFixed(1) + "%"],
+  ["sf", "stepsPerFrame",(v) => v < 1 ? "1 every " + (1 / v).toFixed(1) + " frames"
+                                      : v.toFixed(2) + " ×"],
+];
+
+function syncUI() {
+  for (const [id, key, fmt] of SLIDERS) {
+    $(id).value = P[key];
+    $("v_" + id).textContent = fmt(P[key]);
+  }
+  $("hist").checked = P.showHist;
+  $("pause").classList.toggle("on", P.paused);
+  $("pause").textContent = P.paused ? "resume" : "pause";
+  $("cbnote").textContent = COLOR_MODES[P.colorBy].note;
+  document.querySelectorAll("#colorby .act").forEach((b) => {
+    b.classList.toggle("on", b.dataset.cb === P.colorBy);
+  });
+}
+
+for (const [id, key, fmt] of SLIDERS) {
+  $(id).addEventListener("input", (e) => {
+    P[key] = parseFloat(e.target.value);
+    $("v_" + id).textContent = fmt(P[key]);
+  });
+}
+
+const cbBar = $("colorby");
+MODE_KEYS.forEach((k) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.cb = k; b.textContent = COLOR_MODES[k].label;
+  b.title = COLOR_MODES[k].note;
+  b.addEventListener("click", () => { P.colorBy = k; syncUI(); });
+  cbBar.appendChild(b);
+});
+
+const presetBar = $("presets");
+Object.keys(PRESETS).forEach((name) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.textContent = name;
+  b.title = "Change the environment to '" + name + "'. The creatures stay — watch selection respond.";
+  b.addEventListener("click", () => { Object.assign(P, PRESETS[name]); syncUI(); });
+  presetBar.appendChild(b);
+});
+
+$("hist").addEventListener("change", (e) => { P.showHist = e.target.checked; });
+$("pause").addEventListener("click", () => { P.paused = !P.paused; syncUI(); });
+$("meteor").addEventListener("click", () => meteor());
+$("eden").addEventListener("click", () => eden());
+$("toggle").addEventListener("click", () => {
+  const ui = $("ui"); ui.classList.toggle("collapsed");
+  $("toggle").textContent = ui.classList.contains("collapsed") ? "show" : "hide";
+});
+
+addEventListener("keydown", (e) => {
+  if (e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
+  if (e.code === "Space") { e.preventDefault(); P.paused = !P.paused; syncUI(); }
+  else if (e.key === "m") meteor();
+  else if (e.key === "e") eden();
+  else if (e.key === "h") { P.showHist = !P.showHist; syncUI(); }
+  else if (e.key >= "1" && e.key <= "4") { P.colorBy = MODE_KEYS[+e.key - 1]; syncUI(); }
+});
+
+addEventListener("resize", resize);
+
+// ---- go ------------------------------------------------------------------------
+resize();
+eden();
+syncUI();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

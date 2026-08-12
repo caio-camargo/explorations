@@ -38,6 +38,54 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-11 — Exploration 4: evolution arena
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+Fourth exploration, user-chosen over Gray–Scott/sandpile/RPS: foragers with heritable mutating
+genomes (speed, sense, patience) grazing a regrowing field. Energy in, costs out, death at
+zero, division past `patience` with log-normal mutation and inherited lineage hue. No population
+slider — population is an outcome. Environments (meadow/desert/seasons) set prices; selection
+does the tuning. Overlay: live trait histogram + population sparkline. Meteor button (kill 90%)
+and eden (restart).
+
+### The build finding: the refugium
+First desert run crashed 1,852 → 90 with 2 extinctions — consumer-resource lag makes boom-bust
+limit cycles bottom out in mass starvation. Fix is biological: grazing can't strip a cell below
+0.03 (a seed bank). Same desert after: zero extinctions, smooth approach to a stable ~500. One
+constant separates ecosystem from doomsday loop.
+
+### What evolved (identical founders: speed 1.2, sense 14, patience 160; 6k steps)
+- meadow: pop ~1,200, speed 2.03, sense 7.0, **patience 117**
+- desert: pop ~510, speed 2.17, sense 7.5, **patience 192**
+Both sell senses (weak gradients on grazed fronts), both buy speed — but **life history
+diverges**: meadow breeds r-strategists (divide early), desert breeds bet-hedgers (hoard first).
+Textbook r/K selection from three cost constants and different grass. Variance holds (speed CV
+0.13); meteor recovery 1,219 → 96 → 1,045 in 1,500 steps; seasons preset survives (pop 992,
+0 extinctions); dt arithmetic exact; DOM asserted (4 colour modes, 3 presets, 6 tooltipped
+sliders).
+
+### Concurrency
+Landing-page session holds `index.html`/`README.md` — **the evolution card on the landing page
+is a handoff to that session** (new exploration is in `explorations/README.md`). Slime v1.3.1
+session finished and cleared before my shared-file edits.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/evolution/index.html` | The sim — one file, no deps |
+| 2 | created | `explorations/evolution/NOTES.md` | Mechanism, refugium, measured r/K divergence, open threads |
+| 3 | edited | `explorations/README.md` | Evolution row |
+| 4 | edited | `PROJECT.md` | Current Focus |
+
+### Next Steps
+- [ ] **Landing session**: add the evolution card to `index.html` when rebuilding
+- [ ] Watch: colour-by-patience while switching meadow→desert mid-run — the histogram should walk
+- [ ] Open threads: patchy worlds (make sense worth buying), co-evolving predators, phylogeny strip
+
 ## Session 2026-08-11 — Slime mold v1.3.1: the meal made visible
 **Source**: Claude Code
 **User**: Caio
