@@ -38,6 +38,51 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Evolution v4: predation evolves (the predator species is gone)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User caught the design inconsistency: "if the dots speciate on diet, it doesn't make sense to
+have predators as a separate entity, right?" Correct — v3 made one niche boundary emergent
+while the trophic one stayed engineered. v4 dissolves the predator species into a seventh gene
+(carn), makes who-eats-whom a relation (attack anyone ≥0.25 more herbivorous), and bridges the
+trophic fitness valley with carrion: the dead leave a rotting meat field that scavengers can
+smell and eat. Founders are herbivores; predation must evolve. User chose "both, trophic gene
+first" — assortative mating queued next.
+
+### Two findings from two failures
+1. Symmetric trade-off (both ^1.6) FORBIDS carnivory: carn 0.15 paid 23% plant tax for 4.8%
+   meat efficiency; selection pushed carn down (0.037→0.020 over 9,300 steps). Fix is the
+   biological claim itself: scavenging is easy — meat carn^0.6 (concave-down), plant (1−carn)^1.2.
+2. With the bridge: carnivory creeps by scavenging ~2,000 steps, then predation IGNITES when
+   the front clears the attack gap — mean carn 0.03→0.34 in ~2,500 steps, 24k kills, and a
+   stable trophic pyramid (grazers ~430 / omnivores ~3,900 / mid-hunters ~400 / ~80 apex at
+   0.8+; mean carn plateaus 0.339–0.346). Structure, not soup: the gap makes hunters need grazers.
+
+### The control
+Identical world, corpses vanish instantly: 5,000+ steps, mean carn stays at founder level,
+max ≤0.19, ZERO kills, zero scavengers. No carrion, no carnivores — the scavenging-bridge
+hypothesis (also the real-biology hypothesis for predation's origin) shown with treatment and
+control. Diet split runs alongside unharmed; DOM (7 modes, key 7, pred checkbox gone), dt
+exact, no NaN. Perf note: ~29 ms/step in the throttled pane at 5k agents in the full food web
+(≈3 ms real) — heavy at high steps/frame, fine at 1×.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | edited | `explorations/evolution/index.html` | Predator species removed end-to-end; carn gene + asymmetric trophic trade-off; carrion field (rot, whisker smell, eating, corpse deposits incl. meteor feast); relation-based attack; carn-gated rings; carnivore census sparkline; trophic colour mode |
+| 2 | edited | `explorations/evolution/NOTES.md` | v4 — "The trophic gene: predation is no longer a class, and it evolves" |
+| 3 | edited | `explorations/README.md` | Evolution row → v4 |
+
+### Next Steps
+- [ ] Watch: trophic mode (key 7), fresh eden — green world, then rings appear ~t≈3-4k as
+      predation ignites; the meteor now leaves a feast
+- [ ] Queued by user decision: assortative mating (true speciation) on top of the diet split
+- [ ] Parked: patchy worlds; interference softening
+
 ## Session 2026-08-12 — Evolution v3: adaptive radiation + the phylogeny strip
 **Source**: Claude Code
 **User**: Caio

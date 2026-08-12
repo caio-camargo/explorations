@@ -1,9 +1,9 @@
 # Evolution Arena — selection in real time
-**Version**: v3.0.0
+**Version**: v4.0.0
 **Date Created**: 2026-08-11
 **Last Updated**: 2026-08-12
 **Purpose**: Natural selection, watchable — foragers with heritable mutating genomes on a regrowing field
-**Status**: Active — v3 (adaptive radiation: two resources, diet gene, speciation dial; phylogeny strip)
+**Status**: Active — v4 (the predator species is gone: carnivory is a gene, and predation *evolves*)
 
 ---
 
@@ -224,6 +224,48 @@ both sides.
 (Precision note: with clonal reproduction this is adaptive radiation / evolutionary branching
 — there's no gene flow to isolate, so "speciation" in the full biological sense doesn't
 apply. The branching is real either way, and measurably so.)
+
+## The trophic gene (v4) — predation is no longer a class, and it evolves
+
+User: "if the dots speciate on diet, it doesn't make sense to have predators as a separate
+entity, right?" Right. v3 made one niche boundary (plant A vs plant B) emergent while the
+other (plant-eater vs meat-eater) stayed engineered. v4 dissolves the predator species into a
+seventh gene:
+
+- **carn ∈ [0,1]**: plant digestion scales `(1−carn)^1.2`, meat digestion `carn^0.6`.
+- **Who eats whom is a relation, not a class**: you may attack anyone ≥ 0.25 more herbivorous
+  than you — so chains are possible, and "predator" is whatever a lineage becomes.
+- **The dead leave carrion** (a meat field that rots, ~300-step half-life; kills leave extra).
+  Carrion is calorie-dense, has no refugium, and appears in the whiskers' weighted smell — a
+  scavenger *smells the dead*. All the v2 machinery (pursuit, surprise, sprint, interference,
+  handling) survives, gated on the gene.
+- Founders are herbivores (carn ≈ 0.03). **Predation has to evolve.**
+
+**Two findings, one from each failed attempt:**
+
+1. **The symmetric trade-off forbids carnivory.** With both exponents at 1.6, carn 0.15 pays a
+   23% plant tax for 4.8% meat efficiency; selection pushed carnivory *down* (mean 0.037 →
+   0.020 over 9,300 steps, max pinned at 0.18). The asymmetry is the biological claim that
+   fixes it: **scavenging is easy** — eating the dead needs no fangs (`carn^0.6`, concave-down,
+   early carnivory captures most of the carrion value) while plant digestion degrades slowly
+   (`^1.2`). Omnivores are cheap to become; that cheapness is the bridge.
+2. **With the bridge, a food web assembles itself.** From all-herbivore founders: carnivory
+   creeps by scavenging for ~2,000 steps, and when the front clears the attack gap over the
+   laggards, predation *ignites* — mean carn 0.03 → 0.34 in ~2,500 steps, 24,000 kills, and a
+   **trophic pyramid** at equilibrium: grazer base ~430, omnivore bulk ~3,900, mid-hunters
+   ~400, and ~80 apex carnivores at 0.8+. Mean carn then plateaus (0.339 → 0.346 → 0.341) —
+   structure, not soup, because the attack gap makes hunters need grazers.
+
+**The control that makes it science**: identical world, but corpses vanish instantly. Over
+5,000+ steps: mean carn stays at the founder level (0.027–0.034), max pinned ≤ 0.19, **zero
+kills, zero scavengers**. No carrion, no carnivores. The scavenging-bridge hypothesis — which
+is also the actual hypothesized evolutionary route into predation — demonstrated with
+treatment and control.
+
+The diet split still runs alongside (17/65/18 and separating at t≈5k in the control run), the
+meteor now leaves a carrion feast where it strikes, rings are earned by the gene rather than
+assigned by an array, and the trophic colour mode (key 7) is absolute: if you see red,
+predation evolved *in your run*.
 
 ## Things worth trying next
 
