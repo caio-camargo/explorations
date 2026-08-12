@@ -44,7 +44,10 @@ def main():
             e = (r.get("email") or "").strip().lower()
             if not e: continue
             s = (r.get("status") or "").strip()
-            outcome[e] = "booked" if s == "Meeting Scheduled" else "lost"
+            # "Cancelled" means a meeting WAS scheduled (then cancelled) — the booking
+            # event happened, so it counts as booked. BOOKED = "meeting scheduled",
+            # nothing stronger (held-rate is not measured in the source data).
+            outcome[e] = "booked" if s in ("Meeting Scheduled", "Cancelled") else "lost"
 
     # journeys
     rows = []

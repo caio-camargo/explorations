@@ -176,6 +176,8 @@
 
     <div class="group">
       <div class="glabel">Model</div>
+      <div class="btns" id="modeBtns" style="margin-bottom:9px"></div>
+      <div class="note" id="modenote" style="margin-bottom:10px"></div>
       <div class="row">
         <label title="Pseudo-visits added to every page's outgoing counts, split by the base rate. 0 trusts tiny samples completely; higher values shrink low-traffic pages toward the base rate. Watch the ranking stabilise as you raise it.">Prior strength κ</label><span class="val" id="v_k"></span>
         <input type="range" id="k" min="0" max="20" step="0.5">
@@ -214,9 +216,9 @@
     </div>
 
     <div class="group">
-      <div class="glabel">Lowest pull — attention sinks</div>
+      <div class="glabel" id="lowLabel">Lowest pull</div>
       <div class="rank" id="lowRank"></div>
-      <div class="note">High dwell + low gravity = the site's swamps: time goes in, bookings don't come out.</div>
+      <div class="note" id="lowNote"></div>
     </div>
 
     <div class="group">
@@ -231,6 +233,7 @@
   <div class="prop" id="dprop"></div>
   <h2 id="dtitle"></h2>
   <table id="dstats"></table>
+  <div id="dmeaning"></div>
   <div class="sub">Where walks from here go next</div>
   <div id="dedges"></div>
 </div>
@@ -254,25 +257,42 @@ const pages = DATA.pages.map(p => ({...p}));
 const pageIx = new Map(pages.map((p, i) => [p.id, i]));
 const N = pages.length;
 
-// per-page outgoing: counts to pages, to BOOKED, to LOST
+// per-page outgoing: counts to pages, to BOOKED, to the second absorbing state
+// (LOST in fate mode, EXIT in event mode). Rebuilt when the semantics change.
+//
+// Two absorption semantics:
+//  - "fate":  every session end absorbs into the visitor's eventual outcome.
+//    Answers "is this page's visitor the booking kind?" — but paints BOOKED
+//    edges from pages you cannot book on.
+//  - "event": booking only happens at the gate (the demo-request form), so only
+//    gate session-ends by scheduled visitors absorb into BOOKED; every other
+//    session end is a neutral EXIT. Answers "does this walk reach the form?"
 const outTo = pages.map(() => new Map());
 const outB = new Float64Array(N), outL = new Float64Array(N);
 const startTo = new Map();
-let inCount = pages.map(() => new Map()); // for detail panel (incoming)
-for (const e of DATA.edges) {
-  if (e.from === "__START__") { startTo.set(e.to, e.n); continue; }
-  const i = pageIx.get(e.from);
-  if (e.to === "__BOOKED__") outB[i] += e.n;
-  else if (e.to === "__LOST__") outL[i] += e.n;
-  else {
-    const j = pageIx.get(e.to);
-    outTo[i].set(j, (outTo[i].get(j) || 0) + e.n);
-    inCount[j].set(i, (inCount[j].get(i) || 0) + e.n);
+const inCount = pages.map(() => new Map()); // for detail panel (incoming)
+let totB = 0, totL = 0, BASE = 0.5;
+function buildCounts(mode) {
+  for (let i = 0; i < N; i++) { outTo[i].clear(); inCount[i].clear(); }
+  outB.fill(0); outL.fill(0); startTo.clear();
+  for (const e of DATA.edges) {
+    if (e.from === "__START__") { startTo.set(e.to, e.n); continue; }
+    const i = pageIx.get(e.from);
+    if (e.to === "__BOOKED__") {
+      if (mode === "fate" || GATES.has(e.from)) outB[i] += e.n;
+      else outL[i] += e.n; // event mode: a booked visitor's session ended off-gate — no booking happened here
+    }
+    else if (e.to === "__LOST__") outL[i] += e.n;
+    else {
+      const j = pageIx.get(e.to);
+      outTo[i].set(j, (outTo[i].get(j) || 0) + e.n);
+      inCount[j].set(i, (inCount[j].get(i) || 0) + e.n);
+    }
   }
+  totB = outB.reduce((a, b) => a + b, 0);
+  totL = outL.reduce((a, b) => a + b, 0);
+  BASE = totB / (totB + totL); // session-weighted: share of session-ends that book
 }
-// session-weighted base rate: share of session-ends that are BOOKED
-const totB = outB.reduce((a, b) => a + b, 0), totL = outL.reduce((a, b) => a + b, 0);
-const BASE = totB / (totB + totL);
 
 const model = { g: new Float64Array(N), steps: new Float64Array(N), time: new Float64Array(N), startG: 0 };
 
@@ -331,18 +351,30 @@ for (let i = 0; i < nodes.length; i++) {
   n.r = n.pseudo ? 14 : 3.5 + 11 * Math.sqrt(n.visits / maxVisits);
 }
 
-// display edges (built per filter); every edge also used for springs
-const allEdges = [];
-for (const e of DATA.edges) {
-  const a = e.from === "__START__" ? IX_START : pageIx.get(e.from);
-  const b = e.to === "__BOOKED__" ? IX_BOOKED : e.to === "__LOST__" ? IX_LOST : pageIx.get(e.to);
-  allEdges.push({ a, b, n: e.n, self: a === b });
+// display edges — rebuilt per mode, because the semantics decide where an
+// absorbing edge POINTS (event mode reroutes off-gate BOOKED ends to EXIT)
+let allEdges = [], maxEdge = 1;
+let neighbors = nodes.map(() => new Set());
+function buildGraphEdges(mode) {
+  const merged = new Map();
+  for (const e of DATA.edges) {
+    const a = e.from === "__START__" ? IX_START : pageIx.get(e.from);
+    let b;
+    if (e.to === "__BOOKED__")
+      b = (mode === "fate" || GATES.has(e.from)) ? IX_BOOKED : IX_LOST;
+    else if (e.to === "__LOST__") b = IX_LOST;
+    else b = pageIx.get(e.to);
+    const key = a * 100000 + b;
+    merged.set(key, (merged.get(key) || 0) + e.n);
+  }
+  allEdges = [...merged].map(([key, n]) => {
+    const a = Math.floor(key / 100000), b = key % 100000;
+    return { a, b, n, self: a === b };
+  });
+  maxEdge = Math.max(...allEdges.map(e => e.n));
+  neighbors = nodes.map(() => new Set());
+  for (const e of allEdges) if (!e.self) { neighbors[e.a].add(e.b); neighbors[e.b].add(e.a); }
 }
-const maxEdge = Math.max(...allEdges.map(e => e.n));
-
-// adjacency (for hover-focus dimming)
-const neighbors = nodes.map(() => new Set());
-for (const e of allEdges) if (!e.self) { neighbors[e.a].add(e.b); neighbors[e.b].add(e.a); }
 
 /* ---------- force layout ---------- */
 let W = innerWidth, H = innerHeight;
@@ -432,17 +464,47 @@ function gravColor(g) {
 const maxDwellMean = () => Math.max(...pages.map(p => p.visits ? p.dwell / p.visits : 0));
 
 /* ---------- state & controls ---------- */
-const S = { colorby: "gravity", kappa: 2, minEdge: 2, minVisits: 8, mapMin: 3,
+const S = { colorby: "gravity", mode: "event", kappa: 2, minEdge: 2, minVisits: 8, mapMin: 3,
             fateLayout: true, loops: false, labels: true };
 const $ = id => document.getElementById(id);
 
+// What a visit to each page means, humanly (public-safe domain knowledge)
+const MEANING = {
+  "/": "Homepage — most journeys land here",
+  "/pricing": "Self-serve pricing; its enterprise CTA routes to the gate",
+  "/enterprise-plan": "THE GATE — demo-request form; an embedded scheduler books the meeting",
+  "/changelog": "Momentum check — buyers watching whether the product is moving",
+  "dashboard.retellai.com/agents": "Agent list — the product console's front door",
+  "dashboard.retellai.com/agents/:agent": "Agent builder — configuring a real voice agent; deepest product engagement",
+  "dashboard.retellai.com/call-history": "Reviewing recordings/transcripts of real calls — the product in genuine use",
+  "dashboard.retellai.com/live-monitoring": "Watching production call traffic in real time",
+  "dashboard.retellai.com/knowledgeBase": "Uploading documents that ground an agent — building, not browsing",
+  "dashboard.retellai.com/billing": "Usage-based credits and spend — cost-checking",
+  "dashboard.retellai.com/analytics": "Call/usage analytics dashboards",
+  "docs.retellai.com/reliability/debug-call-disconnect": "Troubleshooting a failing call — already invested",
+};
+
 function nodeColor(n) {
   if (n.pseudo === "booked") return COL.booked;
-  if (n.pseudo === "lost") return COL.lost;
+  if (n.pseudo === "lost") return S.mode === "event" ? "#8e93a6" : COL.lost;
   if (n.pseudo === "start") return "#b8bdcc";
   if (S.colorby === "prop") return COL[n.prop];
   if (S.colorby === "dwell") return seqColor((n.visits ? n.dwell / n.visits : 0) / maxDwellMean());
   return gravColor(model.g[n.ix]);
+}
+
+const MODES = [["event", "Booking event"], ["fate", "Visitor fate"]];
+const modeNotes = {
+  event: "Strict semantics: booking only happens at the gate (the demo-request form). Green flows from the gate alone; every other session end is a neutral EXIT. Gravity = P(this walk books).",
+  fate: "Loose semantics: every session end absorbs into the visitor's eventual outcome, so BOOKED edges appear from pages you cannot book on. Gravity = P(this page's visitor is the booking kind).",
+};
+for (const [k, lbl] of MODES) {
+  const b = document.createElement("button");
+  b.className = "act" + (S.mode === k ? " on" : ""); b.textContent = lbl;
+  b.onclick = () => { S.mode = k;
+    [...$("modeBtns").children].forEach((c, i) => c.classList.toggle("on", MODES[i][0] === k));
+    refit(); heat = Math.max(heat, 0.6); };
+  $("modeBtns").appendChild(b);
 }
 
 const CBS = [["gravity", "Gravity"], ["prop", "Property"], ["dwell", "Dwell"]];
@@ -487,8 +549,9 @@ function renderLegend() {
     e.innerHTML = `<span>0 s/visit</span><span>${maxDwellMean().toFixed(0)} s/visit</span>`;
     L.appendChild(e);
   }
-  item(COL.booked, "BOOKED (absorbing)");
-  item(COL.lost, "LOST (absorbing)");
+  item(COL.booked, "BOOKED — meeting scheduled (held-rate not measured)");
+  if (S.mode === "event") item("#8e93a6", "EXIT — session ends without booking");
+  else item(COL.lost, "LOST — visitor never scheduled");
   const g = document.createElement("div"); g.className = "item";
   g.innerHTML = `<span class="sw" style="background:transparent;border:1.5px dashed rgba(12,163,12,.8)"></span>` +
     `<span>gate — the demo-request form; every booking passes through it</span>`;
@@ -504,9 +567,18 @@ function bindRange(id, valId, key, fmt, after) {
 }
 
 function refit() {
+  buildCounts(S.mode);
+  buildGraphEdges(S.mode);
+  LOST.id = S.mode === "event" ? "EXIT" : "LOST";
   solve(S.kappa);
   const gs = pages.map((p, i) => model.g[i]);
   gLo = Math.min(...gs); gHi = Math.max(...gs);
+  $("modenote").textContent = modeNotes[S.mode];
+  $("lowLabel").textContent = S.mode === "event"
+    ? "Lowest pull — the product lane" : "Lowest pull — attention sinks";
+  $("lowNote").textContent = S.mode === "event"
+    ? "Low here ≠ bad page: product-usage sessions rarely end at the form. Compare with Visitor fate — these same pages predict who books."
+    : "High dwell + low gravity = the site's swamps: time goes in, bookings don't come out.";
   $("modelnote").innerHTML =
     `Base rate (session-weighted): <b>${(BASE * 100).toFixed(1)}%</b> · ` +
     `model start-of-session: <b>${(model.startG * 100).toFixed(1)}%</b><br>` +
@@ -570,12 +642,16 @@ function renderDetail() {
     ["Expected remaining time", fmtTime(model.time[i])],
   ];
   $("dstats").innerHTML = rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join("");
+  let extra = MEANING[p.id] ? `<div class="note" style="margin-top:8px">${MEANING[p.id]}</div>` : "";
+  if (GATES.has(p.id)) extra += `<div class="note">⚠ Some sessions that end here without booking reflect known form/scheduler failure modes — technical losses, not necessarily lost intent.</div>`;
+  $("dmeaning").innerHTML = extra;
   // outgoing distribution
   let T = outB[i] + outL[i];
   for (const n of outTo[i].values()) T += n;
   const outs = [...outTo[i]].map(([j, n]) => ({ label: pages[j].id, n, j }));
-  if (outB[i]) outs.push({ label: "→ BOOKED (session ends)", n: outB[i], j: -1 });
-  if (outL[i]) outs.push({ label: "→ LOST (session ends)", n: outL[i], j: -1 });
+  const exitLbl = S.mode === "event" ? "EXIT" : "LOST";
+  if (outB[i]) outs.push({ label: S.mode === "event" ? "→ BOOKED (books here)" : "→ BOOKED (session ends)", n: outB[i], j: -1 });
+  if (outL[i]) outs.push({ label: `→ ${exitLbl} (session ends)`, n: outL[i], j: -1 });
   outs.sort((a, b) => b.n - a.n);
   $("dedges").innerHTML = "";
   for (const o of outs.slice(0, 12)) {
@@ -673,8 +749,8 @@ function draw(now) {
     const cxp = mx - dy / d * off, cyp = my + dx / d * off;
     const wgt = Math.sqrt(e.n / maxEdge); // sqrt: mid-traffic edges stay visible
     let col = "142,147,166";
-    if (nodes[e.b].pseudo === "booked") col = "12,163,12";
-    else if (nodes[e.b].pseudo === "lost") col = "208,59,59";
+    if (nodes[e.b].pseudo === "booked" && (S.mode === "fate" || nodes[e.a].gate)) col = "12,163,12";
+    else if (nodes[e.b].pseudo === "lost" && S.mode === "fate") col = "208,59,59";
     let alpha = 0.07 + 0.38 * wgt;
     if (dim) alpha *= 0.12;
     ctx.beginPath();
@@ -805,8 +881,9 @@ cv.addEventListener("mousemove", ev => {
     tip.style.display = "block";
     tip.style.left = Math.min(W - 310, ev.clientX + 14) + "px";
     tip.style.top = (ev.clientY + 14) + "px";
-    tip.innerHTML = `<div class="t">${p.id}</div><div class="d">` +
-      `${p.visits} visits · ${p.visitors} visitors · ${fmtTime(p.visits ? p.dwell / p.visits : 0)}/visit<br>` +
+    tip.innerHTML = `<div class="t">${p.id}</div>` +
+      (MEANING[p.id] ? `<div class="d" style="margin-bottom:3px">${MEANING[p.id]}</div>` : "") +
+      `<div class="d">${p.visits} visits · ${p.visitors} visitors · ${fmtTime(p.visits ? p.dwell / p.visits : 0)}/visit<br>` +
       `gravity ${(model.g[hover] * 100).toFixed(1)}% (base ${(BASE * 100).toFixed(1)}%) · ` +
       `${model.steps[hover].toFixed(1)} pages, ${fmtTime(model.time[hover])} to go</div>`;
   } else if (hover >= 0) {
@@ -816,8 +893,12 @@ cv.addEventListener("mousemove", ev => {
     tip.style.top = (ev.clientY + 14) + "px";
     tip.innerHTML = `<div class="t">${n.pseudo === "start" ? "session start" : n.id}</div><div class="d">` +
       (n.pseudo === "start" ? `${DATA.meta.sessions} sessions begin here · model P(booked) ${(model.startG * 100).toFixed(1)}%`
-        : n.pseudo === "booked" ? `${totB} session-ends by visitors who booked a meeting`
-        : `${totL} session-ends by visitors who never booked`) + `</div>`;
+        : n.pseudo === "booked" ? (S.mode === "event"
+            ? `${totB} bookings — all through the gate. "Booked" = meeting scheduled (held-rate not measured)`
+            : `${totB} session-ends by visitors who scheduled a meeting`)
+        : (S.mode === "event"
+            ? `${totL} session-ends without a booking event`
+            : `${totL} session-ends by visitors who never scheduled`)) + `</div>`;
   } else tip.style.display = "none";
 });
 cv.addEventListener("mousedown", ev => {
@@ -859,8 +940,8 @@ $("datanote").innerHTML =
   `${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}.<br>` +
   `Anonymized aggregate — page paths and counts only; no identities. ` +
   `Every session end feeds the visitor's eventual fate (booked / lost) into the chain.`;
-$("stats").textContent = `${N} pages · ${allEdges.length} transitions`;
 refit();
+$("stats").textContent = `${N} pages · ${allEdges.length} transitions`;
 for (let i = 0; i < 300; i++) tick(); // pre-settle so the first paint is a formed map
 requestAnimationFrame(draw);
 </script>

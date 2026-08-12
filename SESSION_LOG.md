@@ -38,6 +38,40 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-12 — Journey Gravity: domain-context brief authored (cross-session handoff)
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+A second, parallel session (running with access to the operator's private work workspace)
+authored a **domain-context brief** for `explorations/journey-markov`, so the viz session can
+interpret the pages it ranks instead of guessing. The brief covers: human-readable page
+semantics for every ranked page, what the BOOKED/LOST outcome labels actually mean upstream
+(including known form/scheduler failure modes that make some LOST-at-the-gate mechanical
+rather than motivational, and a data-window right-edge caveat), corroborating findings from an
+independent enterprise-journey analysis, data-provenance caveats, and a ranked list of viz
+suggestions.
+
+### Decisions Made
+- **The brief lives OUTSIDE this repo**, in the same private workspace as the source CSVs
+  (`JOURNEY_DATA_DIR` — see `build_data.py`). This repo is public; the brief contains
+  internal business figures. It carries an explicit PUBLIC-SAFE vs INTERNAL-ONLY split so
+  the consuming session knows what may appear in committed files vs only in-session.
+- **Handoff is by file, not by paste**: the viz session reads the brief at its private path
+  (Caio relays the path), keeping a single source of truth instead of a copied prompt.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `<JOURNEY_DATA_DIR>/journey-markov-domain-brief.md` | The brief (private workspace, not in this repo) |
+| 2 | edited | `SESSION_LOG.md` | This entry |
+
+### Next Steps
+- [ ] Viz session: read the brief, apply what's worth applying (page labels, gate caveat,
+      BOOKED legend wording, `Cancelled` bucket check), and log what it took in its NOTES.
+
 ## Session 2026-08-12 — Exploration 5: Journey Gravity (Markov chain over real journeys)
 **Source**: Claude Code
 **User**: Caio
@@ -96,9 +130,22 @@ booked:lost when sessions end on it; a destination — 74/78 visits arrive from 
 Layout now pins it in the doorway to BOOKED with a dashed green ring and GATE label; domain
 gates live in a `GATES` set. Pushed.
 
+### v1.3 (same session)
+Caio challenged the green edges: the form lives on `/enterprise-plan`, so booking from other
+pages is impossible — correctly identifying the fate-labeling artifact (caveat #2). Fix:
+**absorption-semantics toggle**. "Booking event" mode (new default) absorbs into BOOKED only
+from the gate; everything else ends in neutral EXIT; display edges rebuild per mode so event
+mode shows a single green edge. The two lenses invert the ranking (event: pricing/homepage
+lead, dashboard ~5–7%; fate: dashboard leads) — the two-lane PLG story, now in NOTES.
+Also consumed `..\..\RetellAI\reports\journey-markov-domain-brief.md` (internal — its numbers
+stay out of the repo): human page meanings on tooltips/detail, BOOKED = "meeting scheduled
+(held-rate not measured)", Cancelled→booked in build script (no-op for this cohort,
+documented), qualitative caveats (gate technical losses, right-edge truncation, short-bounce
+under-representation, heard_about unreliability).
+
 ### Next Steps
-- [ ] Open threads in `journey-markov/NOTES.md`: proper credit assignment, per-channel chains,
-      edge fate-coloring, betweenness.
+- [ ] Open threads in `journey-markov/NOTES.md`: session-level credit assignment, per-channel
+      chains, edge fate-coloring, betweenness.
 - [ ] Pre-existing: uncommitted `index.html` landing-page work from the 2026-08-11 session is
       still in the working tree (its claim row is still active in `ACTIVE_WORK.md`).
 
