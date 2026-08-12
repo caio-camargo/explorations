@@ -43,11 +43,11 @@ def prop_of(page: str) -> str:
     return "www"
 
 def build_all_traffic():
-    """All-traffic funnel from Warmly identified-visitor exports (sankey-all.html).
+    """All-traffic funnel from identified-visitor exports (sankey-all.html).
 
     One row = one identified visitor-session with an ordered Pages Viewed list.
-    Marketing site only (that's all Warmly instruments). Green means "session's
-    last page is the demo-request form" — submission/booking is NOT observable
+    Marketing site only (that's all the identified-visitor tooling covers).
+    Green means "session's last page is the demo-request form" — submission/booking is NOT observable
     at this scale, and the page says so. Person-level fields are never read
     beyond the columns used here; output is aggregate paths + counts only.
     """
@@ -56,7 +56,7 @@ def build_all_traffic():
     # different byte order (file hashing fails) and a week file that is a subset of
     # a month file. Identical records are export duplicates, never two sessions.
     seen, rows, dup_rows = set(), [], 0
-    for fn in sorted(intake.glob("Warm Visitors Export*.csv")):
+    for fn in sorted(intake.glob("*Visitors Export*.csv")):
         with open(fn, encoding="utf-8-sig") as f:
             for r in csv.DictReader(f, delimiter=";"):
                 key = hashlib.md5(repr(sorted(r.items())).encode()).hexdigest()
@@ -122,7 +122,7 @@ def build_all_traffic():
 
     return {
         "meta": {
-            "source": "Warmly identified-visitor sessions, retellai.com marketing site (anonymized aggregate)",
+            "source": "Identified-visitor sessions, retellai.com marketing site (anonymized aggregate)",
             "date_range": ["2026-06-30", "2026-08-10 (two windows)"],
             "sessions": len(seqs),
         },

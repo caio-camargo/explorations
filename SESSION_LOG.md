@@ -165,9 +165,14 @@ and caveat, outcome/origin nodes sized by what they absorb, and human labels (`a
 "homepage", "(other site pages)"). `build_data.py` gained three additive keys
 (`edgesWww`, `entryOrigins`, `inclusion`) — additive so the concurrently-edited Sankey path
 was untouched. Conservation verified in both scopes (41+41+15=97; 41+49+155=245).
-FLAG for Caio: the repo now names the de-anonymization vendor in `build_data.py` and NOTES
-(from the v2.1 all-traffic work, already public) — the domain brief classes instrumentation
-detail as internal-only. Needs a call; not unilaterally scrubbed.
+**Vendor scrub** (Caio approved): the de-anonymization vendor's name had entered the public
+repo via the v2.1 all-traffic work (`build_data.py` docstring + meta string + intake glob,
+`NOTES.md` ×2, `SESSION_LOG.md` ×1, and the injected meta in `sankey-all.html`). Replaced
+with capability-based wording ("identified-visitor exports"); the intake glob became
+`*Visitors Export*.csv` so it still matches without naming the product. Verified with a
+control-tested grep (0 hits repo-wide, "identified-visitor" present), pages re-rendered, and
+all counts unchanged (22,804 sessions). The rule is now written into NOTES' anonymization
+contract so it doesn't recur.
 
 ### v1.5 (same session) — research-driven spacing pass, both pages
 Caio ran best-practice research (`docs/research/dataviz-sankey-best-practices.md`, produced
@@ -196,7 +201,7 @@ highlighting, cross-linked with the graph. Conservation verified (245 = 37 booke
 Two deliverables. (1) `docs/research/journey-viz-refinements.md`: all 13 sankey refinements
 v1.4→v2.0 with principles and per-item applicability to the gravity graph (suggested order:
 inclusion rule → APP absorbing state → origin split → sized terminals → renames). (2)
-`sankey-all.html`: all-traffic funnel from Warmly identified-visitor exports (intake/) —
+`sankey-all.html`: all-traffic funnel from identified-visitor exports (intake/) —
 byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup rows across
 re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
 411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.

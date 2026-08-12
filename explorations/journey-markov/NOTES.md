@@ -34,6 +34,10 @@ This is the first utilitarian exploration — the data is real work data, the ma
   emails, no identities. Dashboard agent URLs are collapsed to `…/agents/:agent`.
 - The build script PII-scans were done at build time (regex for emails and `agent_…` ids —
   clean). Anything committed here is aggregate-only by construction.
+- **Vendor and instrumentation names stay out of this repo.** Data sources are described by
+  what they are ("identified-visitor exports", "the scheduler"), never by which product
+  produces them — instrumentation detail is internal by the domain brief's rule, and naming
+  a vendor also dates the work. Scrubbed repo-wide 2026-08-12 after one slipped in.
 
 ## The model
 
@@ -166,12 +170,12 @@ header.)
 
 **v2.1 — the all-traffic funnel** ([sankey-all.html](sankey-all.html)). Same page code as
 the ICP funnel — `build_data.py` byte-copies `sankey.html` and injects a different dataset;
-`SK.mode` drives the wording, so the two can never drift. Data: Warmly identified-visitor
+`SK.mode` drives the wording, so the two can never drift. Data: identified-visitor
 exports from the private intake (row-level deduped — the folder holds re-exports of the
 same window in different byte order plus a week file inside a month file; 10,085 duplicate
 rows dropped, and the 10k-row export cap is printed as a caveat). 22,804 identified
-sessions across two windows; marketing site only (all Warmly instruments); `Pages Viewed`
-order treated as chronological (59% of multi-page rows start at the homepage; sequences
+sessions across two windows; marketing site only (the limit of the identified-visitor
+tooling); `Pages Viewed` order treated as chronological (59% of multi-page rows start at the homepage; sequences
 read narratively). **Green here means "session's last page is the demo-request form" —
 submission/booking is not observable at this scale**, and the page says so. Origins from
 UTM tags (85% untagged/direct — the attribution hole, printed). The pair of funnels is the
