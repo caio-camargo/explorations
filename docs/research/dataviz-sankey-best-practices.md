@@ -92,18 +92,24 @@ design-system-agnostic method; cross-checked against the external sources in Par
 | Color purpose | ⚠️ property-categorical everywhere + green emphasis is right in spirit, but the orange dashboard mass is as loud as the story flows; soft-tone the mass, keep bold for the booking path |
 | Flow opacity | ✅ after v1 fix (thin flows recede) |
 
-### Prioritized recommendations for v1.5
+### Prioritized recommendations for v1.5 — all applied 2026-08-12
 
-1. **Kill the top band.** Booked exits leave the gate as a short upward stub per column,
-   labeled with the count ("16 book"), plus one fixed cumulative "37 booked" total (e.g.
-   top-right). Same treatment for EXIT: short downward stubs per column, labeled at the
-   majors, cumulative total bottom-right.
-2. **Re-order within columns for fewer crossings**: sort by size within the property
-   groups, or drop grouping and sort purely by size; test both against a screenshot.
-3. **Soften the mass, keep the story bold**: desaturate/dim non-booking flows a step
-   further; the marketing lane (blue) and green stubs should be the loudest things.
-4. **Add the table-view twin** (per-step counts table under the SVG or behind a toggle) —
-   closes the a11y gap and doubles as the precise-numbers view a Sankey is bad at.
+1. ✅ **Kill the top band.** Booked exits leave the gate as a short upward stub per column,
+   labeled with the count ("16 book"), plus fixed cumulative totals in the corners. EXIT
+   likewise: short downward stubs per column, labeled at the majors.
+2. ✅ **Re-order within columns** — with a finding worth keeping: pure size-sorting (the
+   generic advice) was **tested and rejected**. With the gate pinned at the top, raw size
+   put the orange dashboard mass on top and stretched the gate's feeder lane across the
+   column — *more* crossings, not fewer. The generic rule assumes free node placement;
+   with a fixed anchor, keeping the anchor's feeder group adjacent beats raw size. Final
+   order: gate → www → docs → dashboard (each group's "other" folded behind it), size-sorted
+   within groups.
+3. ✅ **Soften the mass**: non-www flows run at roughly half the story lane's opacity;
+   green stubs are the boldest element. (Also fixed while here: the vertical scale ignored
+   inter-node gaps, silently overflowing the densest column — budget = usable height minus
+   that column's gaps, take the tightest column.)
+4. ✅ **Table-view twin**: collapsible per-step and per-page-per-step tables under the SVG;
+   sums cross-checked against the diagram (245 = 37 + 180 + 28).
 
 ## Part 4 — Sources
 

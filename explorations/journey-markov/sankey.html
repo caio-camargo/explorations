@@ -55,6 +55,19 @@
   #tip .t { font-weight: 600; margin-bottom: 2px; word-break: break-all; }
   #tip .d { color: var(--dim); font-variant-numeric: tabular-nums; }
   #foot { padding: 0 22px 24px; font-size: 11px; color: var(--dim); max-width: 900px; }
+  details { padding: 0 22px 14px; }
+  summary { cursor: pointer; font-size: 11px; letter-spacing: .06em; text-transform: uppercase;
+            color: var(--dim); }
+  summary:hover { color: var(--text); }
+  #tables { display: flex; gap: 40px; flex-wrap: wrap; margin-top: 10px; }
+  #tables table { border-collapse: collapse; font-size: 11.5px; }
+  #tables caption { text-align: left; font-size: 10px; letter-spacing: .08em;
+                    text-transform: uppercase; color: var(--dim); padding-bottom: 6px; }
+  #tables th { text-align: right; font-weight: 600; color: var(--dim); padding: 3px 10px;
+               border-bottom: 1px solid var(--line); }
+  #tables td { padding: 2.5px 10px; text-align: right; font-variant-numeric: tabular-nums;
+               border-bottom: 1px solid rgba(255,255,255,.05); }
+  #tables th:first-child, #tables td:first-child { text-align: left; }
 </style>
 </head>
 <body>
@@ -66,13 +79,17 @@
 </header>
 <div id="sub">
   Each column is one step into a session (reloads collapsed). Ribbons flow left to right;
-  sessions that <b style="color:var(--booked)">book at the gate</b> rise into the top band,
-  sessions that end without booking sink into the
-  <b style="color:#9aa0b0">EXIT</b> band. Strict booking-event semantics: green exists only
-  where the demo-request form is. Hover anything for counts.
+  at every step, <b style="color:var(--booked)">bookings</b> rise out of the gate as short
+  green stubs and sessions that end without booking sink out as
+  <b style="color:#9aa0b0">gray stubs</b> — stub width is the count. Strict booking-event
+  semantics: green exists only where the demo-request form is. Hover anything for counts.
 </div>
 <div id="wrap"></div>
 <div id="tip"></div>
+<details>
+  <summary>data table — the precise numbers a Sankey is bad at</summary>
+  <div id="tables"></div>
+</details>
 <div id="foot">
   Anonymized aggregate — page paths and session counts only. Long-tail pages are folded into
   “(other …)” per property; journeys longer than the last column pool into “still browsing”.
@@ -135,11 +152,14 @@ const NCOLS = MAX + 2;
 const colX = c => M.l + c * ((Wv - M.l - M.r) / (NCOLS - 1));
 const NW = 14, GAP = 7;
 
-// column order: gate first (nearest the booked band), then www, docs, dashboard, other; by size within groups
+// column order: the gate is pinned top (its stubs rise), and its feeder lane (www)
+// stays adjacent to it — with a fixed top anchor, keeping the story lane together
+// beats raw size-sorting for crossings; size sorts within each group
+// (see docs/research/dataviz-sankey-best-practices.md § node order)
 const groupRank = n =>
   GATES.has(n.id) ? 0 :
-  n.id === "START" || n.id === "still browsing" ? 2 :
-  ({ www: 1, docs: 3, dashboard: 4 })[propOf(n.id)] + (isOther(n.id) ? 3 : 0);
+  n.id === "START" || n.id === "still browsing" ? 1 :
+  ({ www: 2, docs: 4, dashboard: 6 })[propOf(n.id)] + (isOther(n.id) ? 1 : 0);
 
 const cols = [];
 for (let c = 0; c < NCOLS; c++) {
@@ -147,9 +167,12 @@ for (let c = 0; c < NCOLS; c++) {
   list.sort((a, b) => groupRank(a) - groupRank(b) || Math.max(b.in, b.out) - Math.max(a.in, a.out));
   cols.push(list);
 }
-const colSum = cols.map(list => list.reduce((a, n) => a + Math.max(n.in, n.out), 0) + GAP * Math.max(0, list.length - 1));
 const usableH = Hv - M.t - M.b;
-const scale = usableH * 0.94 / Math.max(...colSum.map((s, i) => s - GAP * Math.max(0, cols[i].length - 1)) ) ;
+// per-column: value budget = usable height minus this column's gaps; global scale = tightest
+const scale = Math.min(...cols.map(list => {
+  const sum = list.reduce((a, n) => a + Math.max(n.in, n.out), 0);
+  return sum ? (usableH - GAP * Math.max(0, list.length - 1)) / sum : Infinity;
+})) * 0.98;
 
 for (let c = 0; c < NCOLS; c++) {
   const hSum = cols[c].reduce((a, n) => a + Math.max(n.in, n.out) * scale, 0) + GAP * Math.max(0, cols[c].length - 1);
@@ -172,24 +195,28 @@ for (const l of flowLinks) { l.dy = l.dst.y + l.dst.dstOff; l.dst.dstOff += l.n 
 const endLinks = links.filter(l => l.kind !== "flow");
 for (const l of endLinks) { l.sy = l.src.y + l.src.srcOff; l.src.srcOff += l.n * scale; }
 
-// band segment x-allocation (booked top band / exit bottom band)
-let bx = M.l + 60, ex = M.l + 60;
-const bandY = { booked: M.t - 34, exit: Hv - M.b + 18 };
+// stub x-allocation: each end leaves as a SHORT LOCAL STUB near its own column
+// (the journey-funnel Exit convention) — never an arc across the chart
+const stubTipY = { booked: 42, exit: Hv - 24 };
+let bx = 0, ex = 0;
+const colStub = { booked: {}, exit: {} }; // per-column stub extent for labels
 endLinks.sort((a, b) => a.src.col - b.src.col || a.sy - b.sy);
 for (const l of endLinks) {
-  if (l.kind === "booked") { l.bx = Math.max(bx, l.src.x - 40); bx = l.bx + l.n * scale; }
-  else { l.bx = Math.max(ex, l.src.x - 40); ex = l.bx + l.n * scale; }
+  const w = l.n * scale;
+  if (l.kind === "booked") { l.bx = Math.max(bx, l.src.x + 34); bx = l.bx + w; }
+  else { l.bx = Math.max(ex, l.src.x - 26); ex = l.bx + w; }
+  const reg = colStub[l.kind === "booked" ? "booked" : "exit"];
+  const r = reg[l.src.col] || (reg[l.src.col] = { x0: l.bx, x1: l.bx, n: 0 });
+  r.x0 = Math.min(r.x0, l.bx); r.x1 = Math.max(r.x1, l.bx + w); r.n += l.n;
 }
 
 /* ---------- render ---------- */
 const S = [];
 S.push(`<svg viewBox="0 0 ${Wv} ${Hv}" xmlns="http://www.w3.org/2000/svg">`);
 
-// terminal bands
-S.push(`<rect x="${M.l + 56}" y="${bandY.booked}" width="${Math.max(totBooked * scale, bx - M.l - 56)}" height="10" rx="5" fill="${BOOKED_C}" opacity=".9"/>`);
-S.push(`<text class="band" x="${M.l + 50}" y="${bandY.booked + 9}" text-anchor="end" fill="${BOOKED_C}" style="fill:${BOOKED_C}">BOOKED ${totBooked}</text>`);
-S.push(`<rect x="${M.l + 56}" y="${bandY.exit}" width="${Math.max(80, ex - M.l - 56)}" height="10" rx="5" fill="${EXIT_C}" opacity=".75"/>`);
-S.push(`<text class="band" x="${M.l + 50}" y="${bandY.exit + 9}" text-anchor="end" style="fill:#9aa0b0">EXIT</text>`);
+// cumulative totals, fixed corners — the stubs carry the per-step counts
+S.push(`<text class="band" x="${Wv - 14}" y="20" text-anchor="end" style="fill:${BOOKED_C}">BOOKED ${totBooked} — meeting scheduled</text>`);
+S.push(`<text class="band" x="${Wv - 14}" y="${Hv - 8}" text-anchor="end" style="fill:#9aa0b0">EXIT ${sessions - totBooked - ([...nodes.values()].find(n => n.id === "still browsing")?.in || 0)} — no booking</text>`);
 
 // column headers
 const heads = ["START", ...Array.from({ length: MAX }, (_, i) => "step " + (i + 1)), "beyond"];
@@ -203,7 +230,9 @@ for (const l of flowLinks) {
   const y1 = l.sy + w / 2, y2 = l.dy + w / 2;
   const mx = (x1 + x2) / 2;
   const col = isOther(l.src.id) || l.src.id === "START" ? "#8e93a6" : PCOL[propOf(l.src.id)];
-  const op = (0.18 + Math.min(0.34, l.n / 24)).toFixed(2); // thin flows recede
+  // emphasis: the marketing lane (www) is the booking story — the rest is soft mass
+  const story = !isOther(l.src.id) && l.src.id !== "START" && propOf(l.src.id) === "www";
+  const op = ((story ? 0.26 : 0.12) + Math.min(story ? 0.3 : 0.16, l.n / 30)).toFixed(2);
   S.push(`<path class="flow" id="L${li}" d="M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}"
     stroke="${col}" stroke-width="${w}" opacity="${op}"
     data-src="${l.src.col}|${esc(l.src.id)}" data-dst="${l.dst.col}|${esc(l.dst.id)}"
@@ -214,13 +243,23 @@ for (const l of endLinks) {
   const w = Math.max(1.2, l.n * scale);
   const x1 = l.src.x + NW, y1 = l.sy + w / 2;
   const toB = l.kind === "booked";
-  const x2 = l.bx + (l.n * scale) / 2, y2 = toB ? bandY.booked + 10 : bandY.exit;
+  const x2 = l.bx + (l.n * scale) / 2, y2 = toB ? stubTipY.booked : stubTipY.exit;
   const col = toB ? BOOKED_C : EXIT_C;
-  S.push(`<path class="flow" id="L${li}" d="M${x1},${y1} C${x1 + 60},${y1} ${x2},${(y1 + y2) / 2} ${x2},${y2}"
-    stroke="${col}" stroke-width="${w}" opacity="${toB ? 0.75 : 0.28}"
+  S.push(`<path class="flow" id="L${li}" d="M${x1},${y1} C${x1 + 42},${y1} ${x2},${(y1 + y2) / 2} ${x2},${y2}"
+    stroke="${col}" stroke-width="${w}" opacity="${toB ? 0.85 : 0.22}"
     data-src="${l.src.col}|${esc(l.src.id)}" data-dst="${toB ? "BOOKED" : "EXIT"}"
     data-tip="${esc(l.src.id)} → ${toB ? "BOOKED" : "EXIT"}|${l.n} session${l.n > 1 ? "s" : ""} end here${toB ? " with a booking" : ""}"/>`);
   li++;
+}
+// per-column stub labels: the count at the tip, right where the flow leaves
+for (const [kind, reg] of Object.entries(colStub)) {
+  const toB = kind === "booked";
+  for (const r of Object.values(reg)) {
+    const mid = (r.x0 + r.x1) / 2;
+    if (!toB && r.n < 6) continue; // label only the major exit stubs
+    S.push(`<text class="band" x="${mid}" y="${toB ? stubTipY.booked - 8 : stubTipY.exit + 14}"
+      text-anchor="middle" style="fill:${toB ? BOOKED_C : "#9aa0b0"}">${r.n} ${toB ? "book" : "exit"}</text>`);
+  }
 }
 
 // nodes + labels
@@ -256,6 +295,27 @@ svg.addEventListener("mousemove", ev => {
   dim(t);
 });
 svg.addEventListener("mouseleave", () => { tip.style.display = "none"; dim(null); });
+/* ---------- table-view twin ---------- */
+(() => {
+  const endAt = (c, id, kind) =>
+    SK.ends.filter(e => e.c === c && e.from === id && e.end === kind).reduce((a, e) => a + e.n, 0);
+  let t1 = `<table><caption>Per step</caption><tr><th>step</th><th>sessions</th><th>book</th><th>exit</th><th>continue</th></tr>`;
+  for (let c = 1; c <= MAX; c++) {
+    const list = cols[c];
+    const entering = list.reduce((a, n) => a + n.in, 0);
+    const bk = SK.ends.filter(e => e.c === c && e.end === "booked").reduce((a, e) => a + e.n, 0);
+    const xt = SK.ends.filter(e => e.c === c && e.end === "exit").reduce((a, e) => a + e.n, 0);
+    t1 += `<tr><td>${c}</td><td>${entering}</td><td>${bk}</td><td>${xt}</td><td>${entering - bk - xt}</td></tr>`;
+  }
+  t1 += `</table>`;
+  let t2 = `<table><caption>Per page per step (sessions through)</caption><tr><th>step</th><th>page</th><th>in</th><th>book</th><th>exit</th></tr>`;
+  for (let c = 1; c <= MAX; c++)
+    for (const n of cols[c])
+      t2 += `<tr><td>${c}</td><td>${esc(n.id)}</td><td>${n.in}</td><td>${endAt(c, n.id, "booked") || ""}</td><td>${endAt(c, n.id, "exit") || ""}</td></tr>`;
+  t2 += `</table>`;
+  document.getElementById("tables").innerHTML = t1 + t2;
+})();
+
 function dim(active) {
   const paths = svg.querySelectorAll("path.flow");
   if (!active) { paths.forEach(p => p.style.opacity = ""); return; }
