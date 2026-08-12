@@ -183,8 +183,19 @@ def main():
         "visits": 0, "dwell": 0, "visitors": set(),
         "visits_booked": 0, "visits_lost": 0,
         "entries": 0, "exits_booked": 0, "exits_lost": 0,
+        "visits_www": 0,
     })
     edges = collections.Counter()
+    # Same chain restricted to the marketing funnel's denominator: sessions that
+    # touch at least one www page (the graph's inclusion rule — the Sankey's v2.0
+    # refinement transferred). Pure-app and docs-only sessions are excluded.
+    edges_www = collections.Counter()
+    # Session entries split by self-reported origin channel, so START is a real
+    # segmentation instead of an information-free bar. heard_about is
+    # self-reported and incomplete — the page prints that caveat.
+    entries_by_origin = collections.Counter()      # (origin, first_page, scope)
+    n_www_sessions = 0
+    excluded_graph = collections.Counter()
 
     n_sessions = 0
     dates = []
@@ -192,20 +203,40 @@ def main():
         oc = outcome.get(email, "lost")
         n_sessions += 1
         dates.append(evs[0]["ts"][:10])
+        seq_pages = [ev["page"] for ev in evs]
+        in_www = any(prop_of(p) == "www" for p in seq_pages)
+        if in_www:
+            n_www_sessions += 1
+        else:
+            excluded_graph["pure app" if all(p.startswith("dashboard.") for p in seq_pages)
+                           else "docs, no site"] += 1
+        org = ("app dashboard" if evs[0]["page"].startswith("dashboard.")
+               else origin.get(email, "other / unlisted"))
+        entries_by_origin[(org, evs[0]["page"], "all")] += 1
+        if in_www:
+            entries_by_origin[(org, evs[0]["page"], "www")] += 1
+
+        def add(edge):
+            edges[edge] += 1
+            if in_www:
+                edges_www[edge] += 1
+
         for i, ev in enumerate(evs):
             p = pages[ev["page"]]
             p["visits"] += 1
             p["dwell"] += ev["dwell"]
             p["visitors"].add(email)
             p["visits_" + oc] += 1
+            if in_www:
+                p["visits_www"] += 1
             if i == 0:
                 p["entries"] += 1
-                edges[("__START__", ev["page"])] += 1
+                add(("__START__", ev["page"]))
             if i == len(evs) - 1:
                 p["exits_" + oc] += 1
-                edges[(ev["page"], "__BOOKED__" if oc == "booked" else "__LOST__")] += 1
+                add((ev["page"], "__BOOKED__" if oc == "booked" else "__LOST__"))
             else:
-                edges[(ev["page"], evs[i + 1]["page"])] += 1
+                add((ev["page"], evs[i + 1]["page"]))
 
     booked_visitors = sum(1 for e in {r["email"] for r in rows} if outcome.get(e) == "booked")
     all_visitors = len({r["email"] for r in rows})
@@ -295,6 +326,7 @@ def main():
                 "visitsBooked": p["visits_booked"],
                 "visitsLost": p["visits_lost"],
                 "entries": p["entries"],
+                "visitsWww": p["visits_www"],
             }
             for name, p in sorted(pages.items(), key=lambda kv: -kv[1]["visits"])
         ],
@@ -302,6 +334,21 @@ def main():
             {"from": a, "to": b, "n": n}
             for (a, b), n in sorted(edges.items(), key=lambda kv: -kv[1])
         ],
+        # inclusion-filtered twin of `edges` (www-touching sessions only) plus the
+        # origin-split entries; the graph switches denominators between them
+        "edgesWww": [
+            {"from": a, "to": b, "n": n}
+            for (a, b), n in sorted(edges_www.items(), key=lambda kv: -kv[1])
+        ],
+        "entryOrigins": [
+            {"origin": o, "page": pg, "scope": sc, "n": n}
+            for (o, pg, sc), n in sorted(entries_by_origin.items(), key=lambda kv: -kv[1])
+        ],
+        "inclusion": {
+            "sessionsAll": n_sessions,
+            "sessionsWww": n_www_sessions,
+            "excluded": dict(excluded_graph),
+        },
         "sankey": {
             "maxstep": MAXSTEP,
             "mode": "icp",

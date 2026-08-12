@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.1.0
+**Version**: 2.2.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -106,6 +106,34 @@ The single sentence the picture earns: **depth of product engagement predicts bo
 better than marketing-page attention — and the billing page is where intent goes to die.**
 Directionally unsurprising; the value is that it's now *quantified per page* with a model
 whose knobs are visible, rather than a hunch.
+
+### The denominator was the story all along (v2.2)
+
+The Sankey's refinements came back to the graph via
+[`docs/research/journey-viz-refinements.md`](../../docs/research/journey-viz-refinements.md).
+The consequential one was **the inclusion rule**: event-mode gravity was being computed over
+*all* 245 sessions, including 132 that never leave the product and 16 docs-only ones. Those
+sessions cannot reach the form — counting them as non-bookings measures the wrong thing.
+
+Restricted to the 97 sessions that touch the marketing site at least once, the base rate goes
+from **16.7% → 42.3%**, and every page's gravity moves with it (the gate reads 69%, pricing
+48%, homepage 44%). Same data, same model, honest denominator: the funnel is far less leaky
+than the first reading suggested. Both denominators ship as a toggle with the exclusion counts
+printed on the page — a denominator is a modeling decision and should be visible, not implied.
+
+Three further transfers changed what the picture *claims*:
+
+- **`→ APP` is now its own absorbing state.** Ending a session inside the product is not
+  "lost" — it's a handoff. 15 of the 97 site-touching sessions end that way (155 of 245 in
+  all-sessions scope, which is exactly why that denominator drowned everything). The model
+  still counts them as non-bookings; the chart no longer calls them failures.
+- **`START` became the origin channels.** An "every session begins" node carries zero
+  information; self-reported origin carries some. chatgpt (26), other/unlisted (24),
+  google (23), app dashboard (14), recommendation (10) — each with its own predicted
+  P(booked), all within a few points of each other, and each tooltip carrying the
+  under-attribution caveat.
+- **Outcome nodes are sized by what they absorb**, with counts and shares printed beneath.
+  Their radius is now the outcome distribution — previously they were fixed-size chrome.
 
 ### The two lenses disagree — and that's the finding (v1.3)
 
@@ -245,8 +273,14 @@ ring in BOOKED's green and a permanent GATE label. Domain gates live in a one-li
    pre-booking session — is an open thread.
 3. **Correlation, not causation.** Call-history doesn't *make* people book; serious people
    visit call-history. Don't reroute the nav based on this alone.
-4. **ICP-filtered cohort** — already qualified leads, hence the 75% fate-mode base. A
-   general-traffic chain would look completely different.
+4. **ICP-filtered cohort** — already qualified leads, hence the high fate-mode base. A
+   general-traffic chain would look completely different (see the all-traffic funnel).
+4b. **The denominator is a choice, and it dominates.** Event-mode gravity reads 16.7% base
+   over all sessions and 42.3% over site-touching ones. Neither is wrong; quoting either
+   without saying which is. The toggle and its exclusion counts are on the page for this
+   reason.
+4c. **Origin channels are self-reported** (asked at form fill) and under-attribute several
+   real discovery paths — the origin split is a segmentation, not an attribution model.
 5. Dwell is missing on ~30% of pageviews (treated as 0), so expected-time figures
    underestimate. Relatedly, very short bounce sessions are systematically
    under-represented by the session-matching pipeline that produced the source data.
@@ -294,6 +328,16 @@ sortable full-data table for accessibility.
 - Visual: verified from headless-Chrome screenshots (the preview pane wouldn't composite
   again); layout fixes (panel-aware anchors, label halos, stronger repulsion) came from
   actually looking, which numeric checks would never have caught.
+
+**v2.2** — the refinement log applied (see "The denominator was the story all along").
+Mechanically: `build_data.py` gained three additive keys — `edgesWww` (the same chain over
+site-touching sessions only), `entryOrigins` (entries split by channel, per scope), and
+`inclusion` (session counts + exclusion reasons); every visit read in the page routes
+through a scope accessor so one toggle re-denominates the whole model. Verified: absorption
+totals conserve to the session count in both scopes (41 + 41 + 15 = 97; 41 + 49 + 155 = 245),
+origin entries sum to the scope's session count, and green edges still originate only at the
+gate. Human labels landed too — `/` reads "homepage", dashboard paths read `app/…`, and the
+folded nodes are "(other site/app/docs pages)".
 
 **v1.5** — spacing pass on the graph, applying
 [`docs/research/dataviz-sankey-best-practices.md`](../../docs/research/dataviz-sankey-best-practices.md)

@@ -151,6 +151,24 @@ enters the doorway corridor. Verified with synthetic mouse events + headless ren
 NOTE: `build_data.py` gained an uncommitted step-indexed Sankey flow computation from
 outside this session (mentions a future `sankey.html`); deliberately left unstaged.
 
+### v2.2 (same session) — the Sankey refinement log applied to the graph
+Caio pointed the graph at `docs/research/journey-viz-refinements.md` (the Sankey's v1.4→v2.0
+iteration log, written for transfer). All five suggested items shipped in one pass; the log
+now carries an "Applied" section recording what each produced.
+**The consequential one was the inclusion rule**: event-mode gravity had been computed over
+all 245 sessions, including 132 pure-app and 16 docs-only ones that cannot reach the form.
+Restricted to the 97 site-touching sessions, base rate goes 16.7% → 42.3% and every page moves
+with it. Shipped as a toggle with exclusion counts on the page, not a silent replacement.
+Also: `→ APP` as a third absorbing state (a handoff is not a loss — 15/97, or 155/245
+unfiltered), START replaced by 5 self-reported origin channels each with its own P(booked)
+and caveat, outcome/origin nodes sized by what they absorb, and human labels (`app/…`,
+"homepage", "(other site pages)"). `build_data.py` gained three additive keys
+(`edgesWww`, `entryOrigins`, `inclusion`) — additive so the concurrently-edited Sankey path
+was untouched. Conservation verified in both scopes (41+41+15=97; 41+49+155=245).
+FLAG for Caio: the repo now names the de-anonymization vendor in `build_data.py` and NOTES
+(from the v2.1 all-traffic work, already public) — the domain brief classes instrumentation
+detail as internal-only. Needs a call; not unilaterally scrubbed.
+
 ### v1.5 (same session) — research-driven spacing pass, both pages
 Caio ran best-practice research (`docs/research/dataviz-sankey-best-practices.md`, produced
 while iterating the Sankey) and asked whether its general principles apply to the graph's
@@ -182,6 +200,19 @@ inclusion rule → APP absorbing state → origin split → sized terminals → 
 byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup rows across
 re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
 411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.
+
+### Data provenance (same session) — Databricks documented as upstream
+Caio: journey data should now live in Databricks; document it if it isn't. It mostly is, and
+mostly was documented (RetellAI's `docs/notes/databricks-inventory-2026-08-07.md`) — but the
+journey data map predated the inventory. Added `user-journey-data-map.md` §8 (per-source
+Databricks location + verification state; the exception: `web_form_submissions` is NOT in
+Databricks) + a work-log entry there. Caio corrected the exception same day: form
+submissions live natively in Webflow and, since ~early Aug, an automation records them in
+HubSpot (→ Fivetran → Databricks transitively; three verifications open, documented in the
+map). On this side: `build_data.py` docstring + NOTES now
+state the CSVs are point-in-time exports (→07-20) whose refresh should regenerate from
+Databricks. Fun-side changes left uncommitted deliberately — a parallel session is mid-flight
+on the same files; these ride with its next commit.
 
 ### v2.0 (same session) — the inclusion rule
 Caio's rule: every session shown must touch ≥1 www page. 97 marketing sessions remain (132

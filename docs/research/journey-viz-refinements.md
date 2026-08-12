@@ -54,3 +54,20 @@ it would change the graph's meaning and needs a call.
 3. #4 origin split of START
 4. #1 size terminal nodes by absorption
 5. #9 renames + visible labels
+
+## Applied — gravity graph v2.2 (2026-08-12)
+
+All five, in that order, in one pass. Results:
+
+| # | Outcome in the graph |
+|---|---|
+| 3 | **The prediction held and then some**: base rate 16.7% → **42.3%** over the 97 site-touching sessions. Shipped as a toggle (not a replacement) with exclusion counts printed on the page, since a denominator is a modeling decision the reader must see |
+| 8 | `→ APP` shipped as a third absorbing node in **both** modes, not just fate — 15 of 97 site-touching session-ends (155 of 245 unfiltered). The model still counts them as non-bookings; the chart stops calling them failures |
+| 4 | START replaced by 5 origin nodes stacked by volume, each with its own predicted P(booked) and the self-report caveat in its tooltip. Origins land within a few points of each other — the channel does *not* predict booking here, which is itself worth knowing |
+| 1 | Outcome nodes sized by absorption, count + share printed beneath. Origin nodes sized by entries |
+| 9 | `/` → "homepage", `dashboard.retellai.com/…` → `app/…`, folded nodes → "(other site/app/docs pages)" |
+
+Process notes that transferred as predicted: conservation checked after every structural
+change (caught nothing — because it was checked), and the one bug that did appear (aggregate
+nodes drawn at ~5× size from a stale maximum) was invisible to the assertions and obvious in
+the screenshot, exactly as §4 says.
