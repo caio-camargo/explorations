@@ -189,6 +189,111 @@ SELECT CASE WHEN raw_path = '{GATE}' THEN 'end_gate' ELSE 'end_exit' END,
   GROUP BY 1,2,3,4
 """
 
+# The gravity graph wants a different shape from the funnel: raw consecutive
+# pageview pairs (self-loops included — reloads are a toggle on that page), plus
+# per-page visit/dwell/visitor counts. Dwell is not readable from the source
+# (engagement_time_msec is populated on ~1% of pageviews), so it is COMPUTED as
+# the gap to the next pageview in the session, clamped to 30 min.
+TOPN_GRAPH = 60
+GRAPH_SQL = f"""
+WITH pv AS (
+  SELECT concat(user_pseudo_id, '|', CAST(ga_session_id AS STRING)) AS sk,
+         user_pseudo_id AS uid, event_ts,
+         CASE WHEN p = '' OR p IS NULL THEN '/' ELSE p END AS path
+  FROM (
+    SELECT user_pseudo_id, ga_session_id, event_ts,
+           CASE WHEN length(lp) > 1 AND endswith(lp, '/')
+                THEN left(lp, length(lp) - 1) ELSE lp END AS p
+    FROM (
+      SELECT user_pseudo_id, ga_session_id, event_ts,
+             regexp_replace(page_path, '^/({LOCALES})(/|$)', '/') AS lp
+      FROM {EVENTS}
+      WHERE device_web_hostname = '{SITE_HOST}' AND event_name = 'page_view'
+        AND ga_session_id IS NOT NULL AND page_path IS NOT NULL
+    ) a
+  ) b
+),
+kept AS (
+  SELECT * FROM pv WHERE path NOT IN ({",".join(f"'{p}'" for p in DROP_PAGES)})
+),
+walk AS (
+  SELECT sk, uid, path, event_ts,
+         LEAD(path) OVER (PARTITION BY sk ORDER BY event_ts) AS next_path,
+         ROW_NUMBER() OVER (PARTITION BY sk ORDER BY event_ts) AS rn,
+         LAST_VALUE(path) OVER (PARTITION BY sk ORDER BY event_ts
+             ROWS BETWEEN UNBOUNDED PRECEDING AND UNBOUNDED FOLLOWING) AS last_path,
+         LEAST(GREATEST(CAST(unix_timestamp(
+             LEAD(event_ts) OVER (PARTITION BY sk ORDER BY event_ts)
+           ) - unix_timestamp(event_ts) AS BIGINT), 0), 1800) AS dwell
+  FROM kept
+),
+topn AS (
+  SELECT path FROM (
+    SELECT path, ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) AS rn
+    FROM kept GROUP BY path
+  ) t WHERE rn <= {TOPN_GRAPH}
+),
+gsrc AS (
+  SELECT concat(user_pseudo_id, '|', CAST(ga_session_id AS STRING)) AS sk,
+         min_by(CASE
+           WHEN gclid IS NOT NULL AND gclid <> '' THEN 'google ads'
+           WHEN lower(coalesce(nullif(param_source, ''),
+                               nullif(traffic_source_source, ''), '')) LIKE '%chatgpt%'
+                THEN 'chatgpt'
+           WHEN lower(coalesce(nullif(param_source, ''),
+                               nullif(traffic_source_source, ''), '')) LIKE '%google%'
+                THEN 'google organic'
+           WHEN lower(coalesce(nullif(param_source, ''),
+                               nullif(traffic_source_source, ''), '')) LIKE '%linkedin%'
+                THEN 'linkedin'
+           WHEN coalesce(nullif(param_source, ''),
+                         nullif(traffic_source_source, ''), '(direct)') IN ('(direct)', '(none)')
+                THEN 'direct / untagged'
+           ELSE 'other referral' END, event_ts) AS origin
+  FROM {EVENTS}
+  WHERE device_web_hostname = '{SITE_HOST}' AND ga_session_id IS NOT NULL
+  GROUP BY 1
+),
+lab AS (
+  SELECT w.*,
+         CASE WHEN w.path = '/' THEN 'homepage'
+              WHEN w.path = '{GATE}' THEN '{GATE}'
+              WHEN w.path IN (SELECT path FROM topn) THEN w.path
+              ELSE '(other site pages)' END AS node,
+         CASE WHEN w.next_path IS NULL THEN NULL
+              WHEN w.next_path = '/' THEN 'homepage'
+              WHEN w.next_path = '{GATE}' THEN '{GATE}'
+              WHEN w.next_path IN (SELECT path FROM topn) THEN w.next_path
+              ELSE '(other site pages)' END AS next_node,
+         CASE WHEN w.last_path = '{GATE}' THEN 1 ELSE 0 END AS reached
+  FROM walk w
+)
+SELECT 'page' AS kind, node AS a, '' AS b,
+       CAST(COUNT(*) AS STRING) AS n,
+       CAST(SUM(COALESCE(dwell, 0)) AS STRING) AS d,
+       CAST(COUNT(DISTINCT uid) AS STRING) AS v,
+       CAST(SUM(CASE WHEN rn = 1 THEN 1 ELSE 0 END) AS STRING) AS e,
+       CAST(SUM(reached) AS STRING) AS rb
+  FROM lab GROUP BY 1,2,3
+UNION ALL
+SELECT 'edge', node, next_node, CAST(COUNT(*) AS STRING), '0', '0', '0', '0'
+  FROM lab WHERE next_node IS NOT NULL GROUP BY 1,2,3
+UNION ALL
+-- the graph splits entries by acquisition channel instead of one START node...
+SELECT 'entry', g.origin, l.node, CAST(COUNT(*) AS STRING), '0', '0', '0', '0'
+  FROM lab l JOIN gsrc g ON g.sk = l.sk
+  WHERE l.rn = 1 GROUP BY 1,2,3
+UNION ALL
+-- ...but the model still needs the plain START mixture for its
+-- start-of-session prediction, so emit both (as the ICP payload does)
+SELECT 'start', '__START__', node, CAST(COUNT(*) AS STRING), '0', '0', '0', '0'
+  FROM lab WHERE rn = 1 GROUP BY 1,2,3
+UNION ALL
+SELECT 'end', node, CASE WHEN reached = 1 THEN '__BOOKED__' ELSE '__LOST__' END,
+       CAST(COUNT(*) AS STRING), '0', '0', '0', '0'
+  FROM lab WHERE next_path IS NULL GROUP BY 1,2,3
+"""
+
 META_SQL = f"""
 SELECT CAST(MIN(event_date) AS STRING), CAST(MAX(event_date) AS STRING),
        COUNT(DISTINCT concat(user_pseudo_id, '|', CAST(ga_session_id AS STRING))),
@@ -225,6 +330,32 @@ def main():
     reached = sum(n for (_c, _a, e), n in list(ends.items()) + list(trunc.items())
                   if e == "booked")
 
+    # ---- gravity-graph shape (index-lakehouse.html) ----
+    pages, edges, entry = [], collections.Counter(), collections.Counter()
+    for kind, a, b, n, d, v, e, rb in sql(GRAPH_SQL):
+        n = int(n)
+        if kind == "entry":
+            entry[(a, b)] += n
+        elif kind == "page":
+            pages.append({
+                "id": a, "prop": "www", "visits": n, "dwell": int(d),
+                "visitors": int(v), "entries": int(e),
+                # "booked" here = the session ended on the form; the graph's
+                # wording is switched to say so
+                "visitsBooked": int(rb), "visitsLost": n - int(rb),
+                "visitsWww": n,            # this dataset is marketing-site only
+            })
+        else:
+            edges[(a, b)] += n
+    pages.sort(key=lambda p: -p["visits"])
+    edge_list = [{"from": a, "to": b, "n": n}
+                 for (a, b), n in sorted(edges.items(), key=lambda kv: -kv[1])]
+    # the graph filters entries by its scope switch; this dataset has only one
+    # scope, so both positions get the same rows rather than one going blank
+    entry_list = [{"origin": o, "page": pg, "scope": sc, "n": n}
+                  for (o, pg), n in sorted(entry.items(), key=lambda kv: -kv[1])
+                  for sc in ("www", "all")]
+
     out = {
         "meta": {
             "source": "Warehouse web-analytics sessions, marketing site only "
@@ -232,8 +363,11 @@ def main():
             "date_range": [first_day, last_day],
             "sessions": included,
             "pageviews": int(pageviews),
+            "visitors": sum(p["entries"] for p in pages),
+            "graphMode": "reach",   # gravity = P(reaches the form), not P(books)
         },
-        "pages": [], "edges": [],
+        "pages": pages, "edges": edge_list, "edgesWww": edge_list,
+        "entryOrigins": entry_list,
         "sankey": {
             "maxstep": MAXSTEP,
             "mode": "lakehouse",
@@ -259,17 +393,21 @@ def main():
 
     # same trick as build_data.py: the page is a byte copy of sankey.html, so the
     # two never drift; only the injected DATA and SK.mode differ
-    src = (HERE / "sankey.html").read_text(encoding="utf-8")
-    dst = HERE / "sankey-lakehouse.html"
-    dst.write_text(src, encoding="utf-8")
-    html = dst.read_text(encoding="utf-8")
+    # One payload feeds both the funnel and the graph.
     s, e = "/*DATA-START*/", "/*DATA-END*/"
-    i, j = html.index(s) + len(s), html.index(e)
-    dst.write_text(html[:i] + js + html[j:], encoding="utf-8")
+    for twin, dest in (("sankey.html", "sankey-lakehouse.html"),
+                       ("index.html", "index-lakehouse.html")):
+        dst = HERE / dest
+        dst.write_text((HERE / twin).read_text(encoding="utf-8"), encoding="utf-8")
+        html = dst.read_text(encoding="utf-8")
+        i, j = html.index(s) + len(s), html.index(e)
+        dst.write_text(html[:i] + js + html[j:], encoding="utf-8")
+        print(f"wrote {dest}")
     # ASCII only: the default Windows console codepage cannot encode arrows
-    print(f"wrote {dst.name}: {included:,} sessions, {reached:,} reached the form "
+    print(f"{included:,} sessions, {reached:,} reached the form "
           f"({reached / included * 100:.2f}%), {first_day} -> {last_day}, "
-          f"{len(out['sankey']['flows'])} flows")
+          f"{len(out['sankey']['flows'])} flows, {len(pages)} graph nodes, "
+          f"{len(edge_list)} graph edges")
 
 
 if __name__ == "__main__":

@@ -422,6 +422,19 @@ byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup 
 re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
 411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.
 
+### v2.6 (same session) — warehouse gravity graph
+Caio: can the gravity graph refresh from the warehouse too, same inputs? Answer: for the ICP
+data it was already rigged (one payload → both pages since v1.4); the warehouse is NOT the
+same inputs. Built `index-lakehouse.html` (byte copy of `index.html`, new `graphMode:"reach"`):
+gravity = P(reaches the form), fate-mode and scope-switch removed rather than faked, dwell
+derived from pageview gaps (the source populates engagement on ~1% of views). 61 nodes /1,416
+edges from 235k sessions. Ranking identical at κ=2 and κ=20 — the shrinkage slider is moot at
+this n. Verdict: blog posts 0.0–0.1% reach despite top-5 traffic; industry/feature pages
+3.4–4.4% (2–3× base); gate 71%. Coherence: start-of-session = base = 1.52%.
+Shared-file edits additive (`index.html` gained a REACH branch + a "warehouse" header link);
+ICP graph re-verified unregressed (base 42.3%, both modes/scopes intact). Also a general fix:
+an absorbing anchor with zero absorbed sessions is no longer drawn (the empty APP node).
+
 ### v2.5 (same session) — "still browsing" retired
 Caio flagged that "still browsing" isn't a proper terminal node. It was a category error (the
 others are fates; that one meant "out of columns"), and the truncated sessions' real outcomes

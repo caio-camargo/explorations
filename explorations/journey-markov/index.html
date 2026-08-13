@@ -162,8 +162,9 @@
 
 <aside id="ui">
   <header>
-    <h1>Journey Gravity</h1>
+    <h1 id="h1">Journey Gravity</h1>
     <span style="display:flex;gap:6px">
+      <a href="index-lakehouse.html" id="siblink" style="font-size:11px;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:2px 7px" title="The same model over every warehouse session">warehouse</a>
       <a href="sankey.html" style="font-size:11px;color:var(--dim);text-decoration:none;border:1px solid var(--line);border-radius:6px;padding:2px 7px" title="The same journeys as a step-by-step funnel">funnel</a>
       <button id="toggle">hide</button>
     </span>
@@ -217,7 +218,7 @@
     </div>
 
     <div class="group">
-      <div class="glabel" title="P(walk ends BOOKED | you are on this page), under the fitted chain. Base rate marked ·">Highest pull toward booked</div>
+      <div class="glabel" id="topLabel" title="P(walk ends in the absorbing state | you are on this page), under the fitted chain. Base rate marked ·">Highest pull toward booked</div>
       <div class="rank" id="topRank"></div>
     </div>
 
@@ -259,6 +260,9 @@ const DATA = /*DATA-START*/{"meta":{"source":"ICP lead journeys, retellai.com pr
 // entry state. Each observed transition is a count; each session's last page
 // carries a count into the visitor's fate. Prior strength kappa adds
 // kappa*base pseudo-counts -> BOOKED and kappa*(1-base) -> LOST to every page.
+// Warehouse-sourced twin: same model, but the absorbing state is "reached the
+// form" rather than "booked", because the source cannot see submissions.
+const REACH = DATA.meta.graphMode === "reach";
 const pages = DATA.pages.map(p => ({...p}));
 const pageIx = new Map(pages.map((p, i) => [p.id, i]));
 const N = pages.length;
@@ -367,7 +371,7 @@ const GATES = new Set(["/enterprise-plan"]);
 // the panel prints that caveat.)
 const ORIGINS = [...new Set(DATA.entryOrigins.map(e => e.origin))]
   .sort().map(id => ({ id, pseudo: "start", origin: id }));
-const BOOKED = { id: "BOOKED", pseudo: "booked" };
+const BOOKED = { id: REACH ? "REACHES FORM" : "BOOKED", pseudo: "booked" };
 const LOST = { id: "LOST", pseudo: "lost" };
 const APP = { id: "→ APP", pseudo: "app" };
 // The long tail folds into one aggregate node per property ("fold minors into
@@ -628,7 +632,8 @@ function nodeColor(n) {
   return gravColor(n.other ? n.gMean : model.g[n.ix]);
 }
 
-const SCOPES = [["www", "Site-touching"], ["all", "All sessions"]];
+// the scope switch only means something when the data carries both populations
+const SCOPES = DATA.inclusion ? [["www", "Site-touching"], ["all", "All sessions"]] : [];
 for (const [k, lbl] of SCOPES) {
   const b = document.createElement("button");
   b.className = "act" + (S.scope === k ? " on" : ""); b.textContent = lbl;
@@ -638,9 +643,17 @@ for (const [k, lbl] of SCOPES) {
   $("scopeBtns").appendChild(b);
 }
 
-const MODES = [["event", "Booking event"], ["fate", "Visitor fate"]];
+// Warehouse dataset: the absorbing state is "ended on the demo-request form",
+// because submission and booking are not observable at that grain. Visitor-fate
+// semantics need a per-visitor outcome, which this source has none of — so the
+// mode toggle collapses to the one honest reading instead of offering a fake choice.
+const MODES = REACH
+  ? [["event", "Reached the form"]]
+  : [["event", "Booking event"], ["fate", "Visitor fate"]];
 const modeNotes = {
-  event: "Strict semantics: booking only happens at the gate (the demo-request form). Green flows from the gate alone; every other session end is a neutral EXIT. Gravity = P(this walk books).",
+  event: REACH
+    ? "Gravity = P(a walk from this page ends on the demo-request form). Whether anyone submitted it, or booked, is not observable in this source — so this measures reach, not conversion."
+    : "Strict semantics: booking only happens at the gate (the demo-request form). Green flows from the gate alone; every other session end is a neutral EXIT. Gravity = P(this walk books).",
   fate: "Loose semantics: every session end absorbs into the visitor's eventual outcome, so BOOKED edges appear from pages you cannot book on. Gravity = P(this page's visitor is the booking kind).",
 };
 for (const [k, lbl] of MODES) {
@@ -654,9 +667,15 @@ for (const [k, lbl] of MODES) {
 
 const CBS = [["gravity", "Gravity"], ["prop", "Property"], ["dwell", "Dwell"]];
 const cbNotes = {
-  gravity: "P(a walk from this page ends in a booked meeting). Diverging around the base rate — blue pulls toward booked, red toward lost.",
-  prop: "Which property the page belongs to. Journeys weave through all three.",
-  dwell: "Mean seconds spent per visit — where attention actually pools.",
+  gravity: REACH
+    ? "P(a walk from this page ends on the demo-request form). Diverging around the base rate — blue pulls toward the form, red toward leaving."
+    : "P(a walk from this page ends in a booked meeting). Diverging around the base rate — blue pulls toward booked, red toward lost.",
+  prop: REACH
+    ? "All one property here — the marketing site. (The ICP graph is where three properties weave together.)"
+    : "Which property the page belongs to. Journeys weave through all three.",
+  dwell: REACH
+    ? "Mean seconds per visit, derived from gaps between consecutive pageviews — where attention actually pools."
+    : "Mean seconds spent per visit — where attention actually pools.",
 };
 for (const [k, lbl] of CBS) {
   const b = document.createElement("button");
@@ -698,13 +717,14 @@ function renderLegend() {
     e.innerHTML = `<span>0 s/visit</span><span>${maxDwellMean().toFixed(0)} s/visit</span>`;
     L.appendChild(e);
   }
-  item(COL.booked, "BOOKED — meeting scheduled (held-rate not measured)");
-  if (S.mode === "event") item("#8e93a6", "EXIT — left the site without booking");
+  item(COL.booked, REACH ? "REACHES FORM — session ended on the demo-request form (submission not observable)"
+                         : "BOOKED — meeting scheduled (held-rate not measured)");
+  if (S.mode === "event") item("#8e93a6", REACH ? "EXIT — left the site elsewhere" : "EXIT — left the site without booking");
   else item(COL.lost, "LOST — visitor never scheduled");
-  item(COL.dashboard, "→ APP — ends inside the product (handed off, not lost)");
+  if (!REACH) item(COL.dashboard, "→ APP — ends inside the product (handed off, not lost)");
   const g = document.createElement("div"); g.className = "item";
   g.innerHTML = `<span class="sw" style="background:transparent;border:1.5px dashed rgba(12,163,12,.8)"></span>` +
-    `<span>gate — the demo-request form; every booking passes through it</span>`;
+    `<span>gate — the demo-request form; ${REACH ? "the absorbing state itself" : "every booking passes through it"}</span>`;
   L.appendChild(g);
   const o = document.createElement("div"); o.className = "item";
   o.innerHTML = `<span class="sw" style="background:rgba(142,147,166,.35);border-style:dashed"></span>` +
@@ -735,14 +755,20 @@ function refit() {
   ranked.forEach(([n], k) => { n.fateR = ranked.length > 1 ? 0.03 + 0.94 * k / (ranked.length - 1) : 0.5; });
   $("modenote").textContent = modeNotes[S.mode];
   const inc = DATA.inclusion;
-  $("scopenote").innerHTML = S.scope === "www"
+  // the warehouse dataset is marketing-site-only by construction, so the
+  // app/www scope split (and its note) has nothing to say there
+  $("scopenote").innerHTML = !inc
+    ? `Marketing-site sessions only — this source carries no product-side journeys, so there is no scope to switch.`
+    : S.scope === "www"
     ? `The funnel's real denominator: the <b>${inc.sessionsWww}</b> sessions that touch the marketing site at least once. ` +
       `Excluded: ${Object.entries(inc.excluded).map(([k, v]) => `${v} ${k}`).join(", ")}.`
     : `All <b>${inc.sessionsAll}</b> sessions, including ${inc.excluded["pure app"] || 0} that never leave the product — ` +
       `they can't reach the form, so they drag the rate down without being failures.`;
-  $("lowLabel").textContent = S.mode === "event"
-    ? "Lowest pull — the product lane" : "Lowest pull — attention sinks";
-  $("lowNote").textContent = S.mode === "event"
+  $("lowLabel").textContent = REACH ? "Lowest pull — the site's dead ends"
+    : S.mode === "event" ? "Lowest pull — the product lane" : "Lowest pull — attention sinks";
+  $("lowNote").textContent = REACH
+    ? "Pages a walk rarely leaves for the form. With 235k sessions the ranking is well-powered — the κ slider matters far less here than on the 53-lead chain."
+    : S.mode === "event"
     ? "Low here ≠ bad page: product-usage sessions rarely end at the form. Compare with Visitor fate — these same pages predict who books."
     : "High dwell + low gravity = the site's swamps: time goes in, bookings don't come out.";
   $("modelnote").innerHTML =
@@ -954,6 +980,9 @@ function draw(now) {
   const labelQueue = [];
   for (const n of nodes) {
     if (!n.pseudo && hidden(n.ix)) continue;
+    // an absorbing state nothing reaches is noise, not information — a dataset
+    // with no product-side journeys should not show an empty APP anchor
+    if (n.anchor && n.absorbed === 0) continue;
     const [sx, sy] = toScreen(n.x, n.y);
     const dimmed = !n.pseudo && !inFocus(n.ix);
     const r = n.r * cam.z;
@@ -1147,12 +1176,33 @@ cv.addEventListener("wheel", ev => {
 }, { passive: false });
 
 /* ---------- boot ---------- */
+if (REACH) {
+  document.title = "Journey Gravity — the warehouse chain (reach, not conversion)";
+  $("h1").textContent = "Journey Gravity — warehouse";
+  $("topLabel").textContent = "Highest pull toward the form";
+  const sl = $("siblink");
+  if (sl) { sl.href = "index.html"; sl.textContent = "ICP graph"; }
+  $("datanote").innerHTML =
+    `<b>${DATA.meta.sessions.toLocaleString()} marketing-site sessions</b> · ` +
+    `${DATA.meta.pageviews.toLocaleString()} pageviews · ` +
+    `${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}.<br>` +
+    `Every session in the analytics warehouse — not a sample. Aggregate only: paths and ` +
+    `counts, reduced in-warehouse; no identifier is read or emitted. ` +
+    `<b>Gravity here is P(reaches the demo-request form)</b>, not P(books) — submissions ` +
+    `are not observable in this source, so the <a href="index.html" style="color:var(--accent)">ICP ` +
+    `graph</a> remains the only view with real booking outcomes. Dwell is <b>derived</b> ` +
+    `from gaps between consecutive pageviews (clamped at 30 min); the source populates its ` +
+    `own engagement field on ~1% of pageviews. Marketing-site host only; ` +
+    `<code>/careers</code> + <code>/about-us</code> and locale prefixes normalised out. ` +
+    `Window starts when the export was connected and cannot be backfilled.`;
+} else {
 $("datanote").innerHTML =
   `${DATA.meta.visitors} ICP visitors (${DATA.meta.visitors_booked} booked) · ` +
   `${DATA.meta.sessions} sessions · ${DATA.meta.pageviews} pageviews · ` +
   `${DATA.meta.date_range[0]} → ${DATA.meta.date_range[1]}.<br>` +
   `Anonymized aggregate — page paths and counts only; no identities. ` +
   `Every session end feeds the visitor's eventual fate (booked / lost) into the chain.`;
+}
 refit();
 pinAnchors(); // origin nodes need their volumes before they can be stacked by size
 $("stats").textContent = `${N} pages · ${allEdges.length} transitions`;

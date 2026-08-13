@@ -23,7 +23,12 @@
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
-| Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html`, `README.md` |
+| Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html` (ROOT landing page), `README.md` |
+> Cleared 2026-08-12: warehouse gravity graph shipped. `index.html` (the exploration's, not
+> the root landing page) gained an additive `REACH` branch keyed on `meta.graphMode`; the ICP
+> graph was re-verified unregressed. `build_data_lakehouse.py` now writes BOTH
+> `sankey-lakehouse.html` and `index-lakehouse.html` from one payload, and still needs
+> `LAKEHOUSE_WAREHOUSE_ID` in the environment.
 > Cleared 2026-08-12: the warehouse funnel shipped (`53891ed`). Its `sankey.html` change was
 > an additive third `SK.mode` branch plus one header link; the ICP and identified-traffic
 > branches were re-verified unregressed (conservation + rendered labels) before pushing.

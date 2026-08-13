@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.5.0
+**Version**: 2.6.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -205,6 +205,33 @@ finding: ICP leads convert ~39%; full identified traffic reaches the form 1.8% o
 (411/22,804, still peaking at steps 2–3), with a 22,020-session EXIT wall of single-page
 visits. Same site, same weeks — the difference between the two charts is what
 "qualified" means.
+
+### The warehouse gravity graph ([index-lakehouse.html](index-lakehouse.html), v2.6)
+
+Caio asked whether the graph could refresh from the warehouse too — "same data inputs,
+right?". Half right, and the half that isn't is the interesting part:
+
+- **For the ICP data it was already rigged.** `build_data.py` has always injected one payload
+  into *both* the graph and the funnel, so a refresh updates them together. Nothing to do.
+- **The warehouse is not the same inputs.** It has richer *behaviour* (235k sessions vs 245)
+  but no booking outcome and no visitor-level fate. So the twin graph redefines the absorbing
+  state: **gravity = P(a walk reaches the demo-request form)**. The Visitor-fate toggle is
+  removed rather than left as a fake choice, and the scope switch disappears because the
+  source carries no product-side journeys.
+- **Dwell had to be derived.** The platform populates its own engagement field on ~1% of
+  pageviews, so per-page dwell is computed from gaps between consecutive pageviews, clamped at
+  30 min (median 35 s/page — plausible). Without that the semi-Markov time quantity would have
+  been silently meaningless.
+
+What it says, and the reason it's worth having: with n=235k the ranking is **identical at
+κ=2 and κ=20** — the shrinkage slider, which exists because n=53 was thin, has nothing left to
+do. And the content verdict is blunt: `/enterprise-plan` 71%, `/thank-you-demo-call` 6.4%,
+industry and feature pages 3.4–4.4% (2–3× base), while **blog posts sit at 0.0–0.1%** despite
+being some of the highest-traffic pages on the site. The blog draws crowds that never walk
+toward the form.
+
+Model coherence checked: start-of-session gravity equals the base rate (1.52%) exactly, and
+all gravities stay in [0, 1].
 
 **v2.5 — the pseudo-outcome retired** (Caio: "10 end on 'still browsing', which isn't a
 proper terminal node"). Correct, and it was a category error: BOOKED / EXIT / app dashboard
