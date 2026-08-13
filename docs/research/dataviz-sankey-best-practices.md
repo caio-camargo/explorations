@@ -78,6 +78,26 @@ design-system-agnostic method; cross-checked against the external sources in Par
   category color), and the conversion path may use the bold/status color as the one
   emphasized flow.
 
+### Truncation is not an outcome
+
+A step-indexed funnel has to stop at some column, and the tempting shortcut is a terminal node
+called "still browsing" / "continues" for journeys that ran past it. **That is a category
+error**: the other terminals are *fates* (converted, dropped), while this one means "the chart
+ran out of room" — so the outcome column stops being comparable, which is the whole reason
+terminal nodes exist (above).
+
+The fix, when the data knows each journey's real ending: route truncated journeys to their
+**actual** terminal and mark the ribbon as incomplete (dashed, plus a tooltip saying the
+middle isn't drawn). Both facts survive, the outcome column stays purely fates, and the counts
+still conserve. Dashing is legitimate here because an incomplete path is what a dash
+conventionally signals — distinct from the anti-pattern of dashing a *gridline*, where it adds
+noise and implies a threshold that doesn't exist. Only assert the convention in the legend on
+charts that actually draw one.
+
+If the real ending is genuinely unknown (a live session, a truncated log), then a
+"still open" terminal is honest — but label it as a *censoring* class, not an outcome, and say
+so on the chart.
+
 ### Per-stage stubs vs. terminal aggregation (both are conventions — pick by question)
 
 Two legitimate treatments of outcomes exist in the surveyed material, and they answer

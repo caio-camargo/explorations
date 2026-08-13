@@ -173,8 +173,15 @@ SELECT 'flow', a.step, a.node, b.node, COUNT(*)
   FROM labeled a JOIN labeled b ON a.sk = b.sk AND b.step = a.step + 1
   WHERE a.step < {MAXSTEP} GROUP BY 1,2,3,4
 UNION ALL
-SELECT 'continues', {MAXSTEP}, node, '__CONTINUES__', COUNT(*)
-  FROM labeled WHERE step = {MAXSTEP} AND steps_total > {MAXSTEP} GROUP BY 1,2,3,4
+-- Journeys longer than the chart is wide still have a known fate: take the real
+-- last page and end there, flagged truncated. A "still browsing" terminal would
+-- be a category error next to genuine outcomes.
+SELECT CASE WHEN last.raw_path = '{GATE}' THEN 'end_gate_trunc' ELSE 'end_exit_trunc' END,
+       {MAXSTEP}, at_edge.node, '', COUNT(*)
+  FROM labeled at_edge
+  JOIN labeled last ON last.sk = at_edge.sk AND last.step = last.steps_total
+  WHERE at_edge.step = {MAXSTEP} AND at_edge.steps_total > {MAXSTEP}
+  GROUP BY 1,2,3,4
 UNION ALL
 SELECT CASE WHEN raw_path = '{GATE}' THEN 'end_gate' ELSE 'end_exit' END,
        step, node, '', COUNT(*)
@@ -199,18 +206,24 @@ def main():
     first_day, last_day, all_sessions, pageviews = sql(META_SQL)[0]
     rows = sql(FUNNEL_SQL)
 
-    flows, ends = collections.Counter(), collections.Counter()
+    flows, ends, trunc = (collections.Counter(), collections.Counter(),
+                          collections.Counter())
     for kind, c, a, b, n in rows:
         c, n = int(c), int(n)
-        if kind in ("origin", "flow", "continues"):
+        if kind in ("origin", "flow"):
             flows[(c, a, b)] += n
         elif kind == "end_gate":
             ends[(c, a, "booked")] += n   # "booked" slot = reached the form
+        elif kind == "end_gate_trunc":
+            trunc[(c, a, "booked")] += n
+        elif kind == "end_exit_trunc":
+            trunc[(c, a, "exit")] += n
         else:
             ends[(c, a, "exit")] += n
 
     included = sum(n for (c, _a, _b), n in flows.items() if c == 0)
-    reached = sum(n for (_c, _a, e), n in ends.items() if e == "booked")
+    reached = sum(n for (_c, _a, e), n in list(ends.items()) + list(trunc.items())
+                  if e == "booked")
 
     out = {
         "meta": {
@@ -233,7 +246,9 @@ def main():
             "flows": [{"c": c, "from": a, "to": b, "n": n}
                       for (c, a, b), n in sorted(flows.items())],
             "ends": [{"c": c, "from": a, "end": e, "n": n}
-                     for (c, a, e), n in sorted(ends.items())],
+                     for (c, a, e), n in sorted(ends.items())]
+                  + [{"c": c, "from": a, "end": e, "n": n, "t": 1}
+                     for (c, a, e), n in sorted(trunc.items())],
         },
     }
 

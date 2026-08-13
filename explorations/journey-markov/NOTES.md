@@ -1,5 +1,5 @@
 # Journey Gravity — absorbing Markov chain over real site journeys
-**Version**: 2.4.0
+**Version**: 2.5.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
 **Last Updated**: 2026-08-12
@@ -206,6 +206,21 @@ finding: ICP leads convert ~39%; full identified traffic reaches the form 1.8% o
 visits. Same site, same weeks — the difference between the two charts is what
 "qualified" means.
 
+**v2.5 — the pseudo-outcome retired** (Caio: "10 end on 'still browsing', which isn't a
+proper terminal node"). Correct, and it was a category error: BOOKED / EXIT / app dashboard
+are *fates*, while "still browsing" only ever meant *we ran out of columns*. The fix keeps
+both facts instead of trading one for the other — a journey longer than the chart is wide now
+ends at its **real** outcome, drawn as a **dashed** ribbon whose tooltip says the middle isn't
+drawn. Dashing earns its keep here (an incomplete path is exactly what a dash conventionally
+means; the anti-pattern is dashing a *gridline*, where it signals nothing).
+
+The correction moved real numbers, because those sessions had been silently withheld from
+their outcomes: ICP **BOOKED 38 → 41, EXIT 36 → 41, app 13 → 15** — 10 sessions, a tenth of
+that funnel, had been parked in a non-answer. Identified traffic redistributed 357; the
+warehouse funnel 812, leaving its outcome column exactly two nodes. All three still conserve
+exactly (97 / 22,804 / 235,218 at both ends), and the legend only claims the dashed
+convention on pages that actually draw one.
+
 ### The warehouse funnel ([sankey-lakehouse.html](sankey-lakehouse.html), v2.4)
 
 The third dataset, and the first sourced from the company's canonical warehouse rather than a
@@ -259,8 +274,10 @@ www page). The funnel's population is now defined, not inherited: 97 marketing s
 retained by construction — booking requires the gate, a www page. Docs pages stay as steps
 inside qualifying journeys (which pages feed them, where they lead). Also: `/` renamed
 **homepage**, "(other www)" → **"(other site pages)"** ("(other docs pages)" likewise).
-The reframe this produced is the strongest single finding of the series: **BOOKED·38 vs
-EXIT·36 — the marketing funnel converts ~39% of its true sessions.** The "leak" in every
+The reframe this produced is the strongest single finding of the series: **BOOKED vs EXIT are
+neck and neck — the marketing funnel converts ~42% of its true sessions** (41 vs 41 of 97
+after v2.5 resolved the truncated journeys; it read 38 vs 36 while 10 sessions were still
+parked in a non-outcome). The "leak" in every
 earlier version was app traffic that was never the marketing funnel's to lose. A funnel's
 denominator is a modeling decision, and it was hiding the conclusion.
 

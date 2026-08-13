@@ -131,6 +131,7 @@ def build_all_traffic():
     coll = lambda p: "homepage" if p == "/" else (p if p in top else SITE_BUCKET[site_group(p)])
 
     flows, ends = collections.Counter(), collections.Counter()
+    trunc = collections.Counter()   # same shape as ends; journey ran past the chart
     n_confirmed = 0
     for s, org in seqs:
         # reaching the confirmation page = an observed submission; the session
@@ -152,7 +153,8 @@ def build_all_traffic():
             if oc_forced:
                 ends[(MAXSTEP, sc[-1], "booked")] += 1
             else:
-                flows[(MAXSTEP, sc[-1], "__CONTINUES__")] += 1
+                # real fate, flagged truncated — see the note in main()
+                trunc[(MAXSTEP, sc[-1], "booked" if s[-1] == GATE else "exit")] += 1
         else:
             ends[(len(sc), sc[-1], oc_forced or ("booked" if s[-1] == GATE else "exit"))] += 1
 
@@ -171,7 +173,8 @@ def build_all_traffic():
             "confirmed": n_confirmed,
             "appHopsElided": 0,
             "flows": [{"c": c, "from": a, "to": b, "n": n} for (c, a, b), n in sorted(flows.items())],
-            "ends": [{"c": c, "from": a, "end": e, "n": n} for (c, a, e), n in sorted(ends.items())],
+            "ends": [{"c": c, "from": a, "end": e, "n": n} for (c, a, e), n in sorted(ends.items())]
+                  + [{"c": c, "from": a, "end": e, "n": n, "t": 1} for (c, a, e), n in sorted(trunc.items())],
         },
     }
 
@@ -304,6 +307,7 @@ def main():
 
     flows = collections.Counter()   # (col_from, from, to)
     ends = collections.Counter()    # (col_from, from, "booked"|"exit"|"app")
+    trunc = collections.Counter()   # same, for journeys longer than the chart
     app_hops_elided = 0
     n_included = 0
     excluded = collections.Counter()  # sessions that never touch the marketing site
@@ -341,7 +345,11 @@ def main():
         for k in range(1, len(seq_c)):
             flows[(k, seq_c[k - 1], seq_c[k])] += 1
         if len(mid) > MAXSTEP:
-            flows[(MAXSTEP, seq_c[-1], "__CONTINUES__")] += 1
+            # The journey is longer than the chart is wide, but its fate is known —
+            # so it ends at its REAL outcome, flagged truncated (drawn dashed).
+            # A "still browsing" terminal would be a category error: the other
+            # outcomes are fates, that one was just "we ran out of columns".
+            trunc[(MAXSTEP, seq_c[-1], oc)] += 1
         else:
             ends[(len(seq_c), seq_c[-1], oc)] += 1
 
@@ -401,6 +409,9 @@ def main():
             "ends": [
                 {"c": c, "from": a, "end": e, "n": n}
                 for (c, a, e), n in sorted(ends.items())
+            ] + [
+                {"c": c, "from": a, "end": e, "n": n, "t": 1}
+                for (c, a, e), n in sorted(trunc.items())
             ],
         },
     }

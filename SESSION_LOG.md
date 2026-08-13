@@ -422,6 +422,16 @@ byte-copy of sankey.html with mode-driven wording; row-level dedupe (10,085 dup 
 re-exports; 10k export cap caveat printed); 22,804 sessions, green = ends-on-form (1.8%,
 411) vs ICP's 39% booking rate. PII scan with control: clean. Conservation verified.
 
+### v2.5 (same session) — "still browsing" retired
+Caio flagged that "still browsing" isn't a proper terminal node. It was a category error (the
+others are fates; that one meant "out of columns"), and the truncated sessions' real outcomes
+were already known and being discarded. Now they end at their true fate as **dashed** ribbons
+(tooltip + legend explain; legend only appears when one is drawn). Numbers moved because the
+withheld sessions rejoined their outcomes: ICP BOOKED 38→41, EXIT 36→41, app 13→15 (10
+sessions = a tenth of that funnel); identified 357 redistributed; warehouse 812. All three
+conserve exactly at both ends; the ICP headline is now ~42% conversion, 41 vs 41.
+Also: the warehouse rebuild picked up 08-11, so that dataset is now 235,218 sessions.
+
 ### v2.4 (same session) — the warehouse funnel (3rd dataset)
 Caio asked whether the Sankey was updated with the newly-verified data (it wasn't — the
 verification proved the pipe, not the payload) and approved building it as another version.
