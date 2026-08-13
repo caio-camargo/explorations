@@ -170,6 +170,18 @@
       <label class="check" data-needs="predatorOn"><input type="checkbox" id="predatorHunts">
         It hunts (else it orbits)</label>
 
+      <label class="check"><input type="checkbox" id="imageOn"> Hidden image</label>
+      <div class="row" data-needs="imageOn">
+        <label>Image pull</label><span class="val" id="v_ip"></span>
+        <input type="range" id="ip" min="0" max="6" step="0.1">
+      </div>
+      <div class="btns" data-needs="imageOn" id="imgshapes" style="margin-bottom:8px"></div>
+      <label class="check" data-needs="imageOn"><input type="checkbox" id="imageDark">
+        Dark attracts (off: light attracts)</label>
+      <label class="check" data-needs="imageOn"><input type="checkbox" id="imagePeek">
+        Peek at the image</label>
+      <input type="file" id="imgfile" accept="image/*" style="display:none">
+
       <div class="regime" id="leashnote"></div>
       <div class="glabel" style="margin-top:10px">Their appearance</div>
       <div class="btns" id="agentstyle"></div>
@@ -306,6 +318,15 @@ const P = {
   predatorSpeed: 2.4,     // px/step
   predatorHunts: true,    // stalk clusters (prowl → windup → lunge), else orbit
   agentStyle: "hidden",   // hidden | glow | comet | void — how the agents appear
+
+  /* The image field. An image is rasterised into a multi-scale potential and
+     its gradient pulls dots toward dark regions — the image itself is never
+     drawn; you read it from where the dots pool. */
+  imageOn: false,
+  imagePull: 2.5,         // px per step at full gradient, on an 800px floor
+  imageDark: true,        // dark attracts (off = light attracts)
+  imagePeek: false,       // ghost the hidden image in — for tuning, i.e. cheating
+  imageShape: "ring",     // ring | star | blob | custom (upload)
   links: false,
   floor: false,
   paused: false,
@@ -317,6 +338,12 @@ const PRESETS = {
   "swarm":  { model:"fixed", friendFixed:2.50, enemyFixed:1.90, centerPull:0.005, rechoosePerSec:25, n:800, stepsPerFrame:1 },
   "knot":   { model:"fixed", friendFixed:1.30, enemyFixed:0.90, centerPull:0.005, rechoosePerSec:0,  n:600, stepsPerFrame:1 },
   "linear": { model:"prop",  friendProp:0.030, enemyProp:0.010, centerPull:0.005, rechoosePerSec:2,  n:400, stepsPerFrame:1 },
+  // The image-field regime, tuned by measurement: heavy re-choose churn keeps
+  // clusters dissolving and re-forming elsewhere on the shape, so the trails
+  // trace it instead of one blob parking on one arc. The only preset that
+  // touches the image switches.
+  "ouija":  { model:"fixed", friendFixed:2.20, enemyFixed:1.70, centerPull:0.002, rechoosePerSec:30, n:900, stepsPerFrame:1,
+              imageOn:true, imageDark:true, imagePull:3.0 },
 };
 
 /* ---------------------------------------------------------------------------
@@ -452,6 +479,137 @@ const AH = 110;
 const pTrail = { x: new Float32Array(AH), y: new Float32Array(AH), head: 0, filled: 0 };
 const aTrail = { x: new Float32Array(AH), y: new Float32Array(AH), head: 0, filled: 0 };
 
+/* ---------------------------------------------------------------------------
+   THE IMAGE FIELD
+
+   The naive version fails, and knowing why shapes everything here: a dot
+   sitting in a large empty region has zero brightness gradient at image
+   resolution, so it never learns the shape exists. The fix is multi-scale —
+   the potential is a coarse-weighted sum of progressively blurred copies of
+   the darkness map. At the coarsest scale the whole image is a few blobs, so
+   a gradient exists EVERYWHERE and herds dots toward the right half of the
+   floor; finer scales take over as they arrive and resolve the actual edges.
+
+   ∇Φ is precomputed into two Float32Arrays, normalised so the strength slider
+   means px/step; per dot per step it's one bilinear lookup. Generated shapes
+   and uploads go through byte-identical code: both are just a canvas handed
+   to buildImageField(). Everything stays client-side — nothing uploads.
+--------------------------------------------------------------------------- */
+const IMG = { src: null, fw: 0, fh: 0, gx: null, gy: null, dark: null, ghost: null };
+const IMG_W = 144;                        // field grid width; height follows floor aspect
+
+function blurBox(a, fw, fh, r) {
+  // separable box blur, one horizontal + one vertical pass of moving sums
+  const out = new Float32Array(a.length), tmp = new Float32Array(a.length);
+  const span = 2 * r + 1;
+  for (let y2 = 0; y2 < fh; y2++) {
+    const row = y2 * fw;
+    let s = 0;
+    for (let x2 = -r; x2 <= r; x2++) s += a[row + Math.min(Math.max(x2, 0), fw - 1)];
+    for (let x2 = 0; x2 < fw; x2++) {
+      tmp[row + x2] = s / span;
+      s += a[row + Math.min(x2 + r + 1, fw - 1)] - a[row + Math.max(x2 - r, 0)];
+    }
+  }
+  for (let x2 = 0; x2 < fw; x2++) {
+    let s = 0;
+    for (let y2 = -r; y2 <= r; y2++) s += tmp[Math.min(Math.max(y2, 0), fh - 1) * fw + x2];
+    for (let y2 = 0; y2 < fh; y2++) {
+      out[y2 * fw + x2] = s / span;
+      s += tmp[Math.min(y2 + r + 1, fh - 1) * fw + x2] - tmp[Math.max(y2 - r, 0) * fw + x2];
+    }
+  }
+  return out;
+}
+
+function buildImageField(srcCanvas) {
+  IMG.src = srcCanvas;
+  const fw = IMG_W, fh = Math.max(24, Math.round(IMG_W * H / Math.max(W, 1)));
+  IMG.fw = fw; IMG.fh = fh;
+
+  // rasterise, cover-fit (uploads and generated shapes take the same path)
+  const rc = document.createElement("canvas"); rc.width = fw; rc.height = fh;
+  const rctx = rc.getContext("2d");
+  rctx.fillStyle = "#fff"; rctx.fillRect(0, 0, fw, fh);
+  const sw = srcCanvas.width, sh = srcCanvas.height;
+  const sc = Math.max(fw / sw, fh / sh);
+  rctx.drawImage(srcCanvas, (fw - sw * sc) / 2, (fh - sh * sc) / 2, sw * sc, sh * sc);
+  const px2 = rctx.getImageData(0, 0, fw, fh).data;
+
+  const dark = new Float32Array(fw * fh);
+  for (let i = 0; i < dark.length; i++) {
+    const j = i * 4;
+    dark[i] = 1 - (0.2126 * px2[j] + 0.7152 * px2[j + 1] + 0.0722 * px2[j + 2]) / 255;
+  }
+  IMG.dark = dark;
+
+  // the pyramid: progressively blurred copies, coarse-weighted
+  const phi = new Float32Array(fw * fh);
+  for (let i = 0; i < phi.length; i++) phi[i] = dark[i] * 0.06;
+  let cur = dark;
+  const radii = [1, 2, 4, 8, 16], wts = [0.08, 0.12, 0.18, 0.26, 0.30];
+  for (let l = 0; l < radii.length; l++) {
+    cur = blurBox(cur, fw, fh, radii[l]);
+    for (let i = 0; i < phi.length; i++) phi[i] += cur[i] * wts[l];
+  }
+
+  // gradient (central differences), normalised so |g| peaks at 1
+  const gx2 = new Float32Array(fw * fh), gy2 = new Float32Array(fw * fh);
+  let gm = 1e-9;
+  for (let y2 = 0; y2 < fh; y2++) for (let x2 = 0; x2 < fw; x2++) {
+    const i = y2 * fw + x2;
+    gx2[i] = (phi[y2 * fw + Math.min(x2 + 1, fw - 1)] - phi[y2 * fw + Math.max(x2 - 1, 0)]) / 2;
+    gy2[i] = (phi[Math.min(y2 + 1, fh - 1) * fw + x2] - phi[Math.max(y2 - 1, 0) * fw + x2]) / 2;
+    const m = Math.hypot(gx2[i], gy2[i]);
+    if (m > gm) gm = m;
+  }
+  for (let i = 0; i < gx2.length; i++) { gx2[i] /= gm; gy2[i] /= gm; }
+  IMG.gx = gx2; IMG.gy = gy2;
+
+  // ghost overlay for "peek" — neutral grey, alpha follows darkness
+  const gc = document.createElement("canvas"); gc.width = fw; gc.height = fh;
+  const gctx = gc.getContext("2d");
+  const gd = gctx.createImageData(fw, fh);
+  for (let i = 0; i < dark.length; i++) {
+    const j = i * 4;
+    gd.data[j] = 150; gd.data[j + 1] = 150; gd.data[j + 2] = 165;
+    gd.data[j + 3] = Math.round(dark[i] * 45);
+  }
+  gctx.putImageData(gd, 0, 0);
+  IMG.ghost = gc;
+}
+
+/* Generated shapes — black on white, rasterised through the exact same path
+   an upload takes, so there is no special case to remove later. */
+function genShape(kind) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 384;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, 512, 384);
+  g.fillStyle = "#000"; g.strokeStyle = "#000";
+  const cx2 = 256, cy2 = 192;
+  if (kind === "ring") {
+    g.lineWidth = 54;
+    g.beginPath(); g.arc(cx2, cy2, 118, 0, Math.PI * 2); g.stroke();
+  } else if (kind === "star") {
+    g.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const r = i % 2 ? 62 : 152, a = -Math.PI / 2 + i * Math.PI / 5;
+      g[i ? "lineTo" : "moveTo"](cx2 + r * Math.cos(a), cy2 + r * Math.sin(a));
+    }
+    g.closePath(); g.fill();
+  } else {                               // blob — three overlapping discs
+    for (const [ox, oy, r] of [[-62, 18, 84], [58, -30, 96], [30, 62, 66]]) {
+      g.beginPath(); g.arc(cx2 + ox, cy2 + oy, r, 0, Math.PI * 2); g.fill();
+    }
+  }
+  return c;
+}
+
+function setImageShape(kind) {
+  P.imageShape = kind;
+  buildImageField(genShape(kind));
+}
+
 function pushAgentTrail(tr, X, Y) {
   tr.x[tr.head] = X; tr.y[tr.head] = Y;
   tr.head = (tr.head + 1) % AH;
@@ -486,6 +644,9 @@ function resize() {
   // Booting into a zero-size canvas (hidden tab, collapsed pane) clamps every
   // dot onto one point. Give them a floor to spread out on.
   if (!hadFloor && maxR > 1 && x) scatter();
+  // The field grid follows the floor's aspect, so rebuild it from the stored
+  // source whenever the floor changes shape.
+  if (IMG.src && maxR > 1) buildImageField(IMG.src);
 }
 
 /* Move the point fields. Runs per step, like everything else derived from
@@ -875,6 +1036,9 @@ function step() {
   const prOn = P.predatorOn;
   const prR = Math.min(W, H) * P.predatorRadius, prR2 = prR * prR;
   const prK = P.predatorPush * unit;
+  const imOn = P.imageOn && IMG.gx !== null;
+  const imK = (P.imageDark ? 1 : -1) * P.imagePull * unit;
+  const imSX = imOn ? (IMG.fw - 1.001) / W : 0, imSY = imOn ? (IMG.fh - 1.001) / H : 0;
 
   for (let i = 0; i < n; i++) {
     const xi = px[i], yi = py[i];
@@ -896,7 +1060,20 @@ function step() {
       X += kEp * edx; Y += kEp * edy;
     }
 
-    // 4. point fields — same slot in the rule as the centre pull
+    // 4. fields — same slot in the rule as the centre pull
+    if (imOn) {
+      // bilinear sample of the precomputed gradient — ascend toward dark
+      let fx = xi * imSX, fy = yi * imSY;
+      if (fx < 0) fx = 0; else if (fx > IMG.fw - 1.001) fx = IMG.fw - 1.001;
+      if (fy < 0) fy = 0; else if (fy > IMG.fh - 1.001) fy = IMG.fh - 1.001;
+      const x0 = fx | 0, y0 = fy | 0, tx2 = fx - x0, ty2 = fy - y0;
+      const i00 = y0 * IMG.fw + x0, i10 = i00 + 1, i01 = i00 + IMG.fw, i11 = i01 + 1;
+      const gX = (IMG.gx[i00] * (1 - tx2) + IMG.gx[i10] * tx2) * (1 - ty2)
+               + (IMG.gx[i01] * (1 - tx2) + IMG.gx[i11] * tx2) * ty2;
+      const gY = (IMG.gy[i00] * (1 - tx2) + IMG.gy[i10] * tx2) * (1 - ty2)
+               + (IMG.gy[i01] * (1 - tx2) + IMG.gy[i11] * tx2) * ty2;
+      X += imK * gX; Y += imK * gY;
+    }
     if (atOn) { X += atK * (atX - xi); Y += atK * (atY - yi); }
     if (prOn) {
       const rdx = xi - prX, rdy = yi - prY, r2 = rdx * rdx + rdy * rdy;
@@ -950,6 +1127,13 @@ function draw() {
     ctx.strokeStyle = L.floor; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.stroke();
     ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fillStyle = L.floor; ctx.fill();
+  }
+
+  // Peek: ghost the hidden image in. Tuning aid — the whole point is that the
+  // image is only ever suggested by where the dots pool.
+  if (P.imageOn && P.imagePeek && IMG.ghost) {
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(IMG.ghost, 0, 0, W, H);
   }
 
   // "hidden" is the purist setting — the agents exist only as what they do to
@@ -1321,6 +1505,7 @@ const SLIDERS = [
                                           : Math.round(360 / (v * 60)) + " s / turn"],
   ["ak", "attractorPull",  (v) => (v * 100).toFixed(1) + "%"],
   ["as", "attractorSpeed", (v) => v.toFixed(2) + " ×"],
+  ["ip", "imagePull",      (v) => v.toFixed(1) + " px"],
   ["pk", "predatorPush",   (v) => v.toFixed(2) + " px"],
   ["pr", "predatorRadius", (v) => (v * 100).toFixed(0) + "% of floor"],
   ["ps", "predatorSpeed",  (v) => v.toFixed(1) + " px"],
@@ -1370,6 +1555,12 @@ function syncUI() {
   $("attractorOn").checked = P.attractorOn;
   $("predatorOn").checked = P.predatorOn;
   $("predatorHunts").checked = P.predatorHunts;
+  $("imageOn").checked = P.imageOn;
+  $("imageDark").checked = P.imageDark;
+  $("imagePeek").checked = P.imagePeek;
+  document.querySelectorAll("#imgshapes .act").forEach((b) => {
+    b.classList.toggle("on", b.dataset.shape === P.imageShape);
+  });
   document.querySelectorAll("#agentstyle .act").forEach((b) => {
     b.classList.toggle("on", b.dataset.style === P.agentStyle);
   });
@@ -1430,6 +1621,10 @@ const TIPS = {
   attractorOn: "A moving point that pulls every dot toward it — a second, wandering centre. Dots that settle on it go quiet and deep.",
   ak: "Pull strength: the fraction of each dot's distance to it covered per step. The centre pull works the same way.",
   as: "How fast the attractor travels its wandering path.",
+  imageOn: "An invisible image whose dark regions pull the dots. You never see the picture — only where the swarm pools. Pick a shape below or upload your own.",
+  ip: "How hard the hidden image pulls, in px per step at the steepest gradient. Low = the image is barely a rumour; high = the dots trace it plainly.",
+  imageDark: "Dark regions attract. Untick to invert — dots avoid the shape and pool in the light instead.",
+  imagePeek: "Ghost the hidden image in, faintly. For tuning. It is cheating.",
   predatorOn: "A moving point that shoves dots away. Watch the hole it carves, the hot rim pinned around it, and the warm wake behind.",
   pk: "Shove strength at point-blank range, fading to nothing at its reach.",
   pr: "How far the shove is felt, as a fraction of the floor.",
@@ -1506,8 +1701,42 @@ $("links").addEventListener("change", (e) => { P.links = e.target.checked; });
 $("floor").addEventListener("change", (e) => { P.floor = e.target.checked; });
 $("skeleton").addEventListener("change", (e) => { P.skeleton = e.target.checked; });
 $("streaks").addEventListener("change", (e) => { P.streaks = e.target.checked; });
-["attractorOn", "predatorOn", "predatorHunts"].forEach((key) => {
+["attractorOn", "predatorOn", "predatorHunts", "imageOn", "imageDark", "imagePeek"].forEach((key) => {
   $(key).addEventListener("change", (e) => { P[key] = e.target.checked; syncUI(); });
+});
+
+const IMG_SHAPES = [
+  ["ring", "A hollow ring — the easiest hidden shape to read from the pooling."],
+  ["star", "A five-pointed star. The points read last; the core reads first."],
+  ["blob", "Three overlapping discs — an organic mass with no straight edges."],
+  ["upload…", "Pick any image from your machine. It never leaves the browser — it is rasterised into an invisible force field and thrown away."],
+];
+const imgBar = $("imgshapes");
+IMG_SHAPES.forEach(([key, tip]) => {
+  const b = document.createElement("button");
+  b.className = "act"; b.dataset.shape = key; b.textContent = key; b.title = tip;
+  b.addEventListener("click", () => {
+    if (key === "upload…") { $("imgfile").click(); return; }
+    setImageShape(key); syncUI();
+  });
+  imgBar.appendChild(b);
+});
+$("imgfile").addEventListener("change", (e) => {
+  const f = e.target.files && e.target.files[0];
+  if (!f) return;
+  const url = URL.createObjectURL(f);
+  const im = new Image();
+  im.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = im.naturalWidth; c.height = im.naturalHeight;
+    c.getContext("2d").drawImage(im, 0, 0);
+    URL.revokeObjectURL(url);
+    P.imageShape = "custom";
+    buildImageField(c);                    // byte-identical path to the shapes
+    syncUI();
+  };
+  im.src = url;
+  e.target.value = "";
 });
 
 const AGENT_STYLES = [
@@ -1545,6 +1774,7 @@ addEventListener("resize", resize);
 // ---- go --------------------------------------------------------------------
 resize();
 rebuild();
+setImageShape(P.imageShape);   // field ready before the toggle is ever ticked
 wipe();
 syncUI();
 requestAnimationFrame(frame);

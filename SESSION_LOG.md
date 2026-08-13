@@ -38,6 +38,41 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-13 — Dots v2.7: the hidden image
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+User revived the image-attractor idea ("which I think got dropped but I still think is good" —
+it was specced, not dropped). Built exactly per the spec that's been sitting in NOTES: an image
+rasterised into a multi-scale potential whose gradient pulls dots toward dark regions; the image
+is never drawn, only betrayed by where the swarm pools.
+
+### The load-bearing piece, proven
+The naive single-scale field fails: no gradient in empty regions. The pyramid (darkness map + 5
+progressively blurred copies, coarse-weighted) fixes it — **measured**: 500 dots seeded in a
+dead-empty corner (local darkness 0.000) reach mean darkness 0.80 in 500 steps, 0.998 by 3000.
+
+### Measured
+Concentration 3.1× uplift (worst regime); polarity flip evacuates the shape (0.000). Legibility
+is a churn problem exactly as forecast: instant density–darkness correlation r=0.07 under
+`orbits` physics (clusters park on one arc), 0.48 instant / 0.69 time-integrated under heavy
+re-choose — those tuned values shipped as the `ouija` preset, the only preset touching image
+switches. Image force cost: 0.05 ms/step at n=900 (same-call A/B, off-then-on ordering so drift
+works against the claim). Shapes (ring/star/blob) and uploads share one rasterise path —
+upload-equivalent path tested with a hand-built canvas; files never leave the browser.
+
+### Verification
+Field: gradient normalised, dark-on-right test image lands right. DOM: rows hidden when off;
+4 shape buttons + 6 presets + 5 looks visible when on; tooltips on all new controls. All 5 looks
+render with image+peek. Bounded, no NaN. Pane never composited — numbers only, no screenshot.
+
+### Next Steps
+- [ ] Try `ouija` + an uploaded photo — high-contrast, simple silhouette works best in theory
+- [ ] Maybe: text rendered to canvas as a shape option ("the dots spell a word")
+
 ## Session 2026-08-12 — Evolution v4: predation evolves (the predator species is gone)
 **Source**: Claude Code
 **User**: Caio

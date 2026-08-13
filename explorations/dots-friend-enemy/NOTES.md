@@ -1,9 +1,9 @@
 # Dots: friends & enemies
-**Version**: v2.6.3
+**Version**: v2.7.0
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
-**Status**: Active — V2.6.1 (stalking predator, agent styles, void corona, eased lunge). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
+**Status**: Active — V2.7 (the hidden image: a picture as an invisible force field). V1 archived at [`archive/v1-rainbow-dots.html`](archive/v1-rainbow-dots.html)
 
 ---
 
@@ -39,6 +39,7 @@ Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering
 | `assign()`, `analyseGraph()` | friend/enemy ties; the O(n) walk that finds cycles and basins |
 | `updateAgents()`, `PRED`, `retarget()` | agent movement — the predator's prowl/windup/lunge/recover state machine and cluster targeting |
 | `drawAgents()` | the four agent appearance styles (hidden / glow / comet / void) |
+| `IMG`, `buildImageField()`, `genShape()` | the hidden image — rasterise → pyramid → ∇Φ; shapes and uploads share one path |
 | `sampleSpeeds()`, `updateHues()` | per-*step* quantities — never call these per frame (see below) |
 | `pushHistory()`, `resetHistory()` | the ribbon ring buffer, `HIST` slots deep |
 | `draw()` → `drawRibbons()` / `drawStreaks()` | the two trail engines |
@@ -47,8 +48,9 @@ Open it in a browser. Roughly 50 lines are the simulation; the rest is rendering
 
 **Controls**, in panel order: look (5), skeleton emphasis, hue drift (basins only), trail style
 (ribbons/bloom), trail length, stroke weight, speed→brightness, pulse depth + period,
-**influences** (wandering attractor, predator), physics presets, step model + rule sliders,
-dot count, steps/frame, links and floor overlays.
+**influences** (wandering attractor, predator, hidden image with shape/upload buttons), agent
+appearance (hidden/glow/comet/void), physics presets, step model + rule sliders, dot count,
+steps/frame, links and floor overlays.
 Keys: `space` pause, `r` scatter, `t` reroll ties, `l` links, `1`–`5` looks.
 
 **Three traps this file has already fallen into**, all documented in full below — don't re-derive
@@ -454,6 +456,39 @@ step so the heading flipped when it passed its mark. Velocity now eases at 0.4/s
 90%, still explosive) and the lunge heading locks at the coil. Max per-step speed change halved
 (9.9 → 4.5 px) with the same 10 px lunge peak and the same stalk rhythm.
 
+## The hidden image (v2.7)
+
+An image is rasterised into a potential field whose gradient pulls dots toward its dark regions.
+**The image is never drawn.** You read it from where the swarm pools — and mostly from the
+trails, over time.
+
+**Why the naive version fails, and the fix that carries this.** A dot in a large empty region has
+zero brightness gradient at image resolution — it would never learn the shape exists. So the
+potential is a *coarse-weighted pyramid*: the darkness map plus five progressively blurred copies
+(box radii 1–16, weights rising toward coarse). At the coarsest scale the whole image is a blob
+and a gradient exists everywhere. Proven directly: 500 dots seeded in a dead-empty corner
+(local darkness 0.000) reach mean darkness 0.80 within 500 steps and 0.998 by 3000 — the coarse
+gradient herds them across the floor, the fine scales park them on the edges.
+
+∇Φ is precomputed into two Float32Arrays, normalised so the strength slider means px/step at the
+steepest gradient; per dot it's one bilinear lookup. Measured cost at n=900: **0.05 ms/step**.
+
+Measured behaviour (ring shape, field mean darkness 0.218):
+- dark-attracts: dots sit at mean darkness 0.68–0.99 depending on regime (3.1× uplift at worst)
+- polarity flipped: dots at 0.000 — they evacuate the shape entirely
+
+**Legibility is a churn problem, as forecast.** Friend attraction collapses dots into clusters,
+and a cluster parks on *one arc* of the ring — instantaneous density–darkness correlation was
+r = 0.07 under `orbits` physics. The image is painted by the *time-integral*: heavy re-choose
+(30/s) keeps clusters dissolving and re-forming elsewhere on the shape. Measured: instant r 0.48,
+time-integrated r 0.69 — which is what the ribbons show. Those measured values are the `ouija`
+preset (the dots as planchette), the only preset that touches the image switches.
+
+Generated shapes (ring / star / blob) and uploads go through byte-identical code — both are a
+canvas handed to `buildImageField()`. Uploads never leave the browser: the file is rasterised
+into the force field and discarded. A `Peek` checkbox ghosts the image in for tuning; it is
+labelled as cheating, because it is.
+
 ## Presets
 
 All measured for "stays on the floor, stays in motion, doesn't collapse to a dot".
@@ -474,7 +509,7 @@ Centre pull is 0.5% everywhere, as stated in the tweet.
 
 Open threads, in rough order of how ready they are to pick up:
 
-- [ ] **Image as a sampled field** — the other half of the influences idea, and the next thing up.
+- [x] ~~**Image as a sampled field**~~ — done in v2.7, exactly per this spec. See "The hidden image".
       Dots attracted to dark regions of an image that is never drawn, so the picture is only
       *suggested* by where they pool. The approach: rasterise to an offscreen canvas (a generated
       shape and a real upload go through byte-identical code), build a ~5-level pyramid, and take
