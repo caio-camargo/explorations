@@ -1,5 +1,5 @@
 # Dots: friends & enemies
-**Version**: v2.7.0
+**Version**: v2.7.1
 **Date Created**: 2026-08-10
 **Last Updated**: 2026-08-11
 **Purpose**: A dot swarm driven by three one-line rules — what it does, and what tuning it taught
@@ -483,6 +483,10 @@ r = 0.07 under `orbits` physics. The image is painted by the *time-integral*: he
 (30/s) keeps clusters dissolving and re-forming elsewhere on the shape. Measured: instant r 0.48,
 time-integrated r 0.69 — which is what the ribbons show. Those measured values are the `ouija`
 preset (the dots as planchette), the only preset that touches the image switches.
+
+**And it spells (v2.7.1).** A text box renders a word — 900-weight, sized to fill — through the
+same rasterise path. Measured with "HI" under `ouija`: dots at 0.99 mean darkness, a 6× uplift,
+sitting on two separated letter masses. Short words read best; the trails do the spelling.
 
 Generated shapes (ring / star / blob) and uploads go through byte-identical code — both are a
 canvas handed to `buildImageField()`. Uploads never leave the browser: the file is rasterised

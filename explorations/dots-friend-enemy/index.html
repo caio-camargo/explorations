@@ -176,6 +176,11 @@
         <input type="range" id="ip" min="0" max="6" step="0.1">
       </div>
       <div class="btns" data-needs="imageOn" id="imgshapes" style="margin-bottom:8px"></div>
+      <div class="row" data-needs="imageOn">
+        <input type="text" id="imgword" maxlength="10" placeholder="…or type a word, press Enter"
+               style="grid-column:1/-1;background:rgba(255,255,255,.06);color:var(--text);
+                      border:1px solid var(--line);border-radius:7px;padding:5px 8px;font-size:12px">
+      </div>
       <label class="check" data-needs="imageOn"><input type="checkbox" id="imageDark">
         Dark attracts (off: light attracts)</label>
       <label class="check" data-needs="imageOn"><input type="checkbox" id="imagePeek">
@@ -608,6 +613,29 @@ function genShape(kind) {
 function setImageShape(kind) {
   P.imageShape = kind;
   buildImageField(genShape(kind));
+}
+
+/* A word is just another canvas through the same path. Heaviest weight the
+   font offers, sized to fill the frame — thick strokes hold the pooling. */
+function genWord(text) {
+  const c = document.createElement("canvas"); c.width = 512; c.height = 384;
+  const g = c.getContext("2d");
+  g.fillStyle = "#fff"; g.fillRect(0, 0, 512, 384);
+  g.fillStyle = "#000";
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.font = "900 100px ui-sans-serif, system-ui, sans-serif";
+  const wPx = g.measureText(text).width || 1;
+  const size = Math.min(100 * 440 / wPx, 250);
+  g.font = "900 " + size.toFixed(0) + "px ui-sans-serif, system-ui, sans-serif";
+  g.fillText(text, 256, 200);
+  return c;
+}
+
+function setImageWord(text) {
+  text = (text || "").trim();
+  if (!text) return;
+  P.imageShape = "word";
+  buildImageField(genWord(text));
 }
 
 function pushAgentTrail(tr, X, Y) {
@@ -1721,6 +1749,12 @@ IMG_SHAPES.forEach(([key, tip]) => {
   });
   imgBar.appendChild(b);
 });
+$("imgword").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { setImageWord(e.target.value); syncUI(); e.target.blur(); }
+});
+$("imgword").closest(".row").title =
+  "The dots spell it out — slowly, and only if you let the trails accumulate. "
+  + "Short words in the 3–6 letter range read best.";
 $("imgfile").addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
   if (!f) return;

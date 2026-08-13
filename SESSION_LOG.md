@@ -38,6 +38,26 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-13 — Dots v2.7.1: the dots spell
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+The parked follow-up from v2.7, green-lit: a text box under the image shapes renders a word
+(900-weight, sized to fill) through the exact same rasterise path as shapes and uploads.
+`genWord()` + `setImageWord()` + one input row; Enter applies. Empty input is a no-op.
+
+### Verification
+"HI" builds a field with 16.7% dark coverage and an 11-column gap between letter masses (two
+separate letters, as drawn). Under `ouija` on noir: dots at 0.99 mean darkness, 6× uplift —
+parked on the letters. DOM: input hidden when image off, shown when on, tooltip present; global
+key shortcuts already ignore INPUT targets so typing r/t/l in the box is safe. No console errors.
+
+### Next Steps
+- [ ] Type a word, `ouija`, `graphite`, long trails — the séance shot
+
 ## Session 2026-08-13 — Dots v2.7: the hidden image
 **Source**: Claude Code
 **User**: Caio
