@@ -38,6 +38,38 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-08-14 — journey-markov migrated to caio-camargo/retell-viz
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-fable-5
+**Status**: Complete
+
+### Summary
+The journey-markov visualizations (both gravity graphs, all three funnels, the build
+scripts, and the living NOTES) moved to a dedicated work repo,
+[caio-camargo/retell-viz](https://github.com/caio-camargo/retell-viz), published at
+caio-camargo.github.io/retell-viz — alongside a new one-page "funnel at a glance"
+all-hands briefing built the same day. Retell work visuals no longer live in this
+personal explorations repo.
+
+### Decisions Made
+- Redirect stubs (meta-refresh) replace the five HTML pages here so previously
+  shared links keep resolving; NOTES.md stays as a frozen copy with a migration
+  banner — the notes are this repo's product, the living copy moves with the code.
+- Internal doc-path comments (`docs/research/…`) were rewritten in the migrated
+  copies; the NOTES links now point at this repo's GitHub URLs.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | replaced | `explorations/journey-markov/*.html` (5) | redirect stubs → retell-viz |
+| 2 | deleted | `explorations/journey-markov/build_data*.py` | moved to retell-viz (`journey/`) |
+| 3 | edited | `explorations/journey-markov/NOTES.md` | migration banner, frozen at v2.6.0 |
+| 4 | edited | `explorations/README.md` | index row marked migrated |
+
+### Next Steps
+- [ ] None here — journey work continues in retell-viz.
+
 ## Session 2026-08-13 — Dots v2.7.1: the dots spell
 **Source**: Claude Code
 **User**: Caio

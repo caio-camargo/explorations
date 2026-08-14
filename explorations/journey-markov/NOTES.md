@@ -2,7 +2,15 @@
 **Version**: 2.6.0
 **Author**: Caio Camargo + Claude
 **Date Created**: 2026-08-12
-**Last Updated**: 2026-08-12
+**Last Updated**: 2026-08-14
+
+> **Migrated 2026-08-14** to [caio-camargo/retell-viz](https://github.com/caio-camargo/retell-viz)
+> — the pages, the build scripts, and the living copy of these notes now live there
+> (`journey/`), published at
+> [caio-camargo.github.io/retell-viz](https://caio-camargo.github.io/retell-viz/).
+> The HTML files in this folder are redirect stubs so previously shared links keep
+> working. This copy of the notes is frozen at v2.6.0; the exploration's findings
+> below remain the record of what it taught.
 **Purpose**: Model + visualization of where a website's pages pull their visitors — toward a booked meeting or toward leaving
 **Status**: Active
 

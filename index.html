@@ -3,69 +3,344 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>explorations</title>
-<meta name="description" content="Small self-contained experiments — simulations, toys, visual things.">
+<title>Caio Camargo — explorations</title>
+<meta name="description" content="Small self-contained experiments — simulations, toys, visual things. Built because they're interesting, not because they're needed.">
+<meta property="og:title" content="Caio Camargo — explorations">
+<meta property="og:description" content="Small self-contained experiments — simulations, toys, visual things.">
 <style>
-  :root { color-scheme: dark; --bg:#0a0b0f; --text:#e6e8ef; --dim:#8e93a6; --accent:#7dd3fc; --line:rgba(255,255,255,.10); }
+  :root { color-scheme: dark; --bg:#0a0b0f; --text:#e6e8ef; --dim:#8e93a6; --line:rgba(255,255,255,.10); }
   * { box-sizing: border-box; }
   body { margin:0; background:var(--bg); color:var(--text); min-height:100vh;
          font:16px/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-         display:flex; align-items:center; justify-content:center; padding:32px 20px; }
-  main { width:100%; max-width:620px; }
-  h1 { font-size:13px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
-       color:var(--dim); margin:0 0 6px; }
-  .lede { color:var(--dim); font-size:15px; margin:0 0 34px; }
-  a.card { display:block; text-decoration:none; color:inherit; border:1px solid var(--line);
-           border-radius:12px; padding:18px 20px; margin-bottom:12px; transition:.15s; }
-  a.card:hover { border-color:var(--accent); background:rgba(125,211,252,.05); }
+         display:flex; justify-content:center; padding:48px 20px 40px; }
+  main { width:100%; max-width:680px; }
+  header h1 { font-size:13px; font-weight:600; letter-spacing:.16em; text-transform:uppercase;
+              color:var(--dim); margin:0 0 6px; }
+  .lede { color:var(--dim); font-size:15px; margin:0 0 36px; }
+  .lede b { color:var(--text); font-weight:600; }
+
+  .card { border:1px solid var(--line); border-radius:14px; overflow:hidden;
+          margin-bottom:14px; background:rgba(255,255,255,.015); transition:border-color .15s; }
+  .card:hover, .card:focus-within { border-color:var(--accent); }
+  .card a.run { display:block; text-decoration:none; color:inherit; }
+  .preview { display:block; width:100%; height:180px; background:var(--bg); }
+  .body { padding:16px 20px 14px; }
   .card h2 { font-size:17px; margin:0 0 5px; color:var(--accent); font-weight:600; }
+  .card h2 .arrow { display:inline-block; transition:transform .15s; }
+  .card:hover h2 .arrow { transform:translateX(3px); }
   .card p { margin:0; color:var(--dim); font-size:14px; }
-  .meta { margin-top:11px; font-size:12px; color:var(--dim); }
+  .meta { padding:0 20px 14px; font-size:12.5px; color:var(--dim); }
   .meta a { color:var(--dim); }
-  footer { margin-top:30px; font-size:13px; color:var(--dim); }
-  footer a { color:var(--accent); text-decoration:none; }
+  .meta a:hover { color:var(--text); }
+
+  footer { margin-top:32px; font-size:13px; color:var(--dim); }
+  footer a { color:#7dd3fc; text-decoration:none; }
   footer a:hover { text-decoration:underline; }
 </style>
 </head>
 <body>
 <main>
-  <h1>explorations</h1>
-  <p class="lede">Small self-contained experiments — simulations, toys, visual things. Built
-  because they're interesting, not because they're needed.</p>
+  <header>
+    <h1>Caio Camargo — explorations</h1>
+    <p class="lede">Small self-contained experiments — simulations, toys, visual things. Built
+    because they're interesting, not because they're needed. Each one is a single file with no
+    dependencies, plus <b>notes on what it taught</b>. The previews below are the real rules,
+    running live.</p>
+  </header>
 
-  <a class="card" href="explorations/dots-friend-enemy/">
-    <h2>Dots: friends &amp; enemies →</h2>
-    <p>Every dot picks one friend and one enemy, then chases one and flees the other while
-    drifting toward the centre. Three rules, no physics engine, and a surprising amount of
-    structure.</p>
-  </a>
-  <p class="meta">
-    <a href="https://github.com/caio-camargo/explorations/blob/main/explorations/dots-friend-enemy/NOTES.md">notes &amp; findings</a>
-  </p>
+  <div class="card" style="--accent:#7dd3fc">
+    <a class="run" href="explorations/dots-friend-enemy/">
+      <canvas class="preview" id="cv-dots" aria-label="Live preview: dots chasing friends and fleeing enemies"></canvas>
+      <div class="body">
+        <h2>Dots: friends &amp; enemies <span class="arrow">→</span></h2>
+        <p>Every dot picks one friend and one enemy, then chases one and flees the other while
+        drifting toward the centre. Three rules, no physics engine, and a surprising amount of
+        structure.</p>
+      </div>
+    </a>
+    <p class="meta"><a href="https://github.com/caio-camargo/explorations/blob/main/explorations/dots-friend-enemy/NOTES.md">notes &amp; findings</a></p>
+  </div>
 
-  <a class="card" href="explorations/fireflies/">
-    <h2>Fireflies →</h2>
-    <p>Every firefly has a clock; it flashes at midnight, and seeing a flash nudges your own
-    clock forward. Nobody is told the time — watch a field of random blinking organise itself
-    into unison, travelling waves, or sync that keeps collapsing.</p>
-  </a>
-  <p class="meta">
-    <a href="https://github.com/caio-camargo/explorations/blob/main/explorations/fireflies/NOTES.md">notes &amp; findings</a>
-  </p>
+  <div class="card" style="--accent:#fde68a">
+    <a class="run" href="explorations/fireflies/">
+      <canvas class="preview" id="cv-fireflies" aria-label="Live preview: fireflies synchronising their flashes"></canvas>
+      <div class="body">
+        <h2>Fireflies <span class="arrow">→</span></h2>
+        <p>Every firefly has a clock; it flashes at midnight, and seeing a flash nudges your own
+        clock forward. Nobody is told the time — watch a field of random blinking organise itself
+        into unison.</p>
+      </div>
+    </a>
+    <p class="meta"><a href="https://github.com/caio-camargo/explorations/blob/main/explorations/fireflies/NOTES.md">notes &amp; findings</a></p>
+  </div>
 
-  <a class="card" href="explorations/slime-mold/">
-    <h2>Slime mold →</h2>
-    <p>Agents that deposit a scent trail and steer toward the strongest smell, three whiskers
-    each. Nothing else — and out of it grow living transport networks: veins that form,
-    compete, merge, and get reabsorbed. The organism that redesigned Tokyo's railways.</p>
-  </a>
-  <p class="meta">
-    <a href="https://github.com/caio-camargo/explorations/blob/main/explorations/slime-mold/NOTES.md">notes &amp; findings</a>
-  </p>
+  <div class="card" style="--accent:#86efac">
+    <a class="run" href="explorations/slime-mold/">
+      <canvas class="preview" id="cv-slime" aria-label="Live preview: slime mold growing a transport network"></canvas>
+      <div class="body">
+        <h2>Slime mold <span class="arrow">→</span></h2>
+        <p>Agents that deposit a scent trail and steer toward the strongest smell, three whiskers
+        each. Nothing else — and out of it grow living transport networks: veins that form,
+        compete, merge, and get reabsorbed.</p>
+      </div>
+    </a>
+    <p class="meta"><a href="https://github.com/caio-camargo/explorations/blob/main/explorations/slime-mold/NOTES.md">notes &amp; findings</a></p>
+  </div>
 
   <footer>
-    Source on <a href="https://github.com/caio-camargo/explorations">GitHub</a>.
+    Source on <a href="https://github.com/caio-camargo/explorations">GitHub</a> — including the
+    notes, the dead ends, and the operating contract for the AI collaborator that helps build these.
   </footer>
 </main>
+
+<script>
+(() => {
+  'use strict';
+  const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DPR = Math.min(devicePixelRatio || 1, 2);
+  const BG = '#0a0b0f';
+
+  // Each sim: { canvas, visible, init(w,h), step(dt), draw(ctx,w,h) }
+  const sims = [];
+
+  function setup(canvas, makeSim) {
+    const w = canvas.clientWidth * DPR, h = canvas.clientHeight * DPR;
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    const sim = makeSim(w, h);
+    sim.canvas = canvas; sim.ctx = ctx; sim.w = w; sim.h = h; sim.visible = true;
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, w, h);
+    sims.push(sim);
+    return sim;
+  }
+
+  // ---------------------------------------------------------------- dots
+  // Fixed-stride reading: constant step toward friend, smaller constant step
+  // away from enemy, weak proportional pull to centre. Bounded by construction.
+  function makeDots(w, h) {
+    // the exploration's "orbits" preset: strides are px on an 800px-tall
+    // floor, scaled to this canvas; ~2 dots/sec re-roll their ties
+    const N = 240, S = h / 800;
+    const sF = 4.0 * S, sE = 2.6 * S, cPull = 0.005, RECHOOSE = 2;
+    const dots = [];
+    for (let i = 0; i < N; i++) {
+      dots.push({ x: Math.random() * w, y: Math.random() * h,
+                  f: 0, e: 0, hue: 190 + Math.random() * 50 });
+    }
+    const assign = (d) => {
+      do { d.f = (Math.random() * N) | 0; } while (dots[d.f] === d);
+      do { d.e = (Math.random() * N) | 0; } while (dots[d.e] === d || d.e === d.f);
+    };
+    dots.forEach(assign);
+    let acc = 0;
+    return {
+      step(dt) {
+        const k = Math.min(dt / 16.7, 2); // frame-rate compensation
+        acc += RECHOOSE * dt / 1000;
+        while (acc >= 1) { acc -= 1; assign(dots[(Math.random() * N) | 0]); }
+        for (const d of dots) {
+          const f = dots[d.f], e = dots[d.e];
+          let dx = f.x - d.x, dy = f.y - d.y, m = Math.hypot(dx, dy) || 1;
+          d.x += (dx / m) * sF * k; d.y += (dy / m) * sF * k;
+          dx = d.x - e.x; dy = d.y - e.y; m = Math.hypot(dx, dy) || 1;
+          d.x += (dx / m) * sE * k; d.y += (dy / m) * sE * k;
+          d.x += (w / 2 - d.x) * cPull * k; d.y += (h / 2 - d.y) * cPull * k;
+        }
+      },
+      draw(ctx) {
+        ctx.fillStyle = 'rgba(10,11,15,0.10)'; ctx.fillRect(0, 0, w, h);
+        for (const d of dots) {
+          ctx.fillStyle = `hsl(${d.hue} 85% 70%)`;
+          ctx.beginPath(); ctx.arc(d.x, d.y, 1.3 * DPR, 0, 7); ctx.fill();
+        }
+      }
+    };
+  }
+
+  // ----------------------------------------------------------- fireflies
+  // Pulse-coupled oscillators: phase advances at its own rate; a neighbour's
+  // flash nudges your phase forward; crossing 1 fires you too (cascade).
+  function makeFireflies(w, h) {
+    // near-identical periods: Mirollo–Strogatz absorption only locks when the
+    // frequency spread is well under the per-flash nudge
+    const N = 60, S = DPR, R = 140 * S, EPS = 0.045;
+    const fl = [];
+    for (let i = 0; i < N; i++) {
+      fl.push({ x: (0.04 + 0.92 * Math.random()) * w, y: (0.08 + 0.84 * Math.random()) * h,
+                phase: Math.random(), T: 2700 + Math.random() * 40, flash: 0 });
+    }
+    const nbr = fl.map((a) => {
+      const out = [];
+      for (let j = 0; j < N; j++) {
+        const b = fl[j];
+        if (b !== a && Math.hypot(a.x - b.x, a.y - b.y) < R) out.push(j);
+      }
+      return out;
+    });
+    // pre-rendered warm glow sprite
+    const G = 64, sprite = document.createElement('canvas');
+    sprite.width = sprite.height = G;
+    const g = sprite.getContext('2d');
+    const grad = g.createRadialGradient(G/2, G/2, 0, G/2, G/2, G/2);
+    grad.addColorStop(0, 'rgba(253,240,160,1)');
+    grad.addColorStop(0.25, 'rgba(250,204,80,0.55)');
+    grad.addColorStop(1, 'rgba(250,204,21,0)');
+    g.fillStyle = grad; g.fillRect(0, 0, G, G);
+    return {
+      fl, // debug handle
+      step(dt) {
+        const fired = new Array(N).fill(false), queue = [];
+        for (let i = 0; i < N; i++) {
+          const f = fl[i];
+          f.flash = Math.max(0, f.flash - dt / 550);
+          f.phase += dt / f.T;
+          if (f.phase >= 1) { f.phase = 0; f.flash = 1; fired[i] = true; queue.push(i); }
+        }
+        while (queue.length) {
+          const i = queue.pop();
+          for (const j of nbr[i]) {
+            if (fired[j]) continue;
+            fl[j].phase += EPS;
+            if (fl[j].phase >= 1) {
+              fl[j].phase = 0; fl[j].flash = 1; fired[j] = true; queue.push(j);
+            }
+          }
+        }
+      },
+      draw(ctx) {
+        ctx.fillStyle = '#0a0d12'; ctx.fillRect(0, 0, w, h);
+        ctx.globalCompositeOperation = 'lighter';
+        for (const f of fl) {
+          const r = 26 * S * (0.35 + 0.65 * f.flash);
+          ctx.globalAlpha = 0.10 + 0.9 * f.flash * f.flash;
+          ctx.drawImage(sprite, f.x - r / 2, f.y - r / 2, r, r);
+        }
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
+    };
+  }
+
+  // ---------------------------------------------------------- slime mold
+  // Jones 2010 Physarum: sense ahead with three whiskers, turn toward the
+  // strongest trail, move, deposit. Field decays + diffuses. Torus bounds.
+  function makeSlime(w, h) {
+    const FW = 176, FH = 96, M = 1100;
+    let trail = new Float32Array(FW * FH);
+    let next = new Float32Array(FW * FH);
+    const ax = new Float32Array(M), ay = new Float32Array(M), aa = new Float32Array(M);
+    for (let i = 0; i < M; i++) {
+      // start in a loose central blob so the network grows outward
+      const r = Math.random() * 18, t = Math.random() * 6.2832;
+      ax[i] = FW / 2 + Math.cos(t) * r * 1.6;
+      ay[i] = FH / 2 + Math.sin(t) * r;
+      aa[i] = Math.random() * 6.2832;
+    }
+    const SD = 6, SA = 0.45, TURN = 0.35, SPEED = 1.05, DEP = 0.9, DECAY = 0.935;
+    const wrapX = (x) => (x + FW) % FW, wrapY = (y) => (y + FH) % FH;
+    const at = (x, y) => trail[wrapY(y | 0) * FW + wrapX(x | 0)];
+    // render buffer + colour LUT (dark → deep green → mint → white)
+    const buf = document.createElement('canvas'); buf.width = FW; buf.height = FH;
+    const bctx = buf.getContext('2d');
+    const img = bctx.createImageData(FW, FH);
+    const lut = new Uint8Array(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255;
+      const stops = [[10,11,15],[16,64,43],[52,153,102],[167,243,208],[255,255,255]];
+      const p = t * (stops.length - 1), s = Math.min(p | 0, stops.length - 2), f = p - s;
+      for (let c = 0; c < 3; c++) lut[i*3+c] = stops[s][c] + (stops[s+1][c] - stops[s][c]) * f;
+    }
+    return {
+      step() {
+        for (let i = 0; i < M; i++) {
+          const a = aa[i];
+          const F = at(ax[i] + Math.cos(a) * SD,      ay[i] + Math.sin(a) * SD);
+          const L = at(ax[i] + Math.cos(a - SA) * SD, ay[i] + Math.sin(a - SA) * SD);
+          const R = at(ax[i] + Math.cos(a + SA) * SD, ay[i] + Math.sin(a + SA) * SD);
+          if (F < L && F < R) aa[i] += (Math.random() < 0.5 ? -TURN : TURN);
+          else if (L > R) aa[i] -= TURN;
+          else if (R > L) aa[i] += TURN;
+          ax[i] = (ax[i] + Math.cos(aa[i]) * SPEED + FW) % FW;
+          ay[i] = (ay[i] + Math.sin(aa[i]) * SPEED + FH) % FH;
+          const idx = (ay[i] | 0) * FW + (ax[i] | 0);
+          trail[idx] = Math.min(trail[idx] + DEP, 8);
+        }
+        // 3x3 mean diffusion + decay (torus)
+        for (let y = 0; y < FH; y++) {
+          const ym = ((y - 1 + FH) % FH) * FW, y0 = y * FW, yp = ((y + 1) % FH) * FW;
+          for (let x = 0; x < FW; x++) {
+            const xm = (x - 1 + FW) % FW, xp = (x + 1) % FW;
+            next[y0 + x] = (trail[ym+xm]+trail[ym+x]+trail[ym+xp]
+                          + trail[y0+xm]+trail[y0+x]+trail[y0+xp]
+                          + trail[yp+xm]+trail[yp+x]+trail[yp+xp]) / 9 * DECAY;
+          }
+        }
+        const tmp = trail; trail = next; next = tmp;
+      },
+      draw(ctx) {
+        const d = img.data;
+        for (let i = 0; i < FW * FH; i++) {
+          const v = Math.min(255, (trail[i] * 90) | 0);
+          d[i*4] = lut[v*3]; d[i*4+1] = lut[v*3+1]; d[i*4+2] = lut[v*3+2]; d[i*4+3] = 255;
+        }
+        bctx.putImageData(img, 0, 0);
+        ctx.imageSmoothingEnabled = true;
+        ctx.drawImage(buf, 0, 0, w, h);
+      }
+    };
+  }
+
+  // ------------------------------------------------------------ run loop
+  const visible = new Map(); // canvas element -> in viewport?
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) visible.set(e.target, e.isIntersecting);
+  }, { rootMargin: '60px' });
+
+  function buildAll() {
+    sims.length = 0;
+    setup(document.getElementById('cv-dots'), makeDots);
+    setup(document.getElementById('cv-fireflies'), makeFireflies);
+    const slime = setup(document.getElementById('cv-slime'), makeSlime);
+    if (REDUCED) {
+      // static frame: settle each sim, draw once, no animation
+      for (const s of sims) {
+        for (let i = 0; i < 500; i++) s.step(16.7);
+        s.draw(s.ctx);
+      }
+    } else {
+      // give the slime a head start so a vein network is visible on load
+      for (let i = 0; i < 250; i++) slime.step(16.7);
+      for (const s of sims) io.observe(s.canvas);
+    }
+    window.__sims = sims; // console/debug handle
+  }
+  buildAll();
+
+  let resizeTimer, lastW = innerWidth;
+  addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => {
+      if (Math.abs(innerWidth - lastW) < 24) return;
+      lastW = innerWidth;
+      buildAll();
+    }, 250);
+  });
+
+  if (REDUCED) return;
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(now - last, 50); // clamp tab-switch jumps
+    last = now;
+    for (const s of sims) {
+      if (visible.get(s.canvas) === false) continue;
+      s.step(dt);
+      s.draw(s.ctx);
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
 </body>
 </html>
