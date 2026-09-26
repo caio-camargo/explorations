@@ -1,0 +1,1185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wuthering Heights</title>
+<style>
+  :root { --bg: #000; --fg: #5a5650; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { display: grid; place-items: center; font: 11px/1.4 ui-monospace, Consolas, monospace; color: var(--fg); }
+  /* 320x200 shown at 4:3 — VGA pixels were 20% taller than wide */
+  canvas { display: block; aspect-ratio: 4 / 3; width: min(calc(100vw - 32px), calc((100vh - 40px) * 4 / 3)); height: auto;
+           image-rendering: pixelated; cursor: none; }
+  #hud { position: fixed; bottom: 6px; left: 0; right: 0; text-align: center; user-select: none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1600" height="1200"></canvas>
+<div id="hud">click a verb, then something · click or [.] skips a line · [C] CRT · [space] pause</div>
+<script>
+// =====================================================================================
+//  WUTHERING HEIGHTS, Chapter I — a point-and-click scene in the LucasArts VGA idiom.
+//  Standalone fork of the night-storm engine (indexed 320x200, painted ramps, verbs),
+//  grown into a tiny adventure engine: rooms, actors, scripts, dialogue trees.
+//  Text in quotation marks is Emily Brontë's (1847, public domain); the rest is mine.
+// =====================================================================================
+const W = 320, H = 200, SH = 144;
+const out = document.getElementById('c'), octx = out.getContext('2d');
+const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
+const lctx = lo.getContext('2d'), img = lctx.createImageData(W, H);
+const idx = new Uint16Array(W * H);                 // palette index per pixel
+const idb = new Uint8Array(W * SH);                 // hotspot id per scene pixel
+const bg = new Uint16Array(W * SH), bgId = new Uint8Array(W * SH), bgZ = new Uint8Array(W * SH);  // baked room: colour, id, occluder depth
+
+let seed = 1847;
+const rng = () => (seed = (seed * 16807) % 2147483647, (seed - 1) / 2147483646);
+const hash = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
+
+// ---------- palette: anchor colours interpolated into long ramps (painted VGA) ----------
+const PAL = [];
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const add = cs => cs.map(c => (PAL.push(c), PAL.length - 1));
+const ANCH = {
+  SKY:    ['#3a404e', '#535a6a', '#707886', '#8e95a0', '#b0b4bc'],
+  CLOUD:  ['#2a2e38', '#424753', '#5f6471', '#878b96', '#aeb1b8'],
+  HILL:   ['#262a2e', '#383e3e', '#4e544e', '#666a60'],
+  MOOR:   ['#1c1216', '#302028', '#473036', '#60443e', '#7a5c4a'],
+  GRASS:  ['#1a1e14', '#2a301e', '#3e442a', '#565a38', '#6e6e46'],
+  MUD:    ['#1e1712', '#34281e', '#4c3c2c', '#665240'],
+  STONE:  ['#1c1a18', '#312e29', '#48433b', '#605a4e', '#7a7364', '#968e7e'],
+  SLATE:  ['#18191f', '#282b33', '#3a3e48', '#505568'],
+  FIR:    ['#0c120e', '#162018', '#223024', '#324432'],
+  THORN:  ['#141010', '#261a16', '#3a2a22'],
+  WOOD:   ['#120a07', '#26180f', '#3e2818', '#5a3c24', '#785234', '#946c3e'],
+  IRON:   ['#0e0e10', '#222228', '#3a3a42', '#585862'],
+  FIRE:   ['#3a0c04', '#7a2008', '#c4480c', '#f08a1c', '#ffc850', '#fff0b0'],
+  FLAG:   ['#38342e', '#554f48', '#746d62', '#938b7e', '#b0a89a'],
+  PEWTER: ['#383c44', '#5c626c', '#888e98', '#b6bac2', '#e0e2e6'],
+  GREEN:  ['#182216', '#2a3a26', '#3e5438', '#56704e'],
+  MEAT:   ['#381610', '#5c281a', '#82402a', '#a66246'],
+  OAT:    ['#3a2e1c', '#5e4a2c', '#86703e', '#ae9656'],
+  SKIN:   ['#583828', '#8a624e', '#b68a6e', '#dab292'],
+  SKIND:  ['#2c1a14', '#4a2e22', '#6c4632', '#8c6246'],
+  HAIR:   ['#07070a', '#161419', '#28242a'],
+  GREY:   ['#383836', '#5c5a56', '#86837c', '#aeaba2'],
+  TAN:    ['#281e12', '#483822', '#6c5634', '#927648', '#b69860'],
+  BLACK:  ['#09090b', '#151519', '#232329', '#33333b'],
+  RED:    ['#2c0c0c', '#581818', '#882a24', '#b64434'],
+  LINEN:  ['#686460', '#98938a', '#c6c1b6', '#ece8de'],
+  GOWN:   ['#282834', '#3e3e58', '#5a5a7c', '#7a7a9e'],
+  SMOCK:  ['#282216', '#423824', '#605436', '#7e724a'],
+  LIVER:  ['#28120a', '#482212', '#6c361e', '#8c4e2e'],
+  DOGW:   ['#6c665e', '#9c968a', '#ccc6b8', '#eeeade'],
+  HORSE:  ['#1a0e08', '#341c10', '#522e1a', '#704226', '#8e5832'],
+};
+const LONG = { SKY: 12, CLOUD: 12, HILL: 8, MOOR: 10, GRASS: 8, MUD: 6, STONE: 14, SLATE: 8, FIR: 6, THORN: 4,
+               WOOD: 10, IRON: 6, FIRE: 10, FLAG: 12, PEWTER: 8, GREEN: 6, MEAT: 5, OAT: 4, SKIN: 6, SKIND: 6,
+               HAIR: 4, GREY: 6, TAN: 7, BLACK: 5, RED: 6, LINEN: 6, GOWN: 5, SMOCK: 5, LIVER: 6, DOGW: 5, HORSE: 7 };
+function interp(hs, n) {
+  const a = hs.map(hex);
+  return Array.from({ length: n }, (_, i) => {
+    const f = i / (n - 1) * (a.length - 1), k = Math.min(a.length - 2, f | 0), u = f - k;
+    return a[k].map((v, j) => Math.round(v + (a[k + 1][j] - v) * u));
+  });
+}
+const R = {};
+for (const k in ANCH) R[k] = add(interp(ANCH[k], LONG[k]));
+const OUT = add([hex('#050405')])[0];                                              // sprite outline
+const [BLACK, INV, VERB, VERB_HI, SENT] = add(['#000000', '#241c20', '#6a5446', '#e8c8a0', '#b89878'].map(hex));
+const [T_LOCK, T_HEATH, T_JOE, T_HOUSE, T_DOG, T_TITLE, T_DIM] =
+  add(['#f0e6cc', '#e0806c', '#b4cc8c', '#f0a8c0', '#d8b890', '#e8dcc0', '#8a8070'].map(hex));
+const UISET = new Set([OUT, BLACK, INV, VERB, VERB_HI, SENT, T_LOCK, T_HEATH, T_JOE, T_HOUSE, T_DOG, T_TITLE, T_DIM]);
+const NCOL = PAL.length;
+
+// ordered dithering, squeezed toward rounding: dither only at the seam between two shades
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(b => (b + .5) / 16);
+function dith(r, v, x, y) {
+  const f = Math.min(1, Math.max(0, v)) * (r.length - 1), i = f | 0, b = BAYER[(y & 3) * 4 + (x & 3)];
+  return r[(f - i) > .5 + (b - .5) * .3 ? Math.min(i + 1, r.length - 1) : i];
+}
+// light that stays inside the palette: lift a pixel up its own ramp
+const RAMP_OF = new Array(PAL.length), POS_OF = new Int16Array(PAL.length);
+for (const k in R) if (k !== 'FIRE') R[k].forEach((c, j) => { RAMP_OF[c] = R[k]; POS_OF[c] = j; });
+function lift(i, e, x, y) {
+  const r = RAMP_OF[idx[i]];
+  if (!r || e <= 0) return;
+  const f = e * (r.length - 1), n = f | 0, b = BAYER[(y & 3) * 4 + (x & 3)];
+  idx[i] = r[Math.min(r.length - 1, POS_OF[idx[i]] + n + ((f - n) > .5 + (b - .5) * .3 ? 1 : 0))];
+}
+
+// ---------- tileable value noise ----------
+const TW = 256, tex = new Float32Array(TW * TW);
+for (const [p, w] of [[4, .45], [8, .27], [16, .15], [32, .08], [64, .05]]) {
+  const g = Float32Array.from({ length: p * p }, rng), cell = TW / p;
+  for (let y = 0; y < TW; y++) for (let x = 0; x < TW; x++) {
+    const gx = x / cell, gy = y / cell, ix = gx | 0, iy = gy | 0;
+    let fx = gx - ix, fy = gy - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    const a = g[iy * p + ix], b = g[iy * p + (ix + 1) % p], c = g[((iy + 1) % p) * p + ix], d = g[((iy + 1) % p) * p + (ix + 1) % p];
+    tex[y * TW + x] += w * ((a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy);
+  }
+}
+const tS = (u, v) => tex[((((v | 0) % TW) + TW) % TW) * TW + ((((u | 0) % TW) + TW) % TW)];
+
+// ---------- the bitmap font (caps rows 0-5, x-height 2-5, descenders 6-7) ----------
+const FONT = {
+  A: '.##./#..#/#..#/####/#..#/#..#', B: '###./#..#/###./#..#/#..#/###.', C: '.###/#.../#.../#.../#.../.###',
+  D: '###./#..#/#..#/#..#/#..#/###.', E: '####/#.../###./#.../#.../####', F: '####/#.../###./#.../#.../#...',
+  G: '.###/#.../#.../#.##/#..#/.###', H: '#..#/#..#/####/#..#/#..#/#..#', I: '###/.#./.#./.#./.#./###',
+  J: '..##/...#/...#/...#/#..#/.##.', K: '#..#/#.#./##../#.#./#..#/#..#', L: '#.../#.../#.../#.../#.../####',
+  M: '#...#/##.##/#.#.#/#...#/#...#/#...#', N: '#..#/##.#/#.##/#..#/#..#/#..#', O: '.##./#..#/#..#/#..#/#..#/.##.',
+  P: '###./#..#/#..#/###./#.../#...', Q: '.##./#..#/#..#/#..#/#.#./.#.#', R: '###./#..#/#..#/###./#.#./#..#',
+  S: '.###/#.../.##./...#/...#/###.', T: '#####/..#../..#../..#../..#../..#..', U: '#..#/#..#/#..#/#..#/#..#/.##.',
+  V: '#...#/#...#/#...#/.#.#./.#.#./..#..', W: '#...#/#...#/#...#/#.#.#/##.##/#...#', X: '#..#/#..#/.##./.##./#..#/#..#',
+  Y: '#...#/#...#/.#.#./..#../..#../..#..', Z: '####/...#/..#./.#../#.../####',
+  a: '..../..../.###/#..#/#..#/.###', b: '#.../#.../###./#..#/#..#/###.', c: '.../.../.##/#../#../.##',
+  d: '...#/...#/.###/#..#/#..#/.###', e: '..../..../.##./####/#.../.###', f: '.##/#../###/#../#../#..',
+  g: '..../..../.###/#..#/#..#/.###/...#/.##.', h: '#.../#.../###./#..#/#..#/#..#', i: '#/./#/#/#/#',
+  j: '.#/../.#/.#/.#/.#/.#/#.', k: '#.../#.../#..#/###./#.#./#..#', l: '#/#/#/#/#/#',
+  m: '...../...../####./#.#.#/#.#.#/#.#.#', n: '..../..../###./#..#/#..#/#..#', o: '..../..../.##./#..#/#..#/.##.',
+  p: '..../..../###./#..#/#..#/###./#.../#...', q: '..../..../.###/#..#/#..#/.###/...#/...#', r: '.../.../#.#/##./#../#..',
+  s: '..../..../.###/##../..##/###.', t: '.#./.#./###/.#./.#./..#', u: '..../..../#..#/#..#/#..#/.###',
+  v: '...../...../#...#/#...#/.#.#./..#..', w: '...../...../#...#/#.#.#/#.#.#/.#.#.', x: '..../..../#..#/.##./.##./#..#',
+  y: '..../..../#..#/#..#/#..#/.###/...#/.##.', z: '..../..../####/..#./.#../####',
+  0: '.##./#..#/#.##/##.#/#..#/.##.', 1: '.#./##./.#./.#./.#./###', 2: '.##./#..#/..#./.#../#.../####',
+  3: '###./...#/.##./...#/...#/###.', 4: '#..#/#..#/####/...#/...#/...#', 5: '####/#.../###./...#/#..#/.##.',
+  6: '.##./#.../###./#..#/#..#/.##.', 7: '####/...#/..#./.#../.#../.#..', 8: '.##./#..#/.##./#..#/#..#/.##.',
+  9: '.##./#..#/#..#/.###/...#/.##.',
+  '.': './././././#', ',': './././././#/#', '!': '#/#/#/#/./#', '?': '###/..#/.##/.#./.../.#.', "'": '#/#',
+  '-': '.../.../###', '—': '...../...../#####', ':': './././#/./#', ';': './././#/./#/#', '"': '#.#/#.#',
+  '(': '.#/#./#./#./#./.#', ')': '#./.#/.#/.#/.#/#.',
+};
+const GLYPH = Object.fromEntries(Object.entries(FONT).map(([k, v]) => [k, v.split('/')]));
+const glyphW = ch => ch === ' ' ? 3 : GLYPH[ch] ? GLYPH[ch][0].length : 3;
+const textW = (s, z = 1) => [...s].reduce((a, ch) => a + (glyphW(ch) + 1) * z, -z);
+const px = (x, y, c) => { x |= 0; y |= 0; if (x >= 0 && x < W && y >= 0 && y < H) idx[y * W + x] = c; };
+function text(s, x, y, c, shadow, z = 1) {
+  for (const ch of s) {
+    const g = GLYPH[ch];
+    if (g) g.forEach((row, r) => { for (let k = 0; k < row.length; k++) if (row[k] === '#')
+      for (let a = 0; a < z; a++) for (let b = 0; b < z; b++) {
+        if (shadow != null) px(x + k * z + a + z, y + r * z + b + z, shadow);
+        px(x + k * z + a, y + r * z + b, c);
+      } });
+    x += (glyphW(ch) + 1) * z;
+  }
+}
+function wrap(s, max) {
+  const lines = []; let cur = '';
+  for (const w of s.split(' ')) { const t = cur ? cur + ' ' + w : w; if (textW(t) > max && cur) { lines.push(cur); cur = w; } else cur = t; }
+  return cur ? [...lines, cur] : lines;
+}
+
+// ---------- baking helpers ----------
+const P = (x, y, c, id, z = 0) => { x |= 0; y |= 0; if (x >= 0 && x < W && y >= 0 && y < SH) { const i = y * W + x; bg[i] = c; bgId[i] = id; bgZ[i] = z; } };
+const Pd = (x, y, ramp, v, id, z = 0) => P(x, y, dith(R[ramp], v, x | 0, y | 0), id, z);
+function bgText(s, x, y, ramp, v, id) {
+  for (const ch of s) { const g = GLYPH[ch]; if (g) g.forEach((row, r) => { for (let k = 0; k < row.length; k++) if (row[k] === '#') Pd(x + k, y + r, ramp, v, id); }); x += glyphW(ch) + 1; }
+}
+function bline(x0, y0, x1, y1, ramp, v, id, z = 0) {
+  const n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0))) || 1;
+  for (let i = 0; i <= n; i++) Pd(Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), ramp, v, id, z);
+}
+
+// =====================================================================================
+//  SPRITES — ASCII frames; K is the outline, other letters map to [ramp, shade].
+//  Shading happens at draw time: the edge facing the room's light gets a rim, the far
+//  edge a shadow — so a mirrored sprite stays correctly lit.
+// =====================================================================================
+const LEGS11 = {
+  idle:   ['..KTTKTTK..', '..KTTKTTK..', '..KTTKTTK..', '..KTTKTTK..', '..KBBKBBK..', '.KBBBKBBBK.'],
+  stride: ['..KTTKTTK..', '.KTTK.KTTK.', '.KTTK.KTTK.', 'KTTK...KTTK', 'KBBK...KBBK', 'KBBK...KBBK'],
+  pass:   ['...KTTTK...', '...KTTTK...', '...KTTTK...', '...KTTTK...', '...KBBBK...', '..KBBBBK...'],
+};
+const LEGS11T = Object.fromEntries(Object.entries(LEGS11).map(([k, v]) => [k, [v[0], ...v]]));   // one row taller
+const SPR = {
+  lockwood: { ax: 5.5, legs: LEGS11, body: [
+    '...KKKKK...', '...KHHHK...', '...KHHHK...', '...KHHHK...', '..KKKKKKK..', '...KFFFK...', '...KFFEK...',
+    '...KFFFK...', '....KFFK...', '...KSSSK...', '..KCCSCCK..', '.KCCCSCCCK.', '.KCCCSCCCK.', '.KCCCCCCCK.',
+    '.KCCCCCCCK.', '.KhCCCCChK.', '..KCCCCCK..', '..KCCCCCK..', '..KCCKCCK..'],
+    pal: { H: ['HAIR', .35], F: ['SKIN', .62], E: ['HAIR', 0], S: ['LINEN', .8], C: ['TAN', .55], h: ['SKIN', .5], T: ['GREY', .4], B: ['HAIR', .25] } },
+  heathcliff: { ax: 5.5, legs: LEGS11T, body: [
+    '...KKKKK...', '..KAAAAAK..', '..KAAAAAK..', '..KAFFFFK..', '..KAFFEFK..', '..KAFFFFK..', '...KFFFK...',
+    '....KFK....', '..KCSSSCK..', '.KCCVSVCCK.', '.KCCVSVCCK.', '.KCCVVVCCK.', '.KCCVVVCCK.', '.KCCCVCCCK.',
+    '.KCCCCCCCK.', '.KCCCCCCCK.', '..KCCCCCK..', '..KCCCCCK..', '..KCCKCCK..', '..KCCKCCK..'],
+    pal: { A: ['HAIR', .45], F: ['SKIND', .55], E: ['HAIR', 0], C: ['BLACK', .55], V: ['RED', .35], S: ['LINEN', .55], T: ['BLACK', .35], B: ['HAIR', .2] } },
+  joseph: { ax: 5.5, legs: LEGS11, body: [
+    '.....KKK...', '....KFFFK..', '...KGFFEK..', '...KGFFFK..', '....KFFFK..', '...KMMMK...', '..KMMMMMK..',
+    '.KMMMMMMK..', '.KMMMMMMMK.', '.KMMMMMMFK.', '.KMMMMMMK..', '.KMMMMMMK..', '..KMMMMMK..', '..KMMMMMK..', '..KMMKMMK..'],
+    pal: { G: ['GREY', .65], F: ['SKIN', .45], E: ['HAIR', 0], M: ['SMOCK', .5], T: ['SMOCK', .25], B: ['HAIR', .2] } },
+  housekeeper: { ax: 5, legs: {
+      idle:   ['..KAK.KAK....', '..KAK.KAK....', '.KBBK.KBBK...'],
+      stride: ['.KAK...KAK...', 'KAK.....KAK..', 'KBBK....KBBK.'],
+      pass:   ['...KAAK......', '...KAAK......', '..KBBBK......'] },
+    body: [
+    '...KKKK......', '..KLLLLK.KKK.', '..KLFFFK.KIIK', '..KFFEFK.KIIK', '..KFrFFK..KK.', '...KFFK...KA.',
+    '..KGGGGK.KA..', '.KGGPPGGKA...', '.KGGPPGGAK...', 'KAGGPPGGK....', 'KAGGPPGGK....', '.KGGPPGGK....',
+    '.KGGPPGGGK...', '.KGGGGGGGK...', 'KGGGGGGGGK...', 'KGGGGGGGGK...'],
+    pal: { L: ['LINEN', .85], F: ['SKIN', .6], r: ['RED', .8], E: ['HAIR', 0], A: ['SKIN', .55], G: ['GOWN', .5], P: ['LINEN', .65], I: ['IRON', .3], B: ['HAIR', .2] } },
+  horse: { ax: 14, frames: {
+    stand: [
+      '......................KK....', '.....................KMHK...', '....................KMHHHK..', '...................KMHHEHHK.',
+      '..................KMHHHHHHHK', '.................KMHHHKKKHNK', '................KMHHHK..KKK.', '.KK............KMHHHK.......',
+      'KMMK.KKKKKKKKKKHHHHHK.......', 'KMK.KHHHSSSSSHHHHHHK........', 'KMK.KHHHSSSSSHHHHHHHK.......', '.K..KHHHHSSSHHHHHHHHK.......',
+      '....KHHHHHHHHHHHHHHHK.......', '....KHHHHHHHHHHHHHHK........', '.....KHHKKKKKKKKHHK.........', '.....KHHK......KHHK.........',
+      '.....KHK........KHK.........', '.....KHK........KHK.........', '.....KHK........KHK.........', '.....KKK........KKK.........'] },
+    pal: { H: ['HORSE', .5], M: ['HAIR', .3], S: ['WOOD', .45], E: ['HAIR', 0], N: ['HAIR', .1] } },
+  pointer: { ax: 8, frames: {
+    stand: ['..........KK....', '.........KLLKK..', '.........KLLELK.', 'K........KLLLLNK', 'KLKKKKKKKLLLKKK.',
+            '.KLLWWLLLWWLK...', '.KLWWWLLLWWWLK..', '..KLK....KLK....', '..KLK....KLK....', '..KKK....KKK....'],
+    run1:  ['..........KK....', '.........KLLKK..', '.........KLLELK.', 'K........KLLLLNK', 'KLKKKKKKKLLLKKK.',
+            '.KLLWWLLLWWLK...', '.KLWWWLLLWWWLK..', '.KLK......KLK...', 'KLK........KLK..', 'KK..........KK..'],
+    run2:  ['..........KK....', '.........KLLKK..', '.........KLLELK.', 'K........KLLLLNK', 'KLKKKKKKKLLLKKK.',
+            '.KLLWWLLLWWLK...', '.KLWWWLLLWWWLK..', '...KLK..KLK.....', '...KLK..KLK.....', '...KK...KK......'],
+    lie:   ['..........KK....', '.........KLLKK..', '.........KLLELK.', 'KK.KKKKKKLLLLLNK', '.KLLWWLLLWWLLLK.', '.KKKKKKKKKKKKKK.'] } },
+  sheep: { ax: 8, frames: {
+    stand: ['..........KKK...', '.........KSSSK..', '.........KSESSK.', '.........KSSSSNK', '.KK.....KSSSSK..', 'KSSKKKKKSSSSSK..',
+            'KSSSSSSSSSSSSK..', '.KSSSDSSSSDSSK..', '.KSSSKKKKKSSK...', '..KSK....KSK....', '..KKK....KKK....'],
+    run1:  ['..........KKK...', '.........KSSSK..', '.........KSESSK.', '.........KSSSSNK', '.KK.....KSSSSK..', 'KSSKKKKKSSSSSK..',
+            'KSSSSSSSSSSSSK..', '.KSSSDSSSSDSSK..', '.KSSSKKKKKSSK...', '.KSK......KSK...', 'KK..........KK..'],
+    run2:  ['..........KKK...', '.........KSSSK..', '.........KSESSK.', '.........KSSSSNK', '.KK.....KSSSSK..', 'KSSKKKKKSSSSSK..',
+            'KSSSSSSSSSSSSK..', '.KSSSDSSSSDSSK..', '.KSSSKKKKKSSK...', '...KSK..KSK.....', '...KK...KK......'],
+    lie:   ['..........KKK...', '.........KSSSK..', '.........KSESSK.', 'KK.KKKKKKSSSSSNK', 'KSSSSSSSSSSSSSK.', '.KSSSDSSSSDSSK..', '.KKKKKKKKKKKKK..'] } },
+  pup: { ax: 3, frames: { a: ['....KK', '.KKKLN', 'KLWLLK', '.K.K..'], b: ['......', '....KK', 'KKKKLN', 'KLWLLK'] } },
+};
+const DOGPAL = {
+  mother: { L: ['LIVER', .55], W: ['DOGW', .7], E: ['HAIR', 0], N: ['HAIR', .1] },
+  sheep:  { S: ['GREY', .5], D: ['GREY', .2], E: ['HAIR', 0], N: ['HAIR', .1] },
+  cur1:   { L: ['GREY', .35], W: ['LIVER', .5], E: ['HAIR', 0], N: ['HAIR', .1] },
+  cur2:   { S: ['MUD', .55], D: ['MUD', .2], E: ['HAIR', 0], N: ['HAIR', .1] },
+  cur3:   { L: ['DOGW', .6], W: ['LIVER', .4], E: ['HAIR', 0], N: ['HAIR', .1] },
+  pup:    { L: ['LIVER', .6], W: ['DOGW', .75], E: ['HAIR', 0], N: ['HAIR', .1] },
+};
+for (const [name, s] of Object.entries(SPR)) {                         // catch ragged rows early
+  const sets = s.frames ? Object.values(s.frames) : [s.body, ...Object.values(s.legs)];
+  const w = sets[0][0].length;
+  sets.forEach(rows => rows.forEach((r, i) => { if (r.length !== w) console.warn(`sprite ${name} row ${i} is ${r.length} wide, expected ${w}: ${r}`); }));
+}
+
+function drawSprite(rows, pal, x, y, s, flip, ax, id, depthY, light) {
+  const h = rows.length, w = rows[0].length, H2 = Math.max(1, Math.round(h * s)), W2 = Math.max(1, Math.round(w * s));
+  const base = Math.round(y) - H2 + 1, dir = flip ? -1 : 1;
+  for (let sy = 0; sy < H2; sy++) {
+    const row = Math.min(h - 1, Math.floor(sy / s)), r = rows[row], Y = base + sy;
+    if (Y < 0 || Y >= SH) continue;
+    for (let sx = 0; sx < W2; sx++) {
+      const col = Math.min(w - 1, Math.floor(sx / s)), ch = r[col];
+      if (ch === '.') continue;
+      const X = Math.round(x + dir * (sx + .5 - ax * s));
+      if (X < 0 || X >= W || bgZ[Y * W + X] > depthY) continue;          // a nearer piece of scenery hides us
+      let c;
+      if (ch === 'K') c = OUT;
+      else {
+        const [rp, v0] = pal[ch];
+        const litN = r[col + dir * light], darkN = r[col - dir * light];  // neighbour toward / away from the light
+        const v = v0 + ((litN === undefined || litN === '.' || litN === 'K') ? .22 : (darkN === 'K' || darkN === '.') ? -.14 : 0);
+        c = dith(R[rp], v, X, Y);
+      }
+      idx[Y * W + X] = c; idb[Y * W + X] = id;
+    }
+  }
+  return H2;
+}
+
+// =====================================================================================
+//  ACTORS
+// =====================================================================================
+const A = {};
+function actor(key, o) { return A[key] = Object.assign({ key, x: 0, y: 0, flip: false, phase: 0, goal: null, visible: true, room: null, say: null, size: 1, dy: 0, speed: 1.4, state: 'lie', light: true }, o); }
+actor('lock',  { id: 40, name: 'Lockwood', spr: SPR.lockwood, col: T_LOCK });
+actor('heath', { id: 41, name: 'Mr. Heathcliff', spr: SPR.heathcliff, col: T_HEATH });
+actor('joe',   { id: 42, name: 'Joseph', spr: SPR.joseph, col: T_JOE, speed: 1.1 });
+actor('house', { id: 43, name: 'housekeeper', spr: SPR.housekeeper, col: T_HOUSE, speed: 2.4 });
+actor('horse', { id: 44, name: 'horse', spr: SPR.horse, kind: 'horse', col: T_DIM, speed: 1.2 });
+actor('mother', { id: 45, name: 'liver-coloured pointer', spr: SPR.pointer, pal: DOGPAL.mother, kind: 'dog', col: T_DOG, speed: 2.6, size: 1.35 });
+actor('sheepA', { id: 46, name: 'sheep-dog', spr: SPR.sheep, pal: DOGPAL.sheep, kind: 'dog', col: T_DOG, speed: 2.4, size: 1.3 });
+actor('sheepB', { id: 47, name: 'sheep-dog', spr: SPR.sheep, pal: DOGPAL.sheep, kind: 'dog', col: T_DOG, speed: 2.5, size: 1.3 });
+actor('cur1', { id: 49, name: 'dog', spr: SPR.pointer, pal: DOGPAL.cur1, kind: 'dog', col: T_DOG, size: 1.05, speed: 2.9 });
+actor('cur2', { id: 50, name: 'dog', spr: SPR.sheep, pal: DOGPAL.cur2, kind: 'dog', col: T_DOG, size: .95, speed: 3.1 });
+actor('cur3', { id: 51, name: 'dog', spr: SPR.pointer, pal: DOGPAL.cur3, kind: 'dog', col: T_DOG, size: .85, speed: 3.2 });
+for (let i = 0; i < 4; i++) actor('pup' + i, { id: 48, name: 'puppies', spr: SPR.pup, pal: DOGPAL.pup, kind: 'pup', col: T_DOG, size: 1.3 });
+const DOGS = ['mother', 'sheepA', 'sheepB', 'cur1', 'cur2', 'cur3'].map(k => A[k]);
+const PUPS = [0, 1, 2, 3].map(i => A['pup' + i]);
+const byId = id => Object.values(A).find(a => a.id === id && a.visible && a.room === room);
+
+function framesOf(a) {
+  const s = a.spr;
+  if (a.kind === 'dog') return a.goal ? ((a.phase | 0) % 2 ? s.frames.run1 : s.frames.run2) : a.state === 'lie' ? s.frames.lie : s.frames.stand;
+  if (a.kind === 'horse') return s.frames.stand;
+  if (a.kind === 'pup') return (a.phase | 0) % 2 ? s.frames.a : s.frames.b;
+  return [...s.body, ...(a.goal ? ((a.phase | 0) % 2 ? s.legs.pass : s.legs.stride) : s.legs.idle)];
+}
+function drawActor(a) {
+  const s = room.scale(a.y) * a.size, rows = framesOf(a);
+  const bob = !a.kind && a.goal && (a.phase | 0) % 2 ? -1 : 0;
+  a.h = drawSprite(rows, a.pal || a.spr.pal, a.x, a.y + a.dy + bob, s, a.flip, a.spr.ax, a.id, a.y, room.light);
+  if (a === A.lock && state.poker) {                                    // the poker, brandished
+    const sw = state.attack ? Math.sin(T * 9) * .9 : 0, hx = a.x + (a.flip ? -3 : 3) * s, hy = a.y - 11 * s;
+    const ang = (a.flip ? Math.PI + .5 : -.5) + sw * (a.flip ? -1 : 1);
+    for (let k = 0; k < 11 * s; k++) { const X = Math.round(hx + Math.cos(ang) * k), Y = Math.round(hy + Math.sin(ang) * k); if (Y >= 0 && Y < SH) { idx[Y * W + X] = dith(R.IRON, .55, X, Y); idb[Y * W + X] = a.id; } }
+  }
+}
+
+// =====================================================================================
+//  WALKING — BFS distance field over the room's walk area (the night-storm walker)
+// =====================================================================================
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function field(tx, ty) {
+  const D = new Int16Array(W * SH).fill(-1), q = [tx + ty * W];
+  D[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % W, y = (i / W) | 0;
+    for (const [ox, oy] of N8) {
+      const nx = x + ox, ny = y + oy, j = nx + ny * W;
+      if (nx >= 0 && nx < W && ny >= 0 && ny < SH && D[j] < 0 && room.walk(nx, ny)) { D[j] = D[i] + 1; q.push(j); }
+    }
+  }
+  return D;
+}
+function ahead(D, x, y, steps, tx, ty) {
+  if (x < 0 || x >= W || y < 0 || y >= SH || D[x + y * W] < 0) return [tx, ty];
+  for (let s = 0; s < steps; s++) {
+    let best = null, bd = D[x + y * W];
+    for (const [ox, oy] of N8) { const j = (x + ox) + (y + oy) * W; if (D[j] >= 0 && D[j] < bd) { bd = D[j]; best = [x + ox, y + oy]; } }
+    if (!best) break;
+    [x, y] = best;
+  }
+  return [x, y];
+}
+function reachNear(a, x, y) {                                           // the reachable spot nearest (x, y)
+  const D = field(Math.round(a.x), Math.round(a.y));
+  let best = [Math.round(a.x), Math.round(a.y)], bd = 1e9;
+  for (let i = 0; i < D.length; i++) if (D[i] >= 0) { const px_ = i % W, py = (i / W) | 0, d = (px_ - x) ** 2 + ((py - y) * 1.6) ** 2; if (d < bd) { bd = d; best = [px_, py]; } }
+  return best;
+}
+function walkTo(a, x, y, opt = {}) {
+  if (a.goal) a.goal.res();                                              // a new walk replaces the old one
+  return new Promise(res => { a.goal = { x, y, D: opt.direct ? null : field(Math.round(x), Math.round(y)), res, speed: opt.speed || 1 }; });
+}
+const playerWalk = (x, y) => { const [tx, ty] = reachNear(A.lock, x, y); return walkTo(A.lock, tx, ty); };
+function stepActor(a) {
+  const g = a.goal;
+  if (!g) return;
+  const v = a.speed * g.speed * Math.max(.5, room.scale(a.y));
+  a.phase += .5;
+  if (Math.hypot(g.x - a.x, g.y - a.y) <= v) { a.x = g.x; a.y = g.y; a.goal = null; g.res(); return; }
+  let [tx, ty] = [g.x, g.y];
+  if (g.D) [tx, ty] = ahead(g.D, Math.round(a.x), Math.round(a.y), 4, g.x, g.y);
+  const dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy) || 1;
+  if (Math.abs(dx) > .3) a.flip = dx < 0;
+  a.x += dx / d * v; a.y += dy / d * v * .8;
+}
+
+// =====================================================================================
+//  SCRIPTING — game time T, timers, speech, dialogue choices, cutscenes
+// =====================================================================================
+let T = 0, busy = 0, cutscene = 0, choices = null, fadeK = 0;
+const timers = [];
+const wait = sec => new Promise(res => timers.push({ at: T + sec, res }));
+function say(a, line, dur) {
+  if (a.say) a.say.res();
+  return new Promise(res => { a.say = { lines: wrap(line, 196), until: T + (dur ?? 1.1 + line.length * .052), res }; });
+}
+function skipSpeech() { for (const a of Object.values(A)) if (a.say) a.say.until = T; }
+function choose(opts) { return new Promise(res => { choices = { opts, res: i => { choices = null; res(i); } }; }); }
+async function cut(fn) { busy++; cutscene++; try { await fn(); } finally { busy--; cutscene--; } }
+async function fade(to, sec = .5) { const from = fadeK, n = Math.max(1, Math.round(sec / STEP)); for (let i = 1; i <= n; i++) { await wait(STEP); fadeK = from + (to - from) * i / n; } }
+
+// =====================================================================================
+//  ROOM 1 — OUTSIDE WUTHERING HEIGHTS
+// =====================================================================================
+const X = { sky: 1, moor: 2, house: 3, door: 4, carvings: 5, windows: 6, firs: 7, thorns: 8, wall: 9, gate: 10, causeway: 12 };
+const state = { invited: false, gateOpen: false, heathInside: false, petted: false, attack: false, poker: false, rescued: false, faces: false };
+// Layout: a dry-stone wall runs across the scene (base y 128) with a five-bar gate between
+// stone pillars. The road is in front of it; the yard and causeway behind it; the house
+// behind that. Anyone in the yard shows from the waist up over the wall.
+const WALL = { base: 128, top: 116, g0: 121, g1: 137 };                 // gate opening between the pillars
+const HOUSE = { x0: 150, x1: 298, eave: 52, base: 110 };
+const DOOR = { x0: 213, x1: 225, y0: 91 };
+const WIN_LO = [164, 183, 240, 258, 276], WIN_UP = [170, 199, 236, 270];
+
+const EXT = {
+  name: 'outside', light: -1,
+  scale: y => .62 + Math.min(1, Math.max(0, y - 110) / 33) * .4,
+  walk(x, y) {
+    if (x < 3 || x > 316 || y > 142) return false;
+    if (y >= 130) return true;                                          // the road
+    if (y >= 112 && y <= 125) return x > 18 && x < 300;                 // the yard, behind the wall
+    return state.gateOpen && x > WALL.g0 && x < WALL.g1 && y > 110;     // through the gateway
+  },
+  bake() {
+    bgZ.fill(0);
+    for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) {
+      const hy = 52 + tS(x * .7, 3) * 8 + tS(x * 2.1, 9) * 3, my = 64 + tS(x * 1.1, 40) * 5;
+      if (y >= my) {                                                     // moor: heather, tussock
+        const tuft = tS(x * 6 + 30, y * 1.5) > .64;
+        if (tuft) Pd(x, y, 'GRASS', .3 + tS(x * 4, y) * .25, X.moor);
+        else Pd(x, y, 'MOOR', .24 + tS(x * 2.5, y * 2) * .32 + Math.min(.15, (y - my) * .004), X.moor);
+      } else if (y >= hy) Pd(x, y, 'HILL', .55 - (y - hy) * .02 + (tS(x * 3, y * 3) - .5) * .15, X.moor);
+      else P(x, y, R.SKY[0], X.sky);                                   // sky: painted live
+    }
+    for (let y = 108; y < 128; y++) for (let x = 0; x < W; x++) {       // the yard: rough grass, the flagged causeway
+      const f = Math.max(0, Math.min(1, (x - 129) / 90)), cy = 124 + (111 - 124) * f;
+      if (x > 124 && x < 226 && Math.abs(y - cy) < 2.6 + (1 - f)) {
+        const seam = (x + (Math.round(y) % 2) * 3) % 6 === 0;
+        Pd(x, y, 'FLAG', seam ? .2 : .45 + hash(Math.floor(x / 6) * 13 + y) * .15, X.causeway);
+      } else if (y >= 109) Pd(x, y, 'GRASS', .2 + tS(x * 4, y * 4) * .28, X.moor);
+    }
+    for (let y = 128; y < SH; y++) for (let x = 0; x < W; x++) {       // the road, rutted mud
+      const ty = 137 + Math.sin(x * .02) * 1.5, onTrack = Math.abs(y - ty) < 3.2;
+      if (onTrack) Pd(x, y, 'MUD', .45 + (tS(x * 3, y * 8) - .5) * .3 - (Math.abs(y - ty) < 1 ? .15 : 0), X.moor);
+      else Pd(x, y, tS(x * 4, y * 4) > .55 ? 'GRASS' : 'MOOR', .3 + tS(x * 5, y * 3) * .3, X.moor);
+    }
+    const { x0, x1, eave, base } = HOUSE;
+    for (let y = 30; y < eave; y++) {                                   // slate roof
+      const inset = (eave - 1 - y) * .3;
+      for (let x = Math.round(x0 - 2 + inset); x <= Math.round(x1 + 2 - inset); x++)
+        Pd(x, y, 'SLATE', y === 30 ? .6 : y % 3 === 0 ? .12 : .32 + tS(x * .9, y * 3) * .25 - (eave - y) * .004, X.house);
+    }
+    for (const [c0, c1] of [[163, 172], [278, 287]]) for (let y = 16; y < 36; y++) for (let x = c0; x <= c1; x++) {   // chimneys
+      const cap = y < 19, mortar = (y - 16) % 5 === 0 || (x - c0 + ((y - 16) / 5 | 0) % 2 * 3) % 6 === 0;
+      Pd(x, y, 'STONE', cap ? .62 : mortar ? .2 : .42 + (x === c0 ? .12 : 0), X.house);
+    }
+    for (let y = eave; y <= base; y++) for (let x = x0; x <= x1; x++) {  // walls: coursed gritstone, jutting corner stones
+      const row = (y - eave) / 5 | 0, off = row % 2 * 6, bx = (x - x0 + off) / 11 | 0;
+      const qrow = (y - eave) / 6 | 0, quoin = qrow % 2 ? (x < x0 + 5 || x > x1 - 5) : (x < x0 + 8 || x > x1 - 8);
+      if (quoin) Pd(x, y, 'STONE', (y - eave) % 6 === 0 ? .25 : .64 + (x < x0 + 8 ? .06 : -.06), X.house);
+      else {
+        const mortar = (y - eave) % 5 === 0 || (x - x0 + off) % 11 === 0;
+        Pd(x, y, 'STONE', mortar ? .2 : .42 + (hash(row * 37 + bx) - .5) * .16 + (tS(x * 2, y * 2) - .5) * .12 - Math.max(0, y - 102) * .02, X.house);
+      }
+    }
+    for (let x = x0 - 2; x <= x1 + 2; x++) Pd(x, eave, 'SLATE', .05, X.house);   // eave shadow
+    const window_ = (wx, wy, w, h) => {                                 // deep-set windows
+      for (let y = wy - 2; y < wy + h + 2; y++) for (let x = wx - 1; x <= wx + w; x++) {
+        if (y < wy) Pd(x, y, 'STONE', .68, X.windows);                  // lintel
+        else if (y >= wy + h) Pd(x, y, 'STONE', .72, X.windows);        // sill
+        else if (x === wx - 1 || x === wx + w) Pd(x, y, 'STONE', .6, X.windows);
+        else if (x <= wx) Pd(x, y, 'STONE', .45, X.windows);            // the lit reveal: they're set deep
+        else if (y === wy) P(x, y, R.HAIR[1], X.windows);
+        else Pd(x, y, 'PEWTER', x === wx + (w >> 1) + 1 ? .05 : .12 + (x - wx === 2 && y < wy + 4 ? .25 : 0), X.windows);
+      }
+    };
+    WIN_LO.forEach(x => window_(x, 76, 5, 13)); WIN_UP.forEach(x => window_(x, 58, 4, 8));
+    for (let y = 73; y < 89; y++) for (let x = 203; x <= 235; x++) {   // carvings: griffins, little boys, 1500
+      const g = tS(x * 5, y * 5), edge = y === 73 || y === 88 || x === 203 || x === 235;
+      Pd(x, y, 'STONE', edge ? .3 : g > .6 ? .76 : g < .32 ? .24 : .54, X.carvings);
+    }
+    bgText('1500', 211, 76, 'STONE', .1, X.carvings);
+    for (let y = DOOR.y0 - 2; y <= base; y++) for (let x = DOOR.x0 - 2; x <= DOOR.x1 + 2; x++) {   // the principal door
+      const ex = (x - 219) / 7.5, ey = (y - (DOOR.y0 + 3)) / 4;
+      if (y < DOOR.y0 + 3 && ex * ex + ey * ey > 1.25) continue;
+      const frame = x < DOOR.x0 || x > DOOR.x1 || (y < DOOR.y0 + 3 && ex * ex + ey * ey > .8);
+      if (frame) { Pd(x, y, 'STONE', .68, X.door); continue; }
+      const seam = (x - DOOR.x0) % 3 === 2, stud = (y - DOOR.y0) % 5 === 3 && (x - DOOR.x0) % 3 === 1;
+      Pd(x, y, stud ? 'IRON' : 'WOOD', stud ? .5 : seam ? .12 : .32 + (x === DOOR.x0 ? .12 : 0), X.door);
+    }
+    Pd(223, 101, 'IRON', .6, X.door);
+    const thorn = (x, y, ang, len, d) => {                               // gaunt thorns, all leaning one way
+      const ex = x + Math.cos(ang) * len, ey = y + Math.sin(ang) * len;
+      bline(x, y, ex, ey, 'THORN', .35 + d * .1, X.thorns);
+      if (d < 3) for (let k = 0; k < 2; k++) thorn(ex, ey, ang + (k ? .45 : -.3) - .12 + (rng() - .5) * .25, len * (.62 + rng() * .15), d + 1);
+    };
+    for (const tx of [156, 171, 188, 250, 268]) thorn(tx, base, -Math.PI / 2 - .75, 4 + rng() * 1.5, 0);
+    for (let y = WALL.top - 2; y <= WALL.base; y++) for (let x = 0; x < W; x++) {   // the dry-stone wall, pillars, gate
+      const pillar = (x >= WALL.g0 - 5 && x < WALL.g0) || (x > WALL.g1 && x <= WALL.g1 + 5);
+      const inGap = x >= WALL.g0 && x <= WALL.g1;
+      if (inGap) continue;
+      if (!pillar && y < WALL.top) continue;
+      if (pillar) {
+        const cap = y < WALL.top;
+        Pd(x, y, 'STONE', cap ? .74 : (y - WALL.top) % 4 === 0 ? .25 : .5 + (x === WALL.g0 - 5 || x === WALL.g1 + 1 ? .14 : 0), X.wall, WALL.base);
+        continue;
+      }
+      const coping = y < WALL.top + 2, row = (y - WALL.top) / 3 | 0, sx = (x + row * 5) / 7 | 0;
+      const joint = (y - WALL.top) % 3 === 0 || (x + row * 5) % 7 === 0;
+      Pd(x, y, 'STONE', coping ? .66 - (y === WALL.top + 1 ? .15 : 0) : joint ? .16 : .34 + hash(sx * 11 + row * 7) * .22 + (tS(x * 4, y * 4) - .5) * .1, X.wall, WALL.base);
+    }
+    if (!state.gateOpen) {                                               // a five-bar gate, chained
+      for (let x = WALL.g0; x <= WALL.g1; x++) {
+        for (let r = 0; r < 5; r++) Pd(x, WALL.top + 1 + r * 2.6, 'WOOD', .7 - r * .04, X.gate, WALL.base);
+        const brace = Math.round(WALL.base - 2 - (x - WALL.g0) / (WALL.g1 - WALL.g0) * 10);
+        Pd(x, brace, 'WOOD', .55, X.gate, WALL.base);
+      }
+      for (const sx of [WALL.g0, WALL.g1]) for (let y = WALL.top; y <= WALL.base - 1; y++) Pd(sx, y, 'WOOD', .62, X.gate, WALL.base);
+      for (let k = 0; k < 6; k++) Pd(WALL.g1 - 1 + (k & 1), WALL.top + 3 + k, 'IRON', .5 + (k & 1) * .2, X.gate, WALL.base);   // the chain
+    } else {                                                              // swung back into the yard
+      for (let x = WALL.g0; x <= WALL.g0 + 8; x++) {
+        const lift_ = (x - WALL.g0) * .7;
+        for (let r = 0; r < 5; r++) Pd(x, WALL.top + 1 + r * 2.6 * (1 - (x - WALL.g0) * .04) - lift_, 'WOOD', .55, X.gate, 0);
+      }
+      for (let y = WALL.top - 6; y <= WALL.top + 11; y++) Pd(WALL.g0 + 8, y, 'WOOD', .45, X.gate, 0);
+    }
+  },
+  dyn() {
+    const gust = Math.sin(T * .5) * .5 + .5;
+    for (let y = 0; y < 70; y++) for (let x = 0; x < W; x++) {           // overcast, and moving fast
+      const i = y * W + x;
+      if (bgId[i] !== X.sky) continue;
+      const d = tS(x * .9 + T * 14, y * 1.8) * .6 + tS(x * 2 + T * 24 + 50, y * 3) * .4;
+      idx[i] = d > .5 ? dith(R.CLOUD, .62 - (d - .5) * 1.6 + (d < .54 ? .12 : 0), x, y) : dith(R.SKY, .3 + y / 55 * .35, x, y);
+    }
+    for (const p of smoke) for (let dy = -p.r; dy <= p.r; dy++) for (let dx = -p.r; dx <= p.r; dx++) {   // chimney smoke, torn sideways
+      if (dx * dx + dy * dy > p.r * p.r) continue;
+      const X_ = Math.round(p.x + dx), Y = Math.round(p.y + dy);
+      if (X_ >= 0 && X_ < W && Y >= 0 && Y < SH && (BAYER[(Y & 3) * 4 + (X_ & 3)] < 1 - p.life / 70)) idx[Y * W + X_] = dith(R.CLOUD, .8 - p.life * .006, X_, Y);
+    }
+    const sway = Math.sin(T * 1.7) * 1.2 + gust * 1.4;                  // the stunted firs: trunks leaning hard, drooping tiers
+    for (const [bx, by, h] of [[303, 111, 30], [311, 109, 24], [318, 112, 34]]) {
+      const tip = k => [bx - .55 * k - sway * (k / h) ** 2, by - k];
+      for (let k = 0; k < h; k++) { const [cx, cy] = tip(k); const X_ = Math.round(cx); if (X_ >= 0 && X_ < W) { idx[cy * W + X_] = dith(R.THORN, .4, X_, cy); idb[cy * W + X_] = X.firs; } }
+      for (let k = Math.round(h * .18); k < h; k += 3) {
+        const f = k / h, [cx, cy] = tip(k), L = (1 - f) * 10 + 2, Rr = (1 - f) * 3 + 1;
+        for (let s = -Rr; s <= L; s++) {                                  // downwind side long, upwind side stubby
+          const X_ = Math.round(cx - s), Y = Math.round(cy + Math.abs(s) * .35 + (s > 0 ? s * .08 * sway : 0));
+          for (let t_ = 0; t_ < 2; t_++) if (X_ >= 0 && X_ < W && Y + t_ >= 0 && Y + t_ < SH) { const i = (Y + t_) * W + X_; idx[i] = dith(R.FIR, .22 + (t_ ? 0 : .2) + (tS(X_ * 5, Y * 5) - .5) * .25, X_, Y + t_); idb[i] = X.firs; }
+        }
+      }
+    }
+  },
+  post() {
+    for (const p of straws) { const X_ = Math.round(p.x), Y = Math.round(p.y); if (X_ >= 0 && X_ < W - 1 && Y >= 0 && Y < SH) { idx[Y * W + X_] = dith(R.OAT, .7, X_, Y); idx[Y * W + X_ + 1] = dith(R.OAT, .45, X_ + 1, Y); } }
+  },
+  tick() {
+    const gust = Math.sin(T * .5) * .5 + .5;
+    if ((T * 15 | 0) % 2 === 0) for (const cx of [167, 282]) smoke.push({ x: cx, y: 15, r: 1, life: 0 });
+    for (const p of smoke) { p.x -= 1.5 + gust; p.y -= .2; p.r = Math.min(5, p.r + .07); p.life++; }
+    while (smoke.length && smoke[0].life > 60) smoke.shift();
+    for (const p of straws) { p.x -= p.v * (1 + gust); p.y += Math.sin(T * 6 + p.v * 9) * .4; if (p.x < -4) { p.x = W + rng() * 60; p.y = 60 + rng() * 80; } }
+  },
+};
+const smoke = [], straws = Array.from({ length: 14 }, () => ({ x: rng() * W, y: 60 + rng() * 80, v: 2.5 + rng() * 2 }));
+
+// =====================================================================================
+//  ROOM 2 — "THE HOUSE"
+// =====================================================================================
+const I = { walls: 20, dresser: 21, arch: 23, fireplace: 24, guns: 25, canisters: 26, poker: 27, kitchen: 28, cellar: 29, window: 30, chairs: 31, table: 32, floor: 33, hams: 34 };
+const INT = {
+  name: 'the house', light: 1,
+  scale: y => .88 + Math.max(0, y - 100) / 43 * .3,
+  walk(x, y) {
+    if (y < 100 || y > 142 || x < 4 || x > 312) return false;
+    if (x >= 112 && x <= 210 && y >= 104 && y <= 133) return false;     // the table
+    if (x > 222 && y < 106) return false;                               // the hearth
+    if (x < 104 && y < 102) return false;                               // the dresser
+    return true;
+  },
+  bake() {
+    bgZ.fill(0);
+    for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) {
+      if (y < 14) {                                                      // bare roof timbers
+        const rafter = x % 22 < 4, beam = y >= 9;
+        Pd(x, y, 'WOOD', beam ? .38 - (y === 9 ? -.1 : 0) : rafter ? .28 : .08, I.hams);
+      } else if (y < 96) {                                               // limewashed stone, smoked near the top
+        Pd(x, y, 'FLAG', .62 + (tS(x * 1.5, y * 1.5) - .5) * .12 - Math.max(0, 34 - y) * .012 - (y % 9 === 0 ? .05 : 0), I.walls);
+      } else {                                                           // smooth white flags, in perspective
+        const zz = 520 / (y - 30), row = Math.floor(zz / 6), wx = (x - 160) * zz / 90 + (row % 2) * 6;
+        const seam = Math.abs(zz / 6 - Math.round(zz / 6)) < .06 || ((wx % 12) + 12) % 12 < .9;
+        Pd(x, y, 'FLAG', seam ? .3 : .55 + hash(row * 17 + Math.floor(wx / 12)) * .15 + (x - 160) * .0008, I.floor);
+      }
+    }
+    for (let x = 112; x <= 228; x++) Pd(x, 16, 'WOOD', .4, I.hams);    // the frame, laden with oatcakes and meat
+    for (const hx of [122, 140, 206, 222]) for (let y = 17; y < 33; y++) {
+      const f = (y - 17) / 16, hw = f < .25 ? 1 : Math.round(1 + Math.sin(Math.min(1, (f - .1) * 1.3) * Math.PI) * 3.5);
+      for (let x = hx - hw; x <= hx + hw; x++) Pd(x, y, y < 20 ? 'LINEN' : 'MEAT', y < 20 ? .4 : .35 + (hx - x) * .06 + (x === hx - hw + 1 ? .15 : 0), I.hams);
+    }
+    for (const ox of [158, 170, 182, 194]) { Pd(ox, 17, 'LINEN', .4, I.hams); for (let y = 18; y < 24; y++) for (let x = ox - 3; x <= ox + 3; x++) if ((x - ox) ** 2 + (y - 21) ** 2 * 1.5 < 11) Pd(x, y, 'OAT', .45 + (ox - x) * .05, I.hams); }
+    for (let y = 14; y < 96; y++) for (let x = 10; x <= 100; x++) {     // the vast oak dresser
+      const side = x < 14 || x > 96, cornice = y < 18, shelf = [28, 42, 56].some(s => y === s || y === s + 1);
+      Pd(x, y, 'WOOD', side ? .45 + (x > 96 ? .1 : 0) : cornice ? .5 : shelf ? .55 : y > 58 ? .36 : .14, I.dresser);
+    }
+    for (const sb of [28, 42, 56]) for (let i = 0; i < 8; i++) {        // pewter dishes and silver jugs, row after row
+      const cx = 19 + i * 11, jug = (i + sb) % 3 === 0;
+      if (!jug) for (let y = sb - 11; y < sb; y++) for (let x = cx - 5; x <= cx + 5; x++) {
+        const nx = (x - cx) / 5, ny = (y - (sb - 6)) / 5, d = Math.hypot(nx, ny);
+        if (d <= 1) Pd(x, y, 'PEWTER', .45 + nx * .22 - ny * .1 + (d > .72 && d < .9 ? .2 : 0) - (d < .3 ? .1 : 0), I.dresser);
+      } else for (let y = sb - 10; y < sb; y++) {
+        const hw = y < sb - 7 ? 1 : Math.round(3 - Math.abs(y - (sb - 4)) * .4);
+        for (let x = cx - hw; x <= cx + hw; x++) Pd(x, y, 'PEWTER', .6 + (x - cx) * .1, I.dresser);
+        if (y > sb - 8 && y < sb - 3) Pd(cx - hw - 1, y, 'PEWTER', .5, I.dresser);
+      }
+    }
+    for (let y = 60; y < 96; y++) for (let x = 16; x <= 94; x++) {       // cupboard panels and the arch
+      const ax_ = (x - 55) / 25, ay = (y - 72) / 8, inArch = x >= 30 && x <= 80 && (y >= 72 || ax_ * ax_ + ay * ay <= 1);
+      if (inArch) Pd(x, y, y > 91 ? 'MUD' : 'HAIR', y > 91 ? .35 + hash(x * 7 + y) * .3 : .5 - (y - 62) * .004, I.arch);
+      else if ((x - 16) % 13 === 0 || y === 60 || y === 95) Pd(x, y, 'WOOD', .2, I.dresser);
+    }
+    for (let y = 14; y < 96; y++) for (let x = 218; x <= 306; x++) {     // chimney breast
+      const mortar = (y - 14) % 6 === 0 || (x - 218 + ((y - 14) / 6 | 0) % 2 * 7) % 14 === 0;
+      Pd(x, y, 'STONE', mortar ? .22 : .38 + (tS(x * 2, y * 2) - .5) * .15 - (y < 40 ? (40 - y) * .006 : 0), I.fireplace);
+    }
+    for (let y = 50; y < 55; y++) for (let x = 212; x <= 310; x++) Pd(x, y, 'WOOD', y === 50 ? .65 : y === 54 ? .2 : .48, I.fireplace);   // mantel
+    for (const [y, x0, x1, stockLeft] of [[23, 228, 294, false], [29, 226, 290, true]]) {      // villainous old guns
+      for (let x = x0; x <= x1; x++) Pd(x, y, 'IRON', .5, I.guns);
+      const s0 = stockLeft ? x0 : x1 - 14; for (let x = s0; x <= s0 + 14; x++) for (let k = 0; k < 2 + (Math.abs(x - s0 - 7) < 4 ? 1 : 0); k++) Pd(x, y + k, 'WOOD', .5 - k * .1, I.guns);
+    }
+    for (const gx of [240, 268]) { for (let x = gx; x < gx + 12; x++) Pd(x, 37, 'IRON', .5, I.guns); for (let k = 0; k < 4; k++) { Pd(gx + 10 + k * .5, 38 + k, 'WOOD', .5, I.guns); Pd(gx + 11 + k * .5, 38 + k, 'WOOD', .35, I.guns); } }
+    for (const [cx, rp] of [[234, 'RED'], [254, 'GREEN'], [274, 'OAT']]) for (let y = 42; y < 50; y++) for (let x = cx; x < cx + 8; x++)   // gaudily-painted canisters
+      Pd(x, y, rp, y === 44 ? .95 : .5 + (x === cx ? .2 : x === cx + 7 ? -.2 : 0), I.canisters);
+    for (let y = 60; y < 96; y++) for (let x = 232; x <= 292; x++) {    // the hearth: a black mouth
+      const top = y < 64 && ((x - 232) ** 2 + (y - 64) ** 2 * 4 > 16 && x < 236 || (x - 292) ** 2 + (y - 64) ** 2 * 4 > 16 && x > 288);
+      if (top) continue;
+      Pd(x, y, 'HAIR', .1 + (y > 80 ? .1 : 0), I.fireplace);
+    }
+    for (let x = 238; x <= 286; x++) for (const y of [86, 89]) Pd(x, y, 'IRON', .35, I.fireplace);   // grate
+    for (let y = 90; y < 94; y++) for (let x = 244; x <= 280; x++) Pd(x, y, 'WOOD', .15 + ((x + y) % 5 === 0 ? .1 : 0), I.fireplace);   // logs
+    for (let y = 96; y < 105; y++) for (let x = 222; x <= 306; x++) Pd(x, y, 'FLAG', .72 - (y - 96) * .01, I.fireplace);   // hearthstone
+    for (let y = 54; y < 96; y++) for (let x = 104; x <= 122; x++) {     // kitchen door, ajar
+      const frame = x < 106 || x > 120 || y < 56;
+      Pd(x, y, frame ? 'STONE' : x > 116 ? 'HAIR' : 'WOOD', frame ? .5 : x > 116 ? .3 : .35 + ((x - 106) % 4 === 0 ? -.12 : 0), I.kitchen);
+    }
+    for (let y = 28; y < 52; y++) for (let x = 144; x <= 170; x++) {     // deep-set window
+      const reveal = x < 148 || x > 166 || y < 31 || y > 48;
+      const bar = x === 157 || y === 40;
+      Pd(x, y, reveal ? 'FLAG' : bar ? 'WOOD' : 'SKY', reveal ? .45 + (x < 148 ? .15 : 0) : bar ? .3 : .55 + (y - 31) * .012, I.window);
+    }
+    for (let y = 54; y < 96; y++) for (let x = 186; x <= 210; x++) {     // the cellar door, open on the dark
+      const frame = x < 188 || x > 206 || y < 56, leaf = x > 206;
+      if (frame && !leaf) { Pd(x, y, 'STONE', .5, I.cellar); continue; }
+      if (leaf) { Pd(x, y, 'WOOD', .3, I.cellar); continue; }
+      const step = [78, 84, 90].find(s => y === s);
+      Pd(x, y, step ? 'STONE' : 'HAIR', step ? .25 : .15 - (96 - y) * .002, I.cellar);
+    }
+    for (let y = 116; y < 132; y++) for (let x = 118; x <= 204; x++) { const i = y * W + x; if (bgId[i] === I.floor) bg[i] = dith(R.FLAG, .12, x, y); }   // shadow under the table
+    for (let y = 106; y <= 112; y++) {                                   // the massive table
+      const f = (y - 106) / 6, xa = Math.round(120 - 4 * f), xb = Math.round(202 + 4 * f);
+      for (let x = xa; x <= xb; x++) Pd(x, y, 'WOOD', .5 + (tS(x * .3, y * 6) - .5) * .2 + (y === 106 ? .1 : 0), I.table, 132);
+    }
+    for (let y = 113; y <= 116; y++) for (let x = 116; x <= 206; x++) Pd(x, y, 'WOOD', .28, I.table, 132);
+    for (const [lx, top, bot, z] of [[124, 113, 124, 124], [196, 113, 124, 124], [118, 117, 132, 132], [202, 117, 132, 132]])
+      for (let y = top; y <= bot; y++) for (let x = lx; x < lx + 3; x++) Pd(x, y, 'WOOD', z === 132 ? .4 + (x === lx ? .1 : 0) : .2, I.table, z);
+    for (const [cx, top] of [[98, 92], [208, 94]]) for (let y = top; y <= 128; y++) for (let x = cx; x <= cx + 9; x++) {   // high-backed chairs, painted green
+      const back = y < 118, seat = y >= 118 && y <= 120, leg = y > 120 && (x === cx || x === cx + 9);
+      if (back && (x === cx || x === cx + 9 || (y - top) % 5 === 0)) Pd(x, y, 'GREEN', .5 + (x === cx ? .1 : 0), I.chairs, 128);
+      else if (seat) Pd(x, y, 'GREEN', .38, I.chairs, 128);
+      else if (leg) Pd(x, y, 'GREEN', .3, I.chairs, 128);
+    }
+    for (let y = 100; y <= 128; y++) for (let x = 2; x <= 9; x++) if (x === 2 || x === 9 || y > 116 || (y - 100) % 5 === 0) Pd(x, y, 'HAIR', .5, I.chairs, 128);   // a black one lurking in the shade
+  },
+  dyn() {
+    const flick = .8 + Math.sin(T * 13) * .1 + Math.sin(T * 7.3) * .1;
+    for (let x = 240; x <= 284; x++) {                                    // the fire
+      const fh = 10 + tS(x * 3 + T * 40, T * 9) * 16 + Math.sin(x * .7 + T * 11) * 2;
+      for (let y = 66; y <= 92; y++) {
+        const up = 91 - y;
+        if (up < fh) { const i = y * W + x; idx[i] = dith(R.FIRE, 1 - up / fh * .85 + (tS(x * 6, y * 4 - T * 60) - .5) * .3, x, y); idb[i] = I.fireplace; }
+      }
+    }
+    if (!state.poker) for (let y = 70; y <= 104; y++) {                  // the poker, leaning by the jamb
+      const x = Math.round(296 + (y - 70) * .08); idx[y * W + x] = dith(R.IRON, y < 73 ? .7 : .45, x, y);
+      for (let k = -1; k <= 1; k++) idb[y * W + x + k] = I.poker;          // a 1-px poker needs a wider hotspot
+      if (y < 73) { idx[y * W + x + 1] = dith(R.IRON, .6, x + 1, y); idb[y * W + x + 1] = I.poker; }
+    }
+    this.flick = flick;
+  },
+  post() {                                                               // firelight spills over everything
+    const flick = this.flick || .9, cx = 262, cy = 84;
+    for (let y = 30; y < SH; y++) for (let x = 150; x < W; x++) {
+      const d = Math.hypot(x - cx, (y - cy) * 1.2) / 130;
+      if (d < 1 && !(x >= 240 && x <= 284 && y >= 64 && y <= 92)) lift(y * W + x, (1 - d) ** 2 * .3 * flick, x, y);
+    }
+  },
+  tick() {
+    for (const p of PUPS) if (p.visible && T > (p.next || 0)) { p.x = p.hx + (rng() - .5) * 4; p.phase++; p.flip = rng() < .5; p.next = T + .3 + rng() * .8; }
+  },
+};
+
+// =====================================================================================
+//  OBJECTS, VERBS, LINES
+// =====================================================================================
+const VERBS = [['Give', 'Pick up', 'Use'], ['Open', 'Look at', 'Push'], ['Close', 'Talk to', 'Pull']];
+const VX = [8, 46, 96], VY = [158, 170, 182];
+let verb = 'Walk to', mx = -1, my = -1;
+const inventory = [];
+const GENERIC = {
+  'Open': "It doesn't open.", 'Close': "It doesn't close.", 'Give': "I have nothing to give.",
+  'Pick up': "I'd better not. I'm a guest.", 'Push': "It won't budge.", 'Pull': "It won't budge.",
+  'Use': "I can't think how to use that.", 'Talk to': "It makes a better listener than Mr. Heathcliff, at least.",
+  'Look at': "Nothing remarkable.",
+};
+const OBJ = {
+  // --- outside ---
+  [X.sky]: { name: 'sky', look: "\"Pure, bracing ventilation they must have up there at all times, indeed.\"" },
+  [X.moor]: { name: 'moor', look: "\"This is certainly a beautiful country! In all England, I do not believe that I could have fixed on a situation so completely removed from the stir of society.\"" },
+  [X.house]: { name: 'Wuthering Heights', ox: 224, look: "\"Wuthering Heights is the name of Mr. Heathcliff's dwelling. 'Wuthering' being a significant provincial adjective, descriptive of the atmospheric tumult to which its station is exposed in stormy weather.\"" },
+  [X.windows]: { name: 'windows', ox: 224, look: "\"Happily, the architect had foresight to build it strong: the narrow windows are deeply set in the wall, and the corners defended with large jutting stones.\"" },
+  [X.carvings]: { name: 'carvings', ox: 219, look: "\"A quantity of grotesque carving lavished over the front... among a wilderness of crumbling griffins and shameless little boys, I detected the date '1500,' and the name 'Hareton Earnshaw.'\"" },
+  [X.firs]: { name: 'stunted firs', ox: 310, look: "\"One may guess the power of the north wind blowing over the edge, by the excessive slant of a few stunted firs at the end of the house.\"" },
+  [X.thorns]: { name: 'thorns', ox: 170, look: "\"A range of gaunt thorns all stretching their limbs one way, as if craving alms of the sun.\"" },
+  [X.wall]: { name: 'wall', ox: 129, look: "A dry-stone wall, built to keep things out. It appears to include me." },
+  [X.causeway]: { name: 'causeway', ox: 180, look: "A flagged causeway up to the door." },
+  [X.gate]: { name: 'gate', ox: 129, at: [118, 134],
+    look: () => state.gateOpen ? "Open. If not exactly welcoming." : "Chained. Mr. Heathcliff leans on it as though to make the point.",
+    verbs: { Open: gateTry, Push: gateTry, Pull: gateTry, Use: gateTry } },
+  [X.door]: { name: 'door', ox: 219, at: [219, 112],
+    look: "The principal door, beneath its carvings.",
+    verbs: { 'Walk to': enterHouse, Open: enterHouse, Push: enterHouse, Use: enterHouse } },
+  // --- inside ---
+  [I.walls]: { name: 'the house', look: "\"One step brought us into the family sitting-room, without any introductory lobby or passage: they call it here 'the house' pre-eminently.\"" },
+  [I.dresser]: { name: 'dresser', ox: 55, at: [80, 106], look: "\"Immense pewter dishes, interspersed with silver jugs and tankards, towering row after row, on a vast oak dresser, to the very roof.\"" },
+  [I.arch]: { name: 'arch', ox: 55, at: [72, 104], look: "\"In an arch under the dresser reposed a huge, liver-coloured bitch pointer, surrounded by a swarm of squealing puppies; and other dogs haunted other recesses.\"" },
+  [I.hams]: { name: 'rafters', look: "\"Its entire anatomy lay bare to an inquiring eye, except where a frame of wood laden with oatcakes and clusters of legs of beef, mutton, and ham, concealed it.\"" },
+  [I.fireplace]: { name: 'fireplace', ox: 262, at: [262, 110], look: "An immense fireplace. The only thing in the house that seems pleased to see anyone." },
+  [I.guns]: { name: 'guns', ox: 262, at: [262, 110], look: "\"Above the chimney were sundry villainous old guns, and a couple of horse-pistols.\"",
+    verbs: { 'Pick up': "I think not. Mr. Heathcliff might take it as a remark." } },
+  [I.canisters]: { name: 'canisters', ox: 258, at: [258, 110], look: "\"And, by way of ornament, three gaudily-painted canisters disposed along its ledge.\"" },
+  [I.poker]: { name: 'poker', ox: 296, at: [298, 108], look: "A stout iron poker.", verbs: { 'Pick up': takePoker, Use: takePoker } },
+  [I.kitchen]: { name: 'kitchen door', ox: 113, at: [113, 102], look: "The kitchen, I suppose. I hear pans.",
+    verbs: { Open: "I'd hardly go poking about my landlord's kitchen.", 'Walk to': null } },
+  [I.cellar]: { name: 'cellar door', ox: 197, at: [197, 102], look: () => state.petted ? "Steps down into the dark. Mr. Heathcliff went down there after Joseph, and has not hurried back." : "Steps going down into the dark.",
+    verbs: { 'Walk to': null, Open: "It's already open, on the dark. I'll stay up here, thank you." } },
+  [I.window]: { name: 'window', ox: 157, at: [157, 102], look: "Deep-set, and grudging with the light." },
+  [I.chairs]: { name: 'chairs', ox: 103, at: [100, 132], look: "\"The chairs, high-backed, primitive structures, painted green: one or two heavy black ones lurking in the shade.\"" },
+  [I.table]: { name: 'table', ox: 160, at: [160, 137], look: "A massive table. Something to put between oneself and trouble." },
+  [I.floor]: { name: 'floor', look: "\"The floor was of smooth, white stone.\"" },
+};
+const ACTOR_LOOK = {
+  lock: "Mr. Lockwood, gentleman: new tenant of Thrushcross Grange, and very much a stranger here.",
+  heath: () => room === EXT
+    ? "\"He little imagined how my heart warmed towards him when I beheld his black eyes withdraw so suspiciously under their brows.\""
+    : "\"He is a dark-skinned gipsy in aspect, in dress and manners a gentleman: that is, as much a gentleman as many a country squire.\"",
+  joe: "\"Joseph was an elderly, nay, an old man: very old, perhaps, though hale and sinewy.\"",
+  house: "\"A lusty dame, with tucked-up gown, bare arms, and fire-flushed cheeks.\"",
+  horse: "A hired horse from Thrushcross Grange. It has already formed an opinion of the moors.",
+  mother: () => state.petted ? "\"The ruffianly bitch.\" She is watching me." : "\"A huge, liver-coloured bitch pointer, surrounded by a swarm of squealing puppies.\"",
+  sheepA: "A grim, shaggy sheep-dog. It shares with her \"a jealous guardianship over all my movements.\"",
+  sheepB: "A grim, shaggy sheep-dog. It shares with her \"a jealous guardianship over all my movements.\"",
+  pup0: "\"A swarm of squealing puppies.\"",
+  cur1: "One of \"half-a-dozen four-footed fiends, of various sizes and ages.\"",
+};
+ACTOR_LOOK.pup1 = ACTOR_LOOK.pup2 = ACTOR_LOOK.pup3 = ACTOR_LOOK.pup0; ACTOR_LOOK.cur2 = ACTOR_LOOK.cur3 = ACTOR_LOOK.cur1;
+const ACTOR_VERBS = {
+  heath: { 'Talk to': () => room === EXT ? talkHeathOutside() : talkHeathInside(),
+           Push: "I would sooner push the wall.", Pull: "I would sooner pull the wall.",
+           Give: "I have nothing he would want. I suspect that includes my company." },
+  horse: { Use: leadHorse, Pull: leadHorse, Push: leadHorse, 'Talk to': "Steady, old fellow.", 'Pick up': "I am a gentleman, not a circus strongman." },
+  lock: { 'Talk to': "\"A capital fellow!\" I tell myself. Nobody else seems about to.", Use: "I'm already in use.", 'Pick up': "Let's not." },
+  house: { 'Talk to': "I believe I'll let her get her breath back first." },
+  joe: { 'Talk to': "He looks at me as if I were a plague sent specially." },
+};
+for (const k of ['mother', 'sheepA', 'sheepB', 'cur1', 'cur2', 'cur3', 'pup0', 'pup1', 'pup2', 'pup3'])
+  ACTOR_VERBS[k] = { 'Use': touchDog, 'Pick up': touchDog, 'Push': touchDog, 'Pull': touchDog, 'Talk to': facesAtDogs,
+                     'Give': "I have nothing to give them, except perhaps my ankles." };
+
+function nameOf(id) {
+  if (!id) return '';
+  const a = byId(id);
+  if (a) return a.name;
+  return OBJ[id]?.name || '';
+}
+async function interact(v, id, clickX, clickY) {
+  const my_ = ++interact.token;
+  const a = byId(id), o = a ? null : OBJ[id];
+  if (!a && !o) return playerWalk(clickX, clickY);
+  let h = a ? ACTOR_VERBS[a.key]?.[v] : o.verbs?.[v];
+  if (v === 'Look at') h ??= a ? ACTOR_LOOK[a.key] : o.look;
+  if (state.attack && !(v === 'Pick up' || v === 'Use') ) h = v === 'Walk to' ? null : "Not now! My heels and coat-laps are under assault!";
+  if (v === 'Walk to' && h == null) return playerWalk(o?.at?.[0] ?? clickX, o?.at?.[1] ?? clickY);
+  h ??= GENERIC[v];
+  const needsWalk = v !== 'Look at' && !state.attack || (state.attack && id === I.poker);
+  if (needsWalk && a && a !== A.lock) await playerWalk(a.x + (A.lock.x < a.x ? -16 : 16), a.y + 1);
+  else if (needsWalk && o?.at) await playerWalk(o.at[0], o.at[1]);
+  if (my_ !== interact.token) return;                                    // the player clicked something else meanwhile
+  const fx = a ? a.x : o.ox;
+  if (fx != null && a !== A.lock) A.lock.flip = fx < A.lock.x;
+  if (typeof h === 'function') h = h();
+  if (h instanceof Promise) { busy++; try { await h; } finally { busy--; } }
+  else if (typeof h === 'string') { busy++; try { await say(A.lock, h); } finally { busy--; } }
+}
+interact.token = 0;
+
+// =====================================================================================
+//  THE STORY — Chapter I, scene by scene
+// =====================================================================================
+async function opening() {
+  await cut(async () => {
+    await fade(0, .8);
+    await say(A.lock, "\"This is certainly a beautiful country!\"");
+    await say(A.lock, "\"A perfect misanthropist's heaven: and Mr. Heathcliff and I are such a suitable pair to divide the desolation between us.\"");
+  });
+}
+
+async function talkHeathOutside() {
+  if (state.invited) { await say(A.heath, state.gateOpen ? "..." : "Walk in, I said."); return; }
+  const asked = talkHeathOutside.asked ||= new Set();
+  while (true) {
+    const opts = [];
+    if (!asked.has('name')) opts.push({ k: 'name', label: 'Mr. Heathcliff?' });
+    opts.push({ k: 'tenant', label: 'Mr. Lockwood, your new tenant, sir...' });
+    if (!asked.has('weather')) opts.push({ k: 'weather', label: 'Bracing weather.' });
+    opts.push({ k: 'bye', label: 'Good day.' });
+    const pick = opts[await choose(opts.map(o => o.label))].k;
+    asked.add(pick);
+    if (pick === 'name') {
+      await say(A.lock, "\"Mr. Heathcliff?\"");
+      A.heath.dy = 1; await wait(.25); A.heath.dy = 0; await wait(.25); A.heath.dy = 1; await wait(.25); A.heath.dy = 0;
+      await say(A.lock, "\"A nod was the answer.\"");
+    } else if (pick === 'weather') {
+      await say(A.lock, "Bracing weather, Mr. Heathcliff.");
+      await say(A.heath, "...", 1.6);
+      await say(A.lock, "He did not seem to be a man for weather.");
+    } else if (pick === 'bye') {
+      await say(A.lock, "Good day to you, then.");
+      return;
+    } else {
+      await say(A.lock, "\"Mr. Lockwood, your new tenant, sir. I do myself the honour of calling as soon as possible after my arrival, to express the hope that I have not inconvenienced you by my perseverance in soliciting the occupation of Thrushcross Grange: I heard yesterday you had had some thoughts—\"");
+      await say(A.heath, "\"Thrushcross Grange is my own, sir. I should not allow any one to inconvenience me, if I could hinder it—walk in!\"");
+      await say(A.lock, "\"The 'walk in' was uttered with closed teeth, and expressed the sentiment, 'Go to the Deuce.'\"");
+      await say(A.lock, "\"Even the gate over which he leant manifested no sympathising movement to the words.\"");
+      state.invited = true;
+      return;
+    }
+  }
+}
+function gateTry() {
+  if (state.gateOpen) return "It's open. Progress.";
+  if (!state.invited) return "It's chained. Mr. Heathcliff shows no inclination to unchain it.";
+  return "I can hardly wrestle my landlord's gate open under his nose. Though a horse, perhaps, might lean on it without offence.";
+}
+function leadHorse() {
+  if (state.gateOpen) return "Joseph has him in hand now. Or in something.";
+  if (!state.invited) return "I can hardly force my way in before being asked. I have some manners.";
+  return cut(async () => {
+    await say(A.lock, "Come along, old fellow.");
+    walkTo(A.lock, 96, 139, { direct: true });
+    await walkTo(A.horse, 112, 135, { direct: true });
+    A.horse.flip = false;
+    await say(A.lock, "\"When he saw my horse's breast fairly pushing the barrier, he did put out his hand to unchain it...\"");
+    state.gateOpen = true; room.bake();
+    await wait(.4);
+    await say(A.lock, "\"...and then sullenly preceded me up the causeway.\"");
+    await walkTo(A.heath, 129, 120, { direct: true });
+    await walkTo(A.heath, 219, 112, { direct: true });
+    A.heath.flip = true;
+    await say(A.heath, "\"Joseph, take Mr. Lockwood's horse; and bring up some wine.\"");
+    A.joe.visible = true; A.joe.room = EXT; A.joe.x = 219; A.joe.y = 112;
+    A.heath.visible = false; state.heathInside = true;
+    await say(A.lock, "\"Here we have the whole establishment of domestics, I suppose.\"");
+    await walkTo(A.joe, 129, 122, { direct: true });
+    await walkTo(A.joe, 128, 133, { direct: true });
+    A.joe.flip = true;
+    await say(A.joe, "\"The Lord help us!\"");
+    A.joe.flip = false;
+    walkTo(A.horse, 129, 131, { direct: true });
+    await walkTo(A.joe, 129, 121, { direct: true });
+    walkTo(A.horse, 150, 121, { direct: true });
+    await walkTo(A.joe, 170, 118, { direct: true });
+    walkTo(A.horse, 340, 117, { direct: true });
+    await walkTo(A.joe, 330, 116, { direct: true });
+    A.joe.visible = false; A.horse.visible = false;
+  });
+}
+function enterHouse() {
+  if (!state.heathInside) return state.gateOpen ? "After you, I think." : "The gate is between me and the door, and Mr. Heathcliff is leaning on it.";
+  return cut(async () => {
+    await fade(1, .5);
+    setRoom(INT);
+    Object.assign(A.lock, { x: 44, y: 138, flip: false, goal: null, room: INT });
+    Object.assign(A.heath, { x: 88, y: 131, flip: true, visible: true, room: INT, goal: null });
+    await fade(0, .5);
+    await say(A.lock, "\"One step brought us into the family sitting-room, without any introductory lobby or passage: they call it here 'the house' pre-eminently.\"");
+  });
+}
+
+async function talkHeathInside() {
+  while (true) {
+    const opts = ['A remarkable room, Mr. Heathcliff.', 'A fine dog, that.', '(Say nothing.)', 'Never mind.'];
+    const i = await choose(opts);
+    if (i === 0) { await say(A.lock, "A remarkable room, Mr. Heathcliff."); await say(A.heath, "...", 1.6); await say(A.lock, "He preserved a silence I was beginning to envy."); }
+    else if (i === 1) { await say(A.lock, "A fine dog, that. The pointer."); await say(A.heath, "She's no lap-dog."); }
+    else if (i === 2) { await say(A.lock, "\"I took a seat at the end of the hearthstone opposite my landlord, and filled up an interval of silence...\""); await say(A.lock, "...perhaps by making friends with the dog."); return; }
+    else return;
+  }
+}
+
+function touchDog() {
+  if (!state.petted) return cut(async () => {
+    await walkTo(A.lock, 74, 104); A.lock.flip = true;
+    await say(A.lock, "\"I filled up an interval of silence by attempting to caress the canine mother...\"");
+    A.mother.state = 'stand';
+    await say(A.mother, "Grrrrrrrrrrrr...", 1.8);
+    await say(A.lock, "\"My caress provoked a long, guttural gnarl.\"");
+    await say(A.heath, "\"You'd better let the dog alone. She's not accustomed to be spoiled—not kept for a pet.\"");
+    await walkTo(A.heath, 197, 102, { direct: true });
+    A.heath.flip = false;
+    await say(A.heath, "\"Joseph!\"");
+    await say(A.joeVoice, "mumble... mumble...", 1.6);
+    await say(A.heath, "\"Joseph!\"");
+    await walkTo(A.heath, 197, 98, { direct: true, speed: .5 });
+    A.heath.visible = false; state.petted = true;
+    for (const d of [A.mother, A.sheepA, A.sheepB]) d.state = 'stand';
+    await say(A.lock, "\"...leaving me vis-a-vis the ruffianly bitch and a pair of grim shaggy sheep-dogs, who shared with her a jealous guardianship over all my movements.\"");
+    state.alone = T;
+  });
+  return facesAtDogs();
+}
+function facesAtDogs() {
+  if (state.rescued) return "I have learned my lesson regarding the dogs.";
+  if (!state.petted) return "Mr. Heathcliff is watching. I'd better behave.";
+  if (state.attack) return "Not now! My heels and coat-laps are under assault!";
+  return cut(async () => {
+    await say(A.lock, "\"Not anxious to come in contact with their fangs, I sat still; but, imagining they would scarcely understand tacit insults, I unfortunately indulged in winking and making faces at the trio...\"");
+    A.lock.dy = -1; await wait(.2); A.lock.dy = 0; await wait(.2); A.lock.dy = -1; await wait(.2); A.lock.dy = 0;
+    await say(A.lock, "\"...and some turn of my physiognomy so irritated madam, that she suddenly broke into a fury and leapt on my knees.\"");
+    await walkTo(A.mother, A.lock.x + (A.lock.flip ? -6 : 6), A.lock.y, { direct: true, speed: 1.4 });
+    A.mother.dy = -6; await wait(.3); A.mother.dy = 0;
+    await say(A.lock, "\"I flung her back, and hastened to interpose the table between us.\"");
+    A.mother.x -= 10;
+    await walkTo(A.lock, 160, 101);
+    A.lock.flip = false;
+    for (const [d, sx, sy] of [[A.cur1, 197, 99], [A.cur2, 113, 100], [A.cur3, 160, 126]]) Object.assign(d, { visible: true, room: INT, x: sx, y: sy, state: 'stand' });
+    state.attack = true; state.attackAt = T;
+    await say(A.lock, "\"This proceeding aroused the whole hive: half-a-dozen four-footed fiends, of various sizes and ages, issued from hidden dens to the common centre.\"");
+  });
+}
+function takePoker() {
+  if (!state.attack) return "I'd rather not be seen arming myself in my landlord's house.";
+  if (state.poker) return "I have it! I'm using it! Vigorously!";
+  return cut(async () => {
+    state.poker = true; inventory.push('poker');
+    await say(A.lock, "\"I felt my heels and coat-laps peculiar subjects of assault; and, parrying off the larger combatants as effectually as I could with the poker...\"");
+    await say(A.lock, "Help! Assistance! Is there nobody in this house?");
+    Object.assign(A.heath, { visible: true, room: INT, x: 197, y: 99, flip: false });
+    Object.assign(A.joe, { visible: true, room: INT, x: 200, y: 98, flip: false });
+    walkTo(A.heath, 205, 104, { direct: true, speed: .15 });
+    walkTo(A.joe, 214, 102, { direct: true, speed: .12 });
+    await say(A.lock, "\"Mr. Heathcliff and his man climbed the cellar steps with vexatious phlegm: I don't think they moved one second faster than usual.\"");
+    Object.assign(A.house, { visible: true, room: INT, x: 113, y: 100, flip: false });
+    await say(A.lock, "\"Happily, an inhabitant of the kitchen made more despatch...\"");
+    await walkTo(A.house, Math.max(20, A.lock.x - 14), Math.min(142, A.lock.y + 4), { direct: true });
+    state.attack = false; state.scatter = true;
+    await say(A.house, "Get down! Get away wi' ye, ye brutes!");
+    await say(A.lock, "\"...she used that weapon, and her tongue, to such purpose, that the storm subsided magically, and she only remained, heaving like a sea after a high wind, when her master entered on the scene.\"");
+    state.rescued = true;
+    await walkTo(A.heath, Math.min(300, A.lock.x + 24), Math.max(101, A.lock.y), { direct: true });
+    A.heath.flip = A.lock.x < A.heath.x;
+    await say(A.heath, "\"What the devil is the matter?\"");
+    await finale();
+  });
+}
+async function finale() {
+  let i = await choose(["What the devil, indeed!", "Your dogs and I were getting acquainted."]);
+  if (i === 0) await say(A.lock, "\"What the devil, indeed! The herd of possessed swine could have had no worse spirits in them than those animals of yours, sir. You might as well leave a stranger with a brood of tigers!\"");
+  else await say(A.lock, "Your dogs and I were getting acquainted, Mr. Heathcliff. Vigorously.");
+  await say(A.heath, "\"They won't meddle with persons who touch nothing. The dogs do right to be vigilant. Take a glass of wine?\"");
+  i = await choose(["No, thank you.", "I believe I will. A large one."]);
+  await say(A.lock, i === 0 ? "\"No, thank you.\"" : "I believe I will, sir. A large one.");
+  await say(A.heath, "\"Not bitten, are you?\"");
+  i = await choose(["If I had been, I would have set my signet on the biter.", "Only my dignity, sir."]);
+  await say(A.lock, i === 0 ? "\"If I had been, I would have set my signet on the biter.\"" : "Only my dignity, sir. It will mend.");
+  await say(A.lock, "His countenance relaxed into a grin.");
+  await say(A.heath, "\"Come, come, you are flurried, Mr. Lockwood. Here, take a little wine. Guests are so exceedingly rare in this house that I and my dogs, I am willing to own, hardly know how to receive them. Your health, sir!\"");
+  await say(A.lock, "\"I bowed and returned the pledge; beginning to perceive that it would be foolish to sit sulking for the misbehaviour of a pack of curs.\"");
+  await fade(1, 1);
+  screen = 'end'; fadeK = 0;
+}
+
+// =====================================================================================
+//  DOGS — lying, watching, swarming, scattering
+// =====================================================================================
+function dogsTick() {
+  const L = A.lock;
+  DOGS.forEach((d, i) => {
+    if (!d.visible || d.room !== room) return;
+    if (state.attack) {
+      const ang = i * Math.PI * 2 / 6 + T * (i % 2 ? 1.4 : -1.2), R_ = 13 + 4 * Math.sin(T * 3 + i);
+      const tx = Math.max(6, Math.min(310, L.x + Math.cos(ang) * R_)), ty = Math.max(100, Math.min(142, L.y + Math.sin(ang) * R_ * .35));
+      if (!d.goal || Math.hypot(d.goal.x - tx, d.goal.y - ty) > 3) walkTo(d, tx, ty, { direct: true });
+      d.state = 'stand';
+      d.dy = Math.hypot(d.x - tx, d.y - ty) < 4 ? -Math.abs(Math.sin(T * 9 + i)) * 4 : 0;
+      if (!d.goal) d.flip = L.x < d.x;
+      if (T > (dogsTick.bark || 0) && rng() < .08) { say(d, ['Grrr!', 'Yap!', 'Wuff!', 'Grrrr...', 'Arf!', 'RRAF!'][rng() * 6 | 0], .6); dogsTick.bark = T + .5; }
+    } else if (state.scatter && !d.home_) {
+      d.home_ = true; d.dy = 0;
+      walkTo(d, d.hx, d.hy, { direct: true, speed: 1.3 }).then(() => { d.state = 'lie'; if (d.key.startsWith('cur')) d.visible = false; });
+    } else if (d.state === 'stand' && !d.goal) d.flip = L.x < d.x;
+  });
+  if (state.attack && !state.poker && T - state.attackAt > 14 && !state.hinted && !busy) {
+    state.hinted = true; say(A.lock, "Something to parry with! There, by the fire—the poker!");
+  }
+  if (state.petted && !state.attack && !state.rescued && state.alone && T - state.alone > 25 && !state.nudged && !busy) {
+    state.nudged = true; say(A.lock, "They are staring at me. I wonder whether a dog understands a wink.");
+  }
+}
+
+// =====================================================================================
+//  ROOMS & SETUP
+// =====================================================================================
+let room = null, screen = 'title';
+function setRoom(r) { room = r; r.bake(); }
+function setupOutside() {
+  setRoom(EXT);
+  Object.assign(A.lock, { x: 70, y: 136, flip: false, room: EXT, visible: true });
+  Object.assign(A.horse, { x: 40, y: 139, flip: false, room: EXT, visible: true });
+  Object.assign(A.heath, { x: 129, y: 124, flip: true, room: EXT, visible: true });
+  A.joe.visible = false;
+  A.joeVoice = actor('joeVoice', { id: 0, name: '', col: T_JOE, visible: false, room: INT, x: 197, y: 92, h: 4 });
+  for (const [d, hx, hy, st, fl] of [[A.mother, 52, 97, 'lie', false], [A.sheepA, 256, 114, 'lie', true], [A.sheepB, 176, 104, 'lie', false],
+                                      [A.cur1, 197, 99, 'lie', false], [A.cur2, 113, 100, 'lie', false], [A.cur3, 160, 126, 'lie', false]])
+    Object.assign(d, { hx, hy, x: hx, y: hy, state: st, flip: fl, room: INT, visible: !d.key.startsWith('cur') });
+  PUPS.forEach((p, i) => Object.assign(p, { hx: 38 + i * 9 + (i > 1 ? 14 : 0), hy: 97, x: 38 + i * 9, y: 97, room: INT, visible: true }));
+  Object.assign(A.house, { room: INT, visible: false });
+}
+
+// =====================================================================================
+//  UI & RENDER
+// =====================================================================================
+function verbAt(x, y) {
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++)
+    if (x >= VX[c] - 1 && x <= VX[c] + textW(VERBS[r][c]) + 1 && y >= VY[r] - 2 && y < VY[r] + 9) return VERBS[r][c];
+  return null;
+}
+const choiceAt = (x, y) => choices ? choices.opts.findIndex((_, i) => y >= 148 + i * 11 && y < 148 + i * 11 + 10 && x < 316) : -1;
+const invAt = (x, y) => { if (x < 162 || y < 157) return -1; const c = (x - 162) / 39 | 0, r = (y - 157) / 21 | 0; return r < 2 && c < 4 ? r * 4 + c : -1; };
+function drawUI() {
+  idx.fill(BLACK, SH * W);
+  if (choices) {
+    const hv = choiceAt(mx, my);
+    choices.opts.forEach((o, i) => text(o, 8, 149 + i * 11, i === hv ? VERB_HI : VERB));
+    return;
+  }
+  if (cutscene) return;
+  const hv = my >= SH ? verbAt(mx, my) : null;
+  let obj = my >= 0 && my < SH && mx >= 0 && mx < W ? nameOf(idb[my * W + mx]) : '';
+  const ii = my >= SH ? invAt(mx, my) : -1;
+  if (ii >= 0 && inventory[ii]) obj = inventory[ii];
+  const sentence = verb + (obj && obj !== 'sky' ? ' ' + obj : '');
+  text(sentence, 160 - (textW(sentence) >> 1), 147, SENT);
+  VERBS.forEach((row, r) => row.forEach((v, c) => text(v, VX[c], VY[r], v === hv ? VERB_HI : VERB)));
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {
+    const x0 = 162 + c * 39, y0 = 157 + r * 21;
+    for (let x = x0; x < x0 + 37; x++) { px(x, y0, INV); px(x, y0 + 19, INV); }
+    for (let y = y0; y < y0 + 20; y++) { px(x0, y, INV); px(x0 + 36, y, INV); }
+    if (inventory[r * 4 + c] === 'poker') for (let k = 0; k < 26; k++) { px(x0 + 6 + k, y0 + 14 - k * .35, dith(R.IRON, .55, x0 + 6 + k, y0)); if (k < 3) px(x0 + 6 + k, y0 + 13 - k * .35, dith(R.IRON, .7, x0, y0)); }
+  }
+}
+function drawSpeech() {
+  for (const a of Object.values(A)) {
+    if (!a.say || (a.room !== room)) continue;
+    const s = room.scale(a.y) * a.size, head = Math.round(a.y) - (a.h || Math.round(24 * s)) - 3;
+    const y0 = Math.max(2, head - a.say.lines.length * 9);
+    a.say.lines.forEach((l, i) => {
+      const w = textW(l), x0 = Math.min(W - 2 - w, Math.max(2, Math.round(a.x) - (w >> 1)));
+      text(l, x0, y0 + i * 9, a.col, BLACK);
+    });
+  }
+}
+function drawCursor() {
+  if (mx < 0) return;
+  const cc = [T_TITLE, SENT, VERB, SENT][(T * 12 | 0) % 4];
+  for (let k = 2; k <= 4; k++) { px(mx - k, my, cc); px(mx + k, my, cc); px(mx, my - k, cc); px(mx, my + k, cc); }
+}
+function drawTitle() {
+  idx.set(bg); EXT.dyn(); EXT.post();
+  for (let i = 0; i < W * SH; i++) if (!UISET.has(idx[i])) idx[i] = RAMP_OF[idx[i]] ? RAMP_OF[idx[i]][Math.max(0, POS_OF[idx[i]] - 3)] : idx[i];
+  idx.fill(BLACK, SH * W);
+  const title = 'WUTHERING HEIGHTS';
+  text(title, 160 - (textW(title, 2) >> 1), 18, T_TITLE, BLACK, 2);
+  text('Chapter I', 160 - (textW('Chapter I') >> 1), 40, T_DIM, BLACK);
+  const intro = wrap("\"1801.—I have just returned from a visit to my landlord—the solitary neighbour that I shall be troubled with.\"", 250);
+  intro.forEach((l, i) => text(l, 160 - (textW(l) >> 1), 70 + i * 10, T_LOCK, BLACK));
+  text('after Emily Bronte, 1847', 160 - (textW('after Emily Bronte, 1847') >> 1), 160, T_DIM);
+  if ((T * 2 | 0) % 2) text('click to begin', 160 - (textW('click to begin') >> 1), 176, SENT);
+}
+function drawEnd() {
+  idx.fill(BLACK);
+  const body = wrap("\"I announced my intention of visiting him again to-morrow. He evidently wished no repetition of my intrusion. I shall go, notwithstanding. It is astonishing how sociable I feel myself compared with him.\"", 260);
+  body.forEach((l, i) => text(l, 160 - (textW(l) >> 1), 50 + i * 10, T_LOCK));
+  text('END OF CHAPTER I', 160 - (textW('END OF CHAPTER I', 2) >> 1), 120, T_TITLE, null, 2);
+  if ((T * 2 | 0) % 2) text('click to begin again', 160 - (textW('click to begin again') >> 1), 176, SENT);
+}
+function render() {
+  if (screen === 'title') drawTitle();
+  else if (screen === 'end') drawEnd();
+  else {
+    idx.set(bg); idb.set(bgId);
+    room.dyn();
+    Object.values(A).filter(a => a.visible && a.room === room && a.spr).sort((a, b) => a.y - b.y).forEach(drawActor);
+    room.post?.();
+    drawSpeech(); drawUI();
+  }
+  drawCursor();
+  const warm = room === INT && screen === 'game' ? .045 + (INT.flick || .9) * .03 : 0;
+  const P0 = PAL.map((c, i) => {
+    let o = c;
+    if (warm && !UISET.has(i)) o = o.map((v, j) => v + ([255, 170, 90][j] - v) * warm);
+    if (fadeK && !(screen === 'game' && i === BLACK)) o = o.map(v => v * (1 - fadeK));
+    return o;
+  });
+  const d = img.data;
+  for (let i = 0; i < W * H; i++) { const c = P0[idx[i]]; d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
+  lctx.putImageData(img, 0, 0);
+  present();
+}
+// CRT: horizontal-only bleed, row-aligned scanlines, glow (from night-storm)
+const mid = document.createElement('canvas'); mid.width = out.width; mid.height = H;
+const mctx = mid.getContext('2d');
+const scan = document.createElement('canvas'); scan.width = 1; scan.height = 6;
+{ const s = scan.getContext('2d'); ['#ffffff', '#ffffff', '#f2f2f2', '#d6d6d6', '#8e8e8e', '#c4c4c4'].forEach((c, i) => { s.fillStyle = c; s.fillRect(0, i, 1, 1); }); }
+const scanPat = octx.createPattern(scan, 'repeat');
+let crt = false;
+function present() {
+  octx.globalCompositeOperation = 'source-over'; octx.globalAlpha = 1; octx.filter = 'none';
+  if (!crt) { octx.imageSmoothingEnabled = false; octx.drawImage(lo, 0, 0, out.width, out.height); return; }
+  mctx.imageSmoothingEnabled = true; mctx.drawImage(lo, 0, 0, mid.width, H);
+  octx.imageSmoothingEnabled = false; octx.drawImage(mid, 0, 0, out.width, out.height);
+  octx.globalCompositeOperation = 'multiply'; octx.fillStyle = scanPat; octx.fillRect(0, 0, out.width, out.height);
+  octx.globalCompositeOperation = 'lighter'; octx.globalAlpha = .28; octx.filter = 'blur(7px)';
+  octx.drawImage(lo, 0, 0, out.width, out.height);
+  octx.globalCompositeOperation = 'source-over'; octx.globalAlpha = 1; octx.filter = 'none';
+  const v = octx.createRadialGradient(800, 600, 450, 800, 600, 1050);
+  v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  octx.fillStyle = v; octx.fillRect(0, 0, out.width, out.height);
+}
+
+// ---------- the loop ----------
+const STEP = 1 / 15;
+let paused = false, last = performance.now(), acc = 0;
+function tick() {
+  T += STEP;
+  for (let i = timers.length - 1; i >= 0; i--) if (T >= timers[i].at) { const t_ = timers[i]; timers.splice(i, 1); t_.res(); }
+  if (screen !== 'game') return;
+  for (const a of Object.values(A)) if (a.room === room && a.visible) stepActor(a);
+  for (const a of Object.values(A)) if (a.say && T >= a.say.until) { const s = a.say; a.say = null; s.res(); }
+  room.tick?.();
+  if (room === INT) dogsTick();
+}
+function frame(now) {
+  acc += Math.min(.25, (now - last) / 1000); last = now;
+  if (acc >= STEP) { acc = 0; if (!paused) tick(); render(); }
+  requestAnimationFrame(frame);
+}
+
+// ---------- input ----------
+function aim(e) { const r = out.getBoundingClientRect(); mx = Math.floor((e.clientX - r.left) / r.width * W); my = Math.floor((e.clientY - r.top) / r.height * H); }
+out.addEventListener('mousemove', aim);
+out.addEventListener('mouseleave', () => { mx = my = -1; });
+out.addEventListener('click', e => {
+  aim(e);
+  if (screen === 'title') { screen = 'game'; fadeK = 1; opening(); return; }
+  if (screen === 'end') { location.reload(); return; }
+  if (choices) { const i = choiceAt(mx, my); if (i >= 0) choices.res(i); return; }
+  if (busy) { skipSpeech(); return; }
+  if (my >= SH) {
+    const v = verbAt(mx, my); if (v) { verb = v; return; }
+    const ii = invAt(mx, my);
+    if (ii >= 0 && inventory[ii] === 'poker') { const v_ = verb; verb = 'Walk to'; busy++; say(A.lock, v_ === 'Look at' ? "A stout iron poker. My only friend in this house." : v_ === 'Use' && state.attack ? "I'm using it! Vigorously!" : "I'll hold on to this, I think.").then(() => busy--); }
+    return;
+  }
+  if (my >= 0) { const v = verb; verb = 'Walk to'; interact(v, idb[my * W + mx], mx, my); }
+});
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === '.') skipSpeech();
+  else if (k === ' ') { paused = !paused; e.preventDefault(); }
+  else if (k === 'c') crt = !crt;
+});
+
+setupOutside();
+document.getElementById('hud').textContent += ` · ${NCOL} colours`;
+window.G = { A, state, OBJ, EXT, INT, tick, render, get T() { return T; }, get room() { return room; }, get screen() { return screen; }, set screen(v) { screen = v; },
+             get busy() { return busy; }, get choices() { return choices; }, interact, setRoom, fade, opening, idb, bg, bgId };
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
