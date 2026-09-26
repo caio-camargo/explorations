@@ -46,6 +46,7 @@ Owned by [`explorations/README.md`](explorations/README.md) — add rows there, 
 |------|---------|
 | [`explorations/dots-friend-enemy/`](explorations/dots-friend-enemy/) | Dots that chase one friend and flee one enemy — [`NOTES.md`](explorations/dots-friend-enemy/NOTES.md), [`index.html`](explorations/dots-friend-enemy/index.html) |
 | [`explorations/sky-floor/`](explorations/sky-floor/) | Lo-fi surreal room with a sky for a floor and a bobbing black orb — [`NOTES.md`](explorations/sky-floor/NOTES.md), [`index.html`](explorations/sky-floor/index.html) |
+| [`explorations/dragon-ouroboros/`](explorations/dragon-ouroboros/) | Danya's spinning dragon re-animated in layers (ripple, trailing whiskers, flapping wings) — [`NOTES.md`](explorations/dragon-ouroboros/NOTES.md), [`index.html`](explorations/dragon-ouroboros/index.html), [`build.py`](explorations/dragon-ouroboros/build.py); preview server config in [`.claude/launch.json`](.claude/launch.json) |
 | [`explorations/night-storm/`](explorations/night-storm/) | LucasArts-style VGA pixel art: stormy coast, lighthouse, verb UI — [`NOTES.md`](explorations/night-storm/NOTES.md), [`index.html`](explorations/night-storm/index.html) |
 | [`explorations/wuthering-heights/`](explorations/wuthering-heights/) | *Wuthering Heights* ch. I as a point-and-click scene — [`NOTES.md`](explorations/wuthering-heights/NOTES.md), [`index.html`](explorations/wuthering-heights/index.html) |
 
