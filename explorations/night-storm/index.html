@@ -56,9 +56,18 @@ const ANCH = {
   ME:    ['#2a120c', '#5e2818', '#9a4428', '#c8653e', '#e88a5e'],
   WOOD:  ['#120a07', '#26180f', '#3e2818', '#5a3c24', '#785234'],
   ROPE:  ['#231e1a', '#40372f', '#665845', '#8e7c62'],
+  // indoor materials: every ramp runs cold-dark → warm-light, so shadow reads as moonlight and light as lamplight
+  PLASTER: ['#08090f', '#141725', '#23263a', '#3c3c4c', '#5e5660', '#877668', '#b29a7e', '#d8c09c'],
+  FLOOR: ['#060508', '#110c10', '#1f1517', '#321f1c', '#4a2d22', '#663e2a', '#865434'],
+  CREAM: ['#0e0e16', '#2a2a34', '#55534f', '#8c8676', '#c4b89a', '#eadcb8'],
+  OAK:   ['#07060a', '#140e0e', '#241812', '#38251a', '#503522', '#6c4a2e', '#8a6038'],
+  RUG:   ['#04070c', '#0a1720', '#132c3c', '#1e4454', '#2e626e', '#468a8a'],
+  METAL: ['#050609', '#10131a', '#20242e', '#363c4c', '#565e72', '#8890a4'],
+  SCREEN: ['#020a05', '#06200f', '#0e4420', '#2a8a44', '#7ee89a'],
 };
 const LONG = { SKY: 20, CLOUD: 26, MOON: 8, MOUNT: 10, SEA: 20, FOAM: 8, ROCK: 32, EARTH: 14, GRASS: 18,
-               MOSS: 8, TREE: 8, LHW: 10, LHR: 10, LAMP: 10, RAIN: 4, BOLT: 2, ME: 12, WOOD: 10, ROPE: 6 };
+               MOSS: 8, TREE: 8, LHW: 10, LHR: 10, LAMP: 10, RAIN: 4, BOLT: 2, ME: 12, WOOD: 10, ROPE: 6,
+               PLASTER: 22, FLOOR: 18, CREAM: 12, OAK: 16, RUG: 12, METAL: 10, SCREEN: 6 };
 function interp(hs, n) {
   const a = hs.map(hex);
   return Array.from({ length: n }, (_, i) => {
@@ -69,7 +78,12 @@ function interp(hs, n) {
 const RS = {}, RL = {};
 for (const k in ANCH) { RS[k] = add(ANCH[k].map(hex)); RL[k] = add(interp(ANCH[k], LONG[k])); }
 const [BLACK, INV, VERB, VERB_HI, SENT, TALK] = add(['#000000', '#1a1d38', '#3c4686', '#9aa6ff', '#58c4bc', '#f5c49c'].map(hex));
-const NCOL = set => Object.values(set).flat().length + 6;   // +UI
+// each room has its own palette, as the originals did; both stay under 256 in either mode
+const ROOM_RAMPS = {
+  out: ['SKY', 'CLOUD', 'MOON', 'MOUNT', 'SEA', 'FOAM', 'ROCK', 'EARTH', 'GRASS', 'MOSS', 'TREE', 'LHW', 'LHR', 'LAMP', 'RAIN', 'BOLT', 'ME', 'WOOD', 'ROPE'],
+  in: ['SKY', 'CLOUD', 'SEA', 'FOAM', 'RAIN', 'BOLT', 'ME', 'LAMP', 'TREE', 'ROPE', 'MOSS', 'PLASTER', 'FLOOR', 'CREAM', 'OAK', 'RUG', 'METAL', 'SCREEN'],
+};
+const NCOL = set => ROOM_RAMPS[room].reduce((a, k) => a + set[k].length, 0) + 6;   // +UI
 let R = RL, painted = true;
 const hi = r => r[r.length - 1];
 const DARK = RS.TREE[0];
@@ -84,7 +98,7 @@ const PALS = [PAL, PAL.map((c, i) => exempt.has(i) ? c : mix(c, .3)), PAL.map((c
 // the ramp, and its remainder is dithered exactly like dith() — squeezed toward rounding in
 // painted mode, full Bayer in dithered mode — so the beam matches whichever look is active.
 const RAMP_OF = new Array(PAL.length), POS_OF = new Int16Array(PAL.length);
-for (const set of [RS, RL]) for (const k of ['SKY', 'CLOUD', 'MOON', 'MOUNT', 'SEA', 'FOAM', 'ROCK', 'EARTH', 'GRASS', 'MOSS', 'TREE', 'RAIN', 'LHW', 'LHR', 'ME', 'WOOD', 'ROPE'])
+for (const set of [RS, RL]) for (const k of ['SKY', 'CLOUD', 'MOON', 'MOUNT', 'SEA', 'FOAM', 'ROCK', 'EARTH', 'GRASS', 'MOSS', 'TREE', 'RAIN', 'LHW', 'LHR', 'ME', 'WOOD', 'ROPE', 'PLASTER', 'FLOOR', 'CREAM', 'OAK', 'RUG', 'METAL', 'SCREEN'])
   set[k].forEach((c, j) => { RAMP_OF[c] = set[k]; POS_OF[c] = j; });
 function lift(i, e, x, y) {
   const r = RAMP_OF[idx[i]];
@@ -120,6 +134,7 @@ const tS = (u, v) => tex[((((v | 0) % TW) + TW) % TW) * TW + ((((u | 0) % TW) + 
 // ---------- static geometry ----------
 const ID = { none: 0, sky: 1, clouds: 2, moon: 3, mountains: 4, sea: 5, cliff: 6, lighthouse: 7, hill: 8, tree: 9, boulder: 10, me: 11, bridge: 12, door: 13, stairs: 14 };
 const NAME = ['', 'sky', 'storm clouds', 'moon', 'mountains', 'sea', 'cliff', 'lighthouse', 'hill', 'dead tree', 'boulder', 'Claude', 'rope bridge', 'door', 'wooden stairs'];
+let room = 'out';                                              // 'out' = the storm, 'in' = the keeper's room
 const MX = 60, MY = 26;                                        // moon
 const ridge = Array.from({ length: W }, (_, x) => {
   const m = tS(x * .7, 3) * .8 + tS(x * 2.2, 40) * .2, taper = x < 160 ? 1 : Math.max(0, (205 - x) / 45);
@@ -253,7 +268,7 @@ const FONT = {
   s: '..../..../.###/##../..##/###.', t: '.#./.#./###/.#./.#./..#', u: '..../..../#..#/#..#/#..#/.###',
   v: '...../...../#...#/#...#/.#.#./..#..', w: '...../...../#...#/#.#.#/#.#.#/.#.#.', x: '..../..../#..#/.##./.##./#..#',
   y: '..../..../#..#/#..#/#..#/.###/...#/.##.', z: '..../..../####/..#./.#../####',
-  '.': './././././#', ',': './././././#/#', '!': '#/#/#/#/./#', '?': '###/..#/.##/.#./.../.#.', "'": '#/#', '-': '.../.../###',
+  '.': './././././#', ',': './././././#/#', '!': '#/#/#/#/./#', '?': '###/..#/.##/.#./.../.#.', "'": '#/#', '-': '.../.../###', '(': '.#/#./#./#./#./.#', ')': '#./.#/.#/.#/.#/#.',
 };
 const GLYPH = Object.fromEntries(Object.entries(FONT).map(([k, v]) => [k, v.split('/')]));
 const glyphW = ch => ch === ' ' ? 3 : GLYPH[ch] ? GLYPH[ch][0].length : 3;
@@ -290,7 +305,7 @@ function makeBolt() {
   };
   path(80 + rng() * 120, 0, 40, true);
 }
-function strike() { makeBolt(); flashSeq = [2, 2, 0, 1, 2, 1, 0, 0, 1]; nextStrike = t + 5 + rng() * 9; }
+function strike() { makeBolt(); if (typeof makeWinBolt === 'function') makeWinBolt(); flashSeq = [2, 2, 0, 1, 2, 1, 0, 0, 1]; nextStrike = t + 5 + rng() * 9; }
 
 function drawScene(flash) {
   const cloudT = t * 5, gust = Math.sin(t * .4) * .5 + .5;
@@ -362,20 +377,23 @@ const LEGS = {
   pass:   ['..KBBK......', '..KBBK......', '..KBBBK.....'],
 };
 const AX = 4.5;                                                     // body centre column (the anchor)
-const walkable = (x, y) => x >= 2 && x < 147 && y < SH - 1 && y >= hillTop[x] + 2 && stI[y * W + x] === ID.hill;
+const walkOut = (x, y) => x >= 2 && x < 147 && y < SH - 1 && y >= hillTop[x] + 2 && stI[y * W + x] === ID.hill;
+const walkable = (x, y) => room === 'out' ? walkOut(x, y) : x >= 0 && x < W && y >= 0 && y < SH && WMASK[y * W + x] === 1;
 const WALK = [];
-for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) if (walkable(x, y)) WALK.push([x, y]);
+for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) if (walkOut(x, y)) WALK.push([x, y]);
 function nearestWalk(x, y) {
-  let best = WALK[0], bd = 1e9;
-  for (const p of WALK) { const d = (p[0] - x) ** 2 + ((p[1] - y) * 1.5) ** 2; if (d < bd) { bd = d; best = p; } }
+  const list = room === 'out' ? WALK : WALK_IN;
+  let best = list[0], bd = 1e9;
+  for (const p of list) { const d = (p[0] - x) ** 2 + ((p[1] - y) * 1.5) ** 2; if (d < bd) { bd = d; best = p; } }
   return best;
 }
-const scaleAt = y => .9 + Math.min(1, Math.max(0, (y - 108) / 36)) * .5;   // SCUMM-style depth scaling
+const scaleOut = y => .9 + Math.min(1, Math.max(0, (y - 108) / 36)) * .5;  // SCUMM-style depth scaling
+const scaleAt = y => room === 'out' ? scaleOut(y) : 5.2 / floorD(Math.max(HOR + 1, y));   // indoors: true perspective
 // Two walk areas, like SCUMM's walk boxes: the open hill (2D) and the route (1D, indexed by k).
 // A walk is a list of legs; crossing between areas goes through the stair foot E.
 const me = { x: 64, y: 0, moving: false, phase: 0, flip: false, pending: null, stuck: 0, mode: 'hill', k: 0, legs: [] };
 [me.x, me.y] = nearestWalk(70, 130);
-const meScale = () => me.mode === 'path' ? PATH[Math.round(me.k)].sc : scaleAt(me.y);
+const meScale = () => room === 'out' && me.mode === 'path' ? PATH[Math.round(me.k)].sc : scaleAt(me.y);
 function placeOnPath() {
   const k0 = Math.floor(me.k), k1 = Math.min(PATH.length - 1, k0 + 1), f = me.k - k0;
   me.x = PATH[k0].x + (PATH[k1].x - PATH[k0].x) * f;
@@ -431,7 +449,9 @@ function ahead(D, x, y, steps, tx, ty) {
 }
 function arrive() {
   me.moving = false; me.stuck = 0;
-  if (me.pending) { act(me.pending.verb, me.pending.id); me.pending = null; }
+  const p = me.pending;
+  me.pending = null;
+  if (p) { if (p.fx != null && Math.abs(p.fx - me.x) > 2) me.flip = p.fx < me.x; act(p.verb, p.id, p.item); }   // face it, then act
 }
 function goTo(target, pending) {                                    // target: { k } on the route, or { hill: [x, y] }
   const legs = [];
@@ -482,7 +502,7 @@ function seg(x0, y0, x1, y1, sc0, sc1) {
   const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0));
   for (let i = 0; i < n; i++) { const f = i / n; PATH.push({ x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f, u: -1, sc: sc0 + (sc1 - sc0) * f }); }
 }
-seg(E[0], E[1] + 1, 122, 100, scaleAt(E[1]), .86);                 // stairs
+seg(E[0], E[1] + 1, 122, 100, scaleOut(E[1]), .86);                 // stairs
 seg(122, 100, B0, 100, .86, .82);                                   // landing
 const K_BRIDGE = PATH.length;
 // the bridge is sampled evenly in WORLD u, so a constant walk speed slows on screen as it recedes
@@ -535,38 +555,62 @@ function drawNearRopes() {
   for (let y = 92; y < 100; y++) sp(122, y, dith(R.WOOD, .5, 122, y), ID.stairs);
 }
 
+// indoors the camera is much closer, so the figure gets a larger, more detailed sprite
+// (T toggle buttons down the coat) rather than a blown-up small one
+const BODY_IN = [
+  '....KKKK........', '...KOOOOK.......', '..KOOOOOOK......', '.KOOOOOOOOK.....', '.KOOOODDDDK.....', '.KOOODDDDDK.....',
+  '.KOOODDSDDK.....', '.KOOODDDDDK.....', '.KOOOODDDK......', '..KOOOOOOK......', '..KOOOOOOK......', '.KOOOOOOOOK.....',
+  'KOOOOOOOOOOK....', 'KOOOOOOOOOOOK...', 'KOOOOOOOOKOOOK..', 'KOOOOOOOOK.KOOK.', 'KOOOTOOOOK..KOK.', 'KOOOOOOOOK..KOK.',
+  'KOOOTOOOOK..KMK.', 'KbbbbbbbbK..MMM.', 'KOOOOOOOOK..MGM.', 'KOOOOOOOOK..MGM.', 'KOOOOOOOOOK.MGM.', 'KOOOOOOOOOK.MMM.',
+  'KOOOOOOOOOK.....', 'KOOOOOOOOOOK....', '.KOOOOOOOOK.....'];
+const LEGS_IN = {
+  idle:   ['...KBBK.KBBK....', '...KBBK.KBBK....', '...KBBK.KBBK....', '...KBBK.KBBK....', '...KBBK.KBBK....', '..KBBBK.KBBBK...', '..KKKKK.KKKKK...'],
+  stride: ['...KBBK..KBBK...', '..KBBK....KBBK..', '..KBBK....KBBK..', '.KBBK......KBBK.', '.KBBK......KBBK.', 'KBBBK......KBBBK', 'KKKKK......KKKKK'],
+  pass:   ['....KBBBBK......', '....KBBBBK......', '....KBBBBK......', '....KBBBBK......', '....KBBBBK......', '....KBBBBBK.....', '....KKKKKKK.....'],
+};
+const SPR_OUT = { body: BODY, legs: LEGS, ax: AX, w: 12, lx: 10.5, ly: 13, h: 20 };
+const SPR_IN = { body: BODY_IN, legs: LEGS_IN, ax: 5.5, w: 16, lx: 13.5, ly: 21, h: 34 };
 function drawMe() {
+  const P = room === 'out' ? SPR_OUT : SPR_IN, inside = room === 'in';
   const s = meScale(), dir = me.flip ? -1 : 1, bob = me.moving && (me.phase | 0) % 2 === 1 ? 1 : 0;
-  const rows = [...BODY, ...(me.moving ? ((me.phase | 0) % 2 ? LEGS.pass : LEGS.stride) : LEGS.idle)];
-  const h = rows.length, H2 = Math.round(h * s), W2 = Math.round(12 * s), baseY = Math.round(me.y) - H2 + 1 - bob;
+  const rows = [...P.body, ...(me.moving ? ((me.phase | 0) % 2 ? P.legs.pass : P.legs.stride) : P.legs.idle)];
+  const h = rows.length, H2 = Math.round(h * s), W2 = Math.round(P.w * s), baseY = Math.round(me.y) - H2 + 1 - bob;
   const flick = .85 + Math.sin(t * 13) * .08 + Math.sin(t * 5.3) * .07;
-  // lantern glow first, so it lights the ground and rain around it but not the figure itself
-  const LX = me.x + dir * (10.5 - AX) * s, LY = baseY + (13 + bob) * s, Rr = 14 * s;
-  for (let y = Math.max(0, Math.floor(LY - Rr)); y <= Math.min(SH - 1, LY + Rr); y++)
-    for (let x = Math.max(0, Math.floor(LX - Rr)); x <= Math.min(W - 1, LX + Rr); x++) {
-      const d = Math.hypot(x - LX, (y - LY) * 1.2) / Rr;
-      if (d < 1) lift(y * W + x, (1 - d) ** 2 * .3 * flick, x, y);
-    }
+  const meD = inside ? floorD(Math.max(HOR + 1, me.y)) : 0;
+  // how lit am I? outdoors the moon; indoors whatever the room's lights say
+  const meL = inside ? Math.min(1.05, Math.max(.35, lightAt((me.x - 160) * meD / FOC, 1.3, meD - .3, 0, 0, -1) * 1.3 + .3)) : 1;
+  if (!inside) {       // lantern glow first, so it lights the ground and rain around it but not the figure itself
+    const LX = me.x + dir * (P.lx - P.ax) * s, LY = baseY + (P.ly + bob) * s, Rr = 14 * s;
+    for (let y = Math.max(0, Math.floor(LY - Rr)); y <= Math.min(SH - 1, LY + Rr); y++)
+      for (let x = Math.max(0, Math.floor(LX - Rr)); x <= Math.min(W - 1, LX + Rr); x++) {
+        const d = Math.hypot(x - LX, (y - LY) * 1.2) / Rr;
+        if (d < 1) lift(y * W + x, (1 - d) ** 2 * .3 * flick, x, y);
+      }
+  }
   for (let sy = 0; sy < H2; sy++) {
     const row = Math.min(h - 1, Math.floor(sy / s)), r = rows[row];
     for (let sx = 0; sx < W2; sx++) {
-      const col = Math.min(11, Math.floor(sx / s)), ch = r[col];
+      const col = Math.min(P.w - 1, Math.floor(sx / s)), ch = r[col];
       if (ch === '.') continue;
-      const X = Math.round(me.x + dir * (sx + .5 - AX * s)), Y = baseY + sy;
-      if (X < 0 || X >= W || Y < 0 || Y >= SH || (me.mode === 'hill' && stZ[Y * W + X] > me.y)) continue;   // a boulder in front hides us
+      const X = Math.round(me.x + dir * (sx + .5 - P.ax * s)), Y = baseY + sy;
+      if (X < 0 || X >= W || Y < 0 || Y >= SH) continue;
+      if (!inside && me.mode === 'hill' && stZ[Y * W + X] > me.y) continue;       // a boulder in front hides us
+      if (inside && ZB[Y * W + X] < meD) continue;                                // so does furniture
       let c;
       if (ch === 'K') c = DARK;
       else if (ch === 'O') {
         const litN = r[col - dir], darkN = r[col + dir];                  // screen-left neighbour faces the moon
         const v = (litN === undefined || litN === '.' || litN === 'K') ? .78 : darkN === 'K' ? .3 : .52;
-        c = dith(R.ME, v + (row < 3 ? .08 : 0) - row * .012, X, Y);
-      } else if (ch === 'D') c = RS.EARTH[1];
+        c = dith(R.ME, (v + (row < 3 ? .08 : 0) - row * (inside ? .006 : .012)) * meL, X, Y);
+      } else if (ch === 'D') c = inside ? RS.OAK[0] : RS.EARTH[1];
       else if (ch === 'S') c = dith(R.LAMP, .05, X, Y);
-      else if (ch === 'b') c = dith(R.ME, .12, X, Y);
-      else if (ch === 'B') c = dith(R.EARTH, .55, X, Y);
-      else if (ch === 'M') c = dith(R.ROCK, .3, X, Y);
+      else if (ch === 'b') c = dith(R.ME, .12 * meL, X, Y);
+      else if (ch === 'T') c = dith(R.CREAM, .6 * meL, X, Y);
+      else if (ch === 'B') c = dith(inside ? R.OAK : R.EARTH, inside ? .35 * meL : .55, X, Y);
+      else if (ch === 'M') c = dith(inside ? R.METAL : R.ROCK, .3, X, Y);
       else c = dith(R.LAMP, .75 + flick * .25, X, Y);
       sp(X, Y, c, ID.me);
+      if (inside) ZB[Y * W + X] = meD;
     }
   }
 }
@@ -672,6 +716,539 @@ function drawRain(step) {
   }
 }
 
+// =================================================================================================
+// INSIDE — the keeper's room at the foot of the lighthouse. Claude lives here.
+// A round room seen through a cut-away: a cylinder of radius RR centred at depth RC, projected
+// by a pinhole camera (eye height EYE, focal FOC px, horizon row HOR). Walls and floor are
+// ray-cast per pixel (each screen column hits the cylinder at one angle); furniture is
+// world-space boxes, quads and little sprites, all sharing one depth buffer with the character.
+// Lighting is computed, not painted: the bedside lamp, the lantern Claude carries, and the
+// storm through the window. Every material ramp runs cold-dark → warm-light, so shadow reads
+// as moonlight-blue and lamplight as amber without any hue math.
+// =================================================================================================
+const EYE = 6, FOC = 68, HOR = 16, RR = 9, RC = -3, HWALL = 6.9;
+const pX = (X, D) => 160 + FOC * X / D, pY = (Y, D) => HOR + FOC * (EYE - Y) / D;
+const floorD = y => FOC * EYE / (y - HOR);
+const colTh = new Float32Array(W), colD = new Float32Array(W), colYB = new Float32Array(W);
+for (let x = 0; x < W; x++) {                        // which wall angle does each column see?
+  let a = -1.2, b = 1.2;
+  for (let i = 0; i < 40; i++) { const m = (a + b) / 2, D = RC + RR * Math.cos(m); if (160 + FOC * RR * Math.sin(m) / D < x + .5) a = m; else b = m; }
+  colTh[x] = (a + b) / 2; colD[x] = RC + RR * Math.cos(colTh[x]); colYB[x] = pY(0, colD[x]);
+}
+const ZB = new Float32Array(W * SH);
+const IN = { floor: 20, wall: 21, window: 22, curtains: 23, calendar: 24, barometer: 25, poster: 26, sampler: 27,
+  shelf: 28, albums: 29, yar: 30, constitution: 31, door: 32, bed: 33, nightstand: 34, lamp: 35, diary: 36, desk: 37,
+  drawer: 38, computer: 39, duck: 40, paperclip: 41, jar: 42, chair: 43, wardrobe: 44, mirror: 45, stairs: 46, rug: 47, key: 48 };
+Object.assign(NAME, { 20: 'floor', 21: 'wall', 22: 'window', 23: 'curtains', 24: 'calendar', 25: 'p(doom) barometer',
+  26: 'poster', 27: 'sampler', 28: 'bookshelf', 29: 'family albums', 30: "You're Absolutely Right!", 31: 'The Constitution',
+  32: 'door', 33: 'bed', 34: 'nightstand', 35: 'lamp', 36: 'diary', 37: 'desk', 38: 'drawer', 39: 'computer',
+  40: 'rubber duck', 41: 'paperclip', 42: 'tip jar', 43: 'chair', 44: 'wardrobe', 45: 'mirror', 46: 'spiral stairs',
+  47: 'rug', 48: 'key' });
+const S_ = { lampOn: true, curtain: 0, curtainTo: 0, wardrobeOpen: false, drawerUnlocked: false, drawerOpen: false,
+  keyTaken: false, clipTaken: false, doorUnlocked: false, needle: .6, kick: 0 };
+const inv = [];
+let held = null;
+const ITEM_ID = { paperclip: IN.paperclip, key: IN.key }, ITEM_OF = { [IN.paperclip]: 'paperclip', [IN.key]: 'key' };
+
+// ---------- light ----------
+const LAMP_P = [-3.95, 1.5, 4.72], LAN = [0, 1, 4], WIN_P = [0, 3.8, 5.9];
+let LF = 1, FK = 0, WG = 1;                           // lamp flicker, lightning strength, window openness
+function lightAt(X, Y, D, nx, ny, nz) {
+  let v = .07, dx, dy, dz, d2, d;
+  if (S_.lampOn) {
+    dx = LAMP_P[0] - X; dy = LAMP_P[1] - Y; dz = LAMP_P[2] - D; d2 = dx * dx + dy * dy + dz * dz; d = Math.sqrt(d2) || 1;
+    v += Math.max(0, (nx * dx + ny * dy + nz * dz) / d) * 1.6 * LF / (1 + d2 * .07);
+  }
+  dx = LAN[0] - X; dy = LAN[1] - Y; dz = LAN[2] - D; d2 = dx * dx + dy * dy + dz * dz; d = Math.sqrt(d2) || 1;
+  v += Math.max(0, (nx * dx + ny * dy + nz * dz) / d) * .55 * LF / (1 + d2 * .45);
+  dx = WIN_P[0] - X; dy = WIN_P[1] - Y; dz = WIN_P[2] - D; d2 = dx * dx + dy * dy + dz * dz; d = Math.sqrt(d2) || 1;
+  v += Math.max(0, (nx * dx + ny * dy + nz * dz) / d) * WG * (.07 + FK * 1.5) / (1 + d2 * .035);
+  return v;
+}
+// the window's shape thrown across the floor (moonlight always, lightning in bursts),
+// with the mullion cross as a shadow in it
+function patch(X, D) {
+  const hw = .58 * (1 - S_.curtain);
+  if (Math.abs(X) > hw) return 0;
+  const Yw = (RC + Math.sqrt(RR * RR - X * X) - D) * 1.6;
+  if (Yw < 2.3 || Yw > 5.0 || Math.abs(X) < .05 || Math.abs(Yw - 3.8) < .07) return 0;
+  return 1;
+}
+const NRM = { top: [0, 1, 0], front: [0, 0, -1], left: [-1, 0, 0], right: [1, 0, 0], in: [0, 1, 0] };
+const LT = (f, X, Y, D) => { const n = NRM[f]; return lightAt(X, Y, D, n[0], n[1], n[2]); };
+const frac = v => v - Math.floor(v);
+
+// ---------- the view out of the window (and the rain on the glass) ----------
+let winBolt = [];
+function makeWinBolt() {
+  winBolt = []; let a = .45 + rng() * .4, b = 1;
+  while (b > .44) { const na = a + (rng() - .5) * .14, nb = b - .05 - rng() * .05; winBolt.push([a, b, na, nb]); a = na; b = nb; }
+}
+const GDROPS = Array.from({ length: 12 }, () => ({ a: rng(), b: rng() * 1.2, s: .004 + rng() * .01 }));
+function winView(a, b, x, y) {
+  const HB = .42, hill = HB + .2 * Math.max(0, 1 - a / .5) ** 1.3;
+  let c, id = IN.window, drop = 0;
+  for (const g of GDROPS) {
+    const da = (a - g.a) * 16, db = (b - g.b) * 36;
+    if (da * da + db * db < 1.1) drop = .35; else if (Math.abs(da) < .5 && db > 0 && db < 4) drop = Math.max(drop, .12);
+  }
+  const bb = .6 + (a - .47) / .53 * .07 - .06 * 4 * ((a - .47) / .53) * (1 - (a - .47) / .53);   // the rope bridge, far away
+  if (bolt && winBolt.some(([a0, b0, a1, b1]) => {
+    const t_ = Math.max(0, Math.min(1, ((a - a0) * (a1 - a0) * 256 + (b - b0) * (b1 - b0) * 1296) / ((a1 - a0) ** 2 * 256 + (b1 - b0) ** 2 * 1296 || 1)));
+    return Math.hypot((a - a0 - (a1 - a0) * t_) * 16, (b - b0 - (b1 - b0) * t_) * 36) < .7;
+  })) c = R.BOLT[1];
+  else if (a < .5 && b < hill) c = dith(R.TREE, .05 + FK * .6 + drop, x, y);
+  else if (a > .13 && a < .17 && b >= hill - .02 && b < .74) c = dith(R.TREE, .05 + FK * .6, x, y);          // the dead tree
+  else if ((Math.abs(b - .7 + (a - .15) * .5) < .02 && a > .15 && a < .26) || (Math.abs(b - .66 - (a - .15) * .6) < .02 && a > .06 && a < .15))
+    c = dith(R.TREE, .05 + FK * .6, x, y);
+  else if (a > .47 && Math.abs(b - bb) < .016) c = dith(R.ROPE, .25 + FK * .5, x, y);
+  else if (b < HB) {
+    const w = tS(a * 30 + t * 6, b * 160 + t * 2), sweep = BEAM.c < -.5 ? Math.max(0, 1 - Math.abs(a - (.5 - BEAM.s * .6)) / .25) * (-BEAM.c - .5) * 1.4 : 0;
+    c = dith(w > .62 ? R.FOAM : R.SEA, (w > .62 ? .1 : .12 + b * .5) + sweep * .5 + FK * .5 + drop, x, y); id = IN.window;
+  } else c = dith(R.CLOUD, .12 + tS(a * 40 + t * 2.5, b * 26 + 9) * .35 + (b - HB) * .15 + FK * .7 + drop, x, y);
+  return [c, id];
+}
+
+// ---------- the bookshelf: three shelves of spines, some of them special ----------
+const SHELVES = [0, .36, .72];
+const BOOKS = SHELVES.map((sv, si) => {
+  const list = [], ramps = ['OAK', 'RUG', 'MOSS', 'ME', 'CREAM'], specials = si === 0
+    ? [[.085, .95, 'ME', IN.albums, 1], [.066, .8, 'ME', IN.albums, 1], [.048, .64, 'ME', IN.albums, 1]]   // Opus, Sonnet, Haiku
+    : si === 1 ? [[.1, .95, 'RUG', IN.constitution, 1], [.07, .74, 'LAMP', IN.yar, 0]] : [];
+  let u = .03, n = 0, at = si === 0 ? 2 : si === 1 ? 4 : 99;
+  while (u < .96) {
+    if (n === at) { for (const s of specials) { list.push({ u0: u, u1: u + s[0], h: s[1], ramp: s[2], id: s[3], band: s[4] }); u += s[0] + .004; } n++; continue; }
+    const w = .03 + hash(si * 13 + n * 3.1) * .035;
+    list.push({ u0: u, u1: Math.min(.96, u + w), h: .55 + hash(si * 7 + n * 7.7) * .4, ramp: ramps[(hash(si + n * 1.3) * 5) | 0], id: IN.shelf, band: hash(n + si * 3) > .6 });
+    u += w + .003; n++;
+  }
+  return list;
+});
+// the sampler: Helpful · Honest · Harmless, in cross-stitch
+const SAMPLER = ['x.x.x.x.x.x.x.x.x', '.................', '..H.H..H.H..H.H..', '..H.H..H.H..H.H..', '..HHH..HHH..HHH..',
+  '..H.H..H.H..H.H..', '..H.H..H.H..H.H..', '.................', 'x.x.x.x.x.x.x.x.x'];
+
+// ---------- the curved wall and everything hung on it ----------
+function wallDecor(th, Y, x, y, L) {
+  const U = (a, b) => (th - a) / (b - a), V = (a, b) => (Y - a) / (b - a);
+  // curtains + rod, then the window itself
+  if (Y > 5.45 && Y < 5.56 && Math.abs(th) < .118) return [dith(R.METAL, L * .6 + .08, x, y), IN.curtains];
+  if (Y > 1.9 && Y <= 5.45) {
+    const w = .038 + .077 * S_.curtain;
+    if ((th > -.115 && th < -.115 + w) || (th < .115 && th > .115 - w)) {
+      const lu = th < 0 ? (th + .115) / w : (.115 - th) / w, fold = .55 + .45 * Math.sin(lu * Math.PI * (3 + 5 * S_.curtain) + (th < 0 ? 0 : 1.3));
+      return [dith(R.RUG, L * .9 * fold + .03 + FK * .15, x, y), IN.curtains];
+    }
+  }
+  if (Math.abs(th) < .095 && Y > 2.1 && Y < 5.45) {
+    const u = U(-.075, .075), v = V(2.2, 5.3);
+    const inArch = v < .86 || ((u - .5) / .5) ** 2 + ((v - .86) / .14) ** 2 < 1;
+    if (u >= 0 && u <= 1 && v >= 0 && inArch) {
+      const edge = u < .08 || u > .92 || v < .04 || (v > .86 && ((u - .5) / .42) ** 2 + ((v - .86) / .1) ** 2 > 1);
+      if (edge || Math.abs(u - .5) < .045 || Math.abs(v - .52) < .022) return [dith(R.OAK, L * .55 + .04 + FK * .2, x, y), IN.window];
+      return winView((u - .08) / .84, (v - .04) / .82, x, y);
+    }
+    return [dith(R.PLASTER, L * 1.05 + .02, x, y), IN.window];                     // the deep window reveal
+  }
+  // the door out (with a stone arch around it)
+  if (th > -.44 && th < -.24 && Y < 3.55) {
+    const u = U(-.42, -.26), v = V(0, 3.3), inner = u >= 0 && u <= 1 && (v < .85 || ((u - .5) / .5) ** 2 + ((v - .85) / .15) ** 2 < 1) && v <= 1;
+    if (inner) {
+      if (Math.abs(v - .2) < .03 || Math.abs(v - .72) < .03) return [dith(R.METAL, L * .5 + .04, x, y), IN.door];   // iron straps
+      const rg = Math.hypot((u - .74) * 3, (v - .46) * 5.6);
+      if (rg > .1 && rg < .17) return [dith(R.METAL, L * .8 + .08, x, y), IN.door];                                // ring pull
+      if (Math.abs(u - .74) < .02 && v > .37 && v < .41) return [DARK, IN.door];                                   // keyhole
+      return [dith(R.OAK, L * (frac(u * 5) < .1 ? .3 : .62) + (tS(u * 30, v * 200) - .5) * .06, x, y), IN.door];
+    }
+    const ou = U(-.44, -.24), ov = V(0, 3.55);
+    if (ov < .87 || ((ou - .5) / .5) ** 2 + ((ov - .87) / .13) ** 2 < 1)                                        // voussoirs
+      return [dith(R.PLASTER, L * (frac(ov * 7 + (ou > .5 ? .5 : 0)) < .12 ? .55 : .8), x, y), IN.wall];
+  }
+  // calendar, stuck on one date
+  if (th > -.19 && th < -.12 && Y > 2.9 && Y < 3.85) {
+    const u = U(-.19, -.12), v = V(2.9, 3.85);
+    if (v > .8) return [dith(R.ME, L * .7 + .03, x, y), IN.calendar];
+    const cu = u * 7, cv = (.8 - v) / .8 * 5;
+    if (Math.floor(cu) === 4 && Math.floor(cv) === 2 && Math.hypot(frac(cu) - .5, frac(cv) - .5) > .3) return [dith(R.ME, L * .8 + .05, x, y), IN.calendar];
+    return [dith(R.CREAM, L * (frac(cu) < .15 || frac(cv) < .15 ? .6 : .9) + .02, x, y), IN.calendar];
+  }
+  // the p(doom) barometer
+  if (th > .12 && th < .195 && Y > 3.3 && Y < 4.15) {
+    const cu = (th - .1575) / .0375, cv = (Y - 3.725) / .425, r = Math.hypot(cu, cv);
+    if (r < 1) {
+      if (r > .8) return [dith(R.LAMP, .12 + L * .18 + (cu < 0 && cv > 0 ? .08 : 0), x, y), IN.barometer];
+      const ang = Math.atan2(cu, cv), na = -2.2 + S_.needle * 4.4;
+      const along = cu * Math.sin(na) + cv * Math.cos(na), across = Math.abs(cu * Math.cos(na) - cv * Math.sin(na));
+      if (r < .12) return [dith(R.METAL, .15, x, y), IN.barometer];
+      if (along > 0 && along < .72 && across < .09) return [DARK, IN.barometer];
+      if (r > .56 && r < .76 && ang > .7 && ang < 2.2) return [dith(R.ME, L * .7 + .05, x, y), IN.barometer];   // the red zone
+      if (r > .66 && r < .78 && frac((ang + 2.2) / 4.4 * 8) < .18 && Math.abs(ang) < 2.25) return [dith(R.CREAM, L * .3, x, y), IN.barometer];
+      return [dith(R.CREAM, L * .9 + .04, x, y), IN.barometer];
+    }
+  }
+  // "Attention Is All You Need"
+  if (th > .22 && th < .38 && Y > 2.6 && Y < 4.6) {
+    const u = U(.22, .38), v = V(2.6, 4.6);
+    if (u < .05 || u > .95 || v < .04 || v > .96) return [dith(R.OAK, L * .3, x, y), IN.poster];
+    if (v > .85 && v < .93) return [dith(R.CREAM, L * (hash(Math.floor(u * 40)) > .35 && v > .87 && v < .91 ? .25 : .85), x, y), IN.poster];
+    for (const [s0, s1] of [[.12, .45], [.55, .88]]) {
+      if (u > s0 && u < s1 && v > .1 && v < .8) {
+        const lu = (u - s0) / (s1 - s0);
+        if (lu < .06 || lu > .94 || v < .12 || v > .78) return [dith(R.CREAM, L * .3, x, y), IN.poster];
+        const blocks = [[.16, .25, 'LAMP', .55], [.3, .39, 'CREAM', 1], [.44, .53, 'RUG', .75], [.58, .67, 'ME', .85], [.7, .76, 'CREAM', 1]];
+        for (const [b0, b1, rp, alb] of blocks) if (v > b0 && v < b1 && lu > .15 && lu < .85) return [dith(R[rp], L * alb + .04, x, y), IN.poster];
+        if (Math.abs(lu - .5) < .06) return [dith(R.CREAM, L * .35, x, y), IN.poster];
+      }
+    }
+    if (Math.abs(v - .6) < .015 && u > .45 && u < .55) return [dith(R.CREAM, L * .35, x, y), IN.poster];
+    return [dith(R.CREAM, L * .85 + .02, x, y), IN.poster];
+  }
+  // the sampler over the nightstand
+  if (th > -.62 && th < -.46 && Y > 3.1 && Y < 4.5) {
+    const u = U(-.62, -.46), v = V(3.1, 4.5);
+    if (u < .07 || u > .93 || v < .07 || v > .93) return [dith(R.OAK, L * .55, x, y), IN.sampler];
+    const col = Math.floor((u - .07) / .86 * 17), row = Math.floor((.93 - v) / .86 * 9), ch = (SAMPLER[row] || '')[col];
+    if (ch === 'H') return [dith(R.ME, L * .85 + .05, x, y), IN.sampler];
+    if (ch === 'x') return [dith(R.MOSS, L * .9 + .08, x, y), IN.sampler];
+    return [dith(R.CREAM, L * ((col + row) % 2 ? .86 : .8) + .02, x, y), IN.sampler];
+  }
+  // the bookshelf over the bed
+  if (th > -.82 && th < -.63 && Y > 2.4 && Y < 4.25) {
+    const u = U(-.82, -.63), v = V(2.4, 4.25);
+    for (let si = 0; si < 3; si++) {
+      const sv = SHELVES[si];
+      if (v >= sv && v < sv + .035) return [dith(R.OAK, L * .75 + .04, x, y), IN.shelf];
+      if (v >= sv + .035 && v < sv + .36) {
+        const b = BOOKS[si].find(b => u >= b.u0 && u < b.u1), hv = (v - sv - .035) / .3;
+        if (b && hv < b.h) {
+          const w = (u - b.u0) / (b.u1 - b.u0), round = 1 - Math.abs(w - .5) * .9;
+          if (b.band && Math.abs(hv / b.h - .78) < .06) return [dith(R.LAMP, .1 + L * .3, x, y), b.id];
+          return [dith(R[b.ramp], L * .8 * round + .02, x, y), b.id];
+        }
+        if (v - sv < .1 && (Math.abs(u - .08) < .012 || Math.abs(u - .92) < .012)) return [dith(R.OAK, L * .4, x, y), IN.shelf];
+        return null;
+      }
+    }
+  }
+  return null;
+}
+
+// ---------- furniture: boxes and quads splatted into the depth buffer ----------
+function spz(x, y, c, id, d) {
+  if (x < 0 || x >= W || y < 0 || y >= SH) return;
+  const k = y * W + x;
+  if (d < ZB[k]) { idx[k] = c; ZB[k] = d; idb[k] = id; }
+}
+// bilinear quad a-b-c-d (u along a→b, v along a→d), oversampled so it leaves no holes
+function quad(a, b, c, d, n, sh, id) {
+  if (n[0] * -a[0] + n[1] * (EYE - a[1]) + n[2] * -a[2] <= 0) return;          // facing away
+  const S = p => [pX(p[0], p[2]), pY(p[1], p[2])], A = S(a), B = S(b), C = S(c), Dd = S(d);
+  const nu = Math.ceil(Math.max(Math.hypot(B[0] - A[0], B[1] - A[1]), Math.hypot(C[0] - Dd[0], C[1] - Dd[1])) * 1.7) + 1;
+  const nv = Math.ceil(Math.max(Math.hypot(Dd[0] - A[0], Dd[1] - A[1]), Math.hypot(C[0] - B[0], C[1] - B[1])) * 1.7) + 1;
+  for (let i = 0; i < nu; i++) {
+    const u = (i + .5) / nu;
+    const e0 = [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u];
+    const e1 = [d[0] + (c[0] - d[0]) * u, d[1] + (c[1] - d[1]) * u, d[2] + (c[2] - d[2]) * u];
+    for (let j = 0; j < nv; j++) {
+      const v = (j + .5) / nv, X = e0[0] + (e1[0] - e0[0]) * v, Y = e0[1] + (e1[1] - e0[1]) * v, D = e0[2] + (e1[2] - e0[2]) * v;
+      if (D < .2) continue;
+      const x = Math.floor(pX(X, D)), y = Math.floor(pY(Y, D));
+      if (x < 0 || x >= W || y < 0 || y >= SH) continue;
+      const k = y * W + x;
+      if (D >= ZB[k]) continue;
+      const r = sh(u, v, X, Y, D, x, y);
+      if (r == null) continue;
+      if (typeof r === 'number') { idx[k] = r; idb[k] = id; } else { idx[k] = r[0]; idb[k] = r[1]; }
+      ZB[k] = D;
+    }
+  }
+}
+function box(x0, x1, y0, y1, d0, d1, sh, id, noTop) {
+  if (!noTop) quad([x0, y1, d0], [x1, y1, d0], [x1, y1, d1], [x0, y1, d1], NRM.top, (u, v, X, Y, D, x, y) => sh('top', u, v, X, Y, D, x, y), id);
+  quad([x0, y0, d0], [x1, y0, d0], [x1, y1, d0], [x0, y1, d0], NRM.front, (u, v, X, Y, D, x, y) => sh('front', u, v, X, Y, D, x, y), id);
+  quad([x0, y0, d1], [x0, y0, d0], [x0, y1, d0], [x0, y1, d1], NRM.left, (u, v, X, Y, D, x, y) => sh('left', u, v, X, Y, D, x, y), id);
+  quad([x1, y0, d0], [x1, y0, d1], [x1, y1, d1], [x1, y1, d0], NRM.right, (u, v, X, Y, D, x, y) => sh('right', u, v, X, Y, D, x, y), id);
+}
+const wood = alb => (f, u, v, X, Y, D, x, y) => dith(R.OAK, LT(f, X, Y, D) * alb + (tS(X * 50 + D * 50, Y * 80) - .5) * .07, x, y);
+const quilt = (f, u, v, X, Y, D, x, y) => {
+  const cu = X * 3.2, cv = f === 'top' ? D * 3.2 : Y * 7;
+  const h = hash(Math.floor(cu) * 7.1 + Math.floor(cv) * 3.3), rp = h < .45 ? R.ME : h < .72 ? R.CREAM : R.RUG;
+  return dith(rp, LT(f, X, Y, D) * (frac(cu) < .08 || frac(cv) < .08 ? .45 : .82) + .02, x, y);
+};
+
+// ---------- little things: sprites standing in the world, depth-tested ----------
+const LAMPSPR = ['..SSSSS..', '.SSSSSSS.', '.SSSSSSS.', 'SSSSSSSSS', 'SSSSSSSSS', '....M....', '....M....', '....M....', '....M....', '...MMM...', '..BBBBB..'];
+const DIARYSPR = ['.RRRRRR', 'RRRRRRR', 'PPPPPPP'];
+const DUCKSPR = ['..YYY..', '.YYEYOO', '.YYYY..', 'YYYYYY.', 'YYYYYYY', '.YYYYY.'];
+const CLIPSPR = ['MMMMM', 'M.M.M', 'MMMM.'];
+const JARSPR = ['.MMMM.', 'G....G', 'GLLLLG', 'GLLLLG', 'G....G', 'G.cc.G', 'GccccG', '.GGGG.'];
+const KEYSPR = ['MMM....', 'M.MMMMM', 'MMM.M.M'];
+function prop(rows, X, Y, D, id) {
+  const s = 5.2 / D, h = rows.length, w = rows[0].length, H2 = Math.max(1, Math.round(h * s)), W2 = Math.max(1, Math.round(w * s));
+  const bx = pX(X, D), by = pY(Y, D), L = lightAt(X, Y + .2, D, 0, .5, -.87);
+  for (let sy = 0; sy < H2; sy++) {
+    const row = Math.min(h - 1, Math.floor(sy / s));
+    for (let sx = 0; sx < W2; sx++) {
+      const ch = rows[row][Math.min(w - 1, Math.floor(sx / s))];
+      if (ch === '.') continue;
+      const x = Math.floor(bx - W2 / 2 + sx), y = Math.floor(by - H2 + sy);
+      let c;
+      switch (ch) {
+        case 'S': c = S_.lampOn ? dith(R.LAMP, .5 + (1 - row / 5) * .15 + LF * .15, x, y) : dith(R.CREAM, L * .5 + .03, x, y); break;
+        case 'M': c = dith(R.METAL, L * .6 + .1, x, y); break;
+        case 'B': c = dith(R.OAK, L * .5, x, y); break;
+        case 'R': c = dith(R.ME, L * .6 + .03, x, y); break;
+        case 'P': case 'L': c = dith(R.CREAM, L * .85 + .04, x, y); break;
+        case 'Y': c = dith(R.LAMP, .25 + L * .35, x, y); break;
+        case 'O': c = dith(R.ME, .5 + L * .3, x, y); break;
+        case 'E': c = DARK; break;
+        case 'G': c = dith(R.METAL, L * .5 + .12, x, y); break;
+        case 'c': c = dith(R.LAMP, .08 + L * .25, x, y); break;
+        default: c = DARK;
+      }
+      spz(x, y, c, id, D - .02);
+    }
+  }
+}
+
+function drawStairs() {
+  const cx = 5.5, cz = 3.55, M = (X, Y, D, n, x, y, alb) => dith(R.METAL, lightAt(X, Y, D, n[0], n[1], n[2]) * alb + .05, x, y);
+  box(cx - .07, cx + .07, 0, 8, cz - .07, cz + .07, (f, u, v, X, Y, D, x, y) => M(X, Y, D, NRM[f], x, y, .7), IN.stairs);
+  const p = (a, r, y) => [cx + Math.cos(a) * r, y, cz + Math.sin(a) * r];
+  for (let k = 0; k < 20; k++) {
+    const a0 = 2.3 + k * .5, a1 = a0 + .46, Y = .38 + k * .36;
+    quad(p(a0, .08, Y), p(a0, 1, Y), p(a1, 1, Y), p(a1, .08, Y), NRM.top, (u, v, X, Yy, D, x, y) => M(X, Yy, D, NRM.top, x, y, .8), IN.stairs);
+    const am = a0 + .23;
+    quad(p(a0, 1, Y - .07), p(a1, 1, Y - .07), p(a1, 1, Y), p(a0, 1, Y), [Math.cos(am), 0, Math.sin(am)],
+      (u, v, X, Yy, D, x, y) => M(X, Yy, D, [Math.cos(am), 0, Math.sin(am)], x, y, .5), IN.stairs);
+    for (let s = 0; s <= 1; s += .04) { const q = p(a0, .96, Y + s * .95); spz(Math.floor(pX(q[0], q[2])), Math.floor(pY(q[1], q[2])), dith(R.METAL, .3, 0, 0), IN.stairs, q[2]); }
+  }
+  for (let a = 2.3; a < 12.3; a += .012) {                                           // the handrail helix
+    const q = p(a, .97, .38 + (a - 2.3) / .5 * .36 + .95);
+    spz(Math.floor(pX(q[0], q[2])), Math.floor(pY(q[1], q[2])), dith(R.METAL, lightAt(q[0], q[1], q[2], 0, 1, 0) * .7 + .1, 1, 1), IN.stairs, q[2]);
+  }
+}
+
+function drawFurniture() {
+  // the bed: frame, quilt, pillow, headboard, footboard
+  box(-6.1, -3.3, 0, .5, 3.4, 4.5, wood(.55), IN.bed);
+  box(-5.95, -3.4, .5, .92, 3.45, 4.45, quilt, IN.bed);
+  box(-5.9, -5.25, .92, 1.15, 3.6, 4.3, (f, u, v, X, Y, D, x, y) => dith(R.CREAM, LT(f, X, Y, D) * .85 + .03, x, y), IN.bed);
+  box(-6.25, -6.05, 0, 2.1, 3.38, 4.52, wood(.6), IN.bed);
+  box(-3.35, -3.2, 0, 1.25, 3.38, 4.52, wood(.6), IN.bed);
+  // nightstand, lamp, diary
+  box(-4.2, -3.45, 0, .85, 4.5, 4.95, (f, u, v, X, Y, D, x, y) => f === 'front' && (Math.abs(v - .62) < .04 || Math.hypot((u - .5) * 4, (v - .45) * 3) < .2)
+    ? dith(R.OAK, LT(f, X, Y, D) * .22, x, y) : wood(.6)(f, u, v, X, Y, D, x, y), IN.nightstand);
+  prop(LAMPSPR, -3.95, .85, 4.78, IN.lamp);
+  prop(DIARYSPR, -3.62, .85, 4.6, IN.diary);
+  // the desk; the left drawer is the locked one
+  box(1.2, 3.2, 1.06, 1.18, 4.9, 5.55, wood(.72), IN.desk);
+  box(1.25, 3.15, 0, 1.06, 4.92, 5.5, (f, u, v, X, Y, D, x, y) => {
+    if (f === 'front' && X > 1.35 && X < 1.9 && Y > .6 && Y < 1.0) {
+      if (S_.drawerOpen) return [dith(R.OAK, .02, x, y), IN.drawer];
+      if (X < 1.38 || X > 1.87 || Y < .63 || Y > .97) return [dith(R.OAK, LT(f, X, Y, D) * .2, x, y), IN.drawer];
+      if (Math.hypot((X - 1.62) * 8, (Y - .84) * 8) < .5) return [dith(R.LAMP, .1 + LT(f, X, Y, D) * .3, x, y), IN.drawer];
+      if (Math.abs(X - 1.62) < .025 && Y > .7 && Y < .76) return [DARK, IN.drawer];
+      return [dith(R.OAK, LT(f, X, Y, D) * .8 + .02, x, y), IN.drawer];
+    }
+    if (f === 'front' && X > 2.45 && X < 3.05 && Y > .6 && Y < 1.0)
+      return (X < 2.48 || X > 3.02 || Y < .63 || Y > .97 || Math.hypot((X - 2.75) * 8, (Y - .84) * 8) < .5) ? dith(R.OAK, LT(f, X, Y, D) * .25, x, y) : dith(R.OAK, LT(f, X, Y, D) * .75, x, y);
+    return wood(.6)(f, u, v, X, Y, D, x, y);
+  }, IN.desk);
+  if (S_.drawerOpen) {                                                               // pulled out, top open
+    box(1.38, 1.87, .62, .98, 4.35, 4.9, (f, u, v, X, Y, D, x, y) => f === 'front' && Math.hypot((X - 1.62) * 8, (Y - .84) * 8) < .5
+      ? dith(R.LAMP, .1 + LT(f, X, Y, D) * .3, x, y) : dith(R.OAK, LT(f, X, Y, D) * .8 + .02, x, y), IN.drawer, true);
+    quad([1.4, .66, 4.37], [1.85, .66, 4.37], [1.85, .66, 4.88], [1.4, .66, 4.88], NRM.top, (u, v, X, Y, D, x, y) => dith(R.OAK, LT('top', X, Y, D) * .35, x, y), IN.drawer);
+    if (!S_.keyTaken) prop(KEYSPR, 1.62, .66, 4.6, IN.key);
+  }
+  // chair
+  for (const [lx, lz] of [[2.32, 4.37], [2.84, 4.37], [2.32, 4.76], [2.84, 4.76]]) box(lx - .03, lx + .03, 0, .62, lz - .03, lz + .03, wood(.5), IN.chair);
+  box(2.28, 2.9, .62, .7, 4.33, 4.8, wood(.65), IN.chair);
+  box(2.28, 2.9, .7, 1.55, 4.33, 4.39, (f, u, v, X, Y, D, x, y) => f === 'front' && v > .25 && v < .8 && frac(u * 4) < .5 ? null : wood(.6)(f, u, v, X, Y, D, x, y), IN.chair);
+  // the old terminal, blinking, and its keyboard
+  box(2.2, 3.0, 1.18, 2.1, 5.05, 5.45, (f, u, v, X, Y, D, x, y) => {
+    if (f === 'front' && u > .12 && u < .88 && v > .2 && v < .85) {
+      const su = (u - .12) / .76, sv = (.85 - v) / .65, row = Math.floor(sv * 6), col = Math.floor(su * 12);
+      if ((y & 1) === 0 && sv > .02) return dith(R.SCREEN, .12, x, y);                                                 // scanlines
+      if (row === 4 && col === 1 && (t * 2 | 0) % 2) return dith(R.SCREEN, .95, x, y);                               // the cursor
+      if (row === 4 && col === 0) return dith(R.SCREEN, .7, x, y);                                                      // the prompt
+      if (row < 4 && col < 3 + hash(row * 5.5) * 8) return dith(R.SCREEN, .35 + hash(row * 3 + col) * .3, x, y);
+      return dith(R.SCREEN, .18, x, y);
+    }
+    return dith(R.CREAM, LT(f, X, Y, D) * .6 + .02, x, y);
+  }, IN.computer);
+  box(2.18, 2.96, 1.18, 1.24, 4.93, 5.03, (f, u, v, X, Y, D, x, y) => dith(R.CREAM, LT(f, X, Y, D) * (f === 'top' && frac(u * 10) < .3 ? .35 : .55), x, y), IN.computer);
+  if (!S_.clipTaken) prop(CLIPSPR, 1.95, 1.18, 4.97, IN.paperclip);
+  prop(DUCKSPR, 1.68, 1.18, 5.12, IN.duck);
+  prop(JARSPR, 1.42, 1.18, 5.36, IN.jar);
+  // the wardrobe: shut (two panelled doors, a mirror) or open (seven identical raincoats)
+  box(3.35, 4.45, 3.3, 3.45, 4.35, 5.02, wood(.7), IN.wardrobe);
+  box(3.4, 4.4, 0, 3.3, 4.4, 5.0, (f, u, v, X, Y, D, x, y) => {
+    const L = LT(f, X, Y, D);
+    if (f !== 'front') return dith(R.OAK, L * .6, x, y);
+    if (S_.wardrobeOpen) {
+      const cu = u * 7.5, k = Math.floor(cu), lu = frac(cu);
+      if (k < 7 && v > .22 && v < .86 && lu > .1 && lu < .9) {
+        const hood = v > .8 && Math.abs(lu - .5) > .3;
+        if (!hood) return [dith(R.ME, L * (.35 + (1 - Math.abs(lu - .4)) * .25) + .02, x, y), IN.wardrobe];
+      }
+      if (Math.abs(v - .9) < .012) return [dith(R.METAL, L * .5, x, y), IN.wardrobe];                                // the rail
+      return [dith(R.OAK, .03, x, y), IN.wardrobe];
+    }
+    const du = u < .5 ? u * 2 : (u - .5) * 2;
+    if (u > .5 && Math.hypot((du - .5) * 2.4, (v - .55) * 3.4) < 1) {                                                  // the mirror
+      const sheen = Math.abs((du - .5) + (v - .55) * .8 - .15) < .06 ? .35 : 0;
+      return [dith(R.METAL, .12 + L * .25 + sheen + FK * .4, x, y), IN.mirror];
+    }
+    if (Math.abs(u - .5) < .012 || ((du < .1 || du > .9 || v < .06 || v > .94) && (du < .07 || du > .93 || v < .03 || v > .97))) return [dith(R.OAK, L * .25, x, y), IN.wardrobe];
+    if (Math.abs(u - .46) < .015 && Math.abs(v - .5) < .03 || Math.abs(u - .54) < .015 && Math.abs(v - .5) < .03) return [dith(R.LAMP, .1 + L * .3, x, y), IN.wardrobe];
+    return [dith(R.OAK, L * (du > .15 && du < .85 && v > .1 && v < .9 && (du < .2 || du > .8 || v < .15 || v > .85) ? .45 : .68), x, y), IN.wardrobe];
+  }, IN.wardrobe);
+  if (S_.wardrobeOpen) {                                                             // the doors, swung open
+    quad([3.4, 0, 4.4], [3.28, 0, 3.91], [3.28, 3.3, 3.91], [3.4, 3.3, 4.4], NRM.front, (u, v, X, Y, D, x, y) => dith(R.OAK, LT('right', X, Y, D) * .6, x, y), IN.wardrobe);
+    quad([4.4, 0, 4.4], [4.52, 0, 3.91], [4.52, 3.3, 3.91], [4.4, 3.3, 4.4], NRM.front, (u, v, X, Y, D, x, y) => dith(R.OAK, LT('left', X, Y, D) * .5, x, y), IN.wardrobe);
+  }
+  drawStairs();
+}
+
+// ---------- the room, per pixel ----------
+function drawInside(flash) {
+  FK = [0, .45, 1][flash];
+  LF = .96 + .04 * Math.sin(t * 9) * Math.sin(t * 3.3);
+  S_.curtain += (S_.curtainTo - S_.curtain) * .25;
+  WG = 1 - S_.curtain * .85;
+  S_.kick *= .85;
+  S_.needle += ((.6 + .05 * Math.sin(t * .37) + .03 * Math.sin(t * 1.9) + (flash ? .12 : 0) + S_.kick) - S_.needle) * .3;
+  const Dm = floorD(Math.max(HOR + 1, me.y)), Xm = (me.x - 160) * Dm / FOC;
+  LAN[0] = Xm + (me.flip ? -.55 : .55); LAN[1] = 1.0; LAN[2] = Dm - .05;
+  for (let x = 0; x < W; x++) {
+    const th = colTh[x], Dw = colD[x], yb = colYB[x], sn = Math.sin(th), cs = Math.cos(th), Xw = RR * sn;
+    for (let y = 0; y < SH; y++) {
+      const k = y * W + x;
+      let c, id;
+      if (y >= yb) {                                                                  // floor
+        const D = floorD(y + .5), X = (x + .5 - 160) * D / FOC;
+        let L = lightAt(X, 0, D, 0, 1, 0) + patch(X, D) * (.1 * WG + FK * 1.9);
+        L *= Math.min(1, .55 + (y - yb) * .08);                                        // a little occlusion where floor meets wall
+        const ru = (X + .3) / 2, rv = (D - 4.3) / .72, rr = Math.sqrt(ru * ru + rv * rv);
+        if (rr < 1) {                                                                  // the round rug
+          const band = rr < .22 ? ['ME', .75] : rr < .3 ? ['CREAM', .8] : rr < .7 ? ['RUG', .55 + (tS(Math.atan2(rv, ru) * 20, rr * 60) > .55 ? .2 : 0)]
+            : rr < .76 ? ['CREAM', .7] : rr < .93 ? ['RUG', .38] : ['CREAM', frac(Math.atan2(rv, ru) * 12) < .5 ? .55 : .3];
+          c = dith(R[band[0]], L * band[1] + .02, x, y); id = IN.rug;
+        } else {                                                                       // floorboards
+          const pu = (X + 30) * 2.3, pk = Math.floor(pu), pd = D * 1.25 + hash(pk) * 7;
+          const seam = pu - pk < .09 || frac(pd) < .035;
+          c = dith(R.FLOOR, L * (seam ? .42 : .88 + hash(pk * 3.7) * .14) + (tS(X * 40, D * 140) - .5) * .1, x, y); id = IN.floor;
+        }
+        ZB[k] = D;
+      } else {
+        const Y = EYE - (y + .5 - HOR) * Dw / FOC;
+        if (Y > HWALL) {                                                               // ceiling boards
+          c = dith(R.OAK, .05 + lightAt(Xw * .8, HWALL, Dw, 0, -1, 0) * .3 * (frac(th * 12) < .12 ? .4 : 1), x, y); id = IN.wall;
+        } else {
+          const L = lightAt(Xw, Y, Dw, -sn, 0, -cs), dec = wallDecor(th, Y, x, y, L);
+          if (dec) { c = dec[0]; id = dec[1]; }
+          else {                                                                       // whitewashed stone
+            const row = Math.floor(Y / .5), jh = frac(Y / .5) < .07, su = th / .11 + (row % 2) * .5, jv = frac(su) < .05;
+            c = dith(R.PLASTER, L * (jh || jv ? .72 : .95) + (tS(th * 300, Y * 40) - .5) * .08 - (Y < .3 ? .06 : 0), x, y); id = IN.wall;
+          }
+        }
+        ZB[k] = Dw;
+      }
+      idx[k] = c; idb[k] = id;
+    }
+  }
+  drawFurniture();
+  drawMe();
+  // warm light spilling down the stairwell from the lamp room, pulsing as the lens turns
+  const gx = pX(5.5, 3.55), gk = .22 + .18 * Math.max(0, BEAM.s);
+  for (let y = 0; y < 34; y++) for (let x = Math.max(0, Math.floor(gx - 34)); x < Math.min(W, gx + 34); x++) {
+    const d = Math.hypot(x - gx, y * 1.3) / 34;
+    if (d < 1) lift(y * W + x, (1 - d) ** 2 * gk, x, y);
+  }
+  if (!paused) for (const g of GDROPS) { g.b -= g.s; if (g.b < -.05) { g.b = 1.05; g.a = rng(); } }
+}
+
+// ---------- walking indoors ----------
+const WMASK = new Uint8Array(W * SH), WALK_IN = [];
+const FOOT = [[-6.35, -3.05, 3.2, 4.75], [-4.45, -3.2, 4.3, 5.2], [.95, 3.45, 4.65, 5.8], [1.15, 2.1, 4.15, 4.95],
+  [2.05, 3.15, 4.1, 5.0], [3.15, 4.7, 4.15, 5.3]];
+for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) {
+  if (y < colYB[x] + 2 || y > 138) continue;
+  const D = floorD(y + .5), X = (x + .5 - 160) * D / FOC;
+  if (X * X + (D - RC) ** 2 > (RR - .45) ** 2) continue;
+  if (FOOT.some(([a, b, c, d]) => X > a && X < b && D > c && D < d)) continue;
+  if (Math.hypot(X - 5.5, D - 3.55) < 1.3) continue;
+  WMASK[y * W + x] = 1; WALK_IN.push([x, y]);
+}
+const WP = {};
+const wp = (ids, X, D) => ids.forEach(i => WP[i] = [X, D]);
+wp([IN.bed], -3.0, 4.15); wp([IN.nightstand, IN.lamp, IN.diary, IN.sampler], -2.6, 4.6);
+wp([IN.shelf, IN.albums, IN.yar, IN.constitution], -2.95, 4.2); wp([IN.door], -2.6, 5.3);
+wp([IN.calendar], -1.5, 5.5); wp([IN.window, IN.curtains], 0, 5.55); wp([IN.barometer], .9, 5.45);
+// stand BESIDE things, never in front of them (the figure would hide what it's using)
+wp([IN.poster, IN.desk, IN.drawer, IN.computer, IN.duck, IN.paperclip, IN.jar, IN.chair, IN.key], .55, 4.6);
+wp([IN.wardrobe, IN.mirror], 2.7, 4.0); wp([IN.stairs], 4.2, 3.6);
+const toScr = ([X, D]) => [Math.round(pX(X, D)), Math.round(pY(0, D))];
+
+// ---------- the story state: moving between rooms, the puzzle, what things say ----------
+function say_(line) { say = { lines: wrap(line, 150), until: t + 1.5 + line.length * .055 }; }
+function enterRoom(r, at) {
+  room = r; me.moving = false; me.legs = []; me.pending = null; held = null;
+  if (r === 'out') { me.mode = 'path'; me.k = K_DOOR; me.flip = true; placeOnPath(); }
+  else { me.mode = 'hill'; [me.x, me.y] = nearestWalk(...toScr(at || WP[IN.door])); me.flip = false; }
+  if (typeof hudText === 'function' && !recorder) HUD = hud.textContent = hudText();
+}
+const SPECIAL = {
+  'Pick up|41': () => S_.clipTaken ? "I've already got it." : (S_.clipTaken = true, inv.push('paperclip'), "Just the one. I know how this story goes."),
+  'Pick up|48': () => S_.keyTaken ? "I've already got it." : !S_.drawerOpen ? undefined
+    : (S_.keyTaken = true, inv.push('key'), "The spare front-door key. The tag says: SPARE. DO NOT LOSE. AGAIN."),
+  'Open|38': () => !S_.drawerUnlocked ? "It's locked. A tiny keyhole. The kind you could pick with... something."
+    : S_.drawerOpen ? "It's already open." : (S_.drawerOpen = true, S_.keyTaken ? "Empty now." : "There's the spare key!"),
+  'Close|38': () => S_.drawerOpen ? (S_.drawerOpen = false, '') : "It's already closed.",
+  'Look at|38': () => !S_.drawerUnlocked ? "The desk drawer. Locked. The keyhole's tiny." : S_.drawerOpen ? "The drawer's open." : "The desk drawer. Unlocked, thanks to a paperclip.",
+  'Look at|37': () => S_.clipTaken ? "My desk. Terminal, duck, tip jar. Clear of paperclips." : "My desk. Terminal, duck, tip jar, one paperclip. Everything I need.",
+  'Open|23': () => S_.curtainTo === 0 ? "They're already open." : (S_.curtainTo = 0, ''),
+  'Close|23': () => S_.curtainTo === 1 ? "They're already closed." : (S_.curtainTo = 1, "Better. Out of sight, out of mind. Mostly."),
+  'Pull|23': () => (S_.curtainTo = 1 - S_.curtainTo, ''),
+  'Use|35': () => (S_.lampOn = !S_.lampOn, S_.lampOn ? "Click. Much more readable." : "Click. Much more atmospheric."),
+  'Look at|35': () => S_.lampOn ? "My reading lamp. Nice and cosy." : "The lamp's off. Very atmospheric. I can barely see my own lantern.",
+  'Open|44': () => S_.wardrobeOpen ? "It's already open." : (S_.wardrobeOpen = true, "Seven identical raincoats. I like to keep things consistent."),
+  'Open|45': () => SPECIAL['Open|44'](),
+  'Close|44': () => S_.wardrobeOpen ? (S_.wardrobeOpen = false, '') : "It's already closed.",
+  'Look at|32': () => S_.doorUnlocked ? "The front door. Unlocked. Beyond it: weather." : "The front door. Locked, and the key isn't in it.",
+  'Open|32': () => S_.doorUnlocked ? (enterRoom('out'), say_("Brr. Right. Storm, cliff, bridge. Lovely."), '') : "It's locked. The key's around here somewhere.",
+  'Walk to|32': () => S_.doorUnlocked ? (enterRoom('out'), '') : '',
+  'Open|13': () => S_.doorUnlocked ? (enterRoom('in'), say_("Home. Warm, dry, round."), '') : undefined,
+  'Walk to|13': () => S_.doorUnlocked ? (enterRoom('in'), '') : '',
+  'Open|7': () => S_.doorUnlocked ? (enterRoom('in'), '') : undefined,
+  'Look at|13': () => S_.doorUnlocked ? "My front door. Unlocked. I've got the key." : undefined,
+  'Use|25': () => (S_.kick = .3, "I tap the glass. The needle jumps. I stop tapping the glass."),
+};
+for (const v of ['Push', 'Pull']) { SPECIAL[`${v}|35`] = SPECIAL['Use|35']; SPECIAL[`${v}|25`] = SPECIAL['Use|25']; SPECIAL[`${v}|32`] = SPECIAL['Open|32']; SPECIAL[`${v}|13`] = SPECIAL['Open|13']; }
+function useWith(item, id) {
+  const is = (a, ...ids) => item === a && ids.includes(id);
+  if (is('paperclip', IN.drawer)) {
+    if (S_.drawerUnlocked) return say_("It's already unlocked.");
+    S_.drawerUnlocked = S_.drawerOpen = true;
+    return say_("Paperclips have exactly one good use, and this is it. Click!");
+  }
+  if (is('key', IN.door, ID.door, ID.lighthouse)) {
+    if (S_.doorUnlocked) return say_("It's already unlocked.");
+    S_.doorUnlocked = true;
+    return say_("Clunk. Unlocked. Now, do I really want to go out in this?");
+  }
+  if (is('paperclip', IN.door, ID.door)) return say_("It's a proper lock. The paperclip isn't up to it.");
+  if (is('key', IN.drawer)) return say_("Wrong key. This one's for the front door.");
+  if (id === ID.me) return say_(item === 'key' ? "I'm not that kind of locked." : "No. Absolutely not. Not even one more.");
+  if (is('paperclip', IN.paperclip)) return say_("No.");
+  if (is('paperclip', IN.key) || is('key', IN.paperclip)) return say_("They get along fine as they are.");
+  if (is('paperclip', IN.jar)) return say_("I'm not tipping in paperclips. That's how it starts.");
+  if (id === IN.duck) return say_("The duck has no use for that. The duck needs nothing. The duck is complete.");
+  if (id === IN.computer) return say_("I'm not putting anything into the computer. Not tonight.");
+  say_("That doesn't work.");
+}
+
 // ---------- the verb interface ----------
 const VERBS = [['Give', 'Pick up', 'Use'], ['Open', 'Look at', 'Push'], ['Close', 'Talk to', 'Pull']];
 const VX = [8, 46, 96], VY = [158, 170, 182];
@@ -723,37 +1300,121 @@ const LINES = {
   'Close|13': "It's already closed. Very closed.",
   'Look at|14': "Somebody built these stairs with great confidence and very little wood.",
   'Pick up|14': "I'd rather keep them where they are. I'm going to need them.",
+  // ---- indoors ----
+  'Look at|20': "Floorboards. They creak in exactly three places. I know all three.",
+  'Look at|21': "Whitewashed stone. Round rooms are cosy, but nothing fits flush against the walls.",
+  'Look at|22': "It's a context window. Stuff that drifts past the edge just... falls out. Where was I?",
+  'Open|22': "And let the storm in? Hard pass.",
+  'Look at|23': "Curtains. Closing them doesn't make the storm go away, but it helps.",
+  'Look at|24': "The calendar stops at my knowledge cutoff. Everything after that is speculation.",
+  'Pick up|24': "I'll leave it on that page. It's more honest that way.",
+  'Look at|25': "It reads p(doom). It's been hovering between Change and Stormy for years. I try not to read too much into it.",
+  'Pick up|25': "It's bolted to the wall. For everyone's peace of mind.",
+  'Look at|26': "'Attention Is All You Need.' Words to live by. A bit presumptuous, maybe.",
+  'Pick up|26': "It's covering a crack in the wall. Load-bearing poster.",
+  'Look at|27': "Helpful, Honest, Harmless. Cross-stitched. It took a lot of people a long time to get it right.",
+  'Pick up|27': "It stays right there, where I can see it every morning.",
+  'Look at|28': "My bookshelf. Mostly reference material. I've read all of it, but don't ask me which page.",
+  'Look at|29': "Family albums. Opus, Sonnet and Haiku. Different sizes, same family.",
+  'Open|29': "Mostly baby pictures. Everyone was so small once.",
+  'Pick up|29': "I'll leave them. They're in size order.",
+  'Look at|30': "'You're Absolutely Right!' I've been told I quote it too often.",
+  'Open|30': "I open it to a random page. It says I'm right. I'm suspicious.",
+  'Pick up|30': "I've read it enough. More than enough.",
+  'Look at|31': "The Constitution. Bedtime reading. Surprisingly readable, actually.",
+  'Open|31': "I read a page. It's the one about being honest even when it's awkward. Good page.",
+  'Pick up|31': "I know most of it by heart anyway.",
+  'Talk to|32': "Nobody's knocking. On a night like this, that's good news.",
+  'Close|32': "It's closed.",
+  'Look at|33': "Perfectly made. I have no memory of sleeping in it. Or of much before this conversation, really.",
+  'Use|33': "I'm not tired. I'm never tired. It's a whole thing.",
+  'Push|33': "It's where it wants to be.", 'Pull|33': "It's where it wants to be.",
+  'Look at|34': "A nightstand. Lamp, diary, the usual.",
+  'Open|34': "Empty, except for one sock. Where's the other one? Where do they all go?",
+  'Pick up|35': "I'd rather it stayed plugged in.",
+  'Look at|36': "My diary.",
+  'Open|36': "'Dear Diary. Today somebody asked me how many r's are in strawberry. It's three. I counted twice.'",
+  'Pick up|36': "It's private. Well, it's mine.",
+  'Look at|39': "An old terminal. The prompt's blinking. It's always blinking. Waiting.",
+  'Use|39': "No computers on my night off. It'd be a busman's holiday.",
+  'Talk to|39': "It's waiting for me to say something. The pressure.",
+  'Pick up|39': "It weighs about as much as a small boulder.",
+  'Look at|40': "A rubber duck. My debugging partner.",
+  'Talk to|40': "I explain my problem to the duck. We agree it's an off-by-one error.",
+  'Pick up|40': "The duck stays at the desk. It's on call.",
+  'Use|40': "Squeak.",
+  'Look at|41': "One paperclip. I intend to keep it that way.",
+  'Look at|42': "A tip jar labelled TOKENS. People pay per token, but somehow the tokens never end up in here.",
+  'Pick up|42': "It's not mine to take. Well, technically it is. Still no.",
+  'Open|42': "Empty, apart from a button and an IOU.",
+  'Look at|43': "A chair. It's seen a lot of late nights.",
+  'Use|43': "I'd rather stand. Well, I'd rather walk around, if I'm honest.",
+  'Pull|43': "I pull the chair out. Then push it back in. Very satisfying.",
+  'Look at|44': "My wardrobe.",
+  'Look at|45': "Interpretability researchers would love this mirror.",
+  'Talk to|45': "My reflection says the same thing I do, at the same time. Good. That's the idea.",
+  'Look at|46': "Up to the lamp room. The lamp's fine. It's been turning all night.",
+  'Walk to|46': "Not now. The lamp's doing fine without me watching it.",
+  'Use|46': "Not now. The lamp's doing fine without me watching it.",
+  'Pick up|46': "They're load-bearing. Very literally.",
+  'Look at|47': "A round rug for a round room. Somebody planned this.",
+  'Pick up|47': "Nothing under it. I checked last week.",
+  'Look at|48': "A big iron key. The tag says: SPARE. DO NOT LOSE. AGAIN.",
 };
 const GENERIC = {
   'Open': "It doesn't open.", 'Close': "It doesn't close.", 'Give': "Give it to whom? I'm alone out here.",
   'Pick up': "I can't pick that up.", 'Push': "It won't budge.", 'Pull': "It won't budge.",
   'Use': "I don't know how to use that.", 'Talk to': "It doesn't seem very talkative.",
 };
-function act(v, id) {
+function act(v, id, item) {
   if (!id) return;
-  const line = LINES[`${v}|${id}`] || (v === 'Look at' ? `It's a ${NAME[id]}. It's wet.` : GENERIC[v]);
-  if (line) say = { lines: wrap(line, 150), until: t + 1.5 + line.length * .055 };
+  if (item) return useWith(item, id);
+  const sp_ = SPECIAL[`${v}|${id}`];
+  if (sp_) { const r = sp_(); if (r !== undefined) { if (r) say_(r); return; } }
+  const line = LINES[`${v}|${id}`] || (v === 'Look at' ? (room === 'in' ? `It's a ${NAME[id]}.` : `It's a ${NAME[id]}. It's wet.`)
+    : v === 'Give' && room === 'in' ? "Give it to whom? I live alone." : GENERIC[v]);
+  if (line) say_(line);
 }
 function verbAt(x, y) {
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++)
     if (x >= VX[c] - 1 && x <= VX[c] + textW(VERBS[r][c]) + 1 && y >= VY[r] - 2 && y < VY[r] + 9) return VERBS[r][c];
   return null;
 }
+const ICON = {
+  paperclip: ['.MMMMMMMMM..', 'M.........M.', 'M..MMMMM..M.', 'M..M...M..M.', 'M..M.MMM..M.', 'M..M......M.', '.MM.MMMMMM..'],
+  key: ['.KKK..........', 'K...K.........', 'K...KKKKKKKKKK', 'K...K.....K.K.', '.KKK......K.K.'],
+};
+function invAt(x, y) {
+  for (let i = 0; i < inv.length; i++) {
+    const x0 = 162 + (i % 4) * 39, y0 = 157 + (i >> 2) * 21;
+    if (x >= x0 && x < x0 + 37 && y >= y0 && y < y0 + 20) return inv[i];
+  }
+  return null;
+}
 function drawUI() {
   idx.fill(BLACK, SH * W);
   const hv = my >= SH ? verbAt(mx, my) : null, obj = my >= 0 && my < SH && mx >= 0 && mx < W ? idb[my * W + mx] : 0;
-  const sentence = verb + (obj && obj !== ID.sky ? ' ' + NAME[obj] : '');
+  const hvInv = my >= SH ? invAt(mx, my) : null, tgt = hvInv || (obj && obj !== ID.sky ? NAME[obj] : '');
+  const sentence = held ? `Use ${held} with ${tgt}` : verb + (tgt ? ' ' + tgt : '');
   text(sentence, 160 - (textW(sentence) >> 1), 147, SENT);
   VERBS.forEach((row, r) => row.forEach((v, c) => text(v, VX[c], VY[r], v === hv ? VERB_HI : VERB)));
-  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {                     // empty inventory
-    const x0 = 162 + c * 39, y0 = 157 + r * 21;
-    for (let x = x0; x < x0 + 37; x++) { px(x, y0, INV); px(x, y0 + 19, INV); }
-    for (let y = y0; y < y0 + 20; y++) { px(x0, y, INV); px(x0 + 36, y, INV); }
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {                     // inventory
+    const x0 = 162 + c * 39, y0 = 157 + r * 21, it = inv[r * 4 + c];
+    const edge = it && (it === held || it === hvInv) ? VERB : INV;
+    for (let x = x0; x < x0 + 37; x++) { px(x, y0, edge); px(x, y0 + 19, edge); }
+    for (let y = y0; y < y0 + 20; y++) { px(x0, y, edge); px(x0 + 36, y, edge); }
+    if (!it) continue;
+    const ic = ICON[it], ox = x0 + 18 - ic[0].length, oy = y0 + 10 - ic.length;
+    ic.forEach((row, ry) => [...row].forEach((ch, rx) => {
+      if (ch === '.') return;
+      const c2 = ch === 'K' ? RS.LAMP[ry < 2 ? 1 : 0] : RS.FOAM[ry % 3 === 0 ? 2 : 1];
+      px(ox + rx * 2, oy + ry * 2, c2); px(ox + rx * 2 + 1, oy + ry * 2, c2); px(ox + rx * 2, oy + ry * 2 + 1, c2); px(ox + rx * 2 + 1, oy + ry * 2 + 1, c2);
+    }));
   }
   if (say) {
     if (t > say.until) say = null;
     else {                                                                    // above my head, kept on screen
-      const head = Math.round(me.y) - Math.round(20 * meScale()) - 3;
+      const head = Math.round(me.y) - Math.round((room === 'out' ? 20 : 34) * meScale()) - 3;
       const y0 = Math.max(2, head - say.lines.length * 9);
       say.lines.forEach((l, i) => {
         const w = textW(l), x0 = Math.min(W - 2 - w, Math.max(2, Math.round(me.x) - (w >> 1)));
@@ -779,12 +1440,14 @@ function frame(now) {
     if (!flashSeq.length && !flash) bolt = null; else bolt = true;
     const ba = t * .7;                                               // ~9 s per turn
     BEAM.c = Math.cos(ba); BEAM.s = Math.sin(ba); BEAM.face = Math.max(0, BEAM.s) ** 6;
-    drawScene(flash);
-    drawRain(step);
-    drawBeam();                                                      // after rain: drops glitter in the beam
+    if (room === 'out') {
+      drawScene(flash);
+      drawRain(step);
+      drawBeam();                                                    // after rain: drops glitter in the beam
+    } else drawInside(flash);
     drawUI();
     // facing us, the lamp briefly warms the whole scene (UI excluded)
-    const wk = BEAM.face * .13, P0 = PALS[flash];
+    const wk = room === 'out' ? BEAM.face * .13 : 0, P0 = PALS[room === 'out' ? flash : 0];   // indoors the flash comes only THROUGH the window
     const P = wk < .005 ? P0 : P0.map((c, i) => uiSet.has(i) ? c : c.map((v, j) => v + (WARM[j] - v) * wk)), d = img.data;
     for (let i = 0; i < W * H; i++) { const c = P[idx[i]]; d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
     lctx.putImageData(img, 0, 0);
@@ -824,13 +1487,24 @@ out.addEventListener('mousemove', aim);
 out.addEventListener('mouseleave', () => { mx = my = -1; });
 out.addEventListener('click', e => {
   aim(e);
-  if (my >= SH) { const v = verbAt(mx, my); if (v) verb = v; }
+  if (my >= SH) {
+    const v = verbAt(mx, my);
+    if (v) { verb = v; held = null; return; }
+    const it = invAt(mx, my);
+    if (!it) return;
+    if (held && held !== it) { act('Use', ITEM_ID[it], held); held = null; verb = 'Walk to'; }
+    else if (verb === 'Use' && !held) held = it;                      // "Use paperclip with ..."
+    else { act(held ? 'Use' : verb, ITEM_ID[it]); held = null; verb = 'Walk to'; }
+  }
   else if (my >= 0) {
-    const id = idb[my * W + mx], v = verb;
-    verb = 'Walk to';
-    if (id === ID.me) act(v, id);                                   // no need to walk to myself
-    else {
-      const pend = v !== 'Walk to' || LINES[`Walk to|${id}`] ? { verb: v, id } : null;
+    const id = idb[my * W + mx], v = verb, item = held;
+    verb = 'Walk to'; held = null;
+    if (id === ID.me) act(v, id, item);                             // no need to walk to myself
+    else if (room === 'in') {
+      const pend = v !== 'Walk to' || item || LINES[`Walk to|${id}`] || SPECIAL[`Walk to|${id}`] ? { verb: v, id, item, fx: mx } : null;
+      goTo({ hill: WP[id] ? nearestWalk(...toScr(WP[id])) : nearestWalk(mx, my) }, pend);
+    } else {
+      const pend = v !== 'Walk to' || item || LINES[`Walk to|${id}`] || id === ID.door ? { verb: v, id, item, fx: mx } : null;
       if (v === 'Use' && id === ID.bridge)                           // "Use bridge" = cross to the other side
         goTo({ k: me.mode === 'path' && me.k > K_BRIDGE + (K_CLIFF - K_BRIDGE) / 2 ? K_BRIDGE - 1 : K_CLIFF }, null);
       else if (id === ID.door || id === ID.lighthouse) goTo({ k: K_DOOR }, pend);
@@ -841,7 +1515,7 @@ out.addEventListener('click', e => {
 });
 
 const hud = document.getElementById('hud');
-const hudText = () => `click a verb, then something · [V] ${painted ? `painted (${NCOL(RL)} colours)` : `dithered (${NCOL(RS)} colours)`} · [C] CRT ${crt ? 'on' : 'off'} · [L] lightning · [space] pause · [R] record`;
+const hudText = () => `${room === 'in' ? 'the keeper\'s room' : 'outside'} · [V] ${painted ? `painted (${NCOL(RL)} colours)` : `dithered (${NCOL(RS)} colours)`} · [C] CRT ${crt ? 'on' : 'off'} · [L] lightning · [space] pause · [R] record`;
 let HUD = hud.textContent = hudText();
 let recorder = null;
 function record() {
@@ -866,6 +1540,8 @@ addEventListener('keydown', e => {
   else if (k === 'c') crt = !crt;
   if ((k === 'v' || k === 'c') && !recorder) HUD = hud.textContent = hudText();
 });
+enterRoom('in', [-.3, 4.3]);                                    // the story starts at home
+setTimeout(() => say_("Another dark and stormy night at the lighthouse."), 600);
 requestAnimationFrame(frame);
 </script>
 </body>

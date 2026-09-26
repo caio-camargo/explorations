@@ -1,6 +1,6 @@
 # Night Storm — notes
-**Version**: 1.5.0 · **Author**: Caio + Claude (Opus 5.5) · **Created**: 2026-09-25 · **Updated**: 2026-09-25 · **Status**: Active
-**Purpose**: Pixel art in the style of early-90s point-and-click adventures (LucasArts VGA era): a stormy night on a coast, with a lighthouse, a dead tree and a working verb interface.
+**Version**: 1.6.0 · **Author**: Caio + Claude (Opus 5.5) · **Created**: 2026-09-25 · **Updated**: 2026-09-25 · **Status**: Active
+**Purpose**: Pixel art in the style of early-90s point-and-click adventures (LucasArts VGA era): a stormy night on a coast with a lighthouse, and since v1.6 the keeper's room inside it, where Claude lives. Two rooms, a verb interface, an inventory and one small puzzle.
 
 ## The idea
 Caio loves the look of the old LucasArts adventures. The goal was a stormy night landscape in
@@ -126,6 +126,58 @@ Caio: the figure looked too big next to the door, and the bridge had no depth.
   with a BFS distance field over the walkable pixels (8-connected, computed per hill leg,
   about 2.5k cells). The walker aims 4 cells down the gradient so diagonals come out smooth.
 
+## v1.6 — inside the lighthouse: Claude's room
+Caio asked for an indoor scene: Claude's bedroom, still a stormy night, with more detail and
+interactable objects, and jokes about p(doom), paperclips and Claude lore. We chose to put the
+room **inside the lighthouse**, so Claude is the keeper. That settles who keeps the lamp lit,
+and it explains why the outside door was "bolted from the inside".
+
+**The story now starts at home.** Try to open the desk drawer: locked. Pick up the one
+paperclip ("Just the one. I know how this story goes."), use it on the drawer ("Paperclips
+have exactly one good use, and this is it."), and take the spare key ("DO NOT LOSE. AGAIN.").
+Use the key on the front door, open it, and you step out onto the cliff top of the original
+scene. The outside door now lets you back in.
+
+**How the room is built:**
+- **A cut-away cylinder.** The round room is a cylinder (radius 9, centred behind the back
+  wall) seen through a pinhole camera: eye height 6, focal 68 px, horizon row 16. Each screen
+  column hits the wall at one angle, found once by bisection, so walls and floor are ray-cast
+  per pixel. Stone courses, the rug and the floorboards are computed in world coordinates, so
+  they curve and recede correctly.
+- **Wall decorations live in (angle, height) space.** Each one is a small procedural texture:
+  - the arched window with curtains, a rod and a view outside
+  - the arched door with iron straps, a ring pull and a keyhole
+  - the calendar
+  - the p(doom) barometer, whose needle twitches with lightning and jumps if you tap it
+  - the "Attention Is All You Need" poster, drawn as the Transformer diagram
+  - the Helpful·Honest·Harmless sampler, as real 17×9 cross-stitch
+  - a three-shelf bookcase whose special spines are separate hotspots: the *Opus / Sonnet /
+    Haiku* family albums (shrinking), *You're Absolutely Right!* and *The Constitution*
+- **Furniture is world-space boxes and quads** splatted into one depth buffer with the walls,
+  the props and the character: the bed with a patchwork quilt, the nightstand, the desk and
+  its drawer (which really slides out), a chair, the old terminal with a blinking prompt, the
+  wardrobe (open it: seven identical raincoats), and a 20-step spiral staircase with a helical
+  handrail rising to the lamp room.
+- **Props are little sprites standing in the world:** the lamp, diary, duck, paperclip, tip
+  jar and key.
+- **Lighting is computed, not painted.** There are three lights: the bedside lamp (which you
+  can switch off), the lantern Claude carries, and the storm through the window. Every indoor
+  material ramp runs cold-dark → warm-light, so shadow reads as moonlight and lamplight reads as
+  amber without any hue maths. Lightning indoors is *not* a palette flash. The light arrives
+  through the window: a cold wash on the walls and the window's shape thrown across the floor,
+  with the mullion cross as a shadow in it. Warm light spills down the stairwell, pulsing as the
+  lens turns overhead.
+- **The view out of the window** is the outside scene, far away: the hill, the dead tree, the
+  rope bridge, the sea, clouds and lightning. Rain beads slide down the glass.
+- **Per-room palettes, like the originals.** Indoors uses 226 colours in painted mode,
+  outdoors 242. Each room stays under 256; the HUD shows the current room's count.
+- **The character gets an indoor sprite:** 16×34, with toggle buttons, and it is not the
+  outdoor sprite blown up. It scales with true perspective (`5.2 / depth`), is depth-tested
+  against furniture, and is lit by whatever light the room has at its position.
+- **SCUMM habits kept:** a walk point per object, placed *beside* the object and never in front
+  of it; the character turns to face what it's using; "Use X with Y" through the inventory; a
+  line for every verb on every object (29 objects × 9 verbs, all checked).
+
 ## Controls
 Click a verb, then something in the scene · V painted/dithered · C CRT · L forces lightning · space pauses · R records 10 s of webm.
 
@@ -154,10 +206,21 @@ Click a verb, then something in the scene · V painted/dithered · C CRT · L fo
   thinning and slowing for free.
 - **A "slide along obstacles" walker needs a stuck detector that counts slides.** Otherwise
   it can oscillate between two slides forever. Better still, use a distance field.
+- **Check furniture against a curved wall in world space.** The nightstand sat 0.9 units
+  outside the room's radius. The depth buffer hid it silently, and it took the room's main
+  light with it, so the whole room was dark for a reason that had nothing to do with lighting.
+- **Walk points go beside objects.** Standing in front of the desk hid the paperclip and the
+  drawer, the very things being used, so a scripted test "couldn't find" them.
+- **Indoor lightning reads better as directional light than as a palette flash.** The palette
+  swap that works outdoors flattened the room. Light through the window, and nothing else, is
+  what makes it dramatic.
+- **Testing a paused animation loop:** a paused loop still redraws every frame and overwrites
+  hand-drawn test frames. Copy the frame to an overlay canvas instead. Don't stub out
+  `requestAnimationFrame`: screenshot tools wait on it.
 - **Click handlers should compute their own coordinates.** Reusing the last mousemove position
   failed when a click arrived without a preceding move (touch, synthetic events).
 
 ## Ideas not done
-Thunder with a delay after the
+The lamp room at the top of the stairs (a third room); a use for the rubber duck; thunder with a delay after the
 flash; rain streaks lit inside the beam; a candle-lit cottage window; parallax as the view
 scrolls wider than 320 px (those games' rooms often did).
