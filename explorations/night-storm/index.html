@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Night Storm</title>
+<style>
+  :root { --bg: #000; --fg: #555a7a; }
+  html, body { margin: 0; height: 100%; background: var(--bg); overflow: hidden; }
+  body { display: grid; place-items: center; font: 11px/1.4 ui-monospace, Consolas, monospace; color: var(--fg); }
+  /* 320x200 shown at 4:3 — VGA pixels were 20% taller than wide */
+  canvas { display: block; aspect-ratio: 4 / 3; width: min(calc(100vw - 32px), calc((100vh - 40px) * 4 / 3)); height: auto;
+           image-rendering: pixelated; cursor: none; }
+  #hud { position: fixed; bottom: 6px; left: 0; right: 0; text-align: center; user-select: none; }
+  #hud.rec { color: #d44; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1600" height="1200"></canvas>
+<div id="hud">click a verb, then something in the scene · [L] lightning · [space] pause · [R] record 10s</div>
+<script>
+const W = 320, H = 200, SH = 144, HZ = 84;   // screen, scene height (UI below), horizon
+const out = document.getElementById('c'), octx = out.getContext('2d');
+const lo = document.createElement('canvas'); lo.width = W; lo.height = H;
+const lctx = lo.getContext('2d'), img = lctx.createImageData(W, H);
+const idx = new Uint8Array(W * H);          // palette index per pixel — the real framebuffer
+const idb = new Uint8Array(W * SH);         // object id per scene pixel, for hover/click
+
+let seed = 1987;
+const rng = () => (seed = (seed * 16807) % 2147483647, (seed - 1) / 2147483646);
+
+// ---------- palette: named ramps, dark → light ----------
+const PAL = [], R = {};
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function ramp(name, hs) { R[name] = hs.map(h => (PAL.push(hex(h)), PAL.length - 1)); }
+ramp('SKY',   ['#06061a', '#0b0c28', '#12143a', '#1b1e4c', '#26295e', '#343870']);
+ramp('CLOUD', ['#14152e', '#1f2140', '#2d3056', '#40446e', '#5c618c', '#8589b0', '#b4b7d2']);
+ramp('MOON',  ['#b8b49a', '#dcd8b8', '#f6f2da']);
+ramp('MOUNT', ['#0c0d20', '#14162d', '#1e213d']);
+ramp('SEA',   ['#04060f', '#081020', '#0f1a32', '#182848', '#243a60', '#3a5478']);
+ramp('FOAM',  ['#6c84a4', '#a8bcd0', '#dce6ee']);
+ramp('ROCK',  ['#0b0a13', '#151320', '#211e30', '#322d44', '#474058']);
+ramp('HILL',  ['#050609', '#0b0d13', '#13161e', '#1d212b']);
+ramp('GRASS', ['#0a130e', '#122017', '#1b3021', '#28432d']);
+ramp('TREE',  ['#040407', '#0f0d15', '#1d1a26']);
+ramp('LHW',   ['#34384e', '#565c78', '#868ca8']);
+ramp('LHR',   ['#2a1017', '#461a24', '#692733']);
+ramp('LAMP',  ['#7a3a12', '#e0862a', '#ffc04a', '#fff2bc']);
+ramp('RAIN',  ['#4a5676', '#7a88a8']);
+ramp('BOLT',  ['#b8c4ff', '#ffffff']);
+ramp('UI',    ['#000000', '#1a1d38', '#3c4686', '#9aa6ff', '#58c4bc', '#f0e2a0']);
+const [BLACK, INV, VERB, VERB_HI, SENT, TALK] = R.UI;
+const DARK = R.TREE[0];
+const CURSOR = [R.BOLT[1], R.FOAM[1], R.FOAM[0], R.FOAM[1]];
+
+// lightning flashes swap the whole palette (the classic trick); lamp + UI are exempt
+const exempt = new Set([...R.LAMP, ...R.UI, ...R.BOLT]);
+const mix = (c, k) => c.map((v, i) => v + ([205, 212, 255][i] - v) * k);
+const PALS = [PAL, PAL.map((c, i) => exempt.has(i) ? c : mix(c, .3)), PAL.map((c, i) => exempt.has(i) ? c : mix(c, .58))];
+
+// beam "lighten" table: each colour → two steps up its own ramp
+const LIGHTEN = PAL.map((_, i) => i);
+for (const k of ['SKY', 'CLOUD', 'MOUNT', 'SEA', 'ROCK', 'HILL', 'GRASS', 'TREE', 'RAIN', 'LHW', 'LHR'])
+  R[k].forEach((c, j, r) => LIGHTEN[c] = r[Math.min(r.length - 1, j + 2)]);
+
+// ordered dithering — 4x4 Bayer
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map(b => (b + .5) / 16);
+function dith(r, v, x, y) {
+  const f = Math.min(1, Math.max(0, v)) * (r.length - 1), i = f | 0;
+  return r[(f - i) > BAYER[(y & 3) * 4 + (x & 3)] ? Math.min(i + 1, r.length - 1) : i];
+}
+
+// ---------- tileable value-noise texture ----------
+const TW = 256, tex = new Float32Array(TW * TW);
+for (const [p, w] of [[4, .45], [8, .27], [16, .15], [32, .08], [64, .05]]) {
+  const g = Float32Array.from({ length: p * p }, rng), cell = TW / p;
+  for (let y = 0; y < TW; y++) for (let x = 0; x < TW; x++) {
+    const gx = x / cell, gy = y / cell, ix = gx | 0, iy = gy | 0;
+    let fx = gx - ix, fy = gy - iy; fx = fx * fx * (3 - 2 * fx); fy = fy * fy * (3 - 2 * fy);
+    const a = g[iy * p + ix], b = g[iy * p + (ix + 1) % p], c = g[((iy + 1) % p) * p + ix], d = g[((iy + 1) % p) * p + (ix + 1) % p];
+    tex[y * TW + x] += w * ((a + (b - a) * fx) * (1 - fy) + (c + (d - c) * fx) * fy);
+  }
+}
+const tS = (u, v) => tex[((((v | 0) % TW) + TW) % TW) * TW + ((((u | 0) % TW) + TW) % TW)];
+
+// ---------- static geometry ----------
+const ID = { none: 0, sky: 1, clouds: 2, moon: 3, mountains: 4, sea: 5, cliff: 6, lighthouse: 7, hill: 8, tree: 9 };
+const NAME = ['', 'sky', 'storm clouds', 'moon', 'mountains', 'sea', 'cliff', 'lighthouse', 'hill', 'dead tree'];
+const MX = 60, MY = 26;                                        // moon
+const ridge = Array.from({ length: W }, (_, x) => {
+  const m = tS(x * .7, 3) * .8 + tS(x * 2.2, 40) * .2, taper = x < 160 ? 1 : Math.max(0, (205 - x) / 45);
+  return x < 205 ? Math.round(HZ - 3 - m * 26 * taper) : HZ;
+});
+// slope over a few pixels, not per column — per-column slope made vertical stripes
+const ridgeLit = ridge.map((_, x) => (ridge[Math.min(W - 1, x + 3)] - ridge[Math.max(0, x - 3)]) < 0);
+const cliffTop = Array.from({ length: W }, (_, x) => x >= 250 && x <= 286 ? 63 : 62 + tS(x * 2, 11) * 5);
+const cliffLeft = Array.from({ length: SH }, (_, y) => 236 - (y - 62) * .34 - tS(y * 3, 23) * 6);
+const hillTop = Array.from({ length: W }, (_, x) => x < 150 ? 108 + (x / 148) ** 2 * 40 + tS(x * 2, 31) * 4 : 999);
+const hillRight = Array.from({ length: SH }, (_, y) => { let r = -1; for (let x = 0; x < 150; x++) if (hillTop[x] <= y) r = x; return r; });
+
+// the tree: a gnarled recursive silhouette, stored as relative angles so it can sway
+function branch(len, w, depth) {
+  const n = { a: 0, bend: (rng() - .5) * .6, len, w, depth, kids: [] };
+  if (depth < 5 && len > 4) {
+    const k = depth === 0 ? 2 : rng() < .3 ? 1 : 2;               // sparse: a dead tree, not a bush
+    for (let i = 0; i < k; i++) {
+      const c = branch(len * (.62 + rng() * .2), Math.max(1, w * .62), depth + 1);
+      c.a = k === 1 ? (rng() - .5) * .9 : (i - .5) * (.75 + rng() * .5) + (rng() - .5) * .35;
+      n.kids.push(c);
+    }
+  }
+  return n;
+}
+const tree = branch(28, 6, 0);
+
+// ---------- pixel helpers ----------
+const px = (x, y, c) => { x |= 0; y |= 0; if (x >= 0 && x < W && y >= 0 && y < H) idx[y * W + x] = c; };
+const sp = (x, y, c, id) => { x |= 0; y |= 0; if (x >= 0 && x < W && y >= 0 && y < SH) { idx[y * W + x] = c; idb[y * W + x] = id; } };
+
+// ---------- the bitmap font (hand-drawn: caps rows 0-5, x-height 2-5, descenders 6-7) ----------
+const FONT = {
+  A: '.##./#..#/#..#/####/#..#/#..#', B: '###./#..#/###./#..#/#..#/###.', C: '.###/#.../#.../#.../#.../.###',
+  D: '###./#..#/#..#/#..#/#..#/###.', E: '####/#.../###./#.../#.../####', F: '####/#.../###./#.../#.../#...',
+  G: '.###/#.../#.../#.##/#..#/.###', H: '#..#/#..#/####/#..#/#..#/#..#', I: '###/.#./.#./.#./.#./###',
+  J: '..##/...#/...#/...#/#..#/.##.', K: '#..#/#.#./##../#.#./#..#/#..#', L: '#.../#.../#.../#.../#.../####',
+  M: '#...#/##.##/#.#.#/#...#/#...#/#...#', N: '#..#/##.#/#.##/#..#/#..#/#..#', O: '.##./#..#/#..#/#..#/#..#/.##.',
+  P: '###./#..#/#..#/###./#.../#...', Q: '.##./#..#/#..#/#..#/#.#./.#.#', R: '###./#..#/#..#/###./#.#./#..#',
+  S: '.###/#.../.##./...#/...#/###.', T: '#####/..#../..#../..#../..#../..#..', U: '#..#/#..#/#..#/#..#/#..#/.##.',
+  V: '#...#/#...#/#...#/.#.#./.#.#./..#..', W: '#...#/#...#/#...#/#.#.#/##.##/#...#', X: '#..#/#..#/.##./.##./#..#/#..#',
+  Y: '#...#/#...#/.#.#./..#../..#../..#..', Z: '####/...#/..#./.#../#.../####',
+  a: '..../..../.###/#..#/#..#/.###', b: '#.../#.../###./#..#/#..#/###.', c: '.../.../.##/#../#../.##',
+  d: '...#/...#/.###/#..#/#..#/.###', e: '..../..../.##./####/#.../.###', f: '.##/#../###/#../#../#..',
+  g: '..../..../.###/#..#/#..#/.###/...#/.##.', h: '#.../#.../###./#..#/#..#/#..#', i: '#/./#/#/#/#',
+  j: '.#/../.#/.#/.#/.#/.#/#.', k: '#.../#.../#..#/###./#.#./#..#', l: '#/#/#/#/#/#',
+  m: '...../...../####./#.#.#/#.#.#/#.#.#', n: '..../..../###./#..#/#..#/#..#', o: '..../..../.##./#..#/#..#/.##.',
+  p: '..../..../###./#..#/#..#/###./#.../#...', q: '..../..../.###/#..#/#..#/.###/...#/...#', r: '.../.../#.#/##./#../#..',
+  s: '..../..../.###/##../..##/###.', t: '.#./.#./###/.#./.#./..#', u: '..../..../#..#/#..#/#..#/.###',
+  v: '...../...../#...#/#...#/.#.#./..#..', w: '...../...../#...#/#.#.#/#.#.#/.#.#.', x: '..../..../#..#/.##./.##./#..#',
+  y: '..../..../#..#/#..#/#..#/.###/...#/.##.', z: '..../..../####/..#./.#../####',
+  '.': './././././#', ',': './././././#/#', '!': '#/#/#/#/./#', '?': '###/..#/.##/.#./.../.#.', "'": '#/#', '-': '.../.../###',
+};
+const GLYPH = Object.fromEntries(Object.entries(FONT).map(([k, v]) => [k, v.split('/')]));
+const glyphW = ch => ch === ' ' ? 3 : GLYPH[ch] ? GLYPH[ch][0].length : 3;
+const textW = s => [...s].reduce((a, ch) => a + glyphW(ch) + 1, -1);
+function text(s, x, y, c, shadow) {
+  for (const ch of s) {
+    const g = GLYPH[ch];
+    if (g) g.forEach((row, r) => { for (let k = 0; k < row.length; k++) if (row[k] === '#') { if (shadow != null) px(x + k + 1, y + r + 1, shadow); px(x + k, y + r, c); } });
+    x += glyphW(ch) + 1;
+  }
+}
+function wrap(s, max) {
+  const lines = []; let cur = '';
+  for (const w of s.split(' ')) { const t = cur ? cur + ' ' + w : w; if (textW(t) > max && cur) { lines.push(cur); cur = w; } else cur = t; }
+  return cur ? [...lines, cur] : lines;
+}
+
+// ---------- scene ----------
+let t = 0, bolt = null, boltMask = new Uint8Array(W * HZ), flashSeq = [], nextStrike = 4;
+function makeBolt() {
+  boltMask.fill(0);
+  const path = (x, y, steps, main) => {
+    for (let i = 0; i < steps; i++) {
+      const nx = x + (rng() - .5) * 8, ny = y + 2 + rng() * 4;
+      const n = Math.ceil(Math.hypot(nx - x, ny - y) * 1.5);
+      for (let k = 0; k <= n; k++) {
+        const bx = (x + (nx - x) * k / n) | 0, by = (y + (ny - y) * k / n) | 0;
+        if (by >= 0 && by < HZ) { boltMask[by * W + bx] = 2; if (main && bx + 1 < W) boltMask[by * W + bx + 1] ||= 1; }
+      }
+      x = nx; y = ny;
+      if (y >= ridge[Math.max(0, Math.min(W - 1, x | 0))]) return;
+      if (main && rng() < .18) path(x, y, 3 + rng() * 5 | 0, false);
+    }
+  };
+  path(80 + rng() * 120, 0, 40, true);
+}
+function strike() { makeBolt(); flashSeq = [2, 2, 0, 1, 2, 1, 0, 0, 1]; nextStrike = t + 5 + rng() * 9; }
+
+function drawScene(flash) {
+  const cloudT = t * 5, gust = Math.sin(t * .4) * .5 + .5;
+  for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) {
+    let c, id;
+    if (x < 150 && y >= hillTop[x]) {                               // foreground hill
+      const dy = y - hillTop[x];
+      if (dy < 2) { c = dith(R.GRASS, .45 + (x < 70 ? .2 : 0), x, y); }
+      else c = dith(R.HILL, .15 + tS(x * 2, y * 2) * .45 - dy * .006, x, y);
+      id = ID.hill;
+    } else if (y >= cliffTop[x] && x >= cliffLeft[y]) {             // cliff, lit on its moon side
+      const dl = x - cliffLeft[y], dy = y - cliffTop[x], s = tS(x * .6, y * 4);
+      if (dy < 2 && x > 232) c = dith(R.GRASS, .35, x, y);
+      else c = dith(R.ROCK, (dl < 7 ? .75 - dl * .07 : .22) + (s > .62 ? .15 : s < .3 ? -.2 : 0), x, y);
+      id = ID.cliff;
+    } else if (y >= HZ) {                                            // sea
+      const z = (y - HZ) / (SH - HZ);
+      const w = tS(x * .6 / (.3 + z * 1.4) + t * 7 * (.4 + z), y * 5 + t * 1.5);
+      let v = .06 + (1 - z) * .32;
+      if (w > .58) v += .25;
+      const glint = Math.abs(x - MX + Math.sin(y * .9 + t * 4) * 2) < 2 + z * 12;
+      const shore = Math.min(x - hillRight[y], cliffLeft[y] - x);
+      if ((w > .7 && (glint || z > .5)) || (shore < 3 && tS(y * 7 + t * 25, x * 3) > .5)) c = dith(R.FOAM, glint ? .8 : .3, x, y);
+      else c = dith(R.SEA, v + (glint && w > .5 ? .35 : 0), x, y);
+      id = ID.sea;
+    } else if (y >= ridge[x]) {                                      // distant mountains
+      const dy = y - ridge[x];
+      c = dy === 0 ? R.MOUNT[2] : dith(R.MOUNT, (ridgeLit[x] ? .55 : .15) - dy * .015, x, y);
+      id = ID.mountains;
+    } else {                                                         // sky, moon, clouds, bolt
+      const dist = Math.hypot(x - MX, (y - MY) * 1.2);
+      const d = tS(x * .8 + cloudT, y * 1.5) * .65 + tS(x * 1.9 + cloudT * 1.8 + 100, y * 2.8 + 50) * .35 + (1 - y / HZ) * .3 - .17;
+      if (bolt && boltMask[y * W + x]) { c = R.BOLT[boltMask[y * W + x] - 1]; id = ID.clouds; }
+      else if (d > .42 && !(dist < 9 && d < .47)) {
+        c = dith(R.CLOUD, .1 + Math.max(0, 1 - dist / 110) * .7 - (d - .42) * 1.5 + (d < .46 ? .15 : 0), x, y);
+        id = ID.clouds;
+      } else if (dist < 9) { c = dith(R.MOON, .55 + tS(x * 4, y * 4) * .45 - (d > .4 ? .4 : 0), x, y); id = ID.moon; }
+      else { c = dith(R.SKY, y / HZ * .5 + Math.max(0, 1 - dist / 55) * .5, x, y); id = ID.sky; }
+    }
+    idx[y * W + x] = c; idb[y * W + x] = id;
+  }
+  drawLighthouse();
+  drawTree(tree, 40, 113, -Math.PI / 2 - .12, gust);
+  drawBeam();
+}
+
+function drawLighthouse() {
+  const cx = 268, L = ID.lighthouse;
+  for (let y = 26; y < 64; y++) {                                   // striped tower, lit from the left
+    const hw = 5 + (y - 26) / 38 * 3, band = ((y - 26) / 7 | 0) % 2 ? R.LHR : R.LHW;
+    for (let x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) sp(x, y, dith(band, .8 - ((x - cx) / hw + 1) * .38, x, y), L);
+  }
+  for (let y = 56; y < 64; y++) for (let x = 266; x <= 269; x++) sp(x, y, DARK, L);                 // door
+  for (let y = 40; y < 43; y++) for (let x = 267; x <= 268; x++) sp(x, y, R.LAMP[1 + (Math.sin(t * 7) > .7)], L);
+  for (let x = 260; x <= 276; x++) { sp(x, 24, DARK, L); sp(x, 25, DARK, L); if (x % 2 === 0) sp(x, 22, DARK, L); sp(x, 23, x % 4 === 0 ? DARK : idx[23 * W + x], L); }
+  for (let y = 16; y < 22; y++) for (let x = 263; x <= 273; x++)                                   // lamp room
+    sp(x, y, x === 265 || x === 271 ? DARK : dith(R.LAMP, 1 - Math.abs(x - cx) / 7 + Math.sin(t * 11) * .04, x, y), L);
+  for (let x = 262; x <= 274; x++) sp(x, 15, DARK, L);
+  for (let y = 9; y < 15; y++) { const hw = (y - 9) * 1.1; for (let x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) sp(x, y, dith(R.LHR, .5 - (x - cx) * .08, x, y), L); }
+  sp(cx, 7, DARK, L); sp(cx, 8, DARK, L);
+}
+
+function thick(x0, y0, x1, y1, w, c) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2), r = w / 2;
+  for (let k = 0; k <= n; k++) {
+    const x = x0 + (x1 - x0) * k / n, y = y0 + (y1 - y0) * k / n;
+    for (let dy = -r; dy < r || dy === -r; dy++) for (let dx = -r; dx < r || dx === -r; dx++) sp(x + dx, y + dy, c, ID.tree);
+  }
+}
+function drawTree(n, x, y, ang, gust) {
+  const sway = (Math.sin(t * 1.9 + n.depth * .7) * .03 + gust * .06) * n.depth * .5;
+  const a = ang + n.a - sway;
+  const mx = x + Math.cos(a + n.bend) * n.len / 2, my = y + Math.sin(a + n.bend) * n.len / 2;
+  const ex = mx + Math.cos(a - n.bend * .5) * n.len / 2, ey = my + Math.sin(a - n.bend * .5) * n.len / 2;
+  if (n.w >= 2) { thick(x - 1, y, mx - 1, my, n.w, R.TREE[2]); thick(mx - 1, my, ex - 1, ey, n.w, R.TREE[2]); } // moonlit rim
+  thick(x, y, mx, my, n.w, R.TREE[0]); thick(mx, my, ex, ey, n.w, R.TREE[0]);
+  for (const k of n.kids) drawTree(k, ex, ey, a, gust);
+}
+
+function drawBeam() {
+  const lx = 268, ly = 19, a = t * .8, c = Math.cos(a), dir = Math.sign(c) || 1;
+  const len = 25 + 300 * Math.abs(c), spread = .05 + .12 * (1 - Math.abs(c));
+  for (let x = lx + dir * 6; dir > 0 ? x < Math.min(W, lx + len) : x > Math.max(-1, lx - len); x += dir) {
+    const d = Math.abs(x - lx), hw = 1.5 + d * spread, fade = 1 - d / len;
+    for (let y = Math.floor(ly - hw); y <= ly + hw; y++) {
+      if (y < 0 || y >= SH || idb[y * W + x] === ID.lighthouse) continue;
+      const e = (1 - Math.abs(y - ly) / hw) * fade * 1.6;
+      if (e > BAYER[(y & 3) * 4 + (x & 3)]) idx[y * W + x] = LIGHTEN[idx[y * W + x]];
+      if (e > .9 + BAYER[(y & 3) * 4 + (x & 3)] * .4) idx[y * W + x] = LIGHTEN[idx[y * W + x]];
+    }
+  }
+  if (Math.abs(c) < .3 && Math.sin(a) > 0)                          // pointing at us: flare
+    for (let y = ly - 12; y <= ly + 12; y++) for (let x = lx - 14; x <= lx + 14; x++)
+      if (x >= 0 && x < W && y >= 0 && idb[y * W + x] !== ID.lighthouse && (1 - Math.hypot(x - lx, (y - ly) * 1.2) / 14) * (1 - Math.abs(c) / .3) * 1.8 > BAYER[(y & 3) * 4 + (x & 3)])
+        idx[y * W + x] = LIGHTEN[idx[y * W + x]];
+}
+
+// rain — thin slanted streaks, blown left
+const drops = Array.from({ length: 230 }, () => ({ x: rng() * (W + 80), y: rng() * SH, s: 5 + rng() * 4, l: 2 + rng() * 4 | 0, end: HZ + rng() * (SH - HZ) }));
+function drawRain(step) {
+  const wx = -.35 - (Math.sin(t * .4) * .5 + .5) * .25;
+  for (const d of drops) {
+    if (step) { d.y += d.s; d.x += d.s * wx; }
+    const X = d.x | 0, Y = d.y | 0;
+    const land = Y >= 0 && Y < SH && X >= 0 && X < W && idb[Y * W + X] >= ID.cliff && idb[Y * W + X] !== ID.lighthouse;
+    if (Y >= SH || land || (Y >= d.end && X >= 0 && X < W && idb[Y * W + X] === ID.sea)) {
+      if (X >= 0 && X < W && Y < SH) { px(X, Y, R.RAIN[1]); if (!land) { px(X - 1, Y, R.FOAM[0]); px(X + 1, Y, R.FOAM[0]); } }
+      Object.assign(d, { x: rng() * (W + 80), y: -rng() * 30, end: HZ + rng() * (SH - HZ) });
+      continue;
+    }
+    for (let k = 0; k < d.l; k++) { const yy = Y - k; if (yy >= 0 && yy < SH) px(X - k * wx, yy, R.RAIN[d.l > 3 ? 1 : 0]); }
+  }
+}
+
+// ---------- the verb interface ----------
+const VERBS = [['Give', 'Pick up', 'Use'], ['Open', 'Look at', 'Push'], ['Close', 'Talk to', 'Pull']];
+const VX = [8, 46, 96], VY = [158, 170, 182];
+let verb = 'Walk to', mx = -1, my = -1, say = null;
+const LINES = {
+  'Look at|7': "Someone's still keeping that lamp lit. On a night like this, that's either devotion or a terrible job.",
+  'Walk to|7': "Not in this weather. Maybe after the storm.",
+  'Open|7': "It's too far away. And probably locked. And very wet.",
+  'Look at|9': "It's been struck before. It looks like it wants to be struck again.",
+  'Pick up|9': "It's rooted. Also, it's a tree.",
+  'Talk to|9': "The tree says nothing. Typical.",
+  'Push|9': "I push the tree. The tree pushes back, spiritually.",
+  'Look at|5': "The sea is having a very bad night.",
+  'Walk to|5': "I'm not that desperate for a bath.",
+  'Pick up|5': "I'd need a much bigger bucket.",
+  'Use|5': "I'd need a much bigger bucket.",
+  'Look at|3': "The moon is hiding behind the clouds. Smart moon.",
+  'Pick up|3': "It's further away than it looks.",
+  'Talk to|3': "Hey moon. Any chance you could do something about the weather?",
+  'Look at|2': "Those clouds mean business.",
+  'Talk to|2': "I shout at the storm. The storm doesn't care.",
+  'Look at|1': "Somewhere up there it's a nice night. Not here, though.",
+  'Look at|6': "Wet rock, sharp edges, long drop. Pass.",
+  'Push|6': "I push the cliff. The cliff wins.",
+  'Look at|4': "Mountains. Far away and bone dry. Lucky them.",
+  'Look at|8': "A windswept hill. I'm standing on it, in the rain, for reasons I can't remember.",
+  'Pick up|8': "I pick up a handful of mud. Then I put it back. Nobody saw that.",
+};
+const GENERIC = {
+  'Open': "It doesn't open.", 'Close': "It doesn't close.", 'Give': "Give it to whom? I'm alone out here.",
+  'Pick up': "I can't pick that up.", 'Push': "It won't budge.", 'Pull': "It won't budge.",
+  'Use': "I don't know how to use that.", 'Talk to': "It doesn't seem very talkative.",
+};
+function act(id) {
+  if (!id) return;
+  const line = LINES[`${verb}|${id}`] || (verb === 'Look at' ? `It's a ${NAME[id]}. It's wet.` : GENERIC[verb]);
+  if (line) say = { lines: wrap(line, 220), until: t + 1.5 + line.length * .055 };
+  verb = 'Walk to';
+}
+function verbAt(x, y) {
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++)
+    if (x >= VX[c] - 1 && x <= VX[c] + textW(VERBS[r][c]) + 1 && y >= VY[r] - 2 && y < VY[r] + 9) return VERBS[r][c];
+  return null;
+}
+function drawUI() {
+  idx.fill(BLACK, SH * W);
+  const hv = my >= SH ? verbAt(mx, my) : null, obj = my >= 0 && my < SH && mx >= 0 && mx < W ? idb[my * W + mx] : 0;
+  const sentence = verb + (obj && obj !== ID.sky ? ' ' + NAME[obj] : '');
+  text(sentence, 160 - (textW(sentence) >> 1), 147, SENT);
+  VERBS.forEach((row, r) => row.forEach((v, c) => text(v, VX[c], VY[r], v === hv ? VERB_HI : VERB)));
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) {                     // empty inventory
+    const x0 = 162 + c * 39, y0 = 157 + r * 21;
+    for (let x = x0; x < x0 + 37; x++) { px(x, y0, INV); px(x, y0 + 19, INV); }
+    for (let y = y0; y < y0 + 20; y++) { px(x0, y, INV); px(x0 + 36, y, INV); }
+  }
+  if (say) {
+    if (t > say.until) say = null;
+    else say.lines.forEach((l, i) => text(l, 160 - (textW(l) >> 1), 6 + i * 9, TALK, BLACK));
+  }
+  if (mx >= 0) {                                                               // crosshair cursor
+    const cc = CURSOR[(t * 12 | 0) % 4];
+    for (let k = 2; k <= 4; k++) { px(mx - k, my, cc); px(mx + k, my, cc); px(mx, my - k, cc); px(mx, my + k, cc); }
+  }
+}
+
+// ---------- loop ----------
+let paused = false, last = performance.now(), acc = 0;
+const STEP = 1 / 15;
+function frame(now) {
+  acc += Math.min(.25, (now - last) / 1000); last = now;
+  if (acc >= STEP) {
+    const step = !paused; acc = 0;
+    if (step) { t += STEP; if (t > nextStrike) strike(); }
+    const flash = step ? (flashSeq.length ? flashSeq.shift() : 0) : 0;
+    if (!flashSeq.length && !flash) bolt = null; else bolt = true;
+    drawScene(flash);
+    drawRain(step);
+    drawUI();
+    const P = PALS[flash], d = img.data;
+    for (let i = 0; i < W * H; i++) { const c = P[idx[i]]; d[i * 4] = c[0]; d[i * 4 + 1] = c[1]; d[i * 4 + 2] = c[2]; d[i * 4 + 3] = 255; }
+    lctx.putImageData(img, 0, 0);
+    octx.imageSmoothingEnabled = false;
+    octx.drawImage(lo, 0, 0, out.width, out.height);                        // 5x wide, 6x tall
+  }
+  requestAnimationFrame(frame);
+}
+
+function aim(e) {
+  const r = out.getBoundingClientRect();
+  mx = Math.floor((e.clientX - r.left) / r.width * W); my = Math.floor((e.clientY - r.top) / r.height * H);
+}
+out.addEventListener('mousemove', aim);
+out.addEventListener('mouseleave', () => { mx = my = -1; });
+out.addEventListener('click', e => {
+  aim(e);
+  if (my >= SH) { const v = verbAt(mx, my); if (v) verb = v; }
+  else if (my >= 0) act(idb[my * W + mx]);
+});
+
+const hud = document.getElementById('hud'), HUD = hud.textContent;
+let recorder = null;
+function record() {
+  if (recorder) { recorder.stop(); return; }
+  const mime = ['video/webm;codecs=vp9', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)), chunks = [];
+  recorder = new MediaRecorder(out.captureStream(30), { mimeType: mime, videoBitsPerSecond: 8e6 });
+  recorder.ondataavailable = e => chunks.push(e.data);
+  recorder.onstop = () => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' })); a.download = `night-storm-${Date.now()}.webm`; a.click();
+    recorder = null; hud.classList.remove('rec'); hud.textContent = HUD;
+  };
+  recorder.start(); hud.classList.add('rec'); hud.textContent = '● recording — R to stop early';
+  setTimeout(() => recorder && recorder.stop(), 10000);
+}
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k === 'l') strike();
+  else if (k === ' ') { paused = !paused; e.preventDefault(); }
+  else if (k === 'r') record();
+});
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

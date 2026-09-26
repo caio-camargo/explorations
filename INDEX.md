@@ -46,6 +46,7 @@ Owned by [`explorations/README.md`](explorations/README.md) — add rows there, 
 |------|---------|
 | [`explorations/dots-friend-enemy/`](explorations/dots-friend-enemy/) | Dots that chase one friend and flee one enemy — [`NOTES.md`](explorations/dots-friend-enemy/NOTES.md), [`index.html`](explorations/dots-friend-enemy/index.html) |
 | [`explorations/sky-floor/`](explorations/sky-floor/) | Lo-fi surreal room with a sky for a floor and a bobbing black orb — [`NOTES.md`](explorations/sky-floor/NOTES.md), [`index.html`](explorations/sky-floor/index.html) |
+| [`explorations/night-storm/`](explorations/night-storm/) | LucasArts-style VGA pixel art: stormy coast, lighthouse, verb UI — [`NOTES.md`](explorations/night-storm/NOTES.md), [`index.html`](explorations/night-storm/index.html) |
 
 ---
 
