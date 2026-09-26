@@ -53,9 +53,12 @@ const ANCH = {
   LAMP:  ['#7a3a12', '#e0862a', '#ffc04a', '#fff2bc'],
   RAIN:  ['#4a5676', '#7a88a8'],
   BOLT:  ['#b8c4ff', '#ffffff'],
+  ME:    ['#2a120c', '#5e2818', '#9a4428', '#c8653e', '#e88a5e'],
+  WOOD:  ['#120a07', '#26180f', '#3e2818', '#5a3c24', '#785234'],
+  ROPE:  ['#231e1a', '#40372f', '#665845', '#8e7c62'],
 };
 const LONG = { SKY: 20, CLOUD: 26, MOON: 8, MOUNT: 10, SEA: 20, FOAM: 8, ROCK: 32, EARTH: 14, GRASS: 18,
-               MOSS: 8, TREE: 8, LHW: 10, LHR: 10, LAMP: 10, RAIN: 4, BOLT: 2 };
+               MOSS: 8, TREE: 8, LHW: 10, LHR: 10, LAMP: 10, RAIN: 4, BOLT: 2, ME: 12, WOOD: 10, ROPE: 6 };
 function interp(hs, n) {
   const a = hs.map(hex);
   return Array.from({ length: n }, (_, i) => {
@@ -65,7 +68,7 @@ function interp(hs, n) {
 }
 const RS = {}, RL = {};
 for (const k in ANCH) { RS[k] = add(ANCH[k].map(hex)); RL[k] = add(interp(ANCH[k], LONG[k])); }
-const [BLACK, INV, VERB, VERB_HI, SENT, TALK] = add(['#000000', '#1a1d38', '#3c4686', '#9aa6ff', '#58c4bc', '#f0e2a0'].map(hex));
+const [BLACK, INV, VERB, VERB_HI, SENT, TALK] = add(['#000000', '#1a1d38', '#3c4686', '#9aa6ff', '#58c4bc', '#f5c49c'].map(hex));
 const NCOL = set => Object.values(set).flat().length + 6;   // +UI
 let R = RL, painted = true;
 const hi = r => r[r.length - 1];
@@ -81,7 +84,7 @@ const PALS = [PAL, PAL.map((c, i) => exempt.has(i) ? c : mix(c, .3)), PAL.map((c
 // the ramp, and its remainder is dithered exactly like dith() — squeezed toward rounding in
 // painted mode, full Bayer in dithered mode — so the beam matches whichever look is active.
 const RAMP_OF = new Array(PAL.length), POS_OF = new Int16Array(PAL.length);
-for (const set of [RS, RL]) for (const k of ['SKY', 'CLOUD', 'MOON', 'MOUNT', 'SEA', 'FOAM', 'ROCK', 'EARTH', 'GRASS', 'MOSS', 'TREE', 'RAIN', 'LHW', 'LHR'])
+for (const set of [RS, RL]) for (const k of ['SKY', 'CLOUD', 'MOON', 'MOUNT', 'SEA', 'FOAM', 'ROCK', 'EARTH', 'GRASS', 'MOSS', 'TREE', 'RAIN', 'LHW', 'LHR', 'ME', 'WOOD', 'ROPE'])
   set[k].forEach((c, j) => { RAMP_OF[c] = set[k]; POS_OF[c] = j; });
 function lift(i, e, x, y) {
   const r = RAMP_OF[idx[i]];
@@ -115,8 +118,8 @@ for (const [p, w] of [[4, .45], [8, .27], [16, .15], [32, .08], [64, .05]]) {
 const tS = (u, v) => tex[((((v | 0) % TW) + TW) % TW) * TW + ((((u | 0) % TW) + TW) % TW)];
 
 // ---------- static geometry ----------
-const ID = { none: 0, sky: 1, clouds: 2, moon: 3, mountains: 4, sea: 5, cliff: 6, lighthouse: 7, hill: 8, tree: 9, boulder: 10 };
-const NAME = ['', 'sky', 'storm clouds', 'moon', 'mountains', 'sea', 'cliff', 'lighthouse', 'hill', 'dead tree', 'boulder'];
+const ID = { none: 0, sky: 1, clouds: 2, moon: 3, mountains: 4, sea: 5, cliff: 6, lighthouse: 7, hill: 8, tree: 9, boulder: 10, me: 11, bridge: 12, door: 13, stairs: 14 };
+const NAME = ['', 'sky', 'storm clouds', 'moon', 'mountains', 'sea', 'cliff', 'lighthouse', 'hill', 'dead tree', 'boulder', 'Claude', 'rope bridge', 'door', 'wooden stairs'];
 const MX = 60, MY = 26;                                        // moon
 const ridge = Array.from({ length: W }, (_, x) => {
   const m = tS(x * .7, 3) * .8 + tS(x * 2.2, 40) * .2, taper = x < 160 ? 1 : Math.max(0, (205 - x) / 45);
@@ -139,6 +142,7 @@ const hillRight = Array.from({ length: SH }, (_, y) => { let r = -1; for (let x 
 // Each static pixel stores a ramp key + a shade float; the per-frame pass only dithers it,
 // so it follows the painted/dithered toggle for free.
 const KEYS = ['MOUNT', 'ROCK', 'EARTH', 'GRASS', 'MOSS'];
+const stZ = new Uint8Array(W * SH);                 // boulder pixels: the y of the boulder's base (depth)
 const stK = new Int8Array(W * SH).fill(-1), stV = new Float32Array(W * SH), stI = new Uint8Array(W * SH);
 const put = (x, y, key, v, id) => { if (x >= 0 && x < W && y >= 0 && y < SH) { const i = y * W + x; stK[i] = KEYS.indexOf(key); stV[i] = v; stI[i] = id; } };
 const LN = Math.hypot(-.55, -.6, .58), Lx = -.55 / LN, Ly = -.6 / LN, Lz = .58 / LN;   // moonlight: upper left, toward us
@@ -152,6 +156,7 @@ function boulder(cx, cy, rx, ry, id, mossy) {        // sphere-normal shading, m
     const nx = (x - cx) / rx, ny = (y - cy) / ry, d2 = nx * nx + ny * ny;
     if (d2 > 1) continue;
     const d = Math.max(0, nx * Lx + ny * Ly + Math.sqrt(1 - d2) * Lz), g = tS(x * 6, y * 6);
+    if (x >= 0 && x < W && y >= 0 && y < SH) stZ[y * W + x] = Math.round(cy + ry);
     if (mossy && ny < -.45 && g > .5) put(x, y, 'MOSS', .2 + d * .6, id);
     else put(x, y, 'ROCK', .04 + d * .62 + (g - .5) * .25 - (d2 > .8 ? .08 : 0), id);
   }
@@ -201,7 +206,7 @@ function boulder(cx, cy, rx, ry, id, mossy) {        // sphere-normal shading, m
       put(x, y, rocky ? 'ROCK' : 'EARTH', .05 + L.d * .42 - dy * .004 + (x > 110 ? .08 : 0), MID.hill);
     }
   }
-  for (const [cx, rx, ry] of [[86, 9, 6], [121, 6, 5], [20, 5, 3.5]]) boulder(cx, hillTop[cx] + ry * .25, rx, ry, MID.boulder, true);
+  for (const [cx, rx, ry] of [[86, 9, 6], [58, 5, 4], [20, 5, 3.5]]) boulder(cx, hillTop[cx] + ry * .25, rx, ry, MID.boulder, true);
 }
 // grass blades along the hill and cliff tops — the only animated part of the foreground
 const hash = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
@@ -318,7 +323,252 @@ function drawScene(flash) {
   }
   drawLighthouse();
   drawBlades(gust);
-  drawTree(tree, 40, Math.ceil(hillTop[40]) + 1, -Math.PI / 2 - .12, gust);
+  BR.sag = 10 + Math.sin(t * 1.1) * 1.2 + gust * 1.6;             // the bridge breathes with the wind
+  BR.meU = me.mode === 'path' ? PATH[Math.round(me.k)].u : -1;      // ...and dips under my weight
+  if (me.mode === 'path') placeOnPath();
+  drawWoodwork();
+  const treeBase = Math.ceil(hillTop[40]) + 1;
+  if (me.y <= treeBase) drawMe();                                  // behind the tree...
+  drawTree(tree, 40, treeBase, -Math.PI / 2 - .12, gust);
+  if (me.y > treeBase) drawMe();                                   // ...or in front of it
+  drawNearRopes();                                                 // the hand rope passes in front of me
+}
+
+// ---------- me: a small figure in a raincoat, carrying a lantern ----------
+// K outline · O coat (shaded at draw time, so the moonlit edge stays on the moon's side
+// whichever way it faces) · D face in the hood's shadow · S lantern-lit cheek · b belt
+// B boots · M lantern frame · G glass
+const BODY = [
+  '...KKK......',
+  '..KOOOK.....',
+  '.KOOOOOK....',
+  '.KOODDDK....',
+  '.KOODSDK....',
+  '.KOODDDK....',
+  '..KOOOK.....',
+  '.KOOOOOOK...',
+  'KOOOOOOOOK..',
+  'KOOOOOKOOK..',
+  'KOOOOOK.KOK.',
+  'KbbbbbK..KMK',
+  'KOOOOOOK.MGM',
+  'KOOOOOOK.MGM',
+  'KOOOOOOOK.M.',
+  'KOOOOOOOK...',
+  '.KOOOOOK....'];
+const LEGS = {
+  idle:   ['.KBK.KBK....', '.KBK.KBK....', 'KBBK.KBBK...'],
+  stride: ['.KBK..KBK...', 'KBK....KBK..', 'KBBK...KBBK.'],
+  pass:   ['..KBBK......', '..KBBK......', '..KBBBK.....'],
+};
+const AX = 4.5;                                                     // body centre column (the anchor)
+const walkable = (x, y) => x >= 2 && x < 147 && y < SH - 1 && y >= hillTop[x] + 2 && stI[y * W + x] === ID.hill;
+const WALK = [];
+for (let y = 0; y < SH; y++) for (let x = 0; x < W; x++) if (walkable(x, y)) WALK.push([x, y]);
+function nearestWalk(x, y) {
+  let best = WALK[0], bd = 1e9;
+  for (const p of WALK) { const d = (p[0] - x) ** 2 + ((p[1] - y) * 1.5) ** 2; if (d < bd) { bd = d; best = p; } }
+  return best;
+}
+const scaleAt = y => .9 + Math.min(1, Math.max(0, (y - 108) / 36)) * .5;   // SCUMM-style depth scaling
+// Two walk areas, like SCUMM's walk boxes: the open hill (2D) and the route (1D, indexed by k).
+// A walk is a list of legs; crossing between areas goes through the stair foot E.
+const me = { x: 64, y: 0, moving: false, phase: 0, flip: false, pending: null, stuck: 0, mode: 'hill', k: 0, legs: [] };
+[me.x, me.y] = nearestWalk(70, 130);
+const meScale = () => me.mode === 'path' ? PATH[Math.round(me.k)].sc : scaleAt(me.y);
+function placeOnPath() {
+  const k0 = Math.floor(me.k), k1 = Math.min(PATH.length - 1, k0 + 1), f = me.k - k0;
+  me.x = PATH[k0].x + (PATH[k1].x - PATH[k0].x) * f;
+  me.y = Math.round(pathY(k0) + (pathY(k1) - pathY(k0)) * f) - 1;
+}
+function updateMe() {
+  if (!me.moving) return;
+  const leg = me.legs[0];
+  if (!leg) return arrive();
+  me.phase += .5;
+  if (leg.enter) { me.mode = 'path'; me.k = 0; me.legs.shift(); return placeOnPath(); }
+  if (leg.exit) { me.mode = 'hill'; [me.x, me.y] = E; me.legs.shift(); return; }
+  if (leg.k != null) {                                               // along the route
+    const dk = leg.k - me.k, v = 1.25 * (PATH[Math.round(me.k)].spd || 1);
+    if (Math.abs(dk) > .01) me.flip = dk < 0;
+    if (Math.abs(dk) <= v) { me.k = leg.k; me.legs.shift(); if (!me.legs.length) arrive(); }
+    else me.k += Math.sign(dk) * v;
+    return placeOnPath();
+  }
+  const [tx, ty] = leg.hill;                                         // across the hill, around boulders
+  if (!leg.D) leg.D = field(tx, ty);
+  const v = 1.5 * scaleAt(me.y), done = () => { me.legs.shift(); if (!me.legs.length) arrive(); };
+  if (Math.hypot(tx - me.x, ty - me.y) <= v) { me.x = tx; me.y = ty; return done(); }
+  const [ax, ay] = ahead(leg.D, Math.round(me.x), Math.round(me.y), 4, tx, ty);
+  const dx = ax - me.x, dy = ay - me.y, d = Math.hypot(dx, dy) || 1;
+  if (Math.abs(dx) > .3) me.flip = dx < 0;
+  me.x += dx / d * v; me.y += dy / d * v * .8;                      // depth moves a little slower
+}
+// BFS distance field over the walkable pixels, from the target outward (8-connected).
+// The walker follows it downhill, aiming a few cells ahead so diagonals come out smooth.
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
+function field(tx, ty) {
+  const D = new Int16Array(W * SH).fill(-1), q = [tx + ty * W];
+  D[q[0]] = 0;
+  for (let h = 0; h < q.length; h++) {
+    const i = q[h], x = i % W, y = (i / W) | 0;
+    for (const [ox, oy] of N8) {
+      const nx = x + ox, ny = y + oy, j = nx + ny * W;
+      if (nx >= 0 && nx < W && ny >= 0 && ny < SH && D[j] < 0 && walkable(nx, ny)) { D[j] = D[i] + 1; q.push(j); }
+    }
+  }
+  return D;
+}
+function ahead(D, x, y, steps, tx, ty) {
+  if (D[x + y * W] < 0) return [tx, ty];                            // off the grid (rounding): head straight for it
+  for (let s = 0; s < steps; s++) {
+    let best = null, bd = D[x + y * W];
+    for (const [ox, oy] of N8) { const j = (x + ox) + (y + oy) * W; if (D[j] >= 0 && D[j] < bd) { bd = D[j]; best = [x + ox, y + oy]; } }
+    if (!best) break;
+    [x, y] = best;
+  }
+  return [x, y];
+}
+function arrive() {
+  me.moving = false; me.stuck = 0;
+  if (me.pending) { act(me.pending.verb, me.pending.id); me.pending = null; }
+}
+function goTo(target, pending) {                                    // target: { k } on the route, or { hill: [x, y] }
+  const legs = [];
+  if (target.k != null) { if (me.mode === 'hill') legs.push({ hill: E }, { enter: true }); legs.push({ k: target.k }); }
+  else { if (me.mode === 'path') legs.push({ k: 0 }, { exit: true }); legs.push({ hill: target.hill }); }
+  me.legs = legs; me.moving = true; me.pending = pending;
+}
+function nearestK(x, y) {
+  let best = 0, bd = 1e9;
+  PATH.forEach((p, k) => { const d = (p.x - x) ** 2 + (pathY(k) - y) ** 2; if (d < bd) { bd = d; best = k; } });
+  return best;
+}
+const ROUTE = new Set([ID.bridge, ID.door, ID.stairs, ID.lighthouse, ID.cliff]);
+
+// ---------- the stairs, the landing and the rope bridge ----------
+// Bridge: anchored at the landing (134,100) and the cliff edge (232,64), and it RECEDES: the
+// far end is BK times further away. u is the world position along the bridge (0 = landing);
+// screen position is perspective-correct, bf(u) = uK / ((1-u) + uK), so the near half fills
+// most of the span. Everything with a size — sag, rail height, deck thickness, plank and
+// suspender spacing, the character — scales with bs(u). Planks go missing where a hash says so.
+const BR = { sag: 10, meU: -1 };
+const B0 = 134, B1 = 232, BY0 = 100, BY1 = 64, BK = 2.4, RAIL = 8;
+const bf = u => u * BK / ((1 - u) + u * BK);                       // world u → screen fraction
+const bu = f => f / (BK * (1 - f) + f);                            // screen fraction → world u
+const bs = u => 1 / ((1 - u) + u * BK);                            // perspective scale (1 at the near end)
+const bx = u => B0 + (B1 - B0) * bf(u);
+function deckY(u) {
+  const bow = 4 * u * (1 - u), sc = bs(u);
+  let y = BY0 + (BY1 - BY0) * bf(u) + BR.sag * bow * sc;
+  if (BR.meU >= 0) y += 3.5 * sc * Math.exp(-(((u - BR.meU) / .12) ** 2)) * Math.min(1, bow * 3);
+  return y;
+}
+const ropeY = u => {                                               // hand rope: anchored on post tops, sags less
+  const bow = 4 * u * (1 - u), sc = bs(u), f = bf(u);
+  return (BY0 - RAIL) + ((BY1 - RAIL / BK) - (BY0 - RAIL)) * f + BR.sag * .75 * bow * sc
+    + (BR.meU >= 0 ? 1.5 * sc * Math.exp(-(((u - BR.meU) / .2) ** 2)) : 0);
+};
+const PLANKS = 44;                                                 // planks in world units along the deck
+const plankGone = u => hash(Math.floor(u * PLANKS) + 7.3) < .14;
+function wline(x0, y0, x1, y1, ramp, v, id) {
+  const n = Math.ceil(Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)));
+  for (let i = 0; i <= n; i++) { const x = Math.round(x0 + (x1 - x0) * i / n), y = Math.round(y0 + (y1 - y0) * i / n); sp(x, y, dith(R[ramp], v, x, y), id); }
+}
+// the walk route beyond the hill: stairs → landing → bridge → cliff top → the door
+const E = nearestWalk(100, 131);
+const PATH = [];
+function seg(x0, y0, x1, y1, sc0, sc1) {
+  const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0));
+  for (let i = 0; i < n; i++) { const f = i / n; PATH.push({ x: x0 + (x1 - x0) * f, y: y0 + (y1 - y0) * f, u: -1, sc: sc0 + (sc1 - sc0) * f }); }
+}
+seg(E[0], E[1] + 1, 122, 100, scaleAt(E[1]), .86);                 // stairs
+seg(122, 100, B0, 100, .86, .82);                                   // landing
+const K_BRIDGE = PATH.length;
+// the bridge is sampled evenly in WORLD u, so a constant walk speed slows on screen as it recedes
+for (let i = 0; i < 110; i++) { const u = i / 110; PATH.push({ x: bx(u), y: 0, u, sc: .82 * bs(u) }); }
+const K_CLIFF = PATH.length, FAR = .82 / BK;                        // ≈ .34: about 7 px tall, under the 9 px door
+for (let x = B1; x <= 259; x++) PATH.push({ x, y: Math.round(cliffTop[x]), u: -1, sc: FAR, spd: FAR / .82 });
+const K_DOOR = PATH.length - 1;
+const pathY = k => PATH[k].u >= 0 ? deckY(PATH[k].u) : PATH[k].y;
+
+function drawWoodwork() {
+  const S = ID.stairs, [ex, ey] = [E[0], E[1] + 1];
+  for (const px_ of [123, 131]) for (let y = 101; y <= Math.ceil(hillTop[px_]) + 1; y++) {   // landing posts
+    sp(px_, y, dith(R.WOOD, .6, px_, y), S); sp(px_ + 1, y, dith(R.WOOD, .25, px_ + 1, y), S);
+  }
+  wline(125, 103, 130, 128, 'WOOD', .3, S); wline(130, 103, 125, 128, 'WOOD', .22, S);          // cross-brace
+  const sx = Math.round((ex + 122) / 2), sy = Math.round((ey + 100) / 2);                       // stair prop
+  for (let y = sy + 1; y <= Math.ceil(hillTop[sx]) + 1; y++) sp(sx, y, dith(R.WOOD, .4, sx, y), S);
+  wline(ex, ey, 122, 100, 'WOOD', .4, S); wline(ex, ey + 1, 122, 101, 'WOOD', .18, S);          // stringer
+  const n = Math.hypot(122 - ex, 100 - ey);
+  for (let d = 2; d < n; d += 3.5) {                                                             // treads
+    const x = Math.round(ex + (122 - ex) * d / n), y = Math.round(ey + (100 - ey) * d / n);
+    for (let k = -1; k <= 2; k++) sp(x + k, y - 1, dith(R.WOOD, .7 - k * .08, x + k, y), S);
+  }
+  for (let x = 121; x <= B0; x++) { sp(x, 100, dith(R.WOOD, .68, x, 100), S); sp(x, 101, dith(R.WOOD, .28, x, 101), S); }
+  for (let y = BY0 - RAIL - 1; y < BY0; y++) { sp(B0, y, dith(R.WOOD, .6, B0, y), S); sp(B0 + 1, y, dith(R.WOOD, .25, B0 + 1, y), S); }  // near anchor post
+  const farTop = Math.round(BY1 - RAIL / BK) - 1;                                                // far post: smaller, thinner
+  for (let y = farTop; y < BY1; y++) sp(B1, y, dith(R.WOOD, .5, B1, y), ID.bridge);
+  for (let x = B0 + 1; x < B1; x++) {                                                            // deck, thinner with distance
+    const u = bu((x - B0) / (B1 - B0)), sc = bs(u);
+    if (plankGone(u)) continue;
+    const y = Math.round(deckY(u)), th = Math.max(1, Math.round(2.6 * sc));
+    const seam = Math.floor(u * PLANKS) !== Math.floor(bu((x + 1 - B0) / (B1 - B0)) * PLANKS);
+    for (let k = 0; k < th; k++) sp(x, y + k, dith(R.WOOD, k === 0 ? (seam ? .3 : .6) : .2, x, y + k), ID.bridge);
+    const ry = Math.round(ropeY(u)) - Math.max(1, Math.round(1.6 * sc));                        // far hand rope, just above the near one
+    sp(x, ry, dith(R.ROPE, .3, x, ry), ID.bridge);
+  }
+}
+function drawNearRopes() {
+  for (let x = B0 + 1; x < B1; x++) {
+    const u = bu((x - B0) / (B1 - B0)), ry = Math.round(ropeY(u));
+    sp(x, ry, dith(R.ROPE, .7, x, ry), ID.bridge);
+  }
+  for (let j = 1; j < 16; j++) {                                                                  // suspenders: even in world, bunching on screen
+    const u = j / 16, x = Math.round(bx(u)), ry = Math.round(ropeY(u)), dy = Math.round(deckY(u));
+    for (let y = ry + 1; y < dy; y++) sp(x, y, dith(R.ROPE, .45, x, y), ID.bridge);
+  }
+  const [ex, ey] = [E[0], E[1] + 1];                                                              // stair handrail
+  wline(ex, ey - 8, 122, 92, 'ROPE', .55, ID.stairs);
+  for (let y = ey - 8; y < ey; y++) sp(ex, y, dith(R.WOOD, .5, ex, y), ID.stairs);
+  for (let y = 92; y < 100; y++) sp(122, y, dith(R.WOOD, .5, 122, y), ID.stairs);
+}
+
+function drawMe() {
+  const s = meScale(), dir = me.flip ? -1 : 1, bob = me.moving && (me.phase | 0) % 2 === 1 ? 1 : 0;
+  const rows = [...BODY, ...(me.moving ? ((me.phase | 0) % 2 ? LEGS.pass : LEGS.stride) : LEGS.idle)];
+  const h = rows.length, H2 = Math.round(h * s), W2 = Math.round(12 * s), baseY = Math.round(me.y) - H2 + 1 - bob;
+  const flick = .85 + Math.sin(t * 13) * .08 + Math.sin(t * 5.3) * .07;
+  // lantern glow first, so it lights the ground and rain around it but not the figure itself
+  const LX = me.x + dir * (10.5 - AX) * s, LY = baseY + (13 + bob) * s, Rr = 14 * s;
+  for (let y = Math.max(0, Math.floor(LY - Rr)); y <= Math.min(SH - 1, LY + Rr); y++)
+    for (let x = Math.max(0, Math.floor(LX - Rr)); x <= Math.min(W - 1, LX + Rr); x++) {
+      const d = Math.hypot(x - LX, (y - LY) * 1.2) / Rr;
+      if (d < 1) lift(y * W + x, (1 - d) ** 2 * .3 * flick, x, y);
+    }
+  for (let sy = 0; sy < H2; sy++) {
+    const row = Math.min(h - 1, Math.floor(sy / s)), r = rows[row];
+    for (let sx = 0; sx < W2; sx++) {
+      const col = Math.min(11, Math.floor(sx / s)), ch = r[col];
+      if (ch === '.') continue;
+      const X = Math.round(me.x + dir * (sx + .5 - AX * s)), Y = baseY + sy;
+      if (X < 0 || X >= W || Y < 0 || Y >= SH || (me.mode === 'hill' && stZ[Y * W + X] > me.y)) continue;   // a boulder in front hides us
+      let c;
+      if (ch === 'K') c = DARK;
+      else if (ch === 'O') {
+        const litN = r[col - dir], darkN = r[col + dir];                  // screen-left neighbour faces the moon
+        const v = (litN === undefined || litN === '.' || litN === 'K') ? .78 : darkN === 'K' ? .3 : .52;
+        c = dith(R.ME, v + (row < 3 ? .08 : 0) - row * .012, X, Y);
+      } else if (ch === 'D') c = RS.EARTH[1];
+      else if (ch === 'S') c = dith(R.LAMP, .05, X, Y);
+      else if (ch === 'b') c = dith(R.ME, .12, X, Y);
+      else if (ch === 'B') c = dith(R.EARTH, .55, X, Y);
+      else if (ch === 'M') c = dith(R.ROCK, .3, X, Y);
+      else c = dith(R.LAMP, .75 + flick * .25, X, Y);
+      sp(X, Y, c, ID.me);
+    }
+  }
 }
 
 function drawBlades(gust) {                                          // wind from the right: blades lean left
@@ -337,7 +587,12 @@ function drawLighthouse() {
     const hw = 5 + (y - 26) / 38 * 3, band = ((y - 26) / 7 | 0) % 2 ? R.LHR : R.LHW;
     for (let x = Math.round(cx - hw); x <= Math.round(cx + hw); x++) sp(x, y, dith(band, .8 - ((x - cx) / hw + 1) * .38, x, y), L);
   }
-  for (let y = 56; y < 64; y++) for (let x = 266; x <= 269; x++) sp(x, y, DARK, L);                 // door
+  for (let y = 55; y < 64; y++) for (let x = 265; x <= 270; x++) {                               // door: arched, planked, locked
+    if (y === 55 && (x === 265 || x === 270)) continue;
+    const edge = x === 265 || x === 270 || y === 55;
+    sp(x, y, edge ? DARK : x === 268 ? dith(R.WOOD, .15, x, y) : dith(R.WOOD, .35 - (x - 266) * .05, x, y), ID.door);
+  }
+  sp(269, 59, dith(R.LAMP, .05, 269, 59), ID.door);                                             // the handle
   for (let y = 40; y < 43; y++) for (let x = 267; x <= 268; x++) sp(x, y, dith(R.LAMP, Math.sin(t * 7) > .7 ? .7 : .45, x, y), L);
   for (let x = 260; x <= 276; x++) { sp(x, 24, DARK, L); sp(x, 25, DARK, L); if (x % 2 === 0) sp(x, 22, DARK, L); sp(x, 23, x % 4 === 0 ? DARK : idx[23 * W + x], L); }
   for (let y = 16; y < 22; y++) for (let x = 263; x <= 273; x++)                                   // lamp room
@@ -423,8 +678,7 @@ const VX = [8, 46, 96], VY = [158, 170, 182];
 let verb = 'Walk to', mx = -1, my = -1, say = null;
 const LINES = {
   'Look at|7': "Someone's still keeping that lamp lit. On a night like this, that's either devotion or a terrible job.",
-  'Walk to|7': "Not in this weather. Maybe after the storm.",
-  'Open|7': "It's too far away. And probably locked. And very wet.",
+  'Open|7': "The door's locked.",
   'Look at|9': "It's been struck before. It looks like it wants to be struck again.",
   'Pick up|9': "It's rooted. Also, it's a tree.",
   'Talk to|9': "The tree says nothing. Typical.",
@@ -448,17 +702,37 @@ const LINES = {
   'Pick up|10': "It's bigger than it looks. And it looks big.",
   'Push|10': "I'd need a lever, a fulcrum, and a much better reason.",
   'Talk to|10': "The boulder listens. Best conversation I've had all night.",
+  'Look at|11': "That's me. Or a version of me that owns a raincoat and a lantern.",
+  'Talk to|11': "I ask myself how I'm doing. I say fine, thanks. This could go on for a while.",
+  'Pick up|11': "I'd rather keep my feet on the ground. It's slippery enough as it is.",
+  'Use|11': "I'm already in use.",
+  'Push|11': "Let's not.", 'Pull|11': "Let's not.",
+  'Give|11': "I give myself a pep talk. It helps a little.",
+  'Open|11': "I'm keeping the coat buttoned. Have you seen the weather?",
+  'Close|11': "Already buttoned up. Tight.",
+  'Look at|12': "A rope bridge. Most of the planks are still there. That's the good news.",
+  'Pick up|12': "It's attached at both ends. Thankfully.",
+  'Push|12': "Let's not test it more than we have to.", 'Pull|12': "Let's not test it more than we have to.",
+  'Talk to|12': "Please hold. Please hold. Please hold.",
+  'Look at|13': "A heavy oak door. Bolted from the inside. Somebody's home, and they're not expecting visitors.",
+  'Open|13': "It's locked.",
+  'Push|13': "It's locked. Pushing doesn't change its mind.",
+  'Pull|13': "It's locked. Pulling doesn't change its mind either.",
+  'Use|13': "I don't have anything to use on it. Not yet.",
+  'Talk to|13': "I knock. Nothing. Just the wind, and the lamp turning overhead.",
+  'Close|13': "It's already closed. Very closed.",
+  'Look at|14': "Somebody built these stairs with great confidence and very little wood.",
+  'Pick up|14': "I'd rather keep them where they are. I'm going to need them.",
 };
 const GENERIC = {
   'Open': "It doesn't open.", 'Close': "It doesn't close.", 'Give': "Give it to whom? I'm alone out here.",
   'Pick up': "I can't pick that up.", 'Push': "It won't budge.", 'Pull': "It won't budge.",
   'Use': "I don't know how to use that.", 'Talk to': "It doesn't seem very talkative.",
 };
-function act(id) {
+function act(v, id) {
   if (!id) return;
-  const line = LINES[`${verb}|${id}`] || (verb === 'Look at' ? `It's a ${NAME[id]}. It's wet.` : GENERIC[verb]);
-  if (line) say = { lines: wrap(line, 220), until: t + 1.5 + line.length * .055 };
-  verb = 'Walk to';
+  const line = LINES[`${v}|${id}`] || (v === 'Look at' ? `It's a ${NAME[id]}. It's wet.` : GENERIC[v]);
+  if (line) say = { lines: wrap(line, 150), until: t + 1.5 + line.length * .055 };
 }
 function verbAt(x, y) {
   for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++)
@@ -478,7 +752,14 @@ function drawUI() {
   }
   if (say) {
     if (t > say.until) say = null;
-    else say.lines.forEach((l, i) => text(l, 160 - (textW(l) >> 1), 6 + i * 9, TALK, BLACK));
+    else {                                                                    // above my head, kept on screen
+      const head = Math.round(me.y) - Math.round(20 * meScale()) - 3;
+      const y0 = Math.max(2, head - say.lines.length * 9);
+      say.lines.forEach((l, i) => {
+        const w = textW(l), x0 = Math.min(W - 2 - w, Math.max(2, Math.round(me.x) - (w >> 1)));
+        text(l, x0, y0 + i * 9, TALK, BLACK);
+      });
+    }
   }
   if (mx >= 0) {                                                               // crosshair cursor
     const cc = CURSOR[(t * 12 | 0) % 4];
@@ -493,7 +774,7 @@ function frame(now) {
   acc += Math.min(.25, (now - last) / 1000); last = now;
   if (acc >= STEP) {
     const step = !paused; acc = 0;
-    if (step) { t += STEP; if (t > nextStrike) strike(); }
+    if (step) { t += STEP; if (t > nextStrike) strike(); updateMe(); }
     const flash = step ? (flashSeq.length ? flashSeq.shift() : 0) : 0;
     if (!flashSeq.length && !flash) bolt = null; else bolt = true;
     const ba = t * .7;                                               // ~9 s per turn
@@ -544,7 +825,19 @@ out.addEventListener('mouseleave', () => { mx = my = -1; });
 out.addEventListener('click', e => {
   aim(e);
   if (my >= SH) { const v = verbAt(mx, my); if (v) verb = v; }
-  else if (my >= 0) act(idb[my * W + mx]);
+  else if (my >= 0) {
+    const id = idb[my * W + mx], v = verb;
+    verb = 'Walk to';
+    if (id === ID.me) act(v, id);                                   // no need to walk to myself
+    else {
+      const pend = v !== 'Walk to' || LINES[`Walk to|${id}`] ? { verb: v, id } : null;
+      if (v === 'Use' && id === ID.bridge)                           // "Use bridge" = cross to the other side
+        goTo({ k: me.mode === 'path' && me.k > K_BRIDGE + (K_CLIFF - K_BRIDGE) / 2 ? K_BRIDGE - 1 : K_CLIFF }, null);
+      else if (id === ID.door || id === ID.lighthouse) goTo({ k: K_DOOR }, pend);
+      else if (ROUTE.has(id)) goTo({ k: nearestK(mx, my) }, pend);
+      else goTo({ hill: nearestWalk(mx, my) }, pend);
+    }
+  }
 });
 
 const hud = document.getElementById('hud');

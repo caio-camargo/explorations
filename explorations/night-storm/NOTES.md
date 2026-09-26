@@ -1,5 +1,5 @@
 # Night Storm — notes
-**Version**: 1.2.0 · **Author**: Caio + Claude (Opus 5.5) · **Created**: 2026-09-25 · **Updated**: 2026-09-25 · **Status**: Active
+**Version**: 1.5.0 · **Author**: Caio + Claude (Opus 5.5) · **Created**: 2026-09-25 · **Updated**: 2026-09-25 · **Status**: Active
 **Purpose**: Pixel art in the style of early-90s point-and-click adventures (LucasArts VGA era): a stormy night on a coast, with a lighthouse, a dead tree and a working verb interface.
 
 ## The idea
@@ -64,6 +64,68 @@ colours). The difference was painted art, long palette ramps, very little dither
     in a different colour
 - The beam now draws after the rain, so drops glitter as it passes.
 
+## v1.3 — me, walking around
+Caio asked for a character that walks where you click, as a representation of Claude. It's
+a small hooded figure in a terracotta raincoat carrying a lantern: a warm light in the
+storm, echoing the lighthouse. It's deliberately a character, not a logo.
+- **Sprite:** 12×20 ASCII frames (idle, stride, passing), with a 1-px bob on passing frames.
+  The coat is shaded *at draw time* from each pixel's neighbours, so the moonlit edge stays
+  on the moon's side whichever way the figure faces (mirroring a pre-shaded sprite would
+  put the rim light on the wrong side). The face is in hood shadow, with one lantern-lit
+  cheek pixel.
+- **SCUMM-style depth scaling:** ×0.9 at the back of the hill up to ×1.4 at the front, with
+  nearest-neighbour scaling, like the originals.
+- **Walk area** = the hill's grass/earth pixels, minus boulders. Clicking the sea, cliff or sky
+  walks to the nearest reachable point. Movement is a straight line that slides along
+  obstacles. Depth moves at 0.8× speed.
+- **Verbs walk first, then act** (SCUMM's convention). Lines are spoken above the head, in a
+  warm speech colour, kept on screen. "Walk to" only speaks where a line exists (the sea,
+  the lighthouse).
+- **Occlusion:** the figure is drawn before or after the tree depending on its y, and
+  boulders store their base line (`stZ`), so a boulder whose base is nearer hides the legs.
+- **Lantern:** a flickering `lift()` glow on the ground and rain around it. It's drawn before
+  the figure, so it lights the surroundings, not the coat. The figure is lit by lightning
+  and the lighthouse beam like everything else. Clicking the character gets
+  self-referential lines ("I'm already in use.").
+
+## v1.4 — a rope bridge to the lighthouse
+- **Geometry forced a staircase.** The hill peaks at y≈129 and the cliff top is at y≈64. A
+  bridge straight from the grass would be a 30° rope ramp. Instead, rickety stairs climb to a
+  braced landing at y≈100, and the bridge sags from there up to the cliff edge. (The small
+  boulder that sat under the landing moved to x=58.)
+- **Bridge:** the deck and the hand rope are both sagging curves between anchor posts.
+  The sag breathes with the wind gust, and a Gaussian dip follows the character's position
+  along the deck (weight). The deck is seen edge-on, with plank seams and planks missing
+  where a hash says so. There are suspender ropes every 6 px. The *near* hand rope and the
+  suspenders draw after the character, so it walks between the ropes.
+- **Walk boxes.** SCUMM rooms were walk boxes joined at edges. Here there are two: the
+  open hill (2D, as before) and a 1-D route indexed by `k` (stairs → landing → bridge → cliff
+  top → door), each point carrying its own depth scale (see v1.5). A walk is a list of legs, and crossing between areas goes through the stair foot
+  `E`. Deck points get their y from the live deck curve every frame, so the character rides
+  the sway.
+- **Clicks:** the route objects (bridge, stairs, cliff, lighthouse, door) target the nearest
+  route point. The door and the lighthouse go straight to the door. "Use" on the bridge
+  crosses to the other side.
+- **The door:** arched, planked, a brass handle pixel, locked. Every verb has a line
+  ("Push: it's locked. Pushing doesn't change its mind.").
+
+## v1.5 — the bridge recedes
+Caio: the figure looked too big next to the door, and the bridge had no depth.
+- **Perspective-correct bridge.** The far end is `BK = 2.4`× further away. `u` is the world
+  position along the bridge, and the screen fraction is `bf(u) = uK / ((1-u) + uK)`. That is
+  the standard perspective-correct interpolation, so the near half fills ~70% of the span.
+  Sag, rail height, deck thickness (3 px → 1 px), plank seams, missing planks and suspender
+  spacing are all defined in world units and scaled by `bs(u) = 1 / ((1-u) + uK)`. They
+  bunch up toward the cliff on their own.
+- **The character follows the same depth.** Route points on the bridge are sampled evenly in
+  world `u`, so a constant walking speed slows down on screen as the figure recedes. It
+  shrinks from ×0.82 at the landing to ×0.34 on the cliff top: 7 px tall next to the 9 px
+  door. Along the cliff top the walk speed scales down to match.
+- **Real pathfinding on the hill.** The straight-line walk with "slide along obstacles"
+  oscillated forever behind the big boulder: slides never counted as stuck. It was replaced
+  with a BFS distance field over the walkable pixels (8-connected, computed per hill leg,
+  about 2.5k cells). The walker aims 4 cells down the gradient so diagonals come out smooth.
+
 ## Controls
 Click a verb, then something in the scene · V painted/dithered · C CRT · L forces lightning · space pauses · R records 10 s of webm.
 
@@ -84,10 +146,18 @@ Click a verb, then something in the scene · V painted/dithered · C CRT · L fo
 - **A flare that lasts a few frames and is one step bright doesn't register.** The facing
   moment needed to be long (a power-6 window rather than a hard threshold), large, and to
   touch the whole frame (the palette warm) before it read as an event.
+- **Hidden preview panes throttle requestAnimationFrame to ~1 fps.** The walk looked
+  "stuck" while testing; stepping `updateMe()` manually proved the logic was fine.
+- **Scale a receding object in world units, not screen units.** Linear-in-screen
+  interpolation (v1.4) made the bridge look flat and the figure too big at the far end.
+  Defining everything along the bridge in world `u` and projecting once gets the bunching,
+  thinning and slowing for free.
+- **A "slide along obstacles" walker needs a stuck detector that counts slides.** Otherwise
+  it can oscillate between two slides forever. Better still, use a distance field.
 - **Click handlers should compute their own coordinates.** Reusing the last mousemove position
   failed when a click arrived without a preceding move (touch, synthetic events).
 
 ## Ideas not done
-A walking character (the obvious next step, and a big one); thunder with a delay after the
+Thunder with a delay after the
 flash; rain streaks lit inside the beam; a candle-lit cottage window; parallax as the view
 scrolls wider than 320 px (those games' rooms often did).
