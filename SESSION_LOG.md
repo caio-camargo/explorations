@@ -1752,3 +1752,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   decoupler, per-joint load frames with shear, aero per stack line, off-axis inertia/thrust/gimbal, explicit staging
   events with parallel burns, and a Δv planner. New Heavy preset. `test.mjs`: 21 checks, all passing (the Lunar yank test
   moved from 3 s to 4 s after the gimbal pivot moved to the engine mount; reason in NOTES).
+- **v1.4 (same session):** maneuver nodes: place them by map click or N, drag handles or use the panel, dashed planned
+  trajectory with encounters, warp-to-burn, SAS → node, frozen-Δv burn tracking with auto throttle cut. `test.mjs`: 25
+  checks, all passing. A flown Hohmann lands 0.82 % short of the plan (finite burn). Verified in the browser with real mouse
+  click and drag. Committed and pushed.

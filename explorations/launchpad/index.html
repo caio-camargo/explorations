@@ -56,6 +56,8 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
 #warp{color:var(--warn);min-width:90px;text-align:right}
+#nodep{right:12px;top:52px;width:285px}#nodep td:first-child{padding-right:8px}#nodep button{padding:0 6px}
+.ndv{display:inline-block;min-width:78px;text-align:right}.ndrow{margin-top:4px;display:flex;gap:3px;align-items:center;flex-wrap:wrap}.ndrow button.on{background:rgba(127,209,255,.35)}
 .grp{margin:1px 0 5px 16px;border-left:2px solid rgba(255,180,84,.45);padding:2px 0 2px 6px;border-radius:0 4px 4px 0}
 .grp.sel{background:rgba(255,180,84,.1);border-left-color:var(--warn)}
 .grp .hd{display:flex;gap:3px;align-items:center;flex-wrap:wrap;color:var(--warn)}.grp .hd button{padding:0 5px}
@@ -95,6 +97,8 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <tr><td>T</td><td>SAS on/off (modes: buttons)</td></tr>
     <tr><td>, . /</td><td>warp down / up / 1×</td></tr>
     <tr><td>M</td><td>map view · Tab cycles focus</td></tr>
+    <tr><td>map click</td><td>place a maneuver node on your orbit</td></tr>
+    <tr><td>N · Del</td><td>node at next apoapsis · delete node</td></tr>
     <tr><td>drag · wheel</td><td>orbit camera · zoom</td></tr>
     <tr><td>R</td><td>revert (after crash / landing)</td></tr>
   </table><div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first.</div></div>
@@ -104,6 +108,19 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <div id="sas"></div>
   </div>
   <div class="panel bl" id="stages"></div>
+  <div class="panel hidden" id="nodep">
+    <h2 style="margin-top:0">Maneuver node</h2>
+    <div id="nd-sum"></div>
+    <table style="margin:6px 0">
+      <tr><td style="color:#d8f05a">Prograde</td><td><button data-a="d0-">−</button> <span id="nd0" class="ndv"></span> <button data-a="d0+">+</button></td></tr>
+      <tr><td style="color:#e07cff">Normal</td><td><button data-a="d1-">−</button> <span id="nd1" class="ndv"></span> <button data-a="d1+">+</button></td></tr>
+      <tr><td style="color:#5fd0ff">Radial out</td><td><button data-a="d2-">−</button> <span id="nd2" class="ndv"></span> <button data-a="d2+">+</button></td></tr>
+    </table>
+    <div class="ndrow">step <button data-a="s0.1">0.1</button><button data-a="s1">1</button><button data-a="s10">10</button><button data-a="s100">100</button> m/s</div>
+    <div class="ndrow">time <button data-a="t-o">−orbit</button><button data-a="t-60">−1m</button><button data-a="t-5">−5s</button><button data-a="t+5">+5s</button><button data-a="t+60">+1m</button><button data-a="t+o">+orbit</button></div>
+    <div class="ndrow"><button data-a="warp">Warp to burn</button> <button data-a="sas">SAS → node</button> <button data-a="del">Delete</button></div>
+    <div class="sub">Drag the coloured handles on the map node; the further you drag, the faster it changes.</div>
+  </div>
 </div>
 <div id="msg"></div>
 <div id="perf"></div>
@@ -348,6 +365,7 @@ function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(
 function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
 function sasTarget(s){
   if(s.sasMode==='stab')return s.hold;
+  if(s.sasMode==='node'){const I=nodeInfo(s);return I&&len(I.rem)>1e-3?norm(I.rem):s.hold}
   const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return s.sasMode==='pro'?pro:s.sasMode==='retro'?mul(pro,-1):s.hold;
   const nrm=norm(h),rad=norm(cross(s.v,nrm));
@@ -468,6 +486,7 @@ function physStep(s,dt){
   if(s.landed){const W=s.mass*b.mu/(rl*rl);
     if(T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
     else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
+  if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const qi=qconj(s.q),vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
   s.mach=b.atm?sp/SND(h):0;s.qdyn=0.5*rho*sp*sp;s.aoa=sp>1?Math.acos(clamp(vb[1]/sp,-1,1)):0;
   if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&rho>0.7?600:6;s.chuteA=s.chuteA<tgt?Math.min(tgt,s.chuteA+dt*(tgt>6?140:3)):tgt}  // drogue below ~20 km, main below ~3 km once under 250 m/s
@@ -509,8 +528,8 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth,tau:len(tau),auth}}
 function firstSeg(s){return launchSegs(s)[0]??0}
 function checkSOI(s){
-  if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI')}}
-  else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI')}}
+  if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI');if(s.node){s.node=null;HOOK.msg('Entering Selene SOI — maneuver node cleared')}}}
+  else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI');if(s.node){s.node=null;HOOK.msg('Escaping Selene SOI — maneuver node cleared')}}}
 function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);
   const hB=len(madd(s.r,Y,s.yBot))-b.R,hT=len(madd(s.r,Y,s.yTop))-b.R;
@@ -560,8 +579,9 @@ function stepDebris(dt){
     if(h<0){HOOK.boom(b,d.r,simT,1);d.dead=true}
     if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
 // Where does the current trajectory go? Up to three patched-conic legs: orbit → Selene encounter → escape back to Tellus.
-function predict(s){
-  const out=[];let st={b:s.body,r:s.r,v:s.v,t:simT,off:null};
+function predict(s){return predictFrom({b:s.body,r:s.r,v:s.v,t:simT})}
+function predictFrom(st0){
+  const out=[];let st={...st0,off:null};
   for(let k=0;k<3;k++){
     const el=elements(st.r,st.v,st.b.mu),pt={...st,el,end:null,endKind:null};out.push(pt);
     if(el.hl<1e-3||k===2)break;
@@ -580,6 +600,22 @@ function predict(s){
       const[p,v]=kepler(st.r,st.v,dt,SELENE.mu),tx=st.t+dt;pt.end=p;pt.endKind='esc';pt.endT=tx;
       st={b:TELLUS,r:add(p,moonPos(tx)),v:add(v,moonVel(tx)),t:tx,off:null}}}
   return out}
+// ---- maneuver node: one planned impulse {t, dv:[prograde, normal, radial]} on the current leg of the trajectory.
+// Before the burn the node's world-frame Δv is recomputed from the orbit (so it follows any correction you make);
+// once thrust starts inside the burn window it freezes, and every m/s the engines deliver is subtracted from it.
+function nodeFrame(r,v){const pro=norm(v),h=cross(r,v),nrm=len(h)>1e-9?norm(h):[0,1,0];return{pro,nrm,rad:norm(cross(v,nrm))}}
+function nodeInfo(s){const n=s.node;if(!n)return null;
+  if(n.burning){const rem=sub(n.dvW,n.applied);return{rem,dvW:n.dvW,rN:s.r,vN:s.v,t:simT,b:s.body}}
+  const[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu),f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
+  return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
+function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
+  let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&segFuel(s,p.seg)>0)}
+  if(!E.length)return NaN;let F=0,md=0;for(const p of E){F+=p.d.thrust*1000;md+=engineMdot(p.d)*1000}
+  return s.mass*(1-Math.exp(-dv/(F/md)))/md}
+function nodeBurn(s,Y,T,dt){const n=s.node;
+  if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}
+  n.applied=madd(n.applied,Y,T/s.mass*dt);const rem=sub(n.dvW,n.applied);
+  if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;HOOK.msg('Maneuver complete — throttle cut')}}
 function dvRemaining(s){ // current stage (until the next staging event) and total, vacuum Isp
   const plan=dvPlan(s,0);return{cur:plan.length?plan[0].dv:0,tot:plan.reduce((a,x)=>a+x.dv,0)}}
 // ==== SIM END
@@ -749,7 +785,7 @@ function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++
 function modelQ(q,pos,shift=0,sc=[1,1,1]){const X=qrot(q,[1,0,0]),Y=qrot(q,[0,1,0]),Z=qrot(q,[0,0,1]),sh=typeof shift==='number'?[0,shift,0]:shift;return mat4(mul(X,sc[0]),mul(Y,sc[1]),mul(Z,sc[2]),add(pos,qrot(q,sh)))}
 
 // ============================================================ app state
-let mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null;
+let mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
 const WARPS=[1,2,4,10,50,100,1000,10000,100000];
 let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
 const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
@@ -760,7 +796,7 @@ HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opac
 HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d)};
-function resetShip(){simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
+function resetShip(){warpTo=null;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
 
 // ============================================================ editor UI
 const $=id=>document.getElementById(id);
@@ -830,7 +866,7 @@ $('bEditor').onclick=()=>{mode='editor';view='flight';$('editor').classList.remo
 $('bRevert').onclick=()=>{resetShip();view='flight';HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
 $('bHelp').onclick=()=>$('help').classList.toggle('hidden');
-const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in']];
+const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver']];
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   for(const[k,n]of SASM){const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
@@ -858,19 +894,33 @@ addEventListener('keydown',e=>{
   else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
   else if(k==='m')toggleMap();
   else if(k==='h')$('help').classList.toggle('hidden');
-  else if(k==='.')warpIdx=Math.min(WARPS.length-1,warpIdx+1);
-  else if(k===',')warpIdx=Math.max(0,warpIdx-1);
-  else if(k==='/')warpIdx=0;
+  else if(k==='.'){warpTo=null;warpIdx=Math.min(WARPS.length-1,warpIdx+1)}
+  else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
+  else if(k==='/'){warpTo=null;warpIdx=0}
   else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[3e6,3e6,1.5e6][cam.focus]}
+  else if(k==='n')nodeAtApoapsis();
+  else if(k==='delete'&&S.node){S.node=null;HOOK.msg('Node deleted')}
   else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();view='flight';HOOK.msg('Reverted to launch')}});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());
 addEventListener('beforeunload',e=>{if(mode==='flight'&&S&&S.alive&&!S.landed){e.preventDefault();e.returnValue=''}});
 function toggleMap(){view=view==='map'?'flight':'map';if(view==='map'){cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),1.2e6,8e7)}}
-let drag=null;
-cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY]});
-addEventListener('mouseup',()=>drag=null);
-addEventListener('mousemove',e=>{if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
+let drag=null,downAt=null,hDrag=null,nDrag=false;
+// map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
+const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*Math.min(devicePixelRatio||1,1.5);
+function pickOrbit(m){let best=null,bd=1e9;for(const q of mapUI.pick){const d=Math.hypot(q.x-m[0],q.y-m[1]);if(d<bd){bd=d;best=q}}return bd<16*Math.min(devicePixelRatio||1,1.5)?best:null}
+cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX,e.clientY];
+  if(view==='map'&&mode==='flight'){const m=toCv(e),h=mapUI.handles.find(h=>near(m,[h.x,h.y],11));
+    if(h&&S.node&&!S.node.burning){hDrag={h,cur:m};drag=null;return}
+    if(S.node&&!S.node.burning&&mapUI.node&&near(m,mapUI.node,11)){nDrag=true;drag=null}}});
+addEventListener('mouseup',e=>{
+  if(!hDrag&&!nDrag&&downAt&&view==='map'&&mode==='flight'&&e.target===cv&&Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5){
+    const q=pickOrbit(toCv(e));if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
+  drag=null;downAt=null;hDrag=null;nDrag=false});
+addEventListener('mousemove',e=>{
+  if(hDrag){hDrag.cur=toCv(e);return}
+  if(nDrag){const q=pickOrbit(toCv(e));if(q&&S.node)S.node.t=q.t;return}
+  if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
   if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-1.45,1.45)}});
 cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,2.2e5,2e8);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
 
@@ -884,6 +934,8 @@ function simulate(dtR){
   INP.pitch=(keys.has('w')?1:0)-(keys.has('s')?1:0);INP.yaw=(keys.has('d')?1:0)-(keys.has('a')?1:0);INP.roll=(keys.has('q')?1:0)-(keys.has('e')?1:0);
   if(!S.alive){simT+=dtR;stepDebris(dtR);warpIdx=0;return}
   const onRails=railsOK(S);
+  if(warpTo!==null){const rem=warpTo-simT;if(rem<=0.05||!S.alive){warpTo=null;warpIdx=0}
+    else{let i=WARPS.length-1;while(i>0&&WARPS[i]*dtR*4>rem)i--;warpIdx=i}}
   if(!onRails&&warpIdx>5)warpIdx=5;   // physics warp: same fixed step, more steps per frame — results are identical
   if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=len(S.r)-S.body.R+S.yBot,tg=vs<0?hb/-vs:Infinity;
     if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
@@ -892,7 +944,7 @@ function simulate(dtR){
     if(!S.landed){
       if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(S,dt/n,null);stepsN=n}
       else{S.w=[0,0,0];if(S.sas&&S.sasMode!=='stab'){const tg=sasTarget(S);if(tg)S.q=qnorm(qmul(qFromTo(qrot(S.q,[0,1,0]),tg),S.q))}}}
-    if(!rails(S,dt)){warpIdx=0;HOOK.msg('Warp stopped')}
+    if(!rails(S,warpTo!==null?Math.min(dt,warpTo-simT):dt)){warpIdx=0;warpTo=null;HOOK.msg('Warp stopped')}
     if(warp>4&&debris.length){debris.forEach(d=>d.mesh.free());debris.length=0}
     else stepDebris(dt);
   }else{
@@ -901,6 +953,8 @@ function simulate(dtR){
 function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
   simulate(dtR);
+  if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=Math.min(devicePixelRatio||1,1.5);
+    S.node.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}
   adaptRes(dtR);
   render();
   frameMs=frameMs*.9+(performance.now()-t0)*.1;
@@ -980,11 +1034,19 @@ function render(){
     gl.uniformMatrix4fv(m.uM,false,mat4([s,0,0],[0,s,0],[0,0,s],sub(p,camW)));gl.uniform1f(m.uGlow,Math.max(0,1.6*(1-a/4)));gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}
   gl.disable(gl.BLEND);gl.depthMask(true);
   // ---- 2D overlay
-  octx.clearRect(0,0,W,H);
+  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];
   if(view==='map'&&mode==='flight'){
+    for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=s;mapUI.handles=[];
+        for(const[d,axis,sign]of L.axes){const q=project(add(L.p,mul(d,cam.mDist*0.06)));let ux=q?q[0]-s[0]:0,uy=q?q[1]-s[1]:0,ul=Math.hypot(ux,uy);
+          if(ul<1e-3){ux=sign;uy=0;ul=1}ux/=ul;uy/=ul;const hx=s[0]+ux*40*k,hy=s[1]+uy*40*k;mapUI.handles.push({x:hx,y:hy,ux,uy,axis,sign});
+          let dx=hx,dy=hy;if(hDrag&&hDrag.h.axis===axis&&hDrag.h.sign===sign){const off=(hDrag.cur[0]-hDrag.h.x)*ux+(hDrag.cur[1]-hDrag.h.y)*uy;dx=hDrag.h.x+ux*off;dy=hDrag.h.y+uy*off}
+          octx.strokeStyle=HC[axis];octx.lineWidth=1.5*k;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(dx,dy);octx.stroke();
+          octx.fillStyle=HC[axis];octx.beginPath();octx.arc(dx,dy,(sign>0?6:4.5)*k,0,7);sign>0?octx.fill():(octx.lineWidth=2*k,octx.stroke())}
+        octx.fillStyle=L.c;octx.strokeStyle='#fff';octx.lineWidth=1.5*k;octx.beginPath();octx.arc(s[0],s[1],7*k,0,7);octx.fill();octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
       if(L.t)octx.fillText(L.t,s[0],s[1]-10)}}
@@ -998,29 +1060,41 @@ function render(){
     mk(S.ana.ful.ycm,'#ffd84a','CoM',12);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
+function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
+function patchRange(pt){const el=pt.el;
+  if(pt.end){let n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=el.nu)n1+=6.2832;return[el.nu,n1]}
+  if(el.e<1)return[0,6.2832];
+  const rc=pt.b===SELENE?SELENE.soi:SELENE.a*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;return[el.nu,Math.max(el.nu,nm)]}
+function drawPatches(list,camW,out,labels,cols,dash,tag){
+  const mp=moonPos(simT),seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
+  list.forEach((pt,k)=>{
+    const el=pt.el,off=pt.b===SELENE?(pt.off||mp):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
+    const[n0,n1]=patchRange(pt),N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
+    for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
+      const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p}
+    const inArc=nu=>{if(!pt.end&&el.e<1)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
+    const bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;
+    if(inArc(0)&&el.e>1e-4)labels.push({p:add(off,mul(el.P,el.pe)),t:(el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR))+tag,c:hc});
+    if(el.e<1&&el.e>1e-4&&inArc(Math.PI))labels.push({p:add(off,mul(el.P,-el.ap)),t:'Ap '+fmtD(el.ap-bR)+tag,c:hc});
+    if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`Selene encounter in ${fmtT(pt.endT-simT)} · Pe ${nx?(nx.el.pe<SELENE.R?'impact':fmtD(nx.el.pe-SELENE.R)):''}${tag}`,c:'#ffb454'});
+      labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[SELENE.soi,0,0]),c:'rgba(255,180,84,.6)'})}
+    if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:'Selene escape'+tag,c:'#cc8cff'})})}
 function drawMap(VP,camW,labels){
   if(!predCache||predCache.t!==simT)predCache={t:simT,p:predict(S)};
-  const out=[],cols={0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]};
-  const seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
+  const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   // Selene's orbit + SOI ring
   let prev=null;for(let i=0;i<=256;i++){const f=i/256*6.2832,p=[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)];if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
   const mp=moonPos(simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(mp,[SELENE.soi*Math.cos(f),0,SELENE.soi*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}
-  predCache.p.forEach((pt,k)=>{
-    const el=pt.el,off=pt.b===SELENE?(pt.off||mp):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
-    let n0,n1;
-    if(pt.end){n0=el.nu;n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=n0)n1+=6.2832}
-    else if(el.e<1){n0=0;n1=6.2832}
-    else{const rc=pt.b===SELENE?SELENE.soi:SELENE.a*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;n0=el.nu;n1=Math.max(el.nu,nm)}
-    const N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
-    for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
-      const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,col);pv=p}
-    const inArc=nu=>{if(!pt.end&&el.e<1)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
-    const bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;
-    if(inArc(0)&&el.e>1e-4)labels.push({p:add(off,mul(el.P,el.pe)),t:el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR),c:hc});
-    if(el.e<1&&el.e>1e-4&&inArc(Math.PI))labels.push({p:add(off,mul(el.P,-el.ap)),t:'Ap '+fmtD(el.ap-bR),c:hc});
-    if(pt.endKind==='enc'){const nx=predCache.p[k+1];labels.push({p:add(off,pt.end),t:`Selene encounter in ${fmtT(pt.endT-simT)} · Pe ${nx?(nx.el.pe<SELENE.R?'impact':fmtD(nx.el.pe-SELENE.R)):''}`,c:'#ffb454'});
-      labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[SELENE.soi,0,0]),c:'rgba(255,180,84,.6)'})}
-    if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:'Selene escape',c:'#cc8cff'})});
+  drawPatches(predCache.p,camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
+  // where a click lands on the current leg: world points with their times (projected in the overlay pass)
+  mapUI.pickW=[];const p0=predCache.p[0];
+  if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=p0.b===SELENE?mp:[0,0,0],[n0,n1]=patchRange(p0);
+    for(let i=0;i<=360;i++){const nu=n0+(n1-n0)*i/360,den=1+el.e*Math.cos(nu);if(den<=1e-6)continue;const rr=el.p/den,t=nuToT(el,nu,simT);
+      if(p0.endT&&t>p0.endT)continue;mapUI.pickW.push({p:add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)))),t})}}
+  // the planned trajectory after the node, dashed
+  if(S.node){const I=nodeInfo(S),off=S.body===SELENE?mp:[0,0,0],plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
+    drawPatches(plan,camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
+    const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
   if(out.length){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
@@ -1047,6 +1121,8 @@ function drawNavball(){
     if(kind==='pro'){nctx.beginPath();nctx.moveTo(sx-12,syy);nctx.lineTo(sx-7,syy);nctx.moveTo(sx+7,syy);nctx.lineTo(sx+12,syy);nctx.moveTo(sx,syy-7);nctx.lineTo(sx,syy-12);nctx.stroke()}
     else{nctx.beginPath();nctx.moveTo(sx-5,syy-5);nctx.lineTo(sx+5,syy+5);nctx.moveTo(sx+5,syy-5);nctx.lineTo(sx-5,syy+5);nctx.stroke()}};
   const sr=speedRef(S);if(len(sr.v)>0.5){const p=norm(sr.v);mark(p,'#d8f05a','pro');mark(mul(p,-1),'#d8f05a','retro')}
+  if(S.node){const I=nodeInfo(S);if(len(I.rem)>1e-3){const d=norm(I.rem);if(dot(d,Y)>0){const sx=NS/2+dot(d,Z)*Rr,sy=NS/2+dot(d,X)*Rr;
+    nctx.strokeStyle='#5f9dff';nctx.lineWidth=3;nctx.beginPath();nctx.arc(sx,sy,8,0,7);nctx.stroke();nctx.beginPath();nctx.moveTo(sx-13,sy);nctx.lineTo(sx+13,sy);nctx.moveTo(sx,sy-13);nctx.lineTo(sx,sy+13);nctx.stroke()}}}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
   $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}`;
@@ -1072,8 +1148,26 @@ function updateHUD(){
     ['Structure',S.maxLoadP&&S.maxLoadP.on?`<span class="${S.maxLoad>1?'bad':S.maxLoad>.7?'warn':'ok'}">${(S.maxLoad*100).toFixed(0)}% ${S.maxLoadKind}</span> <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
-  renderStages()}
+  renderStages();updateNodePanel()}
 
+function nodeAtApoapsis(){if(!S.alive||S.landed)return;const el=elements(S.r,S.v,S.body.mu);
+  const t=el.e<1&&el.hl>1e-3?simT+timeToNu(el,Math.PI):simT+300;S.node={t,dv:[0,0,0]};HOOK.msg(el.e<1?'Node at next apoapsis':'Node in 5 minutes')}
+$('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;const n=S.node;
+  if(a[0]==='d'){if(n.burning)return;n.dv[+a[1]]+=(a[2]==='+'?1:-1)*ndStep}
+  else if(a[0]==='s'&&a!=='sas'){ndStep=+a.slice(1)}
+  else if(a[0]==='t'&&!n.burning){const el=elements(S.r,S.v,S.body.mu),P=el.e<1?el.period:0,d=a==='t-o'?-P:a==='t+o'?P:+a.slice(1);
+    const end=(predCache&&predCache.p[0]&&predCache.p[0].endT)||Infinity;n.t=clamp(n.t+d,simT+1,end)}
+  else if(a==='warp'){const est=nodeBurnTime(S,len(nodeInfo(S).rem));warpTo=n.t-(isFinite(est)?est/2:0)-15;if(warpTo<=simT+1)warpTo=null}
+  else if(a==='sas'){S.sas=true;S.sasMode='node';S.hold=null;renderSAS()}
+  else if(a==='del'){S.node=null;HOOK.msg('Node deleted')}
+  updateNodePanel()});
+function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.classList.add('hidden');return}el.classList.remove('hidden');
+  const n=S.node,I=nodeInfo(S),dv=len(I.rem),est=nodeBurnTime(S,dv);n.est=est;
+  for(let k=0;k<3;k++)$('nd'+k).textContent=n.dv[k].toFixed(1)+' m/s';
+  const tt=n.t-simT,start=tt-(isFinite(est)?est/2:0);
+  $('nd-sum').innerHTML=n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
+    `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${warpTo!==null?' <span class="warn">(warping)</span>':''}`;
+  for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
 renderEditor();
 requestAnimationFrame(frame);
 </script>

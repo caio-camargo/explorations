@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.3.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.4.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -208,6 +208,45 @@ assumed "everything sits on the axis".
 - **Booster nose cones destabilise.** The first Heavy came out at −1.11 cal: cones on the boosters add lift well ahead of the
   CoM. Fins on the boosters bring it to +0.77.
 
+
+## v1.4 — maneuver nodes (2026-10-06)
+
+### How it works
+- **A node** is `{t, dv:[prograde, normal, radial-out]}` on the current leg of the trajectory (before any SOI change;
+  an SOI change clears it). The frame comes from the Kepler state *at the node's time*: prograde = v̂, normal = ĥ, and radial-out = v̂ × ĥ, the same as the SAS modes.
+- **Placing it:** click your orbit in map view (the leg is sampled into 361 points carrying their times, projected
+  each frame), drag the node along the orbit to move it, or press **N** for the next apoapsis.
+- **Editing:**
+  - Six handles on the map node. Drag outward along one; the change is a *rate* that grows with drag distance, 0.02·px² m/s per second.
+  - Or the panel: ± buttons at 0.1–100 m/s steps, and time shifts of ±5 s, ±1 min and ±1 orbit.
+- **The plan:** `predictFrom()` (what `predict()` became) runs from the post-burn state and draws dashed, with its own
+  Ap/Pe/encounter labels marked "▸plan".
+- **Flying it:**
+  - The burn time comes from the rocket equation with the current (or next-stage) engines.
+  - **Warp to burn** auto-steps the warp level down so it lands exactly on t − burn/2 − 15 s. Rails sub-steps are clamped to the target.
+  - **SAS → Maneuver** and a blue navball marker point at the remaining Δv.
+  - When thrust starts inside the burn window, the world-frame Δv *freezes*, and every m/s the engines deliver is subtracted from it. When it's used up (or overshot), the node clears and the throttle cuts.
+
+### Measurements
+| What | Number |
+|---|---|
+| Planned +856 m/s prograde from 80 km | Ap exactly 12 000.0 km (Selene's orbital radius, the textbook Hohmann) |
+| Planned 200 m/s normal | inclination 5.015° (atan(200/2279) = 5.015°) |
+| Burn-time estimate vs actual (Petrel upper stage, 856 m/s) | 40.0 s vs 40.0 s |
+| Flown burn (SAS on node, centred on the node) | Ap 11 902 km vs plan 12 000 km: **0.82 % short** |
+| Browser run: warp-to-burn | 104 frames up to 10 000×, arrived at T+1989.3 s for a 1989 s target |
+| Browser run: Selene periapsis flown vs planned | 773 km vs 658 km |
+
+### What it taught
+- **A 40-second burn isn't an impulse.** Spread over ±20 s around the node, the burn loses ~0.8 % of apoapsis (gravity
+  losses plus the thrust direction lagging the moving node vector). At a 12 000 km transfer that's ~100 km of
+  Selene periapsis, which is exactly why real missions (and KSP players) plan a mid-course correction.
+- **Bug: the node froze its Δv from itself.** `nodeBurn` set `burning = true` *before* asking `nodeInfo` for the Δv to
+  freeze, and `nodeInfo` then took the "already burning" branch with nothing frozen yet. The headless burn test
+  crashed on the first thrust step. The order of two assignments was the whole fix.
+- **Test expectations are code too.** The first plan check "failed" because I'd written the transfer apoapsis
+  as r₀ + a instead of a. The simulation was right to the metre.
+
 ## Precision tricks worth keeping
 
 - **Ray–sphere in float32 at 2 m above a 600 km planet.** The CPU sends `cc = (d−R)(d+R)` in
@@ -234,8 +273,8 @@ assumed "everything sits on the axis".
 
 ## Open threads (best-specified first)
 
-1. **Maneuver nodes.** `predict()` already does patched conics from any state. A node is just a
-   Δv added to a predicted state at a future time, and a burn-time estimate comes from `dvRemaining`.
+1. ~~Maneuver nodes~~ done in v1.4. Next on that line: several nodes in a chain, nodes beyond an SOI change, and a
+   finite-burn correction (aim the burn so its *centroid* hits the impulse) to recover the 0.8 %.
 2. **Re-entry heating + plasma glow**, using q·v³ against a per-part tolerance. The pod now really does fly shield-first
    (v1.2), so the heat shield can become a requirement rather than a convention.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
