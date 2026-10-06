@@ -24,6 +24,7 @@
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
 | Caio + Claude | 2026-08-11 | Landing page rebuild (live-preview cards) for custom-domain launch | `index.html` (ROOT landing page), `README.md` |
+> Cleared 2026-10-06: launchpad exploration v1.0 shipped (new folder + one README row + one INDEX row).
 > Cleared 2026-08-12: warehouse gravity graph shipped. `index.html` (the exploration's, not
 > the root landing page) gained an additive `REACH` branch keyed on `meta.graphMode`; the ICP
 > graph was re-verified unregressed. `build_data_lakehouse.py` now writes BOTH

@@ -1705,3 +1705,50 @@ origin with no console errors.
 - [ ] **Look at it.** Neither the local file nor the published page was ever visually confirmed —
       the preview pane never composited frames, so verification was numeric only.
 - [ ] Follow-up ideas listed at the bottom of `dots-friend-enemy/NOTES.md`
+
+---
+
+## 2026-10-06 — Launchpad v1.0 (lean KSP-inspired rocket sandbox)
+**Operator**: Caio + Claude (Opus 5.5)
+
+### Summary
+New exploration `explorations/launchpad/`: a KSP-inspired rocket and orbit prototype, built for
+leanness. One 62 KB HTML file with raw WebGL2 and no dependencies. Physics runs in float64 and
+the GPU sees only camera-relative positions. Planets are ray-cast in a single full-screen shader
+(with Rayleigh/Mie atmosphere). Coasting is exact Kepler on rails. The vessel is one rigid body,
+and depth is logarithmic. Features: assembly with live Δv/TWR, staging + debris, SAS modes with
+fly-by-wire keys, navball, map with patched-conic Selene encounter prediction, chutes, and
+landing/crash.
+
+### Files
+| Action | File |
+|---|---|
+| created | `explorations/launchpad/index.html`, `NOTES.md`, `test.mjs` |
+| edited | `explorations/README.md` (row), `INDEX.md` (row), `ACTIVE_WORK.md` (claim opened + cleared) |
+
+### Verification
+`node test.mjs`: 9/9 pass. Kepler round-trips, 30 days of 100 000× warp moves Ap/Pe by
+3×10⁻⁷ m, the Orbiter preset reaches 81×72 km headless, and the predicted Selene SOI entry
+matches the actual one within a minute. In-browser (preview pane, driven via JS): launch,
+gravity turn, orbit view, map with encounter, Selene landing at 2.5 m/s, crash at 68 m/s,
+Hopper chute landing at 8.1 m/s. No console errors. GPU 0.35 ms/frame, CPU ~1.7 ms. Real-time
+keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidden pane.
+
+### Next steps
+- [ ] Caio: play it in a real browser — feel of the controls is unverified
+- [ ] Open threads at the bottom of `launchpad/NOTES.md` (maneuver nodes first)
+- [ ] Not committed; not added to the landing page (that file is under another session's claim)
+- **v1.1 (same session):** Caio reported laggy controls *and* zoom, which meant a low frame rate. Added async GPU timer queries, adaptive
+  resolution, a legible perf readout naming the GPU, and faster zoom. Confirmed by Caio: Intel iGPU at 31 fps (res 35 %),
+  RTX 3050 at 80 fps (res 75 %), both smooth. Details are in `launchpad/NOTES.md` § v1.1.
+- **v1.2 (same session):** Caio asked for aerodynamics that respond to rocket design, structure as a gameplay element
+  (KSP's is janky), and a speed-up that doesn't change the simulation. Agreed design: one rigid body, per-joint loads,
+  a parts tree. Built steps 1–4 of the agreed plan: tree model, per-part aero pass (Newtonian + slender-body + fins + Mach),
+  structural loads and breakup, and builder CoM/CoP/stability/load readouts. Exact physics warp now goes to 100× with auto-drop. Two bugs found
+  by measurement are recorded in NOTES (unbalanced gimbal force, half-strength fins). `test.mjs` has 16 checks, all
+  passing. **PARKED:** step 5, radial attachment in the builder. Parked at: data model ready; geom/aero/loads/staging
+  generalisation listed in NOTES open thread 4.
+- **v1.3 (same session):** UNPARKED and done: step 5, radial attachment. Side stacks with ×2–4 symmetry and an optional radial
+  decoupler, per-joint load frames with shear, aero per stack line, off-axis inertia/thrust/gimbal, explicit staging
+  events with parallel burns, and a Δv planner. New Heavy preset. `test.mjs`: 21 checks, all passing (the Lunar yank test
+  moved from 3 s to 4 s after the gimbal pivot moved to the engine mount; reason in NOTES).

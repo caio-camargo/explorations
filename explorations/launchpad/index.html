@@ -1,0 +1,1081 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Launchpad</title>
+<!--
+  Launchpad v1.0 — a lean rocket/orbit sandbox. One file, raw WebGL2, no dependencies.
+  Design notes and measurements: NOTES.md next to this file.
+-->
+<style>
+:root{--fg:#d8e2ee;--dim:#7d8a9a;--acc:#7fd1ff;--warn:#ffb454;--bad:#ff6b6b;--ok:#7dffa8;--panel:rgba(8,13,22,.84);--line:rgba(127,209,255,.22)}
+html,body{margin:0;height:100%;background:#000;color:var(--fg);font:12.5px/1.4 ui-monospace,Consolas,Menlo,monospace;overflow:hidden;user-select:none}
+canvas#gl,canvas#ov{position:fixed;inset:0;width:100%;height:100%;display:block}
+canvas#ov{pointer-events:none}
+.ui{position:fixed;inset:0;pointer-events:none}
+.ui>*{pointer-events:auto}
+.hidden{display:none!important}
+.panel{position:absolute;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:10px 12px;backdrop-filter:blur(3px)}
+h1{margin:0 0 2px;font-size:15px;letter-spacing:.25em;color:var(--acc)}
+h2{margin:12px 0 6px;font-size:11px;letter-spacing:.15em;color:var(--dim);text-transform:uppercase;font-weight:normal}
+.sub{color:var(--dim);font-size:11px}
+button{font:inherit;color:var(--fg);background:rgba(127,209,255,.08);border:1px solid var(--line);border-radius:4px;padding:3px 8px;cursor:pointer}
+button:hover{background:rgba(127,209,255,.2)}
+button.on{background:rgba(127,209,255,.35);color:#fff}
+button.big{display:block;width:100%;margin-top:12px;padding:9px;font-size:14px;letter-spacing:.3em;color:#06121c;background:var(--acc);border:0}
+button.big:hover{filter:brightness(1.15)}
+#palette button{display:flex;justify-content:space-between;width:100%;margin:2px 0;text-align:left}
+#palette button span{color:var(--dim)}
+.left{left:12px;top:12px;width:250px;max-height:calc(100% - 50px);overflow:auto}
+.right{right:12px;top:12px;width:300px;max-height:calc(100% - 50px);overflow:auto}
+.row{display:flex;align-items:center;gap:4px;padding:2px 4px;border-radius:3px}
+.row:hover{background:rgba(255,255,255,.05)}
+.row .nm{flex:1}
+.row button{padding:0 5px}
+.seg{border-left:2px solid var(--line);margin:4px 0;padding-left:6px}
+.dim{color:var(--dim)}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.acc{color:var(--acc)}
+table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-align:right}
+.tl{left:12px;top:12px;min-width:250px}
+.tr{right:12px;top:12px;display:flex;gap:6px;align-items:center}
+.bl{left:12px;bottom:12px;min-width:190px}
+#info td:first-child{color:var(--dim);padding-right:12px}
+#navwrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:10px}
+#nav{width:180px;height:180px;border-radius:50%;box-shadow:0 0 0 2px #223,0 0 18px #000}
+#thr{width:14px;height:150px;border:1px solid var(--line);border-radius:3px;position:relative;background:var(--panel)}
+#thrf{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffcf6b,#ff7a2e)}
+#sas{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:118px}
+#sas button{padding:2px 3px;font-size:11px}
+#sas .wide{grid-column:span 2}
+#navtxt{position:absolute;left:0;right:0;top:-22px;text-align:center;color:var(--acc)}
+#msg{position:fixed;left:50%;top:18%;transform:translateX(-50%);font-size:18px;letter-spacing:.12em;color:#fff;text-shadow:0 0 8px #000,0 0 2px #000;pointer-events:none;transition:opacity .4s;text-align:center}
+#perf{position:fixed;right:12px;bottom:8px;color:var(--fg);font-size:11.5px;pointer-events:none;text-align:right;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
+#help{right:12px;top:52px;width:300px}
+#help td:first-child{color:var(--acc);white-space:nowrap}
+.stg{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
+.bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
+#warp{color:var(--warn);min-width:90px;text-align:right}
+.grp{margin:1px 0 5px 16px;border-left:2px solid rgba(255,180,84,.45);padding:2px 0 2px 6px;border-radius:0 4px 4px 0}
+.grp.sel{background:rgba(255,180,84,.1);border-left-color:var(--warn)}
+.grp .hd{display:flex;gap:3px;align-items:center;flex-wrap:wrap;color:var(--warn)}.grp .hd button{padding:0 5px}
+#target{color:var(--warn);font-size:11px;margin:-2px 0 6px}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
+@media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
+ .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
+</style>
+</head>
+<body>
+<canvas id="gl"></canvas>
+<canvas id="ov"></canvas>
+
+<div id="editor" class="ui">
+  <div class="panel left">
+    <h1>LAUNCHPAD</h1><div class="sub">assembly · click a part to add it to the bottom of the stack</div>
+    <h2>Parts</h2><div id="target"></div><div id="palette"></div>
+    <h2>Presets</h2><div id="presets"></div>
+    <h2>Lean bits</h2>
+    <div class="sub">Physics in float64, GPU only sees camera-relative positions. Planets are ray-cast, not meshed. Coasting orbits are analytic Kepler, so warp is free and orbits never drift. Rocket is one rigid body: no part joints to wobble.</div>
+  </div>
+  <div class="panel right">
+    <h2>Stack <span class="dim">top → bottom</span></h2><div id="stack"></div>
+    <h2>Stages <span class="dim">(Δv vac / sea level)</span></h2><div id="stats"></div>
+    <button id="launch" class="big">LAUNCH</button>
+  </div>
+</div>
+
+<div id="hud" class="ui hidden">
+  <div class="panel tl"><table id="info"></table></div>
+  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bHelp">Keys [H]</button></div>
+  <div class="panel hidden" id="help"><table>
+    <tr><td>Space</td><td>next stage (ignite / decouple / chute)</td></tr>
+    <tr><td>Shift / Ctrl</td><td>throttle up / down</td></tr>
+    <tr><td>Z / X</td><td>full / cut throttle</td></tr>
+    <tr><td>W S A D</td><td>pitch / yaw</td></tr>
+    <tr><td>Q E</td><td>roll</td></tr>
+    <tr><td>T</td><td>SAS on/off (modes: buttons)</td></tr>
+    <tr><td>, . /</td><td>warp down / up / 1×</td></tr>
+    <tr><td>M</td><td>map view · Tab cycles focus</td></tr>
+    <tr><td>drag · wheel</td><td>orbit camera · zoom</td></tr>
+    <tr><td>R</td><td>revert (after crash / landing)</td></tr>
+  </table><div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first.</div></div>
+  <div id="navwrap">
+    <div id="thr"><div id="thrf"></div></div>
+    <div style="position:relative"><div id="navtxt"></div><canvas id="nav" width="180" height="180"></canvas></div>
+    <div id="sas"></div>
+  </div>
+  <div class="panel bl" id="stages"></div>
+</div>
+<div id="msg"></div>
+<div id="perf"></div>
+
+<script>
+'use strict';
+// ==== SIM BEGIN — pure simulation, no DOM/GL. Extracted by test.mjs for headless checks.
+const G0 = 9.80665, DT = 0.02;
+const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){} };
+const INP = { pitch:0, yaw:0, roll:0 };
+
+// ---- vectors / quaternions (plain arrays; doubles throughout)
+const add=(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]];
+const sub=(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]];
+const mul=(a,s)=>[a[0]*s,a[1]*s,a[2]*s];
+const madd=(a,b,s)=>[a[0]+b[0]*s,a[1]+b[1]*s,a[2]+b[2]*s];
+const dot=(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+const len=a=>Math.hypot(a[0],a[1],a[2]);
+const norm=a=>{const l=len(a)||1;return[a[0]/l,a[1]/l,a[2]/l]};
+const clamp=(x,a,b)=>x<a?a:x>b?b:x;
+function rotY(v,th){const c=Math.cos(th),s=Math.sin(th);return[c*v[0]+s*v[2],v[1],-s*v[0]+c*v[2]]}
+const qmul=(a,b)=>[a[3]*b[0]+a[0]*b[3]+a[1]*b[2]-a[2]*b[1],a[3]*b[1]-a[0]*b[2]+a[1]*b[3]+a[2]*b[0],a[3]*b[2]+a[0]*b[1]-a[1]*b[0]+a[2]*b[3],a[3]*b[3]-a[0]*b[0]-a[1]*b[1]-a[2]*b[2]];
+const qnorm=q=>{const l=Math.hypot(q[0],q[1],q[2],q[3]);return[q[0]/l,q[1]/l,q[2]/l,q[3]/l]};
+const qconj=q=>[-q[0],-q[1],-q[2],q[3]];
+const qaxis=(ax,an)=>{const s=Math.sin(an/2);return[ax[0]*s,ax[1]*s,ax[2]*s,Math.cos(an/2)]};
+function qrot(q,v){const u=[q[0],q[1],q[2]],w=q[3],uv=cross(u,v),uuv=cross(u,uv);return[v[0]+2*(w*uv[0]+uuv[0]),v[1]+2*(w*uv[1]+uuv[1]),v[2]+2*(w*uv[2]+uuv[2])]}
+function qFromBasis(X,Y,Z){const m00=X[0],m10=X[1],m20=X[2],m01=Y[0],m11=Y[1],m21=Y[2],m02=Z[0],m12=Z[1],m22=Z[2],tr=m00+m11+m22;let x,y,z,w,s;
+  if(tr>0){s=Math.sqrt(tr+1)*2;w=.25*s;x=(m21-m12)/s;y=(m02-m20)/s;z=(m10-m01)/s}
+  else if(m00>m11&&m00>m22){s=Math.sqrt(1+m00-m11-m22)*2;w=(m21-m12)/s;x=.25*s;y=(m01+m10)/s;z=(m02+m20)/s}
+  else if(m11>m22){s=Math.sqrt(1+m11-m00-m22)*2;w=(m02-m20)/s;x=(m01+m10)/s;y=.25*s;z=(m12+m21)/s}
+  else{s=Math.sqrt(1+m22-m00-m11)*2;w=(m10-m01)/s;x=(m02+m20)/s;y=(m12+m21)/s;z=.25*s}
+  return qnorm([x,y,z,w])}
+function qFromTo(a,b){const c=cross(a,b),d=dot(a,b);if(d<-0.999999){let ax=cross([1,0,0],a);if(len(ax)<1e-6)ax=cross([0,1,0],a);return qaxis(norm(ax),Math.PI)}return qnorm([c[0],c[1],c[2],1+d])}
+
+// ---- the system: one planet, one moon. Inertial frame centred on Tellus, spin axis +Y.
+const TELLUS={name:'Tellus',R:6e5,mu:3.5316e12,rot:2*Math.PI/21600,atm:7e4,H:5600,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
+const SELENE={name:'Selene',R:2e5,mu:6.5138e10,a:1.2e7,atm:0,phi0:2.0};
+SELENE.n=Math.sqrt(TELLUS.mu/SELENE.a**3);
+SELENE.soi=SELENE.a*Math.pow(SELENE.mu/TELLUS.mu,0.4);
+function moonPos(t){const f=SELENE.n*t+SELENE.phi0;return[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)]}
+function moonVel(t){const f=SELENE.n*t+SELENE.phi0,s=SELENE.a*SELENE.n;return[-s*Math.sin(f),0,-s*Math.cos(f)]}
+const bodyPos=(b,t)=>b===SELENE?moonPos(t):[0,0,0];
+const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
+const bodyOmega=b=>b===TELLUS?b.rot:0;
+const surfVel=(b,r)=>{const w=bodyOmega(b);return[w*r[2],0,-w*r[0]]};   // ω×r with ω along +Y
+const toPF=(b,v,t)=>rotY(v,-bodyTheta(b,t));
+const fromPF=(b,v,t)=>rotY(v,bodyTheta(b,t));
+const qBody=(b,t)=>qaxis([0,1,0],bodyTheta(b,t));
+const density=(b,h)=>b.atm&&h<b.atm?b.rho0*Math.exp(-h/b.H):0;
+const pressure=(b,h)=>b.atm&&h<b.atm?Math.exp(-h/b.H):0;
+const physAlt=b=>b.atm?b.atm:5000;   // below this, coasting is simulated, not on rails
+
+// ---- Kepler: universal-variable propagation (handles ellipse, parabola, hyperbola)
+function stumpff(z){
+  if(z>1e-4){const s=Math.sqrt(z);return[(1-Math.cos(s))/z,(s-Math.sin(s))/(s*s*s)]}
+  if(z<-1e-4){const s=Math.sqrt(-z);return[(Math.cosh(s)-1)/(-z),(Math.sinh(s)-s)/(s*s*s)]}
+  return[.5-z/24+z*z/720,1/6-z/120+z*z/5040]}
+function kepler(r0v,v0v,dt,mu){
+  if(dt===0)return[r0v.slice(),v0v.slice()];
+  const r0=len(r0v),v2=dot(v0v,v0v),rv=dot(r0v,v0v),sm=Math.sqrt(mu),al=2/r0-v2/mu;
+  if(al>1e-12){const P=2*Math.PI/Math.sqrt(mu*al*al*al);dt=dt%P}
+  const F=x=>{const z=al*x*x,[C,S]=stumpff(z);return rv/sm*x*x*C+(1-al*r0)*x*x*x*S+r0*x-sm*dt};
+  let x;
+  if(al>1e-12)x=sm*dt*al;
+  else if(al<-1e-12){const a=1/al,sg=Math.sign(dt);x=sg*Math.sqrt(-a)*Math.log((-2*mu*al*dt)/(rv+sg*Math.sqrt(-mu*a)*(1-r0*al)));if(!isFinite(x))x=sm*dt/r0}
+  else x=sm*dt/r0;
+  let ok=false;
+  for(let i=0;i<60;i++){const z=al*x*x,[C,S]=stumpff(z);
+    const f=rv/sm*x*x*C+(1-al*r0)*x*x*x*S+r0*x-sm*dt, df=rv/sm*x*(1-z*S)+(1-al*r0)*x*x*C+r0;
+    const dx=f/df;x-=dx;if(!isFinite(x))break;if(Math.abs(dx)<1e-10*Math.max(1,Math.abs(x))){ok=true;break}}
+  if(!ok){ // F is monotonic in x (dF/dx = r > 0): bracket and bisect
+    let lo=0,hi=Math.sign(dt)*sm*Math.abs(dt)/r0||1;
+    if(dt<0){[lo,hi]=[hi,0]}
+    for(let k=0;k<200&&F(dt>0?hi:lo)*(dt>0?1:-1)<0;k++){if(dt>0)hi*=2;else lo*=2}
+    for(let k=0;k<200;k++){const m=(lo+hi)/2;if(F(m)>0)hi=m;else lo=m}x=(lo+hi)/2}
+  const z=al*x*x,[C,S]=stumpff(z);
+  const f=1-x*x/r0*C,g=dt-x*x*x*S/sm;
+  const r=[f*r0v[0]+g*v0v[0],f*r0v[1]+g*v0v[1],f*r0v[2]+g*v0v[2]],rl=len(r);
+  const fd=sm/(rl*r0)*(al*x*x*x*S-x),gd=1-x*x/rl*C;
+  return[r,[fd*r0v[0]+gd*v0v[0],fd*r0v[1]+gd*v0v[1],fd*r0v[2]+gd*v0v[2]]]}
+function elements(r,v,mu){
+  const h=cross(r,v),hl=len(h),rl=len(r),v2=dot(v,v);
+  const ev=sub(mul(cross(v,h),1/mu),mul(r,1/rl)),e=len(ev);
+  const a=-mu/(2*(v2/2-mu/rl)),p=hl*hl/mu;
+  const P=e>1e-9?mul(ev,1/e):norm(r),Q=hl>1e-9?norm(cross(h,P)):[0,0,0];
+  const nu=Math.atan2(dot(r,Q),dot(r,P));
+  const n=Math.sqrt(mu/Math.abs(a*a*a));
+  return{h,hl,e,a,p,P,Q,nu,n,pe:e<1?a*(1-e):p/(1+e),ap:a>0?2*a-(e<1?a*(1-e):p/(1+e)):Infinity,period:e<1?2*Math.PI/n:Infinity}}
+function tPe(el,nu){const e=el.e;
+  if(e<1){const E=2*Math.atan2(Math.sqrt(1-e)*Math.sin(nu/2),Math.sqrt(1+e)*Math.cos(nu/2));return(E-e*Math.sin(E))/el.n}
+  const F=2*Math.atanh(Math.sqrt((e-1)/(e+1))*Math.tan(nu/2));return(e*Math.sinh(F)-F)/el.n}
+function timeToNu(el,nu){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return dt}
+function timeToR(el,rt){const c=(el.p/rt-1)/el.e;if(!(c>=-1&&c<=1))return NaN;const dt=timeToNu(el,Math.acos(c));return dt>=0?dt:NaN}
+
+// ---- parts. Masses in tonnes, thrust in kN (vacuum), Isp in s.
+// Joint ratings (the weaker side of a joint governs): C compression, T tension, S shear (kN), B bending (kN·m).
+// prof = outer shape as [radius, height] bottom→top; it is both the aero surface and (with colour) the mesh.
+const R0=0.625,SIDE_D=2*R0+0.25;   // side stacks sit this far from the core axis
+const PARTS={
+  cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
+  chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
+  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  t1:{name:'Tank 1 t',kind:'tank',wet:1,dry:0.11,h:1.1},
+  t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
+  t4:{name:'Tank 4 t',kind:'tank',wet:4,dry:0.45,h:3.8},
+  t8:{name:'Tank 8 t',kind:'tank',wet:8,dry:0.9,h:7.4},
+  dec:{name:'Decoupler',kind:'dec',m:0.05,h:0.25,C:1200,T:500,B:220},
+  // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
+  rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
+  fins:{name:'Fin ring',kind:'fins',m:0.25,h:0.9,C:2500,T:1200,B:450,span:0.9,chord:0.9},
+  wren:{name:'Wren lander',kind:'engine',m:0.15,h:0.55,cm:.7,thrust:18,ispA:240,ispV:300,exit:0.25,C:500,T:300,B:150,prof:[[.25,0],[.1,.25],[.35,.35],[.625,.5],[.625,.55]]},
+  petrel:{name:'Petrel vacuum',kind:'engine',m:0.5,h:1.0,cm:.7,thrust:65,ispA:90,ispV:345,exit:0.6,C:1200,T:500,B:250,prof:[[.6,0],[.15,.7],[.3,.8],[.625,.9],[.625,1]]},
+  kestrel:{name:'Kestrel booster',kind:'engine',m:1.3,h:1.3,cm:.65,thrust:230,ispA:285,ispV:315,exit:0.55,C:2000,T:800,B:300,prof:[[.55,0],[.22,.75],[.4,.9],[.625,1.15],[.625,1.3]]},
+  condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
+};
+for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
+  if(!d.prof)d.prof=[[R0,0],[R0,d.h]];if(d.cm==null)d.cm=.5;if(d.S==null)d.S=d.C*0.5}
+// A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
+// radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
+const PRESETS={
+  Hopper:['chute','pod','t2','fins','kestrel'],
+  Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
+  Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
+  Lunar:['chute','pod','t1','wren','dec','t4','t2','petrel','dec','t8','t4','fins','condor'],
+};
+const entryKey=e=>typeof e==='string'?e:e.k;
+// Design → a tree of parts rooted at the command pod, in vessel coordinates (y up from the core's bottom). Each
+// part knows its joint to its parent: the point jP and the axis jA (parent → child). Segments (stages) are cut by
+// decouplers, a decoupler belonging to its far side; events say which segments drop and which ignite when.
+function assemble(stack){
+  const core=stack.map(e=>typeof e==='string'?{k:e}:e),n=core.length,parts=[];
+  const mk=(d,x,y0,z,extra)=>{const p={i:parts.length,d,pos:[x,0,z],y0,h:d.h,parent:null,children:[],on:true,
+    fuel:d.kind==='tank'?d.wet-d.dry:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],...extra};parts.push(p);return p};
+  const link=(c,p,a,J)=>{c.parent=p;p.children.push(c);c.jA=a;c.jP=J};
+  const coreP=new Array(n);let y=0;
+  for(let i=n-1;i>=0;i--){coreP[i]=mk(PARTS[core[i].k],0,y,0,{core:true});y+=coreP[i].h}
+  let root=core.findIndex(e=>e.k==='pod');if(root<0)root=0;
+  for(let i=0;i<n;i++){if(i===root)continue;const c=coreP[i],up=i<root;link(c,coreP[up?i+1:i-1],up?[0,1,0]:[0,-1,0],[0,up?c.y0:c.y0+c.h,0])}
+  const groups=[];
+  core.forEach((e,i)=>{if(!e.rad||!e.rad.stack.length)return;
+    const st=e.rad.stack,H=st.reduce((h,k)=>h+PARTS[k].h,0),yb=coreP[i].y0,yc=yb+H/2;
+    const host=coreP.find(p=>yc>=p.y0&&yc<=p.y0+p.h)||coreP[i],g={host,dec:e.rad.dec,label:`${st.some(k=>PARTS[k].kind==='engine')?'boosters':'side tanks'} ×${e.rad.n}`,joins:[],parts:[]};groups.push(g);
+    for(let c=0;c<e.rad.n;c++){const ph=2*Math.PI*c/e.rad.n,nx=Math.cos(ph),nz=Math.sin(ph),x=SIDE_D*nx,z=SIDE_D*nz,nrm=[nx,0,nz];
+      let yy=yb;const side=[];for(let j=st.length-1;j>=0;j--){const p=mk(PARTS[st[j]],x,yy,z,{phi:ph,group:g});side.unshift(p);yy+=p.h}
+      let r=side.findIndex(p=>yc>=p.y0&&yc<=p.y0+p.h);if(r<0)r=0;
+      for(let j=0;j<side.length;j++){if(j===r)continue;const cc=side[j],up=j<r;link(cc,side[up?j+1:j-1],up?[0,1,0]:[0,-1,0],[x,up?cc.y0:cc.y0+cc.h,z])}
+      if(e.rad.dec){const rd=mk(PARTS.rdec,(R0+0.125)*nx,yc-0.2,(R0+0.125)*nz,{phi:ph,group:g});
+        link(rd,host,nrm,[R0*nx,yc,R0*nz]);link(side[r],rd,nrm,[(SIDE_D-R0)*nx,yc,(SIDE_D-R0)*nz]);g.joins.push(rd);g.parts.push(rd)}
+      else{link(side[r],host,nrm,[R0*nx,yc,R0*nz]);g.joins.push(side[r])}
+      g.parts.push(...side)}});
+  // segments: the nearest decoupler at or above a part (towards the pod) names its segment
+  const segKey=p=>{for(let q=p;q;q=q.parent)if(q.d.kind==='dec'||q.d.kind==='rdec')return q;return null};
+  const keys=[],segs=[],idx=k=>{let i=keys.indexOf(k);if(i<0){i=keys.length;keys.push(k);segs.push({ignited:false,flamed:false,label:''})}return i};
+  const coreSegs=[];for(let i=n-1;i>=0;i--){const k=idx(segKey(coreP[i]));if(!coreSegs.includes(k))coreSegs.push(k)}
+  coreSegs.forEach((k,j)=>segs[k].label=j===coreSegs.length-1?'upper':`core ${j+1}`);
+  for(const p of parts)p.seg=idx(segKey(p));
+  for(const g of groups){g.segs=g.dec?[...new Set(g.joins.map(rd=>rd.seg))]:[];g.hostSeg=g.host.seg;for(const k of g.segs)segs[k].label=g.label}
+  const hasEng=k=>parts.some(p=>p.seg===k&&p.d.kind==='engine'),events=[];
+  const withGroups=k=>[k,...groups.filter(g=>g.hostSeg===k).flatMap(g=>g.segs)].filter(hasEng);
+  const ig0=withGroups(coreSegs[0]);if(ig0.length)events.push({decouple:[],ignite:ig0});
+  for(let j=0;j<coreSegs.length;j++){
+    const gs=groups.filter(g=>g.hostSeg===coreSegs[j]&&g.dec);
+    for(const g of gs)events.push({decouple:g.segs,ignite:[],radial:true});
+    if(j+1<coreSegs.length)events.push({decouple:[coreSegs[j]],ignite:withGroups(coreSegs[j+1])})}
+  if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
+  return{parts,segs,events,root:coreP[root],height:y,groups}}
+function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
+function partMass(p){return p.d.kind==='tank'?p.d.dry+p.fuel:p.d.m}
+function partC(p){return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
+function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
+
+// Δv plan: play the event list forward, burning every ignited segment together (boosters and core in parallel)
+// and staging each time the segments the next event drops have run dry. pr = pressure ratio (0 vac, 1 sea level).
+function dvPlan(s,pr){
+  const fuel=s.segs.map((_,k)=>segFuel(s,k)),on=s.parts.map(p=>p.on),ign=s.segs.map(g=>g.ignited),out=[];let ev=s.evIdx;
+  const mass=()=>s.parts.reduce((m,p,i)=>on[i]?m+(p.d.kind==='tank'?p.d.dry:p.d.m):m,0)+fuel.reduce((a,b,k)=>a+(s.parts.some((p,i)=>on[i]&&p.seg===k)?b:0),0);
+  const engs=()=>s.parts.filter((p,i)=>on[i]&&p.d.kind==='engine'&&ign[p.seg]&&fuel[p.seg]>1e-9);
+  const fire=()=>{const e=s.events[ev++];for(const k of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===k)on[i]=false});for(const k of e.ignite)ign[k]=true};
+  // stage 0 = whatever is burning (or about to be lit by the next event)
+  if(s.evIdx===0&&!engs().length&&s.events[ev]&&s.events[ev].ignite.length&&!s.events[ev].decouple.length)fire();
+  let st={dv:0,burn:0,m0:mass(),twr:0},guard=0,first=true;
+  const tw=()=>{let T=0;for(const p of engs())T+=engineMdot(p.d)*(p.d.ispV+(p.d.ispA-p.d.ispV)*1)*G0;return T/(mass()*G0)};st.twr=tw();
+  while(guard++<200){
+    const E=engs();
+    const next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(k=>!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&fuel[k]>1e-9));
+    if(!E.length||dry){if(!next||next.chute)break;
+      if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0};st.twr=tw();continue}
+    const md={},th={};for(const p of E){md[p.seg]=(md[p.seg]||0)+engineMdot(p.d);th[p.seg]=(th[p.seg]||0)+engineMdot(p.d)*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0}
+    let dt=Infinity;for(const k in md)dt=Math.min(dt,fuel[k]/md[k]);
+    const m0=mass();let T=0,M=0;for(const k in md){fuel[k]=Math.max(0,fuel[k]-md[k]*dt);T+=th[k];M+=md[k]}
+    st.dv+=T/M*Math.log(m0/mass());st.burn+=dt}
+  if(st.dv>0.5||first){st.m1=mass();out.push(st)}
+  return out}
+function stageStats(stack){const s=newShip(stack),v=dvPlan(s,0).filter(x=>x.dv>0.5),a=dvPlan(s,1).filter(x=>x.dv>0.5);
+  return{stages:v.map((x,i)=>({dvV:x.dv,dvA:a[i]?a[i].dv:0,twr:x.twr,burn:x.burn,m0:x.m0,mf:x.m1})),mass:s.mass/1000}}
+
+// ---- the vessel: one rigid body. State is (body, r, v) relative to the body it orbits (patched conics).
+let S=null,simT=0;
+const debris=[];
+function newShip(stack){
+  const A=assemble(stack);
+  const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,evIdx:0,body:TELLUS,alive:true,landed:true,
+    throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1]};
+  geom(s);rebuildShape(s);
+  s.pf=[TELLUS.R-s.yBot,0,0];                              // launch site: equator, planet-fixed +X
+  s.qLocal=qFromBasis([0,0,-1],[1,0,0],[0,-1,0]);        // nose up, +X east
+  syncLanded(s);
+  return s}
+function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.kind==='pod')s.torque+=p.d.torque}
+  c=mul(c,1/m);let Ix=0,Iy=0,Iz=0;
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p)*1000,d=sub(partC(p),c),ip=pm*(p.h*p.h/12+R0*R0/4),ir=pm*R0*R0/2;
+    Ix+=pm*(d[1]*d[1]+d[2]*d[2])+ip;Iy+=pm*(d[0]*d[0]+d[2]*d[2])+ir;Iz+=pm*(d[0]*d[0]+d[1]*d[1])+ip}
+  s.mass=m*1000;s.cm=c;s.com=c[1];s.yBot=yb-c[1];s.yTop=yt-c[1];s.len=yt-yb;s.I=[Ix,Iy,Iz]}
+// Shape-derived data, rebuilt whenever parts come off: one merged outer profile per stack line (core and each side
+// stack, so joints between equal radii are not surfaces), fins, the parachute, and a children-first joint order.
+function rebuildShape(s){
+  const ps=s.parts.filter(p=>p.on),lines=new Map();
+  for(const p of ps){if(p.d.noAero)continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
+  s.lines=[];
+  for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of p.d.prof)pts.push([r,p.y0+y,p]);
+    const all=[[0,pts[0][1],pts[0][2]],...pts,[0,pts[pts.length-1][1],pts[pts.length-1][2]]],E=[];
+    for(let i=0;i<all.length-1;i++){const[r0,y0,p0]=all[i],[r1,y1,p1]=all[i+1],dr=r1-r0,dy=y1-y0,L=Math.hypot(dr,dy);if(L<1e-6)continue;
+      E.push({p:p0===p1?p0:(r0>=r1?p0:p1),r0,y0,r1,y1,L,nr:dy/L,ny:-dr/L,rm:(r0+r1)/2,ym:(y0+y1)/2,slope:Math.abs(dr)/(Math.abs(dy)+1e-9),exp:1,bexp:0})}
+    // a surface recessed below the radius on both sides (an engine bell inside an interstage gap) is a cavity:
+    // the flow bridges it, so it gets no slender-body lift and only a fraction of the impact pressure
+    for(let i=0;i<E.length;i++){let a=0,b=0;for(let j=0;j<i;j++)a=Math.max(a,E[j].r0,E[j].r1);for(let j=i+1;j<E.length;j++)b=Math.max(b,E[j].r0,E[j].r1);
+      E[i].cav=Math.max(E[i].r0,E[i].r1)<Math.min(a,b)-1e-3}
+    const rad=Math.max(...E.map(e=>Math.max(e.r0,e.r1))),len_=lp[lp.length-1].y0+lp[lp.length-1].h-lp[0].y0;
+    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
+  const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
+  s.fins=ps.filter(p=>p.d.kind==='fins');s.chutePart=ps.find(p=>p.d.kind==='chute')||null;
+  const order=[],dist=p=>{let k=0;for(let q=p;q.parent;q=q.parent)k++;return k};
+  for(const p of ps)if(p!==s.root&&p.parent&&p.parent.on)order.push(p);
+  order.sort((a,b)=>dist(b)-dist(a));s.order=order}
+function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.fuel;return f}
+function drainSeg(s,k,amt){const f=segFuel(s,k);if(f<=0)return;const r=Math.max(0,1-amt/f);for(const p of s.parts)if(p.on&&p.seg===k)p.fuel*=r}
+function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&segFuel(s,p.seg)>1e-9)}
+function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
+function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
+function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
+function sasTarget(s){
+  if(s.sasMode==='stab')return s.hold;
+  const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
+  const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return s.sasMode==='pro'?pro:s.sasMode==='retro'?mul(pro,-1):s.hold;
+  const nrm=norm(h),rad=norm(cross(s.v,nrm));
+  return{pro,retro:mul(pro,-1),normal:nrm,anti:mul(nrm,-1),radout:rad,radin:mul(rad,-1)}[s.sasMode]}
+function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)tau+=p.d.thrust*1000*thr*0.07*len(sub(thrustPt(p),s.cm));return tau}
+// Control: reaction wheels in the pod plus engine gimbal. Returns the commanded angular acceleration (world frame).
+function ctrlAccel(s){
+  const X=qrot(s.q,[1,0,0]),Y=qrot(s.q,[0,1,0]),Z=qrot(s.q,[0,0,1]);
+  const tau=ctrlAuthority(s,activeEngines(s),s.throttle),aP=tau/Math.max(s.I[0],s.I[2]),aR=Math.min(2,tau/s.I[1]);
+  if(INP.pitch||INP.yaw||INP.roll){s.hold=null;
+    if(s.sas){ // fly-by-wire: keys command a rotation rate, SAS spends the torque to get there
+      const wb=[dot(s.w,X),dot(s.w,Y),dot(s.w,Z)],wd=[INP.yaw*.3,-INP.roll*.8,-INP.pitch*.3];
+      return add(add(mul(X,clamp((wd[0]-wb[0])*4,-aP,aP)),mul(Y,clamp((wd[1]-wb[1])*4,-aR,aR))),mul(Z,clamp((wd[2]-wb[2])*4,-aP,aP)))}
+    return add(add(mul(X,INP.yaw*aP),mul(Y,-INP.roll*aR)),mul(Z,-INP.pitch*aP))}
+  if(!s.sas)return[0,0,0];
+  if(!s.hold&&len(s.w)<0.02)s.hold=Y;
+  const tg=sasTarget(s)||Y,e=cross(Y,tg),sn=len(e),ang=Math.atan2(sn,dot(Y,tg));
+  const ax=sn>1e-9?mul(e,1/sn):(dot(Y,tg)<0?X:[0,0,0]),wd=mul(ax,Math.min(0.6,Math.sqrt(aP*ang)));
+  const al=mul(sub(wd,s.w),4);
+  return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
+function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
+  s.q=qnorm([q[0]+.5*dt*d[0],q[1]+.5*dt*d[1],q[2]+.5*dt*d[2],q[3]+.5*dt*d[3]])}
+function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used while on rails)
+
+// ---- aerodynamics: one pass over each stack line's merged surface, per part. Body frame throughout.
+// Newtonian impact pressure on every upstream-facing surface element (8 samples around each ring) with the stagnation
+// coefficient rising through Mach 1; slender-body normal force where the cross-section changes; flat-plate fins;
+// base suction on exposed rear faces (mostly filled by a burning engine); skin friction. Forces land on the part that
+// owns the surface, at the point they act, so the same numbers give both the centre of pressure and the joint loads.
+// Lines don't shade each other (no interference between core and boosters).
+const SND=h=>Math.sqrt(1.4*287*Math.max(216.65,288.15-0.0065*Math.max(h,0)));
+const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
+const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
+const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
+function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
+function aeroPass(s,vb,wb,rho,M,thrusting){
+  const c=s.cm,sp=len(vb);if(sp<0.05)return;
+  const cp=cpMax(M)*waveBump(M),fy0=-vb[1]/sp,fromTop=fy0<0;
+  const ex=(rmx,rmn,rs)=>rmx<=rs?0:(rmx*rmx-rmn*rmn<1e-9?1:clamp((rmx*rmx-Math.max(rs,rmn)**2)/(rmx*rmx-rmn*rmn),0,1));
+  const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M));
+  for(const ln of s.lines){const E=ln.E,n=E.length,ox=ln.ox,oz=ln.oz,slender=ln.slender;
+    let rs=0;for(let k=0;k<n;k++){const e=E[fromTop?n-1-k:k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.exp=e.ny*fy0<0?ex(mx,mn,rs):1;rs=Math.max(rs,mx)}
+    rs=0;for(let k=0;k<n;k++){const e=E[fromTop?k:n-1-k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.bexp=e.ny*fy0>0?ex(mx,mn,rs):0;rs=Math.max(rs,mx)}
+    for(const e of E){const p=e.p,dA=e.L*e.rm*(6.283185307/NA)*(e.cav?0.3:1),cb=cbase*(thrusting&&p.d.kind==='engine'?0.25:1);
+      for(let k=0;k<NA;k++){const ca=CA[k],sa=SA[k],px=ox+e.rm*ca,py=e.ym,pz=oz+e.rm*sa,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+        const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx);   // air velocity relative to this point
+        const f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;const fl=Math.sqrt(f2),qL=0.5*rho*f2,nx=e.nr*ca,ny=e.ny,nz=e.nr*sa;
+        const cn=(nx*fx+ny*(ny*fy<0?fy*e.exp:fy)+nz*fz)/fl;
+        if(cn<0){const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz)}
+        else if(e.bexp>0&&cn>0){const pr=qL*cb*e.bexp*cn*dA/fl;addF(p,fx*pr,fy*pr,fz*pr,px,py,pz)}
+        const sf=qL*0.003*dA/fl;addF(p,fx*sf,fy*sf,fz*sf,px,py,pz)}
+      if(slender>0&&e.slope<1.5&&!e.cav){const rx=ox-c[0],ry=e.ym-c[1],rz=oz-c[2];
+        const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),fc=Math.hypot(fx,fz),f2=fx*fx+fy*fy+fz*fz;
+        if(fc>1e-6){const rLo=e.y0<e.y1?e.r0:e.r1,rHi=e.y0<e.y1?e.r1:e.r0,dS=Math.PI*(fy<0?rLo*rLo-rHi*rHi:rHi*rHi-rLo*rLo);
+          const N=0.5*rho*f2*2*(fc/Math.sqrt(f2))*(Math.abs(fy)/Math.sqrt(f2))*dS*slender;   // q·sin2α·dS
+          addF(p,fx/fc*N,0,fz/fc*N,ox,e.ym,oz)}}}}
+  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,rr=R0+d.span/2;
+    for(const[ax,az]of[[1,0],[0,1],[-1,0],[0,-1]]){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,nx=-az,nz=ax,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+      const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;
+      const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
+      addF(p,nx*N+fx*sf,fy*sf,nz*N+fz*sf,px,py,pz)}}
+  if(s.chute&&s.chuteA>0&&s.chutePart&&s.chutePart.on){const p=s.chutePart,px=p.pos[0],pz=p.pos[2],py=p.y0+p.h+1,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+    const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}}
+
+// ---- structure: the vessel is rigid, so every joint carries exactly what it takes to make the branch beyond it
+// follow the whole body's motion. Cut at the joint; (inertial demand of the branch) − (external forces on it) is the
+// force and moment the joint transmits, read in the joint's own frame (axis jA: stack joints vertical, side joints
+// radial): along the axis → compression/tension, across it → shear, moment across it → bending.
+function structLoads(s,aNg,al,w,tauCtrl,probe){
+  const c=s.cm;
+  // control torque: reaction wheels in the pod up to their rating, the remainder as gimbal side-force shared by the
+  // burning engines (which also pushes the whole vessel sideways, so it joins the body's acceleration)
+  const tl=len(tauCtrl);let fg=[0,0,0];
+  if(tl>0){const wheel=Math.min(tl,s.torque),tw=mul(tauCtrl,wheel/tl),tg=sub(tauCtrl,tw),pod=s.parts.find(p=>p.on&&p.d.kind==='pod');
+    if(pod)pod.L=add(pod.L,tw);const E=activeEngines(s);
+    if(E.length&&len(tg)>1){let D=0;for(const e of E){const d=sub(thrustPt(e),c);D+=dot(d,d)}
+      for(const e of E){const pt=thrustPt(e),f=mul(cross(tg,sub(pt,c)),1/D);addF(e,f[0],f[1],f[2],pt[0],pt[1],pt[2]);fg=add(fg,f)}
+      aNg=add(aNg,mul(fg,1/s.mass))}}
+  for(const p of s.parts){if(!p.on)continue;const m=partMass(p)*1000,pc=partC(p),rr=sub(pc,c);
+    const a=add(aNg,add(cross(al,rr),cross(w,cross(w,rr)))),fin=mul(a,m),io=m*(p.h*p.h/12+R0*R0/4),ir=m*R0*R0/2;
+    p.bF=sub(fin,p.F);p.bL=sub(add(cross(pc,fin),[io*al[0],ir*al[1],io*al[2]]),p.L)}
+  let worst={frac:0,p:null,kind:''};
+  for(const p of s.order){const par=p.parent,J=p.jP,A=p.jA,Fj=p.bF,Mj=sub(p.bL,cross(J,Fj));
+    const fA=dot(Fj,A),axial=-fA,shear=len(sub(Fj,mul(A,fA))),bend=len(sub(Mj,mul(A,dot(Mj,A))));
+    const lim=k=>1000*Math.min(p.d[k],par.d[k]);
+    const fa=axial>0?axial/lim('T'):-axial/lim('C'),fs=shear/lim('S'),fb=bend/lim('B');
+    const frac=Math.max(fa,fs,fb),kind=frac===fb?'bending':frac===fs?'shear':axial>0?'tension':'compression';
+    if(!probe)p.load=p.load*0.6+frac*0.4;const f=probe?frac:p.load;
+    p.loadKind=kind;if(f>worst.frac)worst={frac:f,p,kind};
+    par.bF=add(par.bF,Fj);par.bL=add(par.bL,p.bL)}
+  worst.aSide=mul(fg,1/s.mass);return worst}
+function subtree(p){const out=[p];for(const c of p.children)if(c.on)out.push(...subtree(c));return out}
+// Take parts off the vessel (staging or structural failure). They leave as one debris body with the velocity
+// their centre of mass had, including the spin, plus a kick (body frame).
+function detach(s,list,kick,spin){
+  list=list.filter(p=>p.on);if(!list.length)return;
+  geom(s);const c0=s.cm.slice();let dm=0,dc=[0,0,0];for(const p of list){const m=partMass(p);dm+=m;dc=madd(dc,partC(p),m)}dc=mul(dc,1/dm);
+  for(const p of list)p.on=false;
+  geom(s);rebuildShape(s);
+  const off=qrot(s.q,sub(dc,c0));
+  HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
+    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0});
+  s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
+  if(s.landed)s.landed=false;
+  HOOK.rebuild()}
+function physStep(s,dt){
+  const b=s.body;geom(s);
+  const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
+  for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0}
+  const eng=activeEngines(s);let T=0;
+  if(s.throttle>0){const drain={};for(const p of eng){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle,pt=thrustPt(p);
+    T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2]);drain[p.seg]=(drain[p.seg]||0)+md*s.throttle*dt/1000}
+    for(const k in drain)drainSeg(s,+k,drain[k])}
+  const out=new Set();for(let k=0;k<s.segs.length;k++){const g=s.segs[k];if(g.ignited&&!g.flamed&&segFuel(s,k)<=1e-9&&s.parts.some(p=>p.on&&p.seg===k&&p.d.kind==='engine')){g.flamed=true;out.add(g.label.startsWith('boosters')?'Booster burnout':'Flameout')}}
+  for(const m of out)HOOK.msg(m);
+  s.thrust=T;
+  const Y=qrot(s.q,[0,1,0]);
+  if(s.landed){const W=s.mass*b.mu/(rl*rl);
+    if(T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
+    else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
+  const qi=qconj(s.q),vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
+  s.mach=b.atm?sp/SND(h):0;s.qdyn=0.5*rho*sp*sp;s.aoa=sp>1?Math.acos(clamp(vb[1]/sp,-1,1)):0;
+  if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&rho>0.7?600:6;s.chuteA=s.chuteA<tgt?Math.min(tgt,s.chuteA+dt*(tgt>6?140:3)):tgt}  // drogue below ~20 km, main below ~3 km once under 250 m/s
+  if(rho>0&&sp>0.05){
+    const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());
+    aeroPass(s,vb,wb,rho,s.mach,T>0);
+    // drag may not reverse the airflow within one step
+    let Fa=[0,0,0];s.parts.forEach((p,i)=>{Fa=add(Fa,sub(p.F,F0[i]))});
+    const lim=0.9*sp*s.mass/dt,fa=len(Fa);
+    if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}}
+  let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
+  const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
+  const alC=qrot(qi,ctrlAccel(s)),alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
+  const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);
+  s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;
+  const grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;
+  s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
+  integrateRot(s,qrot(s.q,alB),dt);
+  simT+=dt;checkSOI(s);groundCheck(s);
+  if(s.alive&&worst.frac>1){const p=worst.p;
+    HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
+    detach(s,subtree(p),[0,0,0],1.5)}}
+function launchSegs(s){const e=s.events[0];return e&&!e.decouple.length?e.ignite:[]}
+// What-if analysis for the assembly screen: centre of pressure, stability margin, and joint loads at liftoff and
+// at max-q (trimmed, i.e. controls exactly cancel the aero torque — the worst steady case the pilot can hold).
+function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
+  for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
+  const pr=Math.exp(-h/TELLUS.H),ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
+  if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p);T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2])}
+  let Fx=0,Lz=0;
+  if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];
+    const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());aeroPass(s,vb,[0,0,0],rho,M,T>0);
+    s.parts.forEach((p,i)=>{if(p.on){Fx+=p.F[0]-F0[i][0];Lz+=p.L[2]-L0[i][2]}})}
+  let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
+  const tau=sub(L,cross(s.cm,F)),ctl=mul(tau,-1),auth=ctrlAuthority(s,E,thr);
+  const ign=s.segs.map(g=>g.ignited);s.segs.forEach((g,k)=>g.ignited=ls.includes(k));
+  const worst=structLoads(s,mul(F,1/s.mass),[0,0,0],[0,0,0],ctl,true);s.segs.forEach((g,k)=>g.ignited=ign[k]);
+  // CoP on the axis: −Lz/Fx is only meaningful for a symmetric design, which side groups always are
+  return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth,tau:len(tau),auth}}
+function firstSeg(s){return launchSegs(s)[0]??0}
+function checkSOI(s){
+  if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI')}}
+  else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI')}}
+function groundCheck(s){
+  const b=s.body,Y=qrot(s.q,[0,1,0]);
+  const hB=len(madd(s.r,Y,s.yBot))-b.R,hT=len(madd(s.r,Y,s.yTop))-b.R;
+  if(Math.min(hB,hT)>0)return;
+  const up=norm(s.r),sp=len(sub(s.v,surfVel(b,s.r))),tilt=Math.acos(clamp(dot(Y,up),-1,1));
+  if(sp<12&&tilt<0.6){
+    const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
+    const q=qFromBasis(X,up,cross(X,up));
+    s.landed=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
+    s.landedAt=simT;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
+  else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
+function stage(s){
+  if(!s.alive)return;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
+  for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
+    const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
+    detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
+  if(ev.decouple.length)HOOK.msg(ev.radial?'Booster separation':'Stage separation');
+  for(const k of ev.ignite)s.segs[k].ignited=true;
+  if(ev.ignite.length&&!ev.decouple.length)HOOK.msg('Ignition');
+  if(ev.chute){s.chute=true;s.chuteA=0;HOOK.msg(s.body.atm?'Chute armed — drogue below 20 km, main below 3 km':'Chute deployed (no air here)')}
+  HOOK.rebuild()}
+function railsOK(s){
+  if(!s.alive)return false;const thr=s.throttle>0&&activeEngines(s).length>0;
+  if(s.landed)return!thr;
+  return!thr&&len(s.r)-s.body.R>physAlt(s.body)}
+// Advance on rails. Kepler is exact, so the only reason to sub-step is to catch SOI changes and the atmosphere edge.
+function rails(s,dt){
+  if(s.landed){simT+=dt;syncLanded(s);return true}
+  let rem=dt,guard=0;
+  while(rem>1e-9&&guard++<4000){
+    const b=s.body,rl=len(s.r),el=elements(s.r,s.v,b.mu),sp=len(s.v)+(b===TELLUS?SELENE.n*SELENE.a:0)+1;
+    let lim=Infinity;
+    if(el.pe<b.R+physAlt(b))lim=rl-b.R-physAlt(b);
+    if(b===TELLUS){if(el.ap>SELENE.a-SELENE.soi&&el.pe<SELENE.a+SELENE.soi)lim=Math.min(lim,Math.abs(len(sub(s.r,moonPos(simT)))-SELENE.soi))}
+    else if(el.e>=1||el.ap>b.soi)lim=Math.min(lim,b.soi-rl);
+    const h=Math.min(rem,Math.max(dt/2000,0.25*lim/sp));
+    const[r,v]=kepler(s.r,s.v,h,b.mu);s.r=r;s.v=v;simT+=h;rem-=h;
+    checkSOI(s);
+    if(len(s.r)-s.body.R<physAlt(s.body))return rem<=1e-9}
+  return true}
+function stepDebris(dt){
+  for(let i=debris.length-1;i>=0;i--){const d=debris[i],b=d.body;d.t+=dt;
+    const rl=len(d.r),h=rl-b.R;let a=mul(d.r,-b.mu/(rl*rl*rl));
+    const rho=density(b,h);if(rho>0){const va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp>0.1){let ad=0.5*rho*sp*2.5/d.mass;if(ad*dt>0.9)ad=0.9/dt;a=madd(a,va,-ad)}}
+    d.v=madd(d.v,a,dt);d.r=madd(d.r,d.v,dt);
+    const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
+    if(h<0){HOOK.boom(b,d.r,simT,1);d.dead=true}
+    if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
+// Where does the current trajectory go? Up to three patched-conic legs: orbit → Selene encounter → escape back to Tellus.
+function predict(s){
+  const out=[];let st={b:s.body,r:s.r,v:s.v,t:simT,off:null};
+  for(let k=0;k<3;k++){
+    const el=elements(st.r,st.v,st.b.mu),pt={...st,el,end:null,endKind:null};out.push(pt);
+    if(el.hl<1e-3||k===2)break;
+    if(st.b===TELLUS){
+      if(el.e<1&&el.ap<SELENE.a-SELENE.soi)break;if(el.pe>SELENE.a+SELENE.soi)break;
+      const span=el.e<1?Math.min(el.period,40*86400):timeToR(el,SELENE.a*1.6);if(!(span>0))break;
+      const N=400;let tPrev=0,found=-1;
+      for(let i=1;i<=N;i++){const dt=span*i/N,[p]=kepler(st.r,st.v,dt,TELLUS.mu);if(len(sub(p,moonPos(st.t+dt)))<SELENE.soi){found=dt;break}tPrev=dt}
+      if(found<0)break;
+      let lo=tPrev,hi=found;for(let j=0;j<40;j++){const m=(lo+hi)/2,[p]=kepler(st.r,st.v,m,TELLUS.mu);if(len(sub(p,moonPos(st.t+m)))<SELENE.soi)hi=m;else lo=m}
+      const te=st.t+hi,[p,v]=kepler(st.r,st.v,hi,TELLUS.mu);pt.end=p;pt.endKind='enc';pt.endT=te;
+      st={b:SELENE,r:sub(p,moonPos(te)),v:sub(v,moonVel(te)),t:te,off:moonPos(te)}}
+    else{
+      if(el.e<1&&el.ap<SELENE.soi)break;
+      const dt=timeToR(el,SELENE.soi*0.99999);if(!(dt>0))break;
+      const[p,v]=kepler(st.r,st.v,dt,SELENE.mu),tx=st.t+dt;pt.end=p;pt.endKind='esc';pt.endT=tx;
+      st={b:TELLUS,r:add(p,moonPos(tx)),v:add(v,moonVel(tx)),t:tx,off:null}}}
+  return out}
+function dvRemaining(s){ // current stage (until the next staging event) and total, vacuum Isp
+  const plan=dvPlan(s,0);return{cur:plan.length?plan[0].dv:0,tot:plan.reduce((a,x)=>a+x.dv,0)}}
+// ==== SIM END
+
+// ============================================================ rendering (raw WebGL2)
+const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
+const gl=cv.getContext('webgl2',{antialias:true,depth:true,powerPreference:'high-performance'});
+if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'}
+const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
+const QUAD_VS=`#version 300 es
+layout(location=0) in vec2 aV;out vec2 vNdc;void main(){vNdc=aV;gl_Position=vec4(aV,0.,1.);}`;
+const SKY_FS=`#version 300 es
+precision highp float;
+in vec2 vNdc;out vec4 o;
+uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
+uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;
+uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;
+const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=5600.,HM=1200.,SUNI=22.;
+float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
+            mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float hp(vec3 i,float P){return h3(mod(i,P));}
+float pn(vec3 x,float P){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(hp(i,P),hp(i+vec3(1,0,0),P),f.x),mix(hp(i+vec3(0,1,0),P),hp(i+vec3(1,1,0),P),f.x),f.y),
+            mix(mix(hp(i+vec3(0,0,1),P),hp(i+vec3(1,0,1),P),f.x),mix(hp(i+vec3(0,1,1),P),hp(i+vec3(1,1,1),P),f.x),f.y),f.z);}
+float fbm(vec3 p){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*vn(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=.5;}return s;}
+// near-field detail: periods divide 1000 m, so the CPU can re-centre the origin every km without a seam
+float detail(vec3 l){return .4*pn(l/25.,40.)+.3*pn(l/5.,200.)+.2*pn(l,1000.)+.1*pn(l*4.,4000.);}
+float crat(vec3 p){vec3 i=floor(p),f=fract(p);float r=0.;
+ for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)for(int z=-1;z<=1;z++){vec3 o=vec3(x,y,z),c=i+o;
+  vec3 j=vec3(h3(c),h3(c+17.3),h3(c+41.9));float rad=.18+.3*h3(c+5.1),k=length(o+j-f)/rad;
+  r+=k<1.?(k*k-.75)*.6:(k<1.4?(1.4-k)*.5:0.);}return r;}
+// ray from the camera (origin) vs sphere centred at C; cc=|C|^2-R^2 comes from the CPU in float64
+vec2 sph(vec3 C,float cc,vec3 d){float b=dot(d,C),D=b*b-cc;if(D<0.)return vec2(-1.,-2.);float s=sqrt(D),t0,t1;
+ if(b>0.){t1=b+s;t0=cc/t1;}else{t0=b-s;t1=abs(t0)>1e-9?cc/t0:0.;}return vec2(t0,t1);}
+vec3 sunTrans(vec3 p){if(uAR<=0.)return vec3(1.);float r=length(p),b=dot(p,uSun),c=r*r-uAR*uAR,tl=-b+sqrt(max(b*b-c,0.)),sl=tl/6.,lR=0.,lM=0.;
+ for(int j=0;j<6;j++){vec3 q=p+uSun*(float(j)+.5)*sl;float hq=max(length(q)-uPR,0.);lR+=exp(-hq/HR)*sl;lM+=exp(-hq/HM)*sl;}
+ return exp(-(BR*lR+BM*1.1*lM));}
+vec3 scatter(vec3 d,float tMax,out vec3 trans){
+ trans=vec3(1.);if(uAR<=0.)return vec3(0.);
+ vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);if(ta.y<0.||ta.x>ta.y)return vec3(0.);
+ float t0=max(ta.x,0.),t1=min(ta.y,tMax);if(t1<=t0)return vec3(0.);
+ float ds=(t1-t0)/12.,odR=0.,odM=0.;vec3 sR=vec3(0.),sM=vec3(0.);
+ for(int i=0;i<12;i++){float t=t0+(float(i)+.5)*ds;vec3 p=d*t-uPc;float r=length(p),h=r-uPR;
+  float dR=exp(-h/HR)*ds,dM=exp(-h/HM)*ds;odR+=dR;odM+=dM;
+  float b=dot(p,uSun);if(b<0.&&r*r-b*b<uPR*uPR)continue;
+  float c=r*r-uAR*uAR,tl=-b+sqrt(max(b*b-c,0.)),sl=tl/4.,lR=0.,lM=0.;
+  for(int j=0;j<4;j++){vec3 q=p+uSun*(float(j)+.5)*sl;float hq=length(q)-uPR;lR+=exp(-hq/HR)*sl;lM+=exp(-hq/HM)*sl;}
+  vec3 att=exp(-(BR*(odR+lR)+BM*1.1*(odM+lM)));sR+=att*dR;sM+=att*dM;}
+ trans=exp(-(BR*odR+BM*1.1*odM));
+ float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
+ return SUNI*(sR*BR*pR+sM*BM*pM);}
+vec3 tellus(vec3 pf,float det,float fade,out float ocean){
+ vec3 dl=pf-vec3(1,0,0);float c=fbm(pf*2.2)+.42*exp(-dot(dl,dl)*30.);
+ vec3 col;ocean=0.;
+ if(c<.52){ocean=1.;col=mix(vec3(.004,.02,.07),vec3(.01,.06,.14),smoothstep(.3,.52,c));}
+ else{float m=fbm(pf*9.+5.);col=mix(vec3(.05,.12,.03),vec3(.2,.16,.08),smoothstep(.45,.7,m));
+  col=mix(col,vec3(.16,.14,.12),smoothstep(.64,.76,c));col=mix(col,vec3(.22,.2,.12),smoothstep(.535,.52,c)*.6);
+  float mid=fbm(pf*90.+2.);col*=.7+.6*mid;col=mix(col,vec3(.03,.07,.02),smoothstep(.55,.7,fbm(pf*420.))*.6);
+  col*=.8+fade*.4*det+(1.-fade)*.2;}
+ float ice=smoothstep(.8,.87,abs(pf.y)+.08*fbm(pf*12.));return mix(col,vec3(.75,.8,.85),ice*(1.-ocean*.3));}
+void main(){
+ vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
+ float tP=1e30,tM=1e30;
+ vec2 hpl=sph(uPc,uPcc,d);if(uPcc>0.&&hpl.x>0.)tP=hpl.x;
+ vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
+ float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;
+ if(tP<tM){
+  vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
+  float fade=smoothstep(4000.,150.,tP),det=fade>0.?detail(loc):.5,oc;
+  vec3 alb=tellus(pf,det,fade,oc),st=sunTrans(p+n*20.);float ndl=dot(n,uSun);
+  col=alb*(max(ndl,0.)*st*5.+vec3(.01,.016,.03));
+  if(oc>.5)col+=st*pow(max(dot(reflect(d,n),uSun),0.),90.)*1.5*step(0.,ndl);
+  col=col*trans+ins;
+ }else if(tM<1e29){
+  vec3 p=d*tM-uMc,n=normalize(p);
+  // crater relief: the height field's slope along the sun direction tilts the lighting (2 evaluations, no normal map)
+  float cr=crat(n*18.)+.5*crat(n*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(d*tM+uMdet):.5;
+  vec3 ts=normalize(uSun-n*dot(uSun,n));float e=.004,cr2=crat(normalize(n+ts*e)*18.)+.5*crat(normalize(n+ts*e)*55.);
+  float slope=clamp((cr2-cr)*1.4,-.9,1.2);
+  float base=.16+.09*fbm(n*3.)-.07*smoothstep(.5,.65,fbm(n*1.6+3.));
+  vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
+  float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
+ }else{
+  vec3 sd=d*220.,ci=floor(sd),j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));
+  float star=step(.993,h3(ci))*smoothstep(.2,0.,length(fract(sd)-j*.6-.2))*(.3+2.*h3(ci+9.));
+  float sdn=dot(d,uSun);
+  col=ins+trans*(vec3(star)*.6+vec3(1.,.95,.85)*(smoothstep(.99996,.99999,sdn)*60.+pow(max(sdn,0.),900.)*2.));
+ }
+ col=1.-exp(-col*1.1);o=vec4(pow(col,vec3(1./2.2)),1.);
+ gl_FragDepth=tH<1e29?min(log2(1.+tH*dot(d,uF))*uFc*.5,.9999999):1.;
+}`;
+const MESH_VS=`#version 300 es
+layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;
+uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP;out float vW;
+void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;}`;
+const MESH_FS=`#version 300 es
+precision highp float;in vec3 vN,vC,vP;in float vW;out vec4 o;
+uniform vec3 uSun;uniform float uLit,uAmb,uGlow,uFc;
+void main(){vec3 n=normalize(vN);if(dot(n,vP)>0.)n=-n;
+ vec3 c=uGlow>0.?vC*uGlow:vC*(uAmb+uLit*max(dot(n,uSun),0.)*1.15)+vC*uLit*.25*pow(max(dot(reflect(normalize(vP),n),uSun),0.),24.);
+ o=vec4(c,1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const LINE_VS=`#version 300 es
+layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
+void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vC=aC;}`;
+const LINE_FS=`#version 300 es
+precision highp float;in vec4 vC;in float vW;out vec4 o;uniform float uFc;void main(){o=vC;gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+function mkProg(vs,fs){const p=gl.createProgram();
+  for(const[t,s]of[[gl.VERTEX_SHADER,vs],[gl.FRAGMENT_SHADER,fs]]){const sh=gl.createShader(t);gl.shaderSource(sh,s);gl.compileShader(sh);
+    if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}
+  gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
+  const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}return{p,u}}
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS);
+const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
+const lineVAO=gl.createVertexArray(),lineBuf=gl.createBuffer();gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,28,12);gl.bindVertexArray(null);
+function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray(),b=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,36,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,36,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,36,24);gl.bindVertexArray(null);
+  return{vao,n:data.length/9,free(){gl.deleteBuffer(b);gl.deleteVertexArray(vao)}}}
+// surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
+function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){
+  const V=(r,y,ca,sa,nr,ny,c)=>out.push(o[0]+r*ca,o[1]+y,o[2]+r*sa,nr*ca,ny,nr*sa,c[0],c[1],c[2]);
+  for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1];let nr=y1-y0,ny=-(r1-r0);const l=Math.hypot(nr,ny);if(l<1e-9)continue;nr/=l;ny/=l;
+    for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,ca0=Math.cos(a0),sa0=Math.sin(a0),ca1=Math.cos(a1),sa1=Math.sin(a1);
+      V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca0,sa0,nr,ny,c1);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca1,sa1,nr,ny,c0)}}
+  const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
+    out.push(o[0],o[1]+y,o[2],0,ny,0,...c,o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0),0,ny,0,...c,o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1),0,ny,0,...c)}};
+  if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
+const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.06,.06,.07],Y:[.75,.6,.15],R:[.7,.12,.1]};
+function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,1],[2,-1]]){const n=[0,0,0];n[ax]=s;const h=[hx,hy,hz],u=(ax+1)%3,v=(ax+2)%3,P=(a,b)=>{const p=c.slice();p[ax]+=s*h[ax];p[u]+=a*h[u];p[v]+=b*h[v];return p};
+  const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])out.push(...q[i],...n,...col)}}
+function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=9){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
+  out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,a[i+6],a[i+7],a[i+8])}}
+function partShape(out,p){const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
+  switch(d.key){
+    case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
+    case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord,rr=R0+sp/2;
+      box(out,[x+rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x-rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x,y+ch/2,z+rr],.035,ch/2,sp/2,C.R);box(out,[x,y+ch/2,z-rr],.035,ch/2,sp/2,C.R)}break;
+    case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
+    case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);
+      lathe(out,[[.12,0,C.K],[.12,.05,C.K]],[x+0.24,y+.62,z+.4],10);break;
+    case'chute':lathe(out,[[.3,0,C.G],[.3,.22,C.G],[.3,.22,C.O],[.16,.38,C.O],[0,.42,C.O]],o);break;
+    case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
+    case'wren':lathe(out,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o,28,[false,true]);break;
+    case'petrel':lathe(out,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o,28,[false,true]);break;
+    case'kestrel':lathe(out,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o,28,[false,true]);break;
+    case'condor':lathe(out,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o,28,[false,true]);break;
+    default:{const b=.07,big=h>3;const pr=[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W]];
+      if(big)pr.push([.625,h*.46,C.W],[.625,h*.46,C.O],[.625,h*.54,C.O],[.625,h*.54,C.W]);
+      pr.push([.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]);lathe(out,pr,o)}}}
+function partsMesh(parts){const a=[];for(const p of parts)partShape(a,p);return makeMesh(a)}
+const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
+const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
+const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
+const PAD=(()=>{const a=[];
+  lathe(a,[[7,-.8,C.G],[7,.02,C.G]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
+  lathe(a,[[.45,0,C.R],[.45,22,C.R],[.7,22,C.G],[.7,22.6,C.G]],[4.2,0,0],10);
+  for(const[x,z]of[[34,14],[39,21],[-28,30]])lathe(a,[[2.2,0,C.W],[2.2,5,C.W],[1.3,6,C.W],[0,6.3,C.W]],[x,0,z],20);
+  lathe(a,[[11,0,C.G],[11,9,C.G],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
+  lathe(a,[[3,0,C.D],[3,3,C.D]],[20,0,-30],16);return makeMesh(a)})();
+
+// ---- matrices (column-major)
+function mat4(R,U,Fw,t){return[R[0],R[1],R[2],0,U[0],U[1],U[2],0,Fw[0],Fw[1],Fw[2],0,t[0],t[1],t[2],1]}
+function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
+// shift: a body-frame offset (or just a y offset) applied before rotating, e.g. −(centre of mass)
+function modelQ(q,pos,shift=0,sc=[1,1,1]){const X=qrot(q,[1,0,0]),Y=qrot(q,[0,1,0]),Z=qrot(q,[0,0,1]),sh=typeof shift==='number'?[0,shift,0]:shift;return mat4(mul(X,sc[0]),mul(Y,sc[1]),mul(Z,sc[2]),add(pos,qrot(q,sh)))}
+
+// ============================================================ app state
+let mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null;
+const WARPS=[1,2,4,10,50,100,1000,10000,100000];
+let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
+const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
+const keys=new Set();
+let msgTimer=0;
+let evt=false;   // set by any in-flight event message; used to drop out of warp
+HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
+HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
+HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
+HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d)};
+function resetShip(){simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
+
+// ============================================================ editor UI
+const $=id=>document.getElementById(id);
+function renderEditor(){
+  const pal=$('palette');pal.innerHTML='';
+  for(const k in PARTS){const d=PARTS[k],b=document.createElement('button');
+    const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
+    b.innerHTML=`${d.name}<span>${spec}</span>`;b.onclick=()=>{(target?target.stack:stackDef).push(k);editorChanged()};if(d.radialOnly)continue;pal.appendChild(b)}
+  const pre=$('presets');pre.innerHTML='';
+  for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.marginRight='4px';b.onclick=()=>{stackDef=clone(PRESETS[k]);target=null;editorChanged()};pre.appendChild(b)}
+  editorChanged()}
+// target: where palette clicks go — null for the core stack, or the radial group being edited
+let target=null;
+const clone=x=>JSON.parse(JSON.stringify(x));
+function partRow(name,acts,parent){ // a row with a name and small action buttons; acts: [[label, fn, tooltip]]
+  const r=document.createElement('div');r.className='row';r.innerHTML=`<span class="nm">${name}</span>`;
+  for(const[t,f,tip]of acts){const b=document.createElement('button');b.textContent=t;if(tip)b.title=tip;b.onclick=ev=>{ev.stopPropagation();f();editorChanged()};r.appendChild(b)}
+  parent.appendChild(r)}
+const swap=(l,a,b)=>{if(a>=0&&b<l.length)[l[a],l[b]]=[l[b],l[a]]};
+function rowsFor(){
+  const st=$('stack');
+  stackDef.forEach((e,i)=>{const side=typeof e!=='string'&&e.rad;
+    partRow(PARTS[entryKey(e)].name,[['▲',()=>swap(stackDef,i-1,i)],['▼',()=>swap(stackDef,i,i+1)],
+      [side?'⊖':'⊕',()=>{if(side){if(target===e.rad)target=null;stackDef[i]=e.k}else{stackDef[i]={k:e,rad:{n:2,dec:true,stack:['cone','t4','kestrel']}};target=stackDef[i].rad}},
+        side?'remove the side stacks':'add side stacks beside this part (bottoms level with it)'],
+      ['✕',()=>{if(side&&target===e.rad)target=null;stackDef.splice(i,1)}]],st);
+    if(!side)return;
+    const g=document.createElement('div');g.className='grp'+(target===e.rad?' sel':'');g.title='click to add parts here';g.onclick=()=>{target=e.rad;editorChanged()};
+    const hd=document.createElement('div');hd.className='hd';hd.innerHTML=`<span>side ×${e.rad.n}</span>`;
+    for(const n of[2,3,4]){const b=document.createElement('button');b.textContent=n;if(e.rad.n===n)b.className='on';b.onclick=ev=>{ev.stopPropagation();e.rad.n=n;editorChanged()};hd.appendChild(b)}
+    const dc=document.createElement('button');dc.textContent=e.rad.dec?'decoupler ✓':'no decoupler';
+    dc.title='with radial decouplers the side stacks are a stage of their own; without, they stay on for good';
+    dc.onclick=ev=>{ev.stopPropagation();e.rad.dec=!e.rad.dec;editorChanged()};hd.appendChild(dc);g.appendChild(hd);
+    const L=e.rad.stack;L.forEach((k,j)=>partRow(PARTS[k].name,[['▲',()=>swap(L,j-1,j)],['▼',()=>swap(L,j,j+1)],
+      ['✕',()=>{L.splice(j,1);if(!L.length){if(target===e.rad)target=null;stackDef[i]=e.k}}]],g));
+    st.appendChild(g)})}
+function editorChanged(){
+  const st=$('stack');st.innerHTML='';rowsFor();
+  const host=target&&stackDef.find(e=>typeof e!=='string'&&e.rad===target);if(!host)target=null;
+  $('target').innerHTML=target?`adding to: <b>side stack beside ${PARTS[host.k].name}</b> · <a id="tcore">core stack</a>`:'adding to: <b>core stack</b> (bottom) · ⊕ on a row adds a side stack';
+  if(target)$('tcore').onclick=()=>{target=null;editorChanged()};
+  if(!stackDef.length){st.innerHTML='<div class="dim">empty — add a command pod</div>';$('stats').innerHTML='';return}
+  const{stages,mass}=stageStats(stackDef);let tot=0,html='';
+  stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok';
+    html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>Δv <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · TWR <span class="${tw}">${s.twr.toFixed(2)}</span> · ${s.burn.toFixed(0)} s</div>`});
+  html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
+    <div class="sub">Low orbit needs ~3400 m/s. A Selene landing and return, ~6200.</div>`;
+  if(!stackDef.some(e=>entryKey(e)==='pod'))html+='<div class="warn">No command pod: no control torque.</div>';
+  resetShip();cam.dist=Math.max(14,S.len*1.5);cam.pitch=-0.05;
+  const a=S.ana=analyze(S),cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
+  const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
+  html+=`<h2>Aerodynamics &amp; structure</h2>
+    <div>Stability <span class="dim">(CoM ahead of CoP, calibers)</span><br>
+    full <b class="${cc(cal(a.ful))}">${cal(a.ful).toFixed(2)}</b> · stage-1 dry <b class="${cc(cal(a.emp))}">${cal(a.emp).toFixed(2)}</b> · M1.6 <b class="${cc(cal(a.sup))}">${cal(a.sup).toFixed(2)}</b></div>
+    <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.worst.frac)}">${(a.lift.worst.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.worst)}</span></div>
+    <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.worst.frac)}">${(a.mq.worst.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.worst)}</span>
+    ${a.mq.trim?'':`<br><span class="warn">controls can't hold 5° here (need ${(a.mq.tau/1000).toFixed(0)} kN·m, have ${(a.mq.auth/1000).toFixed(0)})</span>`}</div>
+    <div class="sub">Negative stability: it flips unless the engines steer it (SAS can hold it while the engine burns, not while coasting). Over 100%: that joint breaks.</div>`;
+  $('stats').innerHTML=html}
+function analyze(s){
+  const ls=launchSegs(s),saved=s.parts.map(p=>p.fuel);
+  const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000}),lift=probe(s,{thr:1}),mq=probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1});
+  s.parts.forEach(p=>{if(ls.includes(p.seg))p.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>p.fuel=saved[i]);
+  geom(s);return{ful,emp,sup,lift,mq}}
+$('launch').onclick=()=>{if(!stackDef.length)return;resetShip();mode='flight';$('editor').classList.add('hidden');$('hud').classList.remove('hidden');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
+$('bEditor').onclick=()=>{mode='editor';view='flight';$('editor').classList.remove('hidden');$('hud').classList.add('hidden');editorChanged()};
+$('bRevert').onclick=()=>{resetShip();view='flight';HOOK.msg('Reverted to launch')};
+$('bMap').onclick=()=>toggleMap();
+$('bHelp').onclick=()=>$('help').classList.toggle('hidden');
+const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in']];
+function renderSAS(){const el=$('sas');el.innerHTML='';
+  const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
+  for(const[k,n]of SASM){const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
+function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
+  const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
+    if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');
+    if(e.ignite.length){const nm={};S.parts.filter(p=>p.on&&e.ignite.includes(p.seg)&&p.d.kind==='engine').forEach(p=>{const n=p.d.name.split(' ')[0];nm[n]=(nm[n]||0)+1});
+      parts.push('ignite '+Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + '))}
+    if(e.chute)parts.push('chute');
+    html+=`<div class="stg${i===S.evIdx?' cur':''}"><b>${i===S.evIdx?'▶ ':''}${i+1}</b> ${parts.join(' · ')}</div>`}
+  if(S.evIdx>=ev.length)html+='<div class="dim">no stages left</div>';
+  const agg={};for(let k=0;k<S.segs.length;k++){const fm=S.parts.filter(p=>p.on&&p.seg===k&&p.d.kind==='tank').reduce((a,p)=>a+p.d.wet-p.d.dry,0);
+    if(fm>0){const L=S.segs[k].label,a=agg[L]=agg[L]||[0,0];a[0]+=segFuel(S,k);a[1]+=fm}}
+  for(const[L,[f,fm]]of Object.entries(agg))html+=`<div class="dim" style="margin-top:4px">${L} ${f.toFixed(2)} t<div class="bar"><i style="width:${100*f/fm}%"></i></div></div>`;
+  el.innerHTML=html}
+
+// ============================================================ input
+addEventListener('keydown',e=>{
+  if(mode!=='flight')return;const k=e.key.toLowerCase();
+  if([' ','tab'].includes(k)||e.ctrlKey)e.preventDefault();
+  if(e.repeat&&!['shift','control'].includes(k)){keys.add(k);return}
+  keys.add(k);
+  if(k===' ')stage(S);
+  else if(k==='z')S.throttle=1;else if(k==='x')S.throttle=0;
+  else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
+  else if(k==='m')toggleMap();
+  else if(k==='h')$('help').classList.toggle('hidden');
+  else if(k==='.')warpIdx=Math.min(WARPS.length-1,warpIdx+1);
+  else if(k===',')warpIdx=Math.max(0,warpIdx-1);
+  else if(k==='/')warpIdx=0;
+  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[3e6,3e6,1.5e6][cam.focus]}
+  else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();view='flight';HOOK.msg('Reverted to launch')}});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+addEventListener('blur',()=>keys.clear());
+addEventListener('beforeunload',e=>{if(mode==='flight'&&S&&S.alive&&!S.landed){e.preventDefault();e.returnValue=''}});
+function toggleMap(){view=view==='map'?'flight':'map';if(view==='map'){cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),1.2e6,8e7)}}
+let drag=null;
+cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY]});
+addEventListener('mouseup',()=>drag=null);
+addEventListener('mousemove',e=>{if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
+  if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-1.45,1.45)}});
+cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,2.2e5,2e8);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
+
+// ============================================================ main loop
+let last=performance.now(),fpsT=0,fpsN=0,fpsShow=0,frameMs=0,stepsN=0,hudT=0;
+function shipWorld(){return add(bodyPos(S.body,simT),S.r)}
+function simulate(dtR){
+  if(mode!=='flight')return;
+  if(keys.has('shift'))S.throttle=Math.min(1,S.throttle+dtR);
+  if(keys.has('control'))S.throttle=Math.max(0,S.throttle-dtR);
+  INP.pitch=(keys.has('w')?1:0)-(keys.has('s')?1:0);INP.yaw=(keys.has('d')?1:0)-(keys.has('a')?1:0);INP.roll=(keys.has('q')?1:0)-(keys.has('e')?1:0);
+  if(!S.alive){simT+=dtR;stepDebris(dtR);warpIdx=0;return}
+  const onRails=railsOK(S);
+  if(!onRails&&warpIdx>5)warpIdx=5;   // physics warp: same fixed step, more steps per frame — results are identical
+  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=len(S.r)-S.body.R+S.yBot,tg=vs<0?hb/-vs:Infinity;
+    if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
+  const warp=WARPS[warpIdx],dt=dtR*warp;stepsN=0;
+  if(onRails){
+    if(!S.landed){
+      if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(S,dt/n,null);stepsN=n}
+      else{S.w=[0,0,0];if(S.sas&&S.sasMode!=='stab'){const tg=sasTarget(S);if(tg)S.q=qnorm(qmul(qFromTo(qrot(S.q,[0,1,0]),tg),S.q))}}}
+    if(!rails(S,dt)){warpIdx=0;HOOK.msg('Warp stopped')}
+    if(warp>4&&debris.length){debris.forEach(d=>d.mesh.free());debris.length=0}
+    else stepDebris(dt);
+  }else{
+    physAcc+=dt;evt=false;while(physAcc>=DT&&stepsN<800){physStep(S,DT);stepDebris(DT);physAcc-=DT;stepsN++;if(!S.alive)break;if(evt&&warpIdx>0){warpIdx=0;physAcc=0;break}}
+    if(stepsN>=800)physAcc=0}}
+function frame(now){
+  const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
+  simulate(dtR);
+  adaptRes(dtR);
+  render();
+  frameMs=frameMs*.9+(performance.now()-t0)*.1;
+  fpsN++;fpsT+=dtR;if(fpsT>0.5){fpsShow=fpsN/fpsT;fpsN=0;fpsT=0;$('perf').textContent=`${fpsShow.toFixed(0)} fps · gpu ${gpuMs==null?'?':gpuMs.toFixed(1)} ms · cpu ${frameMs.toFixed(1)} ms · res ${Math.round(RS*100)}% · ${GPU_NAME}`}
+  hudT-=dtR;if(hudT<=0&&mode==='flight'){hudT=0.1;updateHUD()}
+  if(msgTimer>0){msgTimer-=dtR;if(msgTimer<=0)$('msg').style.opacity=0}
+  requestAnimationFrame(frame)}
+
+// ============================================================ render
+let W=1,H=1;
+// ---- adaptive resolution: GPU timer queries (async, never stall) drive a render-scale multiplier
+const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0;
+const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
+  const m=/ANGLE \([^,]*, ([^(,]*?)\s*(\(|,|Direct|$)/.exec(r);return (m?m[1]:r).replace(/(NVIDIA|AMD|Intel\(R\)) /,'$1 ').trim()})();
+function gpuTimerBegin(){if(!TQ)return;if(tqPending.length<4){tqCur=gl.createQuery();gl.beginQuery(TQ.TIME_ELAPSED_EXT,tqCur)}else tqCur=null}
+function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);tqPending.push(tqCur);tqCur=null}
+  while(tqPending.length&&gl.getQueryParameter(tqPending[0],gl.QUERY_RESULT_AVAILABLE)){const q=tqPending.shift();
+    if(!gl.getParameter(TQ.GPU_DISJOINT_EXT)){const ms=gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;gpuMs=gpuMs==null?ms:gpuMs*.85+ms*.15}gl.deleteQuery(q)}}
+function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
+  const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
+  if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<1)RS=Math.min(1,RS*1.12)}
+function render(){
+  gpuTimerBegin();
+  const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
+  if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;ov.width=w;ov.height=h}W=w;H=h;
+  // ---- camera, in float64 world coordinates
+  let camW,R,U,Fw,fov;
+  if(view==='map'&&mode==='flight'){
+    const foc=cam.focus===0?shipWorld():cam.focus===1?[0,0,0]:moonPos(simT);
+    const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
+    camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
+  else{
+    let tgt;if(S.alive)tgt=shipWorld();else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
+    if(mode==='editor')cam.yaw+=0.002;
+    const f=localFrame(sub(tgt,bodyPos(S.body,simT)));
+    const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
+    camW=madd(tgt,off,cam.dist);
+    const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);if(ra<S.body.R+1.5)camW=add(bc,mul(rc,(S.body.R+1.5)/ra));
+    Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
+  const tanY=Math.tan(fov/2),tanX=tanY*W/H;
+  gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);
+  // ---- sky / planets: one full-screen ray-cast
+  gl.useProgram(PSKY.p);const u=PSKY.u;
+  gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
+  {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
+   gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
+   gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);
+   const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
+   const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
+   gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
+   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}
+  gl.depthFunc(gl.ALWAYS);gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
+  const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
+  const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
+  // ---- meshes
+  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);
+  const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
+  const amb=p=>{const h=len(p)-TELLUS.R;return .1+.25*Math.exp(-Math.max(h,0)/9000)*lit(p)};
+  const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.uniform1f(m.uAmb,amb(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
+  const near=view!=='map'||mode==='editor';
+  {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
+   if(len(sub(site,camW))<3e5)drawMesh(PAD,mat4(rotY([0,0,-1],th),rotY([1,0,0],th),rotY([0,-1,0],th),sub(site,camW)),site)}
+  if(near&&S.alive&&shipMesh){const p=shipWorld();drawMesh(shipMesh,modelQ(S.q,sub(p,camW),mul(S.cm,-1)),p);
+    if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
+  for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
+  // ---- map: orbit lines + labels
+  const labels=[];
+  if(view==='map'&&mode==='flight')drawMap(VP,camW,labels);
+  // ---- additive glow: plumes, fireballs
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false);gl.useProgram(PMESH.p);
+  if(near&&S.alive&&S.throttle>0){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R);
+    for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1+1.8*(1-pr)),L=ex*(4+9*S.throttle)*(1+.8*(1-pr));
+      gl.uniformMatrix4fv(m.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));gl.uniform1f(m.uGlow,(.35+.4*S.throttle)*(.45+.55*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}}
+  const nowMs=performance.now();
+  for(let i=booms.length-1;i>=0;i--){const bm=booms[i],a=(nowMs-bm.t0)/1000;if(a>4&&S.alive){booms.splice(i,1);continue}if(a>4)continue;
+    const p=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),s=bm.sz*(2+14*Math.sqrt(a));
+    gl.uniformMatrix4fv(m.uM,false,mat4([s,0,0],[0,s,0],[0,0,s],sub(p,camW)));gl.uniform1f(m.uGlow,Math.max(0,1.6*(1-a/4)));gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}
+  gl.disable(gl.BLEND);gl.depthMask(true);
+  // ---- 2D overlay
+  octx.clearRect(0,0,W,H);
+  if(view==='map'&&mode==='flight'){
+    octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
+    for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;
+      if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
+      else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
+      if(L.t)octx.fillText(L.t,s[0],s[1]-10)}}
+  if(mode==='editor'&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
+      const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
+      octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
+      octx.fillStyle='#000';octx.beginPath();octx.arc(s[0],s[1],8*k,0,7);octx.fill();octx.strokeStyle=c;octx.lineWidth=3*k;octx.beginPath();octx.arc(s[0],s[1],6*k,0,7);octx.stroke();
+      octx.fillStyle=c;octx.beginPath();octx.arc(s[0],s[1],2.2*k,0,7);octx.fill();
+      octx.font=`bold ${13*k}px ui-monospace,Consolas,monospace`;octx.textAlign=dx>0?'left':'right';octx.lineWidth=4*k;octx.strokeStyle='rgba(0,0,0,.8)';
+      octx.strokeText(t,x+dx*k*.3,s[1]+4*k);octx.fillText(t,x+dx*k*.3,s[1]+4*k)};
+    mk(S.ana.ful.ycm,'#ffd84a','CoM',12);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
+  if(mode==='flight'&&S.alive)drawNavball();
+  gpuTimerEnd()}
+function drawMap(VP,camW,labels){
+  if(!predCache||predCache.t!==simT)predCache={t:simT,p:predict(S)};
+  const out=[],cols={0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]};
+  const seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
+  // Selene's orbit + SOI ring
+  let prev=null;for(let i=0;i<=256;i++){const f=i/256*6.2832,p=[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)];if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
+  const mp=moonPos(simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(mp,[SELENE.soi*Math.cos(f),0,SELENE.soi*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}
+  predCache.p.forEach((pt,k)=>{
+    const el=pt.el,off=pt.b===SELENE?(pt.off||mp):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
+    let n0,n1;
+    if(pt.end){n0=el.nu;n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=n0)n1+=6.2832}
+    else if(el.e<1){n0=0;n1=6.2832}
+    else{const rc=pt.b===SELENE?SELENE.soi:SELENE.a*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;n0=el.nu;n1=Math.max(el.nu,nm)}
+    const N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
+    for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
+      const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,col);pv=p}
+    const inArc=nu=>{if(!pt.end&&el.e<1)return true;let a=nu;while(a<n0)a+=6.2832;return a<=n1};
+    const bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;
+    if(inArc(0)&&el.e>1e-4)labels.push({p:add(off,mul(el.P,el.pe)),t:el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR),c:hc});
+    if(el.e<1&&el.e>1e-4&&inArc(Math.PI))labels.push({p:add(off,mul(el.P,-el.ap)),t:'Ap '+fmtD(el.ap-bR),c:hc});
+    if(pt.endKind==='enc'){const nx=predCache.p[k+1];labels.push({p:add(off,pt.end),t:`Selene encounter in ${fmtT(pt.endT-simT)} · Pe ${nx?(nx.el.pe<SELENE.R?'impact':fmtD(nx.el.pe-SELENE.R)):''}`,c:'#ffb454'});
+      labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[SELENE.soi,0,0]),c:'rgba(255,180,84,.6)'})}
+    if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:'Selene escape',c:'#cc8cff'})});
+  if(out.length){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
+    gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
+    gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
+
+// ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
+const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS,NS),D32=new Uint32Array(nimg.data.buffer);
+function drawNavball(){
+  const f=localFrame(S.r),X=qrot(S.q,[1,0,0]),Y=qrot(S.q,[0,1,0]),Z=qrot(S.q,[0,0,1]);
+  const au=[dot(X,f.up),dot(Y,f.up),dot(Z,f.up)],an=[dot(X,f.n),dot(Y,f.n),dot(Z,f.n)],ae=[dot(X,f.e),dot(Y,f.e),dot(Z,f.e)];
+  // no trig per pixel: elevation lines are |sin el| = const, heading lines are 4 great circles through the poles
+  const D=nimg.data,Rr=NS/2-1,w=0.014;
+  for(let py=0;py<NS;py++)for(let px=0;px<NS;px++){const i=(py*NS+px)*4,u=(px-NS/2+.5)/Rr,v=-(py-NS/2+.5)/Rr,rr=u*u+v*v;
+    if(rr>1){D32[i>>2]=0;continue}const y=Math.sqrt(1-rr);
+    const el=au[2]*u+au[1]*y-au[0]*v,dn=an[2]*u+an[1]*y-an[0]*v,de=ae[2]*u+ae[1]*y-ae[0]*v,ab=el<0?-el:el;
+    let r,g,b,k=1;if(el>0){r=46;g=110;b=190}else{r=140;g=88;b=48}
+    if(ab<0.012){r=g=b=235}
+    else if(Math.abs(ab-.5)<.009||Math.abs(ab-.866)<.008)k=1.35;
+    else if(ab<.985){const hl=w*Math.sqrt(dn*dn+de*de);if(Math.abs(de)<hl||Math.abs(dn)<hl||Math.abs(de-dn)<hl*1.414||Math.abs(de+dn)<hl*1.414)k=1.3}
+    const sh=k*(.45+.55*Math.sqrt(y));D32[i>>2]=(255<<24)|(Math.min(255,b*sh)<<16)|(Math.min(255,g*sh)<<8)|Math.min(255,r*sh)}
+  nctx.putImageData(nimg,0,0);
+  const mark=(dir,c,kind)=>{const sy=dot(dir,Y);if(sy<0)return;const sx=NS/2+dot(dir,Z)*Rr,syy=NS/2+dot(dir,X)*Rr;
+    nctx.strokeStyle=c;nctx.lineWidth=2;nctx.beginPath();nctx.arc(sx,syy,7,0,7);nctx.stroke();
+    if(kind==='pro'){nctx.beginPath();nctx.moveTo(sx-12,syy);nctx.lineTo(sx-7,syy);nctx.moveTo(sx+7,syy);nctx.lineTo(sx+12,syy);nctx.moveTo(sx,syy-7);nctx.lineTo(sx,syy-12);nctx.stroke()}
+    else{nctx.beginPath();nctx.moveTo(sx-5,syy-5);nctx.lineTo(sx+5,syy+5);nctx.moveTo(sx+5,syy-5);nctx.lineTo(sx-5,syy+5);nctx.stroke()}};
+  const sr=speedRef(S);if(len(sr.v)>0.5){const p=norm(sr.v);mark(p,'#d8f05a','pro');mark(mul(p,-1),'#d8f05a','retro')}
+  nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
+  const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
+  $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}`;
+  $('thrf').style.height=(S.throttle*100)+'%'}
+
+// ---- HUD text
+function fmtD(m){const a=Math.abs(m);return a<1e4?m.toFixed(0)+' m':a<1e7?(m/1e3).toFixed(1)+' km':(m/1e6).toFixed(2)+' Mm'}
+function fmtT(s){if(!isFinite(s))return'—';s=Math.max(0,s);const d=Math.floor(s/86400),h=Math.floor(s%86400/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);
+  return(d?d+'d ':'')+(d||h?h+'h ':'')+(d||h||m?m+'m ':'')+x+'s'}
+function updateHUD(){
+  const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
+  let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';
+  else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>b.soi)sit='escaping';else sit='<span class="ok">orbiting</span>';
+  const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
+  const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
+  const met='T+'+fmtT(simT);
+  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],
+    ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
+    ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
+    ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
+    ['Mass',`${(S.mass/1000).toFixed(2)} t · TWR ${twr.toFixed(2)} · ${S.gload.toFixed(1)} g`],['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s`],
+    ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
+    ['Structure',S.maxLoadP&&S.maxLoadP.on?`<span class="${S.maxLoad>1?'bad':S.maxLoad>.7?'warn':'ok'}">${(S.maxLoad*100).toFixed(0)}% ${S.maxLoadKind}</span> <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
+  $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
+  renderStages()}
+
+renderEditor();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
