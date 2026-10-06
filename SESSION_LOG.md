@@ -1756,3 +1756,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   trajectory with encounters, warp-to-burn, SAS → node, frozen-Δv burn tracking with auto throttle cut. `test.mjs`: 25
   checks, all passing. A flown Hohmann lands 0.82 % short of the plan (finite burn). Verified in the browser with real mouse
   click and drag. Committed and pushed.
+- **v1.5 (same session):** scoped "parts beyond KSP" with Caio (life support set aside, with prerequisites recorded).
+  Built step 1: per-joint reinforcement, interstage decoupler, 2.5 m class + adapter, Big Lunar preset. Measured the
+  weakest-link progression (see NOTES). Caught a page-breaking bug that the headless suite couldn't see, and moved `analyze()` into
+  the tested core. `test.mjs`: 30 checks, all passing. Committed and pushed.

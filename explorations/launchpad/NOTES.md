@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.4.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.5.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -246,6 +246,54 @@ assumed "everything sits on the axis".
   crashed on the first thrust step. The order of two assignments was the whole fix.
 - **Test expectations are code too.** The first plan check "failed" because I'd written the transfer apoapsis
   as r₀ + a instead of a. The simulation was right to the metre.
+
+
+## v1.5 — structural design: joint reinforcement, interstages, the 2.5 m class (2026-10-06)
+
+Step 1 of the "parts beyond KSP" scoping (life support set aside). The idea: KSP never knew what a joint carried,
+so its only structural tool was "add struts until the wobble stops". Here every joint's load is known, so structure
+can be *designed*.
+
+### What's in it
+- **Per-joint reinforcement** stored on the joint (`{k, j}` on the child entry, `rad.j` for a side group):
+  standard ×1, reinforced ×2 (+60 kg), heavy ×4 (+180 kg), with the mass scaled by (joint radius / 0.625 m)².
+  The builder shows every joint's worst load across the liftoff and max-q cases *between the rows*, with a button to cycle the
+  setting. Reinforced joints get a dark collar on the model (two for heavy).
+- **Interstage decoupler.** A decoupler whose shell (0.1 t/m) reaches up around the engine above it:
+  - The aero profile is filled out to the shell radius, so the cavity disappears.
+  - Joint limits skip the enclosed engine's rating, because the shell carries the load from the tank above to the stage below.
+  - It drops with the lower stage, as any decoupler does.
+- **2.5 m class**, as the 1.25 m shapes scaled ×2: Tank 16 t / 32 t, decoupler, fin ring, nose cone, the Albatross engine
+  (1100 kN), and a 2.5 → 1.25 m adapter.
+  - Tanks hold 8× (volume). Compression/tension/shear ratings ×4 (wall area), bending ×8 (section modulus ∝ r²·wall, wall ∝ r).
+  - Every place that assumed one radius now uses the part's own `d.r`: inertia, fins, side-stack spacing, joint points.
+- **New preset, Big Lunar**: the Lunar upper stages on an interstage, adapter, Tank 32 t, 2.5 m fins and an Albatross. 48 t,
+  TWR 2.14, 7581 m/s.
+- `analyze()` moved into the tested core, see the bug below.
+
+### Measurements — fixing the Lunar stack's 4 s max-q yank
+| Fix | Added mass | Result |
+|---|---|---|
+| none | — | snaps at Tank 8 t / Decoupler (bending 103 %) |
+| reinforce that joint | +60 kg | **snaps one joint up** at Decoupler / Petrel (102 %) |
+| reinforce both joints | +120 kg | survives, worst 91 % |
+| interstage instead of the decoupler | +130 kg | survives, worst **69 %** |
+
+Other numbers: Big Lunar stability +0.66 cal (on 2.5 m), worst in flight 32 % (T32 / adapter bending). The interstage closes the Orbiter's
+engine cavity (cavity edges 3 → 1), and max-q worst drops from 16 % to 10 %.
+
+### What it taught
+- **Reinforcement moves the failure; it doesn't remove it.** Strengthening the joint that broke exposed the next-weakest one
+  immediately. That's the real loads-engineering loop, and it fell out of the model with no extra rules.
+- **The interstage is the efficient fix** because it changes the load *path* (around the engine), not a joint's strength.
+  Better margin for about the same mass as two reinforcements.
+- **The interstage barely changes drag** (15.62 vs 15.73 kN at M 0.9 / 20 kPa, α = 0): the gap surfaces were already in
+  the shadow of the tank ahead. Its aero value is at angle of attack (no cavity normal forces), not in drag. Recorded, not tuned.
+- **Bug: a misplaced brace in `analyze()` broke the page on load**, and the 25 headless checks all passed, because `analyze`
+  lived in the UI code. It now lives in the tested core, and a check runs it on every preset. (Lesson: the test
+  boundary has to follow the logic, not the file layout.)
+- **Another wrong-index slip in my own experiment:** I "reinforced" Lunar's index 8, which replaced the decoupler with a second
+  8 t tank (+8 t). The mass column caught it.
 
 ## Precision tricks worth keeping
 

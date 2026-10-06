@@ -61,7 +61,8 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 .grp{margin:1px 0 5px 16px;border-left:2px solid rgba(255,180,84,.45);padding:2px 0 2px 6px;border-radius:0 4px 4px 0}
 .grp.sel{background:rgba(255,180,84,.1);border-left-color:var(--warn)}
 .grp .hd{display:flex;gap:3px;align-items:center;flex-wrap:wrap;color:var(--warn)}.grp .hd button{padding:0 5px}
-#target{color:var(--warn);font-size:11px;margin:-2px 0 6px}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
+#target{color:var(--warn);font-size:11px;margin:-2px 0 6px}
+.jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
 @media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
  .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
 </style>
@@ -219,7 +220,7 @@ function timeToR(el,rt){const c=(el.p/rt-1)/el.e;if(!(c>=-1&&c<=1))return NaN;co
 // ---- parts. Masses in tonnes, thrust in kN (vacuum), Isp in s.
 // Joint ratings (the weaker side of a joint governs): C compression, T tension, S shear (kN), B bending (kN·m).
 // prof = outer shape as [radius, height] bottom→top; it is both the aero surface and (with colour) the mesh.
-const R0=0.625,SIDE_D=2*R0+0.25;   // side stacks sit this far from the core axis
+const R0=0.625;   // the 1.25 m class radius; every part carries its own radius d.r
 const PARTS={
   cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
   chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
@@ -229,6 +230,9 @@ const PARTS={
   t4:{name:'Tank 4 t',kind:'tank',wet:4,dry:0.45,h:3.8},
   t8:{name:'Tank 8 t',kind:'tank',wet:8,dry:0.9,h:7.4},
   dec:{name:'Decoupler',kind:'dec',m:0.05,h:0.25,C:1200,T:500,B:220},
+  // interstage: a decoupler whose shell encloses the engine above it — smooth aero, and the load path skips the engine
+  istage:{name:'Interstage decoupler',kind:'dec',istage:true,m:0.08,h:0.25,C:2500,T:1200,B:450},
+  adapt:{name:'Adapter 2.5 → 1.25 m',kind:'adapt',m:0.4,h:1.5,r:1.25,C:2500,T:1200,B:450,prof:[[1.25,0],[1.25,.15],[.625,1.35],[.625,1.5]]},
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
   fins:{name:'Fin ring',kind:'fins',m:0.25,h:0.9,C:2500,T:1200,B:450,span:0.9,chord:0.9},
@@ -238,7 +242,19 @@ const PARTS={
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
-  if(!d.prof)d.prof=[[R0,0],[R0,d.h]];if(d.cm==null)d.cm=.5;if(d.S==null)d.S=d.C*0.5}
+  if(d.r==null)d.r=R0;if(!d.prof)d.prof=[[d.r,0],[d.r,d.h]];if(d.cm==null)d.cm=.5;if(d.S==null)d.S=d.C*0.5}
+// 2.5 m class: the 1.25 m shapes scaled ×2. Tanks hold 8× (volume); compression/tension/shear ratings ×4 (wall area),
+// bending ×8 (section modulus ∝ r²·wall, wall ∝ r) — which is why fat rockets shrug off loads that snap thin ones.
+const big=(key,base,o)=>{const b=PARTS[base];PARTS[key]={...b,key,base,sc:2,h:b.h*2,r:b.r*2,prof:b.prof.map(([r,y])=>[r*2,y*2]),
+  C:b.C*4,T:b.T*4,S:b.S*4,B:b.B*8,...o}};
+big('T16','t2',{name:'Tank 16 t (2.5 m)',wet:16,dry:1.76,m:16});
+big('T32','t4',{name:'Tank 32 t (2.5 m)',wet:32,dry:3.6,m:32});
+big('dec25','dec',{name:'Decoupler 2.5 m',m:0.2});
+big('fins25','fins',{name:'Fin ring 2.5 m',m:1.0,span:1.8,chord:1.8});
+big('cone25','cone',{name:'Nose cone 2.5 m',m:0.45});
+big('albatross','kestrel',{name:'Albatross (2.5 m)',m:6,thrust:1100,ispA:285,ispV:310,exit:1.1});
+// joint reinforcement: strength multiplier and added mass (t) at a 1.25 m joint, scaled by (joint radius / 0.625)²
+const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy',k:4,m:0.18}];
 // A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
 // radial group beside it: n copies of a side stack (top→bottom), bottoms level with that part's bottom.
 const PRESETS={
@@ -246,6 +262,7 @@ const PRESETS={
   Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   Lunar:['chute','pod','t1','wren','dec','t4','t2','petrel','dec','t8','t4','fins','condor'],
+  'Big Lunar':['chute','pod','t1','wren','dec','t4','t2','petrel','istage','adapt','T32','fins25','albatross'],
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
 // Design → a tree of parts rooted at the command pod, in vessel coordinates (y up from the core's bottom). Each
@@ -259,18 +276,22 @@ function assemble(stack){
   const coreP=new Array(n);let y=0;
   for(let i=n-1;i>=0;i--){coreP[i]=mk(PARTS[core[i].k],0,y,0,{core:true});y+=coreP[i].h}
   let root=core.findIndex(e=>e.k==='pod');if(root<0)root=0;
-  for(let i=0;i<n;i++){if(i===root)continue;const c=coreP[i],up=i<root;link(c,coreP[up?i+1:i-1],up?[0,1,0]:[0,-1,0],[0,up?c.y0:c.y0+c.h,0])}
+  for(let i=0;i<n;i++){coreP[i].coreIdx=i;if(i===root)continue;const c=coreP[i],up=i<root;link(c,coreP[up?i+1:i-1],up?[0,1,0]:[0,-1,0],[0,up?c.y0:c.y0+c.h,0]);c.jr=core[i].j||0}
+  // an interstage's shell reaches up around the part above it (an engine): that part is enclosed
+  for(let i=1;i<n;i++)if(coreP[i].d.istage){const a=coreP[i-1];coreP[i].shell=a.h;coreP[i].xm=0.1*a.h;a.encBy=coreP[i]}
   const groups=[];
   core.forEach((e,i)=>{if(!e.rad||!e.rad.stack.length)return;
     const st=e.rad.stack,H=st.reduce((h,k)=>h+PARTS[k].h,0),yb=coreP[i].y0,yc=yb+H/2;
     const host=coreP.find(p=>yc>=p.y0&&yc<=p.y0+p.h)||coreP[i],g={host,dec:e.rad.dec,label:`${st.some(k=>PARTS[k].kind==='engine')?'boosters':'side tanks'} ×${e.rad.n}`,joins:[],parts:[]};groups.push(g);
-    for(let c=0;c<e.rad.n;c++){const ph=2*Math.PI*c/e.rad.n,nx=Math.cos(ph),nz=Math.sin(ph),x=SIDE_D*nx,z=SIDE_D*nz,nrm=[nx,0,nz];
+    const cr=host.d.r,sr=Math.max(...st.map(k=>PARTS[k].r)),D=cr+sr+0.25;g.coreIdx=i;
+    for(let c=0;c<e.rad.n;c++){const ph=2*Math.PI*c/e.rad.n,nx=Math.cos(ph),nz=Math.sin(ph),x=D*nx,z=D*nz,nrm=[nx,0,nz];
       let yy=yb;const side=[];for(let j=st.length-1;j>=0;j--){const p=mk(PARTS[st[j]],x,yy,z,{phi:ph,group:g});side.unshift(p);yy+=p.h}
       let r=side.findIndex(p=>yc>=p.y0&&yc<=p.y0+p.h);if(r<0)r=0;
       for(let j=0;j<side.length;j++){if(j===r)continue;const cc=side[j],up=j<r;link(cc,side[up?j+1:j-1],up?[0,1,0]:[0,-1,0],[x,up?cc.y0:cc.y0+cc.h,z])}
-      if(e.rad.dec){const rd=mk(PARTS.rdec,(R0+0.125)*nx,yc-0.2,(R0+0.125)*nz,{phi:ph,group:g});
-        link(rd,host,nrm,[R0*nx,yc,R0*nz]);link(side[r],rd,nrm,[(SIDE_D-R0)*nx,yc,(SIDE_D-R0)*nz]);g.joins.push(rd);g.parts.push(rd)}
-      else{link(side[r],host,nrm,[R0*nx,yc,R0*nz]);g.joins.push(side[r])}
+      const jr=e.rad.j||0;
+      if(e.rad.dec){const rd=mk(PARTS.rdec,(cr+0.125)*nx,yc-0.2,(cr+0.125)*nz,{phi:ph,group:g,jr});side[r].jr=jr;
+        link(rd,host,nrm,[cr*nx,yc,cr*nz]);link(side[r],rd,nrm,[(D-sr)*nx,yc,(D-sr)*nz]);g.joins.push(rd);g.parts.push(rd)}
+      else{side[r].jr=jr;link(side[r],host,nrm,[cr*nx,yc,cr*nz]);g.joins.push(side[r])}
       g.parts.push(...side)}});
   // segments: the nearest decoupler at or above a part (towards the pod) names its segment
   const segKey=p=>{for(let q=p;q;q=q.parent)if(q.d.kind==='dec'||q.d.kind==='rdec')return q;return null};
@@ -278,6 +299,8 @@ function assemble(stack){
   const coreSegs=[];for(let i=n-1;i>=0;i--){const k=idx(segKey(coreP[i]));if(!coreSegs.includes(k))coreSegs.push(k)}
   coreSegs.forEach((k,j)=>segs[k].label=j===coreSegs.length-1?'upper':`core ${j+1}`);
   for(const p of parts)p.seg=idx(segKey(p));
+  // reinforcement mass sits on the child side of the joint, scaled by the joint's size
+  for(const p of parts)if(p.parent&&p.jr){const rj=Math.min(p.d.r,p.parent.d.r);p.jm=JR[p.jr].m*(rj/R0)**2}
   for(const g of groups){g.segs=g.dec?[...new Set(g.joins.map(rd=>rd.seg))]:[];g.hostSeg=g.host.seg;for(const k of g.segs)segs[k].label=g.label}
   const hasEng=k=>parts.some(p=>p.seg===k&&p.d.kind==='engine'),events=[];
   const withGroups=k=>[k,...groups.filter(g=>g.hostSeg===k).flatMap(g=>g.segs)].filter(hasEng);
@@ -289,7 +312,7 @@ function assemble(stack){
   if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
   return{parts,segs,events,root:coreP[root],height:y,groups}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
-function partMass(p){return p.d.kind==='tank'?p.d.dry+p.fuel:p.d.m}
+function partMass(p){return(p.d.kind==='tank'?p.d.dry+p.fuel:p.d.m)+(p.jm||0)+(p.xm||0)}
 function partC(p){return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
 function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
 
@@ -297,7 +320,7 @@ function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on
 // and staging each time the segments the next event drops have run dry. pr = pressure ratio (0 vac, 1 sea level).
 function dvPlan(s,pr){
   const fuel=s.segs.map((_,k)=>segFuel(s,k)),on=s.parts.map(p=>p.on),ign=s.segs.map(g=>g.ignited),out=[];let ev=s.evIdx;
-  const mass=()=>s.parts.reduce((m,p,i)=>on[i]?m+(p.d.kind==='tank'?p.d.dry:p.d.m):m,0)+fuel.reduce((a,b,k)=>a+(s.parts.some((p,i)=>on[i]&&p.seg===k)?b:0),0);
+  const mass=()=>s.parts.reduce((m,p,i)=>on[i]?m+(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0):m,0)+fuel.reduce((a,b,k)=>a+(s.parts.some((p,i)=>on[i]&&p.seg===k)?b:0),0);
   const engs=()=>s.parts.filter((p,i)=>on[i]&&p.d.kind==='engine'&&ign[p.seg]&&fuel[p.seg]>1e-9);
   const fire=()=>{const e=s.events[ev++];for(const k of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===k)on[i]=false});for(const k of e.ignite)ign[k]=true};
   // stage 0 = whatever is burning (or about to be lit by the next event)
@@ -333,7 +356,7 @@ function newShip(stack){
 function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;
   for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.kind==='pod')s.torque+=p.d.torque}
   c=mul(c,1/m);let Ix=0,Iy=0,Iz=0;
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p)*1000,d=sub(partC(p),c),ip=pm*(p.h*p.h/12+R0*R0/4),ir=pm*R0*R0/2;
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p)*1000,d=sub(partC(p),c),pr=p.d.r,ip=pm*(p.h*p.h/12+pr*pr/4),ir=pm*pr*pr/2;
     Ix+=pm*(d[1]*d[1]+d[2]*d[2])+ip;Iy+=pm*(d[0]*d[0]+d[2]*d[2])+ir;Iz+=pm*(d[0]*d[0]+d[1]*d[1])+ip}
   s.mass=m*1000;s.cm=c;s.com=c[1];s.yBot=yb-c[1];s.yTop=yt-c[1];s.len=yt-yb;s.I=[Ix,Iy,Iz]}
 // Shape-derived data, rebuilt whenever parts come off: one merged outer profile per stack line (core and each side
@@ -343,6 +366,8 @@ function rebuildShape(s){
   for(const p of ps){if(p.d.noAero)continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
   s.lines=[];
   for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of p.d.prof)pts.push([r,p.y0+y,p]);
+    // an interstage shell fills out everything it encloses to its own radius, and owns that surface
+    for(const q of lp)if(q.shell){const y0=q.y0+q.h-1e-6,y1=y0+q.shell+2e-6;for(const pt of pts)if(pt[1]>=y0&&pt[1]<=y1&&pt[0]<q.d.r){pt[0]=q.d.r;pt[2]=q}}
     const all=[[0,pts[0][1],pts[0][2]],...pts,[0,pts[pts.length-1][1],pts[pts.length-1][2]]],E=[];
     for(let i=0;i<all.length-1;i++){const[r0,y0,p0]=all[i],[r1,y1,p1]=all[i+1],dr=r1-r0,dy=y1-y0,L=Math.hypot(dr,dy);if(L<1e-6)continue;
       E.push({p:p0===p1?p0:(r0>=r1?p0:p1),r0,y0,r1,y1,L,nr:dy/L,ny:-dr/L,rm:(r0+r1)/2,ym:(y0+y1)/2,slope:Math.abs(dr)/(Math.abs(dy)+1e-9),exp:1,bexp:0})}
@@ -422,7 +447,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         if(fc>1e-6){const rLo=e.y0<e.y1?e.r0:e.r1,rHi=e.y0<e.y1?e.r1:e.r0,dS=Math.PI*(fy<0?rLo*rLo-rHi*rHi:rHi*rHi-rLo*rLo);
           const N=0.5*rho*f2*2*(fc/Math.sqrt(f2))*(Math.abs(fy)/Math.sqrt(f2))*dS*slender;   // q·sin2α·dS
           addF(p,fx/fc*N,0,fz/fc*N,ox,e.ym,oz)}}}}
-  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,rr=R0+d.span/2;
+  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,rr=d.r+d.span/2;
     for(const[ax,az]of[[1,0],[0,1],[-1,0],[0,-1]]){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,nx=-az,nz=ax,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
       const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;
       const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
@@ -445,15 +470,17 @@ function structLoads(s,aNg,al,w,tauCtrl,probe){
       for(const e of E){const pt=thrustPt(e),f=mul(cross(tg,sub(pt,c)),1/D);addF(e,f[0],f[1],f[2],pt[0],pt[1],pt[2]);fg=add(fg,f)}
       aNg=add(aNg,mul(fg,1/s.mass))}}
   for(const p of s.parts){if(!p.on)continue;const m=partMass(p)*1000,pc=partC(p),rr=sub(pc,c);
-    const a=add(aNg,add(cross(al,rr),cross(w,cross(w,rr)))),fin=mul(a,m),io=m*(p.h*p.h/12+R0*R0/4),ir=m*R0*R0/2;
+    const a=add(aNg,add(cross(al,rr),cross(w,cross(w,rr)))),fin=mul(a,m),pr=p.d.r,io=m*(p.h*p.h/12+pr*pr/4),ir=m*pr*pr/2;
     p.bF=sub(fin,p.F);p.bL=sub(add(cross(pc,fin),[io*al[0],ir*al[1],io*al[2]]),p.L)}
   let worst={frac:0,p:null,kind:''};
   for(const p of s.order){const par=p.parent,J=p.jP,A=p.jA,Fj=p.bF,Mj=sub(p.bL,cross(J,Fj));
     const fA=dot(Fj,A),axial=-fA,shear=len(sub(Fj,mul(A,fA))),bend=len(sub(Mj,mul(A,dot(Mj,A))));
-    const lim=k=>1000*Math.min(p.d[k],par.d[k]);
+    // the weaker side governs, times the joint's reinforcement. An interstage carries the load around the engine it
+    // encloses, so the enclosed engine's own (weaker) rating drops out of both joints it sits between.
+    const a1=p.encBy?p.encBy.d:p.d,a2=p.d.istage?p.d:(par.encBy?par.encBy.d:par.d),lim=k=>1000*Math.min(a1[k],a2[k])*JR[p.jr||0].k;
     const fa=axial>0?axial/lim('T'):-axial/lim('C'),fs=shear/lim('S'),fb=bend/lim('B');
     const frac=Math.max(fa,fs,fb),kind=frac===fb?'bending':frac===fs?'shear':axial>0?'tension':'compression';
-    if(!probe)p.load=p.load*0.6+frac*0.4;const f=probe?frac:p.load;
+    if(!probe)p.load=p.load*0.6+frac*0.4;else{p.pfrac=frac;p.pkind=kind}const f=probe?frac:p.load;
     p.loadKind=kind;if(f>worst.frac)worst={frac:f,p,kind};
     par.bF=add(par.bF,Fj);par.bL=add(par.bL,p.bL)}
   worst.aSide=mul(fg,1/s.mass);return worst}
@@ -618,6 +645,14 @@ function nodeBurn(s,Y,T,dt){const n=s.node;
   if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;HOOK.msg('Maneuver complete — throttle cut')}}
 function dvRemaining(s){ // current stage (until the next staging event) and total, vacuum Isp
   const plan=dvPlan(s,0);return{cur:plan.length?plan[0].dv:0,tot:plan.reduce((a,x)=>a+x.dv,0)}}
+function analyze(s){ // the what-if cases; each joint keeps its worst load across liftoff and max-q
+  const ls=launchSegs(s),saved=s.parts.map(p=>p.fuel);s.parts.forEach(p=>{p.anaFrac=0;p.anaKind=''});
+  const rec=r=>{for(const p of s.parts){if(p.pfrac>p.anaFrac){p.anaFrac=p.pfrac;p.anaKind=p.pkind}p.pfrac=0}return r};
+  s.parts.forEach(p=>p.pfrac=0);
+  const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
+  const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
+  s.parts.forEach(p=>{if(ls.includes(p.seg))p.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>p.fuel=saved[i]);
+  geom(s);return{ful,emp,sup,lift,mq}}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -750,7 +785,10 @@ function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,
   const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])out.push(...q[i],...n,...col)}}
 function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=9){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
   out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,a[i+6],a[i+7],a[i+8])}}
-function partShape(out,p){const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
+function partShape(out,p){
+  if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
+    for(let i=0;i<a.length;i+=9)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8]);return}
+  const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
     case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
     case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord,rr=R0+sp/2;
@@ -760,6 +798,8 @@ function partShape(out,p){const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d
       lathe(out,[[.12,0,C.K],[.12,.05,C.K]],[x+0.24,y+.62,z+.4],10);break;
     case'chute':lathe(out,[[.3,0,C.G],[.3,.22,C.G],[.3,.22,C.O],[.16,.38,C.O],[0,.42,C.O]],o);break;
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
+    case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
+    case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
     case'wren':lathe(out,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o,28,[false,true]);break;
     case'petrel':lathe(out,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o,28,[false,true]);break;
     case'kestrel':lathe(out,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o,28,[false,true]);break;
@@ -767,7 +807,12 @@ function partShape(out,p){const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d
     default:{const b=.07,big=h>3;const pr=[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W]];
       if(big)pr.push([.625,h*.46,C.W],[.625,h*.46,C.O],[.625,h*.54,C.O],[.625,h*.54,C.W]);
       pr.push([.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]);lathe(out,pr,o)}}}
-function partsMesh(parts){const a=[];for(const p of parts)partShape(a,p);return makeMesh(a)}
+function partsMesh(parts){const a=[];for(const p of parts){partShape(a,p);
+    // reinforced joints show as a dark collar (two for heavy) around a stack joint, a darker box at a side joint
+    if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36];
+      if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
+      else rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}}
+  return makeMesh(a)}
 const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
@@ -816,25 +861,37 @@ function partRow(name,acts,parent){ // a row with a name and small action button
   for(const[t,f,tip]of acts){const b=document.createElement('button');b.textContent=t;if(tip)b.title=tip;b.onclick=ev=>{ev.stopPropagation();f();editorChanged()};r.appendChild(b)}
   parent.appendChild(r)}
 const swap=(l,a,b)=>{if(a>=0&&b<l.length)[l[a],l[b]]=[l[b],l[a]]};
+const jOf=e=>typeof e==='string'?0:(e.j||0);
+const jSet=(list,i,v)=>{let e=list[i];if(typeof e==='string')e=list[i]={k:e};e.j=v;if(!v&&!e.rad)list[i]=e.k};
+function jointStrip(parent,part,j,setJ){ // the joint between two rows: worst load in the what-if cases, and its setting
+  const r=document.createElement('div');r.className='jrow';const f=part&&part.anaFrac,cls=f>1?'bad':f>.7?'warn':'ok';
+  r.innerHTML=`<span class="jl">┆ joint</span><span class="${cls}">${f!=null?(f*100).toFixed(0)+'%':''}</span><span class="dim">${part&&part.anaKind||''}</span>`;
+  const b=document.createElement('button');b.textContent=JR[j].name;if(j)b.className='on';b.title='cycle: standard → reinforced (2× strength) → heavy (4×), each adds mass';
+  b.onclick=ev=>{ev.stopPropagation();setJ((j+1)%3);editorChanged()};r.appendChild(b);parent.appendChild(r)}
 function rowsFor(){
-  const st=$('stack');
+  const st=$('stack'),root=Math.max(0,stackDef.findIndex(e=>entryKey(e)==='pod'));
   stackDef.forEach((e,i)=>{const side=typeof e!=='string'&&e.rad;
     partRow(PARTS[entryKey(e)].name,[['▲',()=>swap(stackDef,i-1,i)],['▼',()=>swap(stackDef,i,i+1)],
       [side?'⊖':'⊕',()=>{if(side){if(target===e.rad)target=null;stackDef[i]=e.k}else{stackDef[i]={k:e,rad:{n:2,dec:true,stack:['cone','t4','kestrel']}};target=stackDef[i].rad}},
         side?'remove the side stacks':'add side stacks beside this part (bottoms level with it)'],
       ['✕',()=>{if(side&&target===e.rad)target=null;stackDef.splice(i,1)}]],st);
-    if(!side)return;
+    const strip=()=>{if(i<stackDef.length-1){const c=i>=root?i+1:i;jointStrip(st,S.parts.find(p=>p.core&&p.coreIdx===c),jOf(stackDef[c]),v=>jSet(stackDef,c,v))}};
+    if(!side)return strip();
     const g=document.createElement('div');g.className='grp'+(target===e.rad?' sel':'');g.title='click to add parts here';g.onclick=()=>{target=e.rad;editorChanged()};
     const hd=document.createElement('div');hd.className='hd';hd.innerHTML=`<span>side ×${e.rad.n}</span>`;
     for(const n of[2,3,4]){const b=document.createElement('button');b.textContent=n;if(e.rad.n===n)b.className='on';b.onclick=ev=>{ev.stopPropagation();e.rad.n=n;editorChanged()};hd.appendChild(b)}
     const dc=document.createElement('button');dc.textContent=e.rad.dec?'decoupler ✓':'no decoupler';
     dc.title='with radial decouplers the side stacks are a stage of their own; without, they stay on for good';
     dc.onclick=ev=>{ev.stopPropagation();e.rad.dec=!e.rad.dec;editorChanged()};hd.appendChild(dc);g.appendChild(hd);
+    {const G=S.groups.find(x=>x.coreIdx===i),js=G?S.parts.filter(p=>p.group===G&&p.parent&&p.jA[1]===0):[],w=js.reduce((m,p)=>p.anaFrac>(m?m.anaFrac:-1)?p:m,null);
+     jointStrip(g,w,e.rad.j||0,v=>{e.rad.j=v})}
     const L=e.rad.stack;L.forEach((k,j)=>partRow(PARTS[k].name,[['▲',()=>swap(L,j-1,j)],['▼',()=>swap(L,j,j+1)],
       ['✕',()=>{L.splice(j,1);if(!L.length){if(target===e.rad)target=null;stackDef[i]=e.k}}]],g));
-    st.appendChild(g)})}
+    st.appendChild(g);strip()})}
 function editorChanged(){
-  const st=$('stack');st.innerHTML='';rowsFor();
+  const st=$('stack');st.innerHTML='';
+  if(stackDef.length){resetShip();S.ana=analyze(S)}
+  rowsFor();
   const host=target&&stackDef.find(e=>typeof e!=='string'&&e.rad===target);if(!host)target=null;
   $('target').innerHTML=target?`adding to: <b>side stack beside ${PARTS[host.k].name}</b> · <a id="tcore">core stack</a>`:'adding to: <b>core stack</b> (bottom) · ⊕ on a row adds a side stack';
   if(target)$('tcore').onclick=()=>{target=null;editorChanged()};
@@ -845,8 +902,8 @@ function editorChanged(){
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     <div class="sub">Low orbit needs ~3400 m/s. A Selene landing and return, ~6200.</div>`;
   if(!stackDef.some(e=>entryKey(e)==='pod'))html+='<div class="warn">No command pod: no control torque.</div>';
-  resetShip();cam.dist=Math.max(14,S.len*1.5);cam.pitch=-0.05;
-  const a=S.ana=analyze(S),cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
+  cam.dist=Math.max(14,S.len*1.5,S.radius*14);cam.pitch=-0.05;
+  const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
   html+=`<h2>Aerodynamics &amp; structure</h2>
     <div>Stability <span class="dim">(CoM ahead of CoP, calibers)</span><br>
@@ -856,11 +913,6 @@ function editorChanged(){
     ${a.mq.trim?'':`<br><span class="warn">controls can't hold 5° here (need ${(a.mq.tau/1000).toFixed(0)} kN·m, have ${(a.mq.auth/1000).toFixed(0)})</span>`}</div>
     <div class="sub">Negative stability: it flips unless the engines steer it (SAS can hold it while the engine burns, not while coasting). Over 100%: that joint breaks.</div>`;
   $('stats').innerHTML=html}
-function analyze(s){
-  const ls=launchSegs(s),saved=s.parts.map(p=>p.fuel);
-  const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000}),lift=probe(s,{thr:1}),mq=probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1});
-  s.parts.forEach(p=>{if(ls.includes(p.seg))p.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>p.fuel=saved[i]);
-  geom(s);return{ful,emp,sup,lift,mq}}
 $('launch').onclick=()=>{if(!stackDef.length)return;resetShip();mode='flight';$('editor').classList.add('hidden');$('hud').classList.remove('hidden');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
 $('bEditor').onclick=()=>{mode='editor';view='flight';$('editor').classList.remove('hidden');$('hud').classList.add('hidden');editorChanged()};
 $('bRevert').onclick=()=>{resetShip();view='flight';HOOK.msg('Reverted to launch')};

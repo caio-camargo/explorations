@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -187,6 +187,32 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
     `booster debris ${side.map(d => `(${d.rel.map(x => x.toFixed(1)).join(', ')})`).join(' & ')} m/s; ${msgs.filter(m => /separation|burnout|Flameout/.test(m)).join(' → ')}`);
 }
 function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
+// 8. Structural design (v1.5): joint reinforcement, interstage, 2.5 m class.
+{
+  const P = api.PRESETS, V = f => { const L = JSON.parse(JSON.stringify(P.Lunar)); f(L); return L; };
+  function yank(stack, dur) { api.t = 0; const s = api.newShip(stack); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
+    s.throttle = 1; api.stage(s); let y0 = null;
+    while (api.t < 600 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0;
+      if (s.qdyn > 15000 && (y0 === null || api.t < y0 + dur)) { y0 = y0 ?? api.t; api.INP.pitch = 1; }
+      if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > 80000) s.throttle = 0;
+      if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s);
+      api.physStep(s, api.DT); if (len(s.r) - TELLUS.R > 70000 && s.throttle === 0) break; }
+    api.INP.pitch = 0; return { ok: s.alive && len(s.r) - TELLUS.R > 70000 && !msgs.some(m => /Structural/.test(m)), broke: msgs.find(m => /Structural/.test(m)), mass: api.newShip(stack).mass / 1000 }; }
+  const base = api.newShip(P.Lunar).mass / 1000;
+  const r1 = yank(V(L => { L[9] = { k: 't8', j: 1 }; }), 4);
+  check('reinforcing the joint that snapped moves the failure to the next weakest joint', /Decoupler \/ Petrel/.test(r1.broke || '') && Math.abs(r1.mass - base - 0.06) < 0.005,
+    `${r1.broke}; +${((r1.mass - base) * 1000).toFixed(0)} kg`);
+  const r2 = yank(V(L => { L[8] = 'istage'; }), 4);
+  check('an interstage takes the engine out of the load path: the same 4 s yank is survived', r2.ok, `+${((r2.mass - base) * 1000).toFixed(0)} kg, reached space intact`);
+  const s = api.newShip(P['Big Lunar']), pr = api.probe(s, { M: 0.6, aoa: 4, q: 5000, h: 3000 }), cal = (pr.ycm - pr.ycp) / (2 * s.radius), r3 = yank(P['Big Lunar'], 0);
+  check('Big Lunar (2.5 m first stage + adapter) is stable and flies intact', cal > 0.5 && r3.ok, `margin ${cal.toFixed(2)} cal (on 2.5 m), ${s.mass / 1000 | 0} t`);
+  const bad = Object.keys(P).filter(k => { try { const a = api.analyze(api.newShip(P[k])); return !(a.lift.worst.frac >= 0 && api.newShip(P[k]).parts.some(p => p.parent)); } catch (e) { return true; } });
+  check('builder analysis runs on every preset (per-joint worst loads)', !bad.length, bad.length ? 'failed: ' + bad.join(', ') : Object.keys(P).join(', '));
+  const cav = st => api.newShip(st).lines[0].E.filter(e => e.cav).length;
+  check('the interstage shell closes the engine cavity in the aero profile', cav(P.Orbiter) > cav(P.Orbiter.map(k => k === 'dec' ? 'istage' : k)),
+    `cavity edges ${cav(P.Orbiter)} → ${cav(P.Orbiter.map(k => k === 'dec' ? 'istage' : k))}`);
+}
+
 // 7. Maneuver nodes (v1.4): plan a Hohmann transfer, fly it with SAS on the node, compare plan vs result.
 {
   const mu = TELLUS.mu, r0 = 680000, vc = Math.sqrt(mu / r0), vp = Math.sqrt(mu * (2 / r0 - 2 / (r0 + SELENE.a))), dvH = vp - vc;
