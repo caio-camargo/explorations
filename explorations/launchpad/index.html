@@ -556,7 +556,7 @@ function rebuildShape(s){
     for(let i=0;i<E.length;i++){let a=0,b=0;for(let j=0;j<i;j++)a=Math.max(a,E[j].r0,E[j].r1);for(let j=i+1;j<E.length;j++)b=Math.max(b,E[j].r0,E[j].r1);
       E[i].cav=Math.max(E[i].r0,E[i].r1)<Math.min(a,b)-1e-3}
     const rad=Math.max(...E.map(e=>Math.max(e.r0,e.r1))),len_=lp[lp.length-1].y0+lp[lp.length-1].h-lp[0].y0;
-    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
+    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],yLo:lp[0].y0,yHi:lp[lp.length-1].y0+lp[lp.length-1].h,radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
   const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
   s.grp=flowGroups(s,onArr(s));
   for(const p of ps){p.area=0}for(const ln of s.lines)for(const e of ln.E)e.p.area+=6.2832*e.rm*e.L;
@@ -601,7 +601,18 @@ function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used
 // coefficient rising through Mach 1; slender-body normal force where the cross-section changes; flat-plate fins;
 // base suction on exposed rear faces (mostly filled by a burning engine); skin friction. Forces land on the part that
 // owns the surface, at the point they act, so the same numbers give both the centre of pressure and the joint loads.
-// Lines don't shade each other (no interference between core and boosters).
+// Interference between lines (v1.23): Newtonian shadowing. An upstream-facing sample on one line gets no impact pressure
+// (and no stagnation heat) if the ray from it back up the flow hits another line's body first. Lines are taken as
+// cylinders of their widest radius over their own height. At small angles of attack the ray climbs steeply (1/tan α per
+// metre across), so side-by-side boosters barely shade each other in an ascent; at high α the leeward lines go dark.
+// Slender-body lift and skin friction are not shadowed.
+let AERO_SHADOW=true;   // off only for A/B measurements
+function shadowed(s,ln,px,py,pz,ux,uy,uz){const a=ux*ux+uz*uz;if(a<1e-12)return false;
+  for(const B of s.lines){if(B===ln)continue;const dx=B.ox-px,dz=B.oz-pz,tc=(dx*ux+dz*uz)/a;if(tc<=0)continue;
+    const perp2=dx*dx+dz*dz-tc*tc*a,r2=B.radius*B.radius;if(perp2>=r2)continue;
+    const sIn=Math.max(0,tc-Math.sqrt((r2-perp2)/a)),sOut=tc+Math.sqrt((r2-perp2)/a),y0=py+sIn*uy,y1=py+sOut*uy;
+    if(Math.max(y0,y1)>=B.yLo&&Math.min(y0,y1)<=B.yHi)return true}   // the chord through B's cylinder overlaps B's height
+  return false}
 const SND=h=>Math.sqrt(1.4*287*Math.max(216.65,288.15-0.0065*Math.max(h,0)));
 const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
 const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
@@ -614,7 +625,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
   const c=s.cm,sp=len(vb);if(sp<0.05)return;
   const cp=cpMax(M)*waveBump(M),fy0=-vb[1]/sp,fromTop=fy0<0;
   const ex=(rmx,rmn,rs)=>rmx<=rs?0:(rmx*rmx-rmn*rmn<1e-9?1:clamp((rmx*rmx-Math.max(rs,rmn)**2)/(rmx*rmx-rmn*rmn),0,1));
-  const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M));
+  const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M)),multi=AERO_SHADOW&&s.lines.length>1;let nShadow=0;
   for(const ln of s.lines){const E=ln.E,n=E.length,ox=ln.ox,oz=ln.oz,slender=ln.slender;
     let rs=0;for(let k=0;k<n;k++){const e=E[fromTop?n-1-k:k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.exp=e.ny*fy0<0?ex(mx,mn,rs):1;rs=Math.max(rs,mx)}
     rs=0;for(let k=0;k<n;k++){const e=E[fromTop?k:n-1-k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.bexp=e.ny*fy0>0?ex(mx,mn,rs):0;rs=Math.max(rs,mx)}
@@ -623,7 +634,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx);   // air velocity relative to this point
         const f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;const fl=Math.sqrt(f2),qL=0.5*rho*f2,nx=e.nr*ca,ny=e.ny,nz=e.nr*sa;
         const cn=(nx*fx+ny*(ny*fy<0?fy*e.exp:fy)+nz*fz)/fl;
-        if(cn<0){const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz);p.Q+=HEAT_GAIN*SG*Math.sqrt(rho/ln.radius)*f2*fl*(-cn)*dA}
+        if(cn<0){if(multi&&shadowed(s,ln,px,py,pz,-fx,-fy,-fz)){nShadow++}else{const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz);p.Q+=HEAT_GAIN*SG*Math.sqrt(rho/ln.radius)*f2*fl*(-cn)*dA}}
         else if(e.bexp>0&&cn>0){const pr=qL*cb*e.bexp*cn*dA/fl;addF(p,fx*pr,fy*pr,fz*pr,px,py,pz)}
         const sf=qL*0.003*dA/fl;addF(p,fx*sf,fy*sf,fz*sf,px,py,pz)}
       if(slender>0&&e.slope<1.5&&!e.cav){const rx=ox-c[0],ry=e.ym-c[1],rz=oz-c[2];
@@ -638,7 +649,8 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
       const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
       addF(p,nx*N+fx*sf,fy*sf,nz*N+fz*sf,px,py,pz)}}
   if(s.chute&&s.chuteA>0&&s.chutePart&&s.chutePart.on){const p=s.chutePart,px=p.pos[0],pz=p.pos[2],py=p.y0+p.h+1,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
-    const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}}
+    const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}
+  s.nShadow=nShadow}
 
 // ---- structure: the vessel is rigid, so every joint carries exactly what it takes to make the branch beyond it
 // follow the whole body's motion. Cut at the joint; (inertial demand of the branch) − (external forces on it) is the

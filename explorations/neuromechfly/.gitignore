@@ -1,0 +1,3 @@
+# Raw sweep artifacts — regenerate with the scripts; only curated media is committed.
+out/raw/
+__pycache__/
