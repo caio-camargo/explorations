@@ -832,6 +832,133 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.27 — launch sites as data (2026-10-07, terrain session, slice B)
+
+Slice B of the geography plan (§ v1.25), built to the economy session's hand-off. Every power now has launch sites
+suited to its own geography. A flight starts from the site you pick, and the site's latitude and downrange are real.
+Economy rules (leases, fees, sanctions, politics) are deliberately left to the economy session.
+
+### What a site is
+`SITES` is plain data in the SIM world block, one entry per pad:
+
+| Field | Meaning |
+|---|---|
+| `id`, `name`, `kind` | `kind` is `'pad'`; a sea platform would be `'sea'` later. Names are the power's root plus Cape / Field / Polar Range. |
+| `u`, `lat` | Planet-fixed unit vector; latitude in degrees. |
+| `h` | Pad height. The pad is levelled to `h` (flat to 2 km, blended out by 4.5 km). |
+| `power` | Index from `powerAt(u)`, or null. |
+| `coastal`, `maxDia` | Coastal means water within 30 km. Stages up to 10 m come by barge; inland, 3.9 m by rail (a real loading gauge). |
+| `downrange` | `{az, sea, over}`: of the eastward headings (45–135°), the one with the most water over the first 1,000 km, favouring due east (the most free speed). `over` lists the powers whose land lies under it. |
+| `polar` | `'S'`, `'N'`, `'NS'` or null: a corridor that way with ≥ 60% water and only the site's own land. |
+| `role` | `home`, `eq`, `polar` or `inland`. |
+| `rot`, `minInc` | Free eastward speed at sea level (ω·R·cos lat); the lowest inclination reachable without a plane change (\|lat\|). |
+
+**How they're generated.**
+1. The home site is found as before: equatorial, flat, low, a coast to the east. The world is still turned so it sits
+   at planet-fixed +X. It is `SITES[0]`, power 0's home.
+2. Once the powers exist, `extendSites()` screens candidates on a 6-texel grid (~47 km) of the baked map:
+   - flat (ruggedness < 0.15), 5–1,500 m up, |lat| < 70°;
+   - on a power's land, ≥ 40 km from cities;
+   - with cheap water fractions east and toward the poles.
+3. Each power gets up to three sites, ≥ 250 km apart (`SITE_GAP`):
+   - its most equatorial, weighted toward open water east (`eq`; power 0 already has its home site);
+   - one with a clear polar corridor (`polar`);
+   - its most equatorial inland one (`inland`).
+4. `finishSite` measures every site on the real terrain and territory: exact `isLand`/`powerAt` along 1,000 km great
+   circles every 20 km.
+5. Cost: ~150–300 ms at load.
+
+**Seed 13 has 15 sites** (3 per power; ⟂ = polar corridor):
+
+| Site | Role | Lat | Pad m | Free m/s | | Downrange | ⟂ |
+|---|---|---|---|---|---|---|---|
+| Fenfen Cape | home | 0.0N | 157 | 278 | coast | 90° 94% water | S |
+| Fenfen Polar Range | polar | 26.9N | 140 | 248 | coast | 90° 100% | SN |
+| Fenfen Field | inland | 7.9N | 66 | 275 | inland | 135° 88% | S |
+| Selhav Field | eq | 0.5S | 175 | 278 | inland | 90° 90% | S |
+| Selhav Polar Range | polar | 18.5N | 368 | 264 | coast | 120° 50% | S |
+| Selhav Field II | inland | 10.0N | 282 | 274 | inland | 90° 88%, over Fentor | S |
+| Ordun Field | eq | 17.4S | 307 | 265 | inland | 105° 88% | N |
+| Ordun Polar Range | polar | 15.3S | 393 | 268 | coast | 45° 82% | N |
+| Ordun Field II | inland | 15.3S | 621 | 268 | inland | 60° 90% | N |
+| Haval Cape | eq | 14.2N | 424 | 269 | coast | 105° 100% | S |
+| Haval Polar Range | polar | 29.0N | 999 | 243 | inland | 135° 66%, over Fenfen | S |
+| Haval Field | inland | 22.7N | 1332 | 256 | inland | 90° 48%, over Fenfen | — |
+| Fentor Field | eq | 1.6N | 851 | 278 | inland | 90° 92% | — |
+| Fentor Polar Range | polar | 43.8N | 682 | 201 | inland | 135° 38% | S |
+| Fentor Field II | inland | 0.5S | 615 | 278 | inland | 105° 60% | — |
+
+What the table says:
+- Ordun's best site is at 15.3°S and Haval's at 14.2°N. Neither can reach an equatorial orbit without a plane change.
+  To the stationary orbit that costs ~370–400 m/s more than from the equator.
+- Two of Haval's sites have their downrange over *our* land. That's the "launching over a neighbour" politics economy
+  plans to add.
+
+### A site per flight
+- `newShip(stack, site = curSite())` puts the ship on that site's pad in the site's own frame (nose up, belly east).
+- The choice is `PROG.site` (saved). `curSite()` falls back to the first home site.
+- Home sites are `homeSites()`, recomputed from `HOME` every call, because `HOME` changes on defection.
+- Tapes record their site (`tape.site`), and the autopilot flies a tape from where it was recorded. The logbook copies
+  and saved tapes carry it too.
+
+**The launch gate** (on Launch, after the budget check):
+1. `siteAccessOf(site)` calls economy's `siteAccess(site)` → `{ok, why, fee}` if it exists. Until then: home sites
+   only, free; a foreign site is refused with "⟨power⟩ won't let us launch from ⟨site⟩".
+2. `siteFits(site, parts)`: no stage wider than `maxDia`.
+
+**The picker** is in the construction screen's right panel, above LAUNCH. It lists our sites, then those abroad (⛔ when
+refused). For the chosen site it shows latitude, free speed, lowest inclination, pad height, downrange and water
+share, the powers overflown, the polar corridor, rail or barge, and the reason it's refused. Picking a site moves the
+ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
+
+**Rendering.**
+- `terr()` in the sky shader levels the 4 sites nearest the camera (`uSites[4]`, `uNS`). `terrainH` levels all of
+  them; sites are ≥ 250 km apart, so the nearest is the only one that can matter.
+- The pad mesh is drawn at every site within 300 km of the camera, in its own frame.
+- The painted launch complex (`padGround`) follows the nearest site's frame (`uPadE`, `uPadS`).
+
+**+X assumptions replaced:**
+- `makeCities` and `makePowers` (one line, per the hand-off) use the home site's `u`.
+- The recovery distance `landDist` is measured from the flight's own site.
+- The pad's ground station is now `padGS()`, the chosen site; planning's `PAD_GS` constant is gone.
+
+### Measurements
+- Agreement around a non-home site (Fenfen Polar Range, 1,024 points within 8 km): GPU vs CPU median 2 mm, max 2.5 cm.
+  260 points sit on the flat 2 km disc.
+- **The Orbiter flown from Haval Polar Range (29.0°N)** reaches 121×102 km at **28.97°**. Latitude now sets the
+  orbit's plane.
+- **Free speed:** 278 m/s at the equator, 248 at 26.9°, 201 at 43.8°.
+- **Tests:** `test.mjs` §23, 5 checks (157 total with everything merged):
+  - fields and generation;
+  - a ship on a far pad: position, attitude, free speed, plane;
+  - `PROG.site` and tapes;
+  - access and rail gauge;
+  - the latitude flight.
+
+### Traps hit
+- **`typeof X` on a `const` in its temporal dead zone throws.** `mkSite` takes its id from the caller instead.
+- **An edit that turns a one-line handler into two lines moves "after this line".** The picker was inserted after the
+  Launch handler's *first* line, i.e. inside it, and `renderSites` was undefined at load.
+- **A merge can fail on an object that Drive hasn't finished syncing** ("unable to read sha1 file"). It leaves the
+  new files it had already written as untracked files in the worktree. The object was readable a minute later. Move
+  the strays aside and merge again.
+
+### Left for others (also in ACTIVE_WORK)
+- **Economy:**
+  - define `siteAccess(site)` → `{ok, why, fee}` (leases, sanctions, closures) and record `R.site`;
+  - westward and overflight politics can read `site.downrange.over`;
+  - the ballistic contract still places its target `rg/600` radians from +X: the old 600 km radius (ranges 2.1× long
+    now), and from +X rather than the flight's site.
+- **Builder:** the site picker lives in `index.html` (`renderSites`, `#sitePick`), not in the construction screen's
+  own UI. Move it if the screen grows a place for it.
+
+### Next on this line
+- A sea-launch platform (`kind:'sea'`).
+- Per-site weather scrubs (`cloudAt`).
+- Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
+  downrange over a neighbour before launch).
+- Then slices C–E (§ v1.25).
+
 ## v1.26 — industrial independence (2026-10-07)
 
 The fourth flavour axis. Each archetype has a **self-sufficiency** level (`ind`): superpowers 1.0, security state 0.55,
@@ -1083,7 +1210,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-1. **Launch sites (slice B).** See the plan above for the design and numbers. Start with a `SITES` list in the world
+1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
@@ -1525,6 +1652,21 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
 - Facts may hold objects (`key` picks the number compared); `logNote(null, …, by)` lets the registry report.
 - A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
   from the pad. Checks §19 (3 new, 136 total).
+
+**Tools gated by what's known** (same day). `TOOLS` maps each tool to the fact it depends on; `toolOK(k)`:
+- **Impact prediction** (HUD row, map trace, ground marker, spread) ← *farthest from Tellus* (any flight that has come
+  down). Before that the HUD reads "no trajectory data yet". Range safety still uses the prediction underneath: only the
+  display is gated.
+- **Maneuver planning** (placing a node by click or N, and so the panel and warp-to-burn) ← *Δv to low orbit*. Refused
+  with "No maneuver planning yet: it needs 'Δv to low orbit' in the logbook". Autopilot tapes still replay their nodes.
+- **Encounter forecasts** (the predicted path inside another body's sphere of influence, encounter labels) ← *Δv to
+  reach Selene*. Before that the map's path stops at the edge with "? Nyx: what its pull does next, no data yet" (any
+  body: the bodies session added Nyx).
+- The logbook says what each fact unlocks ("→ will unlock: maneuver planning" / "→ unlocked: …").
+- Fixes found on the way: the gated forecast first crashed the map (the encounter label looks ahead to the next leg,
+  so the gated leg now keeps its end but drops its encounter tag); and a *placed* vessel (one that spent no Δv) now
+  reports nothing to the logbook. Placing one by script had logged an orbital period.
+- Check §21 (1 new, 142 total).
 
 **Next along this line:**
 - More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
@@ -2320,6 +2462,7 @@ style) would give visible variety that reflects each power's flavour.
 - The world: `WORLD` (baked maps) + `terrainH(pf)` (metres above the sea; the sea is the sphere R) + `biomeAt(pf)`.
   The sky shader marches the *same* height (`hgtG`/`terr`); after any change to the height function on either side,
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
+  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.
