@@ -1252,6 +1252,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0 });
 }
 
+// 26. The claw (sats session): grabs a satellite with no port, wherever it touches, at its attitude. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,stage,physStep,contactStep,satRegister,satAt,satBody,satMP,bodyDist,undock,PROG,TELLUS,DT,qrot,qmul,qaxis,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG;
+  // a claw-pod-tank-engine vessel nose out at 300 km; a camera satellite (no port) lying across its path, `gap` beyond the jaws
+  const scene = ({ nose = 'claw', gap = 0.3, close = 0.4 } = {}) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip([nose, 'pod', 't1', 'kestrel']), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['ant', 'cam', 'petrel']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI / 2), s.q); k.r = add(s.r, mul(Y, s.yTop + gap + 0.625)); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, close)); return { s, q: P.sats[0], Y };
+  };
+  const fly = (s, n, stop) => { for (let i = 0; i < n && !(stop && stop()); i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); } };
+  const axisAngle = (s, a) => Math.acos(Math.max(-1, Math.min(1, dot(D.qrot(s.q, D.qrot(a.q, [0, 1, 0])), D.qrot(s.q, [0, 1, 0]))))) * 57.29578;
+  // grab at 0.4 m/s: held where it touched, at the attitude it had (90° across), momentum kept
+  let { s, q } = scene(), mom = null;
+  for (let i = 0; i < 300 && !s.att.length; i++) { D.physStep(s, D.DT); const [, vq] = D.satAt(q, D.t), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)); D.contactStep(s, D.DT);
+    if (s.att.length) mom = len(sub(mul(s.v, s.mass), p0)) / len(p0); }
+  const a = s.att[0], ang = a ? axisAngle(s, a) : NaN, cw = s.parts.find(p => p.d.kind === 'claw'),   // the held body where it's held: its pose from the vessel
+    held = a && { r: add(s.r, D.qrot(s.q, sub(a.p, s.cm))), q: D.qmul(s.q, a.q), cm: q.cm, parts: D.satMP(q).parts },
+    tip = a ? D.bodyDist(held, add(s.r, D.qrot(s.q, sub([cw.pos[0], cw.y0 + cw.h, cw.pos[2]], s.cm)))) : NaN;
+  check('claw: a satellite with no port, touched at 0.4 m/s, is grabbed where it touched, at its attitude; momentum kept', a && a.kind === 'claw' && a.e === q && mom < 1e-12 && Math.abs(ang - 90) < 1e-6 && tip > -0.02 && tip < 0.35,   // the jaws close on whatever they reached (here across the waist between camera and engine)
+    `held at ${ang.toFixed(4)}° to our axis; jaws' centre ${tip.toFixed(3)} m from its skin (reach 0.35 m); momentum error ${mom != null ? mom.toExponential(1) : '—'}`);
+  // too fast for the jaws, or a part that isn't a claw: a bump, not a grab
+  ({ s, q } = scene({ close: 2 })); fly(s, 200, () => q.spin); const fast = !s.att.length && !!q.spin;
+  ({ s, q } = scene({ nose: 'port' })); fly(s, 200, () => q.spin); const port = !s.att.length && !!q.spin;
+  check('claw: at 2 m/s, or touching with a docking port instead, nothing is grabbed (a bump)', fast && port, `2 m/s: ${fast ? 'bumped' : 'grabbed'}; port: ${port ? 'bumped' : 'grabbed'}`);
+  // a weaker hold than a port: a 5 % burn holds, full throttle tears it loose
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); D.stage(s); s.throttle = 0.05; fly(s, 50); const low = s.att.length ? s.att[0].load : NaN;
+  s.throttle = 1; fly(s, 50, () => !s.att.length); const tore = !s.att.length && P.sats.includes(q) && !q.docked; s.throttle = 0;   // stop there: burning on rams it
+  check('claw: the grip holds through a 5 % burn and tears loose at full throttle', low < 1 && tore, `grip load at 5 %: ${(low * 100).toFixed(0)} % of its rating; full throttle: ${tore ? 'tore loose' : 'held'}`);
+  // release: 0.1 m/s apart along the claw's axis, momentum kept, back in the registry as itself
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); const pB = mul(s.v, s.mass); D.undock(s, q.id); const [, vq] = D.satAt(q, D.t), sep = dot(sub(vq, s.v), D.qrot(s.q, [0, 1, 0]));
+  const err = len(sub(add(mul(s.v, s.mass), mul(vq, q.mass)), pB)) / len(pB); fly(s, 100); const again = s.att.length;
+  check('claw: release pushes off at 0.1 m/s along the claw, momentum kept, no regrab', Math.abs(sep - 0.1) < 1e-6 && err < 1e-12 && !q.docked && P.sats.includes(q) && !again,
+    `separation ${sep.toFixed(4)} m/s; momentum error ${err.toExponential(1)}; regrabbed: ${!!again}`);
+  Object.assign(P, { sats: [], satN: 0 });
+  // the whole page, not just the sim core: a syntax error in render or UI code passes every check above (the claw's HUD row did once)
+  let perr = null; for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) try { new Function(m[1]); } catch (e) { perr = e.message; }
+  check('the whole page script parses (render and UI included)', !perr, perr || 'ok');
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
