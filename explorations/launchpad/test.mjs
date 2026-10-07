@@ -854,6 +854,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.HOOK.news = () => {};
 }
 
+// 20. Satellites in 3D (sats session): registration keeps the vessel's shape and its attitude in the orbital frame.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const qm = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+  const orb = (r, v) => { const pro = norm(v), nrm = norm(api.cross(r, v)); return api.qFromBasis(pro, nrm, api.cross(pro, nrm)); };
+  api.t = 0; const s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
+  s.landed = false; s.rec.launched = true; P.day = 3; s.rec.day0 = 3; s.rec.cost = 0; const r0 = TELLUS.R + 300e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
+  const h = Math.SQRT1_2; s.q = [0, 0, h, h];   // nose (+y) turned to point down at the ground
+  api.t = 50; api.missionEnd(s); const q = JSON.parse(JSON.stringify(P.sats[0]));   // as it comes back from the save
+  const look = T => { const [r, v] = api.satAt(q, T), Y = api.qrot(qm(orb(r, v), q.qo), [0, 1, 0]); return dot(Y, norm(r)); };
+  const per = 2 * Math.PI * Math.sqrt(r0 ** 3 / TELLUS.mu), dn0 = dot(api.qrot(s.q, [0, 1, 0]), norm(s.r)), dn1 = look(q.epoch + per / 4), dn2 = look(q.epoch + 2.6 * per);
+  check('a registered satellite keeps its shape and holds its attitude in the orbital frame (nose-down stays nose-down)',
+    q.shape.length === s.parts.filter(p => p.on).length && q.shape.every(o => api.PARTS[o.k]) && P.sats[0].id === s.rec.satId && Math.abs(dn0 + 1) < 1e-9 && Math.abs(dn1 + 1) < 1e-9 && Math.abs(dn2 + 1) < 1e-9,
+    `${q.shape.length} parts kept; nose·up at registration ${dn0.toFixed(3)}, ¼ orbit later ${dn1.toFixed(3)}, 2.6 orbits ${dn2.toFixed(3)}`);
+  Object.assign(P, { sats: [], satN: 0 });
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
