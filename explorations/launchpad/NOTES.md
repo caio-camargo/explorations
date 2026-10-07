@@ -1009,6 +1009,31 @@ Shading:
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
    - Coordinate with the builder session (the site picker in the construction screen) and the economy session
      (`makePowers` and `PAD_GS` assume the pad at +X; site ownership and leases).
+   - **Hand-off from the economy session (2026-10-07): what the economy layer needs from launch sites.** Geography is
+     the last power-flavour axis, and Caio chose to build it as slice B here first, with economy on top afterwards. The
+     economy side will add site ownership, foreign leases priced by relations, loss of access under sanctions, and the
+     politics of launching over a neighbour. To keep that a thin layer, please:
+     - **`SITES` as plain data in the SIM block,** one entry per site: `id`, `name`, `u` (planet-fixed unit vector),
+       `lat`, `h` (pad height), `power` (index, from `powerAt(u)`; null at sea), `coastal` (bool), `maxDia` (largest stage
+       diameter it can take: rail limit inland, barge at the coast), `downrange` (azimuth plus the powers whose land lies
+       under the first ~1,000 km of the ascent), `polar` (a clear corridor south or north), and `kind` (`'pad'`, later
+       `'sea'`).
+     - **The chosen site lives on the flight** (`S.site` or `newShip(stack, site)`), so missions, incidents and the
+       flight record can read it. Economy will record `R.site`.
+     - **One gate economy owns:** before a launch, call `siteAccess(site)` → `{ok, why, fee}`. Economy defines it in the
+       program block: own sites ok, foreign ones leased or refused, sanctions block. Until it exists, default to "home
+       sites only, free". The builder's site picker should show `why` when `ok` is false.
+     - **Power homes:** `makePowers` seeds power 0 at planet-fixed +X, the current pad. If the world stops being turned to
+       put the home site at +X, seed power 0 at the home site's `u` (a one-line change in economy code; go ahead, and
+       say so in the log). `HOME` can change at runtime (defection), so home sites are always `SITES.filter(s =>
+       s.power === HOME)`, never a stored list.
+     - **Other +X assumptions on the economy side:** `PAD_GS` (the pad ground station, planning's code) and the
+       recovery-demonstration contract (`landDist` is measured from +X). Point them at the flight's site; the
+       contract's text already says "the pad".
+     - **Leave economy rules out of slice B:** no fees, ownership politics or sanction checks. Sites should be able to
+       exist abroad from day one; a foreign site is simply refused until economy's `siteAccess` arrives. Economy then
+       adds leases, a lease line on the budget, sites closed when relations sour (as ground stations already are),
+       westward-launch politics, and site choice in contracts.
 2. **Cost of low grazing views** (8.8 ms at 1024×768 over rugged hills).
    - Ideas: a temporal reuse of last frame's depth; a cheaper hash (exactness only matters near the camera, so
      distant octaves could come from a 3D noise texture with hardware filtering); fewer octaves beyond ~5 km.
