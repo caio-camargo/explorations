@@ -1813,3 +1813,6 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   the ring's plates within 0.6 %) and "make root" (re-hang the design along stack joints, so an upper stage picks up with the pod;
   vessel unchanged). Merging `main` (orbital registry) gave one price-table conflict and exposed a palette bug (new part kinds
   hidden), now an "Other" group. `test.mjs` 90/90. Browser-checked from the worktree. Merged to `main` (`c53b098`). Next: staging editor.
+- **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
+  a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
+  working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
