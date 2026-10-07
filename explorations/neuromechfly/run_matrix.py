@@ -59,6 +59,8 @@ RULE_WEIGHTS = {
 }
 
 
+LEG_CONTACT_SEGS = ["tibia", "tarsus1", "tarsus2", "tarsus3", "tarsus4", "tarsus5"]
+
 ROUGH_KWARGS = dict(
     bodysegs_with_ground_contact=ContactBodiesPreset.TIBIA_TARSUS_ONLY,
     add_ground_contact_sensors=False,
@@ -121,7 +123,15 @@ def make_controller(kind, sim, dof_order, steps, seed):
     raise ValueError("unknown controller: " + repr(kind))
 
 
-def run_one(controller_kind, terrain, seed, run_time, record_video=False, difficulty=None):
+def run_one(
+    controller_kind,
+    terrain,
+    seed,
+    run_time,
+    record_video=False,
+    difficulty=None,
+    measure_contact=False,
+):
     fly = make_locomotion_fly(
         name=controller_kind + "_" + terrain + "_" + str(seed),
         add_adhesion=True,
@@ -173,6 +183,12 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
     # commanded stance per leg: every controller turns adhesion on exactly when a
     # leg's phase is outside its swing window, so this is the gait's intended duty factor
     stance = np.zeros((n, 6), dtype=bool)
+    # measured contact: net ground force on each leg's tibia + tarsus segments, read from
+    # MuJoCo's contact list (flygym's per-leg sensors don't exist on multi-geom terrain)
+    if measure_contact:
+        legs = fly.get_legs_order()
+        leg_segs = [leg + "_" + s for leg in legs for s in LEG_CONTACT_SEGS]
+        contact_n = np.zeros((n, 6), dtype=np.float32)
 
     needs_obs = controller_kind == "hybrid"
     t0 = time.perf_counter()
@@ -187,6 +203,9 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
             stance[i] = action.adhesion_onoff
         sim.step_with_profile()
         pos[i] = sim.get_body_positions(fly.name)[thorax_idx]
+        if measure_contact:
+            f = sim.get_bodysegment_contact_forces(fly.name, leg_segs)
+            contact_n[i] = np.linalg.norm(f, axis=1).reshape(6, -1).sum(1)
         if record_video:
             sim.render_as_needed_with_profile()
     wall = time.perf_counter() - t0
@@ -226,6 +245,13 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
         result["video"] = path.name
     RAW.mkdir(parents=True, exist_ok=True)
     dtag = "" if difficulty is None else "_d{:g}".format(difficulty)
+    if measure_contact:
+        np.savez_compressed(
+            RAW / ("gait_" + controller_kind + "_" + terrain + dtag + "_" + str(seed) + ".npz"),
+            pos=pos,
+            stance=stance,
+            contact_n=contact_n,
+        )
     np.save(
         RAW / ("pos_" + controller_kind + "_" + terrain + dtag + "_" + str(seed) + ".npy"),
         pos,
