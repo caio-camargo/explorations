@@ -568,6 +568,47 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.22 — canted engines (2026-10-07)
+
+**Model.** An engine on a radial line may cant its nozzle outward by θ, in its own radial plane, so its thrust leans in toward the
+axis: d = cos θ·ŷ − sin θ·n̂. It is set per design node, so all symmetric copies share it, and it ranges from −30° to +30°. Everything
+that assumed axial thrust now uses d:
+- physics (the force on the mount) and the builder's what-if probe
+- the Δv planner and TWR, as vector sums, so a symmetric canted pair honestly pays its cosine
+- the maneuver-node burn time
+- the plume, and the engine mesh, rotated about its mount
+
+Uncanted engines carry no direction at all and run the old axial code unchanged (all 112 checks).
+
+**Getting "balance" right.** My first version pointed *this* engine's thrust line through the CoM. That is the wrong target:
+
+| Lone Kestrel booster beside a Kestrel core | Thrust torque about CoM | Max tilt, 40 s climb under SAS |
+|---|---|---|
+| uncanted | 34.6 kN·m (the two equal engines nearly balance already) | 1.9° |
+| booster aimed through the CoM (26°) | **155 kN·m**, ×4.5 | flipped, lost |
+| total thrust balanced (5.05°) | 0.16 kN·m | 4.4°, worse than uncanted |
+
+"Balance" now picks the cant at which all engines burning when this one fires push with zero net torque about the CoM of
+what is still attached then (full tanks). It searches −30…30° on a 0.05° grid, and ties go to the smallest |θ|, so a symmetric
+pair stays at 0°.
+
+The last row is the real lesson. **Canting trades a torque for a side force.** The engine gimbal cancels the torque
+almost for free. The side force (sin 5° × 230 kN ≈ 20 kN here) is never cancelled: it builds a crosswind angle that the fins
+then fight. So cant pays only when the off-axis thrust is beyond what the gimbal can hold:
+
+| Stack (core + lone booster) | Balance cant | Uncanted | Balanced |
+|---|---|---|---|
+| Sparrow + Condor | 15.0° | flips at T+4 s, lost | 4.9° max tilt, 14 km at T+50 s |
+| Kestrel + Condor | 7.75° | 41.7° max tilt | 3.2° |
+| Sparrow + Kestrel | 10.15° | 95.5° | 1.1° |
+| Kestrel + Kestrel | 5.05° | 1.9° | 4.4° (don't) |
+
+A symmetric pair canted 10° gives up 1.0 % of first-stage Δv. That is less than the booster's cosine (1.5 %), because the
+core engine isn't canted.
+
+**Not modelled:** a canted nozzle's plume hitting the core (plume impingement), and a cant that changes as the CoM moves
+during the burn. Real stacks gimbal their boosters for that.
+
 ## v1.21 — career moves: defection and private hire (2026-10-07)
 
 From the backlog (Caio): when the program does badly, the people in it get offers. They can also come when it does very
@@ -1282,8 +1323,8 @@ restartable upper stage, docking port.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
-   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20. Next on that line:
-   canted engines (a thrust direction per engine), truly tilted bodies, and core↔booster aero interference.
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20, ~~canted
+   engines~~ done in v1.22. Next on that line: truly tilted bodies, and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
