@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.11.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -726,6 +726,86 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
+## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
+
+Before this, every engine had the same additive cone: a hard-edged pale shape that only changed size. In vacuum it went
+almost black and hid the stars. The KSP mod Waterfall (1.3 M installs) is the reference. **What we borrowed from it:**
+templates per propellant, not per engine; layered parts of a plume (core, diamonds, mantle, glow); parameters driven by
+throttle and air pressure; and deforming the proxy mesh in the vertex shader. **What we did differently:** Waterfall
+stacks mesh shells with scrolling noise textures because a Unity mod can't do more. We own the shader, so the plume is
+a **volume raymarched inside one proxy mesh per engine** (32 steps). It reads as a body of gas from any angle, with no
+shell edges at grazing views.
+
+### The model (`PLUME_VS`/`PLUME_FS`, `plumeShape`, `PROPS`, `PFX`)
+- **Shape from the pressure ratio** n = pe/pa (nozzle exit pressure over ambient, both in atm). Over-expanded (n < 1):
+  the jet pinches to √n of the exit radius within 1.5 radii. Spread angle: tan θ = 0.03 + 0.52·smoothstep(0, 2.5,
+  log₁₀ n). Near-straight at sea level, about 29° from n ≈ 300 up, plus a little turbulent widening in air. Length
+  re·(10 + 12·throttle)·(1 + 1.4·(1 − pa)).
+- **Thinning:** gas density goes as (re/rb)², and the line of sight through it grows as rb, so emission falls as
+  (re/rb)^1.3. That one term is why a vacuum plume is wide and faint and a sea-level one is tight and bright.
+  (re/rb)² dimmed the 45 km plume to nothing.
+- **Shock diamonds** every Lc = 2.4·re·√n, soft Gaussian cells that fade along the train. Visible only for pa in
+  0.02–0.25 and n < 8: they stretch out and vanish with altitude, as on real ascents.
+- **Layers:** a white-hot core over the potential-core length (3.5–6 re); an afterburning mantle (fuel-rich exhaust
+  burning in air, so it scales with air density); a gas glow; and soot that *absorbs*.
+- **Opacity:** output is premultiplied (`ONE, ONE_MINUS_SRC_ALPHA`), so a plume can occlude. A thick region shows its
+  colour as emission over opacity. Kerolox is opaque (op 1.2), alcohol translucent (0.8), hypergolic faint (0.25),
+  hydrolox nearly clear (0.03).
+- **Propellant profiles (`PROPS`)** with an engine table (`PFX`): Kestrel, Condor and Albatross are kerolox at pe
+  0.7–0.8 atm; Petrel is kerolox at pe 0.025 (vacuum); Sparrow is alcohol/LOX (V-2-like); Wren is hypergolic at pe 0.12.
+  Hydrolox is defined but no engine uses it yet. An engine not in the table defaults to kerolox, with a vacuum nozzle if
+  its sea-level Isp is under half its vacuum Isp.
+- **Spool:** a render-side `SPOOL` WeakMap lags each plume behind the throttle by ~0.12 s, so ignition grows instead
+  of popping. Flicker is two sines on the intensity, phased per engine.
+- Smoke puffs are now born at 0.7 of the plume length (`plumeShape`), so they leave from where the flame fades.
+
+### What it took (and what failed)
+- **First pass: everything saturated to white.** The gains were ~5× too high; `1 − exp(−C)` clips every channel.
+- **Purely additive turned green over grass.** The ground showed through a faint flame. A sooty kerolox flame is
+  close to opaque in reality, so opacity was added.
+- **Then the kerolox plume read as brown smoke.** The outer gas absorbed more than it emitted, and a thick region's
+  colour is its emission/opacity ratio. Fix: only the core and mantle carry opacity.
+- **Gamma 2.2 greyed the faint outer gas** (a peach tint on a blue sky reads grey). Gamma 1.5 plus a more saturated
+  glow colour kept it orange.
+- **Culling:** the lathe's outward faces wind so that `cullFace(FRONT)` keeps the faces nearest the eye. With the
+  camera inside the bounds it switches to the far faces and marches from the eye.
+- **Measuring against the wrong tree.** The first A/B said +3 to +12 ms. The "main" server on 8778 was another
+  process's tree, and 127.0.0.1:8777 had a second listener too. Use explicit `127.0.0.1` URLs on ports you have
+  checked with `netstat` (LESSONS candidate).
+
+### Cost
+Same-run A/B against a `main` snapshot (`d803a54`): GPU timer queries, `RS` pinned to 1, 1280×800 headless Chrome, two
+rounds of three 1.2 s samples.
+
+| view | main | plumes |
+|---|---|---|
+| 2 ascent (Lunar, 3 km) | 14.1–14.5 ms | 14.4–14.8 |
+| 10 Sparrow from below | 5.4–5.9 | 5.9–6.3 |
+| 30 (was 17) Orbiter at the pad | 17.8–19.0 | 18.1–19.4 |
+| 32 (was 19) Albatross at 45 km | 2.6–3.8 | 3.3–4.0 |
+| 33 (was 20) Petrel in vacuum (fills the screen) | 0.8–1.0 | 1.7–2.0 |
+| 36 (was 23) Kestrel at 1 km | 10.4–10.8 | 9.9–10.2 |
+
+The first version cost far more. Three changes fixed it:
+- the vertex shader bends the proxy lathe to 1.9·rb(s), so pixels outside the plume never march (Waterfall's trick);
+- samples outside that radius are skipped before any noise;
+- turbulence is read from a 32³ R8 noise texture (two fetches instead of 16 hashes). Marching stops once the ray is opaque.
+
+### Reference views
+`refView(30)` Orbiter at the pad, `31` Albatross at 20 km, `32` at 45 km, `33` Petrel in vacuum, `34` Sparrow at 1 km,
+`35` Wren in vacuum, `36` Kestrel at 1 km. They teleport the ship (pointing up, climbing), stage and burn 1.5 s.
+(Numbered from 30 because `main` took 17 for the launch site meanwhile.) `refView` now funds the program up to 1e6 M
+first: since the budget gate, a fresh page refused the Lunar launch and views 2 and 31–35 silently stayed in the editor.
+
+### Still open
+- The plume goes into the pad instead of spreading over the deflector. Ground impingement would need the pad or ground
+  height in the shader.
+- No shutdown tail-off: a plume disappears with `activeEngines`. Ignition is a fast grow, with no start-up flash.
+- Plumes don't light anything: no glow on the pad, the smoke or the hull at night.
+- At altitude, the plume should wash back over the base (recirculation). Soot marks model that; the plume doesn't show it.
+- The Sparrow's alcohol plume still reads whitish-blue against the sea. Real V-2 footage is more yellow.
+- RCS puffs could reuse this volume with a small re.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1014,6 +1094,31 @@ Shading:
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
    - Coordinate with the builder session (the site picker in the construction screen) and the economy session
      (`makePowers` and `PAD_GS` assume the pad at +X; site ownership and leases).
+   - **Hand-off from the economy session (2026-10-07): what the economy layer needs from launch sites.** Geography is
+     the last power-flavour axis, and Caio chose to build it as slice B here first, with economy on top afterwards. The
+     economy side will add site ownership, foreign leases priced by relations, loss of access under sanctions, and the
+     politics of launching over a neighbour. To keep that a thin layer, please:
+     - **`SITES` as plain data in the SIM block,** one entry per site: `id`, `name`, `u` (planet-fixed unit vector),
+       `lat`, `h` (pad height), `power` (index, from `powerAt(u)`; null at sea), `coastal` (bool), `maxDia` (largest stage
+       diameter it can take: rail limit inland, barge at the coast), `downrange` (azimuth plus the powers whose land lies
+       under the first ~1,000 km of the ascent), `polar` (a clear corridor south or north), and `kind` (`'pad'`, later
+       `'sea'`).
+     - **The chosen site lives on the flight** (`S.site` or `newShip(stack, site)`), so missions, incidents and the
+       flight record can read it. Economy will record `R.site`.
+     - **One gate economy owns:** before a launch, call `siteAccess(site)` → `{ok, why, fee}`. Economy defines it in the
+       program block: own sites ok, foreign ones leased or refused, sanctions block. Until it exists, default to "home
+       sites only, free". The builder's site picker should show `why` when `ok` is false.
+     - **Power homes:** `makePowers` seeds power 0 at planet-fixed +X, the current pad. If the world stops being turned to
+       put the home site at +X, seed power 0 at the home site's `u` (a one-line change in economy code; go ahead, and
+       say so in the log). `HOME` can change at runtime (defection), so home sites are always `SITES.filter(s =>
+       s.power === HOME)`, never a stored list.
+     - **Other +X assumptions on the economy side:** `PAD_GS` (the pad ground station, planning's code) and the
+       recovery-demonstration contract (`landDist` is measured from +X). Point them at the flight's site; the
+       contract's text already says "the pad".
+     - **Leave economy rules out of slice B:** no fees, ownership politics or sanction checks. Sites should be able to
+       exist abroad from day one; a foreign site is simply refused until economy's `siteAccess` arrives. Economy then
+       adds leases, a lease line on the budget, sites closed when relations sour (as ground stations already are),
+       westward-launch politics, and site choice in contracts.
 2. **Cost of low grazing views** (8.8 ms at 1024×768 over rugged hills).
    - Ideas: a temporal reuse of last frame's depth; a cheaper hash (exactness only matters near the camera, so
      distant octaves could come from a 3D noise texture with hardware filtering); fewer octaves beyond ~5 km.
@@ -1071,6 +1176,118 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## 6b — third-body perturbations near Nyx (2026-10-07, bodies session)
+
+Patched conics called every orbit around Nyx stable. This slice integrates the real three-body problem where it matters.
+
+**Model, and a correction to the earlier study.** In the game Nyx follows a fixed Kepler path about Tellus. The only n-body
+model that agrees with that is one where the pair's relative orbit uses μ_Tellus + μ_Nyx (now `b.n` for a `pert` body) and the
+Tellus frame carries Tellus's reflex toward Nyx. `study_nyx.mjs` mixed the two: a μ_Tellus-only path *with* the reflex, which is
+inconsistent at m/M = 5.6e-4. In a chaotic case that is enough to change the outcome: the 100 km prograde orbit crashes at
+0.52 P there and at 1.51 P in the consistent model. Every other verdict in the study's table stands (prograde wrecked from
+~100 km up, retrograde survives).
+
+**Where.** `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
+Tellus's frame, Nyx's pull minus Tellus's reflex, wherever that is ≥ `PERT_MIN` = 1e-3 of Tellus's pull. A threshold sweep
+against n-body (flybys at Nyx's pe and ap, v∞ 300/800 m/s, error one day later):
+
+| perturbed where | flyby error a day later |
+|---|---|
+| nowhere outside the SOI (patched conics) | 170–10,200 km |
+| within 3 / 10 / 50 × SOI of Nyx, direct pull only, no reflex term | 50–4,800 / 25–1,800 / 4–1,900 km (worse at 50: wrong model, see above) |
+| ratio ≥ 1e-2 | 60–2,900 km |
+| **ratio ≥ 1e-3** (and 1e-4…1e-6, identical) | **0.1–0.6 km** |
+
+The ratio has to include the reflex term. With the direct pull alone the game came out 14 km off on the slow flyby. The reflex
+grows past ~1.3× Nyx's distance, so craft out at Selene's distance are perturbed too. **A real effect, measured:** a
+Selene-bound transfer that misses Selene comes back after one 39 h revolution with its perigee 110 km lower, into the ground (n-body:
+−24 km). Nyx is 5.6e-4 of Tellus, proportionally a twentieth of our Moon, and it moves high perigees by about 100 km a revolution, as
+the Moon does to HEO orbits. Low Tellus orbit sees 2e-6 and keeps exact rails (`30 days at 100000×` unchanged to 1e-8 m).
+
+**How.** `pertNear(b,el)` is an orbit-level prefilter: Nyx's direct pull reaches 1e-3 only within kap·r of it, kap =
+1.05·√((m/M)/1e-3) = 0.79, so the orbit must pass between rMin/(1+kap) and rMax/(1−kap). `coastPlan` is the step planner
+shared by rails, the predictor and `fall()`: the old event limits plus the edge of the perturbed region, and a step cap when
+perturbed (1/200 of the osculating period, 0.02·d^1.5/√μ to the perturber, 1/400 of Nyx's period). `coastStep` is exact
+Kepler, or kick–drift–kick with Kepler drift about the frame's body (symplectic, Wisdom–Holman style). `physStep` adds
+`pertAcc` to gravity. The predictor's perturbed legs are numeric (`numLeg`): a path for the map, ending at an SOI change, at
+the ground ('impact'), or at a horizon of two Nyx orbits inside its SOI (one revolution outside). Impact prediction on Nyx uses
+the same stepper.
+
+**Map.** Perturbed legs draw as their integrated path, with the closest pass and "Impact in … (perturbed)". A numeric
+prediction takes 12–27 ms, so it is cached while the craft stays on it (`predStill`: within a km or 0.1 % of r) and redone at
+most 4× a second while thrusting. The node plan has the same cache. The era map's body loop now iterates `BODIES` (it was
+`[TELLUS, SELENE]`), so Nyx gets its pencil and wireframe outline too.
+
+**Checks** (`test.mjs` §21, 5 new, against an independent RK4 n-body):
+- a 200 km prograde orbit started at Nyx's apoapsis: n-body down at 0.493 P, rails 0.493 P, predicted 0.493 P
+- the retrograde twin is bound after 2 P, and predicted bound
+- one Nyx orbit flown in 60 s chunks vs 1 h chunks: 133 m apart, 0.27 km from n-body
+- the slow flyby at Nyx's periapsis: 0.57 km from n-body a day later
+- 123 µs per warp frame at 100,000× in a 60 km orbit
+
+§20's stripping check now expects the perturbed answer: the 150–971 km retrograde orbit is pumped out at +5.7 h, not the
+patched-conic +12.9 h. Predicted and flown agree.
+
+**Not yet:** node positions still come from Kepler (`nodeInfo`), so a node far ahead on a perturbed leg sits slightly off the
+drawn path. Selene perturbs nothing, though at 0.0123 of Tellus it would matter more than Nyx: making it `pert` is one flag, but
+it changes every Selene trajectory and the tests built on them. Debris near Nyx ignores the tide.
+
+## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
+
+Open thread 6. A local clone at `C:/Users/caioa/dev/launchpad-bodies` (a different machine from the other sessions).
+
+**Slice 1: the body tree, with no change in behaviour.** `BODIES`, built by `addBody(b,parent)`. Each moon carries Kepler elements about
+its parent (`orb: {a, e, i, lan, argp, M0}`, angles in the XZ equator with +Y north, so prograde runs +X → −Z), and
+`bodyRel(b,t)` solves Kepler's equation for its position and velocity. `checkSOI`, the step limits in `rails`, and `predictFrom`
+walk the tree: a leg ends at the earliest of entering any moon's SOI (scan, then bisection) or leaving the body's own.
+`moonPos`/`moonVel` are kept as wrappers. The map (orbits, SOI rings, encounter and escape labels), Tab focus, the shadow test and
+the body labels iterate `BODIES`. **Check:** a fingerprint of 40 aimed Selene transfers (19 encounters), 14 rails runs through SOI
+changes, a prediction from inside Selene's SOI and a Selene impact was **byte-identical** before and after. The circular,
+equatorial case of the general formula reduces exactly (multiplying by ±0 and 1 is exact).
+
+**Nyx.** Caio's idea: a second moon, inclined and very eccentric. An n-body study (RK4, Tellus-centred frame with the
+indirect term; `node study_nyx.mjs [small|mid|selene]`) chose the size:
+
+| Candidate | pe–ap | SOI (Laplace × distance) | Hill radius at pe | Verdict |
+|---|---|---|---|---|
+| R 90 km, g 0.25, a 16,000 km, e 0.7 | 4,800–27,200 km | 133 km at pe (43 km above ground), 752 at ap | 167 km | hardly orbitable |
+| **R 150 km, g 0.4, a 18,000 km, e 0.55, i 30°** | **8,100–27,900 km** | **407–1,401 km** | 464 km | **chosen** |
+
+Period 33.4 h, escape speed 346 m/s. Apoapsis plus the largest SOI clears Selene's SOI by 2,516 km.
+
+What the study showed:
+- **Which SOI rule.** Flybys at pe and ap, v∞ 300/800 m/s, three miss distances, patched conics against n-body one day later.
+  **Laplace radius × the moon's current distance** was best or tied in nearly every case. A fixed SOI from `a` is far too big at
+  periapsis. One fixed at periapsis misses most encounters near apoapsis. Patched conics are off by hundreds to thousands of km a
+  day after a pass, *for Selene too* (the same metric gives 2,000–8,000 km), so Nyx is no worse than what we already have.
+- **What patched conics can't show (a negative result, kept).** In n-body, *prograde* circular orbits about Nyx started at its
+  apoapsis are wrecked at the next periapsis pass (crash or ejection) from ~100 km altitude up. *Retrograde* ones survive at every
+  altitude tried up to 600 km. Patched conics call all of them stable. Showing this would need third-body perturbations (Encke) in
+  rails and the predictor for Nyx. **Caio chose patched conics for now**; this is open thread 6b.
+
+So Nyx's **SOI breathes**: `soiAt(b,t) = |r_moon(t)| × (m/M)^0.4` for a moon with e > 0 (Selene keeps its constant `b.soi`
+exactly). `b.soi` is the largest value and `b.soiMin` the smallest, both for conservative tests; `b.soiRate` bounds how fast the
+SOI moves, which goes into rails' step size. The predictor's escape for a breathing SOI is `escTime`: an outbound leg is scanned up
+to where it crosses the largest SOI; a bound orbit that reaches past `soiMin` is scanned over three Nyx orbits, then bisected.
+**Patched-conic stripping:** an orbit whose apoapsis is above the periapsis-time SOI gets dropped back into Tellus orbit when Nyx
+swings in. That is the patched-conic shadow of the real effect, and it's predicted on the map.
+
+Side effect on Selene flights: rails' speed bound now includes Nyx's speed, so steps near SOI edges are finer. Selene SOI switches
+moved by under 0.4 s, all closer to the predicted times (e.g. predicted 28,090.85 s: 28,091.23 → 28,091.10).
+
+**Drawing.** Selene lives in `SKY_FS`, which belongs to the terrain session, so Nyx gets its own pass: `MOON_FS` = `SKY_FS` up to its
+`main()` (so `sph`, `scatter`, `crat`, `fbm`, `detail` are shared) plus a main that ray-casts one sphere. It's drawn after the sky
+pass, depth-tested against it, and writes the same log depth. Seen from the ground it's ~0.7–2° across (bigger than our Moon)
+and takes the air's colour like a daytime moon. Look: three crater scales and a dark, brown carbonaceous albedo
+(`NYX.alb`) so it doesn't read as a second Selene. Any further non-Selene moon goes through the same pass.
+
+Checks (`test.mjs` §20, 5 new): orbit and SOI geometry; an approach finds the encounter and rails switch in on time, then out; a
+150–971 km retrograde orbit is predicted to be stripped at +12.9 h and is; a 100 km orbit is never stripped; a fall onto Nyx is
+predicted to 2 m.
+
+**Not yet:** missions and contracts for Nyx (the economy's scope); perturbations (6b); eclipses of and by Nyx in the lighting
+(`lit()` already shadows meshes); a non-spherical shape (it's a captured rock, and an SDF would suit it).
+
 ## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
 
 Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
@@ -1287,8 +1504,50 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
 - Checks (§18, 4 new, 128 total). Seen end to end in the app: a Passenger flight logs space at 3,095 m/s and its
   145 km apex, with its 7-op tape.
 
+**The map follows the era too** (same branch, same day):
+- **Notebook:** graph paper; each body a hand-drawn circle (a steady "tremor" so it doesn't shimmer) with the equator
+  pencilled in and the night side hatched; every map line in ink, with warm ones (impacts, encounters) in red pencil;
+  handwritten labels.
+- **Terminal:** black with scanlines; glowing vector wireframe globes (latitude and longitude every 30°, back side
+  hidden); phosphor-green lines and text.
+- How: every map line already goes through one buffer (`drawMap`/`drawPatches` → `out`). In an era map that buffer is
+  kept (`MAPSEGS`) and drawn on the 2D overlay after an opaque sheet, instead of the GL line pass; labels get the era's
+  font and ink. Camera, picking, nodes and handles are untouched.
+- Cost: +0.4–0.5 ms a frame (map at 1280 px: modern 2.2 ms, terminal 2.6, notebook 2.7). "Modern look" keeps the
+  rendered map.
+- Also: a Δv record of 0 is ignored (a placed vessel, not a flight), found by placing one by script.
+
+**More facts** (same day): 15 now, in four sections.
+- **Getting up:** Δv to space, Δv to orbit, highest dynamic pressure flown through (logged at flight end if the vessel
+  is still alive).
+- **In orbit:** the first orbital period; the best ground-station contact a satellite has had (reported between flights
+  by the satellite itself, named after it; no design).
+- **Coming back** (logged on an intact landing on Tellus): fastest re-entry survived (air-relative speed on the way down
+  after reaching space), hottest skin survived (K, with the part), the hardest ride a passenger came home from (g),
+  the closest landing to the pad after a trip to space.
+- **Out there:** farthest from Tellus (replaces "highest point"; counts the Selene leg), Δv to reach Selene, the first
+  orbital period around Selene, Δv to land on Selene, and Selene's surface gravity as the first lander measures it.
+- Facts may hold objects (`key` picks the number compared); `logNote(null, …, by)` lets the registry report.
+- A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
+  from the pad. Checks §19 (3 new, 136 total).
+
+**Tools gated by what's known** (same day). `TOOLS` maps each tool to the fact it depends on; `toolOK(k)`:
+- **Impact prediction** (HUD row, map trace, ground marker, spread) ← *farthest from Tellus* (any flight that has come
+  down). Before that the HUD reads "no trajectory data yet". Range safety still uses the prediction underneath: only the
+  display is gated.
+- **Maneuver planning** (placing a node by click or N, and so the panel and warp-to-burn) ← *Δv to low orbit*. Refused
+  with "No maneuver planning yet: it needs 'Δv to low orbit' in the logbook". Autopilot tapes still replay their nodes.
+- **Encounter forecasts** (the predicted path inside another body's sphere of influence, encounter labels) ← *Δv to
+  reach Selene*. Before that the map's path stops at the edge with "? Nyx: what its pull does next, no data yet" (any
+  body: the bodies session added Nyx).
+- The logbook says what each fact unlocks ("→ will unlock: maneuver planning" / "→ unlocked: …").
+- Fixes found on the way: the gated forecast first crashed the map (the encounter label looks ahead to the next leg,
+  so the gated leg now keeps its end but drops its encounter tag); and a *placed* vessel (one that spent no Δv) now
+  reports nothing to the logbook. Placing one by script had logged an orbital period.
+- Check §21 (1 new, 142 total).
+
 **Next along this line:**
-- More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
+- More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
 - **The map's look following the era:** pencil trajectories on graph paper, then vector CRT. Mission planning UI
   follows the same arc.
@@ -1437,6 +1696,99 @@ Registered satellites used to exist only on the map; now you can fly past one.
 - Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
   is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
+
+### Rendezvous (sats session, 2026-10-07)
+
+Seeing a satellite isn't the same as reaching one. Now you can pick one as the target and fly to it.
+
+- **Choosing:** click a satellite's marker on the map (click again to clear), or **G** to cycle through the registry and
+  back to none. The target is per flight (`S.target`, the registry id); a revert or a new flight starts without one.
+- **Sim side** (`tgtOf`, `approach`, `progT`, next to the registry): `tgtOf(s)` is the target's state at program time and
+  the relative position and velocity. `approach(q, r, v, t0, span)` finds the closest approach between a Kepler state and
+  the target: a 240-step scan, then golden-section on the best bracket. The span is two of our orbits; sub-orbital or
+  escaping trajectories get none.
+- **Autopilot:** four more modes, shown only while there's a target: *Target*, *Anti-tgt* (toward/away), *Rel pro*, *Rel ret*
+  (along/against our velocity relative to it; *Rel ret* plus throttle is how you kill the last few m/s).
+- **Map:** the target's orbit in orange and always labelled; the closest approach on the current orbit (green: our point,
+  orange: its point, a line between them, distance and time) and on the plan after a maneuver node (white, `▸plan`).
+  Recomputed at most 4× a second of real time (`tgtCA`, cached by target and node), or at once when the node moves.
+- **HUD:** *Target* (distance, relative speed, closing or opening) and *Closest* (distance, time, relative speed there,
+  and the plan's). **Navball:** orange marks for the target and anti-target, pink for relative prograde and retrograde.
+  **Flight view:** the target's diamond shows at any distance, not just within 200 km.
+- Checks (`test.mjs` §21, on its own sim instance): the closest approach to a 320 km, 2° target matches a 0.5 s
+  brute-force scan (104.69 vs 104.72 km, same second), and the four modes point exactly where they say, falling back to
+  the hold when the target is gone. In the browser: a synthetic click on the map marker sets the target.
+- **Not yet:** docking (contact came next, see below); target-relative closest approach beyond
+  two orbits (phasing over many revolutions); targeting the moon or debris; contracts that need a rendezvous
+  (inspection, repair, retrieval). Those are the natural next slices.
+
+### Contact: collisions with satellites (sats session, 2026-10-07)
+
+Flying through a satellite is no longer possible. Bump it and it moves; hit it hard and things break.
+
+- **Shapes:** every part is a signed distance field built from its profile (`d.prof`, radius by height, revolved), so
+  cones, bells and flat discs are their real shape; the fin ring is its swept disc. Each part's surface is a cloud of
+  sample points (rings every 0.2 m, ~0.25 m apart, plus the end caps). A point of one body inside the other is a
+  contact: the depth-weighted point and normal over all such points, the deepest depth, and the part on each side most
+  involved. Bounding spheres cull per body and per part pair first.
+- **Response:** one impulse at the contact point, restitution 0.3, Coulomb friction 0.4, full rigid bodies on both sides
+  (the vessel's `I`; the satellite's from its parts, masses as shares of its registered mass), after pushing the two
+  apart by the depth. Momentum is conserved to 1e-27 relative.
+- **No tunnelling:** within 5 km of a satellite the flight runs in physics steps even at 1× (rails would step past it,
+  and in orbit without thrust it's always on rails). Each step is re-checked along the relative motion at 5 cm
+  offsets (up to 400), from the start of the step, and the earliest touch is the one resolved. A 2 km/s pass moves
+  40 m a step and is still caught.
+- **Damage:** a part breaks when the closing speed exceeds its tolerance: 3 m/s for delicate parts (camera, antenna,
+  instruments, chute, fins), 8 m/s for the rest (`d.tol` overrides). On the vessel it's `partLost`, as for burn-up. On a
+  satellite a delicate part breaks off as debris and the satellite carries on without it (kit counts, mass and centre
+  of mass updated); anything else breaking destroys the satellite (every part becomes debris, the registry entry goes).
+  Above 150 m/s both are destroyed outright.
+- **After a hit** the satellite gets new rails (state at that moment) and a free spin (`q.spin`: attitude and world
+  angular velocity at a time); `satSpin` gives its attitude either way, and the renderer uses it. Torque-free spin is
+  taken as a constant world axis (exact only about a principal axis; fine for a tumble you watch for minutes).
+- **Measured:** a 0.5 m/s nose-to-nose bump between an Orbiter-class pod stack and a 660 kg Lookout leaves the
+  satellite spinning at 0.2 rad/s. Not a bug: until it's hit, the satellite turns with its orbital frame (once per
+  orbit) and the vessel holds still in inertial space, so after 2 s the flat faces meet 0.002 rad apart and the first
+  touch is on the rim, 12 cm off the axis. A real flat-on-flat contact does the same.
+- Checks (`test.mjs` §22, own sim instance): the 0.5 m/s bump (momentum, bounce at 0.24 of the closing speed, nothing
+  breaks); 5 m/s (the satellite's antenna breaks off, both carry on); 2 km/s (caught, both destroyed); physics within
+  5 km, rails at 20 km. In the browser: a 1 m/s bump bounces the satellite away; at 6 m/s its antenna and the Orbiter's
+  own chute (its top part, also 3 m/s) come off as debris.
+- **Not yet:** contact with debris (spent stages) or between two satellites; resting contact is a stream of small
+  impulses (fine for bumps, not for pushing something for minutes); one contact point per step.
+
+### Docking and related parts: plan (2026-10-07, not built; decisions for Caio)
+
+**The blocker first.** A part has a position, an angle round the axis (`phi`) and, for engines, a cant. It can't be
+upside down or tilted (open thread 4, "truly tilted bodies"). Two vessels docked nose to nose have opposite axes, so
+merging their parts into one design doesn't fit the part model. **Proposal: a docked vessel is a rigid passenger.** The
+vessel keeps its own parts; each docked body is a sub-body (shape, mass, centre of mass, inertia, relative transform)
+fixed to it. Physics sums mass and inertia; contact, rendering and the registry carry the sub-bodies along; thrust,
+aero and staging stay with the main vessel's parts. Undocking hands the sub-body back to the registry as a satellite
+with the current state. A registry entry with sub-bodies is also how a **station** built from several launches persists.
+
+**What docking needs, roughly in order:**
+
+1. **RCS and translation control** (a prerequisite, not optional). With only a main engine, closing at 0.1 m/s means
+   turning around for every correction. An RCS block (four nozzles, small thrust, its own monopropellant via a new `RES`
+   entry), translation keys (KSP's I J K L H N), and a "kill relative velocity" SAS mode. Probably also a docking
+   camera or a reticle that shows alignment with the target port.
+2. **Docking port** (1.25 m class first). Two ports capture when they're within ~0.2 m, axes opposed within ~10°, and
+   closing under ~0.5 m/s. A short magnetic pull, then a latch that makes the target a rigid passenger. Undock pushes
+   it off at ~0.3 m/s. Contracts follow naturally: inspection (come within 50 m), service (dock, wait, undock), crew
+   rotation (a biocapsule docks to a station).
+3. **Grabber/claw** (KSP's "Klaw"). Latches onto any surface at under ~1 m/s, at the contact point and the current
+   relative attitude (passengers can have any transform, so this is cheap once 2 exists). Retrieval and deorbiting
+   junk, and catching a satellite that has no port.
+4. **Robotic arm.** A real arm (joints, inverse kinematics, control) is a big slice. A cheap version: an arm part that
+   captures a free-drifting target within ~10 m at under 0.1 m/s and berths it onto a port in a scripted 30 s motion.
+
+**Also relevant:** fuel transfer between docked bodies; a cargo bay (retrieve a satellite and bring it home); lights for
+docking on the night side; and contact with debris (also needed before the claw can grab a spent stage).
+
+**Questions for Caio:** (a) is the "rigid passenger" model OK (docked things can't share fuel or be re-staged until we
+add that explicitly)? (b) RCS fuel: a separate monopropellant, or draw from the main tanks? (c) which first after RCS:
+the port or the claw?
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
@@ -1935,7 +2287,8 @@ style) would give visible variety that reflects each power's flavour.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
   `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
   `assemble(toV2(old))` is how the old format still flies.
-- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics).
+- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics). Bodies form a tree (`BODIES`,
+  `addBody`); `bodyRel` gives a moon relative to its parent, `bodyPos` relative to the root, `soiAt` the (possibly breathing) SOI.
   Tellus spins about +Y; `fromPF/toPF` convert to and from planet-fixed. The launch site is
   planet-fixed +X.
 - Vessel axes: Y = nose, X = belly (east on the pad), Z = south on the pad. The navball shows
@@ -1961,5 +2314,6 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations near Nyx~~ done (§ "6b"). Next on that line: Selene as a
+   perturber (`pert:true`, then re-baseline the Selene tests); node positions on perturbed legs; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

@@ -1,8 +1,10 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
+  // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
+  if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
@@ -75,6 +77,22 @@ window.refView = async (n) => {
     if (n === 19) { const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
       if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); markT = null; padShip = null }
     render(); cam.yaw = -0.5; cam.pitch = 0.15; cam.dist = 45; render(); await settle(); bare(); return n === 18 ? 'service' : 'night';
+  }
+  // 30–36: engine plumes. The ship is placed at an altitude (teleported, pointing straight up, climbing at vy m/s), staged
+  // nst times and run 1.5 s at full throttle, then seen from the side: [design, altitude m, stagings, yaw, pitch, dist, vy]
+  const plume = { 30: ['Orbiter', 150, 1, 3.0, -0.05, 24, 60], 31: ['Lunar', 20000, 1, 1.6, -0.35, 60, 700], 32: ['Lunar', 45000, 1, 1.6, -0.35, 90, 1500],
+    33: ['Orbiter', 200000, 3, 1.6, -0.1, 30, 0], 34: ['Sounding', 800, 1, 1.6, 0.0, 9, 150], 35: ['Lunar', 200000, 4, 1.6, -0.1, 14, 0],
+    36: ['Hopper', 1000, 1, 1.6, -0.25, 16, 150] };
+  if (plume[n]) {
+    const [design, alt, nst, yaw, pitch, dist, vy] = plume[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    S.landed = alt < 500 ? S.landed : false; S.mkLift = true; for (let i = 0; i < nst; i++) stage(S);
+    const dir = norm([0.85, 0.2, 0.45]);
+    if (alt >= 500) { S.r = mul(dir, TELLUS.R + alt); const X = norm(cross([0, 0, 1], dir)); S.q = qFromBasis(X, dir, cross(X, dir)); S.w = [0, 0, 0];
+      S.v = add(surfVel(TELLUS, S.r), mul(dir, vy)); S.hold = dir; S.sasMode = 'stab' }
+    S.throttle = 1; const t0 = simT; while (simT - t0 < 1.5) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT) }
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return design + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km p ' + pressure(TELLUS, len(S.r) - TELLUS.R).toFixed(4) + ' eng ' + activeEngines(S).map(e => e.d.key).join(',');
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

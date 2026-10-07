@@ -94,9 +94,12 @@ def make_world(terrain, difficulty=None, rand_seed=0):
 
 
 def make_controller(kind, sim, dof_order, steps, seed):
+    # "cpg@6.4" = tripod CPG with a 6.4 Hz intrinsic frequency (default 12 Hz)
+    kind, _, freq = kind.partition("@")
     if kind == "cpg":
         cpg = make_tripod_cpg_network(
             timestep=sim.timestep,
+            intrinsic_frequency=float(freq) if freq else 12.0,
             intrinsic_amplitude=1.0,
             coupling_strength=10.0,
             convergence_coef=20.0,
@@ -189,8 +192,11 @@ def run_one(
         legs = fly.get_legs_order()
         leg_segs = [leg + "_" + s for leg in legs for s in LEG_CONTACT_SEGS]
         contact_n = np.zeros((n, 6), dtype=np.float32)
+        segs_order = fly.get_bodysegs_order()
+        foot_idx = [segs_order.index(BodySegment(leg + "_tarsus5")) for leg in legs]
+        feet = np.zeros((n, 6, 3), dtype=np.float32)
 
-    needs_obs = controller_kind == "hybrid"
+    needs_obs = controller_kind.startswith("hybrid")
     t0 = time.perf_counter()
     for i in range(n):
         if needs_obs:
@@ -202,8 +208,10 @@ def run_one(
         if action.adhesion_onoff is not None:
             stance[i] = action.adhesion_onoff
         sim.step_with_profile()
-        pos[i] = sim.get_body_positions(fly.name)[thorax_idx]
+        body_pos = sim.get_body_positions(fly.name)
+        pos[i] = body_pos[thorax_idx]
         if measure_contact:
+            feet[i] = body_pos[foot_idx]
             f = sim.get_bodysegment_contact_forces(fly.name, leg_segs)
             contact_n[i] = np.linalg.norm(f, axis=1).reshape(6, -1).sum(1)
         if record_video:
@@ -251,6 +259,7 @@ def run_one(
             pos=pos,
             stance=stance,
             contact_n=contact_n,
+            feet=feet,
         )
     np.save(
         RAW / ("pos_" + controller_kind + "_" + terrain + dtag + "_" + str(seed) + ".npy"),
