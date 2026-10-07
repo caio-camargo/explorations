@@ -1822,6 +1822,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   = old code) and a "balance" button. Pointing one engine through the CoM was the wrong target (torque ×4.5, rocket lost); balancing the
   total thrust is right, and still worse than uncanted when the gimbal could cope (it trades torque for an uncancelled side force).
   Sparrow core + lone Condor: lost uncanted, climbs at 15°. 112/112. Merged to `main` (`c63ff46`).
+- **v1.23 (2026-10-07, builder worktree):** aero interference as Newtonian shadowing between stack lines (no impact pressure or
+  heat where the upstream ray crosses another line). Unchanged for single lines and at 0°; Heavy normal force −5.5 % at 5°, −48 % broadside;
+  builder stability +0.02–0.03 cal. +3–12 µs/step. Two measurement traps noted (cold JIT; a literal 600 km radius after the rescale).
+  116/116. Merged to `main` (`393a60d`).
 - **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
@@ -1830,3 +1834,63 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   private company; knowledge and firsts carry over. Fixed a merge accident that had broken every decision button on main
   (the builder's overlay hook had landed in the ownership click handler; the builder's v1.20 fixed it too, one copy kept).
   `test.mjs` 110/110 after merging main. Merged to `main` (`885940e`).
+
+## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
+
+### Summary
+Caio chose **early-era realism** (1950s–60s hardware) for rocket parts. Built it procedurally in the mesh shader: the
+vertex format went 10 → 16 floats so each part carries its own surface frame (angle around its axis, height, radius,
+detail kind, part index), and `MESH_FS` got one footprint-filtered detail branch per part kind. Results: roll-pattern
+tanks, regen-tube bells with heat tint, a shingled capsule with window and hatch, hazard decouplers, gold foil, a
+honeycomb heat shield, tapered fins, turbopumps on big engines. Caio confirmed this level of detail is right. No
+measurable GPU cost (timer queries, A/B against `main`). Added close-up reference views (`refView(4–10)`) and `shot.mjs`,
+which takes headless-Chrome screenshots on the real GPU, so graphics can be judged from the CLI. Merged `main` into
+`visuals` (conflicts in `partShape` with the new `rfin`/`cam`/`ant` parts and canted-engine tilt: kept both sides, `rfin`
+uses the new tapered fin), then fast-forwarded `main` to `bee8d79`.
+
+Side trip: Caio saw the GUI with a black canvas. The cause was a dying `python http.server` under memory pressure that
+served a truncated `index.html` (the first script was cut at 105 of 207 KB), not the GPU or another session (lesson #18).
+
+### Files
+- `explorations/launchpad/index.html`: `MESH_VS`/`MESH_FS`, `makeMesh`/`VX`/`pv`/`lathe`/`box`/`rbox`/`fin`/`engine`, `partShape`→`partBody`, `partsMesh` collars, `HOT` uniform at the ship draw
+- `explorations/launchpad/views.js`: views 4–10; view 1 resets `cam.edY`
+- `explorations/launchpad/shot.mjs` (new): CDP screenshot script; `SHOT_FLAGS` picks the GPU backend (Intel: `--use-adapter-luid=0,70798`)
+- `explorations/launchpad/NOTES.md`: § "Part visuals — early-era hardware look"
+- `INDEX.md` (`shot.mjs` in the launchpad row), `LESSONS_LEARNED.md` #18
+
+### Verification
+`test.mjs` all passed before and after the merge. Screenshots of all reference views on the RTX 3050, plus a design using
+the new radial fin, camera and antenna parts after the merge. GPU A/B: equal within noise. The Intel iGPU compile was
+NOT verified (the tests against it hit the dying server).
+
+### Next steps
+- [ ] Next (agreed with Caio): **flight leaves marks**: base-heating soot, re-entry char from skin temperatures, LOX frost on the pad, a glowing Petrel nozzle extension, worn recovered stages
+- [ ] Then: **the launch pad** (tower, flame trench, plumbing). The pad drawing is under the terrain session's claim, so coordinate first
+- [ ] Backlog: liveries; Caio may want per-nation designs, decide later
+- [ ] Quick check that `MESH_FS` compiles on the Intel UHD (`SHOT_FLAGS`)
+- [ ] `main` not pushed yet
+
+## 2026-10-07 — Launchpad flight marks + launch complex (visuals session, cont.)
+
+### Summary
+Slice 2, **flight marks** (agreed with Caio): render-side marks per part (`MARKS` WeakMap, never read by the sim). Soot
+from burning engines up the stack base, re-entry char from peak skin temperature laid on the windward side (shields
+blacken early), LOX frost below each tank's fuel line until liftoff, and a glowing Petrel nozzle extension. Fixed a
+pinwheel artifact on lathe caps (planar footprint and noise). Learned that "black" is not black under this sun: judge
+darkening on white paint. Slice 3, **the launch complex**: only the contents of the `PAD` mesh (lattice umbilical tower,
+launch table, flame channel, propellant farm, water tower, blockhouse, lights), leaving placement, height and the apron to
+the terrain session. Caio: "huge improvement". Merged `main` into `visuals` (clean), fast-forwarded `main` to `b3ea9f0`.
+
+### Files
+- `explorations/launchpad/index.html`: marks (`marksTick`, `setMarks`, `uMk`/`uCh` replace `uHot`), shader marks block, `tube`/`lattice`, new `PAD`
+- `explorations/launchpad/views.js`: views 11–16
+- `explorations/launchpad/NOTES.md`: § "Flight marks", § "The launch complex"
+
+### Verification
+`test.mjs` all passed before and after the merge. Screenshots of every new view. GPU A/B on marks: within noise.
+
+### Next steps
+- [ ] Caio isn't sold on the buildings around the pad: decide which buildings to have (options discussed in chat), then rebuild
+- [ ] Pad next steps (Caio OK'd): floodlights lit at night, swing arms retracting at liftoff, tower height from the rocket
+- [ ] Backlog: liveries / per-nation designs; char that reads on the dark capsule; a real flame trench (terrain's ground)
+- [ ] `main` still not pushed

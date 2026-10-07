@@ -556,7 +556,7 @@ function rebuildShape(s){
     for(let i=0;i<E.length;i++){let a=0,b=0;for(let j=0;j<i;j++)a=Math.max(a,E[j].r0,E[j].r1);for(let j=i+1;j<E.length;j++)b=Math.max(b,E[j].r0,E[j].r1);
       E[i].cav=Math.max(E[i].r0,E[i].r1)<Math.min(a,b)-1e-3}
     const rad=Math.max(...E.map(e=>Math.max(e.r0,e.r1))),len_=lp[lp.length-1].y0+lp[lp.length-1].h-lp[0].y0;
-    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
+    s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],yLo:lp[0].y0,yHi:lp[lp.length-1].y0+lp[lp.length-1].h,radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
   const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
   s.grp=flowGroups(s,onArr(s));
   for(const p of ps){p.area=0}for(const ln of s.lines)for(const e of ln.E)e.p.area+=6.2832*e.rm*e.L;
@@ -601,7 +601,18 @@ function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used
 // coefficient rising through Mach 1; slender-body normal force where the cross-section changes; flat-plate fins;
 // base suction on exposed rear faces (mostly filled by a burning engine); skin friction. Forces land on the part that
 // owns the surface, at the point they act, so the same numbers give both the centre of pressure and the joint loads.
-// Lines don't shade each other (no interference between core and boosters).
+// Interference between lines (v1.23): Newtonian shadowing. An upstream-facing sample on one line gets no impact pressure
+// (and no stagnation heat) if the ray from it back up the flow hits another line's body first. Lines are taken as
+// cylinders of their widest radius over their own height. At small angles of attack the ray climbs steeply (1/tan α per
+// metre across), so side-by-side boosters barely shade each other in an ascent; at high α the leeward lines go dark.
+// Slender-body lift and skin friction are not shadowed.
+let AERO_SHADOW=true;   // off only for A/B measurements
+function shadowed(s,ln,px,py,pz,ux,uy,uz){const a=ux*ux+uz*uz;if(a<1e-12)return false;
+  for(const B of s.lines){if(B===ln)continue;const dx=B.ox-px,dz=B.oz-pz,tc=(dx*ux+dz*uz)/a;if(tc<=0)continue;
+    const perp2=dx*dx+dz*dz-tc*tc*a,r2=B.radius*B.radius;if(perp2>=r2)continue;
+    const sIn=Math.max(0,tc-Math.sqrt((r2-perp2)/a)),sOut=tc+Math.sqrt((r2-perp2)/a),y0=py+sIn*uy,y1=py+sOut*uy;
+    if(Math.max(y0,y1)>=B.yLo&&Math.min(y0,y1)<=B.yHi)return true}   // the chord through B's cylinder overlaps B's height
+  return false}
 const SND=h=>Math.sqrt(1.4*287*Math.max(216.65,288.15-0.0065*Math.max(h,0)));
 const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
 const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
@@ -614,7 +625,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
   const c=s.cm,sp=len(vb);if(sp<0.05)return;
   const cp=cpMax(M)*waveBump(M),fy0=-vb[1]/sp,fromTop=fy0<0;
   const ex=(rmx,rmn,rs)=>rmx<=rs?0:(rmx*rmx-rmn*rmn<1e-9?1:clamp((rmx*rmx-Math.max(rs,rmn)**2)/(rmx*rmx-rmn*rmn),0,1));
-  const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M));
+  const cbase=(M<0.8?0.12:M<1.2?0.12+0.3*(M-0.8):Math.max(0.08,0.24/M)),multi=AERO_SHADOW&&s.lines.length>1;let nShadow=0;
   for(const ln of s.lines){const E=ln.E,n=E.length,ox=ln.ox,oz=ln.oz,slender=ln.slender;
     let rs=0;for(let k=0;k<n;k++){const e=E[fromTop?n-1-k:k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.exp=e.ny*fy0<0?ex(mx,mn,rs):1;rs=Math.max(rs,mx)}
     rs=0;for(let k=0;k<n;k++){const e=E[fromTop?k:n-1-k],mx=Math.max(e.r0,e.r1),mn=Math.min(e.r0,e.r1);e.bexp=e.ny*fy0>0?ex(mx,mn,rs):0;rs=Math.max(rs,mx)}
@@ -623,7 +634,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx);   // air velocity relative to this point
         const f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;const fl=Math.sqrt(f2),qL=0.5*rho*f2,nx=e.nr*ca,ny=e.ny,nz=e.nr*sa;
         const cn=(nx*fx+ny*(ny*fy<0?fy*e.exp:fy)+nz*fz)/fl;
-        if(cn<0){const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz);p.Q+=HEAT_GAIN*SG*Math.sqrt(rho/ln.radius)*f2*fl*(-cn)*dA}
+        if(cn<0){if(multi&&shadowed(s,ln,px,py,pz,-fx,-fy,-fz)){nShadow++}else{const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz);p.Q+=HEAT_GAIN*SG*Math.sqrt(rho/ln.radius)*f2*fl*(-cn)*dA}}
         else if(e.bexp>0&&cn>0){const pr=qL*cb*e.bexp*cn*dA/fl;addF(p,fx*pr,fy*pr,fz*pr,px,py,pz)}
         const sf=qL*0.003*dA/fl;addF(p,fx*sf,fy*sf,fz*sf,px,py,pz)}
       if(slender>0&&e.slope<1.5&&!e.cav){const rx=ox-c[0],ry=e.ym-c[1],rz=oz-c[2];
@@ -638,7 +649,8 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
       const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
       addF(p,nx*N+fx*sf,fy*sf,nz*N+fz*sf,px,py,pz)}}
   if(s.chute&&s.chuteA>0&&s.chutePart&&s.chutePart.on){const p=s.chutePart,px=p.pos[0],pz=p.pos[2],py=p.y0+p.h+1,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
-    const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}}
+    const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}
+  s.nShadow=nShadow}
 
 // ---- structure: the vessel is rigid, so every joint carries exactly what it takes to make the branch beyond it
 // follow the whole body's motion. Cut at the joint; (inertial demand of the branch) − (external forces on it) is the
@@ -1758,36 +1770,137 @@ void main(){
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
-layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;
-uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;}`;
+layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;layout(location=4) in vec4 aU;layout(location=5) in vec2 aK;
+uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
+void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
-precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;
+precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
+// Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
+// lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
+float lin(float x,float per,float hw,float fw){float d=abs(fract(x/per+.5)-.5)*per,l=1.-smoothstep(hw,hw+fw*1.5,d);return mix(2.*hw/per,l,smoothstep(per*.5,per*.12,fw));}
+// sqw: square wave, 1 on the first half of each unit cycle of x (fw = footprint in cycles)
+float sqw(float x,float fw){fw=min(fw,.25);return mix(.5,smoothstep(.25-fw,.25+fw,abs(fract(x-.25)-.5)),smoothstep(.5,.2,fw));}
+// band: inside [a,b]
+float band(float x,float a,float b,float fw){fw=fw*.75+1e-5;return smoothstep(a-fw,a+fw,x)*(1.-smoothstep(b-fw,b+fw,x));}
+// dots of radius rad every per along s, on the row at height v0 (rivets, bolts)
+float dots(float s,float v,float v0,float per,float rad,float fw){vec2 q=vec2((fract(s/per+.5)-.5)*per,v-v0);return(1.-smoothstep(rad,rad+fw,length(q)))*smoothstep(rad*2.5,rad*.6,fw);}
 // Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and ground
 // bounce below as hemispheric ambient, Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
 // gradient, then the sky shader's tone curve and gamma — so a white tank and the ground under it finally agree.
 void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  if(uShadow>0.){o=vec4(0.,0.,0.,uShadow);return;}
  if(uGlow>0.){o=vec4(vC*uGlow,1.);return;}
- vec3 n=normalize(vN);if(dot(n,vP)>0.)n=-n;vec3 V=normalize(-vP);
- int m=int(vM+.5);float metal=m==1?1.:0.,rough=m==1?.32:m==2?.9:m==4?.06:.42;
- vec3 alb=pow(vC,vec3(2.2));
- // hull detail on the ship (ship frame: y along the stack): weld rings every 1.25 m on the sides, each ring of panels a
- // slightly different shade, faint vertical grime streaks; all filtered by the pixel footprint so they vanish, not shimmer
- if(uSeam>0.&&m<=1&&abs(vNo.y)<.6){float rr=length(vO.xz),az=atan(vO.z,vO.x)*rr,wy=fwidth(vO.y),fd=smoothstep(.05,.012,wy);
-  float d1=abs(fract(vO.y/1.25+.5)-.5)*1.25,ring=1.-smoothstep(.007,.007+wy*1.5,d1);
-  float pan=hh(vec2(floor(vO.y/1.25),3.))-.5,str=vn2(vec2(az*2.2,vO.y*.12))*vn2(vec2(az*7.,vO.y*.5+9.));
-  alb*=(1.-.45*ring*fd)*(1.+.06*pan*fd)*(1.-.16*str*fd*(m==0?1.:.5));}
+ vec3 V=normalize(-vP);bool inside=dot(vN,vP)>0.;
+ int m=int(vM+.5);float metal=m==1||m==5?1.:0.,rough=m==1?.32:m==2?.9:m==4?.06:m==5?.24:.42;
+ vec3 alb=pow(vC,vec3(2.2)),nO=vNo,emis=vec3(0.);
+ // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
+ // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
+ // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
+ int k=int(vK.x+.5),pi=int(vK.y+.5);
+ float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
+ float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
+ vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;
+ if(uSeam>0.&&k>0){
+  if(k==1&&side){                                         // propellant tank
+   float b=.07*sc,paint=band(v,b,h-b,fv);
+   if(h>3.*sc){float bh=min(1.4*sc,h*.2),q=sqw(vU.x*2.,fu*2.);                  // roll-pattern checker bands, top and bottom
+    float rt=sqw((v-(h-b-bh))/bh,fv/bh),rb=sqw((v-b)/bh,fv/bh);
+    blk=band(v,h-b-bh,h-b,fv)*mix(1.-rt,rt,q)+band(v,b,b+bh,fv)*mix(rb,1.-rb,q);}
+   else if(h>1.5*sc){float dq=abs(fract(vU.x*2.+.5)-.5)*3.1416*R;blk=(1.-smoothstep(.09*sc,.09*sc+fs,dq))*paint;}   // two opposite stripes
+   float ring=lin(v-b,1.25*sc,.006,fv)*paint,seam=lin(s-1.5708*R,6.2832*R,.004,fs)*paint,pan=hh(vec2(floor((v-b)/(1.25*sc)),3.))-.5;
+   float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
+   alb=mix(alb,vec3(.018),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
+   float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));}
+  else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
+   float t=clamp(v/max(h,.01),0.,1.),N=floor(6.2832*R/.035+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
+   nO+=T*sin(ph*6.2832)*.35*fd*(inside?-1.:1.);alb*=1.-.35*fd*smoothstep(.75,1.,abs(ph-.5)*2.);
+   vec3 tint=mix(mix(vec3(1.,.82,.5),vec3(.45,.5,1.),smoothstep(.55,.8,t)),vec3(.8,.45,.9),smoothstep(.8,.95,t));
+   alb*=mix(vec3(1.),tint*1.25,.65*smoothstep(.35,.7,t));
+   float lip=band(v,-.01,.035*sc,fv);alb=mix(alb,vec3(.35,.34,.33),lip);rough=mix(rough,.5,lip);
+   if(inside){alb*=.3;rough=.7;}}
+  else if(k==15){                                          // engine mount: bolt ring under the tank flange
+   alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
+  else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
+   float body=band(v,.06*sc,1.2*sc,fv),N=floor(6.2832*R/.04+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
+   alb=mix(alb,vec3(.028,.029,.032),body);metal=mix(metal,.6,body);rough=mix(rough,.48,body);
+   nO+=T*sin(ph*6.2832)*.22*fd*body;
+   float vr=v-.06*sc,row=lin(vr,.22*sc,.004*sc,fv),rn=hh(vec2(floor(vr/(.22*sc)),floor(vU.x*6.)))-.5;
+   alb*=(1.-.55*row*body)*(1.+.25*rn*body);alb=mix(alb,vec3(.1),dots(s,mod(vr,.22*sc),.018*sc,.05*sc,.005*sc,fp)*body);
+   float du=abs(fract(vU.x-.125+.5)-.5),win=band(du,-1.,.032,fu)*band(v,.44*sc,.72*sc,fv),frm=band(du,-1.,.042,fu)*band(v,.40*sc,.76*sc,fv);
+   alb=mix(alb,vec3(.16,.16,.17),frm);metal=mix(metal,1.,frm);
+   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);metal*=1.-win;rough=mix(rough,.05,win);m=win>.5?4:m;}
+   float dh=abs(fract(vU.x-.375+.5)-.5),hat=band(dh,-1.,.035,fu)*band(v,.16*sc,.58*sc,fv),hin=band(dh,-1.,.030,fu)*band(v,.18*sc,.56*sc,fv);
+   alb*=1.-.7*(hat-hin);alb=mix(alb,vec3(.2),dots(dh*6.2832*R,v,.36*sc,1.,.014*sc,fp));}
+  else if(k==4&&side){                                     // nose cone: fairing split lines with rivets, a ring, a scorched tip
+   float dq=abs(fract(vU.x*2.+.25)-.5)*3.1416*R;float sp=1.-smoothstep(.004,.004+fs*1.5,dq);
+   alb*=1.-.5*sp;alb=mix(alb,vec3(.15),dots(v,dq,.022,.06,.006,fp)*band(v,.05,1.2*sc,fv));
+   alb*=1.-.4*lin(v-.3*sc,8.,.005,fv)*band(v,.2*sc,.4*sc,fv);
+   alb*=1.-.35*vn2(vec2(s*9.,v*4.))*band(v,1.25*sc,2.*sc,fv);}
+  else if(k==5&&side){                                     // decoupler: hazard band, ribbed skirt, separation groove + bolts, interstage vents
+   float y1=.12*sc,hz=sqw((s+v)/(.14*sc),(fs+fv)/(.14*sc));alb=mix(alb,vec3(.02),(1.-hz)*band(v,.015*sc,y1-.015*sc,fv));
+   float sk=band(v,y1,.25*sc,fv),N=floor(6.2832*R/.06+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
+   nO+=T*smoothstep(.75,.95,abs(ph-.5)*2.)*sign(ph-.5)*.5*fd*sk;
+   alb*=1.-.7*lin(v-y1,9.,.004,fv);alb=mix(alb,vec3(.4),dots(s,v,y1+.03*sc,.08*sc,.008*sc,fp));
+   float sh=band(v,.25*sc,9.,fv);if(sh>0.){float N2=floor(6.2832*R/.12+.5),p2=fract(vU.x*N2),f2=smoothstep(.5,.15,fu*N2);
+    nO+=T*smoothstep(.8,.97,abs(p2-.5)*2.)*sign(p2-.5)*.4*f2*sh;alb*=1.-.6*lin(v-.25*sc,.9*sc,.004,fv)*sh;
+    alb=mix(alb,vec3(.02),dots(s,v,.25*sc+.35*sc,.5*sc,.05*sc,fp)*sh);}}
+  else if(k==6){                                           // fin ring rivets; fins keep the paint, with grime
+   if(side&&R>.5)alb=mix(alb,vec3(.3),max(dots(s,v,.04*sc,.07*sc,.007*sc,fp),dots(s,v,h-.04*sc,.07*sc,.007*sc,fp)));
+   alb*=1.-.12*vn2(vec2(vO.x*3.+vO.z*3.,vO.y*.8))*smoothstep(.05,.012,fp);}
+  else if(k==7){                                           // instruments: crinkled gold foil between bolted equipment rings
+   if(m==5){vec2 g=vec2(s,v)*vec2(60.,46.);float fd=smoothstep(.02,.005,fp),fd2=smoothstep(.008,.002,fp);   // crinkles: tilt, not tint
+    float nx=vn2(g)-.5+.5*(vn2(g*2.3+7.)-.5)*fd2,ny=vn2(g+3.1)-.5+.5*(vn2(g*2.3+1.)-.5)*fd2;
+    nO+=(T*nx+vec3(0.,1.,0.)*ny)*.75*fd;alb*=.92+.16*vn2(g*.25);}
+   else if(side)alb=mix(alb,vec3(.45),max(dots(s,v,.035*sc,.09*sc,.009*sc,fp),dots(s,v,h-.035*sc,.09*sc,.009*sc,fp)));}
+  else if(k==8&&side){                                     // biocapsule: a porthole with a bolted frame, a hatch seam
+   vec2 q=vec2(abs(fract(vU.x-.125+.5)-.5)*6.2832*R*.75,v-.47*sc);float dr=length(q);
+   float win=1.-smoothstep(.075*sc,.075*sc+fp,dr),frm=1.-smoothstep(.1*sc,.1*sc+fp,dr);
+   alb=mix(alb,vec3(.25),frm-win);metal=mix(metal,1.,frm-win);
+   if(win>.01){alb=mix(alb,vec3(.01,.012,.015),win);rough=mix(rough,.05,win);m=win>.5?4:m;}
+   alb*=1.-.6*lin(s-3.1416*R,6.2832*R,.004,fs)*band(v,.15*sc,.8*sc,fv);}
+  else if(k==9&&side){                                     // mass simulator: bolted steel plates
+   float pl=band(v,.05*sc,.45*sc,fv);alb*=1.-.6*pl*max(lin(v-.05*sc,.1*sc,.003,fv),lin(s,1.5708*R,.003,fs));
+   alb=mix(alb,vec3(.06),dots(s+.025*sc,mod(v-.05*sc,.1*sc),.05*sc,.15*sc,.008*sc,fp)*pl);
+   alb*=1.+.15*(hh(vec2(floor((v-.05*sc)/(.1*sc)),floor(vU.x*4.)))-.5)*pl;}
+  else if(k==10){                                          // parachute: canister straps, woven canvas cap
+   float cap=step(.22*sc,v);if(side&&cap<.5){float dq=abs(fract(vU.x*2.+.5)-.5)*3.1416*R;alb=mix(alb,vec3(.05,.05,.04),1.-smoothstep(.025,.025+fs,dq));}
+   alb*=1.-.15*cap*sqw(s*60.,fs*60.)*sqw(v*60.,fv*60.)*smoothstep(.02,.008,fp);}
+  else if(k==11){                                          // heat shield: ablator honeycomb, charred unevenly
+   vec2 g=(side?vec2(s,v):vO.xz)/(.045*sc);g.x+=.5*floor(g.y);float fg=fp/(.045*sc);
+   float cell=max(lin(g.x,1.,.06,fg),lin(g.y,1.,.06,fg));alb*=(1.-.5*cell)*(.75+.5*vn2(g*.3));rough=.95;}
+  else if(k==12&&side){                                    // adapter: black roll quadrants on the cone, rivets on the flanges
+   float cone=band(v,.15*sc,1.35*sc,fv);blk=sqw(vU.x*2.,fu*2.)*cone;alb=mix(alb,vec3(.018),blk);
+   alb=mix(alb,vec3(.4),max(dots(s,v,.075*sc,.08*sc,.008*sc,fp),dots(vU.x*6.2832*.625*sc,v,1.425*sc,.07*sc,.008*sc,fp)));}
+  else if(k==13){                                          // radial decoupler: hazard chevrons, bolts
+   alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
+  else if(k==14&&side){                                    // reinforcement collar: a bolt row
+   alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
+ }
+ // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
+ // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
+ // the side the air came from (all over on the shield); frost sits below the fuel line in patches that thin as it sheds;
+ // a vacuum nozzle extension glows dull red to orange from the exit up.
+ if(uSeam>0.&&k>0&&pi>=0&&pi<96){vec4 mk=uMk[pi],ch=uCh[pi];vec2 q2=side?vec2(s,v):vO.xz;float nz=vn2(q2*vec2(3.,1.5)),nz2=vn2(q2*vec2(11.,6.)+4.);
+  if(mk.x>0.){float st=mk.x*(k==2||k==15?1.:exp(-v/(.9*sc)))*(.7+.3*vn2(vec2(s*6.,v*.7)));st=clamp(st*1.2,0.,.985);   // soot is blacker than black paint
+   alb=mix(alb,vec3(.004,.0036,.003),st);rough=mix(rough,max(rough,.85),st);metal*=1.-.6*st;}
+  if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
+   alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
+   rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
+  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fr=mk.y*(1.-smoothstep(lv-.15*sc,lv,v))*smoothstep(.36,.6,nz*.6+nz2*.4+mk.y*.3-.15)*.88;
+   alb=mix(alb,vec3(.82,.87,.93),fr);rough=mix(rough,.95,fr);metal*=1.-fr;nO+=T*(nz2-.5)*.5*fr;}
+  if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
+ }
+ vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
  vec3 sun=uSunCol*uLit,amb=mix(uGnd,uSky,.5+.5*dot(n,uUp));
- vec3 R=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(R,uUp)));
- vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+ (m==4?1.:.35));
+ vec3 Rr=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(Rr,uUp)));
+ vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
 const LINE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
@@ -1856,79 +1969,167 @@ gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
 const lineVAO=gl.createVertexArray(),lineBuf=gl.createBuffer();gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,28,12);gl.bindVertexArray(null);
-function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray(),b=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,40,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,24);
-  gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,1,gl.FLOAT,false,40,36);gl.bindVertexArray(null);
-  return{vao,n:data.length/10,free(){gl.deleteBuffer(b);gl.deleteVertexArray(vao)}}}
-// vertex = position, normal, colour, material (colour arrays may carry the material as a 4th entry)
-const VX=10;
+function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray(),b=gl.createBuffer(),B=VX*4;gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,B,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,B,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,B,24);
+  gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,1,gl.FLOAT,false,B,36);gl.enableVertexAttribArray(4);gl.vertexAttribPointer(4,4,gl.FLOAT,false,B,40);gl.enableVertexAttribArray(5);gl.vertexAttribPointer(5,2,gl.FLOAT,false,B,56);gl.bindVertexArray(null);
+  return{vao,n:data.length/VX,free(){gl.deleteBuffer(b);gl.deleteVertexArray(vao)}}}
+// vertex = position, normal, colour, material (colour arrays may carry the material as a 4th entry), then the part's own
+// surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
+// its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
+const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7};
+// one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
+function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
+  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
 // surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
-function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){
-  const V=(r,y,ca,sa,nr,ny,c)=>out.push(o[0]+r*ca,o[1]+y,o[2]+r*sa,nr*ca,ny,nr*sa,c[0],c[1],c[2],c[3]||0);
+function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
+  const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
   for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1];let nr=y1-y0,ny=-(r1-r0);const l=Math.hypot(nr,ny);if(l<1e-9)continue;nr/=l;ny/=l;
-    for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,ca0=Math.cos(a0),sa0=Math.sin(a0),ca1=Math.cos(a1),sa1=Math.sin(a1);
-      V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca0,sa0,nr,ny,c1);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca1,sa1,nr,ny,c0)}}
+    for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
+      V(r0,y0,a0,nr,ny,c0);V(r1,y1,a0,nr,ny,c1);V(r1,y1,a1,nr,ny,c1);V(r0,y0,a0,nr,ny,c0);V(r1,y1,a1,nr,ny,c1);V(r0,y0,a1,nr,ny,c0)}}
   const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
-    const k=[c[0],c[1],c[2],c[3]||0];out.push(o[0],o[1]+y,o[2],0,ny,0,...k,o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0),0,ny,0,...k,o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1),0,ny,0,...k)}};
+    V(0,y,(a0+a1)/2,0,ny,c);V(r,y,a0,0,ny,c);V(r,y,a1,0,ny,c)}};
   if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
-const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.36,.33,.31,1],Y:[.75,.6,.15],R:[.7,.12,.1],GL:[.05,.06,.08,4],CON:[.6,.59,.56,2],SH:[.35,.22,.12,2]};
+const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.36,.33,.31,1],Y:[.75,.6,.15],R:[.7,.12,.1],GL:[.05,.06,.08,4],CON:[.6,.59,.56,2],SH:[.35,.22,.12,2],
+  BK:[.07,.07,.08],ST:[.5,.5,.52,1],AU:[.8,.6,.22,5]};
 function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,1],[2,-1]]){const n=[0,0,0];n[ax]=s;const h=[hx,hy,hz],u=(ax+1)%3,v=(ax+2)%3,P=(a,b)=>{const p=c.slice();p[ax]+=s*h[ax];p[u]+=a*h[u];p[v]+=b*h[v];return p};
-  const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])out.push(...q[i],...n,col[0],col[1],col[2],col[3]||0)}}
+  const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])pv(out,q[i],n,col)}}
 function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
-  out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,a[i+6],a[i+7],a[i+8],a[i+9])}}
+  out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,...a.slice(i+6,i+VX))}}
+// a swept, tapered fin at angle a around the part axis: root chord ch on the hull (radius r0), tip chord ×0.45 flush with
+// the trailing edge, thickness 2t; the leading edge is a bare-metal strip, the faces take the paint
+function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y,s)=>[o[0]+rr*ca-s*sa,o[1]+y,o[2]+rr*sa+s*ca],N=(nr,ny,ns)=>[nr*ca-ns*sa,ny,nr*sa+ns*ca];
+  const q=[[r0,0],[r0+sp,0],[r0+sp,ch*.45],[r0,ch]],tri=(A,B,Cc,n,c)=>{pv(out,A,n,c);pv(out,B,n,c);pv(out,Cc,n,c)};
+  for(const s of[-1,1]){const n=N(0,0,s),Q=q.map(([r,y])=>P(r,y,s*t));tri(Q[0],Q[1],Q[2],n,col);tri(Q[0],Q[2],Q[3],n,col)}
+  for(let e=0;e<4;e++){const[r1,y1]=q[e],[r2,y2]=q[(e+1)%4],l=Math.hypot(r2-r1,y2-y1),n=N((y2-y1)/l,-(r2-r1)/l,0),c=e===2?C.ST:col;
+    const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}}
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
-    for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9]);return}
+    for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
+  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1};partBody(out,p);PK=PK0}
+// an engine: the bell (exit → throat) gets kind 'bell' with R = its exit radius and h = the throat height; the rest is the
+// mount. Big engines carry a turbopump beside the throat, its exhaust duct running down into the bell wall.
+function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
+  PK={...K,k:KIND.bell,R:prof[0][0],h:yt};lathe(out,prof.slice(0,ti+1),o,32,[false,false]);
+  PK={...K,k:KIND.mount};lathe(out,prof.slice(ti),o,28,[false,true]);
+  if(p.d.thrust>=200){const px=o[0]+rt+.15,pz=o[2],G=C.ST;
+    lathe(out,[[0,yt-.08,G],[.07,yt-.06,G],[.09,yt,G],[.09,yt+.22,G],[.06,yt+.26,G],[0,yt+.27,G]],[px,o[1],pz],12,[false,false]);
+    lathe(out,[[.035,yt*.55,C.K],[.035,yt-.05,C.K]],[px,o[1],pz],8,[false,false]);
+    lathe(out,[[.05,yt+.02,G],[.05,yt+.16,G]],[o[0]-rt-.08,o[1],o[2]],10,[true,true])}
+  PK=K}
+function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
     case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
-    case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord,rr=R0+sp/2;
-      box(out,[x+rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x-rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x,y+ch/2,z+rr],.035,ch/2,sp/2,C.R);box(out,[x,y+ch/2,z-rr],.035,ch/2,sp/2,C.R)}break;
+    case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
+      for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
-    case'rfin':rbox(out,[x+Math.cos(p.phi)*d.span/2,y+h/2,z+Math.sin(p.phi)*d.span/2],d.span/2,h/2,.035,C.R,p.phi);break;
-    case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);
-      lathe(out,[[.12,0,C.GL],[.12,.05,C.GL]],[x+0.24,y+.62,z+.4],10);break;
+    case'rfin':fin(out,o,p.phi,0,d.span,h,.035,C.W);break;
+    case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
     case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.G],[.625,.44,C.G],[.625,.44,C.D],[.625,.5,C.D]],o);
       lathe(out,[[.16,0,C.D],[.16,.12,C.D],[.1,.12,C.GL],[0,.13,C.GL]],[x,y+.25,z+.62],14);break;
     case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);box(out,[x,y+.55,z],.015,.25,.015,C.G);
       lathe(out,[[.0,.0,C.W],[.22,.08,C.W]],[x,y+.78,z],16);break;
-    case'sci':lathe(out,[[.625,0,C.D],[.625,.07,C.D],[.625,.07,[.78,.62,.2,1]],[.625,.38,[.78,.62,.2,1]],[.625,.38,C.D],[.625,.45,C.D]],o);
+    case'sci':lathe(out,[[.625,0,C.D],[.625,.07,C.D],[.625,.07,C.AU],[.625,.38,C.AU],[.625,.38,C.D],[.625,.45,C.D]],o);
       box(out,[x+.45,y+.6,z],.015,.25,.015,C.G);box(out,[x-.45,y+.55,z],.015,.2,.015,C.G);break;
-    case'bio':lathe(out,[[.625,0,C.D],[.625,.08,C.D],[.6,.08,C.W],[.42,.85,C.W],[.42,.85,C.D],[.3,.88,C.D],[.3,1.0,C.D]],o);
-      lathe(out,[[.1,0,C.GL],[.1,.04,C.GL]],[x+0.3,y+.5,z+.38],10);break;
-    case'ballast':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.Y],[.625,.45,C.Y],[.625,.45,C.D],[.625,.5,C.D]],o);break;
+    case'bio':lathe(out,[[.625,0,C.D],[.625,.08,C.D],[.6,.08,C.W],[.42,.85,C.W],[.42,.85,C.D],[.3,.88,C.D],[.3,1.0,C.D]],o);break;
+    case'ballast':lathe(out,[[.625,0,C.D],[.625,.05,C.D],[.625,.05,C.ST],[.625,.45,C.ST],[.625,.45,C.D],[.625,.5,C.D]],o);break;
     case'chute':lathe(out,[[.3,0,C.G],[.3,.22,C.G],[.3,.22,C.O],[.16,.38,C.O],[0,.42,C.O]],o);break;
     case'shield':lathe(out,[[.66,0,C.SH],[.66,.1,C.SH],[.625,.2,C.D]],o);break;
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
-    case'wren':lathe(out,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o,28,[false,true]);break;
-    case'sparrow':lathe(out,[[.3,0,C.K],[.12,.45,C.D],[.3,.55,C.G],[.625,.72,C.G],[.625,.8,C.G]],o,28,[false,true]);break;
-    case'petrel':lathe(out,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o,28,[false,true]);break;
-    case'kestrel':lathe(out,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o,28,[false,true]);break;
-    case'condor':lathe(out,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o,28,[false,true]);break;
-    default:{const b=.07,big=h>3;const pr=[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W]];
-      if(big)pr.push([.625,h*.46,C.W],[.625,h*.46,C.O],[.625,h*.54,C.O],[.625,h*.54,C.W]);
-      pr.push([.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]);lathe(out,pr,o)}}}
+    case'wren':engine(out,p,[[.25,0,C.K],[.1,.25,C.D],[.35,.35,C.G],[.625,.5,C.G],[.625,.55,C.G]],o);break;
+    case'sparrow':engine(out,p,[[.3,0,C.K],[.12,.45,C.D],[.3,.55,C.G],[.625,.72,C.G],[.625,.8,C.G]],o);break;
+    case'petrel':engine(out,p,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o);break;
+    case'kestrel':engine(out,p,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o);break;
+    case'condor':engine(out,p,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o);break;
+    default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
 function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;partShape(a,p);
     if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
       const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
     // reinforced joints show as a dark collar (two for heavy) around a stack joint, a darker box at a side joint
-    if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36];
-      if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
-      else rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}}
+    if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
+      if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
+      else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
   return makeMesh(a)}
+// ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
+// so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
+//   soot  — a burning engine, and the base of the parts within 3 m above it on its stack line; worse at altitude, where
+//           the plume balloons and washes back over the base
+//   char  — the peak skin temperature between 480 K and the part's limit (1 = about to burn up); its direction is the
+//           heat-weighted airflow in the ship frame, so the windward side takes it. A heat shield blackens from ~420 K (and with
+//           the ablator it has used).
+//   frost — fuelled tanks waiting on the pad are LOX-cold; frost sheds over the first minute of flight, faster with speed
+//   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
+const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
+const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
+let markT=null;
+function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
+  const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed)S.mkLift=true;
+  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle;
+  for(const p of S.parts){if(!p.on)continue;const m=markOf(p);
+    if(p.cap.fuel)m.frost=pad?1:Math.max(0,m.frost-dt*(1/45+sp/6000));
+    if(p.T>480){m.char=Math.max(m.char,clamp((p.T-480)/(p.d.Tmax-480),0,1));if(sp>1)m.cd=madd(m.cd,fb,(p.T-480)*dt/sp)}
+    if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
+    if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
+  for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
+    for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
+      const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
+  for(const d of debris)for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12)}}
+// the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
+function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
+    MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
+    CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
+  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA)}
 const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
-const PAD=(()=>{const a=[];
-  lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
-  lathe(a,[[.45,0,C.R],[.45,22,C.R],[.7,22,C.G],[.7,22.6,C.G]],[4.2,0,0],10);
-  for(const[x,z]of[[34,14],[39,21],[-28,30]])lathe(a,[[2.2,0,C.W],[2.2,5,C.W],[1.3,6,C.W],[0,6.3,C.W]],[x,0,z],20);
-  lathe(a,[[11,0,C.CON],[11,9,C.CON],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
-  lathe(a,[[3,0,C.D],[3,3,C.D]],[20,0,-30],16);return makeMesh(a)})();
+// a straight tube from A to B (struts, pipes, masts, legs): seg sides, optional flat end caps
+function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d),Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);
+  const N=a=>add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),P=(a,y)=>add(add(A,mul(Y,y)),mul(N(a),r));
+  for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;for(const[a,y]of[[a0,0],[a0,L],[a1,L],[a0,0],[a1,L],[a1,0]])pv(out,P(a,y),N(a),col)}
+  if(caps)for(const[y,s]of[[0,-1],[L,1]])for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,n=mul(Y,s);pv(out,add(A,mul(Y,y)),n,col);pv(out,P(a0,y),n,col);pv(out,P(a1,y),n,col)}}
+// an open lattice tower, w square and H tall at (x, z): corner posts, a girder ring every ~2.5 m, a zig-zag brace per bay
+function lattice(out,x,z,w,H,col){const c=[[x-w/2,z-w/2],[x+w/2,z-w/2],[x+w/2,z+w/2],[x-w/2,z+w/2]],n=Math.round(H/2.5);
+  for(const[a,b]of c)tube(out,[a,0,b],[a,H,b],.12,col);
+  for(let i=0;i<=n;i++){const y=i*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4];tube(out,[a,y,b],[a2,y,b2],.07,col,5)}}
+  for(let i=0;i<n;i++){const y0=i*H/n,y1=(i+1)*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4],f=(i+k)%2;tube(out,[a,f?y0:y1,b],[a2,f?y1:y0,b2],.05,col,4)}}}
+// The launch complex, in the pad's frame (x east, y up, z north; the rocket stands at the origin). Everything sits at or
+// above the ground, which is drawn by the sky shader; the buildings stand on the concrete slabs that shader paints
+// (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the road leaving to the south-west). Early-era Cape style.
+const PAD=(()=>{const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],W=C.W;
+  // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
+  lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
+  for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
+  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;box(a,[3.4*Math.cos(t),.25,3.4*Math.sin(t)],.3,.25,.3,STL)}
+  // flame channel running north between the propellant farm and the water tower: low sooted walls on a dark floor
+  for(const s of[-1,1])box(a,[3.4*s,.6,21],.4,.6,14.5,CO);box(a,[0,.012,21],3,.01,14.5,DK);
+  // the umbilical tower: an orange lattice east of the rocket, a cap platform, a hammerhead jib, a lightning mast, and
+  // three swing arms (retracted for launch, folded along the tower's west face) with hoses hanging from their tips
+  const TX=7,TW=3,TH=32;lattice(a,TX,0,TW,TH,OR);box(a,[TX,TH+.15,0],TW/2+.6,.15,TW/2+.6,STL);
+  box(a,[TX-2,TH+1.2,0],3.5,.25,.25,OR);tube(a,[TX-5.3,TH+1.2,0],[TX-5.3,TH-1.5,0],.03,DK,4);tube(a,[TX,TH+.3,0],[TX,TH+8,0],.08,STL,6);
+  for(const h of[9,17,25]){box(a,[TX-TW/2-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[TX-TW/2-.25,h-.3,-4.6],[TX-TW/2-.25,h-3.2,-4.4],.08,DK,6)}
+  box(a,[TX,TH/2,0],.5,TH/2,.5,[.22,.23,.25,1]);   // the elevator shaft inside
+  // propellant farm on its slab: a LOX sphere on legs, a horizontal RP-1 tank on saddles, both feeding the pad by pipe
+  {const pr=[];for(let i=0;i<=14;i++){const t=-Math.PI/2+i/14*Math.PI;pr.push([4.5*Math.cos(t),6+4.5*Math.sin(t),W])}lathe(a,pr,[33,0,13],24,[false,false]);
+   for(let i=0;i<6;i++){const t=i/6*6.2832;tube(a,[33+5*Math.cos(t),0,13+5*Math.sin(t)],[33+4.4*Math.cos(t),6,13+4.4*Math.sin(t)],.18,STL,6)}}
+  tube(a,[33,2.3,24],[45,2.3,22],2,W,20,true);for(const x of[35,39,43])box(a,[x,.6,23.7-(x-33)/6],.3,.6,1.4,CO);
+  tube(a,[33,.4,9],[4,.4,1.8],.25,STL,8);tube(a,[35,.35,21],[4.2,.35,2.6],.2,STL,8);
+  // the water tower for the deluge system, by the north-west edge of the apron
+  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;tube(a,[-28+3*Math.cos(t),0,30+3*Math.sin(t)],[-28+2*Math.cos(t),12,30+2*Math.sin(t)],.15,STL,6)}
+  lathe(a,[[3,12,W],[3,16,W],[1.2,17.3,W],[0,17.6,W]],[-28,0,30],20,[true,false]);
+  // the blockhouse: a thick concrete dome on its slab, a dark band of periscope slots, an antenna mast; cables to the pad
+  lathe(a,[[11,0,CO],[11,1.8,CO],[11,1.8,DK],[10.8,2.4,DK],[10.8,2.4,CO],[9.6,5,CO],[7.5,7.4,CO],[4.5,8.9,CO],[0,9.6,CO]],[-45,0,-25],36,[false,false]);
+  tube(a,[-45,9.5,-25],[-45,16,-25],.06,STL,4);tube(a,[-35,.3,-20],[-6,.3,-3],.15,DK,6);
+  // the compressor/power building on the small slab
+  box(a,[20,2,-30],4.5,2,3,[.68,.66,.6,2]);box(a,[20,4.1,-30],4.7,.1,3.2,C.D);
+  // floodlight poles around the apron
+  for(let i=0;i<4;i++){const t=.5+i*Math.PI/2,x=34*Math.cos(t),z=34*Math.sin(t);tube(a,[x,0,z],[x,16,z],.15,STL,6);box(a,[x,16.4,z],.8,.4,.3,C.D)}
+  return makeMesh(a)})();
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
@@ -2223,6 +2424,7 @@ function render(){
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
+  marksTick();
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R+WORLD.siteH,0,0],simT);
@@ -2238,10 +2440,10 @@ function render(){
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
       gl.uniform1f(m.uShadow,0);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS)}
-    gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);gl.uniform1f(m.uSeam,0);
+    setMarks(m,S.parts);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);gl.uniform1f(m.uSeam,0);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
-  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);
+  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];

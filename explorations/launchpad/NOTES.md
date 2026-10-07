@@ -537,6 +537,166 @@ noise. (In editor mode `render()` isn't the drawing path, so the pad must be tim
 Still open: no soot on the parts themselves (the shader doesn't know where engines are); the vertical grime is laid
 around the stack axis, so it's slightly off on side boosters; no ambient occlusion at part joints.
 
+## Part visuals — early-era hardware look (2026-10-07, visuals session, branch `visuals`)
+
+Direction agreed with Caio: **early-era realism**, 1950s–60s hardware to match Epochs 1–2. Later eras can shift the palette.
+Everything is procedural in the mesh shader, with no image textures.
+
+### How it works
+- **Each part has its own surface frame.** The vertex grew from 10 to 16 floats (`VX=16`): turns around the part's *own*
+  axis, height above the part's bottom, the part's nominal radius and height, the detail kind (`KIND`) and the part index.
+  `partShape` sets `PK` while a part is built, and `lathe`/`box`/`fin` stamp it into every vertex (`pv`). Scaled 2.5 m parts
+  scale the height/radius entries along with the positions, so detail sizes follow the part (`sc = R/0.625`). Side boosters
+  get patterns centred on their own axis, which fixes v1.11's off-axis grime. `builder.js` steps by `VX` and only touches
+  entries 6–9, so it needed no change.
+- **One detail branch per kind in `MESH_FS`,** gated on `uSeam` (ship, debris, the builder's solid ghost). It uses shared
+  footprint-filtered helpers (`lin`, `sqw`, `band`, `dots`), so every line, checker and rivet fades to its mean instead of
+  shimmering. Footprints are taken once, before the branches. Bump detail tilts the object-space normal along the
+  around-axis tangent `T`. `uM` is now read in the fragment shader as well.
+- **What each part looks like:**
+  - tanks: Saturn/V-2 roll-pattern checker bands top and bottom when taller than 3 m; two opposite black stripes on 1.5–3 m
+    tanks; the old orange mid-band is gone. Weld rings, one longitudinal seam, and rivets on the end flanges.
+  - engines: the profile is split at the throat into bell and mount. The bell has regen tubes (count fixed by exit radius,
+    so they converge toward the throat), heat tint (straw → blue → violet toward the throat), a stiffener at the lip and a
+    sooted interior. The interior glows by throttle (`uHot[part index]`, set for active engines each frame). Engines of
+    200 kN and up carry a turbopump with an exhaust duct, plus a gas-generator can.
+  - capsule: dark corrugated shingles (Mercury), shingle rows with rivets, a framed trapezoid window drawn on the surface
+    (replaces the glass puck), a hatch outline.
+  - nose cone: fairing split lines with rivets, a scorched tip.
+  - decoupler: hazard band, ribbed skirt, separation groove with bolts. The interstage shell has stringers and vent ports.
+  - fins: now swept and tapered (`fin()`), white and black alternating, with a bare-metal leading edge.
+  - instruments: crinkled gold foil.
+  - biocapsule: a porthole and a hatch seam.
+  - mass simulator: bolted steel plates (it was yellow like a decoupler).
+  - parachute: canister straps and canvas weave.
+  - heat shield: ablator honeycomb.
+  - adapter: black roll quadrants.
+  - radial decoupler: chevrons.
+  - reinforcement collars: bolt rows.
+- **New reference views in `views.js`:** `refView(4–9)` are part close-ups in the editor (Kestrel/fins, pod, adapter +
+  interstage, instruments, Lunar t8, heat shield). `refView(10)` is the Sounding rocket firing, seen from below.
+  `refView(1)` now resets `cam.edY`, which the close-ups leave set.
+
+### Measurements
+GPU timer queries (`gpuMs`, `RS` pinned to 1), 1280×800 headless Chrome on the RTX 3050. Two alternating rounds against a
+`main` snapshot (`34a2317`), three 1.2 s samples per view:
+
+| view | main | visuals |
+|---|---|---|
+| 4 Kestrel close-up | 3.0–3.4 ms | 2.8–3.0 ms |
+| 5 pod close-up | 2.9–3.3 | 2.9–3.7 |
+| 2 ascent | 2.2–2.6 | 2.2–2.7 |
+| 10 engine from below | 1.2–1.6 | 1.2–1.7 |
+
+The two are the same within noise. The per-part branches are cheap next to the sky and ground shaders.
+`test.mjs`: all passed (the pass is render-only).
+
+### What went wrong on the way
+- **`render()` + `gl.finish()` timing is meaningless under ANGLE/D3D11.** It reported 0.1–0.2 ms for frames that the timer
+  queries put at about 3 ms, so `finish` doesn't wait there. Use `gpuMs`.
+- **The first gold foil read as camouflage.** Coarse normal noise on a metal flips its reflection between the sky colour
+  and the ground colour (a hard `smoothstep`) in large patches. Fine, shallow crinkles (≈2 cm, ±0.75 tilt) read as foil.
+  Albedo noise was the wrong lever.
+- **The bell-interior glow is almost never visible.** The plume covers the bell from below, and from the side you see the
+  outside of the bell. It costs nothing, so it stays. The version you would actually see is a radiatively cooled nozzle
+  extension glowing on vacuum engines (the Petrel), on the *outside* of the bell (open thread).
+
+### Screenshot pipeline (CLI, no app needed)
+Headless Chrome on the real GPU (`--use-angle=d3d11`), driven over CDP by a ~30-line Node script (Node 24 has a built-in
+WebSocket): navigate, inject `views.js`, `Runtime.evaluate("refView(n)")`, `Page.captureScreenshot`. Claude reads the PNGs
+directly. It is `shot.mjs` in this folder (usage in its header).
+
+### Still open (visuals)
+- ~~Petrel nozzle extension glowing~~: done ("Flight marks").
+- ~~Soot and scorch that build up~~: done, see "Flight marks" below.
+  (skin temperatures already exist in the sim).
+- Ambient occlusion where parts meet. LOX frost on cryogenic tanks while on the pad.
+- Paint schemes per design or era (agency white, company livery), from the same roll-pattern machinery.
+- Lettering and flags on tanks: needs a glyph atlas or SDF; skipped for now.
+
+## Flight marks — what a flight leaves on the hardware (2026-10-07, visuals session)
+
+Slice 2 of the visuals work, agreed with Caio: the rocket no longer looks factory-new forever. It is render-only. The sim
+never reads marks; they live in a `WeakMap` keyed by part object (`MARKS`), so they ride along onto debris and landed
+stages, and a new flight starts clean.
+
+### How it works
+- **`marksTick()`** runs once per `render()`. Its step is the sim-time delta, capped at 5 s, so warp is roughly right.
+  - **Soot:** a burning engine, and the base of the parts up to 3 m above it on its stack line. The rate is ×(1 + 2·(1 −
+    p/p₀)) because the plume balloons at altitude and washes back over the base.
+  - **Char:** maps the peak skin temperature `p.T` onto 480 K → the part's `Tmax`, so 1 means about to burn up. Its
+    direction is the heat-weighted airflow in the ship frame (`qrot(qconj(q), v − v_surface)`). A heat shield blackens from
+    ~420 K and also with the ablator it has used.
+  - **Frost:** set to 1 on fuelled tanks while landed and before first liftoff (`S.mkLift`). It sheds at
+    1/45 s⁻¹ + speed/6000.
+  - **Glow:** vacuum engines only (`ispA < ½·ispV`, i.e. the Petrel). It follows the throttle with a 6 s heating and
+    12 s cooling time constant.
+- **`setMarks(u, parts)`** packs the marks into `uMk[96]` (soot, frost, fuel level, glow) and `uCh[96]` (windward direction,
+  char), indexed by part index. It is called for the ship, then per debris, then with `[]` so the editor and builder
+  ghosts draw clean. This replaced v-slice-1's `uHot` (the inner-bell glow was invisible under the plume anyway).
+- **Shader:**
+  - soot climbs streakily from each part's base (engines all over);
+  - char first scorches paint yellow-brown, then blackens it, on the windward side, streaked along the flow;
+  - frost lies only below each tank's fuel line, in patches that thin as it sheds;
+  - the vacuum nozzle extension glows dull red to orange from the exit up.
+- **Reference views:** `refView(11)` frost on the pad, `12` soot at 70 s, `13` a biocapsule after an entry from orbit,
+  `14` the Petrel 12 s into an orbital burn. The sim loops call `marksTick()` every 0.25–0.5 s, because one render only
+  takes up to 5 s of marks.
+
+### What went wrong on the way (worth knowing)
+- **"Black" is not black under this light.** The first soot (mix 92 % toward albedo 0.018) didn't show at all. A red test
+  colour proved the branch ran: red appeared on the black paint, while white areas stayed white. The sun term is strong
+  enough that 8 % of white paint plus 0.018 still lands in the tone curve's shoulder as light grey. Soot and char now go
+  to albedo ≈ 0.004 at up to 98.5 % coverage, blacker than black paint. Generalises: in this renderer, judge darkening
+  effects on *white* paint.
+- **Caps break anything keyed to the around-axis coordinate.** A lathe cap's triangles each span a different angle
+  range, so `fwidth(u)` and arc-length noise change per triangle, and the shield face rendered as a pinwheel of wedges.
+  Caps now use the planar footprint `fwidth(vO.xz)` and planar noise. This also fixes slice 1's honeycomb filtering on
+  the shield face.
+- **Integrated char saturates.** Accumulating char over time blackened every part within ~30 s of entry heating. Mapping
+  the *peak* temperature against each part's limit reads right: the biocapsule at 853 / 1250 K is scorched, not burnt.
+- **Tellus is small.** The first entry test used 7.6 km/s and sailed off to 4,700 km. Use `√(μ/r)`.
+- **An unbounded sim loop in a reference view hangs headless Chrome silently.** Bound every `while` (time, `!S.alive`).
+
+### Measurements
+GPU timer, alternating against `main` (two rounds): view 4 close-up 2.7–3.8 vs 2.8–3.3 ms, view 2 ascent 2.4–3.3 vs
+2.2–3.2 ms. Within the run-to-run spread, at most ≈0.2 ms. `test.mjs` all passed (render-only).
+
+### Still open
+- Char on the dark capsule shingles is nearly invisible (it's black on black). A lighter heat-tint or a sheen loss could
+  carry it.
+- Debris doesn't heat in the sim, so stages falling back don't char. Their marks only cool and shed.
+- No soot on the *side* of a core next to a booster's engine (soot only follows the stack line).
+
+## The launch complex (2026-10-07, visuals session)
+
+Slice 3 of the visuals work. Next to the detailed rocket, the old pad (a red pole, three white cylinders, a drum) read as
+a placeholder. Only the **contents** of the `PAD` mesh changed. Where it is drawn, its height (`siteH`) and the
+ground-shader apron (`padGround`) belong to the terrain session and were not touched. Everything sits at or above y = 0
+in the pad's frame (x east, y up, z north), so the rocket still stands at the origin on the ground the physics knows.
+Each building stands on a concrete slab that `padGround` already paints.
+
+### What's there (early-era Cape style)
+- **Launch table:** the concrete disc, a dark steel flame grate under the engines with eight radial bars, four hold-down
+  posts at r 3.4 m.
+- **Flame channel:** low concrete walls on a sooted floor running north. The ground can't be dug (it is raymarched in the
+  sky shader), so the trench is suggested from above ground.
+- **Umbilical tower** east of the rocket: an orange lattice, 3 m square and 32 m tall (`lattice()`: corner posts, a girder
+  ring every ~2.5 m, zig-zag bracing). It has an elevator shaft, a cap platform, a hammerhead jib with a hook line, a
+  lightning mast, and three swing arms retracted along the west face with hoses hanging.
+- **Propellant farm** on its slab: a LOX sphere on six legs, a horizontal RP-1 tank on concrete saddles, pipes to the pad.
+- **Deluge water tower,** a **domed concrete blockhouse** with a band of periscope slots and an antenna mast (with a cable
+  run to the pad), a **compressor building**, and four **floodlight poles** around the apron.
+- New helpers `tube(A, B, r)` (a cylinder between two points) and `lattice()`. About 9,800 vertices in all, a static mesh.
+- `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
+  the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
+
+### Still open
+- A real trench and flame bucket would need a cut in the ground (terrain's shader).
+- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -567,6 +727,48 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
+
+Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
+sim already uses is **Newtonian shadowing**:
+- An upstream-facing surface sample gets no impact pressure, and no stagnation heat, if the ray from it back up the flow
+  crosses another line's body first.
+- Lines are cylinders of their widest radius over their own height.
+- Slender-body lift and skin friction are left unshadowed.
+
+At small angles of attack the upstream ray climbs steeply (1/tan α metres up per metre across, about 11 at 5°), so
+side-by-side boosters barely shade each other on ascent. At high α the leeward lines go dark. Broadside, the Heavy's three
+bodies are in a row along the flow, and the leeward booster tank's pressure falls from 70 kN (windward) to 0.9 kN (its
+skin friction). That's extreme, as Newtonian always is, but it matches tandem cylinders this close (centres 1.2
+diameters apart), where the downstream one sees almost no drag.
+
+| Normal force at q 20 kPa, M 0.6 | 0° | 5° | 20° | 60° | 90° |
+|---|---|---|---|---|---|
+| Orbiter (1 line) | unchanged | unchanged | unchanged | unchanged | unchanged |
+| Heavy (3 lines) | unchanged | 54.0 → 51.1 kN | 247 → 210 | 668 → 456 | 584 → **304** |
+| Asparagus (5 lines) | unchanged | 69.0 → 66.1 | 317 → 282 | 876 → 684 | 787 → 552 |
+| Nested 3×2 (10 lines) | unchanged | 24.8 → 24.3 | 146 → 124 | 568 → 355 | 641 → 476 |
+
+Stagnation heating on shadowed faces drops with it (Heavy at 60°: 0.06 → 0.02 MW). In the builder's design case (4–5°):
+- stability rises by 0.02–0.03 calibers on the booster designs, because the upper booster sections are shaded slightly
+  more and the centre of pressure moves aft
+- max-q joint loads move by 1–2 %
+
+So on a normal ascent this is a small correction. It matters in tumbles, aborts and broadside re-entries.
+
+**Cost:** about 3–12 µs more per step (5–20 %, noisy) with 3–10 lines. That is roughly 3 ms of a frame at 100× physics warp for
+the Heavy. `AERO_SHADOW` switches it off for A/B measurements (tests §19).
+
+**Two measurement traps on the way:**
+- **Cold timings.** The first timing (160–270 µs per step) was a cold JIT. Warmed up and best of 5 it is 26–40 µs, the same
+  as v1.8. Always warm up and take the best of several runs.
+- **The bisect that "found" a 5× higher apogee.** It came from my own script, which still used the old 600 km radius.
+  The planet had been rescaled to 1 274 km on `main` (d5cc27e) in the meantime. Measure altitude from `TELLUS.R`, never
+  a literal.
+
+**Also seen:** an unfaired design (boosters and side tanks with flat tops) has 288 kN of drag at 0°, against 32 kN for the
+Heavy with its nose cones. Newtonian impact pressure on blunt faces is what it should be. Fairings matter.
 
 ## v1.22 — canted engines (2026-10-07)
 
@@ -1324,7 +1526,9 @@ restartable upper stage, docking port.
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
    (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20, ~~canted
-   engines~~ done in v1.22. Next on that line: truly tilted bodies, and core↔booster aero interference.
+   engines~~ done in v1.22, ~~core↔booster aero interference~~ (Newtonian shadowing) done in v1.23. Next on that line: truly
+   tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
+   at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
