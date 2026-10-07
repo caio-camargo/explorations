@@ -568,6 +568,38 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.17 — tourism, military, sanctions, the race (2026-10-07)
+
+Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy`).
+
+- **Tourism** (a source of its own): *tourist flight to space* (g limit 4.5–6) once the passenger hop is done; *orbital
+  holiday* once the passenger orbit is. Pays 55–130M. The passenger is a named tourist ("a retired dentist", "a very
+  excited grandmother"). The offer rate goes with (tourism standing / 50)², so **one hurt tourist** (−40 standing,
+  −10 home opinion) all but empties the board for a long time.
+- **Military** (60% home as client, otherwise any power, including home's enemies):
+  - *reconnaissance orbit* (110–180 km, 60–90°);
+  - *ballistic test*: an instrument package down at sea within 40 km of a target 300–900 km downrange, marked on the
+    map. This exercises the impact predictor. The flight record now keeps where the flight ended (landed or crashed)
+    and whether the instruments were aboard;
+  - *classified payload* to orbit.
+  
+  Pay ×1.6. Each completed military contract **may leak** (25%, 40% for a foreign client). A leak costs home opinion,
+  and every power hostile to the client takes −15 opinion and sanctions us.
+- **Sanctions** (`sanction(i, days, why)`): that power sends no offers, cancels its active contracts and withholds its
+  budget-day share until the sanction lapses. **Home sanctions too:** military work for home's enemy (always found out:
+  250 days), and commercial work for a power with relation < −0.75 (export controls: 120 days). For a state agency
+  that means losing government contracts and the budget day, which is the "working with the enemy" mechanic. Offers
+  show the risk before you take them ("⚠ Maros sanctions us at once · Venka if it leaks (40%)").
+- **The race** for the first satellite, the first passenger to space and the first passenger orbit. Rivals' schedules
+  are seeded from their tech × √economy (first world: the strongest rival is expected around days 86 / 184 / 278).
+  First in the world pays 1.5× (+8 home opinion); second pays half. A rival's win makes the news, and costs home
+  opinion if that rival is unfriendly. The Program panel shows the race.
+
+`test.mjs`: 5 new checks (80).
+
+Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
+controls on hardware).
+
 ## v1.16 — ownership: what the program is (2026-10-07)
 
 Slice 5. The program is a set of shares that sum to 1: state stakes by power (`own().st`) plus private capital

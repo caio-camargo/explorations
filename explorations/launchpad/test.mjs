@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -512,7 +512,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // privatization: a 25% stake sold for cash, the agency becomes part-privatized
   fresh(); api.chooseStart('agency'); const f3 = P.funds; api.offerDecision({ kind: 'ipo', amt: 40, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
   check('privatization: selling 25% brings cash and a part-private program', Math.abs(api.own().pv - 0.25) < 1e-9 && P.funds === f3 + 40 && api.ownKind() === 'agency, part-privatized' && Math.abs(sum() - 1) < 1e-9, `${api.ownKind()}: state ${(api.stateShare() * 100).toFixed(0)}%, private 25%`);
-  fresh(); P.day = 0; P.rel = {}; P.op = {}; api.HOOK.news = () => {};
+  // slice 6 — tourism: only after a passenger has flown; a hurt tourist empties the bookings
+  const R8 = api.rng(8), tourTypes = d => { fresh(); P.done = d; const t = new Set(); for (let i = 0; i < 60; i++) { const o = api.genOffer('tour', R8); if (o) t.add(o.type); } return [...t].sort().join(); };
+  const t0 = tourTypes({}), t1 = tourTypes({ hop: {} }), t2 = tourTypes({ hop: {}, orbiter: {} });
+  fresh(); s = launch(['chute', 'bio', 't2', 'fins', 'kestrel']); s.rec.launched = false; P.active = [ct('touristHop', { g: 5 }, 'tour')]; const opT = api.opOf(api.HOME);
+  armed = false; n = 0; while (s.alive && !(s.rec.launched && s.landed) && n++ < 400000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  api.missionEnd(s);
+  check('tourism: offered only after a passenger flight (orbital holidays after an orbit); a hurt tourist collapses tourism standing', t0 === '' && t1 === 'touristHop' && t2 === 'touristHop,touristOrbit' && s.rec.tourist && !s.rec.bioOK && api.standOf('tour') <= 10 && api.opOf(api.HOME) < opT - 10,
+    `offers: none → ${t1} → ${t2}; on a Kestrel, ${s.rec.pet} ${s.rec.bioWhy}; tourism standing ${api.standOf('tour')}`);
+  // sanctions: military work for home's enemy → home sanctions at once: no government offers, no budget day from home
+  const foe = (() => { for (const p of PW) if (p.i !== api.HOME && api.relOf(api.HOME, p.i) < -0.55) return p.i; return null; })();
+  fresh(); P.day = 0; P.op = {}; if (foe == null) { P.rel['0-1'] = -0.8; }
+  const enemy = foe ?? 1; P.offers = [{ ...ct('milLift', { m: 1 }, 'mil', enemy), id: 77, expires: 50 }];
+  const risk = api.offerRisk(P.offers[0]); api.acceptOffer(77); const fG = P.funds; api.advanceDays(100.5);
+  const govOffers = (() => { const R9 = api.rng(9); let k = 0; for (let i = 0; i < 40; i++) { const o = api.genOffer('gov', R9); if (o) k++; } return k; })();
+  check('military work for an enemy of home: home sanctions at once; no government offers and no budget day from home while it lasts', risk.now.includes(api.HOME) && api.sanctioned(api.HOME) && govOffers === 0 && P.funds === fG,
+    `client ${PW[enemy].name} (relation ${api.relOf(api.HOME, enemy).toFixed(2)}); sanctioned until day ${P.sanc[api.HOME].toFixed(0)}; 40 government draws → ${govOffers} offers`);
+  // a leak: the client's enemies sanction us, cancel their contracts and stop sending offers
+  fresh(); P.day = 0; P.op = {}; P.rel = {}; const pairs = []; for (const a of PW) for (const b of PW) if (a.i < b.i) pairs.push([a.i, b.i]);
+  const [cl1, en1] = pairs.find(([a, b]) => api.relOf(a, b) < -0.55 && a !== api.HOME && b !== api.HOME) || [1, 2]; P.rel[[cl1, en1].sort().join('-')] = -0.8;
+  let mid = 1; while (api.rng((P.wseed ^ (mid * 2654435761)) >>> 0)() >= api.LEAK_P({ client: cl1 })) mid++;   // a contract id whose roll leaks
+  P.active = [{ ...ct('milLift', { m: 0.5 }, 'mil', cl1), id: mid }, { ...ct('apex', { lo: 10, hi: 25 }, 'sci', en1), id: 5 }];
+  api.contractEval({ rec: { lift: 1, cdone: [] } });
+  check('a military contract that leaks: powers hostile to the client sanction the program and cancel their contracts', api.sanctioned(en1) && !P.active.some(c => c.client === en1),
+    `${PW[cl1].name}'s payload leaked → ${PW[en1].name} sanctions us`);
+  // the ballistic test: down at sea within the radius of the target, with the instruments
+  const tgt = norm([Math.cos(0.8), 0, Math.sin(0.8)]), near = norm(add(tgt, [0, 0.02, 0])), far = norm(add(tgt, [0, 0.2, 0])), CTb = api.CT.ballistic;
+  check('ballistic test: counts only near the target and only with the instrument package aboard', CTb.ok({ endPf: mul(near, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(far, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(near, TELLUS.R), endSci: false }, { u: tgt, rad: 40 }),
+    `${(Math.acos(dot(near, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off counts, ${(Math.acos(dot(far, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off doesn't`);
+  // the race: first in the world pays 1.5×; after a rival gets there, half
+  const firstPay = lost => { fresh(); P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); return P.funds - f; };
+  const pFirst = firstPay(false), pSecond = firstPay(true), beeperPay = api.MISSIONS.find(m => m.id === 'beeper').pay;
+  check('the race: the first satellite pays 1.5× when we are first, half when a rival got there first; rivals have schedules', Math.abs(pFirst - 1.5 * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
+    `first ${pFirst}M, second ${pSecond}M; rivals expected: ${api.RACE.map(id => `${id} ${PW[api.RIVALS[id].i].root} day ${api.RIVALS[id].day}`).join(', ')}`);
+  fresh(); P.day = 0; P.rel = {}; P.op = {}; P.sanc = {}; P.raceLost = {}; api.HOOK.news = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }

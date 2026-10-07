@@ -1799,3 +1799,6 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   driving budget days, offers and politics; floor top-ups take equity; rescue (stake or loan), privatization and
   foreign-stake decisions. `test.mjs` 75/75. Committed and pushed (only this session's edits; builder-session work left in
   the tree).
+- **v1.17 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
+  a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
+  working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80.
