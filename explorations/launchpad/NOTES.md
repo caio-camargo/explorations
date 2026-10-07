@@ -977,6 +977,30 @@ staging, relights and throttling up from zero all count.
 
 **Still open:** shutdown tail-off (the plume still vanishes at cutoff) and staging puffs, both proposed with this.
 
+## Engine shutdown and staging (2026-10-07, aerofx session)
+
+**Shutdown tail-off.** A plume used to vanish the frame its engine left `activeEngines`. Now `plumeEngines()` also
+returns stopped engines (still on the ship) whose spool has not decayed, and `spoolOf(e, on)` drives them to zero
+with a 0.22 s lag. The moment an engine's target drops to zero (cutoff, flameout, throttle to zero) stamps `sp.off`:
+- `ignOf` adds a **tail-off richness** (`PROPS[...].tail`, decaying over 0.5 s), so the dying flame goes orange, lumpy and
+  sooty, the same look as the fuel-rich start. Its length follows the spool only (not the start's burst), so it shrinks.
+- **cutoffPuff**: a handful of puffs of unburnt propellant leave the nozzle, sootier and more numerous for kerolox.
+- The start/stop soot is confined to ~6–14 exit radii from the nozzle. At first it filled the plume's whole length
+  and read as a long brown smoke trail.
+
+**Staging.** `HOOK.debris` now calls `sepFx(d)`: when the dropped piece holds a decoupler, a ring of 18 gas puffs vents
+radially from the seam (a stack decoupler's top face, a radial decoupler's mount) and 26 sparks spray out (tiny, glowing,
+0.25–0.7 s). Breakups without a decoupler get nothing here (`booms` covers those). In thin air the gas spreads wider and
+thinner (grow +3·(1 − pa), opacity × (0.25 + 0.75 pa)). Opaque, it ballooned into a white cloud at 30 km.
+
+**Moving puffs:** cutoff and separation puffs travel with a velocity (`fxPuff`: inertial, Tellus-centred, ballistic)
+instead of hanging in the air like the smoke trail, so they keep up with the ship for their short lives. `drawSmoke`
+takes both kinds, and `hot` sets a puff's glow (sparks ~1.6).
+
+Reference views: `refView(73)` the Orbiter's Kestrel 0.15 s after cutoff at 3 km, `74` 0.6 s after; `75` staging at 3 km;
+`76` staging at 30 km; `77` the Heavy dropping its side boosters. They climb unrendered, reset the engines' ignition
+clocks (else the first render would replay their ignition), then render every step through the action and freeze.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -153,6 +153,24 @@ window.refView = async (n) => {
     while (simT - t0 < age - 1e-9) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); render(); }
     window.simulate = () => {};   // freeze the sim for the capture (the live frame loop would run it on); the next refView restores it
     await settle(); bare(); return 'ignition +' + (simT - t0).toFixed(2) + ' s';
+  }
+  // 73–77: cutoff and staging. Climb (pitch kick at 8 s, then prograde) to alt m, then do the action and render every step
+  // for age s, freezing the sim for the capture: [design, alt, action ('cut' = throttle to zero, 'stage'), age, yaw, pitch, dist]
+  const cut = { 73: ['Orbiter', 3000, 'cut', 0.15, 1.75, 0.0, 30], 74: ['Orbiter', 3000, 'cut', 0.6, 1.75, 0.0, 30],
+    75: ['Orbiter', 3000, 'stage', 0.12, 1.75, 0.05, 26], 76: ['Orbiter', 30000, 'stage', 0.3, 1.75, 0.05, 26],
+    77: ['Heavy', 2500, 'stage', 0.15, 1.75, 0.05, 34] };
+  if (cut[n]) {
+    const [design, alt, act, age, yaw, pitch, dist] = cut[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S);
+    while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
+    INP.pitch = 0; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
+    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }   // the climb wasn't rendered: these engines lit long ago
+    render();
+    if (act === 'cut') S.throttle = 0; else stage(S);
+    const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); render(); }
+    window.simulate = () => {};   // freeze for the capture (restored by the next refView)
+    await settle(); bare(); return design + ' ' + act + ' at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km +' + (simT - t0).toFixed(2) + ' s debris ' + debris.length;
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

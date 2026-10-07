@@ -2670,7 +2670,7 @@ void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
   float gf=min(1.,uIg.r+uIg.g+uIg.b);   // while the igniter flashes, its colour outshines the young flame
   vec3 e=uI*(co*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45*(1.-uIg.w)+uMa*(mantle+rich*prof*.6)*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18)*(1.-.85*gf)
    +uIg.rgb*(core*2.+prof*(.6+nn))*d*smoothstep(6.*re,0.,s);   // the igniter's flash (TEA-TEB green on kerolox)
-  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8)+uK.w*rich*prof*smoothstep(1.5*re,5.*re,s)*1.5;
+  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8)+uK.w*rich*prof*smoothstep(1.5*re,5.*re,s)*smoothstep(14.*re,6.*re,s)*1.5;   // start/stop soot stays near the nozzle
   C+=Tr*e*st;Tr*=exp(-(uSo*soot+uOp*uI*(core*d*.4+mantle*.25))*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  vec3 c=pow(1.-exp(-C),vec3(1./1.5));float a=1.-dot(Tr,vec3(.333));
  o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
@@ -3021,10 +3021,10 @@ const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i
 // per channel; K = gains [core, diamonds, mantle, soot]. Engines pick one plus their exit pressure pe (atm) in PFX.
 const PROPS={
   // ig: the igniter's flash colour and length (s), rich: how long the fuel-rich start lasts (s)
-  kerolox:{ig:[.25,1,.35],igT:.3,rich:.7,co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
-  alcohol:{ig:[1,.75,.35],igT:.15,rich:.4,co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
-  hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
-  hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
+  kerolox:{ig:[.25,1,.35],igT:.3,rich:.7,tail:.8,co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
+  alcohol:{ig:[1,.75,.35],igT:.15,rich:.4,tail:.4,co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
+  hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,tail:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
+  hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,tail:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
 const PFX={sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
   kestrel:{prop:'kerolox',pe:.75},condor:{prop:'kerolox',pe:.8},albatross:{prop:'kerolox',pe:.7}};
 // an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
@@ -3042,7 +3042,7 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
-function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive||S.throttle<=0)return;const E=activeEngines(S);if(!E.length)return;
+function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
   const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
   for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
       Q=e.tdir?qmul(S.q,tiltQ(e.tdir)):S.q,o=add(sub(p,camW),qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
@@ -3073,12 +3073,28 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
 // ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)
-function spoolOf(e){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
-  if(sp.k<.02&&S.throttle>0)sp.ig=simT;const a=simT-sp.ig;sp.k+=(S.throttle-sp.k)*(1-Math.exp(-dt/(a<.6?.3:.12)));return sp}
+// on = the engine is still burning (in activeEngines); an engine that stops (cutoff, flameout) keeps a decaying plume, and
+// the moment its target drops to zero stamps sp.off, the cutoff clock for the tail-off (ignOf) and a smoke puff
+function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9,off:-1e9,tg:0});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
+  const tg=on?S.throttle:0;if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
+  const a=simT-sp.ig;sp.k+=(tg-sp.k)*(1-Math.exp(-dt/(tg<sp.k?.22:a<.6?.3:.12)));return sp}
+// the engines whose plume shows: the burning ones, and stopped ones still tailing off: [[engine, burning]]
+function plumeEngines(){const A=S.alive?activeEngines(S):[],out=A.map(e=>[e,true]);
+  for(const p of S.parts)if(p.on&&p.d.kind==='engine'&&!A.includes(p)){const sp=SPOOL.get(p);if(sp&&sp.k>.005)out.push([p,false])}return out}
+// cutoff: a puff of unburnt propellant at the nozzle (kerolox: a dark sooty one), carried with the ship
+function cutoffPuff(e){if(S.body!==TELLUS)return;const P=PROPS[pfxOf(e.d).prop]||PROPS.kerolox,n=Math.round(4+8*(P.tail||.3)),
+    at=add(S.r,qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-e.d.exit,e.pos[2]-S.cm[2]])),dn=qrot(S.q,[0,-1,0]),pa=pressure(TELLUS,len(S.r)-TELLUS.R);
+  for(let i=0;i<n;i++){const R=Math.random,j=[R()-.5,R()-.5,R()-.5];
+    fxPuff(madd(at,j,e.d.exit),add(S.v,add(mul(dn,6+10*R()),mul(j,4))),{s0:e.d.exit*(1+R()),grow:2+3*R()*(1+2*(1-pa)),a0:.35+.3*(P.tail||.3),life:2+3*R()*pa+1,hot:.4})}}
+// a puff that travels with a velocity (inertial frame, Tellus-centred) instead of hanging in the air: separation gas,
+// cutoff puffs, sparks. hot = how much it glows (sparks ~1)
+function fxPuff(r,v,o){if(smoke.length>2500)smoke.shift();smoke.push({iv:true,r0:r,v,t0:simT,s0:o.s0,grow:o.grow,a0:o.a0,life:o.life,hot:o.hot||0,rise:0,seed:Math.random()*97})}
+
 // [igniter colour × flash strength, richness] for an engine's current age since ignition
-function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9;if(a>3)return[0,0,0,0];const T=P.igT||.1,
-    fl=a<0?0:Math.exp(-a/T)*sstep(0,.02,a)*1.4,rich=sstep(0,.05,a)*Math.exp(-a/(P.rich||.2));
-  return[P.ig[0]*fl,P.ig[1]*fl,P.ig[2]*fl,rich]}
+function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9,ao=sp?simT-sp.off:1e9;if(a>3&&ao>3)return[0,0,0,0];const T=P.igT||.1,
+    fl=a<0||a>3?0:Math.exp(-a/T)*sstep(0,.02,a)*1.4,rich=a>3?0:sstep(0,.05,a)*Math.exp(-a/(P.rich||.2)),
+    tail=ao<0||ao>3?0:sstep(0,.04,ao)*Math.exp(-ao/.5)*(P.tail||.3)*1.4;   // the tail-off: the dying flame goes fuel-rich
+  return[P.ig[0]*fl,P.ig[1]*fl,P.ig[2]*fl,Math.max(rich,tail)]}
 
 // the plume's bounding size for an exit radius, throttle and ambient pressure (atm): [n, spread tan, length, radius]
 function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
@@ -3273,10 +3289,12 @@ function drawSmoke(VP,camW,R,U){
   const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th);
   if(smokeK.length<n){smokeK=new Float64Array(n*2);smokeI=new Uint32Array(n*2);smokeP=new Float64Array(n*12);smokeV=new Float32Array(n*96)}
   for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
-    if(q.ux===undefined){const L=len(q.pf);q.ux=q.pf[0]/L;q.uy=q.pf[1]/L;q.uz=q.pf[2]/L;q.wf=L-TELLUS.R<8000?1:.4}
-    const ra=q.rise*age,wa=age*q.wf,x=q.pf[0]+q.ux*ra+WIND[0]*wa,y=q.pf[1]+q.uy*ra+WIND[1]*wa,z=q.pf[2]+q.uz*ra+WIND[2]*wa;
-    const rx=c*x+sn*z-camW[0],ry=y-camW[1],rz=-sn*x+c*z-camW[2],o=i*6;
-    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=Math.max(0,1-age/.35);
+    let rx,ry,rz;const o=i*6;
+    if(q.iv){rx=q.r0[0]+q.v[0]*age-camW[0];ry=q.r0[1]+q.v[1]*age-camW[1];rz=q.r0[2]+q.v[2]*age-camW[2]}   // fxPuff: inertial, ballistic
+    else{if(q.ux===undefined){const L=len(q.pf);q.ux=q.pf[0]/L;q.uy=q.pf[1]/L;q.uz=q.pf[2]/L;q.wf=L-TELLUS.R<8000?1:.4}
+      const ra=q.rise*age,wa=age*q.wf,x=q.pf[0]+q.ux*ra+WIND[0]*wa,y=q.pf[1]+q.uy*ra+WIND[1]*wa,z=q.pf[2]+q.uz*ra+WIND[2]*wa;
+      rx=c*x+sn*z-camW[0];ry=y-camW[1];rz=-sn*x+c*z-camW[2]}
+    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=q.hot?q.hot*Math.max(0,1-age/q.life):Math.max(0,1-age/.35);
     smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}
   const idx=smokeI.subarray(0,n).sort((a,b)=>smokeK[b]-smokeK[a]),v=smokeV;let k=0;
   for(let m=0;m<n;m++){const i=idx[m],o=i*6,sz=smokeP[o+3],seed=smoke[i].seed;
@@ -3297,8 +3315,18 @@ let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
 HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
-HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
+HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
   if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,d.verdict);d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
+// staging: at the separating joint, a ring of pyro/vent gas and a spray of sparks, carried with the ship (render-side).
+// The joint: a stack decoupler's top face, a radial decoupler's mount; breakups (no decoupler) get nothing here (booms).
+function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.kind==='dec'||p.d.kind==='rdec');if(!dec)return;
+  const rad=dec.d.kind==='rdec',J=rad?[dec.pos[0],dec.y0+dec.h/2,dec.pos[2]]:[dec.pos[0],dec.y0+dec.h,dec.pos[2]],
+    at=add(d.r,qrot(d.q,sub(J,d.cm))),Y=qrot(d.q,[0,1,0]),X=qrot(d.q,[1,0,0]),Z=qrot(d.q,[0,0,1]),r=rad?.4:(dec.d.r||R0),
+    pa=pressure(TELLUS,len(d.r)-TELLUS.R),R=Math.random;
+  for(let i=0;i<18;i++){const a=i/18*6.283+R()*.3,u=add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),sp=4+6*R()+8*(1-pa);   // gas vents radially from the seam
+    fxPuff(add(at,mul(u,r)),add(S.v,add(mul(u,sp),mul(Y,(R()-.5)*2))),{s0:.3+.3*R(),grow:1.5+2*R()+3*(1-pa),a0:.45*(.25+.75*pa),life:1.5+2.5*R()*(.3+pa),hot:.25})}
+  for(let i=0;i<26;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=8+18*R();   // sparks: small, hot, fast, short-lived
+    fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6})}}
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 const PROG_KEY='launchpad-program-v1';
 try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked}}catch(e){}   // a flight in progress doesn't survive a reload
@@ -3591,13 +3619,14 @@ function render(){
   drawPadGlow(m,camW);   // the pad's floodlights
   gl.depthFunc(gl.LESS);
   if(near)drawPlumePool(VP);
-  if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
+  const PE=near&&S.alive&&mode==='flight'?plumeEngines():[];
+  if(PE.length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
     const GF=groundFrame(camW),hits=[];
-    for(const e of activeEngines(S)){const sp=spoolOf(e);
-      const f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,ig=ignOf(e,P),thr=Math.max(sp.k,.6*ig[3]),[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01&&simT-sp.ig>.5)continue;
+    for(const[e,on]of PE){const sp=spoolOf(e,on);
+      const f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,ig=ignOf(e,P),thr=sp.tg>0?Math.max(sp.k,.6*ig[3]):sp.k,[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01&&simT-sp.ig>.5)continue;
       const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],Q=qt?qmul(S.q,qt):S.q,
         o=add(sub(p,camW),qrot(S.q,sh)),cl=qrot(qconj(Q),mul(o,-1)),inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05;
       gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(Q,sub(p,camW),qrot(qconj(qt),sh)):modelQ(S.q,sub(p,camW),sh));
