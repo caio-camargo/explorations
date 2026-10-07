@@ -702,6 +702,92 @@ of the descent is fast, which is where the unmodelled trim lift accumulates.
 designs trimmed for mass. Missions give no reward beyond progress and headlines yet (no budget). The beeper's
 city-pass headlines are a first taste of "the world listens".
 
+## Parts and mission types — planning (2026-10-07, brainstorm with Caio; nothing built)
+
+**Through-line:** every part or mission hinges on something the sim computes (orbits, sun angle, line of sight, loads,
+heat, drag, mass). That keeps even the sci-fi end grounded. **Tone:** physics serious, world wry. Consequences arrive
+as headlines and politics, never body counts; a little more serious than KSP.
+
+**Science instruments.** Each wants a different flight:
+- air sampler (exists): pass through bands, be recovered;
+- camera: nadir pointing, daylight, no cloud, resolution ∝ 1/altitude; for maps, crops, weather, recon, disasters;
+- radar: heavy and power-hungry, but works at night and through cloud;
+- radiation counter: discovers the radiation belts, which then set crew dose limits;
+- magnetometer: on a boom, needs latitude coverage (inclination); the field model explains the belts;
+- telescope: pointing stability, away from the sun; for discoveries (second moon, asteroids, visitors);
+- seismometer: soft landing on Selene, upright; several make an interior map, so it's a multi-lander campaign;
+- gravity-mapping pair: two satellites in formation (GRACE-like);
+- spectrometer: asteroid composition, i.e. mining targets.
+
+Data comes home either by transmitting (antenna + power + line of sight to a ground station owned by some power) or
+physically: film canisters caught mid-air by a plane (a Corona nod). Support parts: antennas, solar panels, batteries
+(eclipses from the existing sun direction), reaction wheels, booms, fairings.
+
+**Space stations:**
+- **Assembly in orbit gets past what you can't launch:** a truss that would snap at max-q is fine assembled in orbit.
+  That's a direct use of the structural sim.
+- **Modules with jobs:** habitat (crew capacity), lab (science per crew-day), power truss, docking hub, fuel depot
+  (cheaper Selene missions), construction yard (assembles big vehicles), later a hotel.
+- **A growing station is still one rigid body.** Reboost burns load long trusses, docking shocks propagate, and
+  attitude control has to grow with the mass. Expansion is a structural design problem.
+- **Upkeep becomes repeatable contracts generated from the station's state:** orbital decay → reboost; resupply; crew
+  rotation.
+
+**Military, kept light; weapons are mostly political objects:**
+- **Spy satellites and visibility.** Lower is sharper but decays faster; targets need daylight and clear skies; you plan
+  the ground track. Real physics: **a satellite is visible from the ground when it's sunlit and the observer is in
+  darkness** (dawn and dusk), so rivals see your passes and the news notices. Passing in Tellus's shadow is stealthy but
+  blind.
+- **Early-warning satellites** (high orbits) see launches, so rival launches become news you've earned.
+- **Satellite hacking (Caio):** pull up alongside a rival's satellite at night and work undetected. Stealth rules: do
+  the approach and the work in Tellus's shadow; inside a set distance, burns must stay minimal, since a visible plume
+  or a big Δv gets you spotted. It works only *before the rival has radar*, which makes it a tech-era window: the same
+  approach that is invisible to optical tracking is caught once radar exists. A precision-rendezvous minigame with
+  political stakes (caught means an incident, sanctions, lost contracts).
+- **Anti-satellite weapons** = rendezvous with a high closing speed. The consequence is **debris**: a lasting field that
+  threatens everyone's satellites, yours included, and costs opinion with every power (Kessler as world state).
+- **Lasers:** grounded first (power- and range-limited, dazzling sensors rather than destroying). More sci-fi with
+  nuclear power later.
+- **Tungsten rods:** de-orbit a dense rod; the impact predictor already models it. **Accuracy depends on your own
+  atmosphere science** (the ±25% band uncertainty is your error). Used as tests on empty ranges, treaty politics
+  (Outer Space Treaty-style bans that cost you to break), deterrence and arms races. Never cities.
+
+**Asteroids:**
+- **Start near home:** small objects temporarily captured into Tellus orbit (mini-moons), found by the telescope and
+  reachable with today's physics, before the interplanetary layer exists.
+- **Mining:** new resources (ore, water turned into propellant at a cost in power). Refuelling away from home changes
+  mission design.
+- **Moving one is a momentum budget:** asteroid mass × Δv against thrust × time. That brings ion engines and low-thrust
+  propagation on rails.
+- **Planetary defence as a world event:** a rock on a collision course with N days of warning; the impact ellipse
+  (already built for rockets) shrinks as tracking improves; earlier action needs less Δv. Kinetic impactor (DART), gravity
+  tractor, or mining it (which pushes it as a side effect). Do the powers cooperate? Who pays? Wry headlines if it hits.
+  Redirecting asteroids on purpose is the sci-fi weapon end, and politically radioactive.
+
+**Alien life and public relations (Caio):**
+- **Life research:** mostly microscopic traces (chemistry in Selene samples, ambiguous biosignatures from a telescope,
+  later microbes on another world). Each result has a *real* confidence level that more missions raise or collapse.
+- **PR as a direct dynamic:** how the program *presents* a result is a choice. A **dry scientific tone** builds scientific
+  standing slowly and safely. **Leaning into the little-green-men hype** brings a burst of opinion, funding and tourism
+  interest now, but costs **credibility** if the result is later overturned. Credibility then discounts the hype on the
+  *next* announcement, so the boy who cried alien gets less of a bump. Science clients care about credibility; the
+  public and politicians care about excitement. Fits the tone: a press-conference choice with wry headlines either way.
+- This generalises: PR choices on failures (own it or spin it), on passenger flights, on military work (deny or
+  disclose).
+
+**Infrastructure this all needs** (in order of what it unlocks):
+1. **Persistent objects on rails across program time**: satellites that keep serving, stations, debris, rivals'
+   hardware, asteroids. The keystone, and cheap, since Kepler rails are exact.
+2. **Several vessels in physics at once:** rendezvous, docking, anti-satellite intercepts, formations, hacking.
+3. **Cheap geometry:** sun and shadow, line of sight, ground stations, who can see what; plus a CPU cloud map (a port of
+   the shader's clouds, the way the land mask was ported).
+4. **Power:** solar panels, batteries, eclipses.
+5. **Low-thrust propagation,** then the star-centred system for real asteroids and interplanetary travel.
+
+**A first slice that tests the idea:** persistent satellites + camera + antenna. Imaging contracts (weather, crops,
+disasters, recon) with daylight, cloud and ground-track planning: the first time the world reacts to things that *stay
+up*.
+
 ## Mission design — epochs, archetypes, convergence (2026-10-07)
 
 **Method (Caio):** iterate between levels (mission types, long arcs, craft parts) and home in on where they become
