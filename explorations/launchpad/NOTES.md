@@ -707,12 +707,17 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   - **Five camera bunkers** at about 90 m and **two camera towers**.
 - New helper `strip()` draws flat runs on the ground: roads, rail beds, trenches. The mesh is now ~26k vertices,
   still one static draw. `refView(17)` shows the whole site from high up.
+- **The pad holds the rocket.** In the editor the builder hangs the ship 3 m up (`LIFT` in `builder.js`, so parts can go under
+  its bottom), and it looked like it was hovering. While a rocket stands on the pad or is being built, `padRig()` now gives
+  the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
+  and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
+  fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
 - **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
   painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Nothing moves: the arms don't swing at launch and the gantry doesn't roll.
+- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 

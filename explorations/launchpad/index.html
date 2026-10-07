@@ -1894,7 +1894,7 @@ function strip(out,A,B,w,h,col){const dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,
 // pad the buildings stand on the concrete it paints (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the
 // road leaving to the south-west). Further out, slabs, rail beds and roads are thin meshes. TH is the umbilical tower's
 // height (sized to the rocket); the service gantry and the lightning masts scale with it. Early-era Cape style.
-function buildPad(TH){const a=[],OR=[.78,.3,.12],RD=[.6,.16,.1],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
+function buildPad(TH,rig){const a=[],OR=[.78,.3,.12],RD=[.6,.16,.1],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
   // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
   lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
   for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
@@ -1905,7 +1905,15 @@ function buildPad(TH){const a=[],OR=[.78,.3,.12],RD=[.6,.16,.1],CO=[.48,.47,.44,
   // three swing arms (retracted for launch, folded along the tower's west face) with hoses hanging from their tips
   const TX=7,TW=3;lattice(a,TX,0,TW,TH,OR);box(a,[TX,TH+.15,0],TW/2+.6,.15,TW/2+.6,STL);
   box(a,[TX-2,TH+1.2,0],3.5,.25,.25,OR);tube(a,[TX-5.3,TH+1.2,0],[TX-5.3,TH-1.5,0],.03,DK,4);tube(a,[TX,TH+.3,0],[TX,TH+8,0],.08,STL,6);
-  for(const f of[.3,.55,.8]){const h=Math.round(TH*f);box(a,[TX-TW/2-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[TX-TW/2-.25,h-.3,-4.6],[TX-TW/2-.25,h-3.2,-4.4],.08,DK,6)}
+  // with a rocket on the pad (rig) an arm reaches across to its side at that height, an umbilical plate at the tip;
+  // otherwise (after liftoff) it is folded back along the tower's west face
+  [.3,.55,.8].forEach((f,i)=>{const h=Math.round(TH*f),x0=TX-TW/2,xr=rig&&rig.xs[i];
+    if(xr!=null){const x1=xr+.12;box(a,[(x0+x1)/2,h,0],(x0-x1)/2,.35,.45,OR);box(a,[x1+.05,h-.1,0],.05,.45,.35,STL);tube(a,[x0-.6,h-.35,.3],[x1+.3,h-.55,.3],.07,DK,6)}
+    else{box(a,[x0-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[x0-.25,h-.3,-4.6],[x0-.25,h-3.2,-4.4],.08,DK,6)}});
+  // hold-down arms: from the posts on the table up to clamps on the rocket's base, above its engines (in the editor the
+  // ship hangs higher, as in an assembly hall, and they become the launch stool it stands on)
+  if(rig)for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2,c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=rig.rB+.12;
+    tube(a,[3.4*c,.45,3.4*sn],[r*c,y,r*sn],.14,STL,8);box(a,[(r+.1)*c,y,(r+.1)*sn],.18,.22,.18,OR)}
   box(a,[TX,TH/2,0],.5,TH/2,.5,[.22,.23,.25,1]);   // the elevator shaft inside
   // the mobile service structure, rolled back ~80 m south on twin rails for launch: four lattice columns on rail trucks,
   // work decks across its back half (the open front closes around the rocket when it rolls up), a roof, a bridge crane
@@ -1944,9 +1952,17 @@ function buildPad(TH){const a=[],OR=[.78,.3,.12],RD=[.6,.16,.1],CO=[.48,.47,.44,
   return makeMesh(a)}
 // The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
 // 12.5–60 m. The pad mesh is rebuilt when that changes (~10k vertices, only on a design change); after liftoff it stays.
-let PAD=buildPad(32),padTH=32;
-function padSync(){if(!S||!(mode==='editor'||S.landed&&!S.mkLift))return;const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60);
-  if(H!==padTH){PAD.free();PAD=buildPad(H);padTH=H}}
+// While a rocket stands on the pad (or is being built) the pad holds it: swing arms reach from the tower to the widest
+// thing at each arm's height (boosters included), and hold-down arms clamp its base. Ship x is pad x (east) here.
+let PAD=buildPad(32,null),padTH=32,padKey='';
+function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0,ps=S.parts.filter(p=>p.on);if(!ps.length)return null;
+  const bot=ps.filter(p=>p.y0<.01),core=bot.find(p=>Math.abs(p.pos[0])<.05&&Math.abs(p.pos[2])<.05)||bot[0];
+  const xAt=h=>{let x=null;for(const p of ps){const y0=p.y0+base;if(h>=y0&&h<=y0+p.h){const e=p.pos[0]+p.d.r;if(x==null||e>x)x=e}}return x};
+  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f)))}}
+function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!S.mkLift;
+  const H=pre?clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60):padTH,rig=pre?padRig(H):null;
+  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
+  if(key!==padKey){PAD.free();PAD=buildPad(H,rig);padTH=H;padKey=key}}
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
