@@ -607,12 +607,95 @@ WebSocket): navigate, inject `views.js`, `Runtime.evaluate("refView(n)")`, `Page
 directly. It is `shot.mjs` in this folder (usage in its header).
 
 ### Still open (visuals)
-- Petrel nozzle extension glowing orange while burning (outer surface, by `uHot`).
-- Soot and scorch that build up: base-heating soot on the bottom stage after a burn, re-entry char on the shield and pod
+- ~~Petrel nozzle extension glowing~~: done ("Flight marks").
+- ~~Soot and scorch that build up~~: done, see "Flight marks" below.
   (skin temperatures already exist in the sim).
 - Ambient occlusion where parts meet. LOX frost on cryogenic tanks while on the pad.
 - Paint schemes per design or era (agency white, company livery), from the same roll-pattern machinery.
 - Lettering and flags on tanks: needs a glyph atlas or SDF; skipped for now.
+
+## Flight marks — what a flight leaves on the hardware (2026-10-07, visuals session)
+
+Slice 2 of the visuals work, agreed with Caio: the rocket no longer looks factory-new forever. It is render-only. The sim
+never reads marks; they live in a `WeakMap` keyed by part object (`MARKS`), so they ride along onto debris and landed
+stages, and a new flight starts clean.
+
+### How it works
+- **`marksTick()`** runs once per `render()`. Its step is the sim-time delta, capped at 5 s, so warp is roughly right.
+  - **Soot:** a burning engine, and the base of the parts up to 3 m above it on its stack line. The rate is ×(1 + 2·(1 −
+    p/p₀)) because the plume balloons at altitude and washes back over the base.
+  - **Char:** maps the peak skin temperature `p.T` onto 480 K → the part's `Tmax`, so 1 means about to burn up. Its
+    direction is the heat-weighted airflow in the ship frame (`qrot(qconj(q), v − v_surface)`). A heat shield blackens from
+    ~420 K and also with the ablator it has used.
+  - **Frost:** set to 1 on fuelled tanks while landed and before first liftoff (`S.mkLift`). It sheds at
+    1/45 s⁻¹ + speed/6000.
+  - **Glow:** vacuum engines only (`ispA < ½·ispV`, i.e. the Petrel). It follows the throttle with a 6 s heating and
+    12 s cooling time constant.
+- **`setMarks(u, parts)`** packs the marks into `uMk[96]` (soot, frost, fuel level, glow) and `uCh[96]` (windward direction,
+  char), indexed by part index. It is called for the ship, then per debris, then with `[]` so the editor and builder
+  ghosts draw clean. This replaced v-slice-1's `uHot` (the inner-bell glow was invisible under the plume anyway).
+- **Shader:**
+  - soot climbs streakily from each part's base (engines all over);
+  - char first scorches paint yellow-brown, then blackens it, on the windward side, streaked along the flow;
+  - frost lies only below each tank's fuel line, in patches that thin as it sheds;
+  - the vacuum nozzle extension glows dull red to orange from the exit up.
+- **Reference views:** `refView(11)` frost on the pad, `12` soot at 70 s, `13` a biocapsule after an entry from orbit,
+  `14` the Petrel 12 s into an orbital burn. The sim loops call `marksTick()` every 0.25–0.5 s, because one render only
+  takes up to 5 s of marks.
+
+### What went wrong on the way (worth knowing)
+- **"Black" is not black under this light.** The first soot (mix 92 % toward albedo 0.018) didn't show at all. A red test
+  colour proved the branch ran: red appeared on the black paint, while white areas stayed white. The sun term is strong
+  enough that 8 % of white paint plus 0.018 still lands in the tone curve's shoulder as light grey. Soot and char now go
+  to albedo ≈ 0.004 at up to 98.5 % coverage, blacker than black paint. Generalises: in this renderer, judge darkening
+  effects on *white* paint.
+- **Caps break anything keyed to the around-axis coordinate.** A lathe cap's triangles each span a different angle
+  range, so `fwidth(u)` and arc-length noise change per triangle, and the shield face rendered as a pinwheel of wedges.
+  Caps now use the planar footprint `fwidth(vO.xz)` and planar noise. This also fixes slice 1's honeycomb filtering on
+  the shield face.
+- **Integrated char saturates.** Accumulating char over time blackened every part within ~30 s of entry heating. Mapping
+  the *peak* temperature against each part's limit reads right: the biocapsule at 853 / 1250 K is scorched, not burnt.
+- **Tellus is small.** The first entry test used 7.6 km/s and sailed off to 4,700 km. Use `√(μ/r)`.
+- **An unbounded sim loop in a reference view hangs headless Chrome silently.** Bound every `while` (time, `!S.alive`).
+
+### Measurements
+GPU timer, alternating against `main` (two rounds): view 4 close-up 2.7–3.8 vs 2.8–3.3 ms, view 2 ascent 2.4–3.3 vs
+2.2–3.2 ms. Within the run-to-run spread, at most ≈0.2 ms. `test.mjs` all passed (render-only).
+
+### Still open
+- Char on the dark capsule shingles is nearly invisible (it's black on black). A lighter heat-tint or a sheen loss could
+  carry it.
+- Debris doesn't heat in the sim, so stages falling back don't char. Their marks only cool and shed.
+- No soot on the *side* of a core next to a booster's engine (soot only follows the stack line).
+
+## The launch complex (2026-10-07, visuals session)
+
+Slice 3 of the visuals work. Next to the detailed rocket, the old pad (a red pole, three white cylinders, a drum) read as
+a placeholder. Only the **contents** of the `PAD` mesh changed. Where it is drawn, its height (`siteH`) and the
+ground-shader apron (`padGround`) belong to the terrain session and were not touched. Everything sits at or above y = 0
+in the pad's frame (x east, y up, z north), so the rocket still stands at the origin on the ground the physics knows.
+Each building stands on a concrete slab that `padGround` already paints.
+
+### What's there (early-era Cape style)
+- **Launch table:** the concrete disc, a dark steel flame grate under the engines with eight radial bars, four hold-down
+  posts at r 3.4 m.
+- **Flame channel:** low concrete walls on a sooted floor running north. The ground can't be dug (it is raymarched in the
+  sky shader), so the trench is suggested from above ground.
+- **Umbilical tower** east of the rocket: an orange lattice, 3 m square and 32 m tall (`lattice()`: corner posts, a girder
+  ring every ~2.5 m, zig-zag bracing). It has an elevator shaft, a cap platform, a hammerhead jib with a hook line, a
+  lightning mast, and three swing arms retracted along the west face with hoses hanging.
+- **Propellant farm** on its slab: a LOX sphere on six legs, a horizontal RP-1 tank on concrete saddles, pipes to the pad.
+- **Deluge water tower,** a **domed concrete blockhouse** with a band of periscope slots and an antenna mast (with a cable
+  run to the pad), a **compressor building**, and four **floodlight poles** around the apron.
+- New helpers `tube(A, B, r)` (a cylinder between two points) and `lattice()`. About 9,800 vertices in all, a static mesh.
+- `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
+  the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
+
+### Still open
+- A real trench and flame bucket would need a cut in the ground (terrain's shader).
+- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
 ## Program design — direction and parking lot (2026-10-06)
 
