@@ -1821,7 +1821,8 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
-- **v1.20 (2026-10-07, economy worktree):** career moves: when the program is in trouble (or excelling) the team gets
+- **v1.21 (2026-10-07, economy worktree):** career moves: when the program is in trouble (or excelling) the team gets
   offers to defect to a power that isn't friendly with home (HOME changes; the old home sanctions) or to be hired by a
   private company; knowledge and firsts carry over. Fixed a merge accident that had broken every decision button on main
-  (the builder's overlay hook had landed in the ownership click handler). `test.mjs` 103/103. Merged to `main`.
+  (the builder's overlay hook had landed in the ownership click handler; the builder's v1.20 fixed it too, one copy kept).
+  `test.mjs` 110/110 after merging main. Merged to `main` (`885940e`).
