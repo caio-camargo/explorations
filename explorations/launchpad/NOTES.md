@@ -622,6 +622,9 @@ detail, and got a design pass:
   The old "lens" was a vertical disc stuck to the hull. A film-return hatch is on the far side.
 - **Antenna:** a parabolic dish (focal length 0.15 m) on a mast, its feed horn held at the focus by three struts, two whip antennas.
 - **Radial fin:** alternates black/white by part index like the fin ring, with a root bracket on the hull.
+- **Docking port, RCS quad, gas bottle** (arrived during this pass): a capture ring with a probe, guide vanes and latches;
+  four little heat-tinted bells on an outrigger, on the same thrust axes the physics uses (`RCS_OFF`); a painted bottle
+  with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 

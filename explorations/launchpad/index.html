@@ -2761,7 +2761,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -2809,11 +2809,22 @@ function partBody(out,p){
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
     case'rfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
-    case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.G],[.5,.2,C.G],[.5,.3,C.W]],o);
-      for(let k=0;k<3;k++){const a=k*2.0944;rbox(out,[x+Math.cos(a)*.38,y+.34,z+Math.sin(a)*.38],.02,.05,.08,C.Y,a)}break;
+    // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
+    case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
+      tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
+      for(let k=0;k<3;k++){const a=k*2.0944;fin(out,[x,y+.27,z],a,.3,.16,.16,.012,C.Y);
+        const b=a+1.0472;box(out,[x+Math.cos(b)*.48,y+.31,z+Math.sin(b)*.48],.03,.025,.03,C.D)}break;
     case'rcs':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)],t=[-n[2],0,n[0]],e=[x+n[0]*RCS_OFF,y+h/2,z+n[2]*RCS_OFF];
-      rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.09,.07,C.G,p.phi);for(const dd of[[0,1,0],[0,-1,0],t,mul(t,-1)])tube(out,e,madd(e,dd,-.07),.02,C.D,6,true)}break;
-    case'gas':lathe(out,[[0,0,C.W],[.11,.03,C.W],[.17,.12,C.W],[.17,.48,C.W],[.11,.57,C.W],[0,.6,C.W]],[x+Math.cos(p.phi)*d.off,y,z+Math.sin(p.phi)*d.off],16,[false,false]);break;
+      // an outrigger and a housing at the nozzle cluster; four little bells (throat, flared exit, heat-tinted lip) on the thrust axes
+      rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.05,.045,C.ST,p.phi);rbox(out,e,.035,.035,.035,C.G,p.phi);
+      for(const dd of[[0,1,0],[0,-1,0],t,mul(t,-1)]){tube(out,madd(e,dd,-.03),madd(e,dd,-.05),.011,C.K,6,false);tube(out,madd(e,dd,-.05),madd(e,dd,-.075),.02,C.K,8,false);
+        tube(out,madd(e,dd,-.072),madd(e,dd,-.077),.022,[.55,.36,.24,1],8,false)}}break;
+    // gas bottle: painted, a green service band, two straps, a valve and regulator on top, a feed line to the hull
+    case'gas':{const B=[.78,.79,.8],GN=[.16,.42,.22],c=[x+Math.cos(p.phi)*d.off,y,z+Math.sin(p.phi)*d.off];
+      lathe(out,[[0,0,B],[.11,.03,B],[.17,.12,B],[.17,.33,B],[.17,.33,GN],[.17,.39,GN],[.17,.39,B],[.17,.48,B],[.11,.57,B],[0,.6,B]],c,16,[false,false]);
+      for(const yy of[.17,.44])lathe(out,[[.177,yy,C.D],[.177,yy+.03,C.D]],c,16,[false,false]);
+      tube(out,add(c,[0,.59,0]),add(c,[0,.66,0]),.02,C.ST,8,true);box(out,add(c,[0,.68,0]),.03,.02,.03,C.G);
+      tube(out,add(c,[0,.68,0]),[x,y+.68,z],.008,C.ST,5,false)}break;
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
     case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
       box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
