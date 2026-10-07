@@ -603,6 +603,59 @@ The first slice of the parts-and-missions plan: things left in orbit stay there 
 land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
 in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
 
+## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
+
+Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,
+[`builder.js`](builder.js). That kept the two sessions' hunks apart in `index.html`. It can be folded back into
+the single file once nobody else is editing it.
+
+**What you do.** Pick a part from the palette (now grouped: command, tanks, engines, structure, aero) and it follows
+the cursor as a ghost:
+- **Stack nodes**: every free top or bottom node glows. Near one (34 px), the ghost snaps its bottom onto a top node, or its top under a bottom node.
+- **Surface**: otherwise it attaches **radially** to whatever the cursor is over, at that height and angle. Symmetry is ×1/2/3/4/6/8 [X], snapped to 15°, and the
+  line's ends are pulled onto the host's part boundaries within 0.35 m [C]. Radial decoupler on/off [R].
+- **Validity**: the ghost is green when it fits and red (`blocked`) when any copy would overlap a part.
+- **Picking up**: click a placed part to pick it up with everything hanging from it, all symmetric copies included. Ctrl-click takes a copy, Shift-click places one and keeps holding.
+- **Options**: right-click a part for joint load and reinforcement, crossfeed, copies, decoupler, ±0.1 m and ±15° nudges, pick up / copy / delete.
+- **Overlay**: joint loads are drawn on the rocket itself, replacing the strips between list rows.
+- **Editing**: undo/redo. In the editor the ship hangs 3 m above the pad, as in a VAB, so parts can go under its bottom. The camera no longer auto-spins; Shift+wheel or middle-drag moves the view up and down.
+
+**Design format v2: a tree** (`toV2`, `layoutDesign`, `assemble` in the SIM block). A node is `{k, at, j, x, c}`.
+`at` is `'u'` (on the parent's top), `'d'` (under its bottom), or radial `{y, a, n, cy, dec, x}`. Parts never tilt, so a
+radial child starts a new vertical stack line at distance (widest host-line radius over the child's extent) + 0.25 m +
+(child line radius). The physics already flies exactly that: stack lines for aero, joint frames for loads. So
+nothing in flight changed. Symmetric copies replicate the whole subtree, and nested radials are measured in their
+host's rotated frame, so boosters on boosters come out symmetric. The old `{stack, rad}` format converts losslessly.
+Presets stay in it, and so does any unedited design, so saved autopilot tapes keep matching.
+
+**Staging generalised.** Segments now form a tree: a segment's parent holds its decoupler. The *chain* runs from the
+root's segment down through the stack decouplers below it. Everything else hangs off a chain segment, burns with
+it, and drops before it does: deepest first, then highest first. For the old designs this reproduces the old rule
+exactly. For nested boosters it gives *side tanks → boosters → core*.
+
+### Measurements
+| What | Number |
+|---|---|
+| All 8 presets, new `assemble` vs old | **byte-identical** fingerprint: parts order, positions, parents, joint axes/points, reinforcement, segments, events, labels, Δv |
+| 3 boosters × 2 nested side tanks, no crossfeed → crossfeed | 4 593 → **6 215 m/s**. The engineless side tanks are dead weight until they crossfeed |
+| Same design flown straight up for 80 s | side tanks drop at T+23.9 s, boosters at 71.6 s, 58.5 km, worst joint 21 % |
+| Single ×1 radial Tank 1 t on a Tank 4 t | assembles, CoM 0.21 m off the axis |
+| `test.mjs` | 81 checks, all passing (6 new in §15) |
+
+### What went wrong on the way
+- **A dropped line that only one test could see.** The rewrite lost the reinforcement-mass line (`jm`). The preset
+  fingerprint can't catch that, because no preset reinforces a joint. The v1.5 test "reinforcing the joint that snapped" caught it (+0 kg
+  instead of +60 kg). Fingerprint *and* behavioural tests: each covered the other's blind spot.
+- **Test heuristic vs geometry.** "Nearest booster = host" was wrong for a nested tank that sits 1.49998 m from a
+  neighbouring booster against 1.5 m from its own. The test now reads the host from the joint tree.
+- **Line endings.** `index.html` and `test.mjs` are CRLF in the working tree (`core.autocrlf=true`). A splice that
+  wrote LF lines, and a `sed -i` that silently converted a whole file to LF, both had to be repaired. Edit through
+  something that keeps the file's own line endings.
+
+**Not done:** parts that tilt, so no radial fins or angled engines; that needs a per-part orientation in aero and loads. Re-rooting
+(picking up the root). Drag-to-reorder staging. Aero interference between side-by-side lines is still not modelled.
+The crossfeed note in flight says "side empty" for side-tank groups, which is the label's first word.
+
 ## v1.16 — ownership: what the program is (2026-10-07)
 
 Slice 5. The program is a set of shares that sum to 1: state stakes by power (`own().st`) plus private capital
@@ -984,6 +1037,9 @@ restartable upper stage, docking port.
 
 - Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
   extracts it with `new Function` and drives it headless. Keep that boundary.
+- The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
+  `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
+  `assemble(toV2(old))` is how the old format still flies.
 - Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics).
   Tellus spins about +Y; `fromPF/toPF` convert to and from planet-fixed. The launch site is
   planet-fixed +X.
@@ -1000,8 +1056,9 @@ restartable upper stage, docking port.
 2. ~~Re-entry heating~~ done in v1.7. Next on that line: conduction between neighbouring parts, and heating on an engine's own plume.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
-4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6. Next on that line: asymmetric attachment (a single side stack: the physics already
-   takes off-axis mass and thrust, but the builder only offers ×2–4 and it is untested), and core↔booster aero interference.
+4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
+   (the construction screen). Next on that line: tilted parts (radial fins, canted engines), re-rooting, and core↔booster
+   aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

@@ -554,6 +554,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.sats = []; api.HOOK.news = () => {};
 }
 
+// 15. Design format v2 (v1.17): the construction screen's free attach tree — radial on anything, nested symmetry.
+// Its own instance of the sim core, so this section never touches the shared api object above.
+{
+  const D = new Function(src + 'return {toV2,assemble,stageStats,newShip,physStep,stage,segFuel,PRESETS,HOOK,DT,len,TELLUS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const P = D.PRESETS, fp = A => JSON.stringify([A.parts.map(p => [p.d.key, p.pos, p.y0, p.parent && p.parent.i, p.jA, p.jP, p.jr || 0, p.seg]), A.events, A.segs.map(s => s.label)]);
+  const diff = Object.keys(P).filter(k => fp(D.assemble(P[k])) !== fp(D.assemble(JSON.parse(JSON.stringify(D.toV2(JSON.parse(JSON.stringify(P[k]))))))));
+  check('design v2: every preset converts to the tree format and survives a JSON round trip unchanged (parts, joints, stages)', !diff.length, diff.length ? 'differs: ' + diff.join(', ') : `${Object.keys(P).length} presets`);
+  // three boosters on the core, each carrying two small side tanks of its own (crossfeed optional)
+  const nested = x => ({ v: 2, root: { k: 'pod', c: [{ k: 'chute', at: 'u', c: [] }, { k: 't2', at: 'd', c: [{ k: 'petrel', at: 'd', c: [{ k: 'dec', at: 'd', c: [{ k: 't8', at: 'd', c: [
+    { k: 'fins', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }] },
+    { k: 't4', at: { y: 4.16, a: 0.7854, n: 3, cy: 1.9, dec: true }, c: [{ k: 'kestrel', at: 'd', c: [] },
+      { k: 't1', at: { y: 2.38, a: 5.236, n: 2, cy: 0.55, dec: true, ...(x ? { x: true } : {}) }, c: [] }] }] }] }] }] }] } });
+  const A = D.assemble(nested(true)), B = A.parts.filter(p => p.d.key === 't4'), T = A.parts.filter(p => p.d.key === 't1');
+  const rB = B.map(p => Math.hypot(p.pos[0], p.pos[2])), aB = B.map(p => Math.atan2(p.pos[2], p.pos[0])).sort((a, b) => a - b);
+  const host = t => t.parent.parent, rT = T.map(t => Math.hypot(t.pos[0] - host(t).pos[0], t.pos[2] - host(t).pos[2]));
+  check('nested symmetry: 3 boosters 120° apart at one distance, each with 2 side tanks 1.5 m off its own axis', A.parts.length === 29 && B.length === 3 && T.length === 6 &&
+    Math.max(...rB) - Math.min(...rB) < 1e-9 && Math.abs(aB[1] - aB[0] - 2 * Math.PI / 3) < 1e-9 && rT.every(r => Math.abs(r - 1.5) < 1e-9), `${A.parts.length} parts, boosters at ${rB[0].toFixed(3)} m, side tanks at ${rT[0].toFixed(3)} m`);
+  const ev = A.events;
+  check('nested staging: the side tanks drop first, then the boosters, then the core', ev.length === 5 && ev[0].ignite.length === 4 && ev[1].decouple.length === 6 && ev[1].radial &&
+    ev[2].decouple.length === 3 && ev[2].radial && ev[3].ignite.length === 1 && ev[4].chute, ev.map(e => e.chute ? 'chute' : `${e.decouple.length ? '−' + e.decouple.length : ''}${e.ignite.length ? '+' + e.ignite.length : ''}`).join(' → '));
+  const dv = d => D.stageStats(d).stages.reduce((a, s) => a + s.dvV, 0), d0 = dv(nested(false)), d1 = dv(nested(true));
+  check('…and without crossfeed the side tanks are dead weight (no engine of their own); with it they feed the boosters', d1 > d0 + 1000, `${d0.toFixed(0)} → ${d1.toFixed(0)} m/s`);
+  D.t = 0; const s = D.newShip(nested(true)), msgs = []; D.S = s; D.HOOK.msg = m => msgs.push(`${D.t.toFixed(1)} ${m}`); s.throttle = 1; D.stage(s); let worst = 0;
+  while (D.t < 80 && s.alive) { D.physStep(s, D.DT); worst = Math.max(worst, s.maxLoad); const nx = s.events[s.evIdx]; if (nx && nx.decouple.length && nx.decouple.every(k => D.segFuel(s, k) <= 1e-9)) D.stage(s); }
+  const seps = msgs.filter(m => /separation/.test(m));
+  check('nested design flies: tanks then boosters drop as they run dry, no structural failure', s.alive && s.evIdx === 3 && seps.length === 2 && !msgs.some(m => /Structural/.test(m)) && D.len(s.r) - D.TELLUS.R > 20000,
+    `${seps.join(', ')} · ${((D.len(s.r) - D.TELLUS.R) / 1000).toFixed(1)} km at T+80 s, worst joint ${(worst * 100).toFixed(0)}%`);
+  // a single radial part (×1, no decoupler): the old format couldn't say this; the physics takes the off-axis mass as is
+  const one = D.newShip({ v: 2, root: { k: 'pod', c: [{ k: 't4', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }, { k: 't1', at: { y: 2, a: 0, n: 1 }, c: [] }] }] } });
+  check('asymmetric ×1 radial: assembles, centre of mass moves off the axis toward it', one.parts.length === 4 && one.cm[0] > 0.05 && one.events.length === 1, `CoM x ${one.cm[0].toFixed(3)} m`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
