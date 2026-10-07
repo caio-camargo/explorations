@@ -2368,7 +2368,7 @@ uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;o
 void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
@@ -2497,6 +2497,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // the pad's floodlights at night (padLights): four warm point lights, falling off past ~30 m
  if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);fl+=max(dot(n,L*inversesqrt(d2)),0.)*900./(d2+900.);}
   c+=dif*vec3(1.,.88,.7)*fl*uFlI*2.5;}
+ // the engine plumes' light (plumeLight, aerofx): one soft point light in the flame, uPl = (position, core radius)
+ if(uPlC.r+uPlC.g>0.){vec3 L=uPl.xyz-vP;float d2=dot(L,L);c+=dif*uPlC*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl.w*uPl.w);}
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
 const LINE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
@@ -2573,17 +2575,17 @@ const PNOISE=(()=>{const n=32,d=new Uint8Array(n*n*n);let x=12345;for(let i=0;i<
   gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.bindTexture(gl.TEXTURE_3D,null);return t})();
 // smoke: camera-facing puffs, soft round falloff, lit like the meshes and tone-mapped the same way
 const SMOKE_VS=`#version 300 es
-layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;out vec4 vQ;out float vW,vS;
-void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
+layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;uniform vec4 uPl;uniform vec3 uPlC;out vec4 vQ;out float vW,vS;out vec3 vPl;
+void main(){vec3 L=uPl.xyz-aP;vPl=uPlC*.18/(dot(L,L)+4.*uPl.w*uPl.w);gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
 const SMOKE_FS=`#version 300 es
-precision highp float;in vec4 vQ;in float vW,vS;out vec4 o;uniform vec3 uLight,uAmb,uSq;uniform float uFc;
+precision highp float;in vec4 vQ;in float vW,vS;in vec3 vPl;out vec4 o;uniform vec3 uLight,uAmb,uSq;uniform float uFc;
 float h(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}
 void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(vQ.xy)+.42*(n-.5);if(r>1.)discard;   // lumpy edge per puff
  float a=vQ.z*smoothstep(1.,.2,r)*(.75+.5*n);
  // each puff shaded as a lumpy sphere: sun side bright, the far side in its own shadow (uSq = sun in the quad's frame)
  vec3 sn=normalize(vec3(vQ.xy,sqrt(max(0.,1.-r*r))+.3)+.35*vec3(n-.5,nz(q*1.7+5.)-.5,0.));float ls=.18+.82*smoothstep(-.3,.8,dot(sn,uSq));
- vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8;
+ vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8+vPl*(.7+.5*n);
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance
 const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
@@ -2719,7 +2721,16 @@ void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv
   vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau+uVa*.4*tau)*d;
   C+=Tr*e*st;Tr*=exp(-(uSo*uK.w*1.4*(1.-tau)+uOp*.3*tau+.08)*d*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  vec3 c=pow(1.-exp(-C),vec3(1./1.5));float al=1.-dot(Tr,vec3(.333));o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// the plume's light on the ground (the ground is the sky shader's): an additive disc just above it, like the floodlight
+// pools. Local frame: x/z on the ground, the light uLh above the disc's centre.
+const POOL_VS=`#version 300 es
+layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform float uFc,uR;out vec2 vG;out float vW;
+void main(){vG=aP.xz*uR;vec4 w=uM*vec4(vG.x,.06,vG.y,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
+const POOL_FS=`#version 300 es
+precision highp float;in vec2 vG;in float vW;out vec4 o;uniform vec3 uPlC;uniform float uLh,uR0,uFc,uR,uDk;
+void main(){float d2=dot(vG,vG)+uLh*uLh,E=uLh*inversesqrt(d2)/(d2+uR0*uR0);vec3 c=uPlC*E*.3*uDk*smoothstep(uR,uR*.6,length(vG));
+ o=vec4(1.-exp(-c*1.6),1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -2897,6 +2908,26 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
   if(b===TELLUS){const F=padFrame(camW),d=sub(sub(p,camW),F.O),hz=sub(d,mul(F.Y,dot(d,F.Y)));if(len(hz)<300)return{O:F.O,X:F.X,Y:F.Y,Z:F.Z,pad:true}}
   const up=norm(S.r),g=add(bodyPos(b,simT),mul(up,groundR(b,toPF(b,S.r,simT)))),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0]));
   return{O:sub(g,camW),X,Y:up,Z:cross(X,up),pad:false}}
+// the plumes' light, one point light for all burning engines: at the flame's bright part (a quarter of the plume down,
+// lower when the jet reaches the ground), coloured from the propellant's core and mantle, strength ∝ exit area × spool,
+// with the plume's flicker. PLT = {p: [camera-relative position, core radius], c: colour × strength, g: ground info}.
+let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
+const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
+const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
+function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive||S.throttle<=0)return;const E=activeEngines(S);if(!E.length)return;
+  const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
+  for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;if(thr<.01)continue;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,L=plumeShape(e.d,thr,pa)[2],
+      Q=e.tdir?qmul(S.q,tiltQ(e.tdir)):S.q,o=add(sub(p,camW),qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
+    let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
+    const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);
+    P=madd(P,add(o,mul(dW,at)),w);for(let k=0;k<3;k++)C[k]+=w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6);W+=w;R0=Math.max(R0,e.d.exit*2.5)}
+  if(W<=0)return;P=mul(P,1/W);const K=110*Math.min(1,pa*4+.15);   // dimmer in thin air (the plume's own glow goes too)
+  PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set(C.map(x=>x*K));
+  const h=dot(sub(P,GF.O),GF.Y);if(h>0&&h<60)PLT.g={F:GF,h,foot:sub(P,mul(GF.Y,h))}}
+function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=Math.max(12,g.h*3.2);gl.useProgram(PPOOL.p);
+  gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,mat4(F.X,F.Y,F.Z,g.foot));gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uR,Rp);
+  const dk=1-sstep(-.05,.2,dot(norm(S.r),SUN));gl.uniform1f(u.uDk,.12+.88*dk);   // added onto already-lit ground: in daylight a flame pool barely shows
+  gl.uniform3fv(u.uPlC,PLT.c);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
@@ -3115,7 +3146,7 @@ function drawSmoke(VP,camW,R,U){
       v[k]=smokeP[o]+R[0]*a+U[0]*b;v[k+1]=smokeP[o+1]+R[1]*a+U[1]*b;v[k+2]=smokeP[o+2]+R[2]*a+U[2]*b;
       v[k+3]=cx;v[k+4]=cy;v[k+5]=smokeP[o+4];v[k+6]=smokeP[o+5];v[k+7]=seed;k+=8}}
   const E=lightEnv(camW),su=PSMOKE.u;gl.useProgram(PSMOKE.p);gl.uniformMatrix4fv(su.uVP,false,VP);gl.uniform1f(su.uFc,FC);gl.uniform3fv(su.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(su.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
-  const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));
+  const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));gl.uniform4fv(su.uPl,PLT.p);gl.uniform3fv(su.uPlC,PLT.c);
   gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);gl.bufferData(gl.ARRAY_BUFFER,v.subarray(0,k),gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
 const rcsSeen={};   // RCS nozzle index → when it last fired (render-side, for the puffs)
@@ -3379,7 +3410,7 @@ function render(){
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
-  marksTick();padSync();padLights(m,camW);
+  marksTick();padSync();padLights(m,camW);plumeLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform3fv(m.uPlC,PLT.c);
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
@@ -3418,6 +3449,7 @@ function render(){
   for(const[mesh,M,k]of nightCities){gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uGlow,.22*k);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}   // lit windows, roughly
   drawPadGlow(m,camW);   // the pad's floodlights
   gl.depthFunc(gl.LESS);
+  if(near)drawPlumePool(VP);
   if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
