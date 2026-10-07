@@ -188,11 +188,11 @@ function qFromTo(a,b){const c=cross(a,b),d=dot(a,b);if(d<-0.999999){let ax=cross
 // its top at the Kármán line (100 km, scale height 7.5 km). Orbit costs ~4,200–4,350 m/s; low-orbit speed is 3.4 km/s.
 const TELLUS={name:'Tellus',R:1.274e6,mu:9.81*1.274e6**2,rot:2*Math.PI/28800,atm:1e5,H:7500,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
 // Selene: the Moon's size relative to its planet (0.273 R), the Moon's surface gravity (1.62), a tenth of the Moon's distance
-const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
+const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,pert:true,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
 // Nyx: a small captured moon on an inclined, eccentric orbit (8,100–27,900 km, 30°, 33 h), always inside Selene's orbit
 // clear of its SOI. Its SOI breathes with its distance (407–1,401 km). Sized from an n-body study (NOTES, "Nyx").
 const NYX={name:'Nyx',R:1.5e5,mu:0.4*1.5e5**2,atm:0,pert:true,orb:{a:1.8e7,e:0.55,i:30*Math.PI/180,lan:1.0,argp:0.8,M0:0.5}};
-const BODIES=[],PERT_MIN=1e-3;   // PERT_MIN: see the third-body block below
+const BODIES=[],PERT_MIN=2e-6;   // PERT_MIN: see the third-body block below
 // A moon's orbit about its parent: fixed Kepler elements (a, e, i, longitude of the node, argument of periapsis, mean
 // anomaly at t=0). Angles are measured in this frame's equator (XZ) with +Y north, so prograde runs +X → −Z.
 function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if(!parent)return b;parent.children.push(b);
@@ -202,7 +202,7 @@ function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if
   b.rMin=o.a*(1-o.e);b.rMax=o.a*(1+o.e);b.vMax=b.n*o.a*Math.sqrt((1+o.e)/(1-o.e));
   // SOI: the Laplace radius (m/M)^0.4 × distance. On an eccentric orbit it follows the distance (soiAt); b.soi is its
   // largest value, for conservative tests. soiRate bounds how fast it moves, for rails' step size.
-  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;b.kap=b.pert?1.05*Math.sqrt(b.mu/parent.mu/PERT_MIN):0;return b}
+  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
 addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
 // position and velocity of b relative to its parent at time t
 function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
@@ -211,20 +211,23 @@ function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;
 function moonPos(t){return bodyRel(SELENE,t)[0]}
 function moonVel(t){return bodyRel(SELENE,t)[1]}
 // absolute position (relative to the root); the root is the origin
-// ---- third-body perturbations (open thread 6b). Near a body with pert:true the craft feels both bodies: inside its SOI,
-// the parent's tide (direct pull minus the pull on the moon); in the parent's frame, the moon's pull minus the parent's reflex
-// toward it, wherever that is at least PERT_MIN of the parent's pull (near the moon, and out beyond ~1.3× its distance where the
-// reflex term grows). Elsewhere, low Tellus orbit included, the old exact Kepler rails stand.
-// The parent is treated as moving with the moon (the pair's relative orbit uses μ_parent + μ_moon), which is what makes the
-// two frames agree; an n-body integration of that model matches the hybrid to under a km a day after a flyby (NOTES, 6b).
-function pertAcc(b,r,t){let a=null;
+// ---- third-body perturbations (open thread 6b). Near a moon with pert:true (Nyx, Selene) the craft feels both bodies: inside
+// its SOI, the parent's tide (direct pull minus the pull on the moon); in the parent's frame, the moon's pull minus the
+// parent's reflex toward it. Whether an orbit is perturbed is decided per orbit (pertNear, PERT_MIN = 2e-6 of the central
+// pull), and on such an orbit the force is always on, so warp changes nothing but rounding. Low Tellus orbit feels Nyx's tide
+// (~1e-5) and drifts metres a month; orbits that feel nothing keep the old exact Kepler rails. Each moon's relative orbit
+// uses μ_parent + μ_moon, which is what makes the two frames agree; n-body integrations of that model match the game to under a
+// km a day after a Nyx flyby, 10 m over a day in lunar orbit, ~5 km two days after a close Selene pass (NOTES, 6b).
+const pthr=(b,r,ac)=>{const rl=len(r);return len(ac)*rl*rl>=PERT_MIN*b.mu};
+function pertAcc(b,r,t,thr){let a=null;
   if(b.pert){const R=bodyRel(b,t)[0],y=add(r,R),yl=len(y),Rl=len(R);a=mul(add(mul(y,1/(yl*yl*yl)),mul(R,-1/(Rl*Rl*Rl))),-b.parent.mu)}
   for(const c of b.children)if(c.pert){const R=bodyRel(c,t)[0],d=sub(r,R),dl=len(d),rl=len(r),Rl=len(R),ac=mul(add(mul(d,1/(dl*dl*dl)),mul(R,1/(Rl*Rl*Rl))),-c.mu);
-    if(len(ac)*rl*rl>=PERT_MIN*b.mu)a=a?add(a,ac):ac}
+    if(!thr||pthr(b,r,ac))a=a?add(a,ac):ac}   // thr: physStep's pointwise test (physics runs in short spans)
   return a}
-// can this orbit (elements el about b) feel a perturbation at all? The moon's direct pull reaches PERT_MIN only within
-// kap·r of it (kap = √((m/M)/PERT_MIN)), so the orbit must pass between rMin/(1+kap) and rMax/(1−kap) from the parent.
-const pertNear=(b,el)=>b.pert||b.children.some(c=>c.pert&&el.ap>c.rMin/(1+c.kap)&&el.pe<c.rMax/(1-c.kap));
+// Does this orbit (elements el about b) feel a moon? Decided per orbit, not per point: inside, the force is always on, so
+// how the time is chopped (warp) changes nothing but rounding. An orbit well inside the moon's feels its tide, at most
+// 2(m/M)(ap/(rMin−ap))³ of the parent's pull (with a margin); one reaching out toward or past the moon always counts.
+const pertNear=(b,el)=>b.pert||b.children.some(c=>c.pert&&(el.ap>=c.rMin/2||2.4*c.mu/b.mu*(el.ap/(c.rMin-el.ap))**3>=PERT_MIN));
 // Coasting step planner, shared by rails and the predictor: lim/sp is the old event limit (SOI edges, a floor radius, and
 // now the edge of a perturbed region); pa the perturbation here (null: exact Kepler); hP the step cap when perturbed.
 function coastPlan(b,r,v,t,el,floor){const rl=len(r),sp=len(v)+b.children.reduce((m,c)=>Math.max(m,c.vMax+c.soiRate),0)+(b.soiRate||0)+1;
@@ -233,14 +236,16 @@ function coastPlan(b,r,v,t,el,floor){const rl=len(r),sp=len(v)+b.children.reduce
   for(const c of b.children)if(el.ap>c.rMin-c.soi&&el.pe<c.rMax+c.soi)lim=Math.min(lim,Math.abs(len(sub(r,bodyRel(c,t)[0]))-soiAt(c,t)));
   if(b.parent&&(el.e>=1||el.ap>b.soiMin))lim=Math.min(lim,Math.abs(soiAt(b,t)-rl));
   if(pertNear(b,el)){pa=pertAcc(b,r,t);
-    for(const c of b.children)if(c.pert){const dN=len(sub(r,bodyRel(c,t)[0])),edge=dN-c.kap*rl;if(edge>0)lim=Math.min(lim,edge/(1+c.kap));}
     if(pa){hP=2*Math.PI*Math.sqrt(rl*rl*rl/b.mu)/200;
       if(b.pert){const dP=len(add(r,bodyRel(b,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/b.parent.mu),Math.PI*2/b.n/400)}
       for(const c of b.children)if(c.pert){const dP=len(sub(r,bodyRel(c,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/c.mu),Math.PI*2/c.n/400)}}}
   return{lim,sp,pa,hP}}
+// coast from (r,v,t) to t1 on b's rails (no SOI changes; stops at the ground)
+function coastTo(b,r,v,t,t1){let g=0;while(t<t1-1e-9&&g++<200000){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,b.mu),b.R),h=Math.min(t1-t,Math.max(0.5,0.25*lim/sp),hP);
+  [r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(len(r)<b.R)break}return[r,v]}
 // one coasting step: exact Kepler, or kick–drift–kick (Kepler drift about b, half kicks from the perturbation)
 function coastStep(b,r,v,t,h,pa){if(!pa)return kepler(r,v,h,b.mu);
-  [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}
+  [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}   // (pertAcc without a threshold: on for the whole orbit)
 const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
 const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
 const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
@@ -771,7 +776,7 @@ function subtree(p){const out=[p];for(const c of p.children)if(c.on)out.push(...
 // Take parts off the vessel (staging or structural failure). They leave as one debris body with the velocity
 // their centre of mass had, including the spin, plus a kick (body frame).
 function detach(s,list,kick,spin){
-  list=list.filter(p=>p.on);if(!list.length)return;
+  list=list.filter(p=>p.on);if(!list.length)return;s.kickN=(s.kickN||0)+1;
   geom(s);const c0=s.cm.slice();let dm=0,dc=[0,0,0];for(const p of list){const m=partMass(p);dm+=m;dc=madd(dc,partC(p),m)}dc=mul(dc,1/dm);
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
@@ -819,8 +824,8 @@ function physStep(s,dt){
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
   const alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
   const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);s.aB=add(aNg,worst.aSide);s.alB=alB;s.wB=wb;   // for the ports' loads
-  s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;
-  let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT);if(pa)grav=add(grav,pa)}
+  s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;if(len(aNg)>1e-9)s.kickN=(s.kickN||0)+1;   // non-gravitational: cached node states go stale
+  let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT,true);if(pa)grav=add(grav,pa)}
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
   integrateRot(s,qrot(s.q,alB),dt);
   simT+=dt;checkSOI(s);groundCheck(s);
@@ -882,7 +887,7 @@ function groundCheck(s){
     s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
 function stage(s){
-  if(!s.alive)return;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
+  if(!s.alive)return;s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
   for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
@@ -978,7 +983,13 @@ function predictFrom(st0){
 function nodeFrame(r,v){const pro=norm(v),h=cross(r,v),nrm=len(h)>1e-9?norm(h):[0,1,0];return{pro,nrm,rad:norm(cross(v,nrm))}}
 function nodeInfo(s){const n=s.node;if(!n)return null;
   if(n.burning){const rem=sub(n.dvW,n.applied);return{rem,dvW:n.dvW,rN:s.r,vN:s.v,t:simT,b:s.body}}
-  const[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu),f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
+  let r,v;
+  // on a perturbed orbit the node's state is integrated (same stepper as rails), and kept until something other than
+  // gravity changes the craft's motion (kickN) or the node moves; otherwise it's the exact Kepler state
+  if(pertNear(s.body,elements(s.r,s.v,s.body.mu))){const k=`${n.t}|${s.body.name}|${s.kickN||0}`;
+    if(!n._c||n._c.k!==k||simT<n._c.t0){[r,v]=coastTo(s.body,s.r,s.v,simT,n.t);n._c={k,r,v,t0:simT}}else{r=n._c.r;v=n._c.v}}
+  else[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu);
+  const f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
 function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
   let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
@@ -1251,7 +1262,8 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
-const FUEL_PRICE=0.2,REFURB=0.8,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
+const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
+const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
@@ -1263,7 +1275,7 @@ const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
-const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>2+cost/8;
+const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
@@ -1300,7 +1312,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;PROG.funds-=R.cost;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1546,7 +1558,7 @@ const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
 const RACE=['beeper','hop','orbiter'];
 function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
   for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(p.i).pri.prestige);let t=0;
-    for(const id of RACE){t+=(60+80*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
+    for(const id of RACE){t+=(100+120*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
@@ -1556,7 +1568,7 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
-  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
+  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
@@ -1569,7 +1581,7 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
   HOOK.save();return true}
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
-  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i],T=CT[c.type];if(!T.ok(R,c.p,s))continue;
+  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;   // a leak's sanctions can shrink the list mid-loop
     const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
@@ -1577,6 +1589,9 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 function econTick(d,R){ensureBoard();
+  if(PROG.flights>0){PROG.funds-=(OVERHEAD+0.03*capOf())*d;   // running the program, from its first launch on (more as it grows)
+    floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
+  PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
   if(c0<0.45&&PROG.cycle>=0.45)HOOK.news('Boom times: satellite operators are hiring launches again','ok');
   if(c0>-0.45&&PROG.cycle<=-0.45)HOOK.news('Recession bites: commercial launch orders dry up','warn');
@@ -1631,7 +1646,7 @@ function budgetDay(){const o=own();let g=0;const parts=[];
   HOOK.news(Object.keys(o.st).length>1?`Budget day: members contribute ${fmtM(g)} (${parts.join(', ')})`:
     `Budget day: ${POWERS[+Object.keys(o.st)[0]].name} allocates ${fmtM(g)} to the space program${opOf(HOME)>60?' (and applauds)':opOf(HOME)<40?' (through gritted teeth)':''}`,g>=GRANT_100*stateShare()?'ok':'warn')}
 function floorCheck(){if(PROG.funds>=FUNDS_FLOOR)return;const o=own();
-  if(stateShare()>=0.5){const k=+Object.entries(o.st).sort((a,b)=>b[1]-a[1])[0][0];PROG.bailouts=(PROG.bailouts||0)+1;
+  if(stateShare()>=0.5){const k=+Object.entries(o.st).sort((a,b)=>b[1]-a[1])[0][0];PROG.bailouts=(PROG.bailouts||0)+1;PROG.bailRecent=(PROG.bailRecent||0)+1;
     HOOK.news(`${POWERS[k].name} grudgingly tops up the space program (${fmtM(PROG.funds)} → ${fmtM(FUNDS_FLOOR)})`,'warn');PROG.funds=FUNDS_FLOOR;opAdd(k,-2);
     if(PROG.bailouts>2&&o.pv>0){shiftShare(k,Math.min(o.pv,0.1));HOOK.news(`…and this time it takes a bigger stake: ${POWERS[k].root} now owns ${(o.st[k]*100).toFixed(0)}%`,'warn')}return}
   if(!(PROG.decisions||[]).some(d=>d.kind==='rescue'))offerDecision(rescueDecision())}
@@ -1655,7 +1670,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
-  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/450))){
+  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/900))){
     if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,
@@ -1668,7 +1683,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
 // how badly the program is doing: each of these counts once
 function cancelTick(){if(!PROG.cancelled||(PROG.decisions||[]).some(x=>x.kind==='defect'||x.kind==='hire'))return;
   careerMove({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.max(10,PROG.funds)})}
-function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
+function badness(){const o=own();return((PROG.bailRecent||0)>=1.5?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
 // the program changes hands. Knowledge (certified ratings, the atmosphere, firsts flown, contract record) carries over;
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
 // government work, drop incidents, ground stations, the race) follows. The pad itself stays where it is for now, flying
@@ -2578,7 +2593,109 @@ function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.te
   gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,w,h,0,gl.RED,gl.FLOAT,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);D.w=w;D.h=h;return D}
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);
+// re-entry plasma: a volume raymarched in a flow-aligned frame (y = upstream, origin ahead of the ship, s = −y downstream)
+// inside the plume's proxy cylinder (uB = [R, L]). The hull is a capped cylinder (axis uA through uM0, radius uRb, half
+// length uHl). Three parts, all scaled by the heat level uK (0 at ~15 kW/m², 1 at an orbital entry's ~160 kW/m² peak):
+// the shock layer, a thin hot sheath on the faces that meet the flow (standoff uD); the wake, a cooling trail of
+// streaks peeling off the hull's edges, uLw long; and a dim core in the wake.
+// the hull's envelope radius at 32 stations from its bottom to its top (ship frame; radial parts count by their offset)
+let PLASMA_FX=true;   // false hides the re-entry plasma (GPU A/B)
+const HULLPR=new Float32Array(32);
+function hullProfile(s){const y0=s.cm[1]+s.yBot,dy=(s.yTop-s.yBot)/31;HULLPR.fill(0);
+  for(const p of s.parts){if(!p.on)continue;const off=Math.hypot(p.pos[0],p.pos[2]),pr=p.d.prof;
+    for(let i=0;i<32;i++){const y=y0+i*dy-p.y0;if(y<-1e-6||y>p.h+1e-6)continue;let r=pr[pr.length-1][0];
+      for(let k=1;k<pr.length;k++)if(y<=pr[k][1]){const a=pr[k-1],b=pr[k],t=b[1]>a[1]?(y-a[1])/(b[1]-a[1]):1;r=a[0]+(b[0]-a[0])*t;break}
+      HULLPR[i]=Math.max(HULLPR[i],off+r)}}
+  return HULLPR}
+let VAPOR_FX=true;   // false hides the vapor cones (GPU A/B)
+// hull shoulders for vapor cones, walking the profile downstream from the leading end (dir −1: from station 31 down):
+// where the radius stops growing after a nose or flare, or steps down. Strength by how much it grew or dropped.
+function hullShoulders(pr,dir){const out=[],n=pr.length,st=dir<0?n-1:0,en=dir<0?-1:n;let lo=pr[st];
+  for(let i=st+dir;i!==en-dir&&i+dir!==en;i+=dir){const r=pr[i],nx=pr[i+dir];if(r<=1e-3){lo=nx;continue}lo=Math.min(lo,r);
+    const grew=(r-lo)/r,drop=(r-nx)/r;
+    if((grew>.15&&nx<=r+1e-3)||drop>.1){out.push([i,r,Math.min(1,Math.max(grew,drop)*1.6)]);lo=nx}}
+  return out.sort((a,b)=>b[2]-a[2]).slice(0,3)}
+// draws the vapor collars of the ship S when it is transonic in humid air (camera-relative frame like the meshes)
+const SHA=new Float32Array(12);
+function drawVapor(VP,camW){if(!VAPOR_FX||!S.alive||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,M=S.mach,
+    V=sstep(.84,.94,M)*(1-sstep(1.12,1.28,M))*(1-sstep(5000,15000,h));if(V<.01)return;
+  const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<1)return;const fl=qrot(qconj(S.q),mul(va,1/vl)),ds=fl[1]>0?1:-1;   // downstream is −y when flying nose first
+  const pr=hullProfile(S),hl=(S.yTop-S.yBot)/2,dy=2*hl/31,sh=hullShoulders(pr,ds>0?-1:1);if(!sh.length)return;
+  const rmax=Math.max(...pr),m=rmax*.5,R=rmax*2.6+.3,L=2*hl+2*m,top=S.yTop+m,p=shipWorld(),
+    O=sub(p,camW),Mo=modelQ(S.q,O,[0,top,0]),cl=qrot(qconj(S.q),mul(O,-1)),clL=[cl[0],cl[1]-top,cl[2]],
+    inside=clL[1]<.01&&clL[1]>-L-.01&&Math.hypot(clL[0],clL[2])<R*1.01+.05,u=PVAPOR.u,E=lightEnv(camW);
+  SHA.fill(0);sh.forEach(([i,r,k],j)=>SHA.set([-hl+i*dy,r,k,0],j*4));
+  gl.useProgram(PVAPOR.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,Mo);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,simT%1000);
+  gl.uniform3f(u.uB,R,L,0);gl.uniform3fv(u.uCam,clL);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3f(u.uM0,0,-(m+hl),0);gl.uniform1f(u.uHl,hl);gl.uniform1fv(u['uPr[0]'],pr);
+  gl.uniform4fv(u['uSh[0]'],SHA);gl.uniform1f(u.uV,V);gl.uniform1f(u.uMa,M);gl.uniform1f(u.uDs,ds);
+  gl.uniform3fv(u.uSunL,qrot(qconj(S.q),SUN));gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+  gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.CULL_FACE);gl.cullFace(inside?gl.BACK:gl.FRONT);
+  gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n);gl.disable(gl.CULL_FACE);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
+const PLASMA_VS=`#version 300 es
+layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform float uFc;out vec3 vL;out float vW;
+void main(){vL=aP*vec3(uB.x*1.0086,uB.y,uB.x*1.0086);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
+const PLASMA_FS=`#version 300 es
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uB,uCam,uA,uM0,uC;uniform float uFc,uT,uIn,uK,uRb,uHl,uD,uLw,uEf,uEp,uPr[32];uniform sampler3D uN;
+vec3 heat(float k){return k<.5?mix(vec3(1.,.28,.06),vec3(1.,.55,.22),k*2.):mix(vec3(1.,.55,.22),vec3(1.,.7,.95),min(1.,(k-.5)*2.));}
+void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;float t1;
+ {float a=dot(rd.xz,rd.xz),b=dot(p0.xz,rd.xz),c=dot(p0.xz,p0.xz)-R*R,ts=a>1e-9?(-b+sqrt(max(0.,b*b-a*c)))/a:1e9;
+  float ty=rd.y<-1e-6?(-L-p0.y)/rd.y:rd.y>1e-6?-p0.y/rd.y:1e9;t1=max(0.,min(ts,ty));if(uIn>.5)t1=min(t1,length(vL-uCam));}
+ // steps sized by the distance to the hull: fine through the thin shock layer, coarse down the wake (≤ 56 steps);
+ // ahead of the hull and clear of the shock layer, a step jumps straight to it
+ float j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),dmax=t1/16.,t=0.,h=0.;
+ vec3 C=vec3(0.),cs=heat(uK),cw=heat(uK*.4);
+ for(int i=0;i<56;i++){if(t>=t1)break;vec3 p=p0+rd*(t+h*j),q=p-uM0;
+  // the hull's signed distance and the normal of its nearest face; the ray stops at the hull
+  // (the slope correction to the radial distance only holds near the surface: far out it would pull distant points in)
+  float ta=dot(q,uA);vec3 rv=q-uA*ta;float rr=length(rv),fi=clamp((ta+uHl)/(2.*uHl),0.,1.)*31.;int i0=min(int(fi),30);
+  float r0=uPr[i0],r1=uPr[i0+1],sl=abs(ta)<uHl?clamp((r1-r0)*15.5/uHl,-2.5,2.5):0.,dr=rr-mix(r0,r1,fi-float(i0)),dS=dr*mix(1.,inversesqrt(1.+sl*sl),smoothstep(4.*uD,uD,dr)),dC=abs(ta)-uHl,sd=length(max(vec2(dS,dC),0.))+min(max(dS,dC),0.);
+  if(sd<0.)break;
+  vec3 qc=p-uC;float x=-qc.y-uEf;
+  if(sd>5.*uD&&x<-2.*uEf){h=max(sd-4.5*uD,uD);t+=h;h=0.;continue;}
+  h=clamp(sd*.35+uD*.2,uD*.25,dmax);h=min(h,t1-t);   // this sample stands for the stretch [t, t+h]
+  vec3 n=dS>dC?normalize(rv/max(rr,1e-4)-uA*sl):uA*sign(ta);float w=n.y;   // facing the flow: n·upstream
+  float nn=texture(uN,vec3(p.x,p.y*.35-uT*6.,p.z)/(uEp*.9)*.25).r;
+  float sh=exp(-pow(sd/uD,1.4))*smoothstep(4.*uD,2.5*uD,sd)*smoothstep(-.1,.9,w)*(.75+.5*nn)*.8;
+  // the wake: from the hull's downstream edge, distance x past it, radius ρ off the flow axis
+  float rho=length(qc.xz),W=uEp*.8+.035*max(x,0.);
+  float wk=0.;if(x>-2.*uEf&&rho<1.6*W){float xe=max(x,0.),dec=exp(-xe/uLw*3.)*smoothstep(-2.*uEf,0.,x);
+   vec2 dr=qc.xz/max(rho,1e-4);float n2=texture(uN,vec3(dr*.7,xe/(uEp*5.)-uT*4.)).r,n3=texture(uN,vec3(dr*1.6,xe/(uEp*2.5)-uT*7.)+.37).r;
+   float ring=exp(-pow((rho/W-.75)/.3,2.)),strk=smoothstep(.4,.8,n2*.6+n3*.4);
+   wk=dec*(ring*(.2+1.3*strk)+.3*exp(-3.*rho*rho/(W*W))*(.6+.6*n3));}
+  C+=(cs*sh*3.+cw*wk*.35)*uK*h/max(uEp,.3);t+=h;}
+ vec3 c=pow(1.-exp(-C),vec3(1./1.5));o=vec4(c,0.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// transonic vapor cones: a lit cloud raymarched in the ship's frame (y = ship axis, origin above the top, the plume's proxy
+// lathe). Flow speeds up round each hull shoulder (the end of a nose cone, a step down in diameter), the air expands and
+// cools, and humid air condenses until the shock behind it recompresses it: a collar with a soft front at the shoulder
+// and a sharp rear edge at the shock, which slides aft as Mach rises. uSh[k] = (axial position, radius, strength, 0) of
+// up to three shoulders; uV = visibility (Mach window × humid low air); uDs = +1 if downstream is −y.
+const VAPOR_FS=`#version 300 es
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uB,uCam,uM0,uSunL,uLight,uAmb;uniform vec4 uSh[3];uniform float uFc,uT,uIn,uV,uMa,uDs,uHl,uPr[32];uniform sampler3D uN;
+void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;float t1;
+ {float a=dot(rd.xz,rd.xz),b=dot(p0.xz,rd.xz),c=dot(p0.xz,p0.xz)-R*R,ts=a>1e-9?(-b+sqrt(max(0.,b*b-a*c)))/a:1e9;
+  float ty=rd.y<-1e-6?(-L-p0.y)/rd.y:rd.y>1e-6?-p0.y/rd.y:1e9;t1=max(0.,min(ts,ty));if(uIn>.5)t1=min(t1,length(vL-uCam));}
+ const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
+ float Tr=1.,ls=0.,acc=0.;
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float ta=p.y-uM0.y,rr=length(p.xz);
+  float fi=clamp((ta+uHl)/(2.*uHl),0.,1.)*31.;int i0=min(int(fi),30);float rh=mix(uPr[i0],uPr[i0+1],fi-float(i0));
+  if(abs(ta)<uHl&&rr<rh)break;   // the hull
+  float dens=0.;
+  for(int k=0;k<3;k++){vec4 S=uSh[k];if(S.z<=0.)continue;float z=(S.x-ta)*uDs,zs=S.y*(1.+6.*clamp(uMa-.86,0.,.35));
+   if(z<-.3*S.y||z>zs*1.3)continue;
+   float n1=texture(uN,vec3(p.x*1.3,ta*.6-uT*.4,p.z*1.3)/S.y*.25).r,n2=texture(uN,vec3(p.x,ta*3.,p.z)/S.y*.6+.3).r;
+   float ro=S.y*(1.15+.95*sqrt(max(z,0.)/zs))*(1.+.3*(n1-.5)+.12*(n2-.5)),front=smoothstep(-.15*S.y,.35*zs,z),rear=1.-smoothstep(zs*(.86+.1*n2),zs*(.97+.1*n2),z);
+   dens+=S.z*front*rear*smoothstep(ro,ro*.62,rr)*(.5+n1*n2);}
+  if(dens<=0.)continue;
+  float sg=dens*uV*3./max(uSh[0].y,.3),a=1.-exp(-sg*ds);
+  vec3 nr=vec3(p.x,0.,p.z)/max(rr,1e-3);float l=.5+.5*max(dot(nr,uSunL),0.)+.6*pow(max(dot(rd,uSunL),0.),6.);
+  ls+=Tr*a*l;acc+=Tr*a;Tr*=1.-a;if(Tr<.02)break;}
+ if(acc<1e-4)discard;
+ vec3 c=vec3(.95,.96,.98)*(uLight*(ls/acc)*1.25+uAmb*.6);c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
+ float al=1.-Tr;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -3234,6 +3351,7 @@ function render(){
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
+  if(near&&mode==='flight')drawVapor(VP,camW);
   // ---- map: orbit lines + labels
   const labels=[];
   if(view==='map'&&mode==='flight')drawMap(VP,camW,labels);
@@ -3256,10 +3374,20 @@ function render(){
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
       gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
-  // re-entry plasma: a glowing cap on the upstream side, brighter with the stagnation heat flux
-  if(near&&S.alive&&S.qHeat>4e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>1){const d=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),lead=dot(d,Y)>0?S.yTop:S.yBot,
-      c=add(sub(p,camW),add(mul(Y,lead),mul(d,0.35))),k=S.radius*1.7,X=norm(cross(d,Math.abs(d[1])<.9?[0,1,0]:[1,0,0])),Z=cross(d,X),I=Math.min(0.55,(S.qHeat-4e4)/1.2e6);
-      gl.uniformMatrix4fv(m.uM,false,mat4(mul(X,k),mul(d,k*.3),mul(Z,k),c));gl.uniform1f(m.uGlow,I);gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}}
+  // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux
+  if(PLASMA_FX&&near&&S.alive&&S.qHeat>1.5e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){
+    const f=mul(va,1/vl),k=clamp(Math.log(S.qHeat/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
+      rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb,ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,Lw=ep*(5+14*Math.min(k,1)),
+      su=ef+Math.abs(dot(Y,f)*mid)+3*D,X=norm(cross(f,Math.abs(f[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,f),Qf=qFromBasis(X,f,Z),qi=qconj(Qf),
+      O=add(sub(p,camW),mul(f,su)),R=ep*1.9+D*3+.06*Lw+.2,L=su+ef+Lw+ep,cl=qrot(qi,mul(O,-1)),c=[0,-su,0],A=qrot(qi,Y),m0=add(c,mul(A,mid)),
+      inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05,pu=PPLASMA.u;
+    gl.useProgram(PPLASMA.p);gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+    gl.uniformMatrix4fv(pu.uM,false,modelQ(Qf,O));gl.uniform3f(pu.uB,R,L,0);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);
+    gl.uniform3fv(pu.uA,A);gl.uniform3fv(pu.uM0,m0);gl.uniform3fv(pu.uC,m0);gl.uniform1f(pu.uK,k);gl.uniform1f(pu.uRb,rb);gl.uniform1f(pu.uHl,hl);
+    gl.uniform1f(pu.uD,D);gl.uniform1f(pu.uLw,Lw);gl.uniform1f(pu.uEf,ef);gl.uniform1f(pu.uEp,ep);gl.uniform1fv(pu['uPr[0]'],hullProfile(S));
+    gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
+    gl.enable(gl.CULL_FACE);gl.cullFace(inside?gl.BACK:gl.FRONT);gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n);gl.disable(gl.CULL_FACE);
+    gl.useProgram(PMESH.p)}}
   // RCS: a puff at each nozzle that fired in the last 80 ms (so a single 20 ms pulse is still seen)
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));

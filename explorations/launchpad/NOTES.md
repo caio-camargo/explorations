@@ -808,6 +808,85 @@ first: since the budget gate, a fresh page refused the Lunar launch and views 2 
 - The Sparrow's alcohol plume still reads whitish-blue against the sea. Real V-2 footage is more yellow.
 - RCS puffs could reuse this volume with a small re.
 
+## Re-entry plasma — a raymarched shock layer and wake (2026-10-07, aerofx session, branch `aerofx`)
+
+Before this, re-entry showed one additive half-sphere at the ship's leading end. The heating physics (Sutton–Graves
+stagnation flux `S.qHeat`, skin temperatures) was detailed, but its visual was not. Now the plasma is a volume raymarched
+in a **flow-aligned frame** (y = upstream), reusing the plume's proxy lathe, culling logic and 32³ noise texture.
+
+### The model (`PLASMA_VS`/`PLASMA_FS`, `hullProfile`, the plasma block in `render()`)
+- **Heat level** k = log(q/15 kW/m²) / log(160/15), clamped to 0–1.5. 160 kW/m² is the peak of an orbital capsule entry
+  (measured: it peaks at 50 km; glow from ~85 km down to ~30 km). A fast "lunar return" (1.3× circular) reaches
+  ~440 kW/m², so k ≈ 1.4. Colour runs deep red → orange → pink-white with k. The wake uses k·0.4, so it is redder.
+- **Hull:** the ship's real envelope, `hullProfile(S)`: 32 radius stations along its axis from the parts' lathe profiles
+  (radial parts count by their offset). The shader's signed distance is the radial gap, corrected for the profile's
+  slope near the surface, with flat end caps. The ray stops at the hull.
+- **Shock layer:** a thin sheath, standoff D = 0.12·min(ep, 1.2 rb) + 0.06 m. It glows as exp(−(sd/D)^1.4) on faces
+  that meet the flow (the normal's upstream component), so a stage flown at an angle lights its windward side.
+- **Wake:** from the hull's downstream edge, a ring of streaks (noise in the azimuth and along the flow, scrolling
+  downstream) plus a dim core. Width ~0.8 of the cross-flow extent, growing slowly. Length 5–19 extents with k.
+- Additive, no opacity. `PLASMA_FX = false` hides it (GPU A/B).
+
+### What it took
+- **Even steps band the thin shell.** 40 steps over a ~15 m ray against a 0.15 m layer gave a screen-door pattern over
+  the hull. Steps are now sized by the distance to the hull: 0.35·sd + 0.2 D, at least D/4. Ahead of the hull, clear of
+  the layer, the march jumps straight to it (≤ 56 steps).
+- **A hull cylinder outlines a can that isn't there:** around a conical capsule the glow traced the core radius. Hence
+  the real profile.
+- **Arcs and a spike:** the capsule's neck steps from 0.42 to 0.30 m within one station, and dividing the radial gap
+  by √(1+slope²) (up to 2.7×) made points 2 m out read as 0.6 m away, inside a 4 cm slab across the hull. Edge-on
+  that slab is a spike, obliquely it is arcs. Found by a diagnostic render (emission coloured by the shader's own
+  distance), after two wrong guesses (step size; the proxy, ruled out by doubling its radius). Fix: the slope
+  correction fades out from D to 4D.
+
+### Cost
+`PLASMA_FX` on/off in the same page, GPU timer queries, `RS` pinned to 1, 1280×800, RTX 5050 laptop:
+
+| view | on | off |
+|---|---|---|
+| 40 capsule at 50 km, side | 7.9–8.1 ms | 7.1–7.2 |
+| 41 capsule at 50 km, behind (long wake on screen) | 11.0–11.2 | 9.8 |
+| 44 stage at 35° AoA | 7.7–7.9 | 6.9–7.0 |
+| 45 fast entry at 55 km | 7.6–8.0 | 6.8–6.9 |
+
+### Reference views
+`refView(40)` capsule (chute, bio, shield) at 50 km (peak heating), side; `41` same, from behind; `42` at 75 km
+(onset); `43` at 35 km (fading); `44` pod, tank and Petrel turned 35° off the flow at 55 km; `45` a fast entry
+(1.3× circular, steeper) at 55 km. They fly the entry from 95 km retro, then turn the ship if asked.
+
+### Still open
+- Only the active vessel glows. Debris and spent stages entering (and burning up) would need the same per debris body.
+- No light cast on the hull from its own plasma, and no change to the hull shader (`MESH_FS` is the visuals session's).
+- The views' "retro" capsule leads with its narrow end (SAS hold during the teleport). The glow follows whatever
+  leads, but a shield-first view would be the classic shot.
+- Transonic vapor cones (next idea).
+
+## Transonic vapor cones (2026-10-07, aerofx session)
+
+Around Mach 1 in humid air, the flow speeds up round each convex corner of the hull, expands and cools, and water
+condenses until a shock recompresses it. That's the white collar in max-Q photos. Here it is a lit cloud (alpha
+blended, shaded like the smoke) raymarched in the ship's own frame, reusing the plume proxy, the noise texture and the
+plasma's `hullProfile`.
+
+- **Where:** `hullShoulders(profile, dir)` walks the 32-station radius profile downstream from the leading end. A
+  shoulder is where the radius stops growing after growing ≥ 15 % (the end of a nose cone or a flare), or drops ≥ 10 %
+  in one station (a step down). It keeps the three strongest. The Orbiter gets one at the pod's base and two at the
+  decoupler/Petrel steps. The Lunar's include the top of the 2.5 m adapter.
+- **When:** visibility = smoothstep in Mach 0.84→0.94, fading 1.12→1.28, times humid air below 5 km fading to none at
+  15 km. A stand-in for humidity: the world has no humidity field.
+- **Shape:** a collar per shoulder, soft at the front (at the shoulder) and sharp at the rear (the shock), whose distance
+  aft grows with Mach: zs = r·(1 + 6·(M − 0.86)). The outer radius flares as r·(1.15 + 0.95·√(z/zs)) with noise on the
+  edge and the rear line.
+- **Light:** brighter on the sun side and toward the sun (forward scattering), the smoke's sun/ambient scaling and the
+  same tone curve.
+- `VAPOR_FX = false` hides it. Cost: 0.2–0.7 ms while visible (same-page on/off A/B, views 50, 52, 53).
+- **First pass too timid:** collars 12 % wider than the hull read as small flaps. Then straight flares read as
+  triangles: curved (√) flares and a wider feathered edge fixed it.
+- Reference views: `refView(50)` Orbiter at M 0.97, `51` at M 1.08, `52` Lunar at M 1.0, `53` Orbiter close-up from below.
+
+**Still open:** a real humidity field (clouds, coast vs inland); collars on side boosters (the profile only knows the
+envelope, so radial stacks' noses don't make their own shoulders); condensation off fin tips at high angle of attack.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -838,6 +917,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.28 — balance pass with simulated careers (2026-10-07)
+
+**Tool:** `career.mjs` (`node career.mjs [years] [seeds]`) plays whole programs through the real economy code: contracts,
+budget days, decisions, the race, sanctions, opinion, career offers. Flights are abstracted. A scripted player picks a
+design (sounding rocket at any apex, Kestrel qualification shot, passenger hop with a gentle variant, orbiter to an
+altitude and inclination with optional ballast, passenger orbit, ballistic shot), pays its real price (real presets,
+real sourcing for the archetype), and gets the flight record that design produces, succeeding 80–93% of the time.
+Everything after the flight is the game's own code. The player takes the best-paying offers it has a design for,
+avoids certain home sanctions, flies whatever is worth most (contract pay plus firsts, which are valued above their
+reward because they unlock things), takes a loan when rescued, and declines optional decisions. It runs 6 archetypes ×
+3 starts × 3 seeds; 3 years takes about 2 minutes.
+
+**What it found (before tuning, 1 year):** money exploded. Every program ended year one between 320M and 3,000M from a
+60–90M start: a recovered sounding rocket cost about 4M net after 80% refurbishment and completed 10–25M contracts every
+four days. Orbit came by day 15–19 because stacking took 2 + cost/8 days, so the race was no contest. Two real bugs: a
+leak's sanctions could shrink the active-contract list during `contractEval` (crash), and the floor was only checked at
+flight end, so once running costs existed a program that couldn't fly bled with no rescue.
+
+**Changes:**
+- **Stacking takes real time:** `prepDays` = 5 + cost/2 (sounding 14 d, Orbiter 33 d, Heavy 53 d).
+- **Launch operations fee:** 3M + 10% of the vehicle, every launch (`OPS_FIX`, `OPS_FRAC`; `R.ops`).
+- **Running costs:** 0.1M/day + 0.03M/day per unit of contract capacity, from the first launch on (a program that hasn't
+  flown has nothing to run). An agency's budget day roughly covers this at neutral opinion; a company has to earn it.
+- **Refurbishment** 80% → 65%. **Contract pay** ×0.7.
+- **Rivals race at a human pace:** each first takes (100–220 days) / speed. The strongest rival in the current world is
+  expected on days 83 / 176 / 245.
+- **Career offers:** "excelling" offers half as often (1/900 per day). "Badness" counts *recent* top-ups (`bailRecent`,
+  fading over ~300 days) instead of lifetime top-ups, which had made a recovered program look desperate forever (13–20
+  offers in 3 years → 0–8).
+- **Fixes:** `contractEval` skips entries removed mid-loop; `floorCheck` also runs in the daily tick.
+
+**After (3 years × 3 seeds):**
+
+| | flights in 3 y | first orbit (day) | funds after 3 y | top-ups | career offers |
+|---|---|---|---|---|---|
+| superpowers | 32–44 | ~130 | 790–1,210M | 0 | 0–2 |
+| rising power | 21–36 | ~147 | 176M (company) to 690M | 0–0.3 | 2–5 |
+| frugal middle power | 24–34 | 158 (company 234) | 137M (company, in debt) to 630M | 2.7 (state-run) | 2–8 |
+| resource state | 17–36 | ~170 | 344M (company) to 1,245M (consortium) | 0.7–1.3 | 2–8 |
+| security state | 30–36 | 163–175 | 650–800M | 0–0.3 | 0–6 |
+
+Failure rates 7–15%. The weaker the archetype, the leaner the times: state-run frugal and resource programs need 1–3
+top-ups; a frugal company ends in debt. All nine firsts get done within 3 years everywhere except the frugal and
+resource companies (8.3–8.7). Race: the runner's player goes for the passenger firsts before the beeper (they pay more),
+so it always loses the beeper to the strongest rival (~day 83) and wins hop and orbiter. A player who goes straight
+for the satellite can contest it.
+
+**Still open:** strong programs reach ~1,000M by year 3 with nothing to spend it on. That's a content gap more than a
+tuning one: the economy needs **sinks** (stations, bigger programs, infrastructure such as the planning session's
+ground stations, R&D). Imaging contracts are outside the runner (they need a camera satellite). The runner's flight
+outcomes are fixed per design and don't come from physics; re-check them when designs change.
 
 ## v1.27 — launch sites as data (2026-10-07, terrain session, slice B)
 
@@ -1316,7 +1447,7 @@ inconsistent at m/M = 5.6e-4. In a chaotic case that is enough to change the out
 0.52 P there and at 1.51 P in the consistent model. Every other verdict in the study's table stands (prograde wrecked from
 ~100 km up, retrograde survives).
 
-**Where.** `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
+**Where** (superseded in part 2 below: per-orbit gating, 2e-6). `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
 Tellus's frame, Nyx's pull minus Tellus's reflex, wherever that is ≥ `PERT_MIN` = 1e-3 of Tellus's pull. A threshold sweep
 against n-body (flybys at Nyx's pe and ap, v∞ 300/800 m/s, error one day later):
 
@@ -1360,6 +1491,50 @@ patched-conic +12.9 h. Predicted and flown agree.
 **Not yet:** node positions still come from Kepler (`nodeInfo`), so a node far ahead on a perturbed leg sits slightly off the
 drawn path. Selene perturbs nothing, though at 0.0123 of Tellus it would matter more than Nyx: making it `pert` is one flag, but
 it changes every Selene trajectory and the tests built on them. Debris near Nyx ignores the tide.
+
+### 6b, part 2: Selene perturbs too; gating per orbit; nodes (2026-10-07)
+
+- **Selene is `pert:true`.** Its relative orbit uses μ_T + μ_S. That shortens its period by 0.6 %: the textbook encounter
+  moved from 15.5 h to 15.2 h, and every Selene test still passes.
+- **A per-point threshold breaks warp.** With the 1e-3 per-point test, a long Kepler step that started below the threshold
+  skipped stretches where the force should have been on. 30 days of low orbit at 100,000× came out **472 km** from the same
+  30 days in 60 s chunks. The fix is to gate **per orbit**: `pertNear` estimates an orbit's largest tidal ratio (for orbits
+  well inside a moon's, 2.4·(m/M)·(ap/(rMin−ap))³; anything reaching out toward a moon counts), and within a gated orbit the
+  force is always on, with the step cap. Now warp and small steps end **0.4 m** apart after 30 days. `physStep` keeps a
+  pointwise test, since physics runs in short spans.
+- **PERT_MIN 1e-3 → 2e-6**, by sweep on a translunar coast through Selene's SOI (two days, pass 270 km up, vs Tellus+Selene
+  n-body): 1e-3 → 1,354 km off · 1e-5 → 121 · 3e-6 → 19 · **2e-6 → 6.8** · 1e-6 → 6.8 · 1e-7…1e-9 → 4.6 km (the floor; 10× finer
+  steps change nothing, so it's the close pass). At 2e-6, Selene's tide on low orbit (1.2e-6) stays out, but **Nyx's (~1e-5) is
+  in**: low orbit now drifts ~10–200 m a month (real), and warp there costs ~0.4 ms a frame instead of 3 µs.
+- **Checks are per moon.** The moons ride fixed paths, so an n-body with both on would have Selene pull a craft orbiting Nyx but
+  not Nyx itself. The game keeps only Tellus's tide inside Nyx's SOI, which is the more physical choice. §21 runs Nyx's checks
+  with Selene's perturbation off; §22 runs Selene's with Nyx's off: 100 km lunar orbit **10 m** off n-body after a day;
+  translunar coast **4.7 km** off after two days.
+- **Nodes:** `nodeInfo` integrates to the node on a perturbed orbit (`coastTo`), memoised on the node until `kickN` changes
+  (thrust or aero in `physStep`, staging, separation). Node 4 h ahead around Nyx: **0 m** from where rails take the craft; Kepler
+  alone was 16.5 km off.
+- Test changes outside this scope: the 30-day warp check (§3b) now tests warp *invariance* plus a bound on tidal drift; the
+  economy's satellite-precision check allows 1e-3 M (a "perfectly centred" test orbit now gets nudged by the tides).
+
+### Nyx missions — spec for the economy session (not built)
+
+Per the program design (epoch 5 "Discovery"), Nyx is found by the player's own telescope after the Selene ladder. Until then
+it's in the sky (drawn, perturbing) but nameless and unmarked on the map. A suggested ladder, with the physics already in place:
+
+| Mission | Win condition (headless-checkable) | Why it's interesting here |
+|---|---|---|
+| **Discovery** (telescope) | telescope payload in orbit for N days → Nyx gets its name, map marker and orbit line | the telescope is your instrument opening the chapter |
+| **Flyby** | enter Nyx's SOI (`s.body===NYX`) with a camera | inclined 30°, eccentric: the plane change and *when* to meet it dominate the cost |
+| **Impactor** | crash on Nyx while sending (antenna on board) | cheap, and a prograde low orbit does it for you (that's the joke) |
+| **Orbit that lasts** | stay in Nyx's SOI below 300 km for 2 Nyx orbits (67 h) | prograde orbits from ~100 km up get wrecked at Nyx's periapsis; **retrograde survives**; the map shows it ("Impact in … (perturbed)") |
+| **Lander** | landed on Nyx, upright, under 3 m/s | g 0.40, escape speed 346 m/s: easy to land, easy to bounce |
+| **Sample return** | landed on Nyx, then landed on Tellus with the sample part | |
+
+Rough Δv (equatorial transfer, so optimistic by a plane change): meet Nyx **at apoapsis** (27,900 km), 1,290 m/s from low
+orbit, a 12 h trip, arrival v∞ ~730 m/s, capture into 100 km ~590 m/s. **At periapsis** (8,100 km), 1,040 m/s and 2.3 h,
+but v∞ ~2,470 m/s and capture ~2,290 m/s. So the cheap way in is slow and at apoapsis, where Nyx's SOI is also largest
+(1,401 km vs 407). Landing from 100 km: ~190 m/s. Logbook facts that fit planning's "Out there" section: Δv to reach Nyx,
+Nyx orbital period (first orbit), surface gravity (first lander), and "prograde orbits don't last" (the first wrecked orbit).
 
 ## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
 
@@ -2531,6 +2706,7 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations near Nyx~~ done (§ "6b"). Next on that line: Selene as a
-   perturber (`pert:true`, then re-baseline the Selene tests); node positions on perturbed legs; more moons are one `addBody` each.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations~~ done for Nyx and Selene, nodes included (§ "6b").
+   Next on that line: Nyx missions (spec handed to the economy session, § "Nyx missions"); debris near the moons ignores tides;
+   registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
