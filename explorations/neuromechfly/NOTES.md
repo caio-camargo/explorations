@@ -1,12 +1,12 @@
 # NeuroMechFly — driving EPFL's fly digital twin locally
 
-**Version**: v1.0.2
+**Version**: v1.0.3
 **Author**: Caio Camargo + Claude (Opus 5, Opus 5.5)
 **Date Created**: 2026-09-10
 **Last Updated**: 2026-10-07
 **Purpose**: Exploration notes — what NeuroMechFly v2 is, how to run it here, and what
 the controller × terrain matrix and the breaking-point sweep taught
-**Status**: Active — matrix, breaking-point sweep and measured contact complete, open threads listed at the bottom
+**Status**: Active — matrix, breaking-point sweep and measured contact and foot landings complete, open threads listed at the bottom
 
 ---
 
@@ -109,6 +109,7 @@ C:/Users/caioa/.venvs/flygym/Scripts/python.exe baseline.py
 | `sweep_difficulty.py` | Breaking-point sweep: gap width and block height × 3 controllers × 3 seeds, in parallel processes; writes `out/sweep.json` |
 | `plot_sweep.py` | Breaking points, trapped-in-gap counts, `out/sweep.png` |
 | `plot_contact.py` | Measured contact vs commanded stance from `sweep_difficulty.py --contact` (raw `gait_*.npz`), `out/contact.png` |
+| `plot_feet.py` | Foot landing positions vs the gap layout, strides, caught/not-caught touchdowns, `out/feet.png` |
 
 ### The machine got stricter (2026-10-07)
 
@@ -396,6 +397,62 @@ What this changes:
 So the revised moral: robustness on gaps is about **where feet land**, and the two survivors
 get there differently. The CPG's clock puts feet into gaps from the first one.
 
+> **Corrected by §11:** missed footholds track the breaks of Walknet and the hybrid, but not
+> the CPG's. At 0.1 mm, where the CPG breaks, its feet over gaps are still caught 99 % of the
+> time. It breaks because its *stride* collapses.
+
+### 11. Where feet land: the CPG breaks mid-swing, not at touchdown
+
+Same 54 runs, now with each foot's position (origin of the last tarsal segment, within 0.1 mm of the tip). A *touchdown* is the onset of
+commanded stance; at that step we take the foot's x within the block-and-gap period and check
+whether any contact follows within 10 ms ("caught"). Terrain-blind null: a fraction gap / (1 +
+gap) of touchdowns land over gaps. Figure: [`out/feet.png`](out/feet.png). Script:
+[`plot_feet.py`](plot_feet.py).
+
+| gap (mm) | 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 |
+|---|---|---|---|---|---|---|
+| **median stride** (mm, same leg, touchdown to touchdown) | | | | | | |
+| CPG | 1.21 | **0.48** | 0.22 | 0.00 | 0.20 | 0.01 |
+| Walknet | 1.20 | 1.10 | 1.08 | 1.06 | **0.02** | 0.09 |
+| Hybrid | 1.16 | 1.10 | 0.91 | 0.70 | 0.74 | **0.10** |
+| **touchdowns over a gap** (null: 0.09, 0.17, 0.23, 0.29, 0.33) | | | | | | |
+| CPG | – | 0.23 | 0.26 | 0.46 | 0.40 | 0.49 |
+| Walknet | – | 0.13 | 0.15 | 0.31 | 0.51 | 0.59 |
+| Hybrid | – | 0.12 | 0.21 | 0.29 | 0.35 | 0.53 |
+| **over a gap and not caught within 10 ms** | | | | | | |
+| CPG | – | 0.01 | 0.07 | 0.24 | 0.17 | 0.27 |
+| Walknet | – | 0.15 | 0.00 | 0.23 | 0.21 | 0.25 |
+| Hybrid | – | 0.00 | 0.01 | 0.03 | 0.08 | 0.09 |
+
+Walknet has about half the touchdowns (6.4 steps/s against 12), so its rows rest on ~215
+landings per cell against ~400.
+
+- **The CPG's failure starts in the air.** At a 0.1 mm gap its feet over gaps are caught 99 %
+  of the time; a 0.1 mm hole is narrower than the tarsus, so the foot bridges it. Yet its
+  median stride already falls from 1.21 to 0.48 mm. When a swinging foot touches the ground,
+  it is near the far wall of a gap (the next block's face) 38 % of the time, against 18 % by
+  area. The foot snags the block edge mid-swing, the swing ends short, and the clock moves on
+  regardless. Once the stride is ~0 the fly is stuck, and a stuck fly's feet land in the same
+  gap over and over. That is why the CPG's over-gap share sits far above the null: it's a
+  symptom of being stuck, not a cause.
+- **Every controller keeps its stride until its break, then loses it all at once.** Walknet
+  holds 1.06–1.10 mm up to 0.3 mm, then drops to 0.02 at 0.4. The hybrid shrinks gradually
+  (1.10 → 0.70) and collapses at 0.5. Stride is the cleanest single readout of each break in
+  this whole exploration.
+- **Walknet's "missed footholds" on flat ground are late touchdowns.** Its feet *on blocks*
+  get no contact within 10 ms of commanded stance 17–32 % of the time. That's the 8 % miss rate
+  from §10 that doesn't depend on the gaps: its swing is slower (48 ms against the CPG's 30)
+  and its stance command starts while the foot is still descending.
+- **Walknet also snags (41 % of swing contacts near the far wall at 0.1 mm) but its stride
+  survives; the CPG's doesn't.** Same step trajectories; the differences are a 1.6× slower
+  swing and a stance twice as long (109 ms against 54). A hypothesis to test next, not a
+  finding: a slower foot that hits an edge rides over it instead of stopping. The hybrid's
+  swing contacts land near walls at exactly the area rate at 0.1 mm (0.18 against 0.18): its
+  stumbling correction lifts the foot clear, which is what that correction is for.
+- **At 0.3 mm all three pile up against the far wall** (histograms): feet that reach a gap
+  slide forward until they meet the next block's face. Feet don't drop to the bottom; they
+  wedge.
+
 ### Measurement traps found on the way
 
 - **The worlds end at x = 25 mm.** A fly at full speed covers ~25 mm in 2 s and walks off the
@@ -421,9 +478,11 @@ get there differently. The CPG's clock puts feet into gaps from the first one.
   one-flag experiment and the papers suggest it matters a lot on non-flat ground.
 - ~~**Terrain difficulty sweep.**~~ Done 2026-10-07, see "Breaking points".
 - ~~**Measured duty factor.**~~ Done 2026-10-07, see §10.
-- **Why Walknet's footholds ignore small gaps.** Same step trajectories as the CPG, different
-  timing, yet its miss rate doesn't rise until 0.4 mm. Log foot x positions at touchdown
-  relative to the gap edges for both controllers.
+- ~~**Why Walknet's footholds ignore small gaps.**~~ Done 2026-10-07, see §11: it's stride, not
+  footholds; Walknet's flat-ground "misses" are late touchdowns.
+- **Swing speed as the CPG's fix.** Slow the CPG's intrinsic frequency (12 Hz → 6.4, Walknet's
+  rate) and see whether its stride survives 0.1–0.3 mm gaps. If it does, the "slow foot rides
+  over the edge" hypothesis in §11 holds, and Walknet's robustness is mostly tempo.
 - **Hybrid without swing extension.** If its low duty factor is the price of clearance,
   removing the extension should hurt it on gaps; if incidental, nothing changes.
 - **Longer worlds.** The 25 mm terrain edge caps progress near flat; pass a larger `x_range`
