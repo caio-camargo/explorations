@@ -1813,6 +1813,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   the ring's plates within 0.6 %) and "make root" (re-hang the design along stack joints, so an upper stage picks up with the pod;
   vessel unchanged). Merging `main` (orbital registry) gave one price-table conflict and exposed a palette bug (new part kinds
   hidden), now an "Other" group. `test.mjs` 90/90. Browser-checked from the worktree. Merged to `main` (`c53b098`). Next: staging editor.
+- **v1.20 (2026-10-07, builder worktree):** staging editor (atoms named by decoupler node ids, a custom firing order per design,
+  late parts slot in, drops carry what hangs off them; chips with ◀ ▶ ⤵ and hover highlight). Holding the Heavy's boosters until the
+  core drops costs 535 m/s. Found on the way: since v1.17 the builder's draw hook sat in `drawMap` (no ghosts/highlights) and its
+  overlay hook split the economy's decision click handler (decisions dead in the editor), both from zero-context patches at the
+  worktree switch. Hotfix `480d7c7` on `main` first, then a merge guard in test.mjs. 106/106. Merged to `main` (`31e9306`).
 - **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
