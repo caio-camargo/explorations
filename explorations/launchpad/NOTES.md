@@ -2292,6 +2292,35 @@ Grab anything, port or not, wherever you touch it.
 - **Not yet:** grabbing debris (spent stages: contact with debris comes first); a free pivot so the held body can be
   turned to line up; arming/disarming (it grabs whatever its jaws touch slowly).
 
+## Stations, modules and moonbases: plan (2026-10-07, sats session with Caio; Phase A in progress)
+
+**Decisions (Caio):** stations first, then moonbases. Modules reach a station either as their own rockets or carried in a
+**cargo bay**; once out, **both** you fly them yourself (RCS) **and**, as the more advanced option, an **arm** berths them.
+A winged runway shuttle is a later project of its own; the bay comes first and works on any rocket. **One vessel per
+flight is to be revisited** now, since flying a released module yourself needs it.
+
+**What a station is:** a registry stack (an entry with docked bodies, already built for docking), grown over flights.
+Modules are parts with jobs: habitat (crew capacity), lab (science per crewed day), hub (side-facing ports), power,
+depot (fuel for Selene missions). Its abilities are what's docked. Assembly in orbit gets past what survives max-q.
+
+**Phases:**
+- **A. Several vessels in a flight.** `S` stays the vessel you fly; `FLEET` holds the others. A separation that takes a
+  command part (pod, or a new probe core) makes a vessel, not debris. Every vessel is stepped (physics or rails
+  together), they collide with each other, and you switch with `[` / `]` (a tape op). Controls only reach the vessel
+  you fly; each keeps its own throttle, SAS and RCS. At the end of the flight every vessel left in orbit is registered.
+  Measured before starting: the sim core already takes the vessel as a parameter (16 global `S` references, 3
+  functions read the controls), so this is additive; the 448 `S` references in render/UI mean "the vessel you fly".
+- **A2. Vessels that persist as vessels:** registry entries keep their design and state, so a later flight can take
+  control of a registered vessel (a station's tug, a module waiting in orbit).
+- **B. Cargo bay:** a hollow stack section with doors; contents shielded from air and heat; doors open in orbit; the
+  payload is released (a vessel if it has a command part) or picked out by the arm.
+- **C. Station modules and station state:** habitat, lab, hub (side ports), power, depot; station state from its docked
+  modules; contract types proposed to the economy session (flagship "First station" in milestones; resupply, crew
+  rotation, client experiments, tourists; reboost once orbits decay).
+- **D. The arm:** captures within reach, berths onto a port along a computed path.
+- **E. Moonbase:** objects resting on a body as registry entries (planet-fixed), modules landed near a beacon forming a
+  base, surface functions (science, fuel).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
