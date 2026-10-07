@@ -1785,3 +1785,9 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   biocapsule / mass simulator / Sparrow, certified ratings via telemetry, atmosphere knowledge → impact spread. Flight
   testing found and fixed: supersonic drogue (17 g), chute opening shock (reefing), no convective cooling, chute-as-root.
   `test.mjs` 54/54. Committed and pushed.
+- **v1.13 (2026-10-07):** budget — part prices, launch charged at liftoff, 80 % refurbishment of what lands intact,
+  mission rewards, town damages, a 25k floor; builder shows cost and gates launches. Preview server moved to port 8771
+  (8765 was taken by another chat's server). `test.mjs` 56/56. Committed and pushed.
+- **v1.14 (2026-10-07):** economy design with Caio written into NOTES (sources/tracks, overlapping contracts, multipolar
+  powers, program ownership mix). Built slices 1–3: M units, stress-pegged refurbishment, program calendar, seeded
+  powers (any count) with territory, relation drift, opinion, incidents. `test.mjs` 62/62. Committed and pushed.

@@ -568,6 +568,55 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.14 — M units, stress refurbishment, the calendar, the powers (2026-10-07)
+
+Slices 1–3 of the economy build order (see "Overlap, powers and what the program is" below).
+
+- **Money in M** (relabelled from k, same numbers): Sounding 15M, Orbiter 50M, Heavy 90M.
+- **Refurbishment pegged to stress.** Every physics step keeps each part's peak load against its *true* rating (both
+  sides of each joint) and its peak T/Tmax; landing records the touchdown speed. Value kept = (1 − 0.7·load
+  fatigue above 50%) × (1 − 0.7·heat above 50%) × (touchdown: full up to 6 m/s, down to 40% at 12 m/s). The refund
+  headline names the worst-off part ("came back as scrap"). Cost: two comparisons per part per step, well below the
+  timing noise.
+- **The program calendar,** in Tellus days (6 h, one turn), 400-day years. Stacking takes 2 + cost/8 days (Sounding
+  3.9, Orbiter 8.2, Heavy 13), and the flight adds its own duration. Each advance ticks the world.
+- **Powers as data:** `makePowers(seed, n)`, any n (default 5; checked for 2, 3, 5 and 8). Each has a generated name
+  (government forms not repeated), a home region, economy size, tech and a 2-D alignment. Power 0's home is the launch
+  site. Land goes to the nearest home region, weighted by economy (a power diagram); **the sea is no one's**. Cities take
+  their power, and the map draws city names in its colour.
+- **Relations** for every pair drift toward what the alignments suggest (150-day time constant) with noise, plus
+  occasional crises (likelier when relations are already poor) and treaties, all in the news. Deterministic from a
+  seed kept in the save. **Opinion of the program** per power: missions raise it (most at home); a harmed passenger
+  or a town hit at home lowers it; memory fades toward neutral.
+- **Incidents:** a stage landing on another power's land costs that power's opinion and the home–power relation (×3
+  on a town) and 1.5× damages, with a headline. At home it's a local matter (opinion only).
+
+Seen in the first generated world: the home power is small (2 cities) next to bigger neighbours (5–7). Over a simulated
+year, two pairs drifted to hostile (about −0.7) and one became allied; after halving the crisis rate, none pins at
+−1 any more. `test.mjs`: 6 new checks (62).
+
+Not yet: none of this pays or blocks anything beyond incidents. Contracts tied to powers, opinion-driven grants and
+the business cycle are slice 4.
+
+## v1.13 — the budget (2026-10-07)
+
+Money in thousands of credits ("k"), all in the SIM core (`PRICE`, `vesselCost`, settled in `missionTick` and `missionEnd`):
+- **Launches are paid for:** parts (engines and pods dear, tanks and structure cheap; reinforcement adds by joint size)
+  plus fuel at full tanks (0.2k/t, so fuel is a rounding error, as in reality). Charged at liftoff.
+- **Refurbishment:** whatever is still attached and landed intact on Tellus when the flight ends returns 80% of its dry
+  price. A recovered Sounding flight nets 3.2k of 15.2k; a dropped stage is gone. Reuse and recovery pay.
+- **Missions pay** on completion, 15k to 100k (420k across both epochs), shown in the Program panel.
+- **Damages:** a dropped stage that lands in a town costs 40k, near one 8k.
+- **Floor:** below 25k after a flight, the government tops the program up (with a headline, counted in the panel). There
+  are no dead ends, but the floor only covers cheap flights (Sounding 15.2k, Passenger 21.4k).
+- **Gate:** the builder shows cost, funds and the refundable share. The button reads OVER BUDGET and won't launch
+  what you can't afford.
+
+Starting funds 60k buy one Orbiter attempt (49.8k). Heavy (90k), Asparagus (128k) and Big Lunar (115k) have to be
+earned. Saved v1.12 programs get 60k on load. `test.mjs`: 2 new checks (56).
+
+Not yet: recurring income. That waits for the world clock (satellite services paying per day).
+
 ## v1.12 — the program, first slice: Epochs 1–2 (2026-10-07)
 
 Built from the mission design below. Everything mission-side lives in the SIM core and is tested headlessly
@@ -666,6 +715,52 @@ service contract (target orbits, client cities) · event (disaster, visitor; whe
 **Parts implied:** instrument package, animal capsule (g limit plus a short air supply; a small slice, not full life
 support), mass simulator, escape tower, fairing, antenna (line of sight to ground stations), solar panel and battery,
 restartable upper stage, docking port.
+
+**Economy and mission sources (Caio, 2026-10-07):**
+- **No global cap on missions.** *Firsts* are one-time milestones; *contracts* are repeatable and generated with variation
+  (target bands, orbits, masses, limits), like KSP rescues from different orbits. No grinding is required, but replaying
+  pays. The budget makes doing the same mission more efficiently worth it (profit = pay − cost + refurbishment), plus
+  records and precision bonuses.
+- **Money in M** (relabel k → M; Orbiter ≈ 50M, near real small launchers).
+- **Refurbishment pegged to stress:** each part's peak load fraction, peak T/Tmax and touchdown speed set its refund.
+  It's cheap: the structural and thermal passes already compute these every step, so it's one max per part per step.
+  Later, inventory: reused parts carry their fatigue between flights.
+- **Mission sources / tracks:** pure science, commercial/industrial, tourism, government/transnational agency,
+  military. Each has its own contract shapes and its own standing with the program.
+- **A roughly simulated economy:** public opinion feeds grants and government contracts; a business cycle (lean times)
+  moves commercial demand and budgets. Light-touch scalars updated per program day, not an econ sim.
+- **Competing powers (bigger, later):** geopolitical tension; working for one side can bring sanctions or the loss of the
+  other's government contracts when competition is intense; a space race for firsts. Mostly a balancing problem; it
+  makes the money and prestige layer interesting.
+- **The backbone this needs: a program calendar.** Today `simT` restarts at 0 every flight. Satellites earning per day,
+  opinion drifting, cycles and tension all need dates: launch prep time per vehicle, flight time advancing the
+  calendar, the world ticking between flights.
+
+**Overlap, powers and what the program is (Caio, 2026-10-07):**
+- **Overlapping contracts:** one well-planned flight can satisfy several. They come almost free, since every mission reads
+  the same flight record. The limit worth having is a *program capacity* (how many contracts you can hold at once) that
+  grows with the program.
+- **Multipolar powers, unparked:** N powers generated from a seed (the number is flexible), each with economy size, tech
+  level, an alignment on a couple of axes, and a relation with every other power that drifts. **Cities belong to powers,
+  so the map has territory:** a stage landing in another power's land is a diplomatic incident, and overflight
+  matters. Tension drives sanctions, export controls, embargoes and races for firsts.
+- **What the program is: an ownership mix, not a type.** State shares (from which power or powers) versus private
+  capital. Starting points: *national agency* (a legislature funds it; opinion and firsts matter; rival contracts are off
+  limits; cautious), *private company* (investors want results; contracts from anyone, subject to sanctions and export
+  controls; no safety net), *transnational consortium* (several powers, neutral, politics over priorities). The mix moves
+  through decisions with trade-offs: **privatization** (cash now, lose grants, gain freedom); **bailouts with strings**
+  (the floor top-up becomes a state stake or board seat, so the safety net is the road to nationalization); a
+  **commercial spin-off**; **military work** pulling you toward one power and away from others.
+- **Guardrails:** flying stays the centre. The economy creates missions worth flying and occasional between-flight offers
+  in the game's lighter tone, never menus to manage. Keep the numbers few and legible: a player should be able to say
+  why an offer appeared.
+- **Build order:**
+  1. M units and stress refurbishment.
+  2. The program calendar.
+  3. Powers as data: territory, relations and tension, incidents.
+  4. The contract board: overlap, capacity, sources tied to powers, opinion, business cycle.
+  5. Ownership: starting choice, the national-agency path, then privatization and bailout-for-equity.
+  6. Tourism, military, sanctions, races.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;

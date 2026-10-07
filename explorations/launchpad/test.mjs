@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -363,7 +363,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 14. The program (v1.12): missions read a flight record; knowledge (certified ratings, the atmosphere) is earned by flying.
 {
-  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0 });
+  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0 });
   const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   const launch = st => { api.t = 0; const s = api.newShip(st); api.S = s; s.throttle = 1; api.stage(s); return s; };
   // a sounding flight: straight up on the Sounding preset, chute armed once falling, down to the ground
@@ -424,7 +424,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // missions stay locked until their prerequisites are done
   fresh(); orb(['sci', 'ballast']);
   check('missions are gated: no beeper credit before "Above the weather"', !P.done.beeper && !P.done.lift1);
-  fresh(); api.HOOK.news = () => {};
+  // the budget: a recovered sounding flight costs only fuel plus 20 % wear, and pays its mission; a town hit costs damages;
+  // the floor tops the program up
+  fresh(); s = launch(api.PRESETS.Sounding); const c0 = api.vesselCost(s.parts); armed = false; n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  api.missionEnd(s); const net = api.FUNDS0 - P.funds + 15;   // +15k: "Above the weather" paid out
+  check('budget: launch charged, intact landing refurbished at 80 % of dry price, the mission paid', Math.abs(net - (c0.cost - c0.dry * api.REFURB)) < 1e-6 && !!P.done.weather,
+    `net ${net.toFixed(4)} vs ${(c0.cost - c0.dry * api.REFURB).toFixed(4)}, done ${Object.keys(P.done)}, cost ${c0.cost.toFixed(2)}k, refurbished ${(c0.dry * api.REFURB).toFixed(2)}k, mission +15k → funds ${P.funds.toFixed(2)}k`);
+  fresh(); P.funds = 30; const x = launch(['pod', 't1', 'kestrel']); x.landed = false; x.rec.launched = true; api.missionDrop(x, { kind: 'city' }); x.alive = false; api.missionEnd(x);
+  check('budget: a stage on a town costs damages, and the floor tops a broke program back up', P.funds === api.FUNDS_FLOOR && P.bailouts === 1, `30k − 40k damages → topped up to ${P.funds}k`);
+  // refurbishment pegged to stress: overload, overheating and a hard touchdown each cut the refund
+  const W = api.wearOf;
+  check('wear: gentle flight good as new; peak load at 100 %, peak heat at 100 %, a 12 m/s touchdown each cut the value', W({ wL: .4, wT: .4 }, 5) === 1 && Math.abs(W({ wL: 1 }, 0) - .3) < 1e-9 && Math.abs(W({ wT: 1 }, 0) - .3) < 1e-9 && Math.abs(W({}, 12) - .4) < 1e-9 && W({ wL: .75, wT: .75 }, 9) < .6,
+    `75 % load + 75 % heat + 9 m/s: ${(W({ wL: .75, wT: .75 }, 9) * 100).toFixed(0)}% of value`);
+  const sp = s.parts.find(p => p.d.key === 'sparrow');
+  check('wear is tracked on every part during a flight (peak load and heat)', sp.wL > 0 && sp.wT > 0, `Sparrow peak load ${(sp.wL * 100).toFixed(0)}%, peak heat ${(sp.wT * 100).toFixed(0)}% of limit`);
+  // the calendar: stacking takes days by price, flying takes its flight time
+  fresh(); P.day = 0; s = launch(api.PRESETS.Sounding); armed = false; n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  const ft = api.t; api.missionEnd(s); const want = api.prepDays(c0.cost) + ft / api.DAY_S;
+  check('calendar: a launch advances the date by the stacking time, the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
+  // the powers: any number of them; the pad is home; land is someone's, the sea no one's
+  const counts = [2, 3, 5, 8].map(k => api.makePowers(11, k).length), PW = api.POWERS;
+  const cityOK = api.CITIES.every(c => c.power), sea = (() => { for (let i = 0; i < 2000; i++) { const z = Math.sin(i * 7.1), ph = i * 2.39, q = Math.sqrt(1 - z * z), u = [q * Math.cos(ph), z, q * Math.sin(ph)]; if (!api.isLand(u)) return api.powerAt(u); } return 'none'; })();
+  check('powers: generated for any count; the launch site is home; every city belongs to one; the sea to none', counts.join() === '2,3,5,8' && api.powerAt([1, 0, 0]) === PW[0] && cityOK && sea === null,
+    `${PW.map(p => p.name + ' (' + api.CITIES.filter(c => c.power === p).length + ' cities)').join(', ')}`);
+  // an incident: a stage on a foreign town hurts that power's opinion of us and its relation with home, costs more
+  fresh(); P.funds = 200; const foreign = api.CITIES.find(c => c.power.i !== api.HOME), op0 = api.opOf(foreign.power.i), r0 = api.relOf(api.HOME, foreign.power.i);
+  const y = launch(['pod', 't1', 'kestrel']); y.landed = false; y.rec.launched = true; api.missionDrop(y, { kind: 'city', city: foreign, power: foreign.power }); y.alive = false; api.missionEnd(y);
+  check('a stage on a foreign town: diplomatic incident (their opinion and relations drop, damages ×1.5)', api.opOf(foreign.power.i) < op0 - 10 && api.relOf(api.HOME, foreign.power.i) < r0 && Math.abs(P.funds - (200 - 60)) < 1e-6,
+    `${foreign.name}, ${foreign.power.name}: opinion ${op0.toFixed(0)}→${api.opOf(foreign.power.i).toFixed(0)}, relation ${r0.toFixed(2)}→${api.relOf(api.HOME, foreign.power.i).toFixed(2)}`);
+  // the world drifts between flights, deterministically, and stays bounded
+  const drift = () => { fresh(); P.day = 0; P.wseed = 99; P.rel = {}; P.op = {}; for (let d = 0; d < 40; d++) api.advanceDays(10); return JSON.stringify(P.rel); };
+  const d1 = drift(), d2 = drift(), rv = Object.values(JSON.parse(d1));
+  check('relations drift over a year of program time, deterministically, within [−1, 1]', d1 === d2 && rv.every(r => r >= -1 && r <= 1) && rv.length === PW.length * (PW.length - 1) / 2,
+    `after 400 days: ${rv.map(r => r.toFixed(2)).join(' ')}`);
+  fresh(); P.day = 0; P.rel = {}; P.op = {}; api.HOOK.news = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }

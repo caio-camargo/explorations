@@ -647,7 +647,7 @@ function groundCheck(s){
     const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
     const q=qFromBasis(X,up,cross(X,up));
     s.landed=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
-    s.landedAt=simT;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
+    s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
 function stage(s){
   if(!s.alive)return;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
@@ -796,7 +796,7 @@ const CITIES=makeCities();
 function nearestCity(pf){const u=norm(pf);let best=null,bd=Infinity;for(const c of CITIES){const d=Math.acos(clamp(dot(u,c.u),-1,1))*TELLUS.R;if(d<bd){bd=d;best=c}}return{city:best,dist:bd}}
 // where a falling thing comes down: in a city, near one, at sea or in open country
 function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{city,dist}=nearestCity(pf);
-  if(dist<city.rad)return{kind:'city',city,dist};if(dist<city.rad+15e3)return{kind:'near',city,dist};return{kind:isLand(pf)?'land':'sea',city,dist}}
+  if(dist<city.rad)return{kind:'city',city,dist,power:city.power};if(dist<city.rad+15e3)return{kind:'near',city,dist,power:city.power};const pw=powerAt(pf);return{kind:pw?'land':'sea',city,dist,power:pw}}
 // ---- the program: missions, and what the program knows. Two kinds of knowledge are earned by flying:
 //  · certified part ratings: the builder judges joints against a rating that starts at 70 % of the true one (the
 //    physics always uses the true one). The 30 % is the engineers' reserve for what they don't know. Every flight that
@@ -806,27 +806,46 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 //  · the atmosphere: each 10 km band carries ±25 % density uncertainty until a recovered instrument package sampled it,
 //    and the impact predictor shows that as a landing spread (range safety uses the whole spread).
 // Mission checks only read the flight record, so ticking them never changes a flight: tapes replay identically.
-const PROG={done:{},cert:{},atm:{},streak:0,flights:0};
+// ---- the budget (millions of credits, "M": an Orbiter launch ≈ 50M, near real small launchers). Launches are paid for; whatever lands intact at the end of a flight is
+// refurbished for 80 % of its dry price; missions pay on completion; stages dropped on towns cost damages. Below a floor
+// the government tops the program up (grudgingly): no dead ends, but money still decides what you can fly next.
+const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
+  kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
+const FUEL_PRICE=0.2,REFURB=0.8,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
+const partPrice=p=>(PRICE[p.d.key]??3)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+// what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
+// Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
+// its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.
+// Tracking is one comparison per part per step: the structure and heat passes already computed the numbers.
+const wearOf=(p,touch)=>(1-0.7*clamp(((p.wL||0)-.5)/.5,0,1))*(1-0.7*clamp(((p.wT||0)-.5)/.5,0,1))*clamp(1-(touch-TOUCH_OK)/6*0.6,0.4,1);
+function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*FUEL_PRICE;dry+=q}return{cost:c,dry}}
+const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
+const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
+// ---- the program calendar, in Tellus days (6 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
+// flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
+const DAY_S=21600,YEAR_D=400,prepDays=cost=>2+cost/8;
+const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
+function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>Math.min(1,PROG.cert[k]??CERT0);
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<7&&!PROG.atm[k]?0.25:0};
 const MISSIONS=[
-  {id:'weather',ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
+  {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
-  {id:'air',ep:1,name:'Measure the air',brief:'Recover instrument packages that sampled every 10 km band up to 40 km. Each band sampled narrows the impact predictor.',
+  {id:'air',pay:25,ep:1,name:'Measure the air',brief:'Recover instrument packages that sampled every 10 km band up to 40 km. Each band sampled narrows the impact predictor.',
    win:'the lower atmosphere is mapped',ok:()=>[0,1,2,3].every(k=>PROG.atm[k]),prog:()=>`${[0,1,2,3].filter(k=>PROG.atm[k]).length}/4 bands`},
-  {id:'loads',ep:1,name:'Structural test flight',brief:'Take an instrument package through max-q of 25 kPa or more (the design case the builder checks). It takes a punchy rocket.',
+  {id:'loads',pay:20,ep:1,name:'Structural test flight',brief:'Take an instrument package through max-q of 25 kPa or more (the design case the builder checks). It takes a punchy rocket.',
    win:'the engineers finally have numbers',ok:R=>R.sciQ>=25000},
-  {id:'range',ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, with every one landing clear of towns.',
+  {id:'range',pay:30,ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, with every one landing clear of towns.',
    win:'the range is certified for bigger rockets',ok:()=>PROG.streak>=3,prog:()=>`${PROG.streak}/3 clean flights`},
-  {id:'beeper',ep:2,req:['weather'],name:'The beeper',brief:'Put an instrument package into a stable orbit (periapsis above 70 km). The whole world will be listening.',
+  {id:'beeper',pay:60,ep:2,req:['weather'],name:'The beeper',brief:'Put an instrument package into a stable orbit (periapsis above 70 km). The whole world will be listening.',
    win:'something of ours goes round the world',ok:R=>R.orbitSci},
-  {id:'hop',ep:2,req:['loads'],name:'Passenger: the hop',brief:`A biocapsule to space (70 km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
+  {id:'hop',pay:50,ep:2,req:['loads'],name:'Passenger: the hop',brief:`A biocapsule to space (70 km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
    win:'the passenger is fine, and very famous',ok:R=>R.landed&&R.bioOK&&R.bioSpace&&R.approved},
-  {id:'orbiter',ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule through one full orbit and home safe, within ${AIR_S/3600} h of air. Same flight-safety rules.`,
+  {id:'orbiter',pay:100,ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule through one full orbit and home safe, within ${AIR_S/3600} h of air. Same flight-safety rules.`,
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
-  {id:'lift1',ep:2,req:['beeper'],name:'Heavy lift I',brief:'Half a tonne of mass simulators in a stable orbit.',win:'0.5 t in orbit',ok:R=>R.lift>=0.5-1e-9},
-  {id:'lift2',ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
+  {id:'lift1',pay:40,ep:2,req:['beeper'],name:'Heavy lift I',brief:'Half a tonne of mass simulators in a stable orbit.',win:'0.5 t in orbit',ok:R=>R.lift>=0.5-1e-9},
+  {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
 ];
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
@@ -836,13 +855,15 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
   return{ok:worst<=1,worst,p:wp}}
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
-  if(!R.launched){if(s.landed)return;R.launched=true;
+  if(!R.launched){if(s.landed)return;R.launched=true;R.cost=vesselCost(s.parts).cost;PROG.funds-=R.cost;R.prep=prepDays(R.cost);advanceDays(R.prep);R.day0=PROG.day;
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.pet=PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
     for(const p of s.parts)R.cert0[p.d.key]=certOf(p.d.key)}
   const b=s.body,h=len(s.r)-b.R,on=k=>s.parts.find(p=>p.on&&p.d.kind===k),sci=s.alive&&on('sci'),bio=s.alive&&on('bio');
   if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1}
+  if(phys){for(const p of s.order)if(p.on){if(p.sf1>(p.wL||0))p.wL=p.sf1;const q=p.parent;if(p.sf2>(q.wL||0))q.wL=p.sf2}
+    for(const p of s.parts)if(p.on){const f=p.T/p.d.Tmax;if(f>(p.wT||0))p.wT=f}}
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(R.sf[k]||0))R.sf[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
@@ -860,15 +881,57 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
   missionEval(s)}
 function missionEval(s){for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
-  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1};HOOK.news(`✔ ${M.name}: ${M.win}`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
-function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict.kind)}
+  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};PROG.funds+=M.pay;opAdd(HOME,4);for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);HOOK.news(`✔ ${M.name}: ${M.win} (+${fmtM(M.pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
+function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;R.ended=true;PROG.flights++;
+function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;R.ended=true;PROG.flights++;advanceDays(simT/DAY_S);
   for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*Math.min(1,R.sf[k]/0.4))}
-  if(R.drops.length){const clean=R.drops.every(k=>k!=='city'&&k!=='near');PROG.streak=clean?PROG.streak+1:0}
+  if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
+  // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
+  for(const v of R.drops){const pw=v.power;if(!pw)continue;
+    if(pw.i===HOME){if(v.kind==='city')opAdd(HOME,-6);else if(v.kind==='near')opAdd(HOME,-2);continue}
+    const hit=v.kind==='city'?3:v.kind==='near'?1.5:1;opAdd(pw.i,-5*hit);const key=pairKey(HOME,pw.i);PROG.rel[key]=clamp(relOf(HOME,pw.i)-0.06*hit,-1,1);
+    HOOK.news(v.kind==='city'?`Diplomatic incident: our stage falls on ${v.city.name}; ${pw.name} demands answers`:`${pw.name} protests a rocket stage landing on its territory`,'bad')}
+  if(R.bio&&!R.bioOK)opAdd(HOME,-8);
+  // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
+  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=s.touchV||0;let back=0,full=0,worst=null;
+    for(const p of ps){const w=wearOf(p,tv),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
+    PROG.funds+=back;R.refund=back;
+    if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
+  const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
+  if(PROG.funds<FUNDS_FLOOR){HOOK.news(`Parliament grudgingly tops up the space program (${fmtM(PROG.funds)} → ${fmtM(FUNDS_FLOOR)})`,'warn');PROG.funds=FUNDS_FLOOR;PROG.bailouts=(PROG.bailouts||0)+1}
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
   missionEval(s);HOOK.save();return{ups,streak:PROG.streak}}
+// ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
+// an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies
+// reach further); the sea belongs to no one. Power 0's home is the launch site. Relations between every pair drift
+// toward what their alignments suggest, with noise, and the odd crisis or thaw; tension is just a relation below zero.
+const FORMS=['Republic of #','# Federation','Kingdom of #','# Union','United Provinces of #','# Commonwealth','Free State of #','# Confederacy'];
+function makePowers(seed=11,n=5){const R=rng(seed),out=[],site=[1,0,0],forms=FORMS.slice();let tries=0;   // forms drawn without repeats (until they run out)
+  while(out.length<n&&tries++<50000){let u;if(!out.length)u=site;else{const z=R()*1.6-.8,ph=R()*6.2832,q=Math.sqrt(1-z*z);u=[q*Math.cos(ph),z,q*Math.sin(ph)];
+      if(landValue(u)<0.58||out.some(p=>Math.acos(clamp(dot(u,p.u),-1,1))<1.5/Math.sqrt(n)))continue}
+    const root=SYL[R()*SYL.length|0]+SYL[R()*SYL.length|0],nm=root[0].toUpperCase()+root.slice(1);
+    out.push({i:out.length,root:nm,name:(forms.length?forms.splice(R()*forms.length|0,1)[0]:FORMS[R()*FORMS.length|0]).replace('#',nm),u,econ:out.length?.5+R()*1.5:1.2,tech:.6+R()*.6,
+      align:[R()*2-1,R()*2-1],hue:(out.length*137.5+20)%360})}
+  return out}
+const POWERS=makePowers(),HOME=0;
+function powerAt(pf){const u=norm(pf);if(!isLand(u))return null;let best=null,bd=Infinity;
+  for(const p of POWERS){const d=Math.acos(clamp(dot(u,p.u),-1,1))-0.12*Math.log(p.econ);if(d<bd){bd=d;best=p}}return best}
+for(const c of CITIES)c.power=powerAt(c.u);
+const pairKey=(i,j)=>i<j?i+'-'+j:j+'-'+i;
+const relBase=(i,j)=>{const a=POWERS[i].align,b=POWERS[j].align;return clamp(1-0.9*Math.hypot(a[0]-b[0],a[1]-b[1]),-1,1)};
+const relOf=(i,j)=>i===j?1:PROG.rel[pairKey(i,j)]??relBase(i,j);
+const relWord=r=>r>.55?'allied':r>.2?'friendly':r>-.2?'neutral':r>-.55?'tense':'hostile';
+const opOf=i=>PROG.op[i]??(i===HOME?55:clamp(48+12*relOf(HOME,i),20,80));
+function opAdd(i,d){PROG.op[i]=clamp(opOf(i)+d,0,100)}
+function worldTick(d){const R=rng(PROG.wseed=(PROG.wseed*1103515245+12345+Math.floor(d*1000))>>>0),k=1-Math.exp(-d/150);
+  for(let i=0;i<POWERS.length;i++)for(let j=i+1;j<POWERS.length;j++){const key=pairKey(i,j);let r=relOf(i,j);
+    r+=(relBase(i,j)-r)*k+(R()-.5)*0.12*Math.sqrt(d/20);
+    if(R()<1-Math.exp(-d*0.0015*(1.2-r))){r-=.35;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name}: talks collapse, embassies recalled`,'warn')}
+    else if(R()<1-Math.exp(-d*0.002)){r+=.25;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name} sign a surprise friendship treaty`,'ok')}
+    PROG.rel[key]=clamp(r,-1,1)}
+  for(const p of POWERS)PROG.op[p.i]=opOf(p.i)+(50-opOf(p.i))*(1-Math.exp(-d/250))}   // memory fades
 // ---- deterministic stepping + flight tapes. Everything that advances the flight goes through advPhys / advRails, and a
 // tape records each of those calls plus every control change before it — so playing it back from the pad reproduces the
 // flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
@@ -1292,6 +1355,7 @@ HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 const PROG_KEY='launchpad-program-v1';
 try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j)Object.assign(PROG,j)}catch(e){}
+if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
 HOOK.save=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
@@ -1318,12 +1382,16 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
-      else html+=`<div class="ms"><b>${M.name}</b>${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
+      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
   const bands=[0,1,2,3,4,5,6].map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
+  html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
+  const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
+  html+=`<div class="ep">The world</div><div class="sub">Home: <b style="color:${pc(H)}">${H.name}</b> · opinion of us ${opOf(HOME).toFixed(0)}<br>`+
+    POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–70 km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html;$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0});HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{}});HOOK.save();editorChanged()}}
 // target: where palette clicks go — null for the core stack, or the radial group being edited
 let target=null;
 const clone=x=>JSON.parse(JSON.stringify(x));
@@ -1378,6 +1446,8 @@ function editorChanged(){
   const{stages,mass}=stageStats(stackDef);let tot=0,html='';
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok';
     html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>Δv <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · TWR <span class="${tw}">${s.twr.toFixed(2)}</span> · ${s.burn.toFixed(0)} s</div>`});
+  {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`;$('launch').textContent=ok?'LAUNCH':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
+   html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span></div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     <div class="sub">Low orbit needs ~3400 m/s. A Selene landing and return, ~6200.</div>`;
   if(!stackDef.some(e=>entryKey(e)==='pod'))html+='<div class="warn">No command pod: no control torque.</div>';
@@ -1395,7 +1465,7 @@ function editorChanged(){
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
   renderProgram();
   $('stats').innerHTML=html}
-$('launch').onclick=()=>{if(!stackDef.length)return;resetShip();mode='flight';$('editor').classList.add('hidden');$('hud').classList.remove('hidden');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
+$('launch').onclick=()=>{if(!stackDef.length)return;if(vesselCost(S.parts).cost>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}, the program has ${fmtM(PROG.funds)}`);return}resetShip();mode='flight';$('editor').classList.add('hidden');$('hud').classList.remove('hidden');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
 $('bEditor').onclick=()=>{mode='editor';view='flight';$('editor').classList.remove('hidden');$('hud').classList.add('hidden');editorChanged()};
 $('bRevert').onclick=()=>{resetShip();view='flight';HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
@@ -1665,7 +1735,7 @@ function drawMap(VP,camW,labels){
   if(impact){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
   for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
-    labels.push({p:cp,mark:'city',t:cam.mDist<2.6e6?c.name:'',c:'#ffd27a'})}
+    labels.push({p:cp,mark:'city',t:cam.mDist<2.6e6?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   if(impSpread&&impact)for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
