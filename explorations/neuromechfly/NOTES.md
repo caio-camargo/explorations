@@ -1,12 +1,12 @@
 # NeuroMechFly — driving EPFL's fly digital twin locally
 
-**Version**: v1.0.0
-**Author**: Caio Camargo + Claude (Opus 5)
+**Version**: v1.0.2
+**Author**: Caio Camargo + Claude (Opus 5, Opus 5.5)
 **Date Created**: 2026-09-10
-**Last Updated**: 2026-09-10
+**Last Updated**: 2026-10-07
 **Purpose**: Exploration notes — what NeuroMechFly v2 is, how to run it here, and what
-the controller × terrain matrix taught
-**Status**: Active — matrix complete, open threads listed at the bottom
+the controller × terrain matrix and the breaking-point sweep taught
+**Status**: Active — matrix, breaking-point sweep and measured contact complete, open threads listed at the bottom
 
 ---
 
@@ -106,6 +106,26 @@ C:/Users/caioa/.venvs/flygym/Scripts/python.exe baseline.py
 | `baseline.py` | One CPG fly on flat ground, rendered to mp4. Smoke test. |
 | `run_matrix.py` | The controller × terrain matrix; writes `out/<tag>.json` and per-run thorax traces to `out/raw/` |
 | `plot_matrix.py` | Turns that json into `out/<tag>.png` |
+| `sweep_difficulty.py` | Breaking-point sweep: gap width and block height × 3 controllers × 3 seeds, in parallel processes; writes `out/sweep.json` |
+| `plot_sweep.py` | Breaking points, trapped-in-gap counts, `out/sweep.png` |
+| `plot_contact.py` | Measured contact vs commanded stance from `sweep_difficulty.py --contact` (raw `gait_*.npz`), `out/contact.png` |
+
+### The machine got stricter (2026-10-07)
+
+Between September and October the venv and Python 3.13 disappeared and **Windows Smart App
+Control** was on. Rebuilt on Python 3.12 with the same pins. Smart App Control blocks a few
+unsigned compiled files. Some cleared after a few load attempts (its reputation check seems
+to need a first look); four stayed blocked. None is on the locomotion path:
+
+| Blocked | Needed here? |
+|---|---|
+| `mujoco/plugin/sensor.dll` | No, but MuJoCo loads every bundled plugin at import, so **it is moved aside** to `C:/Users/caioa/.venvs/flygym/_blocked_plugins/` (a README there says how to restore it) |
+| `mujoco/_render…pyd` | Only for video. **No mp4s on this machine until it clears** |
+| `numba/_dynfunc…pyd` | Only `flygym.vision` (the retina). Blocks the vision thread |
+| `pandas`, `fontTools` parts | Not imported |
+
+The rebuilt setup reproduces six September matrix cells to four decimals (27.3426 mm etc.),
+so Python 3.12 against 3.13 changes nothing measurable.
 
 ---
 
@@ -208,6 +228,9 @@ Side by side on the identical terrain, same seed 2 — [`out/cpg_gapped.mp4`](ou
 
 ### 3. The hypothesis this leaves: it's about duty factor, not feedback
 
+> **Tested 2026-10-07: half right.** Duty factor explains Walknet beating the CPG, but the
+> hybrid survives best with the *fewest* legs down. See §8 under "Breaking points".
+
 The pattern that fits all three columns is **how many legs are on the ground at once.**
 
 The CPG is a clock. Six oscillators phase-locked at 12 Hz in a strict tripod: three legs
@@ -244,6 +267,151 @@ in MuJoCo means the physics is portable; the performance numbers in anyone's doc
 
 ---
 
+## Breaking points (2026-10-07)
+
+The matrix asked who copes at one fixed roughness. This sweep asks **how much roughness each
+controller can take.** 144 runs: 2 terrains × 8 levels × 3 controllers × 3 seeds, 2 s each,
+in 12 parallel processes (26 min). Figure: [`out/sweep.png`](out/sweep.png). Raw:
+[`out/sweep.json`](out/sweep.json).
+
+- **Gapped**: 1 mm blocks, 2 mm deep gaps, gap width 0 → 0.8 mm (the matrix used 0.3).
+- **Blocks**: a checkerboard with every other tile raised by h, h = 0 → 0.5 mm (matrix: 0.35).
+  h = 0 is flat ground, so every curve carries its own control.
+
+**Criterion, fixed before looking at the data:** a controller *breaks* at the lowest level
+where its median speed drops below 50 % of its own median speed at level 0. On gaps a run is
+also *trapped* if the thorax goes below the block tops while still over the terrain.
+
+Median speed in mm/s (each T = one of three runs trapped in a gap):
+
+| gap width (mm) | 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.8 | **breaks at** |
+|---|---|---|---|---|---|---|---|---|---|
+| CPG | 12.7 | 4.9 | 4.4 T | 1.0 TT | 2.6 TT | 1.0 TTT | 1.4 TTT | −2.2 TTT | **0.1** |
+| Walknet | 6.6 | 5.8 | 6.8 | 5.8 | 1.1 TTT | 2.3 TTT | −1.2 TTT | 1.1 TTT | **0.4** |
+| Hybrid | 12.8 | 13.2 | 10.3 | 7.2 | 6.9 T | 1.6 TTT | 5.2 TT | −1.1 TTT | **0.5** |
+
+| block step h (mm) | 0 | 0.05 | 0.1 | 0.15 | 0.2 | 0.25 | 0.35 | 0.5 | **breaks at** |
+|---|---|---|---|---|---|---|---|---|---|
+| CPG | 11.8 | 3.2 | 1.2 | −0.8 | 2.3 | 4.0 | 0.9 | 0.9 | **0.05** |
+| Walknet | 6.7 | 7.2 | 3.4 | 1.6 | 4.0 | 1.4 | 1.5 | 2.1 | **0.15** |
+| Hybrid | 12.1 | 12.0 | 11.2 | 5.0 | 0.0 | 5.7 | 5.9 | 6.1 | **0.15** |
+
+Commanded duty factor (the fraction of time a leg's adhesion is on; every controller switches
+it on exactly when the leg is outside its swing window), averaged over all 48 runs each:
+
+| | duty factor | legs down (mean) | time with < 3 legs down |
+|---|---|---|---|
+| CPG | 0.65 | 3.9 | 0.7 % |
+| Walknet | 0.71 | 4.3 | 0.0 % |
+| Hybrid | **0.53** | **3.2** | 2.4 % |
+
+### 6. The CPG breaks at the first notch of the knob
+
+The tripod CPG loses more than half its speed at a **0.1 mm gap** and at a **0.05 mm step**:
+a thirtieth and a sixtieth of its body length. There is no rough regime in which it copes.
+The matrix's 0.3 mm gaps and 0.35 mm blocks were far past its failure, which is why it looked
+like a cliff. It is not a cliff; the CPG fails at the first imperfection.
+
+### 7. Walknet doesn't degrade. It holds, then drops
+
+On gaps Walknet's speed is flat from 0 to 0.3 mm (6.6, 5.8, 6.8, 5.8) and no run falls in. At
+0.4 mm every run falls in. It pays half its flat speed for that plateau. The hybrid degrades
+smoothly instead (13.2 → 10.3 → 7.2 → 6.9) but stays faster than Walknet at every width up to
+its own break. By *retention* Walknet is the most robust up to 0.3 mm (88 % against the
+hybrid's 56 %); by *speed* the hybrid wins everywhere. Which is "better" depends on which you
+mean, and the single-difficulty matrix could not tell those apart.
+
+### 8. Duty factor explains half of it (hypothesis 3, tested)
+
+The prediction was that Walknet beats the CPG because it keeps more legs down. It does: 4.3
+legs on average against 3.9, and never fewer than three. That fits the CPG-vs-Walknet gap.
+
+But the hybrid, the most robust controller, has the **lowest** duty factor of the three (0.53,
+3.2 legs down, under three legs 2.4 % of the time); its swing extension keeps feet up longer.
+So §3's moral ("never committing to a schedule that assumes the ground") is not the whole
+story. There are **two separate routes to robustness**: a static one (more feet planted,
+Walknet) and a reactive one (fewer feet planted, but a leg that misses is caught and
+re-placed, the hybrid). The CPG has neither.
+
+Caveat: this is *commanded* stance, not measured contact. Contact sensors are off on rough
+terrain (`ROUGH_KWARGS`), so a foot commanded down over a gap still counts as down.
+
+> **Measured 2026-10-07 (§10): the commanded duty factor misled.** Measured on the ground,
+> the three controllers keep similar numbers of feet down; what separates them is how often
+> a foot commanded down finds nothing.
+
+### 9. Past the break, the curves stop meaning anything
+
+Above each breaking point the medians bounce (hybrid on blocks: 5.0, 0.0, 5.7, 5.9, 6.1),
+seeds spread from −3 to +9 mm/s, and the hybrid seems to *recover* on tall blocks. With three
+seeds that is noise until shown otherwise. Read the tables up to the break column, not past it.
+
+### 10. Measured contact: it's missed footholds, not feet down
+
+§8 rested on *commanded* stance. This measures the real thing: the net ground force on each
+leg's tibia + tarsus segments, read from MuJoCo's contact list every step (flygym's per-leg
+contact sensors don't exist on multi-block terrain). 54 runs on gaps 0–0.5 mm, same seeds as
+the sweep; logging changes nothing (distances identical to the sweep to the last digit).
+Clipped to time over the terrain, first 0.1 s dropped. Figure: [`out/contact.png`](out/contact.png).
+Contact threshold 1 (force units as MuJoCo reports them); 0 gives the same numbers, and 5
+lowers every duty factor by about 0.1 without changing the ordering of the misses.
+
+| gap (mm) | 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 |
+|---|---|---|---|---|---|---|
+| **measured duty factor** (commanded: CPG 0.65, Walknet 0.71, hybrid 0.53) | | | | | | |
+| CPG | 0.77 | 0.79 | 0.70 | 0.64 | 0.68 | 0.55 |
+| Walknet | 0.72 | 0.74 | 0.76 | 0.77 | 0.71 | 0.73 |
+| Hybrid | 0.64 | 0.65 | 0.67 | 0.69 | 0.67 | 0.67 |
+| **missed footholds**: P(no contact \| commanded stance) | | | | | | |
+| CPG | 0.008 | 0.042 | **0.18** | **0.30** | 0.22 | 0.43 |
+| Walknet | 0.079 | 0.090 | 0.080 | 0.076 | **0.23** | 0.19 |
+| Hybrid | 0.003 | 0.008 | 0.034 | 0.041 | 0.098 | **0.20** |
+| **time with < 3 feet actually down** | | | | | | |
+| CPG | 0.000 | 0.010 | 0.067 | 0.10 | 0.10 | 0.25 |
+| Walknet | 0.000 | 0.003 | 0.000 | 0.004 | 0.030 | 0.019 |
+| Hybrid | 0.002 | 0.003 | 0.028 | 0.033 | 0.066 | 0.12 |
+
+What this changes:
+
+- **The commanded duty factor was mostly an artefact.** Feet stay on the ground for a good part
+  of their commanded swing (25–60 % of swing time has contact: lift-off and touchdown are not
+  instantaneous, and feet drag). Measured, the hybrid keeps 0.64–0.69 of leg-time down, not
+  0.53, and on flat ground the CPG keeps at least as many feet down as Walknet (0.77 vs 0.72 at
+  threshold 1, 0.66 vs 0.65 at 5). "Walknet
+  wins by keeping more legs down" (§3, §8) does not survive measurement as stated.
+- **The variable that tracks failure is missed footholds.** Each controller's miss rate jumps
+  exactly where it breaks: the CPG's climbs from the first gap (0.04 → 0.18 → 0.30), Walknet's
+  sits flat at ~0.08 until 0.3 mm and jumps to 0.23 at 0.4 (its break), the hybrid's stays
+  lowest throughout and reaches 0.20 only at 0.5 (its break). The gait fails when feet land on
+  nothing, not when too few are scheduled down.
+- **Walknet's misses don't depend on the gaps up to 0.3 mm.** It misses 8 % of commanded stance
+  even on flat ground (the others under 1 %), and that rate doesn't move until 0.4. Below 0.4 mm it
+  has fewer than three feet really down at most 0.4 % of the time. Why its foot placement ignores 0.1–0.3 mm gaps
+  while the CPG's doesn't is unexplained here (same step trajectories; the difference is only
+  step timing). Open thread.
+- **The hybrid misses fewest, and recovers the misses it has.** It still has more time below
+  three feet than Walknet (3 % at 0.2–0.3 mm) but far fewer misses, which fits the reactive
+  route of §8: it doesn't avoid every hole, it gets the foot back.
+
+So the revised moral: robustness on gaps is about **where feet land**, and the two survivors
+get there differently. The CPG's clock puts feet into gaps from the first one.
+
+### Measurement traps found on the way
+
+- **The worlds end at x = 25 mm.** A fly at full speed covers ~25 mm in 2 s and walks off the
+  far edge: on gaps it drops to the 2 mm floor; on blocks there is no floor at all and it falls
+  to z = −75 mm. So a run's `z_min` cannot tell "fell into a gap" from "finished the course".
+  The trapped check uses the raw thorax trace restricted to x < 24 mm. The edge also caps
+  level-0 progress, so level-0 speeds (≈ 12 mm/s) read lower than the matrix's flat 14.
+  The matrix's "the CPG falls in" result is unaffected: at 0.9 mm/s it never reached the edge.
+- **On rough terrain the body has no collision.** Only tibia and tarsus touch the ground, so a
+  fly that tips over sinks its thorax through the tiles (z ≈ −0.2 mid-terrain on blocks). That
+  is a real failure, not a solver bug.
+- **Walknet ignores most of its seed.** Seeds 0 and 2 gave bit-identical runs in several
+  cells, so its effective n is below 3.
+
+---
+
 ## Open threads
 
 - **Vision.** The fly has simulated compound eyes. Nothing here uses them. A phototaxis or
@@ -251,9 +419,15 @@ in MuJoCo means the physics is portable; the performance numbers in anyone's doc
 - **Olfaction.** Same — odour gradients at the antennae, unused so far.
 - **Adhesion ablation.** Tarsal adhesion is on for every run above. Turning it off is a
   one-flag experiment and the papers suggest it matters a lot on non-flat ground.
-- **Terrain difficulty sweep.** `run_matrix.py --difficulty` already takes the roughness knob
-  (gap width, block height). The interesting number is the *breaking point* per controller,
-  not the fixed-difficulty comparison.
+- ~~**Terrain difficulty sweep.**~~ Done 2026-10-07, see "Breaking points".
+- ~~**Measured duty factor.**~~ Done 2026-10-07, see §10.
+- **Why Walknet's footholds ignore small gaps.** Same step trajectories as the CPG, different
+  timing, yet its miss rate doesn't rise until 0.4 mm. Log foot x positions at touchdown
+  relative to the gap edges for both controllers.
+- **Hybrid without swing extension.** If its low duty factor is the price of clearance,
+  removing the extension should hurt it on gaps; if incidental, nothing changes.
+- **Longer worlds.** The 25 mm terrain edge caps progress near flat; pass a larger `x_range`
+  to the worlds before comparing speeds at low difficulty.
 - **Turning.** `HybridTurningController` exists in the demo package; descending commands as a
   2-vector is the brain/VNC interface the model is really built around.
 - **GPU.** flygym 2.x has a Warp/MJWarp backend claiming ~60× realtime. Untested here.

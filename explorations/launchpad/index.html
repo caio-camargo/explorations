@@ -69,6 +69,19 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 .jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
 @media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
  .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
+/* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
+#logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
+#logbook .x{position:absolute;right:10px;top:8px;cursor:pointer;opacity:.7}#logbook .lbrow{margin:10px 0}#logbook .lbv{font-size:1.25em}#logbook s{opacity:.55;margin-right:8px}
+#logbook button{font:inherit;font-size:.85em;margin-top:2px}#logbook .lbopt{margin-top:14px;font-size:.8em;opacity:.75}
+.lb-notebook{background:#f6f0de;color:#1d2a52;font:17px/1.35 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;
+  background-image:linear-gradient(#bcd2ea55 1px,transparent 1px),linear-gradient(90deg,#bcd2ea55 1px,transparent 1px);background-size:22px 22px}
+.lb-notebook h3{margin:0 0 6px;font-size:1.5em;text-decoration:underline wavy #c0392b88}.lb-notebook .lbu{color:#8a7c66;font-style:italic}.lb-notebook .lbby{color:#5d6d8a;font-size:.8em}
+.lb-notebook button{background:none;border:0;border-bottom:1px dashed #1d2a52;color:#1d2a52;padding:0;cursor:pointer}
+.lb-terminal{background:#020a03;color:#39ff6e;font:15px/1.4 ui-monospace,Consolas,monospace;text-shadow:0 0 6px #39ff6e88;border:1px solid #1d5a2a;
+  background-image:repeating-linear-gradient(#ffffff06 0 1px,transparent 1px 3px)}
+.lb-terminal h3{margin:0 0 6px;font-weight:normal;letter-spacing:.2em}.lb-terminal .lbu{color:#1f9a45}.lb-terminal .lbby{color:#1f9a45}
+.lb-terminal button{background:#06210d;border:1px solid #39ff6e;color:#39ff6e;border-radius:0;padding:0 6px}
+.lb-modern{background:var(--panel);color:var(--fg);border:1px solid var(--line);font:13px/1.45 ui-monospace,Consolas,monospace}.lb-modern h3{margin:0 0 6px;color:var(--acc)}.lb-modern .lbu,.lb-modern .lbby{color:var(--dim)}
 </style>
 </head>
 <body>
@@ -77,7 +90,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 
 <div id="editor" class="ui">
   <div class="panel left">
-    <h1>LAUNCHPAD</h1><div class="sub">assembly · pick a part, then place it on the rocket</div>
+    <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">assembly · pick a part, then place it on the rocket</div>
     <h2>Program</h2><div id="program"></div>
     <h2>Parts</h2><div id="target"></div><div id="palette"></div>
     <h2>Presets</h2><div id="presets"></div>
@@ -91,7 +104,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
-  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bHelp">Keys [H]</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
+  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div class="panel hidden" id="help"><table>
     <tr><td>Space</td><td>next stage (ignite / decouple / chute)</td></tr>
     <tr><td>Shift / Ctrl</td><td>throttle up / down</td></tr>
@@ -127,6 +140,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <div class="sub">Drag the coloured handles on the map node; the further you drag, the faster it changes.</div>
   </div>
 </div>
+<div id="logbook" class="hidden"></div>
 <div id="msg"></div>
 <div id="news" class="hidden"></div>
 <div id="perf"></div>
@@ -136,7 +150,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 'use strict';
 // ==== SIM BEGIN — pure simulation, no DOM/GL. Extracted by test.mjs for headless checks.
 const G0 = 9.80665, DT = 0.02;
-const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){}, news(){}, save(){} };
+const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){}, news(){}, save(){}, logged(){} };
 const INP = { pitch:0, yaw:0, roll:0 };
 
 // ---- vectors / quaternions (plain arrays; doubles throughout)
@@ -529,7 +543,7 @@ function newShip(stack){
   const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,evIdx:0,body:TELLUS,alive:true,landed:true,
     throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1]};
   geom(s);rebuildShape(s);s.rec=recNew();
-  s.pf=[TELLUS.R-s.yBot,0,0];                              // launch site: equator, planet-fixed +X
+  s.pf=[TELLUS.R+WORLD.siteH-s.yBot,0,0];                  // launch site: equator, planet-fixed +X, on the levelled pad
   s.qLocal=qFromBasis([0,0,-1],[1,0,0],[0,-1,0]);        // nose up, +X east
   syncLanded(s);
   return s}
@@ -781,14 +795,16 @@ function checkSOI(s){
   if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI');if(s.node){s.node=null;HOOK.msg('Entering Selene SOI — maneuver node cleared')}}}
   else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI');if(s.node){s.node=null;HOOK.msg('Escaping Selene SOI — maneuver node cleared')}}}
 function groundCheck(s){
-  const b=s.body,Y=qrot(s.q,[0,1,0]);
-  const hB=len(madd(s.r,Y,s.yBot))-b.R,hT=len(madd(s.r,Y,s.yTop))-b.R;
+  const b=s.body,Y=qrot(s.q,[0,1,0]);if(len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
+  const pB=madd(s.r,Y,s.yBot),pT=madd(s.r,Y,s.yTop),hB=len(pB)-groundR(b,toPF(b,pB,simT)),hT=len(pT)-groundR(b,toPF(b,pT,simT));
   if(Math.min(hB,hT)>0)return;
   const up=norm(s.r),sp=len(sub(s.v,surfVel(b,s.r))),tilt=Math.acos(clamp(dot(Y,up),-1,1));
+  const pf0=toPF(b,s.r,simT),slope=terrainSlope(b,pf0);
+  if(sp<12&&tilt<0.6&&slope>TOPPLE){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,2);HOOK.msg(`Toppled over on a ${(slope*57.3).toFixed(0)}° slope`);return}
   if(sp<12&&tilt<0.6){
     const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
     const q=qFromBasis(X,up,cross(X,up));
-    s.landed=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
+    s.landed=true;s.r=mul(up,groundR(b,pf0)-s.yBot);s.water=b===TELLUS&&terrainH(pf0)<0;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
     s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
 function stage(s){
@@ -827,7 +843,7 @@ function stepDebris(dt){
     const rho=density(b,h);if(rho>0){const va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp>0.1){let ad=0.5*rho*sp*2.5/d.mass;if(ad*dt>0.9)ad=0.9/dt;a=madd(a,va,-ad)}}
     d.v=madd(d.v,a,dt);d.r=madd(d.r,d.v,dt);
     const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
-    if(h<0){HOOK.boom(b,d.r,simT,1);d.dead=true}
+    if(h<TERR_TOP&&h<groundAlt(b,toPF(b,d.r,simT))){HOOK.boom(b,d.r,simT,1);d.dead=true}
     if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
 // Where does the current trajectory go? Up to three patched-conic legs: orbit → Selene encounter → escape back to Tellus.
 function predict(s){return predictFrom({b:s.body,r:s.r,v:s.v,t:simT})}
@@ -898,7 +914,7 @@ function fall(b,r,v,t,kdrag){
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
     if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho);a=madd(a,va,-kd)}return a};
-  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0)break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
+  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<TERR_TOP&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
     if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)
@@ -913,17 +929,133 @@ function predictImpact(s,sg=0){
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
-// ---- the world: land mask (a float32 port of the planet shader's continents, so the CPU and GPU agree on coastlines),
-// and cities placed on it — deterministic from a seed, kept clear of the launch site.
-const F32=Math.fround,fr32=x=>F32(x-Math.floor(x));
-function h3(x,y,z){x=fr32(F32(F32(x*0.3183099)+0.1));y=fr32(F32(F32(y*0.3183099)+0.1));z=fr32(F32(F32(z*0.3183099)+0.1));
-  x=F32(x*17);y=F32(y*17);z=F32(z*17);return fr32(F32(F32(F32(x*y)*z)*F32(F32(x+y)+z)))}
-function vn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
-  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);const H=(a,b,c)=>h3(ix+a,iy+b,iz+c),L=(a,b,t)=>a+(b-a)*t;
-  return L(L(L(H(0,0,0),H(1,0,0),fx),L(H(0,1,0),H(1,1,0),fx),fy),L(L(H(0,0,1),H(1,0,1),fx),L(H(0,1,1),H(1,1,1),fx),fy),fz)}
-function fbm(x,y,z){let a=.5,s=0;for(let i=0;i<6;i++){s+=a*vn(x,y,z);x=F32(x*2.03+1.7);y=F32(y*2.03+9.2);z=F32(z*2.03+3.1);a*=.5}return s}
-function landValue(pf){const n=norm(pf),dx=n[0]-1;return fbm(F32(n[0]*2.2),F32(n[1]*2.2),F32(n[2]*2.2))+.42*Math.exp(-(dx*dx+n[1]*n[1]+n[2]*n[2])*30)}
-const isLand=pf=>landValue(pf)>=.52;
+// ---- the world (terrain session). Tellus is generated from a seed in two layers:
+//  · a baked 512×256 map (equirectangular, 7 km a texel at the equator): plates make the continents and, where they
+//    collide, the mountain ranges (collision belts, coastal ranges with volcanoes over subduction, island arcs, rifts).
+//    Climate follows: temperature from latitude and height; rain carried by the prevailing winds (easterly trades,
+//    westerlies, polar easterlies), dumped where air is forced uphill (wet windward slopes, dry rain shadows), and
+//    modulated by the big circulation (wet equator, dry subtropics, stormy mid-latitudes).
+//  · procedural detail on top (ridges, hills, the fractal coast, fjords, volcano cones), built on an INTEGER hash, so
+//    the lattice values are bit-identical here and in GLSL and heights agree to float rounding (millimetres). The old
+//    float hash could disagree by whole lattice values on GPUs that fuse multiply-adds: tens of metres of terrain.
+// The world is generated in its own frame and turned about the axis so the home launch site sits at planet-fixed +X
+// (on the equator). Heights are metres above sea level; the sea is the sphere R, the land is R + h.
+function ih3(x,y,z){let h=Math.imul(x,0x8da6b343)^Math.imul(y,0xd8163841)^Math.imul(z,0xcb1ab31f);
+  h^=h>>>16;h=Math.imul(h,0x7feb352d);h^=h>>>15;h=Math.imul(h,0x846ca68b);h^=h>>>16;return(h>>>8)/16777216}
+function tn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+  const a=ih3(ix,iy,iz),b=ih3(ix+1,iy,iz),c=ih3(ix,iy+1,iz),d=ih3(ix+1,iy+1,iz),e=ih3(ix,iy,iz+1),f=ih3(ix+1,iy,iz+1),g=ih3(ix,iy+1,iz+1),h=ih3(ix+1,iy+1,iz+1);
+  const x1=a+(b-a)*fx,x2=c+(d-c)*fx,x3=e+(f-e)*fx,x4=g+(h-g)*fx,y1=x1+(x2-x1)*fy;return y1+(x3+(x4-x3)*fy-y1)*fz}
+function tfbm(x,y,z,o){let a=.5,s=0,n=0;for(let i=0;i<o;i++){s+=a*tn(x,y,z);n+=a;x=x*2.03+1.7;y=y*2.03+9.2;z=z*2.03+3.1;a*=.5}return s/n}
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+// Feature sizes are kept in kilometres, not as fractions of the planet: they were tuned on the 600 km Tellus, and WK
+// converts those angles to this radius (ranges ~100 km across, detail from 25 km down to 90 m, fjords, ~5 km cones).
+// ridges: RIDGE_A of ridged relief where the ground is fully rugged, VALLEY of it below the base (deep valleys, sharp crests)
+const RIDGE_A=4200,VALLEY=1800;
+const WTW=1024,WTH=512,WSEED=13,HOCT=9,NPLATES=20,WK=6e5/TELLUS.R,HF0=+(24/WK).toFixed(5),FJ1=+(18/WK).toFixed(5),FJ2=+(70/WK).toFixed(5),VOLF=+(60/WK).toFixed(5);
+function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
+  for(let k=0;k<NP;k++){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z);plates.push({s:[q*Math.cos(ph),z,q*Math.sin(ph)],cont:false,ax:norm([R()*2-1,R()*2-1,R()*2-1]),w:.6+R()*.8})}
+  {const ix=plates.map((_,i)=>i);for(let i=NP-1;i>0;i--){const j=R()*(i+1)|0;[ix[i],ix[j]]=[ix[j],ix[i]]}for(let i=0;i<Math.round(NP*.45);i++)plates[ix[i]].cont=true}
+  const N=WTW*WTH,E=new Float32Array(N),M=new Float32Array(N),V=new Float32Array(N),T=new Float32Array(N),W=new Float32Array(N),S=new Float32Array(N);
+  // the smooth fields (boundary warp, continent noise, old worn ranges) live on a half-resolution grid and are
+  // interpolated; only the plate boundaries, which must stay sharp, are found per texel. Pair normals are precomputed.
+  const LW=WTW/2,LH=WTH/2,QX=new Float32Array(LW*LH),QY=new Float32Array(LW*LH),QZ=new Float32Array(LW*LH),CN=new Float32Array(LW*LH),WR=new Float32Array(LW*LH);
+  for(let j=0;j<LH;j++){const lat=((j+.5)/LH-.5)*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
+    for(let i=0;i<LW;i++){const lon=(i+.5)/LW*2*Math.PI-Math.PI,p=[cl*Math.cos(lon),sl,cl*Math.sin(lon)],k=j*LW+i;
+      QX[k]=p[0]+.45*(tfbm(p[0]*3+off[0],p[1]*3,p[2]*3,3)-.5);QY[k]=p[1]+.45*(tfbm(p[0]*3,p[1]*3+off[1],p[2]*3,3)-.5);QZ[k]=p[2]+.45*(tfbm(p[0]*3,p[1]*3,p[2]*3+off[2],3)-.5);
+      CN[k]=tfbm(p[0]*1.8+off[1],p[1]*1.8,p[2]*1.8+off[2],5)-.5;WR[k]=1-Math.abs(2*tfbm(p[0]*5/WK+off[2],p[1]*5/WK,p[2]*5/WK+off[0],3)-1)}}
+  const lo=(A,x,y)=>{const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,i0=(ix+LW)%LW,i1=(ix+1)%LW,j0=clamp(iy,0,LH-1)*LW,j1=clamp(iy+1,0,LH-1)*LW,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy};
+  const PN=[];for(let a=0;a<NP;a++){PN.push([]);for(let b=0;b<NP;b++)PN[a].push(a===b?null:norm(sub(plates[a].s,plates[b].s)))}
+  for(let j=0;j<WTH;j++){const ly=(j+.5)/2-.5;
+    for(let i=0;i<WTW;i++){const lx=(i+.5)/2-.5,k=j*WTW+i,q=norm([lo(QX,lx,ly),lo(QY,lx,ly),lo(QZ,lx,ly)]);
+      // plates: nearest seed (after the warp, so boundaries wander); the boundary is the nearest bisector
+      let b1=-2,i1=0;for(let n=0;n<NP;n++){const d=dot(q,plates[n].s);if(d>b1){b1=d;i1=n}}
+      const P1=plates[i1],pn=PN[i1];let bd=9,i2=0;
+      for(let n=0;n<NP;n++){if(n===i1)continue;const v=pn[n],a=q[0]*v[0]+q[1]*v[1]+q[2]*v[2];if(a<bd){bd=a;i2=n}}
+      bd=Math.asin(clamp(bd,-1,1));
+      const P2=plates[i2],v1=cross(P1.ax,q),v2=cross(P2.ax,q),bk=bd/WK;   // bk: distance to the boundary in the 600 km planet's radians, so widths stay in km
+      let nb=sub(P2.s,P1.s);nb=norm(sub(nb,mul(q,dot(nb,q))));
+      const conv=dot(v1,nb)*P1.w-dot(v2,nb)*P2.w,c1=P1.cont?1:0,c2=P2.cont?1:0,cb=c1+(c2-c1)*.5*(1-sstep(0,.22,bk));
+      const cn=lo(CN,lx,ly);
+      let e=-3600+3900*cb+7500*cn;if(e>0)e*=.35;   // most land sits low; height comes from tectonics
+      let up=0,vol=0;const g=x=>Math.exp(-x*x);
+      if(conv>0){const cv=Math.min(conv,1.2);
+        if(c1&&c2)up=5200*cv*g(bk/.07)+1400*cv*sstep(.3,.05,bk)*(i1<i2?1:.3);                     // collision: a high range, a plateau behind
+        else if(c1)up=4200*cv*g((bk-.06)/.05),vol=cv*g((bk-.09)/.03);                                // ocean diving under a continent: coastal range + volcanoes
+        else if(c2)up=-2200*cv*g(bk/.03);                                                            // the trench
+        else if(i1<i2)up=4600*cv*g((bk-.05)/.025),vol=cv*g((bk-.05)/.025)}                           // island arc
+      else if(conv<-.15){const cv=Math.min(-conv,1.2);if(c1&&c2)up=-1500*cv*g(bk/.035)+500*cv*g((bk-.07)/.04);else if(!c1&&!c2)up=1200*cv*g(bk/.05)}   // rift valley / mid-ocean ridge
+      const r=lo(WR,lx,ly);up+=900*r*r*r*sstep(-.1,.3,cb+cn);      // old, worn ranges
+      E[k]=e+up;M[k]=clamp(Math.abs(up)/3500,0,1);V[k]=clamp(vol,0,1)}}
+  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*180,al=Math.abs(lat),dir=al<30||al>60?1:-1,dx=2*Math.PI*TELLUS.R/1000*Math.cos(lat*D)/WTW,g=x=>Math.exp(-x*x);
+    const circ=.6+.7*g(lat/11)-.5*g((al-25)/6.5)+.35*g((al-47)/12)-.3*sstep(65,85,al);let m=1,ep=0;
+    for(let pass=0;pass<2;pass++)for(let n=0;n<WTW;n++){const i=dir>0?n:WTW-1-n,k=j*WTW+i,e=E[k];let oro=0;
+      if(e<0){m+=(1-m)*(1-Math.exp(-dx/300));ep=0}else{oro=m*(1-Math.exp(-Math.max(0,e-ep)/1000*.55));m=Math.max(m*Math.exp(-dx/3500)-oro,0);ep=e}
+      if(pass)W[k]=clamp((.4+.95*m)*circ+oro*7,0,1.5)}
+    for(let i=0;i<WTW;i++){const k=j*WTW+i;T[k]=27-52*Math.pow(al/90,2.2)-6.5*Math.max(E[k],0)/1000}}
+  for(let it=0;it<5;it++){const W2=W.slice();for(let j=1;j<WTH-1;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;W[k]=(W2[k]*2+W2[j*WTW+(i+WTW-1)%WTW]+W2[j*WTW+(i+1)%WTW]+W2[k-WTW]+W2[k+WTW])/6}}
+  // salt flats: dry, flat basins that sit below their surroundings (where rain would pool, if it rained)
+  for(let j=2;j<WTH-2;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;if(E[k]<=0||W[k]>.4||M[k]>.2||T[k]<0)continue;let s=0;
+    for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)s+=E[(j+a)*WTW+(i+b+WTW)%WTW];S[k]=sstep(60,220,s/25-E[k])*sstep(.4,.25,W[k])}
+  // an upper bound on the ground near each texel (base + the most the detail can add, dilated ±2 texels): the shader's
+  // march skips through air above it without evaluating the terrain at all
+  const U=new Float32Array(N),U0=new Float32Array(N);for(let k=0;k<N;k++){const e=E[k]>3500?3500+(E[k]-3500)*.5:E[k],m=M[k];U0[k]=e+(m*RIDGE_A+120)*1.3-m*VALLEY+440+V[k]*3400}
+  for(let j=0;j<WTH;j++)for(let i=0;i<WTW;i++){let mx=-1e9;for(let a=-2;a<=2;a++){const jj=clamp(j+a,0,WTH-1);for(let b=-2;b<=2;b++)mx=Math.max(mx,U0[jj*WTW+(i+b+WTW)%WTW])}U[j*WTW+i]=Math.max(mx,0)+30}
+  return{E,M,V,T,W,S,U,plates,seed,lon0:0,site:null,siteH:0}}
+const WORLD=makeWorld();
+// bilinear on the baked map (the shader does the same arithmetic with texelFetch, not the GPU's 8-bit filter weights)
+function wBil(A,g){const x=(Math.atan2(g[2],g[0])/(2*Math.PI)+.5)*WTW-.5,y=(Math.asin(clamp(g[1],-1,1))/Math.PI+.5)*WTH-.5,ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  const i0=(ix+WTW)%WTW,i1=(ix+1)%WTW,j0=Math.max(iy,0)*WTW,j1=Math.min(iy+1,WTH-1)*WTW,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy}
+// the height channels use a quadratic B-spline over 3×3 texels instead: bilinear is continuous but its slope kinks at
+// every texel edge, and the lighting showed those kinks as 8 km facets. The quadratic B-spline has continuous slope,
+// never overshoots its neighbours (so the air bound U, dilated ±2 texels, still holds), and costs the shader 9 fetches.
+const bsq=t=>[.5*(.5-t)*(.5-t),.75-t*t,.5*(.5+t)*(.5+t)];
+function wSpl(g){const x=(Math.atan2(g[2],g[0])/(2*Math.PI)+.5)*WTW-.5,y=(Math.asin(clamp(g[1],-1,1))/Math.PI+.5)*WTH-.5,ix=Math.floor(x+.5),iy=Math.floor(y+.5),wx=bsq(x-ix),wy=bsq(y-iy),W=WORLD,o=[0,0,0,0];
+  for(let b=0;b<3;b++){const j=clamp(iy-1+b,0,WTH-1)*WTW;for(let a=0;a<3;a++){const k=j+(ix-1+a+WTW*2)%WTW,w=wx[a]*wy[b];o[0]+=W.E[k]*w;o[1]+=W.M[k]*w;o[2]+=W.V[k]*w;o[3]+=W.S[k]*w}}return o}
+const toGen=pf=>rotY(norm(pf),-WORLD.lon0),fromGen=g=>rotY(g,WORLD.lon0);
+// the height of the land in the world's own frame g (unit vector), without the launch-site flattening
+function hgtGen(g,oct=HOCT){const[e0,m,v,sf]=wSpl(g),lat=Math.abs(g[1]);
+  let e=e0>3500?3500+(e0-3500)*.5:e0,f=HF0,a=1,rid=0,hil=0,wgt=1,an=0;
+  // ridged multifractal (mountains) and plain fbm (hills, and the fractal coast) from the same octaves
+  for(let i=0;i<oct;i++){const n=tn(g[0]*f+11.3,g[1]*f+3.7,g[2]*f+7.1);let r=1-Math.abs(2*n-1);r*=r*wgt;wgt=clamp(r*1.6,0,1);rid+=a*r;hil+=a*(n-.5);an+=a;f*=2.03;a*=.5}
+  e+=((m*RIDGE_A+120)*rid/an*1.3-m*VALLEY+(380+500*sstep(900,0,Math.abs(e0)))*hil/an*(1-m*.5))*(1-.9*sf);
+  // fjords: glaciers cut narrow valleys into high-latitude mountains; near the coast they flood
+  const gl=sstep(.66,.82,lat)*sstep(.08,.35,m)*sstep(1800,400,e0);
+  if(gl>0){const wv=tn(g[0]*FJ1,g[1]*FJ1+5,g[2]*FJ1)-.5,l=Math.abs(tn(g[0]*FJ2+wv*3,g[1]*FJ2,g[2]*FJ2+wv*3)-.5);e-=gl*1500*(1-sstep(.01,.06,l))}
+  // volcanoes: one cone per ~20 km cell along the active arcs, with a summit crater
+  if(v>.15){const x=g[0]*VOLF,y=g[1]*VOLF,z=g[2]*VOLF,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);
+    if(ih3(ix,iy,iz+77)<.55){const d=Math.hypot(x-ix-.25-.5*ih3(ix,iy,iz+78),y-iy-.25-.5*ih3(ix,iy,iz+79),z-iz-.25-.5*ih3(ix,iy,iz+80))/.25;
+      if(d<1)e+=v*(1800+1600*ih3(ix,iy,iz+81))*(1-d)*(1-d)*(d<.12?.6+3*d:1)}}
+  return e}
+// the home launch site: on the equator, flat low land a few km from a coast with open sea to the east (spent stages
+// fall in the water). The world is then turned so the site is at planet-fixed +X, and the pad is levelled.
+const PAD_FLAT=2000,PAD_BLEND=4500;
+(function siteSearch(){let best=null;const Wd=WORLD,kmT=2*Math.PI*TELLUS.R/1000/WTW,nF=Math.round(150/kmT),nS=Math.round(600/kmT);   // coast within 150 km, then 600 km of open sea
+  for(const j of[WTH/2-1,WTH/2])for(let i=0;i<WTW;i++){const k=j*WTW+i,e=Wd.E[k];if(e<3||e>350||Wd.M[k]>.12)continue;
+    let first=-1,sea=0;for(let n=1;n<=nF+nS;n++){const s=Wd.E[j*WTW+(i-n+WTW*2)%WTW]<0;if(first<0){if(s)first=n;else if(n>nF)break}else if(n<=first+nS)sea+=s}
+    if(first*kmT<12)continue;const sc=sea/nS-first*kmT/740-Wd.M[k];if(!best||sc>best.sc)best={sc,i,j}}
+  const lon=best?(best.i+.5)/WTW*2*Math.PI-Math.PI:0;Wd.lon0=lon;Wd.siteFound=!!best;
+  Wd.site=[1,0,0];Wd.siteH=Math.max(8,hgtGen(toGen([1,0,0])))})();
+// terrain height (m above sea level; negative is sea floor) at a planet-fixed direction
+function terrainH(pf,oct=HOCT){const g=toGen(pf),c=norm(pf),dx=c[0]-1,d=Math.sqrt(dx*dx+c[1]*c[1]+c[2]*c[2])*TELLUS.R;
+  if(d>PAD_BLEND)return hgtGen(g,oct);const h=d<PAD_FLAT?WORLD.siteH:hgtGen(g,oct);return h+(WORLD.siteH-h)*(1-sstep(PAD_FLAT,PAD_BLEND,d))}
+// the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
+const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
+const groundR=(b,pf)=>b.R+groundAlt(b,pf);
+// compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
+const landValue=pf=>.52+terrainH(pf)/700;
+const isLand=pf=>terrainH(pf)>=0;
+// biomes, for colours, science and landing: the same thresholds the shader blends between
+const BIOMES=['sea','ice','tundra','taiga','steppe','temperate forest','grassland','cold desert','rainforest','savanna','hot desert','alpine','volcanic','salt flat','wetland'];
+function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),w4=wSpl(g),e0=w4[0],Tc=wBil(WORLD.T,g)-6.5*Math.max(0,h-Math.max(e0,0))/1000,Wm=wBil(WORLD.W,g),m=w4[1],v=w4[2],sf=w4[3];
+  let id;if(h<0)id=0;else if(Tc<-13)id=1;else if(h>2800&&Tc<2)id=11;else if(v>.5&&h>300)id=12;else if(sf>.5)id=13;else if(Wm>.75&&h<60&&m<.1&&Tc>5)id=14;
+  else if(Tc<-1)id=2;else if(Tc<7)id=Wm>.35?3:4;else if(Tc<18)id=Wm>.55?5:Wm>.3?6:7;else id=Wm>.72?8:Wm>.36?9:10;
+  return{id,name:BIOMES[id],h,T:Tc,wet:Wm}}
+// the steepest the ground gets under a point (radians), from the height field over ±15 m; landings past TOPPLE tip over
+const TERR_TOP=Math.ceil(WORLD.U.reduce((a,b)=>Math.max(a,b),0)/100)*100,TOPPLE=0.42;   // the highest the ground can be anywhere (from the air bound)
+function terrainSlope(b,pf){if(b!==TELLUS)return 0;const u=norm(pf),e=norm(cross([0,1,0],u).map((x,i)=>x+(i===0?1e-9:0))),n=cross(u,e),k=15/TELLUS.R,
+  h0=groundAlt(b,u),hx=groundAlt(b,add(u,mul(e,k)))-groundAlt(b,sub(u,mul(e,k))),hy=groundAlt(b,add(u,mul(n,k)))-groundAlt(b,sub(u,mul(n,k)));
+  return Math.atan(Math.hypot(hx,hy)/30+0*h0)}
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const SYL=['va','lo','ri','an','mar','tel','os','ka','ne','bru','dun','sel','fen','or','is','pa','quel','tor','ven','al','hav','em','ly','gor'];
 function makeCities(seed=7,n=32){const R=rng(seed),out=[],site=[1,0,0];let tries=0;
@@ -955,7 +1087,7 @@ const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.rfin=0.4;   // builder session: one radial fin (a ring of four costs 1.5)
 const FUEL_PRICE=0.2,REFURB=0.8,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
-const partPrice=p=>(PRICE[p.d.key]??3)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.
@@ -971,7 +1103,7 @@ const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`
 function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
-const certOf=k=>Math.min(1,PROG.cert[k]??CERT0);
+const certOf=k=>Math.min(1,PROG.cert[k]??cert0(k));
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
 const MISSIONS=[
@@ -995,7 +1127,7 @@ const MISSIONS=[
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
   sf:{},bio:false,bioOK:true,bioWhy:'',bioSpace:false,bioOrbits:0,g:0,gMax:0,cabin:290,approved:true,drops:[],cert0:{},recSci:false,pet:'',
-  apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[]}}
+  apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[],dv:0,newLog:[]}}
 // flight safety review: every joint within its certified rating in the builder's what-if cases (liftoff, max-q)
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
@@ -1003,20 +1135,24 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;R.cost=vesselCost(s.parts).cost;PROG.funds-=R.cost;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;PROG.funds-=R.cost;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
     for(const p of s.parts)R.cert0[p.d.key]=certOf(p.d.key)}
   const b=s.body,h=len(s.r)-b.R,on=k=>s.parts.find(p=>p.on&&p.d.kind===k),sci=s.alive&&on('sci'),bio=s.alive&&on('bio');
+  if(b===TELLUS&&h>b.atm&&!R.logSpace){R.logSpace=1;logNote(s,'space',R.dv)}
+  if(b===SELENE&&!R.logSel){R.logSel=1;logNote(s,'selene',R.dv)}
+  if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv)}
   if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h}
   if(phys&&sci&&s.qdyn>0)for(const p of s.parts)if(p.on&&s.qdyn>(R.qPart[p.d.key]||0))R.qPart[p.d.key]=s.qdyn;   // the worst q each part flew through, instrumented
+  if(phys&&s.thrust>0)R.dv+=s.thrust/s.mass*dt;   // Δv actually spent, for the logbook
   if(phys){for(const p of s.order)if(p.on){if(p.sf1>(p.wL||0))p.wL=p.sf1;const q=p.parent;if(p.sf2>(q.wL||0))q.wL=p.sf2}
     for(const p of s.parts)if(p.on){const f=p.T/p.d.Tmax;if(f>(p.wT||0))p.wT=f}}
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(R.sf[k]||0))R.sf[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
-    if(el.e<1&&el.pe>b.R+b.atm){R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
+    if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv);logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
   if(R.bio&&R.bioOK){let why='';
     if(!bio)why=s.alive?'was lost with its stage':'was lost with the vessel';
@@ -1029,13 +1165,14 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
   missionEval(s)}
-function missionEval(s){contractEval(s);for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
-  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1.5):1);
-    income(pay);opAdd(HOME,racing&&lost==null?8:4);for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
+function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
+  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
+    income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    if(racing&&lost==null)s.rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;R.ended=true;PROG.flights++;satRegister(s,R);advanceDays(simT/DAY_S);
+function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.apex>0)logNote(s,'apex',R.apex);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);advanceDays(simT/DAY_S);
   for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*Math.min(1,R.sf[k]/0.4))}
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
@@ -1043,7 +1180,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     if(pw.i===HOME){if(v.kind==='city')opAdd(HOME,-6);else if(v.kind==='near')opAdd(HOME,-2);continue}
     const hit=v.kind==='city'?3:v.kind==='near'?1.5:1;opAdd(pw.i,-5*hit);const key=pairKey(HOME,pw.i);PROG.rel[key]=clamp(relOf(HOME,pw.i)-0.06*hit,-1,1);
     HOOK.news(v.kind==='city'?`Diplomatic incident: our stage falls on ${v.city.name}; ${pw.name} demands answers`:`${pw.name} protests a rocket stage landing on its territory`,'bad')}
-  if(R.bio&&!R.bioOK)opAdd(HOME,-8);
+  if(R.bio&&!R.bioOK&&!R.tourist)failHit(-8,`a passenger flight went wrong`);
   if(R.tourist&&!R.bioOK){standAdd('tour',-40);opAdd(HOME,-10);HOOK.news(`Space tourism in crisis after ${R.pet} ${R.bioWhy}; bookings cancelled`,'bad')}
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
   if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=s.touchV||0;let back=0,full=0,worst=null;
@@ -1068,7 +1205,84 @@ function makePowers(seed=11,n=5){const R=rng(seed),out=[],site=[1,0,0],forms=FOR
     out.push({i:out.length,root:nm,name:(forms.length?forms.splice(R()*forms.length|0,1)[0]:FORMS[R()*FORMS.length|0]).replace('#',nm),u,econ:out.length?.5+R()*1.5:1.2,tech:.6+R()*.6,
       align:[R()*2-1,R()*2-1],hue:(out.length*137.5+20)%360})}
   return out}
-const POWERS=makePowers();let HOME=0;   // "our government": power 0 (the launch site's) until the program changes hands (career moves)
+const POWERS=makePowers();let HOME=0;
+// ---- power flavours: settings on a few axes, each wired to an existing system; archetypes are presets.
+//  open (0..1): who the program answers to. Open: failures public, elections swing the budget. Closed: failures hushed
+//    (part of the hit now, the rest as leak risk), the leadership demands spectaculars by a date.
+//  money: tax (by opinion) · commodity (its own price cycle) · patronage (thin budget days, lump sums for prestige) ·
+//    military (grows with tension).  pri: what the power wants (prestige/security/commerce/science) → offers, pay, race.
+//  nat: nationalism, a mood: starts at the archetype's level, rises with tension and crises, fades in calm years, and
+//    scales the home reaction to everything foreign the program does.
+const ARCH={
+  openSuper:{ind:1,name:'Open superpower',open:.9,money:'tax',pri:{prestige:.35,commerce:.35,security:.15,science:.15},nat:.4,
+    blurb:'Rich and watched: every failure is on television, and elections decide the budget.'},
+  closedSuper:{ind:1,name:'Closed superpower',open:.1,money:'patronage',pri:{prestige:.5,security:.35,commerce:.05,science:.1},nat:.6,
+    blurb:'Secrecy and spectaculars: failures stay quiet (until they leak), the leadership wants triumphs on schedule.'},
+  rising:{ind:.5,name:'Rising power',open:.3,money:'tax',grow:true,pri:{prestige:.4,commerce:.2,security:.2,science:.2},nat:.55,
+    blurb:'Behind, and in a hurry: a budget that grows every year, and a public that wants to catch up.'},
+  frugal:{ind:.4,name:'Frugal middle power',open:.75,money:'tax',pri:{commerce:.45,science:.35,prestige:.1,security:.1},nat:.3,
+    blurb:'Small budget, big ingenuity: commerce and science pay, partners are welcome.'},
+  resource:{ind:.1,name:'Resource state',open:.25,money:'commodity',pri:{prestige:.55,commerce:.2,science:.15,security:.1},nat:.45,
+    blurb:'Oil money: lavish in a boom, brutal in a bust, and prestige is what it is for.'},
+  security:{ind:.55,name:'Security state',open:.2,money:'military',cancel:true,pri:{security:.6,prestige:.2,science:.1,commerce:.1},nat:.7,
+    blurb:'A military program first: money follows tension, sanctions follow you, and a new government could end it all.'}};
+const PRI_OF={sci:'science',com:'commerce',mil:'security',gov:'prestige',tour:'commerce'};
+// ---- industrial independence. Parts come in three tiers: structure (0), small engines and 2.5 m structure (1), big
+// engines and complex payloads (2). A power makes the tiers its self-sufficiency reaches (0 / 0.45 / 0.8); a rising
+// power's industry grows with time. Anything home can't make is imported (×1.5) from the most capable supplier that isn't
+// hostile and isn't sanctioning us; with no supplier left it comes through intermediaries (×3): that's how sanctions
+// reach hardware. A young industry's own parts start less certified (CERT0 − 0.2 × (1 − self-sufficiency)); imports
+// arrive certified to the usual level.
+const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
+const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
+function tierOf(k){const d=PARTS[k];if(!d)return 0;
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+function sourceOf(k){const t=tierOf(k);if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
+  const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
+  return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
+const cert0=k=>sourceOf(k).how==='home'?CERT0-0.2*(1-indOf(HOME)):CERT0;
+const TIER_NAME=['structure and tanks','small engines','big engines and avionics'];
+// generated flavours: the two biggest economies are the superpowers (open or closed by their second alignment axis), the
+// rest by what they have: rich and low-tech → resource state, high tension of alignment → security state, etc.
+(()=>{const R=rng(777),big=POWERS.slice().sort((a,b)=>b.econ*b.tech-a.econ*a.tech);
+  big.forEach((p,k)=>{p.arch=k<2?(p.align[1]>0?'closedSuper':'openSuper'):p.econ>1.3&&p.tech<0.85?'resource':p.align[1]>0.4?'security':p.tech>0.95?'rising':R()<0.6?'frugal':'rising'});
+  if(big[0].arch===big[1].arch)big[1].arch=big[0].arch==='openSuper'?'closedSuper':'openSuper'})();   // a rivalry needs both kinds
+const archOf=i=>i===0&&PROG.homeArch?PROG.homeArch:POWERS[i].arch,flav=i=>ARCH[archOf(i)];
+const natOf=i=>(PROG.nat||{})[i]??flav(i).nat,natK=()=>0.3+1.4*natOf(HOME);   // natK: 1 at nationalism 0.5
+const tensionOf=i=>Math.max(0,...POWERS.filter(p=>p.i!==i).map(p=>-relOf(i,p.i)));
+const natWord=n=>n>.7?'fervent':n>.5?'high':n>.3?'moderate':'low';
+// failures at home: open programs take the whole hit now; closed ones a part, the rest piles up as leak risk
+function failHit(x,what){const o=flav(HOME).open;opAdd(HOME,x*(0.4+0.6*o));
+  if(o<0.5){PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)+x*0.6*(1-o)*1.5;HOOK.news(`Officially, nothing happened (${what})`,'warn')}}
+function flavTick(d,R){PROG.nat=PROG.nat||{};
+  for(const p of POWERS){const n=natOf(p.i),tgt=clamp(flav(p.i).nat+0.3*tensionOf(p.i),0,1);PROG.nat[p.i]=n+(tgt-n)*(1-Math.exp(-d/200))}
+  // the commodity cycle (its own clock, ~500 days)
+  const c0=PROG.comm||0;PROG.commPh=(PROG.commPh??R()*6.28)+d*6.2832/500+(R()-.5)*0.2*Math.sqrt(d/10);PROG.comm=clamp(0.8*Math.sin(PROG.commPh),-1,1);
+  if(flav(HOME).money==='commodity'){if(c0<0.5&&PROG.comm>=0.5)HOOK.news('Commodity boom: the treasury is overflowing','ok');if(c0>-0.5&&PROG.comm<=-0.5)HOOK.news('Commodity bust: belts tighten everywhere, rockets included','bad')}
+  const F=flav(HOME);
+  // leaks of hushed-up failures: likelier the more there are
+  if(PROG.hush&&R()<1-Math.exp(-d*0.002*PROG.hush)){opAdd(HOME,PROG.hushPen);   // hushPen is the (negative) deferred hit
+    HOOK.news(`Leaked: the program quietly lost ${PROG.hush} flight${PROG.hush>1?'s':''} it never admitted to`,'bad');PROG.hush=0;PROG.hushPen=0}
+  // elections (open programs): budget mood for the next term
+  if(F.open>=0.6){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
+    if(PROG.day>=PROG.nextElection-50&&!PROG.electionWarned){PROG.electionWarned=true;HOOK.news('Election in 50 days: a success now would not hurt','warn')}
+    if(PROG.day>=PROG.nextElection){const o=opOf(HOME);PROG.bmult=o>55?1.25:o<40?0.7:1;PROG.nextElection+=400;PROG.electionWarned=false;
+      HOOK.news(o>55?'Re-elected: the government doubles down on space':o<40?'New government trims the space budget':'Election: the space budget survives, unchanged',o>55?'ok':o<40?'bad':'')}}
+  // the leadership's demand for a spectacular (closed programs)
+  if(F.open<0.5){if(PROG.demand&&PROG.day>PROG.demand.by){opAdd(HOME,-10);HOOK.news('The leadership is displeased: no spectacular by the anniversary','bad');PROG.demand=null}
+    if(!PROG.demand&&stateShare()>=0.5&&R()<1-Math.exp(-d/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
+  // regime change can cancel a security state's program
+  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R()<1-Math.exp(-d/600))cancelProgram(R)}
+function importNews(s){const ks=[...new Set(s.parts.map(p=>p.d.key))],src=ks.map(k=>[k,sourceOf(k)]),grey=src.filter(x=>x[1].how==='grey'),imp=src.filter(x=>x[1].how==='import');
+  if(grey.length)HOOK.news(`Bought through intermediaries at triple the price: ${grey.map(x=>PARTS[x[0]].name).join(', ')}`,'warn');
+  if(imp.length||grey.length)opAdd(HOME,-0.4*natK()*(imp.length+grey.length)/Math.max(1,ks.length))}
+function demandMet(why){if(!PROG.demand)return;PROG.demand=null;opAdd(HOME,8);if(flav(HOME).money==='patronage')PROG.funds+=30;
+  HOOK.news(`The leadership is delighted (${why})${flav(HOME).money==='patronage'?': +30M':''}`,'ok')}
+function cancelProgram(R){PROG.cancelled=true;PROG.bmult=0;PROG.decisions=(PROG.decisions||[]).filter(x=>x.kind!=='defect'&&x.kind!=='hire');   // these two replace any pending career offers
+  HOOK.news(`Regime change in ${POWERS[HOME].name}: the new government cancels the space program`,'bad');
+  const c=POWERS.filter(p=>p.i!==HOME&&!sanctioned(p.i)).sort((a,b)=>b.econ*opOf(b.i)-a.econ*opOf(a.i))[0],V=valuation();
+  if(c)offerDecision({kind:'defect',power:c.i,amt:Math.round(40+V*0.3),life:40,title:`${c.name} offers the cancelled team a new home`,text:'The program is cancelled at home. Defect, and it lives on as theirs.',opts:[['yes',`Go to ${c.root}`],['no','No']]});
+  offerDecision({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.round(30+V*0.15),life:40,title:'Go private with what is left',text:'The team keeps the hardware and its knowledge, as a private company with little money.',opts:[['yes','Go private'],['no','No']]})}   // "our government": power 0 (the launch site's) until the program changes hands (career moves)
 function powerAt(pf){const u=norm(pf);if(!isLand(u))return null;let best=null,bd=Infinity;
   for(const p of POWERS){const d=Math.acos(clamp(dot(u,p.u),-1,1))-0.12*Math.log(p.econ);if(d<bd){bd=d;best=p}}return best}
 for(const c of CITIES)c.power=powerAt(c.u);
@@ -1160,33 +1374,33 @@ const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
 // economy). First in the world pays 1.5× and a big boost at home; second pays half.
 const RACE=['beeper','hop','orbiter'];
 function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
-  for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ);let t=0;
+  for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(p.i).pri.prestige);let t=0;
     for(const id of RACE){t+=(60+80*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
 function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
-  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news(`${POWERS[r.i].name} gets there first: ${M.name.replace(/^Passenger: /,'')}!`,relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4)}}
+  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news(`${POWERS[r.i].name} gets there first: ${M.name.replace(/^Passenger: /,'')}!`,relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
-  const client=pickClient(src,R);if(sanctioned(client))return null;
+  const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
   const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;PROG.active.push(c);
   if(offerRisk(c).now.includes(HOME))sanction(HOME,c.src==='mil'?250:120,c.src==='mil'?`for military work for ${POWERS[c.client].name}`:`under export controls on ${POWERS[c.client].name}`);
-  if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
+  if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*natK()*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
   HOOK.save();return true}
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i],T=CT[c.type];if(!T.ok(R,c.p,s))continue;
     const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
-    standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);R.cdone.push(cTitle(c));
+    standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
@@ -1195,14 +1409,14 @@ function econTick(d,R){ensureBoard();
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
   if(c0<0.45&&PROG.cycle>=0.45)HOOK.news('Boom times: satellite operators are hiring launches again','ok');
   if(c0>-0.45&&PROG.cycle<=-0.45)HOOK.news('Recession bites: commercial launch orders dry up','warn');
-  for(const k in SRC){const rate=SRC[k].rate*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
+  for(const k in SRC){const rate=SRC[k].rate*(0.4+2.4*flav(HOME).pri[PRI_OF[k]])*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
     for(let j=0;j<n&&PROG.offers.length<BOARD_MAX;j++){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
   PROG.offers=PROG.offers.filter(o=>o.expires>PROG.day);
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(c.deadline>PROG.day)continue;PROG.active.splice(i,1);standAdd(c.src,-10);opAdd(c.client,-3);
     HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  decisionTick(d,R);raceTick()}
+  flavTick(d,R);decisionTick(d,R);cancelTick();raceTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing
@@ -1230,8 +1444,18 @@ function shiftShare(to,amt){const o=own(),get=k=>k==='pv'?o.pv:(o.st[k]||0),set=
   for(const k of others)set(k,get(k)-amt*get(k)/tot);set(to,get(to)+amt)}
 function income(x){const o=own();if(o.debt>0){const r=Math.min(o.debt,x/2);o.debt-=r;x-=r}PROG.funds+=x}
 const valuation=()=>80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0);   // what investors think the program is worth (M)
+// how a power's money arrives (multiplies GRANT_100 × stake): its money axis, opinion where it matters, the cycles
+function importsLine(parts){const by={};for(const k of new Set(parts.map(p=>p.d.key))){const x=sourceOf(k);if(x.how==='home')continue;const w=x.how==='grey'?'grey market ×3':`${POWERS[x.from].root} ×${IMPORT_K}`;(by[w]=by[w]||[]).push(PARTS[k].name)}
+  const e=Object.entries(by);return e.length?`<div class="sub ${by['grey market ×3']?'bad':'dim'}">Imports: ${e.map(([w,n])=>`${n.join(', ')} (${w})`).join(' · ')}</div>`:''}
+function moneyK(i){const F=flav(i),op=opOf(i)/50,home=i===HOME;let k;
+  if(F.money==='commodity')k=(0.6+0.4*op)*(1+0.8*(PROG.comm||0));
+  else if(F.money==='patronage')k=0.5*op;
+  else if(F.money==='military')k=0.7*(1+tensionOf(i));
+  else k=op*(1+0.25*(PROG.cycle||0));
+  if(F.grow)k*=Math.min(2,1+PROG.day/800);
+  return Math.max(0,k*(home?(PROG.bmult??1):1))}
 function budgetDay(){const o=own();let g=0;const parts=[];
-  for(const k in o.st){if(sanctioned(+k))continue;const i=+k,x=GRANT_100*o.st[k]*(opOf(i)/50)*Math.sqrt(POWERS[i].econ/POWERS[HOME].econ)*(1+0.25*(PROG.cycle||0));g+=x;parts.push(`${POWERS[i].root} ${fmtM(x)}`)}
+  for(const k in o.st){if(sanctioned(+k))continue;const i=+k,x=GRANT_100*o.st[k]*Math.sqrt(POWERS[i].econ/POWERS[HOME].econ)*moneyK(i);g+=x;parts.push(`${POWERS[i].root} ${fmtM(x)}`)}
   if(g<=0)return;PROG.funds+=g;
   HOOK.news(Object.keys(o.st).length>1?`Budget day: members contribute ${fmtM(g)} (${parts.join(', ')})`:
     `Budget day: ${POWERS[+Object.keys(o.st)[0]].name} allocates ${fmtM(g)} to the space program${opOf(HOME)>60?' (and applauds)':opOf(HOME)<40?' (through gritted teeth)':''}`,g>=GRANT_100*stateShare()?'ok':'warn')}
@@ -1261,7 +1485,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
   if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/450))){
-    if(R()<0.5){const c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>b.econ*b.tech*opOf(b.i)-a.econ*a.tech*opOf(a.i))[0];
+    if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,
           text:`${good?'They have watched your program and want it for themselves':'Things are going badly at home, and they have noticed'}: defect, and the program becomes theirs, with ${fmtM(amt)} to start. What the team knows comes along (certified parts, the air, everything flown). ${POWERS[HOME].name} will not forgive it.`,
@@ -1271,6 +1495,8 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
         text:`A private company buys the program outright: ${fmtM(amt)} of capital${own().debt>0?', the debts paid off':''}, no budget day, no government to answer to. What the team knows comes along. ${POWERS[HOME].name} will call it a brain drain.`,
         opts:[['yes',`Join ${co}`],['no','Decline']]})}}}
 // how badly the program is doing: each of these counts once
+function cancelTick(){if(!PROG.cancelled||(PROG.decisions||[]).some(x=>x.kind==='defect'||x.kind==='hire'))return;
+  careerMove({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.max(10,PROG.funds)})}
 function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
 // the program changes hands. Knowledge (certified ratings, the atmosphere, firsts flown, contract record) carries over;
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
@@ -1279,11 +1505,11 @@ function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0
 function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];
   if(d.kind==='defect'){const j=d.power;PROG.history.push({day:PROG.day,from:progName(),move:`defected to ${POWERS[j].name}`});
     HOME=j;PROG.home=j;PROG.own={kind:'agency',st:{[j]:1},pv:0,chosen:true,debt:0};PROG.funds=d.amt;PROG.bailouts=0;
-    PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15);for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
+    PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15*(1.3-natOf(j)));PROG.cancelled=false;PROG.bmult=1;for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
     standAdd('gov',-100);standAdd('gov',50);RIVALS=raceSchedule();
     HOOK.news(`DEFECTION: the space program's team crosses over to ${POWERS[j].name}`,'bad');sanction(old,400,'after the defection')}
   else{PROG.history.push({day:PROG.day,from:progName(),move:`hired by ${d.co}`});
-    PROG.own={kind:'company',st:{},pv:1,chosen:true,debt:0,name:d.co};PROG.funds=d.amt;PROG.bailouts=0;opAdd(HOME,-8);standAdd('gov',-20);
+    PROG.own={kind:'company',st:{},pv:1,chosen:true,debt:0,name:d.co};PROG.funds=d.amt;PROG.bailouts=0;opAdd(HOME,-8*natK());PROG.cancelled=false;PROG.bmult=1;standAdd('gov',-20);
     PROG.active=(PROG.active||[]).filter(c=>c.src!=='gov');HOOK.news(`${d.co} hires the whole space program; ${POWERS[HOME].name} calls it a brain drain`,'warn')}}
 function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id===id);if(i<0)return false;const d=PROG.decisions.splice(i,1)[0],o=own();
   if(d.kind==='rescue'){const need=Math.max(0,FUNDS_FLOOR-PROG.funds);
@@ -1291,7 +1517,7 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
   else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2);
+  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}
 // ---- the orbital registry: what we leave in orbit stays there, on exact Kepler rails across program time.
@@ -1324,18 +1550,32 @@ function stationsTick(d){const L=PROG.stations||[];if(!L.length)return;
     L.splice(i,1);opAdd(pw,-2);HOOK.news(`${POWERS[pw].name} shuts our ground station at ${c.name} and keeps the furniture`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100),n=L.filter(g=>{const c=CITIES[g.ci];return c.power&&c.power.i!==HOME}).length;
   if(q1>q0&&n){const x=GS_LEASE*n*(q1-q0);PROG.funds-=x;PROG.leasePaid=(PROG.leasePaid||0)+x}}
-// cloud cover at a planet-fixed unit vector at program time T: the sky shader's cloudCovF, ported like the land mask
+// the sky shader's float value noise (h3/vn/fbm), ported with Math.fround at each step so the CPU sees the same clouds
+// the GPU draws. (It used to carry the land mask too; the terrain now has its own integer-hash noise, see "the world".)
+const F32=Math.fround,fr32=x=>F32(x-Math.floor(x));
+function h3(x,y,z){x=fr32(F32(F32(x*0.3183099)+0.1));y=fr32(F32(F32(y*0.3183099)+0.1));z=fr32(F32(F32(z*0.3183099)+0.1));
+  x=F32(x*17);y=F32(y*17);z=F32(z*17);return fr32(F32(F32(F32(x*y)*z)*F32(F32(x+y)+z)))}
+function vn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);const H=(a,b,c)=>h3(ix+a,iy+b,iz+c),L=(a,b,t)=>a+(b-a)*t;
+  return L(L(L(H(0,0,0),H(1,0,0),fx),L(H(0,1,0),H(1,1,0),fx),fy),L(L(H(0,0,1),H(1,0,1),fx),L(H(0,1,1),H(1,1,1),fx),fy),fz)}
+function fbm(x,y,z){let a=.5,s=0;for(let i=0;i<6;i++){s+=a*vn(x,y,z);x=F32(x*2.03+1.7);y=F32(y*2.03+9.2);z=F32(z*2.03+3.1);a*=.5}return s}
+// cloud cover at a planet-fixed unit vector at program time T: the sky shader's cloudCovF, ported like that
 function cloudAt(u,T){const t=(T*2e-4)%500,a=4;
   const w=[vn(u[0]*a+t*.3,u[1]*a+t*.3,u[2]*a+t*.3),vn(u[0]*a+5.2,u[1]*a+1.3,u[2]*a+t*.3),vn(u[0]*a+9.1,u[1]*a+t*.3,u[2]*a+2.7)].map(x=>x-.5);
   const q=[(u[0]+w[0]*.22)*6+t,(u[1]+w[1]*.22)*11,(u[2]+w[2]*.22)*6+t*.6];
   const c=fbm(q[0],q[1],q[2])+.35*(fbm(u[0]*1.7+4,u[1]*1.7+1,u[2]*1.7+t*.2)-.5),x=clamp((c-.55)/.17,0,1);return x*x*(3-2*x)}
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
+const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
 function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':'Object'}
 function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el=elements(s.r,s.v,TELLUS.mu);if(!(el.e<1&&el.pe>TELLUS.R+TELLUS.atm))return;
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length,q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
+  // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
+  // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
+  const on=s.parts.filter(p=>p.on);q.shape=on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
+  q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
@@ -1367,6 +1607,28 @@ function satTick(d,R){const sats=(PROG.sats||[]).filter(q=>q.cam);ensureBoard();
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
       if(q.ant&&q.pending.length)for(const st of GS){if(dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)<STA_MIN)continue;
         for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
+// ---- the logbook: what the program has *measured*. Nothing here is given: each fact is filled in by a real flight, with
+// who flew it and when, and improved by better flights (the old values kept, struck through in the notebook). Records
+// that a design achieved keep the design (and, through the app, the flight's autopilot tape), so a record can be loaded,
+// studied and flown again. The builder's hints read from here: until someone reaches orbit, nobody knows what it costs.
+const fmtDv=v=>`${Math.round(v).toLocaleString('en-US')} m/s`,fmtKm=v=>`${(v/1e3).toFixed(v<1e5?1:0)} km`;
+const LOGF=[
+  {id:'space',label:'Δv to leave the atmosphere',fmt:fmtDv,best:'min',design:true,hint:'nobody has been to space yet'},
+  {id:'orbit',label:'Δv to low orbit',fmt:fmtDv,best:'min',design:true,hint:'nobody has reached orbit yet'},
+  {id:'period',label:'Orbital period',fmt:v=>`${(v.p/60).toFixed(1)} min at ${fmtKm(v.alt)}`,best:'first',hint:'measured on the first orbit'},
+  {id:'apex',label:'Highest point reached',fmt:fmtKm,best:'max',design:true,hint:'nothing has flown yet'},
+  {id:'selene',label:'Δv to reach Selene',fmt:dvOrTxt=>fmtDv(dvOrTxt),best:'min',design:true,hint:'nobody has been there'},
+  {id:'land',label:'Δv to land on Selene',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
+];
+function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
+  let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
+function logNote(s,id,v){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log||{}),cur=L[id];
+  if(cur){if(F.best==='first')return;if(F.best==='min'&&!(v<cur.v-0.5))return;if(F.best==='max'&&!(v>cur.v*1.001+1))return}
+  const e={v,day:PROG.day,flight:PROG.flights+1,by:designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};
+  if(F.design)e.stack=JSON.parse(JSON.stringify(s.stack));L[id]=e;if(s.rec)s.rec.newLog.push(id);
+  if(F.best!=='max'||!cur)HOOK.news(cur?`Logbook: new best ${F.label.toLowerCase()}, ${F.fmt(v)} (was ${F.fmt(cur.v)})`:`Logbook: first measured ${F.label.toLowerCase()}, ${F.fmt(v)}`,'ok');HOOK.save()}
+// the interface ages with the program: a handwritten notebook, then (with something in orbit) a monochrome terminal
+const eraOf=()=>PROG.done&&PROG.done.beeper?2:1;
 // ---- deterministic stepping + flight tapes. Everything that advances the flight goes through advPhys / advRails, and a
 // tape records each of those calls plus every control change before it — so playing it back from the pad reproduces the
 // flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
@@ -1415,6 +1677,7 @@ precision highp float;
 in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
+uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uSiteH,uTcc;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
@@ -1454,11 +1717,74 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  trans=exp(-(BR*odR+BM*1.1*odM));
  float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
  return SUNI*(sR*BR*pR+sM*BM*pM);}
-// ---- the ground. The coastline (c = 0.52) is untouched — the CPU's land mask and the cities depend on it — but the land is
-// now biomes from temperature and moisture, with ridged mountains and rolling hills that only shade (a lighting normal from
-// the height field's slope; the physics still sees a smooth sphere).
-float ridge(vec3 p){float s=0.,a=.5;for(int i=0;i<3;i++){float r=1.-abs(2.*vn(p)-1.);s+=a*r*r;p=p*2.1+vec3(3.1,1.7,4.9);a*=.5;}return s;}
-float relief(vec3 u,float c){return smoothstep(.6,.8,c)*ridge(u*16.)*1.3+.22*vn(u*70.)*smoothstep(.52,.58,c);}
+// ---- the ground (terrain session): the same height the physics uses. A baked 512×256 map (uWorld: base height,
+// ruggedness, volcanism, salt), read with texelFetch and our own bilinear so the arithmetic matches the CPU's, plus
+// procedural detail on an integer hash (bit-identical lattice values on both sides). uClim: temperature and wetness.
+// sst is smoothstep that allows reversed edges (GLSL's smoothstep is undefined for edge0 >= edge1; the CPU's isn't).
+float sst(float a,float b,float x){float t=clamp((x-a)/(b-a),0.,1.);return t*t*(3.-2.*t);}
+uint ihu(ivec3 p){uint h=uint(p.x)*0x8da6b343u^uint(p.y)*0xd8163841u^uint(p.z)*0xcb1ab31fu;h^=h>>16u;h*=0x7feb352du;h^=h>>15u;h*=0x846ca68bu;h^=h>>16u;return h;}
+float ih(ivec3 p){return float(ihu(p)>>8u)/16777216.;}
+float tn(vec3 x){vec3 fl=floor(x),f=x-fl;ivec3 i=ivec3(fl);f=f*f*(3.-2.*f);
+ float a=ih(i),b=ih(i+ivec3(1,0,0)),c=ih(i+ivec3(0,1,0)),d=ih(i+ivec3(1,1,0)),e=ih(i+ivec3(0,0,1)),g=ih(i+ivec3(1,0,1)),h=ih(i+ivec3(0,1,1)),k=ih(i+ivec3(1,1,1));
+ float x1=a+(b-a)*f.x,x2=c+(d-c)*f.x,x3=e+(g-e)*f.x,x4=h+(k-h)*f.x,y1=x1+(x2-x1)*f.y;return y1+(x3+(x4-x3)*f.y-y1)*f.z;}
+// the quarter-resolution pre-pass marched the terrain already: start just short of the nearest hit among this pixel's
+// coarse neighbours (3×3 covers a silhouette edge), so the full-resolution march only has the last few metres to do
+float coarseStart(){if(uUseDepth<.5)return 0.;ivec2 c=ivec2(gl_FragCoord.xy)/2,sz=textureSize(uDepth,0);float m=1e30;
+ for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++)m=min(m,texelFetch(uDepth,clamp(c+ivec2(x,y),ivec2(0),sz-ivec2(1)),0).x);return m>1e29?0.:m*.985-1.;}
+// atan2 to ~1e-7 rad: the built-in is an approximation good to ~1e-5, which moves the texel lookup enough to put the GPU's
+// ground tens of centimetres (metres, on steep slopes) off the CPU's. Range-reduced to |a| ≤ tan(π/8), then the series.
+float patan(float y,float x){float ax=abs(x),ay=abs(y),a=min(ax,ay)/max(max(ax,ay),1e-30),off=0.;if(a>.41421356){a=(a-1.)/(a+1.);off=.78539816;}
+ float q=a*a,r=a*(1.+q*(-.33333333+q*(.2+q*(-.14285714+q*(.11111111+q*(-.09090909+q*(.07692308-q*.06666667)))))))+off;
+ if(ay>ax)r=1.5707963-r;if(x<0.)r=3.1415927-r;return y<0.?-r:r;}
+vec2 wUV(vec3 g){return vec2(patan(g.z,g.x)/6.2831853+.5,patan(g.y,length(g.xz))/3.1415927+.5);}
+// quadratic B-spline over 3×3 texels, as wSpl on the CPU (continuous slope: no lighting facets at texel edges); unrolled
+vec4 wRow(int j,int ix,vec3 w){return texelFetch(uWorld,ivec2((ix+${WTW*2-1})%${WTW},j),0)*w.x+texelFetch(uWorld,ivec2((ix+${WTW*2})%${WTW},j),0)*w.y+texelFetch(uWorld,ivec2((ix+${WTW*2+1})%${WTW},j),0)*w.z;}
+vec4 wTexUV(vec2 u0){vec2 uv=u0*vec2(${WTW}.,${WTH}.)-.5,c=floor(uv+.5),t=uv-c;int ix=int(c.x),iy=int(c.y);
+ vec3 wx=vec3(.5*(.5-t.x)*(.5-t.x),.75-t.x*t.x,.5*(.5+t.x)*(.5+t.x)),wy=vec3(.5*(.5-t.y)*(.5-t.y),.75-t.y*t.y,.5*(.5+t.y)*(.5+t.y));
+ return wRow(clamp(iy-1,0,${WTH-1}),ix,wx)*wy.x+wRow(clamp(iy,0,${WTH-1}),ix,wx)*wy.y+wRow(clamp(iy+1,0,${WTH-1}),ix,wx)*wy.z;}
+vec4 wTex(vec3 g){return wTexUV(wUV(g));}
+vec3 toGen(vec3 pf){return vec3(uGen.x*pf.x+uGen.y*pf.z,pf.y,-uGen.y*pf.x+uGen.x*pf.z);}
+// k = how many octaves (fractional: the last one fades in). The CPU always uses all 9; the GPU drops the ones finer
+// than a pixel, and while marching high above the ground it uses fewer still and pays for them with a height bound.
+float hgtG(vec3 g,vec2 uv,float k,out float m){vec4 w=wTexUV(uv);m=w.y;float e0=w.x,v=w.z,sf=w.w,lat=abs(g.y);
+ float e=e0>3500.?3500.+(e0-3500.)*.5:e0,f=${HF0.toFixed(5)},a=1.,rid=0.,hil=0.,wgt=1.;
+ for(int i=0;i<9;i++){float q=clamp(k-float(i),0.,1.);if(q<=0.)break;float n=mix(.5,tn(g*f+vec3(11.3,3.7,7.1)),q),r=1.-abs(2.*n-1.);r*=r*wgt;wgt=clamp(r*1.6,0.,1.);rid+=a*r;hil+=a*(n-.5);f*=2.03;a*=.5;}
+ const float AN=1.99609375;
+ e+=((m*${RIDGE_A}.+120.)*rid/AN*1.3-m*${VALLEY}.+(380.+500.*sst(900.,0.,abs(e0)))*hil/AN*(1.-m*.5))*(1.-.9*sf);
+ float gl=sst(.66,.82,lat)*sst(.08,.35,m)*sst(1800.,400.,e0);
+ if(gl>0.){const float F1=${FJ1.toFixed(5)},F2=${FJ2.toFixed(5)};float wv=tn(vec3(g.x*F1,g.y*F1+5.,g.z*F1))-.5,l=abs(tn(vec3(g.x*F2+wv*3.,g.y*F2,g.z*F2+wv*3.))-.5);e-=gl*1500.*(1.-sst(.01,.06,l));}
+ if(v>.15){vec3 x=g*${VOLF.toFixed(5)},fl=floor(x);ivec3 i=ivec3(fl);
+  if(ih(i+ivec3(0,0,77))<.55){float dd=length(x-fl-.25-.5*vec3(ih(i+ivec3(0,0,78)),ih(i+ivec3(0,0,79)),ih(i+ivec3(0,0,80))))/.25;
+   if(dd<1.)e+=v*(1800.+1600.*ih(i+ivec3(0,0,81)))*(1.-dd)*(1.-dd)*(dd<.12?.6+3.*dd:1.);}}
+ return e;}
+// height at a planet-fixed direction, with the pad levelled (as terrainH on the CPU)
+float terr(vec3 pf,float k,out float m,out float ub){m=0.;vec3 g=toGen(pf);vec2 uv=wUV(g);ub=texture(uClim,uv).z;float dd=length(pf-vec3(1,0,0))*uPR;if(dd<2000.)return uSiteH;float h=hgtG(g,uv,k,m);return dd>4500.?h:h+(uSiteH-h)*(1.-sst(2000.,4500.,dd));}
+float terr(vec3 pf,float k){float m,ub;return terr(pf,k,m,ub);}
+// octaves worth drawing at a footprint fw (m per pixel): the finest kept has a wavelength of at least two pixels
+float octF(float fw){return clamp(log2(25000./(2.*max(fw,.5)))/1.0215+1.,1.,9.);}
+// ...and at distance t: all 9 (the physics' ground, to the millimetre) within 2 km of the camera, easing to 5 by ~20 km
+float octT(float t,float fw){return min(octF(fw),clamp(9.-1.2*log2(max(t,1.)/2000.),5.,9.));}
+// march the ray through the shell of possible terrain (sea level to R+uTop). Returns the hit distance (1e30 = none)
+// and the height there (negative: the sea surface over that depth). Altitude along the ray uses cc from the CPU in
+// float64, (t²−2tb+cc)/(|p|+R), so it stays centimetre-accurate even a few metres above the ground.
+float march(vec3 d,out float hh,float tS){hh=0.;vec2 sh=sph(uPc,uTcc,d);if(sh.y<0.||sh.x>sh.y||(uTcc>0.&&sh.x<0.))return 1e30;
+ float b=dot(d,uPc),t=max(max(sh.x,0.),tS),t1=sh.y,tp=t,k=2.;vec2 sea=sph(uPc,uPcc,d);float ts=(uPcc>0.&&sea.x>0.)?sea.x:1e30;t1=min(t1,ts);
+ bool hit=false;
+ float ub=0.,m=0.;
+ for(int i=0;i<64;i++){vec3 p=d*t-uPc;float rl=length(p),alt=(t*t-2.*t*b+uPcc)/(rl+uPR);vec3 up=p/rl,pf=uProt*up;float cs=max(-dot(d,up),0.);
+  // the air bound only needs the climate texel: skip the terrain while clearly above anything that could be here
+  if(alt>ub&&i>0){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;k=2.;vec3 g=toGen(uProt*normalize(d*t-uPc));ub=texture(uClim,wUV(g)).z;if(t>=t1)break;continue;}
+  float kF=octT(t,t*uPix/max(cs,.08)),kk=min(k,kF),h=terr(pf,kk,m,ub),bnd=kk<kF-.01?(m*${(RIDGE_A*1.3/2).toFixed(0)}.+300.)*exp2(1.-kk):0.,dh=alt-h-bnd;
+  if(alt>ub){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;if(t>=t1)break;continue;}
+  if(dh<0.){if(bnd>0.){k=kF;continue;}hit=true;hh=h;break;}
+  // lowlands are gentle (slopes ≲ 0.2), mountains can be steep: the step trusts the local ruggedness
+  tp=t;t+=max(dh/(cs+.22+.8*m),.004*t+.25);k=clamp(log2((m*${(RIDGE_A*1.3/2).toFixed(0)}.+300.)/max(dh,.5))+2.,2.,9.);
+  if(t>=t1)break;}
+ if(!hit){if(t>=t1){if(ts<1e29){hh=terr(uProt*normalize(d*ts-uPc),octT(ts,ts*uPix));return ts;}return 1e30;}
+  vec3 p=d*t-uPc;hh=terr(uProt*normalize(p),octT(t,t*uPix));return t;}   // out of steps right above the ground: call it a hit
+ float lo=tp,hi=t;for(int i=0;i<5;i++){float tm=.5*(lo+hi);vec3 p=d*tm-uPc;float rl=length(p),alt=(tm*tm-2.*tm*b+uPcc)/(rl+uPR),h=terr(uProt*(p/rl),octT(tm,tm*uPix));
+  if(alt<h){hi=tm;hh=h;}else lo=tm;}
+ if(hi<ts&&hh<0.)hh=0.;return hi;}
 // near field, filtered by the pixel footprint fw (metres): octaves finer than a pixel fade to their mean instead of
 // aliasing into streaks at grazing angles
 float detailF(vec3 l,float fw){return .4*pn(l/25.,40.)+.3*mix(.5,pn(l/5.,200.),smoothstep(10.,2.5,fw))
@@ -1483,26 +1809,31 @@ vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
  vec3 c=mix(alb,gravel,shoulder*.9);c=mix(c,conc,apron);c=mix(c,asph,road*(1.-apron));
  float soot=exp(-max(r-6.,0.)/11.)*(.5+.5*vn(vec3(x/2.5,7.)))+.3*exp(-r/28.)*n;
  paved=max(apron,road);return c*(1.-.85*min(soot,1.));}
-vec3 tellus(vec3 pf,vec2 gx,float det,float fade,out float ocean,out vec3 bump){
- vec3 dl=pf-vec3(1,0,0);float c=fbm(pf*2.2)+.42*exp(-dot(dl,dl)*30.);ocean=0.;bump=vec3(0.);
- if(c<.52){ocean=1.;vec3 col=mix(vec3(.003,.016,.06),vec3(.007,.04,.11),smoothstep(.3,.45,c));
-  return mix(col,vec3(.02,.11,.12),pow(smoothstep(.47,.52,c),2.));}                       // shallow turquoise shelf at the coast
- float lat=abs(pf.y),h=relief(pf,c);
- vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-4,0,0)),t2=cross(pf,t1);const float e=.0012;
- bump=(t1*(relief(normalize(pf+t1*e),c)-h)+t2*(relief(normalize(pf+t2*e),c)-h))*(.006/e);
- float temp=1.-lat*1.3-h*.35,moist=fbm(pf*4.+vec3(20.,3.,7.));
- vec3 grass=vec3(.10,.16,.045),forest=vec3(.035,.085,.028),desert=vec3(.33,.24,.13),tundra=vec3(.18,.17,.13),rock=vec3(.17,.15,.12);   // ~real albedos: forest .1, grass .2, desert .35
- vec3 col=mix(grass,forest,smoothstep(.47,.6,moist));
- col=mix(col,desert,smoothstep(.55,.75,temp)*smoothstep(.52,.4,moist));
- col=mix(col,tundra,smoothstep(.42,.22,temp));
- col=mix(col,rock,smoothstep(.3,.7,h));
- col=mix(col,vec3(.17,.15,.10),smoothstep(.535,.52,c)*.8);                                  // beaches
- float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,forest,smoothstep(.56,.7,fbm(pf*420.))*.5*(1.-smoothstep(.55,.75,temp)));
- // close up: a patchwork of fields where it's green and flat
- if(fade>0.){vec2 cl=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl,vec2(12.9898,78.233)))*43758.55),farm=fade*smoothstep(.62,.5,moist)*(1.-smoothstep(.2,.4,h))*(1.-smoothstep(.6,.75,temp));
-  col=mix(col,col*mix(vec3(.75,.85,.6),vec3(1.35,1.2,.7),hsh),farm*.8);col*=.85+.3*det*fade;}
- float snow=smoothstep(1.,1.18,h+(1.-temp)*.3)*smoothstep(.35,.7,vn(pf*220.)+h*.3),ice=smoothstep(.8,.87,lat+.08*fbm(pf*12.));
- return mix(col,vec3(.75,.8,.85),max(snow,ice));}
+// biome colours from the climate map (temperature with a 6.5 K/km lapse, wetness), blended across the same thresholds
+// biomeAt uses on the CPU; then rock on steep slopes, snow where it's cold and not too steep, salt pans, basalt,
+// wetlands, beaches. Albedos roughly physical (forest ~.1, grass ~.2, desert ~.35).
+vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocean){
+ ocean=0.;
+ if(h<0.){ocean=1.;float dp=-h;vec3 col=mix(vec3(.007,.04,.11),vec3(.003,.016,.06),sst(200.,3000.,dp));
+  return mix(col,vec3(.02,.11,.12),pow(sst(70.,0.,dp),2.));}                         // shallow turquoise over the shelf
+ vec3 g=toGen(pf);vec4 w=wTex(g),cl=texture(uClim,wUV(g));
+ float T=cl.x-6.5*max(h-max(w.x,0.),0.)/1000.,W=cl.y,m=w.y,v=w.z,sf=w.w,slope=1.-dot(npf,pf);
+ vec3 rainf=vec3(.022,.065,.02),sav=vec3(.19,.16,.075),hdes=vec3(.36,.26,.14),tfor=vec3(.035,.085,.028),grass=vec3(.10,.16,.045),cdes=vec3(.27,.23,.16),
+  taiga=vec3(.026,.05,.034),stp=vec3(.17,.15,.085),tund=vec3(.18,.17,.13),rock=vec3(.16,.14,.12),snow=vec3(.6,.64,.68);   // fresh snow is ~.8, but at .8 the tone curve flattens it and the relief disappears
+ vec3 hot=mix(mix(hdes,sav,sst(.3,.42,W)),rainf,sst(.64,.8,W)),tmp=mix(mix(cdes,grass,sst(.24,.36,W)),tfor,sst(.5,.62,W)),cld=mix(stp,taiga,sst(.3,.42,W));
+ vec3 col=mix(cld,tmp,sst(4.,10.,T));col=mix(col,hot,sst(15.,21.,T));col=mix(tund,col,sst(-4.,1.,T));
+ col=mix(col,vec3(.045,.07,.035),sst(.7,.85,W)*sst(80.,20.,h)*sst(.15,.05,m)*sst(3.,8.,T));   // wetlands
+ float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,tfor,sst(.56,.7,fbm(pf*420.))*.4*sst(.3,.5,W)*sst(0.,6.,T));
+ col=mix(col,vec3(.62,.6,.55)*(.9+.2*mid),sst(.3,.7,sf));                                    // salt pans
+ col=mix(col,vec3(.06,.055,.05),sst(.3,.6,v)*sst(200.,700.,h));                              // basalt on the volcanic arcs
+ col=mix(col,vec3(.17,.15,.10),sst(12.,3.,h)*.8);                                            // beaches
+ col=mix(col,rock*(.8+.4*mid),max(sst(.06,.2,slope),sst(1.,-3.,T)*.55));                    // cliffs, and bare ground above the trees
+ // close up: a patchwork of fields where it's green, mild and flat
+ if(fade>0.){vec2 cl2=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl2,vec2(12.9898,78.233)))*43758.55),farm=fade*sst(.25,.4,W)*sst(.8,.6,W)*sst(.04,.01,slope)*sst(6.,11.,T)*sst(25.,21.,T)*(1.-sf);
+  col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
+ // snow and ice hold on gentle ground only: faces steeper than ~35° stay bare rock, which is what gives a range its relief
+ float steep=sst(.12,.3,slope),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
+ return mix(col,snow,max(sn,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
 // A cheap domain warp (three value-noise lookups) swirls the cells; stretching y makes them run east–west like zonal winds.
@@ -1515,23 +1846,25 @@ float cloudCov(vec3 u){return cloudCovF(u,0.);}
 float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
- float tP=1e30,tM=1e30;
- vec2 hpl=sph(uPc,uPcc,d);if(uPcc>0.&&hpl.x>0.)tP=hpl.x;
+ float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
  float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
-  float fade=smoothstep(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
-  vec3 bump;vec3 alb=tellus(pf,gx,det,fade,oc,bump);
+  float fade=sst(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
+  // the terrain normal from the height field (planet-fixed), over about a pixel and a half
+  vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
+   npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);}
+  vec3 alb=tellus(pf,npf,hT,gx,det,fade,oc);
   if(fade>0.&&oc<.5){
    // scrub: dark bushes on a 3 m grid, thinning in deserts and fading before they'd alias
    vec2 cb=floor(gx/3.),fb=gx/3.-cb;cb=mod(cb,4096.);float hb=h3(vec3(cb,5.)),grn=alb.g/max(alb.r,.01);
    vec2 ob=vec2(h3(vec3(cb,6.)),h3(vec3(cb,8.)))*.6+.2;float clump=vn(vec3(gx/45.,2.))+.5*vn(vec3(gx/11.,4.))-.75,bs=.05+.25*h3(vec3(cb,9.));
    float bush=step(1.1-.35*clamp(grn,0.,1.5)-.9*clump,hb)*(1.-smoothstep(bs*.5,bs,length(fb-ob)))*smoothstep(1.2,.4,fw);
    vec3 pv=loc-uPadL;float paved=0.;if(dot(pv,pv)<4e6)alb=padGround(vec2(-pv.z,-pv.y),alb,fw,paved);
-   alb=mix(alb,alb*vec3(.35,.45,.3),bush*(1.-paved)*fade);bump*=1.-paved;}
-  vec3 st=sunTrans(p+n*20.);vec3 nb=normalize(n-transpose(uProt)*bump*(1.-oc));   // bump is planet-fixed; n is inertial
+   alb=mix(alb,alb*vec3(.35,.45,.3),bush*(1.-paved)*fade);npf=normalize(mix(npf,pf,paved));}
+  vec3 st=sunTrans(p+n*20.);vec3 nb=oc>.5?n:normalize(transpose(uProt)*npf);   // npf is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
   // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
   vec4 ct=texture(uCity,vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5));float urb=ct.r*(1.-oc);
@@ -1715,6 +2048,13 @@ function mkProg(vs,fs){const p=gl.createProgram();
   gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
   const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}return{p,u}}
 // city texture: 1024×512 equirectangular, built once on the CPU from CITIES (r = built-up density, g = night lights)
+// the baked world for the ground shader: heights etc. as exact floats (read with texelFetch), climate filtered
+const WORLD_TEX=(()=>{const n=WTW*WTH,a=new Float32Array(n*4),c=new Float32Array(n*4);
+  for(let k=0;k<n;k++){a[k*4]=WORLD.E[k];a[k*4+1]=WORLD.M[k];a[k*4+2]=WORLD.V[k];a[k*4+3]=WORLD.S[k];c[k*4]=WORLD.T[k];c[k*4+1]=WORLD.W[k];c[k*4+2]=WORLD.U[k]}
+  const mk=(fmt,data,filt)=>{const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,fmt,WTW,WTH,0,gl.RGBA,gl.FLOAT,data);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,filt);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,filt);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t};
+  return{w:mk(gl.RGBA32F,a,gl.NEAREST),c:mk(gl.RGBA16F,c,gl.LINEAR)}})();
 const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
   for(const c of CITIES){const lat=Math.asin(c.u[1]),lon=Math.atan2(c.u[2],c.u[0]),ang=c.rad/TELLUS.R,rpx=ang/Math.PI*H*1.8+2;
     const cx=(lon/6.2832+.5)*W,cy=(lat/Math.PI+.5)*H,sx=rpx/Math.max(.2,Math.cos(lat));
@@ -1750,6 +2090,14 @@ void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(v
  vec3 sn=normalize(vec3(vQ.xy,sqrt(max(0.,1.-r*r))+.3)+.35*vec3(n-.5,nz(q*1.7+5.)-.5,0.));float ls=.18+.82*smoothstep(-.3,.8,dot(sn,uSq));
  vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8;
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// terrain depth pre-pass: the sky shader's functions with a main that only marches and writes the hit distance
+const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.slice(0,SKY_FS.indexOf('void main(){'))+
+  'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
+const DEPTH_RT={tex:null,fb:null,w:0,h:0};
+function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
+  gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,w,h,0,gl.RED,gl.FLOAT,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);D.w=w;D.h=h;return D}
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
@@ -1853,6 +2201,10 @@ function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;par
 //   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
 const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
 const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+// a registered satellite keeps the marks it flew with: soot, and char with its windward direction. Frost and nozzle
+// glow are gone within a minute, long before anyone flies past. Rounded: they go into the save.
+HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
+  shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
@@ -1967,9 +2319,12 @@ function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
 function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=rng(c.seed),n=Math.min(900,Math.round(160+c.pop/2500));
+  // the same tangent frame the renderer uses (planet-fixed here): each building stands on the terrain under it, none in the water
+  const ex=norm(cross(Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],c.u)),ez=cross(ex,c.u);
   for(let i=0;i<n;i++){const rr=Math.sqrt(R())*c.rad*.9,th=R()*6.2832,x=rr*Math.cos(th),z=rr*Math.sin(th),core=Math.exp(-((rr/c.rad)**2)*3);
     const w=12+R()*30,dpt=12+R()*30,hgt=6+R()*12+core*(40+R()*120),drop=(x*x+z*z)/(2*TELLUS.R),g=.62+R()*.28,w2=R()<.5,col=[g*(w2?1:.94),g*.97,g*(w2?.92:1)];   // light concrete: the mesh shader has no tone map, so mid-greys read as black
-    box(a,[x,hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
+    const gh=terrainH(norm(add(mul(c.u,TELLUS.R),add(mul(ex,x),mul(ez,z)))));if(gh<1)continue;
+    box(a,[x,gh+hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
   const m=makeMesh(a);cityMeshes.set(c,m);return m}
 // ---- light at a point (world): the sun's colour after the air between here and space (same coefficients as the sky
 // shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
@@ -2034,7 +2389,7 @@ HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 const PROG_KEY='launchpad-program-v1';
 try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j)Object.assign(PROG,j)}catch(e){}
-if(PROG.home!=null&&PROG.home!==HOME){HOME=PROG.home;RIVALS=raceSchedule()}ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
+if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
 HOOK.save=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
@@ -2059,12 +2414,16 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
+  const F=flav(HOME),pris=Object.entries(F.pri).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]).join(', ');
   html+=`<div class="ep">The world</div><div class="sub">Home: <b style="color:${pc(H)}">${H.name}</b> · opinion of us ${opOf(HOME).toFixed(0)}<br>`+
-    POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
+    `<span class="dim">${F.name}: answers to ${F.open>=.6?'the public (elections)':F.open>=.4?'a mix of public and leadership':'the leadership'} · money: ${{tax:'taxes',commodity:'commodity revenue',patronage:'patronage',military:'the military budget'}[F.money]}${F.grow?', growing':''} · wants ${pris} · nationalism ${natWord(natOf(HOME))}</span>`+
+    `<br><span class="dim">Industry: makes ${TIER_NAME.filter((_,t)=>indOf(HOME)>=IND_TH[t]).join(', ')}${[0,1,2].some(t=>indOf(HOME)<IND_TH[t])?`; imports ${[0,1,2].filter(t=>indOf(HOME)<IND_TH[t]).map(t=>{const k={1:'sparrow',2:'condor'}[t],x=sourceOf(k);return `${TIER_NAME[t]} ${x.how==='grey'?'<span class="bad">via intermediaries ×3</span>':`from ${POWERS[x.from].root}`}`}).join(', ')}`:''}</span>`+
+    `${PROG.demand?`<br><span class="warn">The leadership expects a spectacular within ${(PROG.demand.by-PROG.day).toFixed(0)} days</span>`:''}${F.open>=.6&&PROG.nextElection!=null?`<br><span class="dim">Next election in ${(PROG.nextElection-PROG.day).toFixed(0)} days</span>`:''}<br>`+
+    POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> <span class="dim">(${ARCH[archOf(p.i)].name.toLowerCase()})</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[]});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -2075,9 +2434,9 @@ function editorChanged(){
   stages.forEach((s,i)=>{tot+=s.dvV;const tw=s.twr<1?'bad':s.twr<1.3?'warn':'ok';
     html+=`<div class="seg"><b>Stage ${i+1}</b> <span class="dim">${s.m0.toFixed(2)} t → ${s.mf.toFixed(2)} t</span><br>Δv <b>${s.dvV.toFixed(0)}</b> / ${s.dvA.toFixed(0)} m/s · TWR <span class="${tw}">${s.twr.toFixed(2)}</span> · ${s.burn.toFixed(0)} s</div>`});
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`;$('launch').textContent=ok?'LAUNCH':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
-   html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span></div>`}
+   html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
-    <div class="sub">Low orbit needs ~4300 m/s. A Selene landing and return, ~8200.</div>`;
+    <div class="sub">${logHintHTML()}</div>`;
   if(!S.parts.some(p=>p.d.kind==='pod'))html+='<div class="warn">No command pod: no control torque.</div>';
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
@@ -2224,23 +2583,30 @@ function render(){
     const f=localFrame(sub(tgt,bodyPos(S.body,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
     camW=madd(tgt,off,cam.dist);
-    const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);if(ra<S.body.R+1.5)camW=add(bc,mul(rc,(S.body.R+1.5)/ra));
+    const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);{const gR=S.body.R+1.5+(S.body===TELLUS&&ra<S.body.R+TERR_TOP+10?groundAlt(TELLUS,toPF(TELLUS,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
   // ---- sky / planets: one full-screen ray-cast
-  gl.useProgram(PSKY.p);const u=PSKY.u;
+  for(const prog of PDEPTH?[PDEPTH,PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
    gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,CITY_TEX);gl.uniform1i(u.uCity,0);
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
-   gl.uniform3fv(u.uPadL,[TELLUS.R,0,0].map((x,i)=>x-Math.round(cpf[i]/1000)*1000));   // the pad, in the same re-centred frame as loc
+   gl.uniform3fv(u.uPadL,[TELLUS.R+WORLD.siteH,0,0].map((x,i)=>x-Math.round(cpf[i]/1000)*1000));   // the pad, in the same re-centred frame as loc
+   gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.w);gl.uniform1i(u.uWorld,1);gl.activeTexture(gl.TEXTURE2);gl.bindTexture(gl.TEXTURE_2D,WORLD_TEX.c);gl.uniform1i(u.uClim,2);gl.activeTexture(gl.TEXTURE0);
+   {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uSiteH,WORLD.siteH);gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,(tNow()*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}
-  gl.depthFunc(gl.ALWAYS);gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
+   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}}
+  gl.bindVertexArray(quadVAO);
+  if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
+    gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,W,H);
+    gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
+  gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
+  gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
@@ -2250,15 +2616,15 @@ function render(){
   marksTick();padSync();
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
-  {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
+  {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R+WORLD.siteH,0,0],simT);
    if(len(sub(site,camW))<3e5)drawMesh(PAD,mat4(rotY([0,0,-1],th),rotY([1,0,0],th),rotY([0,-1,0],th),sub(site,camW)),site)}
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),hb=len(sub(p,bc))-S.body.R+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
-    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
+  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=S.body===TELLUS?groundAlt(TELLUS,toPF(TELLUS,sub(p,bc),simT)):0,hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
+    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+gA+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
       const Pr=[1-L[0]*up[0]/ln,-L[1]*up[0]/ln,-L[2]*up[0]/ln,0, -L[0]*up[1]/ln,1-L[1]*up[1]/ln,-L[2]*up[1]/ln,0, -L[0]*up[2]/ln,-L[1]*up[2]/ln,1-L[2]*up[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
@@ -2267,6 +2633,9 @@ function render(){
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
+  // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
+  if(mode==='flight')for(const q of PROG.sats||[]){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
+    const sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r);gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
@@ -2326,6 +2695,10 @@ function render(){
     if(q){const k=Math.min(devicePixelRatio||1,1.5),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;
       octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`impact · ${fmtD(d)}`,q[0],q[1]-12*k)}}
+  if(mode==='flight'&&view!=='map'){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();
+    for(const q of PROG.sats||[]){if(S.rec&&S.rec.satId===q.id)continue;const p=satAt(q,tNow())[0],d=len(sub(p,me)),s=project(p);if(d>2e5||!s)continue;
+      octx.fillStyle=q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
+      if(d<300)continue;octx.fill();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${q.name} · ${fmtD(d)}`,s[0],s[1]-10*k)}}
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
@@ -2412,7 +2785,9 @@ function fmtT(s){if(!isFinite(s))return'—';s=Math.max(0,s);const d=Math.floor(
   return(d?d+'d ':'')+(d||h?h+'h ':'')+(d||h||m?m+'m ':'')+x+'s'}
 // ============================================================ program UI: the contract board (economy session)
 function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
-  if(!o.chosen&&!PROG.flights)return `<div class="ep">How does the program start?</div>`+Object.entries(START).map(([k,v])=>
+  if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub">`+
+    [['', `Random world (${ARCH[POWERS[0].arch].name.toLowerCase()})`],...Object.entries(ARCH).map(([k,v])=>[k,v.name])].map(([k,n])=>`<button data-arch="${k}" class="${(PROG.homeArch||'')===k?'on':''}" title="${k?ARCH[k].blurb:'Play whatever the launch site\'s power was generated as'}">${n}</button>`).join(' ')+
+    `<div style="margin-top:3px">${flav(0).blurb}</div></div><div class="ep">How does the program start?</div>`+Object.entries(START).map(([k,v])=>
     `<div class="ms"><button data-start="${k}">${v.name}</button> <span class="ok">${fmtM(v.funds)}</span><div class="sub">${v.blurb}</div></div>`).join('');
   const shares=[...Object.entries(o.st).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<span style="color:${pc(+k)}">${POWERS[+k].root}</span> ${(x*100).toFixed(0)}%`),...(o.pv>0?[`private ${(o.pv*100).toFixed(0)}%`]:[])].join(' · ');
   return `<div class="ep">${progName()} <span class="dim">· ${ownKind()}</span></div><div class="sub">${shares}${o.debt>0?` · <span class="bad">debt ${fmtM(o.debt)}</span>`:''}</div>`+
@@ -2420,7 +2795,8 @@ function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
     (PROG.decisions||[]).map(d=>`<div class="ms" style="border-left-color:var(--warn)"><b>${d.title}</b><div class="sub">${d.text} <i>${Math.max(0,d.expires-PROG.day).toFixed(0)} days to answer</i></div>`+
       d.opts.map(([k,l])=>`<button data-dk="${d.id}:${k}">${l}</button>`).join(' ')+`</div>`).join('')}
 document.addEventListener('click',e=>{const ds=e.target.dataset||{};
-  if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
+  if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderProgram()}
+  else if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
   else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
@@ -2438,6 +2814,9 @@ document.addEventListener('click',e=>{const a=e.target.dataset&&(e.target.datase
   if(e.target.dataset.acc){if(!acceptOffer(+a))HOOK.msg(`At capacity: ${capOf()} contracts at once`)}else declineOffer(+a);renderProgram()});
 // ============================================================ program UI: satellites (planning session)
 // program time now: during a flight, its launch-window day plus flight time; on the pad, the next window
+const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first sight
+function satMesh(q){let me=SAT_MESH.get(q);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
+    for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q,me={mesh:partsMesh(parts),parts})}return me}
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
 function satsHTML(){const L=PROG.sats||[];const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -2450,6 +2829,30 @@ function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${P
       (v.ok?`<button data-gs="${ci}">Build</button>`:`<span class="dim">· ${v.why}</span>`)+`</div>`}).join('');
   return`<div class="ep">Ground stations</div><div class="sub">${have}</div><details><summary class="sub" style="cursor:pointer">build another…</summary>${sites}</details>`}
 document.addEventListener('click',e=>{const ci=e.target.dataset&&e.target.dataset.gs;if(ci==null)return;const v=buildStation(+ci);if(!v.ok)HOOK.msg(v.why);renderProgram()});
+// ============================================================ program UI: the logbook (planning session)
+const logF=id=>(PROG.log||{})[id];
+function logHintHTML(){const o=logF('orbit'),l=logF('land');
+  return`Low orbit: ${o?`<b>${fmtDv(o.v)}</b> (best, ${o.by})`:'<i>unknown, nobody has made it yet</i>'} · Selene landing: ${l?`<b>${fmtDv(l.v)}</b> from the pad (best, ${l.by})`:'<i>unknown</i>'} · <a id="lbHint" style="cursor:pointer;text-decoration:underline">logbook</a>`}
+const modernUI=()=>{try{return localStorage.getItem('launchpad-modern-ui')==='1'}catch(e){return false}};
+function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-modern','lb-notebook','lb-terminal'][era];el.className=cls;
+  const title=['Logbook','Program notebook','PROGRAM LOG — TERMINAL 1'][era],U=x=>era===2?x.toUpperCase():x;
+  const rows=LOGF.map(F=>{const e=logF(F.id);if(!e)return`<div class="lbrow">${U(F.label)}<br><span class="lbv lbu">${era===1?'???':'— NO DATA —'}</span> <span class="lbby">${U(F.hint)}</span></div>`;
+    const hist=(e.hist||[]).map(v=>`<s>${F.fmt(v)}</s>`).join('');
+    return`<div class="lbrow">${U(F.label)}<br>${hist}<span class="lbv">${F.fmt(e.v)}</span> <span class="lbby">— ${e.by}, flight ${e.flight}, ${fmtDate(e.day)}</span>`+
+      (e.stack?` <button data-lbload="${F.id}">${era===1?'copy this design':U('load design')}${e.tape?era===1?' + its flight':' + TAPE':''}</button>`:'')+`</div>`}).join('');
+  el.innerHTML=`<span class="x" id="lbClose">✕</span><h3>${title}</h3>${rows}<div class="lbopt"><label><input type="checkbox" id="lbModern" ${modernUI()?'checked':''}> modern look</label></div>`;
+  $('lbClose').onclick=()=>el.classList.add('hidden');
+  $('lbModern').onchange=e=>{try{localStorage.setItem('launchpad-modern-ui',e.target.checked?'1':'0')}catch(x){}renderLog()}}
+function toggleLog(){const el=$('logbook');if(el.classList.toggle('hidden'))return;renderLog()}
+$('bLog').onclick=toggleLog;$('bLog2').onclick=toggleLog;
+document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();const id=e.target.dataset&&e.target.dataset.lbload;if(!id)return;const ent=logF(id);if(!ent||!ent.stack)return;
+  if(mode!=='editor')$('bEditor').click();BLD.load(JSON.parse(JSON.stringify(ent.stack)));
+  // the record flight becomes this design's autopilot, unless the design already has one
+  if(ent.tape)try{if(!localStorage.getItem(tapeKey()))localStorage.setItem(tapeKey(),JSON.stringify({v:ent.tape.v,stack:ent.stack,ops:ent.tape.ops}))}catch(x){}
+  $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?' with its record flight as the autopilot':''}`)});
+// a record set by a flight keeps that flight's tape (from the pad), so the record can be flown again
+HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.length>40000)return;
+  for(const id of ids){const e=(PROG.log||{})[id];if(e&&e.stack)e.tape={v:T.v,ops:JSON.parse(JSON.stringify(T.ops))}}HOOK.save()};
 function payloadRows(){const R=S.rec,out=[];if(!R)return out;
   if(R.bio){out.push(['Passenger',R.bioOK?`${R.pet} · <span class="${R.g>G_LIM*.8?'bad':R.g>G_LIM*.5?'warn':'ok'}">${R.g.toFixed(1)} g</span> <span class="dim">(max ${R.gMax.toFixed(1)}/${G_LIM})</span> · cabin <span class="${R.cabin>CABIN_MAX-10?'bad':'ok'}">${R.cabin.toFixed(0)} K</span> · air ${fmtT(AIR_S-simT)}`:`<span class="bad">${R.pet} ${R.bioWhy}</span>`])}
   if(S.parts.some(p=>p.on&&p.d.kind==='sci')){const b=Object.keys(R.bands).map(Number).sort((a,b)=>a-b);

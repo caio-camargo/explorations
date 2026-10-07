@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -382,8 +382,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `apex ${(R.apex / 1e3).toFixed(1)} km, landed ${s.landed}, max-q ${(R.sciQ / 1e3).toFixed(1)} kPa, ${(api.t / 60).toFixed(1)} min`);
   check('recovered air samples mark the bands flown through as known', bands.length >= 2 && bands[0] === 0 && bands.every((k, i) => k === i) && bands.length === Math.min(7, Math.floor(R.apex / 1e4) + 1),
     `bands ${bands.map(k => k * 10 + '–' + (k + 1) * 10).join(', ')} km`);
-  const before = api.certOf('sparrow'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
-  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', before === api.CERT0 && kc > api.CERT0 && fc > api.CERT0 && tc > api.CERT0 && api.certOf('condor') === api.CERT0 && Math.max(kc, fc, tc) < 1,
+  const before = api.certOf('sparrow'), finC0 = api.certOf('fins'), tnkC0 = api.certOf('t1'), cd0 = api.certOf('condor'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
+  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', kc > before && fc > finC0 && tc > tnkC0 && api.certOf('condor') === api.cert0('condor') && Math.abs(cd0 - api.cert0('condor')) < 0.01 && Math.max(kc, fc, tc) < 1,
     `sparrow ${(kc * 100).toFixed(0)}%, fins ${(fc * 100).toFixed(0)}%, tank ${(tc * 100).toFixed(0)}%, condor (didn't fly) ${(api.certOf('condor') * 100).toFixed(0)}%`);
   // the impact predictor's spread: wide while the air is unknown, gone where it's been sampled
   const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
@@ -489,7 +489,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
   check('a missed deadline drops the contract, our standing with the source and the client\'s opinion', P.active.length === 0 && api.standOf('sci') < st0 && api.opOf(1) < op1 + 1, `standing ${st0} → ${api.standOf('sci')}`);
   // budget days every 100 days, scaled by home opinion and the cycle
-  fresh(); P.day = 0; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5);
+  fresh(); P.homeArch = 'frugal'; P.day = 0; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home
   check('budget day: every 100 days the home government pays, more when opinion is high', P.funds - f2 > api.GRANT_100 * 1.1 && P.funds - f2 < api.GRANT_100 * 1.5 * 1.3, `opinion 75 → +${(P.funds - f2).toFixed(1)}M (base ${api.GRANT_100}M at opinion 50), economy ${P.cycle.toFixed(2)}`);
   // offers arrive and expire over time; types unlock with firsts; the board never overflows
   const seen = done => { fresh(); P.day = 0; P.offers = null; P.done = done; P.wseed = 7; const types = new Set(); let maxB = 0; api.ensureBoard();
@@ -548,9 +548,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ballistic test: counts only near the target and only with the instrument package aboard', CTb.ok({ endPf: mul(near, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(far, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(near, TELLUS.R), endSci: false }, { u: tgt, rad: 40 }),
     `${(Math.acos(dot(near, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off counts, ${(Math.acos(dot(far, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off doesn't`);
   // the race: first in the world pays 1.5×; after a rival gets there, half
-  const firstPay = lost => { fresh(); P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); return P.funds - f; };
+  const firstPay = lost => { fresh(); P.homeArch = 'openSuper'; P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); P.homeArch = null; return P.funds - f; };
   const pFirst = firstPay(false), pSecond = firstPay(true), beeperPay = api.MISSIONS.find(m => m.id === 'beeper').pay;
-  check('the race: the first satellite pays 1.5× when we are first, half when a rival got there first; rivals have schedules', Math.abs(pFirst - 1.5 * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
+  check('the race: the first satellite pays more when we are first (1.7× for an open superpower), half when a rival got there first; rivals have schedules', Math.abs(pFirst - (1 + 2 * api.ARCH.openSuper.pri.prestige) * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
     `first ${pFirst}M, second ${pSecond}M; rivals expected: ${api.RACE.map(id => `${id} ${PW[api.RIVALS[id].i].root} day ${api.RIVALS[id].day}`).join(', ')}`);
   fresh(); P.day = 0; P.rel = {}; P.op = {}; P.sanc = {}; P.raceLost = {}; api.HOOK.news = () => {};
 }
@@ -631,7 +631,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
-  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3), fp = C[far].power.i;
+  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3 && api.relBase(H, c.power.i) > 0), fp = C[far].power.i;   // a friendly power: relations drift toward the alignments over the 100 days
   fresh(); const f0 = P.funds, a = api.buildStation(home);
   P.rel[api.pairKey(H, fp)] = -0.1; const b = api.gsCheck(far);
   P.rel[api.pairKey(H, fp)] = 0.5; P.op[fp] = 60; const c = api.buildStation(far);
@@ -808,6 +808,120 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const cut = a => 1 - Math.abs(run(D.PRESETS.Heavy, a, true).F[0]) / Math.abs(run(D.PRESETS.Heavy, a, false).F[0]), c5 = cut(5), c20 = cut(20), c90 = cut(90);
   check('aero interference: the Heavy\'s normal-force cut grows with angle of attack (small at 5°, about half broadside)', c5 > 0 && c5 < 0.1 && c20 > c5 && c90 > 0.3 && c90 < 0.7,
     `cut ${(c5 * 100).toFixed(1)}% at 5°, ${(c20 * 100).toFixed(1)}% at 20°, ${(c90 * 100).toFixed(1)}% at 90°`);
+}
+
+// 19. Power flavours (economy): archetypes as presets on axes (openness, money, priorities, nationalism).
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = (arch = null) => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [],
+    homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false, nextElection: null, comm: 0, commPh: null, wseed: 5 }); api.chooseStart('agency'); P.funds = 60; };
+  const PW = api.POWERS, arch = PW.map(p => p.arch);
+  fresh('security');
+  check('flavours: every power has an archetype, the two biggest economies are one open and one closed superpower; picking yours overrides', arch.every(a => api.ARCH[a]) && arch.includes('openSuper') && arch.includes('closedSuper') && api.flav(0) === api.ARCH.security,
+    PW.map(p => `${p.root}: ${api.ARCH[p.arch].name}`).join(' · '));
+  // openness: an open program takes the whole hit; a closed one a part now, and the rest leaks later, worse
+  fresh('openSuper'); P.op[0] = 60; api.failHit(-10, 'x'); const openHit = 60 - api.opOf(0);
+  fresh('closedSuper'); P.op[0] = 60; api.failHit(-10, 'x'); const closedNow = 60 - api.opOf(0), pen = -P.hushPen; let leakDay = null, leakDrop = 0;
+  for (let d = 0; d < 2000 && P.hush; d += 10) { const o = api.opOf(0); api.advanceDays(10); if (!P.hush) { leakDay = P.day; leakDrop = o - api.opOf(0); } }
+  check('openness: open programs take a failure in full; closed ones hush it up, until it leaks (worse)', Math.abs(openHit - 9.4) < 0.01 && closedNow < 6 && pen > 10 - closedNow && leakDay != null && leakDrop > pen * 0.8 && news.some(t => /^Leaked/.test(t)),
+    `open −${openHit.toFixed(1)} now · closed −${closedNow.toFixed(1)} now, then −${leakDrop.toFixed(1)} when it leaked (day ${leakDay && leakDay.toFixed(0)})`);
+  // money: each kind responds to its own driver
+  fresh('resource'); P.op[0] = 50; P.comm = 0.8; const boom = api.moneyK(0); P.comm = -0.8; const bust = api.moneyK(0);
+  fresh('security'); P.op[0] = 50; P.rel = {}; for (const p of PW) if (p.i) P.rel[`0-${p.i}`] = 0.5; const calm = api.moneyK(0); P.rel['0-1'] = -0.9; const tense = api.moneyK(0);
+  fresh('rising'); P.op[0] = 50; const y0 = api.moneyK(0); P.day = 800; const y2 = api.moneyK(0);
+  check('money: commodity budgets boom and bust, military budgets grow with tension, a rising power\'s budget grows', boom > 2.5 * bust && tense > 1.5 * calm && Math.abs(y2 / y0 - 2) < 1e-9,
+    `commodity boom ${boom.toFixed(2)} vs bust ${bust.toFixed(2)} · military calm ${calm.toFixed(2)} vs tense ${tense.toFixed(2)} · rising day 0 ${y0.toFixed(2)} → day 800 ${y2.toFixed(2)}`);
+  // priorities: a security state gets military work, a frugal middle power science and commerce
+  const mix = a => { fresh(a); P.done = { weather: {}, beeper: {}, lift1: {}, hop: {} }; P.offers = []; const c = {}; for (let d = 0; d < 1500; d += 5) { api.advanceDays(5); for (const o of P.offers) c[o.src] = (c[o.src] || 0) + 1; P.offers = []; } return c; };
+  const ms = mix('security'), mf = mix('frugal');
+  check('priorities shape the board: military offers dominate a security state, commerce and science a frugal power', ms.mil > 2 * (mf.mil || 0) && (mf.com + mf.sci) > 1.5 * (ms.com + ms.sci),
+    `security: mil ${ms.mil}, com ${ms.com}, sci ${ms.sci} · frugal: mil ${mf.mil || 0}, com ${mf.com}, sci ${mf.sci}`);
+  // nationalism: rises with tension, and scales the reaction at home to a foreign stake
+  fresh('frugal'); P.rel = {}; for (const p of PW) if (p.i) P.rel[`0-${p.i}`] = 0.5; const n0 = api.natOf(0); for (let d = 0; d < 400; d += 10) { P.rel['0-1'] = -1; api.advanceDays(10); } const n1 = api.natOf(0);   // a standing feud
+  const stakeHit = n => { fresh('frugal'); P.nat = { 0: n }; P.op[0] = 50; api.offerDecision({ kind: 'stake', power: 2, amt: 10, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes'); return 50 - api.opOf(0); };
+  check('nationalism rises with tension and makes a foreign stake costlier at home', n1 > n0 + 0.2 && stakeHit(0.9) > 2.5 * stakeHit(0.1), `nationalism ${n0.toFixed(2)} → ${n1.toFixed(2)} with a hostile neighbour · stake costs ${stakeHit(0.1).toFixed(1)} at 0.1, ${stakeHit(0.9).toFixed(1)} at 0.9`);
+  // elections: an open program's budget mood follows opinion on election day
+  fresh('openSuper'); P.op[0] = 80; P.nextElection = 20; api.advanceDays(25); const up = P.bmult; fresh('openSuper'); P.op[0] = 20; P.nextElection = 20; api.advanceDays(25);
+  check('elections: a popular program gets a bigger budget for the term, an unpopular one a cut', up === 1.25 && P.bmult === 0.7, `opinion 80 → ×${up}, opinion 20 → ×${P.bmult}`);
+  // spectaculars: a closed program is told to deliver by a date; a first in the world does it
+  fresh('closedSuper'); P.op[0] = 50; for (let d = 0; d < 1000 && !P.demand; d += 10) api.advanceDays(10); const asked = !!P.demand, f0 = P.funds, o0 = api.opOf(0); api.demandMet('a first');
+  check('spectaculars: the leadership demands one by a date; delivering pleases it (and pays, under patronage)', asked && !P.demand && P.funds === f0 + 30 && api.opOf(0) === o0 + 8, `demanded by day ${asked ? 'set' : '—'}; delivered: +30M, opinion +8`);
+  // regime change: a security state's program can be cancelled; ignoring both offers leaves a private remnant
+  fresh('security'); P.op[0] = 20; for (let d = 0; d < 3000 && !P.cancelled; d += 10) api.advanceDays(10); const offers = P.decisions.map(x => x.kind).sort().join();
+  api.advanceDays(45);
+  check('regime change cancels a security state\'s program: defect or go private, and doing nothing leaves a private remnant', offers === 'defect,hire' && api.own().pv === 1 && /Space Collective/.test(api.own().name) && !P.cancelled,
+    `offers: ${offers}; after 45 days: ${api.ownKind()} "${api.own().name}"`);
+  fresh(); api.HOOK.news = () => {};
+}
+
+// 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
+{
+  const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  // a real flight to space (the Passenger preset, booster dropped at burnout) records the Δv it spent and the design
+  fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
+    if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
+    if (stg === 1 && !arm && dot(s.v, norm(s.r)) < 0) { api.stage(s); arm = true; } api.advPhys(s); }
+  api.missionEnd(s); const L = P.log;
+  check('logbook: a flight to space records the Δv it actually spent, who flew it, and the design; its apex too', L.space && L.space.v > 1000 && L.space.v < s.rec.dv + 1e-9 && L.space.by === 'Passenger' && !!L.space.stack && L.apex && Math.abs(L.apex.v - s.rec.apex) < 1 && logged.includes('space'),
+    `space: ${L.space && L.space.v.toFixed(0)} m/s by ${L.space && L.space.by} (flight total ${s.rec.dv.toFixed(0)}); apex ${L.apex && (L.apex.v / 1e3).toFixed(0)} km`);
+  // orbit records: the first sets it (with the period), a worse one changes nothing, a better one replaces it and keeps history
+  const orbitWith = (dv, st = ['sci', 'petrel']) => { api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; x.rec.launched = true; x.rec.dv = dv;
+    const r0 = TELLUS.R + ATM + 50e3; x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; api.advRails(x, 60, 1000); api.missionEnd(x); };
+  orbitWith(4321); const first = { ...L.orbit }, per = L.period.v.p; orbitWith(4500); const after2 = L.orbit.v; orbitWith(4200, ['sci', 'kestrel']);
+  check('records only improve: a costlier orbit leaves the record alone, a cheaper one replaces it and the old value is kept; the period is set once',
+    first.v === 4321 && after2 === 4321 && L.orbit.v === 4200 && L.orbit.hist.join() === '4321' && L.period.v.p === per && /^Design [0-9A-Z]{1,4}$/.test(L.orbit.by),
+    `orbit 4321 → (4500 ignored) → 4200 by ${L.orbit.by}; period ${(per / 60).toFixed(1)} min, unchanged`);
+  check('names: a preset design is named after the preset; any other design gets a stable short name', api.designName(api.PRESETS.Orbiter) === 'Orbiter' && api.designName(['sci', 'kestrel']) === api.designName(['sci', 'kestrel']) && api.designName(['sci', 'kestrel']) !== api.designName(['sci', 'petrel']));
+  const e1 = api.eraOf(); P.done.beeper = { flight: 1 };
+  check('the logbook\'s era follows the program: a notebook until something orbits, then a terminal', e1 === 1 && api.eraOf() === 2);
+  fresh(); api.HOOK.logged = () => {};
+}
+
+// 20. Satellites in 3D (sats session): registration keeps the vessel's shape and its attitude in the orbital frame.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const qm = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+  const orb = (r, v) => { const pro = norm(v), nrm = norm(api.cross(r, v)); return api.qFromBasis(pro, nrm, api.cross(pro, nrm)); };
+  api.t = 0; const s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
+  s.landed = false; s.rec.launched = true; P.day = 3; s.rec.day0 = 3; s.rec.cost = 0; const r0 = TELLUS.R + 300e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
+  const h = Math.SQRT1_2; s.q = [0, 0, h, h];   // nose (+y) turned to point down at the ground
+  let lookOK = false; api.HOOK.satLook = (sh, ps) => { lookOK = sh.length === ps.length && sh.every((o, k) => o.k === ps[k].d.key && o.i === ps[k].i); };   // the renderer's marks hand-off
+  api.t = 50; api.missionEnd(s); const q = JSON.parse(JSON.stringify(P.sats[0]));   // as it comes back from the save
+  const look = T => { const [r, v] = api.satAt(q, T), Y = api.qrot(qm(orb(r, v), q.qo), [0, 1, 0]); return dot(Y, norm(r)); };
+  const per = 2 * Math.PI * Math.sqrt(r0 ** 3 / TELLUS.mu), dn0 = dot(api.qrot(s.q, [0, 1, 0]), norm(s.r)), dn1 = look(q.epoch + per / 4), dn2 = look(q.epoch + 2.6 * per);
+  check('a registered satellite keeps its shape and holds its attitude in the orbital frame (nose-down stays nose-down)',
+    q.shape.length === s.parts.filter(p => p.on).length && q.shape.every(o => api.PARTS[o.k]) && P.sats[0].id === s.rec.satId && lookOK && Math.abs(dn0 + 1) < 1e-9 && Math.abs(dn1 + 1) < 1e-9 && Math.abs(dn2 + 1) < 1e-9,
+    `${q.shape.length} parts kept; nose·up at registration ${dn0.toFixed(3)}, ¼ orbit later ${dn1.toFixed(3)}, 2.6 orbits ${dn2.toFixed(3)}`);
+  Object.assign(P, { sats: [], satN: 0 }); delete api.HOOK.satLook;
+}
+
+// 21. Industrial independence (economy): who makes which parts, imports and the grey market, young-industry certification.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {} }); };
+  const orbiter = () => api.vesselCost(api.newShip(api.PRESETS.Orbiter).parts).cost;
+  fresh('openSuper'); const cSuper = orbiter(), allHome = ['t2', 'kestrel', 'condor', 'pod', 'sci'].every(k => api.sourceOf(k).how === 'home');
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;   // everyone willing to sell
+  const cRes = orbiter(), srcK = api.sourceOf('kestrel'), srcT = api.sourceOf('t8');
+  check('industry: a superpower makes everything; a resource state makes tanks but imports engines and avionics at ×1.5', allHome && srcT.how === 'home' && srcK.how === 'import' && api.sourceOf('pod').how === 'import' && cRes > 1.3 * cSuper,
+    `Orbiter ${cSuper.toFixed(1)}M at home vs ${cRes.toFixed(1)}M for the resource state (Kestrel from ${api.POWERS[srcK.from].root})`);
+  // sanctions reach hardware: lose the supplier, switch to the next; lose them all, the grey market at ×3
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;
+  const first = api.sourceOf('kestrel').from; P.sanc[first] = 999; const second = api.sourceOf('kestrel');
+  for (const p of api.POWERS) if (p.i !== api.home) P.sanc[p.i] = 999; const grey = api.sourceOf('kestrel');
+  check('sanctions reach hardware: a sanctioning supplier is replaced by the next; with none left, parts come via intermediaries at ×3', second.how === 'import' && second.from !== first && grey.how === 'grey' && grey.k === api.GREY_K,
+    `Kestrel from ${api.POWERS[first].root} → ${api.POWERS[second.from].root} → grey market`);
+  // certification: a young industry's own parts start less proven; imports arrive certified
+  fresh('frugal'); const tHome = api.certOf('t1'), eImp = api.certOf('kestrel');
+  check('a young industry\'s own parts start less certified; imported parts arrive at the usual level', Math.abs(tHome - (api.CERT0 - 0.2 * 0.6)) < 1e-9 && eImp === api.CERT0,
+    `frugal power: own tank ${(tHome * 100).toFixed(0)}%, imported Kestrel ${(eImp * 100).toFixed(0)}%`);
+  // a rising power catches up: big engines become home-made after enough program time
+  fresh('rising'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const d0 = api.sourceOf('condor').how; P.day = 600; const d600 = api.sourceOf('condor').how;
+  check('a rising power\'s industry grows: big engines imported at first, home-made later', d0 === 'import' && d600 === 'home' && api.indOf(api.home) > 0.8, `Condor: ${d0} on day 0, ${d600} on day 600 (self-sufficiency ${api.indOf(api.home).toFixed(2)})`);
+  fresh(null);
 }
 
 function moonPos(t) { return api.moonPos(t); }
