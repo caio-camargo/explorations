@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1078,8 +1078,27 @@ The first slice of the parts-and-missions plan: things left in orbit stay there 
   and disasters plus income.
 
 **Not yet:** ground stations beyond the pad (more stations = faster downlinks: politics, since they're on someone's
-land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
-in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
+land); film return capsules; power and eclipses; orbital decay for low satellites;
+rivals' satellites and visibility (the spy layer).
+
+### Satellites in 3D (sats session, 2026-10-07)
+
+Registered satellites used to exist only on the map; now you can fly past one.
+
+- **Registration keeps a look.** New registry entries also store `shape` (each part still on: part key, position,
+  `y0`, `h`, plus `phi`/`tdir`/`shell` when set), `cm`, and `qo`, the attitude in the orbital frame (prograde, orbit
+  normal, radial: `orbQ`). Render-only; the sim never reads them. Saves are JSON, so plain arrays only.
+- **Attitude rides the orbital frame,** not inertial space: world attitude = `orbQ(r,v)·qo`. A camera left looking down
+  still looks down days later, which is what a real imaging satellite does (and stands in for the attitude control we
+  don't simulate). The inertial alternative would tumble it once per orbit relative to the ground.
+- **Drawing:** next to the debris, within 100 km of the camera, in flight mode. The mesh is rebuilt once per entry
+  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). No flight marks: the parts are new
+  objects. The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
+- **Finding one:** in the flight view, satellites within 200 km get a diamond and `name · distance`; inside 300 m the
+  mesh speaks for itself and the marker goes.
+- **Old saves:** entries registered before this have no `shape`. They get the marker but no mesh.
+- Check (`test.mjs` §20): shape kept and JSON-safe; nose-down at registration is still exactly nose-down a quarter orbit
+  and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
