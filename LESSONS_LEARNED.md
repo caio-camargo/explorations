@@ -26,6 +26,7 @@ Examples:
 
 | # | Date | Lesson | Source |
 |---|------|--------|--------|
+| 18 | 2026-10-07 | When a WebGL page shows its UI over a black canvas, check what the server delivered before suspecting shaders or the GPU. A local `python http.server` dying under memory pressure served a truncated `index.html`: the HTML panels at the top rendered, the inline script was cut at 105 of 207 KB and never ran, and there was no console error. `document.scripts[i].textContent.length` against the file size, or `curl -w '%{size_download}'`, settles it in seconds. Related: under ANGLE/D3D11, `gl.finish()` doesn't block, so CPU-timed `render()` loops read ~0.1 ms for 3 ms frames; time with `EXT_disjoint_timer_query`. | launchpad visuals session |
 | 1 | 2026-08-12 | When bringing sensitive work data into a public-repo exploration, do the anonymization in a build script that emits aggregates only, and PII-scan (emails, IDs) the emitted artifact at build time — the repo then can't leak by construction | journey-markov |
 
 ## Tools & Techniques
