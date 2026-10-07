@@ -1834,6 +1834,12 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   private company; knowledge and firsts carry over. Fixed a merge accident that had broken every decision button on main
   (the builder's overlay hook had landed in the ownership click handler; the builder's v1.20 fixed it too, one copy kept).
   `test.mjs` 110/110 after merging main. Merged to `main` (`885940e`).
+- **v1.24 (2026-10-07, economy worktree):** power flavours, first slice. Six archetypes (open/closed superpower,
+  rising, frugal middle, resource, security) as presets on axes: openness (elections vs hushed failures, leaks,
+  demanded spectaculars), money (taxes, commodity cycle, patronage, military budget), priorities (offers, pay, race)
+  and nationalism (a mood that rises with tension). Pick your power or play a random world; a security state's program
+  can be cancelled by regime change. Fixed a leak-sign bug found in testing. `test.mjs` 124/124 after merging main.
+  Merged to `main` (`7638f3e`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
