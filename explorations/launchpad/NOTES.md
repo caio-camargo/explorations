@@ -712,13 +712,18 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
   and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
   fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
+- **Moving parts and night lights.** The swing arms, the hold-downs and the service gantry are now separate meshes in their own frames (`buildRig`), drawn each frame by `drawPadRig` with a matrix:
+  - **Gantry:** parked in the editor. A flight that starts on the pad starts with it in service position around the rocket (the open front faces it; its rails moved out to ±10.5 m to clear the tower), and it rolls 80 m back over 14 s.
+  - **At liftoff (`S.mkLiftT`):** the arms swing back to the tower face, top first, 1.5 s each, 0.25 s apart, and the hold-downs tip out 0.9 rad in 0.6 s.
+  - **Floodlights,** from dusk (sun 4° above the pad horizon) to dawn: four warm point lights in the mesh shader (`uFl`/`uFlI`) light the rocket, tower and buildings; the lamp faces and ground pools are additive discs in the glow pass (`PAD_GLOW`), because the ground belongs to the sky shader.
+  - **Hooks in `render()`:** three one-line calls (`padLights`, `drawPadRig`, `drawPadGlow`). The pad's own draw call (terrain's) is unchanged, and the rig uses the same frame (`padPF` reads `WORLD.siteH`).
+  - **Pipes:** those crossing the rails became flush covered trenches, so the gantry's trucks can roll over them.
+  - `refView(18)` is the gantry in service at t = 0, `19` the same at night.
 - **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
   painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
-- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
 ## Program design — direction and parking lot (2026-10-06)
