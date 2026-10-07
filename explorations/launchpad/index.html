@@ -1863,12 +1863,48 @@ function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i
 const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
-const PAD=(()=>{const a=[];
-  lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
-  lathe(a,[[.45,0,C.R],[.45,22,C.R],[.7,22,C.G],[.7,22.6,C.G]],[4.2,0,0],10);
-  for(const[x,z]of[[34,14],[39,21],[-28,30]])lathe(a,[[2.2,0,C.W],[2.2,5,C.W],[1.3,6,C.W],[0,6.3,C.W]],[x,0,z],20);
-  lathe(a,[[11,0,C.CON],[11,9,C.CON],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
-  lathe(a,[[3,0,C.D],[3,3,C.D]],[20,0,-30],16);return makeMesh(a)})();
+// a straight tube from A to B (struts, pipes, masts, legs): seg sides, optional flat end caps
+function tube(out,A,B,r,col,seg=6,caps=false){const d=sub(B,A),L=len(d),Y=mul(d,1/L),X=norm(cross(Math.abs(Y[1])<.9?[0,1,0]:[1,0,0],Y)),Z=cross(X,Y);
+  const N=a=>add(mul(X,Math.cos(a)),mul(Z,Math.sin(a))),P=(a,y)=>add(add(A,mul(Y,y)),mul(N(a),r));
+  for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;for(const[a,y]of[[a0,0],[a0,L],[a1,L],[a0,0],[a1,L],[a1,0]])pv(out,P(a,y),N(a),col)}
+  if(caps)for(const[y,s]of[[0,-1],[L,1]])for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,n=mul(Y,s);pv(out,add(A,mul(Y,y)),n,col);pv(out,P(a0,y),n,col);pv(out,P(a1,y),n,col)}}
+// an open lattice tower, w square and H tall at (x, z): corner posts, a girder ring every ~2.5 m, a zig-zag brace per bay
+function lattice(out,x,z,w,H,col){const c=[[x-w/2,z-w/2],[x+w/2,z-w/2],[x+w/2,z+w/2],[x-w/2,z+w/2]],n=Math.round(H/2.5);
+  for(const[a,b]of c)tube(out,[a,0,b],[a,H,b],.12,col);
+  for(let i=0;i<=n;i++){const y=i*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4];tube(out,[a,y,b],[a2,y,b2],.07,col,5)}}
+  for(let i=0;i<n;i++){const y0=i*H/n,y1=(i+1)*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4],f=(i+k)%2;tube(out,[a,f?y0:y1,b],[a2,f?y1:y0,b2],.05,col,4)}}}
+// The launch complex, in the pad's frame (x east, y up, z north; the rocket stands at the origin). Everything sits at or
+// above the ground, which is drawn by the sky shader; the buildings stand on the concrete slabs that shader paints
+// (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the road leaving to the south-west). Early-era Cape style.
+const PAD=(()=>{const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],W=C.W;
+  // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
+  lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
+  for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
+  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;box(a,[3.4*Math.cos(t),.25,3.4*Math.sin(t)],.3,.25,.3,STL)}
+  // flame channel running north between the propellant farm and the water tower: low sooted walls on a dark floor
+  for(const s of[-1,1])box(a,[3.4*s,.6,21],.4,.6,14.5,CO);box(a,[0,.012,21],3,.01,14.5,DK);
+  // the umbilical tower: an orange lattice east of the rocket, a cap platform, a hammerhead jib, a lightning mast, and
+  // three swing arms (retracted for launch, folded along the tower's west face) with hoses hanging from their tips
+  const TX=7,TW=3,TH=32;lattice(a,TX,0,TW,TH,OR);box(a,[TX,TH+.15,0],TW/2+.6,.15,TW/2+.6,STL);
+  box(a,[TX-2,TH+1.2,0],3.5,.25,.25,OR);tube(a,[TX-5.3,TH+1.2,0],[TX-5.3,TH-1.5,0],.03,DK,4);tube(a,[TX,TH+.3,0],[TX,TH+8,0],.08,STL,6);
+  for(const h of[9,17,25]){box(a,[TX-TW/2-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[TX-TW/2-.25,h-.3,-4.6],[TX-TW/2-.25,h-3.2,-4.4],.08,DK,6)}
+  box(a,[TX,TH/2,0],.5,TH/2,.5,[.22,.23,.25,1]);   // the elevator shaft inside
+  // propellant farm on its slab: a LOX sphere on legs, a horizontal RP-1 tank on saddles, both feeding the pad by pipe
+  {const pr=[];for(let i=0;i<=14;i++){const t=-Math.PI/2+i/14*Math.PI;pr.push([4.5*Math.cos(t),6+4.5*Math.sin(t),W])}lathe(a,pr,[33,0,13],24,[false,false]);
+   for(let i=0;i<6;i++){const t=i/6*6.2832;tube(a,[33+5*Math.cos(t),0,13+5*Math.sin(t)],[33+4.4*Math.cos(t),6,13+4.4*Math.sin(t)],.18,STL,6)}}
+  tube(a,[33,2.3,24],[45,2.3,22],2,W,20,true);for(const x of[35,39,43])box(a,[x,.6,23.7-(x-33)/6],.3,.6,1.4,CO);
+  tube(a,[33,.4,9],[4,.4,1.8],.25,STL,8);tube(a,[35,.35,21],[4.2,.35,2.6],.2,STL,8);
+  // the water tower for the deluge system, by the north-west edge of the apron
+  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;tube(a,[-28+3*Math.cos(t),0,30+3*Math.sin(t)],[-28+2*Math.cos(t),12,30+2*Math.sin(t)],.15,STL,6)}
+  lathe(a,[[3,12,W],[3,16,W],[1.2,17.3,W],[0,17.6,W]],[-28,0,30],20,[true,false]);
+  // the blockhouse: a thick concrete dome on its slab, a dark band of periscope slots, an antenna mast; cables to the pad
+  lathe(a,[[11,0,CO],[11,1.8,CO],[11,1.8,DK],[10.8,2.4,DK],[10.8,2.4,CO],[9.6,5,CO],[7.5,7.4,CO],[4.5,8.9,CO],[0,9.6,CO]],[-45,0,-25],36,[false,false]);
+  tube(a,[-45,9.5,-25],[-45,16,-25],.06,STL,4);tube(a,[-35,.3,-20],[-6,.3,-3],.15,DK,6);
+  // the compressor/power building on the small slab
+  box(a,[20,2,-30],4.5,2,3,[.68,.66,.6,2]);box(a,[20,4.1,-30],4.7,.1,3.2,C.D);
+  // floodlight poles around the apron
+  for(let i=0;i<4;i++){const t=.5+i*Math.PI/2,x=34*Math.cos(t),z=34*Math.sin(t);tube(a,[x,0,z],[x,16,z],.15,STL,6);box(a,[x,16.4,z],.8,.4,.3,C.D)}
+  return makeMesh(a)})();
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();

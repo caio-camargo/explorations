@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -58,6 +58,13 @@ window.refView = async (n) => {
     const Y = norm(S.v), X = norm(cross(Y, dir)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.throttle = 1;
     const t0 = simT; fly(() => simT - t0 > 12);
     cam.yaw = 2.6; cam.pitch = -0.3; cam.dist = 9; render(); await settle(); bare(); return 'glow';
+  }
+  // 15–16: the launch complex with the Orbiter on the pad: the whole complex from the south-west, then the tower and table
+  if (n === 15 || n === 16) {
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; cam.edY = 0;
+    if (n === 15) { cam.yaw = -0.9; cam.pitch = 0.28; cam.dist = 85 } else { cam.yaw = 0.25; cam.pitch = 0.12; cam.dist = 26 }
+    render(); await settle(); bare(); return n === 15 ? 'complex' : 'tower';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

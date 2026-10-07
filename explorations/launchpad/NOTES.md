@@ -668,6 +668,35 @@ GPU timer, alternating against `main` (two rounds): view 4 close-up 2.7–3.8 vs
 - Debris doesn't heat in the sim, so stages falling back don't char. Their marks only cool and shed.
 - No soot on the *side* of a core next to a booster's engine (soot only follows the stack line).
 
+## The launch complex (2026-10-07, visuals session)
+
+Slice 3 of the visuals work. Next to the detailed rocket, the old pad (a red pole, three white cylinders, a drum) read as
+a placeholder. Only the **contents** of the `PAD` mesh changed. Where it is drawn, its height (`siteH`) and the
+ground-shader apron (`padGround`) belong to the terrain session and were not touched. Everything sits at or above y = 0
+in the pad's frame (x east, y up, z north), so the rocket still stands at the origin on the ground the physics knows.
+Each building stands on a concrete slab that `padGround` already paints.
+
+### What's there (early-era Cape style)
+- **Launch table:** the concrete disc, a dark steel flame grate under the engines with eight radial bars, four hold-down
+  posts at r 3.4 m.
+- **Flame channel:** low concrete walls on a sooted floor running north. The ground can't be dug (it is raymarched in the
+  sky shader), so the trench is suggested from above ground.
+- **Umbilical tower** east of the rocket: an orange lattice, 3 m square and 32 m tall (`lattice()`: corner posts, a girder
+  ring every ~2.5 m, zig-zag bracing). It has an elevator shaft, a cap platform, a hammerhead jib with a hook line, a
+  lightning mast, and three swing arms retracted along the west face with hoses hanging.
+- **Propellant farm** on its slab: a LOX sphere on six legs, a horizontal RP-1 tank on concrete saddles, pipes to the pad.
+- **Deluge water tower,** a **domed concrete blockhouse** with a band of periscope slots and an antenna mast (with a cable
+  run to the pad), a **compressor building**, and four **floodlight poles** around the apron.
+- New helpers `tube(A, B, r)` (a cylinder between two points) and `lattice()`. About 9,800 vertices in all, a static mesh.
+- `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
+  the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
+
+### Still open
+- A real trench and flame bucket would need a cut in the ground (terrain's shader).
+- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
