@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -489,7 +489,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
   check('a missed deadline drops the contract, our standing with the source and the client\'s opinion', P.active.length === 0 && api.standOf('sci') < st0 && api.opOf(1) < op1 + 1, `standing ${st0} → ${api.standOf('sci')}`);
   // budget days every 100 days, scaled by home opinion and the cycle
-  fresh(); P.day = 0; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5);
+  fresh(); P.homeArch = 'frugal'; P.day = 0; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home
   check('budget day: every 100 days the home government pays, more when opinion is high', P.funds - f2 > api.GRANT_100 * 1.1 && P.funds - f2 < api.GRANT_100 * 1.5 * 1.3, `opinion 75 → +${(P.funds - f2).toFixed(1)}M (base ${api.GRANT_100}M at opinion 50), economy ${P.cycle.toFixed(2)}`);
   // offers arrive and expire over time; types unlock with firsts; the board never overflows
   const seen = done => { fresh(); P.day = 0; P.offers = null; P.done = done; P.wseed = 7; const types = new Set(); let maxB = 0; api.ensureBoard();
@@ -548,9 +548,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ballistic test: counts only near the target and only with the instrument package aboard', CTb.ok({ endPf: mul(near, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(far, TELLUS.R), endSci: true }, { u: tgt, rad: 40 }) && !CTb.ok({ endPf: mul(near, TELLUS.R), endSci: false }, { u: tgt, rad: 40 }),
     `${(Math.acos(dot(near, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off counts, ${(Math.acos(dot(far, tgt)) * TELLUS.R / 1e3).toFixed(0)} km off doesn't`);
   // the race: first in the world pays 1.5×; after a rival gets there, half
-  const firstPay = lost => { fresh(); P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); return P.funds - f; };
+  const firstPay = lost => { fresh(); P.homeArch = 'openSuper'; P.day = 0; P.done.weather = {}; P.raceLost = lost ? { beeper: 1 } : {}; const f = P.funds; orb(['sci'], 1); P.homeArch = null; return P.funds - f; };
   const pFirst = firstPay(false), pSecond = firstPay(true), beeperPay = api.MISSIONS.find(m => m.id === 'beeper').pay;
-  check('the race: the first satellite pays 1.5× when we are first, half when a rival got there first; rivals have schedules', Math.abs(pFirst - 1.5 * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
+  check('the race: the first satellite pays more when we are first (1.7× for an open superpower), half when a rival got there first; rivals have schedules', Math.abs(pFirst - (1 + 2 * api.ARCH.openSuper.pri.prestige) * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
     `first ${pFirst}M, second ${pSecond}M; rivals expected: ${api.RACE.map(id => `${id} ${PW[api.RIVALS[id].i].root} day ${api.RIVALS[id].day}`).join(', ')}`);
   fresh(); P.day = 0; P.rel = {}; P.op = {}; P.sanc = {}; P.raceLost = {}; api.HOOK.news = () => {};
 }
@@ -760,6 +760,50 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.offerDecision({ kind: 'hire', co: 'Brutor Orbital', amt: 90, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
   check('private hire: the company owns it all, the debt is gone, government contracts dropped, knowledge kept', api.own().pv === 1 && api.own().name === 'Brutor Orbital' && api.own().debt === 0 && P.funds === 90 &&
     P.active.length === 1 && P.active[0].src === 'sci' && api.certOf('kestrel') === 0.88 && api.home === 0, `${api.ownKind()} "${api.own().name}", funds ${P.funds}M`);
+  fresh(); api.HOOK.news = () => {};
+}
+
+// 19. Power flavours (economy): archetypes as presets on axes (openness, money, priorities, nationalism).
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = (arch = null) => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [],
+    homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false, nextElection: null, comm: 0, commPh: null, wseed: 5 }); api.chooseStart('agency'); P.funds = 60; };
+  const PW = api.POWERS, arch = PW.map(p => p.arch);
+  fresh('security');
+  check('flavours: every power has an archetype, the two biggest economies are one open and one closed superpower; picking yours overrides', arch.every(a => api.ARCH[a]) && arch.includes('openSuper') && arch.includes('closedSuper') && api.flav(0) === api.ARCH.security,
+    PW.map(p => `${p.root}: ${api.ARCH[p.arch].name}`).join(' · '));
+  // openness: an open program takes the whole hit; a closed one a part now, and the rest leaks later, worse
+  fresh('openSuper'); P.op[0] = 60; api.failHit(-10, 'x'); const openHit = 60 - api.opOf(0);
+  fresh('closedSuper'); P.op[0] = 60; api.failHit(-10, 'x'); const closedNow = 60 - api.opOf(0), pen = -P.hushPen; let leakDay = null, leakDrop = 0;
+  for (let d = 0; d < 2000 && P.hush; d += 10) { const o = api.opOf(0); api.advanceDays(10); if (!P.hush) { leakDay = P.day; leakDrop = o - api.opOf(0); } }
+  check('openness: open programs take a failure in full; closed ones hush it up, until it leaks (worse)', Math.abs(openHit - 9.4) < 0.01 && closedNow < 6 && pen > 10 - closedNow && leakDay != null && leakDrop > pen * 0.8 && news.some(t => /^Leaked/.test(t)),
+    `open −${openHit.toFixed(1)} now · closed −${closedNow.toFixed(1)} now, then −${leakDrop.toFixed(1)} when it leaked (day ${leakDay && leakDay.toFixed(0)})`);
+  // money: each kind responds to its own driver
+  fresh('resource'); P.op[0] = 50; P.comm = 0.8; const boom = api.moneyK(0); P.comm = -0.8; const bust = api.moneyK(0);
+  fresh('security'); P.op[0] = 50; P.rel = {}; for (const p of PW) if (p.i) P.rel[`0-${p.i}`] = 0.5; const calm = api.moneyK(0); P.rel['0-1'] = -0.9; const tense = api.moneyK(0);
+  fresh('rising'); P.op[0] = 50; const y0 = api.moneyK(0); P.day = 800; const y2 = api.moneyK(0);
+  check('money: commodity budgets boom and bust, military budgets grow with tension, a rising power\'s budget grows', boom > 2.5 * bust && tense > 1.5 * calm && Math.abs(y2 / y0 - 2) < 1e-9,
+    `commodity boom ${boom.toFixed(2)} vs bust ${bust.toFixed(2)} · military calm ${calm.toFixed(2)} vs tense ${tense.toFixed(2)} · rising day 0 ${y0.toFixed(2)} → day 800 ${y2.toFixed(2)}`);
+  // priorities: a security state gets military work, a frugal middle power science and commerce
+  const mix = a => { fresh(a); P.done = { weather: {}, beeper: {}, lift1: {}, hop: {} }; P.offers = []; const c = {}; for (let d = 0; d < 1500; d += 5) { api.advanceDays(5); for (const o of P.offers) c[o.src] = (c[o.src] || 0) + 1; P.offers = []; } return c; };
+  const ms = mix('security'), mf = mix('frugal');
+  check('priorities shape the board: military offers dominate a security state, commerce and science a frugal power', ms.mil > 2 * (mf.mil || 0) && (mf.com + mf.sci) > 1.5 * (ms.com + ms.sci),
+    `security: mil ${ms.mil}, com ${ms.com}, sci ${ms.sci} · frugal: mil ${mf.mil || 0}, com ${mf.com}, sci ${mf.sci}`);
+  // nationalism: rises with tension, and scales the reaction at home to a foreign stake
+  fresh('frugal'); P.rel = {}; for (const p of PW) if (p.i) P.rel[`0-${p.i}`] = 0.5; const n0 = api.natOf(0); for (let d = 0; d < 400; d += 10) { P.rel['0-1'] = -1; api.advanceDays(10); } const n1 = api.natOf(0);   // a standing feud
+  const stakeHit = n => { fresh('frugal'); P.nat = { 0: n }; P.op[0] = 50; api.offerDecision({ kind: 'stake', power: 2, amt: 10, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes'); return 50 - api.opOf(0); };
+  check('nationalism rises with tension and makes a foreign stake costlier at home', n1 > n0 + 0.2 && stakeHit(0.9) > 2.5 * stakeHit(0.1), `nationalism ${n0.toFixed(2)} → ${n1.toFixed(2)} with a hostile neighbour · stake costs ${stakeHit(0.1).toFixed(1)} at 0.1, ${stakeHit(0.9).toFixed(1)} at 0.9`);
+  // elections: an open program's budget mood follows opinion on election day
+  fresh('openSuper'); P.op[0] = 80; P.nextElection = 20; api.advanceDays(25); const up = P.bmult; fresh('openSuper'); P.op[0] = 20; P.nextElection = 20; api.advanceDays(25);
+  check('elections: a popular program gets a bigger budget for the term, an unpopular one a cut', up === 1.25 && P.bmult === 0.7, `opinion 80 → ×${up}, opinion 20 → ×${P.bmult}`);
+  // spectaculars: a closed program is told to deliver by a date; a first in the world does it
+  fresh('closedSuper'); P.op[0] = 50; for (let d = 0; d < 1000 && !P.demand; d += 10) api.advanceDays(10); const asked = !!P.demand, f0 = P.funds, o0 = api.opOf(0); api.demandMet('a first');
+  check('spectaculars: the leadership demands one by a date; delivering pleases it (and pays, under patronage)', asked && !P.demand && P.funds === f0 + 30 && api.opOf(0) === o0 + 8, `demanded by day ${asked ? 'set' : '—'}; delivered: +30M, opinion +8`);
+  // regime change: a security state's program can be cancelled; ignoring both offers leaves a private remnant
+  fresh('security'); P.op[0] = 20; for (let d = 0; d < 3000 && !P.cancelled; d += 10) api.advanceDays(10); const offers = P.decisions.map(x => x.kind).sort().join();
+  api.advanceDays(45);
+  check('regime change cancels a security state\'s program: defect or go private, and doing nothing leaves a private remnant', offers === 'defect,hire' && api.own().pv === 1 && /Space Collective/.test(api.own().name) && !P.cancelled,
+    `offers: ${offers}; after 45 days: ${api.ownKind()} "${api.own().name}"`);
   fresh(); api.HOOK.news = () => {};
 }
 

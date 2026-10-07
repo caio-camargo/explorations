@@ -1011,9 +1011,10 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
   missionEval(s)}
-function missionEval(s){contractEval(s);for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
-  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1.5):1);
-    income(pay);opAdd(HOME,racing&&lost==null?8:4);for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
+function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
+  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
+    income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    if(racing&&lost==null)s.rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
@@ -1025,7 +1026,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     if(pw.i===HOME){if(v.kind==='city')opAdd(HOME,-6);else if(v.kind==='near')opAdd(HOME,-2);continue}
     const hit=v.kind==='city'?3:v.kind==='near'?1.5:1;opAdd(pw.i,-5*hit);const key=pairKey(HOME,pw.i);PROG.rel[key]=clamp(relOf(HOME,pw.i)-0.06*hit,-1,1);
     HOOK.news(v.kind==='city'?`Diplomatic incident: our stage falls on ${v.city.name}; ${pw.name} demands answers`:`${pw.name} protests a rocket stage landing on its territory`,'bad')}
-  if(R.bio&&!R.bioOK)opAdd(HOME,-8);
+  if(R.bio&&!R.bioOK&&!R.tourist)failHit(-8,`a passenger flight went wrong`);
   if(R.tourist&&!R.bioOK){standAdd('tour',-40);opAdd(HOME,-10);HOOK.news(`Space tourism in crisis after ${R.pet} ${R.bioWhy}; bookings cancelled`,'bad')}
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
   if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=s.touchV||0;let back=0,full=0,worst=null;
@@ -1050,7 +1051,66 @@ function makePowers(seed=11,n=5){const R=rng(seed),out=[],site=[1,0,0],forms=FOR
     out.push({i:out.length,root:nm,name:(forms.length?forms.splice(R()*forms.length|0,1)[0]:FORMS[R()*FORMS.length|0]).replace('#',nm),u,econ:out.length?.5+R()*1.5:1.2,tech:.6+R()*.6,
       align:[R()*2-1,R()*2-1],hue:(out.length*137.5+20)%360})}
   return out}
-const POWERS=makePowers();let HOME=0;   // "our government": power 0 (the launch site's) until the program changes hands (career moves)
+const POWERS=makePowers();let HOME=0;
+// ---- power flavours: settings on a few axes, each wired to an existing system; archetypes are presets.
+//  open (0..1): who the program answers to. Open: failures public, elections swing the budget. Closed: failures hushed
+//    (part of the hit now, the rest as leak risk), the leadership demands spectaculars by a date.
+//  money: tax (by opinion) · commodity (its own price cycle) · patronage (thin budget days, lump sums for prestige) ·
+//    military (grows with tension).  pri: what the power wants (prestige/security/commerce/science) → offers, pay, race.
+//  nat: nationalism, a mood: starts at the archetype's level, rises with tension and crises, fades in calm years, and
+//    scales the home reaction to everything foreign the program does.
+const ARCH={
+  openSuper:{name:'Open superpower',open:.9,money:'tax',pri:{prestige:.35,commerce:.35,security:.15,science:.15},nat:.4,
+    blurb:'Rich and watched: every failure is on television, and elections decide the budget.'},
+  closedSuper:{name:'Closed superpower',open:.1,money:'patronage',pri:{prestige:.5,security:.35,commerce:.05,science:.1},nat:.6,
+    blurb:'Secrecy and spectaculars: failures stay quiet (until they leak), the leadership wants triumphs on schedule.'},
+  rising:{name:'Rising power',open:.3,money:'tax',grow:true,pri:{prestige:.4,commerce:.2,security:.2,science:.2},nat:.55,
+    blurb:'Behind, and in a hurry: a budget that grows every year, and a public that wants to catch up.'},
+  frugal:{name:'Frugal middle power',open:.75,money:'tax',pri:{commerce:.45,science:.35,prestige:.1,security:.1},nat:.3,
+    blurb:'Small budget, big ingenuity: commerce and science pay, partners are welcome.'},
+  resource:{name:'Resource state',open:.25,money:'commodity',pri:{prestige:.55,commerce:.2,science:.15,security:.1},nat:.45,
+    blurb:'Oil money: lavish in a boom, brutal in a bust, and prestige is what it is for.'},
+  security:{name:'Security state',open:.2,money:'military',cancel:true,pri:{security:.6,prestige:.2,science:.1,commerce:.1},nat:.7,
+    blurb:'A military program first: money follows tension, sanctions follow you, and a new government could end it all.'}};
+const PRI_OF={sci:'science',com:'commerce',mil:'security',gov:'prestige',tour:'commerce'};
+// generated flavours: the two biggest economies are the superpowers (open or closed by their second alignment axis), the
+// rest by what they have: rich and low-tech → resource state, high tension of alignment → security state, etc.
+(()=>{const R=rng(777),big=POWERS.slice().sort((a,b)=>b.econ*b.tech-a.econ*a.tech);
+  big.forEach((p,k)=>{p.arch=k<2?(p.align[1]>0?'closedSuper':'openSuper'):p.econ>1.3&&p.tech<0.85?'resource':p.align[1]>0.4?'security':p.tech>0.95?'rising':R()<0.6?'frugal':'rising'});
+  if(big[0].arch===big[1].arch)big[1].arch=big[0].arch==='openSuper'?'closedSuper':'openSuper'})();   // a rivalry needs both kinds
+const archOf=i=>i===0&&PROG.homeArch?PROG.homeArch:POWERS[i].arch,flav=i=>ARCH[archOf(i)];
+const natOf=i=>(PROG.nat||{})[i]??flav(i).nat,natK=()=>0.3+1.4*natOf(HOME);   // natK: 1 at nationalism 0.5
+const tensionOf=i=>Math.max(0,...POWERS.filter(p=>p.i!==i).map(p=>-relOf(i,p.i)));
+const natWord=n=>n>.7?'fervent':n>.5?'high':n>.3?'moderate':'low';
+// failures at home: open programs take the whole hit now; closed ones a part, the rest piles up as leak risk
+function failHit(x,what){const o=flav(HOME).open;opAdd(HOME,x*(0.4+0.6*o));
+  if(o<0.5){PROG.hush=(PROG.hush||0)+1;PROG.hushPen=(PROG.hushPen||0)+x*0.6*(1-o)*1.5;HOOK.news(`Officially, nothing happened (${what})`,'warn')}}
+function flavTick(d,R){PROG.nat=PROG.nat||{};
+  for(const p of POWERS){const n=natOf(p.i),tgt=clamp(flav(p.i).nat+0.3*tensionOf(p.i),0,1);PROG.nat[p.i]=n+(tgt-n)*(1-Math.exp(-d/200))}
+  // the commodity cycle (its own clock, ~500 days)
+  const c0=PROG.comm||0;PROG.commPh=(PROG.commPh??R()*6.28)+d*6.2832/500+(R()-.5)*0.2*Math.sqrt(d/10);PROG.comm=clamp(0.8*Math.sin(PROG.commPh),-1,1);
+  if(flav(HOME).money==='commodity'){if(c0<0.5&&PROG.comm>=0.5)HOOK.news('Commodity boom: the treasury is overflowing','ok');if(c0>-0.5&&PROG.comm<=-0.5)HOOK.news('Commodity bust: belts tighten everywhere, rockets included','bad')}
+  const F=flav(HOME);
+  // leaks of hushed-up failures: likelier the more there are
+  if(PROG.hush&&R()<1-Math.exp(-d*0.002*PROG.hush)){opAdd(HOME,PROG.hushPen);   // hushPen is the (negative) deferred hit
+    HOOK.news(`Leaked: the program quietly lost ${PROG.hush} flight${PROG.hush>1?'s':''} it never admitted to`,'bad');PROG.hush=0;PROG.hushPen=0}
+  // elections (open programs): budget mood for the next term
+  if(F.open>=0.6){if(PROG.nextElection==null)PROG.nextElection=300+R()*200;
+    if(PROG.day>=PROG.nextElection-50&&!PROG.electionWarned){PROG.electionWarned=true;HOOK.news('Election in 50 days: a success now would not hurt','warn')}
+    if(PROG.day>=PROG.nextElection){const o=opOf(HOME);PROG.bmult=o>55?1.25:o<40?0.7:1;PROG.nextElection+=400;PROG.electionWarned=false;
+      HOOK.news(o>55?'Re-elected: the government doubles down on space':o<40?'New government trims the space budget':'Election: the space budget survives, unchanged',o>55?'ok':o<40?'bad':'')}}
+  // the leadership's demand for a spectacular (closed programs)
+  if(F.open<0.5){if(PROG.demand&&PROG.day>PROG.demand.by){opAdd(HOME,-10);HOOK.news('The leadership is displeased: no spectacular by the anniversary','bad');PROG.demand=null}
+    if(!PROG.demand&&stateShare()>=0.5&&R()<1-Math.exp(-d/260)){PROG.demand={by:PROG.day+60};HOOK.news('The leadership wants a spectacular by the anniversary, 60 days from now: a first, or a contract worth 40M+','warn')}}
+  // regime change can cancel a security state's program
+  if(F.cancel&&!PROG.cancelled&&stateShare()>=0.5&&opOf(HOME)<35&&R()<1-Math.exp(-d/600))cancelProgram(R)}
+function demandMet(why){if(!PROG.demand)return;PROG.demand=null;opAdd(HOME,8);if(flav(HOME).money==='patronage')PROG.funds+=30;
+  HOOK.news(`The leadership is delighted (${why})${flav(HOME).money==='patronage'?': +30M':''}`,'ok')}
+function cancelProgram(R){PROG.cancelled=true;PROG.bmult=0;PROG.decisions=(PROG.decisions||[]).filter(x=>x.kind!=='defect'&&x.kind!=='hire');   // these two replace any pending career offers
+  HOOK.news(`Regime change in ${POWERS[HOME].name}: the new government cancels the space program`,'bad');
+  const c=POWERS.filter(p=>p.i!==HOME&&!sanctioned(p.i)).sort((a,b)=>b.econ*opOf(b.i)-a.econ*opOf(a.i))[0],V=valuation();
+  if(c)offerDecision({kind:'defect',power:c.i,amt:Math.round(40+V*0.3),life:40,title:`${c.name} offers the cancelled team a new home`,text:'The program is cancelled at home. Defect, and it lives on as theirs.',opts:[['yes',`Go to ${c.root}`],['no','No']]});
+  offerDecision({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.round(30+V*0.15),life:40,title:'Go private with what is left',text:'The team keeps the hardware and its knowledge, as a private company with little money.',opts:[['yes','Go private'],['no','No']]})}   // "our government": power 0 (the launch site's) until the program changes hands (career moves)
 function powerAt(pf){const u=norm(pf);if(!isLand(u))return null;let best=null,bd=Infinity;
   for(const p of POWERS){const d=Math.acos(clamp(dot(u,p.u),-1,1))-0.12*Math.log(p.econ);if(d<bd){bd=d;best=p}}return best}
 for(const c of CITIES)c.power=powerAt(c.u);
@@ -1142,33 +1202,33 @@ const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
 // economy). First in the world pays 1.5× and a big boost at home; second pays half.
 const RACE=['beeper','hop','orbiter'];
 function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
-  for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ);let t=0;
+  for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(p.i).pri.prestige);let t=0;
     for(const id of RACE){t+=(60+80*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
 function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
-  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news(`${POWERS[r.i].name} gets there first: ${M.name.replace(/^Passenger: /,'')}!`,relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4)}}
+  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news(`${POWERS[r.i].name} gets there first: ${M.name.replace(/^Passenger: /,'')}!`,relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
-  const client=pickClient(src,R);if(sanctioned(client))return null;
+  const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
   const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;PROG.active.push(c);
   if(offerRisk(c).now.includes(HOME))sanction(HOME,c.src==='mil'?250:120,c.src==='mil'?`for military work for ${POWERS[c.client].name}`:`under export controls on ${POWERS[c.client].name}`);
-  if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
+  if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*natK()*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
   HOOK.save();return true}
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i],T=CT[c.type];if(!T.ok(R,c.p,s))continue;
     const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
-    standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);R.cdone.push(cTitle(c));
+    standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
@@ -1177,14 +1237,14 @@ function econTick(d,R){ensureBoard();
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
   if(c0<0.45&&PROG.cycle>=0.45)HOOK.news('Boom times: satellite operators are hiring launches again','ok');
   if(c0>-0.45&&PROG.cycle<=-0.45)HOOK.news('Recession bites: commercial launch orders dry up','warn');
-  for(const k in SRC){const rate=SRC[k].rate*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
+  for(const k in SRC){const rate=SRC[k].rate*(0.4+2.4*flav(HOME).pri[PRI_OF[k]])*(0.6+0.8*standOf(k)/100)*(k==='com'?(1+0.5*PROG.cycle)*(0.8+0.6*own().pv):k==='gov'?0.3+1.2*stateShare():k==='tour'?(standOf('tour')/50)**2:1),n=Math.min(4,Math.floor(rate*d+R()));
     for(let j=0;j<n&&PROG.offers.length<BOARD_MAX;j++){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
   PROG.offers=PROG.offers.filter(o=>o.expires>PROG.day);
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(c.deadline>PROG.day)continue;PROG.active.splice(i,1);standAdd(c.src,-10);opAdd(c.client,-3);
     HOOK.news(`Missed deadline: ${cTitle(c)} for ${POWERS[c.client].name}`,'bad')}
   const q0=Math.floor((PROG.day-d)/100),q1=Math.floor(PROG.day/100);
   for(let q=q0;q<q1;q++)budgetDay();
-  decisionTick(d,R);raceTick()}
+  flavTick(d,R);decisionTick(d,R);cancelTick();raceTick()}
 // ---- ownership: what the program is. Shares that sum to 1: state stakes by power (st) and private capital (pv).
 // Everything scales with the shares, so a part-privatized agency sits between the archetypes:
 //  · budget day comes from each state shareholder, by its stake and its opinion of us; private capital pays nothing
@@ -1212,8 +1272,16 @@ function shiftShare(to,amt){const o=own(),get=k=>k==='pv'?o.pv:(o.st[k]||0),set=
   for(const k of others)set(k,get(k)-amt*get(k)/tot);set(to,get(to)+amt)}
 function income(x){const o=own();if(o.debt>0){const r=Math.min(o.debt,x/2);o.debt-=r;x-=r}PROG.funds+=x}
 const valuation=()=>80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0);   // what investors think the program is worth (M)
+// how a power's money arrives (multiplies GRANT_100 × stake): its money axis, opinion where it matters, the cycles
+function moneyK(i){const F=flav(i),op=opOf(i)/50,home=i===HOME;let k;
+  if(F.money==='commodity')k=(0.6+0.4*op)*(1+0.8*(PROG.comm||0));
+  else if(F.money==='patronage')k=0.5*op;
+  else if(F.money==='military')k=0.7*(1+tensionOf(i));
+  else k=op*(1+0.25*(PROG.cycle||0));
+  if(F.grow)k*=Math.min(2,1+PROG.day/800);
+  return Math.max(0,k*(home?(PROG.bmult??1):1))}
 function budgetDay(){const o=own();let g=0;const parts=[];
-  for(const k in o.st){if(sanctioned(+k))continue;const i=+k,x=GRANT_100*o.st[k]*(opOf(i)/50)*Math.sqrt(POWERS[i].econ/POWERS[HOME].econ)*(1+0.25*(PROG.cycle||0));g+=x;parts.push(`${POWERS[i].root} ${fmtM(x)}`)}
+  for(const k in o.st){if(sanctioned(+k))continue;const i=+k,x=GRANT_100*o.st[k]*Math.sqrt(POWERS[i].econ/POWERS[HOME].econ)*moneyK(i);g+=x;parts.push(`${POWERS[i].root} ${fmtM(x)}`)}
   if(g<=0)return;PROG.funds+=g;
   HOOK.news(Object.keys(o.st).length>1?`Budget day: members contribute ${fmtM(g)} (${parts.join(', ')})`:
     `Budget day: ${POWERS[+Object.keys(o.st)[0]].name} allocates ${fmtM(g)} to the space program${opOf(HOME)>60?' (and applauds)':opOf(HOME)<40?' (through gritted teeth)':''}`,g>=GRANT_100*stateShare()?'ok':'warn')}
@@ -1243,7 +1311,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
   if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/450))){
-    if(R()<0.5){const c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>b.econ*b.tech*opOf(b.i)-a.econ*a.tech*opOf(a.i))[0];
+    if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,
           text:`${good?'They have watched your program and want it for themselves':'Things are going badly at home, and they have noticed'}: defect, and the program becomes theirs, with ${fmtM(amt)} to start. What the team knows comes along (certified parts, the air, everything flown). ${POWERS[HOME].name} will not forgive it.`,
@@ -1253,6 +1321,8 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
         text:`A private company buys the program outright: ${fmtM(amt)} of capital${own().debt>0?', the debts paid off':''}, no budget day, no government to answer to. What the team knows comes along. ${POWERS[HOME].name} will call it a brain drain.`,
         opts:[['yes',`Join ${co}`],['no','Decline']]})}}}
 // how badly the program is doing: each of these counts once
+function cancelTick(){if(!PROG.cancelled||(PROG.decisions||[]).some(x=>x.kind==='defect'||x.kind==='hire'))return;
+  careerMove({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.max(10,PROG.funds)})}
 function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
 // the program changes hands. Knowledge (certified ratings, the atmosphere, firsts flown, contract record) carries over;
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
@@ -1261,11 +1331,11 @@ function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0
 function careerMove(d){const old=HOME,o=own();PROG.history=PROG.history||[];
   if(d.kind==='defect'){const j=d.power;PROG.history.push({day:PROG.day,from:progName(),move:`defected to ${POWERS[j].name}`});
     HOME=j;PROG.home=j;PROG.own={kind:'agency',st:{[j]:1},pv:0,chosen:true,debt:0};PROG.funds=d.amt;PROG.bailouts=0;
-    PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15);for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
+    PROG.op[old]=10;PROG.rel[pairKey(old,j)]=clamp(relOf(old,j)-0.3,-1,1);opAdd(j,15*(1.3-natOf(j)));PROG.cancelled=false;PROG.bmult=1;for(const p of POWERS)if(p.i!==j&&p.i!==old)opAdd(p.i,-5);
     standAdd('gov',-100);standAdd('gov',50);RIVALS=raceSchedule();
     HOOK.news(`DEFECTION: the space program's team crosses over to ${POWERS[j].name}`,'bad');sanction(old,400,'after the defection')}
   else{PROG.history.push({day:PROG.day,from:progName(),move:`hired by ${d.co}`});
-    PROG.own={kind:'company',st:{},pv:1,chosen:true,debt:0,name:d.co};PROG.funds=d.amt;PROG.bailouts=0;opAdd(HOME,-8);standAdd('gov',-20);
+    PROG.own={kind:'company',st:{},pv:1,chosen:true,debt:0,name:d.co};PROG.funds=d.amt;PROG.bailouts=0;opAdd(HOME,-8*natK());PROG.cancelled=false;PROG.bmult=1;standAdd('gov',-20);
     PROG.active=(PROG.active||[]).filter(c=>c.src!=='gov');HOOK.news(`${d.co} hires the whole space program; ${POWERS[HOME].name} calls it a brain drain`,'warn')}}
 function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id===id);if(i<0)return false;const d=PROG.decisions.splice(i,1)[0],o=own();
   if(d.kind==='rescue'){const need=Math.max(0,FUNDS_FLOOR-PROG.funds);
@@ -1273,7 +1343,7 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
     else{o.debt=(o.debt||0)+need*1.3;PROG.funds+=need;HOOK.news(`Investors lend ${fmtM(need)}; ${fmtM(o.debt)} to repay from future income`,'warn')}}
   else if(d.kind==='ipo'&&key==='yes'){shiftShare('pv',0.25);PROG.funds+=d.amt;opAdd(HOME,POWERS[HOME].align[0]>0?3:-5);HOOK.news(`Privatization: 25% of the program sold for ${fmtM(d.amt)}`,'ok')}
   else if((d.kind==='defect'||d.kind==='hire')&&key==='yes')careerMove(d);
-  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2);
+  else if(d.kind==='stake'&&key==='yes'){shiftShare(d.power,0.15);PROG.funds+=d.amt;opAdd(HOME,-2*natK());
     for(const p of POWERS)if(p.i!==d.power&&p.i!==HOME&&relOf(d.power,p.i)<-0.2)opAdd(p.i,-6);HOOK.news(`${POWERS[d.power].name} buys 15% of the program`,'ok')}
   HOOK.save();return true}
 // ---- the orbital registry: what we leave in orbit stays there, on exact Kepler rails across program time.
@@ -1777,7 +1847,7 @@ HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 const PROG_KEY='launchpad-program-v1';
 try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j)Object.assign(PROG,j)}catch(e){}
-if(PROG.home!=null&&PROG.home!==HOME){HOME=PROG.home;RIVALS=raceSchedule()}ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
+if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
 HOOK.save=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
@@ -1802,12 +1872,15 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
+  const F=flav(HOME),pris=Object.entries(F.pri).sort((a,b)=>b[1]-a[1]).slice(0,2).map(x=>x[0]).join(', ');
   html+=`<div class="ep">The world</div><div class="sub">Home: <b style="color:${pc(H)}">${H.name}</b> · opinion of us ${opOf(HOME).toFixed(0)}<br>`+
-    POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
+    `<span class="dim">${F.name}: answers to ${F.open>=.6?'the public (elections)':F.open>=.4?'a mix of public and leadership':'the leadership'} · money: ${{tax:'taxes',commodity:'commodity revenue',patronage:'patronage',military:'the military budget'}[F.money]}${F.grow?', growing':''} · wants ${pris} · nationalism ${natWord(natOf(HOME))}</span>`+
+    `${PROG.demand?`<br><span class="warn">The leadership expects a spectacular within ${(PROG.demand.by-PROG.day).toFixed(0)} days</span>`:''}${F.open>=.6&&PROG.nextElection!=null?`<br><span class="dim">Next election in ${(PROG.nextElection-PROG.day).toFixed(0)} days</span>`:''}<br>`+
+    POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> <span class="dim">(${ARCH[archOf(p.i)].name.toLowerCase()})</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[]});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -2153,7 +2226,9 @@ function fmtT(s){if(!isFinite(s))return'—';s=Math.max(0,s);const d=Math.floor(
   return(d?d+'d ':'')+(d||h?h+'h ':'')+(d||h||m?m+'m ':'')+x+'s'}
 // ============================================================ program UI: the contract board (economy session)
 function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
-  if(!o.chosen&&!PROG.flights)return `<div class="ep">How does the program start?</div>`+Object.entries(START).map(([k,v])=>
+  if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub">`+
+    [['', `Random world (${ARCH[POWERS[0].arch].name.toLowerCase()})`],...Object.entries(ARCH).map(([k,v])=>[k,v.name])].map(([k,n])=>`<button data-arch="${k}" class="${(PROG.homeArch||'')===k?'on':''}" title="${k?ARCH[k].blurb:'Play whatever the launch site\'s power was generated as'}">${n}</button>`).join(' ')+
+    `<div style="margin-top:3px">${flav(0).blurb}</div></div><div class="ep">How does the program start?</div>`+Object.entries(START).map(([k,v])=>
     `<div class="ms"><button data-start="${k}">${v.name}</button> <span class="ok">${fmtM(v.funds)}</span><div class="sub">${v.blurb}</div></div>`).join('');
   const shares=[...Object.entries(o.st).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<span style="color:${pc(+k)}">${POWERS[+k].root}</span> ${(x*100).toFixed(0)}%`),...(o.pv>0?[`private ${(o.pv*100).toFixed(0)}%`]:[])].join(' · ');
   return `<div class="ep">${progName()} <span class="dim">· ${ownKind()}</span></div><div class="sub">${shares}${o.debt>0?` · <span class="bad">debt ${fmtM(o.debt)}</span>`:''}</div>`+
@@ -2161,7 +2236,8 @@ function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
     (PROG.decisions||[]).map(d=>`<div class="ms" style="border-left-color:var(--warn)"><b>${d.title}</b><div class="sub">${d.text} <i>${Math.max(0,d.expires-PROG.day).toFixed(0)} days to answer</i></div>`+
       d.opts.map(([k,l])=>`<button data-dk="${d.id}:${k}">${l}</button>`).join(' ')+`</div>`).join('')}
 document.addEventListener('click',e=>{const ds=e.target.dataset||{};
-  if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
+  if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderProgram()}
+  else if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
   else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+

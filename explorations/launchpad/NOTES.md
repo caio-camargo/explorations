@@ -568,6 +568,48 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.22 — power flavours, first slice (2026-10-07)
+
+The design is in "Power flavours" in the program-design section. This slice covers openness, money, priorities,
+nationalism, the start choice and the security state's regime change. Industry and geography come later.
+
+- **Archetypes** (`ARCH`): open superpower, closed superpower, rising power, frugal middle power, resource state,
+  security state. Generated worlds: the two biggest economies (economy × tech) become one open and one closed
+  superpower, decided by their second alignment axis. The rest follow what they have: rich and low-tech → resource
+  state, strongly aligned → security state, high tech → rising, otherwise frugal or rising. **Start:** pick your
+  power's archetype in the Program panel, or "Random world" (whatever the launch site's power was generated as).
+  `flav(i)` follows `HOME` through defections.
+- **Openness:**
+  - Open programs (≥ 0.6) take failures in full and hold **elections** every 400 days. Popularity on election day sets
+    the budget for the term (×1.25 above 55 opinion, ×0.7 below 40), with a warning 50 days before.
+  - Closed programs take 40–50% of a failure's hit at once ("Officially, nothing happened"). The rest, ×1.5, is
+    deferred as **leak** risk, which grows with each hidden failure.
+  - Closed programs also get **spectacular demands**: a first or a 40M+ contract within 60 days. Delivered: +8 opinion
+    (+30M under patronage). Missed: −10.
+- **Money** (`moneyK`, multiplying each shareholder's budget day):
+  - taxes: by opinion and the business cycle;
+  - commodity: its own ~500-day price cycle, measured at ×1.64 in a boom vs ×0.36 in a bust;
+  - patronage: half-size budget days, plus lump sums for firsts and spectaculars;
+  - military: grows with the power's worst tension (×0.70 calm → ×1.33 tense);
+  - rising powers' budgets grow ×(1 + day/800), capped at ×2.
+- **Priorities:** home's priorities set offer rates per source (×0.4 to ×1.6). A client's priorities set what it pays.
+  Rivals race faster the more they want prestige. A first in the world is worth 1 + 2 × home's prestige appetite
+  (1.7× for an open superpower, 2× for a closed one).
+- **Nationalism** (`natOf`): starts at the archetype's level and moves toward that level + 0.3 × the power's worst
+  tension (200-day time constant). Measured: 0.30 → 0.55 over 400 days of a standing feud. It scales home's reaction
+  to foreign stakes (×3.4 from 0.1 to 0.9), hostile clients, private hires, losing a race, and winning one. Foreign
+  contracts done raise home opinion when it's low and cost some when it's high.
+- **Regime change** (security states, mostly-state program, home opinion < 35, ~1/600 per day): the program is
+  cancelled. Two offers replace any pending career offers: a power takes the team, or it goes private as "… Space
+  Collective". Ignore both and it goes private anyway.
+- **Resource states are the natural buyers** of teams in career moves (scored ×1.6).
+- **One-line flavour** in the world section; rivals tagged by archetype.
+- **Found while testing:** the leak was applied with the wrong sign (a scandal raised opinion), now fixed. Cancellation
+  now replaces pending career offers instead of adding to them.
+
+`test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
+closed superpower (patronage budget, 2× firsts).
+
 ## v1.21 — career moves: defection and private hire (2026-10-07)
 
 From the backlog (Caio): when the program does badly, the people in it get offers. They can also come when it does very
@@ -1236,6 +1278,35 @@ restartable upper stage, docking port.
 - **Powers with flavours:** different powers play differently. Superpower programs alongside more marginal ones (think
   of the range from the US and USSR to China, Brazil, South Africa, an Arab state). Flavours constrain a power to
   previously designed archetypes, so features and details are TBD. Today powers are generic generated data.
+
+**Power flavours (design with Caio, 2026-10-07).** A flavour is a setting on a few **axes**, each wired to an existing
+system; named **archetypes** are presets on those axes, so any number of powers can be generated and mixed. The test
+for an axis: it changes what you fly or what you decide, not just a number.
+- *Who you answer to* (open ↔ closed): open means failures are public and elections swing the budget; closed means
+  failures are hushed up (but leaks come later, worse), successes are trumpeted, and the leadership demands
+  spectaculars by a date.
+- *Money:* taxes (steady, by opinion), commodity (a resource price cycle of its own: lavish booms, brutal busts),
+  patronage (small budget days, lump sums for prestige), military (grows with tension).
+- *Priorities* (prestige / security / commerce / science): which contracts this power offers and how much it pays, how
+  hard it races, and what a first is worth.
+- *Nationalism,* a **mood, not a setting:** each archetype starts at a level, it rises with tension and crises and
+  fades in calm years. It multiplies the domestic reaction to everything foreign: stakes, foreign clients, hires,
+  defections, the race. Not redundant with openness (who you answer to) or priorities (what they want): it's how they
+  feel about foreigners, and it moves.
+- Later axes: *industrial independence* (import markups; sanctions cutting off parts; a young industry's parts start
+  less certified) and *geography* (inland ranges drop stages at home; latitude), the latter with the terrain work.
+- Archetypes: open superpower, closed superpower, rising power (budget grows, long plans), frugal middle power
+  (commerce, records, partnerships), resource state (commodity money, buys teams and stakes), security state (military
+  money, sanctions-prone, a regime change can cancel the program, which turns into a career move).
+- **Asymmetry is wanted** (Caio). Countermeasure for the secrecy shield: hidden failures still cost some standing at
+  once, and the leak risk grows with each one.
+- **Start:** both. Pick your power's archetype, or play a random world where the launch site's power has whatever it
+  was generated with.
+- Each power shows its flavour in one line (home in full, rivals as a tag).
+
+**Backlog — visual flavours (Caio, 2026-10-07; for the visuals session):** ship and environment design flavour per
+power. Can't be sliders, so a handful of **style presets plus livery** (paint scheme, markings, pad and building
+style) would give visible variety that reflects each power's flavour.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
