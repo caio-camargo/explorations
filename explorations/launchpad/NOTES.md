@@ -728,6 +728,30 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.25 — industrial independence (2026-10-07)
+
+The fourth flavour axis. Each archetype has a **self-sufficiency** level (`ind`): superpowers 1.0, security state 0.55,
+rising power 0.5 (+day/1500, capped at 0.9), frugal middle power 0.4, resource state 0.1.
+
+- **Three tiers of parts** (`tierOf`): structure and tanks (0); small engines and 2.5 m structure (1); big engines
+  (≥ 300 kN) and complex payloads (pod, biocapsule, instruments, camera, antenna) (2). A power makes the tiers its
+  level reaches (0 / 0.45 / 0.8).
+- **Sourcing** (`sourceOf`): home-made ×1; otherwise imported at ×1.5 from the most capable supplier (self-sufficiency ×
+  economy) that isn't hostile to home (relation > −0.2) and isn't sanctioning us; with no such supplier, **grey market
+  ×3** through intermediaries (with a headline at launch). That's how **sanctions reach hardware**: lose your supplier
+  and you switch to the next (Kestrel: Maros → Venka) or pay triple. Prices flow through `partPrice`, so refurbishment
+  refunds follow too. Buying abroad grumbles a little at home, scaled by nationalism.
+- **Young-industry certification** (`cert0`): home-made parts start at CERT0 − 0.2 × (1 − self-sufficiency) (a frugal
+  power's own tank: 58%); imports arrive at the usual 70%.
+- **Shown** on the builder's cost line ("Imports: Kestrel booster, Petrel vacuum (Venka ×1.5) · Command pod (grey market
+  ×3)") and as one industry line in the world section.
+- **Measured:** an Orbiter costs 49.8M for a superpower, 66.8M for a resource state with willing suppliers, and 85M in
+  the generated world, where the only avionics maker is tense with home (pod via the grey market).
+- **Balance note:** a resource state can't afford an Orbiter from the 60M start. It earns its way up through sounding
+  flights or rides a commodity boom. Fine for asymmetry; revisit with real play.
+
+`test.mjs` §20: 4 new checks; 128 total.
+
 ## v1.24 — power flavours, first slice (2026-10-07)
 
 The design is in "Power flavours" in the program-design section. This slice covers openness, money, priorities,

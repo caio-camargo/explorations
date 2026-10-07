@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -852,6 +852,32 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('regime change cancels a security state\'s program: defect or go private, and doing nothing leaves a private remnant', offers === 'defect,hire' && api.own().pv === 1 && /Space Collective/.test(api.own().name) && !P.cancelled,
     `offers: ${offers}; after 45 days: ${api.ownKind()} "${api.own().name}"`);
   fresh(); api.HOOK.news = () => {};
+}
+
+// 20. Industrial independence (economy): who makes which parts, imports and the grey market, young-industry certification.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {} }); };
+  const orbiter = () => api.vesselCost(api.newShip(api.PRESETS.Orbiter).parts).cost;
+  fresh('openSuper'); const cSuper = orbiter(), allHome = ['t2', 'kestrel', 'condor', 'pod', 'sci'].every(k => api.sourceOf(k).how === 'home');
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;   // everyone willing to sell
+  const cRes = orbiter(), srcK = api.sourceOf('kestrel'), srcT = api.sourceOf('t8');
+  check('industry: a superpower makes everything; a resource state makes tanks but imports engines and avionics at ×1.5', allHome && srcT.how === 'home' && srcK.how === 'import' && api.sourceOf('pod').how === 'import' && cRes > 1.3 * cSuper,
+    `Orbiter ${cSuper.toFixed(1)}M at home vs ${cRes.toFixed(1)}M for the resource state (Kestrel from ${api.POWERS[srcK.from].root})`);
+  // sanctions reach hardware: lose the supplier, switch to the next; lose them all, the grey market at ×3
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;
+  const first = api.sourceOf('kestrel').from; P.sanc[first] = 999; const second = api.sourceOf('kestrel');
+  for (const p of api.POWERS) if (p.i !== api.home) P.sanc[p.i] = 999; const grey = api.sourceOf('kestrel');
+  check('sanctions reach hardware: a sanctioning supplier is replaced by the next; with none left, parts come via intermediaries at ×3', second.how === 'import' && second.from !== first && grey.how === 'grey' && grey.k === api.GREY_K,
+    `Kestrel from ${api.POWERS[first].root} → ${api.POWERS[second.from].root} → grey market`);
+  // certification: a young industry's own parts start less proven; imports arrive certified
+  fresh('frugal'); const tHome = api.certOf('t1'), eImp = api.certOf('kestrel');
+  check('a young industry\'s own parts start less certified; imported parts arrive at the usual level', Math.abs(tHome - (api.CERT0 - 0.2 * 0.6)) < 1e-9 && eImp === api.CERT0,
+    `frugal power: own tank ${(tHome * 100).toFixed(0)}%, imported Kestrel ${(eImp * 100).toFixed(0)}%`);
+  // a rising power catches up: big engines become home-made after enough program time
+  fresh('rising'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const d0 = api.sourceOf('condor').how; P.day = 600; const d600 = api.sourceOf('condor').how;
+  check('a rising power\'s industry grows: big engines imported at first, home-made later', d0 === 'import' && d600 === 'home' && api.indOf(api.home) > 0.8, `Condor: ${d0} on day 0, ${d600} on day 600 (self-sufficiency ${api.indOf(api.home).toFixed(2)})`);
+  fresh(null);
 }
 
 function moonPos(t) { return api.moonPos(t); }
