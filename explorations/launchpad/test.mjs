@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {OPS_FIX,OPS_FRAC,groundGap,aglAt,MAIN_AGL,fromPF,density,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -452,7 +452,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the calendar: stacking takes days by price, flying takes its flight time
   fresh(); P.day = 0; s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  const ft = api.t; api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost)) + ft / api.DAY_S;   // lift-off waits for the daily launch window
+  const ft = api.t, khv = api.khVessel(s); api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost) * (1 + 0.5 * (1 - khv))) + ft / api.DAY_S;   // stacking stretches with unfamiliar parts; lift-off waits for the daily launch window
   check('calendar: a launch advances the date by the stacking time (to the next daily launch window), the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
   // the powers: any number of them; the pad is home; land is someone's, the sea no one's
   const counts = [2, 3, 5, 8].map(k => api.makePowers(11, k).length), PW = api.POWERS;
@@ -474,7 +474,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 10, hi: 25 }), ct('sample', { k: 1, pay: 11 })]; const f0 = P.funds;
   s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost - s.rec.ops + 10 + 11 + paid())) < 1e-6,
+  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost - s.rec.ops + (10 + 11) * api.khYield() + paid())) < 1e-6,
     `${s.rec.cdone.join(' + ')} + Above the weather; funds ${f0}M → ${P.funds.toFixed(2)}M before refurbishment`);
   // capacity: two at first, growing with contracts done
   fresh(); P.day = 0; P.offers = [1, 2, 3, 4].map(i => ({ ...ct('apex', { lo: 10, hi: 25 }), id: i, expires: 50 })); const took = [1, 2, 3].map(i => api.acceptOffer(i)); const c0cap = api.capOf(); P.cdone = 6;
@@ -1366,6 +1366,37 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const gap = api.groundGap(x), seaGap = len(x.r) - R + x.yBot;
   check("the warp's ground gap is measured from the ground under the ship", Math.abs(gap - (500 + x.yBot)) < 1e-6 && seaGap > 4500,
     `gap ${gap.toFixed(1)} m (from the sea it would be ${(seaGap / 1e3).toFixed(1)} km)`);
+}
+
+// 25. Know-how (economy): owning a part is not knowing how to use it.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, flights: 0, own: null, decisions: [], active: [], offers: [] }); api.chooseStart('agency'); };
+  // starting points: structure is familiar, big engines aren't; building at home helps
+  fresh('openSuper'); const homeKestrel = api.use0('kestrel'), homeTank = api.use0('t2');
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const impKestrel = api.use0('kestrel'), impCondor = api.use0('condor'), resTank = api.use0('t2');
+  check('know-how starts by tier and origin: tanks familiar, imported engines not; home-made parts start higher', homeKestrel > impKestrel + 0.25 && resTank > impKestrel && impCondor < impKestrel && homeTank >= resTank,
+    `Kestrel: home-made ${(homeKestrel * 100).toFixed(0)}%, imported ${(impKestrel * 100).toFixed(0)}% · imported Condor ${(impCondor * 100).toFixed(0)}% · tank ${(resTank * 100).toFixed(0)}%`);
+  // learning by novelty: the first flight through new regimes teaches a lot, the tenth identical one little
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; P.flights = 1;
+  const seen = { kestrel: { fly: 1, maxq: 1, burn: 1 } }, gains = []; let u = api.khUse('kestrel');
+  for (let n = 0; n < 10; n++) { api.khLearn({ khSeen: JSON.parse(JSON.stringify(seen)) }); const v = api.khUse('kestrel'); gains.push(v - u); u = v; }
+  check('know-how grows by novelty: the first flight teaches most, repeats less and less', gains[0] > 3 * gains[9] && gains.every((g, i) => i === 0 || g <= gains[i - 1] + 1e-12) && u < 0.95,
+    `Kestrel use: gains per flight ${gains.map(g => (g * 100).toFixed(1)).join(', ')} pts → ${(u * 100).toFixed(0)}%`);
+  // risk: unfamiliar engines fail to light more often (deterministic per flight)
+  const ignFails = use => { fresh('frugal'); P.flights = 1; P.kh = { sparrow: { use, reg: {} } }; let f = 0;
+    for (let n = 0; n < 400; n++) { P.flights = n + 1; const x = api.newShip(['sci', 't1', 'sparrow']); if (!api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg)) f++; } return f / 400; };
+  const f0 = ignFails(0), f9 = ignFails(0.9);
+  check('reliability: an engine we barely know fails to ignite ~8% of the time; one we know well almost never', f0 > 0.04 && f0 < 0.13 && f9 < 0.01, `ignition failures: ${(f0 * 100).toFixed(1)}% at know-how 0, ${(f9 * 100).toFixed(1)}% at 0.9`);
+  // time and yield: unfamiliar vehicles stack slower; instruments we don't know return less
+  fresh('frugal'); P.kh = {}; const sh = api.newShip(api.PRESETS.Orbiter), slow = api.khVessel(sh); P.kh = Object.fromEntries(sh.parts.map(q => [q.d.key, { use: 1, reg: {} }]));
+  const fast = api.khVessel(sh), y0 = (P.kh = {}, api.khYield()); P.kh = { sci: { use: 1, reg: {} } }; const y1 = api.khYield();
+  check('time and yield: an unfamiliar vehicle takes longer to stack; an instrument we know returns full value', slow < 0.6 && fast === 1 && y0 < 0.75 && y1 === 1,
+    `Orbiter familiarity ${(slow * 100).toFixed(0)}% → stacking ×${(1 + 0.5 * (1 - slow)).toFixed(2)} · instrument yield ${(y0 * 100).toFixed(0)}% → ${(y1 * 100).toFixed(0)}%`);
+  // no effects before a program starts (plain physics in the sim)
+  api.resetHome(); Object.assign(P, { flights: 0, own: null, kh: {} }); const x = api.newShip(['sci', 't1', 'sparrow']);
+  check('know-how stays out of plain physics: no ignition failures before a program has started', !api.khOn() && api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg));
+  fresh(null); P.own = null; P.flights = 0;
 }
 
 // 27. Several vessels in a flight (sats session, stations plan Phase A): separating a probe module makes a vessel; both

@@ -952,6 +952,31 @@ The burning engines light their surroundings: one soft point light per frame for
 **Still open:** one light for all engines (a wide Heavy is lit from its centroid); no shadows (the tower's far side
 gets 15 % wrap light); the ground pool is a flat disc, so off-pad slopes take it roughly.
 
+## Engine ignition (2026-10-07, aerofx session)
+
+An engine used to fade in over 0.12 s. Now it lights the way 1950s–60s engines did. The model is render-side, keyed on
+a per-engine ignition clock: `spoolOf` stamps `sp.ig` whenever the spool starts from (near) zero with the throttle up, so
+staging, relights and throttling up from zero all count.
+- **Igniter flash** (`PROPS[...].ig`, `igT`): kerolox engines lit with TEA-TEB, a pyrophoric mix that flashes vivid
+  green (the F-1's start). Here it is [0.25, 1, 0.35], decaying over 0.3 s. Alcohol has a short orange pyrotechnic
+  flash, hypergolics a faint pink pop, hydrolox a dim blue spark. While it flashes, its colour replaces (not adds to)
+  the young flame's, in the plume, the flame-channel volume and the plume light (× (1 − 0.8 gf)). Added on top, the
+  flash only tinted a saturated yellow-white and never read as green.
+- **Fuel-rich start** (`rich` s): for ~0.7 s on kerolox, the plume balloons near the nozzle (rb × up to 2.7), goes
+  orange and lumpy, its shock diamonds off, and makes soot. The plume's length follows max(spool, 0.6 richness), so the
+  start is a burst instead of a slow grow, and the spool's lag is 0.3 s while starting.
+- `ignOf(e, P)` returns [flash colour × strength, richness] for the plume, impingement and light code.
+- Reference views `refView(68–71)`: the Orbiter's Kestrel 0.04, 0.12, 0.3 and 0.7 s after ignition. `72`: 0.06 s at
+  night. They wait 15 s on the pad first, since the service gantry rolls back over 14 s from the start of a flight
+  (`padSync`, visuals), and they render every step so the render-side clock starts on time. Then they freeze the sim
+  for the capture (`window.simulate` is stubbed; the next `refView` restores it), because the page's live frame loop
+  otherwise ran the sim ~0.2 s on before the screenshot.
+- Bug on the way: an inline `//` comment inserted mid-line swallowed the end of a `for` body (`R0=…}`), and the page
+  went black with "Identifier 'W' has already been declared". Check one-line code edits with
+  `node --check` on the extracted script.
+
+**Still open:** shutdown tail-off (the plume still vanishes at cutoff) and staging puffs, both proposed with this.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -983,6 +1008,41 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.30 — know-how (2026-10-07)
+
+The first slice of the parts-progression design ("The whole parts system, assessed"): owning a part is not knowing how
+to use it.
+
+- **Two facets per part type:**
+  - *use* (`PROG.kh[k].use`): operational familiarity, new;
+  - *limits*: certification (`PROG.cert`), unchanged.
+
+  The player sees one bar: 0.6·use + 0.4·(certification's progress from 50% to 100%).
+- **Starting use** (`use0`): 0.5 structure and tanks, 0.2 small engines, 0.1 big engines and avionics. A part built at
+  home starts +0.3 × the home industry's self-sufficiency higher (the engineers made it): a superpower's own Kestrel
+  50%, an imported one 20%.
+- **Learning** (`khMark`, `khLearn`): every physics step records the regimes each part goes through: flown, max-q
+  > 15 kPa, vacuum, orbit, hot (T/Tmax > 0.5), landed, burning, vacuum burn, failure. At flight end each regime teaches
+  0.18·(1 − use)/(1 + times seen). Measured on a Kestrel flown the same way ten times: +36 points the first flight,
+  under 1 point by the tenth, 85% after ten.
+- **Effects: risk, time and yield, never stat cuts.**
+  - *Risk:* each engine ignition can fail, with probability 0.08·(1 − use)² (5.8% at zero know-how, 0.3% at 0.9).
+    Deterministic per flight, kick and part. A failed pure-ignition event can be retried (at lift-off it's a scrub).
+    A failure teaches too.
+  - *Time:* stacking takes up to ×1.5 for an unfamiliar vehicle (price-weighted familiarity; an unfamiliar Orbiter
+    takes ×1.35).
+  - *Yield:* science contracts pay, and certification gains accrue, × (0.5 + 0.5·use of the instrument package).
+- **Starts with the program:** effects apply once a start is chosen or a flight is flown, so plain physics in the sim
+  (and its tests) is unaffected. Know-how is in `PROG`, so it carries over in a defection (the team's).
+- **One cross-scope line:** `stage()` asks `igniteOK(s, k)` before marking a segment ignited (flagged in ACTIVE_WORK).
+  Autopilot tapes replay the same rolls only while know-how is unchanged; once the team has learned more, a replay can
+  differ, as a real flight would.
+- **UI:** the builder's cost line lists parts that are "New to us" (under 35% use); the Program panel shows a
+  Know-how section (bars, plus home-made / from <supplier> / grey market).
+- **Not yet:** ground testing (test stands), production lines (the second visible number), support packages
+  (provisional, pending the career runner and playtesting), supplier quality.
+
+`test.mjs` §22: 5 new checks; 182 total. Two older checks updated (stacking time, science pay).
 ## v1.29 — ground awareness (2026-10-07, terrain session)
 
 The fixes listed in § v1.27 "Next on this line". With real ground up to ~9 km, landing-related decisions now measure
@@ -2913,8 +2973,32 @@ pressure.
 - **Open — variants vs upgrades in place:** does development produce a new part next to the old one (a "Kestrel B" in
   the palette), or improve the part itself (with fresh certification)? On hold. It touches the builder's palette and the
   planning session's parts.
-- **First slice when building starts** (purely economy): engineering history on parts, test stands, development
-  projects. Coordinate the palette with the builder and flagships with planning.
+- **The whole parts system, assessed (2026-10-07).** Per part, the program faces seven questions, each a mechanic:
+  - *Can we get it?* — the market (built: industrial independence).
+  - *Is this batch any good?* — supplier quality, hidden until our data reveals it.
+  - *Can we use it well?* — **know-how**.
+  - *Do we know its limits?* — certification (built).
+  - *Can we make it?* — a production line plus a learning curve.
+  - *Can we change it?* — development.
+  - *Where is the world?* — a world technology frontier, with experimental parts beyond it (Caio: there is a tech tree
+    in the world, and you can contribute to it and reach experimental parts first).
+
+  Decisions:
+  1. **Know-how is the core (yes).** Engineering history becomes per-part know-how: owning a part ≠ knowing how to use
+     it (Caio's example: an expensive science instrument you don't know how to use; testing it is costly, wears it,
+     and doesn't get the most out of it). Low know-how bites through **risk, time and yield, never fake stat cuts**:
+     ignition failures, slower stacking and checkout, instruments returning less, conservative certification.
+     Certification folds in as the "limits" facet. Gained by flying (by novelty, with diminishing returns), ground
+     testing (money, wear), building it yourself (a domestic line starts with higher know-how), and possibly support
+     packages. Know-how belongs to the team (it carries over in a defection); production lines belong to the country.
+  2. **Two visible numbers per part (yes):** know-how (one bar) and production (none / licensed / own line, with
+     maturity), plus a supplier-quality label once learned. The rest stays under the hood.
+  3. **Support packages** (buying training and the supplier's engineers with a part, at the price of dependence):
+     **provisional**, pending simulation and then playtesting.
+  4. **The world frontier is a later layer (yes),** designed with the planning session. Build order: know-how →
+     production lines → the frontier.
+  - No hard locks anywhere: everything stays buyable and flyable. The frontier and know-how only change how well, and
+    at what risk.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
