@@ -186,17 +186,18 @@ const TELLUS={name:'Tellus',R:1.274e6,mu:9.81*1.274e6**2,rot:2*Math.PI/28800,atm
 const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
 // Nyx: a small captured moon on an inclined, eccentric orbit (8,100–27,900 km, 30°, 33 h), always inside Selene's orbit
 // clear of its SOI. Its SOI breathes with its distance (407–1,401 km). Sized from an n-body study (NOTES, "Nyx").
-const NYX={name:'Nyx',R:1.5e5,mu:0.4*1.5e5**2,atm:0,orb:{a:1.8e7,e:0.55,i:30*Math.PI/180,lan:1.0,argp:0.8,M0:0.5}};
-const BODIES=[];
+const NYX={name:'Nyx',R:1.5e5,mu:0.4*1.5e5**2,atm:0,pert:true,orb:{a:1.8e7,e:0.55,i:30*Math.PI/180,lan:1.0,argp:0.8,M0:0.5}};
+const BODIES=[],PERT_MIN=1e-3;   // PERT_MIN: see the third-body block below
 // A moon's orbit about its parent: fixed Kepler elements (a, e, i, longitude of the node, argument of periapsis, mean
 // anomaly at t=0). Angles are measured in this frame's equator (XZ) with +Y north, so prograde runs +X → −Z.
 function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if(!parent)return b;parent.children.push(b);
   const o=b.orb,cO=Math.cos(o.lan),sO=Math.sin(o.lan),cw=Math.cos(o.argp),sw=Math.sin(o.argp),ci=Math.cos(o.i),si=Math.sin(o.i);
   b.P=[cO*cw-sO*sw*ci,sw*si,-(sO*cw+cO*sw*ci)];b.Q=[-cO*sw-sO*cw*ci,cw*si,-(-sO*sw+cO*cw*ci)];
-  b.a=o.a;b.n=Math.sqrt(parent.mu/o.a**3);b.rMin=o.a*(1-o.e);b.rMax=o.a*(1+o.e);b.vMax=b.n*o.a*Math.sqrt((1+o.e)/(1-o.e));
+  b.a=o.a;b.n=Math.sqrt((parent.mu+(b.pert?b.mu:0))/o.a**3);   // a perturbing moon: the pair's relative orbit, consistent with its parent's reflex
+  b.rMin=o.a*(1-o.e);b.rMax=o.a*(1+o.e);b.vMax=b.n*o.a*Math.sqrt((1+o.e)/(1-o.e));
   // SOI: the Laplace radius (m/M)^0.4 × distance. On an eccentric orbit it follows the distance (soiAt); b.soi is its
   // largest value, for conservative tests. soiRate bounds how fast it moves, for rails' step size.
-  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
+  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;b.kap=b.pert?1.05*Math.sqrt(b.mu/parent.mu/PERT_MIN):0;return b}
 addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
 // position and velocity of b relative to its parent at time t
 function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
@@ -205,6 +206,36 @@ function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;
 function moonPos(t){return bodyRel(SELENE,t)[0]}
 function moonVel(t){return bodyRel(SELENE,t)[1]}
 // absolute position (relative to the root); the root is the origin
+// ---- third-body perturbations (open thread 6b). Near a body with pert:true the craft feels both bodies: inside its SOI,
+// the parent's tide (direct pull minus the pull on the moon); in the parent's frame, the moon's pull minus the parent's reflex
+// toward it, wherever that is at least PERT_MIN of the parent's pull (near the moon, and out beyond ~1.3× its distance where the
+// reflex term grows). Elsewhere, low Tellus orbit included, the old exact Kepler rails stand.
+// The parent is treated as moving with the moon (the pair's relative orbit uses μ_parent + μ_moon), which is what makes the
+// two frames agree; an n-body integration of that model matches the hybrid to under a km a day after a flyby (NOTES, 6b).
+function pertAcc(b,r,t){let a=null;
+  if(b.pert){const R=bodyRel(b,t)[0],y=add(r,R),yl=len(y),Rl=len(R);a=mul(add(mul(y,1/(yl*yl*yl)),mul(R,-1/(Rl*Rl*Rl))),-b.parent.mu)}
+  for(const c of b.children)if(c.pert){const R=bodyRel(c,t)[0],d=sub(r,R),dl=len(d),rl=len(r),Rl=len(R),ac=mul(add(mul(d,1/(dl*dl*dl)),mul(R,1/(Rl*Rl*Rl))),-c.mu);
+    if(len(ac)*rl*rl>=PERT_MIN*b.mu)a=a?add(a,ac):ac}
+  return a}
+// can this orbit (elements el about b) feel a perturbation at all? The moon's direct pull reaches PERT_MIN only within
+// kap·r of it (kap = √((m/M)/PERT_MIN)), so the orbit must pass between rMin/(1+kap) and rMax/(1−kap) from the parent.
+const pertNear=(b,el)=>b.pert||b.children.some(c=>c.pert&&el.ap>c.rMin/(1+c.kap)&&el.pe<c.rMax/(1-c.kap));
+// Coasting step planner, shared by rails and the predictor: lim/sp is the old event limit (SOI edges, a floor radius, and
+// now the edge of a perturbed region); pa the perturbation here (null: exact Kepler); hP the step cap when perturbed.
+function coastPlan(b,r,v,t,el,floor){const rl=len(r),sp=len(v)+b.children.reduce((m,c)=>Math.max(m,c.vMax+c.soiRate),0)+(b.soiRate||0)+1;
+  let lim=Infinity,pa=null,hP=Infinity;
+  if(el.pe<floor)lim=rl-floor;
+  for(const c of b.children)if(el.ap>c.rMin-c.soi&&el.pe<c.rMax+c.soi)lim=Math.min(lim,Math.abs(len(sub(r,bodyRel(c,t)[0]))-soiAt(c,t)));
+  if(b.parent&&(el.e>=1||el.ap>b.soiMin))lim=Math.min(lim,Math.abs(soiAt(b,t)-rl));
+  if(pertNear(b,el)){pa=pertAcc(b,r,t);
+    for(const c of b.children)if(c.pert){const dN=len(sub(r,bodyRel(c,t)[0])),edge=dN-c.kap*rl;if(edge>0)lim=Math.min(lim,edge/(1+c.kap));}
+    if(pa){hP=2*Math.PI*Math.sqrt(rl*rl*rl/b.mu)/200;
+      if(b.pert){const dP=len(add(r,bodyRel(b,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/b.parent.mu),Math.PI*2/b.n/400)}
+      for(const c of b.children)if(c.pert){const dP=len(sub(r,bodyRel(c,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/c.mu),Math.PI*2/c.n/400)}}}
+  return{lim,sp,pa,hP}}
+// one coasting step: exact Kepler, or kick–drift–kick (Kepler drift about b, half kicks from the perturbation)
+function coastStep(b,r,v,t,h,pa){if(!pa)return kepler(r,v,h,b.mu);
+  [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}
 const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
 const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
 const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
@@ -766,7 +797,7 @@ function physStep(s,dt){
   const alC=qrot(qi,ctrlAccel(s)),alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
   const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);
   s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;
-  const grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;
+  let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT);if(pa)grav=add(grav,pa)}
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
   integrateRot(s,qrot(s.q,alB),dt);
   simT+=dt;checkSOI(s);groundCheck(s);
@@ -841,19 +872,16 @@ function railsOK(s){
   if(!s.alive)return false;const thr=s.throttle>0&&activeEngines(s).length>0;
   if(s.landed)return!thr;
   return!thr&&len(s.r)-s.body.R>physAlt(s.body)}
-// Advance on rails. Kepler is exact, so the only reason to sub-step is to catch SOI changes and the atmosphere edge.
+// Advance on rails. Kepler is exact, so the only reasons to sub-step are SOI changes, the atmosphere edge, and (near Nyx)
+// the perturbation, which is integrated in kick–drift–kick steps.
 function rails(s,dt){
   coolOnRails(s,dt);
   if(s.landed){simT+=dt;syncLanded(s);return true}
   let rem=dt,guard=0;
   while(rem>1e-9&&guard++<4000){
-    const b=s.body,rl=len(s.r),el=elements(s.r,s.v,b.mu),sp=len(s.v)+b.children.reduce((m,c)=>Math.max(m,c.vMax+c.soiRate),0)+(b.soiRate||0)+1;
-    let lim=Infinity;
-    if(el.pe<b.R+physAlt(b))lim=rl-b.R-physAlt(b);
-    for(const c of b.children)if(el.ap>c.rMin-c.soi&&el.pe<c.rMax+c.soi)lim=Math.min(lim,Math.abs(len(sub(s.r,bodyRel(c,simT)[0]))-soiAt(c,simT)));
-    if(b.parent&&(el.e>=1||el.ap>b.soiMin))lim=Math.min(lim,Math.abs(soiAt(b,simT)-rl));
-    const h=Math.min(rem,Math.max(dt/2000,0.25*lim/sp));
-    const[r,v]=kepler(s.r,s.v,h,b.mu);s.r=r;s.v=v;simT+=h;rem-=h;
+    const b=s.body,el=elements(s.r,s.v,b.mu),{lim,sp,pa,hP}=coastPlan(b,s.r,s.v,simT,el,b.R+physAlt(b));
+    const h=Math.min(rem,Math.max(dt/2000,0.25*lim/sp),hP);
+    const[r,v]=coastStep(b,s.r,s.v,simT,h,pa);s.r=r;s.v=v;simT+=h;rem-=h;
     checkSOI(s);
     if(len(s.r)-s.body.R<physAlt(s.body))return rem<=1e-9}
   return true}
@@ -870,6 +898,23 @@ function stepDebris(dt){
 // the body's own SOI. `off` is the leg body's absolute position at the leg's start (null for the root).
 function predict(s){return predictFrom({b:s.body,r:s.r,v:s.v,t:simT})}
 const absOff=(b,t)=>b.parent?bodyPos(b,t):null;
+// A perturbed leg can't be a conic: integrate it with the rails stepper, keeping a path (positions relative to the leg's body,
+// with times) for the map. It ends at an SOI change, at the ground ('impact'), or at a horizon: two of the moon's orbits when
+// inside its SOI (long enough to see an orbit wrecked or stripped), one revolution or the way out otherwise. Returns the next
+// leg's start, or null.
+function numLeg(st,el,pt){const b=st.b;let r=st.r,v=st.v,t=st.t;
+  const H=b.pert?2*2*Math.PI/b.n:el.e<1?Math.min(el.period,40*86400):(timeToR(el,Math.max(...b.children.map(c=>c.rMax))*1.6)||40*86400);
+  const tEnd=t+H,path=[[r,t]],every=H/1500;let tLast=t,minR=len(r),maxR=minR,guard=0;pt.path=path;
+  while(t<tEnd-1e-6&&guard++<60000){
+    const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,b.mu),b.R),h=Math.min(tEnd-t,Math.max(0.5,0.25*lim/sp),hP);
+    [r,v]=coastStep(b,r,v,t,h,pa);t+=h;const rl=len(r);minR=Math.min(minR,rl);maxR=Math.max(maxR,rl);
+    if(t-tLast>=every){path.push([r,t]);tLast=t}
+    if(rl<b.R){path.push([r,t]);pt.end=r;pt.endKind='impact';pt.endT=t;break}
+    if(b.parent&&rl>soiAt(b,t)){path.push([r,t]);const[bp,bv]=bodyRel(b,t);pt.end=r;pt.endKind='esc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
+      return{b:b.parent,r:add(r,bp),v:add(v,bv),t,off:absOff(b.parent,t)}}
+    for(const c of b.children){const[cp,cv]=bodyRel(c,t);if(len(sub(r,cp))<soiAt(c,t)){path.push([r,t]);pt.end=r;pt.endKind='enc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
+      return{b:c,r:sub(r,cp),v:sub(v,cv),t,off:absOff(c,t)}}}}
+  if(!pt.endKind)path.push([r,t]);pt.minR=minR;pt.maxR=maxR;pt.tEnd=t;return null}
 // When does this leg leave its body's SOI? A fixed SOI is a radius crossing (exact). A breathing one is scanned, then
 // bisected: an outbound leg up to where it crosses the largest SOI; a bound orbit that reaches past the smallest SOI over
 // three of the moon's orbits (it is stripped when the moon swings in and its SOI shrinks below the apoapsis).
@@ -885,7 +930,8 @@ function predictFrom(st0){
   const out=[];let st={...st0,off:null};
   for(let k=0;k<3;k++){
     const el=elements(st.r,st.v,st.b.mu),pt={...st,el,end:null,endKind:null};out.push(pt);
-    if(el.hl<1e-3||k===2)break;
+    if(el.hl<1e-3||k===2&&!pertNear(st.b,el))break;
+    if(pertNear(st.b,el)){const nx=numLeg(st,el,pt);if(!nx||k===2)break;st=nx;continue}
     const b=st.b,tEsc=escTime(st,el);
     let enc=null;
     for(const c of b.children){
@@ -942,10 +988,13 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
-  const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t));r=r.slice();v=v.slice();
+  const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t)),r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;
   const el=elements(r,v,mu);if(el.pe>top)return null;
-  if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));
+  if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));dt0=dt;
     for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}
+  if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;let k=0;   // perturbed: the same stepper as rails
+    while(t<tEnd&&len(r)>b.R){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,mu),b.R),h=Math.min(Math.max(0.05,0.25*lim/sp),hP,tEnd-t);[r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(++k%8===0)keep(r,t)}
+    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b}}
   if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
@@ -2405,7 +2454,7 @@ function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++
 function modelQ(q,pos,shift=0,sc=[1,1,1]){const X=qrot(q,[1,0,0]),Y=qrot(q,[0,1,0]),Z=qrot(q,[0,0,1]),sh=typeof shift==='number'?[0,shift,0]:shift;return mat4(mul(X,sc[0]),mul(Y,sc[1]),mul(Z,sc[2]),add(pos,qrot(q,sh)))}
 
 // ============================================================ app state
-let player=null,recTape=null,impact=null,impT=0,mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
+let player=null,recTape=null,impact=null,impT=0,mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,planCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
 const WARPS=[1,2,4,10,50,100,1000,10000,100000];
 let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
 // smoke puffs, anchored to the planet (they hang in the air the rocket flew through). Visual only: not part of the sim or tapes.
@@ -2773,10 +2822,20 @@ function patchRange(pt){const el=pt.el;
   if(pt.end){let n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=el.nu)n1+=6.2832;return[el.nu,n1]}
   if(el.e<1)return[0,6.2832];
   const rc=pt.b.parent?pt.b.soi:Math.max(...pt.b.children.map(c=>c.rMax))*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;return[el.nu,Math.max(el.nu,nm)]}
+// a perturbed (numeric) leg: its integrated path from now on, the closest pass to the body, and how it ends
+function drawPath(pt,k,off,col,dash,tag,seg,labels,list){const P=pt.path,bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;let pv=null,lo=null;
+  for(let i=0;i<P.length;i++){const[r,t]=P[i];if(t<simT&&i<P.length-1&&P[i+1][1]<=simT)continue;const p=add(off,r);if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p;
+    const rl=len(r);if(t>=simT&&(!lo||rl<lo.rl))lo={rl,p}}
+  if(lo&&pt.endKind!=='impact')labels.push({p:lo.p,t:'Pe '+fmtD(lo.rl-bR)+tag,c:hc});
+  if(pt.endKind==='impact')labels.push({p:add(off,pt.end),t:`Impact in ${fmtT(pt.endT-simT)}${pt.b.pert?' (perturbed)':''}`+tag,c:'#ff6b5a'});
+  if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)}${tag}`,c:'#ffb454'});
+    labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
+  if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:`${pt.b.name} escape in ${fmtT(pt.endT-simT)}`+tag,c:'#cc8cff'})}
 function drawPatches(list,camW,out,labels,cols,dash,tag){
   const seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   list.forEach((pt,k)=>{
     const el=pt.el,off=pt.b.parent?(pt.off||bodyPos(pt.b,simT)):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
+    if(pt.path){drawPath(pt,k,off,col,dash,tag,seg,labels,list);return}
     const[n0,n1]=patchRange(pt),N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
     for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
       const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p}
@@ -2787,8 +2846,15 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
     if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)} · Pe ${nx.el.pe<nx.b.R?'impact':fmtD(nx.el.pe-nx.b.R)}${tag}`,c:'#ffb454'});
       labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
     if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:`${pt.b.name} escape`+tag,c:'#cc8cff'})})}
+// A numeric (perturbed) prediction costs milliseconds, so it isn't redone every frame: it stands while the craft is where it
+// said the craft would be (within a km or 0.1 % of the radius); while thrusting, it's redone at most four times a second.
+function predStill(){const c=predCache,p0=c&&c.p[0];if(!p0||!p0.path||c.body!==S.body||S.landed)return false;
+  const P=p0.path,thr=S.throttle>0&&activeEngines(S).length>0;if(thr)return performance.now()-c.wall<250;
+  if(simT>(p0.endT||p0.tEnd||-Infinity))return false;let i=1;while(i<P.length-1&&P[i][1]<simT)i++;
+  const[a,ta]=P[i-1],[b,tb]=P[i],f=tb>ta?clamp((simT-ta)/(tb-ta),0,1):0,q=add(a,mul(sub(b,a),f));
+  return len(sub(q,S.r))<Math.max(1000,1e-3*len(S.r))*(1+len(sub(b,a))/2e4)}
 function drawMap(VP,camW,labels){
-  if(!predCache||predCache.t!==simT)predCache={t:simT,p:predict(S)};
+  if(!predCache||predCache.t!==simT&&!predStill())predCache={t:simT,p:predict(S),wall:performance.now(),body:S.body};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   // the moons' orbits + SOI rings
   for(const b of BODIES){if(!b.parent)continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
@@ -2798,11 +2864,14 @@ function drawMap(VP,camW,labels){
   drawPatches(predCache.p,camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];
-  if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=bodyPos(p0.b,simT),[n0,n1]=patchRange(p0);
+  if(p0&&p0.path&&!S.landed){const off=bodyPos(p0.b,simT);for(const[r,t]of p0.path)if(t>=simT)mapUI.pickW.push({p:add(off,r),t})}
+  else if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=bodyPos(p0.b,simT),[n0,n1]=patchRange(p0);
     for(let i=0;i<=360;i++){const nu=n0+(n1-n0)*i/360,den=1+el.e*Math.cos(nu);if(den<=1e-6)continue;const rr=el.p/den,t=nuToT(el,nu,simT);
       if(p0.endT&&t>p0.endT)continue;mapUI.pickW.push({p:add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)))),t})}}
   // the planned trajectory after the node, dashed
-  if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
+  if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),key=JSON.stringify([S.body.name,I.t,I.rN.map(x=>Math.round(x/100)),add(I.vN,I.rem).map(x=>Math.round(x*100))]);
+    if(!planCache||planCache.key!==key&&!(planCache.num&&performance.now()-planCache.wall<250)){const p=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planCache={key,p,num:p.some(x=>x.path),wall:performance.now()}}
+    const plan=planCache.p;
     drawPatches(plan,camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
     const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
@@ -2944,7 +3013,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
   else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,1)}
   const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
   // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
-  for(const[b,cen]of[[TELLUS,[0,0,0]],[SELENE,moonPos(simT)]]){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
+  for(const[b,cen]of BODIES.map(b=>[b,bodyPos(b,simT)])){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
     const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
     o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k}
     o.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,[x,y]=era===1?wob(c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t),i):[c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t)];i?o.lineTo(x,y):o.moveTo(x,y)}o.stroke();

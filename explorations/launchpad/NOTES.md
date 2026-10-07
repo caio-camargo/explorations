@@ -1066,6 +1066,62 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## 6b — third-body perturbations near Nyx (2026-10-07, bodies session)
+
+Patched conics called every orbit around Nyx stable. This slice integrates the real three-body problem where it matters.
+
+**Model, and a correction to the earlier study.** In the game Nyx follows a fixed Kepler path about Tellus. The only n-body
+model that agrees with that is one where the pair's relative orbit uses μ_Tellus + μ_Nyx (now `b.n` for a `pert` body) and the
+Tellus frame carries Tellus's reflex toward Nyx. `study_nyx.mjs` mixed the two: a μ_Tellus-only path *with* the reflex, which is
+inconsistent at m/M = 5.6e-4. In a chaotic case that is enough to change the outcome: the 100 km prograde orbit crashes at
+0.52 P there and at 1.51 P in the consistent model. Every other verdict in the study's table stands (prograde wrecked from
+~100 km up, retrograde survives).
+
+**Where.** `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
+Tellus's frame, Nyx's pull minus Tellus's reflex, wherever that is ≥ `PERT_MIN` = 1e-3 of Tellus's pull. A threshold sweep
+against n-body (flybys at Nyx's pe and ap, v∞ 300/800 m/s, error one day later):
+
+| perturbed where | flyby error a day later |
+|---|---|
+| nowhere outside the SOI (patched conics) | 170–10,200 km |
+| within 3 / 10 / 50 × SOI of Nyx, direct pull only, no reflex term | 50–4,800 / 25–1,800 / 4–1,900 km (worse at 50: wrong model, see above) |
+| ratio ≥ 1e-2 | 60–2,900 km |
+| **ratio ≥ 1e-3** (and 1e-4…1e-6, identical) | **0.1–0.6 km** |
+
+The ratio has to include the reflex term. With the direct pull alone the game came out 14 km off on the slow flyby. The reflex
+grows past ~1.3× Nyx's distance, so craft out at Selene's distance are perturbed too. **A real effect, measured:** a
+Selene-bound transfer that misses Selene comes back after one 39 h revolution with its perigee 110 km lower, into the ground (n-body:
+−24 km). Nyx is 5.6e-4 of Tellus, proportionally a twentieth of our Moon, and it moves high perigees by about 100 km a revolution, as
+the Moon does to HEO orbits. Low Tellus orbit sees 2e-6 and keeps exact rails (`30 days at 100000×` unchanged to 1e-8 m).
+
+**How.** `pertNear(b,el)` is an orbit-level prefilter: Nyx's direct pull reaches 1e-3 only within kap·r of it, kap =
+1.05·√((m/M)/1e-3) = 0.79, so the orbit must pass between rMin/(1+kap) and rMax/(1−kap). `coastPlan` is the step planner
+shared by rails, the predictor and `fall()`: the old event limits plus the edge of the perturbed region, and a step cap when
+perturbed (1/200 of the osculating period, 0.02·d^1.5/√μ to the perturber, 1/400 of Nyx's period). `coastStep` is exact
+Kepler, or kick–drift–kick with Kepler drift about the frame's body (symplectic, Wisdom–Holman style). `physStep` adds
+`pertAcc` to gravity. The predictor's perturbed legs are numeric (`numLeg`): a path for the map, ending at an SOI change, at
+the ground ('impact'), or at a horizon of two Nyx orbits inside its SOI (one revolution outside). Impact prediction on Nyx uses
+the same stepper.
+
+**Map.** Perturbed legs draw as their integrated path, with the closest pass and "Impact in … (perturbed)". A numeric
+prediction takes 12–27 ms, so it is cached while the craft stays on it (`predStill`: within a km or 0.1 % of r) and redone at
+most 4× a second while thrusting. The node plan has the same cache. The era map's body loop now iterates `BODIES` (it was
+`[TELLUS, SELENE]`), so Nyx gets its pencil and wireframe outline too.
+
+**Checks** (`test.mjs` §21, 5 new, against an independent RK4 n-body):
+- a 200 km prograde orbit started at Nyx's apoapsis: n-body down at 0.493 P, rails 0.493 P, predicted 0.493 P
+- the retrograde twin is bound after 2 P, and predicted bound
+- one Nyx orbit flown in 60 s chunks vs 1 h chunks: 133 m apart, 0.27 km from n-body
+- the slow flyby at Nyx's periapsis: 0.57 km from n-body a day later
+- 123 µs per warp frame at 100,000× in a 60 km orbit
+
+§20's stripping check now expects the perturbed answer: the 150–971 km retrograde orbit is pumped out at +5.7 h, not the
+patched-conic +12.9 h. Predicted and flown agree.
+
+**Not yet:** node positions still come from Kepler (`nodeInfo`), so a node far ahead on a perturbed leg sits slightly off the
+drawn path. Selene perturbs nothing, though at 0.0123 of Tellus it would matter more than Nyx: making it `pert` is one flag, but
+it changes every Selene trajectory and the tests built on them. Debris near Nyx ignores the tide.
+
 ## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
 
 Open thread 6. A local clone at `C:/Users/caioa/dev/launchpad-bodies` (a different machine from the other sessions).
@@ -2026,6 +2082,6 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"). Next on that line: **6b, third-body perturbations near Nyx** (Encke in rails and
-   the predictor, so prograde orbits get wrecked at its periapsis as they do in n-body); more moons are now one `addBody` each.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations near Nyx~~ done (§ "6b"). Next on that line: Selene as a
+   perturber (`pert:true`, then re-baseline the Selene tests); node positions on perturbed legs; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
