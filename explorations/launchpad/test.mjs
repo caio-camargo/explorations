@@ -87,14 +87,17 @@ function fly(preset, { turnStart = 1000 * AS, turnEnd = 45000 * AS, target = (AT
   const ap = (r.el.ap - TELLUS.R) / 1000, pe = (r.el.pe - TELLUS.R) / 1000;
   check('Orbiter reaches a stable orbit', r.phase === 'done' && pe > ATM / 1e3, `Ap ${ap.toFixed(1)} km, Pe ${pe.toFixed(1)} km at T+${r.t.toFixed(0)} s; ` +
     `Δv spent ${r.dvUsed.toFixed(0)} m/s, left ${r.dvLeft.toFixed(0)} m/s; max q ${(r.maxQ / 1000).toFixed(1)} kPa, max ${r.maxG.toFixed(1)} g`);
-  // 3b. once there, the orbit is held on rails: 30 days of warp must not move Ap/Pe
-  const s = r.s, e0 = elements(s.r, s.v, TELLUS.mu);
+  // 3b. once there, the orbit is held on rails: 30 days of warp give the same orbit as small steps. (Since 6b the moons'
+  // tides reach low orbit, so Ap/Pe really do drift a little; what warp must not do is change the answer.)
+  const s = r.s, e0 = elements(s.r, s.v, TELLUS.mu), st0 = { r: s.r.slice(), v: s.v.slice(), t: api.t };
   check('railsOK in orbit', api.railsOK(s));
   const t0 = performance.now(); let frames = 0;
-  while (api.t < r.t + 30 * 86400) { api.rails(s, 100000 / 60); frames++; }
-  const e1 = elements(s.r, s.v, TELLUS.mu);
-  check('30 days at 100000× changes nothing', Math.abs(e1.ap - e0.ap) < 0.01 && Math.abs(e1.pe - e0.pe) < 0.01,
-    `ΔAp ${(e1.ap - e0.ap).toExponential(1)} m, ΔPe ${(e1.pe - e0.pe).toExponential(1)} m; ${((performance.now() - t0) / frames * 1000).toFixed(1)} µs per warp frame`);
+  while (api.t < st0.t + 30 * 86400 - 1e-6) { api.rails(s, Math.min(100000 / 60, st0.t + 30 * 86400 - api.t)); frames++; }
+  const us = (performance.now() - t0) / frames * 1000, e1 = elements(s.r, s.v, TELLUS.mu), rW = s.r.slice();
+  s.r = st0.r.slice(); s.v = st0.v.slice(); api.t = st0.t; while (api.t < st0.t + 30 * 86400 - 1e-6) api.rails(s, Math.min(60, st0.t + 30 * 86400 - api.t));
+  const e2 = elements(s.r, s.v, TELLUS.mu);
+  check('30 days at 100000× = 30 days in 60 s chunks (warp is exact); tides from the moons move Ap/Pe by under a km', Math.abs(e1.ap - e2.ap) < 1 && Math.abs(e1.pe - e2.pe) < 1 && Math.abs(e1.ap - e0.ap) < 1000 && Math.abs(e1.pe - e0.pe) < 1000,
+    `warp vs small steps: ΔAp ${(e1.ap - e2.ap).toExponential(1)} m, ΔPe ${(e1.pe - e2.pe).toExponential(1)} m, ${len(sub(rW, s.r)).toFixed(1)} m apart; tidal drift in 30 days: Ap ${(e1.ap - e0.ap).toFixed(0)} m, Pe ${(e1.pe - e0.pe).toFixed(0)} m; ${us.toFixed(0)} µs per warp frame`);
 }
 // 4. Lunar transfer: from a circular 80 km orbit, a prograde kick at the right phase finds Selene.
 {
@@ -481,7 +484,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     x.r = [r0, 0, 0]; x.v = [0, v * Math.sin(i), -v * Math.cos(i)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
   fresh(); P.day = 0; P.done.beeper = { flight: 0 }; P.active = [ct('sat', { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50 }, 'com'), ct('sat', { alt: 150, tol: 20, inc: 30, itol: 3, pay: 60 }, 'com')]; const f1 = P.funds;
   orbAt(['sci'], 150, 0);
-  check('satellite contract: a centred 150 km equatorial orbit pays with the full precision bonus; the 30° one stays open', P.active.length === 1 && P.active[0].p.inc === 30 && Math.abs(P.funds - f1 - 50 * 1.3) < 1e-6,
+  check('satellite contract: a centred 150 km equatorial orbit pays with the full precision bonus; the 30° one stays open', P.active.length === 1 && P.active[0].p.inc === 30 && Math.abs(P.funds - f1 - 50 * 1.3) < 1e-3,   // 1e-3: since 6b the moons' tides nudge even a 60 s test orbit
     `paid ${(P.funds - f1).toFixed(1)}M for a 50M contract`);
   orbAt(['sci'], 150, 30);
   check('…and an orbit in the 30° plane completes the other', P.active.length === 0, `${P.cdone} contracts done`);
@@ -893,10 +896,13 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 21. Third-body perturbations near Nyx (6b): rails, the predictor and an independent n-body integration agree.
 {
   const { NYX, bodyRel, soiAt } = api, P = 2 * Math.PI / NYX.n, muT = TELLUS.mu, muN = NYX.mu;
-  // truth: RK4 in Tellus's frame with Tellus's reflex (the model the game's Nyx motion is consistent with), tight steps
-  const acc = (r, t) => { const R = bodyRel(NYX, t)[0], d = sub(r, R), dl = len(d), rl = len(r), Rl = len(R);
-    return add(add(mul(r, -muT / rl ** 3), mul(d, -muN / dl ** 3)), mul(R, -muN / Rl ** 3)); };
-  const nbody = (r, v, t, t1, stop) => { while (t < t1) { const h = Math.min(0.005 * Math.min(len(sub(r, bodyRel(NYX, t)[0])) ** 1.5 / Math.sqrt(muN), len(r) ** 1.5 / Math.sqrt(muT)), 60, t1 - t);
+  // truth: RK4 in Tellus's frame with Tellus's reflex toward each moon (the model the moons' motion is consistent with), tight steps
+  // Each moon is checked against its own consistent three-body problem: the moons ride fixed paths, so with both on, n-body
+  // would have Selene pull a craft orbiting Nyx but not Nyx itself. The game keeps only Tellus's tide inside Nyx's SOI.
+  SELENE.pert = false; let MOONS = [NYX];
+  const acc = (r, t) => { let a = mul(r, -muT / len(r) ** 3);   // Tellus, then each moon's pull and Tellus's reflex toward it
+    for (const m of MOONS) { const R = bodyRel(m, t)[0], d = sub(r, R); a = add(a, add(mul(d, -m.mu / len(d) ** 3), mul(R, -m.mu / len(R) ** 3))); } return a; };
+  const nbody = (r, v, t, t1, stop) => { while (t < t1) { const h = Math.min(0.005 * Math.min(...MOONS.map(m => len(sub(r, bodyRel(m, t)[0])) ** 1.5 / Math.sqrt(m.mu)), len(r) ** 1.5 / Math.sqrt(muT)), 60, t1 - t);
       const k1v = acc(r, t), k1r = v, k2v = acc(add(r, mul(k1r, h / 2)), t + h / 2), k2r = add(v, mul(k1v, h / 2)), k3v = acc(add(r, mul(k2r, h / 2)), t + h / 2), k3r = add(v, mul(k2v, h / 2)), k4v = acc(add(r, mul(k3r, h)), t + h), k4r = add(v, mul(k3v, h));
       r = add(r, mul(add(add(k1r, mul(k2r, 2)), add(mul(k3r, 2), k4r)), h / 6)); v = add(v, mul(add(add(k1v, mul(k2v, 2)), add(mul(k3v, 2), k4v)), h / 6)); t += h; if (stop && stop(r, t)) break; } return [r, v, t]; };
   const ship = (r, v, b, t) => { api.t = t; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; return s; };
@@ -935,6 +941,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const [rc, vc] = circ(60e3, -1), sc = ship(rc, vc, NYX, tAp); const t0 = performance.now(); let fr = 0; while (api.t < tAp + P) { api.rails(sc, 100000 / 60); fr++; }
   const us = (performance.now() - t0) * 1000 / fr;
   check('6b: a perturbed orbit at 100,000× warp stays cheap', us < 2000, `${us.toFixed(0)} µs per warp frame (60 km orbit about Nyx), ${fr} frames`);
+  // a maneuver node 4 h ahead on a perturbed orbit sits where rails actually take the craft (Kepler alone would miss it)
+  { const [r, v] = circ(250e3, -1), s = ship(r, v, NYX, tAp); s.node = { t: tAp + 4 * 3600, dv: [10, 0, 0] };
+    const I = api.nodeInfo(s), kep = api.kepler(r, v, 4 * 3600, muN)[0], I2 = api.nodeInfo(s);
+    while (api.t < tAp + 4 * 3600 - 1e-6) api.rails(s, Math.min(600, tAp + 4 * 3600 - api.t));
+    check('6b: a node on a perturbed orbit is placed where the craft will be (integrated, then cached)', len(sub(I.rN, s.r)) < 200 && I2.rN === I.rN,
+      `node state vs rails at the node: ${len(sub(I.rN, s.r)).toFixed(0)} m; Kepler alone: ${(len(sub(kep, s.r)) / 1e3).toFixed(1)} km`); }
+  // 22. Selene perturbs too (the same machinery, kap > 1): checked against Tellus + Selene n-body, with Nyx's perturbation off.
+  SELENE.pert = true; NYX.pert = false; MOONS = [SELENE];
+  const PS = 2 * Math.PI / SELENE.n;
+  // a 100 km circular lunar orbit, one day: Tellus's tide inside Selene's SOI
+  { const [sp, sv] = bodyRel(SELENE, 0), u = norm(sp), w = norm(cross(cross(sp, sv), u)), rr = SELENE.R + 100e3, vc = Math.sqrt(SELENE.mu / rr);
+    const s = ship(mul(u, rr), mul(w, vc), SELENE, 0); while (api.t < 86400 - 1) api.rails(s, 600);
+    const [rT] = nbody(add(sp, mul(u, rr)), add(sv, mul(w, vc)), 0, api.t), e = s.body === SELENE ? len(sub(add(s.r, bodyRel(SELENE, api.t)[0]), rT)) : NaN;
+    check('6b: Selene: a 100 km lunar orbit flown a day on rails matches Tellus+Selene n-body', e < 2000, `${(e / 1e3).toFixed(2)} km off after a day (period ${(2 * Math.PI * Math.sqrt(rr ** 3 / SELENE.mu) / 60).toFixed(0)} min)`); }
+  // a translunar coast through Selene's SOI and out again, two days
+  { const r0 = TELLUS.R + 110e3, at = (r0 + SELENE.a) / 2, tof = Math.PI * Math.sqrt(at ** 3 / muT), f0 = SELENE.n * tof + SELENE.orb.M0, ph = Math.atan2(Math.sin(f0), Math.cos(f0)) + Math.PI - 0.06;
+    const vp = Math.sqrt(muT * (2 / r0 - 2 / (r0 + SELENE.a)));
+    let R0, V0, s, p;   // search the departure angle for a pass 200–3,000 km above Selene (predicted with perturbations)
+    for (let k = 0; k < 40; k++) { const q = ph - 0.01 * k; R0 = [r0 * Math.cos(q), 0, -r0 * Math.sin(q)]; V0 = [-vp * Math.sin(q), 30, -vp * Math.cos(q)];
+      s = ship(R0, V0, TELLUS, 0); p = api.predict(s); const L = p.find(x => x.b === SELENE); if (L && L.minR > SELENE.R + 2e5 && L.minR < SELENE.R + 3e6) break; } let inS = false; while (api.t < 2 * 86400 - 1) { api.rails(s, 600); if (s.body === SELENE) inS = true; }
+    const [rT] = nbody(R0, V0, 0, api.t), rG = s.body === SELENE ? add(s.r, bodyRel(SELENE, api.t)[0]) : s.r;
+    check('6b: Selene: a translunar coast through its SOI matches n-body after two days; the predictor follows it', inS && len(sub(rG, rT)) < 10000 && p.some(x => x.path),
+      `${(len(sub(rG, rT)) / 1e3).toFixed(2)} km off (Selene pass ${((p.find(x => x.b === SELENE) || {}).minR / 1e3 - SELENE.R / 1e3).toFixed(0)} km up); legs ${p.map(x => x.b.name + (x.path ? '~' : '') + (x.endKind ? '→' + x.endKind : '')).join(' ')}`); }
+  NYX.pert = true;
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
