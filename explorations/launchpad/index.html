@@ -816,7 +816,7 @@ function tapeCut(pl){const T=tapeNew(pl.tape.stack);T.ops=JSON.parse(JSON.string
 
 // ============================================================ rendering (raw WebGL2)
 const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
-const gl=cv.getContext('webgl2',{antialias:true,depth:true,powerPreference:'high-performance'});
+const gl=cv.getContext('webgl2',{antialias:true,depth:true,stencil:true,powerPreference:'high-performance'});
 if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'}
 const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
 const QUAD_VS=`#version 300 es
@@ -826,8 +826,10 @@ precision highp float;
 in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
-uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;
+uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=5600.,HM=1200.,SUNI=22.;
+// filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
+vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
  return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
@@ -863,15 +865,38 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
  trans=exp(-(BR*odR+BM*1.1*odM));
  float mu=dot(d,uSun),g=.76,pR=3./(16.*3.14159)*(1.+mu*mu),pM=3./(8.*3.14159)*((1.-g*g)*(1.+mu*mu))/((2.+g*g)*pow(1.+g*g-2.*g*mu,1.5));
  return SUNI*(sR*BR*pR+sM*BM*pM);}
-vec3 tellus(vec3 pf,float det,float fade,out float ocean){
- vec3 dl=pf-vec3(1,0,0);float c=fbm(pf*2.2)+.42*exp(-dot(dl,dl)*30.);
- vec3 col;ocean=0.;
- if(c<.52){ocean=1.;col=mix(vec3(.004,.02,.07),vec3(.01,.06,.14),smoothstep(.3,.52,c));}
- else{float m=fbm(pf*9.+5.);col=mix(vec3(.05,.12,.03),vec3(.2,.16,.08),smoothstep(.45,.7,m));
-  col=mix(col,vec3(.16,.14,.12),smoothstep(.64,.76,c));col=mix(col,vec3(.22,.2,.12),smoothstep(.535,.52,c)*.6);
-  float mid=fbm(pf*90.+2.);col*=.7+.6*mid;col=mix(col,vec3(.03,.07,.02),smoothstep(.55,.7,fbm(pf*420.))*.6);
-  col*=.8+fade*.4*det+(1.-fade)*.2;}
- float ice=smoothstep(.8,.87,abs(pf.y)+.08*fbm(pf*12.));return mix(col,vec3(.75,.8,.85),ice*(1.-ocean*.3));}
+// ---- the ground. The coastline (c = 0.52) is untouched — the CPU's land mask and the cities depend on it — but the land is
+// now biomes from temperature and moisture, with ridged mountains and rolling hills that only shade (a lighting normal from
+// the height field's slope; the physics still sees a smooth sphere).
+float ridge(vec3 p){float s=0.,a=.5;for(int i=0;i<3;i++){float r=1.-abs(2.*vn(p)-1.);s+=a*r*r;p=p*2.1+vec3(3.1,1.7,4.9);a*=.5;}return s;}
+float relief(vec3 u,float c){return smoothstep(.6,.8,c)*ridge(u*16.)*1.3+.22*vn(u*70.)*smoothstep(.52,.58,c);}
+vec3 tellus(vec3 pf,vec3 loc,float det,float fade,out float ocean,out vec3 bump){
+ vec3 dl=pf-vec3(1,0,0);float c=fbm(pf*2.2)+.42*exp(-dot(dl,dl)*30.);ocean=0.;bump=vec3(0.);
+ if(c<.52){ocean=1.;vec3 col=mix(vec3(.003,.016,.06),vec3(.007,.04,.11),smoothstep(.3,.45,c));
+  return mix(col,vec3(.02,.11,.12),pow(smoothstep(.47,.52,c),2.));}                       // shallow turquoise shelf at the coast
+ float lat=abs(pf.y),h=relief(pf,c);
+ vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-4,0,0)),t2=cross(pf,t1);const float e=.0012;
+ bump=(t1*(relief(normalize(pf+t1*e),c)-h)+t2*(relief(normalize(pf+t2*e),c)-h))*(.006/e);
+ float temp=1.-lat*1.3-h*.35,moist=fbm(pf*4.+vec3(20.,3.,7.));
+ vec3 grass=vec3(.10,.16,.045),forest=vec3(.035,.085,.028),desert=vec3(.33,.24,.13),tundra=vec3(.18,.17,.13),rock=vec3(.17,.15,.12);   // ~real albedos: forest .1, grass .2, desert .35
+ vec3 col=mix(grass,forest,smoothstep(.47,.6,moist));
+ col=mix(col,desert,smoothstep(.55,.75,temp)*smoothstep(.52,.4,moist));
+ col=mix(col,tundra,smoothstep(.42,.22,temp));
+ col=mix(col,rock,smoothstep(.3,.7,h));
+ col=mix(col,vec3(.17,.15,.10),smoothstep(.535,.52,c)*.8);                                  // beaches
+ float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,forest,smoothstep(.56,.7,fbm(pf*420.))*.5*(1.-smoothstep(.55,.75,temp)));
+ // close up: a patchwork of fields where it's green and flat
+ if(fade>0.){vec2 cl=floor(loc.xz/260.);float hsh=fract(sin(dot(cl,vec2(12.9898,78.233)))*43758.55),farm=fade*smoothstep(.62,.5,moist)*(1.-smoothstep(.2,.4,h))*(1.-smoothstep(.6,.75,temp));
+  col=mix(col,col*mix(vec3(.75,.85,.6),vec3(1.35,1.2,.7),hsh),farm*.8);col*=.85+.3*det*fade;}
+ float snow=smoothstep(1.,1.18,h+(1.-temp)*.3)*smoothstep(.35,.7,vn(pf*220.)+h*.3),ice=smoothstep(.8,.87,lat+.08*fbm(pf*12.));
+ return mix(col,vec3(.75,.8,.85),max(snow,ice));}
+// clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
+// planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
+// A cheap domain warp (three value-noise lookups) swirls the cells; stretching y makes them run east–west like zonal winds.
+float cloudCov(vec3 u){vec3 w=vec3(vn(u*4.+uCT*.3),vn(u*4.+vec3(5.2,1.3,uCT*.3)),vn(u*4.+vec3(9.1,uCT*.3,2.7)))-.5;
+ vec3 q=(u+w*.22)*vec3(6.,11.,6.)+vec3(uCT,0.,uCT*.6);
+ float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5);return smoothstep(.55,.72,c);}
+float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float tP=1e30,tM=1e30;
@@ -881,11 +906,12 @@ void main(){
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fade=smoothstep(4000.,150.,tP),det=fade>0.?detail(loc):.5,oc;
-  vec3 alb=tellus(pf,det,fade,oc),st=sunTrans(p+n*20.);float ndl=dot(n,uSun);
+  vec3 bump;vec3 alb=tellus(pf,loc,det,fade,oc,bump),st=sunTrans(p+n*20.);vec3 nb=normalize(n-transpose(uProt)*bump*(1.-oc));   // bump is planet-fixed; n is inertial
+  float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
   // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
   vec4 ct=texture(uCity,vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5));float urb=ct.r*(1.-oc);
   float street=0.;if(urb>.01){vec2 g=abs(fract(loc.xz/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
-  col=alb*(max(ndl,0.)*st*5.+vec3(.01,.016,.03));
+  col=alb*(ndb*st*5.*cloudShadow(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
   col+=vec3(1.,.72,.38)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
   if(oc>.5)col+=st*pow(max(dot(reflect(d,n),uSun),0.),90.)*1.5*step(0.,ndl);
@@ -905,19 +931,44 @@ void main(){
   float sdn=dot(d,uSun);
   col=ins+trans*(vec3(star)*.6+vec3(1.,.95,.85)*(smoothstep(.99996,.99999,sdn)*60.+pow(max(sdn,0.),900.)*2.));
  }
- col=1.-exp(-col*1.1);o=vec4(pow(col,vec3(1./2.2)),1.);
- gl_FragDepth=tH<1e29?min(log2(1.+tH*dot(d,uF))*uFc*.5,.9999999):1.;
+ // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
+ // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
+ float tC=-1.,tD=tH;
+ if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
+ if(tC>0.&&tC<tH){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float cov=cloudCov(cu);
+  // up close: billowy detail on top of the weather-scale coverage (fades out with distance, so orbit views pay nothing)
+  float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){dn=vn(cu*2600.+uCT*3.)*.6+vn(cu*7800.)*.4;cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
+  if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
+   vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
+   vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
+   vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
+   col=mix(col,cc*tr+ic,cov*.95);if(cov>.5)tD=tC;}}
+ col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
+ gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
-layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;
-uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP;out float vW;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;}`;
+layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;
+uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP;out float vW,vM;
+void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;}`;
 const MESH_FS=`#version 300 es
-precision highp float;in vec3 vN,vC,vP;in float vW;out vec4 o;
-uniform vec3 uSun;uniform float uLit,uAmb,uGlow,uFc;
-void main(){vec3 n=normalize(vN);if(dot(n,vP)>0.)n=-n;
- vec3 c=uGlow>0.?vC*uGlow:vC*(uAmb+uLit*max(dot(n,uSun),0.)*1.15)+vC*uLit*.25*pow(max(dot(reflect(normalize(vP),n),uSun),0.),24.);
- o=vec4(c,1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+precision highp float;in vec3 vN,vC,vP;in float vW,vM;out vec4 o;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc;
+// Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and ground
+// bounce below as hemispheric ambient, Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
+// gradient, then the sky shader's tone curve and gamma — so a white tank and the ground under it finally agree.
+void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
+ if(uShadow>0.){o=vec4(0.,0.,0.,uShadow);return;}
+ if(uGlow>0.){o=vec4(vC*uGlow,1.);return;}
+ vec3 n=normalize(vN);if(dot(n,vP)>0.)n=-n;vec3 V=normalize(-vP);
+ int m=int(vM+.5);float metal=m==1?1.:0.,rough=m==1?.32:m==2?.9:m==4?.06:.42;
+ vec3 alb=pow(vC,vec3(2.2)),F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
+ float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
+ float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
+ vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
+ vec3 sun=uSunCol*uLit,amb=mix(uGnd,uSky,.5+.5*dot(n,uUp));
+ vec3 R=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(R,uUp)));
+ vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+ (m==4?1.:.35));
+ c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
 const LINE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=2) in vec4 aC;uniform mat4 uVP;uniform float uFc;out vec4 vC;out float vW;
 void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vC=aC;}`;
@@ -937,30 +988,60 @@ const CITY_TEX=(()=>{const W=1024,H=512,d=new Uint8Array(W*H*4),R=rng(99);
   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t})();
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS);
+// engine plume: drawn on the unit cone (y 0 at the nozzle → −1 at the tip). White-hot core cooling to orange and red,
+// soft edges (opacity falls with the angle to the view), shock diamonds that fade with altitude, a little flicker.
+const PLUME_VS=`#version 300 es
+layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;uniform mat4 uVP,uM;uniform float uFc;out vec3 vL,vN,vP;out float vW;
+void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vL=aP;vN=mat3(uM)*aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
+const PLUME_FS=`#version 300 es
+precision highp float;in vec3 vL,vN,vP;in float vW;out vec4 o;uniform float uI,uPr,uTime,uFc;
+void main(){float t=clamp(-vL.y,0.,1.);vec3 n=normalize(vN);float edge=pow(abs(dot(n,normalize(vP))),1.5);
+ float shock=1.+.9*uPr*pow(max(0.,cos(t*31.4)),10.)*(1.-t);
+ float core=pow(1.-t,1.6)*shock*(.92+.08*sin(uTime*70.+t*23.));
+ vec3 hot=mix(vec3(1.,.95,.85),vec3(1.,.55,.18),smoothstep(.0,.35,t)),cold=mix(hot,vec3(.65,.15,.04),smoothstep(.3,.9,t));
+ vec3 c=mix(vec3(.55,.62,1.),cold,smoothstep(0.,.12,uPr))*core*edge*uI;   // only near-vacuum plumes go pale blue
+ o=vec4(c,1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// smoke: camera-facing puffs, soft round falloff, lit like the meshes and tone-mapped the same way
+const SMOKE_VS=`#version 300 es
+layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;out vec4 vQ;out float vW,vS;
+void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
+const SMOKE_FS=`#version 300 es
+precision highp float;in vec4 vQ;in float vW,vS;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
+float h(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}
+void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(vQ.xy)+.42*(n-.5);if(r>1.)discard;   // lumpy edge per puff
+ float a=vQ.z*smoothstep(1.,.2,r)*(.75+.5*n);
+ vec3 c=vec3(.86,.85,.83)*(.8+.35*n)*(uLight*(.6+.4*(1.-r))+uAmb*.6)+vec3(1.,.5,.15)*vQ.w*.8;
+ c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);
+const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
 const lineVAO=gl.createVertexArray(),lineBuf=gl.createBuffer();gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,28,0);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,4,gl.FLOAT,false,28,12);gl.bindVertexArray(null);
 function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray(),b=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);
-  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,36,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,36,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,36,24);gl.bindVertexArray(null);
-  return{vao,n:data.length/9,free(){gl.deleteBuffer(b);gl.deleteVertexArray(vao)}}}
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,40,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,3,gl.FLOAT,false,40,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,3,gl.FLOAT,false,40,24);
+  gl.enableVertexAttribArray(3);gl.vertexAttribPointer(3,1,gl.FLOAT,false,40,36);gl.bindVertexArray(null);
+  return{vao,n:data.length/10,free(){gl.deleteBuffer(b);gl.deleteVertexArray(vao)}}}
+// vertex = position, normal, colour, material (colour arrays may carry the material as a 4th entry)
+const VX=10;
 // surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
 function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){
-  const V=(r,y,ca,sa,nr,ny,c)=>out.push(o[0]+r*ca,o[1]+y,o[2]+r*sa,nr*ca,ny,nr*sa,c[0],c[1],c[2]);
+  const V=(r,y,ca,sa,nr,ny,c)=>out.push(o[0]+r*ca,o[1]+y,o[2]+r*sa,nr*ca,ny,nr*sa,c[0],c[1],c[2],c[3]||0);
   for(let i=0;i<prof.length-1;i++){const[r0,y0,c0]=prof[i],[r1,y1,c1]=prof[i+1];let nr=y1-y0,ny=-(r1-r0);const l=Math.hypot(nr,ny);if(l<1e-9)continue;nr/=l;ny/=l;
     for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832,ca0=Math.cos(a0),sa0=Math.sin(a0),ca1=Math.cos(a1),sa1=Math.sin(a1);
       V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca0,sa0,nr,ny,c1);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca0,sa0,nr,ny,c0);V(r1,y1,ca1,sa1,nr,ny,c1);V(r0,y0,ca1,sa1,nr,ny,c0)}}
   const cap=(r,y,c,ny)=>{if(r<=0)return;for(let j=0;j<seg;j++){const a0=j/seg*6.2832,a1=(j+1)/seg*6.2832;
-    out.push(o[0],o[1]+y,o[2],0,ny,0,...c,o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0),0,ny,0,...c,o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1),0,ny,0,...c)}};
+    const k=[c[0],c[1],c[2],c[3]||0];out.push(o[0],o[1]+y,o[2],0,ny,0,...k,o[0]+r*Math.cos(a0),o[1]+y,o[2]+r*Math.sin(a0),0,ny,0,...k,o[0]+r*Math.cos(a1),o[1]+y,o[2]+r*Math.sin(a1),0,ny,0,...k)}};
   if(caps[0])cap(prof[0][0],prof[0][1],prof[0][2],-1);const L=prof[prof.length-1];if(caps[1])cap(L[0],L[1],L[2],1)}
-const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.06,.06,.07],Y:[.75,.6,.15],R:[.7,.12,.1]};
+const C={W:[.86,.87,.88],D:[.16,.17,.19],G:[.55,.57,.6],O:[.85,.42,.12],K:[.36,.33,.31,1],Y:[.75,.6,.15],R:[.7,.12,.1],GL:[.05,.06,.08,4],CON:[.6,.59,.56,2],SH:[.35,.22,.12,2]};
 function box(out,c,hx,hy,hz,col){for(const[ax,s]of[[0,1],[0,-1],[1,1],[1,-1],[2,1],[2,-1]]){const n=[0,0,0];n[ax]=s;const h=[hx,hy,hz],u=(ax+1)%3,v=(ax+2)%3,P=(a,b)=>{const p=c.slice();p[ax]+=s*h[ax];p[u]+=a*h[u];p[v]+=b*h[v];return p};
-  const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])out.push(...q[i],...n,...col)}}
-function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=9){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
-  out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,a[i+6],a[i+7],a[i+8])}}
+  const q=[P(-1,-1),P(1,-1),P(1,1),P(-1,1)];for(const i of[0,1,2,0,2,3])out.push(...q[i],...n,col[0],col[1],col[2],col[3]||0)}}
+function rbox(out,c,hx,hy,hz,col,phi){const a=[];box(a,[0,0,0],hx,hy,hz,col);for(let i=0;i<a.length;i+=VX){const P=rotY([a[i],a[i+1],a[i+2]],-phi),N=rotY([a[i+3],a[i+4],a[i+5]],-phi);
+  out.push(P[0]+c[0],P[1]+c[1],P[2]+c[2],...N,a[i+6],a[i+7],a[i+8],a[i+9])}}
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
-    for(let i=0;i<a.length;i+=9)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8]);return}
+    for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9]);return}
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
     case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
@@ -968,9 +1049,9 @@ function partShape(out,p){
       box(out,[x+rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x-rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x,y+ch/2,z+rr],.035,ch/2,sp/2,C.R);box(out,[x,y+ch/2,z-rr],.035,ch/2,sp/2,C.R)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);
-      lathe(out,[[.12,0,C.K],[.12,.05,C.K]],[x+0.24,y+.62,z+.4],10);break;
+      lathe(out,[[.12,0,C.GL],[.12,.05,C.GL]],[x+0.24,y+.62,z+.4],10);break;
     case'chute':lathe(out,[[.3,0,C.G],[.3,.22,C.G],[.3,.22,C.O],[.16,.38,C.O],[0,.42,C.O]],o);break;
-    case'shield':lathe(out,[[.66,0,[.35,.22,.12]],[.66,.1,[.35,.22,.12]],[.625,.2,C.D]],o);break;
+    case'shield':lathe(out,[[.66,0,C.SH],[.66,.1,C.SH],[.625,.2,C.D]],o);break;
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
@@ -991,10 +1072,10 @@ const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.8
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
 const PAD=(()=>{const a=[];
-  lathe(a,[[7,-.8,C.G],[7,.02,C.G]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
+  lathe(a,[[7,-.8,C.CON],[7,.02,C.CON]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
   lathe(a,[[.45,0,C.R],[.45,22,C.R],[.7,22,C.G],[.7,22.6,C.G]],[4.2,0,0],10);
   for(const[x,z]of[[34,14],[39,21],[-28,30]])lathe(a,[[2.2,0,C.W],[2.2,5,C.W],[1.3,6,C.W],[0,6.3,C.W]],[x,0,z],20);
-  lathe(a,[[11,0,C.G],[11,9,C.G],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
+  lathe(a,[[11,0,C.CON],[11,9,C.CON],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
   lathe(a,[[3,0,C.D],[3,3,C.D]],[20,0,-30],16);return makeMesh(a)})();
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
@@ -1004,6 +1085,13 @@ function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=
     const w=12+R()*30,dpt=12+R()*30,hgt=6+R()*12+core*(40+R()*120),drop=(x*x+z*z)/(2*TELLUS.R),g=.62+R()*.28,w2=R()<.5,col=[g*(w2?1:.94),g*.97,g*(w2?.92:1)];   // light concrete: the mesh shader has no tone map, so mid-greys read as black
     box(a,[x,hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
   const m=makeMesh(a);cityMeshes.set(c,m);return m}
+// ---- light at a point (world): the sun's colour after the air between here and space (same coefficients as the sky
+// shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
+function lightEnv(p){const up=norm(p),h=len(p)-TELLUS.R,mu=dot(up,SUN),BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6*1.1;
+  let odR=0,odM=0;if(h<TELLUS.atm){const b=dot(p,SUN),c=dot(p,p)-(TELLUS.R+TELLUS.atm)**2,tl=-b+Math.sqrt(Math.max(b*b-c,0)),n=10,sl=tl/n;
+    for(let i=0;i<n;i++){const q=madd(p,SUN,(i+.5)*sl),hq=Math.max(0,len(q)-TELLUS.R);odR+=Math.exp(-hq/5600)*sl;odM+=Math.exp(-hq/1200)*sl}}
+  const T=BR.map(b=>Math.exp(-(b*odR+BM*odM))),day=clamp((mu+.08)/.35,0,1),air=Math.exp(-Math.max(h,0)/22000),shine=clamp(mu+.25,0,1)*Math.exp(-Math.max(h,0)/2.5e6);
+  return{sun:T.map(t=>5*t),up,sky:[.30,.45,.80].map(x=>x*.75*day*air),gnd:[.30,.27,.21].map(x=>x*(.6*day*air+.35*shine))}}
 // ---- matrices (column-major)
 function mat4(R,U,Fw,t){return[R[0],R[1],R[2],0,U[0],U[1],U[2],0,Fw[0],Fw[1],Fw[2],0,t[0],t[1],t[2],1]}
 function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
@@ -1014,6 +1102,37 @@ function modelQ(q,pos,shift=0,sc=[1,1,1]){const X=qrot(q,[1,0,0]),Y=qrot(q,[0,1,
 let player=null,recTape=null,impact=null,impT=0,mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
 const WARPS=[1,2,4,10,50,100,1000,10000,100000];
 let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
+// smoke puffs, anchored to the planet (they hang in the air the rocket flew through). Visual only: not part of the sim or tapes.
+const smoke=[];let smokeAcc=0;const WIND=[3.5,0,-2];   // planet-fixed m/s: a light breeze that shears the column as it ages
+function emitSmoke(dt){if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
+  // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
+  const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
+  while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>2500)smoke.shift();
+    const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-e.d.exit*(7+13*S.throttle)*.85,e.pos[2]-S.cm[2]]),   // born where the plume ends
+      jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
+    smoke.push({pf:toPF(TELLUS,add(add(S.r,off),mul(jit,s0*.45)),simT),t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+// Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
+// of CPU a frame with ~1000 puffs.
+let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
+const QC=[-1,-1,1,-1,1,1,-1,-1,1,1,-1,1];
+function drawSmoke(VP,camW,R,U){
+  let w=0;for(let i=0;i<smoke.length;i++){const q=smoke[i],age=simT-q.t0;if(age<=q.life&&age>=0)smoke[w++]=q}smoke.length=w;
+  const n=w;if(!n)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th);
+  if(smokeK.length<n){smokeK=new Float64Array(n*2);smokeI=new Uint32Array(n*2);smokeP=new Float64Array(n*12);smokeV=new Float32Array(n*96)}
+  for(let i=0;i<n;i++){const q=smoke[i],age=simT-q.t0;
+    if(q.ux===undefined){const L=len(q.pf);q.ux=q.pf[0]/L;q.uy=q.pf[1]/L;q.uz=q.pf[2]/L;q.wf=L-TELLUS.R<8000?1:.4}
+    const ra=q.rise*age,wa=age*q.wf,x=q.pf[0]+q.ux*ra+WIND[0]*wa,y=q.pf[1]+q.uy*ra+WIND[1]*wa,z=q.pf[2]+q.uz*ra+WIND[2]*wa;
+    const rx=c*x+sn*z-camW[0],ry=y-camW[1],rz=-sn*x+c*z-camW[2],o=i*6;
+    smokeP[o]=rx;smokeP[o+1]=ry;smokeP[o+2]=rz;smokeP[o+3]=q.s0+q.grow*Math.sqrt(age);smokeP[o+4]=q.a0*(1-age/q.life);smokeP[o+5]=Math.max(0,1-age/.35);
+    smokeK[i]=rx*rx+ry*ry+rz*rz;smokeI[i]=i}
+  const idx=smokeI.subarray(0,n).sort((a,b)=>smokeK[b]-smokeK[a]),v=smokeV;let k=0;
+  for(let m=0;m<n;m++){const i=idx[m],o=i*6,sz=smokeP[o+3],seed=smoke[i].seed;
+    for(let j=0;j<12;j+=2){const cx=QC[j],cy=QC[j+1],a=cx*sz,b=cy*sz;
+      v[k]=smokeP[o]+R[0]*a+U[0]*b;v[k+1]=smokeP[o+1]+R[1]*a+U[1]*b;v[k+2]=smokeP[o+2]+R[2]*a+U[2]*b;
+      v[k+3]=cx;v[k+4]=cy;v[k+5]=smokeP[o+4];v[k+6]=smokeP[o+5];v[k+7]=seed;k+=8}}
+  const E=lightEnv(camW),su=PSMOKE.u;gl.useProgram(PSMOKE.p);gl.uniformMatrix4fv(su.uVP,false,VP);gl.uniform1f(su.uFc,FC);gl.uniform3fv(su.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(su.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+  gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);gl.bufferData(gl.ARRAY_BUFFER,v.subarray(0,k),gl.DYNAMIC_DRAW);
+  gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
 const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
 const keys=new Set();
 let msgTimer=0;
@@ -1033,7 +1152,7 @@ function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pending
   else if(v.kind==='near')HOOK.news(`${stg} lands ${(v.dist/1000-v.city.rad/1000).toFixed(0)} km outside ${v.city.name}; mayor "would like a word"`,'warn');
   else if(v.kind==='sea')HOOK.news(`${stg} splashes down safely at sea`,'ok');
   else if(v.kind==='land')HOOK.news(`${stg} lands in open country, ${(v.dist/1000).toFixed(0)} km from ${v.city.name}`,'ok')}}
-function resetShip(){warpTo=null;player=null;impact=null;pendingDrops.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
+function resetShip(){warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
 
 // ============================================================ editor UI
 const $=id=>document.getElementById(id);
@@ -1203,7 +1322,7 @@ function simulate(dtR){
     if(stepsN>=800)physAcc=0}}
 function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
-  simulate(dtR);
+  const t0s=simT;simulate(dtR);emitSmoke(simT-t0s);
   if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=Math.min(devicePixelRatio||1,1.5);
     S.node.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}
   adaptRes(dtR);
@@ -1246,7 +1365,7 @@ function render(){
     const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);if(ra<S.body.R+1.5)camW=add(bc,mul(rc,(S.body.R+1.5)/ra));
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;
-  gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT);
+  gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
   // ---- sky / planets: one full-screen ray-cast
   gl.useProgram(PSKY.p);const u=PSKY.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
@@ -1256,15 +1375,16 @@ function render(){
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
+   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,(simT*2e-4)%500);   // clouds drift ~20 m/s
    gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}
   gl.depthFunc(gl.ALWAYS);gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
-  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);
+  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);
+  {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
-  const amb=p=>{const h=len(p)-TELLUS.R;return .1+.25*Math.exp(-Math.max(h,0)/9000)*lit(p)};
-  const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.uniform1f(m.uAmb,amb(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
+  const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
    if(len(sub(site,camW))<3e5)drawMesh(PAD,mat4(rotY([0,0,-1],th),rotY([1,0,0],th),rotY([0,-1,0],th),sub(site,camW)),site)}
@@ -1273,9 +1393,16 @@ function render(){
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  if(near&&S.alive&&shipMesh){const p=shipWorld();drawMesh(shipMesh,modelQ(S.q,sub(p,camW),mul(S.cm,-1)),p);
+  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),hb=len(sub(p,bc))-S.body.R+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
+    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
+      const Pr=[1-L[0]*up[0]/ln,-L[1]*up[0]/ln,-L[2]*up[0]/ln,0, -L[0]*up[1]/ln,1-L[1]*up[1]/ln,-L[2]*up[1]/ln,0, -L[0]*up[2]/ln,-L[1]*up[2]/ln,1-L[2]*up[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
+      gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
+      gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
+      gl.uniform1f(m.uShadow,0);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS)}
+    drawMesh(shipMesh,Mship,p);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
+  if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
   if(view==='map'&&mode==='flight')drawMap(VP,camW,labels);
@@ -1284,9 +1411,12 @@ function render(){
   gl.depthFunc(gl.LEQUAL);   // same geometry again at the same depth
   for(const[mesh,M,k]of nightCities){gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uGlow,.22*k);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}   // lit windows, roughly
   gl.depthFunc(gl.LESS);
-  if(near&&S.alive&&S.throttle>0){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R);
-    for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1+1.8*(1-pr)),L=ex*(4+9*S.throttle)*(1+.8*(1-pr));
-      gl.uniformMatrix4fv(m.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));gl.uniform1f(m.uGlow,(.35+.4*S.throttle)*(.45+.55*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}}
+  if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
+    gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uPr,pr);gl.uniform1f(pu.uTime,performance.now()/1000%100);
+    for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1.05+2.2*(1-pr)),L=ex*(7+13*S.throttle)*(1+.9*(1-pr));
+      gl.uniformMatrix4fv(pu.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));
+      gl.uniform1f(pu.uI,(.6+.7*S.throttle)*(.35+.65*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
+    gl.useProgram(PMESH.p)}
   // re-entry plasma: a glowing cap on the upstream side, brighter with the stagnation heat flux
   if(near&&S.alive&&S.qHeat>4e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>1){const d=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),lead=dot(d,Y)>0?S.yTop:S.yBot,
       c=add(sub(p,camW),add(mul(Y,lead),mul(d,0.35))),k=S.radius*1.7,X=norm(cross(d,Math.abs(d[1])<.9?[0,1,0]:[1,0,0])),Z=cross(d,X),I=Math.min(0.55,(S.qHeat-4e4)/1.2e6);

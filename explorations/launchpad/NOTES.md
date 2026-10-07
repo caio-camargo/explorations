@@ -481,6 +481,36 @@ for gameplay to decide; the headline ticker carries a light voice that can be tu
 - **Test-harness slips, again:** stepping only `physStep` froze the debris mid-air, and the "drop" test that never circularized
   produced no drops at all, just a nose-first re-entry. Each bad harness looked like a game bug for a moment.
 
+## v1.10 — graphics pass (2026-10-06)
+
+Everything was a placeholder: flat-shaded parts, a smooth green/brown ball, a cone for a plume. One pass over each, judged
+with three fixed reference scenes (`views.js`: `refView(1)` the Orbiter on the pad, `2` the Lunar rocket at 3 km, `3` the upper
+stage in a 200 km orbit; each rebuilds the same scene deterministically, so screenshots from different versions line up).
+
+- **Parts:** a material channel in the vertex format (paint, metal, matte, glass). The mesh shader has normalized Blinn–Phong
+  plus Fresnel and an environment gradient. Light comes from `lightEnv`: the sun colour through the real atmosphere (reddens
+  at low sun), plus hemispheric sky and ground ambient. Sky and meshes share one ACES tone curve. Before this, white paint
+  clipped flat and grey concrete rendered black.
+- **Ground shadow:** the ship is flattened onto the ground along the sun, stencil-masked so the shadow doesn't double-darken.
+  It appears below 150 m.
+- **Ground:** the coastline is unchanged (the CPU land mask and the cities depend on it). Land is now biomes from temperature
+  and moisture (grass, forest, desert, tundra, rock, snow, beaches, a turquoise shelf). Ridged mountains shade via a relief
+  normal only, so physics still sees a sphere. Field patchwork appears near the camera.
+- **Clouds:** a shell 3 km up. Domain-warped and stretched coverage, drifting with the planet, with shadows cast onto the
+  ground. Up close, a detail term carves the deck into lumps and holes.
+- **Plume:** its own shader with a white-hot core cooling to orange, shock diamonds that fade with altitude, and flicker. It
+  widens and goes pale blue in vacuum.
+- **Smoke:** camera-facing puffs anchored to the planet, spaced by distance flown (not time) so the trail doesn't bead.
+  Puffs have lumpy edges, wind drift, and thin out with air density. Visual only: not in the sim or the tapes.
+
+Cost (same-session A/B against v1.9 at 1024×768, RTX 3050, `render()`+`finish`): pad ≈ same, orbit 1.4 vs 1.4–1.5 ms,
+ascent 2.2 vs 1.55 ms. The first version of the smoke cost **3.3 ms of CPU** per frame for ~950 puffs: vector temporaries
+per puff and per corner. Rewritten into reused typed arrays, it costs about 0.3 ms. `test.mjs` still 44/44 (the pass is
+render-only).
+
+Still rough: the edge-on cloud shell draws a thin bright line at the horizon. The ground right around the pad is plain. Parts
+have no panel seams, soot or AO. Big smoke puffs read as blobs at the plume tip.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

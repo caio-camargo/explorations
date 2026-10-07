@@ -1774,3 +1774,6 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   open). Built the first slice: cities on a CPU port of the shader's land mask, 3-tier city rendering, predicted landing +
   verdict for every dropped stage, range safety, headline ticker. No measurable GPU cost. Parked ideas (eccentric second moon,
   avionics eras, military/space race) are in NOTES. `test.mjs`: 44 checks, all passing. Committed and pushed.
+- **v1.10 graphics pass (same session):** materials + atmospheric sun light + ACES on parts, ground shadow, biome ground
+  with relief shading, cloud shell with shadows, plume shader, smoke trail. Reference scenes in `launchpad/views.js`. Caught
+  a 3.3 ms/frame CPU cost in the smoke builder (fixed). Committed and pushed.
