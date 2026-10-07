@@ -38,6 +38,93 @@
 
 <!-- New entries go here, above the line below -->
 
+## Session 2026-10-01 — Pulse Loop v1.0: DJ-style hypnotic loops
+**Source**: Claude Code · **Operator**: Caio · **Status**: Complete
+
+### Summary
+New exploration `explorations/pulse-loop/`, a single-file WebGL shader with six tempo-locked
+scenes (tunnel, spiral, moiré, kaleido, squares, dots), 5 palettes, tap tempo, pump/warp
+sliders, strobe, and a recorder that captures exactly one loop at 1920×1080. Every time
+dependency has an integer number of cycles per loop, which makes the loop seamless by
+construction.
+
+### Files changed
+- created `explorations/pulse-loop/index.html`, `explorations/pulse-loop/NOTES.md`
+- edited `explorations/README.md` (row), `INDEX.md` (row), `ACTIVE_WORK.md` (claim opened/cleared)
+
+### Verification
+All 6 scenes rendered in the preview pane with no console errors. The murky kaleido and the
+orange "acid" palette were fixed after the first stills. The recorder produced a valid
+1920×1080 VP9 webm (535 KB for a 2 s loop). The first attempts on a freshly opened tab came out
+empty (see NOTES). Motion and pulse feel have **not** been seen (stills only).
+
+### Next Steps
+- [x] v1.1 (same session): organic set added — cells / flesh / veins / anemone, lub-dub "heart" and "swell" pulse shapes, time-periodic gradient noise, derivative-normal wet shading. Bugs found: pow(neg) NaN, ridged-noise glitter. 1080p GPU cost 1.8–8.7 ms for the new scenes. Notes §v1.1
+- [x] v1.2 (2026-10-02): psychedelic colour — hue as a per-scene field (cell id, fold height, depth, passing wave), cyclic pink/blue palettes (candy default), psy slider, saturation push. Lesson: stacked offset hues average to grey. Notes §v1.2
+- [x] v1.2.1: rounded cells — smooth-min over all neighbour gaps instead of d2−d1; shared gap hue hides old polygon edges (9.1 ms @1080p)
+- [x] v1.3: abstract cells (3 drifting translucent layers, neighbour colour bleeding, no membranes) + languid pulse; v1.2.1 archived to pulse-loop/archive/. Lesson: blend kernel softer than ~7 shows lattice seams. 12.5 ms @1080p; live dpr capped at 1
+- [x] v1.4: `zoom` scene (log-polar infinite zoom, beat rush, HUD rings, circuits, spectrum ring; 2.6 ms). Page hung on shader compile → per-scene programs, #if dispatch, array-free soft-min (cells 21.9 s → 1.3 s), KHR_parallel_shader_compile. LESSONS_LEARNED #15. Recorder not re-verified (hidden pane pauses rAF)
+- [ ] Watch it full-screen with music, then tune pump/kick decay by feel
+- [ ] Ideas at the bottom of `pulse-loop/NOTES.md` (mic beat detection, phrase-boundary morphs, offline exact-frame render)
+
+---
+
+## Session 2026-09-10 — NeuroMechFly v2 running locally; leg-coordination × terrain matrix
+**Source**: Claude Code
+**User**: Caio
+**AI Model**: claude-opus-5
+**Status**: Complete
+
+### Summary
+Exploration 6 opened. EPFL's NeuroMechFly v2 (a micro-CT-derived digital twin of an adult
+*Drosophila*, 42 actuated leg DoFs) now runs locally through flygym 2.1.0 + mujoco 3.9.0.
+The baseline CPG walk reproduces EPFL's published tutorial displacement exactly (27.34 mm
+in 2 s), which certifies the install. A 3 × 4 × 3 matrix (CPG / Walknet / hybrid, across
+flat / gapped / blocks / mixed terrain) then produced a genuine surprise: the pure CPG does
+not merely slow down on gapped terrain, it **falls in** (thorax z mean below zero in 2 of 3
+runs, against ~1.0 mm normal body height and 2 mm-deep gaps), while the equally-blind
+Walknet controller never drops below 0.61 mm. Open-loop vs closed-loop is not the axis that
+explains it.
+
+### Decisions Made
+- The venv lives at `C:/Users/caioa/.venvs/flygym`, deliberately OUTSIDE the Google Drive
+  sync boundary. A venv is thousands of small files; inside a synced folder it invites
+  conflicts. Path recorded in `NOTES.md` so a cold session can find it.
+- Measured straightness and thorax height alongside speed. This is what caught the
+  falling-in failure — mean speed alone reported it as mild degradation, which is wrong.
+- Reported the duty-factor explanation as an explicit **hypothesis**, not a finding. Stance
+  state was never logged, so the mechanism is inferred from gait structure, not observed.
+  The measurement that would settle it is named in `NOTES.md`.
+- `out/raw/` (per-run thorax traces) is gitignored; curated media and the json summary are not.
+
+### Actions Taken
+| # | Action | File(s) | Detail |
+|---|--------|---------|--------|
+| 1 | created | `explorations/neuromechfly/baseline.py` | Single CPG walk on flat ground, renders mp4; install smoke test |
+| 2 | created | `explorations/neuromechfly/run_matrix.py` | Controller × terrain matrix, difficulty knob, per-run traces |
+| 3 | created | `explorations/neuromechfly/plot_matrix.py` | Speed + straightness figure from the json |
+| 4 | created | `explorations/neuromechfly/NOTES.md` | Full write-up incl. the seed caveat and open threads |
+| 5 | created | `explorations/neuromechfly/out/` | `matrix.json`, `matrix.png`, baseline + gapped-contrast videos |
+| 6 | edited | `explorations/README.md` | Added the neuromechfly row (branch index) |
+| 7 | edited | `INDEX.md` | Exploration table had drifted — only listed dots. Added the four missing rows plus neuromechfly |
+| 8 | edited | `ACTIVE_WORK.md` | Claimed at start, cleared at close |
+
+### FLAG: INDEX.md duplicates the explorations branch index
+`INDEX.md` carries its own exploration table while telling readers "add rows there, not
+here". It had drifted to a single stale row. Re-synced additively this session, but the
+duplication will drift again. The durable fix is to replace that table with a pointer to
+`explorations/README.md`. Not done here — a structural change beyond this session's scope.
+
+### Next Steps
+- [ ] Log per-leg stance fraction and test the duty-factor hypothesis — the one thing that
+      would turn the main finding from a story into a result
+- [ ] Terrain difficulty sweep: `run_matrix.py --difficulty` already takes the knob; the
+      interesting number is each controller's breaking point, not a fixed-difficulty score
+- [ ] Fix the seed plumbing — `height_range=(0.35, 0.35)` is degenerate and `rand_seed`
+      collides, so terrain never varied across seeds
+- [ ] Vision and olfaction are entirely untouched — the genuinely unusual part of this model
+- [ ] Adhesion ablation (one flag) on non-flat ground
+
 ## Session 2026-08-14 — journey-markov migrated to caio-camargo/retell-viz
 **Source**: Claude Code
 **User**: Caio
@@ -1840,6 +1927,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   and nationalism (a mood that rises with tension). Pick your power or play a random world; a security state's program
   can be cancelled by regime change. Fixed a leak-sign bug found in testing. `test.mjs` 124/124 after merging main.
   Merged to `main` (`7638f3e`).
+- **v1.26 (2026-10-07, economy worktree):** industrial independence: archetypes have a self-sufficiency level, parts
+  come in three tiers, anything home can't make is imported at ×1.5 from the best willing supplier or bought via
+  intermediaries at ×3 when none will sell (sanctions now reach hardware); a young industry's own parts start less
+  certified. The worktree registry had been pruned from another machine; restored this worktree's entry and redid the
+  merge. `test.mjs` 129/129 after merging main. Merged to `main` (`764f4fc`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
@@ -1900,3 +1992,74 @@ the terrain session. Caio: "huge improvement". Merged `main` into `visuals` (cle
 - [ ] Pad next steps (Caio OK'd): floodlights lit at night, swing arms retracting at liftoff, tower height from the rocket
 - [ ] Backlog: liveries / per-nation designs; char that reads on the dark capsule; a real flame trench (terrain's ground)
 - [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad v1.25: terrain and geography (terrain session)
+
+### Summary
+With Caio: geography as gameplay (launch sites by latitude and downrange, landing difficulty, ground stations and line
+of sight, biome science), planned as slices A–E. Built slice A: a generated world with real height. Plates make the
+continents and ranges, the climate comes from prevailing winds and rain shadows, and there are 14 biomes, fjords,
+volcanoes and salt flats. One height function is shared by the physics (landing, toppling, debris, the impact
+predictor) and the sky shader (ray-marched; CPU/GPU agree to a median 1.7 mm). Adapted to the rescale (features kept
+in km, 20 plates, seed 13: an equatorial east-coast pad, two powers cut off from the equator). Worked in worktree
+`launchpad-terrain`, merged `main` in twice, fast-forwarded `main` to `ccb136e`.
+
+### Files
+- `explorations/launchpad/index.html`: the world block, ground contact, the sky shader's terrain and march, the depth pre-pass, pad and city placement, a near-field brightness-ring fix (from v1.10)
+- `explorations/launchpad/terrain-probe.js` (new): the CPU/GPU agreement probe and view helpers
+- `explorations/launchpad/builder.js`: one line, the construction screen over the levelled pad (for the builder session)
+- `explorations/launchpad/test.mjs`: the foreign-station test no longer depends on geography (for the economy session)
+- `explorations/launchpad/NOTES.md`: § v1.25 (plan, how it works, measurements, traps, hand-off)
+
+### Verification
+`test.mjs` 124/124 on the merged `main`. `terrainProbe()`: median 1.7 mm, max 14 cm (2.6 cm near the pad). GPU at
+1024×768: pad 4.2 ms, coast 3.2 ms, rugged grazing 8.8 ms, against about 2–2.6 ms without terrain. Screenshots sent to
+Caio.
+
+### Next steps
+- [ ] Next session: start at NOTES § v1.25 "Next session: where to pick up". Launch sites (slice B) come first.
+- [ ] The cost of low grazing views over rugged terrain; look (coast, ice ranges, salt flats and wetlands gone)
+- [ ] `main` still not pushed
+
+## 2026-10-07 — NeuroMechFly breaking-point sweep (neuromechfly session)
+
+### Summary
+Picked as work that can't collide with the launchpad sessions. Found how much terrain roughness each leg-coordination
+controller takes: 144 runs (gap width 0–0.8 mm and block step 0–0.5 mm × CPG / Walknet / hybrid × 3 seeds). The tripod CPG
+breaks at the first notch (0.1 mm gap, 0.05 mm step); Walknet holds flat to 0.3 mm gaps then drops all at once; the
+closed-loop hybrid lasts longest (0.5 mm). Also logged commanded duty factor, which tests hypothesis 3 from September: it
+explains Walknet over the CPG, but the hybrid wins with the *lowest* duty factor, so there are two routes to robustness
+(static and reactive). Two measurement traps: the worlds end at x = 25 mm (fast flies walk off, so `z_min` is useless
+for "trapped"; now clipped from raw traces), and the body has no collision on rough terrain (tipped flies sink through).
+
+The venv and Python 3.13 had gone, and Windows Smart App Control is now on. Rebuilt on 3.12 (reproduces September to four
+decimals). SAC blocks MuJoCo's `sensor.dll` plugin (moved aside with Caio's OK to `C:/Users/caioa/.venvs/flygym/_blocked_plugins/`),
+the renderer (no videos for now) and numba (no vision). Also committed the previously untracked v1.0 folder first (`1c7c1f6`).
+
+### Files
+- `explorations/neuromechfly/run_matrix.py`: logs commanded stance per leg (duty factor fields in results)
+- `explorations/neuromechfly/sweep_difficulty.py`, `plot_sweep.py` (new); `out/sweep.json`, `out/sweep.png` (new)
+- `explorations/neuromechfly/NOTES.md` v1.0.1: "The machine got stricter", "Breaking points" §6–9, open threads
+- `explorations/README.md` row, `INDEX.md` row, `LESSONS_LEARNED.md` #20
+
+### Next steps
+- [ ] Measured (contact-sensor) duty factor vs commanded, hybrid over gaps
+- [ ] Hybrid without swing extension: is its low duty factor the price of clearance?
+- [ ] Longer worlds (`x_range`) before comparing speeds near flat
+- [ ] `explorations/pulse-loop/` is also untracked in git (not touched here)
+
+## 2026-10-07 — Launchpad pad revisions (visuals session, cont.)
+
+### Summary
+After Caio's review of the launch complex: the umbilical tower is sized to the rocket (3 m above its top, 12.5–60 m). The
+layout is spread out like a real complex: blockhouse ~230 m up-range with its own slab, spur road and cable trench; a
+mobile service gantry rolled back 80 m on rails; gas bottle racks; a ground deluge tank; lightning masts; camera bunkers.
+The rocket no longer hovers in the builder: the pad holds it with hold-down arms (a launch stool at the builder's 3 m
+`LIFT`) and swing arms reaching from the tower, released at liftoff. `builder.js` untouched. Merged to `main` (`d4b56f9`), pushed.
+
+### Files
+- `explorations/launchpad/index.html`: `buildPad(TH, rig)`, `padRig`, `padSync`, `strip`; `views.js` 17; `NOTES.md` § "Revised layout"
+
+### Next steps
+- [ ] Pad: floodlights lit at night; animate the arms swinging back and the gantry rolling
+- [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)

@@ -265,7 +265,7 @@ function refresh(){panel();palette();const t=el('target');if(t)t.innerHTML=statu
 const LIFT=3;   // in the editor the ship hangs this far above the pad (as in a VAB), so parts can go under its bottom
 function changed(){
   if(isEmpty(stackDef)){shipMesh&&shipMesh.free();shipMesh=null;if(S)S.ana=null}
-  else{S.pf=[TELLUS.R-S.yBot+LIFT,0,0];syncLanded(S)}
+  else{S.pf=[TELLUS.R+WORLD.siteH-S.yBot+LIFT,0,0];syncLanded(S)}   // above the levelled pad (terrain: the pad is WORLD.siteH above the sea)
   st.hover=null;st.ghostKey='';st.hiKey='';refresh()}
 function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
   let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(14,S.len*1.5,w*12);cam.pitch=-0.05;cam.edY=0}
