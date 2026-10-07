@@ -1089,6 +1089,43 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('contact: within 5 km of a satellite the flight stays in physics steps', nearOn && farOff, `near: rails ${D.railsOK(s) ? 'on' : 'off'} at 20 km`);
 }
 
+// 23. RCS (sats session): cold-gas quads, jet selection, pulses, attitude control. Its own instance of the sim core.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,railsOK,rcsJets,rcsGas,INP,PROG,TELLUS,DT,G0,PARTS,qrot,qaxis,qmul,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, I = D.INP, fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const design = (stack, host, ys) => { const d = D.toV2(JSON.parse(JSON.stringify(stack))), h = fnd(d.root, host);
+    for (const y of ys) h.c.push({ k: 'rcs', at: { y, a: 0, n: 4, cy: 0.1 }, c: [] });
+    h.c.push({ k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] }); return d; };
+  const fly = (des, set) => { D.t = 0; const s = D.newShip(des), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; set && set(s); return s; };
+  const zero = () => Object.assign(I, { pitch: 0, yaw: 0, roll: 0, tx: 0, ty: 0, tz: 0 });
+  const twin = (des, ax, sec) => { const a = fly(des, s => s.rcs = true), b = fly(des), g0 = D.rcsGas(a); zero(); I[ax] = 1;
+    for (let i = 0; i < sec / D.DT; i++) { D.t = i * D.DT; D.physStep(a, D.DT); D.t = i * D.DT; D.physStep(b, D.DT); } zero();
+    const dv = D.qrot([-a.q[0], -a.q[1], -a.q[2], a.q[3]], sub(a.v, b.v)); return { a, dv, w: len(a.w), gas: (g0 - D.rcsGas(a)) * 1000 }; };
+  // a pod, a tank with two rings of four quads, two bottles: pure translation along the nose and sideways
+  const des = design(['pod', 't1', 'kestrel'], 't1', [0.15, 0.95]), J = D.rcsJets(fly(des)), F = D.PARTS.rcs.rcsF * 1000;
+  const up = twin(des, 'ty', 2), side = twin(des, 'tx', 2), m = up.a.mass, isp = D.PARTS.rcs.isp;
+  check('RCS: forward translation is pure (8 nozzles at full duty), gas used matches Isp 70 s', Math.abs(up.dv[1] - 8 * F / m * 2) / (8 * F / m * 2) < 0.03 && Math.abs(up.dv[0]) + Math.abs(up.dv[2]) < 1e-3 && up.w < 1e-3 && Math.abs(up.gas - 8 * F * 2 / (isp * D.G0)) < 0.1,
+    `${J.N.length} nozzles; Δv ${up.dv[1].toFixed(3)} m/s (expected ${(8 * F / m * 2).toFixed(3)}), cross ${(Math.abs(up.dv[0]) + Math.abs(up.dv[2])).toExponential(0)}, spin ${up.w.toExponential(0)} rad/s, gas ${up.gas.toFixed(2)} kg`);
+  check('RCS: sideways translation is balanced across the two rings; on/off pulsing leaves only a few mrad/s of jitter', side.dv[0] > 0.1 && Math.abs(side.dv[1]) + Math.abs(side.dv[2]) < 0.02 * side.dv[0] && side.w < 5e-3,
+    `Δv ${side.dv[0].toFixed(3)} m/s sideways, cross ${(Math.abs(side.dv[1]) + Math.abs(side.dv[2])).toExponential(0)}, spin ${side.w.toExponential(1)} rad/s`);
+  // one ring only, 1.4 m above the centre of mass: the sideways nozzles alone would turn it, so jet selection fires the
+  // up/down nozzles on either side to cancel that torque. Still pure, at a lower capacity than two rings
+  const oneD = design(['pod', 't1', 'kestrel'], 'pod', [0.5]), one = twin(oneD, 'tx', 2), c1 = D.rcsJets(fly(oneD)).basis[0].cap, c2 = J.basis[0].cap;
+  check('RCS: one ring off the centre of mass still translates sideways without turning; jet selection balances it, at a lower capacity', one.w < 2e-3 && Math.abs(one.dv[1]) + Math.abs(one.dv[2]) < 0.05 * one.dv[0] && c1 < c2,
+    `spin ${one.w.toExponential(1)} rad/s; sideways capacity ${c1.toFixed(0)} N vs ${c2.toFixed(0)} N with two rings`);
+  // attitude with no wheels: a camera-tank-engine stack, nose 0.5 rad off prograde, SAS on. RCS on: it turns, in whole pulses
+  const probe = design(['cam', 't1', 'sparrow'], 't1', [0.15, 0.95]), turn = rcs => { const s = fly(probe, s => { s.sas = true; s.sasMode = 'pro'; s.rcs = rcs; s.q = D.qmul(D.qaxis([1, 0, 0], 0.5), D.qaxis([1, 0, 0], -Math.PI / 2)); }), g0 = D.rcsGas(s);
+    zero(); for (let i = 0; i < 60 / D.DT; i++) { D.t = i * D.DT; D.physStep(s, D.DT); }
+    const Y = D.qrot(s.q, [0, 1, 0]); return { err: Math.acos(Math.max(-1, Math.min(1, dot(Y, norm(s.v))))), pulses: (g0 - D.rcsGas(s)) / (F * D.DT / (isp * D.G0) / 1000), torque: s.torque }; };
+  const on = turn(true), off = turn(false);
+  check('RCS: a vessel with no reaction wheels holds prograde on RCS alone; gas goes in whole 20 ms pulses', on.torque === 0 && on.err < 0.03 && off.err > 0.3 && Math.abs(on.pulses - Math.round(on.pulses)) < 1e-6,
+    `error after 60 s: ${on.err.toFixed(3)} rad with RCS, ${off.err.toFixed(2)} without; ${Math.round(on.pulses)} pulses of ${(F * D.DT).toFixed(0)} N·s`);
+  const r = fly(des, s => { s.rcs = true; s.sas = true; });
+  check('RCS: while it\'s on (SAS on), the flight stays in physics steps', !D.railsOK(r) && D.railsOK(fly(des)), `rails with RCS on: ${D.railsOK(r)}`);
+  zero();
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

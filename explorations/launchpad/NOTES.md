@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.11.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.12.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1769,6 +1769,50 @@ docking on the night side; and contact with debris (also needed before the claw 
 **Questions for Caio:** (a) is the "rigid passenger" model OK (docked things can't share fuel or be re-staged until we
 add that explicitly)? (b) RCS fuel: a separate monopropellant, or draw from the main tanks? (c) which first after RCS:
 the port or the claw?
+
+**Decisions (Caio, 2026-10-07):** docked spacecraft stay separate bodies fixed together (a "superstructure", as in the
+simulator Orbiter): each subsystem runs per body (thrust from every body, aero and heating per body, a load limit on the
+port, contact, rendering, saving), and fuel crosses only through an explicit transfer or crossfeed. RCS has its own
+propellant, starting with cold gas and moving through the eras; thrusters pulse. Order: RCS, then the docking port, then
+the claw.
+
+### RCS (sats session, 2026-10-07)
+
+Translation control, and attitude control that doesn't need reaction wheels. The docking port needs it.
+
+- **Parts** (palette: *Control*): *RCS quad (cold gas)*, a surface part (like the radial fin, with symmetry) with four
+  nozzles: up and down the vessel's axis and both ways round it, 0.15 kN each, Isp 70 s (nitrogen). *Gas bottle*, a
+  surface part holding 15 kg of nitrogen in a 30 kg bottle. New resource `gas`; every bottle aboard feeds every quad.
+  Costs 1.5M and 0.8M. Quads are delicate in a collision (3 m/s). Thirty kilograms on a 4 t stage is ~5 m/s: modest,
+  as cold gas is, and plenty for docking.
+- **Real forces.** Every pulse is `addF` at the nozzle, so placement matters exactly as it should: a translation from
+  quads off the centre of mass turns the vessel unless other nozzles cancel it.
+- **Jet selection.** For each of the 12 signed axes (± force x, y, z; ± torque x, y, z), the non-negative nozzle duties
+  that give that axis alone as nearly as the layout allows, scaled so the busiest nozzle is at 1. Solved exactly (Lawson–
+  Hanson active-set non-negative least squares, with a small ridge term) once per layout and centre of mass (to 5 cm),
+  then cached. A command is a sum of those, clipped to [0, 1]. This is how real jet-select tables work, and it means
+  one ring of quads 1.4 m above the centre of mass still translates sideways without turning: it fires the up/down
+  nozzles on either side to cancel the torque (at 157 N of sideways capacity, against 546 N for two rings).
+- **Pulses.** Nozzles are on or off. A sigma-delta modulator per nozzle, started half-way, turns duty into whole 20 ms
+  pulses (one physics step), so the minimum impulse bit is 0.15 kN × 20 ms = 3 N·s, and fractional duties leave a
+  bounded jitter of a few mrad/s (a real thruster's limit cycle). Starting the modulators at 0 instead of ½ doubled it.
+- **Attitude.** The control law now asks for the authority of wheels + gimbal + RCS (`ctrlAccel(s, true)`): the wheels
+  and gimbal give their part as before, and the RCS fires real pulses for the rest. With RCS off nothing changes (the
+  old call is untouched, and all earlier checks pass unchanged). A vessel with no pod (no wheels) now holds prograde on
+  RCS alone: 0.001 rad after 60 s, against 0.51 rad with RCS off.
+- **Controls:** **R** toggles RCS in flight (revert keeps R when crashed or landed). **I/K** forward/back along the nose,
+  **J/L** and **U/O** sideways on the vessel's two other axes (KSP's H/N clash with Help and Node here). An RCS button
+  under SAS; a HUD row with gas, its Δv and how many nozzles are firing. White puffs at nozzles that fired in the last
+  80 ms. Tapes record the translation keys and the RCS switch; old tapes play back with RCS off.
+- **Physics, not rails,** while RCS is on with SAS on or any control key held: thrusters can't fire on rails.
+- **Mistake on the way:** the first solver was accelerated projected gradient. Opposed nozzles at the same spot cancel
+  exactly, so the problem has no unique answer, and it fired both of a pair at ~10 %: forward thrust gave 90 % of the Δv for
+  108 % of the gas. The ridge term picks the least-effort answer and the active-set solver gets it exactly.
+- Checks (`test.mjs` §23): pure forward translation (Δv within 0.2 %, gas within 0.01 kg of Isp 70 s, no cross motion
+  or spin); sideways across two rings (jitter under 5 mrad/s); one ring balanced; RCS-only attitude hold in whole pulses;
+  physics while on. In the browser: the palette, both parts in the editor, a stage translating in orbit with puffs.
+- **Not yet:** monopropellant and later thrusters for the later eras; a fine-control mode; exhaust hitting other
+  spacecraft; ullage; reaction wheels that saturate; station-keeping. (See the RCS answer in the docking plan.)
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
