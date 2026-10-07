@@ -1785,165 +1785,165 @@ function hitGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.
 function partSDF(g,x,y,z){const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
 function sdfN(g,l){const e=1e-3,f=(x,y,z)=>partSDF(g,x,y,z),[x,y,z]=l;
   return norm([f(x+e,y,z)-f(x-e,y,z),f(x,y+e,z)-f(x,y-e,z),f(x,y,z+e)-f(x,y,z-e)])}
-const hitW=(B,pt)=>add(B.r,qrot(B.q,sub(pt,B.cm))),hitL=(B,w)=>add(qrot(qconj(B.q),sub(w,B.r)),B.cm);
-const hitIw=(B,L)=>{const l=qrot(qconj(B.q),L);return qrot(B.q,[l[0]/B.I[0],l[1]/B.I[1],l[2]/B.I[2]])};   // world I⁻¹·L
-// A part record can sit in its body at a transform (a docked body's parts): tq/tp/tc carry its own frame (centre of mass
-// tc) to position tp in the body's frame, turned by tq. These map part-frame points and normals into the body frame and back.
-const hitV=(a,pt)=>a.tq?add(a.tp,qrot(a.tq,sub(pt,a.tc))):pt,hitVi=(a,v)=>a.tq?add(qrot(qconj(a.tq),sub(v,a.tp)),a.tc):v,hitVn=(a,n)=>a.tq?qrot(a.tq,n):n;
-// a registry entry's own parts as part records (X: the docking transform when it rides on something else)
-const ownRecs=(e,X)=>e.shape.filter(o=>PARTS[o.k]).map(o=>{const d=PARTS[o.k];return X?{o,p:o,d,g:hitGeo(o,d),owner:e,tq:X.q,tp:X.p,tc:e.cm,att:X}:{o,p:o,d,g:hitGeo(o,d),owner:e}});
-// the vessel as a contact body (shares r, v, q, w with s until written back), docked bodies included
-function shipBody(s){const parts=s.parts.filter(p=>p.on).map(p=>({p,d:p.d,g:hitGeo(p,p.d),owner:null}));for(const a of s.att||[])parts.push(...ownRecs(a.e,a));
-  return{r:s.r,v:s.v,q:s.q,w:s.w,m:s.mass,I:s.I,cm:s.cm,parts,R:Math.max(...parts.map(x=>len(sub(hitV(x,x.g.c),s.cm))+x.g.R))}}
-// a satellite's attitude and spin at program time T: locked to its orbital frame until something hits it, then free
-function satSpin(q,T,r,v){if(q.spin){const w=q.spin.w,wl=len(w),dq=wl>1e-12?qaxis(mul(w,1/wl),wl*(T-q.spin.T0)):[0,0,0,1];return{q:qnorm(qmul(dq,q.spin.q0)),w}}
-  return{q:qmul(orbQ(r,v),q.qo),w:mul(cross(r,v),1/dot(r,r))}}
-// diagonal of R·diag(I)·Rᵀ: a body's principal inertia seen from a frame it's turned by q (products of inertia dropped)
-function rotI(q,I){const R=[qrot(q,[1,0,0]),qrot(q,[0,1,0]),qrot(q,[0,0,1])];return[0,1,2].map(k=>R[0][k]**2*I[0]+R[1][k]**2*I[1]+R[2][k]**2*I[2])}
-const SAT_MP=new WeakMap(),SAT_C=new WeakMap();
-// one entry's own body: its inertia about its own centre of mass (part masses as shares of its registered own mass)
-function satOwnMP(e){let M=SAT_MP.get(e.shape);if(M)return M;const L=e.shape.filter(o=>PARTS[o.k]),bm=L.reduce((a,o)=>a+hitBase(PARTS[o.k]),0)||1,k=e.mass/1000/bm;
-  let I=[0,0,0];for(const o of L){const d=PARTS[o.k],pm=hitBase(d)*k*1000,dd=sub(hitGeo(o,d).c,e.cm),pr=d.r,ip=pm*(d.h*d.h/12+pr*pr/4);
-    I=add(I,[pm*(dd[1]**2+dd[2]**2)+ip,pm*(dd[0]**2+dd[2]**2)+pm*pr*pr/2,pm*(dd[0]**2+dd[1]**2)+ip])}
-  M={I};SAT_MP.set(e.shape,M);return M}
-// an entry with everything docked to it: total mass, combined centre of mass (entry frame), inertia, and all the parts
-function satMP(q){let M=SAT_C.get(q);const A=q.attached||[];if(M&&M.shape===q.shape&&M.n===A.length)return M;
-  let m=q.mass,c=mul(q.cm,q.mass);for(const a of A){m+=a.e.mass;c=madd(c,a.p,a.e.mass)}c=mul(c,1/m);
-  const addI=(I,mass,at,Ib)=>{const d=sub(at,c);return add(I,add([mass*(d[1]**2+d[2]**2),mass*(d[0]**2+d[2]**2),mass*(d[0]**2+d[1]**2)],Ib))};
-  let I=addI([0,0,0],q.mass,q.cm,satOwnMP(q).I);for(const a of A)I=addI(I,a.e.mass,a.p,rotI(a.q,satOwnMP(a.e).I));
-  const parts=[...ownRecs(q,null),...A.flatMap(a=>ownRecs(a.e,a))];
-  M={shape:q.shape,n:A.length,m,cm:c,I,parts,R:Math.max(...parts.map(x=>len(sub(hitV(x,x.g.c),c))+x.g.R))};SAT_C.set(q,M);return M}
-const satCM=q=>q.attached&&q.attached.length?satMP(q).cm:q.cm;
-function satBody(q,T){const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v),M=satMP(q);return{sat:q,r,v,q:sp.q,w:sp.w,m:M.m,I:M.I,cm:M.cm,parts:M.parts,R:M.R}}
-const hitNear=s=>s.body===TELLUS&&!s.landed&&satsUp().some(q=>q.shape&&len(sub(satAt(q,progT(s))[0],s.r))<HIT_NEAR);
-// points of each body inside the other: depth-weighted contact point and normal (n points from B toward A), deepest depth,
-// and the part on each side that's most involved
-function hitFind(A,B){let W=0,P=[0,0,0],N=[0,0,0],D=0,pa=null,pb=null;
-  for(const[X,Y,sg]of[[A,B,1],[B,A,-1]])for(const a of X.parts){const ca=hitW(X,hitV(a,a.g.c));if(len(sub(ca,Y.r))>a.g.R+Y.R)continue;
-    for(const b of Y.parts){if(len(sub(ca,hitW(Y,hitV(b,b.g.c))))>a.g.R+b.g.R)continue;
-      for(const pt of a.g.pts){const w=hitW(X,hitV(a,pt)),l=sub(hitVi(b,hitL(Y,w)),b.g.o),dd=partSDF(b.g,l[0],l[1],l[2]);if(dd>=0)continue;
-        const n=mul(qrot(Y.q,hitVn(b,sdfN(b.g,l))),sg);W-=dd;P=madd(P,w,-dd);N=madd(N,n,-dd);if(-dd>D){D=-dd;pa=sg>0?a:b;pb=sg>0?b:a}}}}
-  return W>0&&len(N)>1e-12?{p:mul(P,1/W),n:norm(N),d:D,pa,pb}:null}
-// one impulse at the contact point (restitution HIT_E, Coulomb friction HIT_MU), after pushing the bodies apart.
-// Returns the closing normal speed it removed (0 if they were already separating).
-function hitResolve(A,B,c){const n=c.n,ia=1/A.m,ib=1/B.m,cr=Math.max(0,c.d-HIT_SLOP)/(ia+ib);A.r=madd(A.r,n,cr*ia);B.r=madd(B.r,n,-cr*ib);
-  const ra=sub(c.p,A.r),rb=sub(c.p,B.r),vr=sub(add(A.v,cross(A.w,ra)),add(B.v,cross(B.w,rb))),vn=dot(vr,n);if(vn>=0)return 0;
-  const kk=u=>ia+ib+dot(u,cross(hitIw(A,cross(ra,u)),ra))+dot(u,cross(hitIw(B,cross(rb,u)),rb));
-  const j=-(1+HIT_E)*vn/kk(n);let J=mul(n,j);const vt=sub(vr,mul(n,vn)),vtl=len(vt);
-  if(vtl>1e-9){const t=mul(vt,1/vtl);J=madd(J,t,-Math.min(vtl/kk(t),HIT_MU*j))}
-  A.v=madd(A.v,J,ia);A.w=add(A.w,hitIw(A,cross(ra,J)));B.v=madd(B.v,J,-ib);B.w=sub(B.w,hitIw(B,cross(rb,J)));return-vn}
-const KIT=['cam','ant','sci','ballast','bio'];
-const kitOwn=(e,k)=>e.shape.filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length;
-const kitSet=e=>{for(const k of KIT)e[k]=kitOwn(e,k)+(e.attached||[]).reduce((a,x)=>a+kitOwn(x.e,k),0)};   // an entry's kit counts everything docked to it
-// a satellite (or a body docked to it) loses parts. Delicate parts break off; anything else takes its whole body, and with
-// it whatever was docked through that body. The pieces leave as debris; what's left keeps its centre of mass where it was.
-function satBreak(q,B,list,why,T){
-  const deb=x=>{const pc=[x.o.pos[0],x.o.y0+x.o.h*x.d.cm,x.o.pos[2]],w=hitW(B,hitV(x,pc)),out=sub(w,B.r),ol=len(out);
-    HOOK.debris({body:TELLUS,r:w,v:add(add(B.v,cross(B.w,out)),ol>1e-6?mul(out,0.5/ol):[0,0,0]),q:x.tq?qmul(B.q,x.tq):B.q.slice(),w:B.w.slice(),parts:[{...x.o,d:x.d,on:true}],cm:pc,mass:hitBase(x.d)*1000,t:0})};
-  list.forEach(deb);
-  const cm0=B.cm,gone=new Set();
-  for(const e of new Set(list.map(x=>x.owner))){const lost=list.filter(x=>x.owner===e),keep=e.shape.filter(o=>!lost.some(x=>x.o===o));
-    if(!keep.length||lost.some(x=>!DELICATE.has(x.d.kind))){gone.add(e);continue}
-    const all=e.shape.reduce((a,o)=>a+(PARTS[o.k]?hitBase(PARTS[o.k]):0),0),lm=lost.reduce((a,x)=>a+hitBase(x.d),0),c0=e.cm;
-    e.mass*=Math.max(0.05,1-lm/(all||1));let c=[0,0,0],m=0;for(const o of keep){const d=PARTS[o.k];if(!d)continue;c=madd(c,[o.pos[0],o.y0+o.h*d.cm,o.pos[2]],hitBase(d));m+=hitBase(d)}
-    e.cm=mul(c,1/m);e.shape=keep;
-    if(e!==q){const a=q.attached.find(a=>a.e===e);a.p=add(a.p,qrot(a.q,sub(e.cm,c0)))}}   // a docked body's position follows its centre of mass
-  const A=q.attached||[];
-  if(gone.has(q)){for(const a of A)if(!gone.has(a.e))ownRecs(a.e,a).forEach(deb);   // what was docked to it goes with it
-    const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);if(S&&S.target===q.id)S.target=null;HOOK.news(`${q.name} destroyed in a collision${why}`,'bad');return}
-  if(gone.size){let more=true;while(more){more=false;for(const a of A)if(!gone.has(a.e)&&[...gone].some(g=>g.id===a.host)){gone.add(a.e);more=true;
-      ownRecs(a.e,a).forEach(deb)}}
-    q.attached=A.filter(a=>!gone.has(a.e));for(const g of gone)HOOK.news(`${g.name} destroyed in a collision${why}`,'bad')}
-  SAT_C.delete(q);kitSet(q);
-  const r=add(B.r,qrot(B.q,sub(satCM(q),cm0)));
-  Object.assign(q,{r,v:add(B.v,cross(B.w,sub(r,B.r))),epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});
-  const del=list.filter(x=>!gone.has(x.owner));if(del.length)HOOK.news(`${q.name} loses its ${del.map(x=>x.d.name.toLowerCase()).join(' and ')} in a collision`,'warn')}
-// after each physics step: the ports' loads, then every satellite near enough: docking if two ports meet right, otherwise
-// contact, checked along the step's relative motion
-function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS)return;portLoads(s);if(!s.alive)return;const T=progT(s);let A=null;
-  for(const q of satsUp()){if(!q.shape||!q.shape.length)continue;const[rq,vq]=satAt(q,T),rel=sub(rq,s.r),vrel=sub(vq,s.v);
-    if(!A)A=shipBody(s);const M=satMP(q),reach=A.R+M.R+len(vrel)*dt+0.5;if(len(rel)>reach)continue;
-    const B=satBody(q,T);if(dockTry(s,q,B,T)){A=null;continue}
-    const n=Math.min(400,Math.max(1,Math.ceil(len(vrel)*dt/HIT_STEP)));let c=null;
-    for(let k=0;k<=n&&!c;k++){const o=sub(rel,mul(vrel,dt*(n-k)/n));if(len(o)>A.R+M.R)continue;B.r=add(s.r,o);c=hitFind(A,B)}   // earliest touch in the step
-    if(!c)continue;
-    const vn=hitResolve(A,B,c),why=` (${vn.toFixed(1)} m/s)`;s.r=A.r;s.v=A.v;s.w=A.w;
-    Object.assign(q,{r:B.r,v:B.v,epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});   // the satellite's new rails
-    if(vn>0.3)HOOK.msg(`Contact with ${q.name} at ${vn.toFixed(1)} m/s`);
-    if(vn>HIT_VAPOR){HOOK.boom(TELLUS,c.p,simT,3);s.alive=false;s.crashSpeed=vn;HOOK.msg(`Destroyed: collided with ${q.name} at ${vn.toFixed(0)} m/s`);satBreak(q,B,B.parts,why,T);return}
-    const sp=c.pb&&vn>hitTol(c.pb.d)?c.pb:null,shp=c.pa&&vn>hitTol(c.pa.d)?c.pa:null;
-    if(sp)satBreak(q,B,DELICATE.has(sp.d.kind)?[sp]:B.parts.filter(x=>x.owner===sp.owner),why,T);
-    if(shp){if(shp.att){HOOK.msg(`${shp.att.e.name} breaks loose from its port`);undock(s,shp.att.e.id,0)}else{HOOK.msg(`${shp.d.name} broke on ${q.name}`);partLost(s,shp.p)}A=null}
-    if(!s.alive)return}}
-// ---- docking (sats session). Docked spacecraft stay separate bodies fixed together (a superstructure, as in the simulator
-// Orbiter): the vessel keeps its own parts, and each docked body rides along as a passenger at a fixed transform. s.att:
-// {e: its registry entry, p: its centre of mass and q: its attitude in the vessel frame, host: the body it's docked to (0 =
-// the vessel, else an entry id), hpi/ppi: the two ports' part indices}. Mass and inertia sum exactly (diagonal kept, as the
-// vessel's own is); contact, rendering and the registry carry passengers; each port carries its load and lets go above
-// its rating. Aero, heating and thrust stay with the vessel's own parts for now: docked stacks fly in vacuum. A docked
-// entry stays in PROG.sats flagged `docked` until the flight ends, so a reload mid-flight can't lose it.
-const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
-function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked)}
-// free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
-function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
-  return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&!P.some(y=>y!==x&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3))
-    .map(x=>({i:x.o.i,face:[x.o.pos[0],x.o.y0+x.o.h,x.o.pos[2]]}))}
-const usedPorts=(att,id)=>new Set(att.flatMap(a=>[...(a.host===id?[a.hpi]:[]),...(a.e.id===id?[a.ppi]:[])]));
-// the vessel's free ports (its own and its passengers'), in the vessel frame: face point and outward axis
-function shipPorts(s){const A=s.att||[],out=portsOf(s.parts.filter(p=>p.on),usedPorts(A,0)).map(x=>({...x,body:0,fv:x.face,av:[0,1,0]}));
-  for(const a of A)for(const x of portsOf(a.e.shape,usedPorts(A,a.e.id)))out.push({...x,body:a.e.id,fv:add(a.p,qrot(a.q,sub(x.face,a.e.cm))),av:qrot(a.q,[0,1,0])});return out}
-// the closest pair of free ports between the vessel and satellite q (body B): world points, axes, offset
-function dockPair(s,q,B){let best=null;const qp=portsOf(q.shape,usedPorts(q.attached||[],0));if(!qp.length)return null;
-  for(const a of shipPorts(s)){const Pa=add(s.r,qrot(s.q,sub(a.fv,s.cm))),Aa=qrot(s.q,a.av);
-    for(const b of qp){const Pb=add(B.r,qrot(B.q,sub(b.face,B.cm))),Ab=qrot(B.q,[0,1,0]),d=sub(Pb,Pa),dl=len(d);if(!best||dl<best.dl)best={a,b,Pa,Aa,Pb,Ab,d,dl}}}
-  return best}
-// capture: faces within PORT_GAP along our axis and PORT_LAT across it, axes opposed within 10°, ports closing under PORT_V
-function dockTry(s,q,B,T){if(q.undockT!=null&&T-q.undockT<PORT_COOL)return false;const P=dockPair(s,q,B);if(!P||P.dl>PORT_GAP+PORT_LAT)return false;
-  const g=dot(P.d,P.Aa),lat=len(sub(P.d,mul(P.Aa,g)));if(g<-0.03||g>PORT_GAP||lat>PORT_LAT||dot(P.Aa,P.Ab)>-PORT_COS)return false;
-  const va=add(s.v,cross(s.w,sub(P.Pa,s.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r)));if(len(sub(vb,va))>PORT_V)return false;
-  dock(s,q,B,P);return true}
-// latch: the target's port is pulled onto ours (turned so the faces oppose, moved so they meet), the two become one rigid
-// body, and the joined vessel takes their total momentum and angular momentum
-function dock(s,q,B,P){const R=s.q,cm0=s.cm.slice(),m0=s.mass;
-  const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q),rB=sub(P.Pa,qrot(Qb,sub(P.b.face,B.cm)));
-  const Iw=(q4,I,w)=>{const l=qrot(qconj(q4),w);return qrot(q4,[l[0]*I[0],l[1]*I[1],l[2]*I[2]])};
-  const Pm=add(mul(s.v,m0),mul(B.v,B.m)),L=add(add(cross(s.r,mul(s.v,m0)),Iw(R,s.I,s.w)),add(cross(rB,mul(B.v,B.m)),Iw(Qb,B.I,B.w)));
-  const toV=w=>add(qrot(qconj(R),sub(w,s.r)),cm0),qv=qmul(qconj(R),Qb);(s.att=s.att||[]);
-  s.att.push({e:q,p:toV(add(rB,qrot(Qb,sub(q.cm,B.cm)))),q:qv,host:P.a.body,hpi:P.a.i,ppi:P.b.i});
-  for(const a of q.attached||[])s.att.push({e:a.e,p:toV(add(rB,qrot(Qb,sub(a.p,B.cm)))),q:qmul(qv,a.q),host:a.host||q.id,hpi:a.hpi,ppi:a.ppi});
-  q.attached=[];q.docked=true;q.undockT=null;SAT_C.delete(q);if(s.target===q.id)s.target=null;
-  geom(s);const rc=add(s.r,qrot(R,sub(s.cm,cm0)));s.r=rc;s.v=mul(Pm,1/s.mass);
-  const l=qrot(qconj(R),sub(L,cross(rc,Pm)));s.w=qrot(R,[l[0]/s.I[0],l[1]/s.I[1],l[2]/s.I[2]]);s.rcsJ=null;
-  HOOK.msg(`Docked with ${q.name}`)}
-// a docked body and everything docked through it
-function dockGroup(s,a){const g=[a];for(let k=0;k<g.length;k++)for(const b of s.att)if(!g.includes(b)&&b.host===g[k].e.id)g.push(b);return g}
-// a host's port, in the vessel frame: face point and axis
-function hostPort(s,a){const h=a.host?s.att.find(x=>x.e.id===a.host):null,L=h?h.e.shape:s.parts,po=L.find(o=>o.i===a.hpi);if(!po)return null;
-  const face=[po.pos[0],po.y0+po.h,po.pos[2]];return h?{P:add(h.p,qrot(h.q,sub(face,h.e.cm))),ax:qrot(h.q,[0,1,0])}:{P:face,ax:[0,1,0]}}
-// what each port carries: the force and bending moment that make everything beyond it follow the vessel's motion
-// (non-gravitational acceleration plus rotation). Above its rating it lets go, and the body leaves with its momentum.
-function portLoads(s){const A=s.att||[];if(!A.length||!s.aB)return;const aB=s.aB,al=s.alB,wb=s.wB;
-  for(const a of A.slice()){if(!s.att.includes(a))continue;const H=hostPort(s,a);if(!H)continue;let F=[0,0,0],Mm=[0,0,0];
-    for(const g of dockGroup(s,a)){const r=sub(g.p,s.cm),f=mul(add(add(aB,cross(al,r)),cross(wb,cross(wb,r))),g.e.mass);F=add(F,f);Mm=add(Mm,cross(sub(g.p,H.P),f))}
-    const mb=len(sub(Mm,mul(H.ax,dot(Mm,H.ax))));a.load=Math.max(len(F)/PORT_F,mb/PORT_M);
-    if(a.load>1){HOOK.msg(`Docking port overloaded: ${a.e.name} breaks loose`);undock(s,a.e.id,0)}}}
-// undock: the body (and everything docked through it) leaves on its own rails, pushed off along the port axis; momentum is
-// shared so the total doesn't change. It goes back into the registry in its own right, as itself.
-function undock(s,id,push=PORT_PUSH){const a0=(s.att||[]).find(a=>a.e.id===id);if(!a0)return false;const grp=dockGroup(s,a0),T=progT(s),R=s.q,cm0=s.cm.slice();
-  const W=x=>add(s.r,qrot(R,sub(x,cm0))),H=hostPort(s,a0),ax=qrot(R,H?H.ax:[0,1,0]);
-  let mg=0,cg=[0,0,0];for(const g of grp){mg+=g.e.mass;cg=madd(cg,g.p,g.e.mass)}cg=mul(cg,1/mg);
-  const rg=W(cg),vg=add(s.v,cross(s.w,sub(rg,s.r)));
-  s.att=s.att.filter(x=>!grp.includes(x));geom(s);const rs=W(s.cm),vs=add(s.v,cross(s.w,sub(rs,s.r))),Mt=s.mass+mg;
-  s.r=rs;s.v=madd(vs,ax,-push*mg/Mt);s.rcsJ=null;
-  const e=a0.e;e.attached=grp.slice(1).map(x=>({e:x.e,p:add(qrot(qconj(a0.q),sub(x.p,a0.p)),e.cm),q:qmul(qconj(a0.q),x.q),host:x.host===e.id?0:x.host,hpi:x.hpi,ppi:x.ppi}));
-  SAT_C.delete(e);kitSet(e);
-  Object.assign(e,{r:rg,v:madd(vg,ax,push*s.mass/Mt),epoch:T,spin:{q0:qmul(R,a0.q),w:s.w.slice(),T0:T},docked:false,undockT:T});
-  if(!PROG.sats.includes(e))PROG.sats.push(e);   // a body that came up docked to another joins the registry in its own right
-  if(push)HOOK.msg(`Undocked ${e.name}`);return true}
-// at the end of a flight: docked entries either went into the vessel's registration or came down with it
-function dockEnd(s){const A=s.att||[];if(!A.length)return;const kept=(PROG.sats||[]).some(q=>(q.attached||[]).some(a=>a.e===A[0].e));
-  PROG.sats=PROG.sats.filter(q=>!q.docked);for(const a of A)delete a.e.docked;
-  if(!kept){const home=s.alive&&s.landed;HOOK.news(`${A.map(a=>a.e.name).join(', ')} ${home?'brought home':'lost with the vessel'}`,home?'ok':'bad')}}
+const hitW=(B,pt)=>add(B.r,qrot(B.q,sub(pt,B.cm))),hitL=(B,w)=>add(qrot(qconj(B.q),sub(w,B.r)),B.cm);
+const hitIw=(B,L)=>{const l=qrot(qconj(B.q),L);return qrot(B.q,[l[0]/B.I[0],l[1]/B.I[1],l[2]/B.I[2]])};   // world I⁻¹·L
+// A part record can sit in its body at a transform (a docked body's parts): tq/tp/tc carry its own frame (centre of mass
+// tc) to position tp in the body's frame, turned by tq. These map part-frame points and normals into the body frame and back.
+const hitV=(a,pt)=>a.tq?add(a.tp,qrot(a.tq,sub(pt,a.tc))):pt,hitVi=(a,v)=>a.tq?add(qrot(qconj(a.tq),sub(v,a.tp)),a.tc):v,hitVn=(a,n)=>a.tq?qrot(a.tq,n):n;
+// a registry entry's own parts as part records (X: the docking transform when it rides on something else)
+const ownRecs=(e,X)=>e.shape.filter(o=>PARTS[o.k]).map(o=>{const d=PARTS[o.k];return X?{o,p:o,d,g:hitGeo(o,d),owner:e,tq:X.q,tp:X.p,tc:e.cm,att:X}:{o,p:o,d,g:hitGeo(o,d),owner:e}});
+// the vessel as a contact body (shares r, v, q, w with s until written back), docked bodies included
+function shipBody(s){const parts=s.parts.filter(p=>p.on).map(p=>({p,d:p.d,g:hitGeo(p,p.d),owner:null}));for(const a of s.att||[])parts.push(...ownRecs(a.e,a));
+  return{r:s.r,v:s.v,q:s.q,w:s.w,m:s.mass,I:s.I,cm:s.cm,parts,R:Math.max(...parts.map(x=>len(sub(hitV(x,x.g.c),s.cm))+x.g.R))}}
+// a satellite's attitude and spin at program time T: locked to its orbital frame until something hits it, then free
+function satSpin(q,T,r,v){if(q.spin){const w=q.spin.w,wl=len(w),dq=wl>1e-12?qaxis(mul(w,1/wl),wl*(T-q.spin.T0)):[0,0,0,1];return{q:qnorm(qmul(dq,q.spin.q0)),w}}
+  return{q:qmul(orbQ(r,v),q.qo),w:mul(cross(r,v),1/dot(r,r))}}
+// diagonal of R·diag(I)·Rᵀ: a body's principal inertia seen from a frame it's turned by q (products of inertia dropped)
+function rotI(q,I){const R=[qrot(q,[1,0,0]),qrot(q,[0,1,0]),qrot(q,[0,0,1])];return[0,1,2].map(k=>R[0][k]**2*I[0]+R[1][k]**2*I[1]+R[2][k]**2*I[2])}
+const SAT_MP=new WeakMap(),SAT_C=new WeakMap();
+// one entry's own body: its inertia about its own centre of mass (part masses as shares of its registered own mass)
+function satOwnMP(e){let M=SAT_MP.get(e.shape);if(M)return M;const L=e.shape.filter(o=>PARTS[o.k]),bm=L.reduce((a,o)=>a+hitBase(PARTS[o.k]),0)||1,k=e.mass/1000/bm;
+  let I=[0,0,0];for(const o of L){const d=PARTS[o.k],pm=hitBase(d)*k*1000,dd=sub(hitGeo(o,d).c,e.cm),pr=d.r,ip=pm*(d.h*d.h/12+pr*pr/4);
+    I=add(I,[pm*(dd[1]**2+dd[2]**2)+ip,pm*(dd[0]**2+dd[2]**2)+pm*pr*pr/2,pm*(dd[0]**2+dd[1]**2)+ip])}
+  M={I};SAT_MP.set(e.shape,M);return M}
+// an entry with everything docked to it: total mass, combined centre of mass (entry frame), inertia, and all the parts
+function satMP(q){let M=SAT_C.get(q);const A=q.attached||[];if(M&&M.shape===q.shape&&M.n===A.length)return M;
+  let m=q.mass,c=mul(q.cm,q.mass);for(const a of A){m+=a.e.mass;c=madd(c,a.p,a.e.mass)}c=mul(c,1/m);
+  const addI=(I,mass,at,Ib)=>{const d=sub(at,c);return add(I,add([mass*(d[1]**2+d[2]**2),mass*(d[0]**2+d[2]**2),mass*(d[0]**2+d[1]**2)],Ib))};
+  let I=addI([0,0,0],q.mass,q.cm,satOwnMP(q).I);for(const a of A)I=addI(I,a.e.mass,a.p,rotI(a.q,satOwnMP(a.e).I));
+  const parts=[...ownRecs(q,null),...A.flatMap(a=>ownRecs(a.e,a))];
+  M={shape:q.shape,n:A.length,m,cm:c,I,parts,R:Math.max(...parts.map(x=>len(sub(hitV(x,x.g.c),c))+x.g.R))};SAT_C.set(q,M);return M}
+const satCM=q=>q.attached&&q.attached.length?satMP(q).cm:q.cm;
+function satBody(q,T){const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v),M=satMP(q);return{sat:q,r,v,q:sp.q,w:sp.w,m:M.m,I:M.I,cm:M.cm,parts:M.parts,R:M.R}}
+const hitNear=s=>s.body===TELLUS&&!s.landed&&satsUp().some(q=>q.shape&&len(sub(satAt(q,progT(s))[0],s.r))<HIT_NEAR);
+// points of each body inside the other: depth-weighted contact point and normal (n points from B toward A), deepest depth,
+// and the part on each side that's most involved
+function hitFind(A,B){let W=0,P=[0,0,0],N=[0,0,0],D=0,pa=null,pb=null;
+  for(const[X,Y,sg]of[[A,B,1],[B,A,-1]])for(const a of X.parts){const ca=hitW(X,hitV(a,a.g.c));if(len(sub(ca,Y.r))>a.g.R+Y.R)continue;
+    for(const b of Y.parts){if(len(sub(ca,hitW(Y,hitV(b,b.g.c))))>a.g.R+b.g.R)continue;
+      for(const pt of a.g.pts){const w=hitW(X,hitV(a,pt)),l=sub(hitVi(b,hitL(Y,w)),b.g.o),dd=partSDF(b.g,l[0],l[1],l[2]);if(dd>=0)continue;
+        const n=mul(qrot(Y.q,hitVn(b,sdfN(b.g,l))),sg);W-=dd;P=madd(P,w,-dd);N=madd(N,n,-dd);if(-dd>D){D=-dd;pa=sg>0?a:b;pb=sg>0?b:a}}}}
+  return W>0&&len(N)>1e-12?{p:mul(P,1/W),n:norm(N),d:D,pa,pb}:null}
+// one impulse at the contact point (restitution HIT_E, Coulomb friction HIT_MU), after pushing the bodies apart.
+// Returns the closing normal speed it removed (0 if they were already separating).
+function hitResolve(A,B,c){const n=c.n,ia=1/A.m,ib=1/B.m,cr=Math.max(0,c.d-HIT_SLOP)/(ia+ib);A.r=madd(A.r,n,cr*ia);B.r=madd(B.r,n,-cr*ib);
+  const ra=sub(c.p,A.r),rb=sub(c.p,B.r),vr=sub(add(A.v,cross(A.w,ra)),add(B.v,cross(B.w,rb))),vn=dot(vr,n);if(vn>=0)return 0;
+  const kk=u=>ia+ib+dot(u,cross(hitIw(A,cross(ra,u)),ra))+dot(u,cross(hitIw(B,cross(rb,u)),rb));
+  const j=-(1+HIT_E)*vn/kk(n);let J=mul(n,j);const vt=sub(vr,mul(n,vn)),vtl=len(vt);
+  if(vtl>1e-9){const t=mul(vt,1/vtl);J=madd(J,t,-Math.min(vtl/kk(t),HIT_MU*j))}
+  A.v=madd(A.v,J,ia);A.w=add(A.w,hitIw(A,cross(ra,J)));B.v=madd(B.v,J,-ib);B.w=sub(B.w,hitIw(B,cross(rb,J)));return-vn}
+const KIT=['cam','ant','sci','ballast','bio'];
+const kitOwn=(e,k)=>e.shape.filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length;
+const kitSet=e=>{for(const k of KIT)e[k]=kitOwn(e,k)+(e.attached||[]).reduce((a,x)=>a+kitOwn(x.e,k),0)};   // an entry's kit counts everything docked to it
+// a satellite (or a body docked to it) loses parts. Delicate parts break off; anything else takes its whole body, and with
+// it whatever was docked through that body. The pieces leave as debris; what's left keeps its centre of mass where it was.
+function satBreak(q,B,list,why,T){
+  const deb=x=>{const pc=[x.o.pos[0],x.o.y0+x.o.h*x.d.cm,x.o.pos[2]],w=hitW(B,hitV(x,pc)),out=sub(w,B.r),ol=len(out);
+    HOOK.debris({body:TELLUS,r:w,v:add(add(B.v,cross(B.w,out)),ol>1e-6?mul(out,0.5/ol):[0,0,0]),q:x.tq?qmul(B.q,x.tq):B.q.slice(),w:B.w.slice(),parts:[{...x.o,d:x.d,on:true}],cm:pc,mass:hitBase(x.d)*1000,t:0})};
+  list.forEach(deb);
+  const cm0=B.cm,gone=new Set();
+  for(const e of new Set(list.map(x=>x.owner))){const lost=list.filter(x=>x.owner===e),keep=e.shape.filter(o=>!lost.some(x=>x.o===o));
+    if(!keep.length||lost.some(x=>!DELICATE.has(x.d.kind))){gone.add(e);continue}
+    const all=e.shape.reduce((a,o)=>a+(PARTS[o.k]?hitBase(PARTS[o.k]):0),0),lm=lost.reduce((a,x)=>a+hitBase(x.d),0),c0=e.cm;
+    e.mass*=Math.max(0.05,1-lm/(all||1));let c=[0,0,0],m=0;for(const o of keep){const d=PARTS[o.k];if(!d)continue;c=madd(c,[o.pos[0],o.y0+o.h*d.cm,o.pos[2]],hitBase(d));m+=hitBase(d)}
+    e.cm=mul(c,1/m);e.shape=keep;
+    if(e!==q){const a=q.attached.find(a=>a.e===e);a.p=add(a.p,qrot(a.q,sub(e.cm,c0)))}}   // a docked body's position follows its centre of mass
+  const A=q.attached||[];
+  if(gone.has(q)){for(const a of A)if(!gone.has(a.e))ownRecs(a.e,a).forEach(deb);   // what was docked to it goes with it
+    const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);if(S&&S.target===q.id)S.target=null;HOOK.news(`${q.name} destroyed in a collision${why}`,'bad');return}
+  if(gone.size){let more=true;while(more){more=false;for(const a of A)if(!gone.has(a.e)&&[...gone].some(g=>g.id===a.host)){gone.add(a.e);more=true;
+      ownRecs(a.e,a).forEach(deb)}}
+    q.attached=A.filter(a=>!gone.has(a.e));for(const g of gone)HOOK.news(`${g.name} destroyed in a collision${why}`,'bad')}
+  SAT_C.delete(q);kitSet(q);
+  const r=add(B.r,qrot(B.q,sub(satCM(q),cm0)));
+  Object.assign(q,{r,v:add(B.v,cross(B.w,sub(r,B.r))),epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});
+  const del=list.filter(x=>!gone.has(x.owner));if(del.length)HOOK.news(`${q.name} loses its ${del.map(x=>x.d.name.toLowerCase()).join(' and ')} in a collision`,'warn')}
+// after each physics step: the ports' loads, then every satellite near enough: docking if two ports meet right, otherwise
+// contact, checked along the step's relative motion
+function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS)return;portLoads(s);if(!s.alive)return;const T=progT(s);let A=null;
+  for(const q of satsUp()){if(!q.shape||!q.shape.length)continue;const[rq,vq]=satAt(q,T),rel=sub(rq,s.r),vrel=sub(vq,s.v);
+    if(!A)A=shipBody(s);const M=satMP(q),reach=A.R+M.R+len(vrel)*dt+0.5;if(len(rel)>reach)continue;
+    const B=satBody(q,T);if(dockTry(s,q,B,T)){A=null;continue}
+    const n=Math.min(400,Math.max(1,Math.ceil(len(vrel)*dt/HIT_STEP)));let c=null;
+    for(let k=0;k<=n&&!c;k++){const o=sub(rel,mul(vrel,dt*(n-k)/n));if(len(o)>A.R+M.R)continue;B.r=add(s.r,o);c=hitFind(A,B)}   // earliest touch in the step
+    if(!c)continue;
+    const vn=hitResolve(A,B,c),why=` (${vn.toFixed(1)} m/s)`;s.r=A.r;s.v=A.v;s.w=A.w;
+    Object.assign(q,{r:B.r,v:B.v,epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});   // the satellite's new rails
+    if(vn>0.3)HOOK.msg(`Contact with ${q.name} at ${vn.toFixed(1)} m/s`);
+    if(vn>HIT_VAPOR){HOOK.boom(TELLUS,c.p,simT,3);s.alive=false;s.crashSpeed=vn;HOOK.msg(`Destroyed: collided with ${q.name} at ${vn.toFixed(0)} m/s`);satBreak(q,B,B.parts,why,T);return}
+    const sp=c.pb&&vn>hitTol(c.pb.d)?c.pb:null,shp=c.pa&&vn>hitTol(c.pa.d)?c.pa:null;
+    if(sp)satBreak(q,B,DELICATE.has(sp.d.kind)?[sp]:B.parts.filter(x=>x.owner===sp.owner),why,T);
+    if(shp){if(shp.att){HOOK.msg(`${shp.att.e.name} breaks loose from its port`);undock(s,shp.att.e.id,0)}else{HOOK.msg(`${shp.d.name} broke on ${q.name}`);partLost(s,shp.p)}A=null}
+    if(!s.alive)return}}
+// ---- docking (sats session). Docked spacecraft stay separate bodies fixed together (a superstructure, as in the simulator
+// Orbiter): the vessel keeps its own parts, and each docked body rides along as a passenger at a fixed transform. s.att:
+// {e: its registry entry, p: its centre of mass and q: its attitude in the vessel frame, host: the body it's docked to (0 =
+// the vessel, else an entry id), hpi/ppi: the two ports' part indices}. Mass and inertia sum exactly (diagonal kept, as the
+// vessel's own is); contact, rendering and the registry carry passengers; each port carries its load and lets go above
+// its rating. Aero, heating and thrust stay with the vessel's own parts for now: docked stacks fly in vacuum. A docked
+// entry stays in PROG.sats flagged `docked` until the flight ends, so a reload mid-flight can't lose it.
+const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
+function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked)}
+// free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
+function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
+  return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&!P.some(y=>y!==x&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3))
+    .map(x=>({i:x.o.i,face:[x.o.pos[0],x.o.y0+x.o.h,x.o.pos[2]]}))}
+const usedPorts=(att,id)=>new Set(att.flatMap(a=>[...(a.host===id?[a.hpi]:[]),...(a.e.id===id?[a.ppi]:[])]));
+// the vessel's free ports (its own and its passengers'), in the vessel frame: face point and outward axis
+function shipPorts(s){const A=s.att||[],out=portsOf(s.parts.filter(p=>p.on),usedPorts(A,0)).map(x=>({...x,body:0,fv:x.face,av:[0,1,0]}));
+  for(const a of A)for(const x of portsOf(a.e.shape,usedPorts(A,a.e.id)))out.push({...x,body:a.e.id,fv:add(a.p,qrot(a.q,sub(x.face,a.e.cm))),av:qrot(a.q,[0,1,0])});return out}
+// the closest pair of free ports between the vessel and satellite q (body B): world points, axes, offset
+function dockPair(s,q,B){let best=null;const qp=portsOf(q.shape,usedPorts(q.attached||[],0));if(!qp.length)return null;
+  for(const a of shipPorts(s)){const Pa=add(s.r,qrot(s.q,sub(a.fv,s.cm))),Aa=qrot(s.q,a.av);
+    for(const b of qp){const Pb=add(B.r,qrot(B.q,sub(b.face,B.cm))),Ab=qrot(B.q,[0,1,0]),d=sub(Pb,Pa),dl=len(d);if(!best||dl<best.dl)best={a,b,Pa,Aa,Pb,Ab,d,dl}}}
+  return best}
+// capture: faces within PORT_GAP along our axis and PORT_LAT across it, axes opposed within 10°, ports closing under PORT_V
+function dockTry(s,q,B,T){if(q.undockT!=null&&T-q.undockT<PORT_COOL)return false;const P=dockPair(s,q,B);if(!P||P.dl>PORT_GAP+PORT_LAT)return false;
+  const g=dot(P.d,P.Aa),lat=len(sub(P.d,mul(P.Aa,g)));if(g<-0.03||g>PORT_GAP||lat>PORT_LAT||dot(P.Aa,P.Ab)>-PORT_COS)return false;
+  const va=add(s.v,cross(s.w,sub(P.Pa,s.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r)));if(len(sub(vb,va))>PORT_V)return false;
+  dock(s,q,B,P);return true}
+// latch: the target's port is pulled onto ours (turned so the faces oppose, moved so they meet), the two become one rigid
+// body, and the joined vessel takes their total momentum and angular momentum
+function dock(s,q,B,P){const R=s.q,cm0=s.cm.slice(),m0=s.mass;
+  const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q),rB=sub(P.Pa,qrot(Qb,sub(P.b.face,B.cm)));
+  const Iw=(q4,I,w)=>{const l=qrot(qconj(q4),w);return qrot(q4,[l[0]*I[0],l[1]*I[1],l[2]*I[2]])};
+  const Pm=add(mul(s.v,m0),mul(B.v,B.m)),L=add(add(cross(s.r,mul(s.v,m0)),Iw(R,s.I,s.w)),add(cross(rB,mul(B.v,B.m)),Iw(Qb,B.I,B.w)));
+  const toV=w=>add(qrot(qconj(R),sub(w,s.r)),cm0),qv=qmul(qconj(R),Qb);(s.att=s.att||[]);
+  s.att.push({e:q,p:toV(add(rB,qrot(Qb,sub(q.cm,B.cm)))),q:qv,host:P.a.body,hpi:P.a.i,ppi:P.b.i});
+  for(const a of q.attached||[])s.att.push({e:a.e,p:toV(add(rB,qrot(Qb,sub(a.p,B.cm)))),q:qmul(qv,a.q),host:a.host||q.id,hpi:a.hpi,ppi:a.ppi});
+  q.attached=[];q.docked=true;q.undockT=null;SAT_C.delete(q);if(s.target===q.id)s.target=null;
+  geom(s);const rc=add(s.r,qrot(R,sub(s.cm,cm0)));s.r=rc;s.v=mul(Pm,1/s.mass);
+  const l=qrot(qconj(R),sub(L,cross(rc,Pm)));s.w=qrot(R,[l[0]/s.I[0],l[1]/s.I[1],l[2]/s.I[2]]);s.rcsJ=null;
+  HOOK.msg(`Docked with ${q.name}`)}
+// a docked body and everything docked through it
+function dockGroup(s,a){const g=[a];for(let k=0;k<g.length;k++)for(const b of s.att)if(!g.includes(b)&&b.host===g[k].e.id)g.push(b);return g}
+// a host's port, in the vessel frame: face point and axis
+function hostPort(s,a){const h=a.host?s.att.find(x=>x.e.id===a.host):null,L=h?h.e.shape:s.parts,po=L.find(o=>o.i===a.hpi);if(!po)return null;
+  const face=[po.pos[0],po.y0+po.h,po.pos[2]];return h?{P:add(h.p,qrot(h.q,sub(face,h.e.cm))),ax:qrot(h.q,[0,1,0])}:{P:face,ax:[0,1,0]}}
+// what each port carries: the force and bending moment that make everything beyond it follow the vessel's motion
+// (non-gravitational acceleration plus rotation). Above its rating it lets go, and the body leaves with its momentum.
+function portLoads(s){const A=s.att||[];if(!A.length||!s.aB)return;const aB=s.aB,al=s.alB,wb=s.wB;
+  for(const a of A.slice()){if(!s.att.includes(a))continue;const H=hostPort(s,a);if(!H)continue;let F=[0,0,0],Mm=[0,0,0];
+    for(const g of dockGroup(s,a)){const r=sub(g.p,s.cm),f=mul(add(add(aB,cross(al,r)),cross(wb,cross(wb,r))),g.e.mass);F=add(F,f);Mm=add(Mm,cross(sub(g.p,H.P),f))}
+    const mb=len(sub(Mm,mul(H.ax,dot(Mm,H.ax))));a.load=Math.max(len(F)/PORT_F,mb/PORT_M);
+    if(a.load>1){HOOK.msg(`Docking port overloaded: ${a.e.name} breaks loose`);undock(s,a.e.id,0)}}}
+// undock: the body (and everything docked through it) leaves on its own rails, pushed off along the port axis; momentum is
+// shared so the total doesn't change. It goes back into the registry in its own right, as itself.
+function undock(s,id,push=PORT_PUSH){const a0=(s.att||[]).find(a=>a.e.id===id);if(!a0)return false;const grp=dockGroup(s,a0),T=progT(s),R=s.q,cm0=s.cm.slice();
+  const W=x=>add(s.r,qrot(R,sub(x,cm0))),H=hostPort(s,a0),ax=qrot(R,H?H.ax:[0,1,0]);
+  let mg=0,cg=[0,0,0];for(const g of grp){mg+=g.e.mass;cg=madd(cg,g.p,g.e.mass)}cg=mul(cg,1/mg);
+  const rg=W(cg),vg=add(s.v,cross(s.w,sub(rg,s.r)));
+  s.att=s.att.filter(x=>!grp.includes(x));geom(s);const rs=W(s.cm),vs=add(s.v,cross(s.w,sub(rs,s.r))),Mt=s.mass+mg;
+  s.r=rs;s.v=madd(vs,ax,-push*mg/Mt);s.rcsJ=null;
+  const e=a0.e;e.attached=grp.slice(1).map(x=>({e:x.e,p:add(qrot(qconj(a0.q),sub(x.p,a0.p)),e.cm),q:qmul(qconj(a0.q),x.q),host:x.host===e.id?0:x.host,hpi:x.hpi,ppi:x.ppi}));
+  SAT_C.delete(e);kitSet(e);
+  Object.assign(e,{r:rg,v:madd(vg,ax,push*s.mass/Mt),epoch:T,spin:{q0:qmul(R,a0.q),w:s.w.slice(),T0:T},docked:false,undockT:T});
+  if(!PROG.sats.includes(e))PROG.sats.push(e);   // a body that came up docked to another joins the registry in its own right
+  if(push)HOOK.msg(`Undocked ${e.name}`);return true}
+// at the end of a flight: docked entries either went into the vessel's registration or came down with it
+function dockEnd(s){const A=s.att||[];if(!A.length)return;const kept=(PROG.sats||[]).some(q=>(q.attached||[]).some(a=>a.e===A[0].e));
+  PROG.sats=PROG.sats.filter(q=>!q.docked);for(const a of A)delete a.e.docked;
+  if(!kept){const home=s.alive&&s.landed;HOOK.news(`${A.map(a=>a.e.name).join(', ')} ${home?'brought home':'lost with the vessel'}`,home?'ok':'bad')}}
 // ---- RCS (sats session). Thrusters are real forces at real points (addF), so translating with unbalanced quads also turns
 // the vessel, as it should. Jet selection: for each of the 12 signed axes (± force x, y, z; ± torque x, y, z) a set of
 // non-negative duties that produces that axis alone as nearly as the layout allows (non-negative least squares, solved
