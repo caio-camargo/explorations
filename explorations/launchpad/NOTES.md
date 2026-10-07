@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.14.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.16.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2478,6 +2478,88 @@ Grab anything, port or not, wherever you touch it.
   regrab; the page parses. In the browser: approach with the *Claw* row, the grab, and release by the button.
 - **Not yet:** grabbing debris (spent stages: contact with debris comes first); a free pivot so the held body can be
   turned to line up; arming/disarming (it grabs whatever its jaws touch slowly).
+
+## Stations, modules and moonbases: plan (2026-10-07, sats session with Caio; Phase A built)
+
+**Decisions (Caio):** stations first, then moonbases. Modules reach a station either as their own rockets or carried in a
+**cargo bay**; once out, **both** you fly them yourself (RCS) **and**, as the more advanced option, an **arm** berths them.
+A winged runway shuttle is a later project of its own; the bay comes first and works on any rocket. **One vessel per
+flight is to be revisited** now, since flying a released module yourself needs it.
+
+**What a station is:** a registry stack (an entry with docked bodies, already built for docking), grown over flights.
+Modules are parts with jobs: habitat (crew capacity), lab (science per crewed day), hub (side-facing ports), power,
+depot (fuel for Selene missions). Its abilities are what's docked. Assembly in orbit gets past what survives max-q.
+
+**Phases:**
+- **A. Several vessels in a flight.** `S` stays the vessel you fly; `FLEET` holds the others. A separation that takes a
+  command part (pod, or a new probe core) makes a vessel, not debris. Every vessel is stepped (physics or rails
+  together), they collide with each other, and you switch with `[` / `]` (a tape op). Controls only reach the vessel
+  you fly; each keeps its own throttle, SAS and RCS. At the end of the flight every vessel left in orbit is registered.
+  Measured before starting: the sim core already takes the vessel as a parameter (16 global `S` references, 3
+  functions read the controls), so this is additive; the 448 `S` references in render/UI mean "the vessel you fly".
+- **A2. Vessels that persist as vessels:** registry entries keep their design and state, so a later flight can take
+  control of a registered vessel (a station's tug, a module waiting in orbit).
+- **B. Cargo bay:** a hollow stack section with doors; contents shielded from air and heat; doors open in orbit; the
+  payload is released (a vessel if it has a command part) or picked out by the arm.
+- **C. Station modules and station state:** habitat, lab, hub (side ports), power, depot; station state from its docked
+  modules; contract types proposed to the economy session (flagship "First station" in milestones; resupply, crew
+  rotation, client experiments, tourists; reboost once orbits decay).
+- **D. The arm:** captures within reach, berths onto a port along a computed path.
+- **E. Moonbase:** objects resting on a body as registry entries (planet-fixed), modules landed near a beacon forming a
+  base, surface functions (science, fuel).
+
+### Phase A built: several vessels in a flight (sats session, 2026-10-07)
+
+- **Probe core** (palette *Command & payload*): a command part without crew, with small reaction wheels (4 kN·m). Wheels
+  are now any part's `torque` (pod or core): the control authority, the structural reaction point and the editor's
+  "no control torque" warning all follow that. The root of a design is a pod, else a probe core, else as before.
+- **Separation makes a vessel** when the parts leaving include a command part (pod or core); otherwise debris, exactly as
+  before. The new vessel is built from clones of those parts (the originals stay off in the vessel they left),
+  re-indexed, with their own part tree, segments and the staging events that concern only them, in the same vessel
+  frame, so it starts exactly where the parts were. Their marks carry over. The separation push now goes both ways:
+  momentum and centre of mass are kept to 1e-20 / 1e-16 m (debris still gets the old one-sided push).
+- **`S` is the vessel you fly; `FLEET` holds the others.** Every tick the others step first from the same instant (the
+  clock is S's to advance; `physStep` advances it, so it's held for them), then S, then every pair is checked for
+  contact. Rails: all coast together, each exactly as it would alone (the bodies session's perturbations included);
+  physics as soon as any vessel needs it. Controls reach only S (`inpOf`); the others keep their own throttle, SAS and
+  RCS.
+- **Switching** with `]` / `[` (cycling through all), recorded on the tape (`['V', i]`); the flight record follows the
+  pilot. Vessels get names when there are two: *Capsule N*, *Probe N*.
+- **The end of the flight** registers every other vessel left in a stable orbit (with anything docked to it).
+- **Shown:** the other vessels drawn (with their docked bodies), a marker with name and distance in the flight view,
+  their orbits and labels on the map, and a HUD *Vessels* row.
+- Checks (`test.mjs` §27): separation (momentum, centre of mass, parts); one clock for both, controls only to the flown
+  one; switching hands over the record; rails exactly as alone; vessel-on-vessel contact (momentum to 2e-16, parting);
+  registration at the end. Browser: separation in orbit, the HUD row, switching with `]`, the map.
+- **Not yet:** ~~docking two vessels of the same flight to each other~~ (done, below);
+  a vessel that keeps its controllability after the flight (A2); fleet vessels' plumes and RCS puffs aren't drawn;
+  a vessel far away is still fully simulated (fine for a few).
+
+### Docking vessels of one flight (sats session, 2026-10-07)
+
+Two halves launched together (or a module you just released) can now dock to each other, and come apart as vessels.
+
+- **Latch** as with a saved satellite (same capture limits, same `join`), checked each tick for every pair of vessels
+  before contact. The vessel you fly is the host; between two you aren't flying, the earlier one is. The other becomes
+  a passenger through a registry-style entry built from its parts (`entryOf`: shape, own mass and centre of mass, kit,
+  whatever it already carries), with its live vessel kept beside the entry out of sight of the save (not enumerable),
+  so a stack registered at the end of a flight serialises normally.
+- **Undock** gives the vessel back: flyable, in the fleet, with anything docked through it, pushed off at 0.3 m/s with
+  momentum kept. The claw grabs vessels too.
+- **Targets:** a vessel of the flight can be the target (`G` cycles satellites, then this flight's vessels, then none);
+  closest approach, the Port / Line-up guidance and the *Docking* SAS mode all work against it.
+- **Tapes now record the target** (`tg` in the controls), so an autopilot mode that depends on it replays the same. That
+  was a gap since rendezvous.
+- **A bug the checks missed:** near another vessel of the same flight the game coasted on rails (the 5 km physics rule
+  only looked at saved satellites), so in play two vessels passed through each other and never docked, while every
+  check passed, because the checks step physics directly. Now `fleetNear` keeps the flight in physics within 5 km of
+  another vessel, and the Phase A check asserts it.
+- Checks (`test.mjs` §28, plus the §27 rails check tightened): latch (momentum exact, mass summed, the vessel kept);
+  undock gives a flyable vessel at 0.3000 m/s; two vessels you aren't flying dock (the earlier hosts); the Docking mode
+  aims at a vessel's port; a stack carrying a vessel registers and serialises (0.9 kB, no hidden vessel in it). Browser:
+  target with `G`, guidance, latch, undock by the button, fly the module.
+- **Not yet:** a vessel docked into a stack and saved at the end of the flight comes back next time as a passive part of
+  the stack (A2: vessels that stay flyable across flights).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

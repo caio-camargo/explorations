@@ -1438,6 +1438,90 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(null); P.own = null; P.flights = 0;
 }
 
+// 27. Several vessels in a flight (sats session, stations plan Phase A): separating a probe module makes a vessel; both
+// fly; controls reach only the one you fly; switching; rails; vessel-on-vessel contact; registration. Own sim instance.
+{
+  const D = new Function(src + 'return {toV2,newShip,stage,advPhys,advRails,rails,vesselContact,flightRailsOK,switchTo,fleetEnd,kepler,FLEET,INP,PROG,TELLUS,DT,qrot,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, I = D.INP, zero = () => Object.assign(I, { pitch: 0, yaw: 0, roll: 0, tx: 0, ty: 0, tz: 0 });
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  // a pod on a tank, a decoupler, then a probe module with its own tank and engine; parked in a 300 km orbit
+  const fly = () => { D.FLEET.length = 0; D.t = 0; zero(); const s = D.newShip(['pod', 't1', 'dec', 'core', 't1', 'sparrow']), r0 = T.R + 300e3;
+    Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] }); s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2];
+    s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  const mom = xs => xs.reduce((a, x) => add(a, mul(x.v, x.mass)), [0, 0, 0]), cmw = xs => mul(xs.reduce((a, x) => add(a, mul(x.r, x.mass)), [0, 0, 0]), 1 / xs.reduce((a, x) => a + x.mass, 0));
+  let s = fly(), p0 = mom([s]), c0 = cmw([s]);
+  for (let k = 0; k < 4 && !D.FLEET.length; k++) D.stage(s);
+  const v = D.FLEET[0], dp = v ? len(sub(mom([s, v]), p0)) / len(p0) : NaN, dc = v ? len(sub(cmw([s, v]), c0)) : NaN;
+  check('fleet: separating a probe module makes a vessel (not debris); momentum and centre of mass kept through the push', v && v.parts.some(p => p.d.kind === 'core') && !v.parts.some(p => p.d.kind === 'pod') && dp < 1e-12 && dc < 1e-9,
+    `${v ? v.name + ': ' + v.parts.map(p => p.d.key).join(', ') : 'no vessel'}; momentum error ${dp.toExponential(1)}, centre of mass moved ${dc.toExponential(1)} m`);
+  // both fly, from the same clock; the pilot's controls turn only the vessel being flown
+  s.sas = false; v.sas = false; const t0 = D.t; for (let k = 0; k < 100; k++) { I.pitch = k < 5 ? 1 : 0; D.advPhys(s); } zero();   // a 0.1 s tap
+  const ws = len(s.w), wv = len(v.w), dt = D.t - t0;
+  check('fleet: both vessels step together on one clock; the controls reach only the vessel you fly', Math.abs(dt - 100 * D.DT) < 1e-9 && ws > 1e-3 && wv < 1e-9 && len(sub(v.r, s.r)) > 0,
+    `clock advanced ${dt.toFixed(3)} s for 100 steps; the flown vessel turns at ${ws.toFixed(3)} rad/s, the other at ${wv.toExponential(1)}`);
+  // switching: the flight record follows the pilot, and so do the controls
+  const R = s.rec; D.switchTo(0); const nowS = D.S; for (let k = 0; k < 50; k++) { I.pitch = k < 5 ? 1 : 0; D.advPhys(D.S); } zero();
+  check('fleet: switching flies the other vessel, hands it the flight record, and leaves the first in the fleet', nowS === v && D.FLEET[0] === s && v.rec === R && s.rec.mini && len(v.w) > 1e-3 && Math.abs(len(s.w) - ws) < 1e-9,
+    `now flying ${D.S.name}; the capsule keeps turning at its own ${len(s.w).toFixed(3)} rad/s`);
+  // rails: the other vessel coasts exactly as it would alone (rails include the bodies session's perturbations, so the
+  // reference is rails itself, not bare Kepler)
+  const nearPhys = !D.flightRailsOK(); v.r = add(v.r, mul(norm(v.v), 20e3));   // within 5 km they stay in physics; 20 km apart, rails
+  s.w = [0, 0, 0]; v.w = [0, 0, 0]; const tr = D.t, alone = x => { const c = { ...x, r: x.r.slice(), v: x.v.slice() }; D.t = tr; D.rails(c, 600); D.t = tr; return c.r; };
+  const ks = alone(s), kv = alone(v), ok = D.flightRailsOK(); D.advRails(D.S, 600, 10);
+  check('fleet: close together the vessels stay in physics; apart, on rails, each coasts 600 s exactly as it would alone', nearPhys && ok && Math.abs(D.t - tr - 600) < 1e-9 && len(sub(s.r, ks)) < 1e-6 && len(sub(v.r, kv)) < 1e-6,
+    `errors ${len(sub(s.r, ks)).toExponential(1)} and ${len(sub(v.r, kv)).toExponential(1)} m`);
+  // the two vessels touching: one impulse, momentum kept, they part
+  s.r = add(v.r, mul(D.qrot(v.q, [0, 1, 0]), -(v.yTop - s.yBot) - 30)); s.v = v.v.slice(); s.q = v.q.slice();
+  const Y = D.qrot(v.q, [0, 1, 0]); s.r = add(v.r, mul(Y, v.yTop - s.yBot + 0.5)); s.v = add(v.v, mul(Y, -0.4));
+  s.r = add(v.r, mul(Y, v.yTop - s.yBot - 0.01));   // the capsule's base 1 cm into the module's top, closing at 0.4 m/s
+  const pc = mom([s, v]); D.vesselContact(v, s, D.DT); const sep = dot(sub(s.v, v.v), Y), hit = sep !== -0.4 ? { err: len(sub(mom([s, v]), pc)) / len(pc), sep } : null;
+  check('fleet: two vessels collide (one impulse), keep their total momentum and part', hit && hit.err < 1e-12 && hit.sep > 0 && s.alive && v.alive,
+    `momentum error ${hit ? hit.err.toExponential(1) : '—'}; parting at ${hit ? hit.sep.toFixed(2) : '—'} m/s`);
+  // the end of the flight: the other vessel in orbit is registered
+  D.fleetEnd({ day0: 0 }); const reg = P.sats.length === 1 && P.sats[0].shape.some(o => o.k === 'pod') && !D.FLEET.length;
+  check('fleet: at the end of the flight the other vessel left in orbit is registered', reg, `${P.sats.map(q => q.name).join(', ')}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0; zero();
+}
+
+// 28. Docking two vessels of one flight (sats session): latch, undock back to a flyable vessel, dock two you aren't flying,
+// target a vessel, and register a stack that carries one. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,fleetContacts,undock,switchTo,sasTarget,satRegister,dockEnd,FLEET,INP,PROG,TELLUS,DT,qrot,qmul,qaxis,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3;
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  const vessel = (stack, name) => { const v = D.newShip(stack); Object.assign(v, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], name });
+    v.rec.launched = true; v.rec.day0 = 0; return v; };
+  // the flown vessel nose out at 300 km; the other turned to face it, `gap` beyond its port, closing at `close`
+  const scene = ({ gap = 0.08, close = 0.2 } = {}) => { D.FLEET.length = 0; D.t = 0;
+    const s = vessel(['port', 'pod', 't1'], 'Ferry'), b = vessel(['port', 'core', 't1'], 'Module'); s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]); b.q = D.qmul(D.qaxis([0, 0, 1], Math.PI), s.q); b.r = add(s.r, mul(Y, s.yTop + gap + b.yTop)); b.v = add(s.v, mul(Y, -close));
+    b.fleet = true; b.rec = { launched: true, day0: 0, mini: true }; D.S = s; D.FLEET.push(b); return { s, b, Y }; };
+  const mom = xs => xs.reduce((a, x) => add(a, mul(x.v, x.mass)), [0, 0, 0]);
+  // latch: the module becomes a passenger, keeping its vessel for later; momentum and mass kept
+  let { s, b, Y } = scene(), p0 = mom([s, b]), m0 = s.mass + b.mass; D.fleetContacts(D.DT);
+  const a = s.att[0], ok1 = a && a.e._v === b && !D.FLEET.length && len(sub(mom([s]), p0)) / len(p0) < 1e-12 && Math.abs(s.mass - m0) < 1e-6;
+  check('vessel docking: two vessels of one flight latch; the module rides as a passenger and keeps its vessel; momentum and mass kept', ok1,
+    `${a ? a.e.name + ' docked' : 'no latch'}; momentum error ${(len(sub(mom([s]), p0)) / len(p0)).toExponential(1)}; ${(s.mass / 1000).toFixed(3)} t`);
+  // undock: the module is a vessel again, flyable, pushed off at 0.3 m/s, momentum kept, and a save of the stack is fine
+  const p1 = mom([s]); D.undock(s, a.e.id); const back = D.FLEET[0], sep = back ? dot(sub(back.v, s.v), Y) : NaN;
+  const flyable = back === b && D.switchTo(0) && D.S === b; if (flyable) D.switchTo(0);
+  check('vessel docking: undocking gives the vessel back (flyable), 0.3 m/s apart along the port, momentum kept', flyable && Math.abs(sep - 0.3) < 1e-6 && len(sub(mom([s, b]), p1)) / len(p1) < 1e-12,
+    `${back ? back.name : '—'} back in the fleet; separation ${sep.toFixed(4)} m/s`);
+  // two vessels you aren't flying dock to each other; the earlier one is the host
+  ({ s, b } = scene()); const c = vessel(['pod'], 'Bystander'); c.r = add(s.r, [0, 0, 5000]); c.v = s.v.slice(); D.S = c; D.FLEET.splice(0, 0, s); s.fleet = true;
+  D.fleetContacts(D.DT); const both = D.FLEET.length === 1 && D.FLEET[0] === s && s.att.length === 1 && s.att[0].e._v === b;
+  check('vessel docking: two vessels you are not flying dock to each other (the earlier one hosts)', both, `fleet now: ${D.FLEET.map(v => v.name + (v.att.length ? ' + ' + v.att.map(x => x.e.name).join() : '')).join(', ')}`);
+  // targeting a vessel: the Docking mode turns the nose against its port
+  ({ s, b } = scene({ gap: 3, close: 0 })); b.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + 0.2), s.q); Object.assign(s, { sas: true, sasMode: 'dock', tgtV: b });
+  const want = mul(D.qrot(b.q, [0, 1, 0]), -1), got = D.sasTarget(s), err = Math.acos(Math.min(1, dot(got, want))) * 57.29578;
+  check('vessel docking: a vessel can be the target; the Docking mode aims at its port', err < 1e-4, `aim error ${err.toExponential(1)}°`);
+  // a flight ending with a vessel docked: one stack registered, and the save (JSON) works (the kept vessel isn't saved)
+  ({ s, b } = scene()); D.fleetContacts(D.DT); D.satRegister(s, { day0: 0 }); D.dockEnd(s); let js = null; try { js = JSON.stringify(P.sats); } catch (e) { js = 'ERR ' + e.message; }
+  check('vessel docking: a flight ending docked registers one stack carrying the module, and the save serialises', P.sats.length === 1 && P.sats[0].attached[0].e.name === 'Module' && !js.startsWith('ERR') && !js.includes('"_v"'),
+    `${P.sats.map(q => q.name + ' + ' + (q.attached || []).map(x => x.e.name).join()).join('; ')}; save ${js.startsWith('ERR') ? js : (js.length / 1024).toFixed(1) + ' kB'}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
