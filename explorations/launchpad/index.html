@@ -811,7 +811,7 @@ function physStep(s,dt){
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const qi=qconj(s.q),vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
   s.mach=b.atm?sp/SND(h):0;s.qdyn=0.5*rho*sp*sp;s.aoa=sp>1?Math.acos(clamp(vb[1]/sp,-1,1)):0;
-  if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&rho>0.7?600:sp<400?6:0,cap=Math.min(tgt,CHUTE_G*G0*s.mass/Math.max(s.qdyn,1));if(tgt)s.chuteA=s.chuteA<cap?Math.min(cap,s.chuteA+dt*(tgt>6?140:3)):cap}  // drogue below ~20 km once under 400 m/s (~Mach 1.3: a supersonic drogue would hit a falling capsule with 17 g), main below ~3 km under 250 m/s
+  if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&mainChuteOK(b,h,r,simT)?600:sp<400?6:0,cap=Math.min(tgt,CHUTE_G*G0*s.mass/Math.max(s.qdyn,1));if(tgt)s.chuteA=s.chuteA<cap?Math.min(cap,s.chuteA+dt*(tgt>6?140:3)):cap}  // drogue below ~20 km once under 400 m/s (~Mach 1.3: a supersonic drogue would hit a falling capsule with 17 g), main below 3 km above the ground (MAIN_AGL) under 250 m/s
   if(rho>0&&sp>0.05){
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());
     aeroPass(s,vb,wb,rho,s.mach,T>0);
@@ -1022,7 +1022,7 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
     const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
     tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
-// generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho) (1/m), to the ground or never
+// generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
   const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t)),r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;
   const el=elements(r,v,mu);if(el.pe>top)return null;
@@ -1034,7 +1034,7 @@ function fall(b,r,v,t,kdrag){
   if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
-    if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho);a=madd(a,va,-kd)}return a};
+    if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho,r,t);a=madd(a,va,-kd)}return a};
   for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<TERR_TOP&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
@@ -1046,7 +1046,7 @@ function predictImpact(s,sg=0){
   if(s.landed||!s.alive)return null;const b=s.body;
   const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
   const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)};
-  return fall(b,s.r,s.v,simT,(h,sp,rho)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&rho>0.7?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*atmU(h):1)})}
+  return fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*atmU(h):1)})}
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
@@ -1220,6 +1220,13 @@ function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;
 // the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
 const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
 const groundR=(b,pf)=>b.R+groundAlt(b,pf);
+// ground awareness: what must be measured from the ground under the ship, not from the sea. Atmosphere thresholds
+// (physAlt, drag bands, the air's top) stay sea-level based; landing-related ones use these.
+const MAIN_AGL=3000;   // the main chute opens below this height above the ground (with a 250 m/s cap)
+const aglAt=(b,r,t)=>len(r)-b.R-groundAlt(b,toPF(b,r,t));   // height above the ground (or sea) under r, at time t
+const mainChuteOK=(b,h,r,t)=>h<TERR_TOP+MAIN_AGL&&aglAt(b,r,t)<MAIN_AGL;   // h is the sea-level height (a cheap early out)
+// the gap between the ship's bottom and the ground under it (the warp's time-to-ground uses this)
+const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;
@@ -3447,7 +3454,7 @@ function simulate(dtR){
   if(warpTo!==null){const rem=warpTo-simT;if(rem<=0.05||!S.alive){warpTo=null;warpIdx=0}
     else{let i=WARPS.length-1;while(i>0&&WARPS[i]*dtR*4>rem)i--;warpIdx=i}}
   if(!onRails&&warpIdx>5)warpIdx=5;   // physics warp: same fixed step, more steps per frame — results are identical
-  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=len(S.r)-S.body.R+S.yBot,tg=vs<0?hb/-vs:Infinity;
+  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=groundGap(S),tg=vs<0?hb/-vs:Infinity;   // time to the ground under the ship, not the sea
     if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
   const warp=WARPS[warpIdx],dt=dtR*warp;stepsN=0;
   if(onRails){
@@ -3930,7 +3937,7 @@ function updateHUD(){
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   const met='T+'+fmtT(simT);
-  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],
+  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above the ground</span>`]]:[]),
     ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
     ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],

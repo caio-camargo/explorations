@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1341,7 +1341,34 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('the whole page script parses (render and UI included)', !perr, perr || 'ok');
 }
 
-// 22. Know-how (economy): owning a part is not knowing how to use it.
+// 24. Ground awareness (terrain session): the main chute, the impact predictor and the warp's time-to-ground read the
+// ground under the ship, not the sea. Before, the main opened on air denser than 0.7 (about 4.2 km above the SEA since
+// the rescale), so over a high plateau a capsule came down under its drogue alone.
+{
+  const D = Math.PI / 180, R = TELLUS.R, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  let spot = null;   // a high, gentle plateau: above 4.5 km, nothing steeper than ~11° within 800 m
+  for (let la = -60; la <= 60 && !spot; la++) for (let lo = -180; lo < 180 && !spot; lo++) {
+    const u = U(la, lo), h = api.terrainH(u); if (h < 4500 || h > 6500 || api.terrainSlope(TELLUS, u) > 0.15) continue;
+    const f = api.siteFrame(u); let ok = true;
+    for (let k = 0; k < 8 && ok; k++) { const q = norm(add(u, add(mul(f.e, Math.cos(k) * 800 / R), mul(f.n, Math.sin(k) * 800 / R)))); if (api.terrainSlope(TELLUS, q) > 0.2) ok = false; }
+    if (ok) spot = { u, h }; }
+  api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
+  s.landed = false; s.r = api.fromPF(TELLUS, mul(spot.u, R + spot.h + 25000), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+  s.v = add(api.surfVel(TELLUS, s.r), mul(up, -250)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+  api.stage(s); const pred = api.predictImpact(s); let mainA = 0;
+  while (s.alive && !s.landed && api.t < 3000) { api.physStep(s, api.DT); mainA = Math.max(mainA, s.chuteA); }
+  const off = pred ? Math.acos(Math.min(1, dot(norm(pred.pf), norm(api.toPF(TELLUS, s.r, api.t))))) * R : Infinity;
+  check('over a 4.5–6.5 km plateau the main chute opens (3 km above the ground) and the capsule lands softly; the predictor agrees',
+    s.alive && s.landed && s.touchV < 8 && mainA > 100 && api.density(TELLUS, spot.h) < 0.7 && pred && Math.abs(pred.v - s.touchV) < 2 && off < 2000,
+    `ground at ${(spot.h / 1e3).toFixed(2)} km (air ${api.density(TELLUS, spot.h).toFixed(2)} kg/m³, under the old 0.7 rule): main ${mainA.toFixed(0)} m², touchdown ${s.touchV ? s.touchV.toFixed(1) : '—'} m/s; predicted ${pred ? pred.v.toFixed(1) : '—'} m/s, ${(off / 1e3).toFixed(2)} km off · ${msgs.slice(-1)[0]}`);
+  // the warp's time-to-ground: 500 m over that plateau is 500 m (plus the ship's bottom offset), not 5+ km
+  const x = api.newShip(['chute', 'pod']); x.landed = false; x.r = api.fromPF(TELLUS, mul(spot.u, R + spot.h + 500), 0); api.t = 0;
+  const gap = api.groundGap(x), seaGap = len(x.r) - R + x.yBot;
+  check("the warp's ground gap is measured from the ground under the ship", Math.abs(gap - (500 + x.yBot)) < 1e-6 && seaGap > 4500,
+    `gap ${gap.toFixed(1)} m (from the sea it would be ${(seaGap / 1e3).toFixed(1)} km)`);
+}
+
+// 25. Know-how (economy): owning a part is not knowing how to use it.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
   const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, flights: 0, own: null, decisions: [], active: [], offers: [] }); api.chooseStart('agency'); };
