@@ -1565,7 +1565,7 @@ uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;o
 void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform float uHot[96];
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
@@ -1590,8 +1590,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
  int k=int(vK.x+.5),pi=int(vK.y+.5);
- float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v),fp=max(fs,fv);
- vec3 T=vec3(-sin(a),0.,cos(a));bool side=abs(vNo.y)<.6;float blk=0.;
+ float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
+ float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
+ vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;
  if(uSeam>0.&&k>0){
   if(k==1&&side){                                         // propellant tank
    float b=.07*sc,paint=band(v,b,h-b,fv);
@@ -1609,7 +1610,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    vec3 tint=mix(mix(vec3(1.,.82,.5),vec3(.45,.5,1.),smoothstep(.55,.8,t)),vec3(.8,.45,.9),smoothstep(.8,.95,t));
    alb*=mix(vec3(1.),tint*1.25,.65*smoothstep(.35,.7,t));
    float lip=band(v,-.01,.035*sc,fv);alb=mix(alb,vec3(.35,.34,.33),lip);rough=mix(rough,.5,lip);
-   if(inside){alb*=.3;rough=.7;float hot=pi>=0&&pi<96?uHot[pi]:0.;emis=vec3(1.,.38,.08)*hot*smoothstep(.3,1.,t)*2.5;}}
+   if(inside){alb*=.3;rough=.7;}}
   else if(k==15){                                          // engine mount: bolt ring under the tank flange
    alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
   else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
@@ -1667,6 +1668,20 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
   else if(k==14&&side){                                    // reinforcement collar: a bolt row
    alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
+ }
+ // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
+ // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
+ // the side the air came from (all over on the shield); frost sits below the fuel line in patches that thin as it sheds;
+ // a vacuum nozzle extension glows dull red to orange from the exit up.
+ if(uSeam>0.&&k>0&&pi>=0&&pi<96){vec4 mk=uMk[pi],ch=uCh[pi];vec2 q2=side?vec2(s,v):vO.xz;float nz=vn2(q2*vec2(3.,1.5)),nz2=vn2(q2*vec2(11.,6.)+4.);
+  if(mk.x>0.){float st=mk.x*(k==2||k==15?1.:exp(-v/(.9*sc)))*(.7+.3*vn2(vec2(s*6.,v*.7)));st=clamp(st*1.2,0.,.985);   // soot is blacker than black paint
+   alb=mix(alb,vec3(.004,.0036,.003),st);rough=mix(rough,max(rough,.85),st);metal*=1.-.6*st;}
+  if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
+   alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
+   rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
+  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fr=mk.y*(1.-smoothstep(lv-.15*sc,lv,v))*smoothstep(.36,.6,nz*.6+nz2*.4+mk.y*.3-.15)*.88;
+   alb=mix(alb,vec3(.82,.87,.93),fr);rough=mix(rough,.95,fr);metal*=1.-fr;nO+=T*(nz2-.5)*.5*fr;}
+  if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
  }
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
@@ -1737,7 +1752,6 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const HOT=new Float32Array(96);   // per part index: how hard that engine is burning, for the glow inside its bell
 const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
@@ -1816,6 +1830,36 @@ function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;par
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
       else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
   return makeMesh(a)}
+// ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
+// so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
+//   soot  — a burning engine, and the base of the parts within 3 m above it on its stack line; worse at altitude, where
+//           the plume balloons and washes back over the base
+//   char  — the peak skin temperature between 480 K and the part's limit (1 = about to burn up); its direction is the
+//           heat-weighted airflow in the ship frame, so the windward side takes it. A heat shield blackens from ~420 K (and with
+//           the ablator it has used).
+//   frost — fuelled tanks waiting on the pad are LOX-cold; frost sheds over the first minute of flight, faster with speed
+//   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
+const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
+const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
+let markT=null;
+function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
+  const b=S.body,pr=pressure(b,len(S.r)-b.R),eng=S.alive&&S.throttle>0?activeEngines(S):[];if(!S.landed)S.mkLift=true;
+  const pad=S.landed&&!S.mkLift,fb=qrot(qconj(S.q),sub(S.v,surfVel(b,S.r))),sp=len(fb),base=(1+2*(1-pr))*S.throttle;
+  for(const p of S.parts){if(!p.on)continue;const m=markOf(p);
+    if(p.cap.fuel)m.frost=pad?1:Math.max(0,m.frost-dt*(1/45+sp/6000));
+    if(p.T>480){m.char=Math.max(m.char,clamp((p.T-480)/(p.d.Tmax-480),0,1));if(sp>1)m.cd=madd(m.cd,fb,(p.T-480)*dt/sp)}
+    if(p.cap.ablator)m.char=Math.max(m.char,clamp((p.T-420)/300,0,1),Math.min(1,3*(1-p.res.ablator/p.cap.ablator)));   // an ablator blackens far below its rating
+    if(vacNozzle(p.d)){const tg=eng.includes(p)?S.throttle:0;m.glow+=(tg-m.glow)*(1-Math.exp(-dt/(tg>m.glow?6:12)))}}
+  for(const e of eng){const top=e.y0+e.h;markOf(e).soot=Math.min(1,markOf(e).soot+dt*base/60);
+    for(const p of S.parts){const dy=p.y0-top;if(!p.on||p===e||dy<-.01||dy>3||Math.abs(p.pos[0]-e.pos[0])>.05||Math.abs(p.pos[2]-e.pos[2])>.05)continue;
+      const m=markOf(p);m.soot=Math.min(1,m.soot+dt*base/80*(1-dy/3))}}
+  for(const d of debris)for(const p of d.parts){const m=MARKS.get(p);if(!m)continue;m.frost=Math.max(0,m.frost-dt/45);m.glow*=Math.exp(-dt/12)}}
+// the marks of these parts into the mesh shader's per-part-index uniforms (zeros for parts without marks, and for [])
+function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
+    MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
+    CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
+  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA)}
 const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
@@ -2109,6 +2153,7 @@ function render(){
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
+  marksTick();
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
@@ -2124,12 +2169,10 @@ function render(){
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
       gl.uniform1f(m.uShadow,0);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS)}
-    // burning engines glow inside the bell, by part index (the mesh isn't rebuilt when an engine runs dry)
-    HOT.fill(0);if(S.throttle>0)for(const e of activeEngines(S))if(e.i<96)HOT[e.i]=S.throttle;
-    gl.uniform1fv(m['uHot[0]'],HOT);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);gl.uniform1f(m.uSeam,0);HOT.fill(0);gl.uniform1fv(m['uHot[0]'],HOT);
+    setMarks(m,S.parts);gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);gl.uniform1f(m.uSeam,0);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
-  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);
+  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];

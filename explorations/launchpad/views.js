@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..10): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -30,6 +30,34 @@ window.refView = async (n) => {
     stackDef = JSON.parse(JSON.stringify(PRESETS.Sounding)); editorChanged(); document.getElementById("launch").click();
     S.throttle = 1; stage(S); while (len(S.r) - TELLUS.R < 1000) advPhys(S);
     cam.yaw = 0.9; cam.pitch = -1.1; cam.dist = 5; render(); await settle(); bare(); return "engine";
+  }
+  // 11–14: flight marks (marksTick runs inside the sim loops; a single render only takes up to 5 s of marks)
+  const fly = (until, every = 0.25) => { let t = simT; while (!until()) { advPhys(S); if (simT - t >= every) { marksTick(); t = simT } } marksTick(); };
+  if (n === 11) { // the Orbiter fuelled on the pad, before ignition: LOX frost below each tank's fuel line
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    markT = null; render(); advPhys(S); render(); cam.yaw = 0.5; cam.pitch = 0.05; cam.dist = 13; render(); await settle(); bare(); return 'frost';
+  }
+  if (n === 12) { // the same rocket 70 s into the climb: first-stage soot, frost mostly shed
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    markT = null; render(); S.throttle = 1; stage(S);
+    fly(() => simT > 70, 0.5); cam.yaw = 1.9; cam.pitch = -0.75; cam.dist = 15; render(); await settle(); bare(); return 'soot';
+  }
+  if (n === 13) { // a biocapsule + heat shield after an entry from orbit (orbital speed at 95 km, ~2° down), shield first: shield and windward hull charred
+    stackDef = ['chute', 'bio', 'shield']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true;
+    const r = TELLUS.R + 95000, dir = norm([0.9, 0.3, 0.3]), v0 = norm(cross([0, 1, 0], dir));
+    const vc = Math.sqrt(TELLUS.mu / r); S.r = mul(dir, r); S.v = add(mul(v0, vc * 1.01), mul(dir, -vc * 0.035));   // just above orbital speed, ~2° down S.throttle = 0; S.sasMode = 'retro'; markT = simT;
+    const Y = mul(norm(S.v), -1), X = norm(cross(Y, dir)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0];
+    const t0 = simT; fly(() => len(S.v) < 0.3 * vc || len(S.r) - TELLUS.R < 20000 || !S.alive || simT - t0 > 900);
+    cam.yaw = 2.2; cam.pitch = -0.35; cam.dist = 5; render(); await settle(); bare();
+    return 'entry v ' + len(S.v).toFixed(0) + ' T ' + S.parts.map(p => p.d.key + ':' + p.T.toFixed(0)).join(' ');
+  }
+  if (n === 14) { // the Orbiter's upper stage, 12 s into a burn in orbit: the Petrel's nozzle extension glowing
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    S.landed = false; S.mkLift = true; stage(S); stage(S); const r = TELLUS.R + 200000, dir = norm([0.85, 0.2, 0.45]);
+    S.r = mul(dir, r); S.v = mul(norm(cross([0, 1, 0], dir)), Math.sqrt(TELLUS.mu / r)); S.sasMode = 'pro'; markT = simT;
+    const Y = norm(S.v), X = norm(cross(Y, dir)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.throttle = 1;
+    const t0 = simT; fly(() => simT - t0 > 12);
+    cam.yaw = 2.6; cam.pitch = -0.3; cam.dist = 9; render(); await settle(); bare(); return 'glow';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
