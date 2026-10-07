@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–64 plume on the pad. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -93,6 +93,46 @@ window.refView = async (n) => {
     S.throttle = 1; const t0 = simT; while (simT - t0 < 1.5) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT) }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return design + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km p ' + pressure(TELLUS, len(S.r) - TELLUS.R).toFixed(4) + ' eng ' + activeEngines(S).map(e => e.d.key).join(',');
+  }
+  // 40–45: re-entry plasma. An entry from 95 km (speed ×vf of circular, ~2° down) flown retro until altitude alt km, then the
+  // ship is turned aoa degrees off the airflow and seen from yaw/pitch/dist: [design, vf, alt, aoa, yaw, pitch, dist]
+  const entry = { 40: [['chute', 'bio', 'shield'], 1.01, 50, 0, 1.6, 0.1, 9], 41: [['chute', 'bio', 'shield'], 1.01, 50, 0, 2.6, 0.35, 14],
+    42: [['chute', 'bio', 'shield'], 1.01, 75, 0, 1.6, 0.1, 9], 43: [['chute', 'bio', 'shield'], 1.01, 35, 0, 1.6, 0.1, 9],
+    44: [['pod', 't2', 'petrel'], 1.01, 55, 35, 1.6, 0.1, 14], 45: [['chute', 'bio', 'shield'], 1.3, 55, 0, 1.6, 0.1, 9] };
+  if (entry[n]) {
+    const [design, vf, alt, aoa, yaw, pitch, dist] = entry[n];
+    stackDef = design; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true;
+    const r = TELLUS.R + 95000, dir = norm([0.9, 0.3, 0.3]), v0 = norm(cross([0, 1, 0], dir)), vc = Math.sqrt(TELLUS.mu / r);
+    S.r = mul(dir, r); S.v = add(mul(v0, vc * vf), mul(dir, -vc * (vf > 1.1 ? 0.25 : 0.035))); S.throttle = 0; S.sasMode = 'retro';
+    const Y0 = mul(norm(S.v), -1), X0 = norm(cross(Y0, dir)); S.q = qFromBasis(X0, Y0, cross(X0, Y0)); S.w = [0, 0, 0];
+    const t0 = simT; while (S.alive && len(S.r) - TELLUS.R > alt * 1000 && simT - t0 < 900) advPhys(S);
+    if (aoa) { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), s = norm(cross(va, up)), a = aoa / 57.2958,
+      Y = add(mul(va, -Math.cos(a)), mul(up, Math.sin(a))), X = norm(cross(Y, s)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return 'entry h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km v ' + len(S.v).toFixed(0) + ' q ' + (S.qHeat / 1000).toFixed(0) + ' kW/m2 alive ' + S.alive;
+  }
+  // 50–53: transonic vapor cones. An ascent (pitch kick at 8 s, then prograde) flown until Mach M: [design, M, yaw, pitch, dist]
+  const vapor = { 50: ['Orbiter', 0.97, 1.75, 0.05, 30], 51: ['Orbiter', 1.08, 1.75, 0.05, 30], 52: ['Lunar', 1.0, 1.75, 0.05, 50],
+    53: ['Orbiter', 1.0, 2.3, -0.25, 16] };
+  if (vapor[n]) {
+    const [design, M, yaw, pitch, dist] = vapor[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S);
+    while (S.alive && S.mach < M && simT < 200) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
+    INP.pitch = 0; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return design + ' M ' + S.mach.toFixed(2) + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km shoulders ' + JSON.stringify(hullShoulders(hullProfile(S), -1).map(x => x.map(v => +v.toFixed(2))));
+  }
+  // 60–64: the plume meeting the ground. Ignite on the pad and burn until the engine's nozzle is alt m up (0: still held
+  // down, 0.6 s after ignition), seen from yaw/pitch/dist: [design, alt, yaw, pitch, dist]
+  const pad = { 60: ['Orbiter', 0, 0.9, 0.12, 40], 61: ['Orbiter', 12, 0.9, 0.12, 40], 62: ['Orbiter', 35, 0.9, 0.1, 55],
+    63: ['Lunar', 3, 0.9, 0.12, 60], 64: ['Orbiter', 6, 0.4, 0.75, 60] };
+  if (pad[n]) {
+    const [design, alt, yaw, pitch, dist] = pad[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S); const t0 = simT, h0 = len(S.r);
+    while (S.alive && simT - t0 < 60 && (alt ? len(S.r) - h0 < alt : simT - t0 < 0.6)) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return design + ' up ' + (len(S.r) - h0).toFixed(1) + ' m t ' + (simT - t0).toFixed(1) + ' s';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
