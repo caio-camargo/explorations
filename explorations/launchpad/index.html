@@ -815,7 +815,7 @@ function physStep(s,dt){
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
   const qi=qconj(s.q),vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
   s.mach=b.atm?sp/SND(h):0;s.qdyn=0.5*rho*sp*sp;s.aoa=sp>1?Math.acos(clamp(vb[1]/sp,-1,1)):0;
-  if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&rho>0.7?600:sp<400?6:0,cap=Math.min(tgt,CHUTE_G*G0*s.mass/Math.max(s.qdyn,1));if(tgt)s.chuteA=s.chuteA<cap?Math.min(cap,s.chuteA+dt*(tgt>6?140:3)):cap}  // drogue below ~20 km once under 400 m/s (~Mach 1.3: a supersonic drogue would hit a falling capsule with 17 g), main below ~3 km under 250 m/s
+  if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&mainChuteOK(b,h,r,simT)?600:sp<400?6:0,cap=Math.min(tgt,CHUTE_G*G0*s.mass/Math.max(s.qdyn,1));if(tgt)s.chuteA=s.chuteA<cap?Math.min(cap,s.chuteA+dt*(tgt>6?140:3)):cap}  // drogue below ~20 km once under 400 m/s (~Mach 1.3: a supersonic drogue would hit a falling capsule with 17 g), main below 3 km above the ground (MAIN_AGL) under 250 m/s
   if(rho>0&&sp>0.05){
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());
     aeroPass(s,vb,wb,rho,s.mach,T>0);
@@ -1026,7 +1026,7 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
     const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
     tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
-// generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho) (1/m), to the ground or never
+// generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
   const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t)),r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;
   const el=elements(r,v,mu);if(el.pe>top)return null;
@@ -1038,7 +1038,7 @@ function fall(b,r,v,t,kdrag){
   if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
-    if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho);a=madd(a,va,-kd)}return a};
+    if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho,r,t);a=madd(a,va,-kd)}return a};
   for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<TERR_TOP&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
@@ -1050,7 +1050,7 @@ function predictImpact(s,sg=0){
   if(s.landed||!s.alive)return null;const b=s.body;
   const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
   const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)};
-  return fall(b,s.r,s.v,simT,(h,sp,rho)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&rho>0.7?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*atmU(h):1)})}
+  return fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*atmU(h):1)})}
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
@@ -1224,6 +1224,13 @@ function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;
 // the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
 const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
 const groundR=(b,pf)=>b.R+groundAlt(b,pf);
+// ground awareness: what must be measured from the ground under the ship, not from the sea. Atmosphere thresholds
+// (physAlt, drag bands, the air's top) stay sea-level based; landing-related ones use these.
+const MAIN_AGL=3000;   // the main chute opens below this height above the ground (with a 250 m/s cap)
+const aglAt=(b,r,t)=>len(r)-b.R-groundAlt(b,toPF(b,r,t));   // height above the ground (or sea) under r, at time t
+const mainChuteOK=(b,h,r,t)=>h<TERR_TOP+MAIN_AGL&&aglAt(b,r,t)<MAIN_AGL;   // h is the sea-level height (a cheap early out)
+// the gap between the ship's bottom and the ground under it (the warp's time-to-ground uses this)
+const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;
@@ -1289,6 +1296,7 @@ const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Co
 const certOf=k=>Math.min(1,PROG.cert[k]??cert0(k));
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
+const NYX_TRACK_H=12;   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
 const MISSIONS=[
   {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
@@ -1306,7 +1314,44 @@ const MISSIONS=[
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
   {id:'lift1',pay:40,ep:2,req:['beeper'],name:'Heavy lift I',brief:'Half a tonne of mass simulators in a stable orbit.',win:'0.5 t in orbit',ok:R=>R.lift>=0.5-1e-9},
   {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
+  // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
+  {id:'farside',pay:150,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
+   win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
+  {id:'selimp',pay:120,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
+   win:'telemetry to the very end, then silence',ok:R=>R.selImpact},
+  {id:'selland',pay:250,ep:4,req:['selimp'],name:'Soft landing on Selene',brief:'Land an instrument package with an antenna on Selene, under 4 m/s, on the side facing Tellus so it can phone home.',
+   win:'a machine of ours stands on another world',ok:R=>R.selLand},
+  {id:'selsample',pay:400,ep:4,req:['selland'],name:'Sample return',brief:'Land an instrument package on Selene, then bring it back to Tellus and recover it.',
+   win:'a handful of Selene on a lab bench',ok:R=>R.selSampled&&R.landed&&R.recSci},
+  {id:'nyxfind',pay:120,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it.`,
+   win:'Nyx weighed, and its orbit on the map',ok:R=>R.nyxFound},
+  {id:'nyxfly',pay:150,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
+   win:'a dark, cratered rock, close up',ok:R=>R.nyxFly},
+  {id:'nyxorb',pay:250,ep:5,req:['nyxfly'],name:'An orbit that lasts',brief:`Keep an instrument package in orbit around Nyx for two of Nyx's own orbits (${(4*Math.PI/NYX.n/3600).toFixed(0)} h). Tellus's tide is strong out there: watch which way round you go.`,
+   win:'an orbit around Nyx that lasts',ok:R=>R.nyxOrbT>=4*Math.PI/NYX.n},
+  {id:'nyxland',pay:300,ep:5,req:['nyxfly'],name:'Landing on Nyx',brief:`Land an instrument package on Nyx under 3 m/s. Its escape speed is only 346 m/s: easy to land, easy to bounce.`,
+   win:'a lander on the dark moon',ok:R=>R.nyxLand},
 ];
+// ---- "out there" (bodies session): what the Selene and Nyx missions read from a flight. Line of sight and sunlight are
+// geometry on the bodies we already have; Nyx's discovery is tracking residuals, i.e. time spent where its pull matters.
+function seesTellus(s){if(s.body===TELLUS)return true;const P=mul(bodyRel(s.body,simT)[0],-1),d=sub(P,s.r),L=len(d),u=mul(d,1/L),t=-dot(s.r,u);   // Tellus from the craft, past the body it's at
+  return!(t>0&&t<L&&len(madd(s.r,u,t))<s.body.R)}
+const nearSide=(b,r)=>dot(norm(r),norm(mul(bodyRel(b,simT)[0],-1)))>0;   // a point on b facing Tellus
+// Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
+const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
+function outThere(s,dt){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k),cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
+  // Selene: far-side photos (sunlit ground below, the side away from Tellus), downlinked in line of sight or carried home
+  if(b===SELENE&&s.alive&&!s.landed&&cam&&!R.farPhoto){const u=norm(s.r);if(len(s.r)<3*b.R&&dot(u,SUN_DIR)>0.1&&dot(u,toT)<-0.3){R.farPhoto=true;HOOK.msg('Far side photographed'+(ant?': downlink when Tellus is back in sight':''))}}
+  if(R.farPhoto&&!R.farSent&&s.alive&&(ant&&seesTellus(s)||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
+  if(!s.alive&&!R.hitDone&&b===SELENE){R.hitDone=true;if(sci&&ant){if(nearSide(b,s.r))R.selImpact=true;else HOOK.news('Our impactor hit the far side of Selene: nobody heard a thing','warn')}}
+  if(s.landed&&s.alive&&b===SELENE&&sci){R.selSampled=true;if(!R.selLand&&ant&&(s.touchV||0)<4){if(nearSide(b,s.r))R.selLand=true;else if(!R.farLandNews){R.farLandNews=1;HOOK.news('Down on the far side of Selene, with no way to phone home','warn')}}}
+  // Nyx: found by tracking; weighed on discovery (that logbook fact unlocks its orbit on the map and its encounter forecasts)
+  if(s.alive&&sci&&ant&&!(PROG.log&&PROG.log.nyx)&&(b===NYX||b===TELLUS&&nyxResidual(s.r)>=1e-3)){R.nyxTrack=(R.nyxTrack||0)+dt;
+    if(R.nyxTrack>=NYX_TRACK_H*3600){R.nyxFound=true;logNote(s,'nyx',{m:NYX.mu/TELLUS.mu,pe:NYX.rMin,ap:NYX.rMax});HOOK.news(`Tracking residuals explained: a second moon, Nyx, weighed at ${(NYX.mu/TELLUS.mu*1e4).toFixed(1)}×10⁻⁴ of Tellus`,'ok')}}
+  if(b===NYX){if(!R.logNyx){R.logNyx=1;logNote(s,'nyxreach',R.dv)}if(s.alive&&cam&&ant)R.nyxFly=true;
+    if(s.alive&&!s.landed&&sci){R.nyxRun=(R.nyxRun||0)+dt;R.nyxOrbT=Math.max(R.nyxOrbT||0,R.nyxRun)}else R.nyxRun=0;
+    if(s.landed&&s.alive&&sci&&(s.touchV||0)<3&&!R.nyxLand){R.nyxLand=true;logNote(s,'nyxland',R.dv)}}
+  else R.nyxRun=0}
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
   sf:{},bio:false,bioOK:true,bioWhy:'',bioSpace:false,bioOrbits:0,g:0,gMax:0,cabin:290,approved:true,drops:[],cert0:{},recSci:false,pet:'',
@@ -1352,7 +1397,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
-  missionEval(s)}
+  outThere(s,dt);missionEval(s)}
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
   if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
     income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
@@ -2132,6 +2177,9 @@ const LOGF=[
   {id:'sorbit',sec:'Out there',label:'Orbital period around Selene',fmt:v=>`${(v.p/60).toFixed(1)} min at ${fmtKm(v.alt)}`,best:'first',hint:'measured on the first orbit there'},
   {id:'land',sec:'Out there',label:'Δv to land on Selene',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
   {id:'sg',sec:'Out there',label:'Surface gravity on Selene',fmt:v=>`${v.toFixed(2)} m/s²`,best:'first',hint:'measured by the first lander'},
+  {id:'nyx',sec:'Out there',label:'The second moon, Nyx',fmt:v=>`${(v.m*1e4).toFixed(1)}×10⁻⁴ Tellus masses, ${fmtKm(v.pe)}–${fmtKm(v.ap)} out`,best:'first',hint:'something unexplained in the tracking data'},
+  {id:'nyxreach',sec:'Out there',label:'Δv to reach Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has been there'},
+  {id:'nyxland',sec:'Out there',label:'Δv to land on Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
 ];
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
@@ -3272,8 +3320,8 @@ function resetShip(){if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=n
 const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
-function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit'};let html='';
-  for(const ep of[1,2]){html+=`<div class="ep">${EP[ep]}</div>`;
+function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
+  for(const ep of[1,2,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;
     for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
@@ -3420,7 +3468,7 @@ function simulate(dtR){
   if(warpTo!==null){const rem=warpTo-simT;if(rem<=0.05||!S.alive){warpTo=null;warpIdx=0}
     else{let i=WARPS.length-1;while(i>0&&WARPS[i]*dtR*4>rem)i--;warpIdx=i}}
   if(!onRails&&warpIdx>5)warpIdx=5;   // physics warp: same fixed step, more steps per frame — results are identical
-  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=len(S.r)-S.body.R+S.yBot,tg=vs<0?hb/-vs:Infinity;
+  if(!onRails&&warpIdx>0&&!S.landed){const vs=dot(S.v,norm(S.r)),hb=groundGap(S),tg=vs<0?hb/-vs:Infinity;   // time to the ground under the ship, not the sea
     if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
   const warp=WARPS[warpIdx],dt=dtR*warp;stepsN=0;
   if(onRails){
@@ -3674,7 +3722,7 @@ function drawMap(VP,camW,labels){
   if(!predCache||predCache.t!==simT&&!predStill())predCache={t:simT,p:predict(S),wall:performance.now(),body:S.body};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   // the moons' orbits + SOI rings
-  for(const b of BODIES){if(!b.parent)continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
+  for(const b of BODIES){if(!b.parent||!knownBody(b))continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
     for(let i=0;i<=256;i++){const p=add(pp,bodyRel(b,simT+T*i/256)[0]);if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
     const bp=bodyPos(b,simT),so=soiAt(b,simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(bp,[so*Math.cos(f),0,so*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}}
   for(const fv of FLEET){if(!fv.alive||fv.body!==TELLUS||fv.landed)continue;const el=elements(fv.r,fv.v,TELLUS.mu);if(!(el.e<1))continue;let pv=null;   // the other vessels' orbits
@@ -3710,7 +3758,7 @@ function drawMap(VP,camW,labels){
   if(impSpread&&impact&&toolOK('impact'))for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
-  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:b.name,c:'#9ab'})))}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:knownBody(b)?b.name:'?',c:'#9ab'})))}
 
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
 const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS,NS),D32=new Uint32Array(nimg.data.buffer);
@@ -3869,7 +3917,8 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
     o.shadowBlur=0}}
 function gateMsg(k){const T=TOOLS[k],F=LOGF.find(f=>f.id===T.fact);return`No ${T.name} yet: it needs "${F.label.toLowerCase()}" in the logbook`}
 // encounter legs are only drawn once someone has been there; until then the map stops at the edge, with a question mark
-function gateLegs(list,labels){if(toolOK('encounters')||!list||!list.length)return list;const p0=list[0];
+const knownBody=b=>b!==NYX||!!(PROG.log&&PROG.log.nyx);   // Nyx's orbit and pull are unknown until it's weighed
+function gateLegs(list,labels){if(!list||!list.length||toolOK('encounters')&&(!list[1]||knownBody(list[1].b)))return list;const p0=list[0];
   if(p0.endKind==='enc'&&p0.end){labels.push({p:add(p0.b.parent?(p0.off||bodyPos(p0.b,simT)):[0,0,0],p0.end),mark:'impact',t:`? ${list[1]?list[1].b.name:'another body'}: what its pull does next, no data yet`,c:'#ffb454'})}
   return[{...p0,endKind:null}]}
 const unlocksOf=id=>Object.values(TOOLS).filter(T=>T.fact===id).map(T=>T.name);
@@ -3916,7 +3965,7 @@ function updateHUD(){
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   const met='T+'+fmtT(simT);
-  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],
+  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above the ground</span>`]]:[]),
     ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
     ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
