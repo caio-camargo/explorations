@@ -568,7 +568,7 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
-## v1.17 — tourism, military, sanctions, the race (2026-10-07)
+## v1.19 — tourism, military, sanctions, the race (2026-10-07)
 
 Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy`).
 
@@ -599,6 +599,142 @@ Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy
 
 Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
 controls on hardware).
+## Ground stations (planning branch, 2026-10-07)
+
+- **Sites:** the pad, plus stations bought at cities, each power's two biggest. **At home** 10M. **Abroad** 20M plus a 2M
+  lease every 100 days, and only with permission: relations with home must be friendly (> 0.2) and their opinion of us
+  ≥ 45. The panel gives the reason when they refuse. **If relations turn tense (< −0.2), they shut the station**
+  ("…and keeps the furniture").
+- **What they're for, measured.** On a planet this small one pass comes soon: a station at the target only brought
+  one picture down 0.3 h sooner, because at 300 km a satellite sees a cap ~40° across and the pad is in view on most
+  orbits. The real value is **contact time**. A polar satellite at 300 km has the pad in view 9–10% of the time;
+  with five well-spread stations, ~54% (equatorial 200 km: 20% → 34%; polar 800 km: 18% → 79%). So **imagery sales
+  now follow contact time:** 0.12M per day at full contact, about 4M a year with the pad alone versus 26M with a
+  network. A foreign station (20M + 8M a year) pays for itself, and the network becomes a map of your foreign
+  relations.
+- Pictures for contracts come down at whichever station is in view first; the headline names it. Stations are drawn
+  on the map (squares).
+- Checks (§17, 4 new, 91 total): build rules and costs, the lease and the closure, delivery via a nearer station,
+  contact time with and without a network.
+
+## Orbital registry: persistent satellites, camera and antenna (planning branch, 2026-10-07)
+
+The first slice of the parts-and-missions plan: things left in orbit stay there and keep working.
+
+- **One absolute frame and clock.** Program time T = day × DAY_S; Tellus's angle = th0 + rot·T. **Lift-off waits for the
+  daily launch window** (stacking ends, then the next whole day), so every flight's own frame (clock from 0) *is* the
+  absolute frame, because a Tellus day is exactly one rotation. That makes persistence consistent with no change to
+  flight physics: a satellite registered at the end of one flight sits over the right ground in the next (checked:
+  3e-10 m). Selene's phase still restarts per flight; nothing in the registry depends on it yet.
+- **Registry:** when a flight ends with the vessel alive in a stable Tellus orbit (periapsis above the air), it's
+  registered (`PROG.sats`): state at its epoch plus its kit (camera, antenna, instruments, ballast, passenger). Named by
+  kit: Lookout N, Beeper N, Boilerplate N, Ark N. Propagated on exact Kepler rails across program time. Listed in the
+  Program panel ("In orbit"); drawn on the map as an orbit line plus a marker.
+- **Parts:** *Imaging camera* (8M; ~10 µrad, so 2 m from 200 km, 3 m from 300 km) and *Antenna* (3M).
+- **Imaging, between flights** (`satTick`, from the world tick). Every 30 s of program time, a camera satellite checks each
+  accepted imaging contract. The target must be within 30° off nadir, slant range × IFOV ≤ the required resolution,
+  the sun above 10° at the target, and cloud cover < 0.35 there. Then the picture waits on board until the satellite
+  passes over a ground station (only the pad so far, elevation ≥ 5°) **with an antenna**.
+- **Clouds on the CPU:** the sky shader's `cloudCovF`, ported like the land mask (same hash and noise). The shader's
+  cloud drift now runs on program time, so the clouds you see are the clouds the satellites see. Mean cover ≈ 9%, in
+  large systems.
+- **Contracts:** a new `image` type (science, commercial and government clients; unlocks with the beeper): photograph a
+  city at 2, 3, 5 or 8 m.
+- **Disasters:** floods, wildfires, volcanoes, storms, locusts. About one per 45 days, always as a headline. If a camera
+  satellite with an antenna is up, the affected power offers a short, well-paid imaging job; if not, the headline
+  adds "(if only someone had a camera up there)".
+- **Imagery sales:** each working camera satellite earns ~0.03M per day, shaded by the business cycle.
+- Checks (`test.mjs` §16, 7 new, 81 total): frame consistency, the launch window, CPU cloud statistics, a polar
+  300 km satellite delivering a 5 m image on day 2 while a 1 m request stays out of reach, no antenna means no delivery,
+  and disasters plus income.
+
+**Not yet:** ground stations beyond the pad (more stations = faster downlinks: politics, since they're on someone's
+land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
+in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
+
+## v1.18 — radial fins and make-root (2026-10-07)
+
+First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
+
+**Radial fin** (`rfin`). It is one flat plate, the same plate as one of the fin ring's four (0.9 × 0.9 m, CN = 3.5·sinα·cosα +
+1.2·sin²α). It is *surface-attached* (`surf`): it sits on the host's skin at the profile radius for that height (`profR`), and it
+has no stack line, so nothing attaches to it and it never gets a radial decoupler. This is the cheap and honest version
+of "tilted parts". The physics already modelled fins as flat plates, so a radial fin is just one plate at its own angle φ.
+Its joint is radial, so the plate's normal force reaches the host as shear plus bending at the root (rated S 150 kN,
+B 60 kN·m).
+
+| What | Number |
+|---|---|
+| 4 radial fins on a 1.25 m body vs the ring's 4 plates (plates alone, M 0.6, 4°, 20 kPa) | force **99.4 %**, lever arm identical (1.750 m). The 0.6 % gap is the 1.2·sin²α term, which depends on plate orientation (45° off the ring's here). The linear term doesn't: Σ n nᵀ = 2I for any 4 orthogonal plates |
+| Orbiter, ring swapped for radial fins at the tank's bottom: none / ×3 / ×4 | **−3.35 / 0.03 / 0.52** calibers (ring: 0.88; without the ring's 0.9 m body the plates sit closer to the CoM). Three plates give 1.5 I, not 2 I: 75 % of the restoring force |
+| Orbiter ring + 4 radial fins on the tank (flown, SAS on) | 1.63 cal; 3.2 km at T+30 s, max AoA 0.27°, busiest fin root ≈ 1 % of its rating |
+
+**Make root.** "make root" in a part's options re-hangs the design tree from that part, flipping each stack joint on the path
+(`'u'` ↔ `'d'`); a joint's reinforcement moves with it. It is limited to stack paths: reversing a radial joint isn't exact,
+because the side-by-side clearance formula is asymmetric, and a symmetric copy would have to become a single parent. The
+point is picking things up: with the core engine as root, clicking the upper stage picks up Petrel + tank + pod + chute
+in one go. The assembled vessel doesn't change at all (test §16: same joints, reinforcement and stages, compared by stage label
+because segment *numbers* follow part creation order, which a re-root changes).
+
+**Merging.** `main` had moved: the orbital registry, which added a camera and an antenna. One conflict, the price table line next
+to `PRICE.rfin`. It also exposed a palette bug: categories were a fixed list of kinds, so the two new parts didn't show.
+The palette now puts any unclaimed kind under "Other". `test.mjs` 90/90 after the merge.
+
+**Headless builder.** `builder.js` loads into the same `new Function` sandbox as the sim core: it touches no DOM until `init()`.
+So tree operations like `reroot` are tested directly.
+
+## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
+
+Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,
+[`builder.js`](builder.js). That kept the two sessions' hunks apart in `index.html`. It can be folded back into
+the single file once nobody else is editing it.
+
+**What you do.** Pick a part from the palette (now grouped: command, tanks, engines, structure, aero) and it follows
+the cursor as a ghost:
+- **Stack nodes**: every free top or bottom node glows. Near one (34 px), the ghost snaps its bottom onto a top node, or its top under a bottom node.
+- **Surface**: otherwise it attaches **radially** to whatever the cursor is over, at that height and angle. Symmetry is ×1/2/3/4/6/8 [X], snapped to 15°, and the
+  line's ends are pulled onto the host's part boundaries within 0.35 m [C]. Radial decoupler on/off [R].
+- **Validity**: the ghost is green when it fits and red (`blocked`) when any copy would overlap a part.
+- **Picking up**: click a placed part to pick it up with everything hanging from it, all symmetric copies included. Ctrl-click takes a copy, Shift-click places one and keeps holding.
+- **Options**: right-click a part for joint load and reinforcement, crossfeed, copies, decoupler, ±0.1 m and ±15° nudges, pick up / copy / delete.
+- **Overlay**: joint loads are drawn on the rocket itself, replacing the strips between list rows.
+- **Editing**: undo/redo. In the editor the ship hangs 3 m above the pad, as in a VAB, so parts can go under its bottom. The camera no longer auto-spins; Shift+wheel or middle-drag moves the view up and down.
+
+**Design format v2: a tree** (`toV2`, `layoutDesign`, `assemble` in the SIM block). A node is `{k, at, j, x, c}`.
+`at` is `'u'` (on the parent's top), `'d'` (under its bottom), or radial `{y, a, n, cy, dec, x}`. Parts never tilt, so a
+radial child starts a new vertical stack line at distance (widest host-line radius over the child's extent) + 0.25 m +
+(child line radius). The physics already flies exactly that: stack lines for aero, joint frames for loads. So
+nothing in flight changed. Symmetric copies replicate the whole subtree, and nested radials are measured in their
+host's rotated frame, so boosters on boosters come out symmetric. The old `{stack, rad}` format converts losslessly.
+Presets stay in it, and so does any unedited design, so saved autopilot tapes keep matching.
+
+**Staging generalised.** Segments now form a tree: a segment's parent holds its decoupler. The *chain* runs from the
+root's segment down through the stack decouplers below it. Everything else hangs off a chain segment, burns with
+it, and drops before it does: deepest first, then highest first. For the old designs this reproduces the old rule
+exactly. For nested boosters it gives *side tanks → boosters → core*.
+
+### Measurements
+| What | Number |
+|---|---|
+| All 8 presets, new `assemble` vs old | **byte-identical** fingerprint: parts order, positions, parents, joint axes/points, reinforcement, segments, events, labels, Δv |
+| 3 boosters × 2 nested side tanks, no crossfeed → crossfeed | 4 593 → **6 215 m/s**. The engineless side tanks are dead weight until they crossfeed |
+| Same design flown straight up for 80 s | side tanks drop at T+23.9 s, boosters at 71.6 s, 58.5 km, worst joint 21 % |
+| Single ×1 radial Tank 1 t on a Tank 4 t | assembles, CoM 0.21 m off the axis |
+| `test.mjs` | 81 checks, all passing (6 new in §15) |
+
+### What went wrong on the way
+- **A dropped line that only one test could see.** The rewrite lost the reinforcement-mass line (`jm`). The preset
+  fingerprint can't catch that, because no preset reinforces a joint. The v1.5 test "reinforcing the joint that snapped" caught it (+0 kg
+  instead of +60 kg). Fingerprint *and* behavioural tests: each covered the other's blind spot.
+- **Test heuristic vs geometry.** "Nearest booster = host" was wrong for a nested tank that sits 1.49998 m from a
+  neighbouring booster against 1.5 m from its own. The test now reads the host from the joint tree.
+- **Line endings.** `index.html` and `test.mjs` are CRLF in the working tree (`core.autocrlf=true`). A splice that
+  wrote LF lines, and a `sed -i` that silently converted a whole file to LF, both had to be repaired. Edit through
+  something that keeps the file's own line endings.
+
+**Not done:** parts that tilt, so no radial fins or angled engines; that needs a per-part orientation in aero and loads. Re-rooting
+(picking up the root). Drag-to-reorder staging. Aero interference between side-by-side lines is still not modelled.
+The crossfeed note in flight says "side empty" for side-tank groups, which is the label's first word.
 
 ## v1.16 — ownership: what the program is (2026-10-07)
 
@@ -981,6 +1117,9 @@ restartable upper stage, docking port.
 
 - Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
   extracts it with `new Function` and drives it headless. Keep that boundary.
+- The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
+  `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
+  `assemble(toV2(old))` is how the old format still flies.
 - Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics).
   Tellus spins about +Y; `fromPF/toPF` convert to and from planet-fixed. The launch site is
   planet-fixed +X.
@@ -997,8 +1136,9 @@ restartable upper stage, docking port.
 2. ~~Re-entry heating~~ done in v1.7. Next on that line: conduction between neighbouring parts, and heating on an engine's own plume.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
-4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6. Next on that line: asymmetric attachment (a single side stack: the physics already
-   takes off-axis mass and thrust, but the builder only offers ×2–4 and it is untested), and core↔booster aero interference.
+4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18. Next on that line: a staging editor,
+   canted engines (a thrust direction per engine), truly tilted bodies, and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

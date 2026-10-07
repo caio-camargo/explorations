@@ -1799,6 +1799,20 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   driving budget days, offers and politics; floor top-ups take equity; rescue (stake or loan), privatization and
   foreign-stake decisions. `test.mjs` 75/75. Committed and pushed (only this session's edits; builder-session work left in
   the tree).
-- **v1.17 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
+- **v1.17 (2026-10-07, builder session, in parallel with the economy session):** a 3D construction screen in
+  `launchpad/builder.js`. Pick a part and it snaps to a glowing stack node or attaches radially to the surface under the cursor (×1–8
+  symmetry, 15° snap, boundary snap, radial decoupler). Also: green/red collision ghost, pick up with subtree, copy, right-click part
+  options, joint loads drawn on the rocket, undo/redo. Design format v2 is a part tree with nested radials. `assemble()` was rewritten on it and
+  is byte-identical to the old one on all 8 presets (fingerprint diff). Staging generalised to a segment tree (nested boosters drop
+  side tanks → boosters → core). Verified in the browser with real clicks: radial ×2/×3, nested ×2 on ×3 boosters, blocked ×8,
+  undo/redo, clear → build pod/tank/engine → launch and fly → back to assembly. No console errors. `test.mjs` 81/81 (§15, 6 new). Files: new
+  `builder.js`; `index.html` (design-format block, editor UI section, 5 render hooks); `test.mjs` §15; NOTES § v1.17; INDEX row;
+  LESSONS #16. Moved to worktree `launchpad-builder` / branch `builder` at the worktree switch, committed there as LF (the first try stored CRLF; amended), browser-checked from the worktree, fast-forward merged into `main`.
+  Next: tilted parts (radial fins), re-rooting, staging reorder UI; fold `builder.js` into `index.html` once nobody else is in it.
+- **v1.18 (2026-10-07, builder worktree):** radial fins (`rfin`, one fin plate surface-attached to any part, ×1–8; 4 of them =
+  the ring's plates within 0.6 %) and "make root" (re-hang the design along stack joints, so an upper stage picks up with the pod;
+  vessel unchanged). Merging `main` (orbital registry) gave one price-table conflict and exposed a palette bug (new part kinds
+  hidden), now an "Other" group. `test.mjs` 90/90. Browser-checked from the worktree. Merged to `main` (`c53b098`). Next: staging editor.
+- **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80.

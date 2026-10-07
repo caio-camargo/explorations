@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -442,8 +442,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the calendar: stacking takes days by price, flying takes its flight time
   fresh(); P.day = 0; s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  const ft = api.t; api.missionEnd(s); const want = api.prepDays(c0.cost) + ft / api.DAY_S;
-  check('calendar: a launch advances the date by the stacking time, the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
+  const ft = api.t; api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost)) + ft / api.DAY_S;   // lift-off waits for the daily launch window
+  check('calendar: a launch advances the date by the stacking time (to the next daily launch window), the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
   // the powers: any number of them; the pad is home; land is someone's, the sea no one's
   const counts = [2, 3, 5, 8].map(k => api.makePowers(11, k).length), PW = api.POWERS;
   const cityOK = api.CITIES.every(c => c.power), sea = (() => { for (let i = 0; i < 2000; i++) { const z = Math.sin(i * 7.1), ph = i * 2.39, q = Math.sqrt(1 - z * z), u = [q * Math.cos(ph), z, q * Math.sin(ph)]; if (!api.isLand(u)) return api.powerAt(u); } return 'none'; })();
@@ -546,6 +546,143 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('the race: the first satellite pays 1.5× when we are first, half when a rival got there first; rivals have schedules', Math.abs(pFirst - 1.5 * beeperPay) < 1e-6 && Math.abs(pSecond - 0.5 * beeperPay) < 1e-6 && api.RACE.every(id => api.RIVALS[id] && api.RIVALS[id].day > 0),
     `first ${pFirst}M, second ${pSecond}M; rivals expected: ${api.RACE.map(id => `${id} ${PW[api.RIVALS[id].i].root} day ${api.RIVALS[id].day}`).join(', ')}`);
   fresh(); P.day = 0; P.rel = {}; P.op = {}; P.sanc = {}; P.raceLost = {}; api.HOOK.news = () => {};
+}
+
+// 16. The orbital registry (planning branch): what's left in orbit persists on Kepler rails across program time; cameras
+// image targets in reach, sharp enough, sunlit and clear, and downlink over a ground station.
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const rotY = (v, th) => { const c = Math.cos(th), sn = Math.sin(th); return [c * v[0] + sn * v[2], v[1], -sn * v[0] + c * v[2]]; };
+  // a flight that ends in orbit leaves its vessel registered, in the same place over the same ground
+  fresh(); api.t = 0; let s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
+  s.landed = false; s.rec.launched = true; P.day = 7; s.rec.day0 = 7; s.rec.cost = 0; const r0 = TELLUS.R + 250e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
+  api.t = 1234.5; api.missionEnd(s); const q = P.sats[0], Tend = 7 * api.DAY_S + 1234.5;
+  const [ra] = api.satAt(q, Tend), pfFlight = api.toPF(TELLUS, s.r, 1234.5), pfA = rotY(ra, -api.absTh(Tend));
+  check('a flight ending in orbit registers a satellite, over the same ground in the program\'s absolute frame', P.sats.length === 1 && q.cam === 1 && q.ant === 1 && len(sub(pfA, pfFlight)) < 1e-6,
+    `${q.name}: planet-fixed mismatch ${len(sub(pfA, pfFlight)).toExponential(1)} m`);
+  // the launch window: lift-off happens on a whole program day
+  fresh(); P.day = 2.3; s = api.newShip(api.PRESETS.Sounding); api.S = s; api.t = 0; s.throttle = 1; api.stage(s); for (let k = 0; k < 200 && !s.rec.launched; k++) api.advPhys(s);
+  check('lift-off waits for the daily launch window: the flight starts on a whole program day', s.rec.launched && Number.isInteger(s.rec.day0) && s.rec.day0 >= 2.3 + api.prepDays(s.rec.cost), `stacking ends day ${(2.3 + api.prepDays(s.rec.cost)).toFixed(2)} → lift-off day ${s.rec.day0}`);
+  // clouds: the CPU port is a coverage in [0,1] that moves with time, and some of the sky is clear
+  let clear = 0, sum = 0, moved = 0; for (let i = 0; i < 400; i++) { const z = Math.sin(i * 1.7), ph = i * 2.4, qq = Math.sqrt(1 - z * z), u = [qq * Math.cos(ph), z, qq * Math.sin(ph)], c = api.cloudAt(u, 1e5), c2 = api.cloudAt(u, 1e5 + 5 * api.DAY_S);
+    sum += c; if (c < .35) clear++; if (Math.abs(c - c2) > .2) moved++; }
+  check('clouds on the CPU: coverage within [0,1], mostly clear somewhere, and the weather moves over days', sum / 400 > 0.05 && sum / 400 < 0.8 && clear > 100 && moved > 20, `mean cover ${(sum / 400).toFixed(2)}, clear at ${clear}/400 points, changed at ${moved}/400 after 5 days`);
+  // imaging: a polar camera satellite at 300 km gets a 5 m picture of a city within weeks; 1 m is beyond it; no antenna, no delivery
+  const sat = (alt, inc, kit) => { const r0 = TELLUS.R + alt * 1e3, v = Math.sqrt(TELLUS.mu / r0), i = inc * Math.PI / 180; P.satN++;
+    P.sats.push({ id: P.satN, name: 'T' + P.satN, epoch: P.day * api.DAY_S, r: [r0, 0, 0], v: [0, v * Math.sin(i), -v * Math.cos(i)], imgs: 0, pending: [], sci: 0, ballast: 0, bio: 0, ...kit }); };
+  const ci = api.CITIES.findIndex(c => c.power && c.power.i === 2), job = (id, res) => ({ id, type: 'image', src: 'com', client: 2, p: { ci, res, pay: 20, dur: 999 }, deadline: 999 });
+  fresh(); sat(300, 90, { cam: 1, ant: 1 }); P.active = [job(1, 5), job(2, 1)]; let day5 = null;
+  for (let d = 0; d < 80 && day5 == null; d++) { api.advanceDays(1); if (!P.active.some(c => c.id === 1)) day5 = P.day; }
+  check('a polar camera satellite delivers a 5 m image of the target within weeks; a 1 m request stays out of its reach', day5 != null && P.active.some(c => c.id === 2) && P.sats[0].imgs === 1,
+    `${api.CITIES[ci].name}: delivered on day ${day5 && day5.toFixed(0)} (resolution at 300 km ≈ ${(300e3 * 1e-5).toFixed(1)} m at nadir)`);
+  fresh(); sat(300, 90, { cam: 1, ant: 0 }); P.active = [job(1, 5)]; for (let d = 0; d < 40; d++) api.advanceDays(1);
+  check('without an antenna the picture is taken but never comes down', P.active.length === 1 && P.sats[0].pending.length === 1, `pending on board: ${P.sats[0].pending.length}`);
+  // the world asks: disasters become offers only once a working camera satellite exists; it also sells imagery
+  fresh(); P.done.beeper = {}; news.length = 0; for (let d = 0; d < 300; d += 5) api.advanceDays(5); const quips = news.filter(t => /if only someone/.test(t)).length;
+  fresh(); P.done.beeper = {}; news.length = 0; sat(300, 90, { cam: 1, ant: 1 }); let disOffers = 0; const f0 = P.funds;
+  for (let d = 0; d < 300; d += 5) { const n0 = P.offers.filter(o => o.p.dis).length; api.advanceDays(5); disOffers += Math.max(0, P.offers.filter(o => o.p.dis).length - n0); }
+  check('disasters: headlines either way, offers only when a camera satellite with an antenna is up; it also earns from imagery', quips > 0 && disOffers > 0 && P.funds > f0,
+    `${quips} unanswerable disasters without one; with one, ${disOffers} disaster offers and funds ${f0} → ${P.funds.toFixed(1)}M`);
+  fresh(); P.sats = []; api.HOOK.news = () => {};
+}
+
+// 15. Design format v2 (v1.17): the construction screen's free attach tree — radial on anything, nested symmetry.
+// Its own instance of the sim core, so this section never touches the shared api object above.
+{
+  const D = new Function(src + 'return {toV2,assemble,stageStats,newShip,physStep,stage,segFuel,PRESETS,HOOK,DT,len,TELLUS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const P = D.PRESETS, fp = A => JSON.stringify([A.parts.map(p => [p.d.key, p.pos, p.y0, p.parent && p.parent.i, p.jA, p.jP, p.jr || 0, p.seg]), A.events, A.segs.map(s => s.label)]);
+  const diff = Object.keys(P).filter(k => fp(D.assemble(P[k])) !== fp(D.assemble(JSON.parse(JSON.stringify(D.toV2(JSON.parse(JSON.stringify(P[k]))))))));
+  check('design v2: every preset converts to the tree format and survives a JSON round trip unchanged (parts, joints, stages)', !diff.length, diff.length ? 'differs: ' + diff.join(', ') : `${Object.keys(P).length} presets`);
+  // three boosters on the core, each carrying two small side tanks of its own (crossfeed optional)
+  const nested = x => ({ v: 2, root: { k: 'pod', c: [{ k: 'chute', at: 'u', c: [] }, { k: 't2', at: 'd', c: [{ k: 'petrel', at: 'd', c: [{ k: 'dec', at: 'd', c: [{ k: 't8', at: 'd', c: [
+    { k: 'fins', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }] },
+    { k: 't4', at: { y: 4.16, a: 0.7854, n: 3, cy: 1.9, dec: true }, c: [{ k: 'kestrel', at: 'd', c: [] },
+      { k: 't1', at: { y: 2.38, a: 5.236, n: 2, cy: 0.55, dec: true, ...(x ? { x: true } : {}) }, c: [] }] }] }] }] }] }] } });
+  const A = D.assemble(nested(true)), B = A.parts.filter(p => p.d.key === 't4'), T = A.parts.filter(p => p.d.key === 't1');
+  const rB = B.map(p => Math.hypot(p.pos[0], p.pos[2])), aB = B.map(p => Math.atan2(p.pos[2], p.pos[0])).sort((a, b) => a - b);
+  const host = t => t.parent.parent, rT = T.map(t => Math.hypot(t.pos[0] - host(t).pos[0], t.pos[2] - host(t).pos[2]));
+  check('nested symmetry: 3 boosters 120° apart at one distance, each with 2 side tanks 1.5 m off its own axis', A.parts.length === 29 && B.length === 3 && T.length === 6 &&
+    Math.max(...rB) - Math.min(...rB) < 1e-9 && Math.abs(aB[1] - aB[0] - 2 * Math.PI / 3) < 1e-9 && rT.every(r => Math.abs(r - 1.5) < 1e-9), `${A.parts.length} parts, boosters at ${rB[0].toFixed(3)} m, side tanks at ${rT[0].toFixed(3)} m`);
+  const ev = A.events;
+  check('nested staging: the side tanks drop first, then the boosters, then the core', ev.length === 5 && ev[0].ignite.length === 4 && ev[1].decouple.length === 6 && ev[1].radial &&
+    ev[2].decouple.length === 3 && ev[2].radial && ev[3].ignite.length === 1 && ev[4].chute, ev.map(e => e.chute ? 'chute' : `${e.decouple.length ? '−' + e.decouple.length : ''}${e.ignite.length ? '+' + e.ignite.length : ''}`).join(' → '));
+  const dv = d => D.stageStats(d).stages.reduce((a, s) => a + s.dvV, 0), d0 = dv(nested(false)), d1 = dv(nested(true));
+  check('…and without crossfeed the side tanks are dead weight (no engine of their own); with it they feed the boosters', d1 > d0 + 1000, `${d0.toFixed(0)} → ${d1.toFixed(0)} m/s`);
+  D.t = 0; const s = D.newShip(nested(true)), msgs = []; D.S = s; D.HOOK.msg = m => msgs.push(`${D.t.toFixed(1)} ${m}`); s.throttle = 1; D.stage(s); let worst = 0;
+  while (D.t < 80 && s.alive) { D.physStep(s, D.DT); worst = Math.max(worst, s.maxLoad); const nx = s.events[s.evIdx]; if (nx && nx.decouple.length && nx.decouple.every(k => D.segFuel(s, k) <= 1e-9)) D.stage(s); }
+  const seps = msgs.filter(m => /separation/.test(m));
+  check('nested design flies: tanks then boosters drop as they run dry, no structural failure', s.alive && s.evIdx === 3 && seps.length === 2 && !msgs.some(m => /Structural/.test(m)) && D.len(s.r) - D.TELLUS.R > 20000,
+    `${seps.join(', ')} · ${((D.len(s.r) - D.TELLUS.R) / 1000).toFixed(1)} km at T+80 s, worst joint ${(worst * 100).toFixed(0)}%`);
+  // a single radial part (×1, no decoupler): the old format couldn't say this; the physics takes the off-axis mass as is
+  const one = D.newShip({ v: 2, root: { k: 'pod', c: [{ k: 't4', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }, { k: 't1', at: { y: 2, a: 0, n: 1 }, c: [] }] }] } });
+  check('asymmetric ×1 radial: assembles, centre of mass moves off the axis toward it', one.parts.length === 4 && one.cm[0] > 0.05 && one.events.length === 1, `CoM x ${one.cm[0].toFixed(3)} m`);
+}
+
+// 17. Ground stations (planning branch): home ones are a purchase; foreign ones need permission, pay a lease, and close
+// when relations sour; a better-spread network brings pictures down sooner.
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3), fp = C[far].power.i;
+  fresh(); const f0 = P.funds, a = api.buildStation(home);
+  P.rel[api.pairKey(H, fp)] = -0.1; const b = api.gsCheck(far);
+  P.rel[api.pairKey(H, fp)] = 0.5; P.op[fp] = 60; const c = api.buildStation(far);
+  check('ground stations: home is a purchase; abroad needs friendly relations and opinion, and costs more', a.ok && !b.ok && c.ok && P.funds === f0 - 10 - 20 && api.stationsAll().length === 3,
+    `${C[home].name} (home) ${a.cost}M; ${C[far].name}: refused at −0.1 ("${b.why}"), built at +0.5 for ${c.cost}M`);
+  P.leasePaid = 0; api.advanceDays(100); P.rel[api.pairKey(H, fp)] = 0.5;
+  const leased = P.leasePaid; P.rel[api.pairKey(H, fp)] = -0.6; api.advanceDays(1);
+  check('a foreign station pays its lease every 100 days, and is shut when relations turn tense', leased >= api.GS_LEASE - 1e-9 && api.stationsAll().length === 2 && news.some(t => /shuts our ground station/.test(t)),
+    `lease ${leased.toFixed(1)}M over 100 days; closed at −0.6`);
+  // delivery: the same polar satellite and target, with only the pad vs with a station near the target
+  const run = withStation => { fresh(); if (withStation) { P.rel[api.pairKey(H, fp)] = 0.9; P.op[fp] = 80; api.buildStation(far); }
+    const r0 = TELLUS.R + 300e3, v = Math.sqrt(TELLUS.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    P.active = [{ id: 9, type: 'image', src: 'com', client: fp, p: { ci: far, res: 5, pay: 20, dur: 999 }, deadline: 999 }];
+    for (let k = 0; k < 3000; k++) { api.advanceDays(0.005); if (!P.active.length) return P.day; if (withStation) P.rel[api.pairKey(H, fp)] = 0.9; } return Infinity; };
+  const tPad = run(false), tNet = run(true);
+  check('a station near the target brings the picture down sooner than waiting for a pass over the pad', isFinite(tNet) && tNet < tPad,
+    `${C[far].name}: pad only, day ${tPad.toFixed(1)}; with a station there, day ${tNet.toFixed(1)} (${((tPad - tNet) * 6).toFixed(1)} h sooner)`);
+  // contact time, and the imagery income that follows it
+  const earn = withNet => { fresh(); if (withNet) for (let k = 1; k < api.POWERS.length; k++) { const ci = C.map((c, i) => ({ c, i })).filter(x => x.c.power.i === k).sort((a, b) => b.c.pop - a.c.pop)[0].i;
+      P.rel[api.pairKey(H, k)] = 0.9; P.op[k] = 80; api.buildStation(ci); }
+    const r0 = TELLUS.R + 300e3, v = Math.sqrt(TELLUS.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    P.funds = 1000; P.cycle = 0; let inc = 0; for (let k = 0; k < 20; k++) { const f = P.funds; api.advanceDays(5); for (let j = 1; j < api.POWERS.length; j++) P.rel[api.pairKey(H, j)] = 0.9; } return { contact: P.sats[0].contact, n: api.stationsAll().length }; };
+  const lone = earn(false), net = earn(true);
+  check('contact time: a polar satellite sees the pad a small share of the time; a station network multiplies it (and the imagery income with it)', lone.contact < 0.2 && net.contact > 2.5 * lone.contact,
+    `pad only ${(lone.contact * 100).toFixed(0)}% → ${net.n} stations ${(net.contact * 100).toFixed(0)}%; sales ≈ ${(0.12 * lone.contact * 400).toFixed(0)}M vs ${(0.12 * net.contact * 400).toFixed(0)}M a year`);
+  fresh(); P.stations = []; api.HOOK.news = () => {};
+}
+
+// 16. Radial fins and make-root (v1.18). The builder's tree operations run headless too: builder.js defines BLD without
+// touching the DOM until init(), so it loads into the same sandbox as the sim core.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {toV2,assemble,newShip,geom,aeroPass,analyze,SND,PRESETS,BLD,set des(v){stackDef=v}};')();
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean), cp = x => JSON.parse(JSON.stringify(x)), P0 = D.PRESETS;
+  // plate forces alone (body subtracted) at M 0.6, 4°, 20 kPa
+  const plates = (s, only) => { D.geom(s); const all = s.fins, v = 0.6 * D.SND(0), a = 4 * Math.PI / 180, rho = 40000 / (v * v), vb = [v * Math.sin(a), v * Math.cos(a), 0];
+    const run = f => { s.fins = f; for (const p of s.parts) { p.F = [0, 0, 0]; p.L = [0, 0, 0]; } D.aeroPass(s, vb, [0, 0, 0], rho, 0.6, false); let Fx = 0, Lz = 0; for (const p of s.parts) { Fx += p.F[0]; Lz += p.L[2]; } return [Fx, Lz]; };
+    const b = run([]), w = run(all.filter(only)); s.fins = all; return [w[0] - b[0], w[1] - b[1]]; };
+  const R = D.newShip(D.toV2(cp(P0.Orbiter))), wR = D.toV2(cp(P0.Orbiter));
+  find(wR.root, 'fins').c.push({ k: 'rfin', at: { y: 0.45, a: Math.PI / 4, n: 4, cy: 0.45 }, c: [] });
+  const F = D.newShip(wR), a = plates(R, p => p.d.kind === 'fins'), b = plates(F, p => p.d.kind === 'rfin'), rf = F.parts.filter(p => p.d.kind === 'rfin');
+  check('radial fins: four on a 1.25 m body give the ring\'s plate force (within 1%) at the same lever arm, roots on the skin', Math.abs(b[0] / a[0] - 1) < 0.01 &&
+    Math.abs(b[1] / b[0] - a[1] / a[0]) < 1e-3 && rf.length === 4 && rf.every(p => Math.abs(Math.hypot(p.pos[0], p.pos[2]) - 0.625) < 1e-9),
+    `force ratio ${(b[0] / a[0]).toFixed(4)}, arm ${(-a[1] / a[0]).toFixed(3)} / ${(-b[1] / b[0]).toFixed(3)} m`);
+  const cal = d => { const s = D.newShip(d), A = D.analyze(s); return [(A.ful.ycm - A.ful.ycp) / (2 * s.radius), A.mq.cert.frac]; };
+  const sw = n => { const d = D.toV2(cp(P0.Orbiter)), t = find(d.root, 't8'); t.c = [{ k: 'kestrel', at: 'd', c: [] }]; if (n) t.c.push({ k: 'rfin', at: { y: 0.45, a: 0, n, cy: 0.45 }, c: [] }); return d; };
+  const c4 = cal(sw(4)), c3 = cal(sw(3)), c0 = cal(sw(0));
+  check('radial fins: the Orbiter without its ring is unstable; ×3 radial fins about neutral, ×4 stable; fin roots hold at max-q', c0[0] < -2 && Math.abs(c3[0]) < 0.3 && c4[0] > 0.3 && c4[1] < 1,
+    `calibers: none ${c0[0].toFixed(2)}, ×3 ${c3[0].toFixed(2)}, ×4 ${c4[0].toFixed(2)} · worst max-q joint ${(c4[1] * 100).toFixed(0)}%`);
+  // make root: re-hang the Heavy preset from its core Kestrel; the assembled vessel must not change at all
+  // canonical: segment numbers follow part creation order, which a re-root changes, so compare by stage label
+  const r9 = v => +v.toFixed(9), fpA = A => JSON.stringify([A.parts.map(p => JSON.stringify([p.d.key, p.pos.map(r9), r9(p.y0), p.jA, p.jP.map(r9), p.jr || 0,
+    A.segs[p.seg].label, p.parent && p.parent.d.key])).sort(), A.events.map(e => [e.decouple.map(k => A.segs[k].label).sort(), e.ignite.map(k => A.segs[k].label).sort(), !!e.chute, !!e.radial])]);
+  const h = D.toV2(cp(P0.Heavy)); find(h.root, 't8').j = 2; D.des = h; const before = fpA(D.assemble(h));
+  const k = (n => { const f = x => x.k === 'kestrel' && x.at === 'd' ? x : (x.c || []).map(f).find(Boolean); return f(n); })(h.root), path = D.BLD.rootPath(h.root, k);
+  D.BLD.reroot(path); const after = fpA(D.assemble(h));
+  check('make root: re-rooting the design at the core engine changes nothing in the assembled vessel (joints, reinforcement, stages)', h.root === k && !k.at && before === after,
+    `path of ${path.length} parts; new root ${h.root.k}, old root now hangs '${find(h.root, 'pod').at}'`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
