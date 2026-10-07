@@ -203,7 +203,10 @@ function panel(){
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
     btn(r,'delete'+(sub?` (+${sub})`:''),false,()=>{if(n===D.root&&!confirm('Delete the root part and everything on it?'))return;del(n)})}}
 function palette(){const pal=el('palette');pal.innerHTML='';
-  const CAT=[['Command & payload',['pod','bio','sci','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
+  const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
+  if(rest.length)CAT.push(['Other',rest]);
   for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
     for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;const b=document.createElement('button');
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
