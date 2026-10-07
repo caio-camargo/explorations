@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.13.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.14.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -622,6 +622,9 @@ detail, and got a design pass:
   The old "lens" was a vertical disc stuck to the hull. A film-return hatch is on the far side.
 - **Antenna:** a parabolic dish (focal length 0.15 m) on a mast, its feed horn held at the focus by three struts, two whip antennas.
 - **Radial fin:** alternates black/white by part index like the fin ring, with a root bracket on the hull.
+- **Docking port, RCS quad, gas bottle** (arrived during this pass): a capture ring with a probe, guide vanes and latches;
+  four little heat-tinted bells on an outrigger, on the same thrust axes the physics uses (`RCS_OFF`); a painted bottle
+  with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 
@@ -2241,6 +2244,35 @@ The first docking. Two ports meet, latch, and the satellite rides along; undock 
   passengers' thrusters, aero and heating; fuel transfer; a body whose port sits on a part that's staged away; the
   passengers' own rotational inertia in the port's moment; a soft-capture animation (the latch snaps the last ≤15 cm).
 
+### The claw (sats session, 2026-10-07)
+
+Grab anything, port or not, wherever you touch it.
+
+- **Part:** *Claw* (palette *Structure*), a stack part with three jaws on top. 4M.
+- **Grab:** when contact is found and the vessel's own claw (not one already holding something) is the part most
+  involved, the contact is within 35 cm of its tip, and the contact points close at under 1 m/s, it grabs instead of
+  bouncing. The target is moved out of the overlap along the contact normal and then held at exactly the attitude it
+  had: nothing snaps, because a passenger can sit at any transform. The jaws close on whatever they reach: in the test
+  they straddle the waist between a satellite's camera and its engine, 14 cm from the jaws' centre.
+- **One join:** docking is now `dock` (work out where the ports put the target) plus `join` (two bodies become one,
+  momentum and angular momentum kept), and the claw uses `join` directly. Attachments carry a `kind` ('port' or 'claw')
+  through flattening, registration and undocking.
+- **Joint ratings per part** (`jF`, `jM`): a port 30 kN / 20 kN·m, the claw 15 kN / 8 kN·m. A 0.7 t satellite in the claw:
+  13 % of the grip at 5 % throttle, torn loose at full throttle.
+- **Release** (HUD button): 0.1 m/s along the claw, momentum shared; back in the registry as itself; no regrab for 5 s.
+- **HUD:** *Claw* row with a target near: the jaws' distance to the target's surface (its parts' distance fields,
+  `bodyDist`) and the closing speed, green under 1 m/s. SAS *Target* points the claw at it.
+- **A bug the sim checks couldn't see:** the claw's HUD row declared `cl`, and the port rows already had a `cl` in the
+  same function, so the page didn't load at all, while every check passed (they only load the sim core). `test.mjs`
+  now also checks that the whole page script parses. Also on the way (my mistake, not the code's): restoring a
+  deliberately broken line with `git checkout -- index.html` threw away the uncommitted claw work; the edit script
+  re-applied it. Commit before mutation-testing.
+- Checks (`test.mjs` §26): a portless satellite grabbed at 0.4 m/s at its own 90° attitude, momentum kept; no grab at
+  2 m/s or with a port touching instead; the grip holds at 5 % and tears at full throttle; release at 0.1 m/s with no
+  regrab; the page parses. In the browser: approach with the *Claw* row, the grab, and release by the button.
+- **Not yet:** grabbing debris (spent stages: contact with debris comes first); a free pivot so the held body can be
+  turned to line up; arming/disarming (it grabs whatever its jaws touch slowly).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -2709,6 +2741,46 @@ for an axis: it changes what you fly or what you decide, not just a number.
 **Backlog — visual flavours (Caio, 2026-10-07; for the visuals session):** ship and environment design flavour per
 power. Can't be sliders, so a handful of **style presets plus livery** (paint scheme, markings, pad and building
 style) would give visible variety that reflects each power's flavour.
+
+**Spending money: development, investments, flagships (design with Caio, 2026-10-07).** The balance pass (v1.28) showed
+strong programs ending year 3 with ~1,000M and nothing to spend it on. The fix is things worth buying, not more
+pressure.
+- **No tech tree of unlocks.** Parts can already be bought abroad, so locking them behind research would be
+  inconsistent. Instead, what a program owns is **its own designs and how well it knows them**.
+- **Engineering history per part:** every part type accumulates a record across your flights (loads survived, burn
+  time at sea level and in vacuum, re-entry heating, restarts). Certification is already a first case of this.
+- **Development projects:** a part + a goal (thrust or Isp, mass, cost, reliability) costs **money and time** and
+  requires **that part's own history** (you can't build a better Kestrel without having flown Kestrels hard). Stress
+  tests on a test stand can supply some of that data for money instead of flights. The result starts less certified
+  (a new design has to be re-qualified): better on paper, untrusted until flown. That's the drama.
+- **Engineering data ≠ the logbook.** Engineering data lives on parts and is about *your hardware* (feeds development
+  and certification). The planning session's logbook is about *the world* (facts discovered, used to plan missions).
+  Both come from flying, but they answer different questions; atmosphere knowledge belongs on the logbook side. They
+  might share plumbing if it serves both purposes; not decided.
+- **Sinks without upkeep misery** (Caio: upkeep as the main sink makes for miserable play). Running costs stay small
+  and steady. The main sinks are **chosen investments that last**:
+  1. development projects;
+  2. capital construction, one-off with little or no upkeep: integration halls (faster stacking, bigger vehicles,
+     parallel campaigns), a recovery fleet (stages recovered at sea), test stands (ground certification, stress
+     data), production lines (domestic tiers), pads at launch sites (with terrain);
+  3. flagship projects (stations, telescope, a lunar program): mission content with the planning session, with economy
+     pricing them and paying for them over time;
+  4. payloads that cost more as ambitions grow.
+- **Open — buying abroad vs developing at home** (Caio: development sits uncomfortably with buying parts abroad;
+  solvable, needs more thought). Directions:
+  - **Part quality you can tell:** suppliers' parts differ in quality (reliability, tolerances, performance spread). It
+    starts hidden and is revealed by your own engineering data, so data matters even for imports: you learn whose
+    Kestrels are good.
+  - **Domestic production and vertical integration get cheaper:** once you build a tier yourself, and more so as you
+    integrate the chain, parts cost less than imports, repaying the setup cost.
+  - Together these let both paths coexist: imports are quick and proven (of known or unknown quality); home production
+    is slower to set up, cheaper in the long run, and developable.
+  - Earlier idea, not adopted: development only for parts you build. Kept as an option.
+- **Open — variants vs upgrades in place:** does development produce a new part next to the old one (a "Kestrel B" in
+  the palette), or improve the part itself (with fresh certification)? On hold. It touches the builder's palette and the
+  planning session's parts.
+- **First slice when building starts** (purely economy): engineering history on parts, test stands, development
+  projects. Coordinate the palette with the builder and flagships with planning.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;

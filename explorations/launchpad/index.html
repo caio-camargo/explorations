@@ -329,7 +329,9 @@ const PARTS={
   rcs:{name:'RCS quad (cold gas)',kind:'rcs',surf:true,noAero:true,m:0.02,h:0.2,r:0.07,off:0.06,C:900,T:600,B:200,rcsF:0.15,isp:70},
   gas:{name:'Gas bottle',kind:'gas',surf:true,noAero:true,m:0.03,h:0.6,r:0.17,off:0.19,res0:{gas:0.015},C:900,T:600,B:200},
   // docking port (sats session): 1.25 m, its face on top; two capture when they meet slowly and nearly aligned
-  port:{name:'Docking port',kind:'port',m:0.1,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.14],[.5,.2],[.5,.3]]},
+  port:{name:'Docking port',kind:'port',m:0.1,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.14],[.5,.2],[.5,.3]],jF:30e3,jM:20e3},
+  // the claw (sats session): its jaws grab whatever they touch slowly enough, wherever and however it is; a weaker hold
+  claw:{name:'Claw',kind:'claw',m:0.15,h:0.55,C:900,T:600,B:200,prof:[[.35,0],[.35,.25],[.3,.32],[.18,.55]],jF:15e3,jM:8e3},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   wren:{name:'Wren lander',kind:'engine',m:0.15,h:0.55,cm:.7,thrust:18,ispA:240,ispV:300,exit:0.25,C:500,T:300,B:150,prof:[[.25,0],[.1,.25],[.35,.35],[.625,.5],[.625,.55]]},
   // a small sea-level engine: sounding rockets and early hops (a Kestrel empties a 1 t tank in 12 s and leaves a tail-heavy, tumbling hull)
@@ -1261,7 +1263,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 // the government tops the program up (grudgingly): no dead ends, but money still decides what you can fly next.
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
-PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -1762,7 +1764,7 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
   const on=s.parts.filter(p=>p.on);q.shape=on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
   q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=(s.cmOwn||s.cm).slice();R.satId=q.id;
-  q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
+  q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
@@ -1882,6 +1884,7 @@ function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS)return;portLoa
     const n=Math.min(400,Math.max(1,Math.ceil(len(vrel)*dt/HIT_STEP)));let c=null;
     for(let k=0;k<=n&&!c;k++){const o=sub(rel,mul(vrel,dt*(n-k)/n));if(len(o)>A.R+M.R)continue;B.r=add(s.r,o);c=hitFind(A,B)}   // earliest touch in the step
     if(!c)continue;
+    if(clawTry(s,q,A,B,c,T)){A=null;continue}
     const vn=hitResolve(A,B,c),why=` (${vn.toFixed(1)} m/s)`;s.r=A.r;s.v=A.v;s.w=A.w;
     Object.assign(q,{r:B.r,v:B.v,epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});   // the satellite's new rails
     if(vn>0.3)HOOK.msg(`Contact with ${q.name} at ${vn.toFixed(1)} m/s`);
@@ -1919,42 +1922,56 @@ function dockTry(s,q,B,T){if(q.undockT!=null&&T-q.undockT<PORT_COOL)return false
   dock(s,q,B,P);return true}
 // latch: the target's port is pulled onto ours (turned so the faces oppose, moved so they meet), the two become one rigid
 // body, and the joined vessel takes their total momentum and angular momentum
-function dock(s,q,B,P){const R=s.q,cm0=s.cm.slice(),m0=s.mass;
-  const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q),rB=sub(P.Pa,qrot(Qb,sub(P.b.face,B.cm)));
+function dock(s,q,B,P){const Qb=qmul(qFromTo(P.Ab,mul(P.Aa,-1)),B.q);
+  join(s,q,B,Qb,sub(P.Pa,qrot(Qb,sub(P.b.face,B.cm))),P.a.body,P.a.i,P.b.i,'port')}
+// two bodies become one: q (body B, placed at attitude Qb and position rB) rides on the vessel, held by part hpi of body
+// host; the joined vessel takes the pair's total momentum and angular momentum
+function join(s,q,B,Qb,rB,host,hpi,ppi,kind){const R=s.q,cm0=s.cm.slice(),m0=s.mass;
   const Iw=(q4,I,w)=>{const l=qrot(qconj(q4),w);return qrot(q4,[l[0]*I[0],l[1]*I[1],l[2]*I[2]])};
   const Pm=add(mul(s.v,m0),mul(B.v,B.m)),L=add(add(cross(s.r,mul(s.v,m0)),Iw(R,s.I,s.w)),add(cross(rB,mul(B.v,B.m)),Iw(Qb,B.I,B.w)));
   const toV=w=>add(qrot(qconj(R),sub(w,s.r)),cm0),qv=qmul(qconj(R),Qb);(s.att=s.att||[]);
-  s.att.push({e:q,p:toV(add(rB,qrot(Qb,sub(q.cm,B.cm)))),q:qv,host:P.a.body,hpi:P.a.i,ppi:P.b.i});
-  for(const a of q.attached||[])s.att.push({e:a.e,p:toV(add(rB,qrot(Qb,sub(a.p,B.cm)))),q:qmul(qv,a.q),host:a.host||q.id,hpi:a.hpi,ppi:a.ppi});
+  s.att.push({e:q,p:toV(add(rB,qrot(Qb,sub(q.cm,B.cm)))),q:qv,host,hpi,ppi,kind});
+  for(const a of q.attached||[])s.att.push({e:a.e,p:toV(add(rB,qrot(Qb,sub(a.p,B.cm)))),q:qmul(qv,a.q),host:a.host||q.id,hpi:a.hpi,ppi:a.ppi,kind:a.kind});
   q.attached=[];q.docked=true;q.undockT=null;SAT_C.delete(q);if(s.target===q.id)s.target=null;
   geom(s);const rc=add(s.r,qrot(R,sub(s.cm,cm0)));s.r=rc;s.v=mul(Pm,1/s.mass);
   const l=qrot(qconj(R),sub(L,cross(rc,Pm)));s.w=qrot(R,[l[0]/s.I[0],l[1]/s.I[1],l[2]/s.I[2]]);s.rcsJ=null;
-  HOOK.msg(`Docked with ${q.name}`)}
+  HOOK.msg(kind==='claw'?`Claw: holding ${q.name}`:`Docked with ${q.name}`)}
+// the claw: a claw part of the vessel's own (not holding anything yet) whose tip touches a satellite at under CLAW_V
+// grabs it right there: the target is moved out of the overlap and held at exactly the attitude it had
+const CLAW_V=1,CLAW_REACH=0.35,CLAW_PUSH=0.1;
+const clawFree=(s,p)=>!(s.att||[]).some(x=>x.host===0&&x.hpi===p.i);
+const clawTip=p=>[p.pos[0],p.y0+p.h,p.pos[2]];
+function clawTry(s,q,A,B,c,T){const a=c.pa;if(!a||a.att||!a.d||a.d.kind!=='claw'||!clawFree(s,a.p)||(q.undockT!=null&&T-q.undockT<PORT_COOL))return false;
+  if(len(sub(c.p,hitW(A,clawTip(a.p))))>CLAW_REACH)return false;   // the jaws, not the side of the claw
+  const ra=sub(c.p,A.r),rb=sub(c.p,B.r);if(len(sub(add(A.v,cross(A.w,ra)),add(B.v,cross(B.w,rb))))>CLAW_V)return false;
+  join(s,q,B,B.q,madd(B.r,c.n,-c.d),0,a.p.i,-1,'claw');return true}
+// how far a world point is from a body's surface (its parts' distance fields; negative inside)
+function bodyDist(B,w){let d=Infinity;for(const b of B.parts){const l=sub(hitVi(b,hitL(B,w)),b.g.o);d=Math.min(d,partSDF(b.g,l[0],l[1],l[2]))}return d}
 // a docked body and everything docked through it
 function dockGroup(s,a){const g=[a];for(let k=0;k<g.length;k++)for(const b of s.att)if(!g.includes(b)&&b.host===g[k].e.id)g.push(b);return g}
 // a host's port, in the vessel frame: face point and axis
 function hostPort(s,a){const h=a.host?s.att.find(x=>x.e.id===a.host):null,L=h?h.e.shape:s.parts,po=L.find(o=>o.i===a.hpi);if(!po)return null;
-  const face=[po.pos[0],po.y0+po.h,po.pos[2]];return h?{P:add(h.p,qrot(h.q,sub(face,h.e.cm))),ax:qrot(h.q,[0,1,0])}:{P:face,ax:[0,1,0]}}
+  const face=[po.pos[0],po.y0+po.h,po.pos[2]],d=po.d||PARTS[po.k];return h?{P:add(h.p,qrot(h.q,sub(face,h.e.cm))),ax:qrot(h.q,[0,1,0]),d}:{P:face,ax:[0,1,0],d}}
 // what each port carries: the force and bending moment that make everything beyond it follow the vessel's motion
 // (non-gravitational acceleration plus rotation). Above its rating it lets go, and the body leaves with its momentum.
 function portLoads(s){const A=s.att||[];if(!A.length||!s.aB)return;const aB=s.aB,al=s.alB,wb=s.wB;
   for(const a of A.slice()){if(!s.att.includes(a))continue;const H=hostPort(s,a);if(!H)continue;let F=[0,0,0],Mm=[0,0,0];
     for(const g of dockGroup(s,a)){const r=sub(g.p,s.cm),f=mul(add(add(aB,cross(al,r)),cross(wb,cross(wb,r))),g.e.mass);F=add(F,f);Mm=add(Mm,cross(sub(g.p,H.P),f))}
-    const mb=len(sub(Mm,mul(H.ax,dot(Mm,H.ax))));a.load=Math.max(len(F)/PORT_F,mb/PORT_M);
-    if(a.load>1){HOOK.msg(`Docking port overloaded: ${a.e.name} breaks loose`);undock(s,a.e.id,0)}}}
+    const mb=len(sub(Mm,mul(H.ax,dot(Mm,H.ax))));a.load=Math.max(len(F)/(H.d.jF||PORT_F),mb/(H.d.jM||PORT_M));
+    if(a.load>1){HOOK.msg(a.kind==='claw'?`The claw loses its grip: ${a.e.name} breaks loose`:`Docking port overloaded: ${a.e.name} breaks loose`);undock(s,a.e.id,0)}}}
 // undock: the body (and everything docked through it) leaves on its own rails, pushed off along the port axis; momentum is
 // shared so the total doesn't change. It goes back into the registry in its own right, as itself.
-function undock(s,id,push=PORT_PUSH){const a0=(s.att||[]).find(a=>a.e.id===id);if(!a0)return false;const grp=dockGroup(s,a0),T=progT(s),R=s.q,cm0=s.cm.slice();
+function undock(s,id,push){const a0=(s.att||[]).find(a=>a.e.id===id);if(!a0)return false;if(push==null)push=a0.kind==='claw'?CLAW_PUSH:PORT_PUSH;const grp=dockGroup(s,a0),T=progT(s),R=s.q,cm0=s.cm.slice();
   const W=x=>add(s.r,qrot(R,sub(x,cm0))),H=hostPort(s,a0),ax=qrot(R,H?H.ax:[0,1,0]);
   let mg=0,cg=[0,0,0];for(const g of grp){mg+=g.e.mass;cg=madd(cg,g.p,g.e.mass)}cg=mul(cg,1/mg);
   const rg=W(cg),vg=add(s.v,cross(s.w,sub(rg,s.r)));
   s.att=s.att.filter(x=>!grp.includes(x));geom(s);const rs=W(s.cm),vs=add(s.v,cross(s.w,sub(rs,s.r))),Mt=s.mass+mg;
   s.r=rs;s.v=madd(vs,ax,-push*mg/Mt);s.rcsJ=null;
-  const e=a0.e;e.attached=grp.slice(1).map(x=>({e:x.e,p:add(qrot(qconj(a0.q),sub(x.p,a0.p)),e.cm),q:qmul(qconj(a0.q),x.q),host:x.host===e.id?0:x.host,hpi:x.hpi,ppi:x.ppi}));
+  const e=a0.e;e.attached=grp.slice(1).map(x=>({e:x.e,p:add(qrot(qconj(a0.q),sub(x.p,a0.p)),e.cm),q:qmul(qconj(a0.q),x.q),host:x.host===e.id?0:x.host,hpi:x.hpi,ppi:x.ppi,kind:x.kind}));
   SAT_C.delete(e);kitSet(e);
   Object.assign(e,{r:rg,v:madd(vg,ax,push*s.mass/Mt),epoch:T,spin:{q0:qmul(R,a0.q),w:s.w.slice(),T0:T},docked:false,undockT:T});
   if(!PROG.sats.includes(e))PROG.sats.push(e);   // a body that came up docked to another joins the registry in its own right
-  if(push)HOOK.msg(`Undocked ${e.name}`);return true}
+  if(push)HOOK.msg(a0.kind==='claw'?`Released ${e.name}`:`Undocked ${e.name}`);return true}
 // at the end of a flight: docked entries either went into the vessel's registration or came down with it
 function dockEnd(s){const A=s.att||[];if(!A.length)return;const kept=(PROG.sats||[]).some(q=>(q.attached||[]).some(a=>a.e===A[0].e));
   PROG.sats=PROG.sats.filter(q=>!q.docked);for(const a of A)delete a.e.docked;
@@ -2772,7 +2789,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -2820,11 +2837,25 @@ function partBody(out,p){
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
     case'rfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
-    case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.G],[.5,.2,C.G],[.5,.3,C.W]],o);
-      for(let k=0;k<3;k++){const a=k*2.0944;rbox(out,[x+Math.cos(a)*.38,y+.34,z+Math.sin(a)*.38],.02,.05,.08,C.Y,a)}break;
+    // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
+    case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
+      tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
+      for(let k=0;k<3;k++){const a=k*2.0944;fin(out,[x,y+.27,z],a,.3,.16,.16,.012,C.Y);
+        const b=a+1.0472;box(out,[x+Math.cos(b)*.48,y+.31,z+Math.sin(b)*.48],.03,.025,.03,C.D)}break;
+    case'claw':lathe(out,[[.35,0,C.D],[.35,.22,C.G],[.24,.27,C.G],[.24,.3,C.D]],o);
+      for(let k=0;k<3;k++){const a=k*2.0944,c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r];
+        tube(out,P(.22,.28),P(.3,.45),.035,C.D,6,true);tube(out,P(.3,.45),P(.14,.56),.03,C.D,6,true)}break;
     case'rcs':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)],t=[-n[2],0,n[0]],e=[x+n[0]*RCS_OFF,y+h/2,z+n[2]*RCS_OFF];
-      rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.09,.07,C.G,p.phi);for(const dd of[[0,1,0],[0,-1,0],t,mul(t,-1)])tube(out,e,madd(e,dd,-.07),.02,C.D,6,true)}break;
-    case'gas':lathe(out,[[0,0,C.W],[.11,.03,C.W],[.17,.12,C.W],[.17,.48,C.W],[.11,.57,C.W],[0,.6,C.W]],[x+Math.cos(p.phi)*d.off,y,z+Math.sin(p.phi)*d.off],16,[false,false]);break;
+      // an outrigger and a housing at the nozzle cluster; four little bells (throat, flared exit, heat-tinted lip) on the thrust axes
+      rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.05,.045,C.ST,p.phi);rbox(out,e,.035,.035,.035,C.G,p.phi);
+      for(const dd of[[0,1,0],[0,-1,0],t,mul(t,-1)]){tube(out,madd(e,dd,-.03),madd(e,dd,-.05),.011,C.K,6,false);tube(out,madd(e,dd,-.05),madd(e,dd,-.075),.02,C.K,8,false);
+        tube(out,madd(e,dd,-.072),madd(e,dd,-.077),.022,[.55,.36,.24,1],8,false)}}break;
+    // gas bottle: painted, a green service band, two straps, a valve and regulator on top, a feed line to the hull
+    case'gas':{const B=[.78,.79,.8],GN=[.16,.42,.22],c=[x+Math.cos(p.phi)*d.off,y,z+Math.sin(p.phi)*d.off];
+      lathe(out,[[0,0,B],[.11,.03,B],[.17,.12,B],[.17,.33,B],[.17,.33,GN],[.17,.39,GN],[.17,.39,B],[.17,.48,B],[.11,.57,B],[0,.6,B]],c,16,[false,false]);
+      for(const yy of[.17,.44])lathe(out,[[.177,yy,C.D],[.177,yy+.03,C.D]],c,16,[false,false]);
+      tube(out,add(c,[0,.59,0]),add(c,[0,.66,0]),.02,C.ST,8,true);box(out,add(c,[0,.68,0]),.03,.02,.03,C.G);
+      tube(out,add(c,[0,.68,0]),[x,y+.68,z],.008,C.ST,5,false)}break;
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
     case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
       box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
@@ -3790,9 +3821,12 @@ function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
 // offset (the target port's position from ours in our body axes: L/J move us +X/−X, U/O +Z/−Z)
 function dockRows(){const out=[],D=S.att||[];
-  if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} <button data-undock="${a.e.id}">undock</button>`).join(' · ')]);
+  if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} <button data-undock="${a.e.id}">${a.kind==='claw'?'release':'undock'}</button>`).join(' · ')]);
   const T=tgtOf(S);if(!T||len(T.dr)>500)return out;const B=satBody(T.q,progT(S)),P=dockPair(S,T.q,B);
-  if(!P){out.push(['Port',`<span class="dim">${T.q.name} has no free docking port</span>`]);return out}
+  const cw=S.parts.find(p=>p.on&&p.d.kind==='claw'&&clawFree(S,p));
+  if(cw){const tip=add(S.r,qrot(S.q,sub(clawTip(cw),S.cm))),d=bodyDist(B,tip),u=norm(sub(B.r,tip)),vc=dot(sub(S.v,B.v),u);
+    out.push(['Claw',`${d<10?d.toFixed(2)+' m':fmtD(d)} to ${T.q.name} · closing <span class="${vc<CLAW_V?'ok':'warn'}">${vc.toFixed(2)} m/s</span> <span class="dim">(grabs under ${CLAW_V} m/s)</span>`])}
+  if(!P){if(!cw)out.push(['Port',`<span class="dim">${T.q.name} has no free docking port</span>`]);return out}
   const ang=Math.acos(clamp(-dot(P.Aa,P.Ab),-1,1))*57.29578,db=qrot(qconj(S.q),P.d),va=add(S.v,cross(S.w,sub(P.Pa,S.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r))),
     cl=-dot(sub(vb,va),P.Aa),vr=qrot(qconj(S.q),sub(va,vb)),k=(v,a,b)=>Math.abs(v)<0.005?'':`${v>0?a:b} ${Math.abs(v).toFixed(2)}`,ok=(c,t)=>`<span class="${c?'ok':'warn'}">${t}</span>`;
   out.push(['Port',`${P.dl<10?P.dl.toFixed(2)+' m':fmtD(P.dl)} · ${ok(ang<10,ang.toFixed(1)+'°')} · closing ${ok(cl<PORT_V,cl.toFixed(2)+' m/s')}`],
