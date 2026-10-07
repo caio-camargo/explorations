@@ -801,6 +801,59 @@ first: since the budget gate, a fresh page refused the Lunar launch and views 2 
 - The Sparrow's alcohol plume still reads whitish-blue against the sea. Real V-2 footage is more yellow.
 - RCS puffs could reuse this volume with a small re.
 
+## Re-entry plasma — a raymarched shock layer and wake (2026-10-07, aerofx session, branch `aerofx`)
+
+Before this, re-entry showed one additive half-sphere at the ship's leading end. The heating physics (Sutton–Graves
+stagnation flux `S.qHeat`, skin temperatures) was detailed, but its visual was not. Now the plasma is a volume raymarched
+in a **flow-aligned frame** (y = upstream), reusing the plume's proxy lathe, culling logic and 32³ noise texture.
+
+### The model (`PLASMA_VS`/`PLASMA_FS`, `hullProfile`, the plasma block in `render()`)
+- **Heat level** k = log(q/15 kW/m²) / log(160/15), clamped to 0–1.5. 160 kW/m² is the peak of an orbital capsule entry
+  (measured: it peaks at 50 km; glow from ~85 km down to ~30 km). A fast "lunar return" (1.3× circular) reaches
+  ~440 kW/m², so k ≈ 1.4. Colour runs deep red → orange → pink-white with k. The wake uses k·0.4, so it is redder.
+- **Hull:** the ship's real envelope, `hullProfile(S)`: 32 radius stations along its axis from the parts' lathe profiles
+  (radial parts count by their offset). The shader's signed distance is the radial gap, corrected for the profile's
+  slope near the surface, with flat end caps. The ray stops at the hull.
+- **Shock layer:** a thin sheath, standoff D = 0.12·min(ep, 1.2 rb) + 0.06 m. It glows as exp(−(sd/D)^1.4) on faces
+  that meet the flow (the normal's upstream component), so a stage flown at an angle lights its windward side.
+- **Wake:** from the hull's downstream edge, a ring of streaks (noise in the azimuth and along the flow, scrolling
+  downstream) plus a dim core. Width ~0.8 of the cross-flow extent, growing slowly. Length 5–19 extents with k.
+- Additive, no opacity. `PLASMA_FX = false` hides it (GPU A/B).
+
+### What it took
+- **Even steps band the thin shell.** 40 steps over a ~15 m ray against a 0.15 m layer gave a screen-door pattern over
+  the hull. Steps are now sized by the distance to the hull: 0.35·sd + 0.2 D, at least D/4. Ahead of the hull, clear of
+  the layer, the march jumps straight to it (≤ 56 steps).
+- **A hull cylinder outlines a can that isn't there:** around a conical capsule the glow traced the core radius. Hence
+  the real profile.
+- **Arcs and a spike:** the capsule's neck steps from 0.42 to 0.30 m within one station, and dividing the radial gap
+  by √(1+slope²) (up to 2.7×) made points 2 m out read as 0.6 m away, inside a 4 cm slab across the hull. Edge-on
+  that slab is a spike, obliquely it is arcs. Found by a diagnostic render (emission coloured by the shader's own
+  distance), after two wrong guesses (step size; the proxy, ruled out by doubling its radius). Fix: the slope
+  correction fades out from D to 4D.
+
+### Cost
+`PLASMA_FX` on/off in the same page, GPU timer queries, `RS` pinned to 1, 1280×800, RTX 5050 laptop:
+
+| view | on | off |
+|---|---|---|
+| 40 capsule at 50 km, side | 7.9–8.1 ms | 7.1–7.2 |
+| 41 capsule at 50 km, behind (long wake on screen) | 11.0–11.2 | 9.8 |
+| 44 stage at 35° AoA | 7.7–7.9 | 6.9–7.0 |
+| 45 fast entry at 55 km | 7.6–8.0 | 6.8–6.9 |
+
+### Reference views
+`refView(40)` capsule (chute, bio, shield) at 50 km (peak heating), side; `41` same, from behind; `42` at 75 km
+(onset); `43` at 35 km (fading); `44` pod, tank and Petrel turned 35° off the flow at 55 km; `45` a fast entry
+(1.3× circular, steeper) at 55 km. They fly the entry from 95 km retro, then turn the ship if asked.
+
+### Still open
+- Only the active vessel glows. Debris and spent stages entering (and burning up) would need the same per debris body.
+- No light cast on the hull from its own plasma, and no change to the hull shader (`MESH_FS` is the visuals session's).
+- The views' "retro" capsule leads with its narrow end (SAS hold during the teleport). The glow follows whatever
+  leads, but a shield-first view would be the classic shot.
+- Transonic vapor cones (next idea).
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
