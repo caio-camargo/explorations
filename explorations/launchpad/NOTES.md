@@ -691,9 +691,28 @@ Each building stands on a concrete slab that `padGround` already paints.
 - `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
   the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
 
+### Revised layout (same day, after Caio's review)
+Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Both changed:
+- **The tower is sized to the rocket on the pad:** about 3 m above its top, in whole 2.5 m bays, 12.5–60 m (Orbiter
+  17.5 m, Big Lunar 35 m, Sounding 12.5 m). `padSync()` rebuilds the pad mesh when that changes, in the editor or on the
+  pad before liftoff. The `PAD` binding is reassigned, so the terrain-owned draw call stays untouched.
+- **Spread out the way real complexes are:**
+  - The domed **blockhouse** moved up-range, about 230 m west, onto its own mesh slab, with a spur road down to the
+    access road and a concrete cable trench to the pad.
+  - The **mobile service structure** (four lattice columns on rail trucks, work decks, roof, bridge crane) is rolled back
+    80 m south on twin rails that run to the launch table. Its height is the tower's + 6 m.
+  - **High-pressure gas bottle racks** sit on the old blockhouse slab.
+  - A **ground deluge tank** with a pump house replaces the elevated water tower.
+  - **Two lightning masts** with a catenary wire.
+  - **Five camera bunkers** at about 90 m and **two camera towers**.
+- New helper `strip()` draws flat runs on the ground: roads, rail beds, trenches. The mesh is now ~26k vertices,
+  still one static draw. `refView(17)` shows the whole site from high up.
+- **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
+  painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
+
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Nothing moves: the arms don't swing at launch and the gantry doesn't roll.
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
