@@ -56,6 +56,8 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
 #warp{color:var(--warn);min-width:90px;text-align:right}
+#news{position:fixed;left:50%;transform:translateX(-50%);top:46px;max-width:min(560px,70vw);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 10px;pointer-events:none}
+#news div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#news div:first-child::before{content:'NEWS · ';color:var(--acc);letter-spacing:.1em}#news .old{color:var(--dim)}
 #nodep{right:12px;top:52px;width:285px}#nodep td:first-child{padding-right:8px}#nodep button{padding:0 6px}
 .ndv{display:inline-block;min-width:78px;text-align:right}.ndrow{margin-top:4px;display:flex;gap:3px;align-items:center;flex-wrap:wrap}.ndrow button.on{background:rgba(127,209,255,.35)}
 .grp{margin:1px 0 5px 16px;border-left:2px solid rgba(255,180,84,.45);padding:2px 0 2px 6px;border-radius:0 4px 4px 0}
@@ -125,13 +127,14 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
   </div>
 </div>
 <div id="msg"></div>
+<div id="news" class="hidden"></div>
 <div id="perf"></div>
 
 <script>
 'use strict';
 // ==== SIM BEGIN — pure simulation, no DOM/GL. Extracted by test.mjs for headless checks.
 const G0 = 9.80665, DT = 0.02;
-const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){} };
+const HOOK = { msg(){}, boom(){}, rebuild(){}, debris(){}, news(){} };
 const INP = { pitch:0, yaw:0, roll:0 };
 
 // ---- vectors / quaternions (plain arrays; doubles throughout)
@@ -725,18 +728,16 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
     const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
     tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
-function predictImpact(s){
-  if(s.landed||!s.alive)return null;const b=s.body,mu=b.mu,top=b.R+(b.atm||0);let r=s.r.slice(),v=s.v.slice(),t=simT;
+// generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho) (1/m), to the ground or never
+function fall(b,r,v,t,kdrag){
+  const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t));r=r.slice();v=v.slice();
   const el=elements(r,v,mu);if(el.pe>top)return null;
-  const path=[],keep=(r,t)=>path.push(toPF(b,r,t));
   if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));
     for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}
   if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
-  const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=dragTable(s,aoa),m=s.mass;
-  const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
-    if(rho>0&&sp>0.1){let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=sp<250&&rho>0.7?600:6;kd=0.5*rho*sp*A/m;a=madd(a,va,-kd)}return a};
+    if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho);a=madd(a,va,-kd)}return a};
   for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0)break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
@@ -744,7 +745,40 @@ function predictImpact(s){
       const e2=elements(r,v,mu);if(e2.pe>top)return null;const c=(e2.p/(top-1)-1)/e2.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(e2,-Math.acos(c));
       for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}}
   return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b}}
+function predictImpact(s){
+  if(s.landed||!s.alive)return null;const b=s.body;
+  const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
+  const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)};
+  return fall(b,s.r,s.v,simT,(h,sp,rho)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=sp<250&&rho>0.7?600:6;return A/m})}
+// debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
+const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
+// ---- the world: land mask (a float32 port of the planet shader's continents, so the CPU and GPU agree on coastlines),
+// and cities placed on it — deterministic from a seed, kept clear of the launch site.
+const F32=Math.fround,fr32=x=>F32(x-Math.floor(x));
+function h3(x,y,z){x=fr32(F32(F32(x*0.3183099)+0.1));y=fr32(F32(F32(y*0.3183099)+0.1));z=fr32(F32(F32(z*0.3183099)+0.1));
+  x=F32(x*17);y=F32(y*17);z=F32(z*17);return fr32(F32(F32(F32(x*y)*z)*F32(F32(x+y)+z)))}
+function vn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);const H=(a,b,c)=>h3(ix+a,iy+b,iz+c),L=(a,b,t)=>a+(b-a)*t;
+  return L(L(L(H(0,0,0),H(1,0,0),fx),L(H(0,1,0),H(1,1,0),fx),fy),L(L(H(0,0,1),H(1,0,1),fx),L(H(0,1,1),H(1,1,1),fx),fy),fz)}
+function fbm(x,y,z){let a=.5,s=0;for(let i=0;i<6;i++){s+=a*vn(x,y,z);x=F32(x*2.03+1.7);y=F32(y*2.03+9.2);z=F32(z*2.03+3.1);a*=.5}return s}
+function landValue(pf){const n=norm(pf),dx=n[0]-1;return fbm(F32(n[0]*2.2),F32(n[1]*2.2),F32(n[2]*2.2))+.42*Math.exp(-(dx*dx+n[1]*n[1]+n[2]*n[2])*30)}
+const isLand=pf=>landValue(pf)>=.52;
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const SYL=['va','lo','ri','an','mar','tel','os','ka','ne','bru','dun','sel','fen','or','is','pa','quel','tor','ven','al','hav','em','ly','gor'];
+function makeCities(seed=7,n=32){const R=rng(seed),out=[],site=[1,0,0];let tries=0;
+  while(out.length<n&&tries++<20000){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z),pf=[q*Math.cos(ph),z*0.85,q*Math.sin(ph)],u=norm(pf);
+    if(Math.abs(u[1])>0.8||landValue(u)<0.58)continue;                       // inland enough that float noise can't put it at sea
+    if(Math.acos(dot(u,site))*TELLUS.R<160e3)continue;                        // not on top of the pad
+    if(out.some(c=>Math.acos(clamp(dot(u,c.u),-1,1))*TELLUS.R<260e3))continue;
+    const pop=Math.round(Math.exp(11+R()*3.3)/1000)*1000,nm=SYL[R()*SYL.length|0]+SYL[R()*SYL.length|0]+(R()<.35?' '+['Bay','Falls','Port','Heights','Cross'][R()*5|0]:'');
+    out.push({name:nm[0].toUpperCase()+nm.slice(1),u,pop,rad:2500+5200*Math.sqrt(pop/1e6),seed:R()*1e9|0})}
+  return out}
+const CITIES=makeCities();
+function nearestCity(pf){const u=norm(pf);let best=null,bd=Infinity;for(const c of CITIES){const d=Math.acos(clamp(dot(u,c.u),-1,1))*TELLUS.R;if(d<bd){bd=d;best=c}}return{city:best,dist:bd}}
+// where a falling thing comes down: in a city, near one, at sea or in open country
+function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{city,dist}=nearestCity(pf);
+  if(dist<city.rad)return{kind:'city',city,dist};if(dist<city.rad+15e3)return{kind:'near',city,dist};return{kind:isLand(pf)?'land':'sea',city,dist}}
 // ---- deterministic stepping + flight tapes. Everything that advances the flight goes through advPhys / advRails, and a
 // tape records each of those calls plus every control change before it — so playing it back from the pad reproduces the
 // flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
@@ -791,7 +825,7 @@ const SKY_FS=`#version 300 es
 precision highp float;
 in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
-uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;
+uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=5600.,HM=1200.,SUNI=22.;
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
@@ -848,7 +882,12 @@ void main(){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fade=smoothstep(4000.,150.,tP),det=fade>0.?detail(loc):.5,oc;
   vec3 alb=tellus(pf,det,fade,oc),st=sunTrans(p+n*20.);float ndl=dot(n,uSun);
+  // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
+  vec4 ct=texture(uCity,vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5));float urb=ct.r*(1.-oc);
+  float street=0.;if(urb>.01){vec2 g=abs(fract(loc.xz/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
   col=alb*(max(ndl,0.)*st*5.+vec3(.01,.016,.03));
+  // night lights: a soft glow from orbit; up close they gather onto the streets
+  col+=vec3(1.,.72,.38)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
   if(oc>.5)col+=st*pow(max(dot(reflect(d,n),uSun),0.),90.)*1.5*step(0.,ndl);
   col=col*trans+ins;
  }else if(tM<1e29){
@@ -889,6 +928,15 @@ function mkProg(vs,fs){const p=gl.createProgram();
     if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(sh));gl.attachShader(p,sh)}
   gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
   const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}return{p,u}}
+// city texture: 1024×512 equirectangular, built once on the CPU from CITIES (r = built-up density, g = night lights)
+const CITY_TEX=(()=>{const W=1024,H=512,d=new Uint8Array(W*H*4),R=rng(99);
+  for(const c of CITIES){const lat=Math.asin(c.u[1]),lon=Math.atan2(c.u[2],c.u[0]),ang=c.rad/TELLUS.R,rpx=ang/Math.PI*H*1.8+2;
+    const cx=(lon/6.2832+.5)*W,cy=(lat/Math.PI+.5)*H,sx=rpx/Math.max(.2,Math.cos(lat));
+    for(let y=Math.floor(cy-rpx);y<=cy+rpx;y++)for(let x=Math.floor(cx-sx);x<=cx+sx;x++){const dx=(x-cx)/sx,dy=(y-cy)/rpx,r2=dx*dx+dy*dy;if(r2>1||y<0||y>=H)continue;
+      const k=((y*W+((x%W)+W)%W)*4),v=Math.exp(-r2*2.6)*(.7+.3*R());d[k]=Math.min(255,d[k]+v*255);d[k+1]=Math.min(255,d[k+1]+v*255*(.5+.5*Math.min(1,c.pop/1e6)))}}
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t})();
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
 const lineVAO=gl.createVertexArray(),lineBuf=gl.createBuffer();gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);
@@ -949,6 +997,13 @@ const PAD=(()=>{const a=[];
   lathe(a,[[11,0,C.G],[11,9,C.G],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
   lathe(a,[[3,0,C.D],[3,3,C.D]],[20,0,-30],16);return makeMesh(a)})();
 
+// buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
+const cityMeshes=new Map();
+function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=rng(c.seed),n=Math.min(900,Math.round(160+c.pop/2500));
+  for(let i=0;i<n;i++){const rr=Math.sqrt(R())*c.rad*.9,th=R()*6.2832,x=rr*Math.cos(th),z=rr*Math.sin(th),core=Math.exp(-((rr/c.rad)**2)*3);
+    const w=12+R()*30,dpt=12+R()*30,hgt=6+R()*12+core*(40+R()*120),drop=(x*x+z*z)/(2*TELLUS.R),g=.62+R()*.28,w2=R()<.5,col=[g*(w2?1:.94),g*.97,g*(w2?.92:1)];   // light concrete: the mesh shader has no tone map, so mid-greys read as black
+    box(a,[x,hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
+  const m=makeMesh(a);cityMeshes.set(c,m);return m}
 // ---- matrices (column-major)
 function mat4(R,U,Fw,t){return[R[0],R[1],R[2],0,U[0],U[1],U[2],0,Fw[0],Fw[1],Fw[2],0,t[0],t[1],t[2],1]}
 function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++){let s=0;for(let k=0;k<4;k++)s+=a[k*4+r]*b[c*4+k];o[c*4+r]=s}return o}
@@ -962,12 +1017,23 @@ let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
 const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
 const keys=new Set();
 let msgTimer=0;
+const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});headlines.length=Math.min(headlines.length,3);
+  const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('')};
 let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
 HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
-HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d)};
-function resetShip(){warpTo=null;player=null;impact=null;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
+HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.body===SELENE?debrisImpact(d):null;
+  if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
+// dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
+const pendingDrops=[];
+function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);
+  const v=d.verdict,stg=`${d.name} stage`;
+  if(v.kind==='city')HOOK.news(`💥 ${stg} comes down IN ${v.city.name} — residents not amused`,'bad');
+  else if(v.kind==='near')HOOK.news(`${stg} lands ${(v.dist/1000-v.city.rad/1000).toFixed(0)} km outside ${v.city.name}; mayor "would like a word"`,'warn');
+  else if(v.kind==='sea')HOOK.news(`${stg} splashes down safely at sea`,'ok');
+  else if(v.kind==='land')HOOK.news(`${stg} lands in open country, ${(v.dist/1000).toFixed(0)} km from ${v.city.name}`,'ok')}}
+function resetShip(){warpTo=null;player=null;impact=null;pendingDrops.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
 
 // ============================================================ editor UI
 const $=id=>document.getElementById(id);
@@ -1186,7 +1252,7 @@ function render(){
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
-   gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);
+   gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,CITY_TEX);gl.uniform1i(u.uCity,0);
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
@@ -1202,6 +1268,11 @@ function render(){
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
    if(len(sub(site,camW))<3e5)drawMesh(PAD,mat4(rotY([0,0,-1],th),rotY([1,0,0],th),rotY([0,-1,0],th),sub(site,camW)),site)}
+  const nightCities=[];
+  // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
+  if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
+    const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
+    const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
   if(near&&S.alive&&shipMesh){const p=shipWorld();drawMesh(shipMesh,modelQ(S.q,sub(p,camW),mul(S.cm,-1)),p);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
   for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
@@ -1210,6 +1281,9 @@ function render(){
   if(view==='map'&&mode==='flight')drawMap(VP,camW,labels);
   // ---- additive glow: plumes, fireballs
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false);gl.useProgram(PMESH.p);
+  gl.depthFunc(gl.LEQUAL);   // same geometry again at the same depth
+  for(const[mesh,M,k]of nightCities){gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uGlow,.22*k);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}   // lit windows, roughly
+  gl.depthFunc(gl.LESS);
   if(near&&S.alive&&S.throttle>0){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R);
     for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1+1.8*(1-pr)),L=ex*(4+9*S.throttle)*(1+.8*(1-pr));
       gl.uniformMatrix4fv(m.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));gl.uniform1f(m.uGlow,(.35+.4*S.throttle)*(.45+.55*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}}
@@ -1236,6 +1310,7 @@ function render(){
           octx.strokeStyle=HC[axis];octx.lineWidth=1.5*k;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(dx,dy);octx.stroke();
           octx.fillStyle=HC[axis];octx.beginPath();octx.arc(dx,dy,(sign>0?6:4.5)*k,0,7);sign>0?octx.fill():(octx.lineWidth=2*k,octx.stroke())}
         octx.fillStyle=L.c;octx.strokeStyle='#fff';octx.lineWidth=1.5*k;octx.beginPath();octx.arc(s[0],s[1],7*k,0,7);octx.fill();octx.stroke()}
+      else if(L.mark==='city'){octx.beginPath();octx.arc(s[0],s[1],2.2,0,7);octx.fill()}
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
@@ -1294,6 +1369,9 @@ function drawMap(VP,camW,labels){
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
   if(impact){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
+  for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
+    labels.push({p:cp,mark:'city',t:cam.mDist<2.6e6?c.name:'',c:'#ffd27a'})}
+  for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
 
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
@@ -1341,13 +1419,18 @@ function updateHUD(){
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
     ['Mass',`${(S.mass/1000).toFixed(2)} t · TWR ${twr.toFixed(2)} · ${S.gload.toFixed(1)} g`],['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s`],
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
-    ['Impact',impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}`:'—'],
+    ['Impact',impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
     ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
     ['Structure',S.maxLoadP&&S.maxLoadP.on?`<span class="${S.maxLoad>1?'bad':S.maxLoad>.7?'warn':'ok'}">${(S.maxLoad*100).toFixed(0)}% ${S.maxLoadKind}</span> <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
-  renderStages();updateNodePanel();updateAutoBtn();
-  if(simT-impT>0.25||simT<impT){impT=simT;impact=predictImpact(S)}}
+  renderStages();updateNodePanel();updateAutoBtn();settleDrops();
+  if(simT-impT>0.25||simT<impT){impT=simT;impact=predictImpact(S);
+    // range safety: while climbing under power, the instantaneous impact point must stay clear of cities
+    const rs=impact&&S.thrust>0&&impact.b===TELLUS?dropVerdict(TELLUS,impact.pf):null,warn=rs&&(rs.kind==='city'||rs.kind==='near');
+    if(warn&&!rangeWarned){rangeWarned=true;HOOK.msg(`RANGE SAFETY: impact point over ${rs.city.name}`);HOOK.news(`Range safety officer spills coffee as flight path crosses ${rs.city.name}`,'warn')}
+    if(!warn)rangeWarned=false;S.rangeWarn=warn?rs:null}}
+let rangeWarned=false;
 
 // ---- autopilot tapes in browser storage, one per exact design (and sim version: a tape only replays on the sim that made it)
 const tapeKey=()=>'launchpad-tape:'+TAPE_V+':'+JSON.stringify(stackDef);

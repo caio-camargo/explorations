@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -187,6 +187,34 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
     `booster debris ${side.map(d => `(${d.rel.map(x => x.toFixed(1)).join(', ')})`).join(' & ')} m/s; ${msgs.filter(m => /separation|burnout|Flameout/.test(m)).join(' → ')}`);
 }
 function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
+// 13. The world (v1.9): cities on land and clear of the pad; dropped stages land where predicted; verdicts.
+{
+  const C = api.CITIES, R = TELLUS.R, gc = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(norm(a), norm(b))))) * R;
+  check('cities: ~30, all inland (land mask with margin), none within 150 km of the pad, ≥250 km apart',
+    C.length >= 20 && C.every(c => api.landValue(c.u) >= 0.58) && C.every(c => gc(c.u, [1, 0, 0]) > 150e3) && C.every((c, i) => C.every((d, j) => i === j || gc(c.u, d.u) > 250e3)),
+    `${C.length} cities, nearest to the pad ${(Math.min(...C.map(c => gc(c.u, [1, 0, 0]))) / 1e3).toFixed(0)} km, populations ${(Math.min(...C.map(c => c.pop)) / 1e3).toFixed(0)}k–${(Math.max(...C.map(c => c.pop)) / 1e6).toFixed(1)}M`);
+  const c0 = C[0], v1 = api.dropVerdict(TELLUS, mul(c0.u, R)), far = api.dropVerdict(TELLUS, mul(norm(add(c0.u, [0, 0.2, 0])), R));
+  check('drop verdict: a stage on a city centre is a city hit; far away it is land or sea', v1.kind === 'city' && v1.city === c0 && (far.kind === 'land' || far.kind === 'sea'),
+    `${c0.name}: ${v1.kind}; 1200 km away: ${far.kind}`);
+  // a dropped first stage, predicted at separation vs flown on its own with the same drag
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; let got = null;
+  api.HOOK.debris = d => { if (got) return; const pred = api.debrisImpact(d); let r = d.r.slice(), v = d.v.slice(), tt = api.t;
+    while (len(r) - R > 0) { const rl = len(r); let a = r.map(x => -TELLUS.mu * x / rl ** 3); const h = rl - R, rho = h < 70000 ? 1.225 * Math.exp(-h / 5600) : 0,
+      va = [v[0] - TELLUS.rot * r[2], v[1], v[2] + TELLUS.rot * r[0]], sp = len(va);
+      if (rho > 0 && sp > 0.1) { let ad = 0.5 * rho * sp * 2.5 / d.mass; if (ad * api.DT > 0.9) ad = 0.9 / api.DT; a = a.map((x, i) => x - ad * va[i]); }
+      v = v.map((x, i) => x + a[i] * api.DT); r = r.map((x, i) => x + v[i] * api.DT); tt += api.DT; }
+    got = { pred, pf: api.toPF(TELLUS, r, tt), t: tt }; };
+  s.throttle = 1; api.stage(s); let ph = 'asc';
+  while (api.t < 900 && s.alive && ph !== 'done') { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro';
+    const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - R;
+    if (ph === 'asc' && el.ap - R > 80000) { s.throttle = 0; ph = 'coast'; } if (ph === 'coast' && h > 70000 && api.timeToNu(el, Math.PI) < 25) { s.throttle = 1; ph = 'circ'; }
+    if (ph === 'circ' && el.pe - R > 70000) { s.throttle = 0; ph = 'done'; }
+    if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s); api.physStep(s, api.DT); }
+  api.INP.pitch = 0; api.HOOK.debris = () => {};
+  check('drop zones: the Orbiter\'s spent first stage lands where it was predicted at separation', got && gc(got.pred.pf, got.pf) < 500 && Math.abs(got.pred.t - got.t) < 2,
+    got ? `${(gc(got.pred.pf, [1, 0, 0]) / 1e3).toFixed(0)} km downrange, prediction off ${gc(got.pred.pf, got.pf).toFixed(0)} m / ${(got.pred.t - got.t).toFixed(1)} s; ${api.dropVerdict(TELLUS, got.pred.pf).kind}` : 'no stage dropped');
+}
+
 // 11. Impact prediction (v1.8): predicted vs actual landing, through the air and onto Selene.
 {
   const R = TELLUS.R, clamp = (x, a, b) => Math.max(a, Math.min(b, x)), gc = (a, b) => { const A = norm(a), B = norm(b); return Math.acos(clamp(dot(A, B), -1, 1)); };

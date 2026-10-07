@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.8.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -436,6 +436,81 @@ said they wanted it (fly it yourself once, then let it repeat).
   hypersonic error is lift. Modelling it needs the lift direction, which depends on roll: a later refinement.
 - **Two test-harness slips worth remembering:** a loop that stopped on `landed` never started for a rocket that begins landed,
   and a "touchdown speed" read *after* landing is 0.
+
+
+## v1.9 — a populated world: cities, drop zones, headlines (2026-10-06)
+
+First slice of the "program with consequence" direction (see the design section below). The tone is deliberately left open,
+for gameplay to decide; the headline ticker carries a light voice that can be turned up or down without touching systems.
+
+### How it works
+- **Land mask on the CPU.** A float32 port of the planet shader's continents (`h3`/`vn`/`fbm` with `Math.fround` at each step),
+  so the CPU and GPU agree on coastlines. Cities are only placed where `landValue ≥ 0.58` (the coast is 0.52), a margin wide
+  enough that float differences can't put one at sea.
+- **27 cities**, deterministic from a seed: inland, ≥ 160 km from the pad, ≥ 260 km apart, 87k–1.3M people, with radius
+  ∝ √population and syllable names. They are data in the SIM block, so the tests can see them.
+- **Rendering in three tiers, all cheap:**
+  - A 1024×512 equirectangular texture (r = built-up, g = lights) read once per planet pixel: urban colour by day, warm lights
+    on the night side.
+  - Up close, a 90 m street grid comes from the same texture, and at night the lights gather onto the streets.
+  - Within 60 km of the camera, each city gets one merged mesh of 160–900 boxes in its tangent plane (dropped by the curvature,
+    taller toward the centre), built on first approach and cached, plus a faint additive "windows" pass at night.
+- **Drop zones.** Every dropped stage gets a predicted landing at separation (`debrisImpact`, the same `fall()` integrator as the
+  vessel's predictor, refactored out). The landing is settled when its time comes, even though the debris left the simulation
+  long before, and reported as a city hit, near a city, open land or at sea (`dropVerdict`).
+- **Range safety.** While climbing under power, the instantaneous impact point is checked against the cities. Over or near one, you get a
+  warning, a HUD flag and a headline.
+- **Headlines.** A three-line news ticker (`HOOK.news`).
+
+### Measurements
+| What | Number |
+|---|---|
+| City generation (plus the SIM load) | 34 ms, once |
+| Dropped-stage landing, predicted at separation vs flown independently | **0–50 m**, 0.0–0.1 s (Orbiter, Heavy, Asparagus) |
+| Standard eastward launches | every stage lands 1–600 km downrange on open land or at sea, 140–250 km from the nearest city |
+| GPU at 1080p, pad view, same session | v1.8 6.4–6.6 ms · v1.9 5.5–6.2 ms (no measurable cost); over a city 5.2 ms by day, 4.3 ms by night |
+
+### What it taught
+- **Drop zones only matter if you aim at a city.** The default eastward launch is already safe, which is right: the
+  mechanic should bite when you choose a different azimuth or a different staging, not on every flight.
+- **The mesh shader has no tone map**, so mid-grey buildings came out black against the gamma-corrected ground. Lighter concrete fixed it.
+  Also, an additive pass over *the same geometry* needs `LEQUAL`, or every fragment fails the depth test and the pass silently does nothing.
+- **A smooth light texture is a floodlight up close.** It looks right from orbit and wrong at 300 m, so near the camera the lights move onto the streets.
+- **Measuring a regression needs the baseline in the same session.** "3.9 ms → 7.6 ms" looked like a regression, but the committed page
+  measured 6.4–6.6 ms on the same run. The GPU's power state had changed between sessions.
+- **Test-harness slips, again:** stepping only `physStep` froze the debris mid-air, and the "drop" test that never circularized
+  produced no drops at all, just a nose-first re-entry. Each bad harness looked like a game bug for a moment.
+
+## Program design — direction and parking lot (2026-10-06)
+
+**Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
+what's possible next, the world reacts (headlines, city growth, mood), and progression comes from infrastructure and
+discovery rather than a points grind. Tone: lighter than "serious", possibly more than KSP. Not locked; gameplay decides.
+
+**Next slices, in order:**
+1. ~~World layer + drop zones + range safety + headlines~~ (v1.9).
+2. A world clock and a light budget, then the **TV satellite** (stationary orbit at ~2,870 km; coverage → audience → support,
+   with launches broadcast live) and **disaster surveillance** (storms, fires, floods, volcanoes on the planet; early
+   warning reduces damage).
+3. Weather sats (polar or sun-synchronous orbit: a plane change from an equatorial pad). They forecast the upper-level winds that load
+   rockets at max-q.
+4. The telescope as a *fragile* payload (g, joint-load and angular-rate limits), which reveals what's hidden (below).
+5. Stations: depot, crew rotation, assembly. These need two fully simulated vessels at once (docking).
+
+**Parking lot (spitballed, needs thinking through):**
+- **A second, eccentric moon.** Physically fine on rails: its orbit is a fixed Kepler ellipse, like Selene's circle. With n-body later,
+  pick an orbit that avoids close passes with Selene (or sits in a resonance such as 2:1) so it stays put. It's a natural
+  *discovery*: small, dark, found by the telescope. It's cheap to reach only near periapsis, its sphere of influence varies along
+  its orbit, and it gives you launch windows driven by *its* phase rather than Selene's.
+- **Eras / ambient tech.** The world's technology advances on its own, partly nudged by the program. The elegant
+  mapping: the **features we already built become avionics generations**. Early guidance computers have stability-only SAS. Later ones add
+  prograde/node modes, maneuver-node planning, the impact predictor, then the autopilot. Satellites age: their service degrades as
+  the standard moves on (TV goes "HD", old satellites lose their audience), which creates **servicing or replacement missions**,
+  as Hubble had. That makes for consequence over time without a tech-tree grind. It needs care so it doesn't become chores.
+- **Military contracts / a space race.** Secret, well-paying payloads with reputation risk if exposed, and a rival
+  agency whose launches appear in the news, competing for firsts. Big. Parked.
+- **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
+  Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
 ## Precision tricks worth keeping
 

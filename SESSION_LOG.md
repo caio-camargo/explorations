@@ -1769,4 +1769,8 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   `test.mjs`: 37 checks, all passing. Committed.
 - **v1.8 (same session):** impact prediction (Kepler + drag-table point mass, planet-fixed path, HUD/map/ground marker) and
   record-and-replay autopilot (flight tapes through `advPhys`/`advRails`, bit-identical replay, saved per design in browser
-  storage). Discussed n-body feasibility with Caio (see the chat; not built). `test.mjs`: 41 checks, all passing. Committed.
+  storage). Discussed n-body feasibility with Caio (see the chat; not built). `test.mjs`: 41 checks, all passing. Committed and pushed.
+- **v1.9 (same session):** missions direction set with Caio (payloads that serve needs, consequence, discovery; tone left
+  open). Built the first slice: cities on a CPU port of the shader's land mask, 3-tier city rendering, predicted landing +
+  verdict for every dropped stage, range safety, headline ticker. No measurable GPU cost. Parked ideas (eccentric second moon,
+  avionics eras, military/space race) are in NOTES. `test.mjs`: 44 checks, all passing. Committed and pushed.
