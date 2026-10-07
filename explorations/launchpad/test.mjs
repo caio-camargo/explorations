@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -439,8 +439,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // every first this flight completed paid out (Above the weather; in denser air a sounding rocket also passes the 25 kPa test)
   const paid = () => Object.keys(P.done).reduce((a, k) => a + (api.MISSIONS.find(m => m.id === k)?.pay || 0), 0);
   api.missionEnd(s); const net = api.FUNDS0 - P.funds + paid();
-  check('budget: launch charged, intact landing refurbished at 80 % of dry price, the mission paid', Math.abs(net - (c0.cost - c0.dry * api.REFURB)) < 1e-6 && !!P.done.weather,
-    `net ${net.toFixed(4)} vs ${(c0.cost - c0.dry * api.REFURB).toFixed(4)}, done ${Object.keys(P.done)}, cost ${c0.cost.toFixed(2)}k, refurbished ${(c0.dry * api.REFURB).toFixed(2)}k, mission +15k → funds ${P.funds.toFixed(2)}k`);
+  check('budget: launch charged (vehicle + operations), intact landing refurbished at REFURB of dry price, the mission paid', Math.abs(net - (c0.cost + api.OPS_FIX + api.OPS_FRAC * c0.cost - c0.dry * api.REFURB)) < 0.1 && !!P.done.weather,   // within 0.1M: a touchdown a hair over 6 m/s wears the parts slightly
+    `net ${net.toFixed(4)} vs ${(c0.cost + api.OPS_FIX + api.OPS_FRAC * c0.cost - c0.dry * api.REFURB).toFixed(4)}, done ${Object.keys(P.done)}, cost ${c0.cost.toFixed(2)}k, refurbished ${(c0.dry * api.REFURB).toFixed(2)}k, mission +15k → funds ${P.funds.toFixed(2)}k`);
   fresh(); P.funds = 30; const x = launch(['pod', 't1', 'kestrel']); x.landed = false; x.rec.launched = true; api.missionDrop(x, { kind: 'city' }); x.alive = false; api.missionEnd(x);
   check('budget: a stage on a town costs damages, and the floor tops a broke program back up', P.funds === api.FUNDS_FLOOR && P.bailouts === 1, `30k − 40k damages → topped up to ${P.funds}k`);
   // refurbishment pegged to stress: overload, overheating and a hard touchdown each cut the refund
@@ -474,7 +474,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 10, hi: 25 }), ct('sample', { k: 1, pay: 11 })]; const f0 = P.funds;
   s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost + 10 + 11 + paid())) < 1e-6,
+  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost - s.rec.ops + 10 + 11 + paid())) < 1e-6,
     `${s.rec.cdone.join(' + ')} + Above the weather; funds ${f0}M → ${P.funds.toFixed(2)}M before refurbishment`);
   // capacity: two at first, growing with contracts done
   fresh(); P.day = 0; P.offers = [1, 2, 3, 4].map(i => ({ ...ct('apex', { lo: 10, hi: 25 }), id: i, expires: 50 })); const took = [1, 2, 3].map(i => api.acceptOffer(i)); const c0cap = api.capOf(); P.cdone = 6;
@@ -1200,6 +1200,56 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const r = fly(des, s => { s.rcs = true; s.sas = true; });
   check('RCS: while it\'s on (SAS on), the flight stays in physics steps', !D.railsOK(r) && D.railsOK(fly(des)), `rails with RCS on: ${D.railsOK(r)}`);
   zero();
+}
+
+// 25. Docking (sats session): ports capture, the docked body rides as a passenger, the port carries its load, undocking
+// hands it back. Its own instance of the sim core.
+{
+  const D = new Function(src + 'return {newShip,stage,physStep,contactStep,satRegister,dockEnd,satAt,satMP,satSpin,undock,PROG,TELLUS,DT,qrot,qmul,qaxis,qconj,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG;
+  // a port-pod-tank-engine vessel nose out in a 300 km orbit; a camera satellite with a port, turned to face it, `gap` beyond
+  const scene = ({ gap = 0.3, close = 0.2, lat = 0.04, tilt = 3 } = {}) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip(['port', 'pod', 't1', 'kestrel']), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['port', 'cam', 'petrel']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + tilt * Math.PI / 180), s.q); k.r = add(add(s.r, mul(Y, s.yTop + gap + k.yTop)), [0, lat, 0]); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, close)); return { s, q: P.sats[0], Y };
+  };
+  const fly = (s, n, stop) => { for (let i = 0; i < n && !(stop && stop()); i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); } };
+  const portW = (s, a) => { const o = a ? a.e.shape.find(x => x.i === a.ppi) : s.parts.find(p => p.d.kind === 'port'), face = [o.pos[0], o.y0 + o.h, o.pos[2]];
+    return add(s.r, D.qrot(s.q, sub(a ? add(a.p, D.qrot(a.q, sub(face, a.e.cm))) : face, s.cm))); };
+  // capture at 0.2 m/s, 4 cm off and 3° off: latched, faces together, momentum kept, mass summed
+  let { s, q, Y } = scene(), mom = null, m0 = s.mass, mq = q.mass;
+  for (let i = 0; i < 300 && !s.att.length; i++) { D.physStep(s, D.DT); const [, vq] = D.satAt(q, D.t), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)); D.contactStep(s, D.DT);
+    if (s.att.length) mom = len(sub(mul(s.v, s.mass), p0)) / len(p0); }
+  const a = s.att[0], gapEnd = a ? len(sub(portW(s, a), portW(s, null))) : NaN, axes = a ? dot(D.qrot(s.q, D.qrot(a.q, [0, 1, 0])), D.qrot(s.q, [0, 1, 0])) : NaN;
+  check('docking: ports meeting at 0.2 m/s, 4 cm and 3° off, latch; faces together, momentum kept, masses summed', a && a.e === q && q.docked && mom < 1e-12 && gapEnd < 1e-9 && axes < -1 + 1e-9 && Math.abs(s.mass - m0 - mq) < 1e-6,
+    `momentum error ${mom != null ? mom.toExponential(1) : '—'}; faces ${gapEnd.toExponential(1)} m apart, axes ${axes.toFixed(6)}; ${(s.mass / 1000).toFixed(3)} t = ${(m0 / 1000).toFixed(3)} + ${(mq / 1000).toFixed(3)}`);
+  // the Docking autopilot mode turns the nose against the target port's axis (15° off to start, 30 s, 3 m apart)
+  ({ s, q } = scene({ gap: 3, close: 0, tilt: 15 })); Object.assign(s, { sas: true, sasMode: 'dock', target: q.id }); fly(s, 30 / D.DT);
+  const tq = D.satAt(q, D.t), Ab = D.qrot(D.satSpin(q, D.t, tq[0], tq[1]).q, [0, 1, 0]), off = Math.acos(Math.min(1, -dot(D.qrot(s.q, [0, 1, 0]), Ab))) * 57.29578;
+  check('docking: the Docking autopilot mode lines the nose up against the target port', off < 0.5, `${off.toFixed(2)}° off after 30 s (15° at the start)`);
+  // too fast, or too far off the axis: no latch (a bump instead)
+  ({ s, q } = scene({ close: 1 })); fly(s, 200, () => q.spin); const fast = !s.att.length && !!q.spin;
+  ({ s, q } = scene({ tilt: 20 })); fly(s, 200, () => q.spin); const askew = !s.att.length && !!q.spin;
+  check('docking: at 1 m/s, or 20° off, the ports bump instead of latching', fast && askew, `1 m/s: ${fast ? 'bumped' : 'latched'}; 20°: ${askew ? 'bumped' : 'latched'}`);
+  // the port carries the load: a gentle burn keeps it, full throttle (≈5 g on the satellite) breaks it loose
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); D.stage(s); s.throttle = 0.05; D.physStep(s, D.DT); D.contactStep(s, D.DT); fly(s, 50);
+  const low = s.att.length === 1 ? s.att[0].load : NaN; s.throttle = 1; fly(s, 50); const broke = !s.att.length && !q.docked && P.sats.includes(q); s.throttle = 0;
+  check('docking: the port carries the satellite through a 5 % burn and lets go at full throttle', low < 1 && broke, `load at 5 %: ${(low * 100).toFixed(0)} % of the rating; full throttle: ${broke ? 'broke loose' : 'held'}`);
+  // undock: pushed apart at 0.3 m/s along the port axis, momentum kept; back in the registry as itself, at the right place
+  ({ s, q, Y } = scene()); fly(s, 300, () => s.att.length); const pBefore = mul(s.v, s.mass), cmQ = add(s.r, D.qrot(s.q, sub(s.att[0].p, s.cm)));
+  D.undock(s, q.id); const [rq, vq] = D.satAt(q, D.t), sep = dot(sub(vq, s.v), D.qrot(s.q, [0, 1, 0])), pAfter = add(mul(s.v, s.mass), mul(vq, q.mass));
+  fly(s, 100); const again = s.att.length;
+  check('undocking: 0.3 m/s apart along the port axis, momentum kept, the satellite back in the registry where it was', !q.docked && P.sats.includes(q) && Math.abs(sep - 0.3) < 1e-6 && len(sub(pAfter, pBefore)) / len(pBefore) < 1e-12 && len(sub(rq, cmQ)) < 1e-6 && !again,
+    `separation ${sep.toFixed(4)} m/s; momentum error ${(len(sub(pAfter, pBefore)) / len(pBefore)).toExponential(1)}; position ${len(sub(rq, cmQ)).toExponential(1)} m; recaptured: ${!!again}`);
+  // a flight that ends docked registers one stack: the satellite rides inside the new entry, which weighs what the vessel did
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); const mS = s.mass, rS = s.r.slice(); D.satRegister(s, { day0: 0 }); D.dockEnd(s);
+  const st = P.sats.find(x => x !== q), M = st && D.satMP(st);
+  check('docking: a flight ending docked registers one stack, the satellite inside it as itself', P.sats.length === 1 && st && st.attached.length === 1 && st.attached[0].e === q && !q.docked && Math.abs(M.m - mS) < 1e-6 && len(sub(st.r, rS)) < 1e-9,
+    `${P.sats.map(x => x.name).join(', ')} carrying ${st ? st.attached.map(x => x.e.name).join(', ') : '—'}; ${(M ? M.m / 1000 : NaN).toFixed(3)} t`);
+  Object.assign(P, { sats: [], satN: 0 });
 }
 
 function moonPos(t) { return api.moonPos(t); }

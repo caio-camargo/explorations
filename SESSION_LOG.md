@@ -1932,6 +1932,12 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   intermediaries at ×3 when none will sell (sanctions now reach hardware); a young industry's own parts start less
   certified. The worktree registry had been pruned from another machine; restored this worktree's entry and redid the
   merge. `test.mjs` 129/129 after merging main. Merged to `main` (`764f4fc`).
+- **v1.28 (2026-10-07, economy worktree):** balance pass. `career.mjs` plays 3-year careers (6 archetypes × 3 starts × 3
+  seeds) through the real economy code with abstracted flights. Found runaway money and two bugs (a contractEval crash
+  when a leak's sanctions cancel contracts mid-loop; no floor check between flights). Tuned: stacking 5 + cost/2 days,
+  a launch operations fee, running costs from the first launch, refurbishment 65%, contract pay ×0.7, rivals at a
+  human pace, career offers from recent trouble only. Results table in NOTES § v1.28; open: money sinks.
+  `test.mjs` 163/163. Merged to `main` (`80edd9d`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 

@@ -1,0 +1,131 @@
+// Career runner: plays whole programs for a few in-game years through the real economy code (contracts, budget days,
+// decisions, the race, sanctions, opinion), with each flight abstracted: a scripted player picks a design, pays its
+// real price (real presets, real sourcing), and gets the flight record that design produces, succeeding with a set
+// probability. Everything after the flight is the game's own code. Run: node career.mjs [years] [seeds]
+// Output: one line per archetype × ownership start, averaged over seeds.
+import { readFileSync } from 'node:fs';
+const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
+const api = new Function(src + `
+return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,
+  PROG,CT,MISSIONS,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
+  TELLUS,HOOK,rng,raceSchedule,PRESETS,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
+const { PROG: P, CT, TELLUS } = api;
+const YEARS = +(process.argv[2] || 3), SEEDS = +(process.argv[3] || 3), DAYS = 400 * YEARS, ATMK = TELLUS.atm / 1e3;
+const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+
+// ---- designs: what each costs (real presets) and the flight record it produces
+const SOUND_S = ['chute', 'sci', 't1', 'fins', 'sparrow'], SOUND_B = ['chute', 'sci', 't2', 'fins', 'sparrow'], QUAL = ['chute', 'sci', 't2', 'fins', 'kestrel'];
+const cost = st => api.vesselCost(api.newShip(st).parts).cost;
+const PLANS = {
+  sound: a => ({ kind: 'sound', stack: a > 20 ? SOUND_B : SOUND_S, apex: a, p: 0.93, dur: 900 }),
+  qual: (k, q) => ({ kind: 'qual', stack: [...QUAL, ...(k && !QUAL.includes(k) ? [k] : [])], q: Math.max(q, 40), apex: 17, p: 0.88, dur: 700 }),
+  hop: g => ({ kind: 'hop', stack: api.PRESETS?.Passenger || ['chute', 'bio', 'dec', 't4', 'fins', 'sparrow'], g: g < 7.1 ? 5.0 : 7.1, gentle: g < 7.1, p: 0.9, dur: 1300, drops: 1 }),
+  orbit: (alt, inc, m = 0) => ({ kind: 'orbit', stack: m > 1 ? 'Heavy' : 'Orbiter', alt, inc, m, p: 0.86, dur: 3600, drops: 2 }),
+  passOrbit: g => ({ kind: 'passOrbit', stack: 'Orbiter', g, p: 0.8, dur: 9000, drops: 2, bio: true }),
+  ballistic: u => ({ kind: 'ballistic', stack: SOUND_B, u, apex: 90, p: 0.9, dur: 1200 }),
+};
+function planCost(pl) {
+  let st = typeof pl.stack === 'string' ? api.PRESETS[pl.stack] : pl.stack;
+  if (pl.kind === 'orbit') st = [...(pl.m > 1 ? api.PRESETS.Heavy : api.PRESETS.Orbiter), 'sci', ...Array(Math.round(pl.m / 0.5)).fill('ballast')];
+  if (pl.kind === 'passOrbit') st = ['chute', 'bio', 'pod', 'shield', ...api.PRESETS.Orbiter.slice(2)];
+  let c = cost(st);
+  if (pl.kind === 'orbit') c *= 1 + pl.alt / 1500 + pl.inc / 120;   // more fuel for higher and more inclined orbits
+  if (pl.gentle) c *= 1.25;
+  return { c, st };
+}
+// the flight record a successful flight of this plan produces (filled into s.rec before the game evaluates it)
+function outcome(pl, R, rnd) {
+  const pad = () => { R.landDist = (5 + 55 * rnd()) * 1e3; };
+  if (pl.kind === 'sound' || pl.kind === 'qual' || pl.kind === 'ballistic') {
+    const a = Math.min(pl.apex, 140) * 1e3; R.apex = R.apexSci = a; for (let k = 0; k * 1e4 < Math.min(a, TELLUS.atm); k++) R.bands[k] = 1;
+    R.sciQ = pl.kind === 'qual' ? pl.q * 1e3 : 18e3; for (const k of R._keys) R.qPart[k] = R.sciQ;
+    if (pl.kind === 'ballistic') { R.endSci = true; const off = rnd() < 0.6 ? 0.02 * rnd() : 0.2; R.endPf = [pl.u[0], pl.u[1] + off, pl.u[2]].map(x => x * TELLUS.R); return 'sea'; }
+    pad(); return 'land';
+  }
+  if (pl.kind === 'hop') { R.apex = 98e3; R.bioSpace = true; R.gMax = pl.g; pad(); return 'land'; }
+  if (pl.kind === 'orbit') { const e = (rnd() * 15 + 2) * 1e3; R.orbit = R.orbitSci = true; R.orb = { pe: pl.alt * 1e3 - e, ap: pl.alt * 1e3 + e * rnd(), inc: pl.inc + (rnd() - 0.5), sci: true }; R.lift = pl.m; return 'orbit'; }
+  if (pl.kind === 'passOrbit') { R.orbit = true; R.bioSpace = true; R.bioOrbits = 1.2; R.gMax = 4.3; pad(); return 'land'; }
+}
+// what a candidate flight would satisfy, by running the game's own checks on the record it would produce
+function wouldDo(pl) {
+  const R = { bands: {}, qPart: {}, _keys: [pl.qk].filter(Boolean), apex: 0, apexSci: 0, recSci: true, landed: true, bio: !!(pl.kind === 'hop' || pl.bio), bioOK: true, approved: true, lift: 0, landDist: 1e9 };
+  const k = outcome(pl, R, () => 0.5); if (k === 'orbit') R.landed = false;
+  let pay = 0; for (const c of P.active) if (CT[c.type].ok(R, c.p)) pay += c.p.pay;
+  // firsts are worth more than their reward: they unlock contract types and the next firsts (a player goes for them)
+  for (const M of api.MISSIONS) if (!P.done[M.id] && api.missionOpen(M)) { try { if (M.ok(R)) pay += M.pay * (api.RACE.includes(M.id) ? 1.8 : 1) + 60; } catch (e) {} }
+  return pay;
+}
+function fitContract(c) {
+  const p = c.p;
+  switch (c.type) {
+    case 'apex': return PLANS.sound((p.lo + p.hi) / 2);
+    case 'sample': return (p.k + 1) * 10 <= ATMK + 30 ? PLANS.sound(p.k * 10 + 8) : null;
+    case 'test': { const pl = PLANS.qual(p.k, p.q); pl.qk = p.k; return pl; }
+    case 'landing': return PLANS.sound(30);
+    case 'bioHop': case 'touristHop': return PLANS.hop(p.g);
+    case 'touristOrbit': return PLANS.passOrbit(p.g);
+    case 'sat': case 'recon': return PLANS.orbit(p.alt, p.inc);
+    case 'lift': case 'milLift': return PLANS.orbit(150, 0, p.m);
+    case 'ballistic': return PLANS.ballistic(p.u);
+    default: return null;   // imaging needs a camera satellite: outside this runner
+  }
+}
+const FIRST_PLAN = { weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => PLANS.qual('kestrel', 40), range: () => PLANS.hop(7.5),
+  beeper: () => PLANS.orbit(150, 0), hop: () => PLANS.hop(7.5), orbiter: () => PLANS.passOrbit(5), lift1: () => PLANS.orbit(150, 0, 0.5), lift2: () => PLANS.orbit(150, 0, 2) };
+
+function fly(pl, rnd) {
+  const { st } = planCost(pl); api.t = 0;
+  const s = api.newShip(st); api.S = s; s.landed = false;
+  api.missionTick(s, 0, false);                   // the launch: charged, stacking days pass
+  const R = s.rec; R._keys = [...new Set(s.parts.map(q => q.d.key))];
+  const ok = rnd() < pl.p;
+  if (!ok) { s.alive = false; R.apex = 5e3; if (R.bio) { R.bioOK = false; R.bioWhy = 'was lost with the vessel'; } }
+  else {
+    const k = outcome(pl, R, rnd);
+    if (k === 'orbit') { s.landed = false; s.alive = true; }
+    else { s.landed = true; s.alive = true; s.touchV = 5; s.pf = [TELLUS.R, 0, 0]; const ld = R.landDist; R.landed = false; api.missionTick(s, 0, false); R.landDist = ld; }
+    api.missionEval(s);
+  }
+  for (let i = 0; i < (pl.drops || 0); i++) { const x = rnd(); api.missionDrop(s, { kind: x < 0.85 ? 'sea' : x < 0.97 ? 'land' : 'near', power: null }); }
+  api.t = pl.dur; api.missionEnd(s);
+  return ok;
+}
+
+function run(arch, start, seed) {
+  api.resetWorld();
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: null, active: [], cdone: 0, stand: {}, recs: {},
+    cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
+    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [] });
+  api.resetWorld(); api.chooseStart(start); api.ensureBoard(); news.length = 0;
+  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0 };
+  while (P.day < DAYS && m.fl < 600) {
+    // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
+    for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
+    // take the best-paying offers we have a design for, avoiding certain home sanctions
+    for (const c of [...P.offers].sort((a, b) => b.p.pay - a.p.pay)) {
+      if (P.active.length >= api.capOf()) break; const pl = fitContract(c); if (!pl) continue;
+      if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds + c.p.pay) continue; api.acceptOffer(c.id);
+    }
+    // the flight worth most (pay of everything it would complete, minus cost) that we can afford
+    const cands = [...P.active.map(fitContract), ...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => FIRST_PLAN[M.id]?.())].filter(Boolean);
+    let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds) continue; const v = wouldDo(pl) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
+    if (best && best.v > -5) { const ok = fly(best.pl, rnd); m.fl++; if (!ok) m.fail++; }
+    else { api.advanceDays(10); m.idle += 10; }
+    m.minF = Math.min(m.minF, P.funds);
+    for (const y of [1, 2, 3, 4, 5]) if (P.day >= 400 * y && m.at[y] == null) m.at[y] = P.funds;
+    for (const id in P.done) if (m.firsts[id] == null) m.firsts[id] = Math.round(P.day);
+  }
+  m.sanc = news.filter(t => /imposes sanctions/.test(t)).length;
+  return { ...m, final: P.funds, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
+    race: api.RACE.map(id => P.done[id] ? (api.raceLost(id) != null ? '2' : '1') : (api.raceLost(id) != null ? 'L' : '-')).join(''), home: api.home };
+}
+
+const avg = xs => xs.reduce((a, b) => a + b, 0) / xs.length, f0 = x => x.toFixed(0).padStart(5);
+console.log(`career runner: ${YEARS} years (${DAYS} days), ${SEEDS} seeds each · race: 1 first, 2 second, L lost (not done), - open (beeper/hop/orbiter)`);
+console.log('archetype    start       flights fail% idle%  firsts  day:beeper/orbiter  contracts  funds y1/y2/final  min  bail debt  op  careers sanc race');
+for (const arch of Object.keys(api.ARCH)) for (const start of ['agency', 'company', 'consortium']) {
+  const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + 1));
+  const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
+  console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')}`);
+}

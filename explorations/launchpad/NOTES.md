@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.12.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.13.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -945,6 +945,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.28 — balance pass with simulated careers (2026-10-07)
+
+**Tool:** `career.mjs` (`node career.mjs [years] [seeds]`) plays whole programs through the real economy code: contracts,
+budget days, decisions, the race, sanctions, opinion, career offers. Flights are abstracted. A scripted player picks a
+design (sounding rocket at any apex, Kestrel qualification shot, passenger hop with a gentle variant, orbiter to an
+altitude and inclination with optional ballast, passenger orbit, ballistic shot), pays its real price (real presets,
+real sourcing for the archetype), and gets the flight record that design produces, succeeding 80–93% of the time.
+Everything after the flight is the game's own code. The player takes the best-paying offers it has a design for,
+avoids certain home sanctions, flies whatever is worth most (contract pay plus firsts, which are valued above their
+reward because they unlock things), takes a loan when rescued, and declines optional decisions. It runs 6 archetypes ×
+3 starts × 3 seeds; 3 years takes about 2 minutes.
+
+**What it found (before tuning, 1 year):** money exploded. Every program ended year one between 320M and 3,000M from a
+60–90M start: a recovered sounding rocket cost about 4M net after 80% refurbishment and completed 10–25M contracts every
+four days. Orbit came by day 15–19 because stacking took 2 + cost/8 days, so the race was no contest. Two real bugs: a
+leak's sanctions could shrink the active-contract list during `contractEval` (crash), and the floor was only checked at
+flight end, so once running costs existed a program that couldn't fly bled with no rescue.
+
+**Changes:**
+- **Stacking takes real time:** `prepDays` = 5 + cost/2 (sounding 14 d, Orbiter 33 d, Heavy 53 d).
+- **Launch operations fee:** 3M + 10% of the vehicle, every launch (`OPS_FIX`, `OPS_FRAC`; `R.ops`).
+- **Running costs:** 0.1M/day + 0.03M/day per unit of contract capacity, from the first launch on (a program that hasn't
+  flown has nothing to run). An agency's budget day roughly covers this at neutral opinion; a company has to earn it.
+- **Refurbishment** 80% → 65%. **Contract pay** ×0.7.
+- **Rivals race at a human pace:** each first takes (100–220 days) / speed. The strongest rival in the current world is
+  expected on days 83 / 176 / 245.
+- **Career offers:** "excelling" offers half as often (1/900 per day). "Badness" counts *recent* top-ups (`bailRecent`,
+  fading over ~300 days) instead of lifetime top-ups, which had made a recovered program look desperate forever (13–20
+  offers in 3 years → 0–8).
+- **Fixes:** `contractEval` skips entries removed mid-loop; `floorCheck` also runs in the daily tick.
+
+**After (3 years × 3 seeds):**
+
+| | flights in 3 y | first orbit (day) | funds after 3 y | top-ups | career offers |
+|---|---|---|---|---|---|
+| superpowers | 32–44 | ~130 | 790–1,210M | 0 | 0–2 |
+| rising power | 21–36 | ~147 | 176M (company) to 690M | 0–0.3 | 2–5 |
+| frugal middle power | 24–34 | 158 (company 234) | 137M (company, in debt) to 630M | 2.7 (state-run) | 2–8 |
+| resource state | 17–36 | ~170 | 344M (company) to 1,245M (consortium) | 0.7–1.3 | 2–8 |
+| security state | 30–36 | 163–175 | 650–800M | 0–0.3 | 0–6 |
+
+Failure rates 7–15%. The weaker the archetype, the leaner the times: state-run frugal and resource programs need 1–3
+top-ups; a frugal company ends in debt. All nine firsts get done within 3 years everywhere except the frugal and
+resource companies (8.3–8.7). Race: the runner's player goes for the passenger firsts before the beeper (they pay more),
+so it always loses the beeper to the strongest rival (~day 83) and wins hop and orbiter. A player who goes straight
+for the satellite can contest it.
+
+**Still open:** strong programs reach ~1,000M by year 3 with nothing to spend it on. That's a content gap more than a
+tuning one: the economy needs **sinks** (stations, bigger programs, infrastructure such as the planning session's
+ground stations, R&D). Imaging contracts are outside the runner (they need a camera satellite). The runner's flight
+outcomes are fixed per design and don't come from physics; re-check them when designs change.
 
 ## v1.27 — launch sites as data (2026-10-07, terrain session, slice B)
 
@@ -2113,6 +2165,49 @@ Translation control, and attitude control that doesn't need reaction wheels. The
   physics while on. In the browser: the palette, both parts in the editor, a stage translating in orbit with puffs.
 - **Not yet:** monopropellant and later thrusters for the later eras; a fine-control mode; exhaust hitting other
   spacecraft; ullage; reaction wheels that saturate; station-keeping. (See the RCS answer in the docking plan.)
+
+### Docking port (sats session, 2026-10-07)
+
+The first docking. Two ports meet, latch, and the satellite rides along; undock and it's itself again.
+
+- **Part:** *Docking port* (1.25 m, palette *Structure*), a stack part whose top face is the port; a port is free when
+  nothing is stacked on it and it isn't in use. 3M.
+- **Capture:** two free ports latch when the faces are within 15 cm along our axis and 10 cm across it, their axes are
+  opposed within 10°, and the port points close at under 0.5 m/s (checked each physics step before contact, so a good
+  approach latches instead of bumping). The latch pulls the target's port onto ours (turned so the faces oppose, moved
+  so they meet: at most 15 cm and 10°), and the joined vessel takes the pair's total momentum and angular momentum
+  exactly. Too fast or too skewed and the ports just bump (contact).
+- **Passengers (the decided model).** The vessel keeps its own parts; each docked body is an entry in `s.att` with its
+  registry entry, its centre of mass and attitude in the vessel frame, the body it's docked to and both ports' part
+  indices. `geom` adds their mass and inertia (each body's own inertia rotated into the vessel frame, diagonal kept as
+  the vessel's own is). Contact sees their parts (part records can sit at a transform); rendering draws them; RCS and
+  aero stay with the vessel's own parts for now (docked stacks live in vacuum, and a passenger's thrusters are a later
+  slice).
+- **Port loads:** each step every port works out the force and bending moment that make everything beyond it follow the
+  vessel (non-gravitational acceleration plus rotation), against a rating of 30 kN and 20 kN·m. Above it the body breaks
+  loose with its momentum. A 0.7 t satellite on an Orbiter-class stage: 7 % of the rating at 5 % throttle, broken at
+  full throttle (about 4 g).
+- **Undocking** (a button in the HUD's *Docked* row; recorded on the flight tape as `['D', id]`): the body, and anything
+  docked through it, leaves on its own rails, pushed apart at 0.3 m/s along the port axis with momentum shared. It goes
+  back into the registry as itself (name, kit, marks), spinning with the vessel's rotation. Ports don't recapture for 5 s.
+- **The registry:** a docked satellite stays in `PROG.sats` flagged `docked` (skipped by everything that looks at
+  satellites in orbit) until the flight ends, so a reload mid-flight can't lose it (the flag is cleared on load, which
+  puts it back where it was before the flight). A flight that ends docked in orbit registers one stack: the new entry
+  carries the others in `attached`, its own `mass`/`cm` are its own body's, and `satMP` gives the combined mass, centre
+  of mass, inertia and parts. Landing docked brings them home (headline); a crash loses them.
+- **Guidance:** with a target within 500 m, the HUD shows *Port* (distance between the ports, angle between their axes,
+  closing speed, green when inside the capture limits) and *Line up*: the target port's offset and our drift in the
+  RCS keys that fix them (L/J, U/O). SAS mode *Docking* holds the nose against the target port's axis (needs a target).
+- **Fixed on the way:** satellite meshes were cached per satellite, so one that lost its antenna in a collision kept
+  drawing it; they're keyed by shape now. And one edit of mine had swallowed the marks hand-off call into a comment;
+  §20's check caught it.
+- Checks (`test.mjs` §25): capture at 0.2 m/s, 4 cm and 3° off (momentum exact, faces 7e-16 m apart, masses summed); no
+  latch at 1 m/s or 20°; the Docking mode lines up from 15° to 0.00°; port load held at 5 %, broken at full throttle;
+  undocking (0.3000 m/s, momentum to 1e-16, position exact, no recapture); a flight ending docked registers one stack.
+  In the browser: the approach with the HUD guidance, the latch, and undocking by the button.
+- **Not yet:** docking to a port on a body that's itself docked to the target (only the target's own ports for now);
+  passengers' thrusters, aero and heating; fuel transfer; a body whose port sits on a part that's staged away; the
+  passengers' own rotational inertia in the port's moment; a soft-capture animation (the latch snaps the last ≤15 cm).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
