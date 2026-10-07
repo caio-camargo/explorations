@@ -1009,6 +1009,31 @@ Shading:
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
    - Coordinate with the builder session (the site picker in the construction screen) and the economy session
      (`makePowers` and `PAD_GS` assume the pad at +X; site ownership and leases).
+   - **Hand-off from the economy session (2026-10-07): what the economy layer needs from launch sites.** Geography is
+     the last power-flavour axis, and Caio chose to build it as slice B here first, with economy on top afterwards. The
+     economy side will add site ownership, foreign leases priced by relations, loss of access under sanctions, and the
+     politics of launching over a neighbour. To keep that a thin layer, please:
+     - **`SITES` as plain data in the SIM block,** one entry per site: `id`, `name`, `u` (planet-fixed unit vector),
+       `lat`, `h` (pad height), `power` (index, from `powerAt(u)`; null at sea), `coastal` (bool), `maxDia` (largest stage
+       diameter it can take: rail limit inland, barge at the coast), `downrange` (azimuth plus the powers whose land lies
+       under the first ~1,000 km of the ascent), `polar` (a clear corridor south or north), and `kind` (`'pad'`, later
+       `'sea'`).
+     - **The chosen site lives on the flight** (`S.site` or `newShip(stack, site)`), so missions, incidents and the
+       flight record can read it. Economy will record `R.site`.
+     - **One gate economy owns:** before a launch, call `siteAccess(site)` → `{ok, why, fee}`. Economy defines it in the
+       program block: own sites ok, foreign ones leased or refused, sanctions block. Until it exists, default to "home
+       sites only, free". The builder's site picker should show `why` when `ok` is false.
+     - **Power homes:** `makePowers` seeds power 0 at planet-fixed +X, the current pad. If the world stops being turned to
+       put the home site at +X, seed power 0 at the home site's `u` (a one-line change in economy code; go ahead, and
+       say so in the log). `HOME` can change at runtime (defection), so home sites are always `SITES.filter(s =>
+       s.power === HOME)`, never a stored list.
+     - **Other +X assumptions on the economy side:** `PAD_GS` (the pad ground station, planning's code) and the
+       recovery-demonstration contract (`landDist` is measured from +X). Point them at the flight's site; the
+       contract's text already says "the pad".
+     - **Leave economy rules out of slice B:** no fees, ownership politics or sanction checks. Sites should be able to
+       exist abroad from day one; a foreign site is simply refused until economy's `siteAccess` arrives. Economy then
+       adds leases, a lease line on the budget, sites closed when relations sour (as ground stations already are),
+       westward-launch politics, and site choice in contracts.
 2. **Cost of low grazing views** (8.8 ms at 1024×768 over rugged hills).
    - Ideas: a temporal reuse of last frame's depth; a cheaper hash (exactness only matters near the camera, so
      distant octaves could come from a 3D noise texture with hardware filtering); fewer octaves beyond ~5 km.
@@ -1066,6 +1091,62 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
+
+Open thread 6. A local clone at `C:/Users/caioa/dev/launchpad-bodies` (a different machine from the other sessions).
+
+**Slice 1: the body tree, with no change in behaviour.** `BODIES`, built by `addBody(b,parent)`. Each moon carries Kepler elements about
+its parent (`orb: {a, e, i, lan, argp, M0}`, angles in the XZ equator with +Y north, so prograde runs +X → −Z), and
+`bodyRel(b,t)` solves Kepler's equation for its position and velocity. `checkSOI`, the step limits in `rails`, and `predictFrom`
+walk the tree: a leg ends at the earliest of entering any moon's SOI (scan, then bisection) or leaving the body's own.
+`moonPos`/`moonVel` are kept as wrappers. The map (orbits, SOI rings, encounter and escape labels), Tab focus, the shadow test and
+the body labels iterate `BODIES`. **Check:** a fingerprint of 40 aimed Selene transfers (19 encounters), 14 rails runs through SOI
+changes, a prediction from inside Selene's SOI and a Selene impact was **byte-identical** before and after. The circular,
+equatorial case of the general formula reduces exactly (multiplying by ±0 and 1 is exact).
+
+**Nyx.** Caio's idea: a second moon, inclined and very eccentric. An n-body study (RK4, Tellus-centred frame with the
+indirect term; `node study_nyx.mjs [small|mid|selene]`) chose the size:
+
+| Candidate | pe–ap | SOI (Laplace × distance) | Hill radius at pe | Verdict |
+|---|---|---|---|---|
+| R 90 km, g 0.25, a 16,000 km, e 0.7 | 4,800–27,200 km | 133 km at pe (43 km above ground), 752 at ap | 167 km | hardly orbitable |
+| **R 150 km, g 0.4, a 18,000 km, e 0.55, i 30°** | **8,100–27,900 km** | **407–1,401 km** | 464 km | **chosen** |
+
+Period 33.4 h, escape speed 346 m/s. Apoapsis plus the largest SOI clears Selene's SOI by 2,516 km.
+
+What the study showed:
+- **Which SOI rule.** Flybys at pe and ap, v∞ 300/800 m/s, three miss distances, patched conics against n-body one day later.
+  **Laplace radius × the moon's current distance** was best or tied in nearly every case. A fixed SOI from `a` is far too big at
+  periapsis. One fixed at periapsis misses most encounters near apoapsis. Patched conics are off by hundreds to thousands of km a
+  day after a pass, *for Selene too* (the same metric gives 2,000–8,000 km), so Nyx is no worse than what we already have.
+- **What patched conics can't show (a negative result, kept).** In n-body, *prograde* circular orbits about Nyx started at its
+  apoapsis are wrecked at the next periapsis pass (crash or ejection) from ~100 km altitude up. *Retrograde* ones survive at every
+  altitude tried up to 600 km. Patched conics call all of them stable. Showing this would need third-body perturbations (Encke) in
+  rails and the predictor for Nyx. **Caio chose patched conics for now**; this is open thread 6b.
+
+So Nyx's **SOI breathes**: `soiAt(b,t) = |r_moon(t)| × (m/M)^0.4` for a moon with e > 0 (Selene keeps its constant `b.soi`
+exactly). `b.soi` is the largest value and `b.soiMin` the smallest, both for conservative tests; `b.soiRate` bounds how fast the
+SOI moves, which goes into rails' step size. The predictor's escape for a breathing SOI is `escTime`: an outbound leg is scanned up
+to where it crosses the largest SOI; a bound orbit that reaches past `soiMin` is scanned over three Nyx orbits, then bisected.
+**Patched-conic stripping:** an orbit whose apoapsis is above the periapsis-time SOI gets dropped back into Tellus orbit when Nyx
+swings in. That is the patched-conic shadow of the real effect, and it's predicted on the map.
+
+Side effect on Selene flights: rails' speed bound now includes Nyx's speed, so steps near SOI edges are finer. Selene SOI switches
+moved by under 0.4 s, all closer to the predicted times (e.g. predicted 28,090.85 s: 28,091.23 → 28,091.10).
+
+**Drawing.** Selene lives in `SKY_FS`, which belongs to the terrain session, so Nyx gets its own pass: `MOON_FS` = `SKY_FS` up to its
+`main()` (so `sph`, `scatter`, `crat`, `fbm`, `detail` are shared) plus a main that ray-casts one sphere. It's drawn after the sky
+pass, depth-tested against it, and writes the same log depth. Seen from the ground it's ~0.7–2° across (bigger than our Moon)
+and takes the air's colour like a daytime moon. Look: three crater scales and a dark, brown carbonaceous albedo
+(`NYX.alb`) so it doesn't read as a second Selene. Any further non-Selene moon goes through the same pass.
+
+Checks (`test.mjs` §20, 5 new): orbit and SOI geometry; an approach finds the encounter and rails switch in on time, then out; a
+150–971 km retrograde orbit is predicted to be stripped at +12.9 h and is; a 100 km orbit is never stripped; a fall onto Nyx is
+predicted to 2 m.
+
+**Not yet:** missions and contracts for Nyx (the economy's scope); perturbations (6b); eclipses of and by Nyx in the lighting
+(`lit()` already shadows meshes); a non-spherical shape (it's a captured rock, and an SDF would suit it).
+
 ## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
 
 Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
@@ -1957,7 +2038,8 @@ style) would give visible variety that reflects each power's flavour.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
   `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
   `assemble(toV2(old))` is how the old format still flies.
-- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics).
+- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics). Bodies form a tree (`BODIES`,
+  `addBody`); `bodyRel` gives a moon relative to its parent, `bodyPos` relative to the root, `soiAt` the (possibly breathing) SOI.
   Tellus spins about +Y; `fromPF/toPF` convert to and from planet-fixed. The launch site is
   planet-fixed +X.
 - Vessel axes: Y = nose, X = belly (east on the pad), Z = south on the pad. The navball shows
@@ -1983,5 +2065,6 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"). Next on that line: **6b, third-body perturbations near Nyx** (Encke in rails and
+   the predictor, so prograde orbits get wrecked at its periapsis as they do in n-body); more moons are now one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

@@ -178,18 +178,36 @@ function qFromBasis(X,Y,Z){const m00=X[0],m10=X[1],m20=X[2],m01=Y[0],m11=Y[1],m2
   return qnorm([x,y,z,w])}
 function qFromTo(a,b){const c=cross(a,b),d=dot(a,b);if(d<-0.999999){let ax=cross([1,0,0],a);if(len(ax)<1e-6)ax=cross([0,1,0],a);return qaxis(norm(ax),Math.PI)}return qnorm([c[0],c[1],c[2],1+d])}
 
-// ---- the system: one planet, one moon. Inertial frame centred on Tellus, spin axis +Y.
+// ---- the system: a tree of bodies. Inertial frame centred on the root (Tellus), spin axis +Y.
 // Sized from a scale study (2026-10-07, see NOTES) and pegged to Earth rather than to any game planet: a fifth of Earth's
 // radius (1,274 km, ~2.1× Kerbin), Earth's surface gravity (9.81), a day a third of Earth's (8 h), Earth-like air with
 // its top at the Kármán line (100 km, scale height 7.5 km). Orbit costs ~4,200–4,350 m/s; low-orbit speed is 3.4 km/s.
 const TELLUS={name:'Tellus',R:1.274e6,mu:9.81*1.274e6**2,rot:2*Math.PI/28800,atm:1e5,H:7500,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
 // Selene: the Moon's size relative to its planet (0.273 R), the Moon's surface gravity (1.62), a tenth of the Moon's distance
-const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,a:3.844e7,atm:0,phi0:2.0};
-SELENE.n=Math.sqrt(TELLUS.mu/SELENE.a**3);
-SELENE.soi=SELENE.a*Math.pow(SELENE.mu/TELLUS.mu,0.4);
-function moonPos(t){const f=SELENE.n*t+SELENE.phi0;return[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)]}
-function moonVel(t){const f=SELENE.n*t+SELENE.phi0,s=SELENE.a*SELENE.n;return[-s*Math.sin(f),0,-s*Math.cos(f)]}
-const bodyPos=(b,t)=>b===SELENE?moonPos(t):[0,0,0];
+const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
+// Nyx: a small captured moon on an inclined, eccentric orbit (8,100–27,900 km, 30°, 33 h), always inside Selene's orbit
+// clear of its SOI. Its SOI breathes with its distance (407–1,401 km). Sized from an n-body study (NOTES, "Nyx").
+const NYX={name:'Nyx',R:1.5e5,mu:0.4*1.5e5**2,atm:0,orb:{a:1.8e7,e:0.55,i:30*Math.PI/180,lan:1.0,argp:0.8,M0:0.5}};
+const BODIES=[];
+// A moon's orbit about its parent: fixed Kepler elements (a, e, i, longitude of the node, argument of periapsis, mean
+// anomaly at t=0). Angles are measured in this frame's equator (XZ) with +Y north, so prograde runs +X → −Z.
+function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if(!parent)return b;parent.children.push(b);
+  const o=b.orb,cO=Math.cos(o.lan),sO=Math.sin(o.lan),cw=Math.cos(o.argp),sw=Math.sin(o.argp),ci=Math.cos(o.i),si=Math.sin(o.i);
+  b.P=[cO*cw-sO*sw*ci,sw*si,-(sO*cw+cO*sw*ci)];b.Q=[-cO*sw-sO*cw*ci,cw*si,-(-sO*sw+cO*cw*ci)];
+  b.a=o.a;b.n=Math.sqrt(parent.mu/o.a**3);b.rMin=o.a*(1-o.e);b.rMax=o.a*(1+o.e);b.vMax=b.n*o.a*Math.sqrt((1+o.e)/(1-o.e));
+  // SOI: the Laplace radius (m/M)^0.4 × distance. On an eccentric orbit it follows the distance (soiAt); b.soi is its
+  // largest value, for conservative tests. soiRate bounds how fast it moves, for rails' step size.
+  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
+addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
+// position and velocity of b relative to its parent at time t
+function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
+  const c=Math.cos(E),s=Math.sin(E),q=Math.sqrt(1-e*e),x=o.a*(c-e),y=o.a*q*s,k=b.n*o.a/(1-e*c),vx=-k*s,vy=k*q*c,P=b.P,Q=b.Q;
+  return[[x*P[0]+y*Q[0],x*P[1]+y*Q[1],x*P[2]+y*Q[2]],[vx*P[0]+vy*Q[0],vx*P[1]+vy*Q[1],vx*P[2]+vy*Q[2]]]}
+function moonPos(t){return bodyRel(SELENE,t)[0]}
+function moonVel(t){return bodyRel(SELENE,t)[1]}
+// absolute position (relative to the root); the root is the origin
+const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
+const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
 const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
 const bodyOmega=b=>b===TELLUS?b.rot:0;
 const surfVel=(b,r)=>{const w=bodyOmega(b);return[w*r[2],0,-w*r[0]]};   // ω×r with ω along +Y
@@ -792,9 +810,11 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   // CoP on the axis: −Lz/Fx is only meaningful for a symmetric design, which side groups always are
   return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth,tau:len(tau),auth}}
 function firstSeg(s){return launchSegs(s)[0]??0}
-function checkSOI(s){
-  if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI');if(s.node){s.node=null;HOOK.msg('Entering Selene SOI — maneuver node cleared')}}}
-  else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI');if(s.node){s.node=null;HOOK.msg('Escaping Selene SOI — maneuver node cleared')}}}
+// Patched conics: leave the current body's SOI for its parent, or enter one of its moons'.
+function soiSwitch(s,to,how){s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);if(s.node){s.node=null;HOOK.msg(`${how} SOI — maneuver node cleared`)}}
+function checkSOI(s){const b=s.body;
+  if(b.parent&&len(s.r)>soiAt(b,simT)){const[p,v]=bodyRel(b,simT);s.r=add(s.r,p);s.v=add(s.v,v);soiSwitch(s,b.parent,`Escaping ${b.name}`);return}
+  for(const c of b.children){const[p,v]=bodyRel(c,simT),d=sub(s.r,p);if(len(d)<soiAt(c,simT)){s.r=d;s.v=sub(s.v,v);soiSwitch(s,c,`Entering ${c.name}`);return}}}
 function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);if(len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
   const pB=madd(s.r,Y,s.yBot),pT=madd(s.r,Y,s.yTop),hB=len(pB)-groundR(b,toPF(b,pB,simT)),hT=len(pT)-groundR(b,toPF(b,pT,simT));
@@ -828,11 +848,11 @@ function rails(s,dt){
   if(s.landed){simT+=dt;syncLanded(s);return true}
   let rem=dt,guard=0;
   while(rem>1e-9&&guard++<4000){
-    const b=s.body,rl=len(s.r),el=elements(s.r,s.v,b.mu),sp=len(s.v)+(b===TELLUS?SELENE.n*SELENE.a:0)+1;
+    const b=s.body,rl=len(s.r),el=elements(s.r,s.v,b.mu),sp=len(s.v)+b.children.reduce((m,c)=>Math.max(m,c.vMax+c.soiRate),0)+(b.soiRate||0)+1;
     let lim=Infinity;
     if(el.pe<b.R+physAlt(b))lim=rl-b.R-physAlt(b);
-    if(b===TELLUS){if(el.ap>SELENE.a-SELENE.soi&&el.pe<SELENE.a+SELENE.soi)lim=Math.min(lim,Math.abs(len(sub(s.r,moonPos(simT)))-SELENE.soi))}
-    else if(el.e>=1||el.ap>b.soi)lim=Math.min(lim,b.soi-rl);
+    for(const c of b.children)if(el.ap>c.rMin-c.soi&&el.pe<c.rMax+c.soi)lim=Math.min(lim,Math.abs(len(sub(s.r,bodyRel(c,simT)[0]))-soiAt(c,simT)));
+    if(b.parent&&(el.e>=1||el.ap>b.soiMin))lim=Math.min(lim,Math.abs(soiAt(b,simT)-rl));
     const h=Math.min(rem,Math.max(dt/2000,0.25*lim/sp));
     const[r,v]=kepler(s.r,s.v,h,b.mu);s.r=r;s.v=v;simT+=h;rem-=h;
     checkSOI(s);
@@ -846,27 +866,43 @@ function stepDebris(dt){
     const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
     if(h<TERR_TOP&&h<groundAlt(b,toPF(b,d.r,simT))){HOOK.boom(b,d.r,simT,1);d.dead=true}
     if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
-// Where does the current trajectory go? Up to three patched-conic legs: orbit → Selene encounter → escape back to Tellus.
+// Where does the current trajectory go? Up to three patched-conic legs, e.g. orbit → Selene encounter → escape back to Tellus.
+// Each leg ends at the earliest of: entering one of the body's moons' SOIs (found by scanning, then bisection) or leaving
+// the body's own SOI. `off` is the leg body's absolute position at the leg's start (null for the root).
 function predict(s){return predictFrom({b:s.body,r:s.r,v:s.v,t:simT})}
+const absOff=(b,t)=>b.parent?bodyPos(b,t):null;
+// When does this leg leave its body's SOI? A fixed SOI is a radius crossing (exact). A breathing one is scanned, then
+// bisected: an outbound leg up to where it crosses the largest SOI; a bound orbit that reaches past the smallest SOI over
+// three of the moon's orbits (it is stripped when the moon swings in and its SOI shrinks below the apoapsis).
+function escTime(st,el){const b=st.b;if(!b.parent)return NaN;
+  if(el.e<1&&el.ap<b.soiMin)return NaN;
+  if(!b.orb.e)return timeToR(el,b.soi*0.99999);
+  const out=dt=>len(kepler(st.r,st.v,dt,b.mu)[0])>=soiAt(b,st.t+dt);
+  let span=el.e<1&&el.ap<b.soi?3*2*Math.PI/b.n:timeToR(el,b.soi*1.00001);if(!(span>0))span=el.e<1?el.period:NaN;if(!(span>0))return NaN;
+  const h=Math.min(span/400,el.e<1?el.period/48:Infinity,2*Math.PI/b.n/96),N=Math.ceil(span/h);
+  let tPrev=0,found=-1;for(let i=1;i<=N;i++){const dt=Math.min(span,i*h);if(out(dt)){found=dt;break}tPrev=dt}
+  if(found<0)return NaN;let lo=tPrev,hi=found;for(let j=0;j<40;j++){const m=(lo+hi)/2;if(out(m))hi=m;else lo=m}return hi}
 function predictFrom(st0){
   const out=[];let st={...st0,off:null};
   for(let k=0;k<3;k++){
     const el=elements(st.r,st.v,st.b.mu),pt={...st,el,end:null,endKind:null};out.push(pt);
     if(el.hl<1e-3||k===2)break;
-    if(st.b===TELLUS){
-      if(el.e<1&&el.ap<SELENE.a-SELENE.soi)break;if(el.pe>SELENE.a+SELENE.soi)break;
-      const span=el.e<1?Math.min(el.period,40*86400):timeToR(el,SELENE.a*1.6);if(!(span>0))break;
+    const b=st.b,tEsc=escTime(st,el);
+    let enc=null;
+    for(const c of b.children){
+      if(el.e<1&&el.ap<c.rMin-c.soi)continue;if(el.pe>c.rMax+c.soi)continue;
+      let span=el.e<1?Math.min(el.period,40*86400):timeToR(el,c.rMax*1.6);if(tEsc>0)span=Math.min(span,tEsc);if(!(span>0))continue;
+      const inC=dt=>len(sub(kepler(st.r,st.v,dt,b.mu)[0],bodyRel(c,st.t+dt)[0]))<soiAt(c,st.t+dt);
       const N=400;let tPrev=0,found=-1;
-      for(let i=1;i<=N;i++){const dt=span*i/N,[p]=kepler(st.r,st.v,dt,TELLUS.mu);if(len(sub(p,moonPos(st.t+dt)))<SELENE.soi){found=dt;break}tPrev=dt}
-      if(found<0)break;
-      let lo=tPrev,hi=found;for(let j=0;j<40;j++){const m=(lo+hi)/2,[p]=kepler(st.r,st.v,m,TELLUS.mu);if(len(sub(p,moonPos(st.t+m)))<SELENE.soi)hi=m;else lo=m}
-      const te=st.t+hi,[p,v]=kepler(st.r,st.v,hi,TELLUS.mu);pt.end=p;pt.endKind='enc';pt.endT=te;
-      st={b:SELENE,r:sub(p,moonPos(te)),v:sub(v,moonVel(te)),t:te,off:moonPos(te)}}
-    else{
-      if(el.e<1&&el.ap<SELENE.soi)break;
-      const dt=timeToR(el,SELENE.soi*0.99999);if(!(dt>0))break;
-      const[p,v]=kepler(st.r,st.v,dt,SELENE.mu),tx=st.t+dt;pt.end=p;pt.endKind='esc';pt.endT=tx;
-      st={b:TELLUS,r:add(p,moonPos(tx)),v:add(v,moonVel(tx)),t:tx,off:null}}}
+      for(let i=1;i<=N;i++){const dt=span*i/N;if(enc&&dt>=enc.dt)break;if(inC(dt)){found=dt;break}tPrev=dt}
+      if(found<0)continue;
+      let lo=tPrev,hi=found;for(let j=0;j<40;j++){const m=(lo+hi)/2;if(inC(m))hi=m;else lo=m}
+      if(!enc||hi<enc.dt)enc={c,dt:hi}}
+    if(enc){const te=st.t+enc.dt,[p,v]=kepler(st.r,st.v,enc.dt,b.mu),[cp,cv]=bodyRel(enc.c,te);pt.end=p;pt.endKind='enc';pt.endT=te;
+      st={b:enc.c,r:sub(p,cp),v:sub(v,cv),t:te,off:absOff(enc.c,te)}}
+    else if(tEsc>0){const[p,v]=kepler(st.r,st.v,tEsc,b.mu),tx=st.t+tEsc,[bp,bv]=bodyRel(b,tx);pt.end=p;pt.endKind='esc';pt.endT=tx;
+      st={b:b.parent,r:add(p,bp),v:add(v,bv),t:tx,off:absOff(b.parent,tx)}}
+    else break}
   return out}
 // ---- maneuver node: one planned impulse {t, dv:[prograde, normal, radial]} on the current leg of the trajectory.
 // Before the burn the node's world-frame Δv is recomputed from the orbit (so it follows any correction you make);
@@ -2119,6 +2155,34 @@ function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.te
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
   gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);D.w=w;D.h=h;return D}
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);
+// ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
+// against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
+// front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
+const MOON_FS=SKY_FS.slice(0,SKY_FS.lastIndexOf('void main(){'))+`
+uniform vec3 uNc,uNdet,uNalb;uniform float uNcc;
+float rough(vec3 n){return crat(n*9.)+.6*crat(n*31.)+.35*crat(n*90.);}
+void main(){
+ vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
+ vec2 hn=sph(uNc,uNcc,d);if(!(uNcc>0.&&hn.x>0.))discard;float tN=hn.x;
+ vec3 trans;vec3 ins=scatter(d,tN,trans);
+ vec3 p=d*tN-uNc,n=normalize(p);
+ // a rubble-pile look: craters at three scales, slope lighting along the sun as on Selene, dark mottled regolith
+ float cr=rough(n),fade=smoothstep(3000.,150.,tN),det=fade>0.?detail(d*tN+uNdet):.5;
+ vec3 ts=normalize(uSun-n*dot(uSun,n));float slope=clamp((rough(normalize(n+ts*.003))-cr)*1.2,-.9,1.2);
+ float base=.75+.5*fbm(n*2.5)-.3*smoothstep(.45,.7,fbm(n*1.2+7.));
+ vec3 alb=uNalb*(base+.12*cr+.25*fade*(det-.5));
+ float ndl=max(dot(n,uSun),0.);vec3 col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
+ col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
+ gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
+}`;
+const PMOON=mkProg(QUAD_VS,MOON_FS);
+NYX.alb=[.085,.068,.054];   // carbonaceous: darker and browner than Selene
+function drawMoons(camW,R,U,Fw,tanX,tanY){const u=PMOON.u;let on=false;
+  for(const b of BODIES){if(!b.parent||b===SELENE)continue;const C=sub(bodyPos(b,simT),camW),dc=len(C);if(dc<b.R)continue;
+    if(!on){on=true;gl.useProgram(PMOON.p);gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
+      const Cp=mul(camW,-1),d=len(Cp);gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);gl.bindVertexArray(quadVAO)}
+    gl.uniform3fv(u.uNc,C);gl.uniform1f(u.uNcc,(dc-b.R)*(dc+b.R));gl.uniform3fv(u.uNalb,b.alb||[.15,.15,.15]);
+    gl.uniform3fv(u.uNdet,mul(C,-1).map(x=>x-Math.round(x/1000)*1000));gl.drawArrays(gl.TRIANGLES,0,3)}}
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
 gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,32,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,4,gl.FLOAT,false,32,12);gl.enableVertexAttribArray(2);gl.vertexAttribPointer(2,1,gl.FLOAT,false,32,28);gl.bindVertexArray(null);
 const quadVAO=gl.createVertexArray();gl.bindVertexArray(quadVAO);{const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0)}
@@ -2404,7 +2468,7 @@ let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
 HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
-HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.body===SELENE?debrisImpact(d):null;
+HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
   if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,d.verdict);d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
 const PROG_KEY='launchpad-program-v1';
@@ -2509,7 +2573,7 @@ addEventListener('keydown',e=>{
   else if(k==='.'){warpTo=null;warpIdx=Math.min(WARPS.length-1,warpIdx+1)}
   else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
   else if(k==='/'){warpTo=null;warpIdx=0}
-  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[5,5,2.5][cam.focus]*TELLUS.R}
+  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%(BODIES.length+1);const fb=BODIES[cam.focus-1];cam.mDist=fb&&fb.parent?fb.R*9.15:5*TELLUS.R}
   else if(k==='n')nodeAtApoapsis();
   else if(k==='delete'&&S.node){S.node=null;HOOK.msg('Node deleted')}
   else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();view='flight';HOOK.msg('Reverted to launch')}});
@@ -2594,7 +2658,7 @@ function render(){
   // ---- camera, in float64 world coordinates
   let camW,R,U,Fw,fov;
   if(view==='map'&&mode==='flight'){
-    const foc=cam.focus===0?shipWorld():cam.focus===1?[0,0,0]:moonPos(simT);
+    const foc=cam.focus===0?shipWorld():bodyPos(BODIES[cam.focus-1],simT);
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
@@ -2627,12 +2691,13 @@ function render(){
     gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
   gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
+  drawMoons(camW,R,U,Fw,tanX,tanY);
   const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
-  const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
+  const lit=p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
   marksTick();padSync();
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
@@ -2726,11 +2791,11 @@ function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.pe
 function patchRange(pt){const el=pt.el;
   if(pt.end){let n1=Math.atan2(dot(pt.end,el.Q),dot(pt.end,el.P));if(el.e<1)while(n1<=el.nu)n1+=6.2832;return[el.nu,n1]}
   if(el.e<1)return[0,6.2832];
-  const rc=pt.b===SELENE?SELENE.soi:SELENE.a*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;return[el.nu,Math.max(el.nu,nm)]}
+  const rc=pt.b.parent?pt.b.soi:Math.max(...pt.b.children.map(c=>c.rMax))*2.5,c=(el.p/rc-1)/el.e,nm=c>=-1&&c<=1?Math.acos(c):Math.acos(-1/el.e)*.98;return[el.nu,Math.max(el.nu,nm)]}
 function drawPatches(list,camW,out,labels,cols,dash,tag){
-  const mp=moonPos(simT),seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
+  const seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   list.forEach((pt,k)=>{
-    const el=pt.el,off=pt.b===SELENE?(pt.off||mp):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
+    const el=pt.el,off=pt.b.parent?(pt.off||bodyPos(pt.b,simT)):[0,0,0],col=cols[k];if(el.hl<1e-3)return;
     const[n0,n1]=patchRange(pt),N=Math.max(64,Math.min(720,Math.round(Math.abs(n1-n0)*90)));let pv=null;
     for(let i=0;i<=N;i++){const nu=n0+(n1-n0)*i/N,den=1+el.e*Math.cos(nu);if(den<=1e-6){pv=null;continue}const rr=el.p/den;
       const p=add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv&&(!dash||i%4<2))seg(pv,p,col);pv=p}
@@ -2738,24 +2803,25 @@ function drawPatches(list,camW,out,labels,cols,dash,tag){
     const bR=pt.b.R,hc=`rgb(${col.slice(0,3).map(x=>x*255|0)})`;
     if(inArc(0)&&el.e>1e-4)labels.push({p:add(off,mul(el.P,el.pe)),t:(el.pe<bR?'Impact':'Pe '+fmtD(el.pe-bR))+tag,c:hc});
     if(el.e<1&&el.e>1e-4&&inArc(Math.PI))labels.push({p:add(off,mul(el.P,-el.ap)),t:'Ap '+fmtD(el.ap-bR)+tag,c:hc});
-    if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`Selene encounter in ${fmtT(pt.endT-simT)} · Pe ${nx?(nx.el.pe<SELENE.R?'impact':fmtD(nx.el.pe-SELENE.R)):''}${tag}`,c:'#ffb454'});
-      labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[SELENE.soi,0,0]),c:'rgba(255,180,84,.6)'})}
-    if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:'Selene escape'+tag,c:'#cc8cff'})})}
+    if(pt.endKind==='enc'){const nx=list[k+1];labels.push({p:add(off,pt.end),t:`${nx.b.name} encounter in ${fmtT(pt.endT-simT)} · Pe ${nx.el.pe<nx.b.R?'impact':fmtD(nx.el.pe-nx.b.R)}${tag}`,c:'#ffb454'});
+      labels.push({p:pt.off||nx.off,mark:'ghost',edge:add(nx.off,[soiAt(nx.b,pt.endT),0,0]),c:'rgba(255,180,84,.6)'})}
+    if(pt.endKind==='esc')labels.push({p:add(off,pt.end),t:`${pt.b.name} escape`+tag,c:'#cc8cff'})})}
 function drawMap(VP,camW,labels){
   if(!predCache||predCache.t!==simT)predCache={t:simT,p:predict(S)};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
-  // Selene's orbit + SOI ring
-  let prev=null;for(let i=0;i<=256;i++){const f=i/256*6.2832,p=[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)];if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
+  // the moons' orbits + SOI rings
+  for(const b of BODIES){if(!b.parent)continue;const pp=bodyPos(b.parent,simT),T=2*Math.PI/b.n;let prev=null;
+    for(let i=0;i<=256;i++){const p=add(pp,bodyRel(b,simT+T*i/256)[0]);if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
+    const bp=bodyPos(b,simT),so=soiAt(b,simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(bp,[so*Math.cos(f),0,so*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}}
   for(const q of PROG.sats||[]){const[r,v]=satAt(q,tNow()),el=elements(r,v,TELLUS.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
-  const mp=moonPos(simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(mp,[SELENE.soi*Math.cos(f),0,SELENE.soi*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}
   drawPatches(predCache.p,camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];
-  if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=p0.b===SELENE?mp:[0,0,0],[n0,n1]=patchRange(p0);
+  if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=bodyPos(p0.b,simT),[n0,n1]=patchRange(p0);
     for(let i=0;i<=360;i++){const nu=n0+(n1-n0)*i/360,den=1+el.e*Math.cos(nu);if(den<=1e-6)continue;const rr=el.p/den,t=nuToT(el,nu,simT);
       if(p0.endT&&t>p0.endT)continue;mapUI.pickW.push({p:add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)))),t})}}
   // the planned trajectory after the node, dashed
-  if(S.node){const I=nodeInfo(S),off=S.body===SELENE?mp:[0,0,0],plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
+  if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
     drawPatches(plan,camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
     const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
@@ -2771,7 +2837,7 @@ function drawMap(VP,camW,labels){
   for(const q of PROG.sats||[])labels.push({p:satAt(q,tNow())[0],mark:'sat',t:cam.mDist<TELLUS.R*10?q.name:'',c:q.cam?'#9fe8ff':'#aab4c0'});
   if(impSpread&&impact)for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
-  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
+  labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:b.name,c:'#9ab'})))}
 
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
 const NBc=$('nav'),nctx=NBc.getContext('2d'),NS=180,nimg=nctx.createImageData(NS,NS),D32=new Uint32Array(nimg.data.buffer);
@@ -2932,7 +2998,7 @@ function payloadRows(){const R=S.rec,out=[];if(!R)return out;
 function updateHUD(){
   const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
   let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';
-  else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>b.soi)sit='escaping';else sit='<span class="ok">orbiting</span>';
+  else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>soiAt(b,simT))sit='escaping';else sit='<span class="ok">orbiting</span>';
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   const met='T+'+fmtT(simT);
