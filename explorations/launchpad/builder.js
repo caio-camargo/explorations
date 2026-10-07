@@ -28,7 +28,11 @@ const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // first edit; then the tree that the current ship was assembled from becomes the design, so S.parts[].dn are its nodes.
 function design(){
   if(!isV2(stackDef)){if(isEmpty(stackDef))stackDef={v:2,root:null};else{const r=S.parts.map(p=>p.dn).find(n=>!n.at);stackDef={v:2,root:r}}}
-  return stackDef}
+  ensureIds(stackDef);return stackDef}
+// every node gets a small id, unique in the design: a custom staging order refers to decouplers by it
+function ensureIds(D){const all=nodes(D.root);let m=0;const seen=new Set();for(const n of all)if(n.id!=null){if(seen.has(n.id))delete n.id;else{seen.add(n.id);m=Math.max(m,n.id)}}
+  for(const n of all)if(n.id==null)n.id=++m}
+const noIds=n=>{delete n.id;kids(n).forEach(noIds);return n};
 function snapshot(){st.undo.push(JSON.stringify(design()));if(st.undo.length>80)st.undo.shift();st.redo.length=0}
 function restore(from,to){if(!from.length)return;to.push(JSON.stringify(stackDef));stackDef=JSON.parse(from.pop());st.held=null;st.sel=null;st.hover=null;editorChanged()}
 function loadDesign(d){st.held=null;st.sel=null;st.hover=null;stackDef=cl(d);st.reframe=true;editorChanged()}
@@ -95,12 +99,12 @@ function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.in
     return dx<1e-3?oy>1e-3:dx<a.d.r+b.d.r-0.02&&oy>0.02};
   for(let i=0;i<all.length;i++){for(const e of ex)if(hit(all[i],e))return true;for(let j=i+1;j<all.length;j++)if(hit(all[i],all[j]))return true}
   return false}
-function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?cl(h):h;
+function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?noIds(cl(h)):h;
   if(slot.root){delete put.at;D.root=put;st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
-  if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
+  ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
 function pickUp(p,copy){const n=p.dn,D=design();
   if(!copy&&n===D.root&&kids(n).length){note('That is the root part: everything hangs from it. Pick up the parts around it instead.');return}
-  if(copy){st.held=cl(n);delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
+  if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
 function grab(k){st.held={k,c:[]};st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
 function drop(){if(!st.held)return;st.held=null;st.ghostKey='';refresh()}
@@ -124,8 +128,9 @@ function ghostMeshes(){const s=st.slot,key=st.held?JSON.stringify([st.held,s&&s.
   if(!s){st.ghost={float:true,G:trial({root:true})};const G=st.ghost.G;st.ghost.glow=meshOf(G,[.5,.6,.7]);st.ghost.c=G.reduce((c,g)=>c+g.y0+g.h/2,0)/G.length;return st.ghost}
   const G=trial(s),bad=collides(G);st.ghost={G,bad,solid:bad?null:meshOf(G),glow:meshOf(G,bad?[1,.15,.1]:[.2,1,.45])};s.bad=bad;return st.ghost}
 function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>p.dn===st.hover))+(st.sel===st.hover):'';
-  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?S.parts.filter(p=>p.on&&p.dn===st.hover):[];
-  const k2=key+'|'+sel.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
+  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?S.parts.filter(p=>p.on&&p.dn===st.hover):
+    st.hiAtom?S.parts.filter(p=>p.on&&st.hiAtom.segs.includes(p.seg)&&(st.hiAtom.kind!=='i'||p.d.kind==='engine')):[];
+  const k2=key+'|'+sel.map(p=>p.i).join(',')+'|'+hov.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
   if(st.hi){st.hi.h&&st.hi.h.free();st.hi.s&&st.hi.s.free()}st.hi={h:meshOf(hov,[.5,.8,1]),s:meshOf(sel,[1,.75,.3])};return st.hi}
 // called from render() after the ship is drawn, with the mesh program bound
 function draw(drawMesh,m,Mship,pw){
@@ -180,6 +185,7 @@ function panel(){
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
   btn(t3,'clear',false,()=>{if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.sel=null;editorChanged()},'remove every part (undo brings them back)');
+  if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
   if(!n||isEmpty(stackDef)||!nodes(design().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
   const D=design(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&p.dn===n),copies=ps.filter(p=>!p.inst.rdec).length;
@@ -202,6 +208,25 @@ function panel(){
     {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part, so a subtree with the old root in it can be picked up (the rocket itself does not change)')}
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
     btn(r,'delete'+(sub?` (+${sub})`:''),false,()=>{if(n===D.root&&!confirm('Delete the root part and everything on it?'))return;del(n)})}}
+// ---- staging editor. Stages in firing order (1 fires first, with Space in flight); each chip is one action — a drop (a
+// decoupling placement, all its copies), an ignition, or the chute. ◀ ▶ move it to the stage before / after (off either end
+// makes a new stage), ⤵ gives it a stage of its own. The first edit freezes the automatic order into the design (stg);
+// "automatic" drops it again. Parts added later slot in where the automatic order would put them.
+function staging(box){
+  st.hiAtom=null;st.hiKey='';   // the chips are rebuilt: a removed chip never fires mouseleave, so its highlight would stick
+  const A=assemble(stackDef),S0=A.stages,wrap=document.createElement('div');wrap.className='bstg';box.appendChild(wrap);
+  wrap.innerHTML=`<div class="bhd2"><span>staging</span> <span class="dim">${A.custom?'custom':'automatic'}</span></div>`;
+  if(A.custom)btn(wrap.firstChild,'automatic',false,()=>edit(()=>{delete design().stg}),'forget the custom order and stage automatically again');
+  const mv=(i,j,how)=>edit(()=>{const D=design(),L=assemble(D).stages.map(s=>s.map(a=>a.id)),id=L[i][j];L[i].splice(j,1);
+    if(how<0){if(i===0)L.unshift([id]);else L[i-1].push(id)}
+    else if(how>0){if(i===L.length-1)L.push([id]);else L[i+1].push(id)}
+    else L.splice(i+1,0,[id]);
+    D.stg=L.filter(s=>s.length)});
+  S0.forEach((s,i)=>{const r=document.createElement('div');r.className='srow';r.innerHTML=`<b>${i+1}</b>`;wrap.appendChild(r);
+    s.forEach((a,j)=>{const c=document.createElement('span');c.className='schip '+a.kind;c.innerHTML=`<span>${a.label}</span>`;
+      c.onmouseenter=()=>{st.hiAtom=a;st.hiKey=''};c.onmouseleave=()=>{if(st.hiAtom===a){st.hiAtom=null;st.hiKey=''}};
+      btn(c,'◀',false,()=>mv(i,j,-1),'fire one stage earlier');btn(c,'▶',false,()=>mv(i,j,1),'fire one stage later');
+      if(s.length>1)btn(c,'⤵',false,()=>mv(i,j,0),'a stage of its own, right after this one');r.appendChild(c)})})}
 function palette(){const pal=el('palette');pal.innerHTML='';
   const CAT=[['Command & payload',['pod','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
@@ -232,6 +257,9 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .bbar{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.bgrp{display:flex;gap:3px;flex-wrap:wrap;align-items:center}.bgrp .dim{margin-right:3px}
 .bbar button,.bsel button{padding:1px 6px;font-size:11px}.bbar button:disabled{opacity:.35;cursor:default}
 .bsel{border-top:1px solid var(--line);padding-top:6px}.bhd{font-size:13px}.brow{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:4px}.brow>.dim{min-width:70px}
+.bstg{border-top:1px solid var(--line);padding:6px 0 4px;margin-bottom:4px}.bhd2{display:flex;gap:6px;align-items:center;color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}.bhd2 button{margin-left:auto;text-transform:none;letter-spacing:0;padding:0 6px;font-size:10.5px}
+.srow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.srow>b{color:var(--warn);min-width:16px}
+.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
 #bldtip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:11.5px;display:none;z-index:5}
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
@@ -265,5 +293,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   palette()}
-return{reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
+return{ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
 })();
