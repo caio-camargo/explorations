@@ -164,8 +164,12 @@ function qFromBasis(X,Y,Z){const m00=X[0],m10=X[1],m20=X[2],m01=Y[0],m11=Y[1],m2
 function qFromTo(a,b){const c=cross(a,b),d=dot(a,b);if(d<-0.999999){let ax=cross([1,0,0],a);if(len(ax)<1e-6)ax=cross([0,1,0],a);return qaxis(norm(ax),Math.PI)}return qnorm([c[0],c[1],c[2],1+d])}
 
 // ---- the system: one planet, one moon. Inertial frame centred on Tellus, spin axis +Y.
-const TELLUS={name:'Tellus',R:6e5,mu:3.5316e12,rot:2*Math.PI/21600,atm:7e4,H:5600,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
-const SELENE={name:'Selene',R:2e5,mu:6.5138e10,a:1.2e7,atm:0,phi0:2.0};
+// Sized from a scale study (2026-10-07, see NOTES) and pegged to Earth rather than to any game planet: a fifth of Earth's
+// radius (1,274 km, ~2.1× Kerbin), Earth's surface gravity (9.81), a day a third of Earth's (8 h), Earth-like air with
+// its top at the Kármán line (100 km, scale height 7.5 km). Orbit costs ~4,200–4,350 m/s; low-orbit speed is 3.4 km/s.
+const TELLUS={name:'Tellus',R:1.274e6,mu:9.81*1.274e6**2,rot:2*Math.PI/28800,atm:1e5,H:7500,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
+// Selene: the Moon's size relative to its planet (0.273 R), the Moon's surface gravity (1.62), a tenth of the Moon's distance
+const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,a:3.844e7,atm:0,phi0:2.0};
 SELENE.n=Math.sqrt(TELLUS.mu/SELENE.a**3);
 SELENE.soi=SELENE.a*Math.pow(SELENE.mu/TELLUS.mu,0.4);
 function moonPos(t){const f=SELENE.n*t+SELENE.phi0;return[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)]}
@@ -286,11 +290,12 @@ const PRESETS={
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
-  Lunar:['chute','pod','t1','wren','dec','t4','t2','petrel','dec','t8','t4','fins','condor'],
+  // resized for the bigger planet (orbit ~4,300 m/s; a Selene landing and return ~3,900 more): a 2.5 m first stage
+  Lunar:['chute','pod','t1','wren','dec','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross'],
   // with a heat shield under the pod: drop the lander stage before re-entry and come home shield-first from Selene
   Sounding:['chute','sci','t1','fins','sparrow'],
-  Passenger:['chute','bio','dec','t2','fins','sparrow'],
-  'Big Lunar':['chute','pod','shield','dec','t1','wren','dec','t4','t2','petrel','istage','adapt','T32','fins25','albatross'],
+  Passenger:['chute','bio','dec','t4','fins','sparrow'],   // a 4 t tank since the rescale: space is 100 km up now
+  'Big Lunar':['chute','pod','shield','dec','t1','wren','dec','t4','t4','petrel','istage','adapt','T32','T16',{k:'fins25',rad:{n:2,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
 // the vessel is its command pod, else the capsule or the instruments, else its top part: losing the root ends the flight
@@ -601,7 +606,7 @@ const SND=h=>Math.sqrt(1.4*287*Math.max(216.65,288.15-0.0065*Math.max(h,0)));
 const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
 const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
 // Sutton–Graves stagnation heating q = k·√(ρ/r_nose)·v³ (W/m², k = 1.83e-4 for air); each surface element gets q·|cos|
-const SG=1.83e-4;let HEAT_GAIN=3;   // ×3: this small planet's 2.3 km/s orbits would otherwise re-enter like a gentle breeze (see NOTES)
+const SG=1.83e-4;let HEAT_GAIN=1;   // plain Sutton–Graves since the rescale (3.4 km/s orbits heat ~3.3× more than the old 2.3); it was ×3 when this small planet's 2.3 km/s orbits would otherwise re-enter like a gentle breeze (see NOTES)
 const FIN4=[[1,0],[0,1],[-1,0],[0,-1]];
 const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
 function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
@@ -947,15 +952,16 @@ const wearOf=(p,touch)=>(1-0.7*clamp(((p.wL||0)-.5)/.5,0,1))*(1-0.7*clamp(((p.wT
 function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*FUEL_PRICE;dry+=q}return{cost:c,dry}}
 const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
-// ---- the program calendar, in Tellus days (6 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
+// ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
-const DAY_S=21600,YEAR_D=400,prepDays=cost=>2+cost/8;
+const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>2+cost/8;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>Math.min(1,PROG.cert[k]??CERT0);
-const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<7&&!PROG.atm[k]?0.25:0};
+const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
+const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
 const MISSIONS=[
   {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
@@ -965,9 +971,9 @@ const MISSIONS=[
    win:'the engineers finally have numbers',ok:R=>R.sciQ>=25000},
   {id:'range',pay:30,ep:1,name:'Range certification',brief:'Three flights in a row that drop stages, with every one landing clear of towns.',
    win:'the range is certified for bigger rockets',ok:()=>PROG.streak>=3,prog:()=>`${PROG.streak}/3 clean flights`},
-  {id:'beeper',pay:60,ep:2,req:['weather'],name:'The beeper',brief:'Put an instrument package into a stable orbit (periapsis above 70 km). The whole world will be listening.',
+  {id:'beeper',pay:60,ep:2,req:['weather'],name:'The beeper',brief:`Put an instrument package into a stable orbit (periapsis above ${(TELLUS.atm/1e3).toFixed(0)} km). The whole world will be listening.`,
    win:'something of ours goes round the world',ok:R=>R.orbitSci},
-  {id:'hop',pay:50,ep:2,req:['loads'],name:'Passenger: the hop',brief:`A biocapsule to space (70 km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
+  {id:'hop',pay:50,ep:2,req:['loads'],name:'Passenger: the hop',brief:`A biocapsule to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home safe: under ${G_LIM} g (1 s average), cabin under ${CABIN_MAX} K. Flight safety only approves designs whose joints are within their certified ratings.`,
    win:'the passenger is fine, and very famous',ok:R=>R.landed&&R.bioOK&&R.bioSpace&&R.approved},
   {id:'orbiter',pay:100,ep:2,req:['hop'],name:'Passenger: one orbit',brief:`A biocapsule through one full orbit and home safe, within ${AIR_S/3600} h of air. Same flight-safety rules.`,
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
@@ -1084,7 +1090,7 @@ const CT={
   apex:{src:['sci'],gen:R=>{const lo=10*(1+(R()*6|0));return{lo,hi:lo+15,pay:6+lo/5,dur:60+R()*60}},
     title:p=>`Sounding experiment, ${p.lo}–${p.hi} km`,brief:p=>`An instrument package with an apex between ${p.lo} and ${p.hi} km, recovered.`,
     ok:(R,p)=>R.recSci&&R.apexSci>=p.lo*1e3&&R.apexSci<=p.hi*1e3},
-  sample:{src:['sci'],gen:R=>{const k=R()*7|0;return{k,pay:8+3*k,dur:60+R()*60}},
+  sample:{src:['sci'],gen:R=>{const k=R()*ATM_BANDS|0;return{k,pay:8+3*k,dur:60+R()*60}},
     title:p=>`Air sample, ${p.k*10}–${p.k*10+10} km`,brief:p=>`Bring home an instrument package that flew through the ${p.k*10}–${p.k*10+10} km band.`,
     ok:(R,p)=>R.recSci&&!!R.bands[p.k]},
   test:{src:['com'],gen:R=>{const ks=['sparrow','kestrel','condor','petrel','t2','t4','t8','fins','dec','istage'],k=ks[R()*ks.length|0],q=5*Math.round(3+R()*5);return{k,q,pay:8+q/2,dur:50+R()*60}},
@@ -1108,7 +1114,7 @@ const CT={
     title:p=>`${p.m} t to orbit`,brief:p=>`${p.m} t of mass simulators in a stable orbit.`,ok:(R,p)=>R.lift>=p.m-1e-9},
   // tourism: passengers who paid a lot and expect to come home comfortable
   touristHop:{src:['tour'],req:'hop',gen:R=>{const g=4.5+0.5*(R()*4|0);return{g,pay:55+12*(6.5-g),dur:60+R()*80}},
-    title:p=>`Tourist flight to space, under ${p.g} g`,brief:p=>`A biocapsule carrying a paying tourist to space (70 km) and home, never over ${p.g} g (1 s average).`,
+    title:p=>`Tourist flight to space, under ${p.g} g`,brief:p=>`A biocapsule carrying a paying tourist to space (${(TELLUS.atm/1e3).toFixed(0)} km) and home, never over ${p.g} g (1 s average).`,
     ok:(R,p)=>R.landed&&R.bio&&R.bioOK&&R.bioSpace&&R.gMax<=p.g},
   touristOrbit:{src:['tour'],req:'orbiter',gen:R=>{const g=5+0.5*(R()*3|0);return{g,pay:110+15*(6-g),dur:90+R()*90}},
     title:p=>`Orbital holiday, under ${p.g} g`,brief:p=>`A tourist through one full orbit and home, never over ${p.g} g.`,
@@ -1398,7 +1404,7 @@ in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
-const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=5600.,HM=1200.,SUNI=22.;
+const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
 vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
 float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
@@ -1596,7 +1602,7 @@ function mkProg(vs,fs){const p=gl.createProgram();
   gl.linkProgram(p);if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));
   const u={},n=gl.getProgramParameter(p,gl.ACTIVE_UNIFORMS);for(let i=0;i<n;i++){const f=gl.getActiveUniform(p,i);u[f.name]=gl.getUniformLocation(p,f.name)}return{p,u}}
 // city texture: 1024×512 equirectangular, built once on the CPU from CITIES (r = built-up density, g = night lights)
-const CITY_TEX=(()=>{const W=1024,H=512,d=new Uint8Array(W*H*4),R=rng(99);
+const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
   for(const c of CITIES){const lat=Math.asin(c.u[1]),lon=Math.atan2(c.u[2],c.u[0]),ang=c.rad/TELLUS.R,rpx=ang/Math.PI*H*1.8+2;
     const cx=(lon/6.2832+.5)*W,cy=(lat/Math.PI+.5)*H,sx=rpx/Math.max(.2,Math.cos(lat));
     for(let y=Math.floor(cy-rpx);y<=cy+rpx;y++)for(let x=Math.floor(cx-sx);x<=cx+sx;x++){const dx=(x-cx)/sx,dy=(y-cy)/rpx,r2=dx*dx+dy*dy;if(r2>1||y<0||y>=H)continue;
@@ -1722,7 +1728,7 @@ function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=
 // shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
 function lightEnv(p){const up=norm(p),h=len(p)-TELLUS.R,mu=dot(up,SUN),BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6*1.1;
   let odR=0,odM=0;if(h<TELLUS.atm){const b=dot(p,SUN),c=dot(p,p)-(TELLUS.R+TELLUS.atm)**2,tl=-b+Math.sqrt(Math.max(b*b-c,0)),n=10,sl=tl/n;
-    for(let i=0;i<n;i++){const q=madd(p,SUN,(i+.5)*sl),hq=Math.max(0,len(q)-TELLUS.R);odR+=Math.exp(-hq/5600)*sl;odM+=Math.exp(-hq/1200)*sl}}
+    for(let i=0;i<n;i++){const q=madd(p,SUN,(i+.5)*sl),hq=Math.max(0,len(q)-TELLUS.R);odR+=Math.exp(-hq/TELLUS.H)*sl;odM+=Math.exp(-hq/(TELLUS.H*1200/5600))*sl}}
   const T=BR.map(b=>Math.exp(-(b*odR+BM*odM))),day=clamp((mu+.08)/.35,0,1),air=Math.exp(-Math.max(h,0)/22000),shine=clamp(mu+.25,0,1)*Math.exp(-Math.max(h,0)/2.5e6);
   return{sun:T.map(t=>5*t),up,sky:[.30,.45,.80].map(x=>x*.75*day*air),gnd:[.30,.27,.21].map(x=>x*(.6*day*air+.35*shine))}}
 // ---- matrices (column-major)
@@ -1767,7 +1773,7 @@ function drawSmoke(VP,camW,R,U){
   const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));
   gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);gl.bufferData(gl.ARRAY_BUFFER,v.subarray(0,k),gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
-const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
+const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:TELLUS.R*5,focus:0};
 const keys=new Set();
 let msgTimer=0;
 const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});headlines.length=Math.min(headlines.length,3);
@@ -1803,12 +1809,12 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
       else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
-  const bands=[0,1,2,3,4,5,6].map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
+  const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
   html+=`<div class="ep">The world</div><div class="sub">Home: <b style="color:${pc(H)}">${H.name}</b> · opinion of us ${opOf(HOME).toFixed(0)}<br>`+
     POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
-  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–70 km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
+  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[]});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
@@ -1824,7 +1830,7 @@ function editorChanged(){
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`;$('launch').textContent=ok?'LAUNCH':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span></div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
-    <div class="sub">Low orbit needs ~3400 m/s. A Selene landing and return, ~6200.</div>`;
+    <div class="sub">Low orbit needs ~4300 m/s. A Selene landing and return, ~8200.</div>`;
   if(!S.parts.some(p=>p.d.kind==='pod'))html+='<div class="warn">No command pod: no control torque.</div>';
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
@@ -1877,14 +1883,14 @@ addEventListener('keydown',e=>{
   else if(k==='.'){warpTo=null;warpIdx=Math.min(WARPS.length-1,warpIdx+1)}
   else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
   else if(k==='/'){warpTo=null;warpIdx=0}
-  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[3e6,3e6,1.5e6][cam.focus]}
+  else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[5,5,2.5][cam.focus]*TELLUS.R}
   else if(k==='n')nodeAtApoapsis();
   else if(k==='delete'&&S.node){S.node=null;HOOK.msg('Node deleted')}
   else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();view='flight';HOOK.msg('Reverted to launch')}});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());
 addEventListener('beforeunload',e=>{if(mode==='flight'&&S&&S.alive&&!S.landed){e.preventDefault();e.returnValue=''}});
-function toggleMap(){view=view==='map'?'flight':'map';if(view==='map'){cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),1.2e6,8e7)}}
+function toggleMap(){view=view==='map'?'flight':'map';if(view==='map'){cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}}
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
 const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*Math.min(devicePixelRatio||1,1.5);
@@ -1902,7 +1908,7 @@ addEventListener('mousemove',e=>{
   if(nDrag){const q=pickOrbit(toCv(e));if(q&&S.node)S.node.t=q.t;return}
   if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
   if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-1.45,1.45)}});
-cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,2.2e5,2e8);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,TELLUS.R*.37,TELLUS.R*333);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
 
 // ============================================================ main loop
 let last=performance.now(),fpsT=0,fpsN=0,fpsShow=0,frameMs=0,stepsN=0,hudT=0;
@@ -2116,10 +2122,10 @@ function drawMap(VP,camW,labels){
   if(impact){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
   for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
-    labels.push({p:cp,mark:'city',t:cam.mDist<2.6e6?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
+    labels.push({p:cp,mark:'city',t:cam.mDist<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
-  for(const q of PROG.sats||[])labels.push({p:satAt(q,tNow())[0],mark:'sat',t:cam.mDist<6e6?q.name:'',c:q.cam?'#9fe8ff':'#aab4c0'});
+  for(const q of PROG.sats||[])labels.push({p:satAt(q,tNow())[0],mark:'sat',t:cam.mDist<TELLUS.R*10?q.name:'',c:q.cam?'#9fe8ff':'#aab4c0'});
   if(impSpread&&impact)for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
@@ -2227,7 +2233,7 @@ function updateHUD(){
     if(dist<350e3&&!heard.has(city.name)){heard.add(city.name);HOOK.news(heard.size===1?`Radio hams in ${city.name} pick up a faint beep-beep-beep from orbit`:`${city.name} hears the beeper pass overhead`,'ok')}}
   if(simT-impT>0.25||simT<impT){impT=simT;impact=predictImpact(S);
     // the atmosphere's unsampled bands: fly the same prediction with the air 25 % thinner and thicker there (once a second)
-    if(!impact||impact.b!==TELLUS||[0,1,2,3,4,5,6].every(k=>PROG.atm[k]))impSpread=null;
+    if(!impact||impact.b!==TELLUS||BANDS.every(k=>PROG.atm[k]))impSpread=null;
     else if(simT-impST>1||simT<impST){impST=simT;const lo=predictImpact(S,-1),hi=predictImpact(S,1),gc=(a,b)=>Math.acos(clamp(dot(norm(a),norm(b)),-1,1))*TELLUS.R/1000;
       impSpread=lo&&hi?{lo,hi,km:Math.max(gc(lo.pf,impact.pf),gc(hi.pf,impact.pf))}:null}
     // range safety: while climbing under power, the impact point (the whole spread of it) must stay clear of cities
