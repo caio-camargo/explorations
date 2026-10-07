@@ -6,7 +6,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -852,6 +852,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('regime change cancels a security state\'s program: defect or go private, and doing nothing leaves a private remnant', offers === 'defect,hire' && api.own().pv === 1 && /Space Collective/.test(api.own().name) && !P.cancelled,
     `offers: ${offers}; after 45 days: ${api.ownKind()} "${api.own().name}"`);
   fresh(); api.HOOK.news = () => {};
+}
+
+// 20. More bodies (bodies session): a body tree; Nyx, a small moon on an inclined eccentric orbit whose SOI breathes.
+{
+  const { NYX, soiAt, bodyRel } = api, P = 2 * Math.PI / NYX.n, tPe = (2 * Math.PI - NYX.orb.M0) / NYX.n, tAp = tPe - P / 2;
+  const sPe = soiAt(NYX, tPe), sAp = soiAt(NYX, tAp), [rP] = bodyRel(NYX, tPe), [rA] = bodyRel(NYX, tAp);
+  const incl = Math.asin(Math.abs(norm(cross(...bodyRel(NYX, 1234)))[1] ** 2 < 1 ? Math.sqrt(1 - norm(cross(...bodyRel(NYX, 1234)))[1] ** 2) : 0)) * 180 / Math.PI;
+  check('Nyx: eccentric inclined orbit clear of Selene\'s SOI; its SOI breathes with distance', Math.abs(len(rP) - NYX.rMin) < 1 && Math.abs(len(rA) - NYX.rMax) < 1 &&
+    Math.abs(incl - 30) < 1e-6 && NYX.rMax + NYX.soi < SELENE.a - SELENE.soi && Math.abs(sPe - NYX.soiMin) < 1 && Math.abs(sAp - NYX.soi) < 1,
+    `pe ${(len(rP) / 1e3).toFixed(0)} km, ap ${(len(rA) / 1e3).toFixed(0)} km, i ${incl.toFixed(1)}°, period ${(P / 3600).toFixed(1)} h; SOI ${(sPe / 1e3).toFixed(0)}–${(sAp / 1e3).toFixed(0)} km; clearance to Selene's SOI ${((SELENE.a - SELENE.soi - NYX.rMax - NYX.soi) / 1e3).toFixed(0)} km`);
+  // an approach from outside the SOI near Nyx's apoapsis: predict() finds the encounter; rails switch there; then it leaves again
+  const t0 = tAp - 2 * 3600, [m0, mv0] = bodyRel(NYX, t0), dir = norm(sub(bodyRel(NYX, t0 + 6 * 3600)[0], m0));
+  const ship = (r, v, b, t) => { api.t = t; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; return s; };
+  const side = norm(cross(dir, cross(m0, mv0)));
+  let s = ship(add(add(m0, mul(dir, -1.8 * NYX.soi)), mul(side, 500e3)), add(mv0, mul(dir, 250)), TELLUS, t0);   // trailing it 500 km off-axis, catching up at 250 m/s
+  let p = api.predict(s), enc = p[0].endKind === 'enc' && p[1].b === NYX;
+  let sw = null; while (api.t < t0 + 40 * 3600 && s.alive) { api.rails(s, 60); if (s.body === NYX && sw === null) sw = api.t; if (sw !== null && s.body !== NYX) break; }
+  check('Nyx: predict() finds an encounter, rails switch into its SOI at the predicted time, and out again', enc && sw !== null && sw - p[0].endT >= 0 && sw - p[0].endT <= 60 && (s.body === TELLUS || !s.alive),
+    enc ? `encounter predicted at +${((p[0].endT - t0) / 3600).toFixed(2)} h (Pe ${p[1].el.pe < NYX.R ? 'impact' : ((p[1].el.pe - NYX.R) / 1e3).toFixed(0) + ' km'}), switched at +${sw && ((sw - t0) / 3600).toFixed(2)} h, out at +${((api.t - t0) / 3600).toFixed(2)} h (predicted +${p[1].endT ? ((p[1].endT - t0) / 3600).toFixed(2) : '—'} h)` : p.map(x => x.b.name + ':' + x.endKind).join(' '));
+  // stripping: a retrograde bound orbit whose apoapsis reaches past the periapsis-time SOI is predicted to leave as Nyx swings in, and does
+  const rr = NYX.R + 150e3, ra = 0.8 * NYX.soi, aO = (rr + ra) / 2, vpe = Math.sqrt(NYX.mu * (2 / rr - 1 / aO)), [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA));
+  s = ship(mul(norm(mA), rr), mul(cross(norm(mA), hn), vpe), NYX, tAp);
+  p = api.predict(s); const esc = p[0].endKind === 'esc';
+  log.length = 0; while (api.t < tAp + 3 * P && s.body === NYX && s.alive) api.rails(s, 300);
+  const left = s.body === TELLUS;
+  check('Nyx: an orbit reaching past its periapsis-time SOI is stripped as Nyx swings in (predicted, then flown on rails)', esc && left && Math.abs(api.t - p[0].endT) < 300 && api.soiAt(NYX, p[0].endT) < ra,
+    `orbit ${(rr - NYX.R) / 1e3}–${((ra - NYX.R) / 1e3).toFixed(0)} km; predicted escape at +${esc ? ((p[0].endT - tAp) / 3600).toFixed(1) : '—'} h (SOI then ${esc ? (api.soiAt(NYX, p[0].endT) / 1e3).toFixed(0) : '—'} km), flown ${left ? 'out at +' + ((api.t - tAp) / 3600).toFixed(1) + ' h' : 'still bound'}`);
+  // a low orbit is never stripped: no escape predicted, still bound after three Nyx orbits
+  s = ship(mul(norm(mA), NYX.R + 100e3), mul(cross(norm(mA), hn), Math.sqrt(NYX.mu / (NYX.R + 100e3))), NYX, tAp);
+  p = api.predict(s); while (api.t < tAp + 3 * P && s.body === NYX) api.rails(s, 3600);
+  check('Nyx: a 100 km circular orbit stays inside even the smallest SOI', !p[0].endKind && s.body === NYX && s.alive, `${p.length} leg(s), body after 3 Nyx orbits: ${s.body.name}`);
+  // falling onto airless Nyx is exact
+  s = ship([NYX.R + 20000, 0, 0], [0, 0, -150], NYX, 1000); const ip = api.predictImpact(s); let n = 0;
+  while (s.alive && !s.landed && n++ < 200000) { if (api.railsOK(s)) api.rails(s, 1); else api.physStep(s, api.DT); }
+  const gcd = ip && Math.acos(Math.max(-1, Math.min(1, dot(norm(ip.pf), norm(api.toPF(NYX, s.r, api.t)))))) * NYX.R;
+  check('Nyx: an unpowered fall is predicted exactly (Kepler)', ip && ip.b === NYX && gcd < 200, ip ? `${gcd.toFixed(0)} m off, ${s.landed ? 'landed' : 'crashed'} at ${(s.crashSpeed || s.touchV || 0).toFixed(0)} m/s` : 'no prediction');
 }
 
 function moonPos(t) { return api.moonPos(t); }
