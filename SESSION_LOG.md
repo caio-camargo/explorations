@@ -1818,6 +1818,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   core drops costs 535 m/s. Found on the way: since v1.17 the builder's draw hook sat in `drawMap` (no ghosts/highlights) and its
   overlay hook split the economy's decision click handler (decisions dead in the editor), both from zero-context patches at the
   worktree switch. Hotfix `480d7c7` on `main` first, then a merge guard in test.mjs. 106/106. Merged to `main` (`31e9306`).
+- **v1.22 (2026-10-07, builder worktree):** canted engines (per-engine thrust direction through physics, planner, plume, mesh; uncanted
+  = old code) and a "balance" button. Pointing one engine through the CoM was the wrong target (torque ×4.5, rocket lost); balancing the
+  total thrust is right, and still worse than uncanted when the gimbal could cope (it trades torque for an uncancelled side force).
+  Sparrow core + lone Condor: lost uncanted, climbs at 15°. 112/112. Merged to `main` (`c63ff46`).
 - **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
