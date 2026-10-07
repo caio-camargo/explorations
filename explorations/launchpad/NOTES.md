@@ -839,6 +839,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.28 — balance pass with simulated careers (2026-10-07)
+
+**Tool:** `career.mjs` (`node career.mjs [years] [seeds]`) plays whole programs through the real economy code: contracts,
+budget days, decisions, the race, sanctions, opinion, career offers. Flights are abstracted. A scripted player picks a
+design (sounding rocket at any apex, Kestrel qualification shot, passenger hop with a gentle variant, orbiter to an
+altitude and inclination with optional ballast, passenger orbit, ballistic shot), pays its real price (real presets,
+real sourcing for the archetype), and gets the flight record that design produces, succeeding 80–93% of the time.
+Everything after the flight is the game's own code. The player takes the best-paying offers it has a design for,
+avoids certain home sanctions, flies whatever is worth most (contract pay plus firsts, which are valued above their
+reward because they unlock things), takes a loan when rescued, and declines optional decisions. It runs 6 archetypes ×
+3 starts × 3 seeds; 3 years takes about 2 minutes.
+
+**What it found (before tuning, 1 year):** money exploded. Every program ended year one between 320M and 3,000M from a
+60–90M start: a recovered sounding rocket cost about 4M net after 80% refurbishment and completed 10–25M contracts every
+four days. Orbit came by day 15–19 because stacking took 2 + cost/8 days, so the race was no contest. Two real bugs: a
+leak's sanctions could shrink the active-contract list during `contractEval` (crash), and the floor was only checked at
+flight end, so once running costs existed a program that couldn't fly bled with no rescue.
+
+**Changes:**
+- **Stacking takes real time:** `prepDays` = 5 + cost/2 (sounding 14 d, Orbiter 33 d, Heavy 53 d).
+- **Launch operations fee:** 3M + 10% of the vehicle, every launch (`OPS_FIX`, `OPS_FRAC`; `R.ops`).
+- **Running costs:** 0.1M/day + 0.03M/day per unit of contract capacity, from the first launch on (a program that hasn't
+  flown has nothing to run). An agency's budget day roughly covers this at neutral opinion; a company has to earn it.
+- **Refurbishment** 80% → 65%. **Contract pay** ×0.7.
+- **Rivals race at a human pace:** each first takes (100–220 days) / speed. The strongest rival in the current world is
+  expected on days 83 / 176 / 245.
+- **Career offers:** "excelling" offers half as often (1/900 per day). "Badness" counts *recent* top-ups (`bailRecent`,
+  fading over ~300 days) instead of lifetime top-ups, which had made a recovered program look desperate forever (13–20
+  offers in 3 years → 0–8).
+- **Fixes:** `contractEval` skips entries removed mid-loop; `floorCheck` also runs in the daily tick.
+
+**After (3 years × 3 seeds):**
+
+| | flights in 3 y | first orbit (day) | funds after 3 y | top-ups | career offers |
+|---|---|---|---|---|---|
+| superpowers | 32–44 | ~130 | 790–1,210M | 0 | 0–2 |
+| rising power | 21–36 | ~147 | 176M (company) to 690M | 0–0.3 | 2–5 |
+| frugal middle power | 24–34 | 158 (company 234) | 137M (company, in debt) to 630M | 2.7 (state-run) | 2–8 |
+| resource state | 17–36 | ~170 | 344M (company) to 1,245M (consortium) | 0.7–1.3 | 2–8 |
+| security state | 30–36 | 163–175 | 650–800M | 0–0.3 | 0–6 |
+
+Failure rates 7–15%. The weaker the archetype, the leaner the times: state-run frugal and resource programs need 1–3
+top-ups; a frugal company ends in debt. All nine firsts get done within 3 years everywhere except the frugal and
+resource companies (8.3–8.7). Race: the runner's player goes for the passenger firsts before the beeper (they pay more),
+so it always loses the beeper to the strongest rival (~day 83) and wins hop and orbiter. A player who goes straight
+for the satellite can contest it.
+
+**Still open:** strong programs reach ~1,000M by year 3 with nothing to spend it on. That's a content gap more than a
+tuning one: the economy needs **sinks** (stations, bigger programs, infrastructure such as the planning session's
+ground stations, R&D). Imaging contracts are outside the runner (they need a camera satellite). The runner's flight
+outcomes are fixed per design and don't come from physics; re-check them when designs change.
+
 ## v1.27 — launch sites as data (2026-10-07, terrain session, slice B)
 
 Slice B of the geography plan (§ v1.25), built to the economy session's hand-off. Every power now has launch sites

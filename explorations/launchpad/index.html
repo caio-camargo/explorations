@@ -1245,7 +1245,8 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
-const FUEL_PRICE=0.2,REFURB=0.8,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
+const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
+const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
@@ -1257,7 +1258,7 @@ const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
 // ---- the program calendar, in Tellus days (8 h, one turn of the planet). Stacking a rocket takes days (bigger, longer);
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
-const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>2+cost/8;
+const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
@@ -1294,7 +1295,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;PROG.funds-=R.cost;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1540,7 +1541,7 @@ const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
 const RACE=['beeper','hop','orbiter'];
 function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
   for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(p.i).pri.prestige);let t=0;
-    for(const id of RACE){t+=(60+80*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
+    for(const id of RACE){t+=(100+120*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
@@ -1550,7 +1551,7 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
-  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
+  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
@@ -1563,7 +1564,7 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
   HOOK.save();return true}
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
-  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i],T=CT[c.type];if(!T.ok(R,c.p,s))continue;
+  for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;   // a leak's sanctions can shrink the list mid-loop
     const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
@@ -1571,6 +1572,9 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 function econTick(d,R){ensureBoard();
+  if(PROG.flights>0){PROG.funds-=(OVERHEAD+0.03*capOf())*d;   // running the program, from its first launch on (more as it grows)
+    floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
+  PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
   if(c0<0.45&&PROG.cycle>=0.45)HOOK.news('Boom times: satellite operators are hiring launches again','ok');
   if(c0>-0.45&&PROG.cycle<=-0.45)HOOK.news('Recession bites: commercial launch orders dry up','warn');
@@ -1625,7 +1629,7 @@ function budgetDay(){const o=own();let g=0;const parts=[];
   HOOK.news(Object.keys(o.st).length>1?`Budget day: members contribute ${fmtM(g)} (${parts.join(', ')})`:
     `Budget day: ${POWERS[+Object.keys(o.st)[0]].name} allocates ${fmtM(g)} to the space program${opOf(HOME)>60?' (and applauds)':opOf(HOME)<40?' (through gritted teeth)':''}`,g>=GRANT_100*stateShare()?'ok':'warn')}
 function floorCheck(){if(PROG.funds>=FUNDS_FLOOR)return;const o=own();
-  if(stateShare()>=0.5){const k=+Object.entries(o.st).sort((a,b)=>b[1]-a[1])[0][0];PROG.bailouts=(PROG.bailouts||0)+1;
+  if(stateShare()>=0.5){const k=+Object.entries(o.st).sort((a,b)=>b[1]-a[1])[0][0];PROG.bailouts=(PROG.bailouts||0)+1;PROG.bailRecent=(PROG.bailRecent||0)+1;
     HOOK.news(`${POWERS[k].name} grudgingly tops up the space program (${fmtM(PROG.funds)} → ${fmtM(FUNDS_FLOOR)})`,'warn');PROG.funds=FUNDS_FLOOR;opAdd(k,-2);
     if(PROG.bailouts>2&&o.pv>0){shiftShare(k,Math.min(o.pv,0.1));HOOK.news(`…and this time it takes a bigger stake: ${POWERS[k].root} now owns ${(o.st[k]*100).toFixed(0)}%`,'warn')}return}
   if(!(PROG.decisions||[]).some(d=>d.kind==='rescue'))offerDecision(rescueDecision())}
@@ -1649,7 +1653,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
       opts:[['yes','Welcome them aboard'],['no','Decline']]})}
   // career moves: when things go badly (a hail mary) or very well (a step up), the team itself gets offers
   const bad=badness(),good=firsts>=5&&opOf(HOME)>60&&!bad;
-  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/450))){
+  if(!has('defect')&&!has('hire')&&(bad||good)&&R()<1-Math.exp(-d*(bad?bad/150:1/900))){
     if(R()<0.5){const sc=p=>p.econ*p.tech*opOf(p.i)*(flav(p.i).money==='commodity'?1.6:1),c=POWERS.filter(p=>p.i!==HOME&&relOf(HOME,p.i)<0.2&&!sanctioned(p.i)).sort((a,b)=>sc(b)-sc(a))[0];
       if(c){const amt=Math.round(40+V*(good?0.5:0.3));
         offerDecision({kind:'defect',power:c.i,amt,life:30,title:`${c.name} wants your whole team`,
@@ -1662,7 +1666,7 @@ function decisionTick(d,R){const o=own();PROG.decisions=(PROG.decisions||[]).fil
 // how badly the program is doing: each of these counts once
 function cancelTick(){if(!PROG.cancelled||(PROG.decisions||[]).some(x=>x.kind==='defect'||x.kind==='hire'))return;
   careerMove({kind:'hire',co:`${POWERS[HOME].root} Space Collective`,amt:Math.max(10,PROG.funds)})}
-function badness(){const o=own();return(PROG.bailouts>=2?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
+function badness(){const o=own();return((PROG.bailRecent||0)>=1.5?1:0)+(opOf(HOME)<35?1:0)+(sanctioned(HOME)?1:0)+((o.debt||0)>0?1:0)+(PROG.funds<FUNDS_FLOOR?1:0)}
 // the program changes hands. Knowledge (certified ratings, the atmosphere, firsts flown, contract record) carries over;
 // money, ownership and government standing don't. A defection moves "home": every HOME-relative rule (budget day,
 // government work, drop incidents, ground stations, the race) follows. The pad itself stays where it is for now, flying
