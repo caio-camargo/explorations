@@ -2721,6 +2721,46 @@ for an axis: it changes what you fly or what you decide, not just a number.
 power. Can't be sliders, so a handful of **style presets plus livery** (paint scheme, markings, pad and building
 style) would give visible variety that reflects each power's flavour.
 
+**Spending money: development, investments, flagships (design with Caio, 2026-10-07).** The balance pass (v1.28) showed
+strong programs ending year 3 with ~1,000M and nothing to spend it on. The fix is things worth buying, not more
+pressure.
+- **No tech tree of unlocks.** Parts can already be bought abroad, so locking them behind research would be
+  inconsistent. Instead, what a program owns is **its own designs and how well it knows them**.
+- **Engineering history per part:** every part type accumulates a record across your flights (loads survived, burn
+  time at sea level and in vacuum, re-entry heating, restarts). Certification is already a first case of this.
+- **Development projects:** a part + a goal (thrust or Isp, mass, cost, reliability) costs **money and time** and
+  requires **that part's own history** (you can't build a better Kestrel without having flown Kestrels hard). Stress
+  tests on a test stand can supply some of that data for money instead of flights. The result starts less certified
+  (a new design has to be re-qualified): better on paper, untrusted until flown. That's the drama.
+- **Engineering data ≠ the logbook.** Engineering data lives on parts and is about *your hardware* (feeds development
+  and certification). The planning session's logbook is about *the world* (facts discovered, used to plan missions).
+  Both come from flying, but they answer different questions; atmosphere knowledge belongs on the logbook side. They
+  might share plumbing if it serves both purposes; not decided.
+- **Sinks without upkeep misery** (Caio: upkeep as the main sink makes for miserable play). Running costs stay small
+  and steady. The main sinks are **chosen investments that last**:
+  1. development projects;
+  2. capital construction, one-off with little or no upkeep: integration halls (faster stacking, bigger vehicles,
+     parallel campaigns), a recovery fleet (stages recovered at sea), test stands (ground certification, stress
+     data), production lines (domestic tiers), pads at launch sites (with terrain);
+  3. flagship projects (stations, telescope, a lunar program): mission content with the planning session, with economy
+     pricing them and paying for them over time;
+  4. payloads that cost more as ambitions grow.
+- **Open — buying abroad vs developing at home** (Caio: development sits uncomfortably with buying parts abroad;
+  solvable, needs more thought). Directions:
+  - **Part quality you can tell:** suppliers' parts differ in quality (reliability, tolerances, performance spread). It
+    starts hidden and is revealed by your own engineering data, so data matters even for imports: you learn whose
+    Kestrels are good.
+  - **Domestic production and vertical integration get cheaper:** once you build a tier yourself, and more so as you
+    integrate the chain, parts cost less than imports, repaying the setup cost.
+  - Together these let both paths coexist: imports are quick and proven (of known or unknown quality); home production
+    is slower to set up, cheaper in the long run, and developable.
+  - Earlier idea, not adopted: development only for parts you build. Kept as an option.
+- **Open — variants vs upgrades in place:** does development produce a new part next to the old one (a "Kestrel B" in
+  the palette), or improve the part itself (with fresh certification)? On hold. It touches the builder's palette and the
+  planning session's parts.
+- **First slice when building starts** (purely economy): engineering history on parts, test stands, development
+  projects. Coordinate the palette with the builder and flagships with planning.
+
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
   planets ride Kepler rails around it, each with its own SOI. The patched-conic code already handles one level of
