@@ -1791,3 +1791,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.14 (2026-10-07):** economy design with Caio written into NOTES (sources/tracks, overlapping contracts, multipolar
   powers, program ownership mix). Built slices 1–3: M units, stress-pegged refurbishment, program calendar, seeded
   powers (any count) with territory, relation drift, opinion, incidents. `test.mjs` 62/62. Committed and pushed.
+- **v1.15 (2026-10-07):** contract board (slice 4): 7 generated contract types from science/commercial/government
+  clients, overlap on one flight, capacity, standing, business cycle, budget days, records. Claimed the economy scope in
+  ACTIVE_WORK (a builder session works in parallel on the same file; committed only this session's hunks). Backlog:
+  career moves, power flavours. `test.mjs` 69/69. Committed and pushed.

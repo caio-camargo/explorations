@@ -568,6 +568,39 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.15 — the contract board (2026-10-07)
+
+Slice 4. Firsts (`MISSIONS`) stay one-time; **contracts** are repeatable and generated, so they never run out.
+
+- **Sources:** science and commercial clients can be any power (weighted by economy); government contracts come from
+  home. Seven types, parameterised by a seeded RNG:
+  - sounding experiment (apex band, recovered);
+  - air sample (a given band, recovered);
+  - part qualification (fly part K through max-q ≥ X kPa, instrumented);
+  - recovery demonstration (land within N km of the pad after passing 20 km);
+  - biology flight (biocapsule to space under a tighter g limit);
+  - satellite (periapsis/apoapsis window and inclination window, plus up to 30% for precision);
+  - mass to orbit.
+  The last three unlock with the matching firsts (hop, beeper, Heavy lift I).
+- **Overlap:** every accepted contract is checked against every flight's record, so one flight can complete several (a
+  check flies a sounding rocket that completes two contracts plus a first). **Capacity:** 2 at once, +1 per 3 contracts
+  done, up to 6.
+- **Offers** arrive over program time per source (science fastest, government slowest), scaled by our *standing* with
+  that source, and expire after 50 days. The board holds at most 6. Accepting a contract from a power hostile to home
+  costs home opinion ("Opposition asks why…"). A missed deadline costs 10 standing and the client's opinion.
+- **Business cycle:** a slow oscillation (~700 days) with noise. Commercial pay ±35% and commercial offer rate ±50%; it
+  also shades the budget. Headlines at boom and recession.
+- **Budget day** every 100 days: 12M × (home opinion / 50) × (1 ± 25% cycle). The national-agency income, before
+  ownership exists.
+- **Records:** cheapest net trip to orbit (cost minus refurbishment), announced when beaten.
+- **UI:** contracts and offers (Take / Pass) at the top of the Program panel, in their own program-UI section, so the
+  builder session's editor code is untouched; a HUD row lists contracts done this flight and the ones still open.
+
+`test.mjs`: 7 new checks (69).
+
+Next in the build order: ownership (starting choice, the national-agency path, privatization, bailout-for-equity). Then
+tourism, military, sanctions and races. Career moves and power flavours are in the backlog.
+
 ## v1.14 — M units, stress refurbishment, the calendar, the powers (2026-10-07)
 
 Slices 1–3 of the economy build order (see "Overlap, powers and what the program is" below).
@@ -761,6 +794,16 @@ restartable upper stage, docking port.
   4. The contract board: overlap, capacity, sources tied to powers, opinion, business cycle.
   5. Ownership: starting choice, the national-agency path, then privatization and bailout-for-equity.
   6. Tourism, military, sanctions, races.
+
+**Backlog ideas (Caio, 2026-10-07):**
+- **Career moves when things go badly** (a more common condition than "win"): besides bailout or buyout, the program's
+  people can be **poached by another power** (a political defection, with a big reputation hit at home) or **hired by a
+  private company**, with some carryover from the original program (knowledge, certified parts, reputation in some
+  form). That's either a step up in the player's career or a hail mary. It fits the ownership-mix model: a defection is
+  a jump to another power's program; a private hire is a jump to the private-capital end.
+- **Powers with flavours:** different powers play differently. Superpower programs alongside more marginal ones (think
+  of the range from the US and USSR to China, Brazil, South Africa, an Arab state). Flavours constrain a power to
+  previously designed archetypes, so features and details are TBD. Today powers are generic generated data.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
