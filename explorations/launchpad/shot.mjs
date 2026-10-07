@@ -5,7 +5,7 @@
 // Headless Chrome over CDP (Node 22+ has WebSocket built in); --use-angle=d3d11 keeps it on the real GPU. Console errors are printed.
 import {spawn} from 'node:child_process';
 const [url,out,...exprs]=process.argv.slice(2), port=9300+Math.floor(Math.random()*500);
-const ch=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new',`--remote-debugging-port=${port}`,'--use-angle=d3d11','--enable-gpu','--ignore-gpu-blocklist','--hide-scrollbars','--window-size=1280,800',`--user-data-dir=${process.env.TEMP}/shotprof${port}`,'about:blank'],{stdio:'ignore'});
+const ch=spawn('C:/Program Files/Google/Chrome/Application/chrome.exe',['--headless=new',`--remote-debugging-port=${port}`,...(process.env.SHOT_FLAGS?process.env.SHOT_FLAGS.split(' '):['--use-angle=d3d11','--enable-gpu']),'--ignore-gpu-blocklist','--hide-scrollbars','--window-size=1280,800',`--user-data-dir=${process.env.TEMP}/shotprof${port}`,'about:blank'],{stdio:'ignore'});
 const wait=ms=>new Promise(r=>setTimeout(r,ms));let tabs;
 for(let i=0;i<50;i++){try{tabs=await (await fetch(`http://127.0.0.1:${port}/json`)).json();if(tabs.find(t=>t.type==='page'))break}catch{}await wait(200)}
 const ws=new WebSocket(tabs.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r);
