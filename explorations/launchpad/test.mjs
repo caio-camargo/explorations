@@ -715,6 +715,13 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const Lg = D.assemble(cp(D.PRESETS.Heavy)).stages, flat = Lg.flat();
   check('staging: an unedited preset (no node ids) still lists each action separately', Lg[0].length === 2 && flat.some(a => a.label === 'drop core 1') && new Set(flat.map(a => a.id)).size === flat.length,
     Lg.map((s, i) => `${i + 1}: ${s.map(a => a.label).join(' + ')}`).join(' · '));
+  // merge guard: the builder's three render hooks each sit once, inside render(). A zero-context patch once put one inside
+  // drawMap (no ghosts or highlights) and another between the program panel's `if` and `else if` (decisions dead in the editor)
+  const H = html.replace(/\r\n/g, '\n'), fnAt = i => { const m = [...H.slice(0, i).matchAll(/\nfunction (\w+)\(/g)]; return m.length ? m[m.length - 1][1] : '?'; };
+  const at = s => { const o = []; let i = -1; while ((i = H.indexOf(s, i + 1)) >= 0) o.push(fnAt(i)); return o.join(','); };
+  const hooks = ['HOOK.edDraw(', 'HOOK.edOverlay(', 'HOOK.view='].map(s => `${s} ${at(s)}`);
+  check('merge guard: builder render hooks are each once inside render(), and the program click handler is an if / else-if chain',
+    hooks.every(s => / render$/.test(s)) && /if\(ds\.start\)\{[^\n]*\}\n\s*else if\(ds\.dk\)/.test(H), hooks.join(' · '));
   // ids survive JSON and duplicates (a copied subtree) are repaired
   const h5 = heavy(), dup = cp(h5.root.c[0]); h5.root.c.push(dup); D.BLD.ensureIds(h5); const all = (n => { const r = []; const w = x => { r.push(x.id); (x.c || []).forEach(w); }; w(n); return r; })(h5.root);
   check('staging: node ids are unique after a copied subtree brings duplicates', new Set(all).size === all.length, `${all.length} nodes`);

@@ -449,7 +449,8 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg){
   const gone=new Set();   // segments already dropped by an earlier stage aren't dropped again
   const events=!ok?auto:out.map(g=>{const dd=[...new Set(g.flatMap(a=>a.d.flatMap(desc)))].filter(k=>!gone.has(k));dd.forEach(k=>gone.add(k));
     const e={decouple:dd,ignite:g.flatMap(a=>a.g)};
-    if(g.some(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;return e});
+    // "Booster separation" only when every drop in the stage is radial; core + boosters together is a stage separation
+    const drops=g.filter(a=>a.d.length);if(drops.length&&drops.every(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;return e});
   return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.g})))}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
 // ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists

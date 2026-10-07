@@ -568,6 +568,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.20 — the staging editor (2026-10-07)
+
+**Model.** The automatic event list (v1.17's segment-tree rule) is split into *atoms*:
+- one per decoupling placement, with all its symmetric copies
+- one per ignited group
+- the chute
+
+An atom is named by its decoupler's design-node id (`d:7`, `i:7`, `i:root`, `c`). A design may carry `stg`, a list of stages in
+firing order, each a list of atom ids; `stageAtoms` turns it into events.
+- **Late parts:** atoms the order doesn't mention (parts added later) keep their automatic place relative to the rest, so
+  editing the rocket never loses staging.
+- **Drops carry what hangs off them:** in a custom order a drop takes everything hanging from the segment, so the core
+  can go before its boosters without leaving them attached to nothing. A segment an earlier stage already dropped is not
+  dropped again.
+
+The automatic order written out as a custom one reproduces the events exactly (test §17). Node ids are assigned on the
+first edit, copies get fresh ones, and duplicates are repaired.
+
+**UI.** The panel sits under the build toolbar: stages in firing order, each action a chip (orange drop, green
+ignition, blue chute).
+- ◀ ▶ move a chip one stage earlier or later; off either end makes a new stage. ⤵ gives it a stage of its own.
+- "automatic" forgets the custom order.
+- Hovering a chip lights its parts on the rocket: the whole segment for a drop, the engines for an ignition.
+- The flight HUD, Space, the Δv planner and autopilot tapes all read the same events, so nothing else needed changing.
+
+| What | Number |
+|---|---|
+| Heavy, boosters held on until the core drops (one fewer stage) | Δv 1 758 + 1 447 + 2 465 → **2 670 + 2 465 m/s**: carrying two empty boosters for the core's burn costs **535 m/s** |
+| Same, flown: Space for real, then physics stepped from the page | boosters burn out at T+48 s and stay on ("boosters empty — stage to drop them"); core + boosters drop together at T+96 s; 129 km at T+120 s, worst joint 24 % |
+| `test.mjs` after merging `main` (economy v1.19) | 106 / 106 |
+
+**Two bugs found by the browser, not the tests.**
+- **Atom ids on unedited presets.** These have no node ids yet, so atoms named `d:undefined` merged: "drop core 1"
+  vanished into the booster drop. The fix names them by design-node object instead (by segment at first, which split
+  the booster pair). There is now a test for it.
+- **A stuck highlight.** Rebuilding the panel removes the hovered chip, and a removed element never fires `mouseleave`.
+
+### The misplaced hooks (fixed on `main` as `480d7c7` before this slice)
+Moving the v1.17 hunks into this worktree used zero-context patches (`git apply --unidiff-zero`). Those place a *pure
+insertion* by line number, and the terrain session's 92 lines were in the source diff but not in the worktree. Two
+insertions landed in the wrong place:
+- `HOOK.edDraw` went inside `drawMap`, so from v1.17 on the builder drew **no placement ghost, hover or selection glow**.
+- `HOOK.edOverlay` went between `if(ds.start)` and `else if(ds.dk)` in the economy's program-panel click handler, so in the
+  editor **program decisions never resolved**.
+
+All behavioural tests passed throughout: nothing in them looks at *where* a hook is called from. My v1.17/v1.18 browser
+checks drove the placement logic and read state ("ghost hard to make out") instead of looking at the ghost. It surfaced
+only when a hover highlight that should have existed didn't. Now:
+- a **merge guard** in test.mjs §17 checks that each render hook is called once, from inside `render()`, and that the click
+  handler's if/else-if chain is intact. Run against the broken commit, the guard fails, as it should.
+- **Never move hunks between diverged trees with zero-context patches.** Use a 3-way merge or a patch with context.
+
 ## v1.19 — tourism, military, sanctions, the race (2026-10-07)
 
 Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy`).
@@ -1137,7 +1189,7 @@ restartable upper stage, docking port.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
-   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18. Next on that line: a staging editor,
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20. Next on that line:
    canted engines (a thrust direction per engine), truly tilted bodies, and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
