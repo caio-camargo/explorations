@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex, 30–36 engine plumes, 40–45 re-entry plasma. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex, 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -101,6 +101,17 @@ window.refView = async (n) => {
       Y = add(mul(va, -Math.cos(a)), mul(up, Math.sin(a))), X = norm(cross(Y, s)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return 'entry h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km v ' + len(S.v).toFixed(0) + ' q ' + (S.qHeat / 1000).toFixed(0) + ' kW/m2 alive ' + S.alive;
+  }
+  // 50–53: transonic vapor cones. An ascent (pitch kick at 8 s, then prograde) flown until Mach M: [design, M, yaw, pitch, dist]
+  const vapor = { 50: ['Orbiter', 0.97, 1.75, 0.05, 30], 51: ['Orbiter', 1.08, 1.75, 0.05, 30], 52: ['Lunar', 1.0, 1.75, 0.05, 50],
+    53: ['Orbiter', 1.0, 2.3, -0.25, 16] };
+  if (vapor[n]) {
+    const [design, M, yaw, pitch, dist] = vapor[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S);
+    while (S.alive && S.mach < M && simT < 200) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
+    INP.pitch = 0; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return design + ' M ' + S.mach.toFixed(2) + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km shoulders ' + JSON.stringify(hullShoulders(hullProfile(S), -1).map(x => x.map(v => +v.toFixed(2))));
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

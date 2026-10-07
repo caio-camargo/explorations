@@ -854,6 +854,32 @@ in a **flow-aligned frame** (y = upstream), reusing the plume's proxy lathe, cul
   leads, but a shield-first view would be the classic shot.
 - Transonic vapor cones (next idea).
 
+## Transonic vapor cones (2026-10-07, aerofx session)
+
+Around Mach 1 in humid air, the flow speeds up round each convex corner of the hull, expands and cools, and water
+condenses until a shock recompresses it. That's the white collar in max-Q photos. Here it is a lit cloud (alpha
+blended, shaded like the smoke) raymarched in the ship's own frame, reusing the plume proxy, the noise texture and the
+plasma's `hullProfile`.
+
+- **Where:** `hullShoulders(profile, dir)` walks the 32-station radius profile downstream from the leading end. A
+  shoulder is where the radius stops growing after growing ≥ 15 % (the end of a nose cone or a flare), or drops ≥ 10 %
+  in one station (a step down). It keeps the three strongest. The Orbiter gets one at the pod's base and two at the
+  decoupler/Petrel steps. The Lunar's include the top of the 2.5 m adapter.
+- **When:** visibility = smoothstep in Mach 0.84→0.94, fading 1.12→1.28, times humid air below 5 km fading to none at
+  15 km. A stand-in for humidity: the world has no humidity field.
+- **Shape:** a collar per shoulder, soft at the front (at the shoulder) and sharp at the rear (the shock), whose distance
+  aft grows with Mach: zs = r·(1 + 6·(M − 0.86)). The outer radius flares as r·(1.15 + 0.95·√(z/zs)) with noise on the
+  edge and the rear line.
+- **Light:** brighter on the sun side and toward the sun (forward scattering), the smoke's sun/ambient scaling and the
+  same tone curve.
+- `VAPOR_FX = false` hides it. Cost: 0.2–0.7 ms while visible (same-page on/off A/B, views 50, 52, 53).
+- **First pass too timid:** collars 12 % wider than the hull read as small flaps. Then straight flares read as
+  triangles: curved (√) flares and a wider feathered edge fixed it.
+- Reference views: `refView(50)` Orbiter at M 0.97, `51` at M 1.08, `52` Lunar at M 1.0, `53` Orbiter close-up from below.
+
+**Still open:** a real humidity field (clouds, coast vs inland); collars on side boosters (the profile only knows the
+envelope, so radial stacks' noses don't make their own shoulders); condensation off fin tips at high angle of attack.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
