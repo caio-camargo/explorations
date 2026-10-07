@@ -1777,3 +1777,6 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.10 graphics pass (same session):** materials + atmospheric sun light + ACES on parts, ground shadow, biome ground
   with relief shading, cloud shell with shadows, plume shader, smoke trail. Reference scenes in `launchpad/views.js`. Caught
   a 3.3 ms/frame CPU cost in the smoke builder (fixed). Committed and pushed.
+- **v1.11 (2026-10-07):** graphics rough spots — footprint-filtered clouds (no horizon rim), sun-shaded smoke puffs,
+  ground patterns in lon/lat metres (fixes pad streaks), launch complex + scrub in the ground shader, hull weld rings.
+  No measurable cost vs v1.10. `test.mjs` 44/44. Committed and pushed.

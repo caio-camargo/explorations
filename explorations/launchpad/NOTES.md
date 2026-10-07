@@ -511,6 +511,32 @@ render-only).
 Still rough: the edge-on cloud shell draws a thin bright line at the horizon. The ground right around the pad is plain. Parts
 have no panel seams, soot or AO. Big smoke puffs read as blobs at the plume tip.
 
+## v1.11 — graphics rough spots (2026-10-07)
+
+- **Cloud rim at the horizon:** where the shell is seen edge-on, one pixel covers kilometres of cloud, and the hard
+  coverage threshold aliased into a bright line. Now coverage is filtered by the pixel's footprint on the shell: far
+  and grazing samples widen the threshold toward the mean. Opacity also fades as the view ray goes tangent. The rim is
+  now a soft haze band.
+- **Smoke "blobs" were a contrast problem, not a spacing one.** Puffs were ~8 m apart and ~18 m wide, so the column
+  was solid. But flat-shaded white puffs vanish against the white deck, and only the denser low puffs showed, as
+  blobs. Each puff is now lit as a lumpy sphere (sun direction in the quad's frame), so the column has a lit side and a
+  shadow side.
+- **The streaks on the ground near the pad were coordinates, not noise.** Fields and city streets used `loc.xz`, and at
+  the pad the planet-fixed x axis points straight up. Ground patterns now use longitude/latitude in metres. The finest
+  detail octaves are also filtered by footprint.
+- **Launch complex:** painted into the ground shader in the pad's own frame, exact because the pad is passed in the same
+  re-centred frame as `loc`. A concrete apron with 6 m expansion joints and stains, slabs under the tanks, soot around
+  the pad, and an access road with a centre dash and gravel shoulders. Scrub bushes everywhere on land, clumped by
+  low-frequency noise and sparser in deserts.
+- **Hull detail:** ship and debris only (`uSeam`). Weld rings every 1.25 m on the sides, a slightly different shade per
+  ring of panels, faint vertical grime. Filtered with `fwidth`, so they fade out with distance instead of shimmering.
+
+Cost: same-run A/B against v1.10 at 1280 px wide (flight mode): pad 1.4, ascent 1.9, orbit 1.4 ms on both, within
+noise. (In editor mode `render()` isn't the drawing path, so the pad must be timed in flight.) `test.mjs` 44/44.
+
+Still open: no soot on the parts themselves (the shader doesn't know where engines are); the vertical grime is laid
+around the stack axis, so it's slightly off on side boosters; no ambient occlusion at part joints.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

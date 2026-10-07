@@ -826,7 +826,7 @@ precision highp float;
 in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
-uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT;
+uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=5600.,HM=1200.,SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
 vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
@@ -870,7 +870,31 @@ vec3 scatter(vec3 d,float tMax,out vec3 trans){
 // the height field's slope; the physics still sees a smooth sphere).
 float ridge(vec3 p){float s=0.,a=.5;for(int i=0;i<3;i++){float r=1.-abs(2.*vn(p)-1.);s+=a*r*r;p=p*2.1+vec3(3.1,1.7,4.9);a*=.5;}return s;}
 float relief(vec3 u,float c){return smoothstep(.6,.8,c)*ridge(u*16.)*1.3+.22*vn(u*70.)*smoothstep(.52,.58,c);}
-vec3 tellus(vec3 pf,vec3 loc,float det,float fade,out float ocean,out vec3 bump){
+// near field, filtered by the pixel footprint fw (metres): octaves finer than a pixel fade to their mean instead of
+// aliasing into streaks at grazing angles
+float detailF(vec3 l,float fw){return .4*pn(l/25.,40.)+.3*mix(.5,pn(l/5.,200.),smoothstep(10.,2.5,fw))
+ +.2*mix(.5,pn(l,1000.),smoothstep(2.,.5,fw))+.1*mix(.5,pn(l*4.,4000.),smoothstep(.5,.12,fw));}
+float sdSeg(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;return length(pa-ba*clamp(dot(pa,ba)/dot(ba,ba),0.,1.));}
+float gline(vec2 x,float per,float w,float fw){vec2 g=abs(fract(x/per)-.5)*per;float e=max(w,fw*.7);return (1.-smoothstep(e*.5,e,min(g.x,g.y)))*min(1.,w/e*1.6);}
+// the launch complex, painted onto the ground in the pad's own frame (x east, y north, metres): a concrete apron with
+// expansion joints and stains, soot around the pad, slabs under the tanks, an access road with a gravel shoulder
+vec3 padGround(vec2 x,vec3 alb,float fw,out float paved){
+ float r=length(x),n=vn(vec3(x/7.,1.)),n2=vn(vec3(x*.9,3.));
+ float apron=1.-smoothstep(40.,42.+3.*n,r);
+ apron=max(apron,1.-smoothstep(14.,15.,length(x-vec2(36.,18.))));
+ apron=max(apron,1.-smoothstep(16.,17.,length(x-vec2(-45.,-25.))));
+ apron=max(apron,1.-smoothstep(6.,6.5,length(x-vec2(20.,-30.))));
+ float rd=sdSeg(x,vec2(-20.,-36.),vec2(-1500.,-1150.));rd=min(rd,sdSeg(x,vec2(-20.,-36.),vec2(-45.,-25.)));
+ float road=1.-smoothstep(3.5,3.5+max(.15,fw),rd),shoulder=(1.-smoothstep(6.,7.5+n*2.,rd))*(1.-road);
+ vec3 conc=vec3(.19,.185,.175)*(.82+.3*n+.1*n2)*(1.-.3*gline(x,6.,.06,fw)*smoothstep(1.5,.3,fw));
+ vec3 asph=vec3(.055,.055,.06)*(.85+.3*n2);
+ float dash=(1.-smoothstep(.12,.12+fw,abs(dot(x-vec2(-20.,-36.),normalize(vec2(-1150.,1480.))))))*step(.5,fract(dot(x,normalize(vec2(-1480.,-1150.)))/9.))*road;
+ asph=mix(asph,vec3(.5,.45,.2),dash*smoothstep(2.,.5,fw));
+ vec3 gravel=vec3(.17,.16,.14)*(.8+.4*n2);
+ vec3 c=mix(alb,gravel,shoulder*.9);c=mix(c,conc,apron);c=mix(c,asph,road*(1.-apron));
+ float soot=exp(-max(r-6.,0.)/11.)*(.5+.5*vn(vec3(x/2.5,7.)))+.3*exp(-r/28.)*n;
+ paved=max(apron,road);return c*(1.-.85*min(soot,1.));}
+vec3 tellus(vec3 pf,vec2 gx,float det,float fade,out float ocean,out vec3 bump){
  vec3 dl=pf-vec3(1,0,0);float c=fbm(pf*2.2)+.42*exp(-dot(dl,dl)*30.);ocean=0.;bump=vec3(0.);
  if(c<.52){ocean=1.;vec3 col=mix(vec3(.003,.016,.06),vec3(.007,.04,.11),smoothstep(.3,.45,c));
   return mix(col,vec3(.02,.11,.12),pow(smoothstep(.47,.52,c),2.));}                       // shallow turquoise shelf at the coast
@@ -886,16 +910,19 @@ vec3 tellus(vec3 pf,vec3 loc,float det,float fade,out float ocean,out vec3 bump)
  col=mix(col,vec3(.17,.15,.10),smoothstep(.535,.52,c)*.8);                                  // beaches
  float mid=fbm(pf*90.+2.);col*=.72+.56*mid;col=mix(col,forest,smoothstep(.56,.7,fbm(pf*420.))*.5*(1.-smoothstep(.55,.75,temp)));
  // close up: a patchwork of fields where it's green and flat
- if(fade>0.){vec2 cl=floor(loc.xz/260.);float hsh=fract(sin(dot(cl,vec2(12.9898,78.233)))*43758.55),farm=fade*smoothstep(.62,.5,moist)*(1.-smoothstep(.2,.4,h))*(1.-smoothstep(.6,.75,temp));
+ if(fade>0.){vec2 cl=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl,vec2(12.9898,78.233)))*43758.55),farm=fade*smoothstep(.62,.5,moist)*(1.-smoothstep(.2,.4,h))*(1.-smoothstep(.6,.75,temp));
   col=mix(col,col*mix(vec3(.75,.85,.6),vec3(1.35,1.2,.7),hsh),farm*.8);col*=.85+.3*det*fade;}
  float snow=smoothstep(1.,1.18,h+(1.-temp)*.3)*smoothstep(.35,.7,vn(pf*220.)+h*.3),ice=smoothstep(.8,.87,lat+.08*fbm(pf*12.));
  return mix(col,vec3(.75,.8,.85),max(snow,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
 // A cheap domain warp (three value-noise lookups) swirls the cells; stretching y makes them run east–west like zonal winds.
-float cloudCov(vec3 u){vec3 w=vec3(vn(u*4.+uCT*.3),vn(u*4.+vec3(5.2,1.3,uCT*.3)),vn(u*4.+vec3(9.1,uCT*.3,2.7)))-.5;
+// fw: the pixel's footprint on the shell (unit-sphere units). Far and grazing samples widen the threshold toward the mean
+// coverage instead of aliasing into speckle and a hard bright rim where the shell is seen edge-on.
+float cloudCovF(vec3 u,float fw){vec3 w=vec3(vn(u*4.+uCT*.3),vn(u*4.+vec3(5.2,1.3,uCT*.3)),vn(u*4.+vec3(9.1,uCT*.3,2.7)))-.5;
  vec3 q=(u+w*.22)*vec3(6.,11.,6.)+vec3(uCT,0.,uCT*.6);
- float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5);return smoothstep(.55,.72,c);}
+ float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5),k=clamp(fw*60.,0.,.3);return smoothstep(.55-k,.72+k*.4,c)*(1.-k*.8);}
+float cloudCov(vec3 u){return cloudCovF(u,0.);}
 float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
@@ -905,12 +932,21 @@ void main(){
  float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
-  float fade=smoothstep(4000.,150.,tP),det=fade>0.?detail(loc):.5,oc;
-  vec3 bump;vec3 alb=tellus(pf,loc,det,fade,oc,bump),st=sunTrans(p+n*20.);vec3 nb=normalize(n-transpose(uProt)*bump*(1.-oc));   // bump is planet-fixed; n is inertial
+  float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
+  float fade=smoothstep(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
+  vec3 bump;vec3 alb=tellus(pf,gx,det,fade,oc,bump);
+  if(fade>0.&&oc<.5){
+   // scrub: dark bushes on a 3 m grid, thinning in deserts and fading before they'd alias
+   vec2 cb=floor(gx/3.),fb=gx/3.-cb;cb=mod(cb,4096.);float hb=h3(vec3(cb,5.)),grn=alb.g/max(alb.r,.01);
+   vec2 ob=vec2(h3(vec3(cb,6.)),h3(vec3(cb,8.)))*.6+.2;float clump=vn(vec3(gx/45.,2.))+.5*vn(vec3(gx/11.,4.))-.75,bs=.05+.25*h3(vec3(cb,9.));
+   float bush=step(1.1-.35*clamp(grn,0.,1.5)-.9*clump,hb)*(1.-smoothstep(bs*.5,bs,length(fb-ob)))*smoothstep(1.2,.4,fw);
+   vec3 pv=loc-uPadL;float paved=0.;if(dot(pv,pv)<4e6)alb=padGround(vec2(-pv.z,-pv.y),alb,fw,paved);
+   alb=mix(alb,alb*vec3(.35,.45,.3),bush*(1.-paved)*fade);bump*=1.-paved;}
+  vec3 st=sunTrans(p+n*20.);vec3 nb=normalize(n-transpose(uProt)*bump*(1.-oc));   // bump is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
   // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
   vec4 ct=texture(uCity,vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5));float urb=ct.r*(1.-oc);
-  float street=0.;if(urb>.01){vec2 g=abs(fract(loc.xz/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
+  float street=0.;if(urb>.01){vec2 g=abs(fract(gx/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
   col=alb*(ndb*st*5.*cloudShadow(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
   col+=vec3(1.,.72,.38)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
@@ -935,7 +971,7 @@ void main(){
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
  float tC=-1.,tD=tH;
  if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
- if(tC>0.&&tC<tH){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float cov=cloudCov(cu);
+ if(tC>0.&&tC<tH){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
   // up close: billowy detail on top of the weather-scale coverage (fades out with distance, so orbit views pay nothing)
   float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){dn=vn(cu*2600.+uCT*3.)*.6+vn(cu*7800.)*.4;cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
   if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
@@ -948,11 +984,13 @@ void main(){
 }`;
 const MESH_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;
-uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP;out float vW,vM;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;}`;
+uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;
+void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;}`;
 const MESH_FS=`#version 300 es
-precision highp float;in vec3 vN,vC,vP;in float vW,vM;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc;
+precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;out vec4 o;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;
+float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
+float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Same light as the planet: sun irradiance already reddened by the air (uSunCol, CPU-integrated), sky above and ground
 // bounce below as hemispheric ambient, Blinn–Phong specular normalised by roughness, metals and glass reflecting a sky/ground
 // gradient, then the sky shader's tone curve and gamma — so a white tank and the ground under it finally agree.
@@ -961,7 +999,14 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  if(uGlow>0.){o=vec4(vC*uGlow,1.);return;}
  vec3 n=normalize(vN);if(dot(n,vP)>0.)n=-n;vec3 V=normalize(-vP);
  int m=int(vM+.5);float metal=m==1?1.:0.,rough=m==1?.32:m==2?.9:m==4?.06:.42;
- vec3 alb=pow(vC,vec3(2.2)),F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
+ vec3 alb=pow(vC,vec3(2.2));
+ // hull detail on the ship (ship frame: y along the stack): weld rings every 1.25 m on the sides, each ring of panels a
+ // slightly different shade, faint vertical grime streaks; all filtered by the pixel footprint so they vanish, not shimmer
+ if(uSeam>0.&&m<=1&&abs(vNo.y)<.6){float rr=length(vO.xz),az=atan(vO.z,vO.x)*rr,wy=fwidth(vO.y),fd=smoothstep(.05,.012,wy);
+  float d1=abs(fract(vO.y/1.25+.5)-.5)*1.25,ring=1.-smoothstep(.007,.007+wy*1.5,d1);
+  float pan=hh(vec2(floor(vO.y/1.25),3.))-.5,str=vn2(vec2(az*2.2,vO.y*.12))*vn2(vec2(az*7.,vO.y*.5+9.));
+  alb*=(1.-.45*ring*fd)*(1.+.06*pan*fd)*(1.-.16*str*fd*(m==0?1.:.5));}
+ vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
  float ex=2./(rough*rough*rough*rough+1e-4)-2.,spec=(ex+8.)/25.13*pow(max(dot(n,H),0.),ex);
  vec3 Fs=F0+(1.-F0)*pow(1.-max(dot(V,H),0.),5.),Fv=F0+(1.-F0)*pow(1.-nv,5.)*(1.-rough);
@@ -1006,12 +1051,14 @@ const SMOKE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;out vec4 vQ;out float vW,vS;
 void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vQ=aQ;vS=aS;}`;
 const SMOKE_FS=`#version 300 es
-precision highp float;in vec4 vQ;in float vW,vS;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
+precision highp float;in vec4 vQ;in float vW,vS;out vec4 o;uniform vec3 uLight,uAmb,uSq;uniform float uFc;
 float h(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
 float nz(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}
 void main(){vec3 q=vec3(vQ.xy*2.2,vS);float n=nz(q)*.65+nz(q*2.3)*.35,r=length(vQ.xy)+.42*(n-.5);if(r>1.)discard;   // lumpy edge per puff
  float a=vQ.z*smoothstep(1.,.2,r)*(.75+.5*n);
- vec3 c=vec3(.86,.85,.83)*(.8+.35*n)*(uLight*(.6+.4*(1.-r))+uAmb*.6)+vec3(1.,.5,.15)*vQ.w*.8;
+ // each puff shaded as a lumpy sphere: sun side bright, the far side in its own shadow (uSq = sun in the quad's frame)
+ vec3 sn=normalize(vec3(vQ.xy,sqrt(max(0.,1.-r*r))+.3)+.35*vec3(n-.5,nz(q*1.7+5.)-.5,0.));float ls=.18+.82*smoothstep(-.3,.8,dot(sn,uSq));
+ vec3 c=vec3(.84,.83,.81)*(.8+.35*n)*(uLight*ls*1.25+uAmb*.55*(.6+.4*sn.y))+vec3(1.,.5,.15)*vQ.w*.8;
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);
 const smokeVAO=gl.createVertexArray(),smokeBuf=gl.createBuffer();gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);
@@ -1072,7 +1119,7 @@ const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.8
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
 const PAD=(()=>{const a=[];
-  lathe(a,[[7,-.8,C.CON],[7,.02,C.CON]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
+  lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.2,.02,C.D],[2.2,.05,C.D]],[0,0,0],24);
   lathe(a,[[.45,0,C.R],[.45,22,C.R],[.7,22,C.G],[.7,22.6,C.G]],[4.2,0,0],10);
   for(const[x,z]of[[34,14],[39,21],[-28,30]])lathe(a,[[2.2,0,C.W],[2.2,5,C.W],[1.3,6,C.W],[0,6.3,C.W]],[x,0,z],20);
   lathe(a,[[11,0,C.CON],[11,9,C.CON],[11,9,C.D],[9,11,C.D]],[-45,0,-25],32);
@@ -1131,6 +1178,7 @@ function drawSmoke(VP,camW,R,U){
       v[k]=smokeP[o]+R[0]*a+U[0]*b;v[k+1]=smokeP[o+1]+R[1]*a+U[1]*b;v[k+2]=smokeP[o+2]+R[2]*a+U[2]*b;
       v[k+3]=cx;v[k+4]=cy;v[k+5]=smokeP[o+4];v[k+6]=smokeP[o+5];v[k+7]=seed;k+=8}}
   const E=lightEnv(camW),su=PSMOKE.u;gl.useProgram(PSMOKE.p);gl.uniformMatrix4fv(su.uVP,false,VP);gl.uniform1f(su.uFc,FC);gl.uniform3fv(su.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(su.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+  const Fz=cross(R,U);gl.uniform3f(su.uSq,dot(SUN,R),dot(SUN,U),dot(SUN,Fz));
   gl.bindVertexArray(smokeVAO);gl.bindBuffer(gl.ARRAY_BUFFER,smokeBuf);gl.bufferData(gl.ARRAY_BUFFER,v.subarray(0,k),gl.DYNAMIC_DRAW);
   gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n*6);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
 const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
@@ -1373,15 +1421,16 @@ function render(){
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
    gl.uniformMatrix3fv(u.uProt,false,[c,0,s,0,1,0,-s,0,c]);gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,CITY_TEX);gl.uniform1i(u.uCity,0);
    const cpf=toPF(TELLUS,camW,simT);gl.uniform3fv(u.uPdet,cpf.map(x=>x-Math.round(x/1000)*1000));
+   gl.uniform3fv(u.uPadL,[TELLUS.R,0,0].map((x,i)=>x-Math.round(cpf[i]/1000)*1000));   // the pad, in the same re-centred frame as loc
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
-   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,(simT*2e-4)%500);   // clouds drift ~20 m/s
+   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,(simT*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
    gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}
   gl.depthFunc(gl.ALWAYS);gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   const V=[R[0],U[0],-Fw[0],0,R[1],U[1],-Fw[1],0,R[2],U[2],-Fw[2],0,0,0,0,1],P=[1/tanX,0,0,0,0,1/tanY,0,0,0,0,-1,-1,0,0,-.2,0],VP=mmul(P,V);
   const project=p=>{const q=sub(p,camW),z=dot(q,Fw);if(z<=0)return null;return[W/2*(1+dot(q,R)/(z*tanX)),H/2*(1-dot(q,U)/(z*tanY))]};
   // ---- meshes
-  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);
+  gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
@@ -1399,9 +1448,9 @@ function render(){
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
       gl.uniform1f(m.uShadow,0);gl.disable(gl.STENCIL_TEST);gl.disable(gl.BLEND);gl.depthMask(true);gl.depthFunc(gl.LESS)}
-    drawMesh(shipMesh,Mship,p);
+    gl.uniform1f(m.uSeam,1);drawMesh(shipMesh,Mship,p);gl.uniform1f(m.uSeam,0);
     if(S.chute&&S.chuteA>0){const k=Math.sqrt(S.chuteA/Math.PI);drawMesh(CANOPY,modelQ(S.q,sub(p,camW),[-S.cm[0],S.yTop+1+k*1.2,-S.cm[2]],[k,k*.6,k]),p)}}
-  for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}
+  gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
