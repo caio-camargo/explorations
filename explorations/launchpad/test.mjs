@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1097,6 +1097,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // physics, not rails, while a satellite is within 5 km
   ({ s } = scene(0)); const nearOn = D.hitNear(s) && !D.railsOK(s); s.r = add(s.r, mul(Y, -20e3)); const farOff = !D.hitNear(s);
   check('contact: within 5 km of a satellite the flight stays in physics steps', nearOn && farOff, `near: rails ${D.railsOK(s) ? 'on' : 'off'} at 20 km`);
+}
+
+// 23. Launch sites as data (terrain session, slice B): generated per power, a site per flight, latitude that matters.
+{
+  const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180, keep = P.site;
+  const fields = ['id', 'name', 'u', 'lat', 'h', 'power', 'coastal', 'maxDia', 'downrange', 'polar', 'kind', 'rot', 'minInc'];
+  const per = api.POWERS.map(p => SI.filter(t => t.power === p.i).length);
+  const gap = Math.min(...SI.flatMap((a, i) => SI.slice(i + 1).map(b => Math.acos(Math.min(1, dot(a.u, b.u))) * R)));
+  const level = SI.every(t => { const f = api.siteFrame(t.u);
+    return [0, 1, 2, 3].every(k => Math.abs(api.terrainH(norm(add(t.u, mul(k % 2 ? f.e : f.n, (k < 2 ? 1 : -1) * 1500 / R)))) - t.h) < 1e-9) && api.terrainSlope(TELLUS, t.u) < 0.01; });
+  check('sites: generated per power with every field the economy needs; home site first, at +X; ≥ 250 km apart; pads levelled',
+    SI.length >= 10 && SI.every(t => fields.every(k => k in t) && t.h > 0 && t.downrange && Array.isArray(t.downrange.over)) && per.every(n => n >= 1)
+      && SI[0].u[0] === 1 && SI[0].power === api.HOME && gap >= api.SITE_GAP - 1 && level,
+    `${SI.length} sites (${per.join('/')} per power), closest pair ${(gap / 1e3).toFixed(0)} km; home ${SI[0].name} at ${SI[0].lat.toFixed(1)}°, ${SI[0].h.toFixed(0)} m, downrange ${SI[0].downrange.az}° ${(SI[0].downrange.sea * 100).toFixed(0)}% water`);
+  // a ship at a far site stands on its pad, nose up, with the site's free speed, in an orbit plane at its latitude
+  const far = SI.reduce((a, b) => Math.abs(b.lat) > Math.abs(a.lat) ? b : a), x = api.newShip(api.PRESETS.Orbiter, far), up = norm(x.r);
+  const hv = cross(x.r, x.v), inc = Math.acos(Math.abs(hv[1]) / len(hv)) / D, Y = api.qrot(x.q, [0, 1, 0]);
+  check("a ship at a site: on its levelled pad, nose up, the site's free speed east, an orbit plane at its latitude",
+    x.site === far && Math.abs(len(x.r) - (R + far.h - x.yBot)) < 1e-6 && dot(Y, up) > 0.999999 && Math.abs(len(x.v) - TELLUS.rot * len(x.r) * Math.cos(far.lat * D)) < 1e-4 && Math.abs(far.rot - TELLUS.rot * R * Math.cos(far.lat * D)) < 1e-9 && Math.abs(inc - Math.abs(far.lat)) < 1e-6,
+    `${far.name} at ${far.lat.toFixed(1)}°: ${len(x.v).toFixed(1)} m/s free (equator ${SI[0].rot.toFixed(1)}), plane ${inc.toFixed(2)}°`);
+  // the chosen site is the default for every flight, and tapes remember where they were recorded
+  P.site = far.id; const y = api.newShip(api.PRESETS.Orbiter), tp = api.tapeNew(api.PRESETS.Orbiter, y.site); P.site = keep;
+  check('the chosen site (PROG.site) is where flights start; a tape records its site',
+    y.site === far && tp.site === far.id && api.curSite() === ((keep && api.siteById(keep)) || api.homeSite()));
+  // until economy defines siteAccess: home sites only, free; a stage too wide for the rail gauge can't go inland
+  const foreign = SI.find(t => t.power !== api.HOME), inland = SI.find(t => !t.coastal), coastal = SI.find(t => t.coastal), wide = [{ d: { r: 2.5 } }];
+  const ah = api.siteAccessOf(SI[0]), af = api.siteAccessOf(foreign);
+  check("site access: home sites only (until economy's siteAccess); inland sites take nothing wider than the rail gauge",
+    ah.ok && !af.ok && af.why.length > 0 && !api.siteFits(inland, wide).ok && api.siteFits(coastal, wide).ok && api.siteFits(inland, [{ d: { r: 1.25 } }]).ok,
+    `"${af.why}"; inland: "${api.siteFits(inland, wide).why}"`);
+  // fly the Orbiter from a site away from the equator: the orbit's inclination is the site's latitude
+  const off = SI.filter(t => Math.abs(t.lat) > 8 && Math.abs(t.lat) < 30).sort((a, b) => Math.abs(b.lat) - Math.abs(a.lat))[0];
+  P.site = off.id; const r = fly('Orbiter', { verbose: false }); P.site = keep;
+  const hh = cross(api.S.r, api.S.v), inc2 = Math.acos(Math.abs(hh[1]) / len(hh)) / D;
+  check('a flight from a site at latitude φ reaches orbit inclined ≈ φ', r.el.pe - R > ATM && Math.abs(inc2 - Math.abs(off.lat)) < 1.0,
+    `${off.name} ${off.lat.toFixed(1)}° → ${((r.el.ap - R) / 1e3).toFixed(0)}×${((r.el.pe - R) / 1e3).toFixed(0)} km at ${inc2.toFixed(2)}°`);
 }
 
 function moonPos(t) { return api.moonPos(t); }

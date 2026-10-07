@@ -18,7 +18,7 @@ void main(){ivec2 c=ivec2(gl_FragCoord.xy);vec3 pf=texelFetch(uDirs,c,0).xyz;o=v
     gl.useProgram(P.p); const u = P.u; gl.uniform1i(u.uDirs, 3);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, WORLD_TEX.w); gl.uniform1i(u.uWorld, 1);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, WORLD_TEX.c); gl.uniform1i(u.uClim, 2);
-    gl.uniform2f(u.uGen, Math.cos(-WORLD.lon0), Math.sin(-WORLD.lon0)); gl.uniform1f(u.uSiteH, WORLD.siteH); gl.uniform1f(u.uPR, TELLUS.R);
+    gl.uniform2f(u.uGen, Math.cos(-WORLD.lon0), Math.sin(-WORLD.lon0)); { const ns = sitesNear([1, 0, 0], 4), a = new Float32Array(16); ns.forEach((x, i) => a.set([x.u[0], x.u[1], x.u[2], x.h], i * 4)); gl.uniform4fv(u['uSites[0]'], a); gl.uniform1i(u.uNS, ns.length); } gl.uniform1f(u.uPR, TELLUS.R);
     gl.viewport(0, 0, N, N); gl.disable(gl.DEPTH_TEST); gl.disable(gl.STENCIL_TEST); gl.disable(gl.BLEND);
     gl.bindVertexArray(quadVAO); gl.drawArrays(gl.TRIANGLES, 0, 3);
     const out = new Float32Array(N * N * 4); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, out);
