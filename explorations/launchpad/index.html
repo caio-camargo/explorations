@@ -1574,8 +1574,8 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
-  q.shape=s.parts.filter(p=>p.on).map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
-  q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;
+  const on=s.parts.filter(p=>p.on);q.shape=on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
+  q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
@@ -2201,6 +2201,10 @@ function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;par
 //   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
 const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
 const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+// a registered satellite keeps the marks it flew with: soot, and char with its windward direction. Frost and nozzle
+// glow are gone within a minute, long before anyone flies past. Rounded: they go into the save.
+HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
+  shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
@@ -2585,7 +2589,7 @@ function render(){
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
   if(mode==='flight')for(const q of PROG.sats||[]){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
-    drawMesh(satMesh(q),modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r)}
+    const sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r);gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
@@ -2765,7 +2769,8 @@ document.addEventListener('click',e=>{const a=e.target.dataset&&(e.target.datase
 // ============================================================ program UI: satellites (planning session)
 // program time now: during a flight, its launch-window day plus flight time; on the pad, the next window
 const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first sight
-function satMesh(q){let me=SAT_MESH.get(q);if(!me){me=partsMesh(q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]})));SAT_MESH.set(q,me)}return me}
+function satMesh(q){let me=SAT_MESH.get(q);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
+    for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q,me={mesh:partsMesh(parts),parts})}return me}
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
 function satsHTML(){const L=PROG.sats||[];const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;

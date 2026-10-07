@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1396,12 +1396,17 @@ Registered satellites used to exist only on the map; now you can fly past one.
   still looks down days later, which is what a real imaging satellite does (and stands in for the attitude control we
   don't simulate). The inertial alternative would tumble it once per orbit relative to the ground.
 - **Drawing:** next to the debris, within 100 km of the camera, in flight mode. The mesh is rebuilt once per entry
-  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). No flight marks: the parts are new
-  objects. The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
+  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
 - **Finding one:** in the flight view, satellites within 200 km get a diamond and `name · distance`; inside 300 m the
   mesh speaks for itself and the marker goes.
+- **It keeps its flight marks.** Marks are render-side (`MARKS`, keyed on part objects) and the registry is sim-side, so
+  `satRegister` hands the shape to a render hook, `HOOK.satLook`, which writes `mk = [soot, char, char direction]` onto
+  each marked shape entry (rounded to 3 places, it goes into the save). `satMesh` puts them back into `MARKS` for the
+  rebuilt parts, and the draw calls `setMarks` like the debris does. Each entry keeps its part index `i`, which is the
+  shader's mark slot. Frost and nozzle glow aren't kept: they fade within a minute of flight.
 - **Old saves:** entries registered before this have no `shape`. They get the marker but no mesh.
-- Check (`test.mjs` §20): shape kept and JSON-safe; nose-down at registration is still exactly nose-down a quarter orbit
+- Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
+  is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
