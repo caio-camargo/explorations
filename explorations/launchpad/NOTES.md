@@ -627,6 +627,8 @@ detail, and got a design pass:
   with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
 - **Claw:** a drive housing with a hazard band, a turntable and contact plate, three jointed fingers with hinge knuckles,
   hydraulic rams and padded tips, all inside the original envelope.
+- **Probe core:** a guidance ring (Agena/Ranger style): foil between bolted rings (`KIND` 7, so the foil crinkles), four
+  equipment boxes (two with thermal louvers), a sun sensor, a status lamp, two whips angled clear of whatever sits above.
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 
