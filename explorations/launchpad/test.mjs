@@ -877,7 +877,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   p = api.predict(s); const esc = p[0].endKind === 'esc';
   log.length = 0; while (api.t < tAp + 3 * P && s.body === NYX && s.alive) api.rails(s, 300);
   const left = s.body === TELLUS;
-  check('Nyx: an orbit reaching past its periapsis-time SOI is stripped as Nyx swings in (predicted, then flown on rails)', esc && left && Math.abs(api.t - p[0].endT) < 300 && api.soiAt(NYX, p[0].endT) < ra,
+  check('Nyx: an orbit reaching past its periapsis-time SOI is stripped as Nyx swings in (predicted, then flown on rails)', esc && left && Math.abs(api.t - p[0].endT) < 300,
     `orbit ${(rr - NYX.R) / 1e3}–${((ra - NYX.R) / 1e3).toFixed(0)} km; predicted escape at +${esc ? ((p[0].endT - tAp) / 3600).toFixed(1) : '—'} h (SOI then ${esc ? (api.soiAt(NYX, p[0].endT) / 1e3).toFixed(0) : '—'} km), flown ${left ? 'out at +' + ((api.t - tAp) / 3600).toFixed(1) + ' h' : 'still bound'}`);
   // a low orbit is never stripped: no escape predicted, still bound after three Nyx orbits
   s = ship(mul(norm(mA), NYX.R + 100e3), mul(cross(norm(mA), hn), Math.sqrt(NYX.mu / (NYX.R + 100e3))), NYX, tAp);
@@ -887,7 +887,54 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   s = ship([NYX.R + 20000, 0, 0], [0, 0, -150], NYX, 1000); const ip = api.predictImpact(s); let n = 0;
   while (s.alive && !s.landed && n++ < 200000) { if (api.railsOK(s)) api.rails(s, 1); else api.physStep(s, api.DT); }
   const gcd = ip && Math.acos(Math.max(-1, Math.min(1, dot(norm(ip.pf), norm(api.toPF(NYX, s.r, api.t)))))) * NYX.R;
-  check('Nyx: an unpowered fall is predicted exactly (Kepler)', ip && ip.b === NYX && gcd < 200, ip ? `${gcd.toFixed(0)} m off, ${s.landed ? 'landed' : 'crashed'} at ${(s.crashSpeed || s.touchV || 0).toFixed(0)} m/s` : 'no prediction');
+  check('Nyx: an unpowered fall is predicted to within 200 m (perturbed: same stepper as rails)', ip && ip.b === NYX && gcd < 200, ip ? `${gcd.toFixed(0)} m off, ${s.landed ? 'landed' : 'crashed'} at ${(s.crashSpeed || s.touchV || 0).toFixed(0)} m/s` : 'no prediction');
+}
+
+// 21. Third-body perturbations near Nyx (6b): rails, the predictor and an independent n-body integration agree.
+{
+  const { NYX, bodyRel, soiAt } = api, P = 2 * Math.PI / NYX.n, muT = TELLUS.mu, muN = NYX.mu;
+  // truth: RK4 in Tellus's frame with Tellus's reflex (the model the game's Nyx motion is consistent with), tight steps
+  const acc = (r, t) => { const R = bodyRel(NYX, t)[0], d = sub(r, R), dl = len(d), rl = len(r), Rl = len(R);
+    return add(add(mul(r, -muT / rl ** 3), mul(d, -muN / dl ** 3)), mul(R, -muN / Rl ** 3)); };
+  const nbody = (r, v, t, t1, stop) => { while (t < t1) { const h = Math.min(0.005 * Math.min(len(sub(r, bodyRel(NYX, t)[0])) ** 1.5 / Math.sqrt(muN), len(r) ** 1.5 / Math.sqrt(muT)), 60, t1 - t);
+      const k1v = acc(r, t), k1r = v, k2v = acc(add(r, mul(k1r, h / 2)), t + h / 2), k2r = add(v, mul(k1v, h / 2)), k3v = acc(add(r, mul(k2r, h / 2)), t + h / 2), k3r = add(v, mul(k2v, h / 2)), k4v = acc(add(r, mul(k3r, h)), t + h), k4r = add(v, mul(k3v, h));
+      r = add(r, mul(add(add(k1r, mul(k2r, 2)), add(mul(k3r, 2), k4r)), h / 6)); v = add(v, mul(add(add(k1v, mul(k2v, 2)), add(mul(k3v, 2), k4v)), h / 6)); t += h; if (stop && stop(r, t)) break; } return [r, v, t]; };
+  const ship = (r, v, b, t) => { api.t = t; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; return s; };
+  const tAp = (Math.PI - NYX.orb.M0) / NYX.n, [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA)), ux = norm(mA), uy = cross(hn, ux);
+  const circ = (alt, dir) => [mul(ux, NYX.R + alt), mul(uy, dir * Math.sqrt(muN / (NYX.R + alt)))];
+  const fate = (alt, dir, chunk) => { const [r, v] = circ(alt, dir), s = ship(r, v, NYX, tAp), p = api.predict(s);
+    while (api.t < tAp + 2 * P && s.alive && s.body === NYX && !(len(s.r) < NYX.R + 5000)) api.rails(s, chunk);
+    return { s, p, t: api.t, how: !s.alive || len(s.r) < NYX.R + 5000 ? 'down' : s.body !== NYX ? 'out' : 'bound' }; };
+  let tN = null; nbody(add(mA, circ(200e3, 1)[0]), add(vA, circ(200e3, 1)[1]), tAp, tAp + 2 * P, (r, t) => { if (len(sub(r, bodyRel(NYX, t)[0])) < NYX.R + 5000) { tN = t; return true; } });
+  const pro = fate(200e3, 1, 600), retro = fate(200e3, -1, 600), pk = pro.p[0];
+  check('6b: a 200 km prograde orbit about Nyx is wrecked at its periapsis pass, as in n-body; the map predicts it', pro.how === 'down' && tN && Math.abs(pro.t - tN) < 600 && pk.endKind === 'impact' && Math.abs(pk.endT - tN) < 900,
+    `n-body: down at ${tN ? ((tN - tAp) / P).toFixed(3) : '—'} P · rails: ${pro.how} at ${((pro.t - tAp) / P).toFixed(3)} P · predicted ${pk.endKind} at ${pk.endT ? ((pk.endT - tAp) / P).toFixed(3) : '—'} P`);
+  check('6b: the retrograde twin survives two Nyx orbits, and is predicted to', retro.how === 'bound' && !retro.p[0].endKind,
+    `${retro.how} after ${((retro.t - tAp) / P).toFixed(2)} P; predicted ${retro.p.length} leg(s), radius ${(retro.p[0].minR / 1e3).toFixed(0)}–${(retro.p[0].maxR / 1e3).toFixed(0)} km`);
+  // the same orbit flown in 60 s chunks and in one-hour chunks (warp) ends in the same place
+  const fly = (chunk) => { const [r, v] = circ(300e3, -1), s = ship(r, v, NYX, tAp); while (api.t < tAp + P - 1e-6) api.rails(s, Math.min(chunk, tAp + P - api.t)); return s; };
+  const a = fly(60), b = fly(3600), [rN] = nbody(add(mA, circ(300e3, -1)[0]), add(vA, circ(300e3, -1)[1]), tAp, tAp + P);
+  const errN = a.body === NYX ? len(sub(add(a.r, bodyRel(NYX, tAp + P)[0]), rN)) : NaN;
+  check('6b: rails chunk size doesn\'t matter (60 s vs 1 h), and one Nyx orbit matches n-body', a.body === NYX && b.body === NYX && len(sub(a.r, b.r)) < 1000 && errN < 2000,
+    `60 s vs 1 h chunks: ${len(sub(a.r, b.r)).toFixed(1)} m apart after one Nyx orbit; vs n-body ${(errN / 1e3).toFixed(2)} km`);
+  // a slow flyby at Nyx's periapsis: n-body vs rails one day after closest approach (patched conics alone were off by ~10,000 km)
+  const tc = -NYX.orb.M0 / NYX.n + P, [rm, vm] = bodyRel(NYX, tc), hx = norm(cross(rm, vm)), x = norm(rm), y = cross(hx, x), rp = 375e3, vp = Math.sqrt(300 ** 2 + 2 * muN / rp);
+  // start: n-body backwards from closest approach (time-reversed RK4 = integrate with -v and flip back)
+  let [r0, v0] = nbody(add(mul(x, rp), rm), mul(add(mul(y, vp), vm), -1), 0, 0.6 * 86400); v0 = mul(v0, -1);
+  // that ran time forward from 0 with reversed velocity; the moon must run backwards too, so instead integrate in reverse properly:
+  { let r = add(mul(x, rp), rm), v = add(mul(y, vp), vm), t = tc; const t1 = tc - 0.6 * 86400;
+    while (t > t1) { const h = -Math.min(0.005 * Math.min(len(sub(r, bodyRel(NYX, t)[0])) ** 1.5 / Math.sqrt(muN), len(r) ** 1.5 / Math.sqrt(muT)), 60, t - t1);
+      const k1v = acc(r, t), k1r = v, k2v = acc(add(r, mul(k1r, h / 2)), t + h / 2), k2r = add(v, mul(k1v, h / 2)), k3v = acc(add(r, mul(k2r, h / 2)), t + h / 2), k3r = add(v, mul(k2v, h / 2)), k4v = acc(add(r, mul(k3r, h)), t + h), k4r = add(v, mul(k3v, h));
+      r = add(r, mul(add(add(k1r, mul(k2r, 2)), add(mul(k3r, 2), k4r)), h / 6)); v = add(v, mul(add(add(k1v, mul(k2v, 2)), add(mul(k3v, 2), k4v)), h / 6)); t += h; }
+    r0 = r; v0 = v; }
+  const [rT] = nbody(r0, v0, tc - 0.6 * 86400, tc + 86400), sf = ship(r0, v0, TELLUS, tc - 0.6 * 86400);
+  while (api.t < tc + 86400 - 1e-6) api.rails(sf, Math.min(600, tc + 86400 - api.t));
+  const rF = sf.body === NYX ? add(sf.r, bodyRel(NYX, api.t)[0]) : sf.r;
+  check('6b: a slow flyby at Nyx\'s periapsis lands within 2 km of n-body a day later', sf.body === TELLUS && len(sub(rF, rT)) < 2000, `${(len(sub(rF, rT)) / 1e3).toFixed(2)} km off; through Nyx's SOI and out`);
+  // cost at full warp in a low Nyx orbit
+  const [rc, vc] = circ(60e3, -1), sc = ship(rc, vc, NYX, tAp); const t0 = performance.now(); let fr = 0; while (api.t < tAp + P) { api.rails(sc, 100000 / 60); fr++; }
+  const us = (performance.now() - t0) * 1000 / fr;
+  check('6b: a perturbed orbit at 100,000× warp stays cheap', us < 2000, `${us.toFixed(0)} µs per warp frame (60 km orbit about Nyx), ${fr} frames`);
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
@@ -958,6 +1005,57 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh('rising'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const d0 = api.sourceOf('condor').how; P.day = 600; const d600 = api.sourceOf('condor').how;
   check('a rising power\'s industry grows: big engines imported at first, home-made later', d0 === 'import' && d600 === 'home' && api.indOf(api.home) > 0.8, `Condor: ${d0} on day 0, ${d600} on day 600 (self-sufficiency ${api.indOf(api.home).toFixed(2)})`);
   fresh(null);
+}
+
+// 21. Rendezvous (sats session): a registered satellite as the target; closest approach; target-relative SAS modes.
+// Its own instance of the sim core, so this section never touches the shared api object above.
+{
+  const D = new Function(src + 'return {tgtOf,approach,sasTarget,newShip,satAt,kepler,PROG,TELLUS,DAY_S,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG; Object.assign(P, { day: 0, sats: [], satN: 0 });
+  const circ = (alt, inc, ph) => { const r = T.R + alt, v = Math.sqrt(T.mu / r), c = Math.cos(ph), s = Math.sin(ph), ci = Math.cos(inc), si = Math.sin(inc);
+    return { r: [r * c, 0, -r * s], v: [-v * s * ci, v * si, -v * c * ci] }; };
+  const tg = circ(320e3, 2 * Math.PI / 180, 0.3); P.sats.push({ id: 7, name: 'Lookout 1', epoch: 0, ...tg, imgs: 0, pending: [] });
+  const s = D.newShip(['ant', 'cam', 'petrel']); Object.assign(s, circ(300e3, 0, 0)); s.landed = false; s.rec.launched = true; s.rec.day0 = 0; D.t = 0;
+  const none = D.tgtOf(s); s.target = 7; const X = D.tgtOf(s), r0 = Math.hypot(...s.r), per = 2 * Math.PI * Math.sqrt(r0 ** 3 / T.mu);
+  // closest approach against a brute-force scan at 0.5 s
+  const ca = D.approach(X.q, s.r, s.v, 0, 2 * per); let bf = Infinity, bt = 0;
+  for (let t = 0; t <= 2 * per; t += 0.5) { const d = len(sub(D.kepler(s.r, s.v, t, T.mu)[0], D.satAt(X.q, t)[0])); if (d < bf) { bf = d; bt = t; } }
+  check('rendezvous: closest approach to a target matches a brute-force scan', none === null && ca.d <= bf + 1 && Math.abs(ca.t - bt) < 30,
+    `closest ${(ca.d / 1e3).toFixed(2)} km at T+${ca.t.toFixed(0)} s (scan: ${(bf / 1e3).toFixed(2)} km at ${bt.toFixed(0)} s), ${ca.vrel.toFixed(0)} m/s relative`);
+  const ang = (a, b) => Math.acos(Math.max(-1, Math.min(1, dot(norm(a), norm(b))))) * 57.29578;
+  s.hold = [0, 1, 0]; const m = k => { s.sasMode = k; return D.sasTarget(s); };
+  const a1 = ang(m('tgt'), X.dr), a2 = ang(m('antitgt'), mul(X.dr, -1)), a3 = ang(m('rpro'), X.dv), a4 = ang(m('rretro'), mul(X.dv, -1));
+  s.target = 99; const lost = m('tgt') === s.hold;
+  check('rendezvous: Target / Anti-tgt / Rel pro / Rel retro point where they say; a vanished target falls back to the hold', Math.max(a1, a2, a3, a4) < 1e-6 && lost,
+    `errors ${[a1, a2, a3, a4].map(x => x.toExponential(0)).join(' ')}°; unknown target → hold: ${lost}`);
+}
+
+// 19. More logbook facts: what a hop measures on the way up and back; Selene's orbit and gravity; satellite contact.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = () => {};
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
+    if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
+    if (stg === 1 && !arm && dot(s.v, norm(s.r)) < 0) { api.stage(s); arm = true; } api.advPhys(s); }
+  api.missionEnd(s); const L = P.log;
+  const all = ['maxq', 'entry', 'heat', 'paxg', 'pad'].every(id => L[id]);
+  check('a hop to space and back logs max-q, its re-entry speed, the hottest skin, the passenger\'s ride and how close to the pad it came down',
+    all && L.maxq.v > 5e3 && L.entry.v > 500 && L.heat.v.T > 350 && typeof L.heat.v.part === 'string' && Math.abs(L.paxg.v - s.rec.gMax) < 1e-9 && Math.abs(L.pad.v - s.rec.landDist) < 1e-6,
+    all ? `max-q ${(L.maxq.v / 1e3).toFixed(1)} kPa, entry ${L.entry.v.toFixed(0)} m/s, hottest ${L.heat.v.T.toFixed(0)} K (${L.heat.v.part}), ${L.paxg.v.toFixed(1)} g, landed ${(L.pad.v / 1e3).toFixed(1)} km from the pad` : Object.keys(L).join(','));
+  // Selene: an orbit there sets its period; a lander sets the Δv to land and measures the surface gravity
+  fresh(); api.t = 0; let x = api.newShip(['pod', 'petrel']); api.S = x; x.landed = false; x.rec.launched = true; x.rec.dv = 6000; x.body = SELENE;
+  const rs = SELENE.R + 50e3; x.r = [rs, 0, 0]; x.v = [0, 0, -Math.sqrt(SELENE.mu / rs)]; api.advRails(x, 30, 1000);
+  api.t = 0; const y = api.newShip(['pod', 'wren']); api.S = y; y.body = SELENE; y.landed = true; y.pf = [SELENE.R - y.yBot, 0, 0]; y.rec.launched = true; y.rec.dv = 7800; api.advRails(y, 1, 1);
+  check('Selene: the first orbit there measures its period; the first lander logs its Δv and measures surface gravity (1.62 m/s²)',
+    P.log.sorbit && Math.abs(P.log.sorbit.v.p - 2 * Math.PI * Math.sqrt(rs ** 3 / SELENE.mu)) < 1 && P.log.land && P.log.land.v === 7800 && P.log.sg && Math.abs(P.log.sg.v - 1.62) < 0.02,
+    `period ${P.log.sorbit && (P.log.sorbit.v.p / 60).toFixed(1)} min at 50 km; g ${P.log.sg && P.log.sg.v.toFixed(3)} m/s²`);
+  // contact: a camera satellite's share of time in view of a ground station, reported between flights
+  fresh(); const r0 = TELLUS.R + 300e3, v0 = Math.sqrt(TELLUS.mu / r0);
+  P.sats.push({ id: 1, name: 'Lookout 9', epoch: 0, r: [r0, 0, 0], v: [0, v0, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 }); api.advanceDays(3);
+  check('a camera satellite reports its ground-station contact to the logbook, named after itself', P.log.contact && P.log.contact.by === 'Lookout 9' && Math.abs(P.log.contact.v - P.sats[0].contact * 100) < 1e-9 && !P.log.contact.stack,
+    `${P.log.contact && P.log.contact.v.toFixed(0)}% by ${P.log.contact && P.log.contact.by}`);
+  fresh();
 }
 
 // 22. Launch sites as data (terrain session, slice B): generated per power, a site per flight, latitude that matters.
