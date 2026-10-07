@@ -776,10 +776,10 @@ rounds of three 1.2 s samples.
 |---|---|---|
 | 2 ascent (Lunar, 3 km) | 14.1–14.5 ms | 14.4–14.8 |
 | 10 Sparrow from below | 5.4–5.9 | 5.9–6.3 |
-| 17 Orbiter at the pad | 17.8–19.0 | 18.1–19.4 |
-| 19 Albatross at 45 km | 2.6–3.8 | 3.3–4.0 |
-| 20 Petrel in vacuum (fills the screen) | 0.8–1.0 | 1.7–2.0 |
-| 23 Kestrel at 1 km | 10.4–10.8 | 9.9–10.2 |
+| 30 (was 17) Orbiter at the pad | 17.8–19.0 | 18.1–19.4 |
+| 32 (was 19) Albatross at 45 km | 2.6–3.8 | 3.3–4.0 |
+| 33 (was 20) Petrel in vacuum (fills the screen) | 0.8–1.0 | 1.7–2.0 |
+| 36 (was 23) Kestrel at 1 km | 10.4–10.8 | 9.9–10.2 |
 
 The first version cost far more. Three changes fixed it:
 - the vertex shader bends the proxy lathe to 1.9·rb(s), so pixels outside the plume never march (Waterfall's trick);
@@ -787,8 +787,10 @@ The first version cost far more. Three changes fixed it:
 - turbulence is read from a 32³ R8 noise texture (two fetches instead of 16 hashes). Marching stops once the ray is opaque.
 
 ### Reference views
-`refView(17)` Orbiter at the pad, `18` Albatross at 20 km, `19` at 45 km, `20` Petrel in vacuum, `21` Sparrow at 1 km,
-`22` Wren in vacuum, `23` Kestrel at 1 km. They teleport the ship (pointing up, climbing), stage and burn 1.5 s.
+`refView(30)` Orbiter at the pad, `31` Albatross at 20 km, `32` at 45 km, `33` Petrel in vacuum, `34` Sparrow at 1 km,
+`35` Wren in vacuum, `36` Kestrel at 1 km. They teleport the ship (pointing up, climbing), stage and burn 1.5 s.
+(Numbered from 30 because `main` took 17 for the launch site meanwhile.) `refView` now funds the program up to 1e6 M
+first: since the budget gate, a fresh page refused the Lunar launch and views 2 and 31–35 silently stayed in the editor.
 
 ### Still open
 - The plume goes into the pad instead of spreading over the deflector. Ground impingement would need the pad or ground

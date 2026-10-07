@@ -1,8 +1,10 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex, 17–23 engine plumes. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex, 30–36 engine plumes. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
+  // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
+  if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
@@ -67,11 +69,11 @@ window.refView = async (n) => {
     const v = { 15: [-0.9, 0.28, 85], 16: [0.25, 0.12, 26], 17: [1.24, 0.75, 420] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
     render(); await settle(); bare(); return { 15: 'complex', 16: 'tower', 17: 'site' }[n];
   }
-  // 17–22: engine plumes. The ship is placed at an altitude (teleported, pointing straight up, climbing at vy m/s), staged
+  // 30–36: engine plumes. The ship is placed at an altitude (teleported, pointing straight up, climbing at vy m/s), staged
   // nst times and run 1.5 s at full throttle, then seen from the side: [design, altitude m, stagings, yaw, pitch, dist, vy]
-  const plume = { 17: ['Orbiter', 150, 1, 3.0, -0.05, 24, 60], 18: ['Lunar', 20000, 1, 1.6, -0.35, 60, 700], 19: ['Lunar', 45000, 1, 1.6, -0.35, 90, 1500],
-    20: ['Orbiter', 200000, 3, 1.6, -0.1, 30, 0], 21: ['Sounding', 800, 1, 1.6, 0.0, 9, 150], 22: ['Lunar', 200000, 4, 1.6, -0.1, 14, 0],
-    23: ['Hopper', 1000, 1, 1.6, -0.25, 16, 150] };
+  const plume = { 30: ['Orbiter', 150, 1, 3.0, -0.05, 24, 60], 31: ['Lunar', 20000, 1, 1.6, -0.35, 60, 700], 32: ['Lunar', 45000, 1, 1.6, -0.35, 90, 1500],
+    33: ['Orbiter', 200000, 3, 1.6, -0.1, 30, 0], 34: ['Sounding', 800, 1, 1.6, 0.0, 9, 150], 35: ['Lunar', 200000, 4, 1.6, -0.1, 14, 0],
+    36: ['Hopper', 1000, 1, 1.6, -0.25, 16, 150] };
   if (plume[n]) {
     const [design, alt, nst, yaw, pitch, dist, vy] = plume[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
