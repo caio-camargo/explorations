@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -691,9 +691,33 @@ Each building stands on a concrete slab that `padGround` already paints.
 - `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
   the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
 
+### Revised layout (same day, after Caio's review)
+Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Both changed:
+- **The tower is sized to the rocket on the pad:** about 3 m above its top, in whole 2.5 m bays, 12.5–60 m (Orbiter
+  17.5 m, Big Lunar 35 m, Sounding 12.5 m). `padSync()` rebuilds the pad mesh when that changes, in the editor or on the
+  pad before liftoff. The `PAD` binding is reassigned, so the terrain-owned draw call stays untouched.
+- **Spread out the way real complexes are:**
+  - The domed **blockhouse** moved up-range, about 230 m west, onto its own mesh slab, with a spur road down to the
+    access road and a concrete cable trench to the pad.
+  - The **mobile service structure** (four lattice columns on rail trucks, work decks, roof, bridge crane) is rolled back
+    80 m south on twin rails that run to the launch table. Its height is the tower's + 6 m.
+  - **High-pressure gas bottle racks** sit on the old blockhouse slab.
+  - A **ground deluge tank** with a pump house replaces the elevated water tower.
+  - **Two lightning masts** with a catenary wire.
+  - **Five camera bunkers** at about 90 m and **two camera towers**.
+- New helper `strip()` draws flat runs on the ground: roads, rail beds, trenches. The mesh is now ~26k vertices,
+  still one static draw. `refView(17)` shows the whole site from high up.
+- **The pad holds the rocket.** In the editor the builder hangs the ship 3 m up (`LIFT` in `builder.js`, so parts can go under
+  its bottom), and it looked like it was hovering. While a rocket stands on the pad or is being built, `padRig()` now gives
+  the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
+  and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
+  fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
+- **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
+  painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
+
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
@@ -806,6 +830,29 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.26 — industrial independence (2026-10-07)
+
+The fourth flavour axis. Each archetype has a **self-sufficiency** level (`ind`): superpowers 1.0, security state 0.55,
+rising power 0.5 (+day/1500, capped at 0.9), frugal middle power 0.4, resource state 0.1.
+
+- **Three tiers of parts** (`tierOf`): structure and tanks (0); small engines and 2.5 m structure (1); big engines
+  (≥ 300 kN) and complex payloads (pod, biocapsule, instruments, camera, antenna) (2). A power makes the tiers its
+  level reaches (0 / 0.45 / 0.8).
+- **Sourcing** (`sourceOf`): home-made ×1; otherwise imported at ×1.5 from the most capable supplier (self-sufficiency ×
+  economy) that isn't hostile to home (relation > −0.2) and isn't sanctioning us; with no such supplier, **grey market
+  ×3** through intermediaries (with a headline at launch). That's how **sanctions reach hardware**: lose your supplier
+  and you switch to the next (Kestrel: Maros → Venka) or pay triple. Prices flow through `partPrice`, so refurbishment
+  refunds follow too. Buying abroad grumbles a little at home, scaled by nationalism.
+- **Young-industry certification** (`cert0`): home-made parts start at CERT0 − 0.2 × (1 − self-sufficiency) (a frugal
+  power's own tank: 58%); imports arrive at the usual 70%.
+- **Shown** on the builder's cost line ("Imports: Kestrel booster, Petrel vacuum (Venka ×1.5) · Command pod (grey market
+  ×3)") and as one industry line in the world section.
+- **Measured:** an Orbiter costs 49.8M for a superpower, 66.8M for a resource state with willing suppliers, and 85M in
+  the generated world, where the only avionics maker is tense with home (pod via the grey market).
+- **Balance note:** a resource state can't afford an Orbiter from the 60M start. It earns its way up through sounding
+  flights or rides a commodity boom. Fine for asymmetry; revisit with real play.
+
+`test.mjs` §20: 4 new checks; 128 total.
 ## v1.25 — terrain and geography: a generated world with real height (2026-10-07, terrain session)
 
 Tellus used to be a perfect sphere with a noise coastline and shading-only biomes. Now it's a generated world with real
@@ -1097,6 +1144,62 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
+
+Open thread 6. A local clone at `C:/Users/caioa/dev/launchpad-bodies` (a different machine from the other sessions).
+
+**Slice 1: the body tree, with no change in behaviour.** `BODIES`, built by `addBody(b,parent)`. Each moon carries Kepler elements about
+its parent (`orb: {a, e, i, lan, argp, M0}`, angles in the XZ equator with +Y north, so prograde runs +X → −Z), and
+`bodyRel(b,t)` solves Kepler's equation for its position and velocity. `checkSOI`, the step limits in `rails`, and `predictFrom`
+walk the tree: a leg ends at the earliest of entering any moon's SOI (scan, then bisection) or leaving the body's own.
+`moonPos`/`moonVel` are kept as wrappers. The map (orbits, SOI rings, encounter and escape labels), Tab focus, the shadow test and
+the body labels iterate `BODIES`. **Check:** a fingerprint of 40 aimed Selene transfers (19 encounters), 14 rails runs through SOI
+changes, a prediction from inside Selene's SOI and a Selene impact was **byte-identical** before and after. The circular,
+equatorial case of the general formula reduces exactly (multiplying by ±0 and 1 is exact).
+
+**Nyx.** Caio's idea: a second moon, inclined and very eccentric. An n-body study (RK4, Tellus-centred frame with the
+indirect term; `node study_nyx.mjs [small|mid|selene]`) chose the size:
+
+| Candidate | pe–ap | SOI (Laplace × distance) | Hill radius at pe | Verdict |
+|---|---|---|---|---|
+| R 90 km, g 0.25, a 16,000 km, e 0.7 | 4,800–27,200 km | 133 km at pe (43 km above ground), 752 at ap | 167 km | hardly orbitable |
+| **R 150 km, g 0.4, a 18,000 km, e 0.55, i 30°** | **8,100–27,900 km** | **407–1,401 km** | 464 km | **chosen** |
+
+Period 33.4 h, escape speed 346 m/s. Apoapsis plus the largest SOI clears Selene's SOI by 2,516 km.
+
+What the study showed:
+- **Which SOI rule.** Flybys at pe and ap, v∞ 300/800 m/s, three miss distances, patched conics against n-body one day later.
+  **Laplace radius × the moon's current distance** was best or tied in nearly every case. A fixed SOI from `a` is far too big at
+  periapsis. One fixed at periapsis misses most encounters near apoapsis. Patched conics are off by hundreds to thousands of km a
+  day after a pass, *for Selene too* (the same metric gives 2,000–8,000 km), so Nyx is no worse than what we already have.
+- **What patched conics can't show (a negative result, kept).** In n-body, *prograde* circular orbits about Nyx started at its
+  apoapsis are wrecked at the next periapsis pass (crash or ejection) from ~100 km altitude up. *Retrograde* ones survive at every
+  altitude tried up to 600 km. Patched conics call all of them stable. Showing this would need third-body perturbations (Encke) in
+  rails and the predictor for Nyx. **Caio chose patched conics for now**; this is open thread 6b.
+
+So Nyx's **SOI breathes**: `soiAt(b,t) = |r_moon(t)| × (m/M)^0.4` for a moon with e > 0 (Selene keeps its constant `b.soi`
+exactly). `b.soi` is the largest value and `b.soiMin` the smallest, both for conservative tests; `b.soiRate` bounds how fast the
+SOI moves, which goes into rails' step size. The predictor's escape for a breathing SOI is `escTime`: an outbound leg is scanned up
+to where it crosses the largest SOI; a bound orbit that reaches past `soiMin` is scanned over three Nyx orbits, then bisected.
+**Patched-conic stripping:** an orbit whose apoapsis is above the periapsis-time SOI gets dropped back into Tellus orbit when Nyx
+swings in. That is the patched-conic shadow of the real effect, and it's predicted on the map.
+
+Side effect on Selene flights: rails' speed bound now includes Nyx's speed, so steps near SOI edges are finer. Selene SOI switches
+moved by under 0.4 s, all closer to the predicted times (e.g. predicted 28,090.85 s: 28,091.23 → 28,091.10).
+
+**Drawing.** Selene lives in `SKY_FS`, which belongs to the terrain session, so Nyx gets its own pass: `MOON_FS` = `SKY_FS` up to its
+`main()` (so `sph`, `scatter`, `crat`, `fbm`, `detail` are shared) plus a main that ray-casts one sphere. It's drawn after the sky
+pass, depth-tested against it, and writes the same log depth. Seen from the ground it's ~0.7–2° across (bigger than our Moon)
+and takes the air's colour like a daytime moon. Look: three crater scales and a dark, brown carbonaceous albedo
+(`NYX.alb`) so it doesn't read as a second Selene. Any further non-Selene moon goes through the same pass.
+
+Checks (`test.mjs` §20, 5 new): orbit and SOI geometry; an approach finds the encounter and rails switch in on time, then out; a
+150–971 km retrograde orbit is predicted to be stripped at +12.9 h and is; a 100 km orbit is never stripped; a fall onto Nyx is
+predicted to 2 m.
+
+**Not yet:** missions and contracts for Nyx (the economy's scope); perturbations (6b); eclipses of and by Nyx in the lighting
+(`lit()` already shadows meshes); a non-spherical shape (it's a captured rock, and an SDF would suit it).
+
 ## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
 
 Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
@@ -1289,6 +1392,50 @@ Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy
 
 Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
 controls on hardware).
+## The logbook: discovered facts, and an interface that ages (planning branch, 2026-10-07)
+
+**Idea (Caio):** the reference numbers should be *discovered*, derived from real game data. The first flight out of the
+atmosphere records the Δv it took; the first orbit, the best Δv for that, keeping the design. The interface changes
+by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission planning, with its graphics, can follow.
+
+**Built (first slice):**
+- **Facts measured by flights** (`LOGF`, `logNote`): Δv to leave the atmosphere, Δv to low orbit, orbital period (first
+  orbit), highest point, Δv to reach Selene, Δv to land on Selene. The flight record now sums the Δv actually spent
+  (thrust/mass over every powered step). Each entry keeps *who* (the design's name: a preset's, or a stable short
+  "Design XXXX"), *which flight* and *when*. Records only improve; the last three values stay as history.
+- **Records keep the design and the flight:** the design is stored with the record, and the app attaches that flight's
+  autopilot tape. "Copy this design" / "LOAD DESIGN" puts it in the builder and installs the record flight as that
+  design's autopilot (if it has none), so a record can be studied and flown again.
+- **The builder's hint reads the logbook:** "Low orbit: 4,412 m/s (best, Orbiter)" once known; "unknown, nobody has made it
+  yet" before. The tools only know what the program knows.
+- **Eras:**
+  - **Program notebook** (graph paper, handwriting, struck-through old records, "???" for the unknown) until something
+    orbits.
+  - Then **PROGRAM LOG — TERMINAL 1** (green phosphor, scanlines, "NO DATA").
+  - A "modern look" checkbox (kept per browser) overrides either.
+- Checks (§18, 4 new, 128 total). Seen end to end in the app: a Passenger flight logs space at 3,095 m/s and its
+  145 km apex, with its 7-op tape.
+
+**The map follows the era too** (same branch, same day):
+- **Notebook:** graph paper; each body a hand-drawn circle (a steady "tremor" so it doesn't shimmer) with the equator
+  pencilled in and the night side hatched; every map line in ink, with warm ones (impacts, encounters) in red pencil;
+  handwritten labels.
+- **Terminal:** black with scanlines; glowing vector wireframe globes (latitude and longitude every 30°, back side
+  hidden); phosphor-green lines and text.
+- How: every map line already goes through one buffer (`drawMap`/`drawPatches` → `out`). In an era map that buffer is
+  kept (`MAPSEGS`) and drawn on the 2D overlay after an opaque sheet, instead of the GL line pass; labels get the era's
+  font and ink. Camera, picking, nodes and handles are untouched.
+- Cost: +0.4–0.5 ms a frame (map at 1280 px: modern 2.2 ms, terminal 2.6, notebook 2.7). "Modern look" keeps the
+  rendered map.
+- Also: a Δv record of 0 is ignored (a placed vessel, not a flight), found by placing one by script.
+
+**Next along this line:**
+- More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
+- More eras: typewritten reports with stamps, early colour.
+- **The map's look following the era:** pencil trajectories on graph paper, then vector CRT. Mission planning UI
+  follows the same arc.
+- Gating tools by what is known: a transfer planner that needs a measured Selene transfer first.
+
 ## The planet's size: a scale study and the rescale (2026-10-07)
 
 **The question (Caio):** was Tellus too small? It was a copy of Kerbin's numbers (600 km, 9.81 m/s², 6 h day, 70 km
@@ -1420,12 +1567,17 @@ Registered satellites used to exist only on the map; now you can fly past one.
   still looks down days later, which is what a real imaging satellite does (and stands in for the attitude control we
   don't simulate). The inertial alternative would tumble it once per orbit relative to the ground.
 - **Drawing:** next to the debris, within 100 km of the camera, in flight mode. The mesh is rebuilt once per entry
-  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). No flight marks: the parts are new
-  objects. The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
+  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
 - **Finding one:** in the flight view, satellites within 200 km get a diamond and `name · distance`; inside 300 m the
   mesh speaks for itself and the marker goes.
+- **It keeps its flight marks.** Marks are render-side (`MARKS`, keyed on part objects) and the registry is sim-side, so
+  `satRegister` hands the shape to a render hook, `HOOK.satLook`, which writes `mk = [soot, char, char direction]` onto
+  each marked shape entry (rounded to 3 places, it goes into the save). `satMesh` puts them back into `MARKS` for the
+  rebuilt parts, and the draw calls `setMarks` like the debris does. Each entry keeps its part index `i`, which is the
+  shader's mark slot. Frost and nozzle glow aren't kept: they fade within a minute of flight.
 - **Old saves:** entries registered before this have no `shape`. They get the marker but no mesh.
-- Check (`test.mjs` §20): shape kept and JSON-safe; nose-down at registration is still exactly nose-down a quarter orbit
+- Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
+  is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
@@ -1925,7 +2077,8 @@ style) would give visible variety that reflects each power's flavour.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
   `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
   `assemble(toV2(old))` is how the old format still flies.
-- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics).
+- Frames: the vessel state is `(body, r, v)` relative to the body it orbits (patched conics). Bodies form a tree (`BODIES`,
+  `addBody`); `bodyRel` gives a moon relative to its parent, `bodyPos` relative to the root, `soiAt` the (possibly breathing) SOI.
   Tellus spins about +Y; `fromPF/toPF` convert to and from planet-fixed. The launch site is
   planet-fixed +X.
 - Vessel axes: Y = nose, X = belly (east on the pad), Z = south on the pad. The navball shows
@@ -1951,5 +2104,6 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"). Next on that line: **6b, third-body perturbations near Nyx** (Encke in rails and
+   the predictor, so prograde orbits get wrecked at its periapsis as they do in n-body); more moons are now one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

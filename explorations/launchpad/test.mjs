@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {relBase,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -382,8 +382,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `apex ${(R.apex / 1e3).toFixed(1)} km, landed ${s.landed}, max-q ${(R.sciQ / 1e3).toFixed(1)} kPa, ${(api.t / 60).toFixed(1)} min`);
   check('recovered air samples mark the bands flown through as known', bands.length >= 2 && bands[0] === 0 && bands.every((k, i) => k === i) && bands.length === Math.min(7, Math.floor(R.apex / 1e4) + 1),
     `bands ${bands.map(k => k * 10 + '–' + (k + 1) * 10).join(', ')} km`);
-  const before = api.certOf('sparrow'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
-  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', before === api.CERT0 && kc > api.CERT0 && fc > api.CERT0 && tc > api.CERT0 && api.certOf('condor') === api.CERT0 && Math.max(kc, fc, tc) < 1,
+  const before = api.certOf('sparrow'), finC0 = api.certOf('fins'), tnkC0 = api.certOf('t1'), cd0 = api.certOf('condor'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
+  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', kc > before && fc > finC0 && tc > tnkC0 && api.certOf('condor') === api.cert0('condor') && Math.abs(cd0 - api.cert0('condor')) < 0.01 && Math.max(kc, fc, tc) < 1,
     `sparrow ${(kc * 100).toFixed(0)}%, fins ${(fc * 100).toFixed(0)}%, tank ${(tc * 100).toFixed(0)}%, condor (didn't fly) ${(api.certOf('condor') * 100).toFixed(0)}%`);
   // the impact predictor's spread: wide while the air is unknown, gone where it's been sampled
   const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
@@ -854,6 +854,67 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.HOOK.news = () => {};
 }
 
+// 20. More bodies (bodies session): a body tree; Nyx, a small moon on an inclined eccentric orbit whose SOI breathes.
+{
+  const { NYX, soiAt, bodyRel } = api, P = 2 * Math.PI / NYX.n, tPe = (2 * Math.PI - NYX.orb.M0) / NYX.n, tAp = tPe - P / 2;
+  const sPe = soiAt(NYX, tPe), sAp = soiAt(NYX, tAp), [rP] = bodyRel(NYX, tPe), [rA] = bodyRel(NYX, tAp);
+  const incl = Math.asin(Math.abs(norm(cross(...bodyRel(NYX, 1234)))[1] ** 2 < 1 ? Math.sqrt(1 - norm(cross(...bodyRel(NYX, 1234)))[1] ** 2) : 0)) * 180 / Math.PI;
+  check('Nyx: eccentric inclined orbit clear of Selene\'s SOI; its SOI breathes with distance', Math.abs(len(rP) - NYX.rMin) < 1 && Math.abs(len(rA) - NYX.rMax) < 1 &&
+    Math.abs(incl - 30) < 1e-6 && NYX.rMax + NYX.soi < SELENE.a - SELENE.soi && Math.abs(sPe - NYX.soiMin) < 1 && Math.abs(sAp - NYX.soi) < 1,
+    `pe ${(len(rP) / 1e3).toFixed(0)} km, ap ${(len(rA) / 1e3).toFixed(0)} km, i ${incl.toFixed(1)}°, period ${(P / 3600).toFixed(1)} h; SOI ${(sPe / 1e3).toFixed(0)}–${(sAp / 1e3).toFixed(0)} km; clearance to Selene's SOI ${((SELENE.a - SELENE.soi - NYX.rMax - NYX.soi) / 1e3).toFixed(0)} km`);
+  // an approach from outside the SOI near Nyx's apoapsis: predict() finds the encounter; rails switch there; then it leaves again
+  const t0 = tAp - 2 * 3600, [m0, mv0] = bodyRel(NYX, t0), dir = norm(sub(bodyRel(NYX, t0 + 6 * 3600)[0], m0));
+  const ship = (r, v, b, t) => { api.t = t; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; return s; };
+  const side = norm(cross(dir, cross(m0, mv0)));
+  let s = ship(add(add(m0, mul(dir, -1.8 * NYX.soi)), mul(side, 500e3)), add(mv0, mul(dir, 250)), TELLUS, t0);   // trailing it 500 km off-axis, catching up at 250 m/s
+  let p = api.predict(s), enc = p[0].endKind === 'enc' && p[1].b === NYX;
+  let sw = null; while (api.t < t0 + 40 * 3600 && s.alive) { api.rails(s, 60); if (s.body === NYX && sw === null) sw = api.t; if (sw !== null && s.body !== NYX) break; }
+  check('Nyx: predict() finds an encounter, rails switch into its SOI at the predicted time, and out again', enc && sw !== null && sw - p[0].endT >= 0 && sw - p[0].endT <= 60 && (s.body === TELLUS || !s.alive),
+    enc ? `encounter predicted at +${((p[0].endT - t0) / 3600).toFixed(2)} h (Pe ${p[1].el.pe < NYX.R ? 'impact' : ((p[1].el.pe - NYX.R) / 1e3).toFixed(0) + ' km'}), switched at +${sw && ((sw - t0) / 3600).toFixed(2)} h, out at +${((api.t - t0) / 3600).toFixed(2)} h (predicted +${p[1].endT ? ((p[1].endT - t0) / 3600).toFixed(2) : '—'} h)` : p.map(x => x.b.name + ':' + x.endKind).join(' '));
+  // stripping: a retrograde bound orbit whose apoapsis reaches past the periapsis-time SOI is predicted to leave as Nyx swings in, and does
+  const rr = NYX.R + 150e3, ra = 0.8 * NYX.soi, aO = (rr + ra) / 2, vpe = Math.sqrt(NYX.mu * (2 / rr - 1 / aO)), [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA));
+  s = ship(mul(norm(mA), rr), mul(cross(norm(mA), hn), vpe), NYX, tAp);
+  p = api.predict(s); const esc = p[0].endKind === 'esc';
+  log.length = 0; while (api.t < tAp + 3 * P && s.body === NYX && s.alive) api.rails(s, 300);
+  const left = s.body === TELLUS;
+  check('Nyx: an orbit reaching past its periapsis-time SOI is stripped as Nyx swings in (predicted, then flown on rails)', esc && left && Math.abs(api.t - p[0].endT) < 300 && api.soiAt(NYX, p[0].endT) < ra,
+    `orbit ${(rr - NYX.R) / 1e3}–${((ra - NYX.R) / 1e3).toFixed(0)} km; predicted escape at +${esc ? ((p[0].endT - tAp) / 3600).toFixed(1) : '—'} h (SOI then ${esc ? (api.soiAt(NYX, p[0].endT) / 1e3).toFixed(0) : '—'} km), flown ${left ? 'out at +' + ((api.t - tAp) / 3600).toFixed(1) + ' h' : 'still bound'}`);
+  // a low orbit is never stripped: no escape predicted, still bound after three Nyx orbits
+  s = ship(mul(norm(mA), NYX.R + 100e3), mul(cross(norm(mA), hn), Math.sqrt(NYX.mu / (NYX.R + 100e3))), NYX, tAp);
+  p = api.predict(s); while (api.t < tAp + 3 * P && s.body === NYX) api.rails(s, 3600);
+  check('Nyx: a 100 km circular orbit stays inside even the smallest SOI', !p[0].endKind && s.body === NYX && s.alive, `${p.length} leg(s), body after 3 Nyx orbits: ${s.body.name}`);
+  // falling onto airless Nyx is exact
+  s = ship([NYX.R + 20000, 0, 0], [0, 0, -150], NYX, 1000); const ip = api.predictImpact(s); let n = 0;
+  while (s.alive && !s.landed && n++ < 200000) { if (api.railsOK(s)) api.rails(s, 1); else api.physStep(s, api.DT); }
+  const gcd = ip && Math.acos(Math.max(-1, Math.min(1, dot(norm(ip.pf), norm(api.toPF(NYX, s.r, api.t)))))) * NYX.R;
+  check('Nyx: an unpowered fall is predicted exactly (Kepler)', ip && ip.b === NYX && gcd < 200, ip ? `${gcd.toFixed(0)} m off, ${s.landed ? 'landed' : 'crashed'} at ${(s.crashSpeed || s.touchV || 0).toFixed(0)} m/s` : 'no prediction');
+}
+
+// 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
+{
+  const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  // a real flight to space (the Passenger preset, booster dropped at burnout) records the Δv it spent and the design
+  fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
+    if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
+    if (stg === 1 && !arm && dot(s.v, norm(s.r)) < 0) { api.stage(s); arm = true; } api.advPhys(s); }
+  api.missionEnd(s); const L = P.log;
+  check('logbook: a flight to space records the Δv it actually spent, who flew it, and the design; its apex too', L.space && L.space.v > 1000 && L.space.v < s.rec.dv + 1e-9 && L.space.by === 'Passenger' && !!L.space.stack && L.apex && Math.abs(L.apex.v - s.rec.apex) < 1 && logged.includes('space'),
+    `space: ${L.space && L.space.v.toFixed(0)} m/s by ${L.space && L.space.by} (flight total ${s.rec.dv.toFixed(0)}); apex ${L.apex && (L.apex.v / 1e3).toFixed(0)} km`);
+  // orbit records: the first sets it (with the period), a worse one changes nothing, a better one replaces it and keeps history
+  const orbitWith = (dv, st = ['sci', 'petrel']) => { api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; x.rec.launched = true; x.rec.dv = dv;
+    const r0 = TELLUS.R + ATM + 50e3; x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; api.advRails(x, 60, 1000); api.missionEnd(x); };
+  orbitWith(4321); const first = { ...L.orbit }, per = L.period.v.p; orbitWith(4500); const after2 = L.orbit.v; orbitWith(4200, ['sci', 'kestrel']);
+  check('records only improve: a costlier orbit leaves the record alone, a cheaper one replaces it and the old value is kept; the period is set once',
+    first.v === 4321 && after2 === 4321 && L.orbit.v === 4200 && L.orbit.hist.join() === '4321' && L.period.v.p === per && /^Design [0-9A-Z]{1,4}$/.test(L.orbit.by),
+    `orbit 4321 → (4500 ignored) → 4200 by ${L.orbit.by}; period ${(per / 60).toFixed(1)} min, unchanged`);
+  check('names: a preset design is named after the preset; any other design gets a stable short name', api.designName(api.PRESETS.Orbiter) === 'Orbiter' && api.designName(['sci', 'kestrel']) === api.designName(['sci', 'kestrel']) && api.designName(['sci', 'kestrel']) !== api.designName(['sci', 'petrel']));
+  const e1 = api.eraOf(); P.done.beeper = { flight: 1 };
+  check('the logbook\'s era follows the program: a notebook until something orbits, then a terminal', e1 === 1 && api.eraOf() === 2);
+  fresh(); api.HOOK.logged = () => {};
+}
+
 // 20. Satellites in 3D (sats session): registration keeps the vessel's shape and its attitude in the orbital frame.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
@@ -863,13 +924,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.t = 0; const s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
   s.landed = false; s.rec.launched = true; P.day = 3; s.rec.day0 = 3; s.rec.cost = 0; const r0 = TELLUS.R + 300e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
   const h = Math.SQRT1_2; s.q = [0, 0, h, h];   // nose (+y) turned to point down at the ground
+  let lookOK = false; api.HOOK.satLook = (sh, ps) => { lookOK = sh.length === ps.length && sh.every((o, k) => o.k === ps[k].d.key && o.i === ps[k].i); };   // the renderer's marks hand-off
   api.t = 50; api.missionEnd(s); const q = JSON.parse(JSON.stringify(P.sats[0]));   // as it comes back from the save
   const look = T => { const [r, v] = api.satAt(q, T), Y = api.qrot(qm(orb(r, v), q.qo), [0, 1, 0]); return dot(Y, norm(r)); };
   const per = 2 * Math.PI * Math.sqrt(r0 ** 3 / TELLUS.mu), dn0 = dot(api.qrot(s.q, [0, 1, 0]), norm(s.r)), dn1 = look(q.epoch + per / 4), dn2 = look(q.epoch + 2.6 * per);
   check('a registered satellite keeps its shape and holds its attitude in the orbital frame (nose-down stays nose-down)',
-    q.shape.length === s.parts.filter(p => p.on).length && q.shape.every(o => api.PARTS[o.k]) && P.sats[0].id === s.rec.satId && Math.abs(dn0 + 1) < 1e-9 && Math.abs(dn1 + 1) < 1e-9 && Math.abs(dn2 + 1) < 1e-9,
+    q.shape.length === s.parts.filter(p => p.on).length && q.shape.every(o => api.PARTS[o.k]) && P.sats[0].id === s.rec.satId && lookOK && Math.abs(dn0 + 1) < 1e-9 && Math.abs(dn1 + 1) < 1e-9 && Math.abs(dn2 + 1) < 1e-9,
     `${q.shape.length} parts kept; nose·up at registration ${dn0.toFixed(3)}, ¼ orbit later ${dn1.toFixed(3)}, 2.6 orbits ${dn2.toFixed(3)}`);
-  Object.assign(P, { sats: [], satN: 0 });
+  Object.assign(P, { sats: [], satN: 0 }); delete api.HOOK.satLook;
+}
+
+// 21. Industrial independence (economy): who makes which parts, imports and the grey market, young-industry certification.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {} }); };
+  const orbiter = () => api.vesselCost(api.newShip(api.PRESETS.Orbiter).parts).cost;
+  fresh('openSuper'); const cSuper = orbiter(), allHome = ['t2', 'kestrel', 'condor', 'pod', 'sci'].every(k => api.sourceOf(k).how === 'home');
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;   // everyone willing to sell
+  const cRes = orbiter(), srcK = api.sourceOf('kestrel'), srcT = api.sourceOf('t8');
+  check('industry: a superpower makes everything; a resource state makes tanks but imports engines and avionics at ×1.5', allHome && srcT.how === 'home' && srcK.how === 'import' && api.sourceOf('pod').how === 'import' && cRes > 1.3 * cSuper,
+    `Orbiter ${cSuper.toFixed(1)}M at home vs ${cRes.toFixed(1)}M for the resource state (Kestrel from ${api.POWERS[srcK.from].root})`);
+  // sanctions reach hardware: lose the supplier, switch to the next; lose them all, the grey market at ×3
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5;
+  const first = api.sourceOf('kestrel').from; P.sanc[first] = 999; const second = api.sourceOf('kestrel');
+  for (const p of api.POWERS) if (p.i !== api.home) P.sanc[p.i] = 999; const grey = api.sourceOf('kestrel');
+  check('sanctions reach hardware: a sanctioning supplier is replaced by the next; with none left, parts come via intermediaries at ×3', second.how === 'import' && second.from !== first && grey.how === 'grey' && grey.k === api.GREY_K,
+    `Kestrel from ${api.POWERS[first].root} → ${api.POWERS[second.from].root} → grey market`);
+  // certification: a young industry's own parts start less proven; imports arrive certified
+  fresh('frugal'); const tHome = api.certOf('t1'), eImp = api.certOf('kestrel');
+  check('a young industry\'s own parts start less certified; imported parts arrive at the usual level', Math.abs(tHome - (api.CERT0 - 0.2 * 0.6)) < 1e-9 && eImp === api.CERT0,
+    `frugal power: own tank ${(tHome * 100).toFixed(0)}%, imported Kestrel ${(eImp * 100).toFixed(0)}%`);
+  // a rising power catches up: big engines become home-made after enough program time
+  fresh('rising'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const d0 = api.sourceOf('condor').how; P.day = 600; const d600 = api.sourceOf('condor').how;
+  check('a rising power\'s industry grows: big engines imported at first, home-made later', d0 === 'import' && d600 === 'home' && api.indOf(api.home) > 0.8, `Condor: ${d0} on day 0, ${d600} on day 600 (self-sufficiency ${api.indOf(api.home).toFixed(2)})`);
+  fresh(null);
 }
 
 function moonPos(t) { return api.moonPos(t); }
