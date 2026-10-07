@@ -5,6 +5,7 @@ const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+  badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -683,6 +684,35 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.BLD.reroot(path); const after = fpA(D.assemble(h));
   check('make root: re-rooting the design at the core engine changes nothing in the assembled vessel (joints, reinforcement, stages)', h.root === k && !k.at && before === after,
     `path of ${path.length} parts; new root ${h.root.k}, old root now hangs '${find(h.root, 'pod').at}'`);
+}
+
+// 18. Career moves (economy): when the program does badly (or very well), the team gets offers to defect or be hired.
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = () => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
+  const careerOffers = setup => { fresh(); setup(); P.wseed = 31; for (let d = 0; d < 400 && !P.decisions.some(x => x.kind === 'defect' || x.kind === 'hire'); d += 10) api.advanceDays(10);
+    return P.decisions.filter(x => x.kind === 'defect' || x.kind === 'hire').map(x => x.kind); };
+  const whenBad = careerOffers(() => { P.bailouts = 2; P.op[0] = 20; }), whenFine = careerOffers(() => { P.op[0] = 50; }), whenGreat = careerOffers(() => { P.op[0] = 80; for (const k of ['weather', 'air', 'loads', 'range', 'beeper']) P.done[k] = {}; });
+  check('career offers come when the program is in trouble (or excelling), not in ordinary times', whenBad.length === 1 && whenFine.length === 0 && whenGreat.length === 1,
+    `in trouble: ${whenBad.join() || 'none'} · ordinary: ${whenFine.join() || 'none'} · excelling: ${whenGreat.join() || 'none'} (within 400 days)`);
+  // defection: the program changes home; the old home sanctions, its contracts go; what the team knows comes along
+  fresh(); api.chooseStart('agency'); P.cert.sparrow = 0.93; P.atm = { 0: 1, 1: 1 }; P.done.weather = {};
+  const old = api.home, j = api.POWERS.find(p => p.i !== old && api.relOf(old, p.i) < 0.2).i;
+  P.active = [{ id: 1, type: 'apex', src: 'gov', client: old, p: { lo: 10, hi: 25, pay: 10, dur: 100 }, deadline: 100 }];
+  api.offerDecision({ kind: 'defect', power: j, amt: 120, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
+  const town = api.CITIES.find(c => c.power.i === old), y = api.newShip(['pod', 't1', 'kestrel']); y.rec.launched = true; y.landed = false; y.alive = false;
+  const opOld = api.opOf(old); api.missionDrop(y, { kind: 'city', city: town, power: town.power }); api.missionEnd(y);
+  check('defection: a new home and owner, signing money, the old home sanctions and cancels; knowledge and firsts carry over', api.home === j && api.ownKind() === 'national agency' && Object.keys(api.own().st).join() === String(j) &&
+    api.sanctioned(old) && P.active.length === 0 && api.certOf('sparrow') === 0.93 && P.atm[1] === 1 && !!P.done.weather && P.history.length === 1,
+    `${P.history[0].from} ${P.history[0].move}; old home opinion ${opOld.toFixed(0)}, sanctioned until day ${P.sanc[old]}`);
+  check('…and the old home is now foreign: a stage on its town is a diplomatic incident', news.some(t => /Diplomatic incident/.test(t)) && api.opOf(old) < opOld, `${town.name}: opinion ${opOld.toFixed(0)} → ${api.opOf(old).toFixed(0)}`);
+  // a private hire: a company buys the program; debts paid, government work dropped, knowledge kept
+  fresh(); api.chooseStart('company'); api.own().debt = 30; P.cert.kestrel = 0.88;
+  P.active = [{ id: 2, type: 'apex', src: 'gov', client: 0, p: { pay: 10, dur: 100, lo: 10, hi: 25 }, deadline: 100 }, { id: 3, type: 'apex', src: 'sci', client: 1, p: { pay: 10, dur: 100, lo: 10, hi: 25 }, deadline: 100 }];
+  api.offerDecision({ kind: 'hire', co: 'Brutor Orbital', amt: 90, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
+  check('private hire: the company owns it all, the debt is gone, government contracts dropped, knowledge kept', api.own().pv === 1 && api.own().name === 'Brutor Orbital' && api.own().debt === 0 && P.funds === 90 &&
+    P.active.length === 1 && P.active[0].src === 'sci' && api.certOf('kestrel') === 0.88 && api.home === 0, `${api.ownKind()} "${api.own().name}", funds ${P.funds}M`);
+  fresh(); api.HOOK.news = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }

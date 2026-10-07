@@ -568,6 +568,35 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.20 — career moves: defection and private hire (2026-10-07)
+
+From the backlog (Caio): when the program does badly, the people in it get offers. They can also come when it does very
+well, as a step up.
+
+- **When:** between flights, at most one career offer at a time, open for 30 days. *Badness* counts one each for: two
+  or more top-ups, home opinion < 35, sanctioned by home, in debt, below the floor. Offers arrive at a rate of
+  badness/150 per day when in trouble, or 1/450 when excelling (≥ 5 firsts, home opinion > 60), and never in ordinary
+  times.
+- **Defection:** the most interested power that isn't friendly with home (relation < 0.2; scored by economy × tech ×
+  its opinion of us) wants the whole team: signing money of 40M + 30% of valuation (50% when excelling). Accept and
+  **`HOME` changes**: the new power owns 100%, so every home-relative rule follows (budget day, government work, drop
+  incidents, ground stations, the race against the new set of rivals). The old home's opinion drops to 10, relations
+  between the two powers fall 0.3, it sanctions the program for 400 days (cancelling its contracts), and everyone else
+  trusts us a little less (−5).
+- **Private hire:** a generated company ("Brutor Orbital") buys the program: 50M + 25% of valuation (45% when
+  excelling), debts paid off, government contracts dropped, home opinion −8 ("brain drain"). It's named after the
+  company from then on.
+- **What carries over:** certified ratings, the atmosphere data, the firsts flown, the contract record. Not money,
+  ownership or government standing. The panel keeps a **history** line per move.
+- **Not yet:** the pad stays where it is (the program flies under lease) until the terrain work provides launch sites
+  per power. Nothing yet stops a later move back home.
+- **Merge accident fixed:** the builder's v1.17 commit had put its render hook `HOOK.edOverlay(octx)` inside the
+  ownership click handler, between `if(ds.start)` and `else if(ds.dk)`. That broke every decision button on main (rescue,
+  privatization, stakes) and drew the editor overlay on clicks instead of every frame. It's now back in `render()`
+  after the CoM/CoP markers, where the builder's original patch had it.
+
+`test.mjs`: 4 new checks (§18), 103 total.
+
 ## v1.19 — tourism, military, sanctions, the race (2026-10-07)
 
 Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy`).
