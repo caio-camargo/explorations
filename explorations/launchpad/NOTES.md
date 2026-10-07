@@ -568,6 +568,41 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## Orbital registry: persistent satellites, camera and antenna (planning branch, 2026-10-07)
+
+The first slice of the parts-and-missions plan: things left in orbit stay there and keep working.
+
+- **One absolute frame and clock.** Program time T = day × DAY_S; Tellus's angle = th0 + rot·T. **Lift-off waits for the
+  daily launch window** (stacking ends, then the next whole day), so every flight's own frame (clock from 0) *is* the
+  absolute frame, because a Tellus day is exactly one rotation. That makes persistence consistent with no change to
+  flight physics: a satellite registered at the end of one flight sits over the right ground in the next (checked:
+  3e-10 m). Selene's phase still restarts per flight; nothing in the registry depends on it yet.
+- **Registry:** when a flight ends with the vessel alive in a stable Tellus orbit (periapsis above the air), it's
+  registered (`PROG.sats`): state at its epoch plus its kit (camera, antenna, instruments, ballast, passenger). Named by
+  kit: Lookout N, Beeper N, Boilerplate N, Ark N. Propagated on exact Kepler rails across program time. Listed in the
+  Program panel ("In orbit"); drawn on the map as an orbit line plus a marker.
+- **Parts:** *Imaging camera* (8M; ~10 µrad, so 2 m from 200 km, 3 m from 300 km) and *Antenna* (3M).
+- **Imaging, between flights** (`satTick`, from the world tick). Every 30 s of program time, a camera satellite checks each
+  accepted imaging contract. The target must be within 30° off nadir, slant range × IFOV ≤ the required resolution,
+  the sun above 10° at the target, and cloud cover < 0.35 there. Then the picture waits on board until the satellite
+  passes over a ground station (only the pad so far, elevation ≥ 5°) **with an antenna**.
+- **Clouds on the CPU:** the sky shader's `cloudCovF`, ported like the land mask (same hash and noise). The shader's
+  cloud drift now runs on program time, so the clouds you see are the clouds the satellites see. Mean cover ≈ 9%, in
+  large systems.
+- **Contracts:** a new `image` type (science, commercial and government clients; unlocks with the beeper): photograph a
+  city at 2, 3, 5 or 8 m.
+- **Disasters:** floods, wildfires, volcanoes, storms, locusts. About one per 45 days, always as a headline. If a camera
+  satellite with an antenna is up, the affected power offers a short, well-paid imaging job; if not, the headline
+  adds "(if only someone had a camera up there)".
+- **Imagery sales:** each working camera satellite earns ~0.03M per day, shaded by the business cycle.
+- Checks (`test.mjs` §16, 7 new, 81 total): frame consistency, the launch window, CPU cloud statistics, a polar
+  300 km satellite delivering a 5 m image on day 2 while a 1 m request stays out of reach, no antenna means no delivery,
+  and disasters plus income.
+
+**Not yet:** ground stations beyond the pad (more stations = faster downlinks: politics, since they're on someone's
+land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
+in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
+
 ## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
 
 Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,

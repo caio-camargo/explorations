@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {satAt,absTh,cloudAt,sunUp,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -442,8 +442,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the calendar: stacking takes days by price, flying takes its flight time
   fresh(); P.day = 0; s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  const ft = api.t; api.missionEnd(s); const want = api.prepDays(c0.cost) + ft / api.DAY_S;
-  check('calendar: a launch advances the date by the stacking time, the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
+  const ft = api.t; api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost)) + ft / api.DAY_S;   // lift-off waits for the daily launch window
+  check('calendar: a launch advances the date by the stacking time (to the next daily launch window), the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
   // the powers: any number of them; the pad is home; land is someone's, the sea no one's
   const counts = [2, 3, 5, 8].map(k => api.makePowers(11, k).length), PW = api.POWERS;
   const cityOK = api.CITIES.every(c => c.power), sea = (() => { for (let i = 0; i < 2000; i++) { const z = Math.sin(i * 7.1), ph = i * 2.39, q = Math.sqrt(1 - z * z), u = [q * Math.cos(ph), z, q * Math.sin(ph)]; if (!api.isLand(u)) return api.powerAt(u); } return 'none'; })();
@@ -513,6 +513,45 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.chooseStart('agency'); const f3 = P.funds; api.offerDecision({ kind: 'ipo', amt: 40, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
   check('privatization: selling 25% brings cash and a part-private program', Math.abs(api.own().pv - 0.25) < 1e-9 && P.funds === f3 + 40 && api.ownKind() === 'agency, part-privatized' && Math.abs(sum() - 1) < 1e-9, `${api.ownKind()}: state ${(api.stateShare() * 100).toFixed(0)}%, private 25%`);
   fresh(); P.day = 0; P.rel = {}; P.op = {}; api.HOOK.news = () => {};
+}
+
+// 16. The orbital registry (planning branch): what's left in orbit persists on Kepler rails across program time; cameras
+// image targets in reach, sharp enough, sunlit and clear, and downlink over a ground station.
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const rotY = (v, th) => { const c = Math.cos(th), sn = Math.sin(th); return [c * v[0] + sn * v[2], v[1], -sn * v[0] + c * v[2]]; };
+  // a flight that ends in orbit leaves its vessel registered, in the same place over the same ground
+  fresh(); api.t = 0; let s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
+  s.landed = false; s.rec.launched = true; P.day = 7; s.rec.day0 = 7; s.rec.cost = 0; const r0 = TELLUS.R + 250e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
+  api.t = 1234.5; api.missionEnd(s); const q = P.sats[0], Tend = 7 * api.DAY_S + 1234.5;
+  const [ra] = api.satAt(q, Tend), pfFlight = api.toPF(TELLUS, s.r, 1234.5), pfA = rotY(ra, -api.absTh(Tend));
+  check('a flight ending in orbit registers a satellite, over the same ground in the program\'s absolute frame', P.sats.length === 1 && q.cam === 1 && q.ant === 1 && len(sub(pfA, pfFlight)) < 1e-6,
+    `${q.name}: planet-fixed mismatch ${len(sub(pfA, pfFlight)).toExponential(1)} m`);
+  // the launch window: lift-off happens on a whole program day
+  fresh(); P.day = 2.3; s = api.newShip(api.PRESETS.Sounding); api.S = s; api.t = 0; s.throttle = 1; api.stage(s); for (let k = 0; k < 200 && !s.rec.launched; k++) api.advPhys(s);
+  check('lift-off waits for the daily launch window: the flight starts on a whole program day', s.rec.launched && Number.isInteger(s.rec.day0) && s.rec.day0 >= 2.3 + api.prepDays(s.rec.cost), `stacking ends day ${(2.3 + api.prepDays(s.rec.cost)).toFixed(2)} → lift-off day ${s.rec.day0}`);
+  // clouds: the CPU port is a coverage in [0,1] that moves with time, and some of the sky is clear
+  let clear = 0, sum = 0, moved = 0; for (let i = 0; i < 400; i++) { const z = Math.sin(i * 1.7), ph = i * 2.4, qq = Math.sqrt(1 - z * z), u = [qq * Math.cos(ph), z, qq * Math.sin(ph)], c = api.cloudAt(u, 1e5), c2 = api.cloudAt(u, 1e5 + 5 * api.DAY_S);
+    sum += c; if (c < .35) clear++; if (Math.abs(c - c2) > .2) moved++; }
+  check('clouds on the CPU: coverage within [0,1], mostly clear somewhere, and the weather moves over days', sum / 400 > 0.05 && sum / 400 < 0.8 && clear > 100 && moved > 20, `mean cover ${(sum / 400).toFixed(2)}, clear at ${clear}/400 points, changed at ${moved}/400 after 5 days`);
+  // imaging: a polar camera satellite at 300 km gets a 5 m picture of a city within weeks; 1 m is beyond it; no antenna, no delivery
+  const sat = (alt, inc, kit) => { const r0 = TELLUS.R + alt * 1e3, v = Math.sqrt(TELLUS.mu / r0), i = inc * Math.PI / 180; P.satN++;
+    P.sats.push({ id: P.satN, name: 'T' + P.satN, epoch: P.day * api.DAY_S, r: [r0, 0, 0], v: [0, v * Math.sin(i), -v * Math.cos(i)], imgs: 0, pending: [], sci: 0, ballast: 0, bio: 0, ...kit }); };
+  const ci = api.CITIES.findIndex(c => c.power && c.power.i === 2), job = (id, res) => ({ id, type: 'image', src: 'com', client: 2, p: { ci, res, pay: 20, dur: 999 }, deadline: 999 });
+  fresh(); sat(300, 90, { cam: 1, ant: 1 }); P.active = [job(1, 5), job(2, 1)]; let day5 = null;
+  for (let d = 0; d < 80 && day5 == null; d++) { api.advanceDays(1); if (!P.active.some(c => c.id === 1)) day5 = P.day; }
+  check('a polar camera satellite delivers a 5 m image of the target within weeks; a 1 m request stays out of its reach', day5 != null && P.active.some(c => c.id === 2) && P.sats[0].imgs === 1,
+    `${api.CITIES[ci].name}: delivered on day ${day5 && day5.toFixed(0)} (resolution at 300 km ≈ ${(300e3 * 1e-5).toFixed(1)} m at nadir)`);
+  fresh(); sat(300, 90, { cam: 1, ant: 0 }); P.active = [job(1, 5)]; for (let d = 0; d < 40; d++) api.advanceDays(1);
+  check('without an antenna the picture is taken but never comes down', P.active.length === 1 && P.sats[0].pending.length === 1, `pending on board: ${P.sats[0].pending.length}`);
+  // the world asks: disasters become offers only once a working camera satellite exists; it also sells imagery
+  fresh(); P.done.beeper = {}; news.length = 0; for (let d = 0; d < 300; d += 5) api.advanceDays(5); const quips = news.filter(t => /if only someone/.test(t)).length;
+  fresh(); P.done.beeper = {}; news.length = 0; sat(300, 90, { cam: 1, ant: 1 }); let disOffers = 0; const f0 = P.funds;
+  for (let d = 0; d < 300; d += 5) { const n0 = P.offers.filter(o => o.p.dis).length; api.advanceDays(5); disOffers += Math.max(0, P.offers.filter(o => o.p.dis).length - n0); }
+  check('disasters: headlines either way, offers only when a camera satellite with an antenna is up; it also earns from imagery', quips > 0 && disOffers > 0 && P.funds > f0,
+    `${quips} unanswerable disasters without one; with one, ${disOffers} disaster offers and funds ${f0} → ${P.funds.toFixed(1)}M`);
+  fresh(); P.sats = []; api.HOOK.news = () => {};
 }
 
 // 15. Design format v2 (v1.17): the construction screen's free attach tree — radial on anything, nested symmetry.
