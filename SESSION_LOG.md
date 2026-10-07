@@ -2047,3 +2047,19 @@ the renderer (no videos for now) and numba (no vision). Also committed the previ
 - [ ] Hybrid without swing extension: is its low duty factor the price of clearance?
 - [ ] Longer worlds (`x_range`) before comparing speeds near flat
 - [ ] `explorations/pulse-loop/` is also untracked in git (not touched here)
+
+## 2026-10-07 — Launchpad pad revisions (visuals session, cont.)
+
+### Summary
+After Caio's review of the launch complex: the umbilical tower is sized to the rocket (3 m above its top, 12.5–60 m). The
+layout is spread out like a real complex: blockhouse ~230 m up-range with its own slab, spur road and cable trench; a
+mobile service gantry rolled back 80 m on rails; gas bottle racks; a ground deluge tank; lightning masts; camera bunkers.
+The rocket no longer hovers in the builder: the pad holds it with hold-down arms (a launch stool at the builder's 3 m
+`LIFT`) and swing arms reaching from the tower, released at liftoff. `builder.js` untouched. Merged to `main` (`d4b56f9`), pushed.
+
+### Files
+- `explorations/launchpad/index.html`: `buildPad(TH, rig)`, `padRig`, `padSync`, `strip`; `views.js` 17; `NOTES.md` § "Revised layout"
+
+### Next steps
+- [ ] Pad: floodlights lit at night; animate the arms swinging back and the gantry rolling
+- [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)

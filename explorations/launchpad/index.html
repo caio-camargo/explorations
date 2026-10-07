@@ -1574,8 +1574,8 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
-  q.shape=s.parts.filter(p=>p.on).map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
-  q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;
+  const on=s.parts.filter(p=>p.on);q.shape=on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
+  q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
@@ -2202,6 +2202,10 @@ function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;par
 //   glow  — a vacuum engine's radiatively cooled nozzle extension: heats over ~6 s of burn, cools over ~12 s after cutoff
 const MARKS=new WeakMap(),MKA=new Float32Array(96*4),CHA=new Float32Array(96*4);
 const markOf=p=>{let m=MARKS.get(p);if(!m)MARKS.set(p,m={soot:0,frost:0,glow:0,char:0,cd:[0,0,0]});return m};
+// a registered satellite keeps the marks it flew with: soot, and char with its windward direction. Frost and nozzle
+// glow are gone within a minute, long before anyone flies past. Rounded: they go into the save.
+HOOK.satLook=(shape,parts)=>parts.forEach((p,k)=>{const m=MARKS.get(p);if(!m||m.soot<.01&&m.char<.01)return;const l=len(m.cd)||1;
+  shape[k].mk=[m.soot,m.char,m.cd[0]/l,m.cd[1]/l,m.cd[2]/l].map(x=>+x.toFixed(3))});
 const vacNozzle=d=>d.kind==='engine'&&d.ispA<0.5*d.ispV;
 let markT=null;
 function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);markT=simT;if(mode!=='flight'||!S||!dt)return;
@@ -2234,38 +2238,84 @@ function lattice(out,x,z,w,H,col){const c=[[x-w/2,z-w/2],[x+w/2,z-w/2],[x+w/2,z+
   for(const[a,b]of c)tube(out,[a,0,b],[a,H,b],.12,col);
   for(let i=0;i<=n;i++){const y=i*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4];tube(out,[a,y,b],[a2,y,b2],.07,col,5)}}
   for(let i=0;i<n;i++){const y0=i*H/n,y1=(i+1)*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4],f=(i+k)%2;tube(out,[a,f?y0:y1,b],[a2,f?y1:y0,b2],.05,col,4)}}}
-// The launch complex, in the pad's frame (x east, y up, z north; the rocket stands at the origin). Everything sits at or
-// above the ground, which is drawn by the sky shader; the buildings stand on the concrete slabs that shader paints
-// (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the road leaving to the south-west). Early-era Cape style.
-const PAD=(()=>{const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],W=C.W;
+// a flat strip on the ground from A to B ((x, z) pairs), w wide and h tall: roads, rail beds, slab paths, cable trenches
+function strip(out,A,B,w,h,col){const dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,dz),ux=dx/L,uz=dz/L,nx=-uz,nz=ux;
+  const P=(t,s,y)=>[A[0]+ux*t+nx*s*w/2,y,A[1]+uz*t+nz*s*w/2],q=(p,n)=>{for(const i of[0,1,2,0,2,3])pv(out,p[i],n,col)};
+  q([P(0,-1,h),P(L,-1,h),P(L,1,h),P(0,1,h)],[0,1,0]);for(const s of[-1,1])q([P(0,s,0),P(L,s,0),P(L,s,h),P(0,s,h)],[nx*s,0,nz*s])}
+// The launch complex, in the pad's frame (x east, y up, z north; the rocket stands at the origin and flies east, so the
+// control side is up-range to the west). Everything sits at or above the ground, which the sky shader draws; near the
+// pad the buildings stand on the concrete it paints (padGround: apron r 40, slabs at (36,18), (−45,−25), (20,−30), the
+// road leaving to the south-west). Further out, slabs, rail beds and roads are thin meshes. TH is the umbilical tower's
+// height (sized to the rocket); the service gantry and the lightning masts scale with it. Early-era Cape style.
+function buildPad(TH,rig){const a=[],OR=[.78,.3,.12],RD=[.6,.16,.1],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
   // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
   lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
   for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
   for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;box(a,[3.4*Math.cos(t),.25,3.4*Math.sin(t)],.3,.25,.3,STL)}
-  // flame channel running north between the propellant farm and the water tower: low sooted walls on a dark floor
+  // flame channel running north: low sooted walls on a dark floor (the ground itself can't be dug)
   for(const s of[-1,1])box(a,[3.4*s,.6,21],.4,.6,14.5,CO);box(a,[0,.012,21],3,.01,14.5,DK);
   // the umbilical tower: an orange lattice east of the rocket, a cap platform, a hammerhead jib, a lightning mast, and
   // three swing arms (retracted for launch, folded along the tower's west face) with hoses hanging from their tips
-  const TX=7,TW=3,TH=32;lattice(a,TX,0,TW,TH,OR);box(a,[TX,TH+.15,0],TW/2+.6,.15,TW/2+.6,STL);
+  const TX=7,TW=3;lattice(a,TX,0,TW,TH,OR);box(a,[TX,TH+.15,0],TW/2+.6,.15,TW/2+.6,STL);
   box(a,[TX-2,TH+1.2,0],3.5,.25,.25,OR);tube(a,[TX-5.3,TH+1.2,0],[TX-5.3,TH-1.5,0],.03,DK,4);tube(a,[TX,TH+.3,0],[TX,TH+8,0],.08,STL,6);
-  for(const h of[9,17,25]){box(a,[TX-TW/2-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[TX-TW/2-.25,h-.3,-4.6],[TX-TW/2-.25,h-3.2,-4.4],.08,DK,6)}
+  // with a rocket on the pad (rig) an arm reaches across to its side at that height, an umbilical plate at the tip;
+  // otherwise (after liftoff) it is folded back along the tower's west face
+  [.3,.55,.8].forEach((f,i)=>{const h=Math.round(TH*f),x0=TX-TW/2,xr=rig&&rig.xs[i];
+    if(xr!=null){const x1=xr+.12;box(a,[(x0+x1)/2,h,0],(x0-x1)/2,.35,.45,OR);box(a,[x1+.05,h-.1,0],.05,.45,.35,STL);tube(a,[x0-.6,h-.35,.3],[x1+.3,h-.55,.3],.07,DK,6)}
+    else{box(a,[x0-.25,h,-2.4],.25,.35,2.4,OR);tube(a,[x0-.25,h-.3,-4.6],[x0-.25,h-3.2,-4.4],.08,DK,6)}});
+  // hold-down arms: from the posts on the table up to clamps on the rocket's base, above its engines (in the editor the
+  // ship hangs higher, as in an assembly hall, and they become the launch stool it stands on)
+  if(rig)for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2,c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=rig.rB+.12;
+    tube(a,[3.4*c,.45,3.4*sn],[r*c,y,r*sn],.14,STL,8);box(a,[(r+.1)*c,y,(r+.1)*sn],.18,.22,.18,OR)}
   box(a,[TX,TH/2,0],.5,TH/2,.5,[.22,.23,.25,1]);   // the elevator shaft inside
+  // the mobile service structure, rolled back ~80 m south on twin rails for launch: four lattice columns on rail trucks,
+  // work decks across its back half (the open front closes around the rocket when it rolls up), a roof, a bridge crane
+  {const GH=TH+6,GX=7.5,z0=-86,z1=-74;for(const x of[-GX,GX]){strip(a,[x,-8],[x,-118],1.6,.05,CO);strip(a,[x-.25,-8],[x-.25,-118],.12,.17,STL);strip(a,[x+.25,-8],[x+.25,-118],.12,.17,STL)}
+   for(const x of[-GX,GX])for(const z of[z0,z1]){lattice(a,x,z,2.2,GH,RD);box(a,[x,.45,z],1.4,.3,1.8,STL)}
+   for(let y=6;y<GH-2;y+=6)box(a,[0,y,(z0+z1)/2-2.5],GX+1.1,.15,3.5,[.5,.5,.48]);
+   for(const z of[z0,z1])for(const y of[GH*.33,GH*.66])box(a,[0,y,z],GX,.25,.25,RD);
+   box(a,[0,GH+.25,(z0+z1)/2],GX+1.2,.25,7,RD);box(a,[0,GH+1.5,(z0+z1)/2],1,1,5,STL);box(a,[0,GH+2.6,(z0+z1)/2+3],.4,.15,4,RD)}
   // propellant farm on its slab: a LOX sphere on legs, a horizontal RP-1 tank on saddles, both feeding the pad by pipe
   {const pr=[];for(let i=0;i<=14;i++){const t=-Math.PI/2+i/14*Math.PI;pr.push([4.5*Math.cos(t),6+4.5*Math.sin(t),W])}lathe(a,pr,[33,0,13],24,[false,false]);
    for(let i=0;i<6;i++){const t=i/6*6.2832;tube(a,[33+5*Math.cos(t),0,13+5*Math.sin(t)],[33+4.4*Math.cos(t),6,13+4.4*Math.sin(t)],.18,STL,6)}}
   tube(a,[33,2.3,24],[45,2.3,22],2,W,20,true);for(const x of[35,39,43])box(a,[x,.6,23.7-(x-33)/6],.3,.6,1.4,CO);
   tube(a,[33,.4,9],[4,.4,1.8],.25,STL,8);tube(a,[35,.35,21],[4.2,.35,2.6],.2,STL,8);
-  // the water tower for the deluge system, by the north-west edge of the apron
-  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;tube(a,[-28+3*Math.cos(t),0,30+3*Math.sin(t)],[-28+2*Math.cos(t),12,30+2*Math.sin(t)],.15,STL,6)}
-  lathe(a,[[3,12,W],[3,16,W],[1.2,17.3,W],[0,17.6,W]],[-28,0,30],20,[true,false]);
-  // the blockhouse: a thick concrete dome on its slab, a dark band of periscope slots, an antenna mast; cables to the pad
-  lathe(a,[[11,0,CO],[11,1.8,CO],[11,1.8,DK],[10.8,2.4,DK],[10.8,2.4,CO],[9.6,5,CO],[7.5,7.4,CO],[4.5,8.9,CO],[0,9.6,CO]],[-45,0,-25],36,[false,false]);
-  tube(a,[-45,9.5,-25],[-45,16,-25],.06,STL,4);tube(a,[-35,.3,-20],[-6,.3,-3],.15,DK,6);
+  // high-pressure gas storage on the west slab: three racks of long nitrogen/helium bottles, four across and three high
+  for(const z of[-33,-25,-17]){for(let r=0;r<3;r++)for(let c=0;c<4;c++)tube(a,[-52,.6+r*.95,z-1.4+c*.95],[-38,.6+r*.95,z-1.4+c*.95],.42,[.74,.74,.7],10,true);
+    for(const x of[-50,-45,-40])box(a,[x,1.5,z],.15,1.5,2.1,STL)}
+  tube(a,[-38,.3,-25],[-5,.3,-2],.12,STL,6);
+  // deluge water: a ground tank and its pump house by the north-west edge of the apron, piped to the flame channel
+  lathe(a,[[10,.025,CO],[10,.045,CO]],[-28,0,30],28);lathe(a,[[6,0,W],[6,8,W],[5.6,8.6,W],[0,9.4,W]],[-28,0,30],28,[false,false]);
+  box(a,[-19,1.6,25],2.5,1.6,2,[.66,.64,.58,2]);box(a,[-19,3.3,25],2.7,.1,2.2,C.D);tube(a,[-17,.4,24],[-3.2,.4,9],.3,STL,8);
+  // two lightning masts with a catenary wire across the pad
+  for(const[x,z]of[[-14,12],[14,-14]])tube(a,[x,0,z],[x,TH+12,z],.22,[.6,.6,.62,1],8);tube(a,[-14,TH+11.5,12],[14,TH+11.5,-14],.02,DK,4);
   // the compressor/power building on the small slab
   box(a,[20,2,-30],4.5,2,3,[.68,.66,.6,2]);box(a,[20,4.1,-30],4.7,.1,3.2,C.D);
+  // camera bunkers ringed ~90 m out (slit window facing the pad) and two camera towers with a hut on top
+  for(const deg of[20,60,130,-30,-150]){const t=deg*Math.PI/180,x=90*Math.cos(t),z=90*Math.sin(t),ph=Math.atan2(-z,-x);
+    rbox(a,[x,1,z],1.3,1,1.1,[.55,.54,.5,2],-ph);rbox(a,[x-Math.cos(t)*1.12,1.35,z-Math.sin(t)*1.12],.02,.12,.8,DK,-ph)}
+  for(const deg of[100,-60]){const t=deg*Math.PI/180,x=70*Math.cos(t),z=70*Math.sin(t);lattice(a,x,z,1.6,10,STL);box(a,[x,11,z],1.4,1,1.4,[.6,.6,.58,2]);box(a,[x,12.05,z],1.6,.08,1.6,C.D)}
+  // the blockhouse, up-range ~230 m west: a thick concrete dome on its own slab with a band of periscope slots and an
+  // antenna mast, a spur road down to the access road, and a cable trench running to the pad
+  {const BX=-230,BZ=-60;lathe(a,[[26,.03,CO],[26,.05,CO]],[BX,0,BZ],40);
+   lathe(a,[[11,0,CO],[11,1.8,CO],[11,1.8,DK],[10.8,2.4,DK],[10.8,2.4,CO],[9.6,5,CO],[7.5,7.4,CO],[4.5,8.9,CO],[0,9.6,CO]],[BX,0,BZ],36,[false,false]);
+   tube(a,[BX,9.5,BZ],[BX,16,BZ],.06,STL,4);strip(a,[BX,BZ-26],[BX,-194],6,.04,AS);strip(a,[BX+24,BZ+4],[-7,-2],.7,.25,CO)}
   // floodlight poles around the apron
-  for(let i=0;i<4;i++){const t=.5+i*Math.PI/2,x=34*Math.cos(t),z=34*Math.sin(t);tube(a,[x,0,z],[x,16,z],.15,STL,6);box(a,[x,16.4,z],.8,.4,.3,C.D)}
-  return makeMesh(a)})();
+  for(let i=0;i<4;i++){const t=.9+i*Math.PI/2,x=34*Math.cos(t),z=34*Math.sin(t);tube(a,[x,0,z],[x,16,z],.15,STL,6);box(a,[x,16.4,z],.8,.4,.3,C.D)}
+  return makeMesh(a)}
+// The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
+// 12.5–60 m. The pad mesh is rebuilt when that changes (~10k vertices, only on a design change); after liftoff it stays.
+// While a rocket stands on the pad (or is being built) the pad holds it: swing arms reach from the tower to the widest
+// thing at each arm's height (boosters included), and hold-down arms clamp its base. Ship x is pad x (east) here.
+let PAD=buildPad(32,null),padTH=32,padKey='';
+function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0,ps=S.parts.filter(p=>p.on);if(!ps.length)return null;
+  const bot=ps.filter(p=>p.y0<.01),core=bot.find(p=>Math.abs(p.pos[0])<.05&&Math.abs(p.pos[2])<.05)||bot[0];
+  const xAt=h=>{let x=null;for(const p of ps){const y0=p.y0+base;if(h>=y0&&h<=y0+p.h){const e=p.pos[0]+p.d.r;if(x==null||e>x)x=e}}return x};
+  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f)))}}
+function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!S.mkLift;
+  const H=pre?clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60):padTH,rig=pre?padRig(H):null;
+  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
+  if(key!==padKey){PAD.free();PAD=buildPad(H,rig);padTH=H;padKey=key}}
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
@@ -2564,7 +2614,7 @@ function render(){
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
-  marksTick();
+  marksTick();padSync();
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R+WORLD.siteH,0,0],simT);
@@ -2586,7 +2636,7 @@ function render(){
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
   if(mode==='flight')for(const q of PROG.sats||[]){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
-    drawMesh(satMesh(q),modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r)}
+    const sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r);gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
@@ -2768,7 +2818,8 @@ document.addEventListener('click',e=>{const a=e.target.dataset&&(e.target.datase
 // ============================================================ program UI: satellites (planning session)
 // program time now: during a flight, its launch-window day plus flight time; on the pad, the next window
 const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first sight
-function satMesh(q){let me=SAT_MESH.get(q);if(!me){me=partsMesh(q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]})));SAT_MESH.set(q,me)}return me}
+function satMesh(q){let me=SAT_MESH.get(q);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
+    for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q,me={mesh:partsMesh(parts),parts})}return me}
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
 function satsHTML(){const L=PROG.sats||[];const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;

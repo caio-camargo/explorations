@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -691,9 +691,33 @@ Each building stands on a concrete slab that `padGround` already paints.
 - `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
   the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
 
+### Revised layout (same day, after Caio's review)
+Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Both changed:
+- **The tower is sized to the rocket on the pad:** about 3 m above its top, in whole 2.5 m bays, 12.5–60 m (Orbiter
+  17.5 m, Big Lunar 35 m, Sounding 12.5 m). `padSync()` rebuilds the pad mesh when that changes, in the editor or on the
+  pad before liftoff. The `PAD` binding is reassigned, so the terrain-owned draw call stays untouched.
+- **Spread out the way real complexes are:**
+  - The domed **blockhouse** moved up-range, about 230 m west, onto its own mesh slab, with a spur road down to the
+    access road and a concrete cable trench to the pad.
+  - The **mobile service structure** (four lattice columns on rail trucks, work decks, roof, bridge crane) is rolled back
+    80 m south on twin rails that run to the launch table. Its height is the tower's + 6 m.
+  - **High-pressure gas bottle racks** sit on the old blockhouse slab.
+  - A **ground deluge tank** with a pump house replaces the elevated water tower.
+  - **Two lightning masts** with a catenary wire.
+  - **Five camera bunkers** at about 90 m and **two camera towers**.
+- New helper `strip()` draws flat runs on the ground: roads, rail beds, trenches. The mesh is now ~26k vertices,
+  still one static draw. `refView(17)` shows the whole site from high up.
+- **The pad holds the rocket.** In the editor the builder hangs the ship 3 m up (`LIFT` in `builder.js`, so parts can go under
+  its bottom), and it looked like it was hovering. While a rocket stands on the pad or is being built, `padRig()` now gives
+  the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
+  and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
+  fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
+- **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
+  painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
+
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- The tower is fixed at 32 m: tall stacks overtop it, and nothing moves (arms don't swing at launch).
+- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
@@ -1409,12 +1433,17 @@ Registered satellites used to exist only on the map; now you can fly past one.
   still looks down days later, which is what a real imaging satellite does (and stands in for the attitude control we
   don't simulate). The inertial alternative would tumble it once per orbit relative to the ground.
 - **Drawing:** next to the debris, within 100 km of the camera, in flight mode. The mesh is rebuilt once per entry
-  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). No flight marks: the parts are new
-  objects. The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
+  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
 - **Finding one:** in the flight view, satellites within 200 km get a diamond and `name · distance`; inside 300 m the
   mesh speaks for itself and the marker goes.
+- **It keeps its flight marks.** Marks are render-side (`MARKS`, keyed on part objects) and the registry is sim-side, so
+  `satRegister` hands the shape to a render hook, `HOOK.satLook`, which writes `mk = [soot, char, char direction]` onto
+  each marked shape entry (rounded to 3 places, it goes into the save). `satMesh` puts them back into `MARKS` for the
+  rebuilt parts, and the draw calls `setMarks` like the debris does. Each entry keeps its part index `i`, which is the
+  shader's mark slot. Frost and nozzle glow aren't kept: they fade within a minute of flight.
 - **Old saves:** entries registered before this have no `shape`. They get the marker but no mesh.
-- Check (`test.mjs` §20): shape kept and JSON-safe; nose-down at registration is still exactly nose-down a quarter orbit
+- Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
+  is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
 
 ## v1.18 — radial fins and make-root (2026-10-07)

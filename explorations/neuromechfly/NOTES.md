@@ -1,12 +1,12 @@
 # NeuroMechFly — driving EPFL's fly digital twin locally
 
-**Version**: v1.0.1
+**Version**: v1.0.2
 **Author**: Caio Camargo + Claude (Opus 5, Opus 5.5)
 **Date Created**: 2026-09-10
 **Last Updated**: 2026-10-07
 **Purpose**: Exploration notes — what NeuroMechFly v2 is, how to run it here, and what
 the controller × terrain matrix and the breaking-point sweep taught
-**Status**: Active — matrix and breaking-point sweep complete, open threads listed at the bottom
+**Status**: Active — matrix, breaking-point sweep and measured contact complete, open threads listed at the bottom
 
 ---
 
@@ -108,6 +108,7 @@ C:/Users/caioa/.venvs/flygym/Scripts/python.exe baseline.py
 | `plot_matrix.py` | Turns that json into `out/<tag>.png` |
 | `sweep_difficulty.py` | Breaking-point sweep: gap width and block height × 3 controllers × 3 seeds, in parallel processes; writes `out/sweep.json` |
 | `plot_sweep.py` | Breaking points, trapped-in-gap counts, `out/sweep.png` |
+| `plot_contact.py` | Measured contact vs commanded stance from `sweep_difficulty.py --contact` (raw `gait_*.npz`), `out/contact.png` |
 
 ### The machine got stricter (2026-10-07)
 
@@ -335,11 +336,65 @@ re-placed, the hybrid). The CPG has neither.
 Caveat: this is *commanded* stance, not measured contact. Contact sensors are off on rough
 terrain (`ROUGH_KWARGS`), so a foot commanded down over a gap still counts as down.
 
+> **Measured 2026-10-07 (§10): the commanded duty factor misled.** Measured on the ground,
+> the three controllers keep similar numbers of feet down; what separates them is how often
+> a foot commanded down finds nothing.
+
 ### 9. Past the break, the curves stop meaning anything
 
 Above each breaking point the medians bounce (hybrid on blocks: 5.0, 0.0, 5.7, 5.9, 6.1),
 seeds spread from −3 to +9 mm/s, and the hybrid seems to *recover* on tall blocks. With three
 seeds that is noise until shown otherwise. Read the tables up to the break column, not past it.
+
+### 10. Measured contact: it's missed footholds, not feet down
+
+§8 rested on *commanded* stance. This measures the real thing: the net ground force on each
+leg's tibia + tarsus segments, read from MuJoCo's contact list every step (flygym's per-leg
+contact sensors don't exist on multi-block terrain). 54 runs on gaps 0–0.5 mm, same seeds as
+the sweep; logging changes nothing (distances identical to the sweep to the last digit).
+Clipped to time over the terrain, first 0.1 s dropped. Figure: [`out/contact.png`](out/contact.png).
+Contact threshold 1 (force units as MuJoCo reports them); 0 gives the same numbers, and 5
+lowers every duty factor by about 0.1 without changing the ordering of the misses.
+
+| gap (mm) | 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 |
+|---|---|---|---|---|---|---|
+| **measured duty factor** (commanded: CPG 0.65, Walknet 0.71, hybrid 0.53) | | | | | | |
+| CPG | 0.77 | 0.79 | 0.70 | 0.64 | 0.68 | 0.55 |
+| Walknet | 0.72 | 0.74 | 0.76 | 0.77 | 0.71 | 0.73 |
+| Hybrid | 0.64 | 0.65 | 0.67 | 0.69 | 0.67 | 0.67 |
+| **missed footholds**: P(no contact \| commanded stance) | | | | | | |
+| CPG | 0.008 | 0.042 | **0.18** | **0.30** | 0.22 | 0.43 |
+| Walknet | 0.079 | 0.090 | 0.080 | 0.076 | **0.23** | 0.19 |
+| Hybrid | 0.003 | 0.008 | 0.034 | 0.041 | 0.098 | **0.20** |
+| **time with < 3 feet actually down** | | | | | | |
+| CPG | 0.000 | 0.010 | 0.067 | 0.10 | 0.10 | 0.25 |
+| Walknet | 0.000 | 0.003 | 0.000 | 0.004 | 0.030 | 0.019 |
+| Hybrid | 0.002 | 0.003 | 0.028 | 0.033 | 0.066 | 0.12 |
+
+What this changes:
+
+- **The commanded duty factor was mostly an artefact.** Feet stay on the ground for a good part
+  of their commanded swing (25–60 % of swing time has contact: lift-off and touchdown are not
+  instantaneous, and feet drag). Measured, the hybrid keeps 0.64–0.69 of leg-time down, not
+  0.53, and on flat ground the CPG keeps at least as many feet down as Walknet (0.77 vs 0.72 at
+  threshold 1, 0.66 vs 0.65 at 5). "Walknet
+  wins by keeping more legs down" (§3, §8) does not survive measurement as stated.
+- **The variable that tracks failure is missed footholds.** Each controller's miss rate jumps
+  exactly where it breaks: the CPG's climbs from the first gap (0.04 → 0.18 → 0.30), Walknet's
+  sits flat at ~0.08 until 0.3 mm and jumps to 0.23 at 0.4 (its break), the hybrid's stays
+  lowest throughout and reaches 0.20 only at 0.5 (its break). The gait fails when feet land on
+  nothing, not when too few are scheduled down.
+- **Walknet's misses don't depend on the gaps up to 0.3 mm.** It misses 8 % of commanded stance
+  even on flat ground (the others under 1 %), and that rate doesn't move until 0.4. Below 0.4 mm it
+  has fewer than three feet really down at most 0.4 % of the time. Why its foot placement ignores 0.1–0.3 mm gaps
+  while the CPG's doesn't is unexplained here (same step trajectories; the difference is only
+  step timing). Open thread.
+- **The hybrid misses fewest, and recovers the misses it has.** It still has more time below
+  three feet than Walknet (3 % at 0.2–0.3 mm) but far fewer misses, which fits the reactive
+  route of §8: it doesn't avoid every hole, it gets the foot back.
+
+So the revised moral: robustness on gaps is about **where feet land**, and the two survivors
+get there differently. The CPG's clock puts feet into gaps from the first one.
 
 ### Measurement traps found on the way
 
@@ -365,8 +420,10 @@ seeds that is noise until shown otherwise. Read the tables up to the break colum
 - **Adhesion ablation.** Tarsal adhesion is on for every run above. Turning it off is a
   one-flag experiment and the papers suggest it matters a lot on non-flat ground.
 - ~~**Terrain difficulty sweep.**~~ Done 2026-10-07, see "Breaking points".
-- **Measured duty factor.** Turn tarsal contact sensors on and compare actual stance with
-  commanded stance, especially for the hybrid over gaps.
+- ~~**Measured duty factor.**~~ Done 2026-10-07, see §10.
+- **Why Walknet's footholds ignore small gaps.** Same step trajectories as the CPG, different
+  timing, yet its miss rate doesn't rise until 0.4 mm. Log foot x positions at touchdown
+  relative to the gap edges for both controllers.
 - **Hybrid without swing extension.** If its low duty factor is the price of clearance,
   removing the extension should hurt it on gaps; if incidental, nothing changes.
 - **Longer worlds.** The 25 mm terrain edge caps progress near flat; pass a larger `x_range`

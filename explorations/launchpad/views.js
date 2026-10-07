@@ -59,12 +59,13 @@ window.refView = async (n) => {
     const t0 = simT; fly(() => simT - t0 > 12);
     cam.yaw = 2.6; cam.pitch = -0.3; cam.dist = 9; render(); await settle(); bare(); return 'glow';
   }
-  // 15–16: the launch complex with the Orbiter on the pad: the whole complex from the south-west, then the tower and table
-  if (n === 15 || n === 16) {
+  // 15–17: the launch complex with the Orbiter on the pad: the pad area from the south-west, the tower and table, and the
+  // whole site from high up (blockhouse 230 m west, gantry 80 m south)
+  if (n === 15 || n === 16 || n === 17) {
     if (mode !== 'editor') document.getElementById('bEditor').click();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; cam.edY = 0;
-    if (n === 15) { cam.yaw = -0.9; cam.pitch = 0.28; cam.dist = 85 } else { cam.yaw = 0.25; cam.pitch = 0.12; cam.dist = 26 }
-    render(); await settle(); bare(); return n === 15 ? 'complex' : 'tower';
+    const v = { 15: [-0.9, 0.28, 85], 16: [0.25, 0.12, 26], 17: [1.24, 0.75, 420] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
+    render(); await settle(); bare(); return { 15: 'complex', 16: 'tower', 17: 'site' }[n];
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

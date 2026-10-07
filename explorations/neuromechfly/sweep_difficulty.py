@@ -25,8 +25,8 @@ LEVELS = {
 
 
 def task(args):
-    ctrl, terrain, d, seed, run_time = args
-    return run_one(ctrl, terrain, seed, run_time, difficulty=d)
+    ctrl, terrain, d, seed, run_time, contact = args
+    return run_one(ctrl, terrain, seed, run_time, difficulty=d, measure_contact=contact)
 
 
 def main():
@@ -39,10 +39,12 @@ def main():
     ap.add_argument("--levels", nargs="*", type=float, default=None,
                     help="override difficulty levels (applies to every terrain given)")
     ap.add_argument("--tag", default="sweep")
+    ap.add_argument("--contact", action="store_true",
+                    help="also record measured leg contact forces (raw/gait_*.npz)")
     args = ap.parse_args()
 
     jobs = [
-        (c, t, d, s, args.run_time)
+        (c, t, d, s, args.run_time, args.contact)
         for t in args.terrains
         for d in (args.levels if args.levels is not None else LEVELS[t])
         for c in args.controllers
