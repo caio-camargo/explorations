@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -452,7 +452,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the calendar: stacking takes days by price, flying takes its flight time
   fresh(); P.day = 0; s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  const ft = api.t; api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost)) + ft / api.DAY_S;   // lift-off waits for the daily launch window
+  const ft = api.t, khv = api.khVessel(s); api.missionEnd(s); const want = Math.ceil(api.prepDays(c0.cost) * (1 + 0.5 * (1 - khv))) + ft / api.DAY_S;   // stacking stretches with unfamiliar parts; lift-off waits for the daily launch window
   check('calendar: a launch advances the date by the stacking time (to the next daily launch window), the flight by its duration', Math.abs(P.day - want) < 1e-9, `${api.prepDays(c0.cost).toFixed(2)} days to stack + ${(ft / 60).toFixed(1)} min of flight → day ${P.day.toFixed(3)}`);
   // the powers: any number of them; the pad is home; land is someone's, the sea no one's
   const counts = [2, 3, 5, 8].map(k => api.makePowers(11, k).length), PW = api.POWERS;
@@ -474,7 +474,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 10, hi: 25 }), ct('sample', { k: 1, pay: 11 })]; const f0 = P.funds;
   s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost - s.rec.ops + 10 + 11 + paid())) < 1e-6,
+  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost - s.rec.ops + (10 + 11) * api.khYield() + paid())) < 1e-6,
     `${s.rec.cdone.join(' + ')} + Above the weather; funds ${f0}M → ${P.funds.toFixed(2)}M before refurbishment`);
   // capacity: two at first, growing with contracts done
   fresh(); P.day = 0; P.offers = [1, 2, 3, 4].map(i => ({ ...ct('apex', { lo: 10, hi: 25 }), id: i, expires: 50 })); const took = [1, 2, 3].map(i => api.acceptOffer(i)); const c0cap = api.capOf(); P.cdone = 6;
@@ -967,6 +967,52 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   NYX.pert = true;
 }
 
+// 23. "Out there" missions (bodies session): the Selene ladder and Nyx, each flown through the real flight code.
+{
+  const P = api.PROG, { NYX, bodyRel, SUN_DIR } = api, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active });
+  const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1000; };
+  const craft = (stack, b, r, v, t) => { api.t = t; const s = api.newShip(stack); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
+  const upright = (s) => { const up = norm(s.r), X = norm(cross(up, [0.3, 0.9, 0.1])); s.q = api.qFromBasis(X, up, cross(X, up)); s.w = [0, 0, 0]; };
+  const toT = t => norm(mul(bodyRel(SELENE, t)[0], -1));
+  // the far side: find a time when Selene's far side is sunlit (Selene between Tellus and the sun), orbit past it at 1.5 R
+  let tF = 0; while (dot(toT(tF), SUN_DIR) > -0.6) tF += 3600;
+  const uF = norm(add(mul(toT(tF), -1), SUN_DIR)), wF = norm(cross(uF, [0, 1, 0])), rF = 1.5 * SELENE.R;
+  reset(['beeper']); let s = craft(['ant', 'cam', 't2', 'petrel'], SELENE, mul(uF, rF), mul(wF, Math.sqrt(SELENE.mu / rF)), tF);
+  let photoT = null; while (api.t < tF + 6 * 3600 && !P.done.farside) { api.advRails(s, 60, 100); if (s.rec.farPhoto && photoT === null) photoT = api.t; }
+  check('out there: the far side is photographed behind Selene and comes home once Tellus is in sight', !!P.done.farside && photoT !== null && P.done.farside && news.some(m => /far side reach home/.test(m)),
+    `photo at +${photoT !== null ? ((photoT - tF) / 60).toFixed(0) : '—'} min, downlink by +${((api.t - tF) / 60).toFixed(0)} min (orbit ${(2 * Math.PI * Math.sqrt(rF ** 3 / SELENE.mu) / 60).toFixed(0)} min)`);
+  // the impactor: heard on the near side, not on the far side
+  const drop = (side) => { reset(['beeper', 'farside']); const u = side > 0 ? toT(0) : mul(toT(0), -1), r = mul(u, SELENE.R + 20e3); const c = craft(['ant', 'sci', 't2', 'petrel'], SELENE, r, mul(u, -300), 0);
+    let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); } return !!P.done.selimp; };
+  const nearHit = drop(1), farHit = drop(-1);
+  check('out there: an impactor on the near side completes the mission; on the far side nobody hears it', nearHit && !farHit && news.some(m => /nobody heard/.test(m)), `near ${nearHit}, far ${farHit}`);
+  // a soft landing near side (instruments + antenna), and the sample counts toward a return
+  // land from rest with the craft's base h metres above the ground
+  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R - c.yBot + h); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };
+  const hard = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 10), hardV = hard.touchV, hardOK = !!P.done.selland;
+  s = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 3);
+  const sampleOK = api.MISSIONS.find(m => m.id === 'selsample').ok({ ...s.rec, landed: true, recSci: true });
+  check('out there: a soft landing on Selene\'s near side phones home (a 10 m drop is too hard); a recovered sample would complete a return', !!P.done.selland && s.rec.selSampled && sampleOK && hard.landed && !hardOK,
+    `from 3 m: ${(s.touchV || 0).toFixed(1)} m/s, done; from 10 m: ${(hardV || 0).toFixed(1)} m/s, ${hardOK ? 'done (wrong)' : 'not counted'}`);
+  // Nyx: weighed by tracking a craft where its pull matters (high orbit around Nyx's periapsis time)
+  const P_N = 2 * Math.PI / NYX.n, tPe = (2 * Math.PI - NYX.orb.M0) / NYX.n + P_N, r30 = 3.0e7;
+  reset(['beeper', 'farside']); s = craft(['ant', 'sci', 't2', 'petrel'], TELLUS, [r30, 0, 0], [0, 0, -Math.sqrt(TELLUS.mu / r30)], tPe - 6 * 3600);
+  while (api.t < tPe + 10 * 3600 && !P.done.nyxfind) api.advRails(s, 600, 1000);
+  check('out there: Nyx is weighed from tracking residuals (12 h where its pull is ≥ 1e-3 of Tellus\'s) and enters the logbook', !!P.done.nyxfind && !!P.log.nyx,
+    `found after ${((s.rec.nyxTrack || 0) / 3600).toFixed(1)} h of tracking; logbook: ${P.log.nyx ? 'm/M ' + P.log.nyx.v.m.toExponential(2) : '—'}`);
+  // an orbit that lasts: retrograde survives two Nyx orbits, prograde is wrecked
+  const tAp = (Math.PI - NYX.orb.M0) / NYX.n, [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA)), ux = norm(mA), uy = cross(hn, ux), rr = NYX.R + 200e3;
+  const orbitNyx = dir => { reset(['beeper', 'farside', 'nyxfind', 'nyxfly']); P.log.nyx = { v: { m: 1, pe: 1, ap: 1 } }; const c = craft(['sci', 't2', 'petrel'], NYX, mul(ux, rr), mul(uy, dir * Math.sqrt(NYX.mu / rr)), tAp);
+    while (api.t < tAp + 2.05 * P_N && c.alive && !P.done.nyxorb) { if (api.railsOK(c)) api.advRails(c, 600, 1000); else api.advPhys(c); } return { ok: !!P.done.nyxorb, alive: c.alive, h: (c.rec.nyxOrbT || 0) / 3600 }; };
+  const ret = orbitNyx(-1), pro = orbitNyx(1);
+  check('out there: "an orbit that lasts" around Nyx: retrograde does it, prograde is wrecked first', ret.ok && !pro.ok, `retrograde ${ret.h.toFixed(0)} h (done ${ret.ok}); prograde ${pro.h.toFixed(0)} h, ${pro.alive ? 'still up' : 'crashed'}`);
+  // landing on Nyx
+  s = land(NYX, norm([0.3, 0.9, 0.2]), ['sci', 't2', 'petrel'], ['beeper', 'farside', 'nyxfind', 'nyxfly'], 5);
+  check('out there: landing on Nyx under 3 m/s', !!P.done.nyxland && !!P.log.nyxland, `touchdown ${(s.touchV || 0).toFixed(2)} m/s`);
+  const S0 = JSON.parse(saved); Object.assign(P, S0); api.HOOK.news = () => {};
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
@@ -1293,6 +1339,64 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the whole page, not just the sim core: a syntax error in render or UI code passes every check above (the claw's HUD row did once)
   let perr = null; for (const m of html.matchAll(/<script>([\s\S]*?)<\/script>/g)) try { new Function(m[1]); } catch (e) { perr = e.message; }
   check('the whole page script parses (render and UI included)', !perr, perr || 'ok');
+}
+
+// 24. Ground awareness (terrain session): the main chute, the impact predictor and the warp's time-to-ground read the
+// ground under the ship, not the sea. Before, the main opened on air denser than 0.7 (about 4.2 km above the SEA since
+// the rescale), so over a high plateau a capsule came down under its drogue alone.
+{
+  const D = Math.PI / 180, R = TELLUS.R, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  let spot = null;   // a high, gentle plateau: above 4.5 km, nothing steeper than ~11° within 800 m
+  for (let la = -60; la <= 60 && !spot; la++) for (let lo = -180; lo < 180 && !spot; lo++) {
+    const u = U(la, lo), h = api.terrainH(u); if (h < 4500 || h > 6500 || api.terrainSlope(TELLUS, u) > 0.15) continue;
+    const f = api.siteFrame(u); let ok = true;
+    for (let k = 0; k < 8 && ok; k++) { const q = norm(add(u, add(mul(f.e, Math.cos(k) * 800 / R), mul(f.n, Math.sin(k) * 800 / R)))); if (api.terrainSlope(TELLUS, q) > 0.2) ok = false; }
+    if (ok) spot = { u, h }; }
+  api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
+  s.landed = false; s.r = api.fromPF(TELLUS, mul(spot.u, R + spot.h + 25000), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+  s.v = add(api.surfVel(TELLUS, s.r), mul(up, -250)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+  api.stage(s); const pred = api.predictImpact(s); let mainA = 0;
+  while (s.alive && !s.landed && api.t < 3000) { api.physStep(s, api.DT); mainA = Math.max(mainA, s.chuteA); }
+  const off = pred ? Math.acos(Math.min(1, dot(norm(pred.pf), norm(api.toPF(TELLUS, s.r, api.t))))) * R : Infinity;
+  check('over a 4.5–6.5 km plateau the main chute opens (3 km above the ground) and the capsule lands softly; the predictor agrees',
+    s.alive && s.landed && s.touchV < 8 && mainA > 100 && api.density(TELLUS, spot.h) < 0.7 && pred && Math.abs(pred.v - s.touchV) < 2 && off < 2000,
+    `ground at ${(spot.h / 1e3).toFixed(2)} km (air ${api.density(TELLUS, spot.h).toFixed(2)} kg/m³, under the old 0.7 rule): main ${mainA.toFixed(0)} m², touchdown ${s.touchV ? s.touchV.toFixed(1) : '—'} m/s; predicted ${pred ? pred.v.toFixed(1) : '—'} m/s, ${(off / 1e3).toFixed(2)} km off · ${msgs.slice(-1)[0]}`);
+  // the warp's time-to-ground: 500 m over that plateau is 500 m (plus the ship's bottom offset), not 5+ km
+  const x = api.newShip(['chute', 'pod']); x.landed = false; x.r = api.fromPF(TELLUS, mul(spot.u, R + spot.h + 500), 0); api.t = 0;
+  const gap = api.groundGap(x), seaGap = len(x.r) - R + x.yBot;
+  check("the warp's ground gap is measured from the ground under the ship", Math.abs(gap - (500 + x.yBot)) < 1e-6 && seaGap > 4500,
+    `gap ${gap.toFixed(1)} m (from the sea it would be ${(seaGap / 1e3).toFixed(1)} km)`);
+}
+
+// 25. Know-how (economy): owning a part is not knowing how to use it.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, flights: 0, own: null, decisions: [], active: [], offers: [] }); api.chooseStart('agency'); };
+  // starting points: structure is familiar, big engines aren't; building at home helps
+  fresh('openSuper'); const homeKestrel = api.use0('kestrel'), homeTank = api.use0('t2');
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; const impKestrel = api.use0('kestrel'), impCondor = api.use0('condor'), resTank = api.use0('t2');
+  check('know-how starts by tier and origin: tanks familiar, imported engines not; home-made parts start higher', homeKestrel > impKestrel + 0.25 && resTank > impKestrel && impCondor < impKestrel && homeTank >= resTank,
+    `Kestrel: home-made ${(homeKestrel * 100).toFixed(0)}%, imported ${(impKestrel * 100).toFixed(0)}% · imported Condor ${(impCondor * 100).toFixed(0)}% · tank ${(resTank * 100).toFixed(0)}%`);
+  // learning by novelty: the first flight through new regimes teaches a lot, the tenth identical one little
+  fresh('resource'); for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; P.flights = 1;
+  const seen = { kestrel: { fly: 1, maxq: 1, burn: 1 } }, gains = []; let u = api.khUse('kestrel');
+  for (let n = 0; n < 10; n++) { api.khLearn({ khSeen: JSON.parse(JSON.stringify(seen)) }); const v = api.khUse('kestrel'); gains.push(v - u); u = v; }
+  check('know-how grows by novelty: the first flight teaches most, repeats less and less', gains[0] > 3 * gains[9] && gains.every((g, i) => i === 0 || g <= gains[i - 1] + 1e-12) && u < 0.95,
+    `Kestrel use: gains per flight ${gains.map(g => (g * 100).toFixed(1)).join(', ')} pts → ${(u * 100).toFixed(0)}%`);
+  // risk: unfamiliar engines fail to light more often (deterministic per flight)
+  const ignFails = use => { fresh('frugal'); P.flights = 1; P.kh = { sparrow: { use, reg: {} } }; let f = 0;
+    for (let n = 0; n < 400; n++) { P.flights = n + 1; const x = api.newShip(['sci', 't1', 'sparrow']); if (!api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg)) f++; } return f / 400; };
+  const f0 = ignFails(0), f9 = ignFails(0.9);
+  check('reliability: an engine we barely know fails to ignite ~8% of the time; one we know well almost never', f0 > 0.04 && f0 < 0.13 && f9 < 0.01, `ignition failures: ${(f0 * 100).toFixed(1)}% at know-how 0, ${(f9 * 100).toFixed(1)}% at 0.9`);
+  // time and yield: unfamiliar vehicles stack slower; instruments we don't know return less
+  fresh('frugal'); P.kh = {}; const sh = api.newShip(api.PRESETS.Orbiter), slow = api.khVessel(sh); P.kh = Object.fromEntries(sh.parts.map(q => [q.d.key, { use: 1, reg: {} }]));
+  const fast = api.khVessel(sh), y0 = (P.kh = {}, api.khYield()); P.kh = { sci: { use: 1, reg: {} } }; const y1 = api.khYield();
+  check('time and yield: an unfamiliar vehicle takes longer to stack; an instrument we know returns full value', slow < 0.6 && fast === 1 && y0 < 0.75 && y1 === 1,
+    `Orbiter familiarity ${(slow * 100).toFixed(0)}% → stacking ×${(1 + 0.5 * (1 - slow)).toFixed(2)} · instrument yield ${(y0 * 100).toFixed(0)}% → ${(y1 * 100).toFixed(0)}%`);
+  // no effects before a program starts (plain physics in the sim)
+  api.resetHome(); Object.assign(P, { flights: 0, own: null, kh: {} }); const x = api.newShip(['sci', 't1', 'sparrow']);
+  check('know-how stays out of plain physics: no ignition failures before a program has started', !api.khOn() && api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg));
+  fresh(null); P.own = null; P.flights = 0;
 }
 
 function moonPos(t) { return api.moonPos(t); }

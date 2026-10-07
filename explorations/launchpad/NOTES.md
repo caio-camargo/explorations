@@ -1008,6 +1008,60 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.30 — know-how (2026-10-07)
+
+The first slice of the parts-progression design ("The whole parts system, assessed"): owning a part is not knowing how
+to use it.
+
+- **Two facets per part type:**
+  - *use* (`PROG.kh[k].use`): operational familiarity, new;
+  - *limits*: certification (`PROG.cert`), unchanged.
+
+  The player sees one bar: 0.6·use + 0.4·(certification's progress from 50% to 100%).
+- **Starting use** (`use0`): 0.5 structure and tanks, 0.2 small engines, 0.1 big engines and avionics. A part built at
+  home starts +0.3 × the home industry's self-sufficiency higher (the engineers made it): a superpower's own Kestrel
+  50%, an imported one 20%.
+- **Learning** (`khMark`, `khLearn`): every physics step records the regimes each part goes through: flown, max-q
+  > 15 kPa, vacuum, orbit, hot (T/Tmax > 0.5), landed, burning, vacuum burn, failure. At flight end each regime teaches
+  0.18·(1 − use)/(1 + times seen). Measured on a Kestrel flown the same way ten times: +36 points the first flight,
+  under 1 point by the tenth, 85% after ten.
+- **Effects: risk, time and yield, never stat cuts.**
+  - *Risk:* each engine ignition can fail, with probability 0.08·(1 − use)² (5.8% at zero know-how, 0.3% at 0.9).
+    Deterministic per flight, kick and part. A failed pure-ignition event can be retried (at lift-off it's a scrub).
+    A failure teaches too.
+  - *Time:* stacking takes up to ×1.5 for an unfamiliar vehicle (price-weighted familiarity; an unfamiliar Orbiter
+    takes ×1.35).
+  - *Yield:* science contracts pay, and certification gains accrue, × (0.5 + 0.5·use of the instrument package).
+- **Starts with the program:** effects apply once a start is chosen or a flight is flown, so plain physics in the sim
+  (and its tests) is unaffected. Know-how is in `PROG`, so it carries over in a defection (the team's).
+- **One cross-scope line:** `stage()` asks `igniteOK(s, k)` before marking a segment ignited (flagged in ACTIVE_WORK).
+  Autopilot tapes replay the same rolls only while know-how is unchanged; once the team has learned more, a replay can
+  differ, as a real flight would.
+- **UI:** the builder's cost line lists parts that are "New to us" (under 35% use); the Program panel shows a
+  Know-how section (bars, plus home-made / from <supplier> / grey market).
+- **Not yet:** ground testing (test stands), production lines (the second visible number), support packages
+  (provisional, pending the career runner and playtesting), supplier quality.
+
+`test.mjs` §22: 5 new checks; 182 total. Two older checks updated (stacking time, science pay).
+## v1.29 — ground awareness (2026-10-07, terrain session)
+
+The fixes listed in § v1.27 "Next on this line". With real ground up to ~9 km, landing-related decisions now measure
+height from the ground under the ship, not from the sea.
+
+- **The main chute** opens below **3 km above the ground** (`MAIN_AGL`), under 250 m/s. It used air denser than
+  0.7 kg/m³, which since the rescale (scale height 7.5 km) is ~4.2 km above the *sea*. The impact predictor uses the
+  same rule: `fall()`'s drag callback now also receives `r` and `t`, so it can ask about the ground.
+- **Measured.** Drop a chute-and-pod from 25 km over a 4.89 km plateau (air 0.64 kg/m³):
+  - with the old rule, only the 6 m² drogue ever opened, and it hit at **63 m/s**;
+  - now the 600 m² main opens and it lands at **6.9 m/s**;
+  - the predictor said 6.9 m/s, 20 m off.
+- **Time-warp auto-drop** uses `groundGap(s)`, the ship's bottom above the ground under it.
+- **The HUD** shows **Radar alt** (height above the ground or sea) below ~32 km, next to the sea-level altitude.
+- **Helpers:** `aglAt(b,r,t)`, `mainChuteOK(b,h,r,t)`, `groundGap(s)` (SIM, next to `groundR`).
+- **Left alone, deliberately:** atmosphere thresholds (`physAlt`, drag, the air's top) stay sea-level based. The
+  plume's ground interaction (`groundFrame`, plumes session) already used `groundR`.
+- **Tests:** `test.mjs` §24, 2 checks (the plateau drop with prediction; the ground gap). 185 total after merging.
+
 ## v1.28 — balance pass with simulated careers (2026-10-07)
 
 **Tool:** `career.mjs` (`node career.mjs [years] [seeds]`) plays whole programs through the real economy code: contracts,
@@ -1181,7 +1235,7 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
   own UI. Move it if the screen grows a place for it.
 
 ### Next on this line
-- **Ground awareness: do this first, it's bugs, not features.** A few systems still measure height from sea level,
+- ~~**Ground awareness**~~ done in v1.29 (§ v1.29). The original note: A few systems still measure height from sea level,
   which the real ground (up to ~9 km) breaks:
   1. **The main parachute never opens over high ground.** In `physStep` the main opens on air density
      (`sp<250&&rho>0.7`), not on height above the ground. With the rescaled air (scale height 7.5 km), ρ = 0.7 is about
@@ -1454,7 +1508,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-0. **Ground awareness first** (main chute, warp auto-drop and HUD still measure from sea level): see § v1.27 "Next on this line".
+0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29). Next: surface properties by biome (friction, softness, boulders) for the touchdown verdict, then the remaining slice-B follow-ups in § v1.27.
 1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
@@ -1543,6 +1597,46 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## "Out there" missions: the Selene ladder and Nyx (2026-10-07, bodies session)
+
+Caio: the economy session works at the high level, so specific missions get built here, from its epoch plan. This slice is epochs
+4 (Selene) and 5 (the second moon). Epoch 3 (utility) is still open. All of it is additive: entries appended to `MISSIONS`, flight-record
+fields filled by `outThere(s,dt)` (one call at the end of `missionTick`), facts in the logbook's "Out there" section, and epoch
+labels in the Program panel. `RACE` is untouched, so rival schedules and the career balance runs don't move.
+
+| Mission (id) | Pays | Needs | What the sim checks |
+|---|---|---|---|
+| The far side (`farside`) | 150M | beeper | camera within 3 R of Selene over **sunlit ground facing away from Tellus**; then an antenna **in line of sight to Tellus** (Selene blocks it while you're behind), or the camera landed home |
+| Impactor (`selimp`) | 120M | far side | crash with instruments + antenna **on the near side**; on the far side "nobody heard a thing" |
+| Soft landing on Selene (`selland`) | 250M | impactor | landed with instruments + antenna, **< 4 m/s**, near side (far side: "no way to phone home") |
+| Sample return (`selsample`) | 400M | soft landing | instruments landed on Selene, then recovered on Tellus |
+| Something out there (`nyxfind`) | 120M | far side | instruments + antenna tracked **12 h where Nyx's pull minus Tellus's reflex is ≥ 1e-3 of Tellus's pull**; logs Nyx's mass |
+| Nyx flyby (`nyxfly`) | 150M | something out there | in Nyx's SOI with camera + antenna |
+| An orbit that lasts (`nyxorb`) | 250M | flyby | instruments in Nyx's SOI, unbroken, for **two Nyx orbits (67 h)**: retrograde does it, prograde gets wrecked (6b) |
+| Landing on Nyx (`nyxland`) | 300M | flyby | landed with instruments, **< 3 m/s** |
+
+**Nyx is discovered by tracking, as Neptune was.** At 8,100–27,900 km and 0.7–2° across, Nyx can't be hidden from the eye, so what's
+unknown is its orbit and mass. Until the `nyx` fact is in the logbook, the map shows it as "?" with no orbit line or SOI ring,
+and encounter forecasts into it stop at the edge with a question mark (`knownBody`, `gateLegs`). The body is still drawn and
+still pulls on everything. Weighing it unlocks all of that. The 12 h runs where `nyxResidual(r)` ≥ 1e-3, i.e. where flying
+without Nyx in the model would leave visible residuals: high orbits (beyond ~1.3× Nyx's distance) or near Nyx. New logbook
+facts: the second moon (mass and orbit), Δv to reach Nyx, Δv to land on Nyx.
+
+**Checks** (`test.mjs` §23, 6, each flown through `advRails`/`advPhys` → `missionTick` → `missionEval`):
+- the far side photographed 1 min into a 1.5 R orbit and downlinked 17 min later, when Tellus came into view
+- impactor heard on the near side, not on the far side
+- landing from 3 m (3.1 m/s) counts; from 10 m (5.7 m/s) doesn't
+- Nyx weighed after exactly 12 h of tracking at 30,000 km around its periapsis time
+- the 200 km retrograde orbit completes 67 h; its prograde twin crashes at 17 h
+- landing on Nyx at 2.0 m/s
+
+The first versions of the landing checks were wrong: the craft's centre was put 1.5 m up, so its base started *in* the ground and
+"landed" at 0.0 m/s.
+
+**Open:** crew on Selene (needs the abort tests and crew parts of epoch 4); contracts that repeat these (economy's board); the
+`RACE` question (should the far side or a Selene landing be a race for firsts? It would shift rival schedules and the v1.28
+balance); prices are untested by `career.mjs`, which doesn't fly past epoch 2.
+
 ## 6b — third-body perturbations near Nyx (2026-10-07, bodies session)
 
 Patched conics called every orbit around Nyx stable. This slice integrates the real three-body problem where it matters.
@@ -1623,7 +1717,7 @@ it changes every Selene trajectory and the tests built on them. Debris near Nyx 
 - Test changes outside this scope: the 30-day warp check (§3b) now tests warp *invariance* plus a bound on tidal drift; the
   economy's satellite-precision check allows 1e-3 M (a "perfectly centred" test orbit now gets nudged by the tides).
 
-### Nyx missions — spec for the economy session (not built)
+### Nyx missions — spec for the economy session (superseded: built here, see "Out there" missions above)
 
 Per the program design (epoch 5 "Discovery"), Nyx is found by the player's own telescope after the Selene ladder. Until then
 it's in the sky (drawn, perturbing) but nameless and unmarked on the map. A suggested ladder, with the physics already in place:
@@ -2823,8 +2917,32 @@ pressure.
 - **Open — variants vs upgrades in place:** does development produce a new part next to the old one (a "Kestrel B" in
   the palette), or improve the part itself (with fresh certification)? On hold. It touches the builder's palette and the
   planning session's parts.
-- **First slice when building starts** (purely economy): engineering history on parts, test stands, development
-  projects. Coordinate the palette with the builder and flagships with planning.
+- **The whole parts system, assessed (2026-10-07).** Per part, the program faces seven questions, each a mechanic:
+  - *Can we get it?* — the market (built: industrial independence).
+  - *Is this batch any good?* — supplier quality, hidden until our data reveals it.
+  - *Can we use it well?* — **know-how**.
+  - *Do we know its limits?* — certification (built).
+  - *Can we make it?* — a production line plus a learning curve.
+  - *Can we change it?* — development.
+  - *Where is the world?* — a world technology frontier, with experimental parts beyond it (Caio: there is a tech tree
+    in the world, and you can contribute to it and reach experimental parts first).
+
+  Decisions:
+  1. **Know-how is the core (yes).** Engineering history becomes per-part know-how: owning a part ≠ knowing how to use
+     it (Caio's example: an expensive science instrument you don't know how to use; testing it is costly, wears it,
+     and doesn't get the most out of it). Low know-how bites through **risk, time and yield, never fake stat cuts**:
+     ignition failures, slower stacking and checkout, instruments returning less, conservative certification.
+     Certification folds in as the "limits" facet. Gained by flying (by novelty, with diminishing returns), ground
+     testing (money, wear), building it yourself (a domestic line starts with higher know-how), and possibly support
+     packages. Know-how belongs to the team (it carries over in a defection); production lines belong to the country.
+  2. **Two visible numbers per part (yes):** know-how (one bar) and production (none / licensed / own line, with
+     maturity), plus a supplier-quality label once learned. The rest stays under the hood.
+  3. **Support packages** (buying training and the supplier's engineers with a part, at the price of dependence):
+     **provisional**, pending simulation and then playtesting.
+  4. **The world frontier is a later layer (yes),** designed with the planning session. Build order: know-how →
+     production lines → the frontier.
+  - No hard locks anywhere: everything stays buyable and flyable. The frontier and know-how only change how well, and
+    at what risk.
 
 **What interplanetary means for the architecture (for later, not now):**
 - Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
@@ -2883,6 +3001,6 @@ pressure.
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations~~ done for Nyx and Selene, nodes included (§ "6b").
-   Next on that line: Nyx missions (spec handed to the economy session, § "Nyx missions"); debris near the moons ignores tides;
+   Selene and Nyx missions built (§ "Out there" missions). Next on that line: debris near the moons ignores tides;
    registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
