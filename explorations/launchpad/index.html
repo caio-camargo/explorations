@@ -374,7 +374,7 @@ function assemble(stack){
   let ymin=Infinity,ymax=-Infinity;for(const q of L.inst){ymin=Math.min(ymin,q.y0);ymax=Math.max(ymax,q.y0+q.d.h)}if(!L.inst.length)ymin=ymax=0;
   for(const q of L.inst){const p={i:parts.length,d:q.d,pos:[q.x,0,q.z],y0:q.y0-ymin,h:q.d.h,parent:null,children:[],on:true,
     res:{...(q.d.res0||{})},cap:{...(q.d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],dn:q.nd,inst:q};
-    if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;p.xfeed=q.rdec?q.xfeed:!!q.nd.x;q.p=p;parts.push(p)}
+    if(q.line===0)p.core=true;if(q.phi!=null)p.phi=q.phi;if(q.d.kind==='engine'&&q.nd.cant&&q.phi!=null)p.tdir=cantDir(q.nd.cant,q.phi);p.xfeed=q.rdec?q.xfeed:!!q.nd.x;q.p=p;parts.push(p)}
   // root: a pod, else a biocapsule, else instruments (on the root line first, then the highest), else the design's root
   let root=null;for(const k of['pod','bio','sci']){const c=parts.filter(p=>p.d.kind===k);if(c.length){root=c.sort((a,b)=>(b.core?1:0)-(a.core?1:0)||b.y0-a.y0)[0];break}}
   if(!root)root=parts.find(p=>p.dn===des.root&&p.core)||parts[0];
@@ -479,6 +479,11 @@ function groupFuel(s,gid){let f=0;for(const p of s.parts)if(p.on&&s.grp[p.i]===g
 function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.res.fuel||0;return f}
 function partC(p){return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
 function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
+// Canted engines (v1.22): an engine on a radial line may tilt its nozzle outward by cant degrees, in its own radial plane, so
+// its thrust leans in toward the axis: d = cosθ·ŷ − sinθ·n̂ (n̂ outward at the line's angle φ). Uncanted engines have no tdir
+// and every thrust path below reduces to exactly the old axial code.
+const Y_AX=[0,1,0],tdirOf=p=>p.tdir||Y_AX;
+function cantDir(deg,phi){const t=deg*Math.PI/180;return[-Math.sin(t)*Math.cos(phi),Math.cos(t),-Math.sin(t)*Math.sin(phi)]}
 
 // Δv plan: play the event list forward, burning every ignited segment together (boosters and core in parallel)
 // and staging each time the segments the next event drops have run dry. pr = pressure ratio (0 vac, 1 sea level).
@@ -493,14 +498,15 @@ function dvPlan(s,pr){
   const segDry=k=>{const T=s.parts.filter((p,i)=>on[i]&&p.seg===k&&p.cap.fuel);return T.length?T.every(p=>fuel[p.i]<=1e-9):!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&ign[k]&&gF(grp[i])>1e-9)};
   if(s.evIdx===0&&!engs().length&&s.events[ev]&&s.events[ev].ignite.length&&!s.events[ev].decouple.length)fire();
   let st={dv:0,burn:0,m0:mass(),twr:0},guard=0,first=true;
-  const tw=()=>{let T=0;for(const p of engs())T+=engineMdot(p.d)*p.d.ispA*G0;return T/(mass()*G0)};st.twr=tw();
+  const tw=()=>{const T=[0,0,0];for(const p of engs()){const d=tdirOf(p),f=engineMdot(p.d)*p.d.ispA*G0;T[0]+=f*d[0];T[1]+=f*d[1];T[2]+=f*d[2]}return len(T)/(mass()*G0)};st.twr=tw();
   while(guard++<400){
     const E=engs(),next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(segDry);
     if(!E.length||dry){if(!next||next.chute)break;
       if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0};st.twr=tw();continue}
     // each flow group burns its lowest-rank tier of tanks; the step ends when the first tier empties (proportional draining
     // empties a whole tier at once), so the plan is exact piecewise — no time step
-    const md={};let T=0,M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d);md[g]=(md[g]||0)+m;M+=m;T+=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0}
+    const md={},Tv=[0,0,0];let M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d),d=tdirOf(p),f=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0;md[g]=(md[g]||0)+m;M+=m;Tv[0]+=f*d[0];Tv[1]+=f*d[1];Tv[2]+=f*d[2]}
+    const T=len(Tv);
     let dt=Infinity;for(const g in md){let r=Infinity,tf=0;for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]<r)r=rank[p.seg]}
       for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]===r)tf+=fuel[i]}dt=Math.min(dt,tf/md[g])}
     const m0=mass();for(const g in md)drawFuel(s,on,fuel,grp,rank,+g,md[g]*dt);
@@ -681,7 +687,7 @@ function physStep(s,dt){
   for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
   const eng=activeEngines(s);let T=0;
   if(s.throttle>0&&eng.length){const want={};for(const p of eng){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle,pt=thrustPt(p);
-    T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
+    const d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
     const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
     s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}
   const out=new Set(),next=s.events[s.evIdx];
@@ -742,7 +748,7 @@ function launchSegs(s){const e=s.events[0];return e&&!e.decouple.length?e.ignite
 function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
   const pr=Math.exp(-h/TELLUS.H),ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
-  if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p);T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2])}
+  if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
   let Fx=0,Lz=0;
   if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());aeroPass(s,vb,[0,0,0],rho,M,T>0);
@@ -838,7 +844,7 @@ function nodeInfo(s){const n=s.node;if(!n)return null;
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
 function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
   let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
-  if(!E.length)return NaN;let F=0,md=0;for(const p of E){F+=p.d.thrust*1000;md+=engineMdot(p.d)*1000}
+  if(!E.length)return NaN;const Fv=[0,0,0];let md=0;for(const p of E){const d=tdirOf(p),f=p.d.thrust*1000;Fv[0]+=f*d[0];Fv[1]+=f*d[1];Fv[2]+=f*d[2];md+=engineMdot(p.d)*1000}const F=len(Fv);
   return s.mass*(1-Math.exp(-dv/(F/md)))/md}
 function nodeBurn(s,Y,T,dt){const n=s.node;
   if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}
@@ -1685,7 +1691,11 @@ function partShape(out,p){
     default:{const b=.07,big=h>3;const pr=[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W]];
       if(big)pr.push([.625,h*.46,C.W],[.625,h*.46,C.O],[.625,h*.54,C.O],[.625,h*.54,C.W]);
       pr.push([.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]);lathe(out,pr,o)}}}
-function partsMesh(parts){const a=[];for(const p of parts){partShape(a,p);
+// the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
+function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
+function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;partShape(a,p);
+    if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
+      const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
     // reinforced joints show as a dark collar (two for heavy) around a stack joint, a darker box at a side joint
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
@@ -2015,7 +2025,8 @@ function render(){
   if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uPr,pr);gl.uniform1f(pu.uTime,performance.now()/1000%100);
     for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1.05+2.2*(1-pr)),L=ex*(7+13*S.throttle)*(1+.9*(1-pr));
-      gl.uniformMatrix4fv(pu.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));
+      const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]];
+      gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(qmul(S.q,qt),sub(p,camW),qrot(qconj(qt),sh),[rad,L,rad]):modelQ(S.q,sub(p,camW),sh,[rad,L,rad]));
       gl.uniform1f(pu.uI,(.6+.7*S.throttle)*(.35+.65*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
     gl.useProgram(PMESH.p)}
   // re-entry plasma: a glowing cap on the upstream side, brighter with the stagnation heat flux

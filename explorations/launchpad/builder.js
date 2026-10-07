@@ -36,6 +36,18 @@ const noIds=n=>{delete n.id;kids(n).forEach(noIds);return n};
 function snapshot(){st.undo.push(JSON.stringify(design()));if(st.undo.length>80)st.undo.shift();st.redo.length=0}
 function restore(from,to){if(!from.length)return;to.push(JSON.stringify(stackDef));stackDef=JSON.parse(from.pop());st.held=null;st.sel=null;st.hover=null;editorChanged()}
 function loadDesign(d){st.held=null;st.sel=null;st.hover=null;stackDef=cl(d);st.reframe=true;editorChanged()}
+// The cant (degrees, −30…30) that balances the thrust: the engines burning when this one fires — this node's copies at
+// cant θ, the rest as they are — push with zero net torque about the centre of mass of what is still attached then (full
+// tanks). Pointing one engine through the CoM is the wrong target: a lone booster beside an equal core engine is already
+// nearly balanced uncanted (measured: aiming it through the CoM multiplied the torque by 4.5 and flipped the rocket).
+// Symmetric copies balance at any angle, so ties go to the smallest |θ|.
+function aimCant(p,s=S){const on=s.parts.map(()=>true),ign=new Set();
+  for(const e of s.events){for(const k of e.decouple)s.parts.forEach((q,i)=>{if(q.seg===k)on[i]=false});for(const k of e.ignite)ign.add(k);if(e.ignite.includes(p.seg))break}
+  let m=0,C=[0,0,0];s.parts.forEach((q,i)=>{if(!on[i])return;const w=partMass(q),c=partC(q);m+=w;C=[C[0]+w*c[0],C[1]+w*c[1],C[2]+w*c[2]]});C=C.map(x=>x/m);
+  const E=s.parts.filter((q,i)=>on[i]&&q.d.kind==='engine'&&ign.has(q.seg)),mine=q=>q.dn===p.dn&&q.phi!=null;
+  const tau=th=>{let L=[0,0,0];for(const q of E){const d=mine(q)?cantDir(th,q.phi):tdirOf(q),f=q.d.thrust,r=sub(thrustPt(q),C);L=add(L,cross(r,[d[0]*f,d[1]*f,d[2]*f]))}return len(L)};
+  let best=0,bt=tau(0);for(let th=-30;th<=30+1e-9;th+=0.05){const t=tau(th);if(t<bt-1e-6*Math.max(1,bt)||Math.abs(t-bt)<=1e-6*Math.max(1,bt)&&Math.abs(th)<Math.abs(best)){bt=t;best=th}}
+  return Math.round(best*100)/100}
 // root → n along the tree, or null
 function rootPath(r,n){if(r===n)return[r];for(const c of kids(r)){const p=rootPath(c,n);if(p)return[r,...p]}return null}
 // reverse every joint on a root→n path of stack joints: each child takes its parent as a child, flipped ('u' ↔ 'd'),
@@ -204,6 +216,14 @@ function panel(){
     {const r=row('move');const hp=PARTS[par.k].h;
       btn(r,'▲',false,()=>edit(()=>{a.y=+Math.min(hp,a.y+.1).toFixed(3)}),'up 0.1 m');btn(r,'▼',false,()=>edit(()=>{a.y=+Math.max(0,a.y-.1).toFixed(3)}),'down 0.1 m');
       btn(r,'⟲',false,()=>edit(()=>{a.a=+(a.a-SNAP_A).toFixed(5)}),'rotate −15°');btn(r,'⟳',false,()=>edit(()=>{a.a=+(a.a+SNAP_A).toFixed(5)}),'rotate +15°')}}
+  // cant: only an engine on a radial line has an outward direction to tilt toward
+  const eng=PARTS[n.k].kind==='engine'?ps.find(p=>p.phi!=null):null;
+  if(eng){const r=row('cant'),c=n.cant||0,v=document.createElement('span');v.textContent=` ${c.toFixed(2)}° `;
+    if(c)v.title=`${((1-Math.cos(c*Math.PI/180))*100).toFixed(1)}% of each engine's thrust goes sideways (cancels between symmetric copies)`;
+    const set=x=>edit(()=>{x=Math.round(clamp(x,-30,30)*100)/100;if(x)n.cant=x;else delete n.cant});
+    btn(r,'−',false,()=>set(c-1),'cant 1° less (below 0 the nozzle tilts inward)');r.appendChild(v);btn(r,'+',false,()=>set(c+1),'cant 1° more: the nozzle tilts outward, the thrust leans in toward the axis');
+    btn(r,'balance',false,()=>{const a=aimCant(eng);if(Math.abs(a-c)<0.01)note('Balanced: the engines burning with this one already push through the centre of mass');else set(a)},
+      'cant so that all the engines burning with this one push through the centre of mass: no turning moment for the controls to fight')}
   const path=rootPath(D.root,n);if(par&&path&&path.slice(1).every(x=>x.at==='u'||x.at==='d'))
     {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part, so a subtree with the old root in it can be picked up (the rocket itself does not change)')}
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
@@ -293,5 +313,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   palette()}
-return{ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
+return{aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
 })();

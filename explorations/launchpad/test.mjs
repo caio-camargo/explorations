@@ -757,6 +757,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.HOOK.news = () => {};
 }
 
+// 18. Canted engines (v1.22): a thrust direction per engine on a radial line; "balance" zeroes the net thrust torque.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {newShip,stageStats,physStep,stage,thrustPt,qrot,len,dot,sub,add,cross,DT,HOOK,BLD,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const torque = s => { let L = [0, 0, 0]; for (const p of s.parts) if (p.d.kind === 'engine') { const d = p.tdir || [0, 1, 0]; L = D.add(L, D.cross(D.sub(D.thrustPt(p), s.cm), d.map(x => x * p.d.thrust))); } return D.len(L); };
+  const pair = cant => ({ v: 2, root: { k: 'pod', c: [{ k: 't4', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }, { k: 't4', at: { y: 1.9, a: 0, n: 2, cy: 1.9, dec: true }, c: [{ k: 'kestrel', at: 'd', c: [], ...(cant ? { cant } : {}) }] }] }] } });
+  const P0 = D.newShip(pair(0)), P10 = D.newShip(pair(10)), bs = P10.parts.filter(p => p.tdir), dv = c => D.stageStats(pair(c)).stages[0].dvV;
+  check('canted engines: no cant, no thrust direction; canted copies lean in toward the axis, unit length; a symmetric pair loses less than its cosine',
+    !P0.parts.some(p => p.tdir) && bs.length === 2 && bs.every(p => Math.abs(D.len(p.tdir) - 1) < 1e-12 && D.dot(p.tdir, [Math.cos(p.phi), 0, Math.sin(p.phi)]) < 0) &&
+    dv(10) < dv(0) && 1 - dv(10) / dv(0) < 1 - Math.cos(10 * Math.PI / 180) && D.BLD.aimCant(P0.parts.find(p => p.phi != null && p.d.kind === 'engine'), P0) === 0,
+    `first-stage Δv ${dv(0).toFixed(0)} → ${dv(10).toFixed(0)} m/s at 10°; balance on the symmetric pair: 0°`);
+  // a light core with a lone big booster: uncanted it flips; balanced it climbs
+  const lone = cant => ({ v: 2, root: { k: 'pod', c: [{ k: 'chute', at: 'u', c: [] }, { k: 't8', at: 'd', c: [{ k: 'fins', at: 'd', c: [{ k: 'sparrow', at: 'd', c: [] }] },
+    { k: 'T16', at: { y: 3.7, a: 0, n: 1, cy: 2, dec: true }, c: [{ k: 'condor', at: 'd', c: [], ...(cant ? { cant } : {}) }] }] }] } });
+  const L0 = D.newShip(lone(0)), aim = D.BLD.aimCant(L0.parts.find(p => p.phi != null && p.d.kind === 'engine'), L0), L1 = D.newShip(lone(aim));
+  const fly = cant => { D.t = 0; const s = D.newShip(lone(cant)); D.S = s; D.HOOK.msg = () => {}; s.throttle = 1; D.stage(s); let tilt = 0;
+    for (let i = 0; i < 2500 && s.alive; i++) { D.physStep(s, D.DT); const Y = D.qrot(s.q, [0, 1, 0]), up = s.r.map(x => x / D.len(s.r)); tilt = Math.max(tilt, Math.acos(Math.min(1, D.dot(Y, up))) * 57.3); }
+    return { alive: s.alive, tilt }; };
+  const f0 = fly(0), f1 = fly(aim);
+  check('canted engines: "balance" zeroes the thrust torque of a Sparrow core + lone Condor; uncanted it flips, balanced it climbs',
+    torque(L1) < 0.01 * torque(L0) && f0.tilt > 90 && f1.alive && f1.tilt < 10,
+    `cant ${aim.toFixed(2)}°, torque ${torque(L0).toFixed(0)} → ${torque(L1).toFixed(2)} kN·m; max tilt ${f0.tilt.toFixed(0)}° → ${f1.tilt.toFixed(1)}°`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
