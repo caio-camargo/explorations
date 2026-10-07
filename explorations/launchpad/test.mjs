@@ -6,7 +6,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -965,6 +965,52 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('6b: Selene: a translunar coast through its SOI matches n-body after two days; the predictor follows it', inS && len(sub(rG, rT)) < 10000 && p.some(x => x.path),
       `${(len(sub(rG, rT)) / 1e3).toFixed(2)} km off (Selene pass ${((p.find(x => x.b === SELENE) || {}).minR / 1e3 - SELENE.R / 1e3).toFixed(0)} km up); legs ${p.map(x => x.b.name + (x.path ? '~' : '') + (x.endKind ? '→' + x.endKind : '')).join(' ')}`); }
   NYX.pert = true;
+}
+
+// 23. "Out there" missions (bodies session): the Selene ladder and Nyx, each flown through the real flight code.
+{
+  const P = api.PROG, { NYX, bodyRel, SUN_DIR } = api, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active });
+  const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1000; };
+  const craft = (stack, b, r, v, t) => { api.t = t; const s = api.newShip(stack); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
+  const upright = (s) => { const up = norm(s.r), X = norm(cross(up, [0.3, 0.9, 0.1])); s.q = api.qFromBasis(X, up, cross(X, up)); s.w = [0, 0, 0]; };
+  const toT = t => norm(mul(bodyRel(SELENE, t)[0], -1));
+  // the far side: find a time when Selene's far side is sunlit (Selene between Tellus and the sun), orbit past it at 1.5 R
+  let tF = 0; while (dot(toT(tF), SUN_DIR) > -0.6) tF += 3600;
+  const uF = norm(add(mul(toT(tF), -1), SUN_DIR)), wF = norm(cross(uF, [0, 1, 0])), rF = 1.5 * SELENE.R;
+  reset(['beeper']); let s = craft(['ant', 'cam', 't2', 'petrel'], SELENE, mul(uF, rF), mul(wF, Math.sqrt(SELENE.mu / rF)), tF);
+  let photoT = null; while (api.t < tF + 6 * 3600 && !P.done.farside) { api.advRails(s, 60, 100); if (s.rec.farPhoto && photoT === null) photoT = api.t; }
+  check('out there: the far side is photographed behind Selene and comes home once Tellus is in sight', !!P.done.farside && photoT !== null && P.done.farside && news.some(m => /far side reach home/.test(m)),
+    `photo at +${photoT !== null ? ((photoT - tF) / 60).toFixed(0) : '—'} min, downlink by +${((api.t - tF) / 60).toFixed(0)} min (orbit ${(2 * Math.PI * Math.sqrt(rF ** 3 / SELENE.mu) / 60).toFixed(0)} min)`);
+  // the impactor: heard on the near side, not on the far side
+  const drop = (side) => { reset(['beeper', 'farside']); const u = side > 0 ? toT(0) : mul(toT(0), -1), r = mul(u, SELENE.R + 20e3); const c = craft(['ant', 'sci', 't2', 'petrel'], SELENE, r, mul(u, -300), 0);
+    let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); } return !!P.done.selimp; };
+  const nearHit = drop(1), farHit = drop(-1);
+  check('out there: an impactor on the near side completes the mission; on the far side nobody hears it', nearHit && !farHit && news.some(m => /nobody heard/.test(m)), `near ${nearHit}, far ${farHit}`);
+  // a soft landing near side (instruments + antenna), and the sample counts toward a return
+  // land from rest with the craft's base h metres above the ground
+  const land = (b, u, stack, done, h) => { reset(done); const c = craft(stack, b, [0, 0, 0], [0, 0, 0], 0); c.r = mul(u, b.R - c.yBot + h); upright(c); let n = 0; while (!c.landed && c.alive && n++ < 5000) api.advPhys(c); for (let k = 0; k < 5; k++) api.advPhys(c); return c; };
+  const hard = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 10), hardV = hard.touchV, hardOK = !!P.done.selland;
+  s = land(SELENE, toT(0), ['ant', 'sci', 't2', 'petrel'], ['beeper', 'farside', 'selimp'], 3);
+  const sampleOK = api.MISSIONS.find(m => m.id === 'selsample').ok({ ...s.rec, landed: true, recSci: true });
+  check('out there: a soft landing on Selene\'s near side phones home (a 10 m drop is too hard); a recovered sample would complete a return', !!P.done.selland && s.rec.selSampled && sampleOK && hard.landed && !hardOK,
+    `from 3 m: ${(s.touchV || 0).toFixed(1)} m/s, done; from 10 m: ${(hardV || 0).toFixed(1)} m/s, ${hardOK ? 'done (wrong)' : 'not counted'}`);
+  // Nyx: weighed by tracking a craft where its pull matters (high orbit around Nyx's periapsis time)
+  const P_N = 2 * Math.PI / NYX.n, tPe = (2 * Math.PI - NYX.orb.M0) / NYX.n + P_N, r30 = 3.0e7;
+  reset(['beeper', 'farside']); s = craft(['ant', 'sci', 't2', 'petrel'], TELLUS, [r30, 0, 0], [0, 0, -Math.sqrt(TELLUS.mu / r30)], tPe - 6 * 3600);
+  while (api.t < tPe + 10 * 3600 && !P.done.nyxfind) api.advRails(s, 600, 1000);
+  check('out there: Nyx is weighed from tracking residuals (12 h where its pull is ≥ 1e-3 of Tellus\'s) and enters the logbook', !!P.done.nyxfind && !!P.log.nyx,
+    `found after ${((s.rec.nyxTrack || 0) / 3600).toFixed(1)} h of tracking; logbook: ${P.log.nyx ? 'm/M ' + P.log.nyx.v.m.toExponential(2) : '—'}`);
+  // an orbit that lasts: retrograde survives two Nyx orbits, prograde is wrecked
+  const tAp = (Math.PI - NYX.orb.M0) / NYX.n, [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA)), ux = norm(mA), uy = cross(hn, ux), rr = NYX.R + 200e3;
+  const orbitNyx = dir => { reset(['beeper', 'farside', 'nyxfind', 'nyxfly']); P.log.nyx = { v: { m: 1, pe: 1, ap: 1 } }; const c = craft(['sci', 't2', 'petrel'], NYX, mul(ux, rr), mul(uy, dir * Math.sqrt(NYX.mu / rr)), tAp);
+    while (api.t < tAp + 2.05 * P_N && c.alive && !P.done.nyxorb) { if (api.railsOK(c)) api.advRails(c, 600, 1000); else api.advPhys(c); } return { ok: !!P.done.nyxorb, alive: c.alive, h: (c.rec.nyxOrbT || 0) / 3600 }; };
+  const ret = orbitNyx(-1), pro = orbitNyx(1);
+  check('out there: "an orbit that lasts" around Nyx: retrograde does it, prograde is wrecked first', ret.ok && !pro.ok, `retrograde ${ret.h.toFixed(0)} h (done ${ret.ok}); prograde ${pro.h.toFixed(0)} h, ${pro.alive ? 'still up' : 'crashed'}`);
+  // landing on Nyx
+  s = land(NYX, norm([0.3, 0.9, 0.2]), ['sci', 't2', 'petrel'], ['beeper', 'farside', 'nyxfind', 'nyxfly'], 5);
+  check('out there: landing on Nyx under 3 m/s', !!P.done.nyxland && !!P.log.nyxland, `touchdown ${(s.touchV || 0).toFixed(2)} m/s`);
+  const S0 = JSON.parse(saved); Object.assign(P, S0); api.HOOK.news = () => {};
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
