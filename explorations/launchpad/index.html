@@ -1681,7 +1681,7 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
  col=mix(col,rock*(.8+.4*mid),max(sst(.06,.2,slope),sst(1.,-3.,T)*.55));                    // cliffs, and bare ground above the trees
  // close up: a patchwork of fields where it's green, mild and flat
  if(fade>0.){vec2 cl2=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl2,vec2(12.9898,78.233)))*43758.55),farm=fade*sst(.25,.4,W)*sst(.8,.6,W)*sst(.04,.01,slope)*sst(6.,11.,T)*sst(25.,21.,T)*(1.-sf);
-  col=mix(col,col*mix(vec3(.75,.85,.6),vec3(1.35,1.2,.7),hsh),farm*.8);col*=.85+.3*det*fade;}
+  col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
  float sn=sst(-.5,-5.,T)*sst(.35,.2,slope)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T);
  return mix(col,snow,max(sn,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
@@ -1702,7 +1702,7 @@ void main(){
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
-  float fade=smoothstep(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
+  float fade=sst(4000.,150.,tP),det=fade>0.?detailF(loc,fw):.5,oc;
   // the terrain normal from the height field (planet-fixed), over about a pixel and a half
   vec3 npf=pf;if(hT>=0.){float kF=octT(tP,tP*uPix),eps=max(fw*1.5,1.);vec3 t1=normalize(cross(vec3(0,1,0),pf)+vec3(1e-6,0,0)),t2=cross(pf,t1);
    npf=normalize(pf-(t1*(terr(normalize(pf+t1*(eps/uPR)),kF)-hT)+t2*(terr(normalize(pf+t2*(eps/uPR)),kF)-hT))/eps);}
