@@ -614,6 +614,17 @@ directly. It is `shot.mjs` in this folder (usage in its header).
 - Paint schemes per design or era (agency white, company livery), from the same roll-pattern machinery.
 - Lettering and flags on tanks: needs a glyph atlas or SDF; skipped for now.
 
+### Parts added after the texture pass (same day)
+An audit of `PARTS` against `partBody` and `KIND`: no part falls back to an undetailed shape. Engines carry no `KIND` on
+purpose (`engine()` sets bell/mount). Three parts other sessions added after slice 1 had only been mapped onto existing
+detail, and got a design pass:
+- **Imaging camera:** a bare-aluminium bay, a black optical port, and a lens barrel looking *out* of the side (`tube` along +z).
+  The old "lens" was a vertical disc stuck to the hull. A film-return hatch is on the far side.
+- **Antenna:** a parabolic dish (focal length 0.15 m) on a mast, its feed horn held at the focus by three struts, two whip antennas.
+- **Radial fin:** alternates black/white by part index like the fin ring, with a root bracket on the hull.
+Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
+`partBody` (tanks use the default) and its `kind` against `KIND`.
+
 ## Flight marks — what a flight leaves on the hardware (2026-10-07, visuals session)
 
 Slice 2 of the visuals work, agreed with Caio: the rocket no longer looks factory-new forever. It is render-only. The sim
