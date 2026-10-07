@@ -1,12 +1,12 @@
 # NeuroMechFly — driving EPFL's fly digital twin locally
 
-**Version**: v1.0.3
+**Version**: v1.0.4
 **Author**: Caio Camargo + Claude (Opus 5, Opus 5.5)
 **Date Created**: 2026-09-10
 **Last Updated**: 2026-10-07
 **Purpose**: Exploration notes — what NeuroMechFly v2 is, how to run it here, and what
 the controller × terrain matrix and the breaking-point sweep taught
-**Status**: Active — matrix, breaking-point sweep and measured contact and foot landings complete, open threads listed at the bottom
+**Status**: Active — matrix, breaking-point sweep and measured contact, foot landings and slowed CPG complete; next: success probability with random spawn offsets, open threads listed at the bottom
 
 ---
 
@@ -110,6 +110,7 @@ C:/Users/caioa/.venvs/flygym/Scripts/python.exe baseline.py
 | `plot_sweep.py` | Breaking points, trapped-in-gap counts, `out/sweep.png` |
 | `plot_contact.py` | Measured contact vs commanded stance from `sweep_difficulty.py --contact` (raw `gait_*.npz`), `out/contact.png` |
 | `plot_feet.py` | Foot landing positions vs the gap layout, strides, caught/not-caught touchdowns, `out/feet.png` |
+| `plot_tempo.py` | Slowed CPG (`cpg@9`, `cpg@6.4`, `cpg@4`) against the 12 Hz CPG and Walknet, `out/tempo.png` |
 
 ### The machine got stricter (2026-10-07)
 
@@ -315,6 +316,10 @@ like a cliff. It is not a cliff; the CPG fails at the first imperfection.
 
 ### 7. Walknet doesn't degrade. It holds, then drops
 
+> **Caveat added 2026-10-07 (§12):** each Walknet cell is effectively two runs (seeds 0 and 2
+> are identical), and at 0.2 mm the other run stalls. The plateau below is partly luck of the
+> spawn position; treat it as unconfirmed until the spawn-offset measurement.
+
 On gaps Walknet's speed is flat from 0 to 0.3 mm (6.6, 5.8, 6.8, 5.8) and no run falls in. At
 0.4 mm every run falls in. It pays half its flat speed for that plateau. The hybrid degrades
 smoothly instead (13.2 → 10.3 → 7.2 → 6.9) but stays faster than Walknet at every width up to
@@ -446,12 +451,63 @@ landings per cell against ~400.
 - **Walknet also snags (41 % of swing contacts near the far wall at 0.1 mm) but its stride
   survives; the CPG's doesn't.** Same step trajectories; the differences are a 1.6× slower
   swing and a stance twice as long (109 ms against 54). A hypothesis to test next, not a
-  finding: a slower foot that hits an edge rides over it instead of stopping. The hybrid's
+  finding: a slower foot that hits an edge rides over it instead of stopping. (**Falsified
+  in §12**, which also shows Walknet's stride survives only in some runs.) The hybrid's
   swing contacts land near walls at exactly the area rate at 0.1 mm (0.18 against 0.18): its
   stumbling correction lifts the foot clear, which is what that correction is for.
 - **At 0.3 mm all three pile up against the far wall** (histograms): feet that reach a gap
   slide forward until they meet the next block's face. Feet don't drop to the bottom; they
   wedge.
+
+### 12. Slowing the CPG doesn't save it, and the medians were hiding coin flips
+
+Test of §11's tempo hypothesis: the same tripod CPG at 9, 6.4 (Walknet's step rate) and 4 Hz
+instead of 12, on gaps 0–0.5 mm, 3 seeds, contact and feet logged (54 runs, `cpg@<Hz>` in
+`sweep_difficulty.py --controllers`). Figure: [`out/tempo.png`](out/tempo.png). Script:
+[`plot_tempo.py`](plot_tempo.py). Prediction written before running: at 6.4 Hz the CPG keeps a
+~1 mm stride through 0.3 mm gaps, as Walknet does.
+
+**Falsified.** At 6.4 Hz the swing is as slow as Walknet's (56 ms against 48) and the CPG still
+fails: at a 0.1 mm gap its median stride is 0.27 mm, *worse* than at 12 Hz (0.48), and every
+6.4 Hz run is trapped at 0.3 mm. Swinging feet still hit the far wall at three to four times
+the area rate at every frequency. A slow swing does not ride over edges.
+
+What the run did show is more important than the hypothesis. **Each run either walks or
+stalls, and which one depends on the run, not the controller.** Distance per seed (mm):
+
+| cell | seed 0 | seed 1 | seed 2 |
+|---|---|---|---|
+| CPG 6.4 Hz, gap 0.2 | 15.1 | **4.6** | 14.9 |
+| CPG 4 Hz, gap 0.1 | 7.6 | **0.9** | 5.2 |
+| CPG 4 Hz, gap 0.2 | 9.3 | **3.2** | 9.1 |
+| CPG 12 Hz, gap 0.2 | 8.7 | **3.2** | 11.9 |
+| **Walknet, gap 0.2** | 13.6 | **2.3** | 13.6 |
+
+A run that walks keeps the full flat-ground stride (1.20 mm); one that stalls has a stride
+near 0. Seed 1 is the bad one in almost every cell. The seed only changes the controller's
+initial state, so it decides which phase of the step cycle each foot is in when it first
+reaches the gaps. Every controller, CPG at any frequency, takes the same ~1.2 mm stride on flat
+ground: stride is set by the step trajectory, not the tempo. At a 0.2 mm gap the terrain period
+is 1.2 mm too, so a foot that lands on a block lands on a block every step, and a foot that
+lands in a gap does so again and again. Whether the fly gets through is decided early and then
+repeated.
+
+This undercuts the comparisons in §6–§7 and §11:
+
+- **Walknet's "plateau" to 0.3 mm rests on two runs, not three.** Seeds 0 and 2 are
+  bit-identical for Walknet (noted above), so each Walknet cell is really one run counted twice
+  plus seed 1. At 0.2 mm seed 1 stalls (2.3 mm), and the median hides it.
+- **The seeds don't sample what matters.** The variable that decides the outcome is where the
+  fly's feet are relative to the gaps, and every run spawns at the same x. Three seeds give two
+  or three samples of a coin flip, and a breaking point read off their median is partly which
+  way the coin fell.
+- **What stands:** the CPG fails at smaller gaps than the other two at every frequency tried;
+  the hybrid shrinks its stride gradually instead of flipping; failures happen mid-swing (§11).
+  What doesn't: precise breaking points, and Walknet's plateau as a property of Walknet.
+
+The right next measurement is a **success probability** per controller and gap width:
+randomize the spawn x across one terrain period, use 10–20 runs per cell, and count walks
+against stalls.
 
 ### Measurement traps found on the way
 
@@ -480,9 +536,10 @@ landings per cell against ~400.
 - ~~**Measured duty factor.**~~ Done 2026-10-07, see §10.
 - ~~**Why Walknet's footholds ignore small gaps.**~~ Done 2026-10-07, see §11: it's stride, not
   footholds; Walknet's flat-ground "misses" are late touchdowns.
-- **Swing speed as the CPG's fix.** Slow the CPG's intrinsic frequency (12 Hz → 6.4, Walknet's
-  rate) and see whether its stride survives 0.1–0.3 mm gaps. If it does, the "slow foot rides
-  over the edge" hypothesis in §11 holds, and Walknet's robustness is mostly tempo.
+- ~~**Swing speed as the CPG's fix.**~~ Done 2026-10-07, falsified, see §12.
+- **Success probability with random spawn offsets (next).** Spawn x uniform over one
+  block+gap period, 10–20 runs per controller × gap width, count walks against stalls. This
+  replaces median-of-3 breaking points (§12 explains why). Also gives Walknet real n.
 - **Hybrid without swing extension.** If its low duty factor is the price of clearance,
   removing the extension should hurt it on gaps; if incidental, nothing changes.
 - **Longer worlds.** The 25 mm terrain edge caps progress near flat; pass a larger `x_range`
