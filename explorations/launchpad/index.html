@@ -2845,9 +2845,13 @@ function partBody(out,p){
       tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
       for(let k=0;k<3;k++){const a=k*2.0944;fin(out,[x,y+.27,z],a,.3,.16,.16,.012,C.Y);
         const b=a+1.0472;box(out,[x+Math.cos(b)*.48,y+.31,z+Math.sin(b)*.48],.03,.025,.03,C.D)}break;
-    case'claw':lathe(out,[[.35,0,C.D],[.35,.22,C.G],[.24,.27,C.G],[.24,.3,C.D]],o);
-      for(let k=0;k<3;k++){const a=k*2.0944,c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r];
-        tube(out,P(.22,.28),P(.3,.45),.035,C.D,6,true);tube(out,P(.3,.45),P(.14,.56),.03,C.D,6,true)}break;
+    // claw: a drive housing with a bolted base flange and a hazard band, a turntable, and three jointed fingers (a
+    // hinge knuckle at the base and the elbow, a hydraulic ram along each, rubber-padded tips) around a dark contact plate
+    case'claw':lathe(out,[[.35,0,C.D],[.35,.04,C.D],[.35,.04,C.ST],[.35,.15,C.ST],[.35,.15,C.Y],[.35,.22,C.Y],[.3,.25,C.ST],[.24,.27,C.ST],[.24,.3,C.D]],o);
+      lathe(out,[[.17,.3,C.BK],[.17,.31,C.BK]],o,24,[false,true]);
+      for(let k=0;k<3;k++){const a=k*2.0944,c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r],t=[-sn,0,c],J=(r,yy)=>tube(out,madd(P(r,yy),t,-.045),madd(P(r,yy),t,.045),.035,C.ST,8,true);
+        J(.22,.28);J(.3,.45);tube(out,P(.22,.28),P(.3,.45),.032,C.D,6,false);tube(out,P(.3,.45),P(.15,.545),.027,C.D,6,false);
+        tube(out,P(.16,.29),P(.27,.41),.012,[.75,.76,.78,1],6,false);box(out,P(.14,.55),.025,.012,.025,C.BK)}break;
     case'rcs':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)],t=[-n[2],0,n[0]],e=[x+n[0]*RCS_OFF,y+h/2,z+n[2]*RCS_OFF];
       // an outrigger and a housing at the nozzle cluster; four little bells (throat, flared exit, heat-tinted lip) on the thrust axes
       rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.05,.045,C.ST,p.phi);rbox(out,e,.035,.035,.035,C.G,p.phi);
