@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.10.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -721,6 +721,86 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
+## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
+
+Before this, every engine had the same additive cone: a hard-edged pale shape that only changed size. In vacuum it went
+almost black and hid the stars. The KSP mod Waterfall (1.3 M installs) is the reference. **What we borrowed from it:**
+templates per propellant, not per engine; layered parts of a plume (core, diamonds, mantle, glow); parameters driven by
+throttle and air pressure; and deforming the proxy mesh in the vertex shader. **What we did differently:** Waterfall
+stacks mesh shells with scrolling noise textures because a Unity mod can't do more. We own the shader, so the plume is
+a **volume raymarched inside one proxy mesh per engine** (32 steps). It reads as a body of gas from any angle, with no
+shell edges at grazing views.
+
+### The model (`PLUME_VS`/`PLUME_FS`, `plumeShape`, `PROPS`, `PFX`)
+- **Shape from the pressure ratio** n = pe/pa (nozzle exit pressure over ambient, both in atm). Over-expanded (n < 1):
+  the jet pinches to √n of the exit radius within 1.5 radii. Spread angle: tan θ = 0.03 + 0.52·smoothstep(0, 2.5,
+  log₁₀ n). Near-straight at sea level, about 29° from n ≈ 300 up, plus a little turbulent widening in air. Length
+  re·(10 + 12·throttle)·(1 + 1.4·(1 − pa)).
+- **Thinning:** gas density goes as (re/rb)², and the line of sight through it grows as rb, so emission falls as
+  (re/rb)^1.3. That one term is why a vacuum plume is wide and faint and a sea-level one is tight and bright.
+  (re/rb)² dimmed the 45 km plume to nothing.
+- **Shock diamonds** every Lc = 2.4·re·√n, soft Gaussian cells that fade along the train. Visible only for pa in
+  0.02–0.25 and n < 8: they stretch out and vanish with altitude, as on real ascents.
+- **Layers:** a white-hot core over the potential-core length (3.5–6 re); an afterburning mantle (fuel-rich exhaust
+  burning in air, so it scales with air density); a gas glow; and soot that *absorbs*.
+- **Opacity:** output is premultiplied (`ONE, ONE_MINUS_SRC_ALPHA`), so a plume can occlude. A thick region shows its
+  colour as emission over opacity. Kerolox is opaque (op 1.2), alcohol translucent (0.8), hypergolic faint (0.25),
+  hydrolox nearly clear (0.03).
+- **Propellant profiles (`PROPS`)** with an engine table (`PFX`): Kestrel, Condor and Albatross are kerolox at pe
+  0.7–0.8 atm; Petrel is kerolox at pe 0.025 (vacuum); Sparrow is alcohol/LOX (V-2-like); Wren is hypergolic at pe 0.12.
+  Hydrolox is defined but no engine uses it yet. An engine not in the table defaults to kerolox, with a vacuum nozzle if
+  its sea-level Isp is under half its vacuum Isp.
+- **Spool:** a render-side `SPOOL` WeakMap lags each plume behind the throttle by ~0.12 s, so ignition grows instead
+  of popping. Flicker is two sines on the intensity, phased per engine.
+- Smoke puffs are now born at 0.7 of the plume length (`plumeShape`), so they leave from where the flame fades.
+
+### What it took (and what failed)
+- **First pass: everything saturated to white.** The gains were ~5× too high; `1 − exp(−C)` clips every channel.
+- **Purely additive turned green over grass.** The ground showed through a faint flame. A sooty kerolox flame is
+  close to opaque in reality, so opacity was added.
+- **Then the kerolox plume read as brown smoke.** The outer gas absorbed more than it emitted, and a thick region's
+  colour is its emission/opacity ratio. Fix: only the core and mantle carry opacity.
+- **Gamma 2.2 greyed the faint outer gas** (a peach tint on a blue sky reads grey). Gamma 1.5 plus a more saturated
+  glow colour kept it orange.
+- **Culling:** the lathe's outward faces wind so that `cullFace(FRONT)` keeps the faces nearest the eye. With the
+  camera inside the bounds it switches to the far faces and marches from the eye.
+- **Measuring against the wrong tree.** The first A/B said +3 to +12 ms. The "main" server on 8778 was another
+  process's tree, and 127.0.0.1:8777 had a second listener too. Use explicit `127.0.0.1` URLs on ports you have
+  checked with `netstat` (LESSONS candidate).
+
+### Cost
+Same-run A/B against a `main` snapshot (`d803a54`): GPU timer queries, `RS` pinned to 1, 1280×800 headless Chrome, two
+rounds of three 1.2 s samples.
+
+| view | main | plumes |
+|---|---|---|
+| 2 ascent (Lunar, 3 km) | 14.1–14.5 ms | 14.4–14.8 |
+| 10 Sparrow from below | 5.4–5.9 | 5.9–6.3 |
+| 30 (was 17) Orbiter at the pad | 17.8–19.0 | 18.1–19.4 |
+| 32 (was 19) Albatross at 45 km | 2.6–3.8 | 3.3–4.0 |
+| 33 (was 20) Petrel in vacuum (fills the screen) | 0.8–1.0 | 1.7–2.0 |
+| 36 (was 23) Kestrel at 1 km | 10.4–10.8 | 9.9–10.2 |
+
+The first version cost far more. Three changes fixed it:
+- the vertex shader bends the proxy lathe to 1.9·rb(s), so pixels outside the plume never march (Waterfall's trick);
+- samples outside that radius are skipped before any noise;
+- turbulence is read from a 32³ R8 noise texture (two fetches instead of 16 hashes). Marching stops once the ray is opaque.
+
+### Reference views
+`refView(30)` Orbiter at the pad, `31` Albatross at 20 km, `32` at 45 km, `33` Petrel in vacuum, `34` Sparrow at 1 km,
+`35` Wren in vacuum, `36` Kestrel at 1 km. They teleport the ship (pointing up, climbing), stage and burn 1.5 s.
+(Numbered from 30 because `main` took 17 for the launch site meanwhile.) `refView` now funds the program up to 1e6 M
+first: since the budget gate, a fresh page refused the Lunar launch and views 2 and 31–35 silently stayed in the editor.
+
+### Still open
+- The plume goes into the pad instead of spreading over the deflector. Ground impingement would need the pad or ground
+  height in the shader.
+- No shutdown tail-off: a plume disappears with `activeEngines`. Ignition is a fast grow, with no start-up flash.
+- Plumes don't light anything: no glow on the pad, the smoke or the hull at night.
+- At altitude, the plume should wash back over the base (recirculation). Soot marks model that; the plume doesn't show it.
+- The Sparrow's alcohol plume still reads whitish-blue against the sea. Real V-2 footage is more yellow.
+- RCS puffs could reuse this volume with a small re.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1009,6 +1089,31 @@ Shading:
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
    - Coordinate with the builder session (the site picker in the construction screen) and the economy session
      (`makePowers` and `PAD_GS` assume the pad at +X; site ownership and leases).
+   - **Hand-off from the economy session (2026-10-07): what the economy layer needs from launch sites.** Geography is
+     the last power-flavour axis, and Caio chose to build it as slice B here first, with economy on top afterwards. The
+     economy side will add site ownership, foreign leases priced by relations, loss of access under sanctions, and the
+     politics of launching over a neighbour. To keep that a thin layer, please:
+     - **`SITES` as plain data in the SIM block,** one entry per site: `id`, `name`, `u` (planet-fixed unit vector),
+       `lat`, `h` (pad height), `power` (index, from `powerAt(u)`; null at sea), `coastal` (bool), `maxDia` (largest stage
+       diameter it can take: rail limit inland, barge at the coast), `downrange` (azimuth plus the powers whose land lies
+       under the first ~1,000 km of the ascent), `polar` (a clear corridor south or north), and `kind` (`'pad'`, later
+       `'sea'`).
+     - **The chosen site lives on the flight** (`S.site` or `newShip(stack, site)`), so missions, incidents and the
+       flight record can read it. Economy will record `R.site`.
+     - **One gate economy owns:** before a launch, call `siteAccess(site)` → `{ok, why, fee}`. Economy defines it in the
+       program block: own sites ok, foreign ones leased or refused, sanctions block. Until it exists, default to "home
+       sites only, free". The builder's site picker should show `why` when `ok` is false.
+     - **Power homes:** `makePowers` seeds power 0 at planet-fixed +X, the current pad. If the world stops being turned to
+       put the home site at +X, seed power 0 at the home site's `u` (a one-line change in economy code; go ahead, and
+       say so in the log). `HOME` can change at runtime (defection), so home sites are always `SITES.filter(s =>
+       s.power === HOME)`, never a stored list.
+     - **Other +X assumptions on the economy side:** `PAD_GS` (the pad ground station, planning's code) and the
+       recovery-demonstration contract (`landDist` is measured from +X). Point them at the flight's site; the
+       contract's text already says "the pad".
+     - **Leave economy rules out of slice B:** no fees, ownership politics or sanction checks. Sites should be able to
+       exist abroad from day one; a foreign site is simply refused until economy's `siteAccess` arrives. Economy then
+       adds leases, a lease line on the budget, sites closed when relations sour (as ground stations already are),
+       westward-launch politics, and site choice in contracts.
 2. **Cost of low grazing views** (8.8 ms at 1024×768 over rugged hills).
    - Ideas: a temporal reuse of last frame's depth; a cheaper hash (exactness only matters near the camera, so
      distant octaves could come from a 3D noise texture with hardware filtering); fewer octaves beyond ~5 km.
@@ -1407,8 +1512,22 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
   rendered map.
 - Also: a Δv record of 0 is ignored (a placed vessel, not a flight), found by placing one by script.
 
+**More facts** (same day): 15 now, in four sections.
+- **Getting up:** Δv to space, Δv to orbit, highest dynamic pressure flown through (logged at flight end if the vessel
+  is still alive).
+- **In orbit:** the first orbital period; the best ground-station contact a satellite has had (reported between flights
+  by the satellite itself, named after it; no design).
+- **Coming back** (logged on an intact landing on Tellus): fastest re-entry survived (air-relative speed on the way down
+  after reaching space), hottest skin survived (K, with the part), the hardest ride a passenger came home from (g),
+  the closest landing to the pad after a trip to space.
+- **Out there:** farthest from Tellus (replaces "highest point"; counts the Selene leg), Δv to reach Selene, the first
+  orbital period around Selene, Δv to land on Selene, and Selene's surface gravity as the first lander measures it.
+- Facts may hold objects (`key` picks the number compared); `logNote(null, …, by)` lets the registry report.
+- A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
+  from the pad. Checks §19 (3 new, 136 total).
+
 **Next along this line:**
-- More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
+- More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
 - **The map's look following the era:** pencil trajectories on graph paper, then vector CRT. Mission planning UI
   follows the same arc.
@@ -1557,6 +1676,31 @@ Registered satellites used to exist only on the map; now you can fly past one.
 - Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
   is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
+
+### Rendezvous (sats session, 2026-10-07)
+
+Seeing a satellite isn't the same as reaching one. Now you can pick one as the target and fly to it.
+
+- **Choosing:** click a satellite's marker on the map (click again to clear), or **G** to cycle through the registry and
+  back to none. The target is per flight (`S.target`, the registry id); a revert or a new flight starts without one.
+- **Sim side** (`tgtOf`, `approach`, `progT`, next to the registry): `tgtOf(s)` is the target's state at program time and
+  the relative position and velocity. `approach(q, r, v, t0, span)` finds the closest approach between a Kepler state and
+  the target: a 240-step scan, then golden-section on the best bracket. The span is two of our orbits; sub-orbital or
+  escaping trajectories get none.
+- **Autopilot:** four more modes, shown only while there's a target: *Target*, *Anti-tgt* (toward/away), *Rel pro*, *Rel ret*
+  (along/against our velocity relative to it; *Rel ret* plus throttle is how you kill the last few m/s).
+- **Map:** the target's orbit in orange and always labelled; the closest approach on the current orbit (green: our point,
+  orange: its point, a line between them, distance and time) and on the plan after a maneuver node (white, `▸plan`).
+  Recomputed at most 4× a second of real time (`tgtCA`, cached by target and node), or at once when the node moves.
+- **HUD:** *Target* (distance, relative speed, closing or opening) and *Closest* (distance, time, relative speed there,
+  and the plan's). **Navball:** orange marks for the target and anti-target, pink for relative prograde and retrograde.
+  **Flight view:** the target's diamond shows at any distance, not just within 200 km.
+- Checks (`test.mjs` §21, on its own sim instance): the closest approach to a 320 km, 2° target matches a 0.5 s
+  brute-force scan (104.69 vs 104.72 km, same second), and the four modes point exactly where they say, falling back to
+  the hold when the target is gone. In the browser: a synthetic click on the map marker sets the target.
+- **Not yet:** docking or any contact (you fly past, or through, the satellite); target-relative closest approach beyond
+  two orbits (phasing over many revolutions); targeting the moon or debris; contracts that need a rendezvous
+  (inspection, repair, retrieval). Those are the natural next slices.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
