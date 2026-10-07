@@ -1058,7 +1058,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh();
 }
 
-// 22. Launch sites as data (terrain session, slice B): generated per power, a site per flight, latitude that matters.
+// 22. Contact (sats session): the vessel against a registered satellite. Its own instance of the sim core.
+{
+  const D = new Function(src + 'return {newShip,satRegister,satAt,contactStep,physStep,hitNear,railsOK,PROG,TELLUS,DT,qrot,qmul,qaxis,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG;
+  // a pod-tank-engine vessel in a 300 km orbit, nose out, and a camera satellite 1 m beyond its nose, antenna toward us
+  const scene = (vClose) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip(['pod', 't1', 'kestrel']), r0 = T.R + 300e3; s.landed = false; s.rec.launched = true; s.rec.day0 = 0; s.sas = false; s.throttle = 0;
+    s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)]; s.w = [0, 0, 0];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['ant', 'cam', 'petrel']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI), s.q); k.r = add(s.r, mul(Y, s.yTop + 1 + k.yTop)); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, vClose)); return { s, q: P.sats[0], Y, nParts: s.parts.filter(p => p.on).length };
+  };
+  // gentle: 0.5 m/s. Momentum is conserved through the contact step, they separate at about HIT_E of the closing speed, nothing breaks
+  let { s, q, Y, nParts } = scene(0.5), mom = null, sep = null;
+  for (let i = 0; i < 400 && !mom; i++) { D.physStep(s, D.DT); const T0 = D.t, [, vq] = D.satAt(q, T0), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)), c0 = dot(sub(s.v, vq), Y), had = !!q.spin;
+    D.contactStep(s, D.DT); if (q.spin && !had) { const p1 = add(mul(s.v, s.mass), mul(q.v, q.mass)); mom = len(sub(p1, p0)) / len(p0); sep = dot(sub(s.v, q.v), Y) / c0; } }
+  check('contact: a 0.5 m/s bump conserves momentum, bounces them apart, breaks nothing', mom != null && mom < 1e-12 && sep < -0.05 && sep > -0.6 && s.alive && s.parts.filter(p => p.on).length === nParts && P.sats.length === 1 && q.shape.length === 3,
+    `momentum error ${mom != null ? mom.toExponential(1) : '—'}; relative speed after/before ${sep != null ? sep.toFixed(2) : '—'}; satellite spinning at ${q.spin ? len(q.spin.w).toExponential(1) : '—'} rad/s`);
+  // 5 m/s: the satellite's antenna (delicate, 3 m/s) breaks off, the satellite and our pod (8 m/s) survive
+  ({ s, q } = scene(5)); for (let i = 0; i < 100 && !q.spin; i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); }
+  check('contact: at 5 m/s the antenna it hits breaks off; the satellite and the vessel carry on', q.spin && P.sats.length === 1 && q.ant === 0 && q.cam === 1 && q.shape.length === 2 && s.alive,
+    `satellite kit now: ${q.shape.map(o => o.k).join(', ')}; vessel ${s.alive ? 'intact' : 'lost'}`);
+  // 2 km/s: 40 m per step, much more than either body. Still caught, and nothing survives
+  ({ s, q } = scene(2000)); let hit = false; for (let i = 0; i < 5 && s.alive; i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); hit = !s.alive; }
+  check('contact: a 2 km/s pass doesn\'t tunnel through (40 m a step); vessel and satellite are destroyed', hit && P.sats.length === 0, `vessel ${s.alive ? 'survived' : 'destroyed'}, ${P.sats.length} satellites left`);
+  // physics, not rails, while a satellite is within 5 km
+  ({ s } = scene(0)); const nearOn = D.hitNear(s) && !D.railsOK(s); s.r = add(s.r, mul(Y, -20e3)); const farOff = !D.hitNear(s);
+  check('contact: within 5 km of a satellite the flight stays in physics steps', nearOn && farOff, `near: rails ${D.railsOK(s) ? 'on' : 'off'} at 20 km`);
+}
+
+// 23. Launch sites as data (terrain session, slice B): generated per power, a site per flight, latitude that matters.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180, keep = P.site;
   const fields = ['id', 'name', 'u', 'lat', 'h', 'power', 'coastal', 'maxDia', 'downrange', 'polar', 'kind', 'rot', 'minInc'];

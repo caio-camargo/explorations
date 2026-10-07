@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.10.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.11.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -928,7 +928,7 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
 - **The Orbiter flown from Haval Polar Range (29.0°N)** reaches 121×102 km at **28.97°**. Latitude now sets the
   orbit's plane.
 - **Free speed:** 278 m/s at the equator, 248 at 26.9°, 201 at 43.8°.
-- **Tests:** `test.mjs` §22, 5 checks (153 total with everything merged):
+- **Tests:** `test.mjs` §23, 5 checks (157 total with everything merged):
   - fields and generation;
   - a ship on a far pad: position, attitude, free speed, plane;
   - `PROG.site` and tapes;
@@ -1825,9 +1825,77 @@ Seeing a satellite isn't the same as reaching one. Now you can pick one as the t
 - Checks (`test.mjs` §21, on its own sim instance): the closest approach to a 320 km, 2° target matches a 0.5 s
   brute-force scan (104.69 vs 104.72 km, same second), and the four modes point exactly where they say, falling back to
   the hold when the target is gone. In the browser: a synthetic click on the map marker sets the target.
-- **Not yet:** docking or any contact (you fly past, or through, the satellite); target-relative closest approach beyond
+- **Not yet:** docking (contact came next, see below); target-relative closest approach beyond
   two orbits (phasing over many revolutions); targeting the moon or debris; contracts that need a rendezvous
   (inspection, repair, retrieval). Those are the natural next slices.
+
+### Contact: collisions with satellites (sats session, 2026-10-07)
+
+Flying through a satellite is no longer possible. Bump it and it moves; hit it hard and things break.
+
+- **Shapes:** every part is a signed distance field built from its profile (`d.prof`, radius by height, revolved), so
+  cones, bells and flat discs are their real shape; the fin ring is its swept disc. Each part's surface is a cloud of
+  sample points (rings every 0.2 m, ~0.25 m apart, plus the end caps). A point of one body inside the other is a
+  contact: the depth-weighted point and normal over all such points, the deepest depth, and the part on each side most
+  involved. Bounding spheres cull per body and per part pair first.
+- **Response:** one impulse at the contact point, restitution 0.3, Coulomb friction 0.4, full rigid bodies on both sides
+  (the vessel's `I`; the satellite's from its parts, masses as shares of its registered mass), after pushing the two
+  apart by the depth. Momentum is conserved to 1e-27 relative.
+- **No tunnelling:** within 5 km of a satellite the flight runs in physics steps even at 1× (rails would step past it,
+  and in orbit without thrust it's always on rails). Each step is re-checked along the relative motion at 5 cm
+  offsets (up to 400), from the start of the step, and the earliest touch is the one resolved. A 2 km/s pass moves
+  40 m a step and is still caught.
+- **Damage:** a part breaks when the closing speed exceeds its tolerance: 3 m/s for delicate parts (camera, antenna,
+  instruments, chute, fins), 8 m/s for the rest (`d.tol` overrides). On the vessel it's `partLost`, as for burn-up. On a
+  satellite a delicate part breaks off as debris and the satellite carries on without it (kit counts, mass and centre
+  of mass updated); anything else breaking destroys the satellite (every part becomes debris, the registry entry goes).
+  Above 150 m/s both are destroyed outright.
+- **After a hit** the satellite gets new rails (state at that moment) and a free spin (`q.spin`: attitude and world
+  angular velocity at a time); `satSpin` gives its attitude either way, and the renderer uses it. Torque-free spin is
+  taken as a constant world axis (exact only about a principal axis; fine for a tumble you watch for minutes).
+- **Measured:** a 0.5 m/s nose-to-nose bump between an Orbiter-class pod stack and a 660 kg Lookout leaves the
+  satellite spinning at 0.2 rad/s. Not a bug: until it's hit, the satellite turns with its orbital frame (once per
+  orbit) and the vessel holds still in inertial space, so after 2 s the flat faces meet 0.002 rad apart and the first
+  touch is on the rim, 12 cm off the axis. A real flat-on-flat contact does the same.
+- Checks (`test.mjs` §22, own sim instance): the 0.5 m/s bump (momentum, bounce at 0.24 of the closing speed, nothing
+  breaks); 5 m/s (the satellite's antenna breaks off, both carry on); 2 km/s (caught, both destroyed); physics within
+  5 km, rails at 20 km. In the browser: a 1 m/s bump bounces the satellite away; at 6 m/s its antenna and the Orbiter's
+  own chute (its top part, also 3 m/s) come off as debris.
+- **Not yet:** contact with debris (spent stages) or between two satellites; resting contact is a stream of small
+  impulses (fine for bumps, not for pushing something for minutes); one contact point per step.
+
+### Docking and related parts: plan (2026-10-07, not built; decisions for Caio)
+
+**The blocker first.** A part has a position, an angle round the axis (`phi`) and, for engines, a cant. It can't be
+upside down or tilted (open thread 4, "truly tilted bodies"). Two vessels docked nose to nose have opposite axes, so
+merging their parts into one design doesn't fit the part model. **Proposal: a docked vessel is a rigid passenger.** The
+vessel keeps its own parts; each docked body is a sub-body (shape, mass, centre of mass, inertia, relative transform)
+fixed to it. Physics sums mass and inertia; contact, rendering and the registry carry the sub-bodies along; thrust,
+aero and staging stay with the main vessel's parts. Undocking hands the sub-body back to the registry as a satellite
+with the current state. A registry entry with sub-bodies is also how a **station** built from several launches persists.
+
+**What docking needs, roughly in order:**
+
+1. **RCS and translation control** (a prerequisite, not optional). With only a main engine, closing at 0.1 m/s means
+   turning around for every correction. An RCS block (four nozzles, small thrust, its own monopropellant via a new `RES`
+   entry), translation keys (KSP's I J K L H N), and a "kill relative velocity" SAS mode. Probably also a docking
+   camera or a reticle that shows alignment with the target port.
+2. **Docking port** (1.25 m class first). Two ports capture when they're within ~0.2 m, axes opposed within ~10°, and
+   closing under ~0.5 m/s. A short magnetic pull, then a latch that makes the target a rigid passenger. Undock pushes
+   it off at ~0.3 m/s. Contracts follow naturally: inspection (come within 50 m), service (dock, wait, undock), crew
+   rotation (a biocapsule docks to a station).
+3. **Grabber/claw** (KSP's "Klaw"). Latches onto any surface at under ~1 m/s, at the contact point and the current
+   relative attitude (passengers can have any transform, so this is cheap once 2 exists). Retrieval and deorbiting
+   junk, and catching a satellite that has no port.
+4. **Robotic arm.** A real arm (joints, inverse kinematics, control) is a big slice. A cheap version: an arm part that
+   captures a free-drifting target within ~10 m at under 0.1 m/s and berths it onto a port in a scripted 30 s motion.
+
+**Also relevant:** fuel transfer between docked bodies; a cargo bay (retrieve a satellite and bring it home); lights for
+docking on the night side; and contact with debris (also needed before the claw can grab a spent stage).
+
+**Questions for Caio:** (a) is the "rigid passenger" model OK (docked things can't share fuel or be re-staged until we
+add that explicitly)? (b) RCS fuel: a separate monopropellant, or draw from the main tanks? (c) which first after RCS:
+the port or the claw?
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

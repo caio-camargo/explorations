@@ -879,7 +879,7 @@ function stage(s){
 function railsOK(s){
   if(!s.alive)return false;const thr=s.throttle>0&&activeEngines(s).length>0;
   if(s.landed)return!thr;
-  return!thr&&len(s.r)-s.body.R>physAlt(s.body)}
+  return!thr&&len(s.r)-s.body.R>physAlt(s.body)&&!hitNear(s)}   // near a satellite: physics, so contact is checked
 // Advance on rails. Kepler is exact, so the only reasons to sub-step are SOI changes, the atmosphere edge, and (near Nyx)
 // the perturbation, which is integrated in kick–drift–kick steps.
 function rails(s,dt){
@@ -1744,6 +1744,90 @@ function approach(q,r0,v0,t0,span){const N=240,d=t=>len(sub(kepler(r0,v0,t-t0,TE
   for(let i=0;i<=N;i++){const x=d(t0+span*i/N);if(x<bd){bd=x;bi=i}}
   let a=t0+span*Math.max(0,bi-1)/N,b=t0+span*Math.min(N,bi+1)/N;for(let k=0;k<50;k++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(d(m1)<d(m2))b=m2;else a=m1}
   const t=(a+b)/2,[p,vs]=kepler(r0,v0,t-t0,TELLUS.mu),[pt,vt]=satAt(q,t);return{t,d:len(sub(p,pt)),vrel:len(sub(vs,vt)),p,pt}}
+// ---- contact: the vessel against registered satellites (sats session). Each part's shape is a signed distance field
+// from its profile (radius by height, the one d.prof gives); each part's surface is a cloud of sample points on that
+// profile. A point of one body inside the other is a contact. Satellites within HIT_NEAR are stepped with the vessel in
+// physics (rails would step past them), and each step is re-checked at offsets 5 cm of relative motion apart, so a
+// fast pass can't tunnel through. A satellite that's been hit leaves its orbit-locked attitude and spins freely.
+const HIT_E=0.3,HIT_MU=0.4,HIT_SLOP=0.01,HIT_NEAR=5000,HIT_VAPOR=150,HIT_STEP=0.05;
+const DELICATE=new Set(['cam','ant','sci','chute','rfin','fins']);
+const hitTol=d=>d.tol??(DELICATE.has(d.kind)?3:8);   // normal speed (m/s) a part takes without breaking
+const hitBase=d=>d.kind==='tank'?d.dry:d.m;          // a satellite's part masses are shares of its registered mass
+function hitProf(P,y){if(y<=P[0][1])return P[0][0];for(let i=1;i<P.length;i++)if(y<=P[i][1]){const[a,ya]=P[i-1],[b,yb]=P[i];return yb>ya?a+(b-a)*(y-ya)/(yb-ya):Math.max(a,b)}return P[P.length-1][0]}
+const HIT_GEO=new WeakMap();
+// a part's contact geometry in the vessel frame: axis base o, profile, height, sample points, centre and bounding radius
+function hitGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const h=d.h,o=[p.pos[0],p.y0,p.pos[2]];
+  let prof=d.sc&&PARTS[d.base]?PARTS[d.base].prof.map(([r,y])=>[r*d.sc,y*d.sc]):d.prof;
+  if(d.kind==='fins')prof=[[d.r+(d.span||0),0],[d.r+(d.span||0),h]];   // the fin ring as its swept disc
+  const pts=[],ny=Math.max(1,Math.ceil(h/0.2));
+  for(let i=0;i<=ny;i++){const y=h*i/ny,r=hitProf(prof,y),n=Math.max(6,Math.ceil(6.2832*r/0.25));
+    for(let k=0;k<n;k++){const a=k/n*6.2832;pts.push([o[0]+r*Math.cos(a),o[1]+y,o[2]+r*Math.sin(a)])}
+    if(i===0||i===ny)for(let rr=r-0.25;rr>0.05;rr-=0.25){const m=Math.max(6,Math.ceil(6.2832*rr/0.25));for(let k=0;k<m;k++){const a=k/m*6.2832;pts.push([o[0]+rr*Math.cos(a),o[1]+y,o[2]+rr*Math.sin(a)])}}
+    if(i===0||i===ny)pts.push([o[0],o[1]+y,o[2]])}
+  const rmax=Math.max(...prof.map(x=>x[0]));
+  g={o,prof,h,pts,c:[o[0],o[1]+h/2,o[2]],R:Math.hypot(rmax,h/2)};HIT_GEO.set(p,g);return g}
+function partSDF(g,x,y,z){const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
+function sdfN(g,l){const e=1e-3,f=(x,y,z)=>partSDF(g,x,y,z),[x,y,z]=l;
+  return norm([f(x+e,y,z)-f(x-e,y,z),f(x,y+e,z)-f(x,y-e,z),f(x,y,z+e)-f(x,y,z-e)])}
+const hitW=(B,pt)=>add(B.r,qrot(B.q,sub(pt,B.cm))),hitL=(B,w)=>add(qrot(qconj(B.q),sub(w,B.r)),B.cm);
+const hitIw=(B,L)=>{const l=qrot(qconj(B.q),L);return qrot(B.q,[l[0]/B.I[0],l[1]/B.I[1],l[2]/B.I[2]])};   // world I⁻¹·L
+// the vessel as a contact body (shares r, v, q, w with s until written back)
+function shipBody(s){const parts=s.parts.filter(p=>p.on).map(p=>({p,d:p.d,g:hitGeo(p,p.d)}));
+  return{r:s.r,v:s.v,q:s.q,w:s.w,m:s.mass,I:s.I,cm:s.cm,parts,R:Math.max(...parts.map(x=>len(sub(x.g.c,s.cm))+x.g.R))}}
+// a satellite's attitude and spin at program time T: locked to its orbital frame until something hits it, then free
+function satSpin(q,T,r,v){if(q.spin){const w=q.spin.w,wl=len(w),dq=wl>1e-12?qaxis(mul(w,1/wl),wl*(T-q.spin.T0)):[0,0,0,1];return{q:qnorm(qmul(dq,q.spin.q0)),w}}
+  return{q:qmul(orbQ(r,v),q.qo),w:mul(cross(r,v),1/dot(r,r))}}
+const SAT_MP=new WeakMap();
+function satMP(q){let M=SAT_MP.get(q.shape);if(M)return M;
+  const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>{const d=PARTS[o.k];return{o,d,g:hitGeo(o,d)}}),bm=parts.reduce((a,x)=>a+hitBase(x.d),0)||1,k=q.mass/1000/bm;
+  let I=[0,0,0];for(const x of parts){const pm=hitBase(x.d)*k*1000,dd=sub(x.g.c,q.cm),pr=x.d.r,ip=pm*(x.d.h*x.d.h/12+pr*pr/4);
+    I=add(I,[pm*(dd[1]**2+dd[2]**2)+ip,pm*(dd[0]**2+dd[2]**2)+pm*pr*pr/2,pm*(dd[0]**2+dd[1]**2)+ip])}
+  M={parts,I,R:Math.max(...parts.map(x=>len(sub(x.g.c,q.cm))+x.g.R))};SAT_MP.set(q.shape,M);return M}
+function satBody(q,T){const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v),M=satMP(q);return{sat:q,r,v,q:sp.q,w:sp.w,m:q.mass,I:M.I,cm:q.cm,parts:M.parts,R:M.R}}
+const hitNear=s=>s.body===TELLUS&&!s.landed&&(PROG.sats||[]).some(q=>q.shape&&len(sub(satAt(q,progT(s))[0],s.r))<HIT_NEAR);
+// points of each body inside the other: depth-weighted contact point and normal (n points from B toward A), deepest depth,
+// and the part on each side that's most involved
+function hitFind(A,B){let W=0,P=[0,0,0],N=[0,0,0],D=0,pa=null,pb=null;
+  for(const[X,Y,sg]of[[A,B,1],[B,A,-1]])for(const a of X.parts){const ca=hitW(X,a.g.c);if(len(sub(ca,Y.r))>a.g.R+Y.R)continue;
+    for(const b of Y.parts){if(len(sub(ca,hitW(Y,b.g.c)))>a.g.R+b.g.R)continue;
+      for(const pt of a.g.pts){const w=hitW(X,pt),l=sub(hitL(Y,w),b.g.o),dd=partSDF(b.g,l[0],l[1],l[2]);if(dd>=0)continue;
+        const n=mul(qrot(Y.q,sdfN(b.g,l)),sg);W-=dd;P=madd(P,w,-dd);N=madd(N,n,-dd);if(-dd>D){D=-dd;pa=sg>0?a:b;pb=sg>0?b:a}}}}
+  return W>0&&len(N)>1e-12?{p:mul(P,1/W),n:norm(N),d:D,pa,pb}:null}
+// one impulse at the contact point (restitution HIT_E, Coulomb friction HIT_MU), after pushing the bodies apart.
+// Returns the closing normal speed it removed (0 if they were already separating).
+function hitResolve(A,B,c){const n=c.n,ia=1/A.m,ib=1/B.m,cr=Math.max(0,c.d-HIT_SLOP)/(ia+ib);A.r=madd(A.r,n,cr*ia);B.r=madd(B.r,n,-cr*ib);
+  const ra=sub(c.p,A.r),rb=sub(c.p,B.r),vr=sub(add(A.v,cross(A.w,ra)),add(B.v,cross(B.w,rb))),vn=dot(vr,n);if(vn>=0)return 0;
+  const kk=u=>ia+ib+dot(u,cross(hitIw(A,cross(ra,u)),ra))+dot(u,cross(hitIw(B,cross(rb,u)),rb));
+  const j=-(1+HIT_E)*vn/kk(n);let J=mul(n,j);const vt=sub(vr,mul(n,vn)),vtl=len(vt);
+  if(vtl>1e-9){const t=mul(vt,1/vtl);J=madd(J,t,-Math.min(vtl/kk(t),HIT_MU*j))}
+  A.v=madd(A.v,J,ia);A.w=add(A.w,hitIw(A,cross(ra,J)));B.v=madd(B.v,J,-ib);B.w=sub(B.w,hitIw(B,cross(rb,J)));return-vn}
+// a satellite loses one part (it broke off) or everything (destroyed): the pieces leave as debris
+function satBreak(q,B,list,why,T){const keep=q.shape.filter(o=>!list.some(x=>x.o===o));
+  for(const x of list){const d=x.d,pc=[x.o.pos[0],x.o.y0+x.o.h*d.cm,x.o.pos[2]],w=hitW(B,pc),out=sub(w,B.r),ol=len(out);
+    HOOK.debris({body:TELLUS,r:w,v:add(add(B.v,cross(B.w,out)),ol>1e-6?mul(out,0.5/ol):[0,0,0]),q:B.q.slice(),w:B.w.slice(),parts:[{...x.o,d,on:true}],cm:pc,mass:hitBase(d)*1000,t:0})}
+  if(!keep.length){PROG.sats.splice(PROG.sats.indexOf(q),1);if(S&&S.target===q.id)S.target=null;HOOK.news(`${q.name} destroyed in a collision${why}`,'bad');return}
+  // what's left: mass, centre of mass (the world position follows it, so nothing jumps) and the kit counts
+  const lost=list.reduce((a,x)=>a+hitBase(x.d),0),all=q.shape.reduce((a,o)=>a+(PARTS[o.k]?hitBase(PARTS[o.k]):0),0);
+  q.mass*=Math.max(0.05,1-lost/(all||1));let c=[0,0,0],m=0;for(const o of keep){const d=PARTS[o.k];if(!d)continue;c=madd(c,[o.pos[0],o.y0+o.h*d.cm,o.pos[2]],hitBase(d));m+=hitBase(d)}
+  c=mul(c,1/m);const r=add(B.r,qrot(B.q,sub(c,q.cm)));q.cm=c;q.shape=keep;
+  for(const kd of['cam','ant','sci','ballast','bio'])q[kd]=keep.filter(o=>PARTS[o.k]&&PARTS[o.k].kind===kd).length;
+  Object.assign(q,{r,v:add(B.v,cross(B.w,sub(r,B.r))),epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});
+  HOOK.news(`${q.name} loses its ${list.map(x=>x.d.name.toLowerCase()).join(' and ')} in a collision`,'warn')}
+// after each physics step: every satellite near enough is checked along the step's relative motion
+function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS||!(PROG.sats||[]).length)return;const T=progT(s);let A=null;
+  for(const q of PROG.sats.slice()){if(!q.shape||!q.shape.length)continue;const[rq,vq]=satAt(q,T),rel=sub(rq,s.r),vrel=sub(vq,s.v);
+    if(!A)A=shipBody(s);const M=satMP(q),reach=A.R+M.R+len(vrel)*dt+0.5;if(len(rel)>reach)continue;
+    const B=satBody(q,T),n=Math.min(400,Math.max(1,Math.ceil(len(vrel)*dt/HIT_STEP)));let c=null;
+    for(let k=0;k<=n&&!c;k++){const o=sub(rel,mul(vrel,dt*(n-k)/n));if(len(o)>A.R+M.R)continue;B.r=add(s.r,o);c=hitFind(A,B)}   // earliest touch in the step
+    if(!c)continue;
+    const vn=hitResolve(A,B,c),why=` (${vn.toFixed(1)} m/s)`;s.r=A.r;s.v=A.v;s.w=A.w;
+    Object.assign(q,{r:B.r,v:B.v,epoch:T,spin:{q0:B.q.slice(),w:B.w.slice(),T0:T}});   // the satellite's new rails
+    if(vn>0.3)HOOK.msg(`Contact with ${q.name} at ${vn.toFixed(1)} m/s`);
+    if(vn>HIT_VAPOR){HOOK.boom(TELLUS,c.p,simT,3);s.alive=false;s.crashSpeed=vn;HOOK.msg(`Destroyed: collided with ${q.name} at ${vn.toFixed(0)} m/s`);satBreak(q,B,B.parts,why,T);return}
+    const sp=c.pb&&vn>hitTol(c.pb.d)?c.pb:null,shp=c.pa&&vn>hitTol(c.pa.d)?c.pa.p:null;
+    if(sp)satBreak(q,B,DELICATE.has(sp.d.kind)?[sp]:B.parts,why,T);
+    if(shp){HOOK.msg(`${shp.d.name} broke on ${q.name}`);partLost(s,shp);A=null}
+    if(!s.alive)return}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
 function imageDone(c,sat,st){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);income(c.p.pay);PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);sat.imgs++;
@@ -1814,7 +1898,7 @@ const eraOf=()=>PROG.done&&PROG.done.beeper?2:1;
 // flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
 const CHUTE_G=3;   // chutes are reefed: the canopy opens in stages so its own drag never exceeds this many g
 const TAPE_V='lp-1.12';   // 1.12: the drogue waits for subsonic-ish speed
-function advPhys(s){physStep(s,DT);stepDebris(DT);missionTick(s,DT,true)}
+function advPhys(s){physStep(s,DT);contactStep(s,DT);stepDebris(DT);missionTick(s,DT,true)}
 function advRails(s,dt,warp){
   if(!s.landed){if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(s,dt/n)}
     else{s.w=[0,0,0];if(s.sas&&s.sasMode!=='stab'){const tg=sasTarget(s);if(tg)s.q=qnorm(qmul(qFromTo(qrot(s.q,[0,1,0]),tg),s.q))}}}
@@ -2914,7 +2998,7 @@ function render(){
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
   if(mode==='flight')for(const q of PROG.sats||[]){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
-    const sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(qmul(orbQ(r,v),q.qo),sub(r,camW),mul(q.cm,-1)),r);gl.uniform1f(m.uSeam,0);setMarks(m,[])}
+    const sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(satSpin(q,tNow(),r,v).q,sub(r,camW),mul(q.cm,-1)),r);gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
   // ---- map: orbit lines + labels
   const labels=[];
