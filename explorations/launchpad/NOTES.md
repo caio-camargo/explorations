@@ -1295,8 +1295,22 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
   rendered map.
 - Also: a Δv record of 0 is ignored (a placed vessel, not a flight), found by placing one by script.
 
+**More facts** (same day): 15 now, in four sections.
+- **Getting up:** Δv to space, Δv to orbit, highest dynamic pressure flown through (logged at flight end if the vessel
+  is still alive).
+- **In orbit:** the first orbital period; the best ground-station contact a satellite has had (reported between flights
+  by the satellite itself, named after it; no design).
+- **Coming back** (logged on an intact landing on Tellus): fastest re-entry survived (air-relative speed on the way down
+  after reaching space), hottest skin survived (K, with the part), the hardest ride a passenger came home from (g),
+  the closest landing to the pad after a trip to space.
+- **Out there:** farthest from Tellus (replaces "highest point"; counts the Selene leg), Δv to reach Selene, the first
+  orbital period around Selene, Δv to land on Selene, and Selene's surface gravity as the first lander measures it.
+- Facts may hold objects (`key` picks the number compared); `logNote(null, …, by)` lets the registry report.
+- A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
+  from the pad. Checks §19 (3 new, 136 total).
+
 **Next along this line:**
-- More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
+- More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
 - **The map's look following the era:** pencil trajectories on graph paper, then vector CRT. Mission planning UI
   follows the same arc.

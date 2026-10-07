@@ -72,7 +72,8 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 /* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
 #logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
 #logbook .x{position:absolute;right:10px;top:8px;cursor:pointer;opacity:.7}#logbook .lbrow{margin:10px 0}#logbook .lbv{font-size:1.25em}#logbook s{opacity:.55;margin-right:8px}
-#logbook button{font:inherit;font-size:.85em;margin-top:2px}#logbook .lbopt{margin-top:14px;font-size:.8em;opacity:.75}
+#logbook button{font:inherit;font-size:.85em;margin-top:2px}#logbook .lbsec{margin:16px 0 2px;font-size:.8em;letter-spacing:.15em;text-transform:uppercase;opacity:.65;border-bottom:1px solid currentColor}
+#logbook .lbrow{margin:6px 0 8px}#logbook .lbopt{margin-top:14px;font-size:.8em;opacity:.75}
 .lb-notebook{background:#f6f0de;color:#1d2a52;font:17px/1.35 'Segoe Print','Bradley Hand','Comic Sans MS',cursive;
   background-image:linear-gradient(#bcd2ea55 1px,transparent 1px),linear-gradient(90deg,#bcd2ea55 1px,transparent 1px);background-size:22px 22px}
 .lb-notebook h3{margin:0 0 6px;font-size:1.5em;text-decoration:underline wavy #c0392b88}.lb-notebook .lbu{color:#8a7c66;font-style:italic}.lb-notebook .lbby{color:#5d6d8a;font-size:.8em}
@@ -1127,7 +1128,7 @@ const MISSIONS=[
 const missionOpen=M=>(M.req||[]).every(r=>PROG.done[r]);
 function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,bands:{},orbit:false,orbitSci:false,lift:0,
   sf:{},bio:false,bioOK:true,bioWhy:'',bioSpace:false,bioOrbits:0,g:0,gMax:0,cabin:290,approved:true,drops:[],cert0:{},recSci:false,pet:'',
-  apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[],dv:0,newLog:[]}}
+  apexSci:0,qPart:{},orb:null,landDist:Infinity,cdone:[],dv:0,newLog:[],qMax:0,far:0,vEntry:0,hotT:0,hotPart:''}}
 // flight safety review: every joint within its certified rating in the builder's what-if cases (liftoff, max-q)
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
@@ -1143,7 +1144,11 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   const b=s.body,h=len(s.r)-b.R,on=k=>s.parts.find(p=>p.on&&p.d.kind===k),sci=s.alive&&on('sci'),bio=s.alive&&on('bio');
   if(b===TELLUS&&h>b.atm&&!R.logSpace){R.logSpace=1;logNote(s,'space',R.dv)}
   if(b===SELENE&&!R.logSel){R.logSel=1;logNote(s,'selene',R.dv)}
-  if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv)}
+  if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv);logNote(s,'sg',SELENE.mu/dot(s.r,s.r))}   // a lander measures g
+  if(b===SELENE&&!s.landed&&!R.logSOrb){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
+  {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
+  if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
+    if(b===TELLUS&&R.logSpace&&h<b.atm&&dot(s.v,s.r)<0){const sp=len(sub(s.v,surfVel(b,s.r)));if(sp>R.vEntry)R.vEntry=sp}}
   if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h}
   if(phys&&sci&&s.qdyn>0)for(const p of s.parts)if(p.on&&s.qdyn>(R.qPart[p.d.key]||0))R.qPart[p.d.key]=s.qdyn;   // the worst q each part flew through, instrumented
   if(phys&&s.thrust>0)R.dv+=s.thrust/s.mass*dt;   // Δv actually spent, for the logbook
@@ -1161,6 +1166,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
       if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT>AIR_S&&!s.landed)why='ran out of air'}
     if(why){R.bioOK=false;R.bioWhy=why;HOOK.news(`${R.pet} ${why}. The program pauses to reflect`,'bad');HOOK.msg(`Passenger ${why}`)}}
   if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landDist=Math.acos(clamp(norm(s.pf)[0],-1,1))*b.R;
+    if(R.logSpace){if(R.vEntry>0)logNote(s,'entry',R.vEntry);logNote(s,'pad',R.landDist)}if(R.hotT>350)logNote(s,'heat',{T:R.hotT,part:R.hotPart});if(R.bio&&R.bioOK&&R.gMax>0)logNote(s,'paxg',R.gMax);
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
@@ -1172,7 +1178,7 @@ function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.b
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.apex>0)logNote(s,'apex',R.apex);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);advanceDays(simT/DAY_S);
+function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);advanceDays(simT/DAY_S);
   for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*Math.min(1,R.sf[k]/0.4))}
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
   // where the stages came down: at home it's a local matter; on another power's land, an incident (worse on a town)
@@ -1592,7 +1598,7 @@ function satTick(d,R){const sats=(PROG.sats||[]).filter(q=>q.cam);ensureBoard();
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0;
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)>=STA_MIN))n++}
-    if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0)))}}}
+    if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0)));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R()<1-Math.exp(-d/45)){const ci=R()*CITIES.length|0,[dis,head]=DIS[R()*DIS.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
@@ -1611,22 +1617,35 @@ function satTick(d,R){const sats=(PROG.sats||[]).filter(q=>q.cam);ensureBoard();
 // who flew it and when, and improved by better flights (the old values kept, struck through in the notebook). Records
 // that a design achieved keep the design (and, through the app, the flight's autopilot tape), so a record can be loaded,
 // studied and flown again. The builder's hints read from here: until someone reaches orbit, nobody knows what it costs.
-const fmtDv=v=>`${Math.round(v).toLocaleString('en-US')} m/s`,fmtKm=v=>`${(v/1e3).toFixed(v<1e5?1:0)} km`;
+const fmtDv=v=>`${Math.round(v).toLocaleString('en-US')} m/s`,fmtAny=(F,v)=>F.fmt(v),fmtKm=v=>`${(v/1e3).toFixed(v<1e5?1:0)} km`;
 const LOGF=[
-  {id:'space',label:'Δv to leave the atmosphere',fmt:fmtDv,best:'min',design:true,hint:'nobody has been to space yet'},
-  {id:'orbit',label:'Δv to low orbit',fmt:fmtDv,best:'min',design:true,hint:'nobody has reached orbit yet'},
-  {id:'period',label:'Orbital period',fmt:v=>`${(v.p/60).toFixed(1)} min at ${fmtKm(v.alt)}`,best:'first',hint:'measured on the first orbit'},
-  {id:'apex',label:'Highest point reached',fmt:fmtKm,best:'max',design:true,hint:'nothing has flown yet'},
-  {id:'selene',label:'Δv to reach Selene',fmt:dvOrTxt=>fmtDv(dvOrTxt),best:'min',design:true,hint:'nobody has been there'},
-  {id:'land',label:'Δv to land on Selene',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
+  // getting up
+  {id:'space',sec:'Getting up',label:'Δv to leave the atmosphere',fmt:fmtDv,best:'min',design:true,hint:'nobody has been to space yet'},
+  {id:'orbit',sec:'Getting up',label:'Δv to low orbit',fmt:fmtDv,best:'min',design:true,hint:'nobody has reached orbit yet'},
+  {id:'maxq',sec:'Getting up',label:'Highest dynamic pressure flown through',fmt:v=>`${(v/1000).toFixed(1)} kPa`,best:'max',design:true,hint:'nothing has flown hard yet'},
+  // in orbit
+  {id:'period',sec:'In orbit',label:'Orbital period',fmt:v=>`${(v.p/60).toFixed(1)} min at ${fmtKm(v.alt)}`,best:'first',hint:'measured on the first orbit'},
+  {id:'contact',sec:'In orbit',label:'Best ground contact for a satellite',fmt:v=>`${v.toFixed(0)}% of the time`,best:'max',hint:'no satellite has reported in'},
+  // coming back
+  {id:'entry',sec:'Coming back',label:'Fastest re-entry survived',fmt:fmtDv,best:'max',design:true,hint:'nothing has come back from space yet'},
+  {id:'heat',sec:'Coming back',label:'Hottest skin survived',fmt:v=>`${v.T.toFixed(0)} K (${v.part})`,key:v=>v.T,best:'max',design:true,hint:'nothing has come home hot yet'},
+  {id:'paxg',sec:'Coming back',label:'Hardest ride a passenger came home from',fmt:v=>`${v.toFixed(1)} g`,best:'max',design:true,hint:'no passenger has flown yet'},
+  {id:'pad',sec:'Coming back',label:'Closest landing to the pad, from space',fmt:fmtKm,best:'min',design:true,hint:'nothing has come back from space yet'},
+  // out there
+  {id:'apex',sec:'Out there',label:'Farthest from Tellus',fmt:fmtKm,best:'max',design:true,hint:'nothing has flown yet'},
+  {id:'selene',sec:'Out there',label:'Δv to reach Selene',fmt:fmtDv,best:'min',design:true,hint:'nobody has been there'},
+  {id:'sorbit',sec:'Out there',label:'Orbital period around Selene',fmt:v=>`${(v.p/60).toFixed(1)} min at ${fmtKm(v.alt)}`,best:'first',hint:'measured on the first orbit there'},
+  {id:'land',sec:'Out there',label:'Δv to land on Selene',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
+  {id:'sg',sec:'Out there',label:'Surface gravity on Selene',fmt:v=>`${v.toFixed(2)} m/s²`,best:'first',hint:'measured by the first lander'},
 ];
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
-function logNote(s,id,v){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log||{}),cur=L[id];
+// s may be null for facts that come from the registry (then by names the reporter); F.key picks the number from an object
+function logNote(s,id,v,by){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log||{}),cur=L[id],K=x=>F.key?F.key(x):x;
   if(typeof v==='number'&&F.fmt===fmtDv&&v<1)return;   // a Δv record of nothing is a placed vessel, not a flight
-  if(cur){if(F.best==='first')return;if(F.best==='min'&&!(v<cur.v-0.5))return;if(F.best==='max'&&!(v>cur.v*1.001+1))return}
-  const e={v,day:PROG.day,flight:PROG.flights+1,by:designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};
-  if(F.design)e.stack=JSON.parse(JSON.stringify(s.stack));L[id]=e;if(s.rec)s.rec.newLog.push(id);
+  if(cur){if(F.best==='first')return;if(F.best==='min'&&!(K(v)<K(cur.v)-0.5))return;if(F.best==='max'&&!(K(v)>K(cur.v)*1.001+(K(v)>100?1:0.01)))return}
+  const e={v,day:PROG.day,flight:PROG.flights+1,by:by||designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};
+  if(F.design&&s)e.stack=JSON.parse(JSON.stringify(s.stack));L[id]=e;if(s&&s.rec)s.rec.newLog.push(id);
   if(F.best!=='max'||!cur)HOOK.news(cur?`Logbook: new best ${F.label.toLowerCase()}, ${F.fmt(v)} (was ${F.fmt(cur.v)})`:`Logbook: first measured ${F.label.toLowerCase()}, ${F.fmt(v)}`,'ok');HOOK.save()}
 // the interface ages with the program: a handwritten notebook, then (with something in orbit) a monochrome terminal
 const eraOf=()=>PROG.done&&PROG.done.beeper?2:1;
@@ -2839,9 +2858,9 @@ function logHintHTML(){const o=logF('orbit'),l=logF('land');
 const modernUI=()=>{try{return localStorage.getItem('launchpad-modern-ui')==='1'}catch(e){return false}};
 function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-modern','lb-notebook','lb-terminal'][era];el.className=cls;
   const title=['Logbook','Program notebook','PROGRAM LOG — TERMINAL 1'][era],U=x=>era===2?x.toUpperCase():x;
-  const rows=LOGF.map(F=>{const e=logF(F.id);if(!e)return`<div class="lbrow">${U(F.label)}<br><span class="lbv lbu">${era===1?'???':'— NO DATA —'}</span> <span class="lbby">${U(F.hint)}</span></div>`;
+  let lastSec='';const rows=LOGF.map(F=>{const sh=F.sec!==lastSec?(lastSec=F.sec,`<div class="lbsec">${U(F.sec)}</div>`):'',e=logF(F.id);if(!e)return sh+`<div class="lbrow">${U(F.label)}<br><span class="lbv lbu">${era===1?'???':'— NO DATA —'}</span> <span class="lbby">${U(F.hint)}</span></div>`;
     const hist=(e.hist||[]).map(v=>`<s>${F.fmt(v)}</s>`).join('');
-    return`<div class="lbrow">${U(F.label)}<br>${hist}<span class="lbv">${F.fmt(e.v)}</span> <span class="lbby">— ${e.by}, flight ${e.flight}, ${fmtDate(e.day)}</span>`+
+    return sh+`<div class="lbrow">${U(F.label)}<br>${hist}<span class="lbv">${F.fmt(e.v)}</span> <span class="lbby">— ${e.by}, flight ${e.flight}, ${fmtDate(e.day)}</span>`+
       (e.stack?` <button data-lbload="${F.id}">${era===1?'copy this design':U('load design')}${e.tape?era===1?' + its flight':' + TAPE':''}</button>`:'')+`</div>`}).join('');
   el.innerHTML=`<span class="x" id="lbClose">✕</span><h3>${title}</h3>${rows}<div class="lbopt"><label><input type="checkbox" id="lbModern" ${modernUI()?'checked':''}> modern look</label></div>`;
   $('lbClose').onclick=()=>el.classList.add('hidden');
