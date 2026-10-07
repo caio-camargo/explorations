@@ -88,7 +88,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
-  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bHelp">Keys [H]</button></div>
+  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bHelp">Keys [H]</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div class="panel hidden" id="help"><table>
     <tr><td>Space</td><td>next stage (ignite / decouple / chute)</td></tr>
     <tr><td>Shift / Ctrl</td><td>throttle up / down</td></tr>
@@ -102,6 +102,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <tr><td>N · Del</td><td>node at next apoapsis · delete node</td></tr>
     <tr><td>drag · wheel</td><td>orbit camera · zoom</td></tr>
     <tr><td>R</td><td>revert (after crash / landing)</td></tr>
+    <tr><td>Autopilot</td><td>fly once, "Save as autopilot"; next launch of the same design offers ▶ Autopilot (any control key takes over)</td></tr>
   </table><div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first.</div></div>
   <div id="navwrap">
     <div id="thr"><div id="thrf"></div></div>
@@ -229,6 +230,8 @@ const PARTS={
   t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
   t4:{name:'Tank 4 t',kind:'tank',wet:4,dry:0.45,h:3.8},
   t8:{name:'Tank 8 t',kind:'tank',wet:8,dry:0.9,h:7.4},
+  // heat shield: wider than the stack so everything behind it rides in its shadow; ablator boils off to soak up heat
+  shield:{name:'Heat shield',kind:'shield',m:0.1,h:0.2,cm:.4,r:.66,Tmax:1700,res0:{ablator:0.04},C:2500,T:1200,B:450,prof:[[.66,0],[.66,.1],[.625,.2]]},
   dec:{name:'Decoupler',kind:'dec',m:0.05,h:0.25,C:1200,T:500,B:220},
   // interstage: a decoupler whose shell encloses the engine above it — smooth aero, and the load path skips the engine
   istage:{name:'Interstage decoupler',kind:'dec',istage:true,m:0.08,h:0.25,C:2500,T:1200,B:450},
@@ -242,11 +245,12 @@ const PARTS={
   condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
+  if(d.Tmax==null)d.Tmax={pod:1250,chute:1000,engine:1500,cone:1400,fins:1400}[d.kind]||1300;if(d.kind==='tank')d.res0={fuel:d.wet-d.dry};
   if(d.r==null)d.r=R0;if(!d.prof)d.prof=[[d.r,0],[d.r,d.h]];if(d.cm==null)d.cm=.5;if(d.S==null)d.S=d.C*0.5}
 // 2.5 m class: the 1.25 m shapes scaled ×2. Tanks hold 8× (volume); compression/tension/shear ratings ×4 (wall area),
 // bending ×8 (section modulus ∝ r²·wall, wall ∝ r) — which is why fat rockets shrug off loads that snap thin ones.
 const big=(key,base,o)=>{const b=PARTS[base];PARTS[key]={...b,key,base,sc:2,h:b.h*2,r:b.r*2,prof:b.prof.map(([r,y])=>[r*2,y*2]),
-  C:b.C*4,T:b.T*4,S:b.S*4,B:b.B*8,...o}};
+  C:b.C*4,T:b.T*4,S:b.S*4,B:b.B*8,...o};const d=PARTS[key];if(d.kind==='tank')d.res0={fuel:d.wet-d.dry}};
 big('T16','t2',{name:'Tank 16 t (2.5 m)',wet:16,dry:1.76,m:16});
 big('T32','t4',{name:'Tank 32 t (2.5 m)',wet:32,dry:3.6,m:32});
 big('dec25','dec',{name:'Decoupler 2.5 m',m:0.2});
@@ -261,8 +265,11 @@ const PRESETS={
   Hopper:['chute','pod','t2','fins','kestrel'],
   Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
+  // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
+  Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
   Lunar:['chute','pod','t1','wren','dec','t4','t2','petrel','dec','t8','t4','fins','condor'],
-  'Big Lunar':['chute','pod','t1','wren','dec','t4','t2','petrel','istage','adapt','T32','fins25','albatross'],
+  // with a heat shield under the pod: drop the lander stage before re-entry and come home shield-first from Selene
+  'Big Lunar':['chute','pod','shield','dec','t1','wren','dec','t4','t2','petrel','istage','adapt','T32','fins25','albatross'],
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
 // Design → a tree of parts rooted at the command pod, in vessel coordinates (y up from the core's bottom). Each
@@ -271,12 +278,12 @@ const entryKey=e=>typeof e==='string'?e:e.k;
 function assemble(stack){
   const core=stack.map(e=>typeof e==='string'?{k:e}:e),n=core.length,parts=[];
   const mk=(d,x,y0,z,extra)=>{const p={i:parts.length,d,pos:[x,0,z],y0,h:d.h,parent:null,children:[],on:true,
-    fuel:d.kind==='tank'?d.wet-d.dry:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],...extra};parts.push(p);return p};
+    res:{...(d.res0||{})},cap:{...(d.res0||{})},T:290,Q:0,load:0,F:[0,0,0],L:[0,0,0],jA:[0,1,0],jP:[0,0,0],...extra};parts.push(p);return p};
   const link=(c,p,a,J)=>{c.parent=p;p.children.push(c);c.jA=a;c.jP=J};
   const coreP=new Array(n);let y=0;
   for(let i=n-1;i>=0;i--){coreP[i]=mk(PARTS[core[i].k],0,y,0,{core:true});y+=coreP[i].h}
   let root=core.findIndex(e=>e.k==='pod');if(root<0)root=0;
-  for(let i=0;i<n;i++){coreP[i].coreIdx=i;if(i===root)continue;const c=coreP[i],up=i<root;link(c,coreP[up?i+1:i-1],up?[0,1,0]:[0,-1,0],[0,up?c.y0:c.y0+c.h,0]);c.jr=core[i].j||0}
+  for(let i=0;i<n;i++){coreP[i].coreIdx=i;coreP[i].xfeed=!!core[i].x;if(i===root)continue;const c=coreP[i],up=i<root;link(c,coreP[up?i+1:i-1],up?[0,1,0]:[0,-1,0],[0,up?c.y0:c.y0+c.h,0]);c.jr=core[i].j||0}
   // an interstage's shell reaches up around the part above it (an engine): that part is enclosed
   for(let i=1;i<n;i++)if(coreP[i].d.istage){const a=coreP[i-1];coreP[i].shell=a.h;coreP[i].xm=0.1*a.h;a.encBy=coreP[i]}
   const groups=[];
@@ -284,15 +291,17 @@ function assemble(stack){
     const st=e.rad.stack,H=st.reduce((h,k)=>h+PARTS[k].h,0),yb=coreP[i].y0,yc=yb+H/2;
     const host=coreP.find(p=>yc>=p.y0&&yc<=p.y0+p.h)||coreP[i],g={host,dec:e.rad.dec,label:`${st.some(k=>PARTS[k].kind==='engine')?'boosters':'side tanks'} ×${e.rad.n}`,joins:[],parts:[]};groups.push(g);
     const cr=host.d.r,sr=Math.max(...st.map(k=>PARTS[k].r)),D=cr+sr+0.25;g.coreIdx=i;
-    for(let c=0;c<e.rad.n;c++){const ph=2*Math.PI*c/e.rad.n,nx=Math.cos(ph),nz=Math.sin(ph),x=D*nx,z=D*nz,nrm=[nx,0,nz];
+    const ph0=groups.length>1?(groups.length-1)*Math.PI/e.rad.n:0;
+    for(let c=0;c<e.rad.n;c++){const ph=2*Math.PI*c/e.rad.n+ph0,nx=Math.cos(ph),nz=Math.sin(ph),x=D*nx,z=D*nz,nrm=[nx,0,nz];
       let yy=yb;const side=[];for(let j=st.length-1;j>=0;j--){const p=mk(PARTS[st[j]],x,yy,z,{phi:ph,group:g});side.unshift(p);yy+=p.h}
       let r=side.findIndex(p=>yc>=p.y0&&yc<=p.y0+p.h);if(r<0)r=0;
       for(let j=0;j<side.length;j++){if(j===r)continue;const cc=side[j],up=j<r;link(cc,side[up?j+1:j-1],up?[0,1,0]:[0,-1,0],[x,up?cc.y0:cc.y0+cc.h,z])}
       const jr=e.rad.j||0;
-      if(e.rad.dec){const rd=mk(PARTS.rdec,(cr+0.125)*nx,yc-0.2,(cr+0.125)*nz,{phi:ph,group:g,jr});side[r].jr=jr;
+      if(e.rad.dec){const rd=mk(PARTS.rdec,(cr+0.125)*nx,yc-0.2,(cr+0.125)*nz,{phi:ph,group:g,jr,xfeed:!!e.rad.x});side[r].jr=jr;
         link(rd,host,nrm,[cr*nx,yc,cr*nz]);link(side[r],rd,nrm,[(D-sr)*nx,yc,(D-sr)*nz]);g.joins.push(rd);g.parts.push(rd)}
       else{side[r].jr=jr;link(side[r],host,nrm,[cr*nx,yc,cr*nz]);g.joins.push(side[r])}
       g.parts.push(...side)}});
+  if(groups.length>1)groups.forEach((g,i)=>{g.label=g.label.replace(' ×',' '+'ABCDEFGH'[i]+' ×')});
   // segments: the nearest decoupler at or above a part (towards the pod) names its segment
   const segKey=p=>{for(let q=p;q;q=q.parent)if(q.d.kind==='dec'||q.d.kind==='rdec')return q;return null};
   const keys=[],segs=[],idx=k=>{let i=keys.indexOf(k);if(i<0){i=keys.length;keys.push(k);segs.push({ignited:false,flamed:false,label:''})}return i};
@@ -312,29 +321,57 @@ function assemble(stack){
   if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
   return{parts,segs,events,root:coreP[root],height:y,groups}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
-function partMass(p){return(p.d.kind==='tank'?p.d.dry+p.fuel:p.d.m)+(p.jm||0)+(p.xm||0)}
+// ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists
+// today (tonnes, so density 1); power or life support would be new entries here plus producers/consumers with rates.
+const RES={fuel:{density:1,unit:'t'},ablator:{density:1,unit:'t'}};
+function dryMass(p){return(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0)}
+function partMass(p){let m=dryMass(p);for(const k in p.res)m+=p.res[k]*RES[k].density;return m}
+// Fuel flow follows the part tree: it crosses every joint except a decoupler's own (decoupler ↔ the part it holds on to),
+// unless that decoupler is set to crossfeed. Engines draw on every tank in their flow group, the tanks whose segment will
+// be dropped soonest first (proportionally within that tier) — so crossfed boosters run dry before the core is touched.
+function flowGroups(s,on){const g=new Array(s.parts.length).fill(-1),cut=p=>(p.d.kind==='dec'||p.d.kind==='rdec')&&!p.xfeed;let n=0;
+  for(const p0 of s.parts){if(!on[p0.i]||g[p0.i]>=0)continue;g[p0.i]=n;const st=[p0];
+    while(st.length){const p=st.pop(),nb=p.children.filter(c=>!cut(c));if(p.parent&&!cut(p))nb.push(p.parent);
+      for(const q of nb)if(on[q.i]&&g[q.i]<0){g[q.i]=n;st.push(q)}}n++}
+  return g}
+function dropRank(s,ev0){const NEVER=1e9,r=s.segs.map(()=>NEVER);for(let e=ev0;e<s.events.length;e++)for(const k of s.events[e].decouple)if(r[k]===NEVER)r[k]=e;return r}   // segments never dropped drain last (finite, so they still drain)
+function drawFuel(s,on,fuel,grp,rank,gid,amt){let got=0;
+  for(let guard=0;guard<50&&amt-got>1e-12;guard++){let r=Infinity,tot=0;
+    for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]===gid&&fuel[i]>1e-12&&rank[p.seg]<r)r=rank[p.seg]}
+    if(r===Infinity)break;for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]===gid&&fuel[i]>1e-12&&rank[p.seg]===r)tot+=fuel[i]}
+    const take=Math.min(tot,amt-got),k=Math.max(0,1-take/tot);
+    for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]===gid&&fuel[i]>1e-12&&rank[p.seg]===r)fuel[i]=k<1e-12?0:fuel[i]*k}got+=take}
+  return got}
+const fuelArr=s=>s.parts.map(p=>p.res.fuel||0),onArr=s=>s.parts.map(p=>p.on);
+function groupFuel(s,gid){let f=0;for(const p of s.parts)if(p.on&&s.grp[p.i]===gid)f+=p.res.fuel||0;return f}
+function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.res.fuel||0;return f}
 function partC(p){return[p.pos[0],p.y0+p.h*p.d.cm,p.pos[2]]}
 function thrustPt(p){return[p.pos[0],p.y0+p.h*.8,p.pos[2]]}   // engines push on their mount
 
 // Δv plan: play the event list forward, burning every ignited segment together (boosters and core in parallel)
 // and staging each time the segments the next event drops have run dry. pr = pressure ratio (0 vac, 1 sea level).
 function dvPlan(s,pr){
-  const fuel=s.segs.map((_,k)=>segFuel(s,k)),on=s.parts.map(p=>p.on),ign=s.segs.map(g=>g.ignited),out=[];let ev=s.evIdx;
-  const mass=()=>s.parts.reduce((m,p,i)=>on[i]?m+(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0):m,0)+fuel.reduce((a,b,k)=>a+(s.parts.some((p,i)=>on[i]&&p.seg===k)?b:0),0);
-  const engs=()=>s.parts.filter((p,i)=>on[i]&&p.d.kind==='engine'&&ign[p.seg]&&fuel[p.seg]>1e-9);
-  const fire=()=>{const e=s.events[ev++];for(const k of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===k)on[i]=false});for(const k of e.ignite)ign[k]=true};
-  // stage 0 = whatever is burning (or about to be lit by the next event)
+  const on=onArr(s),fuel=fuelArr(s),ign=s.segs.map(g=>g.ignited),out=[];let ev=s.evIdx,grp=flowGroups(s,on),rank=dropRank(s,ev);
+  const other=p=>{let m=0;for(const k in p.res)if(k!=='fuel')m+=p.res[k]*RES[k].density;return m};   // ablator etc. ride along
+  const mass=()=>s.parts.reduce((m,p,i)=>on[i]?m+dryMass(p)+fuel[i]+other(p):m,0);
+  const gF=g=>{let f=0;for(let i=0;i<fuel.length;i++)if(on[i]&&grp[i]===g)f+=fuel[i];return f};
+  const engs=()=>s.parts.filter((p,i)=>on[i]&&p.d.kind==='engine'&&ign[p.seg]&&gF(grp[i])>1e-9);
+  const fire=()=>{const e=s.events[ev++];for(const k of e.decouple)s.parts.forEach((p,i)=>{if(p.seg===k)on[i]=false});for(const k of e.ignite)ign[k]=true;grp=flowGroups(s,on);rank=dropRank(s,ev)};
+  // a segment is ready to drop once its own tanks are empty (with crossfeed its engines would run on, on others' fuel)
+  const segDry=k=>{const T=s.parts.filter((p,i)=>on[i]&&p.seg===k&&p.cap.fuel);return T.length?T.every(p=>fuel[p.i]<=1e-9):!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&ign[k]&&gF(grp[i])>1e-9)};
   if(s.evIdx===0&&!engs().length&&s.events[ev]&&s.events[ev].ignite.length&&!s.events[ev].decouple.length)fire();
   let st={dv:0,burn:0,m0:mass(),twr:0},guard=0,first=true;
-  const tw=()=>{let T=0;for(const p of engs())T+=engineMdot(p.d)*(p.d.ispV+(p.d.ispA-p.d.ispV)*1)*G0;return T/(mass()*G0)};st.twr=tw();
-  while(guard++<200){
-    const E=engs();
-    const next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(k=>!s.parts.some((p,i)=>on[i]&&p.seg===k&&p.d.kind==='engine'&&fuel[k]>1e-9));
+  const tw=()=>{let T=0;for(const p of engs())T+=engineMdot(p.d)*p.d.ispA*G0;return T/(mass()*G0)};st.twr=tw();
+  while(guard++<400){
+    const E=engs(),next=s.events[ev],dry=next&&next.decouple.length&&next.decouple.every(segDry);
     if(!E.length||dry){if(!next||next.chute)break;
       if(st.dv>0.5||first){st.m1=mass();out.push(st)}first=false;fire();st={dv:0,burn:0,m0:mass(),twr:0};st.twr=tw();continue}
-    const md={},th={};for(const p of E){md[p.seg]=(md[p.seg]||0)+engineMdot(p.d);th[p.seg]=(th[p.seg]||0)+engineMdot(p.d)*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0}
-    let dt=Infinity;for(const k in md)dt=Math.min(dt,fuel[k]/md[k]);
-    const m0=mass();let T=0,M=0;for(const k in md){fuel[k]=Math.max(0,fuel[k]-md[k]*dt);T+=th[k];M+=md[k]}
+    // each flow group burns its lowest-rank tier of tanks; the step ends when the first tier empties (proportional draining
+    // empties a whole tier at once), so the plan is exact piecewise — no time step
+    const md={};let T=0,M=0;for(const p of E){const g=grp[p.i],m=engineMdot(p.d);md[g]=(md[g]||0)+m;M+=m;T+=m*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0}
+    let dt=Infinity;for(const g in md){let r=Infinity,tf=0;for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]<r)r=rank[p.seg]}
+      for(const p of s.parts){const i=p.i;if(on[i]&&grp[i]==g&&fuel[i]>1e-9&&rank[p.seg]===r)tf+=fuel[i]}dt=Math.min(dt,tf/md[g])}
+    const m0=mass();for(const g in md)drawFuel(s,on,fuel,grp,rank,+g,md[g]*dt);
     st.dv+=T/M*Math.log(m0/mass());st.burn+=dt}
   if(st.dv>0.5||first){st.m1=mass();out.push(st)}
   return out}
@@ -378,13 +415,14 @@ function rebuildShape(s){
     const rad=Math.max(...E.map(e=>Math.max(e.r0,e.r1))),len_=lp[lp.length-1].y0+lp[lp.length-1].h-lp[0].y0;
     s.lines.push({E,ox:lp[0].pos[0],oz:lp[0].pos[2],radius:rad,slender:clamp((len_/(2*rad)-1.5)/1.5,0,1),core:lp[0].pos[0]===0&&lp[0].pos[2]===0})}
   const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
+  s.grp=flowGroups(s,onArr(s));
+  for(const p of ps){p.area=0}for(const ln of s.lines)for(const e of ln.E)e.p.area+=6.2832*e.rm*e.L;
+  for(const p of ps){if(p.d.kind==='fins')p.area+=8*p.d.span*p.d.chord;if(!p.area)p.area=2}
   s.fins=ps.filter(p=>p.d.kind==='fins');s.chutePart=ps.find(p=>p.d.kind==='chute')||null;
   const order=[],dist=p=>{let k=0;for(let q=p;q.parent;q=q.parent)k++;return k};
   for(const p of ps)if(p!==s.root&&p.parent&&p.parent.on)order.push(p);
   order.sort((a,b)=>dist(b)-dist(a));s.order=order}
-function segFuel(s,k){let f=0;for(const p of s.parts)if(p.on&&p.seg===k)f+=p.fuel;return f}
-function drainSeg(s,k,amt){const f=segFuel(s,k);if(f<=0)return;const r=Math.max(0,1-amt/f);for(const p of s.parts)if(p.on&&p.seg===k)p.fuel*=r}
-function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&segFuel(s,p.seg)>1e-9)}
+function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&groupFuel(s,s.grp[p.i])>1e-9)}
 function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
@@ -424,6 +462,8 @@ function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used
 const SND=h=>Math.sqrt(1.4*287*Math.max(216.65,288.15-0.0065*Math.max(h,0)));
 const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
 const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
+// Sutton–Graves stagnation heating q = k·√(ρ/r_nose)·v³ (W/m², k = 1.83e-4 for air); each surface element gets q·|cos|
+const SG=1.83e-4;let HEAT_GAIN=3;   // ×3: this small planet's 2.3 km/s orbits would otherwise re-enter like a gentle breeze (see NOTES)
 const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
 function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
 function aeroPass(s,vb,wb,rho,M,thrusting){
@@ -439,7 +479,7 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx);   // air velocity relative to this point
         const f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;const fl=Math.sqrt(f2),qL=0.5*rho*f2,nx=e.nr*ca,ny=e.ny,nz=e.nr*sa;
         const cn=(nx*fx+ny*(ny*fy<0?fy*e.exp:fy)+nz*fz)/fl;
-        if(cn<0){const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz)}
+        if(cn<0){const pr=qL*cp*cn*cn*dA;addF(p,-nx*pr,-ny*pr,-nz*pr,px,py,pz);p.Q+=HEAT_GAIN*SG*Math.sqrt(rho/ln.radius)*f2*fl*(-cn)*dA}
         else if(e.bexp>0&&cn>0){const pr=qL*cb*e.bexp*cn*dA/fl;addF(p,fx*pr,fy*pr,fz*pr,px,py,pz)}
         const sf=qL*0.003*dA/fl;addF(p,fx*sf,fy*sf,fz*sf,px,py,pz)}
       if(slender>0&&e.slope<1.5&&!e.cav){const rx=ox-c[0],ry=e.ym-c[1],rz=oz-c[2];
@@ -501,12 +541,17 @@ function detach(s,list,kick,spin){
 function physStep(s,dt){
   const b=s.body;geom(s);
   const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
-  for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0}
+  for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
   const eng=activeEngines(s);let T=0;
-  if(s.throttle>0){const drain={};for(const p of eng){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle,pt=thrustPt(p);
-    T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2]);drain[p.seg]=(drain[p.seg]||0)+md*s.throttle*dt/1000}
-    for(const k in drain)drainSeg(s,+k,drain[k])}
-  const out=new Set();for(let k=0;k<s.segs.length;k++){const g=s.segs[k];if(g.ignited&&!g.flamed&&segFuel(s,k)<=1e-9&&s.parts.some(p=>p.on&&p.seg===k&&p.d.kind==='engine')){g.flamed=true;out.add(g.label.startsWith('boosters')?'Booster burnout':'Flameout')}}
+  if(s.throttle>0&&eng.length){const want={};for(const p of eng){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle,pt=thrustPt(p);
+    T+=t;addF(p,0,t,0,pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
+    const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
+    s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}
+  const out=new Set(),next=s.events[s.evIdx];
+  for(let k=0;k<s.segs.length;k++){const g=s.segs[k],eng=s.parts.filter(p=>p.on&&p.seg===k&&p.d.kind==='engine');
+    if(g.ignited&&!g.flamed&&eng.length&&eng.every(p=>groupFuel(s,s.grp[p.i])<=1e-9)){g.flamed=true;out.add(g.label.startsWith('boosters')?'Booster burnout':'Flameout')}
+    // a crossfed segment empties its own tanks while its engines run on: say so when it's the next thing to drop
+    else if(!g.dryNote&&next&&next.decouple.includes(k)&&s.parts.some(p=>p.on&&p.seg===k&&p.cap.fuel)&&segFuel(s,k)<=1e-9){g.dryNote=true;out.add(`${g.label.split(' ')[0]} empty — stage to drop them`)}}
   for(const m of out)HOOK.msg(m);
   s.thrust=T;
   const Y=qrot(s.q,[0,1,0]);
@@ -533,9 +578,25 @@ function physStep(s,dt){
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
   integrateRot(s,qrot(s.q,alB),dt);
   simT+=dt;checkSOI(s);groundCheck(s);
+  thermal(s,dt,rho*sp*sp*sp>0?Math.sqrt(rho/Math.max(s.radius,.3))*sp*sp*sp*SG*HEAT_GAIN:0);
   if(s.alive&&worst.frac>1){const p=worst.p;
     HOOK.msg(`Structural failure — ${p.d.name} / ${p.parent.d.name} (${worst.kind}, ${(worst.frac*100).toFixed(0)}%)`);
     detach(s,subtree(p),[0,0,0],1.5)}}
+// ---- heat. Each part has a skin temperature: absorbed aero heat in, εσ(T⁴−T∞⁴) radiated out over its whole skin, heat
+// capacity of a 6 kg/m² metal skin. A shield's ablator boils off above 700 K at 2.5 MJ/kg and pins it there until gone.
+const T_AMB=250,SKIN=6*900,H_ABL=2.5e6,T_ABL=700;
+function thermal(s,dt,qStag){
+  s.qHeat=qStag;let hot=null;
+  for(const p of s.parts){if(!p.on)continue;const A=p.area||2,cap=SKIN*A;
+    let net=p.Q-0.8*5.67e-8*(p.T**4-T_AMB**4)*A;
+    if(p.res.ablator>0&&p.T>=T_ABL&&net>0){const use=Math.min(p.res.ablator,net*dt/H_ABL/1000);p.res.ablator-=use;net-=use*1000*H_ABL/dt}
+    p.T=Math.max(T_AMB*0.9,p.T+net*dt/cap);if(!hot||p.T/p.d.Tmax>hot.T/hot.d.Tmax)hot=p}
+  s.hot=hot;
+  if(hot&&hot.T>hot.d.Tmax){HOOK.msg(`${hot.d.name} burned up (${hot.T.toFixed(0)} K)`);partLost(s,hot)}}
+function coolOnRails(s,dt){for(const p of s.parts)if(p.on)p.T=T_AMB+(p.T-T_AMB)*Math.exp(-dt/400)}
+// a destroyed part takes its branch with it; losing the root (the pod) ends the flight
+function partLost(s,p){const P=add(s.r,qrot(s.q,sub(partC(p),s.cm)));HOOK.boom(s.body,P,simT,0.6);
+  if(p===s.root){s.alive=false;HOOK.msg('Vessel lost');return}detach(s,subtree(p),[0,0,0],1)}
 function launchSegs(s){const e=s.events[0];return e&&!e.decouple.length?e.ignite:[]}
 // What-if analysis for the assembly screen: centre of pressure, stability margin, and joint loads at liftoff and
 // at max-q (trimmed, i.e. controls exactly cancel the aero torque — the worst steady case the pilot can hold).
@@ -584,6 +645,7 @@ function railsOK(s){
   return!thr&&len(s.r)-s.body.R>physAlt(s.body)}
 // Advance on rails. Kepler is exact, so the only reason to sub-step is to catch SOI changes and the atmosphere edge.
 function rails(s,dt){
+  coolOnRails(s,dt);
   if(s.landed){simT+=dt;syncLanded(s);return true}
   let rem=dt,guard=0;
   while(rem>1e-9&&guard++<4000){
@@ -636,7 +698,7 @@ function nodeInfo(s){const n=s.node;if(!n)return null;
   const[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu),f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
 function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
-  let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&segFuel(s,p.seg)>0)}
+  let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
   if(!E.length)return NaN;let F=0,md=0;for(const p of E){F+=p.d.thrust*1000;md+=engineMdot(p.d)*1000}
   return s.mass*(1-Math.exp(-dv/(F/md)))/md}
 function nodeBurn(s,Y,T,dt){const n=s.node;
@@ -646,13 +708,76 @@ function nodeBurn(s,Y,T,dt){const n=s.node;
 function dvRemaining(s){ // current stage (until the next staging event) and total, vacuum Isp
   const plan=dvPlan(s,0);return{cur:plan.length?plan[0].dv:0,tot:plan.reduce((a,x)=>a+x.dv,0)}}
 function analyze(s){ // the what-if cases; each joint keeps its worst load across liftoff and max-q
-  const ls=launchSegs(s),saved=s.parts.map(p=>p.fuel);s.parts.forEach(p=>{p.anaFrac=0;p.anaKind=''});
+  const ls=launchSegs(s),saved=fuelArr(s);s.parts.forEach(p=>{p.anaFrac=0;p.anaKind=''});
   const rec=r=>{for(const p of s.parts){if(p.pfrac>p.anaFrac){p.anaFrac=p.pfrac;p.anaKind=p.pkind}p.pfrac=0}return r};
   s.parts.forEach(p=>p.pfrac=0);
   const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
   const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
-  s.parts.forEach(p=>{if(ls.includes(p.seg))p.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>p.fuel=saved[i]);
+  s.parts.forEach(p=>{if(ls.includes(p.seg)&&p.res.fuel!=null)p.res.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=saved[i]});
   geom(s);return{ful,emp,sup,lift,mq}}
+
+// ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
+// the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
+// airflow right now (5° bins), plus the parachute rules. The path is kept in the planet's rotating frame.
+function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on).length+':'+A;if(s.dragTab&&s.dragTab.key===key)return s.dragTab.tab;const ar=A*Math.PI/180;
+  const tab=[],ca=s.chuteA,saved=s.parts.map(p=>[p.F.slice(),p.L.slice(),p.Q]);s.chuteA=0;geom(s);
+  for(let M=0;M<=12.01;M+=0.5){for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}const v=Math.max(M,0.05)*SND(5000),rho=0.5;
+    const vb=[v*Math.sin(ar),v*Math.cos(ar),0];aeroPass(s,vb,[0,0,0],rho,M,false);let F=[0,0,0];for(const p of s.parts)if(p.on)F=add(F,p.F);
+    tab.push(Math.max(0,-dot(F,vb)/v)/(0.5*rho*v*v))}   // the drag component only; lift from a trim angle is not modelled
+  s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
+function predictImpact(s){
+  if(s.landed||!s.alive)return null;const b=s.body,mu=b.mu,top=b.R+(b.atm||0);let r=s.r.slice(),v=s.v.slice(),t=simT;
+  const el=elements(r,v,mu);if(el.pe>top)return null;
+  const path=[],keep=(r,t)=>path.push(toPF(b,r,t));
+  if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));
+    for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}
+  if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
+  const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=dragTable(s,aoa),m=s.mass;
+  const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)};
+  let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
+  const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
+    if(rho>0&&sp>0.1){let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=sp<250&&rho>0.7?600:6;kd=0.5*rho*sp*A/m;a=madd(a,va,-kd)}return a};
+  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0)break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
+    const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
+    if(i%8===0)keep(r,t);
+    if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)
+      const e2=elements(r,v,mu);if(e2.pe>top)return null;const c=(e2.p/(top-1)-1)/e2.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(e2,-Math.acos(c));
+      for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}}
+  return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b}}
+
+// ---- deterministic stepping + flight tapes. Everything that advances the flight goes through advPhys / advRails, and a
+// tape records each of those calls plus every control change before it — so playing it back from the pad reproduces the
+// flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
+const TAPE_V='lp-1.8';
+function advPhys(s){physStep(s,DT);stepDebris(DT)}
+function advRails(s,dt,warp){
+  if(!s.landed){if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(s,dt/n)}
+    else{s.w=[0,0,0];if(s.sas&&s.sasMode!=='stab'){const tg=sasTarget(s);if(tg)s.q=qnorm(qmul(qFromTo(qrot(s.q,[0,1,0]),tg),s.q))}}}
+  const ok=rails(s,dt);
+  if(warp>4){for(const d of debris)d.mesh&&d.mesh.free&&d.mesh.free();debris.length=0}else stepDebris(dt);
+  return ok}
+function controls(s){return{th:s.throttle,p:INP.pitch,y:INP.yaw,r:INP.roll,sas:s.sas,mode:s.sasMode,
+  node:s.node?(s.node.burning?'burning':JSON.stringify({t:s.node.t,dv:s.node.dv})):null}}
+function setControls(s,c){s.throttle=c.th;INP.pitch=c.p;INP.yaw=c.y;INP.roll=c.r;
+  if(s.sas!==c.sas||s.sasMode!==c.mode){s.sas=c.sas;s.sasMode=c.mode;s.hold=null}
+  if(c.node!=='burning'){const cur=s.node&&!s.node.burning?JSON.stringify({t:s.node.t,dv:s.node.dv}):null;if(cur!==c.node)s.node=c.node?JSON.parse(c.node):null}}
+function tapeNew(stack){return{v:TAPE_V,stack:JSON.parse(JSON.stringify(stack)),ops:[],lastK:null}}
+function tapeCtl(T,s){const c=controls(s),k=JSON.stringify(c);if(k!==T.lastK){T.ops.push(['C',c]);T.lastK=k}}
+function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='P')o[1]++;else T.ops.push(['P',1]);advPhys(s)}
+function tapeRails(T,s,dt,warp){tapeCtl(T,s);T.ops.push(['R',dt,warp]);return advRails(s,dt,warp)}
+function tapeStage(T,s){tapeCtl(T,s);T.ops.push(['S']);stage(s)}
+function tapeDuration(T){let d=0;for(const o of T.ops)d+=o[0]==='P'?o[1]*DT:o[0]==='R'?o[1]:0;return d}
+// play up to `budget` steps (a rails jump counts as one); returns false once the tape is used up
+function tapePlay(pl,s,budget){const ops=pl.tape.ops;
+  while(budget>0&&pl.i<ops.length&&s.alive){const o=ops[pl.i];
+    if(o[0]==='C'){setControls(s,o[1]);pl.i++}
+    else if(o[0]==='S'){stage(s);pl.i++}
+    else if(o[0]==='R'){advRails(s,o[1],o[2]);pl.i++;budget--}
+    else{const k=Math.min(budget,o[1]-pl.n);for(let j=0;j<k;j++)advPhys(s);pl.n+=k;budget-=k;if(pl.n>=o[1]){pl.i++;pl.n=0}}}
+  return pl.i<ops.length&&s.alive}
+// the tape so far, when the pilot takes over mid-replay (recording continues from there)
+function tapeCut(pl){const T=tapeNew(pl.tape.stack);T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
+  for(let i=T.ops.length-1;i>=0;i--)if(T.ops[i][0]==='C'){T.lastK=JSON.stringify(T.ops[i][1]);break}return T}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -797,6 +922,7 @@ function partShape(out,p){
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);
       lathe(out,[[.12,0,C.K],[.12,.05,C.K]],[x+0.24,y+.62,z+.4],10);break;
     case'chute':lathe(out,[[.3,0,C.G],[.3,.22,C.G],[.3,.22,C.O],[.16,.38,C.O],[0,.42,C.O]],o);break;
+    case'shield':lathe(out,[[.66,0,[.35,.22,.12]],[.66,.1,[.35,.22,.12]],[.625,.2,C.D]],o);break;
     case'dec':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);break;
     case'istage':lathe(out,[[.625,0,C.Y],[.625,.12,C.Y],[.625,.12,C.D],[.625,.25,C.D]],o);if(p.shell)lathe(out,[[.627,.25,C.G],[.627,.25+p.shell,C.G]],o,28,[false,false]);break;
     case'adapt':lathe(out,[[1.25,0,C.D],[1.25,.15,C.D],[1.25,.15,C.W],[.625,1.35,C.W],[.625,1.35,C.D],[.625,1.5,C.D]],o);break;
@@ -830,7 +956,7 @@ function mmul(a,b){const o=new Array(16);for(let c=0;c<4;c++)for(let r=0;r<4;r++
 function modelQ(q,pos,shift=0,sc=[1,1,1]){const X=qrot(q,[1,0,0]),Y=qrot(q,[0,1,0]),Z=qrot(q,[0,0,1]),sh=typeof shift==='number'?[0,shift,0]:shift;return mat4(mul(X,sc[0]),mul(Y,sc[1]),mul(Z,sc[2]),add(pos,qrot(q,sh)))}
 
 // ============================================================ app state
-let mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
+let player=null,recTape=null,impact=null,impT=0,mode='editor',view='flight',warpIdx=0,physAcc=0,predCache=null,warpTo=null,ndStep=10,mapUI={pick:[],handles:[],node:null};
 const WARPS=[1,2,4,10,50,100,1000,10000,100000];
 let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
 const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:3e6,focus:0};
@@ -841,7 +967,7 @@ HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opac
 HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d)};
-function resetShip(){warpTo=null;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
+function resetShip(){warpTo=null;player=null;impact=null;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef);HOOK.rebuild();warpIdx=0;physAcc=0}
 
 // ============================================================ editor UI
 const $=id=>document.getElementById(id);
@@ -862,7 +988,9 @@ function partRow(name,acts,parent){ // a row with a name and small action button
   parent.appendChild(r)}
 const swap=(l,a,b)=>{if(a>=0&&b<l.length)[l[a],l[b]]=[l[b],l[a]]};
 const jOf=e=>typeof e==='string'?0:(e.j||0);
-const jSet=(list,i,v)=>{let e=list[i];if(typeof e==='string')e=list[i]={k:e};e.j=v;if(!v&&!e.rad)list[i]=e.k};
+const tidy=(list,i)=>{const e=list[i];if(typeof e!=='string'&&!e.rad&&!e.j&&!e.x)list[i]=e.k};
+const jSet=(list,i,v)=>{if(typeof list[i]==='string')list[i]={k:list[i]};list[i].j=v;tidy(list,i)};
+const xSet=(list,i,v)=>{if(typeof list[i]==='string')list[i]={k:list[i]};list[i].x=v;tidy(list,i)};
 function jointStrip(parent,part,j,setJ){ // the joint between two rows: worst load in the what-if cases, and its setting
   const r=document.createElement('div');r.className='jrow';const f=part&&part.anaFrac,cls=f>1?'bad':f>.7?'warn':'ok';
   r.innerHTML=`<span class="jl">┆ joint</span><span class="${cls}">${f!=null?(f*100).toFixed(0)+'%':''}</span><span class="dim">${part&&part.anaKind||''}</span>`;
@@ -874,7 +1002,8 @@ function rowsFor(){
     partRow(PARTS[entryKey(e)].name,[['▲',()=>swap(stackDef,i-1,i)],['▼',()=>swap(stackDef,i,i+1)],
       [side?'⊖':'⊕',()=>{if(side){if(target===e.rad)target=null;stackDef[i]=e.k}else{stackDef[i]={k:e,rad:{n:2,dec:true,stack:['cone','t4','kestrel']}};target=stackDef[i].rad}},
         side?'remove the side stacks':'add side stacks beside this part (bottoms level with it)'],
-      ['✕',()=>{if(side&&target===e.rad)target=null;stackDef.splice(i,1)}]],st);
+      ['✕',()=>{if(side&&target===e.rad)target=null;stackDef.splice(i,1)}],
+      ...(PARTS[entryKey(e)].kind==='dec'?[[typeof e!=='string'&&e.x?'⇅ feed':'⊘ feed',()=>xSet(stackDef,i,!(typeof e!=='string'&&e.x)),'crossfeed: let fuel flow across this decoupler (the stage below feeds the engines above it, and drains first)']]:[])],st);
     const strip=()=>{if(i<stackDef.length-1){const c=i>=root?i+1:i;jointStrip(st,S.parts.find(p=>p.core&&p.coreIdx===c),jOf(stackDef[c]),v=>jSet(stackDef,c,v))}};
     if(!side)return strip();
     const g=document.createElement('div');g.className='grp'+(target===e.rad?' sel':'');g.title='click to add parts here';g.onclick=()=>{target=e.rad;editorChanged()};
@@ -882,7 +1011,11 @@ function rowsFor(){
     for(const n of[2,3,4]){const b=document.createElement('button');b.textContent=n;if(e.rad.n===n)b.className='on';b.onclick=ev=>{ev.stopPropagation();e.rad.n=n;editorChanged()};hd.appendChild(b)}
     const dc=document.createElement('button');dc.textContent=e.rad.dec?'decoupler ✓':'no decoupler';
     dc.title='with radial decouplers the side stacks are a stage of their own; without, they stay on for good';
-    dc.onclick=ev=>{ev.stopPropagation();e.rad.dec=!e.rad.dec;editorChanged()};hd.appendChild(dc);g.appendChild(hd);
+    dc.onclick=ev=>{ev.stopPropagation();e.rad.dec=!e.rad.dec;editorChanged()};hd.appendChild(dc);
+    if(e.rad.dec){const xf=document.createElement('button');xf.textContent=e.rad.x?'crossfeed ✓':'no crossfeed';if(e.rad.x)xf.className='on';
+      xf.title='crossfeed: the side stacks feed the core engines too, and run dry first — the core is still full when they drop';
+      xf.onclick=ev=>{ev.stopPropagation();e.rad.x=!e.rad.x;editorChanged()};hd.appendChild(xf)}
+    g.appendChild(hd);
     {const G=S.groups.find(x=>x.coreIdx===i),js=G?S.parts.filter(p=>p.group===G&&p.parent&&p.jA[1]===0):[],w=js.reduce((m,p)=>p.anaFrac>(m?m.anaFrac:-1)?p:m,null);
      jointStrip(g,w,e.rad.j||0,v=>{e.rad.j=v})}
     const L=e.rad.stack;L.forEach((k,j)=>partRow(PARTS[k].name,[['▲',()=>swap(L,j-1,j)],['▼',()=>swap(L,j,j+1)],
@@ -930,7 +1063,7 @@ function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="m
     if(e.chute)parts.push('chute');
     html+=`<div class="stg${i===S.evIdx?' cur':''}"><b>${i===S.evIdx?'▶ ':''}${i+1}</b> ${parts.join(' · ')}</div>`}
   if(S.evIdx>=ev.length)html+='<div class="dim">no stages left</div>';
-  const agg={};for(let k=0;k<S.segs.length;k++){const fm=S.parts.filter(p=>p.on&&p.seg===k&&p.d.kind==='tank').reduce((a,p)=>a+p.d.wet-p.d.dry,0);
+  const agg={};for(let k=0;k<S.segs.length;k++){const fm=S.parts.filter(p=>p.on&&p.seg===k).reduce((a,p)=>a+(p.cap.fuel||0),0);
     if(fm>0){const L=S.segs[k].label,a=agg[L]=agg[L]||[0,0];a[0]+=segFuel(S,k);a[1]+=fm}}
   for(const[L,[f,fm]]of Object.entries(agg))html+=`<div class="dim" style="margin-top:4px">${L} ${f.toFixed(2)} t<div class="bar"><i style="width:${100*f/fm}%"></i></div></div>`;
   el.innerHTML=html}
@@ -941,7 +1074,8 @@ addEventListener('keydown',e=>{
   if([' ','tab'].includes(k)||e.ctrlKey)e.preventDefault();
   if(e.repeat&&!['shift','control'].includes(k)){keys.add(k);return}
   keys.add(k);
-  if(k===' ')stage(S);
+  if(player&&['w','a','s','d','q','e','z','x','t',' ','shift','control','n','delete'].includes(k))takeOver();
+  if(k===' ')tapeStage(recTape,S);
   else if(k==='z')S.throttle=1;else if(k==='x')S.throttle=0;
   else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
   else if(k==='m')toggleMap();
@@ -981,6 +1115,10 @@ let last=performance.now(),fpsT=0,fpsN=0,fpsShow=0,frameMs=0,stepsN=0,hudT=0;
 function shipWorld(){return add(bodyPos(S.body,simT),S.r)}
 function simulate(dtR){
   if(mode!=='flight')return;
+  if(player){ // autopilot: the tape drives; warp just sets how many steps per frame
+    if(!S.alive){player=null;return}
+    const more=tapePlay(player,S,Math.max(1,Math.round(dtR*WARPS[Math.min(warpIdx,5)]/DT)));
+    if(!more){recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot tape ended — you have control')}return}
   if(keys.has('shift'))S.throttle=Math.min(1,S.throttle+dtR);
   if(keys.has('control'))S.throttle=Math.max(0,S.throttle-dtR);
   INP.pitch=(keys.has('w')?1:0)-(keys.has('s')?1:0);INP.yaw=(keys.has('d')?1:0)-(keys.has('a')?1:0);INP.roll=(keys.has('q')?1:0)-(keys.has('e')?1:0);
@@ -993,14 +1131,9 @@ function simulate(dtR){
     if(tg<4||S.maxLoad>0.7)warpIdx=0;else if(tg<15&&warpIdx>2)warpIdx=2}
   const warp=WARPS[warpIdx],dt=dtR*warp;stepsN=0;
   if(onRails){
-    if(!S.landed){
-      if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(S,dt/n,null);stepsN=n}
-      else{S.w=[0,0,0];if(S.sas&&S.sasMode!=='stab'){const tg=sasTarget(S);if(tg)S.q=qnorm(qmul(qFromTo(qrot(S.q,[0,1,0]),tg),S.q))}}}
-    if(!rails(S,warpTo!==null?Math.min(dt,warpTo-simT):dt)){warpIdx=0;warpTo=null;HOOK.msg('Warp stopped')}
-    if(warp>4&&debris.length){debris.forEach(d=>d.mesh.free());debris.length=0}
-    else stepDebris(dt);
+    if(!tapeRails(recTape,S,warpTo!==null?Math.min(dt,warpTo-simT):dt,warp)){warpIdx=0;warpTo=null;HOOK.msg('Warp stopped')}
   }else{
-    physAcc+=dt;evt=false;while(physAcc>=DT&&stepsN<800){physStep(S,DT);stepDebris(DT);physAcc-=DT;stepsN++;if(!S.alive)break;if(evt&&warpIdx>0){warpIdx=0;physAcc=0;break}}
+    physAcc+=dt;evt=false;while(physAcc>=DT&&stepsN<800){tapePhys(recTape,S);physAcc-=DT;stepsN++;if(!S.alive)break;if(evt&&warpIdx>0){warpIdx=0;physAcc=0;break}}
     if(stepsN>=800)physAcc=0}}
 function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
@@ -1080,6 +1213,10 @@ function render(){
   if(near&&S.alive&&S.throttle>0){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R);
     for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1+1.8*(1-pr)),L=ex*(4+9*S.throttle)*(1+.8*(1-pr));
       gl.uniformMatrix4fv(m.uM,false,modelQ(S.q,sub(p,camW),[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],[rad,L,rad]));gl.uniform1f(m.uGlow,(.35+.4*S.throttle)*(.45+.55*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}}
+  // re-entry plasma: a glowing cap on the upstream side, brighter with the stagnation heat flux
+  if(near&&S.alive&&S.qHeat>4e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>1){const d=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),lead=dot(d,Y)>0?S.yTop:S.yBot,
+      c=add(sub(p,camW),add(mul(Y,lead),mul(d,0.35))),k=S.radius*1.7,X=norm(cross(d,Math.abs(d[1])<.9?[0,1,0]:[1,0,0])),Z=cross(d,X),I=Math.min(0.55,(S.qHeat-4e4)/1.2e6);
+      gl.uniformMatrix4fv(m.uM,false,mat4(mul(X,k),mul(d,k*.3),mul(Z,k),c));gl.uniform1f(m.uGlow,I);gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}}
   const nowMs=performance.now();
   for(let i=booms.length-1;i>=0;i--){const bm=booms[i],a=(nowMs-bm.t0)/1000;if(a>4&&S.alive){booms.splice(i,1);continue}if(a>4)continue;
     const p=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),s=bm.sz*(2+14*Math.sqrt(a));
@@ -1099,6 +1236,7 @@ function render(){
           octx.strokeStyle=HC[axis];octx.lineWidth=1.5*k;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(dx,dy);octx.stroke();
           octx.fillStyle=HC[axis];octx.beginPath();octx.arc(dx,dy,(sign>0?6:4.5)*k,0,7);sign>0?octx.fill():(octx.lineWidth=2*k,octx.stroke())}
         octx.fillStyle=L.c;octx.strokeStyle='#fff';octx.lineWidth=1.5*k;octx.beginPath();octx.arc(s[0],s[1],7*k,0,7);octx.fill();octx.stroke()}
+      else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
       if(L.t)octx.fillText(L.t,s[0],s[1]-10)}}
@@ -1110,6 +1248,10 @@ function render(){
       octx.font=`bold ${13*k}px ui-monospace,Consolas,monospace`;octx.textAlign=dx>0?'left':'right';octx.lineWidth=4*k;octx.strokeStyle='rgba(0,0,0,.8)';
       octx.strokeText(t,x+dx*k*.3,s[1]+4*k);octx.fillText(t,x+dx*k*.3,s[1]+4*k)};
     mk(S.ana.ful.ycm,'#ffd84a','CoM',12);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
+  if(mode==='flight'&&view!=='map'&&S.alive&&impact){const ip=add(bodyPos(impact.b,simT),fromPF(impact.b,impact.pf,simT)),q=project(ip);
+    if(q){const k=Math.min(devicePixelRatio||1,1.5),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;
+      octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();
+      octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`impact · ${fmtD(d)}`,q[0],q[1]-12*k)}}
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
@@ -1150,6 +1292,8 @@ function drawMap(VP,camW,labels){
   if(out.length){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
+  if(impact){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
+    const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
 
 // ---- navball: per-pixel into a small ImageData (32k pixels, trivial on the CPU)
@@ -1197,14 +1341,25 @@ function updateHUD(){
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
     ['Mass',`${(S.mass/1000).toFixed(2)} t · TWR ${twr.toFixed(2)} · ${S.gload.toFixed(1)} g`],['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s`],
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
+    ['Impact',impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}`:'—'],
+    ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
     ['Structure',S.maxLoadP&&S.maxLoadP.on?`<span class="${S.maxLoad>1?'bad':S.maxLoad>.7?'warn':'ok'}">${(S.maxLoad*100).toFixed(0)}% ${S.maxLoadKind}</span> <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
-  renderStages();updateNodePanel()}
+  renderStages();updateNodePanel();updateAutoBtn();
+  if(simT-impT>0.25||simT<impT){impT=simT;impact=predictImpact(S)}}
 
+// ---- autopilot tapes in browser storage, one per exact design (and sim version: a tape only replays on the sim that made it)
+const tapeKey=()=>'launchpad-tape:'+TAPE_V+':'+JSON.stringify(stackDef);
+function loadTape(){try{const t=JSON.parse(localStorage.getItem(tapeKey())||'null');return t&&t.v===TAPE_V?t:null}catch(e){return null}}
+function updateAutoBtn(){const t=loadTape();$('bAuto').classList.toggle('hidden',!(t&&mode==='flight'&&simT===0&&!player));if(t)$('bAuto').textContent=`▶ Autopilot (${fmtT(tapeDuration(t))})`}
+function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
+$('bAuto').onclick=()=>{const t=loadTape();if(!t)return;resetShip();player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
+$('bSaveTape').onclick=()=>{try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops}));
+  HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};
 function nodeAtApoapsis(){if(!S.alive||S.landed)return;const el=elements(S.r,S.v,S.body.mu);
   const t=el.e<1&&el.hl>1e-3?simT+timeToNu(el,Math.PI):simT+300;S.node={t,dv:[0,0,0]};HOOK.msg(el.e<1?'Node at next apoapsis':'Node in 5 minutes')}
-$('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;const n=S.node;
+$('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;if(player)takeOver();const n=S.node;
   if(a[0]==='d'){if(n.burning)return;n.dv[+a[1]]+=(a[2]==='+'?1:-1)*ndStep}
   else if(a[0]==='s'&&a!=='sas'){ndStep=+a.slice(1)}
   else if(a[0]==='t'&&!n.burning){const el=elements(S.r,S.v,S.body.mu),P=el.e<1?el.period:0,d=a==='t-o'?-P:a==='t+o'?P:+a.slice(1);

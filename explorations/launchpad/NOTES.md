@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.5.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.8.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -295,6 +295,148 @@ engine cavity (cavity edges 3 → 1), and max-q worst drops from 16 % to 10 %.
 - **Another wrong-index slip in my own experiment:** I "reinforced" Lunar's index 8, which replaced the decoupler with a second
   8 t tank (+8 t). The mass column caught it.
 
+
+## v1.6 — resources and crossfeed (2026-10-06)
+
+Step 2 of the scoping: the foundation that power and life support would later sit on, made useful now through fuel crossfeed.
+
+### How it works
+- **Resources.** Every part holds `res {name: amount}` up to `cap`, and mass = dry + Σ amount × density (`RES` registry).
+  Only `fuel` exists (in tonnes). A new resource is a registry entry plus producers and consumers.
+- **Flow follows the tree.** Fuel crosses every joint except a decoupler's own (decoupler ↔ the part it holds on to), unless
+  that decoupler is set to **crossfeed** (`{k:'dec', x:true}` on a core decoupler, `rad.x` on a side group). The connected
+  pieces are flow groups, recomputed when parts come off.
+- **Drain order = drop order.** Each engine draws from its whole flow group. The tanks whose segment the event list
+  drops soonest go first, proportionally within that tier (`dropRank`, `drawFuel`). With crossfeed, boosters feed the core
+  engine too and empty first, so the core is still full when they go.
+- **One model for flight and plan.** `physStep` and `dvPlan` call the same `flowGroups`/`drawFuel`. The planner steps
+  exactly from tier-empty to tier-empty: proportional draining empties a whole tier at once, so no time step is needed.
+  A segment is "ready to drop" when *its own tanks* are empty (with crossfeed its engines would run on).
+- **In flight**, a crossfed group that empties says "boosters empty — stage to drop them". With several side groups they're
+  lettered A, B, … and each later group is turned by half a step so they don't overlap.
+- **New preset, Asparagus**: Orbiter core + two crossfed booster pairs.
+
+### Measurements
+| Design | No crossfeed | Crossfeed |
+|---|---|---|
+| Heavy | 5671 m/s | **5949** (+278) |
+| Asparagus | 6050 m/s | **6638** (+588), 4 stages: 688 / 1055 / 2429 / 2465 |
+| Asparagus, crossfeed on pair B only | | 6461 |
+| Asparagus, crossfeed on pair A only | | **6050** (no gain at all) |
+
+Flight: pair A runs dry at T+19.1 s, with the core and pair B at 100 %.
+
+### What it taught
+- **Crossfeed only pays if the crossfed tanks are also the first to drop.** With crossfeed on pair A only, pair B (fed by itself
+  *and* the core engine) empties at 32 s. But staging order says A goes first, and A isn't dry until 48 s, so B's dead
+  boosters ride along and keep draining the core for 16 s. Nothing is shed early, and the Δv comes out *exactly* equal to no
+  crossfeed. The model enforces the real asparagus rule without anyone writing it down.
+- **Bug: segments that are never dropped got drain rank ∞**, and the "lowest rank first" search never matches ∞. So the upper
+  stage *never drained*. The planner lost the whole upper-stage Δv, and in flight the stage burned at constant mass (the node burn
+  took 45 s instead of 40 and missed by 1.01 %). A finite sentinel fixed both. The old per-stage numbers then came back
+  **identical** (4894 / 5671 / 6639 m/s), which is now a test: without crossfeed, the new flow model must reproduce the old one.
+
+
+## v1.7 — re-entry heating (2026-10-06)
+
+### How it works
+- **Heat in.** Sutton–Graves stagnation heating, q = k·√(ρ/r_nose)·v³ with k = 1.83e-4 for air, applied to every upstream-facing surface
+  element in the same loop as the Newtonian pressure (each element gets q·|cos|). So **shadowing works for heat too**:
+  whatever rides behind a wider shield stays cool.
+- **Skin temperature per part.** The heat capacity is a 6 kg/m² metal skin over the part's wetted area, and the skin radiates εσ(T⁴ − T∞⁴) from all
+  of it. Each kind has a limit (pod 1250 K, chute 1000 K, tanks 1300 K, engines 1500 K). A part past its limit is destroyed:
+  its branch comes off, or the flight ends if it's the pod. Parts cool exponentially on rails.
+- **Heat shield** (r 0.66 m, wider than the stack) carries **40 kg of ablator as a resource**, the resource system's second user.
+  Above 700 K ablation soaks up 2.5 MJ/kg and pins the shield there until the ablator is gone. The backing structure fails at 1700 K.
+- **Heating gain ×3 (`HEAT_GAIN`)**, chosen by sweep, see below. Plus a plasma glow on the upstream side scaled by heat flux, and a
+  HUD "Heat" row with the hottest part (relative to its limit) and ablator left.
+- **Big Lunar** now has a heat shield under the pod, with a decoupler beneath it to drop the lander before re-entry.
+
+### Measurements — choosing the gain (entries set up from real orbits, periapsis 30 km unless noted)
+| Gain | Low-orbit return, bare pod | Selene return, bare pod | Selene return + shield |
+|---|---|---|---|
+| 1 (pure Sutton–Graves) | 53 % of limit | 66 % | 21 % (ablator untouched) |
+| 2 | 69 % | 90 % | 21 % |
+| **3 (chosen)** | **80 %** | **burns up at 1250 K** | pod 29 %, **48 % ablator left** |
+| 4 | 87 % | burns up | pod 28 % |
+
+Also with gain 3: three Selene returns on one shield go 47 % → 0 % → *burned through*. Ascent peak heating is 41–52 % of the hottest part's limit
+(Orbiter / Lunar / Big Lunar). Peak flux on a Selene return is about 700 kW/m² at 32 km (Mach 8.6).
+
+### What it taught
+- **A small planet re-enters gently.** Orbital speed here is 2.3 km/s, about a third of Earth's, and heating goes as v³. Pure physics makes
+  even a Selene return harmless for a bare pod (66 %), so a gain is needed for the shield to mean anything. KSP faces the
+  same issue with its own heating multiplier. I chose ×3 by measurement: the smallest gain where "orbit: survivable bare,
+  Moon: needs a shield" holds.
+- **A shield needs a weak backing, or the ablator is decorative.** At 3300 K the spent shield survived any number of
+  returns on radiation alone. The ablator only became a budget once the shield's structure could fail (1700 K).
+- **The first ablator was 100× too much** (200 kg at 15 MJ/kg against ~40 MJ of heat per Selene return). Sizing it to the actual
+  heat load (40 kg × 2.5 MJ/kg) gives about one comfortable return per shield.
+- **Bug (old, now caught): 2.5 m tanks inherited the 1.25 m tanks' fuel load** once tank contents moved into `res0`. The
+  Big Lunar flight check failed with the rocket at 23 t instead of 48 t, and the scaled-part clone now recomputes its contents.
+
+## Ideas from KSP's most popular mods (research, 2026-10-06)
+
+Sources: download counts from CKAN's `download_counts.json` (parsed 2026-10-06; it undercounts mods hosted elsewhere, e.g.
+MechJeb has ~3.8 M downloads on CurseForge), plus "must-have" threads on r/KerbalSpaceProgram and the KSP forum. The pattern is what players had to add:
+
+| Player need | Top mods (CKAN downloads) | Launchpad status / idea |
+|---|---|---|
+| **Numbers to plan with** | Kerbal Engineer Redux 1.9 M, Alarm Clock 1.3 M, Trajectories 1.1 M, BetterBurnTime 0.6 M, Transfer Window Planner | Δv/TWR, burn time, node countdown: done. **Next: an impact/landing prediction with drag** (Trajectories), **alarms**, and **transfer-window plots** (the planner's patched conics already run fast enough) |
+| **Not flying the same launch by hand forever** | MechJeb (~3.8 M CurseForge), kOS 0.4 M | **Autopilots unlocked by doing it once by hand** (players' own compromise). The sim is deterministic, so a *recorded* ascent could replay exactly |
+| **Deeper physics** | FAR 1.0 M, Deadly Reentry 0.5 M, KJR 1.4 M, Principia, RSS/RO/RP-1 | Shape aero, heating, no-wobble structure: done. **Next: n-body (Principia-style) as an option**, since float64 + Kepler make it cheap-ish |
+| **Long missions mattering** | TAC-LS 0.8 M, Kerbalism 0.7 M, USI-LS 0.6 M | Scoped and parked. The forums' main complaint is **bookkeeping without decisions**, which matches our own prerequisite |
+| **Part freedom** | TweakScale 1.5 M, Procedural Parts 1.1 M, B9PartSwitch 2.0 M, Procedural Wings | 2.5 m class done. **Parametric tanks** (length/diameter/wall) are the natural next step: meshes and aero are already procedural |
+| **Wonder** | EVE 4.4 M (top overall), Scatterer 2.7 M, Parallax 2.1 M, Waterfall 1.3 M | Scattering atmosphere done. **Clouds, terrain relief, better plumes** are the most-installed mods of all |
+| **Goals** | Contract Configurator 1.5 M, Community Tech Tree 1.5 M, StageRecovery 0.4 M, RemoteTech 0.7 M | Nothing yet. **Missions / challenges** are the biggest missing layer. Stage recovery fits the reusable-booster idea |
+
+
+## v1.8 — impact prediction, record-and-replay autopilot (2026-10-06)
+
+The two ideas taken from the mod research: a Trajectories-style landing prediction, and MechJeb's job done the way players
+said they wanted it (fly it yourself once, then let it repeat).
+
+### Impact prediction (`predictImpact`)
+- A point mass flown forward from now. Vacuum legs are **exact Kepler**, including vacuum arcs *between* air passes: a rocket
+  climbing out of the atmosphere coasts to its next entry. In the air it uses RK2 with a step that is ≤ 0.3 / (drag rate), see the bug below.
+- The drag is the vessel's own: a CdA(Mach) table measured by `aeroPass` at the angle the vessel is holding to the airflow
+  right now (5° bins, drag component only), plus the parachute rules. The path is stored planet-fixed, so it rotates with
+  Tellus and ends on the impact marker. The HUD gives time and speed ("safe" under 12 m/s), the map draws the red path and an X,
+  and the flight view marks the spot on the ground.
+
+| Case | Error |
+|---|---|
+| Ballistic Hopper, predicted at apex 121 s out | **0.23 km, 0.1 s**, impact speed 477 vs 477 m/s |
+| Unpowered fall onto airless Selene, 332 s | **3 m, 0.01 s** |
+| Re-entering pod under its parachute, from 25 km | 1.4 km, 10 s, touchdown 5.3 vs 5.3 m/s |
+| Same pod, from 74 km (760 km to go) | ~40 km (5 %): **lift isn't modelled** |
+
+### Autopilot = flight tapes (`tapeNew` / `tapePhys` / `tapeRails` / `tapeStage` / `tapePlay`)
+- All flight advancement now goes through `advPhys` (one fixed step) and `advRails(dt, warp)`. A tape records every such
+  call plus every control change before it (throttle, keys, SAS on/mode, the maneuver node) and every staging. Physics steps
+  are run-length encoded. Played back from the pad, it reproduces the flight **bit for bit**: the planet's spin and Selene's
+  position depend only on time, which starts at 0.
+- Every flight records from launch. **"Save as autopilot"** stores the tape in browser storage, keyed by the exact design
+  and a sim version (`TAPE_V`, since a tape only replays on the sim that made it). On the pad, a matching design offers **▶ Autopilot**.
+  Warp sets how many steps per frame it plays, any control key takes over mid-tape (and recording continues from there), and
+  the tape running out hands control back.
+- Measured: a hand-flown Orbiter flight to orbit (W tap, prograde hold, staging, warped rails coasts, circularization) is
+  **31 ops / 1 KB for 248 s**, and replays bit-identically in chunks of 7 or 1000 steps. In the browser, a 109 s flight recorded through the
+  real key handling replays to an identical state.
+
+### What it taught
+- **Determinism was already there; the tape just had to capture *everything* that moves time.** That included the rails jumps
+  with their exact lengths (frame-rate dependent) and attitude sub-steps during low warp. Recording the calls, not the
+  frames, made exact replay fall out with nothing to tune.
+- **Bug: the predictor's explicit integrator rang under the main chute.** 600 m² of chute at 175 m/s is a drag rate of
+  ~35 /s, and a 2 s step reversed the velocity every step, so the point mass bounced between 3 and 4 km for 17 000 s. Limiting the
+  step to 0.3 / (drag rate) fixed it. It's the same stiffness the physics step guards against with its drag clamp.
+- **Bug: the predictor gave up on rockets still climbing out of the air.** It now coasts the vacuum arc.
+- **A capsule trimmed at 165° flies as a weak lifting body.** Using the true trim angle for drag didn't help, and the residual
+  hypersonic error is lift. Modelling it needs the lift direction, which depends on roll: a later refinement.
+- **Two test-harness slips worth remembering:** a loop that stopped on `landed` never started for a rocket that begins landed,
+  and a "touchdown speed" read *after* landing is 0.
+
 ## Precision tricks worth keeping
 
 - **Ray–sphere in float32 at 2 m above a 600 km planet.** The CPU sends `cc = (d−R)(d+R)` in
@@ -323,12 +465,11 @@ engine cavity (cavity edges 3 → 1), and max-q worst drops from 16 % to 10 %.
 
 1. ~~Maneuver nodes~~ done in v1.4. Next on that line: several nodes in a chain, nodes beyond an SOI change, and a
    finite-burn correction (aim the burn so its *centroid* hits the impulse) to recover the 0.8 %.
-2. **Re-entry heating + plasma glow**, using q·v³ against a per-part tolerance. The pod now really does fly shield-first
-   (v1.2), so the heat shield can become a requirement rather than a convention.
+2. ~~Re-entry heating~~ done in v1.7. Next on that line: conduction between neighbouring parts, and heating on an engine's own plume.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
-4. ~~Radial attachment~~ done in v1.3. Next on that line: asymmetric attachment (a single side stack: the physics already takes off-axis
-   mass and thrust, but the builder only offers ×2–4 and it is untested), crossfeed between side tanks and the core, and core↔booster aero interference.
+4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6. Next on that line: asymmetric attachment (a single side stack: the physics already
+   takes off-axis mass and thrust, but the builder only offers ×2–4 and it is untested), and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

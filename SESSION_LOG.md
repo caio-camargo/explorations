@@ -1760,3 +1760,13 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   Built step 1: per-joint reinforcement, interstage decoupler, 2.5 m class + adapter, Big Lunar preset. Measured the
   weakest-link progression (see NOTES). Caught a page-breaking bug that the headless suite couldn't see, and moved `analyze()` into
   the tested core. `test.mjs`: 30 checks, all passing. Committed and pushed.
+- **v1.6 (same session):** step 2: generic resource map on parts, flow groups over the part tree, crossfeed per decoupler
+  and side group, drain order by drop order. One flow model for flight and planner. Asparagus preset. Found and fixed the
+  "never-dropped tanks never drain" bug through a regression check. `test.mjs`: 34 checks, all passing. Committed.
+- **v1.7 (same session):** step 3, re-entry heating: Sutton–Graves per surface element through the aero loop, skin
+  temperatures, ablative heat shield using the resource system, gain ×3 chosen by sweep, plasma glow, Heat HUD row. Big Lunar
+  gets a shield. Caught a 2.5 m tank fuel-load bug. Researched popular KSP mods via a subagent; the expansion table is in NOTES.
+  `test.mjs`: 37 checks, all passing. Committed.
+- **v1.8 (same session):** impact prediction (Kepler + drag-table point mass, planet-fixed path, HUD/map/ground marker) and
+  record-and-replay autopilot (flight tapes through `advPhys`/`advRails`, bit-identical replay, saved per design in browser
+  storage). Discussed n-body feasibility with Caio (see the chat; not built). `test.mjs`: 41 checks, all passing. Committed.
