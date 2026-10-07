@@ -65,8 +65,8 @@ function proj(v){const w=V();if(!w)return null;const q=sub(toWorld(v),w.camW),z=
 function mouseRay(){const w=V(),m=st.mouse;if(!w||!m)return null;const x=(2*m[0]/w.W-1)*w.tanX,y=(1-2*m[1]/w.H)*w.tanY;
   const dw=norm(add(w.Fw,add(mul(w.R,x),mul(w.U,y)))),qi=qconj(S.q);return{o:add(qrot(qi,sub(w.camW,shipWorld())),S.cm),d:qrot(qi,dw)}}
 // a ray against one part's surface of revolution: each profile segment is a cone frustum around the part's axis
-function hitPart(p,o,d){const I=p.inst||{},sf=I.surf,pr=I.rdec?[[.2,0],[.2,p.h]]:sf?[[p.d.span/2,0],[p.d.span/2,p.h]]:p.d.prof;
-  const cx=sf?p.pos[0]+Math.cos(p.phi)*p.d.span/2:p.pos[0],cz=sf?p.pos[2]+Math.sin(p.phi)*p.d.span/2:p.pos[2],ax=o[0]-cx,az=o[2]-cz;let best=null;
+function hitPart(p,o,d){const I=p.inst||{},sf=I.surf,sw=p.d.span??Math.max(.3,(p.d.off||0)+p.d.r),pr=I.rdec?[[.2,0],[.2,p.h]]:sf?[[sw/2,0],[sw/2,p.h]]:p.d.prof;   // sw: a surface part's outward extent
+  const cx=sf?p.pos[0]+Math.cos(p.phi)*sw/2:p.pos[0],cz=sf?p.pos[2]+Math.sin(p.phi)*sw/2:p.pos[2],ax=o[0]-cx,az=o[2]-cz;let best=null;
   for(let i=0;i<pr.length-1;i++){let[r0,ya]=pr[i],[r1,yb]=pr[i+1];ya+=p.y0;yb+=p.y0;if(yb-ya<1e-6)continue;
     const k=(r1-r0)/(yb-ya),c=r0+k*(o[1]-ya),A=d[0]*d[0]+d[2]*d[2]-k*k*d[1]*d[1],B=2*(ax*d[0]+az*d[2]-c*k*d[1]),C=ax*ax+az*az-c*c;
     const ts=[];if(Math.abs(A)<1e-12){if(Math.abs(B)>1e-12)ts.push(-C/B)}else{const D=B*B-4*A*C;if(D>=0){const s=Math.sqrt(D);ts.push((-B-s)/(2*A),(-B+s)/(2*A))}}
@@ -248,7 +248,7 @@ function staging(box){
       btn(c,'◀',false,()=>mv(i,j,-1),'fire one stage earlier');btn(c,'▶',false,()=>mv(i,j,1),'fire one stage later');
       if(s.length>1)btn(c,'⤵',false,()=>mv(i,j,0),'a stage of its own, right after this one');r.appendChild(c)})})}
 function palette(){const pal=el('palette');pal.innerHTML='';
-  const CAT=[['Command & payload',['pod','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Control',['rcs','gas']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
@@ -265,7 +265,7 @@ function refresh(){panel();palette();const t=el('target');if(t)t.innerHTML=statu
 const LIFT=3;   // in the editor the ship hangs this far above the pad (as in a VAB), so parts can go under its bottom
 function changed(){
   if(isEmpty(stackDef)){shipMesh&&shipMesh.free();shipMesh=null;if(S)S.ana=null}
-  else{S.pf=[TELLUS.R+WORLD.siteH-S.yBot+LIFT,0,0];syncLanded(S)}   // above the levelled pad (terrain: the pad is WORLD.siteH above the sea)
+  else{S.pf=mul(S.site.u,TELLUS.R+S.site.h-S.yBot+LIFT);syncLanded(S)}   // above the chosen launch site's levelled pad
   st.hover=null;st.ghostKey='';st.hiKey='';refresh()}
 function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
   let w=0;for(const p of S.parts)w=Math.max(w,Math.hypot(p.pos[0],p.pos[2])+p.d.r);cam.dist=Math.max(14,S.len*1.5,w*12);cam.pitch=-0.05;cam.edY=0}

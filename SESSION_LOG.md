@@ -2048,6 +2048,54 @@ the renderer (no videos for now) and numba (no vision). Also committed the previ
 - [ ] Longer worlds (`x_range`) before comparing speeds near flat
 - [ ] `explorations/pulse-loop/` is also untracked in git (not touched here)
 
+## 2026-10-07 — Launchpad: registered satellites in 3D (sats session, `pc_de_varginha`)
+
+### Summary
+Satellites left in orbit were map-only; now they're drawn in the flight view and you can fly past one. Registration
+keeps each satellite's shape (parts still on), centre of mass and attitude in the orbital frame, so a camera left
+looking down keeps looking down. The renderer rebuilds the mesh once per entry and draws it on the same Kepler rails as
+the map, within 100 km. Satellites within 200 km get a `name · distance` marker. Older saves get the marker but no mesh.
+Worked in a local clone (`C:/Users/caioa/dev/launchpad-sats`, branch `sats`), merged `main` in, then merged into `main`
+(`d803a54`).
+
+### Files
+- `explorations/launchpad/index.html`: `orbQ`, extra fields in `satRegister`, `satMesh`, sat draw in `render()`, near-sat marker in the overlay
+- `explorations/launchpad/test.mjs`: §20 (shape kept, attitude held a quarter orbit and 2.6 orbits later)
+- `explorations/launchpad/NOTES.md` v1.9.1: § "Satellites in 3D" under the orbital registry
+
+### Verification
+`test.mjs` all passed on `sats` and on merged `main`. Headless-Chrome screenshots: a Lookout 25 m from an Orbiter
+(lit, nose-down, engine bell up), a Beeper's marker at 3 km.
+
+### Next steps
+- [x] Flight marks carried over (`e920366`, below)
+- [ ] `main` still not pushed
+
+### Follow-up: satellites keep their flight marks
+`satRegister` hands the shape to a render hook (`HOOK.satLook`) that stores soot, char and char direction per part
+(rounded, saved with the registry); `satMesh` restores them into `MARKS` and the draw calls `setMarks`. Frost and nozzle
+glow aren't kept. §20 now also checks the hook (fails when the call is removed). Screenshot: a marked and a clean Lookout
+side by side after a JSON round trip. Merged to `main` as `e920366` (fast-forward). NOTES v1.9.2.
+
+## 2026-10-07 — NeuroMechFly measured ground contact (neuromechfly session, cont.)
+
+### Summary
+Tested the September duty-factor hypothesis against measured contact (net ground force on each leg's tibia + tarsus from
+MuJoCo's contact list; flygym's per-leg sensors don't exist on multi-block terrain). 54 runs on gaps 0–0.5 mm; logging
+leaves the physics bit-identical. The commanded duty factor misled: feet stay down through 25–60 % of commanded swing, so
+measured duty is similar across controllers (hybrid 0.64–0.69, not 0.53; CPG ≥ Walknet on flat). What tracks each break
+is **missed footholds** (commanded stance with no contact): CPG 0.04 → 0.30 from the first gap; Walknet flat at 0.08 until
+it jumps at 0.4 mm (its break); hybrid lowest until 0.5 mm (its break). Why Walknet's footholds ignore 0.1–0.3 mm gaps is open.
+
+### Files
+- `explorations/neuromechfly/run_matrix.py` (`measure_contact`), `sweep_difficulty.py` (`--contact`), `plot_contact.py` (new)
+- `explorations/neuromechfly/out/contact.json`, `out/contact.png` (new); `NOTES.md` v1.0.2 §10, notes on §3/§8
+- `explorations/README.md` row, `INDEX.md` row
+
+### Next steps
+- [ ] Foot x at touchdown relative to gap edges, CPG vs Walknet: why Walknet misses don't rise below 0.4 mm
+- [ ] Hybrid without swing extension; longer worlds (`x_range`)
+
 ## 2026-10-07 — Launchpad pad revisions (visuals session, cont.)
 
 ### Summary
@@ -2063,3 +2111,217 @@ The rocket no longer hovers in the builder: the pad holds it with hold-down arms
 ### Next steps
 - [ ] Pad: floodlights lit at night; animate the arms swinging back and the gantry rolling
 - [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)
+
+## 2026-10-07 — Launchpad: more bodies, the body tree and Nyx (bodies session, machine `pc_de_varginha`)
+
+### Summary
+Open thread 6. Set up on a second machine (no Node there; installed Node 24 LTS with Caio's OK). Worked in a **local clone**
+(`C:/Users/caioa/dev/launchpad-bodies`, branch `bodies`), not a worktree: this machine can't see the other sessions' worktrees,
+which show as "prunable" here (LESSONS #21). **Slice 1:** the hard-coded Tellus/Selene pair became a body tree (`BODIES`,
+`addBody`, Kepler elements per moon, `bodyRel`). SOI switching, rails, the multi-leg predictor, the map, focus, shadows and labels
+all walk the tree. A 40-transfer behaviour fingerprint was byte-identical. **Slice 2:** Caio's idea, a second moon, inclined
+and very eccentric. An n-body study sized it and chose the SOI rule. **Nyx:** R 150 km, g 0.4, 8,100–27,900 km, i 30°, 33 h. Its
+SOI breathes with its distance (407–1,401 km), the rule that tracked n-body best. Patched-conic stripping is predicted and flown.
+Negative result kept: in n-body, prograde orbits about Nyx are wrecked at its periapsis and patched conics can't show it. Caio
+chose patched conics for now (open thread 6b). **Slice 3:** Nyx has its own ray-cast pass (`MOON_FS` = SKY_FS's helpers + its
+own main), so terrain's SKY_FS is untouched. It's a daytime moon seen from the ground, with a dark brown carbonaceous look. Merged
+`main` twice (terrain's depth pre-pass and the era map; conflicts in `render()` and the end of test.mjs, both sides kept), then
+fast-forwarded `main` to `61ff6a1`.
+
+### Files
+- `explorations/launchpad/index.html`: body tree (`addBody`, `bodyRel`, `soiAt`, `NYX`), `checkSOI`/`soiSwitch`, `rails` limits, `predictFrom`/`escTime`, map/focus/lit/labels over `BODIES`, `MOON_FS`/`PMOON`/`drawMoons`
+- `explorations/launchpad/test.mjs`: §20 (5 Nyx checks)
+- `explorations/launchpad/study_nyx.mjs` (new): n-body vs patched-conics study
+- `explorations/launchpad/NOTES.md`: § "More bodies", open thread 6 → 6b, frames note
+- `INDEX.md` (study_nyx row entry), `explorations/README.md` (launchpad row), `LESSONS_LEARNED.md` #21
+
+### Verification
+`test.mjs` 138/138 after the final merge. Fingerprint identical for slice 1. Headless-Chrome screenshots on this machine: map
+(dark and notebook eras), a low orbit over Nyx, Nyx in the daytime sky over terrain's new ground. No console errors.
+
+### Next steps
+- [ ] 6b: third-body perturbations near Nyx (Encke in rails + predictor) so prograde orbits get wrecked at periapsis, as in n-body
+- [ ] Missions/contracts for Nyx (economy's scope): first flyby, first landing, the stripping as a hazard in briefs
+- [ ] Nyx eclipses in lighting; a non-spherical (SDF) shape for a captured rock
+- [ ] `main` not pushed to GitHub (Caio's call)
+
+## 2026-10-07 — NeuroMechFly foot landing positions (neuromechfly session, cont.)
+
+### Summary
+Recorded foot positions (tarsus5 origin) in the 54 contact runs and mapped every touchdown onto the block-and-gap period.
+Corrects §10: the CPG breaks at 0.1 mm not by missing footholds (its feet over gaps are caught 99 % of the time; the
+tarsus bridges the hole) but by stride collapse (1.21 → 0.48 mm). Swinging feet snag the far wall of a gap (38 % of swing
+contacts near it vs 18 % by area) and the clock moves on. Every controller holds its stride until its break, then loses it,
+so stride is the cleanest readout. Walknet's flat-ground "misses" are late touchdowns (slower swing). Walknet snags as often
+but keeps its stride; hypothesis: its 1.6x slower swing rides over edges. The hybrid's stumble correction keeps swing
+contacts near walls at the area rate.
+
+### Files
+- `explorations/neuromechfly/run_matrix.py` (foot positions in `gait_*.npz`), `plot_feet.py` (new), `out/feet.png` (new),
+  `out/contact.json` (regenerated, identical apart from timings); `NOTES.md` v1.0.3 §11 + correction note on §10
+- `explorations/README.md` row, `INDEX.md` row
+
+### Next steps
+- [ ] Slow the CPG to Walknet's 6.4 Hz: does its stride survive 0.1–0.3 mm gaps? (tests the tempo hypothesis in §11)
+- [ ] Hybrid without swing extension; longer worlds (`x_range`)
+
+### Follow-up 2: rendezvous
+Pick a registered satellite as the flight's target (click its map marker, or G to cycle). The map shows its orbit in
+orange and the closest approach on the current orbit and on the planned one after a node; the HUD shows distance,
+relative and closing speed, and the closest approach; the navball marks the target and the relative velocity; four
+SAS modes (Target, Anti-tgt, Rel pro, Rel ret). Sim side: `tgtOf`, `approach` (scan + golden-section), `progT`.
+test.mjs §21: closest approach vs a 0.5 s brute-force scan (104.69 vs 104.72 km), SAS directions exact. Browser:
+synthetic click on the marker targets it; map shots in both the modern and the era style. Merging: `main` moved twice
+(bodies tree + era map, then logbook facts); conflicts resolved in the clone, Drive fast-forwarded to `321da3f`.
+LESSONS #22. NOTES v1.10.0 § "Rendezvous".
+
+### Next steps
+- [ ] Rendezvous contracts (inspection, repair, retrieval) now have the groundwork; docking/contact doesn't exist yet
+- [ ] Phasing help over many revolutions (the closest-approach scan covers two of our orbits)
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad engine plumes (plumes session, branch `plumes`)
+
+### Summary
+Caio asked for better engine plumes, with Waterfall (the KSP mod) as a reference but not a requirement. The single
+additive cone became a **volume raymarched inside a proxy lathe**. Its shape follows the nozzle-exit/ambient pressure
+ratio: a pinch when over-expanded, shock diamonds near sea level, a balloon at altitude, a wide faint cone in vacuum.
+**Propellant profiles** (kerolox, alcohol, hypergolic, hydrolox) set colours, gains and opacity, through a per-engine
+`PFX` table. Borrowed from Waterfall: per-propellant templates; throttle/pressure-driven layers; the vertex shader
+deforming the proxy mesh. Plumes use premultiplied blending, so kerolox can occlude. The plume spools up at ignition, and
+smoke starts where the flame fades. Caio OK'd the merge; `main` fast-forwarded to `5e71091`.
+
+### Files
+- `explorations/launchpad/index.html`: `PLUME_RB`/`PLUME_VS`/`PLUME_FS`, `PNOISE` (32³ noise texture), the `PLUME` proxy, `PROPS`, `PFX`, `pfxOf`, `plumeShape`, `SPOOL`, the plume draw block, the smoke birth offset
+- `explorations/launchpad/views.js`: plume views 30–36; `refView` funds the program first (the budget gate refused the Lunar launch on a fresh page)
+- `explorations/launchpad/NOTES.md`: § "Engine plumes"
+- `LESSONS_LEARNED.md` #23 (prove which tree a server serves before an A/B)
+
+### Verification
+`node test.mjs` all passed, before and after both merges of `main`. Screenshots of every plume view and of views 2 and 10,
+plus the Heavy (three plumes). GPU A/B against a `main` snapshot (two rounds): within noise except +0.9 ms with a
+full-screen vacuum plume and +0.5 ms from below.
+
+### Next steps
+- [ ] Plume over the pad: spread on the deflector instead of going into the ground (needs pad/ground height in the shader)
+- [ ] Shutdown tail-off and an ignition flash; plume light on pad, smoke and hull at night
+- [ ] Sparrow's alcohol plume is too white-blue; hydrolox profile awaits an engine; RCS puffs could reuse the volume
+- [ ] `main` not pushed
+
+
+## 2026-10-07 — NeuroMechFly slowed CPG (neuromechfly session, cont.)
+
+### Summary
+Tested §11's tempo hypothesis: the tripod CPG at 9 / 6.4 / 4 Hz on gaps (54 runs, `cpg@<Hz>` controller names). Falsified:
+at Walknet's step rate the CPG still stalls (stride 0.27 mm at a 0.1 mm gap, worse than at 12 Hz) and its feet still hit
+gap walls at 3–4x the area rate. The bigger finding: per-run outcomes are bimodal (walk at full 1.2 mm stride, or stall)
+and depend on the seed, which only sets where the feet meet the gaps; every fly spawns at the same x. Walknet's seeds 0
+and 2 are identical, and its seed 1 stalls at 0.2 mm, so its "plateau" is partly luck. Median-of-3 breaking points are
+weaker than written in §6–7; caveats added there. Lesson #24.
+
+### Files
+- `explorations/neuromechfly/run_matrix.py` (`cpg@<Hz>` controller names), `plot_tempo.py` (new), `out/tempo.json`, `out/tempo.png` (new)
+- `explorations/neuromechfly/NOTES.md` v1.0.4 §12, caveats on §7 and §11; `explorations/README.md` row, `INDEX.md` row, `LESSONS_LEARNED.md` #24
+
+### Next steps
+- [ ] Success probability per controller x gap: spawn x uniform over one terrain period, 10–20 runs per cell
+- [ ] Hybrid without swing extension; longer worlds (`x_range`)
+
+## 2026-10-07 — Launchpad 6b: third-body perturbations near Nyx (bodies session, cont.)
+
+### Summary
+Near Nyx, craft now feel both bodies, integrated with kick–drift–kick steps (exact Kepler drift plus third-body kicks), shared
+by rails, physics, the predictor and impact prediction. A threshold sweep against n-body chose where: wherever the
+perturbation is ≥ 1e-3 of the central pull, *including* Tellus's reflex term. Flybys now land 0.1–0.6 km from n-body a day
+later, against up to 10,000 km for patched conics. Found and fixed a model inconsistency (in the earlier study, and needed for
+the two frames to agree): Nyx's relative orbit uses μ_T + μ_N. Prograde orbits around Nyx are now wrecked at its periapsis
+pass, as in n-body. The map draws perturbed legs as integrated paths ("Impact in … (perturbed)"), cached while coasting. Low
+Tellus orbit keeps exact rails. A real side effect, confirmed by n-body: a Selene transfer that misses comes back with its
+perigee ~110 km lower. Merged `main` (clean), fast-forwarded `main` to `cba2d3e`.
+
+### Files
+- `explorations/launchpad/index.html`: `PERT_MIN`, `pertAcc`, `pertNear`, `coastPlan`, `coastStep`; rails and `physStep` use them; `numLeg` in `predictFrom`; perturbed branch in `fall()`; `drawPath`, `predStill`, `planCache`; era map body loop → `BODIES` (planning's code, one line)
+- `explorations/launchpad/test.mjs`: §21 (5 n-body checks); §20 stripping check updated to the perturbed answer
+- `explorations/launchpad/NOTES.md`: § "6b", open thread 6
+
+### Verification
+`test.mjs` 148/148 after the merge. Rails, prediction and an independent RK4 n-body agree on the wrecked 200 km prograde orbit
+(0.493 P). Browser: notebook map shows the spiral to impact and the surviving retrograde twin; no console errors.
+
+### Next steps
+- [ ] Selene as a perturber (one flag; re-baseline Selene tests)
+- [ ] Node positions on perturbed legs (nodeInfo still uses Kepler)
+- [ ] Nyx missions (economy's scope)
+- [ ] `main` not pushed to GitHub
+
+### Follow-up 3: contact (collisions with satellites)
+Vessel vs registered satellites: parts as signed distance fields from their profiles, surface sample points, one rigid-
+body impulse per contact (e 0.3, friction 0.4). Within 5 km of a satellite the flight stays in physics (in orbit it's
+otherwise on rails even at 1×) and each step is swept at 5 cm, so a 2 km/s pass is caught. Parts break above 3 m/s
+(delicate) or 8 m/s; a hit satellite gets new rails and a free spin (`satSpin`). Fixed on the way: my `profR` silently
+replaced an existing `profR` in the builder layout code (function declarations, last one wins); renamed `hitProf`.
+test.mjs §22 (momentum to 1e-27, bounce, antenna breaks at 5 m/s, no tunnelling, physics within 5 km). Browser: a 1 m/s
+bump and a 6 m/s hit (the satellite's antenna and the Orbiter's chute come off). One conflict merging `main` (a comment
+under `railsOK` from the bodies/Nyx work). `main` at `484ba1d`. NOTES v1.11.0: § "Contact" and § "Docking and related
+parts: plan".
+
+### Next steps
+- [ ] Caio to decide (NOTES docking plan): rigid-passenger model for docked bodies; RCS fuel (monoprop or main tanks); port or claw first after RCS
+- [ ] Then: RCS + translation controls, which docking needs regardless
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad v1.27: launch sites as data (terrain session, slice B)
+
+### Summary
+Built slice B of the geography plan to the economy session's hand-off. `SITES` is plain data: the home site at +X plus
+up to three per power (most equatorial with open water east, a clear polar corridor, inland), 15 on seed 13. Each has
+latitude, pad height, power, coastal/maxDia (rail or barge), downrange {az, sea, over}, polar, free speed and lowest
+inclination. A site per flight: `newShip(stack, site = curSite())` and `PROG.site`; tapes record their site. Pads are
+levelled and drawn at every site. The launch gate calls `siteAccessOf` (economy's `siteAccess` when it exists, else home
+sites only) and `siteFits` (rail gauge). Site picker in the construction screen. The +X assumptions in
+`makeCities`/`makePowers`, `landDist` and the pad ground station now follow the site. Merged `main` into `terrain` three
+times (main kept moving), fast-forwarded `main` to `baa19ba`.
+
+### Files
+- `explorations/launchpad/index.html`: SIM sites (`SITES`, `extendSites`, `finishSite`, `siteAccessOf`, `siteFits`, `curSite`/`homeSites`), `terrainH` levelling, `newShip(stack, site)`, `padGS`, tapes, the shader's `uSites`/`uPadE`/`uPadS`, pad drawing per site, the picker (`renderSites`)
+- `explorations/launchpad/builder.js`: `changed()` hangs the ship over `S.site`
+- `explorations/launchpad/test.mjs`: §23, 5 checks; `explorations/launchpad/terrain-probe.js`: passes the sites
+- `explorations/launchpad/NOTES.md`: § v1.27 (site table, gate, picker, measurements, traps, hand-offs)
+
+### Verification
+`test.mjs` 158/158 on the merged `main`. The Orbiter flown from Haval Polar Range (29.0°N) reaches orbit at 28.97°.
+GPU/CPU terrain agreement around a non-home site: median 2 mm, max 2.5 cm. In the browser: picking a site moves the ship
+onto that pad, a foreign site is refused ("Haval Federation won't let us launch from Haval Cape"), a home polar site
+launches standing on its pad.
+
+### Next steps
+- [ ] Economy: `siteAccess(site)` → {ok, why, fee}, `R.site`, westward/overflight politics from `site.downrange.over`; the ballistic contract's `rg/600` (old radius, from +X)
+- [ ] Terrain: a sea-launch platform, per-site weather scrubs, a pre-launch warning when the downrange crosses a neighbour; then slices C–E
+- [ ] `main` not pushed
+
+## 2026-10-07 — Launchpad pad animation + floodlights (visuals session, cont.)
+
+### Summary
+The pad's moving parts are separate meshes animated by matrix (`buildRig`, `drawPadRig`). The service gantry starts each
+flight from the pad in service position and rolls 80 m back in 14 s. At liftoff the swing arms swing back top first and the
+hold-downs tip out. Floodlights from dusk to dawn: four point lights in the mesh shader, plus additive lamp faces and ground
+pools. Merged main twice (plumes views; then terrain's launch sites as data): the rig and lights now follow `curSite()` in
+its `siteFrame`. Found that the pad's z axis is south, not north, and corrected the comments and notes. Merged to main and pushed.
+
+### Next steps
+- [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)
+
+### Follow-up 4: docking design decisions, then RCS
+Caio's decisions: docked spacecraft stay separate bodies fixed together (each subsystem per body; fuel only by explicit
+transfer); RCS on its own propellant, cold gas first, pulsed; then the docking port, then the claw. Built RCS: *RCS quad
+(cold gas)* and *Gas bottle* (surface parts, palette "Control"), `gas` resource, nozzles as real forces, exact jet-select
+tables (ridge NNLS, Lawson–Hanson) per layout, sigma-delta pulses (3 N·s minimum impulse), RCS adds attitude authority
+beyond wheels and gimbal, keys I K J L U O and R, HUD row, puffs, tapes. Fixed on the way: a first iterative solver fired
+opposed nozzle pairs (90 % of the Δv for 108 % of the gas); the builder's surface-part picking assumed a fin's span.
+test.mjs §24 (renumbered after terrain's §23). `main` moved twice during the merge; resolved in the clone, Drive
+fast-forwarded to `d5a2e9c`. NOTES v1.12.0.
+
+### Next steps
+- [ ] Docking port (1.25 m): capture cone, latch, the docked body as a passenger (mass, thrust, contact, render, registry), undock
+- [ ] Then the claw; later RCS eras (monoprop), fine control, plume impingement, ullage
+- [ ] `main` still not pushed
