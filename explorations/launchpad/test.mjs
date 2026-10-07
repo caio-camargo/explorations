@@ -1172,6 +1172,56 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   zero();
 }
 
+// 25. Docking (sats session): ports capture, the docked body rides as a passenger, the port carries its load, undocking
+// hands it back. Its own instance of the sim core.
+{
+  const D = new Function(src + 'return {newShip,stage,physStep,contactStep,satRegister,dockEnd,satAt,satMP,satSpin,undock,PROG,TELLUS,DT,qrot,qmul,qaxis,qconj,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG;
+  // a port-pod-tank-engine vessel nose out in a 300 km orbit; a camera satellite with a port, turned to face it, `gap` beyond
+  const scene = ({ gap = 0.3, close = 0.2, lat = 0.04, tilt = 3 } = {}) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip(['port', 'pod', 't1', 'kestrel']), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['port', 'cam', 'petrel']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + tilt * Math.PI / 180), s.q); k.r = add(add(s.r, mul(Y, s.yTop + gap + k.yTop)), [0, lat, 0]); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, close)); return { s, q: P.sats[0], Y };
+  };
+  const fly = (s, n, stop) => { for (let i = 0; i < n && !(stop && stop()); i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); } };
+  const portW = (s, a) => { const o = a ? a.e.shape.find(x => x.i === a.ppi) : s.parts.find(p => p.d.kind === 'port'), face = [o.pos[0], o.y0 + o.h, o.pos[2]];
+    return add(s.r, D.qrot(s.q, sub(a ? add(a.p, D.qrot(a.q, sub(face, a.e.cm))) : face, s.cm))); };
+  // capture at 0.2 m/s, 4 cm off and 3° off: latched, faces together, momentum kept, mass summed
+  let { s, q, Y } = scene(), mom = null, m0 = s.mass, mq = q.mass;
+  for (let i = 0; i < 300 && !s.att.length; i++) { D.physStep(s, D.DT); const [, vq] = D.satAt(q, D.t), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)); D.contactStep(s, D.DT);
+    if (s.att.length) mom = len(sub(mul(s.v, s.mass), p0)) / len(p0); }
+  const a = s.att[0], gapEnd = a ? len(sub(portW(s, a), portW(s, null))) : NaN, axes = a ? dot(D.qrot(s.q, D.qrot(a.q, [0, 1, 0])), D.qrot(s.q, [0, 1, 0])) : NaN;
+  check('docking: ports meeting at 0.2 m/s, 4 cm and 3° off, latch; faces together, momentum kept, masses summed', a && a.e === q && q.docked && mom < 1e-12 && gapEnd < 1e-9 && axes < -1 + 1e-9 && Math.abs(s.mass - m0 - mq) < 1e-6,
+    `momentum error ${mom != null ? mom.toExponential(1) : '—'}; faces ${gapEnd.toExponential(1)} m apart, axes ${axes.toFixed(6)}; ${(s.mass / 1000).toFixed(3)} t = ${(m0 / 1000).toFixed(3)} + ${(mq / 1000).toFixed(3)}`);
+  // the Docking autopilot mode turns the nose against the target port's axis (15° off to start, 30 s, 3 m apart)
+  ({ s, q } = scene({ gap: 3, close: 0, tilt: 15 })); Object.assign(s, { sas: true, sasMode: 'dock', target: q.id }); fly(s, 30 / D.DT);
+  const tq = D.satAt(q, D.t), Ab = D.qrot(D.satSpin(q, D.t, tq[0], tq[1]).q, [0, 1, 0]), off = Math.acos(Math.min(1, -dot(D.qrot(s.q, [0, 1, 0]), Ab))) * 57.29578;
+  check('docking: the Docking autopilot mode lines the nose up against the target port', off < 0.5, `${off.toFixed(2)}° off after 30 s (15° at the start)`);
+  // too fast, or too far off the axis: no latch (a bump instead)
+  ({ s, q } = scene({ close: 1 })); fly(s, 200, () => q.spin); const fast = !s.att.length && !!q.spin;
+  ({ s, q } = scene({ tilt: 20 })); fly(s, 200, () => q.spin); const askew = !s.att.length && !!q.spin;
+  check('docking: at 1 m/s, or 20° off, the ports bump instead of latching', fast && askew, `1 m/s: ${fast ? 'bumped' : 'latched'}; 20°: ${askew ? 'bumped' : 'latched'}`);
+  // the port carries the load: a gentle burn keeps it, full throttle (≈5 g on the satellite) breaks it loose
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); D.stage(s); s.throttle = 0.05; D.physStep(s, D.DT); D.contactStep(s, D.DT); fly(s, 50);
+  const low = s.att.length === 1 ? s.att[0].load : NaN; s.throttle = 1; fly(s, 50); const broke = !s.att.length && !q.docked && P.sats.includes(q); s.throttle = 0;
+  check('docking: the port carries the satellite through a 5 % burn and lets go at full throttle', low < 1 && broke, `load at 5 %: ${(low * 100).toFixed(0)} % of the rating; full throttle: ${broke ? 'broke loose' : 'held'}`);
+  // undock: pushed apart at 0.3 m/s along the port axis, momentum kept; back in the registry as itself, at the right place
+  ({ s, q, Y } = scene()); fly(s, 300, () => s.att.length); const pBefore = mul(s.v, s.mass), cmQ = add(s.r, D.qrot(s.q, sub(s.att[0].p, s.cm)));
+  D.undock(s, q.id); const [rq, vq] = D.satAt(q, D.t), sep = dot(sub(vq, s.v), D.qrot(s.q, [0, 1, 0])), pAfter = add(mul(s.v, s.mass), mul(vq, q.mass));
+  fly(s, 100); const again = s.att.length;
+  check('undocking: 0.3 m/s apart along the port axis, momentum kept, the satellite back in the registry where it was', !q.docked && P.sats.includes(q) && Math.abs(sep - 0.3) < 1e-6 && len(sub(pAfter, pBefore)) / len(pBefore) < 1e-12 && len(sub(rq, cmQ)) < 1e-6 && !again,
+    `separation ${sep.toFixed(4)} m/s; momentum error ${(len(sub(pAfter, pBefore)) / len(pBefore)).toExponential(1)}; position ${len(sub(rq, cmQ)).toExponential(1)} m; recaptured: ${!!again}`);
+  // a flight that ends docked registers one stack: the satellite rides inside the new entry, which weighs what the vessel did
+  ({ s, q } = scene()); fly(s, 300, () => s.att.length); const mS = s.mass, rS = s.r.slice(); D.satRegister(s, { day0: 0 }); D.dockEnd(s);
+  const st = P.sats.find(x => x !== q), M = st && D.satMP(st);
+  check('docking: a flight ending docked registers one stack, the satellite inside it as itself', P.sats.length === 1 && st && st.attached.length === 1 && st.attached[0].e === q && !q.docked && Math.abs(M.m - mS) < 1e-6 && len(sub(st.r, rS)) < 1e-9,
+    `${P.sats.map(x => x.name).join(', ')} carrying ${st ? st.attached.map(x => x.e.name).join(', ') : '—'}; ${(M ? M.m / 1000 : NaN).toFixed(3)} t`);
+  Object.assign(P, { sats: [], satN: 0 });
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

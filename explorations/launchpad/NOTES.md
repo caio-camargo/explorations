@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.12.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.13.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1962,6 +1962,49 @@ Translation control, and attitude control that doesn't need reaction wheels. The
   physics while on. In the browser: the palette, both parts in the editor, a stage translating in orbit with puffs.
 - **Not yet:** monopropellant and later thrusters for the later eras; a fine-control mode; exhaust hitting other
   spacecraft; ullage; reaction wheels that saturate; station-keeping. (See the RCS answer in the docking plan.)
+
+### Docking port (sats session, 2026-10-07)
+
+The first docking. Two ports meet, latch, and the satellite rides along; undock and it's itself again.
+
+- **Part:** *Docking port* (1.25 m, palette *Structure*), a stack part whose top face is the port; a port is free when
+  nothing is stacked on it and it isn't in use. 3M.
+- **Capture:** two free ports latch when the faces are within 15 cm along our axis and 10 cm across it, their axes are
+  opposed within 10°, and the port points close at under 0.5 m/s (checked each physics step before contact, so a good
+  approach latches instead of bumping). The latch pulls the target's port onto ours (turned so the faces oppose, moved
+  so they meet: at most 15 cm and 10°), and the joined vessel takes the pair's total momentum and angular momentum
+  exactly. Too fast or too skewed and the ports just bump (contact).
+- **Passengers (the decided model).** The vessel keeps its own parts; each docked body is an entry in `s.att` with its
+  registry entry, its centre of mass and attitude in the vessel frame, the body it's docked to and both ports' part
+  indices. `geom` adds their mass and inertia (each body's own inertia rotated into the vessel frame, diagonal kept as
+  the vessel's own is). Contact sees their parts (part records can sit at a transform); rendering draws them; RCS and
+  aero stay with the vessel's own parts for now (docked stacks live in vacuum, and a passenger's thrusters are a later
+  slice).
+- **Port loads:** each step every port works out the force and bending moment that make everything beyond it follow the
+  vessel (non-gravitational acceleration plus rotation), against a rating of 30 kN and 20 kN·m. Above it the body breaks
+  loose with its momentum. A 0.7 t satellite on an Orbiter-class stage: 7 % of the rating at 5 % throttle, broken at
+  full throttle (about 4 g).
+- **Undocking** (a button in the HUD's *Docked* row; recorded on the flight tape as `['D', id]`): the body, and anything
+  docked through it, leaves on its own rails, pushed apart at 0.3 m/s along the port axis with momentum shared. It goes
+  back into the registry as itself (name, kit, marks), spinning with the vessel's rotation. Ports don't recapture for 5 s.
+- **The registry:** a docked satellite stays in `PROG.sats` flagged `docked` (skipped by everything that looks at
+  satellites in orbit) until the flight ends, so a reload mid-flight can't lose it (the flag is cleared on load, which
+  puts it back where it was before the flight). A flight that ends docked in orbit registers one stack: the new entry
+  carries the others in `attached`, its own `mass`/`cm` are its own body's, and `satMP` gives the combined mass, centre
+  of mass, inertia and parts. Landing docked brings them home (headline); a crash loses them.
+- **Guidance:** with a target within 500 m, the HUD shows *Port* (distance between the ports, angle between their axes,
+  closing speed, green when inside the capture limits) and *Line up*: the target port's offset and our drift in the
+  RCS keys that fix them (L/J, U/O). SAS mode *Docking* holds the nose against the target port's axis (needs a target).
+- **Fixed on the way:** satellite meshes were cached per satellite, so one that lost its antenna in a collision kept
+  drawing it; they're keyed by shape now. And one edit of mine had swallowed the marks hand-off call into a comment;
+  §20's check caught it.
+- Checks (`test.mjs` §25): capture at 0.2 m/s, 4 cm and 3° off (momentum exact, faces 7e-16 m apart, masses summed); no
+  latch at 1 m/s or 20°; the Docking mode lines up from 15° to 0.00°; port load held at 5 %, broken at full throttle;
+  undocking (0.3000 m/s, momentum to 1e-16, position exact, no recapture); a flight ending docked registers one stack.
+  In the browser: the approach with the HUD guidance, the latch, and undocking by the button.
+- **Not yet:** docking to a port on a body that's itself docked to the target (only the target's own ports for now);
+  passengers' thrusters, aero and heating; fuel transfer; a body whose port sits on a part that's staged away; the
+  passengers' own rotational inertia in the port's moment; a soft-capture animation (the latch snaps the last ≤15 cm).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
