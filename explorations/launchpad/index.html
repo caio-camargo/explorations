@@ -185,11 +185,11 @@ function qFromTo(a,b){const c=cross(a,b),d=dot(a,b);if(d<-0.999999){let ax=cross
 // its top at the Kármán line (100 km, scale height 7.5 km). Orbit costs ~4,200–4,350 m/s; low-orbit speed is 3.4 km/s.
 const TELLUS={name:'Tellus',R:1.274e6,mu:9.81*1.274e6**2,rot:2*Math.PI/28800,atm:1e5,H:7500,rho0:1.225,th0:-Math.PI/3,soi:Infinity};
 // Selene: the Moon's size relative to its planet (0.273 R), the Moon's surface gravity (1.62), a tenth of the Moon's distance
-const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
+const SELENE={name:'Selene',R:3.48e5,mu:1.62*3.48e5**2,atm:0,pert:true,orb:{a:3.844e7,e:0,i:0,lan:0,argp:0,M0:2.0}};
 // Nyx: a small captured moon on an inclined, eccentric orbit (8,100–27,900 km, 30°, 33 h), always inside Selene's orbit
 // clear of its SOI. Its SOI breathes with its distance (407–1,401 km). Sized from an n-body study (NOTES, "Nyx").
 const NYX={name:'Nyx',R:1.5e5,mu:0.4*1.5e5**2,atm:0,pert:true,orb:{a:1.8e7,e:0.55,i:30*Math.PI/180,lan:1.0,argp:0.8,M0:0.5}};
-const BODIES=[],PERT_MIN=1e-3;   // PERT_MIN: see the third-body block below
+const BODIES=[],PERT_MIN=2e-6;   // PERT_MIN: see the third-body block below
 // A moon's orbit about its parent: fixed Kepler elements (a, e, i, longitude of the node, argument of periapsis, mean
 // anomaly at t=0). Angles are measured in this frame's equator (XZ) with +Y north, so prograde runs +X → −Z.
 function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if(!parent)return b;parent.children.push(b);
@@ -199,7 +199,7 @@ function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if
   b.rMin=o.a*(1-o.e);b.rMax=o.a*(1+o.e);b.vMax=b.n*o.a*Math.sqrt((1+o.e)/(1-o.e));
   // SOI: the Laplace radius (m/M)^0.4 × distance. On an eccentric orbit it follows the distance (soiAt); b.soi is its
   // largest value, for conservative tests. soiRate bounds how fast it moves, for rails' step size.
-  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;b.kap=b.pert?1.05*Math.sqrt(b.mu/parent.mu/PERT_MIN):0;return b}
+  b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
 addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
 // position and velocity of b relative to its parent at time t
 function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
@@ -208,20 +208,23 @@ function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;
 function moonPos(t){return bodyRel(SELENE,t)[0]}
 function moonVel(t){return bodyRel(SELENE,t)[1]}
 // absolute position (relative to the root); the root is the origin
-// ---- third-body perturbations (open thread 6b). Near a body with pert:true the craft feels both bodies: inside its SOI,
-// the parent's tide (direct pull minus the pull on the moon); in the parent's frame, the moon's pull minus the parent's reflex
-// toward it, wherever that is at least PERT_MIN of the parent's pull (near the moon, and out beyond ~1.3× its distance where the
-// reflex term grows). Elsewhere, low Tellus orbit included, the old exact Kepler rails stand.
-// The parent is treated as moving with the moon (the pair's relative orbit uses μ_parent + μ_moon), which is what makes the
-// two frames agree; an n-body integration of that model matches the hybrid to under a km a day after a flyby (NOTES, 6b).
-function pertAcc(b,r,t){let a=null;
+// ---- third-body perturbations (open thread 6b). Near a moon with pert:true (Nyx, Selene) the craft feels both bodies: inside
+// its SOI, the parent's tide (direct pull minus the pull on the moon); in the parent's frame, the moon's pull minus the
+// parent's reflex toward it. Whether an orbit is perturbed is decided per orbit (pertNear, PERT_MIN = 2e-6 of the central
+// pull), and on such an orbit the force is always on, so warp changes nothing but rounding. Low Tellus orbit feels Nyx's tide
+// (~1e-5) and drifts metres a month; orbits that feel nothing keep the old exact Kepler rails. Each moon's relative orbit
+// uses μ_parent + μ_moon, which is what makes the two frames agree; n-body integrations of that model match the game to under a
+// km a day after a Nyx flyby, 10 m over a day in lunar orbit, ~5 km two days after a close Selene pass (NOTES, 6b).
+const pthr=(b,r,ac)=>{const rl=len(r);return len(ac)*rl*rl>=PERT_MIN*b.mu};
+function pertAcc(b,r,t,thr){let a=null;
   if(b.pert){const R=bodyRel(b,t)[0],y=add(r,R),yl=len(y),Rl=len(R);a=mul(add(mul(y,1/(yl*yl*yl)),mul(R,-1/(Rl*Rl*Rl))),-b.parent.mu)}
   for(const c of b.children)if(c.pert){const R=bodyRel(c,t)[0],d=sub(r,R),dl=len(d),rl=len(r),Rl=len(R),ac=mul(add(mul(d,1/(dl*dl*dl)),mul(R,1/(Rl*Rl*Rl))),-c.mu);
-    if(len(ac)*rl*rl>=PERT_MIN*b.mu)a=a?add(a,ac):ac}
+    if(!thr||pthr(b,r,ac))a=a?add(a,ac):ac}   // thr: physStep's pointwise test (physics runs in short spans)
   return a}
-// can this orbit (elements el about b) feel a perturbation at all? The moon's direct pull reaches PERT_MIN only within
-// kap·r of it (kap = √((m/M)/PERT_MIN)), so the orbit must pass between rMin/(1+kap) and rMax/(1−kap) from the parent.
-const pertNear=(b,el)=>b.pert||b.children.some(c=>c.pert&&el.ap>c.rMin/(1+c.kap)&&el.pe<c.rMax/(1-c.kap));
+// Does this orbit (elements el about b) feel a moon? Decided per orbit, not per point: inside, the force is always on, so
+// how the time is chopped (warp) changes nothing but rounding. An orbit well inside the moon's feels its tide, at most
+// 2(m/M)(ap/(rMin−ap))³ of the parent's pull (with a margin); one reaching out toward or past the moon always counts.
+const pertNear=(b,el)=>b.pert||b.children.some(c=>c.pert&&(el.ap>=c.rMin/2||2.4*c.mu/b.mu*(el.ap/(c.rMin-el.ap))**3>=PERT_MIN));
 // Coasting step planner, shared by rails and the predictor: lim/sp is the old event limit (SOI edges, a floor radius, and
 // now the edge of a perturbed region); pa the perturbation here (null: exact Kepler); hP the step cap when perturbed.
 function coastPlan(b,r,v,t,el,floor){const rl=len(r),sp=len(v)+b.children.reduce((m,c)=>Math.max(m,c.vMax+c.soiRate),0)+(b.soiRate||0)+1;
@@ -230,14 +233,16 @@ function coastPlan(b,r,v,t,el,floor){const rl=len(r),sp=len(v)+b.children.reduce
   for(const c of b.children)if(el.ap>c.rMin-c.soi&&el.pe<c.rMax+c.soi)lim=Math.min(lim,Math.abs(len(sub(r,bodyRel(c,t)[0]))-soiAt(c,t)));
   if(b.parent&&(el.e>=1||el.ap>b.soiMin))lim=Math.min(lim,Math.abs(soiAt(b,t)-rl));
   if(pertNear(b,el)){pa=pertAcc(b,r,t);
-    for(const c of b.children)if(c.pert){const dN=len(sub(r,bodyRel(c,t)[0])),edge=dN-c.kap*rl;if(edge>0)lim=Math.min(lim,edge/(1+c.kap));}
     if(pa){hP=2*Math.PI*Math.sqrt(rl*rl*rl/b.mu)/200;
       if(b.pert){const dP=len(add(r,bodyRel(b,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/b.parent.mu),Math.PI*2/b.n/400)}
       for(const c of b.children)if(c.pert){const dP=len(sub(r,bodyRel(c,t)[0]));hP=Math.min(hP,0.02*Math.sqrt(dP*dP*dP/c.mu),Math.PI*2/c.n/400)}}}
   return{lim,sp,pa,hP}}
+// coast from (r,v,t) to t1 on b's rails (no SOI changes; stops at the ground)
+function coastTo(b,r,v,t,t1){let g=0;while(t<t1-1e-9&&g++<200000){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,b.mu),b.R),h=Math.min(t1-t,Math.max(0.5,0.25*lim/sp),hP);
+  [r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(len(r)<b.R)break}return[r,v]}
 // one coasting step: exact Kepler, or kick–drift–kick (Kepler drift about b, half kicks from the perturbation)
 function coastStep(b,r,v,t,h,pa){if(!pa)return kepler(r,v,h,b.mu);
-  [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}
+  [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}   // (pertAcc without a threshold: on for the whole orbit)
 const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
 const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
 const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
@@ -757,7 +762,7 @@ function subtree(p){const out=[p];for(const c of p.children)if(c.on)out.push(...
 // Take parts off the vessel (staging or structural failure). They leave as one debris body with the velocity
 // their centre of mass had, including the spin, plus a kick (body frame).
 function detach(s,list,kick,spin){
-  list=list.filter(p=>p.on);if(!list.length)return;
+  list=list.filter(p=>p.on);if(!list.length)return;s.kickN=(s.kickN||0)+1;
   geom(s);const c0=s.cm.slice();let dm=0,dc=[0,0,0];for(const p of list){const m=partMass(p);dm+=m;dc=madd(dc,partC(p),m)}dc=mul(dc,1/dm);
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
@@ -802,8 +807,8 @@ function physStep(s,dt){
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
   const alC=qrot(qi,ctrlAccel(s)),alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
   const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);
-  s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;
-  let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT);if(pa)grav=add(grav,pa)}
+  s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;if(len(aNg)>1e-9)s.kickN=(s.kickN||0)+1;   // non-gravitational: cached node states go stale
+  let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT,true);if(pa)grav=add(grav,pa)}
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
   integrateRot(s,qrot(s.q,alB),dt);
   simT+=dt;checkSOI(s);groundCheck(s);
@@ -865,7 +870,7 @@ function groundCheck(s){
     s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
 function stage(s){
-  if(!s.alive)return;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
+  if(!s.alive)return;s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
   for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
@@ -961,7 +966,13 @@ function predictFrom(st0){
 function nodeFrame(r,v){const pro=norm(v),h=cross(r,v),nrm=len(h)>1e-9?norm(h):[0,1,0];return{pro,nrm,rad:norm(cross(v,nrm))}}
 function nodeInfo(s){const n=s.node;if(!n)return null;
   if(n.burning){const rem=sub(n.dvW,n.applied);return{rem,dvW:n.dvW,rN:s.r,vN:s.v,t:simT,b:s.body}}
-  const[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu),f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
+  let r,v;
+  // on a perturbed orbit the node's state is integrated (same stepper as rails), and kept until something other than
+  // gravity changes the craft's motion (kickN) or the node moves; otherwise it's the exact Kepler state
+  if(pertNear(s.body,elements(s.r,s.v,s.body.mu))){const k=`${n.t}|${s.body.name}|${s.kickN||0}`;
+    if(!n._c||n._c.k!==k||simT<n._c.t0){[r,v]=coastTo(s.body,s.r,s.v,simT,n.t);n._c={k,r,v,t0:simT}}else{r=n._c.r;v=n._c.v}}
+  else[r,v]=kepler(s.r,s.v,n.t-simT,s.body.mu);
+  const f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
   return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b:s.body,f}}
 function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning now (or the next stage's)
   let E=activeEngines(s);if(!E.length){const ev=s.events[s.evIdx];if(ev)E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ev.ignite.includes(p.seg)&&groupFuel(s,s.grp[p.i])>0)}
