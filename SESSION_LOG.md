@@ -1869,3 +1869,28 @@ NOT verified (the tests against it hit the dying server).
 - [ ] Backlog: liveries; Caio may want per-nation designs, decide later
 - [ ] Quick check that `MESH_FS` compiles on the Intel UHD (`SHOT_FLAGS`)
 - [ ] `main` not pushed yet
+
+## 2026-10-07 — Launchpad flight marks + launch complex (visuals session, cont.)
+
+### Summary
+Slice 2, **flight marks** (agreed with Caio): render-side marks per part (`MARKS` WeakMap, never read by the sim). Soot
+from burning engines up the stack base, re-entry char from peak skin temperature laid on the windward side (shields
+blacken early), LOX frost below each tank's fuel line until liftoff, and a glowing Petrel nozzle extension. Fixed a
+pinwheel artifact on lathe caps (planar footprint and noise). Learned that "black" is not black under this sun: judge
+darkening on white paint. Slice 3, **the launch complex**: only the contents of the `PAD` mesh (lattice umbilical tower,
+launch table, flame channel, propellant farm, water tower, blockhouse, lights), leaving placement, height and the apron to
+the terrain session. Caio: "huge improvement". Merged `main` into `visuals` (clean), fast-forwarded `main` to `b3ea9f0`.
+
+### Files
+- `explorations/launchpad/index.html`: marks (`marksTick`, `setMarks`, `uMk`/`uCh` replace `uHot`), shader marks block, `tube`/`lattice`, new `PAD`
+- `explorations/launchpad/views.js`: views 11–16
+- `explorations/launchpad/NOTES.md`: § "Flight marks", § "The launch complex"
+
+### Verification
+`test.mjs` all passed before and after the merge. Screenshots of every new view. GPU A/B on marks: within noise.
+
+### Next steps
+- [ ] Caio isn't sold on the buildings around the pad: decide which buildings to have (options discussed in chat), then rebuild
+- [ ] Pad next steps (Caio OK'd): floodlights lit at night, swing arms retracting at liftoff, tower height from the rocket
+- [ ] Backlog: liveries / per-nation designs; char that reads on the dark capsule; a real flame trench (terrain's ground)
+- [ ] `main` still not pushed
