@@ -887,6 +887,34 @@ plasma's `hullProfile`.
 **Still open:** a real humidity field (clouds, coast vs inland); collars on side boosters (the profile only knows the
 envelope, so radial stacks' noses don't make their own shoulders); condensation off fin tips at high angle of attack.
 
+## The plume meeting the ground (2026-10-07, aerofx session)
+
+Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
+through the deck, and smoke puffs were born underground. Three changes, all render-side:
+
+- **The ground is opaque to the plume.** `groundFrame(camW)` returns the frame of the ground under the ship: the pad's
+  own frame (x east, y up, z south down the flame channel) within 300 m of it, else the terrain below. The plume shader
+  gets that plane in its local frame (`uGp`) and stops marching at it.
+- **An impingement volume** (`IMP_FS`, drawn by `drawImpact` right after the plumes, a box proxy `CUBE`). The draw block
+  intersects each burning engine's axis with the ground; jet strength there w = spool · smoothstep(1.15 L, 0.35 L,
+  distance), so it fades as the ship climbs out of its own plume. On the pad, most of the flow goes down the flame
+  channel (|x| < 3.4 m, from z ≈ 0 to ~38 m), thickening and cooling as it goes: white-hot at the impact, the
+  propellant's mantle orange, then soot. Off the pad, a radial splash a few exit radii across. Colours, soot and
+  opacity come from the engine's propellant profile (`PROPS`), so kerolox is smoky and hypergolic is faint.
+- **A ground cloud of smoke** (`emitGroundSmoke`): while the jet reaches the ground, puffs at 30/s per engine (×
+  strength). On the pad, 80 % pour out of the channel's mouth 26–40 m south and the rest spill over the deck round the
+  table. Off the pad, they form a ring round the impact. Big, slow, rising puffs with a 40–70 s life. Underground birth
+  points of the normal trail are dropped (the ground cloud stands in for them).
+
+`IMPACT_FX = false` hides the volume. Cost, 1280×800, RS 1: the volume ~1 ms GPU on the pad; the ground cloud's puffs
+~2 ms more while thick (they overdraw the screen near the camera; the old trail cost about the same once the rocket
+climbed). CPU per frame unchanged (0.8–0.9 ms).
+
+Reference views: `refView(60)` 0.6 s after ignition, `61` 12 m up, `62` 35 m up, `63` the Lunar at 3 m, `64` from above.
+
+**Still open:** the channel is fixed to this pad layout (its walls at x = ±3.4, running south): another site's pad
+would need its channel as data. No deluge water or steam. The ground cloud doesn't light up from the flame.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

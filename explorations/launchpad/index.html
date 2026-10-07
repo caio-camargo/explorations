@@ -2429,7 +2429,7 @@ void main(){float s=-aP.y*uB.y,k=min(uB.x,1.9*rb(s,uB.z)+.15*uB.z)*1.0086;vL=vec
  vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLUME_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
-uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
+uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS,uGp;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
 ${PLUME_RB}
 void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
  // the stretch of the ray inside the bounding cylinder: from the proxy's front face (or the eye, when inside) to where it leaves
@@ -2439,7 +2439,7 @@ void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
  const int N=32;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
  float Lc=re*2.4*sqrt(clamp(uS.x,.3,4.)),Lp=re*(3.5+2.5*uS.w),st=ds/re;
  vec3 C=vec3(0.),Tr=vec3(1.);
- for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float s=-p.y;if(s<0.||s>L)continue;
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float s=-p.y;if(dot(p,uGp.xyz)<uGp.w)break;if(s<0.||s>L)continue;   // the ground (uGp: its plane) is opaque
   float b=rb(s,re),r=length(p.xz);if(r>1.95*b)continue;   // outside even the noisiest edge: skip before any noise
   vec3 q=vec3(p.x,s-uT*re*30.,p.z)/(re*.8);float nn=texture(uN,q*.03125).r*.65+texture(uN,q*.0844+.21).r*.35;
   float u=r/(b*(1.+(.08+.3*s/L)*(nn-.5)*2.)),d=pow(re/b,1.3);   // density ∝ (re/rb)², seen through a path ∝ rb
@@ -2582,7 +2582,31 @@ void main(){float R=uB.x,L=uB.y;vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL;flo
  if(acc<1e-4)discard;
  vec3 c=vec3(.95,.96,.98)*(uLight*(ls/acc)*1.25+uAmb*.6);c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
  float al=1.-Tr;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// the plume meeting the ground: a volume in a ground frame (y up; on the pad, the pad's frame, x east, z south down the
+// flame channel) inside a box uLo..uHi. Around the impact point uIP a hot splash spreads over the deck; on the pad most of
+// the flow (uCh = 1) is driven down the channel between its walls (|x| < 3.4 m, from z ≈ 0), rising and cooling as it
+// goes: white-hot near the impact, then the mantle's orange, then soot. uW = how much jet still reaches the ground.
+const IMP_VS=`#version 300 es
+layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uLo,uHi;uniform float uFc;out vec3 vL;out float vW;
+void main(){vL=mix(uLo,uHi,aP*.5+.5);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
+const IMP_FS=`#version 300 es
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uLo,uHi,uCam,uIP,uCo,uMa,uVa,uSo;uniform vec4 uK;uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform sampler3D uN;
+void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
+ float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
+ const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
+ vec3 C=vec3(0.),Tr=vec3(1.);
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float h=p.y;if(h<0.)break;
+  vec2 q=p.xz-uIP.xz;float rho=length(q),a=p.z,re=uRe;
+  float th=re*(.45+.2*rho/re),sp=exp(-rho/(re*3.2))*exp(-h/th)*(1.-.6*uCh);
+  float cm=uCh*smoothstep(3.6,2.4,abs(p.x))*smoothstep(-1.,4.,a),thc=1.3+.1*max(a,0.),ch=cm*exp(-max(a,0.)/35.)*exp(-h/thc);
+  if(sp+ch<.003)continue;
+  vec2 dr=q/max(rho,1e-3);float n1=texture(uN,vec3(p.x,p.y*1.5,p.z-uT*14.*uCh)*.18-vec3(dr*uT*1.2*(1.-uCh),0.).xzy).r,n2=texture(uN,vec3(p.xz*.5,p.y*.8-uT*2.).xzy+.3).r;
+  float d=uW*(sp+ch)*(.15+1.5*n1*n2),tau=mix(exp(-rho/(re*3.)),exp(-max(a,0.)/12.),ch/(sp+ch+1e-4));
+  vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau+uVa*.4*tau)*d;
+  C+=Tr*e*st;Tr*=exp(-(uSo*uK.w*1.4*(1.-tau)+uOp*.3*tau+.08)*d*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
+ vec3 c=pow(1.-exp(-C),vec3(1./1.5));float al=1.-dot(Tr,vec3(.333));o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -2752,6 +2776,25 @@ const PFX={sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel
 // an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
 const pfxOf=d=>PFX[d.key]||PFX[d.base]||{prop:'kerolox',pe:d.ispA<0.5*d.ispV?.025:.75};
 // render-side spool: plumes grow over ~0.3 s after ignition (and follow throttle with the same lag)
+// the ground under the ship, camera-relative: on (within 300 m of) the launch pad its frame (x east, y up, z south down the
+// flame channel), else the terrain below with an arbitrary heading. {O, X, Y, Z, pad}
+function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
+  if(b===TELLUS){const F=padFrame(camW),d=sub(sub(p,camW),F.O),hz=sub(d,mul(F.Y,dot(d,F.Y)));if(len(hz)<300)return{O:F.O,X:F.X,Y:F.Y,Z:F.Z,pad:true}}
+  const up=norm(S.r),g=add(bodyPos(b,simT),mul(up,groundR(b,toPF(b,S.r,simT)))),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0]));
+  return{O:sub(g,camW),X,Y:up,Z:cross(X,up),pad:false}}
+let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
+const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
+function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+  gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(CUBE.vao);
+  const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
+  for(const h of hits){const P=h.P2,ip=loc(h.P),Rs=h.re*9,H=h.re*4+(G.pad?5:2),
+      lo=[ip[0]-Rs,0,ip[2]-Rs],hi=[ip[0]+Rs,H,ip[2]+Rs];if(G.pad){lo[0]=Math.min(lo[0],-4.2);hi[0]=Math.max(hi[0],4.2);hi[2]=Math.max(hi[2],38)}
+    const inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
+    gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3fv(u.uIP,ip);
+    gl.uniform3fv(u.uCo,P.co);gl.uniform3fv(u.uMa,P.ma);gl.uniform3fv(u.uVa,P.va);gl.uniform3fv(u.uSo,P.so);gl.uniform4fv(u.uK,P.K);gl.uniform1f(u.uOp,P.op);
+    gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,h.w);gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,h.re);
+    gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,CUBE.n)}
+  gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const SPOOL=new WeakMap();
 // the plume's bounding size for an exit radius, throttle and ambient pressure (atm): [n, spread tan, length, radius]
 function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
@@ -2916,13 +2959,27 @@ const WARPS=[1,2,4,10,50,100,1000,10000,100000];
 let stackDef=JSON.parse(JSON.stringify(PRESETS.Orbiter)),shipMesh=null;
 // smoke puffs, anchored to the planet (they hang in the air the rocket flew through). Visual only: not part of the sim or tapes.
 const smoke=[];let smokeAcc=0;const WIND=[3.5,0,-2];   // planet-fixed m/s: a light breeze that shears the column as it ages
+// the ground cloud: while a plume reaches the ground, puffs at a steady rate (∝ how much jet arrives). On the pad they
+// pour out of the flame channel's mouth (and a few spill over the deck); elsewhere they ring the impact point.
+let gSmokeAcc=0;
+function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=toPF(TELLUS,S.r,simT),onPad=len(sub(spf,pp))<300,pa=pressure(TELLUS,len(S.r)-TELLUS.R);
+  for(const e of activeEngines(S)){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle,L=plumeShape(e.d,thr,pa)[2],
+      nz=toPF(TELLUS,add(S.r,qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),simT),hn=len(nz)-groundR(TELLUS,nz),w=thr*sstep(L*1.15,L*.35,hn);
+    if(w<.02)continue;gSmokeAcc+=dt*30*w*Math.max(.6,e.d.exit/.55);
+    while(gSmokeAcc>1){gSmokeAcc-=1;if(smoke.length>2500)smoke.shift();const R=Math.random;let pf,s0=2.5+2*R();
+      if(onPad&&R()<.8)pf=add(pp,add(add(mul(F.e,(R()-.5)*7),mul(F.up,1+R()*3)),mul(F.s,26+R()*14)));
+      else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
+        pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
+      smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
 function emitSmoke(dt){if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
+  emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
   while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>2500)smoke.shift();
     const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
-    smoke.push({pf:toPF(TELLUS,add(add(S.r,off),mul(jit,s0*.45)),simT),t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
+    const pw=add(add(S.r,off),mul(jit,s0*.45)),pf=toPF(TELLUS,pw,simT);if(len(pf)-groundR(TELLUS,pf)<s0*.4)continue;   // underground: the ground cloud covers it
+    smoke.push({pf,t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
 // of CPU a frame with ~1000 puffs.
 let smokeV=new Float32Array(0),smokeK=new Float64Array(0),smokeI=new Uint32Array(0),smokeP=new Float64Array(0);
@@ -3246,14 +3303,19 @@ function render(){
     gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
+    const GF=groundFrame(camW),hits=[];
     for(const e of activeEngines(S)){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT});const dt=clamp(simT-sp.t,0,5);sp.t=simT;sp.k+=(S.throttle-sp.k)*(1-Math.exp(-dt/.12));
       const thr=sp.k,f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01)continue;
       const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],Q=qt?qmul(S.q,qt):S.q,
         o=add(sub(p,camW),qrot(S.q,sh)),cl=qrot(qconj(Q),mul(o,-1)),inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05;
       gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(Q,sub(p,camW),qrot(qconj(qt),sh)):modelQ(S.q,sub(p,camW),sh));
+      {const qi=qconj(Q),n=qrot(qi,GF.Y);gl.uniform4f(pu.uGp,n[0],n[1],n[2],dot(qrot(qi,sub(GF.O,o)),n));   // the ground plane, plume-local
+        const dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn,w=thr*sstep(L*1.15,L*.35,sg);
+          if(sg>0&&w>.01)hits.push({P:add(o,mul(dW,sg)),w,re:e.d.exit,P2:P})}}
       gl.uniform3f(pu.uB,R,L,e.d.exit);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);gl.cullFace(inside?gl.BACK:gl.FRONT);
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
       gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
+    if(hits.length&&IMPACT_FX)drawImpact(GF,hits,VP);
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux
   if(PLASMA_FX&&near&&S.alive&&S.qHeat>1.5e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){
