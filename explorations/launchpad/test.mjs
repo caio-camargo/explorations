@@ -547,6 +547,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('asymmetric ×1 radial: assembles, centre of mass moves off the axis toward it', one.parts.length === 4 && one.cm[0] > 0.05 && one.events.length === 1, `CoM x ${one.cm[0].toFixed(3)} m`);
 }
 
+// 16. Radial fins and make-root (v1.18). The builder's tree operations run headless too: builder.js defines BLD without
+// touching the DOM until init(), so it loads into the same sandbox as the sim core.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {toV2,assemble,newShip,geom,aeroPass,analyze,SND,PRESETS,BLD,set des(v){stackDef=v}};')();
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean), cp = x => JSON.parse(JSON.stringify(x)), P0 = D.PRESETS;
+  // plate forces alone (body subtracted) at M 0.6, 4°, 20 kPa
+  const plates = (s, only) => { D.geom(s); const all = s.fins, v = 0.6 * D.SND(0), a = 4 * Math.PI / 180, rho = 40000 / (v * v), vb = [v * Math.sin(a), v * Math.cos(a), 0];
+    const run = f => { s.fins = f; for (const p of s.parts) { p.F = [0, 0, 0]; p.L = [0, 0, 0]; } D.aeroPass(s, vb, [0, 0, 0], rho, 0.6, false); let Fx = 0, Lz = 0; for (const p of s.parts) { Fx += p.F[0]; Lz += p.L[2]; } return [Fx, Lz]; };
+    const b = run([]), w = run(all.filter(only)); s.fins = all; return [w[0] - b[0], w[1] - b[1]]; };
+  const R = D.newShip(D.toV2(cp(P0.Orbiter))), wR = D.toV2(cp(P0.Orbiter));
+  find(wR.root, 'fins').c.push({ k: 'rfin', at: { y: 0.45, a: Math.PI / 4, n: 4, cy: 0.45 }, c: [] });
+  const F = D.newShip(wR), a = plates(R, p => p.d.kind === 'fins'), b = plates(F, p => p.d.kind === 'rfin'), rf = F.parts.filter(p => p.d.kind === 'rfin');
+  check('radial fins: four on a 1.25 m body give the ring\'s plate force (within 1%) at the same lever arm, roots on the skin', Math.abs(b[0] / a[0] - 1) < 0.01 &&
+    Math.abs(b[1] / b[0] - a[1] / a[0]) < 1e-3 && rf.length === 4 && rf.every(p => Math.abs(Math.hypot(p.pos[0], p.pos[2]) - 0.625) < 1e-9),
+    `force ratio ${(b[0] / a[0]).toFixed(4)}, arm ${(-a[1] / a[0]).toFixed(3)} / ${(-b[1] / b[0]).toFixed(3)} m`);
+  const cal = d => { const s = D.newShip(d), A = D.analyze(s); return [(A.ful.ycm - A.ful.ycp) / (2 * s.radius), A.mq.cert.frac]; };
+  const sw = n => { const d = D.toV2(cp(P0.Orbiter)), t = find(d.root, 't8'); t.c = [{ k: 'kestrel', at: 'd', c: [] }]; if (n) t.c.push({ k: 'rfin', at: { y: 0.45, a: 0, n, cy: 0.45 }, c: [] }); return d; };
+  const c4 = cal(sw(4)), c3 = cal(sw(3)), c0 = cal(sw(0));
+  check('radial fins: the Orbiter without its ring is unstable; ×3 radial fins about neutral, ×4 stable; fin roots hold at max-q', c0[0] < -2 && Math.abs(c3[0]) < 0.3 && c4[0] > 0.3 && c4[1] < 1,
+    `calibers: none ${c0[0].toFixed(2)}, ×3 ${c3[0].toFixed(2)}, ×4 ${c4[0].toFixed(2)} · worst max-q joint ${(c4[1] * 100).toFixed(0)}%`);
+  // make root: re-hang the Heavy preset from its core Kestrel; the assembled vessel must not change at all
+  // canonical: segment numbers follow part creation order, which a re-root changes, so compare by stage label
+  const r9 = v => +v.toFixed(9), fpA = A => JSON.stringify([A.parts.map(p => JSON.stringify([p.d.key, p.pos.map(r9), r9(p.y0), p.jA, p.jP.map(r9), p.jr || 0,
+    A.segs[p.seg].label, p.parent && p.parent.d.key])).sort(), A.events.map(e => [e.decouple.map(k => A.segs[k].label).sort(), e.ignite.map(k => A.segs[k].label).sort(), !!e.chute, !!e.radial])]);
+  const h = D.toV2(cp(P0.Heavy)); find(h.root, 't8').j = 2; D.des = h; const before = fpA(D.assemble(h));
+  const k = (n => { const f = x => x.k === 'kestrel' && x.at === 'd' ? x : (x.c || []).map(f).find(Boolean); return f(n); })(h.root), path = D.BLD.rootPath(h.root, k);
+  D.BLD.reroot(path); const after = fpA(D.assemble(h));
+  check('make root: re-rooting the design at the core engine changes nothing in the assembled vessel (joints, reinforcement, stages)', h.root === k && !k.at && before === after,
+    `path of ${path.length} parts; new root ${h.root.k}, old root now hangs '${find(h.root, 'pod').at}'`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
