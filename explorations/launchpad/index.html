@@ -924,6 +924,8 @@ function tfbm(x,y,z,o){let a=.5,s=0,n=0;for(let i=0;i<o;i++){s+=a*tn(x,y,z);n+=a
 const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
 // Feature sizes are kept in kilometres, not as fractions of the planet: they were tuned on the 600 km Tellus, and WK
 // converts those angles to this radius (ranges ~100 km across, detail from 25 km down to 90 m, fjords, ~5 km cones).
+// ridges: RIDGE_A of ridged relief where the ground is fully rugged, VALLEY of it below the base (deep valleys, sharp crests)
+const RIDGE_A=4200,VALLEY=1800;
 const WTW=1024,WTH=512,WSEED=13,HOCT=9,NPLATES=20,WK=6e5/TELLUS.R,HF0=+(24/WK).toFixed(5),FJ1=+(18/WK).toFixed(5),FJ2=+(70/WK).toFixed(5),VOLF=+(60/WK).toFixed(5);
 function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
   for(let k=0;k<NP;k++){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z);plates.push({s:[q*Math.cos(ph),z,q*Math.sin(ph)],cont:false,ax:norm([R()*2-1,R()*2-1,R()*2-1]),w:.6+R()*.8})}
@@ -971,7 +973,7 @@ function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R
     for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)s+=E[(j+a)*WTW+(i+b+WTW)%WTW];S[k]=sstep(60,220,s/25-E[k])*sstep(.4,.25,W[k])}
   // an upper bound on the ground near each texel (base + the most the detail can add, dilated ±2 texels): the shader's
   // march skips through air above it without evaluating the terrain at all
-  const U=new Float32Array(N),U0=new Float32Array(N);for(let k=0;k<N;k++){const e=E[k]>3500?3500+(E[k]-3500)*.5:E[k],m=M[k];U0[k]=e+(m*2600+120)*1.3-m*900+440+V[k]*3400}
+  const U=new Float32Array(N),U0=new Float32Array(N);for(let k=0;k<N;k++){const e=E[k]>3500?3500+(E[k]-3500)*.5:E[k],m=M[k];U0[k]=e+(m*RIDGE_A+120)*1.3-m*VALLEY+440+V[k]*3400}
   for(let j=0;j<WTH;j++)for(let i=0;i<WTW;i++){let mx=-1e9;for(let a=-2;a<=2;a++){const jj=clamp(j+a,0,WTH-1);for(let b=-2;b<=2;b++)mx=Math.max(mx,U0[jj*WTW+(i+b+WTW)%WTW])}U[j*WTW+i]=Math.max(mx,0)+30}
   return{E,M,V,T,W,S,U,plates,seed,lon0:0,site:null,siteH:0}}
 const WORLD=makeWorld();
@@ -990,7 +992,7 @@ function hgtGen(g,oct=HOCT){const[e0,m,v,sf]=wSpl(g),lat=Math.abs(g[1]);
   let e=e0>3500?3500+(e0-3500)*.5:e0,f=HF0,a=1,rid=0,hil=0,wgt=1,an=0;
   // ridged multifractal (mountains) and plain fbm (hills, and the fractal coast) from the same octaves
   for(let i=0;i<oct;i++){const n=tn(g[0]*f+11.3,g[1]*f+3.7,g[2]*f+7.1);let r=1-Math.abs(2*n-1);r*=r*wgt;wgt=clamp(r*1.6,0,1);rid+=a*r;hil+=a*(n-.5);an+=a;f*=2.03;a*=.5}
-  e+=((m*2600+120)*rid/an*1.3-m*900+(380+500*sstep(900,0,Math.abs(e0)))*hil/an*(1-m*.5))*(1-.9*sf);
+  e+=((m*RIDGE_A+120)*rid/an*1.3-m*VALLEY+(380+500*sstep(900,0,Math.abs(e0)))*hil/an*(1-m*.5))*(1-.9*sf);
   // fjords: glaciers cut narrow valleys into high-latitude mountains; near the coast they flood
   const gl=sstep(.66,.82,lat)*sstep(.08,.35,m)*sstep(1800,400,e0);
   if(gl>0){const wv=tn(g[0]*FJ1,g[1]*FJ1+5,g[2]*FJ1)-.5,l=Math.abs(tn(g[0]*FJ2+wv*3,g[1]*FJ2,g[2]*FJ2+wv*3)-.5);e-=gl*1500*(1-sstep(.01,.06,l))}
@@ -1024,7 +1026,7 @@ function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),w4=wSpl(g),e0=w4[0],Tc=wBi
   else if(Tc<-1)id=2;else if(Tc<7)id=Wm>.35?3:4;else if(Tc<18)id=Wm>.55?5:Wm>.3?6:7;else id=Wm>.72?8:Wm>.36?9:10;
   return{id,name:BIOMES[id],h,T:Tc,wet:Wm}}
 // the steepest the ground gets under a point (radians), from the height field over ±15 m; landings past TOPPLE tip over
-const TERR_TOP=9500,TOPPLE=0.42;
+const TERR_TOP=Math.ceil(WORLD.U.reduce((a,b)=>Math.max(a,b),0)/100)*100,TOPPLE=0.42;   // the highest the ground can be anywhere (from the air bound)
 function terrainSlope(b,pf){if(b!==TELLUS)return 0;const u=norm(pf),e=norm(cross([0,1,0],u).map((x,i)=>x+(i===0?1e-9:0))),n=cross(u,e),k=15/TELLUS.R,
   h0=groundAlt(b,u),hx=groundAlt(b,add(u,mul(e,k)))-groundAlt(b,sub(u,mul(e,k))),hy=groundAlt(b,add(u,mul(n,k)))-groundAlt(b,sub(u,mul(n,k)));
   return Math.atan(Math.hypot(hx,hy)/30+0*h0)}
@@ -1601,7 +1603,7 @@ float hgtG(vec3 g,vec2 uv,float k,out float m){vec4 w=wTexUV(uv);m=w.y;float e0=
  float e=e0>3500.?3500.+(e0-3500.)*.5:e0,f=${HF0.toFixed(5)},a=1.,rid=0.,hil=0.,wgt=1.;
  for(int i=0;i<9;i++){float q=clamp(k-float(i),0.,1.);if(q<=0.)break;float n=mix(.5,tn(g*f+vec3(11.3,3.7,7.1)),q),r=1.-abs(2.*n-1.);r*=r*wgt;wgt=clamp(r*1.6,0.,1.);rid+=a*r;hil+=a*(n-.5);f*=2.03;a*=.5;}
  const float AN=1.99609375;
- e+=((m*2600.+120.)*rid/AN*1.3-m*900.+(380.+500.*sst(900.,0.,abs(e0)))*hil/AN*(1.-m*.5))*(1.-.9*sf);
+ e+=((m*${RIDGE_A}.+120.)*rid/AN*1.3-m*${VALLEY}.+(380.+500.*sst(900.,0.,abs(e0)))*hil/AN*(1.-m*.5))*(1.-.9*sf);
  float gl=sst(.66,.82,lat)*sst(.08,.35,m)*sst(1800.,400.,e0);
  if(gl>0.){const float F1=${FJ1.toFixed(5)},F2=${FJ2.toFixed(5)};float wv=tn(vec3(g.x*F1,g.y*F1+5.,g.z*F1))-.5,l=abs(tn(vec3(g.x*F2+wv*3.,g.y*F2,g.z*F2+wv*3.))-.5);e-=gl*1500.*(1.-sst(.01,.06,l));}
  if(v>.15){vec3 x=g*${VOLF.toFixed(5)},fl=floor(x);ivec3 i=ivec3(fl);
@@ -1625,11 +1627,11 @@ float march(vec3 d,out float hh,float tS){hh=0.;vec2 sh=sph(uPc,uTcc,d);if(sh.y<
  for(int i=0;i<64;i++){vec3 p=d*t-uPc;float rl=length(p),alt=(t*t-2.*t*b+uPcc)/(rl+uPR);vec3 up=p/rl,pf=uProt*up;float cs=max(-dot(d,up),0.);
   // the air bound only needs the climate texel: skip the terrain while clearly above anything that could be here
   if(alt>ub&&i>0){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;k=2.;vec3 g=toGen(uProt*normalize(d*t-uPc));ub=texture(uClim,wUV(g)).z;if(t>=t1)break;continue;}
-  float kF=octT(t,t*uPix/max(cs,.08)),kk=min(k,kF),h=terr(pf,kk,m,ub),bnd=kk<kF-.01?(m*1700.+350.)*exp2(1.-kk):0.,dh=alt-h-bnd;
+  float kF=octT(t,t*uPix/max(cs,.08)),kk=min(k,kF),h=terr(pf,kk,m,ub),bnd=kk<kF-.01?(m*${(RIDGE_A*1.3/2).toFixed(0)}.+300.)*exp2(1.-kk):0.,dh=alt-h-bnd;
   if(alt>ub){tp=t;t+=(alt-ub)/(cs+.7)+.002*t+.5;if(t>=t1)break;continue;}
   if(dh<0.){if(bnd>0.){k=kF;continue;}hit=true;hh=h;break;}
   // lowlands are gentle (slopes ≲ 0.2), mountains can be steep: the step trusts the local ruggedness
-  tp=t;t+=max(dh/(cs+.22+.8*m),.004*t+.25);k=clamp(log2((m*1700.+350.)/max(dh,.5))+2.,2.,9.);
+  tp=t;t+=max(dh/(cs+.22+.8*m),.004*t+.25);k=clamp(log2((m*${(RIDGE_A*1.3/2).toFixed(0)}.+300.)/max(dh,.5))+2.,2.,9.);
   if(t>=t1)break;}
  if(!hit){if(t>=t1){if(ts<1e29){hh=terr(uProt*normalize(d*ts-uPc),octT(ts,ts*uPix));return ts;}return 1e30;}
   vec3 p=d*t-uPc;hh=terr(uProt*normalize(p),octT(t,t*uPix));return t;}   // out of steps right above the ground: call it a hit
@@ -1670,7 +1672,7 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
  vec3 g=toGen(pf);vec4 w=wTex(g),cl=texture(uClim,wUV(g));
  float T=cl.x-6.5*max(h-max(w.x,0.),0.)/1000.,W=cl.y,m=w.y,v=w.z,sf=w.w,slope=1.-dot(npf,pf);
  vec3 rainf=vec3(.022,.065,.02),sav=vec3(.19,.16,.075),hdes=vec3(.36,.26,.14),tfor=vec3(.035,.085,.028),grass=vec3(.10,.16,.045),cdes=vec3(.27,.23,.16),
-  taiga=vec3(.026,.05,.034),stp=vec3(.17,.15,.085),tund=vec3(.18,.17,.13),rock=vec3(.16,.14,.12),snow=vec3(.75,.8,.85);
+  taiga=vec3(.026,.05,.034),stp=vec3(.17,.15,.085),tund=vec3(.18,.17,.13),rock=vec3(.16,.14,.12),snow=vec3(.6,.64,.68);   // fresh snow is ~.8, but at .8 the tone curve flattens it and the relief disappears
  vec3 hot=mix(mix(hdes,sav,sst(.3,.42,W)),rainf,sst(.64,.8,W)),tmp=mix(mix(cdes,grass,sst(.24,.36,W)),tfor,sst(.5,.62,W)),cld=mix(stp,taiga,sst(.3,.42,W));
  vec3 col=mix(cld,tmp,sst(4.,10.,T));col=mix(col,hot,sst(15.,21.,T));col=mix(tund,col,sst(-4.,1.,T));
  col=mix(col,vec3(.045,.07,.035),sst(.7,.85,W)*sst(80.,20.,h)*sst(.15,.05,m)*sst(3.,8.,T));   // wetlands
@@ -1682,7 +1684,8 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
  // close up: a patchwork of fields where it's green, mild and flat
  if(fade>0.){vec2 cl2=mod(floor(gx/260.),4096.);float hsh=fract(sin(dot(cl2,vec2(12.9898,78.233)))*43758.55),farm=fade*sst(.25,.4,W)*sst(.8,.6,W)*sst(.04,.01,slope)*sst(6.,11.,T)*sst(25.,21.,T)*(1.-sf);
   col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
- float sn=sst(-.5,-5.,T)*sst(.35,.2,slope)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T);
+ // snow and ice hold on gentle ground only: faces steeper than ~35° stay bare rock, which is what gives a range its relief
+ float steep=sst(.12,.3,slope),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
  return mix(col,snow,max(sn,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
