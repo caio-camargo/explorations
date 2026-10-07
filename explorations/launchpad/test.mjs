@@ -652,6 +652,41 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `path of ${path.length} parts; new root ${h.root.k}, old root now hangs '${find(h.root, 'pod').at}'`);
 }
 
+// 17. Staging editor (v1.20): a design may carry its own firing order (stg); atoms are named by decoupler node ids.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {toV2,assemble,newShip,stageStats,physStep,stage,DT,PRESETS,BLD};')();
+  const cp = x => JSON.parse(JSON.stringify(x)), heavy = () => { const d = D.toV2(cp(D.PRESETS.Heavy)); D.BLD.ensureIds(d); return d; };
+  const ids = A => A.stages.map(s => s.map(a => a.id)), evs = A => JSON.stringify(A.events);
+  const h0 = heavy(), A0 = D.assemble(h0), h1 = heavy(); h1.stg = ids(A0); const A1 = D.assemble(h1);
+  check('staging: the automatic order written out as a custom one gives the same events', A1.custom && !A0.custom && evs(A1) === evs(A0),
+    A0.stages.map((s, i) => `${i + 1}: ${s.map(a => a.label).join(' + ')}`).join(' · '));
+  // keep the boosters on until the core goes: their drop moves into the core's decoupling stage
+  const L = ids(A0), bi = L.findIndex(s => s.some(id => id.startsWith('d:') && A0.stages[L.indexOf(s)].find(a => a.id === id).label.includes('boosters')));
+  const bid = L[bi][0], h2 = heavy(); L.splice(bi, 1); L[bi].push(bid); h2.stg = L; const A2 = D.assemble(h2);
+  const dv = d => D.stageStats(d).stages.map(s => s.dvV.toFixed(0)).join(' + ');
+  check('staging: boosters held on until the core drops — one fewer stage, the drop event carries both, Δv plan changes', A2.events.length === A0.events.length - 1 &&
+    A2.events.some(e => e.decouple.length === 3 && e.ignite.length === 1) && dv(h2) !== dv(h0), `auto ${dv(h0)} m/s → held ${dv(h2)} m/s`);
+  // a part added after the custom order existed still gets staged (where the automatic order would put it)
+  const h3 = heavy(); h3.stg = ids(D.assemble(h3)); const t2 = (n => { const f = x => x.k === 't2' ? x : (x.c || []).map(f).find(Boolean); return f(n); })(h3.root);
+  t2.c.push({ k: 't1', at: { y: 1, a: 0, n: 2, cy: 0.55, dec: true }, c: [] }); D.BLD.ensureIds(h3); const A3 = D.assemble(h3), newD = A3.stages.flat().filter(a => a.label.includes('side tanks'));
+  check('staging: a decoupler added after the order was set is still staged', newD.length === 1 && A3.events.some(e => e.decouple.length === 2 && e.radial),
+    A3.stages.map((s, i) => `${i + 1}: ${s.map(a => a.label).join(' + ')}`).join(' · '));
+  // drop the core first, boosters still on it: they must leave with it, not float on attached to nothing
+  const h4 = heavy(), L4 = ids(D.assemble(h4)), ci = L4.findIndex(s => s.some(id => id.startsWith('d:') && id !== bid)), cid = L4[ci].find(id => id.startsWith('d:'));
+  L4[ci] = L4[ci].filter(id => id !== cid); h4.stg = [L4[0], [cid], ...L4.slice(1)].filter(s => s.length);
+  D.t = 0; const s4 = D.newShip(h4), boost = s4.parts.filter(p => p.d.key === 'kestrel' && !p.core); s4.throttle = 1; D.stage(s4); D.stage(s4);
+  check('staging: dropping the core before its boosters takes the boosters with it', boost.length === 2 && boost.every(p => !p.on) && s4.parts.filter(p => p.on).every(p => !p.inst || p.core || p.inst.rdec === undefined),
+    `after stage 2: ${s4.parts.filter(p => p.on).map(p => p.d.key).join(', ')}`);
+  // an unedited preset (old format, no node ids yet) still shows every atom separately
+  const Lg = D.assemble(cp(D.PRESETS.Heavy)).stages, flat = Lg.flat();
+  check('staging: an unedited preset (no node ids) still lists each action separately', Lg[0].length === 2 && flat.some(a => a.label === 'drop core 1') && new Set(flat.map(a => a.id)).size === flat.length,
+    Lg.map((s, i) => `${i + 1}: ${s.map(a => a.label).join(' + ')}`).join(' · '));
+  // ids survive JSON and duplicates (a copied subtree) are repaired
+  const h5 = heavy(), dup = cp(h5.root.c[0]); h5.root.c.push(dup); D.BLD.ensureIds(h5); const all = (n => { const r = []; const w = x => { r.push(x.id); (x.c || []).forEach(w); }; w(n); return r; })(h5.root);
+  check('staging: node ids are unique after a copied subtree brings duplicates', new Set(all).size === all.length, `${all.length} nodes`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

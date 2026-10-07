@@ -420,7 +420,37 @@ function assemble(stack){
     for(const k of att(X))if(!segs[k].label)segs[k].label='jettison';
     if(j>0)events.push({decouple:[X],ignite:burn(chain[j-1])})}
   if(parts.some(p=>p.d.kind==='chute'))events.push({decouple:[],ignite:[],chute:true});
-  return{parts,segs,events,root,height:ymax-ymin,groups,layout:L,shift:-ymin}}
+  const st=stageAtoms(events,keys,sPar,segs,parts,des.stg);
+  return{parts,segs,events:st.events,root,height:ymax-ymin,groups,layout:L,shift:-ymin,stages:st.stages,custom:st.custom}}
+// Staging. The automatic events split into atoms: one per decoupling placement (all its symmetric copies), one per ignited
+// segment group, and the chute. An atom is named by its decoupler's design-node id ('d:7', 'i:7', 'i:root', 'c'), so a
+// design can carry its own order: stg = [[atom ids fired together], …] in firing order. Atoms it doesn't mention yet (parts
+// added since) keep their automatic place relative to the rest. In a custom order a drop takes everything hanging from the
+// segment with it — the core can go before its boosters, and the boosters must not stay behind as orphans.
+function stageAtoms(auto,keys,sPar,segs,parts,stg){
+  // a design that was never edited has no node ids yet: name its atoms by segment so they stay distinct (display only —
+  // a custom order needs real ids, and the builder assigns them on the first edit)
+  const tmp=new Map(),nid=k=>{if(!keys[k])return'root';const n=keys[k].dn;if(n.id!=null)return n.id;if(!tmp.has(n))tmp.set(n,'#'+tmp.size);return tmp.get(n)};
+  const atoms=[],byId=new Map();
+  const add=(id,i,f)=>{let a=byId.get(id);if(!a){a={id,i,d:[],g:[],c:false,radial:false};byId.set(id,a);atoms.push(a)}f(a)};
+  auto.forEach((e,i)=>{if(e.decouple.length)add('d:'+nid(e.decouple[0]),i,a=>{a.d.push(...e.decouple);a.radial=!!e.radial});
+    for(const k of e.ignite)add('i:'+nid(k),i,a=>a.g.push(k));if(e.chute)add('c',i,a=>{a.c=true})});
+  const eng=ks=>{const nm={};for(const p of parts)if(ks.includes(p.seg)&&p.d.kind==='engine'){const n=p.d.name.split(' ')[0];nm[n]=(nm[n]||0)+1}
+    return Object.entries(nm).map(([n,c])=>c>1?`${n}×${c}`:n).join(' + ')};
+  for(const a of atoms){a.label=a.c?'chute':a.d.length?'drop '+segs[a.d[0]].label.split(' (')[0]:'ignite '+(eng(a.g)||'—');a.kind=a.c?'c':a.d.length?'d':'i'}
+  const ok=Array.isArray(stg)&&atoms.every(a=>!a.id.includes('#'));
+  let out;
+  if(!ok)out=auto.map((e,i)=>atoms.filter(a=>a.i===i));
+  else{const used=new Set();out=[];
+    for(const s of stg){const g=(s||[]).map(id=>byId.get(id)).filter(a=>a&&!used.has(a.id));g.forEach(a=>used.add(a.id));if(g.length)out.push(g)}
+    const miss=atoms.filter(a=>!used.has(a.id)),ev=[...new Set(miss.map(a=>a.i))].sort((x,y)=>x-y);
+    for(const i of ev){const g=miss.filter(a=>a.i===i),at=out.findIndex(s=>s.some(a=>a.i>i));at<0?out.push(g):out.splice(at,0,g)}}
+  const desc=k=>{const r=[k];for(let s=0;s<sPar.length;s++){let q=s;while(q>=0&&q!==k)q=sPar[q];if(q===k&&s!==k)r.push(s)}return r};
+  const gone=new Set();   // segments already dropped by an earlier stage aren't dropped again
+  const events=!ok?auto:out.map(g=>{const dd=[...new Set(g.flatMap(a=>a.d.flatMap(desc)))].filter(k=>!gone.has(k));dd.forEach(k=>gone.add(k));
+    const e={decouple:dd,ignite:g.flatMap(a=>a.g)};
+    if(g.some(a=>a.radial))e.radial=true;if(g.some(a=>a.c))e.chute=true;return e});
+  return{events,custom:ok,stages:out.map(g=>g.map(a=>({id:a.id,label:a.label,kind:a.kind,segs:a.kind==='d'?a.d:a.g})))}}
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
 // ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists
 // today (tonnes, so density 1); power or life support would be new entries here plus producers/consumers with rates.
