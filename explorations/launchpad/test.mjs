@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
+return {SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -87,14 +87,17 @@ function fly(preset, { turnStart = 1000 * AS, turnEnd = 45000 * AS, target = (AT
   const ap = (r.el.ap - TELLUS.R) / 1000, pe = (r.el.pe - TELLUS.R) / 1000;
   check('Orbiter reaches a stable orbit', r.phase === 'done' && pe > ATM / 1e3, `Ap ${ap.toFixed(1)} km, Pe ${pe.toFixed(1)} km at T+${r.t.toFixed(0)} s; ` +
     `Δv spent ${r.dvUsed.toFixed(0)} m/s, left ${r.dvLeft.toFixed(0)} m/s; max q ${(r.maxQ / 1000).toFixed(1)} kPa, max ${r.maxG.toFixed(1)} g`);
-  // 3b. once there, the orbit is held on rails: 30 days of warp must not move Ap/Pe
-  const s = r.s, e0 = elements(s.r, s.v, TELLUS.mu);
+  // 3b. once there, the orbit is held on rails: 30 days of warp give the same orbit as small steps. (Since 6b the moons'
+  // tides reach low orbit, so Ap/Pe really do drift a little; what warp must not do is change the answer.)
+  const s = r.s, e0 = elements(s.r, s.v, TELLUS.mu), st0 = { r: s.r.slice(), v: s.v.slice(), t: api.t };
   check('railsOK in orbit', api.railsOK(s));
   const t0 = performance.now(); let frames = 0;
-  while (api.t < r.t + 30 * 86400) { api.rails(s, 100000 / 60); frames++; }
-  const e1 = elements(s.r, s.v, TELLUS.mu);
-  check('30 days at 100000× changes nothing', Math.abs(e1.ap - e0.ap) < 0.01 && Math.abs(e1.pe - e0.pe) < 0.01,
-    `ΔAp ${(e1.ap - e0.ap).toExponential(1)} m, ΔPe ${(e1.pe - e0.pe).toExponential(1)} m; ${((performance.now() - t0) / frames * 1000).toFixed(1)} µs per warp frame`);
+  while (api.t < st0.t + 30 * 86400 - 1e-6) { api.rails(s, Math.min(100000 / 60, st0.t + 30 * 86400 - api.t)); frames++; }
+  const us = (performance.now() - t0) / frames * 1000, e1 = elements(s.r, s.v, TELLUS.mu), rW = s.r.slice();
+  s.r = st0.r.slice(); s.v = st0.v.slice(); api.t = st0.t; while (api.t < st0.t + 30 * 86400 - 1e-6) api.rails(s, Math.min(60, st0.t + 30 * 86400 - api.t));
+  const e2 = elements(s.r, s.v, TELLUS.mu);
+  check('30 days at 100000× = 30 days in 60 s chunks (warp is exact); tides from the moons move Ap/Pe by under a km', Math.abs(e1.ap - e2.ap) < 1 && Math.abs(e1.pe - e2.pe) < 1 && Math.abs(e1.ap - e0.ap) < 1000 && Math.abs(e1.pe - e0.pe) < 1000,
+    `warp vs small steps: ΔAp ${(e1.ap - e2.ap).toExponential(1)} m, ΔPe ${(e1.pe - e2.pe).toExponential(1)} m, ${len(sub(rW, s.r)).toFixed(1)} m apart; tidal drift in 30 days: Ap ${(e1.ap - e0.ap).toFixed(0)} m, Pe ${(e1.pe - e0.pe).toFixed(0)} m; ${us.toFixed(0)} µs per warp frame`);
 }
 // 4. Lunar transfer: from a circular 80 km orbit, a prograde kick at the right phase finds Selene.
 {
@@ -481,7 +484,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     x.r = [r0, 0, 0]; x.v = [0, v * Math.sin(i), -v * Math.cos(i)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
   fresh(); P.day = 0; P.done.beeper = { flight: 0 }; P.active = [ct('sat', { alt: 150, tol: 20, inc: 0, itol: 3, pay: 50 }, 'com'), ct('sat', { alt: 150, tol: 20, inc: 30, itol: 3, pay: 60 }, 'com')]; const f1 = P.funds;
   orbAt(['sci'], 150, 0);
-  check('satellite contract: a centred 150 km equatorial orbit pays with the full precision bonus; the 30° one stays open', P.active.length === 1 && P.active[0].p.inc === 30 && Math.abs(P.funds - f1 - 50 * 1.3) < 1e-6,
+  check('satellite contract: a centred 150 km equatorial orbit pays with the full precision bonus; the 30° one stays open', P.active.length === 1 && P.active[0].p.inc === 30 && Math.abs(P.funds - f1 - 50 * 1.3) < 1e-3,   // 1e-3: since 6b the moons' tides nudge even a 60 s test orbit
     `paid ${(P.funds - f1).toFixed(1)}M for a 50M contract`);
   orbAt(['sci'], 150, 30);
   check('…and an orbit in the 30° plane completes the other', P.active.length === 0, `${P.cdone} contracts done`);
@@ -893,10 +896,13 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 21. Third-body perturbations near Nyx (6b): rails, the predictor and an independent n-body integration agree.
 {
   const { NYX, bodyRel, soiAt } = api, P = 2 * Math.PI / NYX.n, muT = TELLUS.mu, muN = NYX.mu;
-  // truth: RK4 in Tellus's frame with Tellus's reflex (the model the game's Nyx motion is consistent with), tight steps
-  const acc = (r, t) => { const R = bodyRel(NYX, t)[0], d = sub(r, R), dl = len(d), rl = len(r), Rl = len(R);
-    return add(add(mul(r, -muT / rl ** 3), mul(d, -muN / dl ** 3)), mul(R, -muN / Rl ** 3)); };
-  const nbody = (r, v, t, t1, stop) => { while (t < t1) { const h = Math.min(0.005 * Math.min(len(sub(r, bodyRel(NYX, t)[0])) ** 1.5 / Math.sqrt(muN), len(r) ** 1.5 / Math.sqrt(muT)), 60, t1 - t);
+  // truth: RK4 in Tellus's frame with Tellus's reflex toward each moon (the model the moons' motion is consistent with), tight steps
+  // Each moon is checked against its own consistent three-body problem: the moons ride fixed paths, so with both on, n-body
+  // would have Selene pull a craft orbiting Nyx but not Nyx itself. The game keeps only Tellus's tide inside Nyx's SOI.
+  SELENE.pert = false; let MOONS = [NYX];
+  const acc = (r, t) => { let a = mul(r, -muT / len(r) ** 3);   // Tellus, then each moon's pull and Tellus's reflex toward it
+    for (const m of MOONS) { const R = bodyRel(m, t)[0], d = sub(r, R); a = add(a, add(mul(d, -m.mu / len(d) ** 3), mul(R, -m.mu / len(R) ** 3))); } return a; };
+  const nbody = (r, v, t, t1, stop) => { while (t < t1) { const h = Math.min(0.005 * Math.min(...MOONS.map(m => len(sub(r, bodyRel(m, t)[0])) ** 1.5 / Math.sqrt(m.mu)), len(r) ** 1.5 / Math.sqrt(muT)), 60, t1 - t);
       const k1v = acc(r, t), k1r = v, k2v = acc(add(r, mul(k1r, h / 2)), t + h / 2), k2r = add(v, mul(k1v, h / 2)), k3v = acc(add(r, mul(k2r, h / 2)), t + h / 2), k3r = add(v, mul(k2v, h / 2)), k4v = acc(add(r, mul(k3r, h)), t + h), k4r = add(v, mul(k3v, h));
       r = add(r, mul(add(add(k1r, mul(k2r, 2)), add(mul(k3r, 2), k4r)), h / 6)); v = add(v, mul(add(add(k1v, mul(k2v, 2)), add(mul(k3v, 2), k4v)), h / 6)); t += h; if (stop && stop(r, t)) break; } return [r, v, t]; };
   const ship = (r, v, b, t) => { api.t = t; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; return s; };
@@ -935,6 +941,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const [rc, vc] = circ(60e3, -1), sc = ship(rc, vc, NYX, tAp); const t0 = performance.now(); let fr = 0; while (api.t < tAp + P) { api.rails(sc, 100000 / 60); fr++; }
   const us = (performance.now() - t0) * 1000 / fr;
   check('6b: a perturbed orbit at 100,000× warp stays cheap', us < 2000, `${us.toFixed(0)} µs per warp frame (60 km orbit about Nyx), ${fr} frames`);
+  // a maneuver node 4 h ahead on a perturbed orbit sits where rails actually take the craft (Kepler alone would miss it)
+  { const [r, v] = circ(250e3, -1), s = ship(r, v, NYX, tAp); s.node = { t: tAp + 4 * 3600, dv: [10, 0, 0] };
+    const I = api.nodeInfo(s), kep = api.kepler(r, v, 4 * 3600, muN)[0], I2 = api.nodeInfo(s);
+    while (api.t < tAp + 4 * 3600 - 1e-6) api.rails(s, Math.min(600, tAp + 4 * 3600 - api.t));
+    check('6b: a node on a perturbed orbit is placed where the craft will be (integrated, then cached)', len(sub(I.rN, s.r)) < 200 && I2.rN === I.rN,
+      `node state vs rails at the node: ${len(sub(I.rN, s.r)).toFixed(0)} m; Kepler alone: ${(len(sub(kep, s.r)) / 1e3).toFixed(1)} km`); }
+  // 22. Selene perturbs too (the same machinery, kap > 1): checked against Tellus + Selene n-body, with Nyx's perturbation off.
+  SELENE.pert = true; NYX.pert = false; MOONS = [SELENE];
+  const PS = 2 * Math.PI / SELENE.n;
+  // a 100 km circular lunar orbit, one day: Tellus's tide inside Selene's SOI
+  { const [sp, sv] = bodyRel(SELENE, 0), u = norm(sp), w = norm(cross(cross(sp, sv), u)), rr = SELENE.R + 100e3, vc = Math.sqrt(SELENE.mu / rr);
+    const s = ship(mul(u, rr), mul(w, vc), SELENE, 0); while (api.t < 86400 - 1) api.rails(s, 600);
+    const [rT] = nbody(add(sp, mul(u, rr)), add(sv, mul(w, vc)), 0, api.t), e = s.body === SELENE ? len(sub(add(s.r, bodyRel(SELENE, api.t)[0]), rT)) : NaN;
+    check('6b: Selene: a 100 km lunar orbit flown a day on rails matches Tellus+Selene n-body', e < 2000, `${(e / 1e3).toFixed(2)} km off after a day (period ${(2 * Math.PI * Math.sqrt(rr ** 3 / SELENE.mu) / 60).toFixed(0)} min)`); }
+  // a translunar coast through Selene's SOI and out again, two days
+  { const r0 = TELLUS.R + 110e3, at = (r0 + SELENE.a) / 2, tof = Math.PI * Math.sqrt(at ** 3 / muT), f0 = SELENE.n * tof + SELENE.orb.M0, ph = Math.atan2(Math.sin(f0), Math.cos(f0)) + Math.PI - 0.06;
+    const vp = Math.sqrt(muT * (2 / r0 - 2 / (r0 + SELENE.a)));
+    let R0, V0, s, p;   // search the departure angle for a pass 200–3,000 km above Selene (predicted with perturbations)
+    for (let k = 0; k < 40; k++) { const q = ph - 0.01 * k; R0 = [r0 * Math.cos(q), 0, -r0 * Math.sin(q)]; V0 = [-vp * Math.sin(q), 30, -vp * Math.cos(q)];
+      s = ship(R0, V0, TELLUS, 0); p = api.predict(s); const L = p.find(x => x.b === SELENE); if (L && L.minR > SELENE.R + 2e5 && L.minR < SELENE.R + 3e6) break; } let inS = false; while (api.t < 2 * 86400 - 1) { api.rails(s, 600); if (s.body === SELENE) inS = true; }
+    const [rT] = nbody(R0, V0, 0, api.t), rG = s.body === SELENE ? add(s.r, bodyRel(SELENE, api.t)[0]) : s.r;
+    check('6b: Selene: a translunar coast through its SOI matches n-body after two days; the predictor follows it', inS && len(sub(rG, rT)) < 10000 && p.some(x => x.path),
+      `${(len(sub(rG, rT)) / 1e3).toFixed(2)} km off (Selene pass ${((p.find(x => x.b === SELENE) || {}).minR / 1e3 - SELENE.R / 1e3).toFixed(0)} km up); legs ${p.map(x => x.b.name + (x.path ? '~' : '') + (x.endKind ? '→' + x.endKind : '')).join(' ')}`); }
+  NYX.pert = true;
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
@@ -1058,6 +1088,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh();
 }
 
+// 21. Tools gated by knowledge: each unlocks with the logbook fact it depends on.
+{
+  const P = api.PROG, saved = P.log; P.log = {};
+  const before = Object.keys(api.TOOLS).filter(k => api.toolOK(k)).length;
+  P.log.apex = { v: 1 }; const a = api.toolOK('impact') && !api.toolOK('nodes'); P.log.orbit = { v: 1 }; const b = api.toolOK('nodes') && !api.toolOK('encounters'); P.log.selene = { v: 1 };
+  check('tools unlock with knowledge: impact prediction with trajectory data from a flight, maneuver planning with a measured orbit, encounter forecasts with a visit',
+    before === 0 && a && b && api.toolOK('encounters'), Object.entries(api.TOOLS).map(([k, T]) => `${T.name} ← ${T.fact}`).join(', '));
+  P.log = saved;
+}
+
 // 22. Contact (sats session): the vessel against a registered satellite. Its own instance of the sim core.
 {
   const D = new Function(src + 'return {newShip,satRegister,satAt,contactStep,physStep,hitNear,railsOK,PROG,TELLUS,DT,qrot,qmul,qaxis,get t(){return simT},set t(v){simT=v}};')();
@@ -1087,6 +1127,79 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // physics, not rails, while a satellite is within 5 km
   ({ s } = scene(0)); const nearOn = D.hitNear(s) && !D.railsOK(s); s.r = add(s.r, mul(Y, -20e3)); const farOff = !D.hitNear(s);
   check('contact: within 5 km of a satellite the flight stays in physics steps', nearOn && farOff, `near: rails ${D.railsOK(s) ? 'on' : 'off'} at 20 km`);
+}
+
+// 23. Launch sites as data (terrain session, slice B): generated per power, a site per flight, latitude that matters.
+{
+  const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180, keep = P.site;
+  const fields = ['id', 'name', 'u', 'lat', 'h', 'power', 'coastal', 'maxDia', 'downrange', 'polar', 'kind', 'rot', 'minInc'];
+  const per = api.POWERS.map(p => SI.filter(t => t.power === p.i).length);
+  const gap = Math.min(...SI.flatMap((a, i) => SI.slice(i + 1).map(b => Math.acos(Math.min(1, dot(a.u, b.u))) * R)));
+  const level = SI.every(t => { const f = api.siteFrame(t.u);
+    return [0, 1, 2, 3].every(k => Math.abs(api.terrainH(norm(add(t.u, mul(k % 2 ? f.e : f.n, (k < 2 ? 1 : -1) * 1500 / R)))) - t.h) < 1e-9) && api.terrainSlope(TELLUS, t.u) < 0.01; });
+  check('sites: generated per power with every field the economy needs; home site first, at +X; ≥ 250 km apart; pads levelled',
+    SI.length >= 10 && SI.every(t => fields.every(k => k in t) && t.h > 0 && t.downrange && Array.isArray(t.downrange.over)) && per.every(n => n >= 1)
+      && SI[0].u[0] === 1 && SI[0].power === api.HOME && gap >= api.SITE_GAP - 1 && level,
+    `${SI.length} sites (${per.join('/')} per power), closest pair ${(gap / 1e3).toFixed(0)} km; home ${SI[0].name} at ${SI[0].lat.toFixed(1)}°, ${SI[0].h.toFixed(0)} m, downrange ${SI[0].downrange.az}° ${(SI[0].downrange.sea * 100).toFixed(0)}% water`);
+  // a ship at a far site stands on its pad, nose up, with the site's free speed, in an orbit plane at its latitude
+  const far = SI.reduce((a, b) => Math.abs(b.lat) > Math.abs(a.lat) ? b : a), x = api.newShip(api.PRESETS.Orbiter, far), up = norm(x.r);
+  const hv = cross(x.r, x.v), inc = Math.acos(Math.abs(hv[1]) / len(hv)) / D, Y = api.qrot(x.q, [0, 1, 0]);
+  check("a ship at a site: on its levelled pad, nose up, the site's free speed east, an orbit plane at its latitude",
+    x.site === far && Math.abs(len(x.r) - (R + far.h - x.yBot)) < 1e-6 && dot(Y, up) > 0.999999 && Math.abs(len(x.v) - TELLUS.rot * len(x.r) * Math.cos(far.lat * D)) < 1e-4 && Math.abs(far.rot - TELLUS.rot * R * Math.cos(far.lat * D)) < 1e-9 && Math.abs(inc - Math.abs(far.lat)) < 1e-6,
+    `${far.name} at ${far.lat.toFixed(1)}°: ${len(x.v).toFixed(1)} m/s free (equator ${SI[0].rot.toFixed(1)}), plane ${inc.toFixed(2)}°`);
+  // the chosen site is the default for every flight, and tapes remember where they were recorded
+  P.site = far.id; const y = api.newShip(api.PRESETS.Orbiter), tp = api.tapeNew(api.PRESETS.Orbiter, y.site); P.site = keep;
+  check('the chosen site (PROG.site) is where flights start; a tape records its site',
+    y.site === far && tp.site === far.id && api.curSite() === ((keep && api.siteById(keep)) || api.homeSite()));
+  // until economy defines siteAccess: home sites only, free; a stage too wide for the rail gauge can't go inland
+  const foreign = SI.find(t => t.power !== api.HOME), inland = SI.find(t => !t.coastal), coastal = SI.find(t => t.coastal), wide = [{ d: { r: 2.5 } }];
+  const ah = api.siteAccessOf(SI[0]), af = api.siteAccessOf(foreign);
+  check("site access: home sites only (until economy's siteAccess); inland sites take nothing wider than the rail gauge",
+    ah.ok && !af.ok && af.why.length > 0 && !api.siteFits(inland, wide).ok && api.siteFits(coastal, wide).ok && api.siteFits(inland, [{ d: { r: 1.25 } }]).ok,
+    `"${af.why}"; inland: "${api.siteFits(inland, wide).why}"`);
+  // fly the Orbiter from a site away from the equator: the orbit's inclination is the site's latitude
+  const off = SI.filter(t => Math.abs(t.lat) > 8 && Math.abs(t.lat) < 30).sort((a, b) => Math.abs(b.lat) - Math.abs(a.lat))[0];
+  P.site = off.id; const r = fly('Orbiter', { verbose: false }); P.site = keep;
+  const hh = cross(api.S.r, api.S.v), inc2 = Math.acos(Math.abs(hh[1]) / len(hh)) / D;
+  check('a flight from a site at latitude φ reaches orbit inclined ≈ φ', r.el.pe - R > ATM && Math.abs(inc2 - Math.abs(off.lat)) < 1.0,
+    `${off.name} ${off.lat.toFixed(1)}° → ${((r.el.ap - R) / 1e3).toFixed(0)}×${((r.el.pe - R) / 1e3).toFixed(0)} km at ${inc2.toFixed(2)}°`);
+}
+
+// 24. RCS (sats session): cold-gas quads, jet selection, pulses, attitude control. Its own instance of the sim core.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,railsOK,rcsJets,rcsGas,INP,PROG,TELLUS,DT,G0,PARTS,qrot,qaxis,qmul,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, I = D.INP, fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const design = (stack, host, ys) => { const d = D.toV2(JSON.parse(JSON.stringify(stack))), h = fnd(d.root, host);
+    for (const y of ys) h.c.push({ k: 'rcs', at: { y, a: 0, n: 4, cy: 0.1 }, c: [] });
+    h.c.push({ k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] }); return d; };
+  const fly = (des, set) => { D.t = 0; const s = D.newShip(des), r0 = T.R + 300e3; Object.assign(s, { landed: false, sas: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; set && set(s); return s; };
+  const zero = () => Object.assign(I, { pitch: 0, yaw: 0, roll: 0, tx: 0, ty: 0, tz: 0 });
+  const twin = (des, ax, sec) => { const a = fly(des, s => s.rcs = true), b = fly(des), g0 = D.rcsGas(a); zero(); I[ax] = 1;
+    for (let i = 0; i < sec / D.DT; i++) { D.t = i * D.DT; D.physStep(a, D.DT); D.t = i * D.DT; D.physStep(b, D.DT); } zero();
+    const dv = D.qrot([-a.q[0], -a.q[1], -a.q[2], a.q[3]], sub(a.v, b.v)); return { a, dv, w: len(a.w), gas: (g0 - D.rcsGas(a)) * 1000 }; };
+  // a pod, a tank with two rings of four quads, two bottles: pure translation along the nose and sideways
+  const des = design(['pod', 't1', 'kestrel'], 't1', [0.15, 0.95]), J = D.rcsJets(fly(des)), F = D.PARTS.rcs.rcsF * 1000;
+  const up = twin(des, 'ty', 2), side = twin(des, 'tx', 2), m = up.a.mass, isp = D.PARTS.rcs.isp;
+  check('RCS: forward translation is pure (8 nozzles at full duty), gas used matches Isp 70 s', Math.abs(up.dv[1] - 8 * F / m * 2) / (8 * F / m * 2) < 0.03 && Math.abs(up.dv[0]) + Math.abs(up.dv[2]) < 1e-3 && up.w < 1e-3 && Math.abs(up.gas - 8 * F * 2 / (isp * D.G0)) < 0.1,
+    `${J.N.length} nozzles; Δv ${up.dv[1].toFixed(3)} m/s (expected ${(8 * F / m * 2).toFixed(3)}), cross ${(Math.abs(up.dv[0]) + Math.abs(up.dv[2])).toExponential(0)}, spin ${up.w.toExponential(0)} rad/s, gas ${up.gas.toFixed(2)} kg`);
+  check('RCS: sideways translation is balanced across the two rings; on/off pulsing leaves only a few mrad/s of jitter', side.dv[0] > 0.1 && Math.abs(side.dv[1]) + Math.abs(side.dv[2]) < 0.02 * side.dv[0] && side.w < 5e-3,
+    `Δv ${side.dv[0].toFixed(3)} m/s sideways, cross ${(Math.abs(side.dv[1]) + Math.abs(side.dv[2])).toExponential(0)}, spin ${side.w.toExponential(1)} rad/s`);
+  // one ring only, 1.4 m above the centre of mass: the sideways nozzles alone would turn it, so jet selection fires the
+  // up/down nozzles on either side to cancel that torque. Still pure, at a lower capacity than two rings
+  const oneD = design(['pod', 't1', 'kestrel'], 'pod', [0.5]), one = twin(oneD, 'tx', 2), c1 = D.rcsJets(fly(oneD)).basis[0].cap, c2 = J.basis[0].cap;
+  check('RCS: one ring off the centre of mass still translates sideways without turning; jet selection balances it, at a lower capacity', one.w < 2e-3 && Math.abs(one.dv[1]) + Math.abs(one.dv[2]) < 0.05 * one.dv[0] && c1 < c2,
+    `spin ${one.w.toExponential(1)} rad/s; sideways capacity ${c1.toFixed(0)} N vs ${c2.toFixed(0)} N with two rings`);
+  // attitude with no wheels: a camera-tank-engine stack, nose 0.5 rad off prograde, SAS on. RCS on: it turns, in whole pulses
+  const probe = design(['cam', 't1', 'sparrow'], 't1', [0.15, 0.95]), turn = rcs => { const s = fly(probe, s => { s.sas = true; s.sasMode = 'pro'; s.rcs = rcs; s.q = D.qmul(D.qaxis([1, 0, 0], 0.5), D.qaxis([1, 0, 0], -Math.PI / 2)); }), g0 = D.rcsGas(s);
+    zero(); for (let i = 0; i < 60 / D.DT; i++) { D.t = i * D.DT; D.physStep(s, D.DT); }
+    const Y = D.qrot(s.q, [0, 1, 0]); return { err: Math.acos(Math.max(-1, Math.min(1, dot(Y, norm(s.v))))), pulses: (g0 - D.rcsGas(s)) / (F * D.DT / (isp * D.G0) / 1000), torque: s.torque }; };
+  const on = turn(true), off = turn(false);
+  check('RCS: a vessel with no reaction wheels holds prograde on RCS alone; gas goes in whole 20 ms pulses', on.torque === 0 && on.err < 0.03 && off.err > 0.3 && Math.abs(on.pulses - Math.round(on.pulses)) < 1e-6,
+    `error after 60 s: ${on.err.toFixed(3)} rad with RCS, ${off.err.toFixed(2)} without; ${Math.round(on.pulses)} pulses of ${(F * D.DT).toFixed(0)} N·s`);
+  const r = fly(des, s => { s.rcs = true; s.sas = true; });
+  check('RCS: while it\'s on (SAS on), the flight stays in physics steps', !D.railsOK(r) && D.railsOK(fly(des)), `rails with RCS on: ${D.railsOK(r)}`);
+  zero();
 }
 
 function moonPos(t) { return api.moonPos(t); }

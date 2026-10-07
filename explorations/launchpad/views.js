@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–16 the launch complex, 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -68,6 +68,15 @@ window.refView = async (n) => {
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; cam.edY = 0;
     const v = { 15: [-0.9, 0.28, 85], 16: [0.25, 0.12, 26], 17: [1.24, 0.75, 420] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
     render(); await settle(); bare(); return { 15: 'complex', 16: 'tower', 17: 'site' }[n];
+  }
+  // 18–19: a flight starting on the pad: the gantry in service position around the rocket at t = 0, and the same at
+  // night (the first time after now when the sun is well below the pad's horizon), floodlights on
+  if (n === 18 || n === 19) {
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click(); markT = null;
+    if (n === 19) { const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
+      if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); markT = null; padShip = null }
+    render(); cam.yaw = -0.5; cam.pitch = 0.15; cam.dist = 45; render(); await settle(); bare(); return n === 18 ? 'service' : 'night';
   }
   // 30–36: engine plumes. The ship is placed at an altitude (teleported, pointing straight up, climbing at vy m/s), staged
   // nst times and run 1.5 s at full throttle, then seen from the side: [design, altitude m, stagings, yaw, pitch, dist, vy]

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.11.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.12.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -670,16 +670,18 @@ GPU timer, alternating against `main` (two rounds): view 4 close-up 2.7–3.8 vs
 
 ## The launch complex (2026-10-07, visuals session)
 
+> Axes: the pad frame is `siteFrame` (x east, y up, **z south**). Early drafts of this section had north and south swapped.
+
 Slice 3 of the visuals work. Next to the detailed rocket, the old pad (a red pole, three white cylinders, a drum) read as
 a placeholder. Only the **contents** of the `PAD` mesh changed. Where it is drawn, its height (`siteH`) and the
 ground-shader apron (`padGround`) belong to the terrain session and were not touched. Everything sits at or above y = 0
-in the pad's frame (x east, y up, z north), so the rocket still stands at the origin on the ground the physics knows.
+in the pad's frame (x east, y up, z south), so the rocket still stands at the origin on the ground the physics knows.
 Each building stands on a concrete slab that `padGround` already paints.
 
 ### What's there (early-era Cape style)
 - **Launch table:** the concrete disc, a dark steel flame grate under the engines with eight radial bars, four hold-down
   posts at r 3.4 m.
-- **Flame channel:** low concrete walls on a sooted floor running north. The ground can't be dug (it is raymarched in the
+- **Flame channel:** low concrete walls on a sooted floor running south. The ground can't be dug (it is raymarched in the
   sky shader), so the trench is suggested from above ground.
 - **Umbilical tower** east of the rocket: an orange lattice, 3 m square and 32 m tall (`lattice()`: corner posts, a girder
   ring every ~2.5 m, zig-zag bracing). It has an elevator shaft, a cap platform, a hammerhead jib with a hook line, a
@@ -688,7 +690,7 @@ Each building stands on a concrete slab that `padGround` already paints.
 - **Deluge water tower,** a **domed concrete blockhouse** with a band of periscope slots and an antenna mast (with a cable
   run to the pad), a **compressor building**, and four **floodlight poles** around the apron.
 - New helpers `tube(A, B, r)` (a cylinder between two points) and `lattice()`. About 9,800 vertices in all, a static mesh.
-- `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
+- `refView(15)` shows the whole complex from the north-west, `16` the tower and table. In the editor the rocket floats:
   the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
 
 ### Revised layout (same day, after Caio's review)
@@ -700,7 +702,7 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   - The domed **blockhouse** moved up-range, about 230 m west, onto its own mesh slab, with a spur road down to the
     access road and a concrete cable trench to the pad.
   - The **mobile service structure** (four lattice columns on rail trucks, work decks, roof, bridge crane) is rolled back
-    80 m south on twin rails that run to the launch table. Its height is the tower's + 6 m.
+    80 m north on twin rails that run to the launch table. Its height is the tower's + 6 m.
   - **High-pressure gas bottle racks** sit on the old blockhouse slab.
   - A **ground deluge tank** with a pump house replaces the elevated water tower.
   - **Two lightning masts** with a catenary wire.
@@ -712,13 +714,18 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
   and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
   fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
+- **Moving parts and night lights.** The swing arms, the hold-downs and the service gantry are now separate meshes in their own frames (`buildRig`), drawn each frame by `drawPadRig` with a matrix:
+  - **Gantry:** parked in the editor. A flight that starts on the pad starts with it in service position around the rocket (the open front faces it; its rails moved out to ±10.5 m to clear the tower), and it rolls 80 m back over 14 s.
+  - **At liftoff (`S.mkLiftT`):** the arms swing back to the tower face, top first, 1.5 s each, 0.25 s apart, and the hold-downs tip out 0.9 rad in 0.6 s.
+  - **Floodlights,** from dusk (sun 4° above the pad horizon) to dawn: four warm point lights in the mesh shader (`uFl`/`uFlI`) light the rocket, tower and buildings; the lamp faces and ground pools are additive discs in the glow pass (`PAD_GLOW`), because the ground belongs to the sky shader.
+  - **Hooks in `render()`:** three one-line calls (`padLights`, `drawPadRig`, `drawPadGlow`). The pad's own draw call (terrain's) is unchanged, and the rig uses the same frame (`padPF` reads `WORLD.siteH`).
+  - **Pipes:** those crossing the rails became flush covered trenches, so the gantry's trucks can roll over them.
+  - `refView(18)` is the gantry in service at t = 0, `19` the same at night.
 - **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
   painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
-- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
 ## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
@@ -910,6 +917,133 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.27 — launch sites as data (2026-10-07, terrain session, slice B)
+
+Slice B of the geography plan (§ v1.25), built to the economy session's hand-off. Every power now has launch sites
+suited to its own geography. A flight starts from the site you pick, and the site's latitude and downrange are real.
+Economy rules (leases, fees, sanctions, politics) are deliberately left to the economy session.
+
+### What a site is
+`SITES` is plain data in the SIM world block, one entry per pad:
+
+| Field | Meaning |
+|---|---|
+| `id`, `name`, `kind` | `kind` is `'pad'`; a sea platform would be `'sea'` later. Names are the power's root plus Cape / Field / Polar Range. |
+| `u`, `lat` | Planet-fixed unit vector; latitude in degrees. |
+| `h` | Pad height. The pad is levelled to `h` (flat to 2 km, blended out by 4.5 km). |
+| `power` | Index from `powerAt(u)`, or null. |
+| `coastal`, `maxDia` | Coastal means water within 30 km. Stages up to 10 m come by barge; inland, 3.9 m by rail (a real loading gauge). |
+| `downrange` | `{az, sea, over}`: of the eastward headings (45–135°), the one with the most water over the first 1,000 km, favouring due east (the most free speed). `over` lists the powers whose land lies under it. |
+| `polar` | `'S'`, `'N'`, `'NS'` or null: a corridor that way with ≥ 60% water and only the site's own land. |
+| `role` | `home`, `eq`, `polar` or `inland`. |
+| `rot`, `minInc` | Free eastward speed at sea level (ω·R·cos lat); the lowest inclination reachable without a plane change (\|lat\|). |
+
+**How they're generated.**
+1. The home site is found as before: equatorial, flat, low, a coast to the east. The world is still turned so it sits
+   at planet-fixed +X. It is `SITES[0]`, power 0's home.
+2. Once the powers exist, `extendSites()` screens candidates on a 6-texel grid (~47 km) of the baked map:
+   - flat (ruggedness < 0.15), 5–1,500 m up, |lat| < 70°;
+   - on a power's land, ≥ 40 km from cities;
+   - with cheap water fractions east and toward the poles.
+3. Each power gets up to three sites, ≥ 250 km apart (`SITE_GAP`):
+   - its most equatorial, weighted toward open water east (`eq`; power 0 already has its home site);
+   - one with a clear polar corridor (`polar`);
+   - its most equatorial inland one (`inland`).
+4. `finishSite` measures every site on the real terrain and territory: exact `isLand`/`powerAt` along 1,000 km great
+   circles every 20 km.
+5. Cost: ~150–300 ms at load.
+
+**Seed 13 has 15 sites** (3 per power; ⟂ = polar corridor):
+
+| Site | Role | Lat | Pad m | Free m/s | | Downrange | ⟂ |
+|---|---|---|---|---|---|---|---|
+| Fenfen Cape | home | 0.0N | 157 | 278 | coast | 90° 94% water | S |
+| Fenfen Polar Range | polar | 26.9N | 140 | 248 | coast | 90° 100% | SN |
+| Fenfen Field | inland | 7.9N | 66 | 275 | inland | 135° 88% | S |
+| Selhav Field | eq | 0.5S | 175 | 278 | inland | 90° 90% | S |
+| Selhav Polar Range | polar | 18.5N | 368 | 264 | coast | 120° 50% | S |
+| Selhav Field II | inland | 10.0N | 282 | 274 | inland | 90° 88%, over Fentor | S |
+| Ordun Field | eq | 17.4S | 307 | 265 | inland | 105° 88% | N |
+| Ordun Polar Range | polar | 15.3S | 393 | 268 | coast | 45° 82% | N |
+| Ordun Field II | inland | 15.3S | 621 | 268 | inland | 60° 90% | N |
+| Haval Cape | eq | 14.2N | 424 | 269 | coast | 105° 100% | S |
+| Haval Polar Range | polar | 29.0N | 999 | 243 | inland | 135° 66%, over Fenfen | S |
+| Haval Field | inland | 22.7N | 1332 | 256 | inland | 90° 48%, over Fenfen | — |
+| Fentor Field | eq | 1.6N | 851 | 278 | inland | 90° 92% | — |
+| Fentor Polar Range | polar | 43.8N | 682 | 201 | inland | 135° 38% | S |
+| Fentor Field II | inland | 0.5S | 615 | 278 | inland | 105° 60% | — |
+
+What the table says:
+- Ordun's best site is at 15.3°S and Haval's at 14.2°N. Neither can reach an equatorial orbit without a plane change.
+  To the stationary orbit that costs ~370–400 m/s more than from the equator.
+- Two of Haval's sites have their downrange over *our* land. That's the "launching over a neighbour" politics economy
+  plans to add.
+
+### A site per flight
+- `newShip(stack, site = curSite())` puts the ship on that site's pad in the site's own frame (nose up, belly east).
+- The choice is `PROG.site` (saved). `curSite()` falls back to the first home site.
+- Home sites are `homeSites()`, recomputed from `HOME` every call, because `HOME` changes on defection.
+- Tapes record their site (`tape.site`), and the autopilot flies a tape from where it was recorded. The logbook copies
+  and saved tapes carry it too.
+
+**The launch gate** (on Launch, after the budget check):
+1. `siteAccessOf(site)` calls economy's `siteAccess(site)` → `{ok, why, fee}` if it exists. Until then: home sites
+   only, free; a foreign site is refused with "⟨power⟩ won't let us launch from ⟨site⟩".
+2. `siteFits(site, parts)`: no stage wider than `maxDia`.
+
+**The picker** is in the construction screen's right panel, above LAUNCH. It lists our sites, then those abroad (⛔ when
+refused). For the chosen site it shows latitude, free speed, lowest inclination, pad height, downrange and water
+share, the powers overflown, the polar corridor, rail or barge, and the reason it's refused. Picking a site moves the
+ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
+
+**Rendering.**
+- `terr()` in the sky shader levels the 4 sites nearest the camera (`uSites[4]`, `uNS`). `terrainH` levels all of
+  them; sites are ≥ 250 km apart, so the nearest is the only one that can matter.
+- The pad mesh is drawn at every site within 300 km of the camera, in its own frame.
+- The painted launch complex (`padGround`) follows the nearest site's frame (`uPadE`, `uPadS`).
+
+**+X assumptions replaced:**
+- `makeCities` and `makePowers` (one line, per the hand-off) use the home site's `u`.
+- The recovery distance `landDist` is measured from the flight's own site.
+- The pad's ground station is now `padGS()`, the chosen site; planning's `PAD_GS` constant is gone.
+
+### Measurements
+- Agreement around a non-home site (Fenfen Polar Range, 1,024 points within 8 km): GPU vs CPU median 2 mm, max 2.5 cm.
+  260 points sit on the flat 2 km disc.
+- **The Orbiter flown from Haval Polar Range (29.0°N)** reaches 121×102 km at **28.97°**. Latitude now sets the
+  orbit's plane.
+- **Free speed:** 278 m/s at the equator, 248 at 26.9°, 201 at 43.8°.
+- **Tests:** `test.mjs` §23, 5 checks (157 total with everything merged):
+  - fields and generation;
+  - a ship on a far pad: position, attitude, free speed, plane;
+  - `PROG.site` and tapes;
+  - access and rail gauge;
+  - the latitude flight.
+
+### Traps hit
+- **`typeof X` on a `const` in its temporal dead zone throws.** `mkSite` takes its id from the caller instead.
+- **An edit that turns a one-line handler into two lines moves "after this line".** The picker was inserted after the
+  Launch handler's *first* line, i.e. inside it, and `renderSites` was undefined at load.
+- **A merge can fail on an object that Drive hasn't finished syncing** ("unable to read sha1 file"). It leaves the
+  new files it had already written as untracked files in the worktree. The object was readable a minute later. Move
+  the strays aside and merge again.
+
+### Left for others (also in ACTIVE_WORK)
+- **Economy:**
+  - define `siteAccess(site)` → `{ok, why, fee}` (leases, sanctions, closures) and record `R.site`;
+  - westward and overflight politics can read `site.downrange.over`;
+  - the ballistic contract still places its target `rg/600` radians from +X: the old 600 km radius (ranges 2.1× long
+    now), and from +X rather than the flight's site.
+- **Builder:** the site picker lives in `index.html` (`renderSites`, `#sitePick`), not in the construction screen's
+  own UI. Move it if the screen grows a place for it.
+
+### Next on this line
+- A sea-launch platform (`kind:'sea'`).
+- Per-site weather scrubs (`cloudAt`).
+- Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
+  downrange over a neighbour before launch).
+- Then slices C–E (§ v1.25).
 
 ## v1.26 — industrial independence (2026-10-07)
 
@@ -1162,7 +1296,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-1. **Launch sites (slice B).** See the plan above for the design and numbers. Start with a `SITES` list in the world
+1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
    - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
@@ -1261,7 +1395,7 @@ inconsistent at m/M = 5.6e-4. In a chaotic case that is enough to change the out
 0.52 P there and at 1.51 P in the consistent model. Every other verdict in the study's table stands (prograde wrecked from
 ~100 km up, retrograde survives).
 
-**Where.** `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
+**Where** (superseded in part 2 below: per-orbit gating, 2e-6). `pertAcc(b,r,t)`: inside Nyx's SOI, Tellus's tide (its pull on the craft minus its pull on Nyx), always on. In
 Tellus's frame, Nyx's pull minus Tellus's reflex, wherever that is ≥ `PERT_MIN` = 1e-3 of Tellus's pull. A threshold sweep
 against n-body (flybys at Nyx's pe and ap, v∞ 300/800 m/s, error one day later):
 
@@ -1305,6 +1439,50 @@ patched-conic +12.9 h. Predicted and flown agree.
 **Not yet:** node positions still come from Kepler (`nodeInfo`), so a node far ahead on a perturbed leg sits slightly off the
 drawn path. Selene perturbs nothing, though at 0.0123 of Tellus it would matter more than Nyx: making it `pert` is one flag, but
 it changes every Selene trajectory and the tests built on them. Debris near Nyx ignores the tide.
+
+### 6b, part 2: Selene perturbs too; gating per orbit; nodes (2026-10-07)
+
+- **Selene is `pert:true`.** Its relative orbit uses μ_T + μ_S. That shortens its period by 0.6 %: the textbook encounter
+  moved from 15.5 h to 15.2 h, and every Selene test still passes.
+- **A per-point threshold breaks warp.** With the 1e-3 per-point test, a long Kepler step that started below the threshold
+  skipped stretches where the force should have been on. 30 days of low orbit at 100,000× came out **472 km** from the same
+  30 days in 60 s chunks. The fix is to gate **per orbit**: `pertNear` estimates an orbit's largest tidal ratio (for orbits
+  well inside a moon's, 2.4·(m/M)·(ap/(rMin−ap))³; anything reaching out toward a moon counts), and within a gated orbit the
+  force is always on, with the step cap. Now warp and small steps end **0.4 m** apart after 30 days. `physStep` keeps a
+  pointwise test, since physics runs in short spans.
+- **PERT_MIN 1e-3 → 2e-6**, by sweep on a translunar coast through Selene's SOI (two days, pass 270 km up, vs Tellus+Selene
+  n-body): 1e-3 → 1,354 km off · 1e-5 → 121 · 3e-6 → 19 · **2e-6 → 6.8** · 1e-6 → 6.8 · 1e-7…1e-9 → 4.6 km (the floor; 10× finer
+  steps change nothing, so it's the close pass). At 2e-6, Selene's tide on low orbit (1.2e-6) stays out, but **Nyx's (~1e-5) is
+  in**: low orbit now drifts ~10–200 m a month (real), and warp there costs ~0.4 ms a frame instead of 3 µs.
+- **Checks are per moon.** The moons ride fixed paths, so an n-body with both on would have Selene pull a craft orbiting Nyx but
+  not Nyx itself. The game keeps only Tellus's tide inside Nyx's SOI, which is the more physical choice. §21 runs Nyx's checks
+  with Selene's perturbation off; §22 runs Selene's with Nyx's off: 100 km lunar orbit **10 m** off n-body after a day;
+  translunar coast **4.7 km** off after two days.
+- **Nodes:** `nodeInfo` integrates to the node on a perturbed orbit (`coastTo`), memoised on the node until `kickN` changes
+  (thrust or aero in `physStep`, staging, separation). Node 4 h ahead around Nyx: **0 m** from where rails take the craft; Kepler
+  alone was 16.5 km off.
+- Test changes outside this scope: the 30-day warp check (§3b) now tests warp *invariance* plus a bound on tidal drift; the
+  economy's satellite-precision check allows 1e-3 M (a "perfectly centred" test orbit now gets nudged by the tides).
+
+### Nyx missions — spec for the economy session (not built)
+
+Per the program design (epoch 5 "Discovery"), Nyx is found by the player's own telescope after the Selene ladder. Until then
+it's in the sky (drawn, perturbing) but nameless and unmarked on the map. A suggested ladder, with the physics already in place:
+
+| Mission | Win condition (headless-checkable) | Why it's interesting here |
+|---|---|---|
+| **Discovery** (telescope) | telescope payload in orbit for N days → Nyx gets its name, map marker and orbit line | the telescope is your instrument opening the chapter |
+| **Flyby** | enter Nyx's SOI (`s.body===NYX`) with a camera | inclined 30°, eccentric: the plane change and *when* to meet it dominate the cost |
+| **Impactor** | crash on Nyx while sending (antenna on board) | cheap, and a prograde low orbit does it for you (that's the joke) |
+| **Orbit that lasts** | stay in Nyx's SOI below 300 km for 2 Nyx orbits (67 h) | prograde orbits from ~100 km up get wrecked at Nyx's periapsis; **retrograde survives**; the map shows it ("Impact in … (perturbed)") |
+| **Lander** | landed on Nyx, upright, under 3 m/s | g 0.40, escape speed 346 m/s: easy to land, easy to bounce |
+| **Sample return** | landed on Nyx, then landed on Tellus with the sample part | |
+
+Rough Δv (equatorial transfer, so optimistic by a plane change): meet Nyx **at apoapsis** (27,900 km), 1,290 m/s from low
+orbit, a 12 h trip, arrival v∞ ~730 m/s, capture into 100 km ~590 m/s. **At periapsis** (8,100 km), 1,040 m/s and 2.3 h,
+but v∞ ~2,470 m/s and capture ~2,290 m/s. So the cheap way in is slow and at apoapsis, where Nyx's SOI is also largest
+(1,401 km vs 407). Landing from 100 km: ~190 m/s. Logbook facts that fit planning's "Out there" section: Δv to reach Nyx,
+Nyx orbital period (first orbit), surface gravity (first lander), and "prograde orbits don't last" (the first wrecked orbit).
 
 ## More bodies: the body tree and Nyx (2026-10-07, bodies session, branch `bodies`)
 
@@ -1605,6 +1783,21 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
 - A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
   from the pad. Checks §19 (3 new, 136 total).
 
+**Tools gated by what's known** (same day). `TOOLS` maps each tool to the fact it depends on; `toolOK(k)`:
+- **Impact prediction** (HUD row, map trace, ground marker, spread) ← *farthest from Tellus* (any flight that has come
+  down). Before that the HUD reads "no trajectory data yet". Range safety still uses the prediction underneath: only the
+  display is gated.
+- **Maneuver planning** (placing a node by click or N, and so the panel and warp-to-burn) ← *Δv to low orbit*. Refused
+  with "No maneuver planning yet: it needs 'Δv to low orbit' in the logbook". Autopilot tapes still replay their nodes.
+- **Encounter forecasts** (the predicted path inside another body's sphere of influence, encounter labels) ← *Δv to
+  reach Selene*. Before that the map's path stops at the edge with "? Nyx: what its pull does next, no data yet" (any
+  body: the bodies session added Nyx).
+- The logbook says what each fact unlocks ("→ will unlock: maneuver planning" / "→ unlocked: …").
+- Fixes found on the way: the gated forecast first crashed the map (the encounter label looks ahead to the next leg,
+  so the gated leg now keeps its end but drops its encounter tag); and a *placed* vessel (one that spent no Δv) now
+  reports nothing to the logbook. Placing one by script had logged an orbital period.
+- Check §21 (1 new, 142 total).
+
 **Next along this line:**
 - More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
@@ -1848,6 +2041,50 @@ docking on the night side; and contact with debris (also needed before the claw 
 **Questions for Caio:** (a) is the "rigid passenger" model OK (docked things can't share fuel or be re-staged until we
 add that explicitly)? (b) RCS fuel: a separate monopropellant, or draw from the main tanks? (c) which first after RCS:
 the port or the claw?
+
+**Decisions (Caio, 2026-10-07):** docked spacecraft stay separate bodies fixed together (a "superstructure", as in the
+simulator Orbiter): each subsystem runs per body (thrust from every body, aero and heating per body, a load limit on the
+port, contact, rendering, saving), and fuel crosses only through an explicit transfer or crossfeed. RCS has its own
+propellant, starting with cold gas and moving through the eras; thrusters pulse. Order: RCS, then the docking port, then
+the claw.
+
+### RCS (sats session, 2026-10-07)
+
+Translation control, and attitude control that doesn't need reaction wheels. The docking port needs it.
+
+- **Parts** (palette: *Control*): *RCS quad (cold gas)*, a surface part (like the radial fin, with symmetry) with four
+  nozzles: up and down the vessel's axis and both ways round it, 0.15 kN each, Isp 70 s (nitrogen). *Gas bottle*, a
+  surface part holding 15 kg of nitrogen in a 30 kg bottle. New resource `gas`; every bottle aboard feeds every quad.
+  Costs 1.5M and 0.8M. Quads are delicate in a collision (3 m/s). Thirty kilograms on a 4 t stage is ~5 m/s: modest,
+  as cold gas is, and plenty for docking.
+- **Real forces.** Every pulse is `addF` at the nozzle, so placement matters exactly as it should: a translation from
+  quads off the centre of mass turns the vessel unless other nozzles cancel it.
+- **Jet selection.** For each of the 12 signed axes (± force x, y, z; ± torque x, y, z), the non-negative nozzle duties
+  that give that axis alone as nearly as the layout allows, scaled so the busiest nozzle is at 1. Solved exactly (Lawson–
+  Hanson active-set non-negative least squares, with a small ridge term) once per layout and centre of mass (to 5 cm),
+  then cached. A command is a sum of those, clipped to [0, 1]. This is how real jet-select tables work, and it means
+  one ring of quads 1.4 m above the centre of mass still translates sideways without turning: it fires the up/down
+  nozzles on either side to cancel the torque (at 157 N of sideways capacity, against 546 N for two rings).
+- **Pulses.** Nozzles are on or off. A sigma-delta modulator per nozzle, started half-way, turns duty into whole 20 ms
+  pulses (one physics step), so the minimum impulse bit is 0.15 kN × 20 ms = 3 N·s, and fractional duties leave a
+  bounded jitter of a few mrad/s (a real thruster's limit cycle). Starting the modulators at 0 instead of ½ doubled it.
+- **Attitude.** The control law now asks for the authority of wheels + gimbal + RCS (`ctrlAccel(s, true)`): the wheels
+  and gimbal give their part as before, and the RCS fires real pulses for the rest. With RCS off nothing changes (the
+  old call is untouched, and all earlier checks pass unchanged). A vessel with no pod (no wheels) now holds prograde on
+  RCS alone: 0.001 rad after 60 s, against 0.51 rad with RCS off.
+- **Controls:** **R** toggles RCS in flight (revert keeps R when crashed or landed). **I/K** forward/back along the nose,
+  **J/L** and **U/O** sideways on the vessel's two other axes (KSP's H/N clash with Help and Node here). An RCS button
+  under SAS; a HUD row with gas, its Δv and how many nozzles are firing. White puffs at nozzles that fired in the last
+  80 ms. Tapes record the translation keys and the RCS switch; old tapes play back with RCS off.
+- **Physics, not rails,** while RCS is on with SAS on or any control key held: thrusters can't fire on rails.
+- **Mistake on the way:** the first solver was accelerated projected gradient. Opposed nozzles at the same spot cancel
+  exactly, so the problem has no unique answer, and it fired both of a pair at ~10 %: forward thrust gave 90 % of the Δv for
+  108 % of the gas. The ridge term picks the least-effort answer and the active-set solver gets it exactly.
+- Checks (`test.mjs` §23): pure forward translation (Δv within 0.2 %, gas within 0.01 kg of Isp 70 s, no cross motion
+  or spin); sideways across two rings (jitter under 5 mrad/s); one ring balanced; RCS-only attitude hold in whole pulses;
+  physics while on. In the browser: the palette, both parts in the editor, a stage translating in orbit with puffs.
+- **Not yet:** monopropellant and later thrusters for the later eras; a fine-control mode; exhaust hitting other
+  spacecraft; ullage; reaction wheels that saturate; station-keeping. (See the RCS answer in the docking plan.)
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
@@ -2355,6 +2592,7 @@ style) would give visible variety that reflects each power's flavour.
 - The world: `WORLD` (baked maps) + `terrainH(pf)` (metres above the sea; the sea is the sphere R) + `biomeAt(pf)`.
   The sky shader marches the *same* height (`hgtG`/`terr`); after any change to the height function on either side,
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
+  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.
@@ -2373,6 +2611,7 @@ style) would give visible variety that reflects each power's flavour.
    tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
    at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
-6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations near Nyx~~ done (§ "6b"). Next on that line: Selene as a
-   perturber (`pert:true`, then re-baseline the Selene tests); node positions on perturbed legs; more moons are one `addBody` each.
+6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations~~ done for Nyx and Selene, nodes included (§ "6b").
+   Next on that line: Nyx missions (spec handed to the economy session, § "Nyx missions"); debris near the moons ignores tides;
+   registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
