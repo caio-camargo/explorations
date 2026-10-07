@@ -1822,6 +1822,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   = old code) and a "balance" button. Pointing one engine through the CoM was the wrong target (torque ×4.5, rocket lost); balancing the
   total thrust is right, and still worse than uncanted when the gimbal could cope (it trades torque for an uncancelled side force).
   Sparrow core + lone Condor: lost uncanted, climbs at 15°. 112/112. Merged to `main` (`c63ff46`).
+- **v1.23 (2026-10-07, builder worktree):** aero interference as Newtonian shadowing between stack lines (no impact pressure or
+  heat where the upstream ray crosses another line). Unchanged for single lines and at 0°; Heavy normal force −5.5 % at 5°, −48 % broadside;
+  builder stability +0.02–0.03 cal. +3–12 µs/step. Two measurement traps noted (cold JIT; a literal 600 km radius after the rescale).
+  116/116. Merged to `main` (`393a60d`).
 - **v1.19 (2026-10-07, economy worktree):** slice 6: tourism (tourist hops and orbital holidays, standing collapses on
   a hurt tourist), military contracts (recon, ballistic test, classified lift) that may leak, sanctions (incl. home's for
   working with its enemies), the race for firsts against seeded rival schedules. `test.mjs` 80/80 (99 after merging main). Merged to `main`.
