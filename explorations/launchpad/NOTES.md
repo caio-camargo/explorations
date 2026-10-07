@@ -1653,6 +1653,21 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
 - A Passenger hop logs: max-q 29.9 kPa, entry 1,274 m/s, hottest skin 401 K (the parachute), 6.7 g, landing 25.8 km
   from the pad. Checks §19 (3 new, 136 total).
 
+**Tools gated by what's known** (same day). `TOOLS` maps each tool to the fact it depends on; `toolOK(k)`:
+- **Impact prediction** (HUD row, map trace, ground marker, spread) ← *farthest from Tellus* (any flight that has come
+  down). Before that the HUD reads "no trajectory data yet". Range safety still uses the prediction underneath: only the
+  display is gated.
+- **Maneuver planning** (placing a node by click or N, and so the panel and warp-to-burn) ← *Δv to low orbit*. Refused
+  with "No maneuver planning yet: it needs 'Δv to low orbit' in the logbook". Autopilot tapes still replay their nodes.
+- **Encounter forecasts** (the predicted path inside another body's sphere of influence, encounter labels) ← *Δv to
+  reach Selene*. Before that the map's path stops at the edge with "? Nyx: what its pull does next, no data yet" (any
+  body: the bodies session added Nyx).
+- The logbook says what each fact unlocks ("→ will unlock: maneuver planning" / "→ unlocked: …").
+- Fixes found on the way: the gated forecast first crashed the map (the encounter label looks ahead to the next leg,
+  so the gated leg now keeps its end but drops its encounter tag); and a *placed* vessel (one that spent no Δv) now
+  reports nothing to the logbook. Placing one by script had logged an orbital period.
+- Check §21 (1 new, 142 total).
+
 **Next along this line:**
 - More facts: lost limits (what broke, and at how much), max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
