@@ -568,6 +568,39 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.16 — ownership: what the program is (2026-10-07)
+
+Slice 5. The program is a set of shares that sum to 1: state stakes by power (`own().st`) plus private capital
+(`own().pv`). Its label follows the shares (national agency / agency, part-privatized / consortium / company with a
+state stake / private company).
+
+- **Starting points,** chosen in the Program panel before the first flight (older saves default to a national agency):
+  - *national agency*: home 100%, 60M;
+  - *private company*: private 100%, 90M of investor capital;
+  - *transnational consortium*: home 40% plus its two friendliest powers at 30% each, 60M.
+- **Everything scales with the shares,** so mixed programs sit in between:
+  - Budget day comes from every state shareholder, by stake × that power's opinion of us × √(its economy relative to
+    home). A consortium gets contributions itemised in the news; private capital pays nothing.
+  - Government offers come from the state shareholders, at a rate of 0.3 + 1.2 × total state share.
+  - Commercial offers (×0.8 + 0.6 × private share) and commercial pay (+15% × private share).
+  - Working for a power hostile to home costs home opinion only in proportion to home's stake.
+- **Below the floor:**
+  - A mostly-state program is topped up by its biggest shareholder (opinion −2). From the third top-up on, it takes 10%
+    of any private stake: the safety net is the road to nationalization.
+  - A mostly-private program gets a *rescue* decision instead: either the friendliest power puts in what's needed + 30M
+    for 30%, or investors lend what's needed, repaid ×1.3 from half of all future income.
+- **Between-flight decisions,** which expire if ignored:
+  - *Privatization:* investors offer 25% of the valuation for a 25% stake, to programs at least 40% state with two firsts
+    done. Home opinion rises or falls with home's economic alignment.
+  - *Foreign stake:* a friendly power offers 15% of the valuation for 15%. Their budget share and contracts come with it;
+    their rivals' opinion drops and home's dips.
+  - Valuation = 80M + 40M per first + 6M per contract.
+- `test.mjs`: 6 new checks (75). UI lives in the program-UI section (`ownershipHTML`); the builder session's editor code
+  is untouched.
+
+Not yet: career moves (defection, private hire) and power flavours are in the backlog; slice 6 (tourism, military,
+sanctions, races) is next in the build order.
+
 ## v1.15 — the contract board (2026-10-07)
 
 Slice 4. Firsts (`MISSIONS`) stay one-time; **contracts** are repeatable and generated, so they never run out.

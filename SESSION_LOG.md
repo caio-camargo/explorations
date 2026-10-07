@@ -1795,3 +1795,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   clients, overlap on one flight, capacity, standing, business cycle, budget days, records. Claimed the economy scope in
   ACTIVE_WORK (a builder session works in parallel on the same file; committed only this session's hunks). Backlog:
   career moves, power flavours. `test.mjs` 69/69. Committed and pushed.
+- **v1.16 (2026-10-07):** ownership (slice 5): starting choice (agency / company / consortium), state and private shares
+  driving budget days, offers and politics; floor top-ups take equity; rescue (stake or loan), privatization and
+  foreign-stake decisions. `test.mjs` 75/75. Committed and pushed (only this session's edits; builder-session work left in
+  the tree).

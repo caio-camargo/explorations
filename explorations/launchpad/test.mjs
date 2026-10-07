@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -363,7 +363,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 14. The program (v1.12): missions read a flight record; knowledge (certified ratings, the atmosphere) is earned by flying.
 {
-  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0 });
+  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
   const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   const launch = st => { api.t = 0; const s = api.newShip(st); api.S = s; s.throttle = 1; api.stage(s); return s; };
   // a sounding flight: straight up on the Sounding preset, chute armed once falling, down to the ground
@@ -490,6 +490,28 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const early = seen({}), later = seen({ beeper: {}, lift1: {}, hop: {} });
   check('offers flow over program time; orbital and passenger contracts appear only once those firsts are done; board ≤ 6', !early.types.some(t => ['sat', 'lift', 'bioHop'].includes(t)) && ['sat', 'lift', 'bioHop'].every(t => later.types.includes(t)) && Math.max(early.maxB, later.maxB) <= 6,
     `early: ${early.types.join(', ')} · later: ${later.types.join(', ')} · biggest board ${Math.max(early.maxB, later.maxB)}`);
+  // ownership: three starting points, shares that sum to 1, everything scaled by them
+  const sum = () => api.stateShare() + api.own().pv, starts = {};
+  for (const k of ['agency', 'company', 'consortium']) { fresh(); api.chooseStart(k); starts[k] = { kind: api.ownKind(), funds: P.funds, members: Object.keys(api.own().st).length, sum: sum() }; }
+  check('ownership: agency, company and consortium start with their own shares and funds; shares sum to 1', starts.agency.kind === 'national agency' && starts.company.kind === 'private company' && starts.consortium.kind === 'consortium' && starts.consortium.members === 3 && Object.values(starts).every(x => Math.abs(x.sum - 1) < 1e-9) && starts.company.funds > starts.agency.funds,
+    Object.entries(starts).map(([k, v]) => `${k}: ${v.kind}, ${v.funds}M, ${v.members} state holder(s)`).join(' · '));
+  const grant = k => { fresh(); P.day = 0; P.op = {}; P.cycle = 0; P.cyc = 0; api.chooseStart(k); const f = P.funds; api.advanceDays(100.5); return P.funds - f; };
+  const gA = grant('agency'), gC = grant('consortium'), gP = grant('company');
+  check('budget day by shares: the agency\'s home pays, consortium members each pay their part, a private company gets nothing', gA > 5 && gC > 5 && gP === 0, `agency +${gA.toFixed(1)}M · consortium +${gC.toFixed(1)}M · company +${gP.toFixed(1)}M`);
+  // government work follows the state shareholders
+  fresh(); api.chooseStart('consortium'); const R7 = api.rng(3), cl = new Set(); for (let i = 0; i < 200; i++) cl.add(api.pickClient('gov', R7));
+  check('government contracts come from whoever holds the state stakes', [...cl].sort().join() === Object.keys(api.own().st).sort().join(), `clients ${[...cl].sort().join(', ')}`);
+  // below the floor: an agency is topped up; a company gets a rescue decision, and a loan is repaid from half of income
+  fresh(); api.chooseStart('agency'); P.funds = 5; api.floorCheck(); const agencyFunds = P.funds;
+  fresh(); api.chooseStart('company'); P.funds = 5; api.floorCheck(); const dec = P.decisions[0];
+  api.resolveDecision(dec.id, 'loan'); const debt0 = api.own().debt; api.income(20);
+  check('below the floor: the agency is topped up; the company must choose, and a loan is repaid from half of all income', agencyFunds === 25 && dec && dec.kind === 'rescue' && Math.abs(debt0 - 26) < 1e-9 && Math.abs(api.own().debt - 16) < 1e-9 && Math.abs(P.funds - 35) < 1e-9,
+    `loan of 20M → debt ${debt0}M; a 20M payout repays 10M (debt ${api.own().debt}M) and banks 10M`);
+  fresh(); api.chooseStart('company'); P.funds = 5; api.floorCheck(); api.resolveDecision(P.decisions[0].id, 'stake');
+  check('…or a state rescue: 30% goes to the rescuing power, and the company now has a state stake', Math.abs(api.stateShare() - 0.3) < 1e-9 && api.ownKind() === 'company with a state stake' && P.funds === 55, `${api.ownKind()}, funds ${P.funds}M`);
+  // privatization: a 25% stake sold for cash, the agency becomes part-privatized
+  fresh(); api.chooseStart('agency'); const f3 = P.funds; api.offerDecision({ kind: 'ipo', amt: 40, title: 't', text: '', opts: [] }); api.resolveDecision(P.decisions[0].id, 'yes');
+  check('privatization: selling 25% brings cash and a part-private program', Math.abs(api.own().pv - 0.25) < 1e-9 && P.funds === f3 + 40 && api.ownKind() === 'agency, part-privatized' && Math.abs(sum() - 1) < 1e-9, `${api.ownKind()}: state ${(api.stateShare() * 100).toFixed(0)}%, private 25%`);
   fresh(); P.day = 0; P.rel = {}; P.op = {}; api.HOOK.news = () => {};
 }
 
