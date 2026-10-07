@@ -568,6 +568,24 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## Ground stations (planning branch, 2026-10-07)
+
+- **Sites:** the pad, plus stations bought at cities, each power's two biggest. **At home** 10M. **Abroad** 20M plus a 2M
+  lease every 100 days, and only with permission: relations with home must be friendly (> 0.2) and their opinion of us
+  ≥ 45. The panel gives the reason when they refuse. **If relations turn tense (< −0.2), they shut the station**
+  ("…and keeps the furniture").
+- **What they're for, measured.** On a planet this small one pass comes soon: a station at the target only brought
+  one picture down 0.3 h sooner, because at 300 km a satellite sees a cap ~40° across and the pad is in view on most
+  orbits. The real value is **contact time**. A polar satellite at 300 km has the pad in view 9–10% of the time;
+  with five well-spread stations, ~54% (equatorial 200 km: 20% → 34%; polar 800 km: 18% → 79%). So **imagery sales
+  now follow contact time:** 0.12M per day at full contact, about 4M a year with the pad alone versus 26M with a
+  network. A foreign station (20M + 8M a year) pays for itself, and the network becomes a map of your foreign
+  relations.
+- Pictures for contracts come down at whichever station is in view first; the headline names it. Stations are drawn
+  on the map (squares).
+- Checks (§17, 4 new, 91 total): build rules and costs, the lease and the closure, delivery via a nearer station,
+  contact time with and without a network.
+
 ## Orbital registry: persistent satellites, camera and antenna (planning branch, 2026-10-07)
 
 The first slice of the parts-and-missions plan: things left in orbit stay there and keep working.

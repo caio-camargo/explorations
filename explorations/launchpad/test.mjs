@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {satAt,absTh,cloudAt,sunUp,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -584,6 +584,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // a single radial part (×1, no decoupler): the old format couldn't say this; the physics takes the off-axis mass as is
   const one = D.newShip({ v: 2, root: { k: 'pod', c: [{ k: 't4', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }, { k: 't1', at: { y: 2, a: 0, n: 1 }, c: [] }] }] } });
   check('asymmetric ×1 radial: assembles, centre of mass moves off the axis toward it', one.parts.length === 4 && one.cm[0] > 0.05 && one.events.length === 1, `CoM x ${one.cm[0].toFixed(3)} m`);
+}
+
+// 17. Ground stations (planning branch): home ones are a purchase; foreign ones need permission, pay a lease, and close
+// when relations sour; a better-spread network brings pictures down sooner.
+{
+  const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3), fp = C[far].power.i;
+  fresh(); const f0 = P.funds, a = api.buildStation(home);
+  P.rel[api.pairKey(H, fp)] = -0.1; const b = api.gsCheck(far);
+  P.rel[api.pairKey(H, fp)] = 0.5; P.op[fp] = 60; const c = api.buildStation(far);
+  check('ground stations: home is a purchase; abroad needs friendly relations and opinion, and costs more', a.ok && !b.ok && c.ok && P.funds === f0 - 10 - 20 && api.stationsAll().length === 3,
+    `${C[home].name} (home) ${a.cost}M; ${C[far].name}: refused at −0.1 ("${b.why}"), built at +0.5 for ${c.cost}M`);
+  P.leasePaid = 0; api.advanceDays(100); P.rel[api.pairKey(H, fp)] = 0.5;
+  const leased = P.leasePaid; P.rel[api.pairKey(H, fp)] = -0.6; api.advanceDays(1);
+  check('a foreign station pays its lease every 100 days, and is shut when relations turn tense', leased >= api.GS_LEASE - 1e-9 && api.stationsAll().length === 2 && news.some(t => /shuts our ground station/.test(t)),
+    `lease ${leased.toFixed(1)}M over 100 days; closed at −0.6`);
+  // delivery: the same polar satellite and target, with only the pad vs with a station near the target
+  const run = withStation => { fresh(); if (withStation) { P.rel[api.pairKey(H, fp)] = 0.9; P.op[fp] = 80; api.buildStation(far); }
+    const r0 = TELLUS.R + 300e3, v = Math.sqrt(TELLUS.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    P.active = [{ id: 9, type: 'image', src: 'com', client: fp, p: { ci: far, res: 5, pay: 20, dur: 999 }, deadline: 999 }];
+    for (let k = 0; k < 3000; k++) { api.advanceDays(0.005); if (!P.active.length) return P.day; if (withStation) P.rel[api.pairKey(H, fp)] = 0.9; } return Infinity; };
+  const tPad = run(false), tNet = run(true);
+  check('a station near the target brings the picture down sooner than waiting for a pass over the pad', isFinite(tNet) && tNet < tPad,
+    `${C[far].name}: pad only, day ${tPad.toFixed(1)}; with a station there, day ${tNet.toFixed(1)} (${((tPad - tNet) * 6).toFixed(1)} h sooner)`);
+  // contact time, and the imagery income that follows it
+  const earn = withNet => { fresh(); if (withNet) for (let k = 1; k < api.POWERS.length; k++) { const ci = C.map((c, i) => ({ c, i })).filter(x => x.c.power.i === k).sort((a, b) => b.c.pop - a.c.pop)[0].i;
+      P.rel[api.pairKey(H, k)] = 0.9; P.op[k] = 80; api.buildStation(ci); }
+    const r0 = TELLUS.R + 300e3, v = Math.sqrt(TELLUS.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    P.funds = 1000; P.cycle = 0; let inc = 0; for (let k = 0; k < 20; k++) { const f = P.funds; api.advanceDays(5); for (let j = 1; j < api.POWERS.length; j++) P.rel[api.pairKey(H, j)] = 0.9; } return { contact: P.sats[0].contact, n: api.stationsAll().length }; };
+  const lone = earn(false), net = earn(true);
+  check('contact time: a polar satellite sees the pad a small share of the time; a station network multiplies it (and the imagery income with it)', lone.contact < 0.2 && net.contact > 2.5 * lone.contact,
+    `pad only ${(lone.contact * 100).toFixed(0)}% → ${net.n} stations ${(net.contact * 100).toFixed(0)}%; sales ≈ ${(0.12 * lone.contact * 400).toFixed(0)}M vs ${(0.12 * net.contact * 400).toFixed(0)}M a year`);
+  fresh(); P.stations = []; api.HOOK.news = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }
