@@ -1621,6 +1621,50 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
+
+Built from the economy's epoch plan: utility satellites that keep doing a job. Weather and TV are flight missions (read by
+`outThere`). Disaster watch and navigation are **world missions** (`world:true`, `okW()`), checked between flights by
+`utilTick(d)`, one call at the end of `worldTick`. The payout moved out of `missionEval` into `missionComplete(M, rec)` so
+world missions pay the same way; the behaviour is unchanged (all prior checks, and `career.mjs` runs).
+
+| Mission | Pays | What the sim checks |
+|---|---|---|
+| Weather satellite | 80M | camera + antenna in a stable orbit inclined **80–100°** (from an equatorial pad: a plane change) |
+| TV for the capital | 120M + **0.4M/day** | antenna in a **stationary orbit** (period = one day to 0.2 %, e < 0.01, i < 2°) at least **15° up in the capital's sky**; it pays daily while it stays there (`isTV`, a looser 1 % tolerance) and the news says when it drifts out |
+| Disaster watch | 60M | disaster pictures delivered **within 12 h** of the call (`imageDone` now records the delivery time) |
+| Navigation constellation | 150M | Transit-style: from **95 %** of (place, moment), a satellite with an antenna passes **≥ 10° up within 30 min** |
+
+- **Stationary orbit after the rescale.** The old notes said "about 2,870 km". For the 8 h day it's r = 6,942 km, **5,668 km up**.
+  The capital is the home power's biggest city (Kamar, 42° S, in the default world). From there the satellite sits ~40° up.
+- **Drift is the maintenance.** A satellite 0.2 % off in speed (0.6 % in period) doesn't count for the mission, and it leaves the
+  capital's sky after **25 days** (`isTV` allows 1 %). A precise insertion pays for much longer.
+- **Navigation metric, measured.** "Three in view everywhere 95 % of the time" (a GPS-like fix) needs **~12 satellites** in 4
+  planes at 3,000 km (93 %); 9 in 3 planes gets 71 %. That's too much for one-satellite-per-flight 1960s play. Transit (the
+  real 1960s system) fixed from a single pass, so the metric is the wait for a pass. Polar orbits at 1,000 km, fix within 30 min:
+
+  | satellites | coverage |
+  |---|---|
+  | 1 | 40 % |
+  | 2 in 2 planes | 68 % |
+  | 3 in 3 planes | 78 % |
+  | 5 in 5 planes | 83 % |
+  | **4 in 2 planes, 2 per plane, half an orbit apart** | **99.4 %** |
+  | 6 in 3 planes at 500 km | 100 % |
+
+  With a 1 h wait, three at 1,000 km already give 99.9 % (too easy on a planet this small). **Phasing within a plane matters more
+  than adding planes**, which is a lesson the mission teaches by itself.
+
+**Checks** (`test.mjs` §24, 4):
+- polar weather counts, equatorial doesn't
+- TV from a stationary orbit over Kamar pays 4.0M in 10 days; the sloppy one isn't counted and drifts out after 25 days
+- disaster pictures delivered 0.9 h after the call (polar camera at 300 km, a city near the pad)
+- navigation: 2 satellites give 60 %, 4 phased in two planes give 99.8 %
+
+**Open:** weather forecasts of upper winds at max-q (the plan's idea; there's no wind model yet); sun-synchronous orbits (no J2);
+launching several satellites in one flight (the registry registers one vessel per flight; a dispenser part would make
+constellations practical); TV audience by city size.
+
 ## "Out there" missions: the Selene ladder and Nyx (2026-10-07, bodies session)
 
 Caio: the economy session works at the high level, so specific missions get built here, from its epoch plan. This slice is epochs
