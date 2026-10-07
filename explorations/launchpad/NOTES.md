@@ -625,6 +625,8 @@ detail, and got a design pass:
 - **Docking port, RCS quad, gas bottle** (arrived during this pass): a capture ring with a probe, guide vanes and latches;
   four little heat-tinted bells on an outrigger, on the same thrust axes the physics uses (`RCS_OFF`); a painted bottle
   with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
+- **Claw:** a drive housing with a hazard band, a turntable and contact plate, three jointed fingers with hinge knuckles,
+  hydraulic rams and padded tips, all inside the original envelope.
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 
