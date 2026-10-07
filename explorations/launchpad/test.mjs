@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -382,8 +382,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `apex ${(R.apex / 1e3).toFixed(1)} km, landed ${s.landed}, max-q ${(R.sciQ / 1e3).toFixed(1)} kPa, ${(api.t / 60).toFixed(1)} min`);
   check('recovered air samples mark the bands flown through as known', bands.length >= 2 && bands[0] === 0 && bands.every((k, i) => k === i) && bands.length === Math.min(7, Math.floor(R.apex / 1e4) + 1),
     `bands ${bands.map(k => k * 10 + '–' + (k + 1) * 10).join(', ')} km`);
-  const before = api.certOf('sparrow'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
-  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', before === api.CERT0 && kc > api.CERT0 && fc > api.CERT0 && tc > api.CERT0 && api.certOf('condor') === api.CERT0 && Math.max(kc, fc, tc) < 1,
+  const before = api.certOf('sparrow'), finC0 = api.certOf('fins'), tnkC0 = api.certOf('t1'), cd0 = api.certOf('condor'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
+  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', kc > before && fc > finC0 && tc > tnkC0 && api.certOf('condor') === api.cert0('condor') && Math.abs(cd0 - api.cert0('condor')) < 0.01 && Math.max(kc, fc, tc) < 1,
     `sparrow ${(kc * 100).toFixed(0)}%, fins ${(fc * 100).toFixed(0)}%, tank ${(tc * 100).toFixed(0)}%, condor (didn't fly) ${(api.certOf('condor') * 100).toFixed(0)}%`);
   // the impact predictor's spread: wide while the air is unknown, gone where it's been sampled
   const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
@@ -631,7 +631,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
   const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
-  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3), fp = C[far].power.i;
+  const C = api.CITIES, H = api.HOME, home = C.findIndex(c => c.power.i === H && len(sub(c.u, [1, 0, 0])) > 0.05), far = C.findIndex(c => c.power.i !== H && c.u[0] < -0.3 && api.relBase(H, c.power.i) > 0), fp = C[far].power.i;   // a friendly power: relations drift toward the alignments over the 100 days
   fresh(); const f0 = P.funds, a = api.buildStation(home);
   P.rel[api.pairKey(H, fp)] = -0.1; const b = api.gsCheck(far);
   P.rel[api.pairKey(H, fp)] = 0.5; P.op[fp] = 60; const c = api.buildStation(far);
@@ -854,7 +854,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.HOOK.news = () => {};
 }
 
-// 20. Industrial independence (economy): who makes which parts, imports and the grey market, young-industry certification.
+// 20. Satellites in 3D (sats session): registration keeps the vessel's shape and its attitude in the orbital frame.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {} });
+  const qm = (a, b) => [a[3] * b[0] + a[0] * b[3] + a[1] * b[2] - a[2] * b[1], a[3] * b[1] - a[0] * b[2] + a[1] * b[3] + a[2] * b[0], a[3] * b[2] + a[0] * b[1] - a[1] * b[0] + a[2] * b[3], a[3] * b[3] - a[0] * b[0] - a[1] * b[1] - a[2] * b[2]];
+  const orb = (r, v) => { const pro = norm(v), nrm = norm(api.cross(r, v)); return api.qFromBasis(pro, nrm, api.cross(pro, nrm)); };
+  api.t = 0; const s = api.newShip(['ant', 'cam', 'petrel']); api.S = s;
+  s.landed = false; s.rec.launched = true; P.day = 3; s.rec.day0 = 3; s.rec.cost = 0; const r0 = TELLUS.R + 300e3; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)];
+  const h = Math.SQRT1_2; s.q = [0, 0, h, h];   // nose (+y) turned to point down at the ground
+  api.t = 50; api.missionEnd(s); const q = JSON.parse(JSON.stringify(P.sats[0]));   // as it comes back from the save
+  const look = T => { const [r, v] = api.satAt(q, T), Y = api.qrot(qm(orb(r, v), q.qo), [0, 1, 0]); return dot(Y, norm(r)); };
+  const per = 2 * Math.PI * Math.sqrt(r0 ** 3 / TELLUS.mu), dn0 = dot(api.qrot(s.q, [0, 1, 0]), norm(s.r)), dn1 = look(q.epoch + per / 4), dn2 = look(q.epoch + 2.6 * per);
+  check('a registered satellite keeps its shape and holds its attitude in the orbital frame (nose-down stays nose-down)',
+    q.shape.length === s.parts.filter(p => p.on).length && q.shape.every(o => api.PARTS[o.k]) && P.sats[0].id === s.rec.satId && Math.abs(dn0 + 1) < 1e-9 && Math.abs(dn1 + 1) < 1e-9 && Math.abs(dn2 + 1) < 1e-9,
+    `${q.shape.length} parts kept; nose·up at registration ${dn0.toFixed(3)}, ¼ orbit later ${dn1.toFixed(3)}, 2.6 orbits ${dn2.toFixed(3)}`);
+  Object.assign(P, { sats: [], satN: 0 });
+}
+
+// 21. Industrial independence (economy): who makes which parts, imports and the grey market, young-industry certification.
 {
   const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
   const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {} }); };

@@ -140,6 +140,10 @@ as its own repo.
 - [x] Exploration 4 — evolution arena ([`explorations/evolution/`](explorations/evolution/)) — heritable genomes, live selection, measured r/K divergence
 - [x] Exploration 5 — Journey Gravity ([`explorations/journey-markov/`](explorations/journey-markov/)) — absorbing Markov chain over real anonymized journeys; **publishing needs Caio's sign-off** (aggregate work data)
 
+- [x] Exploration 6 — NeuroMechFly ([`explorations/neuromechfly/`](explorations/neuromechfly/)) — EPFL’s
+      *Drosophila* digital twin driven locally via flygym/MuJoCo; 3 leg-coordination schemes × 4
+      terrains. The blind CPG *falls into* gaps that the equally blind Walknet walks over.
+
 ### Up Next
 - [ ] Fireflies open threads (chimeras, Kuramoto coupling, sound) at the bottom of `fireflies/NOTES.md`
 - [ ] Dots open threads, best-specified first, at the bottom of `dots-friend-enemy/NOTES.md`

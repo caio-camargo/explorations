@@ -170,6 +170,9 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
     n = int(run_time / sim.timestep)
     thorax_idx = fly.get_bodysegs_order().index(BodySegment("c_thorax"))
     pos = np.full((n, 3), np.nan, dtype=np.float32)
+    # commanded stance per leg: every controller turns adhesion on exactly when a
+    # leg's phase is outside its swing window, so this is the gait's intended duty factor
+    stance = np.zeros((n, 6), dtype=bool)
 
     needs_obs = controller_kind == "hybrid"
     t0 = time.perf_counter()
@@ -180,6 +183,8 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
         else:
             action = controller.step()
         apply_locomotion_action(sim, fly.name, action)
+        if action.adhesion_onoff is not None:
+            stance[i] = action.adhesion_onoff
         sim.step_with_profile()
         pos[i] = sim.get_body_positions(fly.name)[thorax_idx]
         if record_video:
@@ -207,6 +212,9 @@ def run_one(controller_kind, terrain, seed, run_time, record_video=False, diffic
         z_min=float(np.nanmin(pos[:, 2])),
         z_max=float(np.nanmax(pos[:, 2])),
         z_std=float(np.nanstd(pos[:, 2])),
+        duty_factor=float(stance.mean()),
+        legs_down_mean=float(stance.sum(1).mean()),
+        frac_under3_down=float((stance.sum(1) < 3).mean()),
         wall_s=wall,
         x_realtime=run_time / wall,
     )
