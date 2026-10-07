@@ -1927,6 +1927,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   and nationalism (a mood that rises with tension). Pick your power or play a random world; a security state's program
   can be cancelled by regime change. Fixed a leak-sign bug found in testing. `test.mjs` 124/124 after merging main.
   Merged to `main` (`7638f3e`).
+- **v1.26 (2026-10-07, economy worktree):** industrial independence: archetypes have a self-sufficiency level, parts
+  come in three tiers, anything home can't make is imported at ×1.5 from the best willing supplier or bought via
+  intermediaries at ×3 when none will sell (sanctions now reach hardware); a young industry's own parts start less
+  certified. The worktree registry had been pruned from another machine; restored this worktree's entry and redid the
+  merge. `test.mjs` 129/129 after merging main. Merged to `main` (`764f4fc`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
