@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.10.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1408,6 +1408,31 @@ Registered satellites used to exist only on the map; now you can fly past one.
 - Check (`test.mjs` §20): shape kept and JSON-safe, the marks hook gets the parts in shape order (fails if the hook call
   is removed); nose-down at registration is still exactly nose-down a quarter orbit
   and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
+
+### Rendezvous (sats session, 2026-10-07)
+
+Seeing a satellite isn't the same as reaching one. Now you can pick one as the target and fly to it.
+
+- **Choosing:** click a satellite's marker on the map (click again to clear), or **G** to cycle through the registry and
+  back to none. The target is per flight (`S.target`, the registry id); a revert or a new flight starts without one.
+- **Sim side** (`tgtOf`, `approach`, `progT`, next to the registry): `tgtOf(s)` is the target's state at program time and
+  the relative position and velocity. `approach(q, r, v, t0, span)` finds the closest approach between a Kepler state and
+  the target: a 240-step scan, then golden-section on the best bracket. The span is two of our orbits; sub-orbital or
+  escaping trajectories get none.
+- **Autopilot:** four more modes, shown only while there's a target: *Target*, *Anti-tgt* (toward/away), *Rel pro*, *Rel ret*
+  (along/against our velocity relative to it; *Rel ret* plus throttle is how you kill the last few m/s).
+- **Map:** the target's orbit in orange and always labelled; the closest approach on the current orbit (green: our point,
+  orange: its point, a line between them, distance and time) and on the plan after a maneuver node (white, `▸plan`).
+  Recomputed at most 4× a second of real time (`tgtCA`, cached by target and node), or at once when the node moves.
+- **HUD:** *Target* (distance, relative speed, closing or opening) and *Closest* (distance, time, relative speed there,
+  and the plan's). **Navball:** orange marks for the target and anti-target, pink for relative prograde and retrograde.
+  **Flight view:** the target's diamond shows at any distance, not just within 200 km.
+- Checks (`test.mjs` §21, on its own sim instance): the closest approach to a 320 km, 2° target matches a 0.5 s
+  brute-force scan (104.69 vs 104.72 km, same second), and the four modes point exactly where they say, falling back to
+  the hold when the target is gone. In the browser: a synthetic click on the map marker sets the target.
+- **Not yet:** docking or any contact (you fly past, or through, the satellite); target-relative closest approach beyond
+  two orbits (phasing over many revolutions); targeting the moon or debris; contracts that need a rendezvous
+  (inspection, repair, retrieval). Those are the natural next slices.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

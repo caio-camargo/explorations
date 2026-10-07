@@ -115,6 +115,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <tr><td>, . /</td><td>warp down / up / 1×</td></tr>
     <tr><td>M</td><td>map view · Tab cycles focus</td></tr>
     <tr><td>map click</td><td>place a maneuver node on your orbit</td></tr>
+    <tr><td>G · map click</td><td>cycle the target · click a satellite on the map to target it</td></tr>
     <tr><td>N · Del</td><td>node at next apoapsis · delete node</td></tr>
     <tr><td>drag · wheel</td><td>orbit camera · zoom</td></tr>
     <tr><td>R</td><td>revert (after crash / landing)</td></tr>
@@ -583,9 +584,13 @@ function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.
 function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
+const TGT_M=['tgt','antitgt','rpro','rretro'];
 function sasTarget(s){
   if(s.sasMode==='stab')return s.hold;
   if(s.sasMode==='node'){const I=nodeInfo(s);return I&&len(I.rem)>1e-3?norm(I.rem):s.hold}
+  if(TGT_M.includes(s.sasMode)){const T=tgtOf(s);if(!T)return s.hold;   // toward / away from the target; along / against our velocity relative to it
+    if(s.sasMode==='tgt'||s.sasMode==='antitgt'){const u=norm(T.dr);return s.sasMode==='tgt'?u:mul(u,-1)}
+    if(len(T.dv)<0.05)return s.hold;const u=norm(T.dv);return s.sasMode==='rpro'?u:mul(u,-1)}
   const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return s.sasMode==='pro'?pro:s.sasMode==='retro'?mul(pro,-1):s.hold;
   const nrm=norm(h),rad=norm(cross(s.v,nrm));
@@ -1578,6 +1583,16 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
   q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=s.cm.slice();R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
+// ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
+const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
+function tgtOf(s){const q=s.target!=null&&s.body===TELLUS&&(PROG.sats||[]).find(x=>x.id===s.target);if(!q)return null;
+  const[r,v]=satAt(q,progT(s));return{q,r,v,dr:sub(r,s.r),dv:sub(s.v,v)}}   // dr: from us to it; dv: our velocity relative to it
+// closest approach between a Kepler state (r0, v0 at program time t0) and satellite q over the next span seconds:
+// a coarse scan (240 steps), then golden-section on the best bracket. {t, d, vrel, p (ours), pt (its)} at that moment.
+function approach(q,r0,v0,t0,span){const N=240,d=t=>len(sub(kepler(r0,v0,t-t0,TELLUS.mu)[0],satAt(q,t)[0]));let bi=0,bd=Infinity;
+  for(let i=0;i<=N;i++){const x=d(t0+span*i/N);if(x<bd){bd=x;bi=i}}
+  let a=t0+span*Math.max(0,bi-1)/N,b=t0+span*Math.min(N,bi+1)/N;for(let k=0;k<50;k++){const m1=a+(b-a)*.381966,m2=b-(b-a)*.381966;if(d(m1)<d(m2))b=m2;else a=m1}
+  const t=(a+b)/2,[p,vs]=kepler(r0,v0,t-t0,TELLUS.mu),[pt,vt]=satAt(q,t);return{t,d:len(sub(p,pt)),vrel:len(sub(vs,vt)),p,pt}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
 function imageDone(c,sat,st){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);income(c.p.pay);PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);sat.imgs++;
@@ -2411,10 +2426,10 @@ $('bEditor').onclick=()=>{mode='editor';view='flight';$('editor').classList.remo
 $('bRevert').onclick=()=>{resetShip();view='flight';HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
 $('bHelp').onclick=()=>$('help').classList.toggle('hidden');
-const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver']];
+const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver'],['tgt','Target'],['antitgt','Anti-tgt'],['rpro','Rel pro'],['rretro','Rel ret']];
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
-  for(const[k,n]of SASM){const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
+  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
     if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');
@@ -2444,6 +2459,7 @@ addEventListener('keydown',e=>{
   else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
   else if(k==='/'){warpTo=null;warpIdx=0}
   else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%3;cam.mDist=[5,5,2.5][cam.focus]*TELLUS.R}
+  else if(k==='g')cycleTarget();
   else if(k==='n')nodeAtApoapsis();
   else if(k==='delete'&&S.node){S.node=null;HOOK.msg('Node deleted')}
   else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();view='flight';HOOK.msg('Reverted to launch')}});
@@ -2461,7 +2477,8 @@ cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX
     if(S.node&&!S.node.burning&&mapUI.node&&near(m,mapUI.node,11)){nDrag=true;drag=null}}});
 addEventListener('mouseup',e=>{
   if(!hDrag&&!nDrag&&downAt&&view==='map'&&mode==='flight'&&e.target===cv&&Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5){
-    const q=pickOrbit(toCv(e));if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
+    const st=(mapUI.sats||[]).find(x=>near(toCv(e),[x.x,x.y],9)),q=st?null:pickOrbit(toCv(e));if(st)setTarget(S.target===st.id?null:st.id);
+    if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
   drag=null;downAt=null;hDrag=null;nDrag=false});
 addEventListener('mousemove',e=>{
   if(hDrag){hDrag.cur=toCv(e);return}
@@ -2616,11 +2633,11 @@ function render(){
     gl.uniformMatrix4fv(m.uM,false,mat4([s,0,0],[0,s,0],[0,0,s],sub(p,camW)));gl.uniform1f(m.uGlow,Math.max(0,1.6*(1-a/4)));gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}
   gl.disable(gl.BLEND);gl.depthMask(true);
   // ---- 2D overlay
-  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];
+  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
-    for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;
+    for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
       else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=s;mapUI.handles=[];
         for(const[d,axis,sign]of L.axes){const q=project(add(L.p,mul(d,cam.mDist*0.06)));let ux=q?q[0]-s[0]:0,uy=q?q[1]-s[1]:0,ul=Math.hypot(ux,uy);
@@ -2632,6 +2649,7 @@ function render(){
       else if(L.mark==='city'){octx.beginPath();octx.arc(s[0],s[1],2.2,0,7);octx.fill()}
       else if(L.mark==='gs'){octx.strokeStyle=L.c;octx.lineWidth=1.5;octx.strokeRect(s[0]-3.5,s[1]-3.5,7,7)}
       else if(L.mark==='sat'){octx.beginPath();octx.moveTo(s[0],s[1]-4);octx.lineTo(s[0]+4,s[1]);octx.lineTo(s[0],s[1]+4);octx.lineTo(s[0]-4,s[1]);octx.closePath();octx.fill()}
+      else if(L.mark==='ca'){octx.strokeStyle=L.c;octx.lineWidth=2;octx.beginPath();octx.arc(s[0],s[1],5,0,7);octx.stroke()}
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
@@ -2650,8 +2668,8 @@ function render(){
       octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`impact · ${fmtD(d)}`,q[0],q[1]-12*k)}}
   if(mode==='flight'&&view!=='map'){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();
-    for(const q of PROG.sats||[]){if(S.rec&&S.rec.satId===q.id)continue;const p=satAt(q,tNow())[0],d=len(sub(p,me)),s=project(p);if(d>2e5||!s)continue;
-      octx.fillStyle=q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
+    for(const q of PROG.sats||[]){if(S.rec&&S.rec.satId===q.id)continue;const p=satAt(q,tNow())[0],d=len(sub(p,me)),s=project(p),tg=q.id===S.target;if(!s||d>2e5&&!tg)continue;
+      octx.fillStyle=tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
       if(d<300)continue;octx.fill();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${q.name} · ${fmtD(d)}`,s[0],s[1]-10*k)}}
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
@@ -2679,7 +2697,7 @@ function drawMap(VP,camW,labels){
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
   // Selene's orbit + SOI ring
   let prev=null;for(let i=0;i<=256;i++){const f=i/256*6.2832,p=[SELENE.a*Math.cos(f),0,-SELENE.a*Math.sin(f)];if(prev)seg(prev,p,[.5,.5,.55,.6]);prev=p}
-  for(const q of PROG.sats||[]){const[r,v]=satAt(q,tNow()),el=elements(r,v,TELLUS.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
+  for(const q of PROG.sats||[]){const[r,v]=satAt(q,tNow()),el=elements(r,v,TELLUS.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
   const mp=moonPos(simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(mp,[SELENE.soi*Math.cos(f),0,SELENE.soi*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}
   drawPatches(predCache.p,camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
@@ -2691,6 +2709,9 @@ function drawMap(VP,camW,labels){
   if(S.node){const I=nodeInfo(S),off=S.body===SELENE?mp:[0,0,0],plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
     drawPatches(plan,camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
     const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
+  // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
+  {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
+    labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
   if(out.length){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
@@ -2700,7 +2721,7 @@ function drawMap(VP,camW,labels){
     labels.push({p:cp,mark:'city',t:cam.mDist<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
-  for(const q of PROG.sats||[])labels.push({p:satAt(q,tNow())[0],mark:'sat',t:cam.mDist<TELLUS.R*10?q.name:'',c:q.cam?'#9fe8ff':'#aab4c0'});
+  for(const q of PROG.sats||[]){const tg=q.id===S.target;labels.push({p:satAt(q,tNow())[0],mark:'sat',id:q.id,t:tg||cam.mDist<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
   if(impSpread&&impact)for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},{p:[0,TELLUS.R*1.15,0],t:'Tellus',c:'#9ab'},{p:add(mp,[0,SELENE.R*1.3,0]),t:'Selene',c:'#9ab'})}
@@ -2726,6 +2747,8 @@ function drawNavball(){
     if(kind==='pro'){nctx.beginPath();nctx.moveTo(sx-12,syy);nctx.lineTo(sx-7,syy);nctx.moveTo(sx+7,syy);nctx.lineTo(sx+12,syy);nctx.moveTo(sx,syy-7);nctx.lineTo(sx,syy-12);nctx.stroke()}
     else{nctx.beginPath();nctx.moveTo(sx-5,syy-5);nctx.lineTo(sx+5,syy+5);nctx.moveTo(sx+5,syy-5);nctx.lineTo(sx-5,syy+5);nctx.stroke()}};
   const sr=speedRef(S);if(len(sr.v)>0.5){const p=norm(sr.v);mark(p,'#d8f05a','pro');mark(mul(p,-1),'#d8f05a','retro')}
+  {const T=tgtOf(S);if(T){const u=norm(T.dr);mark(u,'#ffb347','pro');mark(mul(u,-1),'#ffb347','retro');   // the target, and our velocity relative to it
+    if(len(T.dv)>0.05){const w=norm(T.dv);mark(w,'#ff7ad9','pro');mark(mul(w,-1),'#ff7ad9','retro')}}}
   if(S.node){const I=nodeInfo(S);if(len(I.rem)>1e-3){const d=norm(I.rem);if(dot(d,Y)>0){const sx=NS/2+dot(d,Z)*Rr,sy=NS/2+dot(d,X)*Rr;
     nctx.strokeStyle='#5f9dff';nctx.lineWidth=3;nctx.beginPath();nctx.arc(sx,sy,8,0,7);nctx.stroke();nctx.beginPath();nctx.moveTo(sx-13,sy);nctx.lineTo(sx+13,sy);nctx.moveTo(sx,sy-13);nctx.lineTo(sx,sy+13);nctx.stroke()}}}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
@@ -2813,6 +2836,18 @@ function payloadRows(){const R=S.rec,out=[];if(!R)return out;
     out.push(['Instruments',`telemetry live · max-q ${(R.sciQ/1000).toFixed(1)} kPa${b.length?` · air samples ${b[0]*10}–${(b[b.length-1]+1)*10} km`:''}`])}
   if((PROG.active&&PROG.active.length)||R.cdone.length)out.push(['Contracts',[...R.cdone.map(t=>`<span class="ok">✔ ${t}</span>`),...(PROG.active||[]).map(c=>`<span class="dim">${cTitle(c)}</span>`)].join(' · ')]);
   return out}
+// ---- rendezvous UI: choosing a target, the closest-approach cache, the HUD rows
+function setTarget(id){S.target=id;caCache=null;if(id==null&&TGT_M.includes(S.sasMode))S.sasMode='stab';renderSAS();const T=tgtOf(S);HOOK.msg(T?`Target: ${T.q.name}`:'Target cleared')}
+function cycleTarget(){const L=(PROG.sats||[]).map(q=>q.id);if(!L.length){HOOK.msg('Nothing in orbit to target');return}const i=L.indexOf(S.target);setTarget(i+1<L.length?L[i+1]:null)}
+let caCache=null;   // recomputed at most 4× a second of real time, or at once when the target or the node changes
+function tgtCA(){const T=tgtOf(S);if(!T||S.landed||!S.alive)return null;const key=S.target+'|'+(S.node?S.node.t+','+S.node.dv.join():''),now=performance.now();
+  if(caCache&&caCache.key===key&&now-caCache.at<250)return caCache;
+  const T0=progT(S),orbit=(r,v,t0)=>{const el=elements(r,v,TELLUS.mu);return el.e<1&&el.pe>TELLUS.R?approach(T.q,r,v,t0,2*el.period):null};
+  let plan=null;if(S.node){const I=nodeInfo(S);if(I)plan=orbit(I.rN,add(I.vN,I.rem),T0+I.t-simT)}
+  return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan}}
+function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv,T.dr)/Math.max(d,1e-9),ca=tgtCA();
+  return[['Target',`${T.q.name} · ${fmtD(d)} · <span class="dim">rel</span> ${len(T.dv).toFixed(1)} m/s${Math.abs(cl)>0.05?` <span class="dim">${cl>0?'closing':'opening'}</span> ${Math.abs(cl).toFixed(1)}`:''}`],
+    ['Closest',ca&&ca.now?`${fmtD(ca.now.d)} <span class="dim">in ${fmtT(ca.now.t-progT(S))} at ${ca.now.vrel.toFixed(0)} m/s</span>${ca.plan?` · plan ${fmtD(ca.plan.d)}`:''}`:'—']]}
 function updateHUD(){
   const b=S.body,rl=len(S.r),h=rl-b.R,el=elements(S.r,S.v,b.mu),vs=dot(S.v,S.r)/rl,srf=len(sub(S.v,surfVel(b,S.r)));
   let sit;if(!S.alive)sit='<span class="bad">destroyed</span>';else if(S.landed)sit='landed';else if(b.atm&&h<b.atm)sit='flying';
@@ -2828,7 +2863,7 @@ function updateHUD(){
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
     ['Impact',impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
     ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
-    ...payloadRows(),
+    ...tgtRows(),...payloadRows(),
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
