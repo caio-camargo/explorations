@@ -670,16 +670,18 @@ GPU timer, alternating against `main` (two rounds): view 4 close-up 2.7–3.8 vs
 
 ## The launch complex (2026-10-07, visuals session)
 
+> Axes: the pad frame is `siteFrame` (x east, y up, **z south**). Early drafts of this section had north and south swapped.
+
 Slice 3 of the visuals work. Next to the detailed rocket, the old pad (a red pole, three white cylinders, a drum) read as
 a placeholder. Only the **contents** of the `PAD` mesh changed. Where it is drawn, its height (`siteH`) and the
 ground-shader apron (`padGround`) belong to the terrain session and were not touched. Everything sits at or above y = 0
-in the pad's frame (x east, y up, z north), so the rocket still stands at the origin on the ground the physics knows.
+in the pad's frame (x east, y up, z south), so the rocket still stands at the origin on the ground the physics knows.
 Each building stands on a concrete slab that `padGround` already paints.
 
 ### What's there (early-era Cape style)
 - **Launch table:** the concrete disc, a dark steel flame grate under the engines with eight radial bars, four hold-down
   posts at r 3.4 m.
-- **Flame channel:** low concrete walls on a sooted floor running north. The ground can't be dug (it is raymarched in the
+- **Flame channel:** low concrete walls on a sooted floor running south. The ground can't be dug (it is raymarched in the
   sky shader), so the trench is suggested from above ground.
 - **Umbilical tower** east of the rocket: an orange lattice, 3 m square and 32 m tall (`lattice()`: corner posts, a girder
   ring every ~2.5 m, zig-zag bracing). It has an elevator shaft, a cap platform, a hammerhead jib with a hook line, a
@@ -688,7 +690,7 @@ Each building stands on a concrete slab that `padGround` already paints.
 - **Deluge water tower,** a **domed concrete blockhouse** with a band of periscope slots and an antenna mast (with a cable
   run to the pad), a **compressor building**, and four **floodlight poles** around the apron.
 - New helpers `tube(A, B, r)` (a cylinder between two points) and `lattice()`. About 9,800 vertices in all, a static mesh.
-- `refView(15)` shows the whole complex from the south-west, `16` the tower and table. In the editor the rocket floats:
+- `refView(15)` shows the whole complex from the north-west, `16` the tower and table. In the editor the rocket floats:
   the builder lifts the ship while you build. `refView(11)` shows it standing on the grate in flight.
 
 ### Revised layout (same day, after Caio's review)
@@ -700,7 +702,7 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   - The domed **blockhouse** moved up-range, about 230 m west, onto its own mesh slab, with a spur road down to the
     access road and a concrete cable trench to the pad.
   - The **mobile service structure** (four lattice columns on rail trucks, work decks, roof, bridge crane) is rolled back
-    80 m south on twin rails that run to the launch table. Its height is the tower's + 6 m.
+    80 m north on twin rails that run to the launch table. Its height is the tower's + 6 m.
   - **High-pressure gas bottle racks** sit on the old blockhouse slab.
   - A **ground deluge tank** with a pump house replaces the elevated water tower.
   - **Two lightning masts** with a catenary wire.
@@ -712,13 +714,18 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
   the pad four hold-down arms from the table posts to clamps above the engines (in the editor they become a launch stool),
   and swing arms reaching from the tower to the widest thing at each arm's height, boosters included. At liftoff the arms
   fold back and the hold-downs go (a pad rebuild keyed on the rig). The builder's code is untouched.
+- **Moving parts and night lights.** The swing arms, the hold-downs and the service gantry are now separate meshes in their own frames (`buildRig`), drawn each frame by `drawPadRig` with a matrix:
+  - **Gantry:** parked in the editor. A flight that starts on the pad starts with it in service position around the rocket (the open front faces it; its rails moved out to ±10.5 m to clear the tower), and it rolls 80 m back over 14 s.
+  - **At liftoff (`S.mkLiftT`):** the arms swing back to the tower face, top first, 1.5 s each, 0.25 s apart, and the hold-downs tip out 0.9 rad in 0.6 s.
+  - **Floodlights,** from dusk (sun 4° above the pad horizon) to dawn: four warm point lights in the mesh shader (`uFl`/`uFlI`) light the rocket, tower and buildings; the lamp faces and ground pools are additive discs in the glow pass (`PAD_GLOW`), because the ground belongs to the sky shader.
+  - **Hooks in `render()`:** three one-line calls (`padLights`, `drawPadRig`, `drawPadGlow`). The pad's own draw call (terrain's) is unchanged, and the rig uses the same frame (`padPF` reads `WORLD.siteH`).
+  - **Pipes:** those crossing the rails became flush covered trenches, so the gantry's trucks can roll over them.
+  - `refView(18)` is the gantry in service at t = 0, `19` the same at night.
 - **Bare metal reads blue under this sky.** Steel props (bottle racks, decks) reflected the sky gradient and looked
   painted blue. Use painted (non-metal) colours for big plain steel surfaces, and keep metal for thin members.
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Nothing animates: the arms snap from connected to folded at liftoff, and the gantry doesn't roll.
-- Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
 ## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)

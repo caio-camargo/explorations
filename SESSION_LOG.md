@@ -2063,3 +2063,15 @@ The rocket no longer hovers in the builder: the pad holds it with hold-down arms
 ### Next steps
 - [ ] Pad: floodlights lit at night; animate the arms swinging back and the gantry rolling
 - [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)
+
+## 2026-10-07 — Launchpad pad animation + floodlights (visuals session, cont.)
+
+### Summary
+The pad's moving parts are separate meshes animated by matrix (`buildRig`, `drawPadRig`). The service gantry starts each
+flight from the pad in service position and rolls 80 m back in 14 s. At liftoff the swing arms swing back top first and the
+hold-downs tip out. Floodlights from dusk to dawn: four point lights in the mesh shader, plus additive lamp faces and ground
+pools. Merged main twice (plumes views; then terrain's launch sites as data): the rig and lights now follow `curSite()` in
+its `siteFrame`. Found that the pad's z axis is south, not north, and corrected the comments and notes. Merged to main and pushed.
+
+### Next steps
+- [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench (terrain's ground)
