@@ -728,6 +728,256 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.24 — terrain and geography: a generated world with real height (2026-10-07, terrain session)
+
+Tellus used to be a perfect sphere with a noise coastline and shading-only biomes. Now it's a generated world with real
+height: plates, mountain ranges, climate and biomes. The physics lands on it, and the sky shader ray-marches the same
+height function, so what you see is where you touch down (to millimetres near the camera). This is **slice A** of the
+geography plan below. Slices B–E (launch sites, stations, recovery, biome science) are designed but not built.
+
+### The plan agreed with Caio (geography → gameplay)
+Decisions: **real height** (not shading only); **regenerate the world freely**; **terrain first, then launch sites**;
+after the rescale, **keep features at their km size** and use **20 plates**.
+
+- **A. Terrain (done here).** One height function shared by CPU and GPU; biomes; mountains, fjords, volcanoes, salt
+  flats, wetlands; the physics uses the height.
+- **B. Launch sites as data (next).** Several sites per power, generated to suit the geography: flat, coastal, with a
+  clear downrange. The chosen site sets the start position, the pad, the rotation bonus and the minimum inclination.
+  Numbers at today's scale (R 1,274 km, 8 h day, µ = 1.592e13):
+  - Free rotation speed east: **278 m/s × cos(lat)**.
+  - A westward launch (when a neighbour lies downrange, like Israel's) costs about **2 × 278 m/s more**.
+  - Stationary orbit at **5,670 km**, where orbital speed is 1,515 m/s. The plane change from latitude φ costs
+    2·1515·sin(φ/2): **264 m/s from 10°, 369 from 14°, 395 from 15°, 604 from 23°, 1,257 from 49°**.
+  - Other levers:
+    - Downrange safety reuses the existing range safety and drop-zone incidents.
+    - Polar launches need a clear corridor to the south.
+    - Inland sites can't take stages wider than rail allows; coastal sites get big stages by barge.
+    - An equatorial site can be leased from another power, depending on relations; later, a sea-launch platform ("the
+      sea is no one's").
+    - Site weather can scrub launches (the cloud field is real data: `cloudAt`).
+  - Code that needs generalising: the pad is hard-wired at planet-fixed +X in about six places (`newShip`, pad
+    drawing, `uPadL`, `PAD_GS`, `makeCities`, and `makePowers`, which is the economy session's code). The world is
+    currently *turned* so that the one site lands at +X. Several sites need a `SITES` list and a site per flight.
+- **C. Ground stations with terrain.** Main already has stations (planning branch; see "Ground stations" below).
+  Contact is an elevation test against the sea-level sphere: `dot(norm(sub(pf, st.u·R)), st.u) ≥ STA_MIN` in the
+  daily tick. To add:
+  - Stations at their ground height, `st.u·(R+terrainH)`.
+  - **Horizon masking** by sampling `terrainH` along the line of sight (mountain-top stations see more).
+  - Plasma blackout during re-entry (the glow already exists).
+  - A station's site choice becomes a real trade-off.
+- **D. Recovery.** Splashdowns are already flagged (`s.water`).
+  - Sea recovery needs a ship near your coast and costs days.
+  - Land landings need a softer touchdown.
+  - Landing in another power's territory means they keep or return the hardware, depending on relations.
+  - Recovery distance feeds refurbishment.
+- **E. Biome science and events.** `biomeAt(pf)` gives `{id,name,h,T,wet}`.
+  - Ground tracks matter: imaging a latitude needs an inclination at least that high.
+  - Aurora sounding rockets favour high-latitude powers.
+  - Precision landers into a biome: glacier, volcano, salt flat.
+  - Cyclones only over warm sea; fires in dry forest; floods on deltas; eruptions on volcanic arcs.
+  - Hand these to the economy session's contract board rather than writing contracts here.
+
+### How it works
+**The baked map (CPU, at load).** `makeWorld(seed)` fills 1024×512 equirectangular Float32 fields, about 8 km per
+texel at the equator:
+- `E`: base height in metres.
+- `M`: ruggedness 0–1.
+- `V`: volcanism.
+- `S`: salt flat.
+- `T`: °C at the surface of `E`.
+- `W`: wetness.
+- `U`: an upper bound on the final height, dilated ±2 texels.
+
+The steps:
+1. **Plates.** `NPLATES`=20 seeds, 45% continental, each rotating about a random Euler pole. Each texel finds its
+   nearest plate after a noise warp, and the distance to the nearest bisector. Precomputed pair normals make that a
+   dot product per plate.
+2. **Boundaries.** Converging continent–continent makes a high range plus a plateau behind it. Ocean under continent
+   makes a coastal range with volcanoes. Ocean–ocean makes an island arc. Diverging makes a rift (or a mid-ocean
+   ridge). Plus old worn ranges from ridged noise. Every boundary width is in the 600 km planet's radians times
+   `WK` = 600 km / R, so **features keep their km size whatever R is**.
+3. **Low-frequency fields.** The warp, the continent noise and the worn ranges live on a half-resolution grid and
+   are interpolated. That cut generation from 2.7 s to 0.4–0.75 s.
+4. **Climate.**
+   - `T` = 27 − 52·(|lat|/90)^2.2 − 6.5 K/km. That is about Earth's zonal means: 27 °C at the equator, 13 at 45°,
+     3 at 60°, −25 at the pole.
+   - Wetness: air is carried along each latitude row by the prevailing wind (easterly below 30° and above 60°,
+     westerly between). **East is decreasing `atan2(z,x)`**: the surface moves toward −Z. Air picks up moisture over
+     the sea (300 km e-fold), dries inland (3,500 km) and rains out going uphill (rain shadows).
+   - All of that is scaled by the big circulation: a wet equator, dry ~25°, stormy ~47°, dry poles.
+   - Then 5 smoothing passes.
+5. **Masks.** Salt flats are dry, flat basins below their 5×5 mean. `U` is the base plus the most the detail can add.
+
+**The height at a point.** `hgtGen(g)` on the CPU and `hgtG(g,k)` in GLSL:
+- The map's E/M/V/S read with a **quadratic B-spline** over 3×3 texels. Bilinear gave 8 km lighting facets; see the
+  negative results.
+- Plus 9 octaves of integer-hash value noise from 25 km down to 90 m (`HF0`), used two ways from the same octaves:
+  - ridged multifractal, `RIDGE_A`=4200 m × ruggedness, crests over valleys `VALLEY`=1800 m deep;
+  - plain fbm hills, ±380 m, ±880 m near coasts, so the coastline is fractal.
+- Fjords: glacial valleys at |lat| > ~45° in rugged, low coastal ground. A warped noise isoline is carved 1,500 m
+  deep, so it floods near the coast and leaves a valley inland.
+- Volcano cones: one per ~42 km cell (`VOLF`), ~5 km radius, 1.8–3.4 km high, with a summit crater.
+
+`terrainH(pf)` adds the pad levelling (flat to 2 km, blended out by 4.5 km). `groundAlt`/`groundR` give the ground
+under a point (the sea where h < 0). `biomeAt` classifies with the same thresholds the shader blends between.
+
+**CPU/GPU agreement is designed in, not hoped for:**
+- The hash is integer (`ih3`, Math.imul / uint), so the lattice values are bit-identical.
+- The map is read with `texelFetch` and the same weights. Hardware filtering has 8-bit weights.
+- GLSL `atan`/`asin` are replaced by `patan`, a range-reduced series good to ~1e-7 rad. The built-ins are good to
+  ~1e-5, which moved the texel lookup by decimetres, and metres on steep slopes.
+- `sst()` replaces GLSL `smoothstep` wherever edges are reversed. That's undefined in the spec, though NVIDIA happens
+  to do the obvious thing.
+- Feature constants are rounded once (`toFixed(5)`) and injected into the shader from the SIM values.
+
+**Physics.**
+- `newShip` stands on the levelled pad.
+- `groundCheck` tests both ends of the vessel against `groundR`. Above `TERR_TOP` + length it returns at once.
+- Landing on a slope over `TOPPLE` (0.42 rad, 24°) topples the vessel: a crash.
+- `s.water` is set on splashdown.
+- `stepDebris` and `fall()` (the impact predictor and drop zones) stop at the ground.
+- `TERR_TOP` comes from the data (max of `U`, 12.1 km for seed 13).
+- Selene is still a smooth sphere.
+
+**Rendering, in the sky shader.** `march(d,hh,tS)`:
+1. Intersect the shell from sea level to R+`TERR_TOP`.
+2. Step in clear air with only the `U` bound. That's one filtered fetch, no terrain evaluation, so most sea and sky
+   pixels are cheap.
+3. Near the ground, evaluate `terr()` with only as many octaves as needed:
+   - an octave bound `(m·2730+300)·2^(1−k)` covers what the dropped octaves could add;
+   - octaves finer than ~2 pixels are dropped, and so are those beyond 2 km (`octT`: 9 octaves within 2 km, easing
+     to 5 by 20 km);
+   - step lengths trust the local ruggedness, since lowland slopes are gentle;
+   - then 5 bisection steps.
+4. Altitude along the ray is `(t²−2tb+cc)/(|p|+R)`, with `cc` from the CPU in float64, so it's centimetre-accurate.
+5. A quarter-resolution **pre-pass** (`PDEPTH`, R32F target) marches first. The full-res pass starts just short of the
+   nearest coarse hit among its 3×3 neighbours.
+
+Shading:
+- Normals come from the height field over ~1.5 pixels.
+- Biome colours blend over the climate map (`uClim`, RGBA16F: T, W, U).
+- Rock on steep faces; snow and ice only below ~35°; basalt on volcanic arcs; salt pans; wetlands; beaches.
+- The sea is coloured by real depth.
+
+**Placement on the ground.**
+- The pad mesh and the launch complex stand at `WORLD.siteH`.
+- City buildings stand on the terrain under each one (none in the water).
+- The ship's ground shadow and the camera clamp use the real ground.
+- The construction screen (`builder.js`, one line) hangs the ship over the pad's height.
+
+### The world (seed 13, R 1,274 km)
+- **Land:** 37% of the surface, with 20 plates.
+- **Heights:** peaks to ~9.3 km; the base map ranges from −5.8 to +9.3 km.
+- **The pad:** at 157 m on the tip of an equatorial peninsula. The coast is 25–50 km east, then open ocean for 700+
+  km. The world is turned so the pad is at planet-fixed +X; it's at longitude −79.6° in the generator's own frame.
+- **Biomes:** sea 63% · grassland 7.5 · tundra 4.9 · taiga 4.1 · ice 4.0 · hot desert 3.8 · savanna 3.3 · cold desert
+  2.7 · temperate forest 2.4 · rainforest 1.9 · steppe 1.1 · alpine 1.1 · volcanic 0.3. Salt flats and wetlands
+  are effectively 0 since the wetter climate (open thread).
+- **Powers** (the economy session's `makePowers`, on this land):
+  - Ordun's land starts at 10°S and Haval's at 14°N: **two powers can't reach the equator**.
+  - The other three straddle it.
+  - Territories are still big Voronoi cells. Smaller ones, or land owned by no one, would sharpen the asymmetry.
+    That's the economy session's call.
+- **Seed choice:** surveyed seeds 1–30 for an equatorial east-coast site and powers cut off from the equator. Seed 12
+  was the runner-up.
+
+### Measurements
+- **CPU vs GPU height** (`terrainProbe()`, 4,096 random directions plus 1,024 near the pad plus 1,024 in mountains):
+  - global: median 1.7 mm, p99 3 cm, max 14 cm;
+  - near the pad: max 2 cm;
+  - mountains: max 10 cm.
+  - Before `patan`: 0.1–0.4 m, more on steep slopes.
+  - Before the integer hash, a float hash could disagree by whole lattice values: tens of metres.
+- **GPU cost**, RTX 3050 laptop, 1024×768 canvas, the game's own timer (`gpuMs`), whole frame:
+  - pad view 4.2 ms;
+  - coast from 1.5 km 3.2 ms;
+  - rugged hills at a grazing angle 8.8 ms;
+  - orbit about 2.5 ms;
+  - without terrain: ~2.0–2.6 ms.
+  - So terrain roughly doubles the sky pass near the ground, and more in grazing rugged views.
+  - Timings in the hidden in-app pane swing ±15% between identical runs; compare only within one session.
+- **Generation:** `makeWorld` 0.4–0.85 s; the SIM loads in 0.8–1.4 s (it was 0.7 s at 600 km with the old land mask).
+- **Tests:** 116/116, including the existing suites, unchanged in what they check.
+
+### Negative results and traps (worth reading before touching this)
+- **A float hash can't be shared between CPU and GPU.** `fract(sin…)`-style hashes depend on whether the GPU fuses
+  multiply-adds, so whole lattice values differ. The old land mask survived only because coastline margins hid it.
+  Height can't hide it: use integer hashes.
+- **GPU `atan`/`asin` are approximate (~1e-5 rad).** That moved texel lookups enough for decimetre errors. A
+  hand-written `atan2` fixed it at no measurable cost.
+- **Bilinear height → visible facets.** It's continuous, but its slope kinks at every texel edge, and lighting shows
+  slope. Two attempts at a fix:
+  - A **cubic** B-spline over 4×4 texels with loops and dynamic `vec4` indexing **doubled the frame cost**.
+  - A **quadratic** B-spline (C1 is enough for normals), 9 fetches, unrolled, costs nothing measurable. It never
+    overshoots, so the `U` bound stays valid.
+- **The march is bounded by its slowest pixel group, not by octave count.** Cutting octaves (level of detail ×6 or
+  ×12) barely moved the cost. Warp divergence near the horizon dominates, where some rays creep along just above the
+  ground. What worked:
+  - the clear-air bound;
+  - ruggedness-aware step lengths;
+  - longer minimum steps at distance;
+  - the pre-pass (about 10%).
+  - The hash finalizer and the 9th octave were within noise.
+- **The near-field detail had an old 15% brightness step.** Ground colour was multiplied by `.85+.3·det·fade`
+  inside 4 km and not at all outside. It only became visible as a large arc on the new flat plains. The bug dated
+  from v1.10; it's now ×1 at fade 0.
+- **Climate first came out far too cold.** 2 °C at 44° snowed over every hill. It's now fitted to Earth's zonal means.
+  Mid-latitude interiors also came out mostly desert until inland drying slowed (2,200 → 3,500 km) and base wetness
+  rose.
+- **A uniform 8 km snow dome reads as a white blob.** Snow on steep faces plus 0.8 albedo through the tone curve
+  erased the relief. Rock now shows on faces over ~35° and snow is 0.6. The relief itself was too gentle: 22° at
+  most over 100 m, now `RIDGE_A` 4200.
+- **East is decreasing longitude** in this codebase's `atan2(z,x)`. The first winds and site search had it backwards.
+- **Tests can depend on geography without saying so.** After the regeneration, the foreign-station lease test's first
+  foreign city belonged to a power drifting hostile within the 100 days. It now picks a city of a friendly power.
+- **The merge with main** needed main's new `cloudAt` back on the float `h3/vn/fbm` port, which the terrain had
+  replaced. They're restored next to `cloudAt`.
+- **Tooling traps in the in-app preview:**
+  - When the pane is hidden, `computer` screenshots return a stale frame and `requestAnimationFrame` stalls. Capture
+    the canvas yourself instead (`toDataURL`, then POST to a local endpoint).
+  - Nesting your own `TIME_ELAPSED` query inside the game's breaks its timer. Read `gpuMs` instead.
+  - The first frame after swapping a shader program is garbage.
+  - The browser caches `builder.js`: fetch with `{cache:'reload'}` after editing it.
+
+### Files and tools
+- `index.html`:
+  - SIM: "the world" block (`ih3`/`tn`, `makeWorld`, `wSpl`/`wBil`, `hgtGen`, `siteSearch`, `terrainH`,
+    `groundAlt`/`groundR`, `biomeAt`, `TERR_TOP`/`terrainSlope`).
+  - `groundCheck`, `stepDebris`, `fall`.
+  - SKY_FS: `patan`, `wTexUV`, `hgtG`, `terr`, `octF`/`octT`, `march`, `coarseStart`, `tellus`.
+  - JS: `WORLD_TEX`, `PDEPTH`/`depthTarget`, the sky-pass setup in `render()`, `cityMesh`, pad and shadow placement.
+- `terrain-probe.js` (load it into the page like `views.js`):
+  - `terrainProbe()` measures CPU/GPU height agreement. Rerun it after any change to the height function on either
+    side.
+  - `overView(lat, lon, alt, yaw, pitch, dist, hour)` puts the camera over any spot at a local hour.
+  - `gpuTime()` times frames, but conflicts with the game's own timer; prefer reading `gpuMs` after ~20 renders.
+- **Seed survey:** load the SIM block in node with `WSEED` replaced. Report `WORLD.siteFound`/`siteH`, each power's
+  latitude range via `powerAt` on a 2–4° grid, and biome shares via `biomeAt`. Render maps from `biomeAt` per pixel.
+  The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
+
+### Next session: where to pick up
+1. **Launch sites (slice B).** See the plan above for the design and numbers. Start with a `SITES` list in the world
+   block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
+   latitude. Then a site per flight, and replace the +X assumptions.
+   - The pad levelling becomes per site: `terrainH` and the shader's `terr` (a uniform array of sites).
+   - Coordinate with the builder session (the site picker in the construction screen) and the economy session
+     (`makePowers` and `PAD_GS` assume the pad at +X; site ownership and leases).
+2. **Cost of low grazing views** (8.8 ms at 1024×768 over rugged hills).
+   - Ideas: a temporal reuse of last frame's depth; a cheaper hash (exactness only matters near the camera, so
+     distant octaves could come from a 3D noise texture with hardware filtering); fewer octaves beyond ~5 km.
+   - Check in a real browser; the in-app pane's timings are noisy.
+3. **Look.**
+   - The coast is smoother than wanted.
+   - The pad's levelled disc shows as a faint terrace from altitude.
+   - High ranges are almost all ice (right at 7–8 km, but monotonous).
+   - Salt flats and wetlands vanished with the wetter climate (re-tune their masks).
+   - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
+   - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
+     slope (unconfirmed).
+4. **Stations with terrain (C), recovery (D), biome science (E):** see the plan above.
+5. **The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
+   in play.
+
 ## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
 
 Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
@@ -1513,6 +1763,9 @@ restartable upper stage, docking port.
   planet-fixed +X.
 - Vessel axes: Y = nose, X = belly (east on the pad), Z = south on the pad. The navball shows
   screen-up = −X and screen-right = +Z.
+- The world: `WORLD` (baked maps) + `terrainH(pf)` (metres above the sea; the sea is the sphere R) + `biomeAt(pf)`.
+  The sky shader marches the *same* height (`hgtG`/`terr`); after any change to the height function on either side,
+  load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.24 for how, and for the geography plan (slices B–E).
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.
@@ -1522,8 +1775,9 @@ restartable upper stage, docking port.
 1. ~~Maneuver nodes~~ done in v1.4. Next on that line: several nodes in a chain, nodes beyond an SOI change, and a
    finite-burn correction (aim the burn so its *centroid* hits the impulse) to recover the 0.8 %.
 2. ~~Re-entry heating~~ done in v1.7. Next on that line: conduction between neighbouring parts, and heating on an engine's own plume.
-3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
-   and GPU (ray-march only near the surface) is the next real engineering problem.
+3. ~~Terrain height~~ done in v1.24 (generated world, shared CPU/GPU height, physics on it). Next on that line: launch
+   sites as data, stations with horizon masking, recovery, biome science (§ v1.24 "Next session"), and the cost of
+   low grazing views.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
    (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20, ~~canted
    engines~~ done in v1.22, ~~core↔booster aero interference~~ (Newtonian shadowing) done in v1.23. Next on that line: truly
