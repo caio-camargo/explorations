@@ -1211,6 +1211,37 @@ Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy
 
 Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
 controls on hardware).
+## The logbook: discovered facts, and an interface that ages (planning branch, 2026-10-07)
+
+**Idea (Caio):** the reference numbers should be *discovered*, derived from real game data. The first flight out of the
+atmosphere records the Δv it took; the first orbit, the best Δv for that, keeping the design. The interface changes
+by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission planning, with its graphics, can follow.
+
+**Built (first slice):**
+- **Facts measured by flights** (`LOGF`, `logNote`): Δv to leave the atmosphere, Δv to low orbit, orbital period (first
+  orbit), highest point, Δv to reach Selene, Δv to land on Selene. The flight record now sums the Δv actually spent
+  (thrust/mass over every powered step). Each entry keeps *who* (the design's name: a preset's, or a stable short
+  "Design XXXX"), *which flight* and *when*. Records only improve; the last three values stay as history.
+- **Records keep the design and the flight:** the design is stored with the record, and the app attaches that flight's
+  autopilot tape. "Copy this design" / "LOAD DESIGN" puts it in the builder and installs the record flight as that
+  design's autopilot (if it has none), so a record can be studied and flown again.
+- **The builder's hint reads the logbook:** "Low orbit: 4,412 m/s (best, Orbiter)" once known; "unknown, nobody has made it
+  yet" before. The tools only know what the program knows.
+- **Eras:**
+  - **Program notebook** (graph paper, handwriting, struck-through old records, "???" for the unknown) until something
+    orbits.
+  - Then **PROGRAM LOG — TERMINAL 1** (green phosphor, scanlines, "NO DATA").
+  - A "modern look" checkbox (kept per browser) overrides either.
+- Checks (§18, 4 new, 128 total). Seen end to end in the app: a Passenger flight logs space at 3,095 m/s and its
+  145 km apex, with its 7-op tape.
+
+**Next along this line:**
+- More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
+- More eras: typewritten reports with stamps, early colour.
+- **The map's look following the era:** pencil trajectories on graph paper, then vector CRT. Mission planning UI
+  follows the same arc.
+- Gating tools by what is known: a transfer planner that needs a measured Selene transfer first.
+
 ## The planet's size: a scale study and the rescale (2026-10-07)
 
 **The question (Caio):** was Tellus too small? It was a copy of Kerbin's numbers (600 km, 9.81 m/s², 6 h day, 70 km

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {relBase,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
+return {eraOf,designName,LOGF,relBase,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -852,6 +852,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('regime change cancels a security state\'s program: defect or go private, and doing nothing leaves a private remnant', offers === 'defect,hire' && api.own().pv === 1 && /Space Collective/.test(api.own().name) && !P.cancelled,
     `offers: ${offers}; after 45 days: ${api.ownKind()} "${api.own().name}"`);
   fresh(); api.HOOK.news = () => {};
+}
+
+// 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
+{
+  const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  // a real flight to space (the Passenger preset, booster dropped at burnout) records the Δv it spent and the design
+  fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
+    if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
+    if (stg === 1 && !arm && dot(s.v, norm(s.r)) < 0) { api.stage(s); arm = true; } api.advPhys(s); }
+  api.missionEnd(s); const L = P.log;
+  check('logbook: a flight to space records the Δv it actually spent, who flew it, and the design; its apex too', L.space && L.space.v > 1000 && L.space.v < s.rec.dv + 1e-9 && L.space.by === 'Passenger' && !!L.space.stack && L.apex && Math.abs(L.apex.v - s.rec.apex) < 1 && logged.includes('space'),
+    `space: ${L.space && L.space.v.toFixed(0)} m/s by ${L.space && L.space.by} (flight total ${s.rec.dv.toFixed(0)}); apex ${L.apex && (L.apex.v / 1e3).toFixed(0)} km`);
+  // orbit records: the first sets it (with the period), a worse one changes nothing, a better one replaces it and keeps history
+  const orbitWith = (dv, st = ['sci', 'petrel']) => { api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; x.rec.launched = true; x.rec.dv = dv;
+    const r0 = TELLUS.R + ATM + 50e3; x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; api.advRails(x, 60, 1000); api.missionEnd(x); };
+  orbitWith(4321); const first = { ...L.orbit }, per = L.period.v.p; orbitWith(4500); const after2 = L.orbit.v; orbitWith(4200, ['sci', 'kestrel']);
+  check('records only improve: a costlier orbit leaves the record alone, a cheaper one replaces it and the old value is kept; the period is set once',
+    first.v === 4321 && after2 === 4321 && L.orbit.v === 4200 && L.orbit.hist.join() === '4321' && L.period.v.p === per && /^Design [0-9A-Z]{1,4}$/.test(L.orbit.by),
+    `orbit 4321 → (4500 ignored) → 4200 by ${L.orbit.by}; period ${(per / 60).toFixed(1)} min, unchanged`);
+  check('names: a preset design is named after the preset; any other design gets a stable short name', api.designName(api.PRESETS.Orbiter) === 'Orbiter' && api.designName(['sci', 'kestrel']) === api.designName(['sci', 'kestrel']) && api.designName(['sci', 'kestrel']) !== api.designName(['sci', 'petrel']));
+  const e1 = api.eraOf(); P.done.beeper = { flight: 1 };
+  check('the logbook\'s era follows the program: a notebook until something orbits, then a terminal', e1 === 1 && api.eraOf() === 2);
+  fresh(); api.HOOK.logged = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }
