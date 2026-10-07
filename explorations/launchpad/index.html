@@ -2825,7 +2825,7 @@ function partBody(out,p){
     case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
-    case'rfin':fin(out,o,p.phi,0,d.span,h,.035,C.W);break;
+    case'rfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.G],[.5,.2,C.G],[.5,.3,C.W]],o);
       for(let k=0;k<3;k++){const a=k*2.0944;rbox(out,[x+Math.cos(a)*.38,y+.34,z+Math.sin(a)*.38],.02,.05,.08,C.Y,a)}break;
     case'claw':lathe(out,[[.35,0,C.D],[.35,.22,C.G],[.24,.27,C.G],[.24,.3,C.D]],o);
@@ -2835,10 +2835,13 @@ function partBody(out,p){
       rbox(out,[x+n[0]*d.off,y+h/2,z+n[2]*d.off],d.off,.09,.07,C.G,p.phi);for(const dd of[[0,1,0],[0,-1,0],t,mul(t,-1)])tube(out,e,madd(e,dd,-.07),.02,C.D,6,true)}break;
     case'gas':lathe(out,[[0,0,C.W],[.11,.03,C.W],[.17,.12,C.W],[.17,.48,C.W],[.11,.57,C.W],[0,.6,C.W]],[x+Math.cos(p.phi)*d.off,y,z+Math.sin(p.phi)*d.off],16,[false,false]);break;
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
-    case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.G],[.625,.44,C.G],[.625,.44,C.D],[.625,.5,C.D]],o);
-      lathe(out,[[.16,0,C.D],[.16,.12,C.D],[.1,.12,C.GL],[0,.13,C.GL]],[x,y+.25,z+.62],14);break;
-    case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);box(out,[x,y+.55,z],.015,.25,.015,C.G);
-      lathe(out,[[.0,.0,C.W],[.22,.08,C.W]],[x,y+.78,z],16);break;
+    case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
+      box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
+      box(out,[x,y+.25,z-.61],.17,.12,.03,C.G);break;
+    case'ant':lathe(out,[[.625,0,C.D],[.625,.12,C.D],[.3,.3,C.W]],o);tube(out,[x,y+.3,z],[x,y+.62,z],.03,C.ST,8);
+      {const pr=[];for(let i=0;i<=8;i++){const r=.3*i/8;pr.push([r,.62+r*r/.6,[.84,.85,.86]])}lathe(out,pr,[x,y,z],24,[false,false]);
+       for(let k=0;k<3;k++){const t=k*2.094;tube(out,[x+.29*Math.cos(t),y+.76,z+.29*Math.sin(t)],[x,y+.79,z],.008,C.D,4)}tube(out,[x,y+.74,z],[x,y+.81,z],.03,C.D,8,true);
+       for(const t of[.8,3.9])tube(out,[x+.55*Math.cos(t),y+.1,z+.55*Math.sin(t)],[x+.8*Math.cos(t),y+.95,z+.8*Math.sin(t)],.008,C.D,4)}break;
     case'sci':lathe(out,[[.625,0,C.D],[.625,.07,C.D],[.625,.07,C.AU],[.625,.38,C.AU],[.625,.38,C.D],[.625,.45,C.D]],o);
       box(out,[x+.45,y+.6,z],.015,.25,.015,C.G);box(out,[x-.45,y+.55,z],.015,.2,.015,C.G);break;
     case'bio':lathe(out,[[.625,0,C.D],[.625,.08,C.D],[.6,.08,C.W],[.42,.85,C.W],[.42,.85,C.D],[.3,.88,C.D],[.3,1.0,C.D]],o);break;
