@@ -1659,6 +1659,7 @@ const LOGF=[
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
 function logNote(s,id,v){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log||{}),cur=L[id];
+  if(typeof v==='number'&&F.fmt===fmtDv&&v<1)return;   // a Δv record of nothing is a placed vessel, not a flight
   if(cur){if(F.best==='first')return;if(F.best==='min'&&!(v<cur.v-0.5))return;if(F.best==='max'&&!(v>cur.v*1.001+1))return}
   const e={v,day:PROG.day,flight:PROG.flights+1,by:designName(s.stack),hist:cur?[...(cur.hist||[]),cur.v].slice(-3):[]};
   if(F.design)e.stack=JSON.parse(JSON.stringify(s.stack));L[id]=e;if(s.rec)s.rec.newLog.push(id);
@@ -2731,6 +2732,7 @@ function render(){
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
+    const era=mapEra();if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels)L.c=eraInk(era,L.c)}
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
       else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=s;mapUI.handles=[];
@@ -2803,7 +2805,8 @@ function drawMap(VP,camW,labels){
   if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),plan=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});
     drawPatches(plan,camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
     const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
-  if(out.length){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
+  MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
+  if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);
     gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.drawArrays(gl.LINES,0,out.length/7);gl.disable(gl.BLEND)}
   if(impact){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
@@ -2919,6 +2922,54 @@ document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();cons
 // a record set by a flight keeps that flight's tape (from the pad), so the record can be flown again
 HOOK.logged=ids=>{const T=player?tapeCut(player):recTape;if(!T||!T.ops||T.ops.length>40000)return;
   for(const id of ids){const e=(PROG.log||{})[id];if(e&&e.stack)e.tape={v:T.v,ops:JSON.parse(JSON.stringify(T.ops))}}HOOK.save()};
+// ============================================================ program UI: the map by era (planning session)
+// The map ages with the program like the logbook: pencil on graph paper (orbits sketched in ink, the planet a hand-drawn
+// circle with its night side hatched), then a vector terminal (a glowing wireframe globe, phosphor-green orbits). Same
+// simulation, same camera, same clicks and handles: only the drawing changes. "Modern look" keeps the rendered map.
+let MAPSEGS=null;
+const mapEra=()=>view==='map'&&mode==='flight'&&!modernUI()?eraOf():0;
+const ERA_FONT={1:k=>`${15*k}px 'Segoe Print','Bradley Hand','Comic Sans MS',cursive`,2:k=>`${12*k}px ui-monospace,Consolas,monospace`};
+const inkCache=new Map(),inkCv=document.createElement('canvas').getContext('2d');
+function rgbOf(c){if(inkCache.has(c))return inkCache.get(c);inkCv.fillStyle='#000';inkCv.fillStyle=c;const f=inkCv.fillStyle;let r=0,g=0,b=0,a=1;
+  if(f[0]==='#'){r=parseInt(f.slice(1,3),16);g=parseInt(f.slice(3,5),16);b=parseInt(f.slice(5,7),16)}else{const m=f.match(/[\d.]+/g)||[];[r,g,b]=m.map(Number);a=m[3]!=null?+m[3]:1}
+  const v=[r,g,b,a];inkCache.set(c,v);return v}
+// warm colours (impacts, warnings, encounters) become red pencil / bright phosphor; everything else, ink / green
+function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
+  return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
+const wob=(x,y,i)=>[x+Math.sin(i*1.7+y*.05)*.7,y+Math.cos(i*2.3+x*.05)*.7];   // a hand's tremor, steady from frame to frame
+function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,1.5),o=octx;
+  // the sheet
+  if(era===1){o.fillStyle='#f6f0de';o.fillRect(0,0,W,H);o.strokeStyle='rgba(120,160,210,.28)';o.lineWidth=1;o.beginPath();
+    for(let x=0;x<W;x+=24*k){o.moveTo(x,0);o.lineTo(x,H)}for(let y=0;y<H;y+=24*k){o.moveTo(0,y);o.lineTo(W,y)}o.stroke()}
+  else{o.fillStyle='#020a03';o.fillRect(0,0,W,H);o.fillStyle='rgba(255,255,255,.025)';for(let y=0;y<H;y+=3*k)o.fillRect(0,y,W,1)}
+  const ink=era===1?'rgba(29,42,82,.85)':'rgba(57,255,110,.9)';
+  // the bodies: limb circles; the terminal adds a wireframe of latitude and longitude, the notebook hatches the night side
+  for(const[b,cen]of[[TELLUS,[0,0,0]],[SELENE,moonPos(simT)]]){const c=project(cen);if(!c)continue;const d=len(sub(cen,camW));if(d<=b.R)continue;
+    const rp=(H/2)*Math.tan(Math.asin(b.R/d))/tanY;if(rp<1.5){o.fillStyle=ink;o.beginPath();o.arc(c[0],c[1],2*k,0,7);o.fill();continue}
+    o.strokeStyle=ink;o.lineWidth=(era===1?1.6:1.2)*k;if(era===2){o.shadowColor='rgba(57,255,110,.8)';o.shadowBlur=6*k}
+    o.beginPath();for(let i=0;i<=72;i++){const t=i/72*6.2832,[x,y]=era===1?wob(c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t),i):[c[0]+rp*Math.cos(t),c[1]+rp*Math.sin(t)];i?o.lineTo(x,y):o.moveTo(x,y)}o.stroke();
+    const th=bodyTheta(b,simT),vis=p=>dot(sub(p,cen),sub(camW,p))>0,P=(lat,lon)=>add(cen,rotY([b.R*Math.cos(lat)*Math.cos(lon),b.R*Math.sin(lat),b.R*Math.cos(lat)*Math.sin(lon)],th));
+    const line=(fn,n)=>{let pv=null;for(let i=0;i<=n;i++){const w=fn(i/n);if(!vis(w)){pv=null;continue}const q=project(w);if(q&&pv){o.moveTo(pv[0],pv[1]);o.lineTo(q[0],q[1])}pv=q}};
+    o.beginPath();o.lineWidth=(era===1?1:.8)*k;o.strokeStyle=era===1?'rgba(29,42,82,.35)':'rgba(57,255,110,.45)';
+    if(era===2){for(let la=-60;la<=60;la+=30)line(t=>P(la*Math.PI/180,t*6.2832),64);for(let lo=0;lo<360;lo+=30)line(t=>P((t-.5)*Math.PI,lo*Math.PI/180),48)}
+    else line(t=>P(0,t*6.2832),64);   // the notebook just pencils in the equator
+    o.stroke();o.shadowBlur=0;
+    if(era===1){const sq=project(add(cen,mul(SUN,b.R)));if(sq){let sx=sq[0]-c[0],sy=sq[1]-c[1];const sl=Math.hypot(sx,sy)||1;sx/=sl;sy/=sl;
+      o.save();o.beginPath();o.arc(c[0],c[1],rp,0,7);o.clip();o.beginPath();o.rect(c[0]-rp-2,c[1]-rp-2,2*rp+4,2*rp+4);o.clip();
+      o.strokeStyle='rgba(29,42,82,.22)';o.lineWidth=1;o.beginPath();
+      for(let t=-rp*1.5;t<rp*1.5;t+=6*k){const x0=c[0]+t,y0=c[1]-rp*1.5,x1=c[0]+t+rp*1.2,y1=c[1]+rp*1.5;   // diagonal strokes, kept on the night half
+        for(let u=0;u<1;u+=.05){const xa=x0+(x1-x0)*u,ya=y0+(y1-y0)*u,xb=x0+(x1-x0)*(u+.05),yb=y0+(y1-y0)*(u+.05);
+          if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}
+      o.stroke();o.restore()}}}
+  // every line the map computed (orbits, plans, Selene, satellites, impact traces), in two inks
+  const segs=MAPSEGS;if(!segs||!segs.length)return;const warm=[],cool=[];
+  for(let i=0;i<segs.length;i+=14){const a=project(add([segs[i],segs[i+1],segs[i+2]],camW)),bb=project(add([segs[i+7],segs[i+8],segs[i+9]],camW));if(!a||!bb)continue;
+    const r=segs[i+3],g=segs[i+4],bl=segs[i+5],al=segs[i+6];((r>g+.15&&r>bl+.15)?warm:cool).push(a,bb,al)}
+  for(const[L,col]of[[cool,era===1?[29,42,82]:[57,255,110]],[warm,era===1?[176,54,42]:[214,255,120]]]){if(!L.length)continue;
+    o.lineWidth=(era===1?1.3:1.1)*k;if(era===2){o.shadowColor=`rgba(${col},.9)`;o.shadowBlur=5*k}
+    for(const pass of[.35,.7,1]){o.strokeStyle=`rgba(${col},${era===1?pass*.9:pass})`;o.beginPath();   // three alpha bands keep faint lines faint
+      for(let i=0;i<L.length;i+=3){const al=L[i+2];if(al>pass||al<=pass-.35&&pass>.35)continue;let[x0,y0]=L[i],[x1,y1]=L[i+1];if(era===1){[x0,y0]=wob(x0,y0,i);[x1,y1]=wob(x1,y1,i+1)}o.moveTo(x0,y0);o.lineTo(x1,y1)}o.stroke()}
+    o.shadowBlur=0}}
 function payloadRows(){const R=S.rec,out=[];if(!R)return out;
   if(R.bio){out.push(['Passenger',R.bioOK?`${R.pet} · <span class="${R.g>G_LIM*.8?'bad':R.g>G_LIM*.5?'warn':'ok'}">${R.g.toFixed(1)} g</span> <span class="dim">(max ${R.gMax.toFixed(1)}/${G_LIM})</span> · cabin <span class="${R.cabin>CABIN_MAX-10?'bad':'ok'}">${R.cabin.toFixed(0)} K</span> · air ${fmtT(AIR_S-simT)}`:`<span class="bad">${R.pet} ${R.bioWhy}</span>`])}
   if(S.parts.some(p=>p.on&&p.d.kind==='sci')){const b=Object.keys(R.bands).map(Number).sort((a,b)=>a-b);

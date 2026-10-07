@@ -1338,6 +1338,19 @@ by epoch: scrawled notes first, then a monochrome monitor, and so on. Mission pl
 - Checks (§18, 4 new, 128 total). Seen end to end in the app: a Passenger flight logs space at 3,095 m/s and its
   145 km apex, with its 7-op tape.
 
+**The map follows the era too** (same branch, same day):
+- **Notebook:** graph paper; each body a hand-drawn circle (a steady "tremor" so it doesn't shimmer) with the equator
+  pencilled in and the night side hatched; every map line in ink, with warm ones (impacts, encounters) in red pencil;
+  handwritten labels.
+- **Terminal:** black with scanlines; glowing vector wireframe globes (latitude and longitude every 30°, back side
+  hidden); phosphor-green lines and text.
+- How: every map line already goes through one buffer (`drawMap`/`drawPatches` → `out`). In an era map that buffer is
+  kept (`MAPSEGS`) and drawn on the 2D overlay after an opaque sheet, instead of the GL line pass; labels get the era's
+  font and ink. Camera, picking, nodes and handles are untouched.
+- Cost: +0.4–0.5 ms a frame (map at 1280 px: modern 2.2 ms, terminal 2.6, notebook 2.7). "Modern look" keeps the
+  rendered map.
+- Also: a Δv record of 0 is ignored (a placed vessel, not a flight), found by placing one by script.
+
 **Next along this line:**
 - More facts: heating limits survived and lost, max-q survived, Selene's gravity, ground-station contact.
 - More eras: typewritten reports with stamps, early colour.
