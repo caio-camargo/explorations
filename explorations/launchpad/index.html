@@ -1292,7 +1292,8 @@ const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Co
 const certOf=k=>Math.min(1,PROG.cert[k]??cert0(k));
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
-const NYX_TRACK_H=12;   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
+const NYX_TRACK_H=12,TV_RATE=0.4,NAV_MIN=0.95,NAV_WAIT=1800;
+const STAT_R=Math.cbrt(TELLUS.mu*(DAY_S/(2*Math.PI))**2);   // stationary orbit radius (a day-long period)   // hours of tracking where Nyx's pull matters, to weigh it (bodies session)
 const MISSIONS=[
   {id:'weather',pay:15,ep:1,name:'Above the weather',brief:'Fly an instrument package above 10 km and bring it home under a parachute.',
    win:'first data from above the clouds',ok:R=>R.recSci&&R.apex>=1e4},
@@ -1310,6 +1311,16 @@ const MISSIONS=[
    win:'a passenger has gone round the world and come home',ok:R=>R.landed&&R.bioOK&&R.bioOrbits>=1&&R.approved},
   {id:'lift1',pay:40,ep:2,req:['beeper'],name:'Heavy lift I',brief:'Half a tonne of mass simulators in a stable orbit.',win:'0.5 t in orbit',ok:R=>R.lift>=0.5-1e-9},
   {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
+  // epoch 3, utility (bodies session): satellites that do a job. Flight missions read outThere(); world ones (world:true)
+  // are checked between flights by utilTick(), from the registry.
+  {id:'weather',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change.',
+   win:'the whole planet\'s weather, every day',ok:R=>R.weather},
+  {id:'tv',pay:120,ep:3,req:['beeper'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there.`,
+   win:'the capital watches the launch on TV',ok:R=>R.tv},
+  {id:'diswatch',pay:60,ep:3,req:['weather'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
+   win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
+  {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments).`,
+   win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
   {id:'farside',pay:150,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
@@ -1333,9 +1344,33 @@ const MISSIONS=[
 function seesTellus(s){if(s.body===TELLUS)return true;const P=mul(bodyRel(s.body,simT)[0],-1),d=sub(P,s.r),L=len(d),u=mul(d,1/L),t=-dot(s.r,u);   // Tellus from the craft, past the body it's at
   return!(t>0&&t<L&&len(madd(s.r,u,t))<s.body.R)}
 const nearSide=(b,r)=>dot(norm(r),norm(mul(bodyRel(b,simT)[0],-1)))>0;   // a point on b facing Tellus
+// the capital: the home power's biggest city; does a satellite at r (absolute frame, program time T) sit 15° up in its sky?
+const capital=()=>CITIES.filter(c=>c.power&&c.power.i===HOME).sort((a,b)=>b.pop-a.pop)[0]||CITIES[0];
+function capSees(r,T,minEl=15){const c=capital(),pf=rotY(r,-absTh(T)),d=sub(pf,mul(c.u,TELLUS.R));return dot(norm(d),c.u)>=Math.sin(minEl*Math.PI/180)}
+const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
+  return el.e<0.02&&inc<3&&Math.abs(el.period/DAY_S-1)<0.01&&capSees(satAt(q,T)[0],T)};
+// navigation, Transit-style (a fix from one satellite's pass, as in the 1960s): the share of (place, moment) over the past
+// day from which a satellite with an antenna will be at least 10° up within NAV_WAIT. 64 places spread evenly over the
+// globe (a Fibonacci lattice), moments every 10 min. (Three in view at once almost everywhere would take ~12 satellites.)
+const NAV_PTS=Array.from({length:64},(_,i)=>{const y=1-2*(i+.5)/64,r=Math.sqrt(1-y*y),a=i*2.39996323;return[r*Math.cos(a),y,r*Math.sin(a)]});
+function navCover(T){const sats=satsUp().filter(q=>q.ant);if(!sats.length)return PROG.navCov=0;const s10=Math.sin(10*Math.PI/180),M=144,dtS=DAY_S/M,W=Math.round(NAV_WAIT/dtS);
+  const vis=NAV_PTS.map(()=>new Uint8Array(M+W));
+  for(let k=0;k<M+W;k++){const t=T-DAY_S+k*dtS,P=sats.map(q=>rotY(satAt(q,t)[0],-absTh(t)));
+    NAV_PTS.forEach((u,j)=>{for(const p of P){const d=sub(p,mul(u,TELLUS.R));if(dot(d,u)>=s10*len(d)){vis[j][k]=1;break}}})}
+  let ok=0;for(const v of vis){let next=Infinity;for(let k=M+W-1;k>=0;k--){if(v[k])next=k;if(k<M&&next-k<=W)ok++}}
+  return PROG.navCov=ok/(M*NAV_PTS.length)}
+// between flights: TV pays while it's in the capital's sky; world missions are checked
+function utilTick(d){const T=PROG.day*DAY_S;
+  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE);if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
+  for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
 function outThere(s,dt){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k),cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
+  // epoch 3: a working orbit for the job (stable, coasting)
+  if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
+    if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
+      if(cam&&inc>=80&&inc<=100)R.weather=true;
+      if(Math.abs(el.period/DAY_S-1)<0.002&&el.e<0.01&&inc<2&&capSees(s.r,progT(s)))R.tv=true}}
   // Selene: far-side photos (sunlit ground below, the side away from Tellus), downlinked in line of sight or carried home
   if(b===SELENE&&s.alive&&!s.landed&&cam&&!R.farPhoto){const u=norm(s.r);if(len(s.r)<3*b.R&&dot(u,SUN_DIR)>0.1&&dot(u,toT)<-0.3){R.farPhoto=true;HOOK.msg('Far side photographed'+(ant?': downlink when Tellus is back in sight':''))}}
   if(R.farPhoto&&!R.farSent&&s.alive&&(ant&&seesTellus(s)||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
@@ -1396,10 +1431,12 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
   outThere(s,dt);missionEval(s)}
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
-  if(M.ok(s.rec,s)){PROG.done[M.id]={flight:PROG.flights+1,day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
+  if(M.ok(s.rec,s))missionComplete(M,s.rec)}}
+// a mission is done: pay it, move opinion, tell the world. rec is the flight's record, or null for a world mission
+function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
     income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
-    if(racing&&lost==null)s.rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
-    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}}}
+    if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
+    HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);advanceDays(simT/DAY_S);
@@ -1565,7 +1602,7 @@ function worldTick(d){const R=rng(PROG.wseed=(PROG.wseed*1103515245+12345+Math.f
     else if(R()<1-Math.exp(-d*0.002)){r+=.25;HOOK.news(`${POWERS[i].name} and ${POWERS[j].name} sign a surprise friendship treaty`,'ok')}
     PROG.rel[key]=clamp(r,-1,1)}
   for(const p of POWERS)PROG.op[p.i]=opOf(p.i)+(50-opOf(p.i))*(1-Math.exp(-d/250));   // memory fades
-  econTick(d,R);satTick(d,R)}
+  econTick(d,R);satTick(d,R);utilTick(d)}
 // ---- contracts: repeatable, generated work from three sources (science, commercial, government), each client a power.
 // Offers arrive over program time and expire; the program holds a few at once (capacity grows with contracts done);
 // every accepted contract is checked against every flight, so one well-planned flight can complete several. Pay scales
@@ -2113,7 +2150,7 @@ function rcsStep(s,dt,tauB){const J=s.rcs&&rcsJets(s);s.rcsFire=0;s.rcsShots=[];
   // gas out of the fullest bottles first
   for(const p of s.parts.filter(p=>p.on&&p.res.gas>0).sort((a,b)=>b.res.gas-a.res.gas)){if(used<=0)break;const x=Math.min(used,p.res.gas);p.res.gas-=x;used-=x}}
 // paying out an imaging contract (the same terms a flight-completed contract gets)
-function imageDone(c,sat,st){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);income(c.p.pay);PROG.cdone=(PROG.cdone||0)+1;
+function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c.p.dis&&t!=null)(PROG.disDone=PROG.disDone||[]).push({posted:c.posted,t});PROG.active.splice(i,1);income(c.p.pay);PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);sat.imgs++;
   HOOK.news(`${sat.name} delivers via ${st?st.name:'the pad'}: ${cTitle(c)} for ${POWERS[c.client].name} (+${fmtM(c.p.pay)})`,'ok')}
 // between flights: satellites with cameras look for their targets (in reach of the camera, sharp enough, sunlit, clear),
@@ -2140,7 +2177,7 @@ function satTick(d,R){const sats=satsUp().filter(q=>q.cam);ensureBoard();
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
       if(q.ant&&q.pending.length)for(const st of GS){if(dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)<STA_MIN)continue;
-        for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
+        for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
 // ---- the logbook: what the program has *measured*. Nothing here is given: each fact is filled in by a real flight, with
 // who flew it and when, and improved by better flights (the old values kept, struck through in the notebook). Records
 // that a design achieved keep the design (and, through the app, the flight's autopilot tape), so a record can be loaded,
@@ -3304,8 +3341,8 @@ function resetShip(){if(S)missionEnd(S);heard.clear();impSpread=null;warpTo=null
 const $=id=>document.getElementById(id);
 // the construction screen lives in builder.js (BLD)
 function renderEditor(){BLD.init();editorChanged();renderSites()}
-function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
-  for(const ep of[1,2,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;
+function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 1 · sounding rockets',2:'Epoch 2 · first orbit',3:'Epoch 3 · satellites that work',4:'Epoch 4 · Selene',5:'Epoch 5 · the second moon'};let html='';
+  for(const ep of[1,2,3,4,5]){html+=`<div class="ep">${EP[ep]}</div>`;
     for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
