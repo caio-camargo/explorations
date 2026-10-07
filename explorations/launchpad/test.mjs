@@ -983,6 +983,34 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `errors ${[a1, a2, a3, a4].map(x => x.toExponential(0)).join(' ')}°; unknown target → hold: ${lost}`);
 }
 
+// 19. More logbook facts: what a hop measures on the way up and back; Selene's orbit and gravity; satellite contact.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = () => {};
+  const fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, stations: [], log: {} });
+  fresh(); api.t = 0; let s = api.newShip(api.PRESETS.Passenger); api.S = s; s.throttle = 1; api.stage(s); let stg = 0, arm = false, k = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && k++ < 600000) {
+    if (stg === 0 && s.rec.launched && s.thrust === 0) { api.stage(s); stg = 1; }
+    if (stg === 1 && !arm && dot(s.v, norm(s.r)) < 0) { api.stage(s); arm = true; } api.advPhys(s); }
+  api.missionEnd(s); const L = P.log;
+  const all = ['maxq', 'entry', 'heat', 'paxg', 'pad'].every(id => L[id]);
+  check('a hop to space and back logs max-q, its re-entry speed, the hottest skin, the passenger\'s ride and how close to the pad it came down',
+    all && L.maxq.v > 5e3 && L.entry.v > 500 && L.heat.v.T > 350 && typeof L.heat.v.part === 'string' && Math.abs(L.paxg.v - s.rec.gMax) < 1e-9 && Math.abs(L.pad.v - s.rec.landDist) < 1e-6,
+    all ? `max-q ${(L.maxq.v / 1e3).toFixed(1)} kPa, entry ${L.entry.v.toFixed(0)} m/s, hottest ${L.heat.v.T.toFixed(0)} K (${L.heat.v.part}), ${L.paxg.v.toFixed(1)} g, landed ${(L.pad.v / 1e3).toFixed(1)} km from the pad` : Object.keys(L).join(','));
+  // Selene: an orbit there sets its period; a lander sets the Δv to land and measures the surface gravity
+  fresh(); api.t = 0; let x = api.newShip(['pod', 'petrel']); api.S = x; x.landed = false; x.rec.launched = true; x.rec.dv = 6000; x.body = SELENE;
+  const rs = SELENE.R + 50e3; x.r = [rs, 0, 0]; x.v = [0, 0, -Math.sqrt(SELENE.mu / rs)]; api.advRails(x, 30, 1000);
+  api.t = 0; const y = api.newShip(['pod', 'wren']); api.S = y; y.body = SELENE; y.landed = true; y.pf = [SELENE.R - y.yBot, 0, 0]; y.rec.launched = true; y.rec.dv = 7800; api.advRails(y, 1, 1);
+  check('Selene: the first orbit there measures its period; the first lander logs its Δv and measures surface gravity (1.62 m/s²)',
+    P.log.sorbit && Math.abs(P.log.sorbit.v.p - 2 * Math.PI * Math.sqrt(rs ** 3 / SELENE.mu)) < 1 && P.log.land && P.log.land.v === 7800 && P.log.sg && Math.abs(P.log.sg.v - 1.62) < 0.02,
+    `period ${P.log.sorbit && (P.log.sorbit.v.p / 60).toFixed(1)} min at 50 km; g ${P.log.sg && P.log.sg.v.toFixed(3)} m/s²`);
+  // contact: a camera satellite's share of time in view of a ground station, reported between flights
+  fresh(); const r0 = TELLUS.R + 300e3, v0 = Math.sqrt(TELLUS.mu / r0);
+  P.sats.push({ id: 1, name: 'Lookout 9', epoch: 0, r: [r0, 0, 0], v: [0, v0, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 }); api.advanceDays(3);
+  check('a camera satellite reports its ground-station contact to the logbook, named after itself', P.log.contact && P.log.contact.by === 'Lookout 9' && Math.abs(P.log.contact.v - P.sats[0].contact * 100) < 1e-9 && !P.log.contact.stack,
+    `${P.log.contact && P.log.contact.v.toFixed(0)}% by ${P.log.contact && P.log.contact.by}`);
+  fresh();
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
