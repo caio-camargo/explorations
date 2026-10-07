@@ -905,7 +905,7 @@ function stage(s){
 function railsOK(s){
   if(!s.alive)return false;const thr=s.throttle>0&&activeEngines(s).length>0;
   if(s.landed)return!thr;
-  return!thr&&len(s.r)-s.body.R>physAlt(s.body)&&!hitNear(s)&&!rcsBusy(s)}   // near a satellite: physics, so contact is checked
+  return!thr&&len(s.r)-s.body.R>physAlt(s.body)&&!hitNear(s)&&!fleetNear(s)&&!rcsBusy(s)}   // near a satellite: physics, so contact is checked
 // Advance on rails. Kepler is exact, so the only reasons to sub-step are SOI changes, the atmosphere edge, and (near Nyx)
 // the perturbation, which is integrated in kick–drift–kick steps.
 function rails(s,dt){
@@ -2121,6 +2121,8 @@ function fleetContacts(dt){if(!FLEET.length)return;const all=[S,...FLEET],here=x
   for(let i=0;i<all.length;i++)for(let j=i+1;j<all.length;j++){const a=all[i],b=all[j];if(!here(a)||!here(b))continue;
     if(a.alive&&b.alive&&!a.landed&&!b.landed&&a.body===b.body&&dockTryV(a,b))continue;vesselContact(a,b,dt)}
   for(let i=FLEET.length-1;i>=0;i--)if(!FLEET[i].alive)FLEET.splice(i,1)}
+// another vessel of this flight within reach: physics, or rails would step them through each other (and never dock)
+const fleetNear=s=>s.alive&&!s.landed&&[S,...FLEET].some(v=>v&&v!==s&&v.alive&&!v.landed&&v.body===s.body&&len(sub(v.r,s.r))<HIT_NEAR);
 const flightRailsOK=()=>railsOK(S)&&FLEET.every(v=>!v.alive||railsOK(v));
 // switch: fly FLEET[i]; the vessel you leave keeps its throttle, SAS and RCS, and the flight record follows you
 // (the vessel you leave goes to the end of FLEET, so ] (take the first) and [ (take the last) cycle through them all)
