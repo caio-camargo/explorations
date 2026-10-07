@@ -1359,7 +1359,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)));advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)));advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1468,10 +1468,10 @@ const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
   if(d.kind==='engine')return d.thrust>=300?2:1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
-function sourceOf(k){const t=tierOf(k);if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
+function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
-const cert0=k=>sourceOf(k).how==='home'?CERT0-0.2*(1-indOf(HOME)):CERT0;
+const cert0=k=>{const x=sourceOf(k);return x.how==='home'?CERT0-0.2*(1-indOf(HOME)):x.how==='line'?CERT0-0.2*(1-x.line.m):CERT0};
 const TIER_NAME=['structure and tanks','small engines','big engines and avionics'];
 // ---- know-how: owning a part is not knowing how to use it. Per part type, two facets:
 //  · use: operational familiarity (PROG.kh[k].use), gained by flying it through regimes (each new regime teaches a
@@ -1484,7 +1484,7 @@ const TIER_NAME=['structure and tanks','small engines','big engines and avionics
 // flight flown), so plain physics in the sim is unaffected. Know-how belongs to the team: it carries over on defection.
 const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.18,IGN_FAIL=0.08;
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
-function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t];return sourceOf(k).how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):b}
+function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
 const khUse=k=>((PROG.kh||{})[k]?.use)??use0(k);
 const khBar=k=>clamp(0.6*khUse(k)+0.4*(certOf(k)-0.5)/0.5,0,1);
 const khYield=()=>0.5+0.5*khUse('sci');
@@ -1501,8 +1501,29 @@ function khLearn(R){if(!khOn())return;PROG.kh=PROG.kh||{};
   for(const k in R.khSeen){const e=PROG.kh[k]||(PROG.kh[k]={use:use0(k),reg:{}});
     for(const g in R.khSeen[k]){const n=e.reg[g]||0;e.use+=KH_RATE*(1-e.use)/(1+n);e.reg[g]=n+1}}}
 // an ignition event: each engine in the segment rolls against its know-how (deterministic per flight, kick and part)
+// ---- production lines: learning to manufacture a part is different from buying it. A line costs capital and time to
+// set up: ~8× the part's price × (1 + tier), 40 + 30·tier days. Your own line (reverse-engineering) needs real know-how
+// of the part (≥ 40 % use); a license from a supplier that makes it (friendly, not sanctioning us) costs 60 %, is
+// quicker, starts more mature, and pays the licensor 10 % royalty per unit. Every unit built raises maturity m
+// (+8 %·(1 − m) per unit): the price per unit runs from ×1.25 at m = 0 to ×0.75 at m = 1, so building at home ends up
+// cheaper than buying; an immature line's engines are rougher (ignition failures ×(2 − m)); line parts start with more
+// know-how and certification. Lines belong to the country: they ignore sanctions (a license keeps running) and stay
+// behind on a defection.
+const LINE_ROYALTY=0.1;
+function prodLine(k){const L=(PROG.lines||{})[k];return L&&L.power===HOME&&PROG.day>=L.ready?L:null}
+const prodLineK=L=>(1.25-0.5*L.m)+(L.lic!=null?LINE_ROYALTY:0);
+function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*8*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
+  const can=khUse(k)>=0.4,licOK=lic!=null&&relOf(HOME,lic)>0.2&&!sanctioned(lic);
+  return{own:{cost:base,days,ok:can,why:can?'':'we need to know it better first (fly it: know-how 40 %+)'},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK,from:lic,
+    why:lic==null?'no foreign maker to license from':!licOK?`${POWERS[lic].root} won't license it`:''}}}
+function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q.cost)return false;const L0=(PROG.lines||{})[k];if(L0&&L0.power===HOME)return false;
+  PROG.funds-=Q.cost;(PROG.lines=PROG.lines||{})[k]={power:HOME,lic:mode==='lic'?Q.from:null,start:PROG.day,ready:PROG.day+Q.days,m:mode==='lic'?0.3:0.05,units:0};
+  if(mode==='lic')opAdd(Q.from,3);else opAdd(HOME,2*natK());
+  HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name} will be built under license (${Q.days} days to tool up)`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
+function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
+  for(let i=0;i<n;i++){L.m+=0.08*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(!khOn()||!s.rec)return true;
-  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const f=IGN_FAIL*(1-khUse(p.d.key))**2;
+  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);return false}}
@@ -1716,7 +1737,7 @@ const valuation=()=>80+40*Object.keys(PROG.done).length+6*(PROG.cdone||0);   // 
 // how a power's money arrives (multiplies GRANT_100 × stake): its money axis, opinion where it matters, the cycles
 function knowhowLine(parts){const ks=[...new Set(parts.map(p=>p.d.key))].filter(k=>khUse(k)<0.35).sort((a,b)=>khUse(a)-khUse(b));
   return ks.length?`<div class="sub warn">New to us: ${ks.slice(0,4).map(k=>`${PARTS[k].name} (know-how ${(khBar(k)*100).toFixed(0)}%)`).join(', ')}${ks.length>4?'…':''}: riskier ignitions, slower checkout</div>`:''}
-function importsLine(parts){const by={};for(const k of new Set(parts.map(p=>p.d.key))){const x=sourceOf(k);if(x.how==='home')continue;const w=x.how==='grey'?'grey market ×3':`${POWERS[x.from].root} ×${IMPORT_K}`;(by[w]=by[w]||[]).push(PARTS[k].name)}
+function importsLine(parts){const by={};for(const k of new Set(parts.map(p=>p.d.key))){const x=sourceOf(k);if(x.how==='home'||x.how==='line')continue;const w=x.how==='grey'?'grey market ×3':`${POWERS[x.from].root} ×${IMPORT_K}`;(by[w]=by[w]||[]).push(PARTS[k].name)}
   const e=Object.entries(by);return e.length?`<div class="sub ${by['grey market ×3']?'bad':'dim'}">Imports: ${e.map(([w,n])=>`${n.join(', ')} (${w})`).join(' · ')}</div>`:''}
 function moneyK(i){const F=flav(i),op=opOf(i)/50,home=i===HOME;let k;
   if(F.money==='commodity')k=(0.6+0.4*op)*(1+0.8*(PROG.comm||0));
@@ -3320,12 +3341,16 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     `${PROG.demand?`<br><span class="warn">The leadership expects a spectacular within ${(PROG.demand.by-PROG.day).toFixed(0)} days</span>`:''}${F.open>=.6&&PROG.nextElection!=null?`<br><span class="dim">Next election in ${(PROG.nextElection-PROG.day).toFixed(0)} days</span>`:''}<br>`+
     POWERS.filter(p=>p.i!==HOME).map(p=>{const r=relOf(HOME,p.i);return`<span style="color:${pc(p)}">${p.name}</span> <span class="dim">(${ARCH[archOf(p.i)].name.toLowerCase()})</span> · <span class="${r>.2?'ok':r<-.2?'bad':'dim'}">${relWord(r)}</span> · opinion ${opOf(p.i).toFixed(0)}`}).join('<br>')+`</div>`;
   {const used=Object.keys(PROG.kh||{}).sort((a,b)=>khBar(b)-khBar(a)),bar=k=>`<span class="acc">${'▮'.repeat(Math.round(khBar(k)*8))}${'▯'.repeat(8-Math.round(khBar(k)*8))}</span>`,
-     prod=k=>{const x=sourceOf(k);return x.how==='home'?'home-made':x.how==='grey'?'<span class="bad">grey market</span>':`from ${POWERS[x.from].root}`};
+     prod=k=>{const x=sourceOf(k);return x.how==='line'?`${x.line.lic!=null?'licensed':'own'} line, maturity ${(x.line.m*100).toFixed(0)}%`:x.how==='home'?'home-made':x.how==='grey'?'<span class="bad">grey market</span>':`from ${POWERS[x.from].root}`};
    if(used.length)html+=`<div class="ep">Know-how</div><div class="sub">${used.slice(0,10).map(k=>`${bar(k)} ${PARTS[k].name} <span class="dim">· ${prod(k)}</span>`).join('<br>')}</div>`}
+  {const L=PROG.lines||{},mine=Object.keys(L).filter(k=>L[k].power===HOME),cand=S?[...new Set(S.parts.map(p=>p.d.key))].filter(k=>{const x=sourceOf(k);return(x.how==='import'||x.how==='grey')&&!(L[k]&&L[k].power===HOME)}):[];
+   if(mine.length||cand.length){html+=`<div class="ep">Production</div><div class="sub">`+mine.map(k=>{const l=L[k];return PROG.day<l.ready?`${PARTS[k].name}: tooling up, ready in ${(l.ready-PROG.day).toFixed(0)} days`:`${PARTS[k].name}: ${l.lic!=null?`licensed from ${POWERS[l.lic].root}`:'own line'} · maturity ${(l.m*100).toFixed(0)}% · ${l.units} built · ×${prodLineK(l).toFixed(2)} per unit`}).join('<br>')+
+     cand.map(k=>{const q=prodQuote(k),b=(m,o,lbl)=>`<button data-line="${k}:${m}" ${o.ok&&PROG.funds>=o.cost?'':'disabled'} title="${o.why||''}">${lbl} ${fmtM(o.cost)}, ${o.days} d</button>`;
+       return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -3783,7 +3808,8 @@ function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
 document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   if(ds.arch!=null){PROG.homeArch=ds.arch||null;RIVALS=raceSchedule();HOOK.save();renderProgram()}
   else if(ds.start){chooseStart(ds.start);renderProgram();editorChanged()}
-  else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}});
+  else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}
+  else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
     `<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+

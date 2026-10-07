@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1397,6 +1397,27 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.resetHome(); Object.assign(P, { flights: 0, own: null, kh: {} }); const x = api.newShip(['sci', 't1', 'sparrow']);
   check('know-how stays out of plain physics: no ignition failures before a program has started', !api.khOn() && api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg));
   fresh(null); P.own = null; P.flights = 0;
+}
+
+// 26. Production lines (economy): learning to manufacture is different from buying.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
+    api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
+  // you can't reverse-engineer what you don't know; a license is possible straight away
+  fresh('frugal'); const q0 = api.prodQuote('kestrel'), ownEarly = api.startProdLine('kestrel', 'own'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const q1 = api.prodQuote('kestrel');
+  check('an own line needs know-how of the part; a license from its maker is possible at once (cheaper, quicker)', !q0.own.ok && !ownEarly && q0.lic.ok && q1.own.ok && q0.lic.cost < q0.own.cost && q0.lic.days < q0.own.days,
+    `Kestrel: own line ${q0.own.cost.toFixed(0)}M / ${q0.own.days} d (needs know-how), license from ${api.POWERS[q0.lic.from].root} ${q0.lic.cost.toFixed(0)}M / ${q0.lic.days} d`);
+  // tooling up takes time; then the part is ours: no import markup, immune to sanctions, cheaper with every unit
+  fresh('frugal'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const price = () => api.vesselCost(api.newShip(['pod', 't2', 'kestrel']).parts).cost;
+  const imp = price(), sup = api.sourceOf('kestrel').from; api.startProdLine('kestrel', 'own'); const during = api.sourceOf('kestrel').how; P.day += 200; const first = price();
+  for (let n = 0; n < 25; n++) api.prodUnits(api.newShip(['kestrel'])); const mature = price(); P.sanc[sup] = 9999; const how = api.sourceOf('kestrel').how;
+  check('a line takes time to tool up; then units start dear and get cheaper than imports with every one built; sanctions don\'t touch it', during === 'import' && how === 'line' && first < imp && mature < first && api.prodLine('kestrel').m > 0.8,
+    `pod+tank+Kestrel: imported ${imp.toFixed(1)}M → first line units ${first.toFixed(1)}M → after 25 units ${mature.toFixed(1)}M (maturity ${(api.prodLine('kestrel').m * 100).toFixed(0)}%)`);
+  // lines belong to the country: after a defection they're no longer ours
+  const j = api.POWERS.find(p => p.i !== api.home && api.relOf(api.home, p.i) < 0.6).i; api.careerMove({ kind: 'defect', power: j, amt: 50 });
+  check('production lines stay with the country on a defection', api.prodLine('kestrel') === null && api.sourceOf('kestrel').how !== 'line', `after defecting, the Kestrel comes ${api.sourceOf('kestrel').how === 'home' ? 'from the new home\'s industry' : 'from abroad again'}`);
+  fresh(null); P.own = null; P.flights = 0; P.lines = {};
 }
 
 function moonPos(t) { return api.moonPos(t); }

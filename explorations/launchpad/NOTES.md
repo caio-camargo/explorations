@@ -983,6 +983,36 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.31 — production lines (2026-10-07)
+
+The second visible number per part: production. Learning to manufacture a part is different from buying it.
+
+- **Setting up a line** (`prodQuote`, `startProdLine`): about 8 × the part's price × (1 + tier), and 40 + 30·tier days to
+  tool up.
+  - *Own line* (reverse-engineering): needs real know-how of the part (use ≥ 40%), so you have to fly it first.
+  - *License*: from a supplier that makes it, is friendly (relation > 0.2) and isn't sanctioning us. 60% of the cost,
+    70% of the time, starts at 30% maturity instead of 5%, and pays the licensor 10% royalty per unit (their opinion
+    rises).
+  - Measured, Kestrel for a frugal power: own line 192M / 70 days; license from Ordun 115M / 49 days.
+- **Maturity** (the learning curve, `prodUnits`): every unit built at launch adds 8%·(1 − m). Price per unit runs from
+  ×1.25 (new line) to ×0.75 (mature), plus 0.1 if licensed (`prodLineK`). Measured: pod + tank + Kestrel imported
+  38.9M → first line units 35.6M → after 25 units 30.6M (88% maturity).
+- **Quality:** an immature line's engines fail to ignite more often (×(2 − m)). A first, simple form of the part-quality
+  idea.
+- **Building it teaches it:** line parts start with more know-how (+0.2 + 0.2·m) and certification (CERT0 − 0.2·(1 − m)).
+- **Lines belong to the country:** `sourceOf` prefers a working line of ours, so sanctions don't touch it (a license keeps
+  running), and after a defection the old home's lines are no longer ours.
+- **UI:** a Production section in the Program panel lists our lines (tooling up / maturity / units / price) and, for each
+  part bought abroad in the current design, "Own line" and "License from …" buttons with cost, days and the reason when
+  it isn't possible. Know-how labels show "own line, maturity N%" or "licensed line".
+- **Found while building:** my first `lineOf` collided with the builder's `lineOf(nd)` (a JS function declaration
+  silently replaces an earlier one with the same name), which broke `assemble()`. Mine are now `prodLine`,
+  `prodLineK`, `prodQuote`, `startProdLine`, `prodUnits`.
+- **Not yet:** the career runner doesn't build lines yet; supplier quality beyond line maturity; vertical integration
+  across tiers.
+
+`test.mjs` §26: 3 new checks.
+
 ## v1.30 — know-how (2026-10-07)
 
 The first slice of the parts-progression design ("The whole parts system, assessed"): owning a part is not knowing how
