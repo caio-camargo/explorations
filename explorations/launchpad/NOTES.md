@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.9.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.9.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -728,6 +728,29 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.26 — industrial independence (2026-10-07)
+
+The fourth flavour axis. Each archetype has a **self-sufficiency** level (`ind`): superpowers 1.0, security state 0.55,
+rising power 0.5 (+day/1500, capped at 0.9), frugal middle power 0.4, resource state 0.1.
+
+- **Three tiers of parts** (`tierOf`): structure and tanks (0); small engines and 2.5 m structure (1); big engines
+  (≥ 300 kN) and complex payloads (pod, biocapsule, instruments, camera, antenna) (2). A power makes the tiers its
+  level reaches (0 / 0.45 / 0.8).
+- **Sourcing** (`sourceOf`): home-made ×1; otherwise imported at ×1.5 from the most capable supplier (self-sufficiency ×
+  economy) that isn't hostile to home (relation > −0.2) and isn't sanctioning us; with no such supplier, **grey market
+  ×3** through intermediaries (with a headline at launch). That's how **sanctions reach hardware**: lose your supplier
+  and you switch to the next (Kestrel: Maros → Venka) or pay triple. Prices flow through `partPrice`, so refurbishment
+  refunds follow too. Buying abroad grumbles a little at home, scaled by nationalism.
+- **Young-industry certification** (`cert0`): home-made parts start at CERT0 − 0.2 × (1 − self-sufficiency) (a frugal
+  power's own tank: 58%); imports arrive at the usual 70%.
+- **Shown** on the builder's cost line ("Imports: Kestrel booster, Petrel vacuum (Venka ×1.5) · Command pod (grey market
+  ×3)") and as one industry line in the world section.
+- **Measured:** an Orbiter costs 49.8M for a superpower, 66.8M for a resource state with willing suppliers, and 85M in
+  the generated world, where the only avionics maker is tense with home (pod via the grey market).
+- **Balance note:** a resource state can't afford an Orbiter from the 60M start. It earns its way up through sounding
+  flights or rides a commodity boom. Fine for asymmetry; revisit with real play.
+
+`test.mjs` §20: 4 new checks; 128 total.
 ## v1.25 — terrain and geography: a generated world with real height (2026-10-07, terrain session)
 
 Tellus used to be a perfect sphere with a noise coastline and shading-only biomes. Now it's a generated world with real
@@ -1359,8 +1382,27 @@ The first slice of the parts-and-missions plan: things left in orbit stay there 
   and disasters plus income.
 
 **Not yet:** ground stations beyond the pad (more stations = faster downlinks: politics, since they're on someone's
-land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
-in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
+land); film return capsules; power and eclipses; orbital decay for low satellites;
+rivals' satellites and visibility (the spy layer).
+
+### Satellites in 3D (sats session, 2026-10-07)
+
+Registered satellites used to exist only on the map; now you can fly past one.
+
+- **Registration keeps a look.** New registry entries also store `shape` (each part still on: part key, position,
+  `y0`, `h`, plus `phi`/`tdir`/`shell` when set), `cm`, and `qo`, the attitude in the orbital frame (prograde, orbit
+  normal, radial: `orbQ`). Render-only; the sim never reads them. Saves are JSON, so plain arrays only.
+- **Attitude rides the orbital frame,** not inertial space: world attitude = `orbQ(r,v)·qo`. A camera left looking down
+  still looks down days later, which is what a real imaging satellite does (and stands in for the attitude control we
+  don't simulate). The inertial alternative would tumble it once per orbit relative to the ground.
+- **Drawing:** next to the debris, within 100 km of the camera, in flight mode. The mesh is rebuilt once per entry
+  (`satMesh`, a WeakMap keyed on the entry, so a reloaded save just builds fresh). No flight marks: the parts are new
+  objects. The satellite this very flight registered is skipped (`rec.satId`), since it's still `S` on screen.
+- **Finding one:** in the flight view, satellites within 200 km get a diamond and `name · distance`; inside 300 m the
+  mesh speaks for itself and the marker goes.
+- **Old saves:** entries registered before this have no `shape`. They get the marker but no mesh.
+- Check (`test.mjs` §20): shape kept and JSON-safe; nose-down at registration is still exactly nose-down a quarter orbit
+  and 2.6 orbits later. Screenshots (headless Chrome, RTX 3050): a Lookout 25 m off an Orbiter, a Beeper's marker at 3 km.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
