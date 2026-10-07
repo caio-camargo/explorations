@@ -568,6 +568,115 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.12 — the program, first slice: Epochs 1–2 (2026-10-07)
+
+Built from the mission design below. Everything mission-side lives in the SIM core and is tested headlessly
+(`test.mjs` §14, 10 new checks, 54 total).
+
+- **Parts:** *Instrument package* (telemetry plus air samples), *Biocapsule* (a passenger with limits: 8 g averaged over 1 s, a
+  330 K cabin that lags the skin by ~10 min, 4 h of air), *Mass simulator 0.5 t*, and the **Sparrow** sounding engine
+  (60 kN, 0.3 t). Presets: *Sounding*, *Passenger*.
+- **Nine missions** in two epochs. They read a flight record that `advPhys`/`advRails` tick, and they never write to the
+  flight, so tapes still replay bit-identically. Prerequisites gate them. Progress is saved in browser storage
+  (`launchpad-program-v1`); the Program panel in the builder lists missions and "What we know", with a reset.
+- **Certified ratings.** The physics keeps the true rating. The builder and HUD show joint loads against a *certified*
+  rating that starts at 70% of true. Each flight with an instrument package shrinks the 30% reserve by up to half,
+  in proportion to how hard each part was loaded (40% of its rating counts fully). A failure certifies the broken
+  part at 100%.
+- **Atmosphere knowledge.** Each 10 km band carries ±25% density uncertainty until a recovered package has sampled
+  it. The impact predictor flies two extra predictions (air thinner and thicker in the unknown bands) once a second
+  (0.6 ms each). The HUD shows "± km", the map marks both ends, and range safety checks the whole spread.
+
+**What the first flights taught (each was a real bug or a real design lesson):**
+- **The Kestrel is the wrong sounding engine.** It empties a 1 t tank in 12 s, and its 1.3 t at the tail makes the empty
+  hull unstable (−0.30 cal); with no pod for torque it tumbles and drag kills the climb (5.8 km apex). Hence the Sparrow.
+- **My first certification rule certified nothing.** "Certified up to the worst load survived" needs flights that load
+  parts past 70% of their rating, which no sane flight does. The reserve-shrinking model rewards every instrumented
+  flight and rewards hard ones more.
+- **Supersonic drogue: 17 g.** The drogue opened at 20 km whatever the speed, so a hop deployed it at Mach 3. Now it waits
+  for 400 m/s (~Mach 1.3).
+- **Chute opening shock: 18 g.** With the old instant opening, the main came out at 250 m/s. Real canopies are *reefed*, so
+  now the open area is capped so the chute's own drag stays ≤ 3 g (`CHUTE_G`), and the predictor uses the same cap.
+  Landing speeds are unchanged.
+- **A capsule hung at 500 K under its chute.** The thermal model only radiated. Convective cooling now applies once the skin
+  is hotter than the flow's recovery temperature (h ≈ 12·√(ρv)), so peak re-entry heating is unchanged.
+- **The parachute was the vessel.** Without a pod, the root of the part tree was the top part, so a burnt chute "lost the
+  vessel". `rootIdx`: pod, else biocapsule, else instruments, else top.
+- **Design lessons the sim now teaches by itself:**
+  - A Kestrel-powered hop crushes the passenger (8.1 g).
+  - Keeping the spent booster on overheats the cabin, since 1.3 t falls fast and hot.
+  - Dropping the booster at burnout: 98 km, 7.1 g, cabin 283 K, home safe.
+  - From orbital speed, a bare capsule tumbles and cooks its passenger; held shield-first by a pod on SAS retrograde,
+    it lands at 4.3 g with a 269 K cabin.
+- **Balance:** the starter Sounding rocket (1 t tank) reaches 14 km, enough for *Above the weather*. *Measure the air* needs
+  the 2 t version (99 km). The 25 kPa structural test needs a punchy Kestrel build (66–78 kPa). One preset flight no
+  longer clears the epoch.
+
+**Physics changes** (drogue gate, reefing, convection): `TAPE_V` → `lp-1.12`, so autopilot tapes saved by older versions
+no longer offer to replay. The pod impact-prediction check is relaxed from 3 to 5 km: with no supersonic drogue, more
+of the descent is fast, which is where the unmodelled trim lift accumulates.
+
+**Open:** flight safety rarely blocks a preset (builder max-q case 10–57% certified), so certification bites mainly on
+designs trimmed for mass. Missions give no reward beyond progress and headlines yet (no budget). The beeper's
+city-pass headlines are a first taste of "the world listens".
+
+## Mission design — epochs, archetypes, convergence (2026-10-07)
+
+**Method (Caio):** iterate between levels (mission types, long arcs, craft parts) and home in on where they become
+coherent with each other. Variety is what makes it replayable.
+
+**The lens: missions are questions the world needs answered.** A good mission (1) tests something the sim already
+models (loads, g, heating, drop zones, phasing), so it's a design problem and not just "go to X"; (2) leaves something
+behind: a working satellite, data, a qualified part, or a discovery; (3) changes what comes next.
+
+**Epochs, with representative missions:**
+1. *Sounding rockets.* **Above the weather:** an instrument package past the cloud deck, recovered under a chute.
+   **Measure the air:** each recovered sample of an altitude band shrinks the impact predictor's uncertainty, so your own
+   science makes your tools better. **Range certification:** three flights in a row with every spent stage landing clear,
+   needed before bigger rockets fly near cities.
+2. *First orbit, animals aboard (a nod to Laika).* **The beeper:** reach a stable orbit; cities hear it pass overhead.
+   **Passenger:** an animal on a suborbital hop, then an orbit and back. Peak g, cabin heat and recovery are the
+   constraints, all already simulated. **Heavy lift benchmarks:** 500 kg, 2 t, 5 t to orbit (records; a rival would make
+   them races).
+3. *Utility.* **Weather satellite:** clouds are real data in the world, and coverage wants a polar orbit, so inclination
+   becomes a design driver from an equatorial pad. **TV for the capital:** stationary orbit at about 2,870 km, which needs
+   a transfer, an upper-stage restart and an antenna; it pays while it works. **Disaster watch:** a flood in the ticker,
+   an imaging pass within 12 h (phasing with maneuver nodes). **Navigation constellation.**
+4. *Crew and Selene.* **Abort tests** (pad, then max-q) qualify an escape tower before crew fly, which is testing that
+   makes sense. **Rendezvous and docking.** **The Selene ladder:** flyby (far-side photos), impactor, soft lander,
+   sample return, crew.
+5. *Big projects.* **Space telescope:** a fragile payload with acceleration and vibration limits across the whole
+   flight. **Station:** assembled over flights, then a fuel depot that makes later missions cheaper. **Discovery:** the
+   telescope finds the second, eccentric moon, so your own instrument opens the next chapter.
+6. *Interplanetary (long term, Caio 2026-10-07).* Other planets around the star, like KSP, and **intercepting extrasolar
+   objects passing through** (an 'Oumuamua-style visitor on a hyperbolic path): spotted by the telescope, with a closing
+   window to launch an interceptor. That's a one-off event, so every playthrough gets different ones.
+
+**Archetypes (variety):** benchmark (records, rival timing) · qualification (fly a part through a target envelope) ·
+service contract (target orbits, client cities) · event (disaster, visitor; when and where vary) · science/discovery
+(what you look at first).
+
+**Convergence:**
+1. **Uncertainty your own missions reduce:** part ratings, the atmosphere model, what's out there. Progression comes
+   from knowing more, not from a points shop.
+2. **Payloads stay in the world:** visible in the ticker and over the cities.
+3. **The constraints we already simulate** (g, loads, heating, drop zones) make each mission a design problem. That's
+   our edge over KSP.
+
+**Parts implied:** instrument package, animal capsule (g limit plus a short air supply; a small slice, not full life
+support), mass simulator, escape tower, fairing, antenna (line of sight to ground stations), solar panel and battery,
+restartable upper stage, docking port.
+
+**What interplanetary means for the architecture (for later, not now):**
+- Tellus is the root body today (`soi: Infinity`) and the sun is a fixed direction (`SUN`). A star becomes the root;
+  planets ride Kepler rails around it, each with its own SOI. The patched-conic code already handles one level of
+  hierarchy (Tellus → Selene), so this is about generalising it to a tree.
+- The sun direction then comes from the star's position (lighting, day/night, the light budget).
+- Float64 at AU scale is fine: 1.5e11 m × 1e-16 ≈ 15 µm. Rendering is already camera-relative.
+- Interplanetary and intercept planning want a Lambert solver (porkchop plots for windows). Visitors are hyperbolic
+  Kepler legs through the star's SOI, so the propagator already handles them.
+- Warp: transfers take months; rails warp is exact at any rate, but the top step (1e5×) may need another notch.
+
 ## Precision tricks worth keeping
 
 - **Ray–sphere in float32 at 2 m above a 600 km planet.** The CPU sends `cc = (d−R)(d+R)` in

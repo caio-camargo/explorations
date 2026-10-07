@@ -1780,3 +1780,8 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.11 (2026-10-07):** graphics rough spots — footprint-filtered clouds (no horizon rim), sun-shaded smoke puffs,
   ground patterns in lon/lat metres (fixes pad streaks), launch complex + scrub in the ground shader, hull weld rings.
   No measurable cost vs v1.10. `test.mjs` 44/44. Committed and pushed.
+- **v1.12 (2026-10-07):** mission design written into launchpad NOTES (epochs, archetypes, convergence; long term:
+  interplanetary + extrasolar visitors, per Caio). Built the first slice: 9 missions (Epochs 1–2), instrument package /
+  biocapsule / mass simulator / Sparrow, certified ratings via telemetry, atmosphere knowledge → impact spread. Flight
+  testing found and fixed: supersonic drogue (17 g), chute opening shock (reefing), no convective cooling, chute-as-root.
+  `test.mjs` 54/54. Committed and pushed.

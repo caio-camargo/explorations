@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
+return {advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,railsOK,stage,stageStats,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 const log = [];
@@ -236,7 +236,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const pod = compare('pod', { stack: ['chute', 'pod', 'shield'], init: s => { s.landed = false; const f = api.localFrame([R + 75000, 0, 0]); s.r = [R + 75000, 0, 0];
       s.v = add(mul(f.e, 2250), mul(f.up, -60)); const d = norm(s.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.sas = false; api.stage(s); } },
     s => len(s.r) - R < 25000);
-  check('impact prediction: a re-entering pod under its parachute, predicted from 25 km', pod.ok && pod.dist < 3000 && Math.abs(pod.dv) < 0.5,
+  // 5 km since v1.12: with the drogue held until ~Mach 1.3, more of the descent is fast, where the unmodelled trim lift accumulates
+  check('impact prediction: a re-entering pod under its parachute, predicted from 25 km', pod.ok && pod.dist < 5000 && Math.abs(pod.dv) < 0.5,
     `${(pod.dist / 1000).toFixed(2)} km off, ${pod.dt.toFixed(0)} s; touchdown ${pod.v.toFixed(1)} m/s predicted. (From 74 km it is ~40 km off of 760: the capsule's trim lift is not modelled)`);
   const moon = compare('selene', { stack: ['pod', 't1', 'wren'], init: s => { s.landed = false; s.body = SELENE; s.r = [SELENE.R + 30000, 0, 0]; s.v = [0, 0, -400]; s.sas = false; } },
     s => true);
@@ -358,6 +359,72 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const elA = elements(s.r, s.v, mu), err = Math.abs(elA.ap - apPlan) / apPlan;
   check('node burn: SAS-pointed finite burn lands within 1% of the planned apoapsis, then cuts the throttle', !s.node && s.throttle === 0 && err < 0.01,
     `burn ${(n * api.DT).toFixed(1)} s (estimate ${est.toFixed(1)} s); Ap ${(elA.ap / 1e3).toFixed(0)} km vs plan ${(apPlan / 1e3).toFixed(0)} km (${(err * 100).toFixed(2)}%)`);
+}
+
+// 14. The program (v1.12): missions read a flight record; knowledge (certified ratings, the atmosphere) is earned by flying.
+{
+  const P = api.PROG, fresh = () => Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0 });
+  const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const launch = st => { api.t = 0; const s = api.newShip(st); api.S = s; s.throttle = 1; api.stage(s); return s; };
+  // a sounding flight: straight up on the Sounding preset, chute armed once falling, down to the ground
+  fresh(); let s = launch(api.PRESETS.Sounding), armed = false, n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) {
+    if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; }
+    api.advPhys(s);
+  }
+  const R = s.rec, bands = Object.keys(P.atm).map(Number).sort((a, b) => a - b);
+  check('sounding flight: instrument package to altitude and home under the chute completes "Above the weather"', !!P.done.weather && R.recSci,
+    `apex ${(R.apex / 1e3).toFixed(1)} km, landed ${s.landed}, max-q ${(R.sciQ / 1e3).toFixed(1)} kPa, ${(api.t / 60).toFixed(1)} min`);
+  check('recovered air samples mark the bands flown through as known', bands.length >= 2 && bands[0] === 0 && bands.every((k, i) => k === i) && bands.length === Math.min(7, Math.floor(R.apex / 1e4) + 1),
+    `bands ${bands.map(k => k * 10 + '–' + (k + 1) * 10).join(', ')} km`);
+  const before = api.certOf('sparrow'); api.missionEnd(s); const kc = api.certOf('sparrow'), fc = api.certOf('fins'), tc = api.certOf('t1');
+  check('telemetry from an instrumented flight raises certified ratings, for the parts that flew only, never past 100 %', before === api.CERT0 && kc > api.CERT0 && fc > api.CERT0 && tc > api.CERT0 && api.certOf('condor') === api.CERT0 && Math.max(kc, fc, tc) < 1,
+    `sparrow ${(kc * 100).toFixed(0)}%, fins ${(fc * 100).toFixed(0)}%, tank ${(tc * 100).toFixed(0)}%, condor (didn't fly) ${(api.certOf('condor') * 100).toFixed(0)}%`);
+  // the impact predictor's spread: wide while the air is unknown, gone where it's been sampled
+  const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
+  const gc = (a, b) => Math.acos(Math.min(1, dot(norm(a), norm(b)))) * TELLUS.R / 1000;
+  fresh(); let q = probeShip(); const i0 = api.predictImpact(q), w0 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
+  [0, 1, 2, 3, 4, 5, 6].forEach(k => P.atm[k] = 1); q = probeShip(); const w1 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
+  check('impact spread: an unsampled atmosphere widens the landing prediction; a sampled one collapses it', w0 > 2 && w1 < 0.01,
+    `±25 % density: ${w0.toFixed(1)} km wide → sampled: ${w1.toFixed(3)} km (nominal flight ${(i0.t).toFixed(0)} s)`);
+  // a failure is a measurement: the part that broke is fully known afterwards
+  fresh(); api.t = 0; s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.r = [TELLUS.R + 3000, 0, 0]; s.v = [0, 0, -600];   // broadside at 600 m/s: something gives
+  for (let k = 0; k < 500 && s.parts.every(p => p.on); k++) api.advPhys(s);
+  const known = Object.keys(P.cert).filter(k => P.cert[k] === 1);
+  check('a structural failure reveals the broken part\'s true rating (certified 100 %)', known.length >= 1, `fully known: ${known.join(', ') || 'none'}`);
+  // range certification: three clean flights in a row, any town hit resets the streak
+  fresh(); const fl = verdicts => { const x = launch(['pod', 't1', 'kestrel']); x.landed = false; x.rec.launched = true; verdicts.forEach(v => api.missionDrop(x, { kind: v })); api.missionEnd(x); };
+  fl(['sea']); fl(['land', 'sea']); fl(['near']); const after3 = P.streak; fl(['sea']); fl(['land']); fl([]); fl(['sea']);
+  check('range certification: a near-town drop resets the streak; flights with no drops don\'t count; three clean in a row completes it', after3 === 0 && !!P.done.range && P.streak === 3,
+    `streak after a near miss ${after3}, final ${P.streak}, flights ${P.flights}`);
+  // the passenger hop: a Kestrel's kick is too much for the passenger; the Sparrow preset goes to space and home safe
+  const hop = st => { fresh(); P.done.loads = { flight: 0 }; const x = launch(st); let arm = false, k = 0;
+    let stg = 0; const dropBooster = st.includes('dec');   // burnout: drop the booster (if it can be dropped); falling: arm the chute
+    while (x.alive && !(x.rec.launched && x.landed) && k++ < 400000) {
+      if (dropBooster && stg === 0 && x.rec.launched && x.thrust === 0) { api.stage(x); stg = 1; }
+      if ((stg === 1 || !dropBooster) && !arm && x.rec.launched && dot(x.v, norm(x.r)) < 0) { api.stage(x); arm = true; }
+      api.advPhys(x); }
+    return x; };
+  const hard = hop(['chute', 'bio', 't2', 'fins', 'kestrel']), whole = hop(['chute', 'bio', 't2', 'fins', 'sparrow']), soft = hop(api.PRESETS.Passenger);   // each hop() starts a fresh program: the preset goes last
+  check('passenger hop: a Kestrel crushes the passenger; the Passenger preset (booster dropped at burnout) goes to space and home safe', !hard.rec.bioOK && /g$/.test(hard.rec.bioWhy) && soft.rec.bioOK && soft.rec.bioSpace && !!P.done.hop,
+    `Kestrel: ${hard.rec.bioWhy} · preset: apex ${(soft.rec.apex / 1e3).toFixed(0)} km, peak ${soft.rec.gMax.toFixed(1)} g (1 s avg), cabin ${soft.rec.cabin.toFixed(0)} K at landing, approved ${soft.rec.approved} · booster kept on: ${whole.rec.bioOK ? 'safe' : whole.rec.bioWhy}`);
+  // an orbital-speed return: a bare capsule tumbles and cooks its passenger; with a pod holding it shield-first, home safe
+  const entry = (st, sas) => { fresh(); api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; const R0 = TELLUS.R, f = api.localFrame([R0 + 75000, 0, 0]);
+    x.r = [R0 + 75000, 0, 0]; x.v = add(mul(f.e, 2250), mul(f.up, -60)); const d = norm(x.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); x.q = api.qFromBasis(X, Y, cross(X, Y));
+    x.sas = sas; if (sas) x.sasMode = 'retro'; x.rec.launched = true; x.rec.bio = true; api.stage(x); let k = 0; while (x.alive && !x.landed && k++ < 200000) api.advPhys(x); return x; };
+  const bare = entry(['chute', 'bio', 'shield'], false), held = entry(['chute', 'bio', 'pod', 'shield'], true);
+  check('orbital-speed return: a bare biocapsule tumbles and overheats; held shield-first by a pod, the passenger lands safe', !bare.rec.bioOK && held.rec.bioOK && held.landed,
+    `bare: ${bare.rec.bioWhy}; held: ${held.rec.gMax.toFixed(1)} g, cabin ${held.rec.cabin.toFixed(0)} K, landed ${held.landed}`);
+  // orbit benchmarks: the beeper and the lift records, from a ship placed in a circular orbit and coasted on rails
+  fresh(); P.done.weather = { flight: 0 };
+  const orb = st => { const x = api.newShip(st); api.S = x; api.t = 0; x.landed = false; const r0 = TELLUS.R + 90000; x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
+  orb(['sci', 'ballast', 'ballast']); const b1 = !!P.done.beeper, l1 = !!P.done.lift1;
+  orb(['sci', 'ballast', 'ballast', 'ballast', 'ballast']);
+  check('orbit benchmarks: the beeper, then 0.5 t and 2 t of mass simulators', b1 && l1 && !!P.done.lift2, `beeper ${b1}, lift I ${l1}, lift II ${!!P.done.lift2}`);
+  // missions stay locked until their prerequisites are done
+  fresh(); orb(['sci', 'ballast']);
+  check('missions are gated: no beeper credit before "Above the weather"', !P.done.beeper && !P.done.lift1);
+  fresh(); api.HOOK.news = () => {};
 }
 
 function moonPos(t) { return api.moonPos(t); }
