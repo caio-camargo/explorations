@@ -28,10 +28,33 @@ const DPR=()=>Math.min(devicePixelRatio||1,1.5);
 // first edit; then the tree that the current ship was assembled from becomes the design, so S.parts[].dn are its nodes.
 function design(){
   if(!isV2(stackDef)){if(isEmpty(stackDef))stackDef={v:2,root:null};else{const r=S.parts.map(p=>p.dn).find(n=>!n.at);stackDef={v:2,root:r}}}
-  return stackDef}
+  ensureIds(stackDef);return stackDef}
+// every node gets a small id, unique in the design: a custom staging order refers to decouplers by it
+function ensureIds(D){const all=nodes(D.root);let m=0;const seen=new Set();for(const n of all)if(n.id!=null){if(seen.has(n.id))delete n.id;else{seen.add(n.id);m=Math.max(m,n.id)}}
+  for(const n of all)if(n.id==null)n.id=++m}
+const noIds=n=>{delete n.id;kids(n).forEach(noIds);return n};
 function snapshot(){st.undo.push(JSON.stringify(design()));if(st.undo.length>80)st.undo.shift();st.redo.length=0}
 function restore(from,to){if(!from.length)return;to.push(JSON.stringify(stackDef));stackDef=JSON.parse(from.pop());st.held=null;st.sel=null;st.hover=null;editorChanged()}
 function loadDesign(d){st.held=null;st.sel=null;st.hover=null;stackDef=cl(d);st.reframe=true;editorChanged()}
+// The cant (degrees, −30…30) that balances the thrust: the engines burning when this one fires — this node's copies at
+// cant θ, the rest as they are — push with zero net torque about the centre of mass of what is still attached then (full
+// tanks). Pointing one engine through the CoM is the wrong target: a lone booster beside an equal core engine is already
+// nearly balanced uncanted (measured: aiming it through the CoM multiplied the torque by 4.5 and flipped the rocket).
+// Symmetric copies balance at any angle, so ties go to the smallest |θ|.
+function aimCant(p,s=S){const on=s.parts.map(()=>true),ign=new Set();
+  for(const e of s.events){for(const k of e.decouple)s.parts.forEach((q,i)=>{if(q.seg===k)on[i]=false});for(const k of e.ignite)ign.add(k);if(e.ignite.includes(p.seg))break}
+  let m=0,C=[0,0,0];s.parts.forEach((q,i)=>{if(!on[i])return;const w=partMass(q),c=partC(q);m+=w;C=[C[0]+w*c[0],C[1]+w*c[1],C[2]+w*c[2]]});C=C.map(x=>x/m);
+  const E=s.parts.filter((q,i)=>on[i]&&q.d.kind==='engine'&&ign.has(q.seg)),mine=q=>q.dn===p.dn&&q.phi!=null;
+  const tau=th=>{let L=[0,0,0];for(const q of E){const d=mine(q)?cantDir(th,q.phi):tdirOf(q),f=q.d.thrust,r=sub(thrustPt(q),C);L=add(L,cross(r,[d[0]*f,d[1]*f,d[2]*f]))}return len(L)};
+  let best=0,bt=tau(0);for(let th=-30;th<=30+1e-9;th+=0.05){const t=tau(th);if(t<bt-1e-6*Math.max(1,bt)||Math.abs(t-bt)<=1e-6*Math.max(1,bt)&&Math.abs(th)<Math.abs(best)){bt=t;best=th}}
+  return Math.round(best*100)/100}
+// root → n along the tree, or null
+function rootPath(r,n){if(r===n)return[r];for(const c of kids(r)){const p=rootPath(c,n);if(p)return[r,...p]}return null}
+// reverse every joint on a root→n path of stack joints: each child takes its parent as a child, flipped ('u' ↔ 'd'),
+// and the joint's reinforcement moves with the joint. Geometry and the assembled vessel are unchanged.
+function reroot(path){const D=design();for(let i=0;i<path.length-1;i++){const p=path[i],c=path[i+1],at=c.at,j=c.j;
+    p.c.splice(p.c.indexOf(c),1);kids(c).push(p);p.at=at==='u'?'d':'u';if(j)p.j=j;else delete p.j}
+  const r=path[path.length-1];delete r.at;delete r.j;D.root=r}
 function detachNode(n){const D=design();if(n===D.root){D.root=null;return}const p=parentOf(D.root,n);if(p)p.c.splice(p.c.indexOf(n),1)}
 
 // ---- geometry: vessel frame (y along the stack, the ship's own coordinates) ↔ world ↔ screen
@@ -42,7 +65,8 @@ function proj(v){const w=V();if(!w)return null;const q=sub(toWorld(v),w.camW),z=
 function mouseRay(){const w=V(),m=st.mouse;if(!w||!m)return null;const x=(2*m[0]/w.W-1)*w.tanX,y=(1-2*m[1]/w.H)*w.tanY;
   const dw=norm(add(w.Fw,add(mul(w.R,x),mul(w.U,y)))),qi=qconj(S.q);return{o:add(qrot(qi,sub(w.camW,shipWorld())),S.cm),d:qrot(qi,dw)}}
 // a ray against one part's surface of revolution: each profile segment is a cone frustum around the part's axis
-function hitPart(p,o,d){const pr=p.inst&&p.inst.rdec?[[.2,0],[.2,p.h]]:p.d.prof,ax=o[0]-p.pos[0],az=o[2]-p.pos[2];let best=null;
+function hitPart(p,o,d){const I=p.inst||{},sf=I.surf,pr=I.rdec?[[.2,0],[.2,p.h]]:sf?[[p.d.span/2,0],[p.d.span/2,p.h]]:p.d.prof;
+  const cx=sf?p.pos[0]+Math.cos(p.phi)*p.d.span/2:p.pos[0],cz=sf?p.pos[2]+Math.sin(p.phi)*p.d.span/2:p.pos[2],ax=o[0]-cx,az=o[2]-cz;let best=null;
   for(let i=0;i<pr.length-1;i++){let[r0,ya]=pr[i],[r1,yb]=pr[i+1];ya+=p.y0;yb+=p.y0;if(yb-ya<1e-6)continue;
     const k=(r1-r0)/(yb-ya),c=r0+k*(o[1]-ya),A=d[0]*d[0]+d[2]*d[2]-k*k*d[1]*d[1],B=2*(ax*d[0]+az*d[2]-c*k*d[1]),C=ax*ax+az*az-c*c;
     const ts=[];if(Math.abs(A)<1e-12){if(Math.abs(B)>1e-12)ts.push(-C/B)}else{const D=B*B-4*A*C;if(D>=0){const s=Math.sqrt(D);ts.push((-B-s)/(2*A),(-B+s)/(2*A))}}
@@ -54,17 +78,18 @@ function rayHit(r){let best=null;if(!r||isEmpty(stackDef))return null;
 // ---- where the held part would go. Stack nodes near the cursor win; else the surface under it; else nowhere.
 function heldNeeds(h){const k=kids(h);return{top:!k.some(c=>c.at==='u'),bot:!k.some(c=>c.at==='d')}}
 function stackSlots(){const out=[];if(isEmpty(stackDef))return out;
-  for(const p of S.parts){if(!p.on||p.inst.rdec)continue;const n=p.dn,k=kids(n);
+  for(const p of S.parts){if(!p.on||p.inst.rdec||p.inst.surf)continue;const n=p.dn,k=kids(n);
     const topFree=n.at!=='d'&&!k.some(c=>c.at==='u'),botFree=n.at!=='u'&&!k.some(c=>c.at==='d');
     if(topFree)out.push({p,side:'u',v:[p.pos[0],p.y0+p.h,p.pos[2]]});if(botFree)out.push({p,side:'d',v:[p.pos[0],p.y0,p.pos[2]]})}
   return out}
 function findSlot(){const h=st.held;if(!h||!st.mouse)return null;
-  if(isEmpty(stackDef))return{root:true};
+  const surf=!!PARTS[h.k].surf;
+  if(isEmpty(stackDef))return surf?null:{root:true};
   const need=heldNeeds(h),m=st.mouse;let best=null,bd=NODE_PX*DPR();
-  for(const s of stackSlots()){if(s.side==='u'&&!need.bot||s.side==='d'&&!need.top)continue;const q=proj(s.v);if(!q)continue;
+  if(!surf)for(const s of stackSlots()){if(s.side==='u'&&!need.bot||s.side==='d'&&!need.top)continue;const q=proj(s.v);if(!q)continue;
     const dd=Math.hypot(q[0]-m[0],q[1]-m[1]);if(dd<bd){bd=dd;best=s}}
   if(best)return{p:best.p,at:best.side};
-  const hit=rayHit(mouseRay());if(!hit||hit.p.inst.rdec)return null;
+  const hit=rayHit(mouseRay());if(!hit||hit.p.inst.rdec||hit.p.inst.surf)return null;
   const p=hit.p,I=p.inst;let a=Math.atan2(hit.pt[2]-p.pos[2],hit.pt[0]-p.pos[0])-I.rot,y=clamp(hit.pt[1]-p.y0,0,p.h);
   if(st.snap)a=Math.round(a/SNAP_A)*SNAP_A;a=((a%(2*Math.PI))+2*Math.PI)%(2*Math.PI);
   const cy=PARTS[h.k].h/2;
@@ -72,7 +97,7 @@ function findSlot(){const h=st.held;if(!h||!st.mouse)return null;
     const L=lineOf(h),lo=Math.min(...L.map(q=>q.y)),hi=Math.max(...L.map(q=>q.y+PARTS[q.nd.k].h)),yb=p.y0+y-cy;let bestD=SNAP_Y,dy=0;
     for(const q of S.parts)if(q.on&&!q.inst.rdec&&q.inst.line===I.line)for(const b of[q.y0,q.y0+q.h])for(const e of[yb+lo,yb+hi])if(Math.abs(b-e)<bestD){bestD=Math.abs(b-e);dy=b-e}
     y=clamp(y+dy,0,p.h)}
-  const at={y:+y.toFixed(3),a:+a.toFixed(5),n:st.sym,cy};if(st.dec)at.dec=true;
+  const at={y:+y.toFixed(3),a:+a.toFixed(5),n:st.sym,cy};if(st.dec&&!surf)at.dec=true;
   return{p,at}}
 // lay the design out with the held part tentatively attached; returns the held instances in vessel coordinates
 function trial(slot){const h=st.held,old=h.at,D=design();let L;
@@ -80,18 +105,18 @@ function trial(slot){const h=st.held,old=h.at,D=design();let L;
   else{const host=slot.p.dn;h.at=slot.at;kids(host).push(h);try{L=layoutDesign(D)}finally{host.c.pop()}}
   if(old===undefined)delete h.at;else h.at=old;
   const set=new Set(nodes(h)),sh=isEmpty(stackDef)?0:S.parts[0].y0-S.parts[0].inst.y0;
-  return L.inst.filter(q=>set.has(q.nd)).map(q=>({d:q.d,pos:[q.x,0,q.z],y0:q.y0+sh,h:q.d.h,phi:q.phi,rdec:q.rdec}))}
-function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.inst.rdec);const all=[...G.filter(g=>!g.rdec)];
+  return L.inst.filter(q=>set.has(q.nd)).map(q=>({d:q.d,pos:[q.x,0,q.z],y0:q.y0+sh,h:q.d.h,phi:q.phi,rdec:q.rdec||q.surf}))}
+function collides(G){const ex=isEmpty(stackDef)?[]:S.parts.filter(p=>p.on&&!p.inst.rdec&&!p.inst.surf);const all=[...G.filter(g=>!g.rdec)];
   const hit=(a,b)=>{const dx=Math.hypot(a.pos[0]-b.pos[0],a.pos[2]-b.pos[2]),oy=Math.min(a.y0+a.h,b.y0+b.h)-Math.max(a.y0,b.y0);
     return dx<1e-3?oy>1e-3:dx<a.d.r+b.d.r-0.02&&oy>0.02};
   for(let i=0;i<all.length;i++){for(const e of ex)if(hit(all[i],e))return true;for(let j=i+1;j<all.length;j++)if(hit(all[i],all[j]))return true}
   return false}
-function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?cl(h):h;
+function place(slot,keep){const h=st.held;snapshot();const D=design(),put=keep?noIds(cl(h)):h;
   if(slot.root){delete put.at;D.root=put;st.reframe=true}else{put.at=cl(slot.at);kids(slot.p.dn).push(put)}
-  if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
+  ensureIds(D);if(!keep){st.held=null;st.sel=put}st.ghostKey='';editorChanged()}
 function pickUp(p,copy){const n=p.dn,D=design();
   if(!copy&&n===D.root&&kids(n).length){note('That is the root part: everything hangs from it. Pick up the parts around it instead.');return}
-  if(copy){st.held=cl(n);delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
+  if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
 function grab(k){st.held={k,c:[]};st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
 function drop(){if(!st.held)return;st.held=null;st.ghostKey='';refresh()}
@@ -115,8 +140,9 @@ function ghostMeshes(){const s=st.slot,key=st.held?JSON.stringify([st.held,s&&s.
   if(!s){st.ghost={float:true,G:trial({root:true})};const G=st.ghost.G;st.ghost.glow=meshOf(G,[.5,.6,.7]);st.ghost.c=G.reduce((c,g)=>c+g.y0+g.h/2,0)/G.length;return st.ghost}
   const G=trial(s),bad=collides(G);st.ghost={G,bad,solid:bad?null:meshOf(G),glow:meshOf(G,bad?[1,.15,.1]:[.2,1,.45])};s.bad=bad;return st.ghost}
 function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>p.dn===st.hover))+(st.sel===st.hover):'';
-  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?S.parts.filter(p=>p.on&&p.dn===st.hover):[];
-  const k2=key+'|'+sel.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
+  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?S.parts.filter(p=>p.on&&p.dn===st.hover):
+    st.hiAtom?S.parts.filter(p=>p.on&&st.hiAtom.segs.includes(p.seg)&&(st.hiAtom.kind!=='i'||p.d.kind==='engine')):[];
+  const k2=key+'|'+sel.map(p=>p.i).join(',')+'|'+hov.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
   if(st.hi){st.hi.h&&st.hi.h.free();st.hi.s&&st.hi.s.free()}st.hi={h:meshOf(hov,[.5,.8,1]),s:meshOf(sel,[1,.75,.3])};return st.hi}
 // called from render() after the ship is drawn, with the mesh program bound
 function draw(drawMesh,m,Mship,pw){
@@ -171,6 +197,7 @@ function panel(){
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
   btn(t3,'clear',false,()=>{if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.sel=null;editorChanged()},'remove every part (undo brings them back)');
+  if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
   if(!n||isEmpty(stackDef)||!nodes(design().root).includes(n)){st.sel=null;sel.innerHTML='<div class="sub">Right-click a part for its options.</div>';return}
   const D=design(),par=parentOf(D.root,n),ps=S.parts.filter(p=>p.on&&p.dn===n),copies=ps.filter(p=>!p.inst.rdec).length;
@@ -184,15 +211,47 @@ function panel(){
   if(PARTS[n.k].kind==='dec'){const r=row('crossfeed');btn(r,n.x?'on':'off',!!n.x,()=>edit(()=>{if(n.x)delete n.x;else n.x=true}),'let fuel flow across this decoupler: the stage below feeds the engines above it, and drains first')}
   if(radAt(n.at)){const a=n.at;
     {const r=row('copies');for(const k of SYM)btn(r,'×'+k,a.n===k,()=>edit(()=>{a.n=k}))}
-    {const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
+    if(!PARTS[n.k].surf){const r=row('decoupler');btn(r,a.dec?'radial decoupler':'fixed',!!a.dec,()=>edit(()=>{if(a.dec){delete a.dec;delete a.x}else a.dec=true}),'with a decoupler the radial parts are a stage of their own; without, they stay on for good');
       if(a.dec)btn(r,a.x?'crossfeed ✓':'no crossfeed',!!a.x,()=>edit(()=>{if(a.x)delete a.x;else a.x=true}),'the radial parts feed the engines they hang on too, and run dry first')}
     {const r=row('move');const hp=PARTS[par.k].h;
       btn(r,'▲',false,()=>edit(()=>{a.y=+Math.min(hp,a.y+.1).toFixed(3)}),'up 0.1 m');btn(r,'▼',false,()=>edit(()=>{a.y=+Math.max(0,a.y-.1).toFixed(3)}),'down 0.1 m');
       btn(r,'⟲',false,()=>edit(()=>{a.a=+(a.a-SNAP_A).toFixed(5)}),'rotate −15°');btn(r,'⟳',false,()=>edit(()=>{a.a=+(a.a+SNAP_A).toFixed(5)}),'rotate +15°')}}
+  // cant: only an engine on a radial line has an outward direction to tilt toward
+  const eng=PARTS[n.k].kind==='engine'?ps.find(p=>p.phi!=null):null;
+  if(eng){const r=row('cant'),c=n.cant||0,v=document.createElement('span');v.textContent=` ${c.toFixed(2)}° `;
+    if(c)v.title=`${((1-Math.cos(c*Math.PI/180))*100).toFixed(1)}% of each engine's thrust goes sideways (cancels between symmetric copies)`;
+    const set=x=>edit(()=>{x=Math.round(clamp(x,-30,30)*100)/100;if(x)n.cant=x;else delete n.cant});
+    btn(r,'−',false,()=>set(c-1),'cant 1° less (below 0 the nozzle tilts inward)');r.appendChild(v);btn(r,'+',false,()=>set(c+1),'cant 1° more: the nozzle tilts outward, the thrust leans in toward the axis');
+    btn(r,'balance',false,()=>{const a=aimCant(eng);if(Math.abs(a-c)<0.01)note('Balanced: the engines burning with this one already push through the centre of mass');else set(a)},
+      'cant so that all the engines burning with this one push through the centre of mass: no turning moment for the controls to fight')}
+  const path=rootPath(D.root,n);if(par&&path&&path.slice(1).every(x=>x.at==='u'||x.at==='d'))
+    {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part, so a subtree with the old root in it can be picked up (the rocket itself does not change)')}
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
     btn(r,'delete'+(sub?` (+${sub})`:''),false,()=>{if(n===D.root&&!confirm('Delete the root part and everything on it?'))return;del(n)})}}
+// ---- staging editor. Stages in firing order (1 fires first, with Space in flight); each chip is one action — a drop (a
+// decoupling placement, all its copies), an ignition, or the chute. ◀ ▶ move it to the stage before / after (off either end
+// makes a new stage), ⤵ gives it a stage of its own. The first edit freezes the automatic order into the design (stg);
+// "automatic" drops it again. Parts added later slot in where the automatic order would put them.
+function staging(box){
+  st.hiAtom=null;st.hiKey='';   // the chips are rebuilt: a removed chip never fires mouseleave, so its highlight would stick
+  const A=assemble(stackDef),S0=A.stages,wrap=document.createElement('div');wrap.className='bstg';box.appendChild(wrap);
+  wrap.innerHTML=`<div class="bhd2"><span>staging</span> <span class="dim">${A.custom?'custom':'automatic'}</span></div>`;
+  if(A.custom)btn(wrap.firstChild,'automatic',false,()=>edit(()=>{delete design().stg}),'forget the custom order and stage automatically again');
+  const mv=(i,j,how)=>edit(()=>{const D=design(),L=assemble(D).stages.map(s=>s.map(a=>a.id)),id=L[i][j];L[i].splice(j,1);
+    if(how<0){if(i===0)L.unshift([id]);else L[i-1].push(id)}
+    else if(how>0){if(i===L.length-1)L.push([id]);else L[i+1].push(id)}
+    else L.splice(i+1,0,[id]);
+    D.stg=L.filter(s=>s.length)});
+  S0.forEach((s,i)=>{const r=document.createElement('div');r.className='srow';r.innerHTML=`<b>${i+1}</b>`;wrap.appendChild(r);
+    s.forEach((a,j)=>{const c=document.createElement('span');c.className='schip '+a.kind;c.innerHTML=`<span>${a.label}</span>`;
+      c.onmouseenter=()=>{st.hiAtom=a;st.hiKey=''};c.onmouseleave=()=>{if(st.hiAtom===a){st.hiAtom=null;st.hiKey=''}};
+      btn(c,'◀',false,()=>mv(i,j,-1),'fire one stage earlier');btn(c,'▶',false,()=>mv(i,j,1),'fire one stage later');
+      if(s.length>1)btn(c,'⤵',false,()=>mv(i,j,0),'a stage of its own, right after this one');r.appendChild(c)})})}
 function palette(){const pal=el('palette');pal.innerHTML='';
-  const CAT=[['Command & payload',['pod','bio','sci','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','chute','shield']]];
+  const CAT=[['Command & payload',['pod','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
+  const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
+  if(rest.length)CAT.push(['Other',rest]);
   for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
     for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;const b=document.createElement('button');
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
@@ -218,6 +277,9 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 .bbar{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.bgrp{display:flex;gap:3px;flex-wrap:wrap;align-items:center}.bgrp .dim{margin-right:3px}
 .bbar button,.bsel button{padding:1px 6px;font-size:11px}.bbar button:disabled{opacity:.35;cursor:default}
 .bsel{border-top:1px solid var(--line);padding-top:6px}.bhd{font-size:13px}.brow{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:4px}.brow>.dim{min-width:70px}
+.bstg{border-top:1px solid var(--line);padding:6px 0 4px;margin-bottom:4px}.bhd2{display:flex;gap:6px;align-items:center;color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:3px}.bhd2 button{margin-left:auto;text-transform:none;letter-spacing:0;padding:0 6px;font-size:10.5px}
+.srow{display:flex;flex-wrap:wrap;gap:3px;align-items:center;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.05)}.srow>b{color:var(--warn);min-width:16px}
+.schip{display:inline-flex;align-items:center;gap:2px;border:1px solid var(--line);border-radius:3px;padding:0 2px 0 5px;font-size:11px}.schip.d{border-color:rgba(255,180,84,.5)}.schip.i{border-color:rgba(125,255,168,.45)}.schip.c{border-color:rgba(127,209,255,.5)}.schip button{padding:0 3px;font-size:10px;border:0;background:none}.schip button:hover{background:rgba(127,209,255,.2)}
 #bldtip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:11.5px;display:none;z-index:5}
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
@@ -251,5 +313,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='escape'){if(st.held)drop();else if(st.sel){st.sel=null;refresh()}}
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   palette()}
-return{init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
+return{aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,st};
 })();

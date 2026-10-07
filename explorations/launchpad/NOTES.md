@@ -645,6 +645,307 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.22 — canted engines (2026-10-07)
+
+**Model.** An engine on a radial line may cant its nozzle outward by θ, in its own radial plane, so its thrust leans in toward the
+axis: d = cos θ·ŷ − sin θ·n̂. It is set per design node, so all symmetric copies share it, and it ranges from −30° to +30°. Everything
+that assumed axial thrust now uses d:
+- physics (the force on the mount) and the builder's what-if probe
+- the Δv planner and TWR, as vector sums, so a symmetric canted pair honestly pays its cosine
+- the maneuver-node burn time
+- the plume, and the engine mesh, rotated about its mount
+
+Uncanted engines carry no direction at all and run the old axial code unchanged (all 112 checks).
+
+**Getting "balance" right.** My first version pointed *this* engine's thrust line through the CoM. That is the wrong target:
+
+| Lone Kestrel booster beside a Kestrel core | Thrust torque about CoM | Max tilt, 40 s climb under SAS |
+|---|---|---|
+| uncanted | 34.6 kN·m (the two equal engines nearly balance already) | 1.9° |
+| booster aimed through the CoM (26°) | **155 kN·m**, ×4.5 | flipped, lost |
+| total thrust balanced (5.05°) | 0.16 kN·m | 4.4°, worse than uncanted |
+
+"Balance" now picks the cant at which all engines burning when this one fires push with zero net torque about the CoM of
+what is still attached then (full tanks). It searches −30…30° on a 0.05° grid, and ties go to the smallest |θ|, so a symmetric
+pair stays at 0°.
+
+The last row is the real lesson. **Canting trades a torque for a side force.** The engine gimbal cancels the torque
+almost for free. The side force (sin 5° × 230 kN ≈ 20 kN here) is never cancelled: it builds a crosswind angle that the fins
+then fight. So cant pays only when the off-axis thrust is beyond what the gimbal can hold:
+
+| Stack (core + lone booster) | Balance cant | Uncanted | Balanced |
+|---|---|---|---|
+| Sparrow + Condor | 15.0° | flips at T+4 s, lost | 4.9° max tilt, 14 km at T+50 s |
+| Kestrel + Condor | 7.75° | 41.7° max tilt | 3.2° |
+| Sparrow + Kestrel | 10.15° | 95.5° | 1.1° |
+| Kestrel + Kestrel | 5.05° | 1.9° | 4.4° (don't) |
+
+A symmetric pair canted 10° gives up 1.0 % of first-stage Δv. That is less than the booster's cosine (1.5 %), because the
+core engine isn't canted.
+
+**Not modelled:** a canted nozzle's plume hitting the core (plume impingement), and a cant that changes as the CoM moves
+during the burn. Real stacks gimbal their boosters for that.
+
+## v1.21 — career moves: defection and private hire (2026-10-07)
+
+From the backlog (Caio): when the program does badly, the people in it get offers. They can also come when it does very
+well, as a step up.
+
+- **When:** between flights, at most one career offer at a time, open for 30 days. *Badness* counts one each for: two
+  or more top-ups, home opinion < 35, sanctioned by home, in debt, below the floor. Offers arrive at a rate of
+  badness/150 per day when in trouble, or 1/450 when excelling (≥ 5 firsts, home opinion > 60), and never in ordinary
+  times.
+- **Defection:** the most interested power that isn't friendly with home (relation < 0.2; scored by economy × tech ×
+  its opinion of us) wants the whole team: signing money of 40M + 30% of valuation (50% when excelling). Accept and
+  **`HOME` changes**: the new power owns 100%, so every home-relative rule follows (budget day, government work, drop
+  incidents, ground stations, the race against the new set of rivals). The old home's opinion drops to 10, relations
+  between the two powers fall 0.3, it sanctions the program for 400 days (cancelling its contracts), and everyone else
+  trusts us a little less (−5).
+- **Private hire:** a generated company ("Brutor Orbital") buys the program: 50M + 25% of valuation (45% when
+  excelling), debts paid off, government contracts dropped, home opinion −8 ("brain drain"). It's named after the
+  company from then on.
+- **What carries over:** certified ratings, the atmosphere data, the firsts flown, the contract record. Not money,
+  ownership or government standing. The panel keeps a **history** line per move.
+- **Not yet:** the pad stays where it is (the program flies under lease) until the terrain work provides launch sites
+  per power. Nothing yet stops a later move back home.
+- **Merge accident:** the misplaced `HOOK.edOverlay(octx)` line (in the ownership click handler since 86e67a6) was found and fixed
+  independently here and in the builder's v1.20 (which added a guard test); the merge kept one copy, in `render()`.
+
+`test.mjs`: 4 new checks (§18), 103 total.
+## v1.20 — the staging editor (2026-10-07)
+
+**Model.** The automatic event list (v1.17's segment-tree rule) is split into *atoms*:
+- one per decoupling placement, with all its symmetric copies
+- one per ignited group
+- the chute
+
+An atom is named by its decoupler's design-node id (`d:7`, `i:7`, `i:root`, `c`). A design may carry `stg`, a list of stages in
+firing order, each a list of atom ids; `stageAtoms` turns it into events.
+- **Late parts:** atoms the order doesn't mention (parts added later) keep their automatic place relative to the rest, so
+  editing the rocket never loses staging.
+- **Drops carry what hangs off them:** in a custom order a drop takes everything hanging from the segment, so the core
+  can go before its boosters without leaving them attached to nothing. A segment an earlier stage already dropped is not
+  dropped again.
+
+The automatic order written out as a custom one reproduces the events exactly (test §17). Node ids are assigned on the
+first edit, copies get fresh ones, and duplicates are repaired.
+
+**UI.** The panel sits under the build toolbar: stages in firing order, each action a chip (orange drop, green
+ignition, blue chute).
+- ◀ ▶ move a chip one stage earlier or later; off either end makes a new stage. ⤵ gives it a stage of its own.
+- "automatic" forgets the custom order.
+- Hovering a chip lights its parts on the rocket: the whole segment for a drop, the engines for an ignition.
+- The flight HUD, Space, the Δv planner and autopilot tapes all read the same events, so nothing else needed changing.
+
+| What | Number |
+|---|---|
+| Heavy, boosters held on until the core drops (one fewer stage) | Δv 1 758 + 1 447 + 2 465 → **2 670 + 2 465 m/s**: carrying two empty boosters for the core's burn costs **535 m/s** |
+| Same, flown: Space for real, then physics stepped from the page | boosters burn out at T+48 s and stay on ("boosters empty — stage to drop them"); core + boosters drop together at T+96 s; 129 km at T+120 s, worst joint 24 % |
+| `test.mjs` after merging `main` (economy v1.19) | 106 / 106 |
+
+**Two bugs found by the browser, not the tests.**
+- **Atom ids on unedited presets.** These have no node ids yet, so atoms named `d:undefined` merged: "drop core 1"
+  vanished into the booster drop. The fix names them by design-node object instead (by segment at first, which split
+  the booster pair). There is now a test for it.
+- **A stuck highlight.** Rebuilding the panel removes the hovered chip, and a removed element never fires `mouseleave`.
+
+### The misplaced hooks (fixed on `main` as `480d7c7` before this slice)
+Moving the v1.17 hunks into this worktree used zero-context patches (`git apply --unidiff-zero`). Those place a *pure
+insertion* by line number, and the terrain session's 92 lines were in the source diff but not in the worktree. Two
+insertions landed in the wrong place:
+- `HOOK.edDraw` went inside `drawMap`, so from v1.17 on the builder drew **no placement ghost, hover or selection glow**.
+- `HOOK.edOverlay` went between `if(ds.start)` and `else if(ds.dk)` in the economy's program-panel click handler, so in the
+  editor **program decisions never resolved**.
+
+All behavioural tests passed throughout: nothing in them looks at *where* a hook is called from. My v1.17/v1.18 browser
+checks drove the placement logic and read state ("ghost hard to make out") instead of looking at the ghost. It surfaced
+only when a hover highlight that should have existed didn't. Now:
+- a **merge guard** in test.mjs §17 checks that each render hook is called once, from inside `render()`, and that the click
+  handler's if/else-if chain is intact. Run against the broken commit, the guard fails, as it should.
+- **Never move hunks between diverged trees with zero-context patches.** Use a 3-way merge or a patch with context.
+
+## v1.19 — tourism, military, sanctions, the race (2026-10-07)
+
+Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy`).
+
+- **Tourism** (a source of its own): *tourist flight to space* (g limit 4.5–6) once the passenger hop is done; *orbital
+  holiday* once the passenger orbit is. Pays 55–130M. The passenger is a named tourist ("a retired dentist", "a very
+  excited grandmother"). The offer rate goes with (tourism standing / 50)², so **one hurt tourist** (−40 standing,
+  −10 home opinion) all but empties the board for a long time.
+- **Military** (60% home as client, otherwise any power, including home's enemies):
+  - *reconnaissance orbit* (110–180 km, 60–90°);
+  - *ballistic test*: an instrument package down at sea within 40 km of a target 300–900 km downrange, marked on the
+    map. This exercises the impact predictor. The flight record now keeps where the flight ended (landed or crashed)
+    and whether the instruments were aboard;
+  - *classified payload* to orbit.
+  
+  Pay ×1.6. Each completed military contract **may leak** (25%, 40% for a foreign client). A leak costs home opinion,
+  and every power hostile to the client takes −15 opinion and sanctions us.
+- **Sanctions** (`sanction(i, days, why)`): that power sends no offers, cancels its active contracts and withholds its
+  budget-day share until the sanction lapses. **Home sanctions too:** military work for home's enemy (always found out:
+  250 days), and commercial work for a power with relation < −0.75 (export controls: 120 days). For a state agency
+  that means losing government contracts and the budget day, which is the "working with the enemy" mechanic. Offers
+  show the risk before you take them ("⚠ Maros sanctions us at once · Venka if it leaks (40%)").
+- **The race** for the first satellite, the first passenger to space and the first passenger orbit. Rivals' schedules
+  are seeded from their tech × √economy (first world: the strongest rival is expected around days 86 / 184 / 278).
+  First in the world pays 1.5× (+8 home opinion); second pays half. A rival's win makes the news, and costs home
+  opinion if that rival is unfriendly. The Program panel shows the race.
+
+`test.mjs`: 5 new checks (80).
+
+Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
+controls on hardware).
+## The planet's size: a scale study and the rescale (2026-10-07)
+
+**The question (Caio):** was Tellus too small? It was a copy of Kerbin's numbers (600 km, 9.81 m/s², 6 h day, 70 km
+of air; Selene was the Mun).
+
+**What players say** (KSP forums): Squad shrank Kerbin to 1/10 Earth for gameplay (easier rockets, frequent transfer
+windows, less warp). Among rescale mods, **2.5×** is the most-cited sweet spot ("2.5–3.7× the perfect sweet spot of
+challenge versus casual play"); JNSQ (2.7×) adds ~1,400 m/s to orbit; 3.2× (~6,000 m/s) is "a solid difficulty level
+without making it a hindrance". Real scale (RSS) is a big adjustment many players leave. The usual complaints at
+larger scales are rebalancing (the planets are easy, the rest of the game isn't) and slow ascents and warp limits. Our
+exact Kepler rails remove the warp problem.
+
+**The study** (a harness that loads the sim core with Tellus rescaled, surface gravity kept, atmosphere ×(1+0.25(k−1)),
+and flies the same scripted missions):
+
+| | 1× | 2× | 2.5× |
+|---|---|---|---|
+| Δv to low orbit | 3,060–3,180 | 4,000–4,180 | 4,390–4,600 |
+| Orbiter preset reaches orbit with | 1,643 spare | 720 | 217 |
+| Lunar preset | orbit | lost (overheats on ascent) | lost |
+| Peak ascent heating (heating ×3) | 68–85% | 96–100% | 90–100% |
+| Pod + shield back from orbit, ablator left | 63% | 4% | 0% |
+| Polar 300 km satellite contact, pad → 5 stations | 10% → 53% | 5% → 32% | 4% → 19% |
+| Mean distance to the nearest city | 295 km | 368 | 446 |
+
+Findings: Δv grows less than the forums suggest (the 6 h day's spin helps); **heating, not Δv, was the wall**. The ×3
+heating gain had been compensating for the small planet's slow orbits. The world gains real room: area ×4 at 2×.
+
+**Decision (Caio): about 2×, pegged to Earth rather than to "2× Kerbin":**
+
+| | Value | Peg |
+|---|---|---|
+| Radius | 1,274 km | a fifth of Earth's (~2.1× Kerbin) |
+| Surface gravity | 9.81 m/s² | Earth's |
+| Day | 8 h | a third of Earth's |
+| Atmosphere | top 100 km (Kármán line), scale height 7.5 km, sea-level density 1.225 | Earth-like |
+| Selene | radius 348 km, surface gravity 1.62, orbit 38,440 km | the Moon's size ratio and gravity; a tenth of the Moon's distance |
+
+**As built** (measured):
+- Orbit costs 4,244–4,454 m/s; low-orbit speed is 3.4 km/s; the period at 300 km is 52 min; the equator spins at
+  278 m/s.
+- **Heating gain ×3 → ×1** (plain Sutton–Graves). That restores the old balance exactly: ascents peak at 35–76% of
+  part limits; a shielded pod comes back from orbit with 69% ablator; a bare pod survives a low-orbit return (74%) but
+  not a Selene one.
+- **Presets resized:**
+  - Lunar moves to a 2.5 m first stage (orbit with ~4,070 m/s left).
+  - Big Lunar gains tankage and two Kestrel boosters (~4,100 left).
+  - Passenger gets a 4 t tank (142 km apex, 6.6 g).
+
+  A Selene landing and return is about 8,200 m/s in all: 4,300 to orbit plus ~3,900 (transfer 1,321, a 2.4-day trip).
+- The program calendar follows the planet: a program day is 8 h (`DAY_S` derives from the rotation, so the launch
+  window still matches a whole day). Air sampling has 10 bands. The sky shader and CPU light model take their scale
+  heights from `TELLUS.H`. Map camera distances are in planet radii. The city texture is 2048×1024, keeping ~3.7 km
+  texels.
+- **Tests now take their geometry from the planet** (`LEO`, `ATM`, `VENT` at the top of test.mjs) instead of 600 km
+  literals. Changes worth knowing:
+  - The node burn tolerance is 1.5% (a 58 s burn to Selene).
+  - The structural yank checks use a fixed 1.25 m test rocket, and "survived" means intact a minute after the yank.
+  - The broadside failure check sets its speed through the air, not inertially (the faster spin was hiding it).
+  - The tape check's pitch kick is retuned (8.95 s).
+
+  106 checks pass.
+
+**Other branches:** terrain (not yet merged) bakes a world map whose texels double in km and generates plate and
+climate features over the unit sphere, so it needs a look when it merges. Economy and builder only pick up preset and
+number changes.
+
+## Ground stations (planning branch, 2026-10-07)
+
+- **Sites:** the pad, plus stations bought at cities, each power's two biggest. **At home** 10M. **Abroad** 20M plus a 2M
+  lease every 100 days, and only with permission: relations with home must be friendly (> 0.2) and their opinion of us
+  ≥ 45. The panel gives the reason when they refuse. **If relations turn tense (< −0.2), they shut the station**
+  ("…and keeps the furniture").
+- **What they're for, measured.** On a planet this small one pass comes soon: a station at the target only brought
+  one picture down 0.3 h sooner, because at 300 km a satellite sees a cap ~40° across and the pad is in view on most
+  orbits. The real value is **contact time**. A polar satellite at 300 km has the pad in view 9–10% of the time;
+  with five well-spread stations, ~54% (equatorial 200 km: 20% → 34%; polar 800 km: 18% → 79%). So **imagery sales
+  now follow contact time:** 0.12M per day at full contact, about 4M a year with the pad alone versus 26M with a
+  network. A foreign station (20M + 8M a year) pays for itself, and the network becomes a map of your foreign
+  relations.
+- Pictures for contracts come down at whichever station is in view first; the headline names it. Stations are drawn
+  on the map (squares).
+- Checks (§17, 4 new, 91 total): build rules and costs, the lease and the closure, delivery via a nearer station,
+  contact time with and without a network.
+
+## Orbital registry: persistent satellites, camera and antenna (planning branch, 2026-10-07)
+
+The first slice of the parts-and-missions plan: things left in orbit stay there and keep working.
+
+- **One absolute frame and clock.** Program time T = day × DAY_S; Tellus's angle = th0 + rot·T. **Lift-off waits for the
+  daily launch window** (stacking ends, then the next whole day), so every flight's own frame (clock from 0) *is* the
+  absolute frame, because a Tellus day is exactly one rotation. That makes persistence consistent with no change to
+  flight physics: a satellite registered at the end of one flight sits over the right ground in the next (checked:
+  3e-10 m). Selene's phase still restarts per flight; nothing in the registry depends on it yet.
+- **Registry:** when a flight ends with the vessel alive in a stable Tellus orbit (periapsis above the air), it's
+  registered (`PROG.sats`): state at its epoch plus its kit (camera, antenna, instruments, ballast, passenger). Named by
+  kit: Lookout N, Beeper N, Boilerplate N, Ark N. Propagated on exact Kepler rails across program time. Listed in the
+  Program panel ("In orbit"); drawn on the map as an orbit line plus a marker.
+- **Parts:** *Imaging camera* (8M; ~10 µrad, so 2 m from 200 km, 3 m from 300 km) and *Antenna* (3M).
+- **Imaging, between flights** (`satTick`, from the world tick). Every 30 s of program time, a camera satellite checks each
+  accepted imaging contract. The target must be within 30° off nadir, slant range × IFOV ≤ the required resolution,
+  the sun above 10° at the target, and cloud cover < 0.35 there. Then the picture waits on board until the satellite
+  passes over a ground station (only the pad so far, elevation ≥ 5°) **with an antenna**.
+- **Clouds on the CPU:** the sky shader's `cloudCovF`, ported like the land mask (same hash and noise). The shader's
+  cloud drift now runs on program time, so the clouds you see are the clouds the satellites see. Mean cover ≈ 9%, in
+  large systems.
+- **Contracts:** a new `image` type (science, commercial and government clients; unlocks with the beeper): photograph a
+  city at 2, 3, 5 or 8 m.
+- **Disasters:** floods, wildfires, volcanoes, storms, locusts. About one per 45 days, always as a headline. If a camera
+  satellite with an antenna is up, the affected power offers a short, well-paid imaging job; if not, the headline
+  adds "(if only someone had a camera up there)".
+- **Imagery sales:** each working camera satellite earns ~0.03M per day, shaded by the business cycle.
+- Checks (`test.mjs` §16, 7 new, 81 total): frame consistency, the launch window, CPU cloud statistics, a polar
+  300 km satellite delivering a 5 m image on day 2 while a 1 m request stays out of reach, no antenna means no delivery,
+  and disasters plus income.
+
+**Not yet:** ground stations beyond the pad (more stations = faster downlinks: politics, since they're on someone's
+land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
+in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
+
+## v1.18 — radial fins and make-root (2026-10-07)
+
+First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
+
+**Radial fin** (`rfin`). It is one flat plate, the same plate as one of the fin ring's four (0.9 × 0.9 m, CN = 3.5·sinα·cosα +
+1.2·sin²α). It is *surface-attached* (`surf`): it sits on the host's skin at the profile radius for that height (`profR`), and it
+has no stack line, so nothing attaches to it and it never gets a radial decoupler. This is the cheap and honest version
+of "tilted parts". The physics already modelled fins as flat plates, so a radial fin is just one plate at its own angle φ.
+Its joint is radial, so the plate's normal force reaches the host as shear plus bending at the root (rated S 150 kN,
+B 60 kN·m).
+
+| What | Number |
+|---|---|
+| 4 radial fins on a 1.25 m body vs the ring's 4 plates (plates alone, M 0.6, 4°, 20 kPa) | force **99.4 %**, lever arm identical (1.750 m). The 0.6 % gap is the 1.2·sin²α term, which depends on plate orientation (45° off the ring's here). The linear term doesn't: Σ n nᵀ = 2I for any 4 orthogonal plates |
+| Orbiter, ring swapped for radial fins at the tank's bottom: none / ×3 / ×4 | **−3.35 / 0.03 / 0.52** calibers (ring: 0.88; without the ring's 0.9 m body the plates sit closer to the CoM). Three plates give 1.5 I, not 2 I: 75 % of the restoring force |
+| Orbiter ring + 4 radial fins on the tank (flown, SAS on) | 1.63 cal; 3.2 km at T+30 s, max AoA 0.27°, busiest fin root ≈ 1 % of its rating |
+
+**Make root.** "make root" in a part's options re-hangs the design tree from that part, flipping each stack joint on the path
+(`'u'` ↔ `'d'`); a joint's reinforcement moves with it. It is limited to stack paths: reversing a radial joint isn't exact,
+because the side-by-side clearance formula is asymmetric, and a symmetric copy would have to become a single parent. The
+point is picking things up: with the core engine as root, clicking the upper stage picks up Petrel + tank + pod + chute
+in one go. The assembled vessel doesn't change at all (test §16: same joints, reinforcement and stages, compared by stage label
+because segment *numbers* follow part creation order, which a re-root changes).
+
+**Merging.** `main` had moved: the orbital registry, which added a camera and an antenna. One conflict, the price table line next
+to `PRICE.rfin`. It also exposed a palette bug: categories were a fixed list of kinds, so the two new parts didn't show.
+The palette now puts any unclaimed kind under "Other". `test.mjs` 90/90 after the merge.
+
+**Headless builder.** `builder.js` loads into the same `new Function` sandbox as the sim core: it touches no DOM until `init()`.
+So tree operations like `reroot` are tested directly.
+
 ## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
 
 Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,
@@ -1099,8 +1400,8 @@ restartable upper stage, docking port.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
-   (the construction screen). Next on that line: tilted parts (radial fins, canted engines), re-rooting, and core↔booster
-   aero interference.
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20, ~~canted
+   engines~~ done in v1.22. Next on that line: truly tilted bodies, and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
