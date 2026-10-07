@@ -621,6 +621,37 @@ The first slice of the parts-and-missions plan: things left in orbit stay there 
 land); film return capsules; power and eclipses; orbital decay for low satellites; flying past a registered satellite
 in a flight (it isn't drawn in 3D yet); rivals' satellites and visibility (the spy layer).
 
+## v1.18 — radial fins and make-root (2026-10-07)
+
+First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
+
+**Radial fin** (`rfin`). It is one flat plate, the same plate as one of the fin ring's four (0.9 × 0.9 m, CN = 3.5·sinα·cosα +
+1.2·sin²α). It is *surface-attached* (`surf`): it sits on the host's skin at the profile radius for that height (`profR`), and it
+has no stack line, so nothing attaches to it and it never gets a radial decoupler. This is the cheap and honest version
+of "tilted parts". The physics already modelled fins as flat plates, so a radial fin is just one plate at its own angle φ.
+Its joint is radial, so the plate's normal force reaches the host as shear plus bending at the root (rated S 150 kN,
+B 60 kN·m).
+
+| What | Number |
+|---|---|
+| 4 radial fins on a 1.25 m body vs the ring's 4 plates (plates alone, M 0.6, 4°, 20 kPa) | force **99.4 %**, lever arm identical (1.750 m). The 0.6 % gap is the 1.2·sin²α term, which depends on plate orientation (45° off the ring's here). The linear term doesn't: Σ n nᵀ = 2I for any 4 orthogonal plates |
+| Orbiter, ring swapped for radial fins at the tank's bottom: none / ×3 / ×4 | **−3.35 / 0.03 / 0.52** calibers (ring: 0.88; without the ring's 0.9 m body the plates sit closer to the CoM). Three plates give 1.5 I, not 2 I: 75 % of the restoring force |
+| Orbiter ring + 4 radial fins on the tank (flown, SAS on) | 1.63 cal; 3.2 km at T+30 s, max AoA 0.27°, busiest fin root ≈ 1 % of its rating |
+
+**Make root.** "make root" in a part's options re-hangs the design tree from that part, flipping each stack joint on the path
+(`'u'` ↔ `'d'`); a joint's reinforcement moves with it. It is limited to stack paths: reversing a radial joint isn't exact,
+because the side-by-side clearance formula is asymmetric, and a symmetric copy would have to become a single parent. The
+point is picking things up: with the core engine as root, clicking the upper stage picks up Petrel + tank + pod + chute
+in one go. The assembled vessel doesn't change at all (test §16: same joints, reinforcement and stages, compared by stage label
+because segment *numbers* follow part creation order, which a re-root changes).
+
+**Merging.** `main` had moved: the orbital registry, which added a camera and an antenna. One conflict, the price table line next
+to `PRICE.rfin`. It also exposed a palette bug: categories were a fixed list of kinds, so the two new parts didn't show.
+The palette now puts any unclaimed kind under "Other". `test.mjs` 90/90 after the merge.
+
+**Headless builder.** `builder.js` loads into the same `new Function` sandbox as the sim core: it touches no DOM until `init()`.
+So tree operations like `reroot` are tested directly.
+
 ## v1.17 — the construction screen: free placement, radial on anything (2026-10-07)
 
 Built in a session running in parallel with the economy work (v1.13–v1.16), so the UI lives in its own file,
@@ -1075,8 +1106,8 @@ restartable upper stage, docking port.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
-   (the construction screen). Next on that line: tilted parts (radial fins, canted engines), re-rooting, and core↔booster
-   aero interference.
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18. Next on that line: a staging editor,
+   canted engines (a thrust direction per engine), truly tilted bodies, and core↔booster aero interference.
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.

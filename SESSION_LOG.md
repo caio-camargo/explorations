@@ -1809,3 +1809,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   `builder.js`; `index.html` (design-format block, editor UI section, 5 render hooks); `test.mjs` §15; NOTES § v1.17; INDEX row;
   LESSONS #16. Moved to worktree `launchpad-builder` / branch `builder` at the worktree switch, committed there as LF (the first try stored CRLF; amended), browser-checked from the worktree, fast-forward merged into `main`.
   Next: tilted parts (radial fins), re-rooting, staging reorder UI; fold `builder.js` into `index.html` once nobody else is in it.
+- **v1.18 (2026-10-07, builder worktree):** radial fins (`rfin`, one fin plate surface-attached to any part, ×1–8; 4 of them =
+  the ring's plates within 0.6 %) and "make root" (re-hang the design along stack joints, so an upper stage picks up with the pod;
+  vessel unchanged). Merging `main` (orbital registry) gave one price-table conflict and exposed a palette bug (new part kinds
+  hidden), now an "Other" group. `test.mjs` 90/90. Browser-checked from the worktree. Merged to `main` (`c53b098`). Next: staging editor.

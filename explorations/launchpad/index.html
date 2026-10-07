@@ -244,6 +244,10 @@ const PARTS={
   // radial decoupler: rated as if it were the usual pair of attach points, so it carries a booster's thrust and moment
   rdec:{name:'Radial decoupler',kind:'rdec',m:0.08,h:0.4,C:800,T:500,S:500,B:500,noAero:true,radialOnly:true},
   fins:{name:'Fin ring',kind:'fins',m:0.25,h:0.9,C:2500,T:1200,B:450,span:0.9,chord:0.9},
+  // radial fin: one plate, surface-attached (surf) to any part's side — no stack line of its own, nothing attaches to it.
+  // Same plate as one of the ring's four, so four of these on a 1.25 m body fly like the ring. Its root carries the plate's
+  // normal force as shear and bending at the joint.
+  rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   wren:{name:'Wren lander',kind:'engine',m:0.15,h:0.55,cm:.7,thrust:18,ispA:240,ispV:300,exit:0.25,C:500,T:300,B:150,prof:[[.25,0],[.1,.25],[.35,.35],[.625,.5],[.625,.55]]},
   // a small sea-level engine: sounding rockets and early hops (a Kestrel empties a 1 t tank in 12 s and leaves a tail-heavy, tumbling hull)
   sparrow:{name:'Sparrow sounding',kind:'engine',m:0.3,h:0.8,cm:.6,thrust:60,ispA:250,ispV:280,exit:0.3,C:900,T:400,B:200,prof:[[.3,0],[.12,.45],[.3,.55],[.625,.72],[.625,.8]]},
@@ -327,6 +331,9 @@ function lineOf(nd){const mem=[{nd,y:0,up:null}];
     const q={nd:c,y:c.at==='u'?m.y+PARTS[m.nd.k].h:m.y-PARTS[c.k].h,up:m};mem.push(q);walk(q)}};
   walk(mem[0]);return mem}
 const radAt=at=>at&&typeof at==='object';
+// a part's outer radius at height y above its bottom (its profile, interpolated): where a surface part sits
+function profR(d,y){const pr=d.prof;if(y<=pr[0][1])return pr[0][0];
+  for(let i=0;i<pr.length-1;i++){const[r0,y0]=pr[i],[r1,y1]=pr[i+1];if(y<=y1)return y1-y0<1e-9?Math.max(r0,r1):r0+(r1-r0)*(y-y0)/(y1-y0)}return pr[pr.length-1][0]}
 // Every part instance of a v2 design (symmetric copies included) and the joints between them. y up, the root's bottom at
 // 0 (assemble shifts the lowest part to 0). An instance: {nd, d, x, z, y0, rot, phi, line, rdec?}: rot is the frame
 // angle its own radial children are measured in, phi the outward angle of the radial attachment that placed its line.
@@ -342,6 +349,12 @@ function layoutDesign(des){
   const queue=[];const m0=lineOf(des.root),L0=place(m0,0,0,0,0,null,'');queue.push({mem:m0,L:L0});
   while(queue.length){const{mem,L}=queue.shift(),lineQ=[...L.byM.values()];
     for(const m of [...mem].sort((a,b)=>b.y-a.y))for(const c of m.nd.c||[]){if(!radAt(c.at))continue;
+      if(PARTS[c.k].surf){ // a surface part sits on the host's skin at that height; no line, no children
+        const P=L.byM.get(m),at=c.at,d=PARTS[c.k],n=Math.max(1,at.n|0),rp=profR(P.d,clamp(at.y,0,P.d.h)),yc=P.y0+at.y;
+        for(let k=0;k<n;k++){const ph=P.rot+at.a+2*Math.PI*k/n,nx=Math.cos(ph),nz=Math.sin(ph),
+          q={nd:c,d,x:P.x+rp*nx,z:P.z+rp*nz,y0:yc-(at.cy??d.h/2),rot:ph,phi:ph,line:-1,surf:true,path:P.path+'/'+k};inst.push(q);
+          joints.push({a:P,b:q,axis:[nx,0,nz],P:[q.x,yc,q.z],j:c.j||0})}
+        continue}
       const P=L.byM.get(m),at=c.at,cm=lineOf(c),n=Math.max(1,at.n|0),cy=at.cy??PARTS[c.k].h/2,yb=P.y0+at.y-cy;
       const lo=yb+Math.min(...cm.map(q=>q.y)),hi=yb+Math.max(...cm.map(q=>q.y+PARTS[q.nd.k].h)),rs=Math.max(...cm.map(q=>PARTS[q.nd.k].r));
       const D=Math.max(rMax(lineQ,lo,hi),P.d.r)+RGAP+rs,rp=P.d.r,yc=P.y0+at.y;
@@ -372,7 +385,7 @@ function assemble(stack){
   // reinforcement mass sits on the child side of the joint, scaled by the joint's size
   for(const p of parts)if(p.parent&&p.jr){const rj=Math.min(p.d.r,p.parent.d.r);p.jm=JR[p.jr].m*(rj/R0)**2}
   // an interstage's shell reaches up around the part right above it on its line (an engine): that part is enclosed
-  for(const p of parts)if(p.d.istage){const a=parts.find(q=>q!==p&&!q.inst.rdec&&q.inst.line===p.inst.line&&Math.abs(q.y0-(p.y0+p.h))<1e-6);
+  for(const p of parts)if(p.d.istage){const a=parts.find(q=>q!==p&&!q.inst.rdec&&!q.inst.surf&&q.inst.line===p.inst.line&&Math.abs(q.y0-(p.y0+p.h))<1e-6);
     if(a){p.shell=a.h;p.xm=0.1*a.h;a.encBy=p}}
   // radial groups: one per radial placement (all its symmetric copies)
   const groups=[],gOf=new Map();
@@ -505,8 +518,8 @@ function rebuildShape(s){
   const cl=s.lines.find(l=>l.core)||s.lines[0];s.radius=cl?cl.radius:R0;
   s.grp=flowGroups(s,onArr(s));
   for(const p of ps){p.area=0}for(const ln of s.lines)for(const e of ln.E)e.p.area+=6.2832*e.rm*e.L;
-  for(const p of ps){if(p.d.kind==='fins')p.area+=8*p.d.span*p.d.chord;if(!p.area)p.area=2}
-  s.fins=ps.filter(p=>p.d.kind==='fins');s.chutePart=ps.find(p=>p.d.kind==='chute')||null;
+  for(const p of ps){if(p.d.kind==='fins')p.area+=8*p.d.span*p.d.chord;else if(p.d.kind==='rfin')p.area+=2*p.d.span*p.d.chord;if(!p.area)p.area=2}
+  s.fins=ps.filter(p=>p.d.kind==='fins'||p.d.kind==='rfin');s.chutePart=ps.find(p=>p.d.kind==='chute')||null;
   const order=[],dist=p=>{let k=0;for(let q=p;q.parent;q=q.parent)k++;return k};
   for(const p of ps)if(p!==s.root&&p.parent&&p.parent.on)order.push(p);
   order.sort((a,b)=>dist(b)-dist(a));s.order=order}
@@ -552,6 +565,7 @@ const cpMax=M=>M<1?1+0.28*M*M:1.84-0.56/(M*M);
 const waveBump=M=>1+0.5*Math.exp(-(((M-1.05)/0.18)**2));
 // Sutton–Graves stagnation heating q = k·√(ρ/r_nose)·v³ (W/m², k = 1.83e-4 for air); each surface element gets q·|cos|
 const SG=1.83e-4;let HEAT_GAIN=3;   // ×3: this small planet's 2.3 km/s orbits would otherwise re-enter like a gentle breeze (see NOTES)
+const FIN4=[[1,0],[0,1],[-1,0],[0,-1]];
 const NA=8,CA=[],SA=[];for(let k=0;k<NA;k++){CA.push(Math.cos((k+.5)/NA*6.283185307));SA.push(Math.sin((k+.5)/NA*6.283185307))}
 function addF(p,fx,fy,fz,px,py,pz){const F=p.F,L=p.L;F[0]+=fx;F[1]+=fy;F[2]+=fz;L[0]+=py*fz-pz*fy;L[1]+=pz*fx-px*fz;L[2]+=px*fy-py*fx}
 function aeroPass(s,vb,wb,rho,M,thrusting){
@@ -575,8 +589,9 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
         if(fc>1e-6){const rLo=e.y0<e.y1?e.r0:e.r1,rHi=e.y0<e.y1?e.r1:e.r0,dS=Math.PI*(fy<0?rLo*rLo-rHi*rHi:rHi*rHi-rLo*rLo);
           const N=0.5*rho*f2*2*(fc/Math.sqrt(f2))*(Math.abs(fy)/Math.sqrt(f2))*dS*slender;   // q·sin2α·dS
           addF(p,fx/fc*N,0,fz/fc*N,ox,e.ym,oz)}}}}
-  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,rr=d.r+d.span/2;
-    for(const[ax,az]of[[1,0],[0,1],[-1,0],[0,-1]]){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,nx=-az,nz=ax,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+  // a fin ring is four plates around its own axis; a radial fin is one plate, its root on the host's skin at angle phi
+  for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,one=d.kind==='rfin',rr=one?d.span/2:d.r+d.span/2;
+    for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,nx=-az,nz=ax,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
       const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;
       const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
       addF(p,nx*N+fx*sf,fy*sf,nz*N+fz*sf,px,py,pz)}}
@@ -884,6 +899,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 // the government tops the program up (grudgingly): no dead ends, but money still decides what you can fly next.
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
+PRICE.rfin=0.4;   // builder session: one radial fin (a ring of four costs 1.5)
 const FUEL_PRICE=0.2,REFURB=0.8,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
@@ -1532,6 +1548,7 @@ function partShape(out,p){
     case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord,rr=R0+sp/2;
       box(out,[x+rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x-rr,y+ch/2,z],sp/2,ch/2,.035,C.R);box(out,[x,y+ch/2,z+rr],.035,ch/2,sp/2,C.R);box(out,[x,y+ch/2,z-rr],.035,ch/2,sp/2,C.R)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
+    case'rfin':rbox(out,[x+Math.cos(p.phi)*d.span/2,y+h/2,z+Math.sin(p.phi)*d.span/2],d.span/2,h/2,.035,C.R,p.phi);break;
     case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);
       lathe(out,[[.12,0,C.GL],[.12,.05,C.GL]],[x+0.24,y+.62,z+.4],10);break;
     case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.G],[.625,.44,C.G],[.625,.44,C.D],[.625,.5,C.D]],o);
