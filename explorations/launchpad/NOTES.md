@@ -697,6 +697,84 @@ Each building stands on a concrete slab that `padGround` already paints.
 - Night: the floodlights have heads but don't emit. Hook them into the night-lights additive pass.
 - Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
 
+## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
+
+Before this, every engine had the same additive cone: a hard-edged pale shape that only changed size. In vacuum it went
+almost black and hid the stars. The KSP mod Waterfall (1.3 M installs) is the reference. **What we borrowed from it:**
+templates per propellant, not per engine; layered parts of a plume (core, diamonds, mantle, glow); parameters driven by
+throttle and air pressure; and deforming the proxy mesh in the vertex shader. **What we did differently:** Waterfall
+stacks mesh shells with scrolling noise textures because a Unity mod can't do more. We own the shader, so the plume is
+a **volume raymarched inside one proxy mesh per engine** (32 steps). It reads as a body of gas from any angle, with no
+shell edges at grazing views.
+
+### The model (`PLUME_VS`/`PLUME_FS`, `plumeShape`, `PROPS`, `PFX`)
+- **Shape from the pressure ratio** n = pe/pa (nozzle exit pressure over ambient, both in atm). Over-expanded (n < 1):
+  the jet pinches to √n of the exit radius within 1.5 radii. Spread angle: tan θ = 0.03 + 0.52·smoothstep(0, 2.5,
+  log₁₀ n). Near-straight at sea level, about 29° from n ≈ 300 up, plus a little turbulent widening in air. Length
+  re·(10 + 12·throttle)·(1 + 1.4·(1 − pa)).
+- **Thinning:** gas density goes as (re/rb)², and the line of sight through it grows as rb, so emission falls as
+  (re/rb)^1.3. That one term is why a vacuum plume is wide and faint and a sea-level one is tight and bright.
+  (re/rb)² dimmed the 45 km plume to nothing.
+- **Shock diamonds** every Lc = 2.4·re·√n, soft Gaussian cells that fade along the train. Visible only for pa in
+  0.02–0.25 and n < 8: they stretch out and vanish with altitude, as on real ascents.
+- **Layers:** a white-hot core over the potential-core length (3.5–6 re); an afterburning mantle (fuel-rich exhaust
+  burning in air, so it scales with air density); a gas glow; and soot that *absorbs*.
+- **Opacity:** output is premultiplied (`ONE, ONE_MINUS_SRC_ALPHA`), so a plume can occlude. A thick region shows its
+  colour as emission over opacity. Kerolox is opaque (op 1.2), alcohol translucent (0.8), hypergolic faint (0.25),
+  hydrolox nearly clear (0.03).
+- **Propellant profiles (`PROPS`)** with an engine table (`PFX`): Kestrel, Condor and Albatross are kerolox at pe
+  0.7–0.8 atm; Petrel is kerolox at pe 0.025 (vacuum); Sparrow is alcohol/LOX (V-2-like); Wren is hypergolic at pe 0.12.
+  Hydrolox is defined but no engine uses it yet. An engine not in the table defaults to kerolox, with a vacuum nozzle if
+  its sea-level Isp is under half its vacuum Isp.
+- **Spool:** a render-side `SPOOL` WeakMap lags each plume behind the throttle by ~0.12 s, so ignition grows instead
+  of popping. Flicker is two sines on the intensity, phased per engine.
+- Smoke puffs are now born at 0.7 of the plume length (`plumeShape`), so they leave from where the flame fades.
+
+### What it took (and what failed)
+- **First pass: everything saturated to white.** The gains were ~5× too high; `1 − exp(−C)` clips every channel.
+- **Purely additive turned green over grass.** The ground showed through a faint flame. A sooty kerolox flame is
+  close to opaque in reality, so opacity was added.
+- **Then the kerolox plume read as brown smoke.** The outer gas absorbed more than it emitted, and a thick region's
+  colour is its emission/opacity ratio. Fix: only the core and mantle carry opacity.
+- **Gamma 2.2 greyed the faint outer gas** (a peach tint on a blue sky reads grey). Gamma 1.5 plus a more saturated
+  glow colour kept it orange.
+- **Culling:** the lathe's outward faces wind so that `cullFace(FRONT)` keeps the faces nearest the eye. With the
+  camera inside the bounds it switches to the far faces and marches from the eye.
+- **Measuring against the wrong tree.** The first A/B said +3 to +12 ms. The "main" server on 8778 was another
+  process's tree, and 127.0.0.1:8777 had a second listener too. Use explicit `127.0.0.1` URLs on ports you have
+  checked with `netstat` (LESSONS candidate).
+
+### Cost
+Same-run A/B against a `main` snapshot (`d803a54`): GPU timer queries, `RS` pinned to 1, 1280×800 headless Chrome, two
+rounds of three 1.2 s samples.
+
+| view | main | plumes |
+|---|---|---|
+| 2 ascent (Lunar, 3 km) | 14.1–14.5 ms | 14.4–14.8 |
+| 10 Sparrow from below | 5.4–5.9 | 5.9–6.3 |
+| 17 Orbiter at the pad | 17.8–19.0 | 18.1–19.4 |
+| 19 Albatross at 45 km | 2.6–3.8 | 3.3–4.0 |
+| 20 Petrel in vacuum (fills the screen) | 0.8–1.0 | 1.7–2.0 |
+| 23 Kestrel at 1 km | 10.4–10.8 | 9.9–10.2 |
+
+The first version cost far more. Three changes fixed it:
+- the vertex shader bends the proxy lathe to 1.9·rb(s), so pixels outside the plume never march (Waterfall's trick);
+- samples outside that radius are skipped before any noise;
+- turbulence is read from a 32³ R8 noise texture (two fetches instead of 16 hashes). Marching stops once the ray is opaque.
+
+### Reference views
+`refView(17)` Orbiter at the pad, `18` Albatross at 20 km, `19` at 45 km, `20` Petrel in vacuum, `21` Sparrow at 1 km,
+`22` Wren in vacuum, `23` Kestrel at 1 km. They teleport the ship (pointing up, climbing), stage and burn 1.5 s.
+
+### Still open
+- The plume goes into the pad instead of spreading over the deflector. Ground impingement would need the pad or ground
+  height in the shader.
+- No shutdown tail-off: a plume disappears with `activeEngines`. Ignition is a fast grow, with no start-up flash.
+- Plumes don't light anything: no glow on the pad, the smoke or the hull at night.
+- At altitude, the plume should wash back over the base (recirculation). Soot marks model that; the plume doesn't show it.
+- The Sparrow's alcohol plume still reads whitish-blue against the sea. Real V-2 footage is more yellow.
+- RCS puffs could reuse this volume with a small re.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

@@ -2003,19 +2003,53 @@ const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
   const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);return t})();
-// engine plume: drawn on the unit cone (y 0 at the nozzle → −1 at the tip). White-hot core cooling to orange and red,
-// soft edges (opacity falls with the angle to the view), shock diamonds that fade with altitude, a little flicker.
+// engine plume: a raymarched volume, axisymmetric about the nozzle axis, inside a bounding cylinder (unit lathe scaled by
+// uB = [R, L, exit radius]; local frame in metres, y 0 at the nozzle exit → −L downstream, s = −y). Shape follows the
+// pressure ratio n = pe/pa (exit over ambient): over-expanded jets pinch in, matched ones run straight with shock
+// diamonds every Lc ∝ √n, under-expanded ones balloon (spread angle grows with log n), and the gas thins as (re/rb)² as
+// it spreads, so a vacuum plume is wide and faint. Colours and strengths come from the engine's propellant profile (PFX):
+// a hot core over the potential-core length, diamonds, a fuel-rich afterburning mantle that needs air, a gas glow, and
+// soot that absorbs (premultiplied blend, so a kerolox tail can darken what is behind it).
+// uS: x = n (pe/pa), y = tan of the spread angle, z = diamond visibility, w = air density ratio; uK: core, diamond, mantle,
+// soot gains. rb(s) is the jet boundary radius; the vertex shader bends the proxy lathe to ~1.9 rb (Waterfall-style mesh
+// deformation), so the march only runs where there can be plume.
+const PLUME_RB=`float rb(float s,float re){return re*mix(1.,sqrt(clamp(uS.x,.3,1.)),smoothstep(0.,1.5*re,s))+s*(uS.y+.035*uS.w);}`;
 const PLUME_VS=`#version 300 es
-layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;uniform mat4 uVP,uM;uniform float uFc;out vec3 vL,vN,vP;out float vW;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vL=aP;vN=mat3(uM)*aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
+layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform vec4 uS;uniform float uFc;out vec3 vL;out float vW;
+${PLUME_RB}
+void main(){float s=-aP.y*uB.y,k=min(uB.x,1.9*rb(s,uB.z)+.15*uB.z)*1.0086;vL=vec3(aP.x*k,-s,aP.z*k);
+ vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLUME_FS=`#version 300 es
-precision highp float;in vec3 vL,vN,vP;in float vW;out vec4 o;uniform float uI,uPr,uTime,uFc;
-void main(){float t=clamp(-vL.y,0.,1.);vec3 n=normalize(vN);float edge=pow(abs(dot(n,normalize(vP))),1.5);
- float shock=1.+.9*uPr*pow(max(0.,cos(t*31.4)),10.)*(1.-t);
- float core=pow(1.-t,1.6)*shock*(.92+.08*sin(uTime*70.+t*23.));
- vec3 hot=mix(vec3(1.,.95,.85),vec3(1.,.55,.18),smoothstep(.0,.35,t)),cold=mix(hot,vec3(.65,.15,.04),smoothstep(.3,.9,t));
- vec3 c=mix(vec3(.55,.62,1.),cold,smoothstep(0.,.12,uPr))*core*edge*uI;   // only near-vacuum plumes go pale blue
- o=vec4(c,1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
+${PLUME_RB}
+void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
+ // the stretch of the ray inside the bounding cylinder: from the proxy's front face (or the eye, when inside) to where it leaves
+ vec3 p0=uIn>.5?uCam:vL;float t1;
+ {float a=dot(rd.xz,rd.xz),b=dot(p0.xz,rd.xz),c=dot(p0.xz,p0.xz)-R*R,ts=a>1e-9?(-b+sqrt(max(0.,b*b-a*c)))/a:1e9;
+  float ty=rd.y<-1e-6?(-L-p0.y)/rd.y:rd.y>1e-6?-p0.y/rd.y:1e9;t1=max(0.,min(ts,ty));if(uIn>.5)t1=min(t1,length(vL-uCam));}
+ const int N=32;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
+ float Lc=re*2.4*sqrt(clamp(uS.x,.3,4.)),Lp=re*(3.5+2.5*uS.w),st=ds/re;
+ vec3 C=vec3(0.),Tr=vec3(1.);
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float s=-p.y;if(s<0.||s>L)continue;
+  float b=rb(s,re),r=length(p.xz);if(r>1.95*b)continue;   // outside even the noisiest edge: skip before any noise
+  vec3 q=vec3(p.x,s-uT*re*30.,p.z)/(re*.8);float nn=texture(uN,q*.03125).r*.65+texture(uN,q*.0844+.21).r*.35;
+  float u=r/(b*(1.+(.08+.3*s/L)*(nn-.5)*2.)),d=pow(re/b,1.3);   // density ∝ (re/rb)², seen through a path ∝ rb
+  if(u>1.4)continue;
+  float prof=exp(-2.2*u*u)*smoothstep(1.4,1.,u),fade=smoothstep(L,L*.45,s+(nn-.5)*L*.25);
+  float core=smoothstep(Lp,0.,s+2.2*re*u)*smoothstep(1.05,.4,u);
+  float k=floor(s/Lc+.5),f=s/Lc-k,dm=k>=1.&&k<6.?exp(-.45*(k-1.))*exp(-f*f*14.-u*u*4.):0.;
+  float mantle=uK.z*uS.w*smoothstep(.35,.95,u)*smoothstep(1.35,1.,u)*smoothstep(0.,3.*re,s)*fade*(.4+1.2*nn);
+  vec3 e=uI*(uCo*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45+uMa*mantle*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18);
+  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8);
+  C+=Tr*e*st;Tr*=exp(-(uSo*soot+uOp*uI*(core*d*.4+mantle*.25))*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
+ vec3 c=pow(1.-exp(-C),vec3(1./1.5));float a=1.-dot(Tr,vec3(.333));
+ o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+// 32³ tiling value noise for the plume's turbulence: one trilinear fetch per octave instead of eight hashes
+const PNOISE=(()=>{const n=32,d=new Uint8Array(n*n*n);let x=12345;for(let i=0;i<d.length;i++){x=(x*1103515245+12345)>>>0;d[i]=x>>>24}
+  const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_3D,t);gl.texImage3D(gl.TEXTURE_3D,0,gl.R8,n,n,n,0,gl.RED,gl.UNSIGNED_BYTE,d);
+  for(const w of[gl.TEXTURE_WRAP_S,gl.TEXTURE_WRAP_T,gl.TEXTURE_WRAP_R])gl.texParameteri(gl.TEXTURE_3D,w,gl.REPEAT);
+  gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_3D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.bindTexture(gl.TEXTURE_3D,null);return t})();
 // smoke: camera-facing puffs, soft round falloff, lit like the meshes and tone-mapped the same way
 const SMOKE_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec4 aQ;layout(location=2) in float aS;uniform mat4 uVP;uniform float uFc;out vec4 vQ;out float vW,vS;
@@ -2160,7 +2194,23 @@ function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
     CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
   gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA)}
-const PLUME=(()=>{const a=[];lathe(a,[[0,-1,[0,0,0]],[.55,-.62,[.5,.12,.02]],[.85,-.3,[1,.45,.1]],[1,0,[.95,.7,.4]]],[0,0,0],20,[false,true]);return makeMesh(a)})();
+const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i/16,w]);lathe(a,pr,[0,0,0],24,[true,true]);return makeMesh(a)})();
+// propellant profiles (Waterfall's "templates"): colours of core, diamonds, afterburning mantle, gas glow, soot absorption
+// per channel; K = gains [core, diamonds, mantle, soot]. Engines pick one plus their exit pressure pe (atm) in PFX.
+const PROPS={
+  kerolox:{co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
+  alcohol:{co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
+  hypergolic:{co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
+  hydrolox:{co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
+const PFX={sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
+  kestrel:{prop:'kerolox',pe:.75},condor:{prop:'kerolox',pe:.8},albatross:{prop:'kerolox',pe:.7}};
+// an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
+const pfxOf=d=>PFX[d.key]||PFX[d.base]||{prop:'kerolox',pe:d.ispA<0.5*d.ispV?.025:.75};
+// render-side spool: plumes grow over ~0.3 s after ignition (and follow throttle with the same lag)
+const SPOOL=new WeakMap();
+// the plume's bounding size for an exit radius, throttle and ambient pressure (atm): [n, spread tan, length, radius]
+function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
+    L=re*(10+12*thr)*(1+1.4*(1-pa)),rb=re*Math.sqrt(clamp(n,.3,1))+L*(tn+.035*pa);return[n,tn,L,rb*1.12+re*.3]}
 const FIRE=(()=>{const a=[],pr=[];for(let i=0;i<=10;i++){const t=i/10*Math.PI;pr.push([Math.sin(t),-Math.cos(t),[1,.55+.3*Math.sin(t),.15]])}lathe(a,pr,[0,0,0],18,[false,false]);return makeMesh(a)})();
 const CANOPY=(()=>{const a=[];lathe(a,[[1,0,C.O],[.92,.35,C.O],[.92,.35,C.W],[.7,.7,C.W],[.7,.7,C.O],[.38,.92,C.O],[0,1,C.W]],[0,0,0],24,[false,false]);return makeMesh(a)})();
 // a straight tube from A to B (struts, pipes, masts, legs): seg sides, optional flat end caps
@@ -2239,7 +2289,7 @@ function emitSmoke(dt){if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLU
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
   while(smokeAcc>gap){smokeAcc-=gap;for(const e of activeEngines(S)){if(smoke.length>2500)smoke.shift();
-    const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-e.d.exit*(7+13*S.throttle)*.85,e.pos[2]-S.cm[2]]),   // born where the plume ends
+    const off=qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-plumeShape(e.d,S.throttle,rho/TELLUS.rho0)[2]*.7,e.pos[2]-S.cm[2]]),   // born where the plume fades
       jit=[Math.random()-.5,Math.random()-.5,Math.random()-.5];
     smoke.push({pf:toPF(TELLUS,add(add(S.r,off),mul(jit,s0*.45)),simT),t0:simT,s0:s0*(.8+.4*Math.random())*Math.max(.5,e.d.exit/.55)*.5,grow:4+Math.random()*3,a0:.45*clamp(rho*1.1,.12,1),life:70+Math.random()*50,rise:Math.random()*0.6,seed:Math.random()*97})}}}
 // Built allocation-free into reused typed arrays: the naive version (vector temporaries per puff and per corner) cost ~3 ms
@@ -2534,13 +2584,19 @@ function render(){
   gl.depthFunc(gl.LEQUAL);   // same geometry again at the same depth
   for(const[mesh,M,k]of nightCities){gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uGlow,.22*k);gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)}   // lit windows, roughly
   gl.depthFunc(gl.LESS);
-  if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pr=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
-    gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uPr,pr);gl.uniform1f(pu.uTime,performance.now()/1000%100);
-    for(const e of activeEngines(S)){const ex=e.d.exit,rad=ex*(1.05+2.2*(1-pr)),L=ex*(7+13*S.throttle)*(1+.9*(1-pr));
-      const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]];
-      gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(qmul(S.q,qt),sub(p,camW),qrot(qconj(qt),sh),[rad,L,rad]):modelQ(S.q,sub(p,camW),sh,[rad,L,rad]));
-      gl.uniform1f(pu.uI,(.6+.7*S.throttle)*(.35+.65*pr));gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
-    gl.useProgram(PMESH.p)}
+  if(near&&S.alive&&S.throttle>0&&activeEngines(S).length){const p=shipWorld(),pa=pressure(S.body,len(S.r)-S.body.R),pu=PPLUME.u;gl.useProgram(PPLUME.p);
+    gl.uniformMatrix4fv(pu.uVP,false,VP);gl.uniform1f(pu.uFc,FC);gl.uniform1f(pu.uT,performance.now()/1000%1000);
+    gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
+    gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
+    for(const e of activeEngines(S)){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT});const dt=clamp(simT-sp.t,0,5);sp.t=simT;sp.k+=(S.throttle-sp.k)*(1-Math.exp(-dt/.12));
+      const thr=sp.k,f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01)continue;
+      const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],Q=qt?qmul(S.q,qt):S.q,
+        o=add(sub(p,camW),qrot(S.q,sh)),cl=qrot(qconj(Q),mul(o,-1)),inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05;
+      gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(Q,sub(p,camW),qrot(qconj(qt),sh)):modelQ(S.q,sub(p,camW),sh));
+      gl.uniform3f(pu.uB,R,L,e.d.exit);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);gl.cullFace(inside?gl.BACK:gl.FRONT);
+      gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
+      gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
+    gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // re-entry plasma: a glowing cap on the upstream side, brighter with the stagnation heat flux
   if(near&&S.alive&&S.qHeat>4e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>1){const d=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),lead=dot(d,Y)>0?S.yTop:S.yBot,
       c=add(sub(p,camW),add(mul(Y,lead),mul(d,0.35))),k=S.radius*1.7,X=norm(cross(d,Math.abs(d[1])<.9?[0,1,0]:[1,0,0])),Z=cross(d,X),I=Math.min(0.55,(S.qHeat-4e4)/1.2e6);
