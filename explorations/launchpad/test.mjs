@@ -763,6 +763,53 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); api.HOOK.news = () => {};
 }
 
+// 18. Canted engines (v1.22): a thrust direction per engine on a radial line; "balance" zeroes the net thrust torque.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {newShip,stageStats,physStep,stage,thrustPt,qrot,len,dot,sub,add,cross,DT,HOOK,BLD,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const torque = s => { let L = [0, 0, 0]; for (const p of s.parts) if (p.d.kind === 'engine') { const d = p.tdir || [0, 1, 0]; L = D.add(L, D.cross(D.sub(D.thrustPt(p), s.cm), d.map(x => x * p.d.thrust))); } return D.len(L); };
+  const pair = cant => ({ v: 2, root: { k: 'pod', c: [{ k: 't4', at: 'd', c: [{ k: 'kestrel', at: 'd', c: [] }, { k: 't4', at: { y: 1.9, a: 0, n: 2, cy: 1.9, dec: true }, c: [{ k: 'kestrel', at: 'd', c: [], ...(cant ? { cant } : {}) }] }] }] } });
+  const P0 = D.newShip(pair(0)), P10 = D.newShip(pair(10)), bs = P10.parts.filter(p => p.tdir), dv = c => D.stageStats(pair(c)).stages[0].dvV;
+  check('canted engines: no cant, no thrust direction; canted copies lean in toward the axis, unit length; a symmetric pair loses less than its cosine',
+    !P0.parts.some(p => p.tdir) && bs.length === 2 && bs.every(p => Math.abs(D.len(p.tdir) - 1) < 1e-12 && D.dot(p.tdir, [Math.cos(p.phi), 0, Math.sin(p.phi)]) < 0) &&
+    dv(10) < dv(0) && 1 - dv(10) / dv(0) < 1 - Math.cos(10 * Math.PI / 180) && D.BLD.aimCant(P0.parts.find(p => p.phi != null && p.d.kind === 'engine'), P0) === 0,
+    `first-stage Δv ${dv(0).toFixed(0)} → ${dv(10).toFixed(0)} m/s at 10°; balance on the symmetric pair: 0°`);
+  // a light core with a lone big booster: uncanted it flips; balanced it climbs
+  const lone = cant => ({ v: 2, root: { k: 'pod', c: [{ k: 'chute', at: 'u', c: [] }, { k: 't8', at: 'd', c: [{ k: 'fins', at: 'd', c: [{ k: 'sparrow', at: 'd', c: [] }] },
+    { k: 'T16', at: { y: 3.7, a: 0, n: 1, cy: 2, dec: true }, c: [{ k: 'condor', at: 'd', c: [], ...(cant ? { cant } : {}) }] }] }] } });
+  const L0 = D.newShip(lone(0)), aim = D.BLD.aimCant(L0.parts.find(p => p.phi != null && p.d.kind === 'engine'), L0), L1 = D.newShip(lone(aim));
+  const fly = cant => { D.t = 0; const s = D.newShip(lone(cant)); D.S = s; D.HOOK.msg = () => {}; s.throttle = 1; D.stage(s); let tilt = 0;
+    for (let i = 0; i < 2500 && s.alive; i++) { D.physStep(s, D.DT); const Y = D.qrot(s.q, [0, 1, 0]), up = s.r.map(x => x / D.len(s.r)); tilt = Math.max(tilt, Math.acos(Math.min(1, D.dot(Y, up))) * 57.3); }
+    return { alive: s.alive, tilt }; };
+  const f0 = fly(0), f1 = fly(aim);
+  check('canted engines: "balance" zeroes the thrust torque of a Sparrow core + lone Condor; uncanted it flips, balanced it climbs',
+    torque(L1) < 0.01 * torque(L0) && f0.tilt > 90 && f1.alive && f1.tilt < 10,
+    `cant ${aim.toFixed(2)}°, torque ${torque(L0).toFixed(0)} → ${torque(L1).toFixed(2)} kN·m; max tilt ${f0.tilt.toFixed(0)}° → ${f1.tilt.toFixed(1)}°`);
+}
+
+// 19. Aero interference (v1.23): Newtonian shadowing between stack lines.
+{
+  const D = new Function(src + 'return {newShip,geom,aeroPass,analyze,SND,PRESETS,set SH(v){AERO_SHADOW=v}};')();
+  const cp = x => JSON.parse(JSON.stringify(x));
+  // aero on a fresh ship at a given AoA (q 20 kPa, M 0.6); flow in the x-y plane, from +x when sgn = 1, from −x when −1
+  const run = (d, aoa, sh, sgn = 1) => { D.SH = sh; const s = D.newShip(cp(d)); D.geom(s); const v = 0.6 * D.SND(0), a = aoa * Math.PI / 180, rho = 40000 / (v * v);
+    for (const p of s.parts) { p.F = [0, 0, 0]; p.L = [0, 0, 0]; p.Q = 0; } D.aeroPass(s, [sgn * v * Math.sin(a), v * Math.cos(a), 0], [0, 0, 0], rho, 0.6, false); D.SH = true;
+    let F = [0, 0, 0], Q = 0; for (const p of s.parts) { F = F.map((x, i) => x + p.F[i]); Q += p.Q; } return { s, F, Q, n: s.nShadow || 0 }; };
+  const same = (a, b) => a.F.every((x, i) => x === b.F[i]) && a.Q === b.Q;
+  const orb = [0, 20, 90].every(a => same(run(D.PRESETS.Orbiter, a, true), run(D.PRESETS.Orbiter, a, false))), h0 = same(run(D.PRESETS.Heavy, 0, true), run(D.PRESETS.Heavy, 0, false));
+  check('aero interference: a single-line rocket, and any rocket at zero angle of attack, is exactly unchanged', orb && h0);
+  // broadside Heavy: the boosters sit on the x axis, in line with the crossflow; the leeward booster goes dark
+  const B = run(D.PRESETS.Heavy, 90, true), side = sgnx => B.s.parts.filter(p => p.d.key === 't4' && Math.sign(p.pos[0]) === sgnx).reduce((m, p) => m + Math.hypot(p.F[0], p.F[2]), 0);
+  const windward = side(1), leeward = side(-1);   // air arrives from +x (vb along +x means the body moves toward +x)
+  check('aero interference: broadside, the leeward booster tank gets no impact pressure, the windward one does', windward > 1000 && leeward < 0.02 * windward && B.n > 0,
+    `windward ${(windward / 1000).toFixed(1)} kN, leeward ${(leeward / 1000).toFixed(2)} kN, ${B.n} shadowed samples`);
+  const mir = run(D.PRESETS.Heavy, 60, true, 1), mir2 = run(D.PRESETS.Heavy, 60, true, -1);
+  check('aero interference: mirror-symmetric (flow from +x and from −x give mirrored forces)', Math.abs(mir.F[0] + mir2.F[0]) < 1e-6 * Math.abs(mir.F[0]) && Math.abs(mir.F[1] - mir2.F[1]) < 1e-6 * Math.abs(mir.F[1]));
+  const cut = a => 1 - Math.abs(run(D.PRESETS.Heavy, a, true).F[0]) / Math.abs(run(D.PRESETS.Heavy, a, false).F[0]), c5 = cut(5), c20 = cut(20), c90 = cut(90);
+  check('aero interference: the Heavy\'s normal-force cut grows with angle of attack (small at 5°, about half broadside)', c5 > 0 && c5 < 0.1 && c20 > c5 && c90 > 0.3 && c90 < 0.7,
+    `cut ${(c5 * 100).toFixed(1)}% at 5°, ${(c20 * 100).toFixed(1)}% at 20°, ${(c90 * 100).toFixed(1)}% at 90°`);
+}
+
 // 19. Power flavours (economy): archetypes as presets on axes (openness, money, priorities, nationalism).
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};

@@ -537,6 +537,83 @@ noise. (In editor mode `render()` isn't the drawing path, so the pad must be tim
 Still open: no soot on the parts themselves (the shader doesn't know where engines are); the vertical grime is laid
 around the stack axis, so it's slightly off on side boosters; no ambient occlusion at part joints.
 
+## Part visuals — early-era hardware look (2026-10-07, visuals session, branch `visuals`)
+
+Direction agreed with Caio: **early-era realism**, 1950s–60s hardware to match Epochs 1–2. Later eras can shift the palette.
+Everything is procedural in the mesh shader, with no image textures.
+
+### How it works
+- **Each part has its own surface frame.** The vertex grew from 10 to 16 floats (`VX=16`): turns around the part's *own*
+  axis, height above the part's bottom, the part's nominal radius and height, the detail kind (`KIND`) and the part index.
+  `partShape` sets `PK` while a part is built, and `lathe`/`box`/`fin` stamp it into every vertex (`pv`). Scaled 2.5 m parts
+  scale the height/radius entries along with the positions, so detail sizes follow the part (`sc = R/0.625`). Side boosters
+  get patterns centred on their own axis, which fixes v1.11's off-axis grime. `builder.js` steps by `VX` and only touches
+  entries 6–9, so it needed no change.
+- **One detail branch per kind in `MESH_FS`,** gated on `uSeam` (ship, debris, the builder's solid ghost). It uses shared
+  footprint-filtered helpers (`lin`, `sqw`, `band`, `dots`), so every line, checker and rivet fades to its mean instead of
+  shimmering. Footprints are taken once, before the branches. Bump detail tilts the object-space normal along the
+  around-axis tangent `T`. `uM` is now read in the fragment shader as well.
+- **What each part looks like:**
+  - tanks: Saturn/V-2 roll-pattern checker bands top and bottom when taller than 3 m; two opposite black stripes on 1.5–3 m
+    tanks; the old orange mid-band is gone. Weld rings, one longitudinal seam, and rivets on the end flanges.
+  - engines: the profile is split at the throat into bell and mount. The bell has regen tubes (count fixed by exit radius,
+    so they converge toward the throat), heat tint (straw → blue → violet toward the throat), a stiffener at the lip and a
+    sooted interior. The interior glows by throttle (`uHot[part index]`, set for active engines each frame). Engines of
+    200 kN and up carry a turbopump with an exhaust duct, plus a gas-generator can.
+  - capsule: dark corrugated shingles (Mercury), shingle rows with rivets, a framed trapezoid window drawn on the surface
+    (replaces the glass puck), a hatch outline.
+  - nose cone: fairing split lines with rivets, a scorched tip.
+  - decoupler: hazard band, ribbed skirt, separation groove with bolts. The interstage shell has stringers and vent ports.
+  - fins: now swept and tapered (`fin()`), white and black alternating, with a bare-metal leading edge.
+  - instruments: crinkled gold foil.
+  - biocapsule: a porthole and a hatch seam.
+  - mass simulator: bolted steel plates (it was yellow like a decoupler).
+  - parachute: canister straps and canvas weave.
+  - heat shield: ablator honeycomb.
+  - adapter: black roll quadrants.
+  - radial decoupler: chevrons.
+  - reinforcement collars: bolt rows.
+- **New reference views in `views.js`:** `refView(4–9)` are part close-ups in the editor (Kestrel/fins, pod, adapter +
+  interstage, instruments, Lunar t8, heat shield). `refView(10)` is the Sounding rocket firing, seen from below.
+  `refView(1)` now resets `cam.edY`, which the close-ups leave set.
+
+### Measurements
+GPU timer queries (`gpuMs`, `RS` pinned to 1), 1280×800 headless Chrome on the RTX 3050. Two alternating rounds against a
+`main` snapshot (`34a2317`), three 1.2 s samples per view:
+
+| view | main | visuals |
+|---|---|---|
+| 4 Kestrel close-up | 3.0–3.4 ms | 2.8–3.0 ms |
+| 5 pod close-up | 2.9–3.3 | 2.9–3.7 |
+| 2 ascent | 2.2–2.6 | 2.2–2.7 |
+| 10 engine from below | 1.2–1.6 | 1.2–1.7 |
+
+The two are the same within noise. The per-part branches are cheap next to the sky and ground shaders.
+`test.mjs`: all passed (the pass is render-only).
+
+### What went wrong on the way
+- **`render()` + `gl.finish()` timing is meaningless under ANGLE/D3D11.** It reported 0.1–0.2 ms for frames that the timer
+  queries put at about 3 ms, so `finish` doesn't wait there. Use `gpuMs`.
+- **The first gold foil read as camouflage.** Coarse normal noise on a metal flips its reflection between the sky colour
+  and the ground colour (a hard `smoothstep`) in large patches. Fine, shallow crinkles (≈2 cm, ±0.75 tilt) read as foil.
+  Albedo noise was the wrong lever.
+- **The bell-interior glow is almost never visible.** The plume covers the bell from below, and from the side you see the
+  outside of the bell. It costs nothing, so it stays. The version you would actually see is a radiatively cooled nozzle
+  extension glowing on vacuum engines (the Petrel), on the *outside* of the bell (open thread).
+
+### Screenshot pipeline (CLI, no app needed)
+Headless Chrome on the real GPU (`--use-angle=d3d11`), driven over CDP by a ~30-line Node script (Node 24 has a built-in
+WebSocket): navigate, inject `views.js`, `Runtime.evaluate("refView(n)")`, `Page.captureScreenshot`. Claude reads the PNGs
+directly. It is `shot.mjs` in this folder (usage in its header).
+
+### Still open (visuals)
+- Petrel nozzle extension glowing orange while burning (outer surface, by `uHot`).
+- Soot and scorch that build up: base-heating soot on the bottom stage after a burn, re-entry char on the shield and pod
+  (skin temperatures already exist in the sim).
+- Ambient occlusion where parts meet. LOX frost on cryogenic tanks while on the pad.
+- Paint schemes per design or era (agency white, company livery), from the same roll-pattern machinery.
+- Lettering and flags on tanks: needs a glyph atlas or SDF; skipped for now.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -568,7 +645,7 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
-## v1.22 — power flavours, first slice (2026-10-07)
+## v1.24 — power flavours, first slice (2026-10-07)
 
 The design is in "Power flavours" in the program-design section. This slice covers openness, money, priorities,
 nationalism, the start choice and the security state's regime change. Industry and geography come later.
@@ -609,6 +686,88 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## v1.23 — aero interference: shadowing between stack lines (2026-10-07)
+
+Until now every stack line (core, each booster) flew as if it were alone. The interference that follows from the model the
+sim already uses is **Newtonian shadowing**:
+- An upstream-facing surface sample gets no impact pressure, and no stagnation heat, if the ray from it back up the flow
+  crosses another line's body first.
+- Lines are cylinders of their widest radius over their own height.
+- Slender-body lift and skin friction are left unshadowed.
+
+At small angles of attack the upstream ray climbs steeply (1/tan α metres up per metre across, about 11 at 5°), so
+side-by-side boosters barely shade each other on ascent. At high α the leeward lines go dark. Broadside, the Heavy's three
+bodies are in a row along the flow, and the leeward booster tank's pressure falls from 70 kN (windward) to 0.9 kN (its
+skin friction). That's extreme, as Newtonian always is, but it matches tandem cylinders this close (centres 1.2
+diameters apart), where the downstream one sees almost no drag.
+
+| Normal force at q 20 kPa, M 0.6 | 0° | 5° | 20° | 60° | 90° |
+|---|---|---|---|---|---|
+| Orbiter (1 line) | unchanged | unchanged | unchanged | unchanged | unchanged |
+| Heavy (3 lines) | unchanged | 54.0 → 51.1 kN | 247 → 210 | 668 → 456 | 584 → **304** |
+| Asparagus (5 lines) | unchanged | 69.0 → 66.1 | 317 → 282 | 876 → 684 | 787 → 552 |
+| Nested 3×2 (10 lines) | unchanged | 24.8 → 24.3 | 146 → 124 | 568 → 355 | 641 → 476 |
+
+Stagnation heating on shadowed faces drops with it (Heavy at 60°: 0.06 → 0.02 MW). In the builder's design case (4–5°):
+- stability rises by 0.02–0.03 calibers on the booster designs, because the upper booster sections are shaded slightly
+  more and the centre of pressure moves aft
+- max-q joint loads move by 1–2 %
+
+So on a normal ascent this is a small correction. It matters in tumbles, aborts and broadside re-entries.
+
+**Cost:** about 3–12 µs more per step (5–20 %, noisy) with 3–10 lines. That is roughly 3 ms of a frame at 100× physics warp for
+the Heavy. `AERO_SHADOW` switches it off for A/B measurements (tests §19).
+
+**Two measurement traps on the way:**
+- **Cold timings.** The first timing (160–270 µs per step) was a cold JIT. Warmed up and best of 5 it is 26–40 µs, the same
+  as v1.8. Always warm up and take the best of several runs.
+- **The bisect that "found" a 5× higher apogee.** It came from my own script, which still used the old 600 km radius.
+  The planet had been rescaled to 1 274 km on `main` (d5cc27e) in the meantime. Measure altitude from `TELLUS.R`, never
+  a literal.
+
+**Also seen:** an unfaired design (boosters and side tanks with flat tops) has 288 kN of drag at 0°, against 32 kN for the
+Heavy with its nose cones. Newtonian impact pressure on blunt faces is what it should be. Fairings matter.
+
+## v1.22 — canted engines (2026-10-07)
+
+**Model.** An engine on a radial line may cant its nozzle outward by θ, in its own radial plane, so its thrust leans in toward the
+axis: d = cos θ·ŷ − sin θ·n̂. It is set per design node, so all symmetric copies share it, and it ranges from −30° to +30°. Everything
+that assumed axial thrust now uses d:
+- physics (the force on the mount) and the builder's what-if probe
+- the Δv planner and TWR, as vector sums, so a symmetric canted pair honestly pays its cosine
+- the maneuver-node burn time
+- the plume, and the engine mesh, rotated about its mount
+
+Uncanted engines carry no direction at all and run the old axial code unchanged (all 112 checks).
+
+**Getting "balance" right.** My first version pointed *this* engine's thrust line through the CoM. That is the wrong target:
+
+| Lone Kestrel booster beside a Kestrel core | Thrust torque about CoM | Max tilt, 40 s climb under SAS |
+|---|---|---|
+| uncanted | 34.6 kN·m (the two equal engines nearly balance already) | 1.9° |
+| booster aimed through the CoM (26°) | **155 kN·m**, ×4.5 | flipped, lost |
+| total thrust balanced (5.05°) | 0.16 kN·m | 4.4°, worse than uncanted |
+
+"Balance" now picks the cant at which all engines burning when this one fires push with zero net torque about the CoM of
+what is still attached then (full tanks). It searches −30…30° on a 0.05° grid, and ties go to the smallest |θ|, so a symmetric
+pair stays at 0°.
+
+The last row is the real lesson. **Canting trades a torque for a side force.** The engine gimbal cancels the torque
+almost for free. The side force (sin 5° × 230 kN ≈ 20 kN here) is never cancelled: it builds a crosswind angle that the fins
+then fight. So cant pays only when the off-axis thrust is beyond what the gimbal can hold:
+
+| Stack (core + lone booster) | Balance cant | Uncanted | Balanced |
+|---|---|---|---|
+| Sparrow + Condor | 15.0° | flips at T+4 s, lost | 4.9° max tilt, 14 km at T+50 s |
+| Kestrel + Condor | 7.75° | 41.7° max tilt | 3.2° |
+| Sparrow + Kestrel | 10.15° | 95.5° | 1.1° |
+| Kestrel + Kestrel | 5.05° | 1.9° | 4.4° (don't) |
+
+A symmetric pair canted 10° gives up 1.0 % of first-stage Δv. That is less than the booster's cosine (1.5 %), because the
+core engine isn't canted.
+
+**Not modelled:** a canted nozzle's plume hitting the core (plume impingement), and a cant that changes as the CoM moves
+during the burn. Real stacks gimbal their boosters for that.
 
 ## v1.21 — career moves: defection and private hire (2026-10-07)
 
@@ -1353,8 +1512,10 @@ style) would give visible variety that reflects each power's flavour.
 3. **Terrain height.** The planet is a perfect sphere. A height function shared by CPU (contact)
    and GPU (ray-march only near the surface) is the next real engineering problem.
 4. ~~Radial attachment~~ done in v1.3, ~~crossfeed~~ done in v1.6, ~~asymmetric and nested attachment~~ done in v1.17
-   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20. Next on that line:
-   canted engines (a thrust direction per engine), truly tilted bodies, and core↔booster aero interference.
+   (the construction screen), ~~radial fins~~ and ~~re-rooting~~ done in v1.18, ~~a staging editor~~ done in v1.20, ~~canted
+   engines~~ done in v1.22, ~~core↔booster aero interference~~ (Newtonian shadowing) done in v1.23. Next on that line: truly
+   tilted bodies; and on interference, the parts Newtonian shadowing leaves out (wake suction behind a body, gap-flow drag
+   at zero α, shadowing of fin plates).
 5. ~~Physics warp > 4×~~ done in v1.2: exact up to 100×. Optional next: *drawn* flex, bending the mesh by the computed moment.
 6. **More bodies.** The SOI code is written for exactly one moon. Generalize it to a tree.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
