@@ -94,9 +94,12 @@ def make_world(terrain, difficulty=None, rand_seed=0):
 
 
 def make_controller(kind, sim, dof_order, steps, seed):
+    # "cpg@6.4" = tripod CPG with a 6.4 Hz intrinsic frequency (default 12 Hz)
+    kind, _, freq = kind.partition("@")
     if kind == "cpg":
         cpg = make_tripod_cpg_network(
             timestep=sim.timestep,
+            intrinsic_frequency=float(freq) if freq else 12.0,
             intrinsic_amplitude=1.0,
             coupling_strength=10.0,
             convergence_coef=20.0,
@@ -193,7 +196,7 @@ def run_one(
         foot_idx = [segs_order.index(BodySegment(leg + "_tarsus5")) for leg in legs]
         feet = np.zeros((n, 6, 3), dtype=np.float32)
 
-    needs_obs = controller_kind == "hybrid"
+    needs_obs = controller_kind.startswith("hybrid")
     t0 = time.perf_counter()
     for i in range(n):
         if needs_obs:
