@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–64 plume on the pad. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
@@ -125,10 +125,14 @@ window.refView = async (n) => {
   // 60–64: the plume meeting the ground. Ignite on the pad and burn until the engine's nozzle is alt m up (0: still held
   // down, 0.6 s after ignition), seen from yaw/pitch/dist: [design, alt, yaw, pitch, dist]
   const pad = { 60: ['Orbiter', 0, 0.9, 0.12, 40], 61: ['Orbiter', 12, 0.9, 0.12, 40], 62: ['Orbiter', 35, 0.9, 0.1, 55],
-    63: ['Lunar', 3, 0.9, 0.12, 60], 64: ['Orbiter', 6, 0.4, 0.75, 60] };
+    63: ['Lunar', 3, 0.9, 0.12, 60], 64: ['Orbiter', 6, 0.4, 0.75, 60],
+    // 65–67 at night (the plume lighting the pad): just after ignition, 12 m up, and a close look at the rocket's base
+    65: ['Orbiter', 0, 0.9, 0.12, 40, 1], 66: ['Orbiter', 12, 0.9, 0.12, 45, 1], 67: ['Orbiter', 0, 2.2, 0.05, 16, 1] };
   if (pad[n]) {
-    const [design, alt, yaw, pitch, dist] = pad[n];
+    const [design, alt, yaw, pitch, dist, night] = pad[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
+    if (night) { const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
+      if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); markT = null; padShip = null }
     S.throttle = 1; stage(S); const t0 = simT, h0 = len(S.r);
     while (S.alive && simT - t0 < 60 && (alt ? len(S.r) - h0 < alt : simT - t0 < 0.6)) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();

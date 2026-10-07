@@ -625,6 +625,8 @@ detail, and got a design pass:
 - **Docking port, RCS quad, gas bottle** (arrived during this pass): a capture ring with a probe, guide vanes and latches;
   four little heat-tinted bells on an outrigger, on the same thrust axes the physics uses (`RCS_OFF`); a painted bottle
   with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
+- **Claw:** a drive housing with a hazard band, a turntable and contact plate, three jointed fingers with hinge knuckles,
+  hydraulic rams and padded tips, all inside the original envelope.
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 
@@ -929,6 +931,27 @@ Reference views: `refView(60)` 0.6 s after ignition, `61` 12 m up, `62` 35 m up,
 **Still open:** the channel is fixed to this pad layout (its walls at x = ±3.4, running south): another site's pad
 would need its channel as data. No deluge water or steam. The ground cloud doesn't light up from the flame.
 
+## Plume light (2026-10-07, aerofx session)
+
+The burning engines light their surroundings: one soft point light per frame for all plumes (`plumeLight`, `PLT`).
+- **Where and how bright:** each engine contributes at a quarter of its plume's length, or at 0.85 of the way to the
+  ground when the jet reaches it (so the light sits low in the flame on the pad). Weight = spool × (exit radius / 0.55)²,
+  and the light's position is the weighted mean. Colour = 0.4 core + 0.6 mantle from the propellant profile, with the
+  plume's flicker. Strength scale 110, dimmed in thin air (×min(1, 4 pa + 0.15)). The core radius (2.5 exit radii)
+  softens the 1/d² so nothing blows out next to the nozzle.
+- **Meshes** (hull, pad, tower): a block in `MESH_FS` beside the floodlights: albedo × colour × (0.85 n·l + 0.15 wrap)
+  / (d² + r₀²). This is the one cross-scope edit (the visuals session's shader), additive and self-contained.
+- **Smoke:** per-vertex in `SMOKE_VS`, gain 0.18 with a wider core. At 0.55 the puffs by the flame saturated to white in
+  daylight.
+- **Ground:** the ground is the sky shader's, so a light pool is an additive disc just above it (`POOL_FS`, `drawPlumePool`),
+  like the floodlight pools: irradiance from the light's height, faded at the edge, and scaled by darkness at the ship
+  (0.12 in full sun → 1 at night), since it is added on already-lit ground.
+- `PLUME_LIGHT = false` turns it off. Cost: ~0.5–1 ms GPU on the pad (same-page A/B, views 60 and 65).
+- Reference views: `refView(65)` night, just after ignition; `66` night, 12 m up; `67` night, close on the rocket's base.
+
+**Still open:** one light for all engines (a wide Heavy is lit from its centroid); no shadows (the tower's far side
+gets 15 % wrap light); the ground pool is a flat disc, so off-pad slopes take it roughly.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1133,6 +1156,22 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
   own UI. Move it if the screen grows a place for it.
 
 ### Next on this line
+- **Ground awareness: do this first, it's bugs, not features.** A few systems still measure height from sea level,
+  which the real ground (up to ~9 km) breaks:
+  1. **The main parachute never opens over high ground.** In `physStep` the main opens on air density
+     (`sp<250&&rho>0.7`), not on height above the ground. With the rescaled air (scale height 7.5 km), ρ = 0.7 is about
+     4.2 km above sea level, so over a plateau higher than that a capsule comes down under the drogue alone and crashes.
+     The impact predictor (`predictImpact`'s drag function) copies the same rule, so change both together. Open the
+     main by height above the ground (the arming message says "main below 3 km"), e.g. `h − groundAlt(b, pf) < 3000`,
+     with density only as a floor.
+  2. **Time-warp auto-drop estimates time to the ground from sea level** (in the main loop, `hb=len(S.r)-S.body.R+
+     S.yBot`). Over mountains it drops out of warp late. Use `groundAlt` under the ship.
+  3. **The flight HUD shows only altitude above sea level** (`rows` → `'Altitude'`). Add a radar altitude (height above
+     the ground or sea under the ship, `h − groundAlt`) when below a few km. You need it to land on terrain.
+  4. While there, check anything else that compares `len(r)−R` with a ground-related threshold. Atmosphere thresholds
+     (`physAlt`, `h<b.atm`, drag bands) are correctly sea-level based; touchdown, chutes and warp are not.
+  - Tests to add: a capsule coming down over a 4–5 km plateau lands under its main; warp drops before ground contact
+    over a range.
 - A sea-launch platform (`kind:'sea'`).
 - Per-site weather scrubs (`cloudAt`).
 - Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
@@ -1390,6 +1429,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
+0. **Ground awareness first** (main chute, warp auto-drop and HUD still measure from sea level): see § v1.27 "Next on this line".
 1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
