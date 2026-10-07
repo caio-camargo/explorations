@@ -7,6 +7,8 @@ const api = new Function(src + `
 return {sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapeNew,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,
   TELLUS,SELENE,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
+// geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
+const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
 const log = [];
 api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
 let fails = 0;
@@ -14,7 +16,7 @@ const check = (name, ok, detail) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${na
 
 // 1. Kepler propagation: a full period returns to the start; forward then back is identity (ellipse + hyperbola).
 {
-  const mu = TELLUS.mu, r0 = [680000, 0, 0], v0 = [0, 120, -2400];
+  const mu = TELLUS.mu, r0 = [LEO, 0, 0], v0 = [0, 120, -1.053 * Math.sqrt(TELLUS.mu / LEO)];
   const el = elements(r0, v0, mu);
   const [r1, v1] = kepler(r0, v0, el.period, mu);
   check('ellipse: one period returns home', len(sub(r1, r0)) < 1e-3, `err ${len(sub(r1, r0)).toExponential(2)} m`);
@@ -26,15 +28,15 @@ const check = (name, ok, detail) => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${na
   check('hyperbola: energy conserved', Math.abs(E(r4, v4) - E(r0, vh)) / Math.abs(E(r0, vh)) < 1e-9);
   // drift comparison: 10 days of a low orbit via Kepler steps vs. symplectic Euler at DT
   const steps = 10 * 86400;
-  let [ra, va] = [r0, [0, 0, -Math.sqrt(mu / 680000)]];
+  let [ra, va] = [r0, [0, 0, -Math.sqrt(mu / LEO)]];
   const e0 = E(ra, va);
   for (let i = 0; i < 1000; i++) [ra, va] = kepler(ra, va, steps / 1000, mu);
-  let rb = r0.slice(), vb = [0, 0, -Math.sqrt(mu / 680000)];
+  let rb = r0.slice(), vb = [0, 0, -Math.sqrt(mu / LEO)];
   const t0 = performance.now();
   for (let i = 0; i < steps / 0.02; i++) { const rl = len(rb), a = mul(rb, -mu / (rl * rl * rl)); vb = add(vb, mul(a, 0.02)); rb = add(rb, mul(vb, 0.02)); }
   const ms = performance.now() - t0;
   console.log(`      10-day low orbit: Kepler energy drift ${(Math.abs(E(ra, va) - e0) / Math.abs(e0)).toExponential(1)}, ` +
-    `Euler@50Hz drift ${(Math.abs(E(rb, vb) - e0) / Math.abs(e0)).toExponential(1)}, radius error ${(Math.abs(len(rb) - 680000)).toFixed(0)} m, ${ms.toFixed(0)} ms for 43.2M steps`);
+    `Euler@50Hz drift ${(Math.abs(E(rb, vb) - e0) / Math.abs(e0)).toExponential(1)}, radius error ${(Math.abs(len(rb) - LEO)).toFixed(0)} m, ${ms.toFixed(0)} ms for 43.2M steps`);
 }
 
 // 2. Stage maths for the presets
@@ -45,7 +47,7 @@ for (const [k, st] of Object.entries(api.PRESETS)) {
 }
 
 // 3. Fly the Orbiter preset: scripted gravity turn, attitude set directly (this tests physics, not piloting).
-function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbose = true } = {}) {
+function fly(preset, { turnStart = 1000 * AS, turnEnd = 45000 * AS, target = (ATM + 10000), verbose = true } = {}) {
   api.t = 0; const s = api.newShip(api.PRESETS[preset]); api.S = s; s.sas = false;
   s.throttle = 1; api.stage(s);
   let phase = 'ascent', maxQ = 0, maxG = 0, guard = 0, dvUsed = 0, lastV = len(s.v);
@@ -68,7 +70,7 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
       const f = api.localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up))));
       const X = norm(cross(hv, f.n)); s.q = api.qFromBasis(X, hv, cross(X, hv)); s.w = [0, 0, 0];
       s.throttle = 1;
-      if (el.pe - TELLUS.R > 72000) { s.throttle = 0; phase = 'done'; break; }
+      if (el.pe - TELLUS.R > (ATM + 2000)) { s.throttle = 0; phase = 'done'; break; }
     }
     if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s);
     const v0 = s.v.slice();
@@ -82,7 +84,7 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
 {
   const r = fly('Orbiter');
   const ap = (r.el.ap - TELLUS.R) / 1000, pe = (r.el.pe - TELLUS.R) / 1000;
-  check('Orbiter reaches a stable orbit', r.phase === 'done' && pe > 70, `Ap ${ap.toFixed(1)} km, Pe ${pe.toFixed(1)} km at T+${r.t.toFixed(0)} s; ` +
+  check('Orbiter reaches a stable orbit', r.phase === 'done' && pe > ATM / 1e3, `Ap ${ap.toFixed(1)} km, Pe ${pe.toFixed(1)} km at T+${r.t.toFixed(0)} s; ` +
     `Δv spent ${r.dvUsed.toFixed(0)} m/s, left ${r.dvLeft.toFixed(0)} m/s; max q ${(r.maxQ / 1000).toFixed(1)} kPa, max ${r.maxG.toFixed(1)} g`);
   // 3b. once there, the orbit is held on rails: 30 days of warp must not move Ap/Pe
   const s = r.s, e0 = elements(s.r, s.v, TELLUS.mu);
@@ -95,7 +97,7 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
 }
 // 4. Lunar transfer: from a circular 80 km orbit, a prograde kick at the right phase finds Selene.
 {
-  api.t = 0; const mu = TELLUS.mu, r = 680000, vc = Math.sqrt(mu / r), vp = Math.sqrt(mu * (2 / r - 2 / (r + SELENE.a)));
+  api.t = 0; const mu = TELLUS.mu, r = LEO, vc = Math.sqrt(mu / r), vp = Math.sqrt(mu * (2 / r - 2 / (r + SELENE.a)));
   // transfer time; lead the moon so it arrives at apoapsis
   const at = (r + SELENE.a) / 2, tof = Math.PI * Math.sqrt(at ** 3 / mu);
   const moonAtArrival = moonPos(tof), dir = norm(mul(moonAtArrival, -1));          // depart opposite the arrival point
@@ -114,7 +116,7 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
 
 // 5. Aerodynamics + structure (v1.2): stability from shape, real-dynamics flights, coasting, abuse, re-entry, determinism.
 {
-  const P = api.PRESETS, noFin = st => st.filter(x => x !== 'fins');
+  const P = api.PRESETS, noFin = st => st.filter(x => x !== 'fins' && x !== 'fins25');
   const margin = st => { const s = api.newShip(st), r = api.probe(s, { M: 0.6, aoa: 4, q: 5000, h: 3000 }); return (r.ycm - r.ycp) / (2 * s.radius); };
   const mO = margin(P.Orbiter), mL = margin(P.Lunar), mOn = margin(noFin(P.Orbiter)), mLn = margin(noFin(P.Lunar));
   check('fins make the presets stable, removing them makes them unstable', mO > 0.5 && mL > 0.5 && mOn < 0 && mLn < 0,
@@ -129,13 +131,13 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
       api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0;
       if (yank && s.qdyn > 15000 && !yank.done) { yank.t0 = yank.t0 ?? api.t; api.INP.pitch = 1; if (api.t > yank.t0 + yank.dur) yank.done = true; }
       if (api.t > 9.8) s.sasMode = 'pro';
-      const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > 80000) s.throttle = 0;
+      const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > (ATM + 10000)) s.throttle = 0;
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s);
       api.physStep(s, api.DT); maxLoad = Math.max(maxLoad, s.maxLoad); maxQ = Math.max(maxQ, s.qdyn);
-      if (len(s.r) - TELLUS.R > 70000 && s.throttle === 0) break;
+      if (len(s.r) - TELLUS.R > ATM && s.throttle === 0) break;
     }
     api.INP.pitch = 0;
-    return { ok: s.alive && len(s.r) - TELLUS.R > 70000, maxLoad, maxQ, broke: msgs.find(m => /Structural/.test(m)) };
+    return { ok: s.alive && len(s.r) - TELLUS.R > ATM, maxLoad, maxQ, broke: msgs.find(m => /Structural/.test(m)) };
   }
   for (const k of ['Orbiter', 'Lunar']) { const r = flySAS(P[k]);
     check(`${k}: W-tap + prograde hold reaches space intact`, r.ok && !r.broke, `max q ${(r.maxQ / 1000).toFixed(1)} kPa, worst joint ${(r.maxLoad * 100).toFixed(0)}%`); }
@@ -150,7 +152,7 @@ function fly(preset, { turnStart = 1000, turnEnd = 45000, target = 80000, verbos
   check('coasting with SAS off: fins weathervane, no fins tumbles', cf < 10 && cn > 90, `max AoA ${cf.toFixed(1)}° with fins, ${cn.toFixed(0)}° without`);
 
   { api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
-    s.landed = false; const f = api.localFrame([TELLUS.R + 75000, 0, 0]); s.r = [TELLUS.R + 75000, 0, 0]; s.v = add(mul(f.e, 2300), mul(f.up, -60));
+    s.landed = false; const f = api.localFrame([TELLUS.R + (ATM + 5000), 0, 0]); s.r = [TELLUS.R + (ATM + 5000), 0, 0]; s.v = add(mul(f.e, 2300), mul(f.up, -60));
     const Y = norm(add(f.e, mul(f.up, -0.03))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.sas = false;
     let staged = false, shield = 0, n = 0;
     while (s.alive && !s.landed && api.t < 4000) { const h = len(s.r) - TELLUS.R; if (!staged && h < 20000) { api.stage(s); staged = true; }
@@ -199,7 +201,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // a dropped first stage, predicted at separation vs flown on its own with the same drag
   api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; let got = null;
   api.HOOK.debris = d => { if (got) return; const pred = api.debrisImpact(d); let r = d.r.slice(), v = d.v.slice(), tt = api.t;
-    while (len(r) - R > 0) { const rl = len(r); let a = r.map(x => -TELLUS.mu * x / rl ** 3); const h = rl - R, rho = h < 70000 ? 1.225 * Math.exp(-h / 5600) : 0,
+    while (len(r) - R > 0) { const rl = len(r); let a = r.map(x => -TELLUS.mu * x / rl ** 3); const h = rl - R, rho = h < ATM ? TELLUS.rho0 * Math.exp(-h / TELLUS.H) : 0,
       va = [v[0] - TELLUS.rot * r[2], v[1], v[2] + TELLUS.rot * r[0]], sp = len(va);
       if (rho > 0 && sp > 0.1) { let ad = 0.5 * rho * sp * 2.5 / d.mass; if (ad * api.DT > 0.9) ad = 0.9 / api.DT; a = a.map((x, i) => x - ad * va[i]); }
       v = v.map((x, i) => x + a[i] * api.DT); r = r.map((x, i) => x + v[i] * api.DT); tt += api.DT; }
@@ -207,8 +209,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   s.throttle = 1; api.stage(s); let ph = 'asc';
   while (api.t < 900 && s.alive && ph !== 'done') { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro';
     const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - R;
-    if (ph === 'asc' && el.ap - R > 80000) { s.throttle = 0; ph = 'coast'; } if (ph === 'coast' && h > 70000 && api.timeToNu(el, Math.PI) < 25) { s.throttle = 1; ph = 'circ'; }
-    if (ph === 'circ' && el.pe - R > 70000) { s.throttle = 0; ph = 'done'; }
+    if (ph === 'asc' && el.ap - R > (ATM + 10000)) { s.throttle = 0; ph = 'coast'; } if (ph === 'coast' && h > ATM && api.timeToNu(el, Math.PI) < 25) { s.throttle = 1; ph = 'circ'; }
+    if (ph === 'circ' && el.pe - R > ATM) { s.throttle = 0; ph = 'done'; }
     if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s); api.physStep(s, api.DT); }
   api.INP.pitch = 0; api.HOOK.debris = () => {};
   check('drop zones: the Orbiter\'s spent first stage lands where it was predicted at separation', got && gc(got.pred.pf, got.pf) < 500 && Math.abs(got.pred.t - got.t) < 2,
@@ -233,8 +235,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.INP.pitch = 0;
   check('impact prediction: a ballistic Hopper from apex lands where predicted', hop.ok && hop.dist < 2000 && Math.abs(hop.dt) < 10,
     `predicted ${(hop.flight).toFixed(0)} s ahead: ${(hop.dist / 1000).toFixed(2)} km off, ${hop.dt.toFixed(1)} s early/late; predicted ${hop.v.toFixed(0)} m/s, actual ${typeof hop.vAct === 'number' ? hop.vAct.toFixed(0) : hop.vAct} m/s`);
-  const pod = compare('pod', { stack: ['chute', 'pod', 'shield'], init: s => { s.landed = false; const f = api.localFrame([R + 75000, 0, 0]); s.r = [R + 75000, 0, 0];
-      s.v = add(mul(f.e, 2250), mul(f.up, -60)); const d = norm(s.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.sas = false; api.stage(s); } },
+  const pod = compare('pod', { stack: ['chute', 'pod', 'shield'], init: s => { s.landed = false; const f = api.localFrame([R + (ATM + 5000), 0, 0]); s.r = [R + (ATM + 5000), 0, 0];
+      s.v = add(mul(f.e, VENT), mul(f.up, -60)); const d = norm(s.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.sas = false; api.stage(s); } },
     s => len(s.r) - R < 25000);
   // 5 km since v1.12: with the drogue held until ~Mach 1.3, more of the descent is fast, where the unmodelled trim lift accumulates
   check('impact prediction: a re-entering pod under its parachute, predicted from 25 km', pod.ok && pod.dist < 5000 && Math.abs(pod.dv) < 0.5,
@@ -249,12 +251,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const mu = TELLUS.mu, R = TELLUS.R;
   api.t = 0; let s = api.newShip(api.PRESETS.Orbiter); api.S = s; api.HOOK.msg = () => {}; const T = api.tapeNew(api.PRESETS.Orbiter);
   s.throttle = 1; api.tapeStage(T, s); let phase = 'asc', frames = 0;
-  while (api.t < 1500 && s.alive && phase !== 'done') { frames++;
-    api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8 && s.sasMode !== 'pro') s.sasMode = 'pro';
+  while (api.t < 3000 && s.alive && phase !== 'done') { frames++;
+    api.INP.pitch = (api.t >= 8 && api.t < 8.95) ? 1 : 0; if (api.t > 9.95 && s.sasMode !== 'pro') s.sasMode = 'pro';   // kick retuned for the bigger planet
     const el = elements(s.r, s.v, mu), h = len(s.r) - R;
-    if (phase === 'asc' && el.ap - R > 80000) { s.throttle = 0; phase = 'coast'; }
-    if (phase === 'coast' && h > 70000 && api.timeToNu(el, Math.PI) < 20) { s.throttle = 1; phase = 'circ'; }
-    if (phase === 'circ' && el.pe - R > 70000) { s.throttle = 0; phase = 'done'; }
+    if (phase === 'asc' && el.ap - R > (ATM + 10000)) { s.throttle = 0; phase = 'coast'; }
+    if (phase === 'coast' && h > ATM && api.timeToNu(el, Math.PI) < 20) { s.throttle = 1; phase = 'circ'; }
+    if (phase === 'circ' && el.pe - R > ATM) { s.throttle = 0; phase = 'done'; }
     if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.tapeStage(T, s);
     if (api.railsOK(s) && !s.landed) api.tapeRails(T, s, 1.7 + (frames % 3) * 0.9, 50); else for (let k = 0; k < 1 + (frames % 4); k++) api.tapePhys(T, s);
   }
@@ -269,22 +271,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 10. Re-entry heating (v1.7): low-orbit returns are survivable bare, Selene returns need a shield, the ablator is a budget.
 {
   const mu = TELLUS.mu, R = TELLUS.R;
-  const entry = (ra, hp) => { const r = R + 75000, rp = R + hp, a = (ra + rp) / 2, v = Math.sqrt(mu * (2 / r - 1 / a)), e = (ra - rp) / (ra + rp), h = Math.sqrt(mu * a * (1 - e * e)); return { v, g: Math.acos(Math.min(1, h / (r * v))) }; };
+  const entry = (ra, hp) => { const r = R + (ATM + 5000), rp = R + hp, a = (ra + rp) / 2, v = Math.sqrt(mu * (2 / r - 1 / a)), e = (ra - rp) / (ra + rp), h = Math.sqrt(mu * a * (1 - e * e)); return { v, g: Math.acos(Math.min(1, h / (r * v))) }; };
   function enter(stack, ra, hp) { const { v, g } = entry(ra, hp); api.t = 0; const s = api.newShip(stack); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
-    s.landed = false; const f = api.localFrame([R + 75000, 0, 0]); s.r = [R + 75000, 0, 0]; s.v = add(mul(f.e, v * Math.cos(g)), mul(f.up, -v * Math.sin(g)));
+    s.landed = false; const f = api.localFrame([R + (ATM + 5000), 0, 0]); s.r = [R + (ATM + 5000), 0, 0]; s.v = add(mul(f.e, v * Math.cos(g)), mul(f.up, -v * Math.sin(g)));
     const d = norm(s.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.sas = false; let st = false, hot = 0;
     while (s.alive && !s.landed && api.t < 5000) { if (!st && len(s.r) - R < 15000) { api.stage(s); st = true; } api.physStep(s, api.DT);
       for (const p of s.parts) if (p.on && p.d.key === 'pod') hot = Math.max(hot, p.T / p.d.Tmax); }
     const sh = s.parts.find(p => p.d.key === 'shield'); return { landed: s.landed, alive: s.alive, hot, abl: sh ? sh.res.ablator / sh.cap.ablator : null, burned: msgs.find(m => /burned up/.test(m)) }; }
-  const leo = enter(['chute', 'pod'], R + 80000, 30000), lun = enter(['chute', 'pod'], 12e6, 30000), lunS = enter(['chute', 'pod', 'shield'], 12e6, 30000);
+  const leo = enter(['chute', 'pod'], R + (ATM + 10000), 30000), lun = enter(['chute', 'pod'], SELENE.a, 30000), lunS = enter(['chute', 'pod', 'shield'], SELENE.a, 30000);
   check('re-entry: a bare pod survives a low-orbit return, but burns up coming back from Selene', leo.landed && leo.hot < 1 && !lun.alive && /Command pod/.test(lun.burned || ''),
     `LEO pod peaks at ${(leo.hot * 100).toFixed(0)}% of its limit; Selene return: ${lun.burned}`);
   check('re-entry: with a heat shield the Selene return lands, using about half the ablator', lunS.landed && lunS.hot < 0.5 && lunS.abl > 0.2 && lunS.abl < 0.8,
     `pod peaks at ${(lunS.hot * 100).toFixed(0)}%, ${(lunS.abl * 100).toFixed(0)}% ablator left`);
   const asc = k => { api.t = 0; const s = api.newShip(api.PRESETS[k]); api.S = s; api.HOOK.msg = () => {}; s.throttle = 1; api.stage(s); let mx = 0;
-    while (api.t < 300 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, mu); if (el.ap - R > 80000) s.throttle = 0;
+    while (api.t < 300 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, mu); if (el.ap - R > (ATM + 10000)) s.throttle = 0;
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s); api.physStep(s, api.DT);
-      for (const p of s.parts) if (p.on) mx = Math.max(mx, p.T / p.d.Tmax); if (len(s.r) - R > 70000 && s.throttle === 0) break; }
+      for (const p of s.parts) if (p.on) mx = Math.max(mx, p.T / p.d.Tmax); if (len(s.r) - R > ATM && s.throttle === 0) break; }
     api.INP.pitch = 0; return mx; };
   const hs = ['Orbiter', 'Lunar', 'Big Lunar'].map(k => [k, asc(k)]);
   check('ascent heating stays well inside part limits on every launch preset', hs.every(x => x[1] < 0.7), hs.map(x => `${x[0]} ${(x[1] * 100).toFixed(0)}%`).join(', '));
@@ -296,7 +298,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const noX = st => J(st).map(e => typeof e === 'string' ? e : { ...e, rad: { ...e.rad, x: false } }), withX = st => J(st).map(e => typeof e === 'string' ? e : { ...e, rad: { ...e.rad, x: true } });
   const t8 = api.newShip(['t8']).parts[0];
   check('resource mass: a full Tank 8 t weighs dry + propellant', Math.abs(api.partMass(t8) - 8) < 1e-9, `${api.partMass(t8)} t (res ${JSON.stringify(t8.res)})`);
-  check('without crossfeed the flow model reproduces the old per-stage numbers', Math.round(tot(P.Orbiter)) === 4894 && Math.round(tot(P.Heavy)) === 5671 && Math.round(tot(P.Lunar)) === 6639,
+  check('without crossfeed the flow model reproduces the old per-stage numbers', Math.round(tot(P.Orbiter)) === 4894 && Math.round(tot(P.Heavy)) === 5671 && Math.round(tot(P.Lunar)) === 8495,   // Lunar resized for the 2026-10-07 rescale
     `Orbiter ${tot(P.Orbiter).toFixed(0)}, Heavy ${tot(P.Heavy).toFixed(0)}, Lunar ${tot(P.Lunar).toFixed(0)} m/s`);
   const h0 = tot(P.Heavy), h1 = tot(withX(P.Heavy)), a0 = tot(noX(P.Asparagus)), a1 = tot(P.Asparagus);
   check('crossfeed adds Δv: boosters feed the core and drop before it is touched', h1 > h0 + 200 && a1 > a0 + 500,
@@ -311,21 +313,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 8. Structural design (v1.5): joint reinforcement, interstage, 2.5 m class.
 {
-  const P = api.PRESETS, V = f => { const L = JSON.parse(JSON.stringify(P.Lunar)); f(L); return L; };
+  // a fixed 1.25 m test rocket (the pre-rescale Lunar), so these checks edit the joints they mean to, whatever the presets become
+  const P = api.PRESETS, OLD_LUNAR = ['chute', 'pod', 't1', 'wren', 'dec', 't4', 't2', 'petrel', 'dec', 't8', 't4', 'fins', 'condor'], V = f => { const L = JSON.parse(JSON.stringify(OLD_LUNAR)); f(L); return L; };
   function yank(stack, dur) { api.t = 0; const s = api.newShip(stack); api.S = s; const msgs = []; api.HOOK.msg = m => msgs.push(m);
     s.throttle = 1; api.stage(s); let y0 = null;
-    while (api.t < 600 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0;
+    while (api.t < 1200 && s.alive) { api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0;
       if (s.qdyn > 15000 && (y0 === null || api.t < y0 + dur)) { y0 = y0 ?? api.t; api.INP.pitch = 1; }
-      if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > 80000) s.throttle = 0;
+      if (api.t > 9.8) s.sasMode = 'pro'; const el = elements(s.r, s.v, TELLUS.mu); if (el.ap - TELLUS.R > (ATM + 30000)) s.throttle = 0;   // 30 km of margin: the thicker air drags a coasting apoapsis down
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length - 1) api.stage(s);
-      api.physStep(s, api.DT); if (len(s.r) - TELLUS.R > 70000 && s.throttle === 0) break; }
-    api.INP.pitch = 0; return { ok: s.alive && len(s.r) - TELLUS.R > 70000 && !msgs.some(m => /Structural/.test(m)), broke: msgs.find(m => /Structural/.test(m)), mass: api.newShip(stack).mass / 1000 }; }
-  const base = api.newShip(P.Lunar).mass / 1000;
+      api.physStep(s, api.DT); if (len(s.r) - TELLUS.R > ATM && s.throttle === 0) break; if (y0 !== null && api.t > y0 + dur + 60) break; }
+    api.INP.pitch = 0; return { ok: s.alive && !msgs.some(m => /Structural/.test(m)) /* intact and still flying a minute after the yank */, broke: msgs.find(m => /Structural/.test(m)), mass: api.newShip(stack).mass / 1000 }; }
+  const base = api.newShip(OLD_LUNAR).mass / 1000;
   const r1 = yank(V(L => { L[9] = { k: 't8', j: 1 }; }), 4);
   check('reinforcing the joint that snapped moves the failure to the next weakest joint', /Decoupler \/ Petrel/.test(r1.broke || '') && Math.abs(r1.mass - base - 0.06) < 0.005,
     `${r1.broke}; +${((r1.mass - base) * 1000).toFixed(0)} kg`);
   const r2 = yank(V(L => { L[8] = 'istage'; }), 4);
-  check('an interstage takes the engine out of the load path: the same 4 s yank is survived', r2.ok, `+${((r2.mass - base) * 1000).toFixed(0)} kg, reached space intact`);
+  check('an interstage takes the engine out of the load path: the same 4 s yank is survived', r2.ok, `+${((r2.mass - base) * 1000).toFixed(0)} kg, flying intact a minute after the yank`);
   const s = api.newShip(P['Big Lunar']), pr = api.probe(s, { M: 0.6, aoa: 4, q: 5000, h: 3000 }), cal = (pr.ycm - pr.ycp) / (2 * s.radius), r3 = yank(P['Big Lunar'], 0);
   check('Big Lunar (2.5 m first stage + adapter) is stable and flies intact', cal > 0.5 && r3.ok, `margin ${cal.toFixed(2)} cal (on 2.5 m), ${s.mass / 1000 | 0} t`);
   const bad = Object.keys(P).filter(k => { try { const a = api.analyze(api.newShip(P[k])); return !(a.lift.worst.frac >= 0 && api.newShip(P[k]).parts.some(p => p.parent)); } catch (e) { return true; } });
@@ -337,14 +340,14 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 7. Maneuver nodes (v1.4): plan a Hohmann transfer, fly it with SAS on the node, compare plan vs result.
 {
-  const mu = TELLUS.mu, r0 = 680000, vc = Math.sqrt(mu / r0), vp = Math.sqrt(mu * (2 / r0 - 2 / (r0 + SELENE.a))), dvH = vp - vc;
+  const mu = TELLUS.mu, r0 = LEO, vc = Math.sqrt(mu / r0), vp = Math.sqrt(mu * (2 / r0 - 2 / (r0 + SELENE.a))), dvH = vp - vc;
   const orbitShip = () => { api.t = 0; const s = api.newShip(['chute', 'pod', 't2', 'petrel']); api.S = s; api.HOOK.msg = () => {};
     s.landed = false; s.r = [r0, 0, 0]; s.v = [0, 0, -vc]; api.stage(s); return s; };
   // plan only: the dashed trajectory's apoapsis must be the textbook one
   let s = orbitShip(); s.node = { t: 600, dv: [dvH, 0, 0] };
   let I = api.nodeInfo(s), plan = api.predictFrom({ b: s.body, r: I.rN, v: add(I.vN, I.rem), t: I.t });
   const apPlan = plan[0].el.ap ?? plan[0].el.a * 2;
-  check('node plan: +856 m/s prograde from 80 km reaches Selene\'s orbit', Math.abs(apPlan - SELENE.a) < 1000 || plan[0].endKind === 'enc',
+  check(`node plan: +${dvH.toFixed(0)} m/s prograde from low orbit reaches Selene's orbit`, Math.abs(apPlan - SELENE.a) < 1000 || plan[0].endKind === 'enc',
     `planned Ap ${((apPlan) / 1e3).toFixed(1)} km from centre (target ${(SELENE.a / 1e3).toFixed(1)}), legs: ${plan.map(x => x.b.name + (x.endKind ? '→' + x.endKind : '')).join(' | ')}`);
   s.node.dv = [0, 200, 0]; I = api.nodeInfo(s); plan = api.predictFrom({ b: s.body, r: I.rN, v: add(I.vN, I.rem), t: I.t });
   const inc = Math.acos(plan[0].el.h[1] / plan[0].el.hl) * 57.2958;
@@ -357,7 +360,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   for (let k = 0; k < 300; k++) { s.throttle = 0; api.physStep(s, api.DT); }   // settle attitude on the node vector (6 s)
   s.throttle = 1; let n = 0; while (s.node && n++ < 20000) api.physStep(s, api.DT);
   const elA = elements(s.r, s.v, mu), err = Math.abs(elA.ap - apPlan) / apPlan;
-  check('node burn: SAS-pointed finite burn lands within 1% of the planned apoapsis, then cuts the throttle', !s.node && s.throttle === 0 && err < 0.01,
+  // 1.5 % since the rescale: Selene is 3.2× farther, the burn ~58 s, and a finite burn's spread around the node grows with it
+  check('node burn: SAS-pointed finite burn lands within 1.5% of the planned apoapsis, then cuts the throttle', !s.node && s.throttle === 0 && err < 0.015,
     `burn ${(n * api.DT).toFixed(1)} s (estimate ${est.toFixed(1)} s); Ap ${(elA.ap / 1e3).toFixed(0)} km vs plan ${(apPlan / 1e3).toFixed(0)} km (${(err * 100).toFixed(2)}%)`);
 }
 
@@ -388,7 +392,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('impact spread: an unsampled atmosphere widens the landing prediction; a sampled one collapses it', w0 > 2 && w1 < 0.01,
     `±25 % density: ${w0.toFixed(1)} km wide → sampled: ${w1.toFixed(3)} km (nominal flight ${(i0.t).toFixed(0)} s)`);
   // a failure is a measurement: the part that broke is fully known afterwards
-  fresh(); api.t = 0; s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.r = [TELLUS.R + 3000, 0, 0]; s.v = [0, 0, -600];   // broadside at 600 m/s: something gives
+  fresh(); api.t = 0; s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.landed = false; s.r = [TELLUS.R + 3000, 0, 0]; s.v = add(api.surfVel(TELLUS, s.r), [0, 0, -600]);   // broadside at 600 m/s through the air: something gives
   for (let k = 0; k < 500 && s.parts.every(p => p.on); k++) api.advPhys(s);
   const known = Object.keys(P.cert).filter(k => P.cert[k] === 1);
   check('a structural failure reveals the broken part\'s true rating (certified 100 %)', known.length >= 1, `fully known: ${known.join(', ') || 'none'}`);
@@ -409,15 +413,15 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('passenger hop: a Kestrel crushes the passenger; the Passenger preset (booster dropped at burnout) goes to space and home safe', !hard.rec.bioOK && /g$/.test(hard.rec.bioWhy) && soft.rec.bioOK && soft.rec.bioSpace && !!P.done.hop,
     `Kestrel: ${hard.rec.bioWhy} · preset: apex ${(soft.rec.apex / 1e3).toFixed(0)} km, peak ${soft.rec.gMax.toFixed(1)} g (1 s avg), cabin ${soft.rec.cabin.toFixed(0)} K at landing, approved ${soft.rec.approved} · booster kept on: ${whole.rec.bioOK ? 'safe' : whole.rec.bioWhy}`);
   // an orbital-speed return: a bare capsule tumbles and cooks its passenger; with a pod holding it shield-first, home safe
-  const entry = (st, sas) => { fresh(); api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; const R0 = TELLUS.R, f = api.localFrame([R0 + 75000, 0, 0]);
-    x.r = [R0 + 75000, 0, 0]; x.v = add(mul(f.e, 2250), mul(f.up, -60)); const d = norm(x.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); x.q = api.qFromBasis(X, Y, cross(X, Y));
+  const entry = (st, sas) => { fresh(); api.t = 0; const x = api.newShip(st); api.S = x; x.landed = false; const R0 = TELLUS.R, f = api.localFrame([R0 + (ATM + 5000), 0, 0]);
+    x.r = [R0 + (ATM + 5000), 0, 0]; x.v = add(mul(f.e, VENT), mul(f.up, -60)); const d = norm(x.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); x.q = api.qFromBasis(X, Y, cross(X, Y));
     x.sas = sas; if (sas) x.sasMode = 'retro'; x.rec.launched = true; x.rec.bio = true; api.stage(x); let k = 0; while (x.alive && !x.landed && k++ < 200000) api.advPhys(x); return x; };
   const bare = entry(['chute', 'bio', 'shield'], false), held = entry(['chute', 'bio', 'pod', 'shield'], true);
   check('orbital-speed return: a bare biocapsule tumbles and overheats; held shield-first by a pod, the passenger lands safe', !bare.rec.bioOK && held.rec.bioOK && held.landed,
     `bare: ${bare.rec.bioWhy}; held: ${held.rec.gMax.toFixed(1)} g, cabin ${held.rec.cabin.toFixed(0)} K, landed ${held.landed}`);
   // orbit benchmarks: the beeper and the lift records, from a ship placed in a circular orbit and coasted on rails
   fresh(); P.done.weather = { flight: 0 };
-  const orb = st => { const x = api.newShip(st); api.S = x; api.t = 0; x.landed = false; const r0 = TELLUS.R + 90000; x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
+  const orb = st => { const x = api.newShip(st); api.S = x; api.t = 0; x.landed = false; const r0 = TELLUS.R + (ATM + 20000); x.r = [r0, 0, 0]; x.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; x.rec.launched = true; api.advRails(x, 60, 1000); return x; };
   orb(['sci', 'ballast', 'ballast']); const b1 = !!P.done.beeper, l1 = !!P.done.lift1;
   orb(['sci', 'ballast', 'ballast', 'ballast', 'ballast']);
   check('orbit benchmarks: the beeper, then 0.5 t and 2 t of mass simulators', b1 && l1 && !!P.done.lift2, `beeper ${b1}, lift I ${l1}, lift II ${!!P.done.lift2}`);
@@ -428,7 +432,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the floor tops the program up
   fresh(); s = launch(api.PRESETS.Sounding); const c0 = api.vesselCost(s.parts); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  api.missionEnd(s); const net = api.FUNDS0 - P.funds + 15;   // +15k: "Above the weather" paid out
+  // every first this flight completed paid out (Above the weather; in denser air a sounding rocket also passes the 25 kPa test)
+  const paid = () => Object.keys(P.done).reduce((a, k) => a + (api.MISSIONS.find(m => m.id === k)?.pay || 0), 0);
+  api.missionEnd(s); const net = api.FUNDS0 - P.funds + paid();
   check('budget: launch charged, intact landing refurbished at 80 % of dry price, the mission paid', Math.abs(net - (c0.cost - c0.dry * api.REFURB)) < 1e-6 && !!P.done.weather,
     `net ${net.toFixed(4)} vs ${(c0.cost - c0.dry * api.REFURB).toFixed(4)}, done ${Object.keys(P.done)}, cost ${c0.cost.toFixed(2)}k, refurbished ${(c0.dry * api.REFURB).toFixed(2)}k, mission +15k → funds ${P.funds.toFixed(2)}k`);
   fresh(); P.funds = 30; const x = launch(['pod', 't1', 'kestrel']); x.landed = false; x.rec.launched = true; api.missionDrop(x, { kind: 'city' }); x.alive = false; api.missionEnd(x);
@@ -464,7 +470,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 10, hi: 25 }), ct('sample', { k: 1, pay: 11 })]; const f0 = P.funds;
   s = launch(api.PRESETS.Sounding); armed = false; n = 0;
   while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
-  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost + 10 + 11 + 15)) < 1e-6,
+  check('contracts overlap: one sounding flight completes two contracts and a first, each paid once', P.active.length === 0 && s.rec.cdone.length === 2 && !!P.done.weather && P.cdone === 2 && Math.abs(P.funds - (f0 - s.rec.cost + 10 + 11 + paid())) < 1e-6,
     `${s.rec.cdone.join(' + ')} + Above the weather; funds ${f0}M → ${P.funds.toFixed(2)}M before refurbishment`);
   // capacity: two at first, growing with contracts done
   fresh(); P.day = 0; P.offers = [1, 2, 3, 4].map(i => ({ ...ct('apex', { lo: 10, hi: 25 }), id: i, expires: 50 })); const took = [1, 2, 3].map(i => api.acceptOffer(i)); const c0cap = api.capOf(); P.cdone = 6;

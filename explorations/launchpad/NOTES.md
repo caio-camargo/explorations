@@ -651,6 +651,73 @@ Slice 6, on the `economy` branch (worktree `C:/Users/caioa/dev/launchpad-economy
 
 Still open: career moves and power flavours (backlog). Sanctions don't yet reach launch-site access or parts (export
 controls on hardware).
+## The planet's size: a scale study and the rescale (2026-10-07)
+
+**The question (Caio):** was Tellus too small? It was a copy of Kerbin's numbers (600 km, 9.81 m/s², 6 h day, 70 km
+of air; Selene was the Mun).
+
+**What players say** (KSP forums): Squad shrank Kerbin to 1/10 Earth for gameplay (easier rockets, frequent transfer
+windows, less warp). Among rescale mods, **2.5×** is the most-cited sweet spot ("2.5–3.7× the perfect sweet spot of
+challenge versus casual play"); JNSQ (2.7×) adds ~1,400 m/s to orbit; 3.2× (~6,000 m/s) is "a solid difficulty level
+without making it a hindrance". Real scale (RSS) is a big adjustment many players leave. The usual complaints at
+larger scales are rebalancing (the planets are easy, the rest of the game isn't) and slow ascents and warp limits. Our
+exact Kepler rails remove the warp problem.
+
+**The study** (a harness that loads the sim core with Tellus rescaled, surface gravity kept, atmosphere ×(1+0.25(k−1)),
+and flies the same scripted missions):
+
+| | 1× | 2× | 2.5× |
+|---|---|---|---|
+| Δv to low orbit | 3,060–3,180 | 4,000–4,180 | 4,390–4,600 |
+| Orbiter preset reaches orbit with | 1,643 spare | 720 | 217 |
+| Lunar preset | orbit | lost (overheats on ascent) | lost |
+| Peak ascent heating (heating ×3) | 68–85% | 96–100% | 90–100% |
+| Pod + shield back from orbit, ablator left | 63% | 4% | 0% |
+| Polar 300 km satellite contact, pad → 5 stations | 10% → 53% | 5% → 32% | 4% → 19% |
+| Mean distance to the nearest city | 295 km | 368 | 446 |
+
+Findings: Δv grows less than the forums suggest (the 6 h day's spin helps); **heating, not Δv, was the wall**. The ×3
+heating gain had been compensating for the small planet's slow orbits. The world gains real room: area ×4 at 2×.
+
+**Decision (Caio): about 2×, pegged to Earth rather than to "2× Kerbin":**
+
+| | Value | Peg |
+|---|---|---|
+| Radius | 1,274 km | a fifth of Earth's (~2.1× Kerbin) |
+| Surface gravity | 9.81 m/s² | Earth's |
+| Day | 8 h | a third of Earth's |
+| Atmosphere | top 100 km (Kármán line), scale height 7.5 km, sea-level density 1.225 | Earth-like |
+| Selene | radius 348 km, surface gravity 1.62, orbit 38,440 km | the Moon's size ratio and gravity; a tenth of the Moon's distance |
+
+**As built** (measured):
+- Orbit costs 4,244–4,454 m/s; low-orbit speed is 3.4 km/s; the period at 300 km is 52 min; the equator spins at
+  278 m/s.
+- **Heating gain ×3 → ×1** (plain Sutton–Graves). That restores the old balance exactly: ascents peak at 35–76% of
+  part limits; a shielded pod comes back from orbit with 69% ablator; a bare pod survives a low-orbit return (74%) but
+  not a Selene one.
+- **Presets resized:**
+  - Lunar moves to a 2.5 m first stage (orbit with ~4,070 m/s left).
+  - Big Lunar gains tankage and two Kestrel boosters (~4,100 left).
+  - Passenger gets a 4 t tank (142 km apex, 6.6 g).
+
+  A Selene landing and return is about 8,200 m/s in all: 4,300 to orbit plus ~3,900 (transfer 1,321, a 2.4-day trip).
+- The program calendar follows the planet: a program day is 8 h (`DAY_S` derives from the rotation, so the launch
+  window still matches a whole day). Air sampling has 10 bands. The sky shader and CPU light model take their scale
+  heights from `TELLUS.H`. Map camera distances are in planet radii. The city texture is 2048×1024, keeping ~3.7 km
+  texels.
+- **Tests now take their geometry from the planet** (`LEO`, `ATM`, `VENT` at the top of test.mjs) instead of 600 km
+  literals. Changes worth knowing:
+  - The node burn tolerance is 1.5% (a 58 s burn to Selene).
+  - The structural yank checks use a fixed 1.25 m test rocket, and "survived" means intact a minute after the yank.
+  - The broadside failure check sets its speed through the air, not inertially (the faster spin was hiding it).
+  - The tape check's pitch kick is retuned (8.95 s).
+
+  106 checks pass.
+
+**Other branches:** terrain (not yet merged) bakes a world map whose texels double in km and generates plate and
+climate features over the unit sphere, so it needs a look when it merges. Economy and builder only pick up preset and
+number changes.
+
 ## Ground stations (planning branch, 2026-10-07)
 
 - **Sites:** the pad, plus stations bought at cities, each power's two biggest. **At home** 10M. **Abroad** 20M plus a 2M
