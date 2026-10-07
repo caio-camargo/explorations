@@ -922,38 +922,50 @@ function tn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let 
   const x1=a+(b-a)*fx,x2=c+(d-c)*fx,x3=e+(f-e)*fx,x4=g+(h-g)*fx,y1=x1+(x2-x1)*fy;return y1+(x3+(x4-x3)*fy-y1)*fz}
 function tfbm(x,y,z,o){let a=.5,s=0,n=0;for(let i=0;i<o;i++){s+=a*tn(x,y,z);n+=a;x=x*2.03+1.7;y=y*2.03+9.2;z=z*2.03+3.1;a*=.5}return s/n}
 const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
-const WTW=512,WTH=256,WSEED=12,HOCT=9;
-function makeWorld(seed=WSEED){const R=rng(seed),NP=14,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
+// Feature sizes are kept in kilometres, not as fractions of the planet: they were tuned on the 600 km Tellus, and WK
+// converts those angles to this radius (ranges ~100 km across, detail from 25 km down to 90 m, fjords, ~5 km cones).
+const WTW=1024,WTH=512,WSEED=13,HOCT=9,NPLATES=20,WK=6e5/TELLUS.R,HF0=+(24/WK).toFixed(5),FJ1=+(18/WK).toFixed(5),FJ2=+(70/WK).toFixed(5),VOLF=+(60/WK).toFixed(5);
+function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
   for(let k=0;k<NP;k++){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z);plates.push({s:[q*Math.cos(ph),z,q*Math.sin(ph)],cont:false,ax:norm([R()*2-1,R()*2-1,R()*2-1]),w:.6+R()*.8})}
   {const ix=plates.map((_,i)=>i);for(let i=NP-1;i>0;i--){const j=R()*(i+1)|0;[ix[i],ix[j]]=[ix[j],ix[i]]}for(let i=0;i<Math.round(NP*.45);i++)plates[ix[i]].cont=true}
   const N=WTW*WTH,E=new Float32Array(N),M=new Float32Array(N),V=new Float32Array(N),T=new Float32Array(N),W=new Float32Array(N),S=new Float32Array(N);
-  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
-    for(let i=0;i<WTW;i++){const lon=(i+.5)/WTW*2*Math.PI-Math.PI,p=[cl*Math.cos(lon),sl,cl*Math.sin(lon)],k=j*WTW+i;
-      // plates: nearest seed, after a warp so boundaries wander; the boundary is the nearest bisector
-      const q=norm([p[0]+.45*(tfbm(p[0]*3+off[0],p[1]*3,p[2]*3,3)-.5),p[1]+.45*(tfbm(p[0]*3,p[1]*3+off[1],p[2]*3,3)-.5),p[2]+.45*(tfbm(p[0]*3,p[1]*3,p[2]*3+off[2],3)-.5)]);
+  // the smooth fields (boundary warp, continent noise, old worn ranges) live on a half-resolution grid and are
+  // interpolated; only the plate boundaries, which must stay sharp, are found per texel. Pair normals are precomputed.
+  const LW=WTW/2,LH=WTH/2,QX=new Float32Array(LW*LH),QY=new Float32Array(LW*LH),QZ=new Float32Array(LW*LH),CN=new Float32Array(LW*LH),WR=new Float32Array(LW*LH);
+  for(let j=0;j<LH;j++){const lat=((j+.5)/LH-.5)*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
+    for(let i=0;i<LW;i++){const lon=(i+.5)/LW*2*Math.PI-Math.PI,p=[cl*Math.cos(lon),sl,cl*Math.sin(lon)],k=j*LW+i;
+      QX[k]=p[0]+.45*(tfbm(p[0]*3+off[0],p[1]*3,p[2]*3,3)-.5);QY[k]=p[1]+.45*(tfbm(p[0]*3,p[1]*3+off[1],p[2]*3,3)-.5);QZ[k]=p[2]+.45*(tfbm(p[0]*3,p[1]*3,p[2]*3+off[2],3)-.5);
+      CN[k]=tfbm(p[0]*1.8+off[1],p[1]*1.8,p[2]*1.8+off[2],5)-.5;WR[k]=1-Math.abs(2*tfbm(p[0]*5/WK+off[2],p[1]*5/WK,p[2]*5/WK+off[0],3)-1)}}
+  const lo=(A,x,y)=>{const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy,i0=(ix+LW)%LW,i1=(ix+1)%LW,j0=clamp(iy,0,LH-1)*LW,j1=clamp(iy+1,0,LH-1)*LW,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy};
+  const PN=[];for(let a=0;a<NP;a++){PN.push([]);for(let b=0;b<NP;b++)PN[a].push(a===b?null:norm(sub(plates[a].s,plates[b].s)))}
+  for(let j=0;j<WTH;j++){const ly=(j+.5)/2-.5;
+    for(let i=0;i<WTW;i++){const lx=(i+.5)/2-.5,k=j*WTW+i,q=norm([lo(QX,lx,ly),lo(QY,lx,ly),lo(QZ,lx,ly)]);
+      // plates: nearest seed (after the warp, so boundaries wander); the boundary is the nearest bisector
       let b1=-2,i1=0;for(let n=0;n<NP;n++){const d=dot(q,plates[n].s);if(d>b1){b1=d;i1=n}}
-      const P1=plates[i1];let bd=9,i2=0;
-      for(let n=0;n<NP;n++){if(n===i1)continue;const dd=sub(P1.s,plates[n].s),a=Math.asin(clamp(dot(q,dd)/len(dd),-1,1));if(a<bd){bd=a;i2=n}}
-      const P2=plates[i2],v1=cross(P1.ax,q),v2=cross(P2.ax,q);let nb=sub(P2.s,P1.s);nb=norm(sub(nb,mul(q,dot(nb,q))));
-      const conv=dot(v1,nb)*P1.w-dot(v2,nb)*P2.w,c1=P1.cont?1:0,c2=P2.cont?1:0,cb=c1+(c2-c1)*.5*(1-sstep(0,.22,bd));
-      const cn=tfbm(p[0]*1.8+off[1],p[1]*1.8,p[2]*1.8+off[2],5)-.5;
+      const P1=plates[i1],pn=PN[i1];let bd=9,i2=0;
+      for(let n=0;n<NP;n++){if(n===i1)continue;const v=pn[n],a=q[0]*v[0]+q[1]*v[1]+q[2]*v[2];if(a<bd){bd=a;i2=n}}
+      bd=Math.asin(clamp(bd,-1,1));
+      const P2=plates[i2],v1=cross(P1.ax,q),v2=cross(P2.ax,q),bk=bd/WK;   // bk: distance to the boundary in the 600 km planet's radians, so widths stay in km
+      let nb=sub(P2.s,P1.s);nb=norm(sub(nb,mul(q,dot(nb,q))));
+      const conv=dot(v1,nb)*P1.w-dot(v2,nb)*P2.w,c1=P1.cont?1:0,c2=P2.cont?1:0,cb=c1+(c2-c1)*.5*(1-sstep(0,.22,bk));
+      const cn=lo(CN,lx,ly);
       let e=-3600+3900*cb+7500*cn;if(e>0)e*=.35;   // most land sits low; height comes from tectonics
       let up=0,vol=0;const g=x=>Math.exp(-x*x);
       if(conv>0){const cv=Math.min(conv,1.2);
-        if(c1&&c2)up=5200*cv*g(bd/.07)+1400*cv*sstep(.3,.05,bd)*(i1<i2?1:.3);                     // collision: a high range, a plateau behind
-        else if(c1)up=4200*cv*g((bd-.06)/.05),vol=cv*g((bd-.09)/.03);                                // ocean diving under a continent: coastal range + volcanoes
-        else if(c2)up=-2200*cv*g(bd/.03);                                                            // the trench
-        else if(i1<i2)up=4600*cv*g((bd-.05)/.025),vol=cv*g((bd-.05)/.025)}                           // island arc
-      else if(conv<-.15){const cv=Math.min(-conv,1.2);if(c1&&c2)up=-1500*cv*g(bd/.035)+500*cv*g((bd-.07)/.04);else if(!c1&&!c2)up=1200*cv*g(bd/.05)}   // rift valley / mid-ocean ridge
-      const r=1-Math.abs(2*tfbm(p[0]*5+off[2],p[1]*5,p[2]*5+off[0],3)-1);up+=900*r*r*r*sstep(-.1,.3,cb+cn);      // old, worn ranges
+        if(c1&&c2)up=5200*cv*g(bk/.07)+1400*cv*sstep(.3,.05,bk)*(i1<i2?1:.3);                     // collision: a high range, a plateau behind
+        else if(c1)up=4200*cv*g((bk-.06)/.05),vol=cv*g((bk-.09)/.03);                                // ocean diving under a continent: coastal range + volcanoes
+        else if(c2)up=-2200*cv*g(bk/.03);                                                            // the trench
+        else if(i1<i2)up=4600*cv*g((bk-.05)/.025),vol=cv*g((bk-.05)/.025)}                           // island arc
+      else if(conv<-.15){const cv=Math.min(-conv,1.2);if(c1&&c2)up=-1500*cv*g(bk/.035)+500*cv*g((bk-.07)/.04);else if(!c1&&!c2)up=1200*cv*g(bk/.05)}   // rift valley / mid-ocean ridge
+      const r=lo(WR,lx,ly);up+=900*r*r*r*sstep(-.1,.3,cb+cn);      // old, worn ranges
       E[k]=e+up;M[k]=clamp(Math.abs(up)/3500,0,1);V[k]=clamp(vol,0,1)}}
-  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*180,al=Math.abs(lat),dir=al<30||al>60?1:-1,dx=2*Math.PI*600*Math.cos(lat*D)/WTW,g=x=>Math.exp(-x*x);
+  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*180,al=Math.abs(lat),dir=al<30||al>60?1:-1,dx=2*Math.PI*TELLUS.R/1000*Math.cos(lat*D)/WTW,g=x=>Math.exp(-x*x);
     const circ=.6+.7*g(lat/11)-.5*g((al-25)/6.5)+.35*g((al-47)/12)-.3*sstep(65,85,al);let m=1,ep=0;
     for(let pass=0;pass<2;pass++)for(let n=0;n<WTW;n++){const i=dir>0?n:WTW-1-n,k=j*WTW+i,e=E[k];let oro=0;
       if(e<0){m+=(1-m)*(1-Math.exp(-dx/300));ep=0}else{oro=m*(1-Math.exp(-Math.max(0,e-ep)/1000*.55));m=Math.max(m*Math.exp(-dx/3500)-oro,0);ep=e}
-      if(pass)W[k]=clamp((.3+.95*m)*circ+oro*7,0,1.5)}
+      if(pass)W[k]=clamp((.4+.95*m)*circ+oro*7,0,1.5)}
     for(let i=0;i<WTW;i++){const k=j*WTW+i;T[k]=27-52*Math.pow(al/90,2.2)-6.5*Math.max(E[k],0)/1000}}
-  for(let it=0;it<3;it++){const W2=W.slice();for(let j=1;j<WTH-1;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;W[k]=(W2[k]*2+W2[j*WTW+(i+WTW-1)%WTW]+W2[j*WTW+(i+1)%WTW]+W2[k-WTW]+W2[k+WTW])/6}}
+  for(let it=0;it<5;it++){const W2=W.slice();for(let j=1;j<WTH-1;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;W[k]=(W2[k]*2+W2[j*WTW+(i+WTW-1)%WTW]+W2[j*WTW+(i+1)%WTW]+W2[k-WTW]+W2[k+WTW])/6}}
   // salt flats: dry, flat basins that sit below their surroundings (where rain would pool, if it rained)
   for(let j=2;j<WTH-2;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;if(E[k]<=0||W[k]>.4||M[k]>.2||T[k]<0)continue;let s=0;
     for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)s+=E[(j+a)*WTW+(i+b+WTW)%WTW];S[k]=sstep(60,220,s/25-E[k])*sstep(.4,.25,W[k])}
@@ -966,28 +978,34 @@ const WORLD=makeWorld();
 // bilinear on the baked map (the shader does the same arithmetic with texelFetch, not the GPU's 8-bit filter weights)
 function wBil(A,g){const x=(Math.atan2(g[2],g[0])/(2*Math.PI)+.5)*WTW-.5,y=(Math.asin(clamp(g[1],-1,1))/Math.PI+.5)*WTH-.5,ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
   const i0=(ix+WTW)%WTW,i1=(ix+1)%WTW,j0=Math.max(iy,0)*WTW,j1=Math.min(iy+1,WTH-1)*WTW,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy}
+// the height channels use a quadratic B-spline over 3×3 texels instead: bilinear is continuous but its slope kinks at
+// every texel edge, and the lighting showed those kinks as 8 km facets. The quadratic B-spline has continuous slope,
+// never overshoots its neighbours (so the air bound U, dilated ±2 texels, still holds), and costs the shader 9 fetches.
+const bsq=t=>[.5*(.5-t)*(.5-t),.75-t*t,.5*(.5+t)*(.5+t)];
+function wSpl(g){const x=(Math.atan2(g[2],g[0])/(2*Math.PI)+.5)*WTW-.5,y=(Math.asin(clamp(g[1],-1,1))/Math.PI+.5)*WTH-.5,ix=Math.floor(x+.5),iy=Math.floor(y+.5),wx=bsq(x-ix),wy=bsq(y-iy),W=WORLD,o=[0,0,0,0];
+  for(let b=0;b<3;b++){const j=clamp(iy-1+b,0,WTH-1)*WTW;for(let a=0;a<3;a++){const k=j+(ix-1+a+WTW*2)%WTW,w=wx[a]*wy[b];o[0]+=W.E[k]*w;o[1]+=W.M[k]*w;o[2]+=W.V[k]*w;o[3]+=W.S[k]*w}}return o}
 const toGen=pf=>rotY(norm(pf),-WORLD.lon0),fromGen=g=>rotY(g,WORLD.lon0);
 // the height of the land in the world's own frame g (unit vector), without the launch-site flattening
-function hgtGen(g,oct=HOCT){const e0=wBil(WORLD.E,g),m=wBil(WORLD.M,g),v=wBil(WORLD.V,g),sf=wBil(WORLD.S,g),lat=Math.abs(g[1]);
-  let e=e0>3500?3500+(e0-3500)*.5:e0,f=24,a=1,rid=0,hil=0,wgt=1,an=0;
+function hgtGen(g,oct=HOCT){const[e0,m,v,sf]=wSpl(g),lat=Math.abs(g[1]);
+  let e=e0>3500?3500+(e0-3500)*.5:e0,f=HF0,a=1,rid=0,hil=0,wgt=1,an=0;
   // ridged multifractal (mountains) and plain fbm (hills, and the fractal coast) from the same octaves
   for(let i=0;i<oct;i++){const n=tn(g[0]*f+11.3,g[1]*f+3.7,g[2]*f+7.1);let r=1-Math.abs(2*n-1);r*=r*wgt;wgt=clamp(r*1.6,0,1);rid+=a*r;hil+=a*(n-.5);an+=a;f*=2.03;a*=.5}
   e+=((m*2600+120)*rid/an*1.3-m*900+(380+500*sstep(900,0,Math.abs(e0)))*hil/an*(1-m*.5))*(1-.9*sf);
   // fjords: glaciers cut narrow valleys into high-latitude mountains; near the coast they flood
   const gl=sstep(.66,.82,lat)*sstep(.08,.35,m)*sstep(1800,400,e0);
-  if(gl>0){const wv=tn(g[0]*18,g[1]*18+5,g[2]*18)-.5,l=Math.abs(tn(g[0]*70+wv*3,g[1]*70,g[2]*70+wv*3)-.5);e-=gl*1500*(1-sstep(.01,.06,l))}
+  if(gl>0){const wv=tn(g[0]*FJ1,g[1]*FJ1+5,g[2]*FJ1)-.5,l=Math.abs(tn(g[0]*FJ2+wv*3,g[1]*FJ2,g[2]*FJ2+wv*3)-.5);e-=gl*1500*(1-sstep(.01,.06,l))}
   // volcanoes: one cone per ~20 km cell along the active arcs, with a summit crater
-  if(v>.15){const x=g[0]*60,y=g[1]*60,z=g[2]*60,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);
+  if(v>.15){const x=g[0]*VOLF,y=g[1]*VOLF,z=g[2]*VOLF,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);
     if(ih3(ix,iy,iz+77)<.55){const d=Math.hypot(x-ix-.25-.5*ih3(ix,iy,iz+78),y-iy-.25-.5*ih3(ix,iy,iz+79),z-iz-.25-.5*ih3(ix,iy,iz+80))/.25;
       if(d<1)e+=v*(1800+1600*ih3(ix,iy,iz+81))*(1-d)*(1-d)*(d<.12?.6+3*d:1)}}
   return e}
 // the home launch site: on the equator, flat low land a few km from a coast with open sea to the east (spent stages
 // fall in the water). The world is then turned so the site is at planet-fixed +X, and the pad is levelled.
 const PAD_FLAT=2000,PAD_BLEND=4500;
-(function siteSearch(){let best=null;const Wd=WORLD;
+(function siteSearch(){let best=null;const Wd=WORLD,kmT=2*Math.PI*TELLUS.R/1000/WTW,nF=Math.round(150/kmT),nS=Math.round(600/kmT);   // coast within 150 km, then 600 km of open sea
   for(const j of[WTH/2-1,WTH/2])for(let i=0;i<WTW;i++){const k=j*WTW+i,e=Wd.E[k];if(e<3||e>350||Wd.M[k]>.12)continue;
-    let first=-1,sea=0;for(let n=1;n<=110;n++){const s=Wd.E[j*WTW+(i-n+WTW*2)%WTW]<0;if(first<0){if(s)first=n;else if(n>20)break}else if(n<=first+80)sea+=s}
-    if(first<2)continue;const sc=sea/80-first*.01-Wd.M[k];if(!best||sc>best.sc)best={sc,i,j}}
+    let first=-1,sea=0;for(let n=1;n<=nF+nS;n++){const s=Wd.E[j*WTW+(i-n+WTW*2)%WTW]<0;if(first<0){if(s)first=n;else if(n>nF)break}else if(n<=first+nS)sea+=s}
+    if(first*kmT<12)continue;const sc=sea/nS-first*kmT/740-Wd.M[k];if(!best||sc>best.sc)best={sc,i,j}}
   const lon=best?(best.i+.5)/WTW*2*Math.PI-Math.PI:0;Wd.lon0=lon;Wd.siteFound=!!best;
   Wd.site=[1,0,0];Wd.siteH=Math.max(8,hgtGen(toGen([1,0,0])))})();
 // terrain height (m above sea level; negative is sea floor) at a planet-fixed direction
@@ -1001,7 +1019,7 @@ const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;
 // biomes, for colours, science and landing: the same thresholds the shader blends between
 const BIOMES=['sea','ice','tundra','taiga','steppe','temperate forest','grassland','cold desert','rainforest','savanna','hot desert','alpine','volcanic','salt flat','wetland'];
-function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),e0=wBil(WORLD.E,g),Tc=wBil(WORLD.T,g)-6.5*Math.max(0,h-Math.max(e0,0))/1000,Wm=wBil(WORLD.W,g),m=wBil(WORLD.M,g),v=wBil(WORLD.V,g),sf=wBil(WORLD.S,g);
+function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),w4=wSpl(g),e0=w4[0],Tc=wBil(WORLD.T,g)-6.5*Math.max(0,h-Math.max(e0,0))/1000,Wm=wBil(WORLD.W,g),m=w4[1],v=w4[2],sf=w4[3];
   let id;if(h<0)id=0;else if(Tc<-13)id=1;else if(h>2800&&Tc<2)id=11;else if(v>.5&&h>300)id=12;else if(sf>.5)id=13;else if(Wm>.75&&h<60&&m<.1&&Tc>5)id=14;
   else if(Tc<-1)id=2;else if(Tc<7)id=Wm>.35?3:4;else if(Tc<18)id=Wm>.55?5:Wm>.3?6:7;else id=Wm>.72?8:Wm>.36?9:10;
   return{id,name:BIOMES[id],h,T:Tc,wet:Wm}}
@@ -1570,21 +1588,23 @@ float patan(float y,float x){float ax=abs(x),ay=abs(y),a=min(ax,ay)/max(max(ax,a
  float q=a*a,r=a*(1.+q*(-.33333333+q*(.2+q*(-.14285714+q*(.11111111+q*(-.09090909+q*(.07692308-q*.06666667)))))))+off;
  if(ay>ax)r=1.5707963-r;if(x<0.)r=3.1415927-r;return y<0.?-r:r;}
 vec2 wUV(vec3 g){return vec2(patan(g.z,g.x)/6.2831853+.5,patan(g.y,length(g.xz))/3.1415927+.5);}
-vec4 wTexUV(vec2 u0){vec2 uv=u0*vec2(512.,256.)-.5,fl=floor(uv),f=uv-fl;int ix=int(fl.x),iy=int(fl.y),i0=(ix+512)%512,i1=(ix+1)%512,j0=max(iy,0),j1=min(iy+1,255);
- vec4 a=texelFetch(uWorld,ivec2(i0,j0),0),b=texelFetch(uWorld,ivec2(i1,j0),0),c=texelFetch(uWorld,ivec2(i0,j1),0),d=texelFetch(uWorld,ivec2(i1,j1),0),r=a+(b-a)*f.x;
- return r+(c+(d-c)*f.x-r)*f.y;}
+// quadratic B-spline over 3×3 texels, as wSpl on the CPU (continuous slope: no lighting facets at texel edges); unrolled
+vec4 wRow(int j,int ix,vec3 w){return texelFetch(uWorld,ivec2((ix+${WTW*2-1})%${WTW},j),0)*w.x+texelFetch(uWorld,ivec2((ix+${WTW*2})%${WTW},j),0)*w.y+texelFetch(uWorld,ivec2((ix+${WTW*2+1})%${WTW},j),0)*w.z;}
+vec4 wTexUV(vec2 u0){vec2 uv=u0*vec2(${WTW}.,${WTH}.)-.5,c=floor(uv+.5),t=uv-c;int ix=int(c.x),iy=int(c.y);
+ vec3 wx=vec3(.5*(.5-t.x)*(.5-t.x),.75-t.x*t.x,.5*(.5+t.x)*(.5+t.x)),wy=vec3(.5*(.5-t.y)*(.5-t.y),.75-t.y*t.y,.5*(.5+t.y)*(.5+t.y));
+ return wRow(clamp(iy-1,0,${WTH-1}),ix,wx)*wy.x+wRow(clamp(iy,0,${WTH-1}),ix,wx)*wy.y+wRow(clamp(iy+1,0,${WTH-1}),ix,wx)*wy.z;}
 vec4 wTex(vec3 g){return wTexUV(wUV(g));}
 vec3 toGen(vec3 pf){return vec3(uGen.x*pf.x+uGen.y*pf.z,pf.y,-uGen.y*pf.x+uGen.x*pf.z);}
 // k = how many octaves (fractional: the last one fades in). The CPU always uses all 9; the GPU drops the ones finer
 // than a pixel, and while marching high above the ground it uses fewer still and pays for them with a height bound.
 float hgtG(vec3 g,vec2 uv,float k,out float m){vec4 w=wTexUV(uv);m=w.y;float e0=w.x,v=w.z,sf=w.w,lat=abs(g.y);
- float e=e0>3500.?3500.+(e0-3500.)*.5:e0,f=24.,a=1.,rid=0.,hil=0.,wgt=1.;
+ float e=e0>3500.?3500.+(e0-3500.)*.5:e0,f=${HF0.toFixed(5)},a=1.,rid=0.,hil=0.,wgt=1.;
  for(int i=0;i<9;i++){float q=clamp(k-float(i),0.,1.);if(q<=0.)break;float n=mix(.5,tn(g*f+vec3(11.3,3.7,7.1)),q),r=1.-abs(2.*n-1.);r*=r*wgt;wgt=clamp(r*1.6,0.,1.);rid+=a*r;hil+=a*(n-.5);f*=2.03;a*=.5;}
  const float AN=1.99609375;
  e+=((m*2600.+120.)*rid/AN*1.3-m*900.+(380.+500.*sst(900.,0.,abs(e0)))*hil/AN*(1.-m*.5))*(1.-.9*sf);
  float gl=sst(.66,.82,lat)*sst(.08,.35,m)*sst(1800.,400.,e0);
- if(gl>0.){float wv=tn(vec3(g.x*18.,g.y*18.+5.,g.z*18.))-.5,l=abs(tn(vec3(g.x*70.+wv*3.,g.y*70.,g.z*70.+wv*3.))-.5);e-=gl*1500.*(1.-sst(.01,.06,l));}
- if(v>.15){vec3 x=g*60.,fl=floor(x);ivec3 i=ivec3(fl);
+ if(gl>0.){const float F1=${FJ1.toFixed(5)},F2=${FJ2.toFixed(5)};float wv=tn(vec3(g.x*F1,g.y*F1+5.,g.z*F1))-.5,l=abs(tn(vec3(g.x*F2+wv*3.,g.y*F2,g.z*F2+wv*3.))-.5);e-=gl*1500.*(1.-sst(.01,.06,l));}
+ if(v>.15){vec3 x=g*${VOLF.toFixed(5)},fl=floor(x);ivec3 i=ivec3(fl);
   if(ih(i+ivec3(0,0,77))<.55){float dd=length(x-fl-.25-.5*vec3(ih(i+ivec3(0,0,78)),ih(i+ivec3(0,0,79)),ih(i+ivec3(0,0,80))))/.25;
    if(dd<1.)e+=v*(1800.+1600.*ih(i+ivec3(0,0,81)))*(1.-dd)*(1.-dd)*(dd<.12?.6+3.*dd:1.);}}
  return e;}
@@ -1910,9 +1930,12 @@ const PAD=(()=>{const a=[];
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
 function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=rng(c.seed),n=Math.min(900,Math.round(160+c.pop/2500));
+  // the same tangent frame the renderer uses (planet-fixed here): each building stands on the terrain under it, none in the water
+  const ex=norm(cross(Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],c.u)),ez=cross(ex,c.u);
   for(let i=0;i<n;i++){const rr=Math.sqrt(R())*c.rad*.9,th=R()*6.2832,x=rr*Math.cos(th),z=rr*Math.sin(th),core=Math.exp(-((rr/c.rad)**2)*3);
     const w=12+R()*30,dpt=12+R()*30,hgt=6+R()*12+core*(40+R()*120),drop=(x*x+z*z)/(2*TELLUS.R),g=.62+R()*.28,w2=R()<.5,col=[g*(w2?1:.94),g*.97,g*(w2?.92:1)];   // light concrete: the mesh shader has no tone map, so mid-greys read as black
-    box(a,[x,hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
+    const gh=terrainH(norm(add(mul(c.u,TELLUS.R),add(mul(ex,x),mul(ez,z)))));if(gh<1)continue;
+    box(a,[x,gh+hgt/2-drop-1,z],w/2,hgt/2,dpt/2,col)}
   const m=makeMesh(a);cityMeshes.set(c,m);return m}
 // ---- light at a point (world): the sun's colour after the air between here and space (same coefficients as the sky
 // shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
@@ -2167,7 +2190,7 @@ function render(){
     const f=localFrame(sub(tgt,bodyPos(S.body,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
     camW=madd(tgt,off,cam.dist);
-    const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);if(ra<S.body.R+1.5)camW=add(bc,mul(rc,(S.body.R+1.5)/ra));
+    const bc=bodyPos(S.body,simT),rc=sub(camW,bc),ra=len(rc);{const gR=S.body.R+1.5+(S.body===TELLUS&&ra<S.body.R+TERR_TOP+10?groundAlt(TELLUS,toPF(TELLUS,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
@@ -2199,15 +2222,15 @@ function render(){
   const lit=p=>{for(const b of[TELLUS,SELENE]){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
-  {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R,0,0],simT);
+  {const th=bodyTheta(TELLUS,simT),site=fromPF(TELLUS,[TELLUS.R+WORLD.siteH,0,0],simT);
    if(len(sub(site,camW))<3e5)drawMesh(PAD,mat4(rotY([0,0,-1],th),rotY([1,0,0],th),rotY([0,-1,0],th),sub(site,camW)),site)}
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
-  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),hb=len(sub(p,bc))-S.body.R+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
-    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
+  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=S.body===TELLUS?groundAlt(TELLUS,toPF(TELLUS,sub(p,bc),simT)):0,hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
+    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+gA+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
       const Pr=[1-L[0]*up[0]/ln,-L[1]*up[0]/ln,-L[2]*up[0]/ln,0, -L[0]*up[1]/ln,1-L[1]*up[1]/ln,-L[2]*up[1]/ln,0, -L[0]*up[2]/ln,-L[1]*up[2]/ln,1-L[2]*up[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
       gl.uniform1f(m.uShadow,.55*(1-hb/150));gl.uniformMatrix4fv(m.uM,false,mmul(Pr,Mship));gl.bindVertexArray(shipMesh.vao);gl.drawArrays(gl.TRIANGLES,0,shipMesh.n);
