@@ -401,7 +401,7 @@ function newShip(stack){
   const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,evIdx:0,body:TELLUS,alive:true,landed:true,
     throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1]};
   geom(s);rebuildShape(s);s.rec=recNew();
-  s.pf=[TELLUS.R-s.yBot,0,0];                              // launch site: equator, planet-fixed +X
+  s.pf=[TELLUS.R+WORLD.siteH-s.yBot,0,0];                  // launch site: equator, planet-fixed +X, on the levelled pad
   s.qLocal=qFromBasis([0,0,-1],[1,0,0],[0,-1,0]);        // nose up, +X east
   syncLanded(s);
   return s}
@@ -639,14 +639,16 @@ function checkSOI(s){
   if(s.body===TELLUS){const d=sub(s.r,moonPos(simT));if(len(d)<SELENE.soi){s.r=d;s.v=sub(s.v,moonVel(simT));s.body=SELENE;s.hold=null;HOOK.msg('Entering Selene SOI');if(s.node){s.node=null;HOOK.msg('Entering Selene SOI — maneuver node cleared')}}}
   else if(len(s.r)>SELENE.soi){s.r=add(s.r,moonPos(simT));s.v=add(s.v,moonVel(simT));s.body=TELLUS;s.hold=null;HOOK.msg('Escaping Selene SOI');if(s.node){s.node=null;HOOK.msg('Escaping Selene SOI — maneuver node cleared')}}}
 function groundCheck(s){
-  const b=s.body,Y=qrot(s.q,[0,1,0]);
-  const hB=len(madd(s.r,Y,s.yBot))-b.R,hT=len(madd(s.r,Y,s.yTop))-b.R;
+  const b=s.body,Y=qrot(s.q,[0,1,0]);if(len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
+  const pB=madd(s.r,Y,s.yBot),pT=madd(s.r,Y,s.yTop),hB=len(pB)-groundR(b,toPF(b,pB,simT)),hT=len(pT)-groundR(b,toPF(b,pT,simT));
   if(Math.min(hB,hT)>0)return;
   const up=norm(s.r),sp=len(sub(s.v,surfVel(b,s.r))),tilt=Math.acos(clamp(dot(Y,up),-1,1));
+  const pf0=toPF(b,s.r,simT),slope=terrainSlope(b,pf0);
+  if(sp<12&&tilt<0.6&&slope>TOPPLE){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,2);HOOK.msg(`Toppled over on a ${(slope*57.3).toFixed(0)}° slope`);return}
   if(sp<12&&tilt<0.6){
     const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
     const q=qFromBasis(X,up,cross(X,up));
-    s.landed=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
+    s.landed=true;s.r=mul(up,groundR(b,pf0)-s.yBot);s.water=b===TELLUS&&terrainH(pf0)<0;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
     s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
 function stage(s){
@@ -685,7 +687,7 @@ function stepDebris(dt){
     const rho=density(b,h);if(rho>0){const va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp>0.1){let ad=0.5*rho*sp*2.5/d.mass;if(ad*dt>0.9)ad=0.9/dt;a=madd(a,va,-ad)}}
     d.v=madd(d.v,a,dt);d.r=madd(d.r,d.v,dt);
     const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
-    if(h<0){HOOK.boom(b,d.r,simT,1);d.dead=true}
+    if(h<TERR_TOP&&h<groundAlt(b,toPF(b,d.r,simT))){HOOK.boom(b,d.r,simT,1);d.dead=true}
     if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
 // Where does the current trajectory go? Up to three patched-conic legs: orbit → Selene encounter → escape back to Tellus.
 function predict(s){return predictFrom({b:s.body,r:s.r,v:s.v,t:simT})}
@@ -756,7 +758,7 @@ function fall(b,r,v,t,kdrag){
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
     if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho);a=madd(a,va,-kd)}return a};
-  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0)break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
+  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<TERR_TOP&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
     if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)
@@ -771,17 +773,109 @@ function predictImpact(s,sg=0){
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
-// ---- the world: land mask (a float32 port of the planet shader's continents, so the CPU and GPU agree on coastlines),
-// and cities placed on it — deterministic from a seed, kept clear of the launch site.
-const F32=Math.fround,fr32=x=>F32(x-Math.floor(x));
-function h3(x,y,z){x=fr32(F32(F32(x*0.3183099)+0.1));y=fr32(F32(F32(y*0.3183099)+0.1));z=fr32(F32(F32(z*0.3183099)+0.1));
-  x=F32(x*17);y=F32(y*17);z=F32(z*17);return fr32(F32(F32(F32(x*y)*z)*F32(F32(x+y)+z)))}
-function vn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
-  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);const H=(a,b,c)=>h3(ix+a,iy+b,iz+c),L=(a,b,t)=>a+(b-a)*t;
-  return L(L(L(H(0,0,0),H(1,0,0),fx),L(H(0,1,0),H(1,1,0),fx),fy),L(L(H(0,0,1),H(1,0,1),fx),L(H(0,1,1),H(1,1,1),fx),fy),fz)}
-function fbm(x,y,z){let a=.5,s=0;for(let i=0;i<6;i++){s+=a*vn(x,y,z);x=F32(x*2.03+1.7);y=F32(y*2.03+9.2);z=F32(z*2.03+3.1);a*=.5}return s}
-function landValue(pf){const n=norm(pf),dx=n[0]-1;return fbm(F32(n[0]*2.2),F32(n[1]*2.2),F32(n[2]*2.2))+.42*Math.exp(-(dx*dx+n[1]*n[1]+n[2]*n[2])*30)}
-const isLand=pf=>landValue(pf)>=.52;
+// ---- the world (terrain session). Tellus is generated from a seed in two layers:
+//  · a baked 512×256 map (equirectangular, 7 km a texel at the equator): plates make the continents and, where they
+//    collide, the mountain ranges (collision belts, coastal ranges with volcanoes over subduction, island arcs, rifts).
+//    Climate follows: temperature from latitude and height; rain carried by the prevailing winds (easterly trades,
+//    westerlies, polar easterlies), dumped where air is forced uphill (wet windward slopes, dry rain shadows), and
+//    modulated by the big circulation (wet equator, dry subtropics, stormy mid-latitudes).
+//  · procedural detail on top (ridges, hills, the fractal coast, fjords, volcano cones), built on an INTEGER hash, so
+//    the lattice values are bit-identical here and in GLSL and heights agree to float rounding (millimetres). The old
+//    float hash could disagree by whole lattice values on GPUs that fuse multiply-adds: tens of metres of terrain.
+// The world is generated in its own frame and turned about the axis so the home launch site sits at planet-fixed +X
+// (on the equator). Heights are metres above sea level; the sea is the sphere R, the land is R + h.
+function ih3(x,y,z){let h=Math.imul(x,0x8da6b343)^Math.imul(y,0xd8163841)^Math.imul(z,0xcb1ab31f);
+  h^=h>>>16;h=Math.imul(h,0x7feb352d);h^=h>>>15;h=Math.imul(h,0x846ca68b);h^=h>>>16;return(h>>>8)/16777216}
+function tn(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let fx=x-ix,fy=y-iy,fz=z-iz;
+  fx=fx*fx*(3-2*fx);fy=fy*fy*(3-2*fy);fz=fz*fz*(3-2*fz);
+  const a=ih3(ix,iy,iz),b=ih3(ix+1,iy,iz),c=ih3(ix,iy+1,iz),d=ih3(ix+1,iy+1,iz),e=ih3(ix,iy,iz+1),f=ih3(ix+1,iy,iz+1),g=ih3(ix,iy+1,iz+1),h=ih3(ix+1,iy+1,iz+1);
+  const x1=a+(b-a)*fx,x2=c+(d-c)*fx,x3=e+(f-e)*fx,x4=g+(h-g)*fx,y1=x1+(x2-x1)*fy;return y1+(x3+(x4-x3)*fy-y1)*fz}
+function tfbm(x,y,z,o){let a=.5,s=0,n=0;for(let i=0;i<o;i++){s+=a*tn(x,y,z);n+=a;x=x*2.03+1.7;y=y*2.03+9.2;z=z*2.03+3.1;a*=.5}return s/n}
+const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
+const WTW=512,WTH=256,WSEED=12,HOCT=9;
+function makeWorld(seed=WSEED){const R=rng(seed),NP=14,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
+  for(let k=0;k<NP;k++){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z);plates.push({s:[q*Math.cos(ph),z,q*Math.sin(ph)],cont:false,ax:norm([R()*2-1,R()*2-1,R()*2-1]),w:.6+R()*.8})}
+  {const ix=plates.map((_,i)=>i);for(let i=NP-1;i>0;i--){const j=R()*(i+1)|0;[ix[i],ix[j]]=[ix[j],ix[i]]}for(let i=0;i<Math.round(NP*.45);i++)plates[ix[i]].cont=true}
+  const N=WTW*WTH,E=new Float32Array(N),M=new Float32Array(N),V=new Float32Array(N),T=new Float32Array(N),W=new Float32Array(N),S=new Float32Array(N);
+  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*Math.PI,cl=Math.cos(lat),sl=Math.sin(lat);
+    for(let i=0;i<WTW;i++){const lon=(i+.5)/WTW*2*Math.PI-Math.PI,p=[cl*Math.cos(lon),sl,cl*Math.sin(lon)],k=j*WTW+i;
+      // plates: nearest seed, after a warp so boundaries wander; the boundary is the nearest bisector
+      const q=norm([p[0]+.45*(tfbm(p[0]*3+off[0],p[1]*3,p[2]*3,3)-.5),p[1]+.45*(tfbm(p[0]*3,p[1]*3+off[1],p[2]*3,3)-.5),p[2]+.45*(tfbm(p[0]*3,p[1]*3,p[2]*3+off[2],3)-.5)]);
+      let b1=-2,i1=0;for(let n=0;n<NP;n++){const d=dot(q,plates[n].s);if(d>b1){b1=d;i1=n}}
+      const P1=plates[i1];let bd=9,i2=0;
+      for(let n=0;n<NP;n++){if(n===i1)continue;const dd=sub(P1.s,plates[n].s),a=Math.asin(clamp(dot(q,dd)/len(dd),-1,1));if(a<bd){bd=a;i2=n}}
+      const P2=plates[i2],v1=cross(P1.ax,q),v2=cross(P2.ax,q);let nb=sub(P2.s,P1.s);nb=norm(sub(nb,mul(q,dot(nb,q))));
+      const conv=dot(v1,nb)*P1.w-dot(v2,nb)*P2.w,c1=P1.cont?1:0,c2=P2.cont?1:0,cb=c1+(c2-c1)*.5*(1-sstep(0,.22,bd));
+      const cn=tfbm(p[0]*1.8+off[1],p[1]*1.8,p[2]*1.8+off[2],5)-.5;
+      let e=-3600+3900*cb+7500*cn;if(e>0)e*=.35;   // most land sits low; height comes from tectonics
+      let up=0,vol=0;const g=x=>Math.exp(-x*x);
+      if(conv>0){const cv=Math.min(conv,1.2);
+        if(c1&&c2)up=5200*cv*g(bd/.07)+1400*cv*sstep(.3,.05,bd)*(i1<i2?1:.3);                     // collision: a high range, a plateau behind
+        else if(c1)up=4200*cv*g((bd-.06)/.05),vol=cv*g((bd-.09)/.03);                                // ocean diving under a continent: coastal range + volcanoes
+        else if(c2)up=-2200*cv*g(bd/.03);                                                            // the trench
+        else if(i1<i2)up=4600*cv*g((bd-.05)/.025),vol=cv*g((bd-.05)/.025)}                           // island arc
+      else if(conv<-.15){const cv=Math.min(-conv,1.2);if(c1&&c2)up=-1500*cv*g(bd/.035)+500*cv*g((bd-.07)/.04);else if(!c1&&!c2)up=1200*cv*g(bd/.05)}   // rift valley / mid-ocean ridge
+      const r=1-Math.abs(2*tfbm(p[0]*5+off[2],p[1]*5,p[2]*5+off[0],3)-1);up+=900*r*r*r*sstep(-.1,.3,cb+cn);      // old, worn ranges
+      E[k]=e+up;M[k]=clamp(Math.abs(up)/3500,0,1);V[k]=clamp(vol,0,1)}}
+  for(let j=0;j<WTH;j++){const lat=((j+.5)/WTH-.5)*180,al=Math.abs(lat),dir=al<30||al>60?1:-1,dx=2*Math.PI*600*Math.cos(lat*D)/WTW,g=x=>Math.exp(-x*x);
+    const circ=.6+.7*g(lat/11)-.5*g((al-25)/6.5)+.35*g((al-47)/12)-.3*sstep(65,85,al);let m=1,ep=0;
+    for(let pass=0;pass<2;pass++)for(let n=0;n<WTW;n++){const i=dir>0?n:WTW-1-n,k=j*WTW+i,e=E[k];let oro=0;
+      if(e<0){m+=(1-m)*(1-Math.exp(-dx/300));ep=0}else{oro=m*(1-Math.exp(-Math.max(0,e-ep)/1000*.55));m=Math.max(m*Math.exp(-dx/2200)-oro,0);ep=e}
+      if(pass)W[k]=clamp((.3+.95*m)*circ+oro*7,0,1.5)}
+    for(let i=0;i<WTW;i++){const k=j*WTW+i;T[k]=28-46*Math.pow(Math.abs(Math.sin(lat*D)),1.6)-6.5*Math.max(E[k],0)/1000}}
+  for(let it=0;it<3;it++){const W2=W.slice();for(let j=1;j<WTH-1;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;W[k]=(W2[k]*2+W2[j*WTW+(i+WTW-1)%WTW]+W2[j*WTW+(i+1)%WTW]+W2[k-WTW]+W2[k+WTW])/6}}
+  // salt flats: dry, flat basins that sit below their surroundings (where rain would pool, if it rained)
+  for(let j=2;j<WTH-2;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;if(E[k]<=0||W[k]>.4||M[k]>.2||T[k]<0)continue;let s=0;
+    for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)s+=E[(j+a)*WTW+(i+b+WTW)%WTW];S[k]=sstep(60,220,s/25-E[k])*sstep(.4,.25,W[k])}
+  return{E,M,V,T,W,S,plates,seed,lon0:0,site:null,siteH:0}}
+const WORLD=makeWorld();
+// bilinear on the baked map (the shader does the same arithmetic with texelFetch, not the GPU's 8-bit filter weights)
+function wBil(A,g){const x=(Math.atan2(g[2],g[0])/(2*Math.PI)+.5)*WTW-.5,y=(Math.asin(clamp(g[1],-1,1))/Math.PI+.5)*WTH-.5,ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
+  const i0=(ix+WTW)%WTW,i1=(ix+1)%WTW,j0=Math.max(iy,0)*WTW,j1=Math.min(iy+1,WTH-1)*WTW,a=A[j0+i0]+(A[j0+i1]-A[j0+i0])*fx;return a+(A[j1+i0]+(A[j1+i1]-A[j1+i0])*fx-a)*fy}
+const toGen=pf=>rotY(norm(pf),-WORLD.lon0),fromGen=g=>rotY(g,WORLD.lon0);
+// the height of the land in the world's own frame g (unit vector), without the launch-site flattening
+function hgtGen(g,oct=HOCT){const e0=wBil(WORLD.E,g),m=wBil(WORLD.M,g),v=wBil(WORLD.V,g),sf=wBil(WORLD.S,g),lat=Math.abs(g[1]);
+  let e=e0>3500?3500+(e0-3500)*.5:e0,f=24,a=1,rid=0,hil=0,wgt=1,an=0;
+  // ridged multifractal (mountains) and plain fbm (hills, and the fractal coast) from the same octaves
+  for(let i=0;i<oct;i++){const n=tn(g[0]*f+11.3,g[1]*f+3.7,g[2]*f+7.1);let r=1-Math.abs(2*n-1);r*=r*wgt;wgt=clamp(r*1.6,0,1);rid+=a*r;hil+=a*(n-.5);an+=a;f*=2.03;a*=.5}
+  e+=((m*2600+120)*rid/an*1.3-m*900+(380+500*sstep(900,0,Math.abs(e0)))*hil/an*(1-m*.5))*(1-.9*sf);
+  // fjords: glaciers cut narrow valleys into high-latitude mountains; near the coast they flood
+  const gl=sstep(.66,.82,lat)*sstep(.08,.35,m)*sstep(1800,400,e0);
+  if(gl>0){const wv=tn(g[0]*18,g[1]*18+5,g[2]*18)-.5,l=Math.abs(tn(g[0]*70+wv*3,g[1]*70,g[2]*70+wv*3)-.5);e-=gl*1500*(1-sstep(.01,.06,l))}
+  // volcanoes: one cone per ~20 km cell along the active arcs, with a summit crater
+  if(v>.15){const x=g[0]*60,y=g[1]*60,z=g[2]*60,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);
+    if(ih3(ix,iy,iz+77)<.55){const d=Math.hypot(x-ix-.25-.5*ih3(ix,iy,iz+78),y-iy-.25-.5*ih3(ix,iy,iz+79),z-iz-.25-.5*ih3(ix,iy,iz+80))/.25;
+      if(d<1)e+=v*(1800+1600*ih3(ix,iy,iz+81))*(1-d)*(1-d)*(d<.12?.6+3*d:1)}}
+  return e}
+// the home launch site: on the equator, flat low land a few km from a coast with open sea to the east (spent stages
+// fall in the water). The world is then turned so the site is at planet-fixed +X, and the pad is levelled.
+const PAD_FLAT=2000,PAD_BLEND=4500;
+(function siteSearch(){let best=null;const Wd=WORLD;
+  for(const j of[WTH/2-1,WTH/2])for(let i=0;i<WTW;i++){const k=j*WTW+i,e=Wd.E[k];if(e<3||e>350||Wd.M[k]>.12)continue;
+    let first=-1,sea=0;for(let n=1;n<=110;n++){const s=Wd.E[j*WTW+(i-n+WTW*2)%WTW]<0;if(first<0){if(s)first=n;else if(n>20)break}else if(n<=first+80)sea+=s}
+    if(first<2)continue;const sc=sea/80-first*.01-Wd.M[k];if(!best||sc>best.sc)best={sc,i,j}}
+  const lon=best?(best.i+.5)/WTW*2*Math.PI-Math.PI:0;Wd.lon0=lon;Wd.siteFound=!!best;
+  Wd.site=[1,0,0];Wd.siteH=Math.max(8,hgtGen(toGen([1,0,0])))})();
+// terrain height (m above sea level; negative is sea floor) at a planet-fixed direction
+function terrainH(pf,oct=HOCT){const g=toGen(pf),c=norm(pf),dx=c[0]-1,d=Math.sqrt(dx*dx+c[1]*c[1]+c[2]*c[2])*TELLUS.R;
+  if(d>PAD_BLEND)return hgtGen(g,oct);const h=d<PAD_FLAT?WORLD.siteH:hgtGen(g,oct);return h+(WORLD.siteH-h)*(1-sstep(PAD_FLAT,PAD_BLEND,d))}
+// the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
+const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
+const groundR=(b,pf)=>b.R+groundAlt(b,pf);
+// compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
+const landValue=pf=>.52+terrainH(pf)/700;
+const isLand=pf=>terrainH(pf)>=0;
+// biomes, for colours, science and landing: the same thresholds the shader blends between
+const BIOMES=['sea','ice','tundra','taiga','steppe','temperate forest','grassland','cold desert','rainforest','savanna','hot desert','alpine','volcanic','salt flat','wetland'];
+function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),e0=wBil(WORLD.E,g),Tc=wBil(WORLD.T,g)-6.5*Math.max(0,h-Math.max(e0,0))/1000,Wm=wBil(WORLD.W,g),m=wBil(WORLD.M,g),v=wBil(WORLD.V,g),sf=wBil(WORLD.S,g);
+  let id;if(h<0)id=0;else if(Tc<-13)id=1;else if(h>2800&&Tc<2)id=11;else if(v>.5&&h>300)id=12;else if(sf>.5)id=13;else if(Wm>.75&&h<60&&m<.1&&Tc>5)id=14;
+  else if(Tc<-1)id=2;else if(Tc<7)id=Wm>.35?3:4;else if(Tc<18)id=Wm>.55?5:Wm>.3?6:7;else id=Wm>.72?8:Wm>.36?9:10;
+  return{id,name:BIOMES[id],h,T:Tc,wet:Wm}}
+// the steepest the ground gets under a point (radians), from the height field over ±15 m; landings past TOPPLE tip over
+const TERR_TOP=9500,TOPPLE=0.42;
+function terrainSlope(b,pf){if(b!==TELLUS)return 0;const u=norm(pf),e=norm(cross([0,1,0],u).map((x,i)=>x+(i===0?1e-9:0))),n=cross(u,e),k=15/TELLUS.R,
+  h0=groundAlt(b,u),hx=groundAlt(b,add(u,mul(e,k)))-groundAlt(b,sub(u,mul(e,k))),hy=groundAlt(b,add(u,mul(n,k)))-groundAlt(b,sub(u,mul(n,k)));
+  return Math.atan(Math.hypot(hx,hy)/30+0*h0)}
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 const SYL=['va','lo','ri','an','mar','tel','os','ka','ne','bru','dun','sel','fen','or','is','pa','quel','tor','ven','al','hav','em','ly','gor'];
 function makeCities(seed=7,n=32){const R=rng(seed),out=[],site=[1,0,0];let tries=0;
