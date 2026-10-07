@@ -1,7 +1,8 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
+  if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
@@ -137,6 +138,21 @@ window.refView = async (n) => {
     while (S.alive && simT - t0 < 60 && (alt ? len(S.r) - h0 < alt : simT - t0 < 0.6)) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return design + ' up ' + (len(S.r) - h0).toFixed(1) + ' m t ' + (simT - t0).toFixed(1) + ' s';
+  }
+  // 68–72: ignition. The Orbiter's Kestrel (kerolox: TEA-TEB green flash, then a fuel-rich orange start) age seconds after
+  // ignition, after 15 s on the pad (gantry clear), rendered every step so the render-side ignition clock starts on time: [age, night, yaw, pitch, dist]
+  const ign = { 68: [0.04, 0, 0.9, 0.08, 26], 69: [0.12, 0, 0.9, 0.08, 26], 70: [0.3, 0, 0.9, 0.08, 26], 71: [0.7, 0, 0.9, 0.08, 26], 72: [0.06, 1, 0.9, 0.08, 30] };
+  if (ign[n]) {
+    const [age, night, yaw, pitch, dist] = ign[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    if (night) { const t0 = simT; for (let k = 1; k < 400; k++) { const tt = t0 + k * 120, site = fromPF(TELLUS, padPF(), tt);
+      if (dot(norm(sub(site, bodyPos(TELLUS, tt))), SUN) < -0.3) { simT = tt; break } } syncLanded(S); markT = null; padShip = null }
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
+    { const tw = simT; while (simT - tw < 15) advPhys(S); }   // the service gantry rolls back over 14 s (padSync)
+    render(); S.throttle = 1; stage(S); const t0 = simT;
+    while (simT - t0 < age - 1e-9) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); render(); }
+    window.simulate = () => {};   // freeze the sim for the capture (the live frame loop would run it on); the next refView restores it
+    await settle(); bare(); return 'ignition +' + (simT - t0).toFixed(2) + ' s';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

@@ -2553,15 +2553,15 @@ const CITY_TEX=(()=>{const W=2048,H=1024,d=new Uint8Array(W*H*4),R=rng(99);
 // uS: x = n (pe/pa), y = tan of the spread angle, z = diamond visibility, w = air density ratio; uK: core, diamond, mantle,
 // soot gains. rb(s) is the jet boundary radius; the vertex shader bends the proxy lathe to ~1.9 rb (Waterfall-style mesh
 // deformation), so the march only runs where there can be plume.
-const PLUME_RB=`float rb(float s,float re){return re*mix(1.,sqrt(clamp(uS.x,.3,1.)),smoothstep(0.,1.5*re,s))+s*(uS.y+.035*uS.w);}`;
+const PLUME_RB=`float rb(float s,float re){return (re*mix(1.,sqrt(clamp(uS.x,.3,1.)),smoothstep(0.,1.5*re,s))+s*(uS.y+.035*uS.w))*(1.+uIg.w*(.5+1.2*smoothstep(0.,4.*re,s)));}`;
 const PLUME_VS=`#version 300 es
-layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform vec4 uS;uniform float uFc;out vec3 vL;out float vW;
+layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform vec4 uS,uIg;uniform float uFc;out vec3 vL;out float vW;
 ${PLUME_RB}
 void main(){float s=-aP.y*uB.y,k=min(uB.x,1.9*rb(s,uB.z)+.15*uB.z)*1.0086;vL=vec3(aP.x*k,-s,aP.z*k);
  vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const PLUME_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
-uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS,uGp;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
+uniform vec3 uB,uCam,uCo,uDi,uMa,uVa,uSo;uniform vec4 uK,uS,uGp,uIg;uniform float uFc,uT,uIn,uI,uOp;uniform sampler3D uN;
 ${PLUME_RB}
 void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
  // the stretch of the ray inside the bounding cylinder: from the proxy's front face (or the eye, when inside) to where it leaves
@@ -2580,8 +2580,11 @@ void main(){float R=uB.x,L=uB.y,re=uB.z;vec3 rd=normalize(vL-uCam);
   float core=smoothstep(Lp,0.,s+2.2*re*u)*smoothstep(1.05,.4,u);
   float k=floor(s/Lc+.5),f=s/Lc-k,dm=k>=1.&&k<6.?exp(-.45*(k-1.))*exp(-f*f*14.-u*u*4.):0.;
   float mantle=uK.z*uS.w*smoothstep(.35,.95,u)*smoothstep(1.35,1.,u)*smoothstep(0.,3.*re,s)*fade*(.4+1.2*nn);
-  vec3 e=uI*(uCo*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45+uMa*mantle*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18);
-  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8);
+  float rich=uIg.w*(.5+nn);vec3 co=mix(uCo,uMa*vec3(1.,.8,.6),min(rich,1.));
+  float gf=min(1.,uIg.r+uIg.g+uIg.b);   // while the igniter flashes, its colour outshines the young flame
+  vec3 e=uI*(co*uK.x*core*d*.45+uDi*uK.y*uS.z*dm*.45*(1.-uIg.w)+uMa*(mantle+rich*prof*.6)*sqrt(d)*.5+uVa*prof*d*fade*(.6+.4*nn)*.18)*(1.-.85*gf)
+   +uIg.rgb*(core*2.+prof*(.6+nn))*d*smoothstep(6.*re,0.,s);   // the igniter's flash (TEA-TEB green on kerolox)
+  float soot=uK.w*uS.w*(smoothstep(.45*L,.9*L,s)*prof*fade*nn*2.+smoothstep(.75,1.,u)*smoothstep(1.25,1.,u)*smoothstep(3.*re,re,s)*.8)+uK.w*rich*prof*smoothstep(1.5*re,5.*re,s)*1.5;
   C+=Tr*e*st;Tr*=exp(-(uSo*soot+uOp*uI*(core*d*.4+mantle*.25))*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  vec3 c=pow(1.-exp(-C),vec3(1./1.5));float a=1.-dot(Tr,vec3(.333));
  o=vec4(c,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
@@ -2723,7 +2726,7 @@ layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uLo,uHi;uniform f
 void main(){vL=mix(uLo,uHi,aP*.5+.5);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const IMP_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
-uniform vec3 uLo,uHi,uCam,uIP,uCo,uMa,uVa,uSo;uniform vec4 uK;uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform sampler3D uN;
+uniform vec3 uLo,uHi,uCam,uIP,uCo,uMa,uVa,uSo;uniform vec4 uK,uIg;uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform sampler3D uN;
 void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
  float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
  const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
@@ -2735,7 +2738,7 @@ void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv
   if(sp+ch<.003)continue;
   vec2 dr=q/max(rho,1e-3);float n1=texture(uN,vec3(p.x,p.y*1.5,p.z-uT*14.*uCh)*.18-vec3(dr*uT*1.2*(1.-uCh),0.).xzy).r,n2=texture(uN,vec3(p.xz*.5,p.y*.8-uT*2.).xzy+.3).r;
   float d=uW*(sp+ch)*(.15+1.5*n1*n2),tau=mix(exp(-rho/(re*3.)),exp(-max(a,0.)/12.),ch/(sp+ch+1e-4));
-  vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau+uVa*.4*tau)*d;
+  vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau*(1.+uIg.w)+uVa*.4*tau)*d*(1.-.85*min(1.,uIg.r+uIg.g+uIg.b))+uIg.rgb*1.5*tau*d;   // + the igniter's flash, fuel-rich start
   C+=Tr*e*st;Tr*=exp(-(uSo*uK.w*1.4*(1.-tau)+uOp*.3*tau+.08)*d*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  vec3 c=pow(1.-exp(-C),vec3(1./1.5));float al=1.-dot(Tr,vec3(.333));o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
 // the plume's light on the ground (the ground is the sky shader's): an additive disc just above it, like the floodlight
@@ -2927,10 +2930,11 @@ const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i
 // propellant profiles (Waterfall's "templates"): colours of core, diamonds, afterburning mantle, gas glow, soot absorption
 // per channel; K = gains [core, diamonds, mantle, soot]. Engines pick one plus their exit pressure pe (atm) in PFX.
 const PROPS={
-  kerolox:{co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
-  alcohol:{co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
-  hypergolic:{co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
-  hydrolox:{co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
+  // ig: the igniter's flash colour and length (s), rich: how long the fuel-rich start lasts (s)
+  kerolox:{ig:[.25,1,.35],igT:.3,rich:.7,co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
+  alcohol:{ig:[1,.75,.35],igT:.15,rich:.4,co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
+  hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
+  hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
 const PFX={sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
   kestrel:{prop:'kerolox',pe:.75},condor:{prop:'kerolox',pe:.8},albatross:{prop:'kerolox',pe:.7}};
 // an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
@@ -2950,11 +2954,12 @@ const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
 function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive||S.throttle<=0)return;const E=activeEngines(S);if(!E.length)return;
   const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
-  for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;if(thr<.01)continue;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,L=plumeShape(e.d,thr,pa)[2],
+  for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
       Q=e.tdir?qmul(S.q,tiltQ(e.tdir)):S.q,o=add(sub(p,camW),qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
+    if(thr<.01&&g[0]+g[1]+g[2]<.01)continue;
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
     const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);
-    P=madd(P,add(o,mul(dW,at)),w);for(let k=0;k<3;k++)C[k]+=w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6);W+=w;R0=Math.max(R0,e.d.exit*2.5)}
+    P=madd(P,add(o,mul(dW,at)),w);const gf=Math.min(1,g[0]+g[1]+g[2]);for(let k=0;k<3;k++)C[k]+=w*fl*(Pr.co[k]*.4+Pr.ma[k]*.6)*(1-.8*gf)+(e.d.exit/.55)**2*g[k]*.6;W+=Math.max(w,.05);R0=Math.max(R0,e.d.exit*2.5)}   // (1−0.8 gf: the igniter's flash outshines the young flame)
   if(W<=0)return;P=mul(P,1/W);const K=110*Math.min(1,pa*4+.15);   // dimmer in thin air (the plume's own glow goes too)
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set(C.map(x=>x*K));
   const h=dot(sub(P,GF.O),GF.Y);if(h>0&&h<60)PLT.g={F:GF,h,foot:sub(P,mul(GF.Y,h))}}
@@ -2972,10 +2977,19 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
     const inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
     gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3fv(u.uIP,ip);
     gl.uniform3fv(u.uCo,P.co);gl.uniform3fv(u.uMa,P.ma);gl.uniform3fv(u.uVa,P.va);gl.uniform3fv(u.uSo,P.so);gl.uniform4fv(u.uK,P.K);gl.uniform1f(u.uOp,P.op);
-    gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,h.w);gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,h.re);
+    gl.uniform4fv(u.uIg,h.ig||[0,0,0,0]);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.max(h.w,.7*(h.ig?h.ig[3]:0)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,h.re);
     gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,CUBE.n)}
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const SPOOL=new WeakMap();
+// the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
+// ignition time sp.ig, which drives the igniter flash and the fuel-rich start (ignOf)
+function spoolOf(e){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
+  if(sp.k<.02&&S.throttle>0)sp.ig=simT;const a=simT-sp.ig;sp.k+=(S.throttle-sp.k)*(1-Math.exp(-dt/(a<.6?.3:.12)));return sp}
+// [igniter colour × flash strength, richness] for an engine's current age since ignition
+function ignOf(e,P){const sp=SPOOL.get(e),a=sp?simT-sp.ig:1e9;if(a>3)return[0,0,0,0];const T=P.igT||.1,
+    fl=a<0?0:Math.exp(-a/T)*sstep(0,.02,a)*1.4,rich=sstep(0,.05,a)*Math.exp(-a/(P.rich||.2));
+  return[P.ig[0]*fl,P.ig[1]*fl,P.ig[2]*fl,rich]}
+
 // the plume's bounding size for an exit radius, throttle and ambient pressure (atm): [n, spread tan, length, radius]
 function plumeShape(d,thr,pa){const f=pfxOf(d),re=d.exit,n=f.pe/Math.max(pa,1e-5),tn=.03+.52*sstep(0,2.5,Math.log10(Math.max(n,1))),
     L=re*(10+12*thr)*(1+1.4*(1-pa)),rb=re*Math.sqrt(clamp(n,.3,1))+L*(tn+.035*pa);return[n,tn,L,rb*1.12+re*.3]}
@@ -3489,16 +3503,17 @@ function render(){
     gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(PLUME.vao);
     gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(pu.uN,7);gl.activeTexture(gl.TEXTURE0);
     const GF=groundFrame(camW),hits=[];
-    for(const e of activeEngines(S)){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT});const dt=clamp(simT-sp.t,0,5);sp.t=simT;sp.k+=(S.throttle-sp.k)*(1-Math.exp(-dt/.12));
-      const thr=sp.k,f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01)continue;
+    for(const e of activeEngines(S)){const sp=spoolOf(e);
+      const f=pfxOf(e.d),P=PROPS[f.prop]||PROPS.kerolox,ig=ignOf(e,P),thr=Math.max(sp.k,.6*ig[3]),[n,tn,L,R]=plumeShape(e.d,thr,pa);if(thr<.01&&simT-sp.ig>.5)continue;
       const qt=e.tdir?tiltQ(e.tdir):null,sh=[e.pos[0]-S.cm[0],e.y0-S.cm[1]+0.02,e.pos[2]-S.cm[2]],Q=qt?qmul(S.q,qt):S.q,
         o=add(sub(p,camW),qrot(S.q,sh)),cl=qrot(qconj(Q),mul(o,-1)),inside=cl[1]<.01&&cl[1]>-L-.01&&Math.hypot(cl[0],cl[2])<R*1.01+.05;
       gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(Q,sub(p,camW),qrot(qconj(qt),sh)):modelQ(S.q,sub(p,camW),sh));
       {const qi=qconj(Q),n=qrot(qi,GF.Y);gl.uniform4f(pu.uGp,n[0],n[1],n[2],dot(qrot(qi,sub(GF.O,o)),n));   // the ground plane, plume-local
         const dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn,w=thr*sstep(L*1.15,L*.35,sg);
-          if(sg>0&&w>.01)hits.push({P:add(o,mul(dW,sg)),w,re:e.d.exit,P2:P})}}
+          if(sg>0&&w>.01)hits.push({P:add(o,mul(dW,sg)),w,re:e.d.exit,P2:P,ig})}}
       gl.uniform3f(pu.uB,R,L,e.d.exit);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);gl.cullFace(inside?gl.BACK:gl.FRONT);
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
+      gl.uniform4f(pu.uIg,ig[0],ig[1],ig[2],ig[3]);
       gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
     if(hits.length&&IMPACT_FX)drawImpact(GF,hits,VP);
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}

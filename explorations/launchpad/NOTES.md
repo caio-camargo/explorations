@@ -950,6 +950,31 @@ The burning engines light their surroundings: one soft point light per frame for
 **Still open:** one light for all engines (a wide Heavy is lit from its centroid); no shadows (the tower's far side
 gets 15 % wrap light); the ground pool is a flat disc, so off-pad slopes take it roughly.
 
+## Engine ignition (2026-10-07, aerofx session)
+
+An engine used to fade in over 0.12 s. Now it lights the way 1950s–60s engines did. The model is render-side, keyed on
+a per-engine ignition clock: `spoolOf` stamps `sp.ig` whenever the spool starts from (near) zero with the throttle up, so
+staging, relights and throttling up from zero all count.
+- **Igniter flash** (`PROPS[...].ig`, `igT`): kerolox engines lit with TEA-TEB, a pyrophoric mix that flashes vivid
+  green (the F-1's start). Here it is [0.25, 1, 0.35], decaying over 0.3 s. Alcohol has a short orange pyrotechnic
+  flash, hypergolics a faint pink pop, hydrolox a dim blue spark. While it flashes, its colour replaces (not adds to)
+  the young flame's, in the plume, the flame-channel volume and the plume light (× (1 − 0.8 gf)). Added on top, the
+  flash only tinted a saturated yellow-white and never read as green.
+- **Fuel-rich start** (`rich` s): for ~0.7 s on kerolox, the plume balloons near the nozzle (rb × up to 2.7), goes
+  orange and lumpy, its shock diamonds off, and makes soot. The plume's length follows max(spool, 0.6 richness), so the
+  start is a burst instead of a slow grow, and the spool's lag is 0.3 s while starting.
+- `ignOf(e, P)` returns [flash colour × strength, richness] for the plume, impingement and light code.
+- Reference views `refView(68–71)`: the Orbiter's Kestrel 0.04, 0.12, 0.3 and 0.7 s after ignition. `72`: 0.06 s at
+  night. They wait 15 s on the pad first, since the service gantry rolls back over 14 s from the start of a flight
+  (`padSync`, visuals), and they render every step so the render-side clock starts on time. Then they freeze the sim
+  for the capture (`window.simulate` is stubbed; the next `refView` restores it), because the page's live frame loop
+  otherwise ran the sim ~0.2 s on before the screenshot.
+- Bug on the way: an inline `//` comment inserted mid-line swallowed the end of a `for` body (`R0=…}`), and the page
+  went black with "Identifier 'W' has already been declared". Check one-line code edits with
+  `node --check` on the extracted script.
+
+**Still open:** shutdown tail-off (the plume still vanishes at cutoff) and staging puffs, both proposed with this.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
