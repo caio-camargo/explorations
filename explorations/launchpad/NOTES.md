@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3986,6 +3986,69 @@ today Selene is a smooth sphere apart from the regolith model; power (R3) is new
   - science (R4);
   - drive plans (R5).
 
+
+### R3 built: Selene tidally locked; rover power and contact (sats session, 2026-10-08)
+
+**Selene is tidally locked (decided with Caio).** Before this, Selene didn't turn and the sun never moves, so each spot
+on Selene was in permanent day or permanent night, and Tellus circled the sky of every spot once an orbit. Now
+`bodyTheta(SELENE, t)` follows its orbit (`lockTh`). Its planet-fixed −X always faces Tellus (the near side), and
+`bodyOmega` is its mean motion.
+- **A day lasts an orbit:** 104 h, so a 52 h night (about 6.5 Tellus days each way).
+- **Its ground moves:** the equator at 5.9 m/s.
+- **Speeds near an airless body's ground are now against the surface** (`speedRef` below 3 % of the radius; the navball
+  says SURFACE).
+- **Landings adjusted.** The procedure executor's landing and the crewed-lunar test script now null surface-relative
+  velocity. Tests that drop a vessel start it at rest over the ground. The moonbase test takes a module's position from
+  `fromPF`.
+- **Selene's markings turn with it** in the sky shader (`uMrot`; detail in its own frame, `uMdet` rotated).
+
+**The moons run on program time.** `ORB_T0`, the program time at the flight's t = 0, is added inside `bodyRel`:
+- set at lift-off from `day0`, and for flights from orbit;
+- a replayed autopilot tape keeps the `orbT0` it was recorded with (older tapes have none: 0, the old fixed start), so
+  replays still meet Selene where they did;
+- headless it stays 0 (`ORB_ABS` is false without a document), so every flown test is unchanged;
+- the procedures' passage timing subtracts it.
+
+This was a bodies-session matter; done here because R3 needs it. Selene's position on a given day is now the same in
+every flight, and a lunar day's time of day carries across flights.
+
+**Power** (`rvPowerStep`; between flights `rvFieldTick`, from `advanceDays`, half an hour at a time):
+- New deck items: **Solar panels** (330 W at the sun overhead, 18 kg; output follows the sun's height over the deck,
+  nothing once the sun is down) and an **RTG** (60 W steady, 35 kg).
+- Draw: 30 W awake, 10 W asleep. On an airless body at night, a 25 W heater, unless an RTG keeps it warm.
+- **A battery that runs flat in the night with no RTG: it froze**, and it is lost (a headline between flights).
+- The designer's *Power and contact* box says whether the battery carries the heater through Selene's night.
+
+**Contact** (`rvContact`; the relays come from `rvRelays`):
+- On Tellus, always.
+- Elsewhere, directly with the high-gain antenna (deck item) while Tellus is over the rover's horizon.
+- Otherwise through a relay in sight: a lander in the flight, or a landed object of yours, with an antenna, that sees
+  Tellus itself, within radio horizon √(2Rh₁)+√(2Rh₂) (rover 1.2 m with the high-gain, 0.8 m without). On Selene,
+  about 2.4 km to a 4 m lander.
+- A crew riding it needs none.
+- **Commands arrive a light-time round trip late** (0.25 s from Tellus; `rvCommand`). Out of contact the rover holds
+  still.
+- The Program list shows the delay and the relay, or *out of contact*; it offers no Drive button without contact.
+- The far side has no contact until a relay can orbit Selene: the registry keeps only Tellus orbits. That relay is the
+  next thing for the orbital registry (sats/planning).
+
+**Checks:** `test.mjs` §39, 6 checks:
+- the lock (near side within 1e-6°, a 104 h day, the ground's speed);
+- program time;
+- power by day, freezing, the RTG;
+- 40 days between flights with and without panels;
+- contact (direct, far side, relay at 1 km against 6 km);
+- commands (held out of contact; a round trip late in it).
+
+The lock's knock-on changes are covered by the existing lunar-landing checks, which failed until the landings used the
+surface.
+
+**Not yet:**
+- terrain shadows and horizons (Selene is still smooth: hills will block both sun and radio);
+- a relay in Selene orbit;
+- the clock running while you drive from home;
+- eclipses by Tellus;
+- Nyx's spin.
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
