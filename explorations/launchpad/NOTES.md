@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3535,6 +3535,77 @@ Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright o
 
 **Needed from others:** Selene's terrain (craters, maria and highlands, boulders, slopes) from the terrain session:
 today Selene is a smooth sphere apart from the regolith model; power (R3) is new everywhere.
+
+### R1 built: the Rover yard (sats session, 2026-10-08)
+
+- **Screen.** *Rover yard*, from a button in the Program header (`go('rover')`, `mode='drive'`). On the left is the
+  designer; on the right a readout: speed, heading, pitch and roll against the tip angles, ground, battery, this drive.
+  Designs live in `PROG.rovers` (name, chassis `ch`, wheels `wh`, count `n` 4/6, springs set for `spr` Tellus/Selene,
+  deck `slots`).
+- **Parts.** Three chassis (`RV_CH`: 3/5/8 slots), three wheels with hub motors (`RV_WH`; the wire-mesh one is the lunar
+  rover's: 0.82 m, 190 W), and deck items (`RV_IT`): battery, crew seat (occupant included), camera mast, high-gain
+  antenna, sample arm, spectrometer, seismometer pack, drill. Instruments are only mass and height until R4.
+- **On paper** (`rvStats`), for Tellus on grass and Selene on regolith:
+  - centre-of-mass height;
+  - tip angles sideways, forward and back;
+  - steepest climb and what limits it (traction, motors, tipping backwards);
+  - top speed (gearing or power against rolling resistance);
+  - the speed at which a full-lock turn tips or slides it;
+  - range on the flat.
+- **Physics** (`rvNew`/`rvStep`/`rvRun`, in the SIM block, 1/240 s steps, in the planet's frame):
+  - one rigid body;
+  - per-wheel spring and damper along the chassis's down axis (compression rate from the mount's approach speed);
+  - grip solved over four passes, each wheel's impulse kept inside its friction circle (μ × load);
+  - hub motors limited by torque, power and gearing;
+  - a parking brake when stopped;
+  - rolling resistance `rvCrr` (soft ground, eased by bigger wheels);
+  - bumps on rough ground (value noise, a quarter of the biome's `rough` in metres);
+  - the chassis corners, deck-item tops and hubs touch the ground too, so tipping over is real and nothing rights it;
+  - a battery, drained by the motors and 30 W of electronics.
+- **Where to drive:**
+  - the **test yard**, 320 m east of the pad (`yardOf`, `RV_YARD`): ramps of 10°, 20° and 30° and side slopes of 20°
+    and 35°, all 2.5 m high and made of gravel (μ 0.65, so 35° is past its grip);
+  - **open country** (`countryOf`): gentle land 5–8 km out, on the biome's real ground;
+  - either at Tellus's gravity or as a **lunar trainer** (Selene's gravity on Tellus's ground).
+
+  The sea ends a drive. Off the pad itself the levelled ground drives as grass.
+- **Records.** Each drive's record is kept per design and per gravity (`d.test.T` / `.S`): km, steepest climb, top
+  speed, tip-overs. Each wheel kind also accumulates its tested km (`PROG.wheelKm`), for R2's reliability.
+- **What it shows:**
+  - The default two-seat rover is sized like Apollo's. At home it climbs only 7° and stalls on the 20° ramp: its hub
+    motors are sized for a sixth of the weight, as the real one's were; it couldn't carry its crew on Earth.
+  - As a lunar trainer it tops all three ramps; the 30° one is at the edge of the gravel's grip.
+  - At Selene's gravity a full-lock turn lets go at under half the speed it does at home.
+  - A top-heavy rover (three crew on a small chassis, 38° on paper) tips on the 35° slope. The springs lean it a few
+    degrees past the rigid figure: keep a margin.
+- **Checks:** `test.mjs` §34, 7 checks:
+  - the stats;
+  - settling where the designer says;
+  - the designer's top speed (2.14 against 2.15 m/s);
+  - the ramp at home against the trainer;
+  - holding on 20° and sliding on 35°;
+  - a top-heavy rover tipping where a low one doesn't;
+  - no battery, no drive, and the record folding.
+
+  Mutation-tested: dropping the friction circle, solving grip in one pass, removing the body contacts or ignoring the
+  battery each fails a check.
+- **Not yet:**
+  - science (R4);
+  - deployment (R2);
+  - power generation (R3);
+  - trees as obstacles (rough ground is only bumps);
+  - a shadow under the rover;
+  - era gating and prices for rover parts (economy).
+
+**Overlap with "Planning before the flight"** (economy's spec, above):
+- **R5's drive plans are a surface leg of the mission plan,** not a system of their own. A traverse is waypoints on the
+  same timeline (v1.42), executed between flights at the era's error, with results arriving as events.
+- **The deploy check (R2) belongs to the planner too.** Choosing a landing site there should already say whether the
+  rover can deploy and drive away. That draws on its *tested* climb and tip figures from R1, much as the trajectory
+  study sets a trajectory's precision.
+- **Traverse planning needs a map of the ground.** How well a route can be planned depends on how well the site has
+  been imaged from orbit, which ties the imaging satellites to surface work, as Lunar Orbiter's photos did for Apollo.
+- **Rover instruments (R4) use the same pointing and activity timeline** as orbital instruments (Owners and order, item 3).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
