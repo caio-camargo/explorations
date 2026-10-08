@@ -1943,6 +1943,32 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   regimes and higher for home-made parts. Low know-how means riskier ignitions (one-line `igniteOK` hook in `stage()`,
   flagged in ACTIVE_WORK), slower stacking and lower instrument yield. `test.mjs` 190/190 after merging main. Merged to
   `main` (`af2acb5`).
+- **v1.31–v1.32 (2026-10-07, economy worktree):** production lines (own line, needing know-how; or a license with
+  royalties; a learning curve makes home-built parts cheaper than imports; sanction-proof; they stay with the country)
+  and a second balance pass. The career runner now plays know-how, lines and support packages. It found know-how
+  learned ~85% in one orbital flight (now one step per flight), weak agencies stuck topping up (running costs, budget
+  day and starts retuned) and lines that never paid back (setup halved; they now pay back over ~6 years, except for
+  resource states, which do better buying). Support packages are a real trade-off; still provisional. Also fixed a
+  name clash with the builder's `lineOf`. `test.mjs` 220/220. Merged to `main` (`a0ac3cb`).
+- **v1.33 (2026-10-07, economy worktree):** the test stand, a one-off investment (40M, 60 days, no upkeep). Ground
+  campaigns raise a part's know-how (at 60% of a flight's weight; never vacuum or orbit) and certification, or test it to
+  destruction for full certification. `test.mjs` 223/223. Merged to `main` (`f35d61d`).
+- **v1.34 (2026-10-07, economy worktree):** development projects: the design bureau makes parts we build cheaper,
+  more reliable (engines) or more durable, up to three levels each, needing know-how, money and time; a redesign dips
+  certification and know-how. Performance goals wait for the variants decision. `test.mjs` 226/226. Merged to `main`
+  (`537df29`).
+- **v1.35 (2026-10-08, economy worktree):** facilities, upgradeable one-off investments with no upkeep: the
+  integration hall (stacking ×0.75 / ×0.55) and the recovery fleet (stages salvaged at sea within 800 / 1,500 km of
+  the launch point, 35 / 60% of their value). All tests pass. Merged to `main` (`23e383e`).
+- **v1.36 (2026-10-08, economy worktree):** balance pass 3. The career runner now plays the stand, development and
+  facilities. Sinks absorb the strong programs' pile-up (1.4–2.6B spent over 6 years) without sinking the weak ones.
+  Tuned: the hall was a money machine (now 90/220M, ×0.8/×0.65); stand campaigns teach at least half a fresh regime;
+  development costs 3× price (was 5×). All tests pass. Merged to `main` (`a865120`).
+- **v1.38 (2026-10-08, economy worktree):** compute eras and trajectory studies. World compute eras by date (human
+  computers → mainframes → onboard → cheap → AI boom), an access lag per power, and a computing centre facility.
+  Per-design trajectory studies cost money and days (a launch waits for its study) and narrow the impact spread
+  that range safety uses. Design notes cover the rich-programs ladder, waste heat, routine runs and compute.
+  All tests pass. Merged to `main` (`654ba64`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
@@ -2337,6 +2363,213 @@ fast-forwarded to `d5a2e9c`. NOTES v1.12.0.
 - [ ] Then the claw; later RCS eras (monoprop), fine control, plume impingement, ullage
 - [ ] `main` still not pushed
 
+## 2026-10-07 — Launchpad bodies: Selene perturbs, per-orbit gating, nodes, Nyx missions spec (bodies session, cont.)
+
+### Summary
+Three follow-ups to 6b, agreed with Caio. (1) **Selene is a perturber too.** That exposed a per-point threshold breaking warp
+(472 km after 30 days of low orbit, warp vs small steps), so perturbation is now gated **per orbit** (`pertNear`) and always
+on within it: warp vs small steps is now 0.4 m. A threshold sweep against n-body set PERT_MIN at 2e-6: a close Selene pass
+4.7–6.8 km off after two days (was 1,354), lunar orbit 10 m after a day. Nyx's tide now reaches low orbit (real, ~10–200 m a
+month). (2) **Nodes on perturbed orbits** are integrated (`coastTo`, memoised until `kickN` changes): 0 m from rails vs
+16.5 km for Kepler. (3) **Nyx missions:** Caio chose spec-and-handoff. A ladder (discovery, flyby, impactor, an orbit that
+lasts, lander, sample return) with measured Δv is in NOTES for the economy session. Also set `receive.autogc=false` in the
+Drive repo: pushes from this machine were the likely trigger of the emptied worktree registry (auto-gc prunes worktrees
+this machine can't see). Merged `main`, fast-forwarded `main` to `60b1b7b`.
+
+### Files
+- `explorations/launchpad/index.html`: `SELENE.pert`, `PERT_MIN` 2e-6, `pertNear` per orbit, `pertAcc(…,thr)`, `coastTo`, `nodeInfo`, `kickN` (physStep/stage/detach)
+- `explorations/launchpad/test.mjs`: §3b now warp invariance; §21 per-moon n-body + node check; §22 Selene; economy satellite-precision tolerance 1e-3 M
+- `explorations/launchpad/NOTES.md`: § "6b, part 2", § "Nyx missions — spec", open thread 6
+
+### Verification
+`test.mjs` 166/166 after merging main. Browser: Selene transfer with node and dashed plan on the notebook map (frames 2.4 ms
+mean); Nyx orbit predicted to impact; no console errors.
+
+### Next steps
+- [ ] Economy session: Nyx missions from the spec (epoch 5 "Discovery" after the Selene ladder)
+- [ ] Satellites session: registered satellites (`satAt`) are pure Kepler while craft now feel the tides (metres a month in low orbit; matters only for long rendezvous)
+- [ ] Debris near the moons ignores tides
+- [ ] `main` not pushed to GitHub
+
+### Follow-up 5: docking port
+*Docking port* (1.25 m). Free ports latch within 15 cm / 10 cm / 10° at under 0.5 m/s; the latch snaps the last bit and
+the joined vessel takes the pair's momentum and angular momentum exactly. Docked bodies ride as passengers (`s.att`):
+`geom` sums mass and inertia, contact sees their parts at a transform, rendering draws them, the registry keeps them
+(`docked` flag during the flight, `attached` in the stack registered at the end). Ports carry loads (30 kN / 20 kN·m)
+and break loose above. Undock by a HUD button (tape op). HUD *Port* / *Line up* rows tell you which RCS keys close the
+offset; SAS mode *Docking*. Fixed on the way: satellite meshes cached per satellite (a broken-off antenna kept drawing);
+an edit of mine that swallowed the marks hand-off into a comment (caught by §20); a CRLF blob from doubled line endings
+(lesson #27). test.mjs §25 (6 checks). Two real conflicts merging `main` (bodies' physics line, economy's prices).
+`main` at `bc5b3ab`. NOTES v1.13.0.
+
+### Next steps
+- [ ] The claw (grab any surface at an arbitrary attitude; passengers already support any transform)
+- [ ] Passengers' own thrusters/aero/heating; fuel transfer; docking to a port on a body docked to the target
+- [ ] `main` still not pushed
+
+### Follow-up 6: the claw
+*Claw* part: grabs any satellite surface its jaws touch at under 1 m/s (within 35 cm of the tip), held exactly where and
+how it touched. `dock` split into `dock` + shared `join`; attachments carry `kind`; joints rated per part (port 30 kN /
+20 kN·m, claw 15 kN / 8 kN·m); release at 0.1 m/s; HUD *Claw* row (jaws to the target's skin via `bodyDist`). Found in the
+browser, not by the checks: a duplicate `const cl` in the HUD code stopped the page loading while every sim check
+passed; added a whole-page parse check. My mistake: `git checkout -- index.html` after a mutation test discarded the
+uncommitted slice; re-applied from the edit script (lesson #28). test.mjs §26. `main` at `d4cc109`. NOTES v1.14.0.
+
+### Next steps
+- [ ] Contact with debris (spent stages), then the claw can grab them (junk retrieval)
+- [ ] Passengers' own thrusters/aero/heating; fuel transfer; a free pivot for the claw; docking to a docked body's port
+- [ ] Contracts that use all this: inspection, servicing, retrieval
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad: "Out there" missions, the Selene ladder and Nyx (bodies session, cont.)
+
+### Summary
+Caio: the economy session works at the high level, so specific missions get built here from its epoch plan. Built epochs 4–5,
+additively (MISSIONS entries, `outThere()` at the end of `missionTick`, logbook facts, panel labels; `RACE` untouched). Selene:
+the far side (photos behind Selene, downlinked once Tellus is in line of sight), impactor (near side only), soft landing
+(< 4 m/s, near side), sample return. Nyx: discovered by tracking residuals (12 h where its pull is ≥ 1e-3 of Tellus's; until
+then the map shows "?" with no orbit, and encounter forecasts stop at the edge), flyby, an orbit that lasts (67 h, which only
+retrograde survives), landing (< 3 m/s). Merged `main`, fast-forwarded `main` to `9b191b3` (not pushed to GitHub).
+
+### Files
+- `explorations/launchpad/index.html`: `MISSIONS` (8 new), `NYX_TRACK_H`, `outThere`, `seesTellus`, `nearSide`, `nyxResidual`; `LOGF` (3 Nyx facts); `knownBody` in `gateLegs` and the map; `renderProgram` epochs 4–5
+- `explorations/launchpad/test.mjs`: §23 (6 checks)
+- `explorations/launchpad/NOTES.md`: § "Out there" missions; spec marked superseded; open thread 6
+
+### Verification
+`test.mjs` 183/183 after the merge. Browser: Program panel lists epochs 4–5 with the locks; the map shows Nyx as "?" before
+it's weighed and with its orbit after; no console errors.
+
+### Next steps
+- [ ] Epoch 3 utility missions (weather, TV, disaster watch, navigation)
+- [ ] Crew on Selene (abort tests, crew parts); repeatable contracts from these (economy board)
+- [ ] Decide whether Selene firsts join `RACE` (shifts rival schedules and the v1.28 balance)
+- [ ] `main` 2 commits ahead of GitHub
+
+## 2026-10-07 — Launchpad v1.29: ground awareness (terrain session)
+
+### Summary
+Landing-related decisions now measure from the ground under the ship, not the sea:
+- **The main chute** opens below 3 km above the ground (it used air density, ~4.2 km above the *sea* since the
+  rescale). The impact predictor uses the same rule.
+- **Time-warp auto-drop** uses the gap to the real ground.
+- **The HUD** shows a radar altitude.
+
+Over a 4.9 km plateau the old rule opened only the drogue (impact at 63 m/s); now the main opens and the pod lands at
+6.9 m/s, as predicted. Fast-forwarded `main` to `dee4b28`.
+
+### Files
+- `explorations/launchpad/index.html`: `MAIN_AGL`, `aglAt`, `mainChuteOK`, `groundGap` (SIM); the chute in `physStep`; `fall`/`predictImpact`'s drag callback; the warp drop; the HUD's Radar alt
+- `explorations/launchpad/test.mjs`: §24, 2 checks; `explorations/launchpad/NOTES.md`: § v1.29
+
+### Verification
+`test.mjs` 185/185 on the merged `main`. The plateau drop was run against the old rule too (it fails, hitting at
+63 m/s). HUD checked in the browser: "Radar alt 1193 m above the ground" at 6,094 m over the plateau.
+
+### Next steps
+- [ ] Surface properties by biome (friction, softness, boulders) for the touchdown verdict; slice-B follow-ups (§ v1.27)
+- [ ] `main` not pushed
+
+### Follow-up 7: stations plan, and Phase A (several vessels in a flight)
+Caio's direction: stations then moonbases; modules as their own rockets or in a cargo bay; once out, flown with RCS
+**and** (later, more advanced) berthed by an arm; one-vessel-per-flight to be revisited; winged shuttle later. Plan in
+NOTES § "Stations, modules and moonbases: plan" (phases A–E). Built Phase A: probe core part; separations with a command
+part make a vessel (cloned parts, own staging, momentum kept); `FLEET` stepped every tick on one clock (physics or rails
+together), vessel-on-vessel contact, controls only to S, switching with ] / [ (tape op), fleet registered at flight end;
+drawn, marked, on the map, in the HUD. Measured first: the sim core only had 16 global `S` references and 3 functions
+reading controls, so it was additive. Test references corrected on the way (rails now include third-body perturbations;
+momentum must be compared across the contact, not over many gravity steps). test.mjs §27 (6 checks). Two side-by-side
+conflicts merging `main`. `main` at `1caf1cb`. NOTES v1.15.0.
+
+### Next steps
+- [ ] Phase B: cargo bay (enclosure, doors, shielding, release)
+- [ ] Vessel-to-vessel docking within a flight; A2: vessels that stay controllable after the flight
+- [ ] Fleet vessels' plumes and RCS puffs
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad: epoch 3 missions, satellites that work (bodies session, cont.)
+
+### Summary
+Built epoch 3 from the economy's plan. Weather satellite (camera + antenna, 80–100° inclination) and TV for the capital
+(stationary orbit, 5,668 km up after the rescale, not the notes' 2,870; at least 15° up in the capital's sky; pays 0.4M a day
+while it stays there, and a 0.6 % period error drifts it out in 25 days). Disaster watch (pictures within 12 h of the call) and a
+Transit-style navigation constellation (a pass within 30 min from 95 % of places and moments). These two are world missions
+checked by `utilTick` between flights. The nav target was measured: a GPS-like "3 in view" needs ~12 satellites; Transit with 4
+phased in pairs gives 99.4 %, 5 in 5 planes only 83 %. Payout extracted into `missionComplete` (behaviour unchanged;
+`career.mjs` runs). Merged `main`; `main` fast-forwarded.
+
+### Files
+- `explorations/launchpad/index.html`: 4 `MISSIONS` (ep 3), `STAT_R`/`TV_RATE`/`NAV_*`, weather/TV in `outThere`, `capital`/`capSees`/`isTV`/`navCover`/`utilTick`, `missionComplete`, `imageDone(…,t)`, panel epoch 3
+- `explorations/launchpad/test.mjs`: §24 (4 checks)
+- `explorations/launchpad/NOTES.md`: § "Epoch 3 missions"
+
+### Verification
+`test.mjs` 194/194 after the merge; `career.mjs 1 1` runs; the Program panel lists epoch 3 with its locks.
+
+### Next steps
+- [ ] A dispenser part (several satellites per flight) would make constellations practical
+- [ ] Weather forecasts of upper winds (needs a wind model); sun-synchronous orbits (needs J2)
+- [ ] Crew on Selene (epoch 4); repeatable contracts from these missions
+
+### Follow-up 8: docking vessels of one flight
+Flight vessels dock to each other (the flown one hosts); the other rides as a passenger through `entryOf`, keeping its
+live vessel (not saved) so undocking gives back a flyable vessel; the claw grabs vessels; `G` can target a vessel, with
+guidance, closest approach and the Docking mode; tapes record the target. Found in the browser, not by the checks:
+near another flight vessel the game coasted on rails (physics rule only looked at saved satellites), so vessels passed
+through each other; `fleetNear` fixes it, §27 asserts it. test.mjs §28 (5 checks). My slip again: an appended comment
+swallowed a test argument (lesson #29).
+FLAG: Drive `main` had moved backwards to `4f6bdb9` (no Phase A); restored by fast-forwarding to `705fcb8`, which
+contains both. A stray Phase A `builder.js` in the Drive folder was verified identical to `1caf1cb` before restoring it.
+
+### Next steps
+- [ ] Phase B: cargo bay; A2: vessels that stay flyable across flights
+- [ ] Fleet vessels' plumes and RCS puffs
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad aero and engine FX (aerofx session, branch `aerofx`)
+
+### Summary
+Continuation of the plumes session. Six slices, each merged to `main` on Caio's OK (last: `57d7781`):
+- **Re-entry plasma:** a raymarched shock layer hugging the hull's real radius profile (`hullProfile`), plus a streaked
+  wake; heat level from the stagnation flux (15 kW/m² onset, 160 kW/m² orbital peak). A hull-slope term made
+  stray arcs at the capsule's neck, found with a diagnostic render.
+- **Transonic vapor cones:** lit condensation collars behind hull shoulders (`hullShoulders`) at Mach 0.85–1.25 below
+  ~15 km.
+- **Plume meets the ground:** plume stops at the ground plane; an impingement volume turns the jet down the flame
+  channel (or splashes off-pad); a ground cloud of smoke pours from the channel mouth.
+- **Plume light:** one point light in the flame lights hull, pad (an additive block in `MESH_FS`, the visuals session's
+  shader: note left in ACTIVE_WORK), smoke and an additive ground pool; faded in daylight.
+- **Ignition:** per-engine ignition clock; TEA-TEB green flash on kerolox (replacing the young flame's colour), then a
+  fuel-rich, ballooning start.
+- **Shutdown and staging:** stopped engines tail off (fuel-rich, sooty) with a cutoff puff; decouplers vent a gas ring
+  and sparks (`sepFx`). Moving puffs (`fxPuff`) share the smoke renderer.
+
+**Repo incident:** at close, `git log` failed with "Could not read d28aa2d" — a commit in `main`'s history (this
+session's ignition merge) was missing from the object store in the Drive folder. `git fetch origin` restored it (it had
+been pushed), and `git fsck --connectivity-only` is clean again. Cause not proven; likely Drive sync or a gc from
+another machine dropping a loose object (see LESSONS #31). Also: this session's `git worktree prune` at start (plumes)
+had emptied other sessions' worktree registry entries; the economy session restored its own.
+
+### Files
+- `explorations/launchpad/index.html`: `PLASMA_*`, `hullProfile`, `VAPOR_FS`, `hullShoulders`, `drawVapor`, `IMP_*`,
+  `groundFrame`, `drawImpact`, `emitGroundSmoke`, `POOL_*`, `plumeLight`, `drawPlumePool`, `spoolOf`, `ignOf`,
+  `plumeEngines`, `cutoffPuff`, `fxPuff`, `sepFx`; toggles `PLASMA_FX`, `VAPOR_FX`, `IMPACT_FX`, `PLUME_LIGHT`
+- `explorations/launchpad/views.js`: views 40–45, 50–53, 60–77; `refView` restores `simulate` after a frozen capture
+- `explorations/launchpad/NOTES.md`: § "Re-entry plasma", "Transonic vapor cones", "The plume meeting the ground",
+  "Plume light", "Engine ignition", "Engine shutdown and staging"
+- `LESSONS_LEARNED.md` #31
+
+### Verification
+`node test.mjs` all passed after every slice and every merge of `main`. Screenshots of each reference view on the
+RTX 5050; GPU cost per effect measured with an on/off toggle in the same page (each ≤ ~1.3 ms while visible; the ground
+cloud ~2 ms while thick near the camera).
+
+### Next steps
+- [x] Performance pass: done (`02968a5`). All FX together in the Heavy at night: 9.1 → 4.8 ms; the impingement volume was drawn per engine (NOTES § "Performance pass")
+- [ ] Spent stages glowing / breaking up on the way down; fin-tip vapor; heat shimmer (needs a frame copy)
+- [ ] Flame channel is hard-coded to this pad layout; plume light is one light for all engines, no shadows
+- [ ] `main` has unpushed commits again; a push keeps a second copy of the objects (see the incident above)
+
 ## 2026-10-07 — Launchpad part design passes + git object repair (visuals session, cont.)
 
 ### Summary
@@ -2349,3 +2582,74 @@ were re-written from a temp `--mirror` clone (hashes verified). `fsck` clean, al
 
 ### Next steps
 - [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench
+
+### Follow-up 9: the cargo bay (stations plan Phase B)
+*Cargo bay*: floor + 4 m walls + clamshell doors; a payload stacked on its floor and fitting inside is enclosed
+(`p.inBay`), out of the airflow (no load, no heat) while shut. Doors take 2 s on the flight clock (key B, HUD row, tape
+op); release (doors open) pushes the payload out along the bay at 0.3 m/s as a vessel, command part or not; the bay is
+hollow for contact. Fixed on the way: opening didn't expose the payload (the outline was rebuilt at 0 % open). test.mjs
+§29 (6 checks). Browser: editor, doors opening, release, the payload leaving through the top. Merge with `main` kept
+the visuals session's new probe-core look next to the bay. NOTES v1.17.0.
+FLAG: the fast-forward of the Drive `main` to `ca9782f` was blocked by a fresh `.git/index.lock` (created 21:00:31,
+just after another session's recovery commit about zero-filled git objects). Waited 5 minutes, then removed it with
+Caio's OK; `main` fast-forwarded to `ca9782f`, `git fsck --connectivity-only` clean, tests pass.
+
+### Next steps
+- [ ] Phase C (station modules with jobs and station state) or D (the arm); A2 (vessels flyable across flights)
+- [ ] Side-opening bay, 2.5 m bay, "payload fits" in the editor
+- [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad: crew, escape tower, abort tests, people to Selene (bodies session, cont.)
+
+### Summary
+Epoch 4's crew line from the economy's plan. New parts: **crew capsule** (pod kind, 2 crew, 10 days of air) and **escape
+tower** (150 kN for 3 s, sized for < 8 g). **Abort** (Backspace, tape op `A`) drops everything below the capsule, fires the
+tower, jettisons it at burnout and arms the chute; on nominal flights the tower goes at the first staging above 30 km.
+People fly only after the max-q abort qualifies the tower (dummies before). Missions: pad abort (measured 840 m apex, 6.8 g),
+max-q abort (18 kPa: 6.1 g), crew around Selene, crew on Selene. Earlier in the session: repaired a Drive-renamed git
+object (`d28aa2d` → `.corrupt-`) by re-writing it from the clone (lesson added); dropped a duplicate "deploy satellites"
+idea because the sats session's multi-vessel flights already do it. Merged `main` (conflicts with the sats cargo bay:
+adjacent price and tape lines, both kept); `main` fast-forwarded to `9c821b3`; fsck clean.
+
+### Files
+- `explorations/launchpad/index.html`: `PARTS.crew`/`les`, `PRICE.crew`/`les`, `rootIdx`, `abort`/`lesJettison`/`LES_JET_ALT`/`CREW_AIR`, LES force and jettison in `physStep`, tower jettison in `stage`, `tapeAbort` + tape op `A`, Backspace, crew tracking in `outThere(…,phys)`, 4 missions, `partBody` cases `les`/`crew`
+- `explorations/launchpad/test.mjs`: §25 (6 checks)
+- `explorations/launchpad/NOTES.md`: § "Crew"
+
+### Verification
+`test.mjs` 217/217 after the merge. Browser: the tower draws on top of the capsule; Backspace in flight drops the rocket
+and the capsule climbs away at 7 g.
+
+### Next steps
+- [ ] Plumes session: the escape tower's motor has no plume
+- [ ] A crewed preset (Big Lunar with a crew capsule and a tower); crew transfer / EVA
+- [ ] Repeatable contracts from the new missions (economy board)
+
+## 2026-10-07 — Launchpad UI: screens spec + slice 1 (ui session, branch `ui`)
+- New session line: worktree `C:/Users/caioa/dev/launchpad-ui`, branch `ui`, port 8795 (preview config `launchpad-ui`).
+- Inventory of the current UI, then a spec agreed with Caio, in launchpad NOTES § "UI: screens and navigation". The screens are
+  Program → Assembly → Rollout → Flight ⇄ Map → Debrief. Program is its own home screen, Rollout is a checkpoint before
+  launch, and the flight HUD is a fixed core plus cards that appear on demand. Five slices.
+- Slice 1 built and merged to `main` (`c421ed0`, not pushed):
+  - `go()` is now the only code that changes screens.
+  - Overlays stack, with an Esc menu. Revert and Back to Assembly ask twice while airborne.
+  - Help is generated from the per-screen `KEYS` tables.
+  - Logbook is on F, RCS on/off on V. The perf readout is off by default.
+  - test.mjs §32 adds 4 checks: key coverage (mutation-tested), one meaning per key per screen, and only `go()` assigning `mode`/`view`.
+- Merge note: economy's §31 (development projects) landed at the same spot in test.mjs; resolved by taking main's file
+  and re-appending the UI checks as §32.
+- Next: slice 2, the Program screen (tabs and a first-run gate). Tell economy/bodies first.
+
+## 2026-10-08 — Launchpad UI slice 2: the Program screen (ui session, branch `ui`)
+- The page opens on **Program**, a panel over the ship on the pad, with tabs: Inbox (decisions with deadlines, offers),
+  Missions, Contracts, Fleet, World, Industry, Company. The first run shows only "Whose program? / How does it start?",
+  and Build stays disabled until you choose. Assembly lost the whole career column: a strip shows date, funds and Inbox
+  count, with ← Program (`P`). `B` builds.
+- `renderProgram` is untouched. `progLayout()` (a wrapper) deals its sections into tabs by heading. test.mjs §32 fails
+  if a heading literal has no tab. Screen keys come from `KEYS` rows with `go:`.
+- Small cross-scope edits: builder.js ignores keys while `atHQ` is set; the logbook's "Load design" now calls
+  `go('assembly')`.
+- Merging `main` checked `index.html` out with CRLF, which broke §32's string anchors. §32 now normalises line endings.
+  Committed files verified CR-free (lesson #27).
+- Merged to `main` (`641a3d7`, not pushed); 0 failing checks.
+- Next: slice 3, Debrief.

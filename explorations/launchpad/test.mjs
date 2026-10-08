@@ -4,9 +4,9 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {missionTick,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -392,7 +392,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
   const gc = (a, b) => Math.acos(Math.min(1, dot(norm(a), norm(b)))) * TELLUS.R / 1000;
   fresh(); let q = probeShip(); const i0 = api.predictImpact(q), w0 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
-  [0, 1, 2, 3, 4, 5, 6].forEach(k => P.atm[k] = 1); q = probeShip(); const w1 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
+  [0, 1, 2, 3, 4, 5, 6].forEach(k => P.atm[k] = 1); q = probeShip(); P.studies = { [api.studyKey(q)]: { err: 0 } }; const w1 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);   // (studied exactly: only the air counts here)
   check('impact spread: an unsampled atmosphere widens the landing prediction; a sampled one collapses it', w0 > 2 && w1 < 0.01,
     `±25 % density: ${w0.toFixed(1)} km wide → sampled: ${w1.toFixed(3)} km (nominal flight ${(i0.t).toFixed(0)} s)`);
   // a failure is a measurement: the part that broke is fully known afterwards
@@ -1052,6 +1052,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
 }
 
+// 25. Crew (bodies session, epoch 4): the escape tower, abort tests, then people. Flown through the real flight code.
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, day: P.day });
+  const news = [], msgs = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = m => msgs.push(m); api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1e4; news.length = 0; msgs.length = 0; };
+  const flyOut = s => { let apex = 0, n = 0; while (s.alive && !(s.landed && s.rec.abort && api.t > s.rec.abort.t + 5) && n++ < 300000) {
+      if (api.railsOK(s) && !s.landed) api.advRails(s, 1, 1); else api.advPhys(s); apex = Math.max(apex, len(s.r) - TELLUS.R); } return apex; };
+  // pad abort: from a standing start, under 8 g, high enough for the chute
+  reset(['orbiter']); api.t = 0; let s = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = s; api.abort(s); let apex = flyOut(s);
+  check('crew: a pad abort lifts the capsule clear under 8 g and it lands under its chute (dummies aboard)', !!P.done.padabort && s.landed && s.alive && !s.rec.crewed && s.rec.cgMax < 8 && apex > 500,
+    `apex ${(apex / 1e3).toFixed(2)} km, peak ${s.rec.cgMax.toFixed(1)} g, touchdown ${(s.touchV || 0).toFixed(1)} m/s; tower jettisoned: ${!s.parts.some(p => p.on && p.d.kind === 'les')}`);
+  // max-q abort: straight up at full throttle, abort at 18 kPa
+  reset(['orbiter', 'padabort']); api.t = 0; s = api.newShip(['les', 'chute', 'crew', 'dec', 't8', 'kestrel']); api.S = s; s.throttle = 1; api.stage(s);
+  let k = 0; while (s.alive && k++ < 20000) { api.advPhys(s); if ((s.qdyn || 0) >= 18000) { api.abort(s); break; } } apex = flyOut(s);
+  check('crew: a max-q abort (18 kPa) brings the capsule home under 8 g and qualifies the tower', !!P.done.maxqabort && s.landed && s.rec.cgMax < 8,
+    `abort at ${(s.rec.abort.q / 1e3).toFixed(1)} kPa, ${(s.rec.abort.alt / 1e3).toFixed(1)} km up; peak ${s.rec.cgMax.toFixed(1)} g; apex ${(apex / 1e3).toFixed(1)} km`);
+  // no tower, no abort; and on a nominal flight the tower goes at the first staging above 30 km
+  reset(['orbiter']); api.t = 0; s = api.newShip(['chute', 'crew', 't4', 'kestrel']); api.S = s; const noTower = api.abort(s);
+  s = api.newShip(['les', 'chute', 'crew', 'dec', 't4', 'kestrel']); api.S = s; s.landed = false; s.rec.launched = true; s.r = mul(norm(s.r), TELLUS.R + 4e4); api.stage(s);
+  check('crew: no abort without a tower; the tower is jettisoned at the first staging above 30 km', !noTower && !s.parts.some(p => p.on && p.d.kind === 'les') && msgs.some(m => /Escape tower jettisoned/.test(m)), `abort without a tower: ${noTower}`);
+  // once qualified, capsules fly people: around Selene and home counts; a crashed capsule loses its crew
+  const crewFlight = (done) => { reset(done); P.day = 50; api.t = 0; const c = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = c; c.rec.launched = true; c.rec.day0 = P.day; c.rec.dv = 4000;
+    const home = { r: c.r.slice(), pf: c.pf.slice(), q: c.q.slice(), qLocal: c.qLocal.slice() }; return { c, home }; };
+  let { c, home } = crewFlight(['orbiter', 'padabort', 'maxqabort', 'farside']);
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 300e3, 0, 0]; c.v = [0, 0, -Math.sqrt(SELENE.mu / (SELENE.R + 300e3))]; api.advRails(c, 60, 10);
+  const sawSel = c.rec.crewSel; c.body = TELLUS; c.landed = true; Object.assign(c, { pf: home.pf, qLocal: home.qLocal }); api.advRails(c, 1, 1);
+  check('crew: after qualification the capsule carries people; around Selene and home safe completes "Crew around Selene"', c.rec.crewed && sawSel && c.rec.crewOK && !!P.done.crewaround, `crewed ${c.rec.crewed}, in Selene's SOI ${sawSel}, home ${c.rec.capHome}`);
+  ({ c } = crewFlight(['orbiter', 'padabort', 'maxqabort']));
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 20e3, 0, 0]; c.v = [-300, 0, 0]; let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); }
+  check('crew: a crashed crewed capsule loses its crew (news, opinion)', !c.rec.crewOK && news.some(m => /The crew were lost/.test(m)), news.find(m => /crew/.test(m)) || 'no news');
+  // the landing mission's condition reads the flight record
+  const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
+  check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
+  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
@@ -1520,6 +1556,238 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('vessel docking: a flight ending docked registers one stack carrying the module, and the save serialises', P.sats.length === 1 && P.sats[0].attached[0].e.name === 'Module' && !js.startsWith('ERR') && !js.includes('"_v"'),
     `${P.sats.map(q => q.name + ' + ' + (q.attached || []).map(x => x.e.name).join()).join('; ')}; save ${js.startsWith('ERR') ? js : (js.length / 1024).toFixed(1) + ' kB'}`);
   Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
+}
+
+// 29. The cargo bay (sats session, stations plan Phase B): enclosure, shielding, doors, release. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,advPhys,bayOp,doorF,hitGeo,partSDF,FLEET,PARTS,TELLUS,DT,qrot,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS;
+  // a probe module on the floor of a bay, on a pod, a tank and an engine
+  const mk = (pay = ['core', 't1']) => { D.FLEET.length = 0; D.t = 0; const s = D.newShip([...pay, 'bay', 'pod', 't2', 'kestrel']); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  let s = mk(); const bay = s.parts.find(p => p.d.kind === 'bay'), pay = s.parts.filter(p => p.inBay === bay);
+  check('bay: what sits on its floor inside the walls is enclosed', pay.map(p => p.d.key).sort().join() === 'core,t1', `enclosed: ${pay.map(p => p.d.key).join(', ')}`);
+  // in the air at 400 m/s, 8 km up: shut, the payload takes no air load and no heat; open, it does
+  const air = (open) => { const s = mk(); if (open) { D.bayOp(s, 'open'); D.t += 2.01; D.bayOp(s, 'noop'); }
+    const r0 = T.R + 8000, up = [1, 0, 0]; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = add(D.qrot(s.q, [0, 400, 0]), [0, 0, 0]); D.physStep(s, D.DT);
+    const p = s.parts.filter(q => q.inBay), b = s.parts.find(q => q.d.kind === 'bay'); return { pay: p.reduce((a, q) => a + len(q.F) + Math.abs(q.Q), 0), bay: len(b.F) }; };
+  const shut = air(false), open = air(true);
+  check('bay: doors shut, the payload takes no air load or heat; open, it does', shut.pay === 0 && shut.bay > 0 && open.pay > 0, `payload |F|+|Q| shut ${shut.pay.toFixed(1)}, open ${open.pay.toFixed(0)}; bay ${shut.bay.toFixed(0)} N`);
+  // release: refused while shut; open, the payload leaves as a vessel at 0.3 m/s along the bay's axis, momentum kept
+  s = mk(); const r0 = T.R + 300e3; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+  const refused = !D.bayOp(s, 'rel') && !D.FLEET.length;
+  D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); const f = D.doorF(s.parts.find(p => p.d.kind === 'bay'));
+  const Y = D.qrot(s.q, [0, 1, 0]), p0 = mul(s.v, s.mass); D.bayOp(s, 'rel'); const v = D.FLEET[0], sep = v ? dot(sub(v.v, s.v), Y) : NaN, dp = v ? len(sub(add(mul(s.v, s.mass), mul(v.v, v.mass)), p0)) / len(p0) : NaN;
+  check('bay: release is refused with the doors shut; open, the payload leaves as a vessel at 0.3 m/s along the bay, momentum kept', refused && f === 1 && v && v.parts.some(p => p.d.kind === 'core') && Math.abs(sep - 0.3) < 1e-9 && dp < 1e-12,
+    `${v ? v.name : 'no vessel'}; doors ${f}; separation ${sep.toFixed(4)} m/s; momentum error ${dp.toExponential(1)}`);
+  // it leaves without touching the walls: 15 s later (4 m of bay at 0.3 m/s) it's still parting at 0.3 m/s, clear of the top
+  const sb = s.parts.find(p => p.d.kind === 'bay'), topY = sb.y0 + sb.h + sb.d.bayL; for (let k = 0; k < 15 / D.DT; k++) D.advPhys(s);
+  const sep2 = dot(sub(v.v, s.v), Y), bottomV = dot(sub(add(v.r, D.qrot(v.q, sub([0, Math.min(...v.parts.map(p => p.y0)), 0], v.cm))), add(s.r, D.qrot(s.q, sub([0, topY, 0], s.cm)))), Y);
+  check('bay: the payload slides out without touching the walls and clears the top', Math.abs(sep2 - 0.3) < 1e-3 && bottomV > 0, `still parting at ${sep2.toFixed(4)} m/s; its base ${bottomV.toFixed(2)} m above the bay's rim`);
+  // a payload without a command part is a vessel too (not debris that would vanish)
+  s = mk(['cam', 'ant']); s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)]; D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); D.bayOp(s, 'rel');
+  check('bay: a payload with no command part still leaves as a vessel', D.FLEET.length === 1 && /^Payload/.test(D.FLEET[0].name), `${D.FLEET.map(x => x.name + ': ' + x.parts.map(p => p.d.key).join()).join('; ')}`);
+  // the contact shape is hollow: the cavity is outside the bay, the wall inside it; the roof only while shut
+  const g = D.hitGeo(sb, sb.d), mid = D.partSDF(g, 0, 2, 0), wall = D.partSDF(g, 0.75, 2, 0), roof = D.partSDF(g, 0, sb.h + sb.d.bayL + 0.05, 0);
+  check('bay: its contact shape is hollow (the payload can leave), with the roof gone while the doors are open', mid > 0 && wall < 0 && roof > 0, `cavity ${mid.toFixed(2)}, wall ${wall.toFixed(3)}, roof plane ${roof.toFixed(3)} (open)`);
+  D.FLEET.length = 0;
+}
+
+// 26. Production lines (economy): learning to manufacture is different from buying.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], funds: 2000 });
+    api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
+  // you can't reverse-engineer what you don't know; a license is possible straight away
+  fresh('frugal'); const q0 = api.prodQuote('kestrel'), ownEarly = api.startProdLine('kestrel', 'own'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const q1 = api.prodQuote('kestrel');
+  check('an own line needs know-how of the part; a license from its maker is possible at once (cheaper, quicker)', !q0.own.ok && !ownEarly && q0.lic.ok && q1.own.ok && q0.lic.cost < q0.own.cost && q0.lic.days < q0.own.days,
+    `Kestrel: own line ${q0.own.cost.toFixed(0)}M / ${q0.own.days} d (needs know-how), license from ${api.POWERS[q0.lic.from].root} ${q0.lic.cost.toFixed(0)}M / ${q0.lic.days} d`);
+  // tooling up takes time; then the part is ours: no import markup, immune to sanctions, cheaper with every unit
+  fresh('frugal'); P.kh = { kestrel: { use: 0.5, reg: {} } }; const price = () => api.vesselCost(api.newShip(['pod', 't2', 'kestrel']).parts).cost;
+  const imp = price(), sup = api.sourceOf('kestrel').from; api.startProdLine('kestrel', 'own'); const during = api.sourceOf('kestrel').how; P.day += 200; const first = price();
+  for (let n = 0; n < 25; n++) api.prodUnits(api.newShip(['kestrel'])); const mature = price(); P.sanc[sup] = 9999; const how = api.sourceOf('kestrel').how;
+  check('a line takes time to tool up; then units start dear and get cheaper than imports with every one built; sanctions don\'t touch it', during === 'import' && how === 'line' && first < imp && mature < first && api.prodLine('kestrel').m > 0.8,
+    `pod+tank+Kestrel: imported ${imp.toFixed(1)}M → first line units ${first.toFixed(1)}M → after 25 units ${mature.toFixed(1)}M (maturity ${(api.prodLine('kestrel').m * 100).toFixed(0)}%)`);
+  // lines belong to the country: after a defection they're no longer ours
+  const j = api.POWERS.find(p => p.i !== api.home && api.relOf(api.home, p.i) < 0.6).i; api.careerMove({ kind: 'defect', power: j, amt: 50 });
+  check('production lines stay with the country on a defection', api.prodLine('kestrel') === null && api.sourceOf('kestrel').how !== 'line', `after defecting, the Kestrel comes ${api.sourceOf('kestrel').how === 'home' ? 'from the new home\'s industry' : 'from abroad again'}`);
+  fresh(null); P.own = null; P.flights = 0; P.lines = {};
+}
+
+// 30. The test stand (economy): ground testing for know-how and certification, at a price.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
+  api.chooseStart('agency'); P.funds = 500;
+  const early = api.startTest('kestrel', 'qual'), built = api.buildStand(), stillBuilding = api.startTest('kestrel', 'qual'); api.advanceDays(61);
+  const u0 = api.khUse('kestrel'), c0 = api.certOf('kestrel'), f0 = P.funds, q = api.testQuote('kestrel', 'qual'), ok = api.startTest('kestrel', 'qual'), busy = api.startTest('t2', 'qual');
+  api.advanceDays(q.days + 1); const u1 = api.khUse('kestrel'), c1 = api.certOf('kestrel');
+  check('test stand: built once (it takes time), one campaign at a time; a qualification run raises know-how and certification', !early && built && !stillBuilding && ok && !busy && u1 > u0 && c1 > c0 && P.funds < f0 - q.cost + 1e-9,
+    `Kestrel: know-how ${(u0 * 100).toFixed(0)} → ${(u1 * 100).toFixed(0)}%, certified ${(c0 * 100).toFixed(0)} → ${(c1 * 100).toFixed(0)}%, ${q.cost.toFixed(1)}M over ${q.days} days`);
+  // ground tests teach less than flying the same regimes
+  const flown = (() => { const P2 = JSON.parse(JSON.stringify(P.kh)); P.kh = { kestrel: { use: u0, reg: {} } }; api.khLearn({ khSeen: { kestrel: { fly: 1, maxq: 1, heat: 1, burn: 1 } } }); const v = api.khUse('kestrel'); P.kh = P2; return v; })();
+  check('the stand teaches less than a flight through the same regimes (and never vacuum or orbit)', u1 - u0 < flown - u0, `stand +${((u1 - u0) * 100).toFixed(1)} pts vs a flight +${((flown - u0) * 100).toFixed(1)} pts`);
+  // to destruction: true limits known, the unit lost
+  const r = api.testQuote('condor', 'destroy'); api.startTest('condor', 'destroy'); api.advanceDays(r.days + 1);
+  check('test to destruction: the true rating is known (certified 100 %)', api.certOf('condor') === 1, `Condor, ${r.cost.toFixed(1)}M over ${r.days} days`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, stand2: null, kh: {}, cert: {} });
+}
+
+// 31. Development projects (economy): improving parts we make, for money, time and know-how.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
+    api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
+  // only what we make, and only once we know it
+  fresh('frugal'); const imp = api.devQuote('kestrel', 'cheap'); P.lines = { kestrel: { power: api.home, lic: null, start: 0, ready: 0, m: 0.05, units: 0 } };   // a brand-new own line: we make it, but don't know it yet
+  const green = api.devQuote('kestrel', 'cheap'); P.lines = {}; const known = api.devQuote('t2', 'cheap');   // tanks we've always made: known from the start
+  check('development: only parts we make (not imports), and only once we know them', !imp.ok && /make/.test(imp.why) && !green.ok && /know-how/.test(green.why) && known.ok,
+    `Kestrel imported: "${imp.why}" · Kestrel off a new own line: "${green.why}" · our own tank: ${known.cost.toFixed(0)}M, ${known.days} days`);
+  // a cheaper tank: the design bureau takes time; then the price drops, certification and know-how take a hit
+  const price = () => api.vesselCost(api.newShip(['pod', 't2', 'kestrel']).parts).cost, p0 = price(), c0 = api.certOf('t2'), u0 = api.khUse('t2');
+  const started = api.startDev('t2', 'cheap'), busy = api.startDev('t2', 'rel'); const mid = price(); api.advanceDays(known.days + 1); const p1 = price();
+  check('a cheaper design costs less per unit once done, and has to prove itself again (certification and know-how dip)', started && !busy && Math.abs(mid - p0) < 1e-9 && p1 < p0 && api.devLv('t2', 'cheap') === 1 && api.certOf('t2') < c0 && api.khUse('t2') < u0,
+    `pod+tank+Kestrel ${p0.toFixed(1)} → ${p1.toFixed(1)}M · tank certified ${(c0 * 100).toFixed(0)} → ${(api.certOf('t2') * 100).toFixed(0)}%, know-how ${(u0 * 100).toFixed(0)} → ${(api.khUse('t2') * 100).toFixed(0)}%`);
+  // durability: the same flight wears the part less
+  const part = { d: { key: 't2' }, wL: 0.9, wT: 0.2 }, w0 = api.wearOf(part, 4); P.dev.t2.dur = 2; const w2 = api.wearOf(part, 4);
+  check('a more durable design keeps more of its value after a hard flight', w2 > w0, `90 % load: refurbished value ${(w0 * 100).toFixed(0)}% → ${(w2 * 100).toFixed(0)}% at durability mark 2`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, dev: {}, devJob: null, kh: {}, cert: {} });
+}
+
+// 32. Screens and keys (ui session): Help is generated from KEYS, so every key a handler reads must be in its screen's table;
+// and only go() changes the screen (mode/view), so moving between screens has one place to look.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));   // git may check files out with CRLF
+  const KEYS = new Function(cut(page, 'const KEYS={', '\nconst SCREEN_NAME') + ';return KEYS')();
+  const read = t => new Set([...t.matchAll(/k===?'([^']+)'/g), ...t.matchAll(/keys\.has\('([^']+)'\)/g)].map(m => m[1]));
+  const listed = (...L) => new Set(L.flat().flatMap(r => r.k || []));
+  const flightSrc = cut(page, "if(mode!=='flight')return;const k=e.key", "addEventListener('keyup'") + page.match(/keys\.has\('[^']+'\)/g).join(' ');
+  const shared = cut(page, '// Keys every screen shares', '\n// ') || cut(page, '// Keys every screen shares', '</script>');
+  const edSrc = cut(bsrc, "addEventListener('keydown',e=>{if(mode!=='editor'", 'palette()}');
+  const fl = listed(KEYS.flight, KEYS.map, KEYS.all), ed = listed(KEYS.assembly, KEYS.all);
+  const missF = [...read(flightSrc), ...read(shared)].filter(k => !fl.has(k)), missE = [...read(edSrc), ...read(shared)].filter(k => !ed.has(k));
+  check('Help lists every key the flight and map handlers read', flightSrc.length > 500 && !missF.length, missF.join(' ') || `${fl.size} keys`);
+  check('Help lists every key the assembly handler reads', edSrc.length > 300 && !missE.length, missE.join(' ') || `${ed.size} keys`);
+  const dup = sc => { const L = (sc === 'assembly' ? [] : KEYS.flight.concat(sc === 'map' ? KEYS.map : [])).concat(sc === 'assembly' ? KEYS.assembly : [], KEYS.all).flatMap(r => r.k || []); return L.filter((k, i) => L.indexOf(k) !== i && !(sc === 'assembly' && k === 'escape')); };
+  const d = ['flight', 'map', 'assembly'].flatMap(dup);
+  check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
+  const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view=/atHQ= assignments outside it but their declarations)', goSrc && outside.length === 3, outside.join(' '));
+  // every Program section heading the page can write lands in a real tab, not "More"
+  const progTabOf = new Function('progName', cut(page, 'const progTabOf=', ';\nlet progTab') + ';return progTabOf')(() => 'Fenfen Space Agency');
+  const heads = [...html.matchAll(/class="ep">([A-Z][^<$]*)/g)].map(m => m[1].trim()).filter(h => !/^\.\*/.test(h));
+  const lost = [...new Set(heads.filter(h => progTabOf(h) === 'more'))];
+  check('every Program section heading has a tab (add new ones to progTabOf)', heads.length > 8 && !lost.length && progTabOf('Fenfen Space Agency · national agency') === 'company', lost.join(' | ') || `${heads.length} headings`);
+}
+
+// 33. Facilities (economy): the integration hall and the recovery fleet.
+{
+  const P = api.PROG; const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], fac: {} });
+  api.chooseStart('agency'); P.funds = 1000;
+  const stack = st => { P.day = 0; const x = api.newShip(st); api.S = x; x.landed = false; api.t = 0; const d0 = P.day; api.missionTick(x, 0, false); return { x, days: x.rec.prep }; };
+  const t0 = stack(api.PRESETS.Orbiter).days; api.buildFac('hall'); const tBuilding = stack(api.PRESETS.Orbiter).days; P.day = 500; api.advanceDays(1); const t1 = stack(api.PRESETS.Orbiter).days;   // (stack() resets the date)
+  check('integration hall: stacking takes less time once it is built (not while building)', Math.abs(tBuilding - t0) < 1e-9 && Math.abs(t1 / t0 - api.FAC.hall.eff[1]) < 1e-9 && api.facLv('hall') === 1, `Orbiter stacking ${t0.toFixed(1)} → ${t1.toFixed(1)} days at hall level 1`);
+  // the fleet: salvages stages that land at sea within range of the launch point, not on land or too far
+  api.buildFac('fleet'); P.day = 1000; api.advanceDays(1);
+  const { x } = stack(['pod', 't1', 'dec', 't8', 'kestrel']), stagePts = x.parts.filter(p => ['t8', 'kestrel'].includes(p.d.key)), pf0 = x.rec.launchPf, u0 = api.norm(pf0), near = api.norm([u0[0], u0[1] + 0.1, u0[2]]).map(v => v * api.TELLUS.R), far = api.norm([u0[0], u0[1] + 1.0, u0[2]]).map(v => v * api.TELLUS.R);
+  const R = { drops: [{ kind: 'sea', pf: near, parts: stagePts }, { kind: 'land', pf: near, parts: stagePts }, { kind: 'sea', pf: far, parts: stagePts }], launchPf: pf0 }, f0 = P.funds; api.fleetSalvage(R);
+  const got = P.funds - f0;
+  check('recovery fleet: one stage fished out at sea within range; the one on land and the one too far are lost', got > 0 && news.some(t => /1 stage fished out/.test(t)) && api.khUse('kestrel') > 0,
+    `+${got.toFixed(1)}M for a Kestrel stage ${(Math.acos(api.dot(api.norm(near), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km out (the other ${(Math.acos(api.dot(api.norm(far), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km away: out of range)`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {} });
+}
+
+// 34. Compute eras and trajectory studies (economy).
+{
+  const P = api.PROG; const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const setup = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], compEra: null });
+    api.chooseStart('agency'); P.funds = 1000; };
+  // eras follow the world date; a power arrives late by its access lag
+  setup('openSuper'); const e0 = api.compEra(); P.day = 3.5 * 400; const eOpen = api.compEra(), lagOpen = api.compLag();
+  setup('resource'); P.day = 3.5 * 400; const eRes = api.compEra(), lagRes = api.compLag();
+  check('compute eras: the world date brings mainframes; a resource state with no chip industry gets them late', e0 === 0 && eOpen === 1 && eRes === 0 && lagOpen === 0 && lagRes > 1,
+    `year 4.5: open superpower ${api.COMP_ERAS[eOpen].name} (lag ${lagOpen.toFixed(1)} yr), resource state ${api.COMP_ERAS[eRes].name} (lag ${lagRes.toFixed(1)} yr)`);
+  // a study: costs money, a launch waits for it, and it narrows the prediction error; another design isn't covered
+  setup('openSuper'); const s = api.newShip(api.PRESETS.Orbiter), q = api.studyQuote(s), e1 = api.predErr(s), f0 = P.funds;
+  const okOrder = api.orderStudy(s), paid = f0 - P.funds; api.S = s; s.landed = false; api.t = 0; api.missionTick(s, 0, false);
+  const waited = s.rec.studyWait, prep = s.rec.prep; api.advanceDays(0.01); const e2 = api.predErr(s), other = api.predErr(api.newShip(api.PRESETS.Sounding));
+  check('a trajectory study costs money and days (the launch waits for it, then stacks), and narrows the prediction error for that design only',
+    okOrder && Math.abs(paid - q.cost) < 1e-9 && Math.abs(waited - q.days) < 1e-9 && P.day >= q.days + prep && e1 === 0.3 && e2 === 0.1 && other === 0.3,
+    `Orbiter study ${q.cost.toFixed(1)}M, ${q.days.toFixed(0)} days + ${prep.toFixed(0)} stacking; ±${e1 * 100}% → ±${e2 * 100}% (a Sounding stays ±${other * 100}%)`);
+  // ordered ahead, while time passes, it costs no days at launch
+  setup('openSuper'); const s2 = api.newShip(api.PRESETS.Orbiter); api.orderStudy(s2); api.advanceDays(40); api.S = s2; s2.landed = false; api.t = 0; api.missionTick(s2, 0, false);
+  check('a study ordered ahead of time costs no days at launch', s2.rec.studyWait === 0 && api.predErr(s2) === 0.1, `waited ${s2.rec.studyWait} days`);
+  // the impact predictor reads the error as a drag-model error: an unstudied design's spread is wider; none once compute is cheap
+  setup('openSuper'); for (const k of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) P.atm[k] = 1;
+  const f = api.newShip(['pod']); api.S = f; f.landed = false; api.t = 0; const up = api.norm(f.r); f.r = api.add(f.r, api.mul(up, 60e3)); f.v = api.add(api.surfVel(api.TELLUS, f.r), api.add(api.mul(up, 300), api.mul(api.norm(api.cross([0, 1, 0], up)), 1500)));
+  const gc = (a, b) => Math.acos(Math.max(-1, Math.min(1, api.dot(api.norm(a.pf), api.norm(b.pf))))) * api.TELLUS.R / 1e3;
+  const sp = () => { const c = api.predictImpact(f), lo = api.predictImpact(f, -1), hi = api.predictImpact(f, 1); return Math.max(gc(lo, c), gc(hi, c)); };
+  const raw = sp(); P.studies = { [api.studyKey(f)]: { err: 0.1 } }; const studied = sp(); P.day = 15 * 400; const cheap = sp();
+  check('impact spread: an unstudied design lands in a wider spread than a studied one, and cheap compute makes it exact (all air bands sampled)', raw > studied * 2 && studied > 0 && cheap < 1e-6,
+    `±${raw.toFixed(1)} km unstudied, ±${studied.toFixed(1)} km studied, ${cheap.toFixed(3)} km with cheap compute`);
+  // the computing centre: studies faster, the program ahead of its power
+  setup('resource'); P.day = 3.5 * 400; const sR = api.newShip(api.PRESETS.Orbiter), d0 = api.studyQuote(sR).days; api.buildFac('centre'); P.day += 100; api.advanceDays(0.01);
+  check('computing centre: faster studies and a year ahead of our power', api.compEra() === 1 && api.studyQuote(sR).days < d0, `resource state, year 4.8: ${api.COMP_ERAS[api.compEra()].name}; study ${d0.toFixed(0)} d → ${api.studyQuote(sR).days.toFixed(0)} d`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {}, studies: {}, studyQ: [], compEra: null, atm: {} });
+}
+
+// 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
+// stand on (atan μ), softness changes the speed the ground forgives, boulders or trees add to the effective speed.
+{
+  const D = Math.PI / 180, R = TELLUS.R, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  const want = { ice: null, grip: null, sand: null, basalt: null, rain: null };
+  for (let la = -80; la <= 80; la += 0.5) for (let lo = -180; lo < 180; lo += 0.5) {
+    const u = U(la, lo), b = api.biomeAt(u); if (b.h < 0) continue;
+    const sl = api.terrainSlope(TELLUS, u), su = api.surfaceAt(TELLUS, u), hit = api.surfaceHit(su, u);
+    if (!want.ice && b.id === 1 && sl > 0.14 && sl < 0.35) want.ice = { u, sl, su };
+    if (!want.grip && b.id !== 1 && su.name === b.name && su.mu >= 0.5 && hit === 0 && sl > 0.14 && sl < Math.min(api.TOPPLE, Math.atan(su.mu)) - 0.02) want.grip = { u, sl, su };
+    if (!want.sand && b.id === 10 && su.name === b.name && hit === 0 && sl < 0.1) want.sand = { u, sl, su };
+    if (!want.basalt && b.id === 12 && su.name === b.name && hit === 0 && sl < 0.1) want.basalt = { u, sl, su };
+    if (!want.rain && b.id === 8 && su.name === b.name) want.rain = { u, sl, su }; }
+  // set a pod down, upright, just above the ground, coming down at v m/s
+  const drop = (spot, v, stack = ['chute', 'pod'], steps = 2500) => { api.t = 0; const s = api.newShip(stack); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
+    s.r = api.fromPF(TELLUS, mul(spot.u, R + api.groundAlt(TELLUS, spot.u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(api.surfVel(TELLUS, s.r), mul(up, -v)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+    let p0 = null; for (let i = 0; i < steps && s.alive && !s.landed; i++) { api.physStep(s, api.DT); if (!p0 && s.inContact) p0 = api.toPF(TELLUS, s.r, api.t); }
+    const moved = p0 ? len(sub(api.toPF(TELLUS, s.r, api.t), p0)) : 0, Y = api.qrot(s.q, [0, 1, 0]), lean = Math.acos(Math.min(1, dot(Y, norm(s.r)))) / D;
+    return { s, last, moved, lean }; };
+  const ice = drop(want.ice, 2, ['chute', 'pod'], 500), grip = drop(want.grip, 2);
+  check('contact: on a slope ice cannot hold (μ 0.1) the pod slides; on grippier ground at a steeper pitch it comes to rest, leaning with the slope',
+    api.SURF.length === api.BIOMES.length && ice.s.alive && !ice.s.landed && ice.moved > 3 && grip.s.landed && grip.moved < 1.5 && Math.abs(grip.lean - want.grip.sl / D) < 4 && grip.s.landSurface.name === want.grip.su.name,
+    `ice at ${(want.ice.sl / D).toFixed(0)}°: slid ${ice.moved.toFixed(1)} m in 10 s · ${want.grip.su.name} at ${(want.grip.sl / D).toFixed(0)}°: ${grip.last} (moved ${grip.moved.toFixed(2)} m)`);
+  const sand = drop(want.sand, 13.5), basalt = drop(want.basalt, 10.5), flatRain = drop(want.sand, 10.5);
+  check('surfaces: sand forgives 13.5 m/s; basalt does not forgive 10.5 m/s, which sand takes in its stride',
+    sand.s.landed && !basalt.s.alive && flatRain.s.landed, `sand: ${sand.last} · basalt: ${basalt.last}`);
+  // boulders/trees: the share of hit cells follows the biome's roughness, and the same spot always gives the same answer
+  const su = want.rain.su, f = api.siteFrame(want.rain.u); let hits = 0, same = true;
+  for (let k = 0; k < 2000; k++) { const q = norm(add(want.rain.u, add(mul(f.e, (k % 50) * 37 / R), mul(f.n, Math.floor(k / 50) * 37 / R))));
+    const h = api.surfaceHit(su, q); if (h > 0) { hits++; if (h < 2 || h > 6) same = false; } if (h !== api.surfaceHit(su, q)) same = false; }
+  check('surfaces: rainforest cells have trees at its roughness (60%), adding 2–6 m/s, deterministically', Math.abs(hits / 2000 - su.rough) < 0.05 && same,
+    `${(100 * hits / 2000).toFixed(0)}% of 2,000 cells (roughness ${su.rough * 100}%)`);
+  // snow: cold, gentle ground on a non-ice biome is snow (μ 0.3, +3 m/s); Selene's regolith has boulders in 15% of cells
+  let snowFlat = null, snowSteep = null;
+  for (let la = -80; la <= 80 && !(snowFlat && snowSteep); la += 0.5) for (let lo = -180; lo < 180 && !(snowFlat && snowSteep); lo += 0.5) {
+    const u = U(la, lo), sv = api.surfaceAt(TELLUS, u); if (sv.name !== 'snow') continue; const sl = api.terrainSlope(TELLUS, u);
+    if (!snowFlat && sl < 0.1 && api.surfaceHit(sv, u) === 0) snowFlat = { u, sl, su: sv };
+    if (!snowSteep && sl > 0.33 && sl < 0.4 && api.surfaceHit(sv, u) === 0) snowSteep = { u, sl, su: sv }; }
+  const sf = drop(snowFlat, 14.5), ss = drop(snowSteep, 2, ['chute', 'pod'], 500);
+  let mh = 0; for (let k = 0; k < 2000; k++) { const q = U(-60 + (k % 40) * 0.3, (k / 40 | 0) * 0.7); if (api.surfaceHit(api.SURF_MOON, q, api.SELENE) > 0) mh++; }
+  check('surfaces: snow forgives 14.5 m/s on the flat but cannot hold a 19–23° slope; Selene has boulders in ~15% of cells',
+    sf.s.landed && ss.s.alive && !ss.s.landed && ss.moved > 3 && Math.abs(mh / 2000 - 0.15) < 0.04,
+    `snow flat: ${sf.last} · snow at ${(snowSteep.sl / D).toFixed(0)}°: slid ${ss.moved.toFixed(1)} m in 10 s · Selene ${(100 * mh / 2000).toFixed(0)}% boulder cells`);
+  // tipping: a tall, narrow rocket (the Orbiter: 1.25 m base, CoM ~5 m up) set down gently stands on the flat but goes over on a
+  // slope its footprint can't span, however grippy the ground
+  let tiltSpot = null;
+  for (let la = -60; la <= 60 && !tiltSpot; la += 0.5) for (let lo = -180; lo < 180 && !tiltSpot; lo += 0.5) {
+    const u = U(la, lo), sv = api.surfaceAt(TELLUS, u); if (sv.mu < 0.5 || api.surfaceHit(sv, u) > 0) continue; const sl = api.terrainSlope(TELLUS, u);
+    if (sl > 0.2 && sl < 0.3) tiltSpot = { u, sl, su: sv }; }
+  const tallFlat = drop(want.sand, 1, api.PRESETS.Orbiter), tallSlope = drop(tiltSpot, 1, api.PRESETS.Orbiter);
+  check('contact: the Orbiter set down at 1 m/s stands on the flat and topples on a 12–17° slope (its footprint is narrow)',
+    tallFlat.s.landed && !tallSlope.s.alive && /Toppled/.test(tallSlope.last), `flat: ${tallFlat.last} · ${tiltSpot.su.name} at ${(tiltSpot.sl / D).toFixed(0)}°: ${tallSlope.last}`);
 }
 
 function moonPos(t) { return api.moonPos(t); }

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.16.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1059,6 +1059,342 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.39 — real ground contact; snow and Selene boulders (2026-10-08, terrain session)
+
+The three things v1.37 left out. Vessels no longer snap upright when they touch: they slide, tip, bounce and come to
+rest.
+
+**Contact dynamics** (`footPoints`, `groundNormal`, `groundContact`, `touchdown`, `groundCheck`):
+- **Contact points:** 4 per part whose foot is within 0.5 m of the lowest point, around that part's own axis. So side
+  boosters widen the footprint.
+- **Ground force per point:** a spring-damper along the terrain normal. Stiffness gives 2 cm of static deflection at
+  Earth gravity on *every* body; with local gravity, tiny Nyx would let a 2 m/s touchdown sink over a metre. ζ 0.6.
+- **Friction:** Coulomb, μ from the surface under that point, regularised to stop within ~2 steps.
+- **They are part forces:** they go into `p.F`/`p.L` like aero and thrust, so landing loads reach the joints and the
+  structural checks.
+- **The speed verdict** (`touchdown`) happens at first touch and is judged under the vessel's centre. Its base spans
+  more than one boulder cell, so judging at the first rim point made the result depend on timing.
+- **Outcomes:**
+  - tilting past 60° while touching: "Toppled over on a 12° slope of taiga";
+  - the nose in the ground: a crash;
+  - at rest (< 0.15 m/s, < 0.03 rad/s) for 0.5 s, and not while the engines push (a slow liftoff is not a landing):
+    landed, pinned in the attitude it came to rest in ("leaning 19°");
+  - the sea keeps the old upright splashdown.
+- **Measured:**
+  - a pod set down on a 13° ice slope slid 65 m in 10 s; theory g(sin θ − μ cos θ) gives 62 m;
+  - a pod on 19° taiga comes to rest leaning 19°;
+  - the Orbiter (1.25 m base, CoM ~5 m up) set down at 1 m/s stands on the flat but topples on a 12° slope, as
+    atan(r/h) predicts;
+  - a TWR-1.05 liftoff climbs without being re-landed.
+  - Every flown landing already in the suite (chutes, Selene, Nyx, the plateau drop) passes unchanged.
+- **The ship's ground shadow** lies on the terrain's own plane, so it reads correctly on slopes.
+
+**Snow** is a surface where the shader paints it: a non-ice biome colder than ~−3 °C at that height, on slopes under
+~38° (μ 0.3, +3 m/s, boulders mostly buried). **Selene regolith** has boulders in 15% of cells.
+
+**`touchV` is the measured speed again.** v1.37 had made it the effective one, boulders included, and mission rules
+read it: Nyx's "under 3 m/s" saw 5.6. Now `s.touchHit` holds what boulders or trees added, and only the refurbishment's
+wear adds it in (`missionEnd`, one token in economy code).
+
+**What it means for play:** without landing legs a tall rocket's footprint is its bottom rim, so it tips on slopes of
+roughly atan(r/h_cm): ~7–12° for an upper stage, ~30° for a squat pod. That's real, and it makes **landing legs** a
+natural next part (a wider footprint is just more contact points: `footPoints` would pick up a leg part's feet). Parts
+are the planning session's domain; suggest it there.
+
+**Tests:** `test.mjs` §25 rewritten for emergent outcomes, 5 checks (243 total after merging):
+- ice and steep snow slide (distance);
+- grippy ground holds, leaning with the slope;
+- speed limits;
+- boulder share;
+- the Orbiter stands on the flat and topples on a slope.
+
+**Not yet:** legs; bouncing debris (debris still dies on contact); wheels and rolling; Selene's boulders as terrain
+(they only change the verdict); a contact sound and dust.
+
+## v1.38 — compute eras and trajectory studies (2026-10-08, economy session)
+
+The first slice of "Compute — a resource across eras" (design in "Rich programs" below).
+
+- **Eras follow the world date** (`COMP_ERAS`), by program year:
+  - human computers;
+  - mainframes (3);
+  - onboard computers (7);
+  - cheap compute (14);
+  - the AI boom (25).
+  
+  Each era has a world price index `cpi` (100 → 20 → 5 → 1 → 4: scarce, abundant, scarce again), shown now and to
+  be used by datacenters later. A news item marks each new era reaching the program.
+- **Access lag by power** (`compLag`), like parts sourcing: own industry (4 yr × (1 − industry)), else a friendly
+  supplier (0.5 + 1.5 × (1 − openness) yr), else the grey market (4 yr). A sanction shuts the supplier's door.
+  Measured at world year 4.5: the open superpower is on mainframes (lag 0), the resource state still on human
+  computers (lag 1.6 yr).
+- **Nudges:** a **computing centre** (a new facility: 40M / 90 days, then 120M / 180 days) makes studies ×0.6 / ×0.4
+  as long and puts the program 1 / 2 years ahead of its power. Every level also nudges the world forward by 0.25 yr
+  (the program contributes to the frontier).
+- **Trajectory studies** (`orderStudy`), per exact design (part counts, like autopilot tapes):
+  - **cost and time** come from the era, ×√(cost/50M) clamped to 0.5–3. An Orbiter with human computers: 3.5M, 28 days;
+  - **one at a time**, in order (`PROG.studyQ`);
+  - **a launch waits for its own design's study, then stacks** (`R.studyWait`), so studies add days. One ordered
+    ahead, while other things fly, costs none: planning ahead pays.
+- **What a study buys: precision.**
+  - Unstudied, a design's predictions carry the era's raw error: ±30% with human computers, ±15% with mainframes,
+    ±5% with onboard computers, exact after that.
+  - Studied, they carry the era's studied error: ±10%, ±4%, exact.
+  - The impact predictor reads it as a drag-model error (`predErr`, added to the unsampled-band ±25%). The landing
+    spread widens, and range safety takes the whole spread. So an unstudied early flight near cities is constrained.
+    Measured on a fully sampled atmosphere: ±7.2 km unstudied, ±2.2 km studied, 0 with cheap compute.
+- **Compute never blocks flying:** you can always fly unstudied.
+- **Cross-scope lines (flagged):**
+  - `predictImpact` adds `pe`;
+  - the app's spread no longer vanishes on a sampled atmosphere while `predErr(S)` > 0;
+  - `progTabOf` maps the new "Compute" heading to Industry (UI session's map).
+- **UI:**
+  - Assembly shows "Trajectory: unstudied ±30% [Study 3.5M, 28 d → ±10%]", or "in the office, ready in N d", or
+    "studied";
+  - a self-contained `computeHTML()` section (era, the world, lag, predictions, the office queue);
+  - the centre appears in Facilities.
+  
+  Checked in the app: ordering charges the cost and the line changes, with no console errors.
+- **Not yet:**
+  - planning's tool gating and map error bars, which read `predErr` / `compEra()`;
+  - onboard computers as parts (builder);
+  - the career runner ordering studies;
+  - datacenter revenue on `cpi`.
+
+`test.mjs` §34: 5 new checks. §14's spread check now gives its probe an exact study, so it measures only the air.
+
+## v1.37 — surfaces: what the ground is like to land on (2026-10-08, terrain session)
+
+The touchdown verdict used to be the same everywhere: under 12 m/s and tilted < 34° → landed, unless the slope was
+over 24°. Now it depends on the biome under the ship (`SURF`, indexed like `BIOMES`).
+
+| Surface | μ | Stands up to | Softness (m/s) | Boulders/trees (share of cells) |
+|---|---|---|---|---|
+| sea | — | — | +2 | 0 |
+| ice | 0.10 | 5.7° | 0 | 0 |
+| tundra | 0.45 | 24° | +1 | 5% |
+| taiga | 0.50 | 24° | 0 | 35% (trees) |
+| steppe | 0.55 | 24° | +1 | 3% |
+| temperate forest | 0.50 | 24° | 0 | 40% (trees) |
+| grassland | 0.55 | 24° | +1 | 2% |
+| cold desert | 0.55 | 24° | +1 | 8% |
+| rainforest | 0.50 | 24° | 0 | 60% (trees) |
+| savanna | 0.55 | 24° | +1 | 5% |
+| hot desert (sand) | 0.45 | 24° | +3 | 2% |
+| alpine | 0.60 | 24° | 0 | 30% |
+| volcanic (basalt) | 0.70 | 24° | −2 | 30% |
+| salt flat | 0.60 | 24° | 0 | 0 |
+| wetland | 0.30 | 16.7° | +4 | 5% |
+| launch pad (within 2 km of a site) | 0.80 | 24° | 0 | 0 |
+| Selene regolith | 0.60 | 24° | +1 | 0 (for now) |
+
+- **Slope:** a vessel stands on slopes up to atan(μ), never past `TOPPLE` (24°). Steeper ground: "Slid down a 13° slope
+  of ice and toppled" (or the old "Toppled over" past 24°).
+- **Speed:** the crash limit is `TOUCH_MAX` (12 m/s) plus the softness.
+- **Boulders and trees** (`surfaceHit`): a cell (~20 m) of rough ground adds 2–6 m/s to the effective touchdown speed.
+  It is decided by an integer hash of the cell, so it's deterministic and tapes replay the same. The effective speed is
+  what `touchV` (and so the refurbishment's wear) sees. 2–6 m/s, not more: a normal parachute landing (~5 m/s) on rough
+  ground mostly costs wear; a fast one crashes.
+- **Reported:** the landing message names the surface (and trees or boulders when hit), the HUD's radar altitude says
+  what's below ("above hot desert"), and `s.landSurface` = `{name, id, hit}` is set at touchdown for the economy's
+  mission record (biome science, recovery).
+- **Tests:** `test.mjs` §25, 3 checks (236 total):
+  - ice at 13° slides where taiga holds at 19°;
+  - sand forgives 13.7 m/s, basalt not 11;
+  - rainforest has trees in 59% of 2,000 cells against its 60% roughness, deterministically.
+- **Not yet:** ~~contact dynamics, snow cover, Selene boulders~~, all done in v1.39 (§ v1.39).
+
+## v1.36 — balance pass 3: the money sinks in simulated careers (2026-10-08)
+
+`career.mjs` now plays the stand, development and facilities. Variant `all` = lines + a prudent investor (`invest()`):
+- it builds the hall, the fleet and the stand;
+- it qualifies the least-known of its six most-used parts while that part is under 70% know-how;
+- it develops parts it has flown ≥ 5 times (cheaper → reliable → durable);
+- it always keeps a 250M reserve (`RESERVE=`).
+
+Other runner changes:
+- `INV=hall|fleet|test|dev` runs one sink at a time;
+- drops now carry their parts and a sea impact point, so the fleet is simulated.
+
+Agency starts, 6 years, 5 seeds. Final funds are in M, and the noise is roughly ±400M between policies.
+
+**Results**
+
+| archetype   | lines only | all (old) | all (tuned) | hall only | tests only | dev only |
+|---|---|---|---|---|---|---|
+| openSuper   | 1193 | 293  | 785  | 759  | 1106 | 1240 |
+| closedSuper | 1744 | 986  | 1094 | 3039 | 1663 | 2221 |
+| rising      | 1565 | 333  | 553  | 1581 | 731  | 1016 |
+| frugal      | 861  | 622  | 313  | 825  | 470  | 542  |
+| resource    | 908  | 1003 | 477  | 1218 | 1158 | 549  |
+| security    | 2914 | 2944 | 1594 | 4010 | 2718 | 2159 |
+
+(The hall, test and dev columns are after tuning.)
+
+- **The pile-up is absorbed.** Strong programs put 1.4–2.6B into sinks over six years and end at 0.8–1.6B instead
+  of 1.2–2.9B. Weak programs stay solvent: frugal and resource end at 300–500M, with as many top-ups as without
+  investing.
+- **What the money buys:**
+  - flights: closedSuper 68 → 106, security 79 → 99 (the hall);
+  - fewer failures for the weak: frugal 13 → 9%, resource 14 → 10%;
+  - more contracts done.
+- **Before tuning, the hall was a money machine.** Time is a busy program's bottleneck: +1,900M back for 210M.
+- **Before tuning, tests and development were near-pure losses:**
+  - qualification taught ~1% on a part already flown (a stand run counted as "seen before", exactly like a flight);
+  - development cost 5 × price × (1 + tier) × (1 + level) against a 12% price cut, so it rarely paid back.
+- **The fleet is about neutral.** Salvage roughly pays for the ships. Left as is.
+
+**Tuning**
+
+- **Hall:** 90M / 220M (was 60 / 150); stacking ×0.8 / ×0.65 (was ×0.75 / ×0.55). It still pays well for busy
+  programs (+1,100 to +1,300M), and is neutral for weak ones.
+- **Stand learning:** a campaign never counts for less than half a fresh regime (`STAND_NOV=0.5`; `khLearn` takes
+  `novMin`). A qualification on a well-flown part now teaches ~3–4% instead of ~1%. Fewer runs are needed, since the
+  runner's runs fell from 61 to 52 for closedSuper.
+- **Development:** costs ~3 × price × (1 + tier) × (1 + level) (was 5). A workhorse part's cheaper level now breaks even
+  around 25 × (1 + tier) units. Its net effect is roughly neutral for superpowers and a cost for weak programs.
+
+**Emergent loop.** A redesign costs know-how (−0.1), the runner then requalifies the part on the stand, and then
+develops it again. That's how real programs work: a new mark means a new qualification. Average know-how sits ~10
+points lower in programs that keep redesigning.
+
+**Open:**
+- the runner is one prudent policy, not a good player; weak programs would do better being choosier;
+- support packages still provisional;
+- sinks for the very rich (prestige projects, ground stations) are still on the backlog.
+
+`test.mjs`: the hall check now reads `FAC.hall.eff[1]` instead of a literal.
+
+## v1.35 — facilities: integration hall and recovery fleet (2026-10-08)
+
+One-off investments you upgrade, with no upkeep (`FAC`, `buildFac`, `facTick`). While an upgrade is being built, the
+facility keeps working at its old level.
+
+- **Integration hall:** level 1 is 60M / 60 days, stacking ×0.75; level 2 is 150M more / 120 days, stacking ×0.55 (as
+  if two vehicles were stacked side by side). Measured: an Orbiter's stacking time, 36.4 → 27.3 days at level 1.
+- **Recovery fleet:** level 1 is 50M / 90 days (800 km, 35%); level 2 is 120M more / 120 days (1,500 km, 60%). Ships
+  salvage spent stages that come down at sea within range of the launch point (`R.launchPf`), for that share of
+  their dry price × REFURB × load/heat wear (not the splash: they're salvaged for parts), minus 2M ship time each. A
+  little know-how too (the "land" regime at 0.3 weight). Measured: a Kestrel stage 127 km out, +2.3M at level 1. A
+  stage on land, or one 1,001 km out, is lost.
+- **Plumbing:** the app's debris hook now passes the dropped parts and their impact point to `missionDrop`. The career
+  runner's drops carry no parts, so the fleet isn't simulated there yet.
+- **UI:** `facilitiesHTML()`, a self-contained section called once from `renderProgram`, so the UI session can move it
+  into a tab (flagged in ACTIVE_WORK).
+
+`test.mjs` §33: 2 new checks.
+
+## v1.34 — development projects (2026-10-07)
+
+The design bureau improves parts the program makes. The variants-vs-upgrades decision is still on hold, so this slice
+uses only goals that don't touch shared part definitions or physics.
+
+- **Goals** (`DEV_GOALS`), up to three levels each, stored in `PROG.dev[k]`:
+  - *cheaper*: unit price −12% per level (`devPriceK`, for home-made and own-line parts);
+  - *more reliable* (engines only): ignition failures ×0.6 per level;
+  - *more durable*: wear ×0.75 per level, so more of the value comes back after a hard flight. Measured at 90% load:
+    44% → 72% at mark 2.
+- **Who can develop:** only parts we make (home industry or our own line). Not imports, and not licensed lines (the
+  design belongs to the licensor). That's the "develop only what you build" option from the design notes, easy to
+  relax later.
+- **Needs:** know-how of the part ≥ 50 / 65 / 80% for levels 1 / 2 / 3 (a Kestrel off a brand-new own line: 41%, not
+  yet). Cost ~5 × price × (1 + tier) × (1 + level) (3× since v1.36); 30 + 20·tier days × (1 + 0.5·level); one project at a time
+  (`PROG.devJob`, ticked daily).
+- **A redesign is a new design:** certification −0.1 (floor 50%) and know-how −0.1, to be won back by flying or testing.
+- **UI:** a Development section in the Program panel with the running project, or the three goals per part we make,
+  with cost, days and the reason when a goal isn't possible.
+- **Not yet:**
+  - performance goals (thrust, Isp, mass), pending the variants decision;
+  - licensing our designs to others;
+  - the career runner using development;
+  - stand data counting directly toward a project (today it counts through know-how).
+
+`test.mjs` §31: 3 new checks; 226 total.
+
+## v1.33 — the test stand (2026-10-07)
+
+A first capital investment: a one-off facility with no upkeep, chosen by the player.
+
+- **Building it:** 40M and 60 days (`buildStand`), stored in `PROG.stand2` (`PROG.stand` already holds the contract
+  sources' standing).
+- **Campaigns** (`startTest`, ticked daily by `standTick`), one at a time. Each buys a unit of the part at its current
+  sourced price and burns 1.5M a day.
+  - *Qualification run* (10 + 10·tier days): the regimes a stand can reproduce (fly, structural load, heat, and burn for
+    engines), learned at 60% of a flight's weight; certification rises as if the part had been loaded to 60%. A stand
+    never teaches vacuum or orbit. Measured: a frugal power's Kestrel, 48M over 20 days → know-how 20 → 29% (a flight
+    through the same regimes: +14.5 points), certified 70 → 85%.
+  - *Test to destruction* (5 + 5·tier days): certified 100% (true limits known), a little know-how, the unit destroyed.
+    A Condor: 60M over 15 days.
+- `khLearn(R, w)` takes a weight; ground tests use 0.6.
+- **UI:** a Test stand section in the Program panel: build, construction progress, the running campaign, and Qualify /
+  To destruction buttons for parts in the current design or already known.
+- **Not yet:** the career runner doesn't use the stand, so its effect on balance is untested. Development projects (the
+  next sink) can build on it: stress data from the stand counts toward a part's history.
+
+`test.mjs` §30: 3 new checks; 223 total.
+
+## v1.32 — balance pass 2: know-how, lines and support in simulated careers (2026-10-07)
+
+`career.mjs` now plays the new systems:
+- upper-stage ignitions can fail by know-how (a first-stage failure is a scrub);
+- each abstracted flight records the regimes its parts went through, so the game's own `khLearn` runs;
+- three policies, picked with `node career.mjs [years] [seeds] [base|lines|support] [starts]`:
+  - *base:* buy everything;
+  - *lines:* license or build a line for any part flown three times, if 120M stays in reserve;
+  - *support:* a runner-only model of support packages (fee 1.5× the part's price on first purchase; that part
+    starts at 45% use).
+
+**What it found:**
+1. **Know-how grew far too fast.** Each regime added its own step, and an orbital flight passes through about nine, so
+   one flight took a part from 20% to ~85% (90–96% for every program after a year; zero ignition failures). My v1.30
+   check only exercised three regimes, which hid it. Now **one step per flight**: Δuse = (1 − use)·(1 −
+   e^(−0.05·Σ novelty)). Measured on a Kestrel through the same three regimes ten times: +11, +5, +3 … +0.8 points, 48%
+   after ten. Varied orbital flights reach the high 70s in about ten. (This supersedes the v1.30 numbers.)
+2. **Weak agencies bled.** Running costs exceeded a neutral budget day, so frugal/resource agencies needed 7–22 top-ups
+   in 3 years: the upkeep misery Caio warned about. Running costs are now 0.06 + 0.015·capacity M/day, the budget day
+   15M per 100 days, and the agency and consortium starts 80M. Top-ups in 3 years: 0.7–4.7 (frugal leanest).
+3. **Lines didn't pay back.** At 8× price setup they never did within 3 years. Now 4× price × (1 + tier), and
+   maturity +12% per unit. Over 6 years (2 seeds), agencies' final funds without → with lines: rising 1,668 → 1,854M;
+   frugal 356 → 661M (it affords 59 flights instead of 32); security 1,698 → 2,488M; but resource 1,174 → 698M. A
+   resource state with no industry is better off buying. That's the archetype doing its job, and buying and building
+   coexist as designed.
+4. **Support packages are a real trade-off** (3 years): resource 332 → 737M and frugal 367 → 455M, but rising
+   830 → 579M and security 885 → 571M. Good for import-dependent programs, a drain for others. It stays provisional,
+   now with evidence that it's a choice and not a dominant strategy.
+
+**Still open:** superpowers reach 2,400–3,300M by year 6. Money sinks for the strongest programs are the next job:
+test stands and development projects.
+
+## v1.31 — production lines (2026-10-07)
+
+The second visible number per part: production. Learning to manufacture a part is different from buying it.
+
+- **Setting up a line** (`prodQuote`, `startProdLine`): about 8 × the part's price × (1 + tier), and 40 + 30·tier days to
+  tool up.
+  - *Own line* (reverse-engineering): needs real know-how of the part (use ≥ 40%), so you have to fly it first.
+  - *License*: from a supplier that makes it, is friendly (relation > 0.2) and isn't sanctioning us. 60% of the cost,
+    70% of the time, starts at 30% maturity instead of 5%, and pays the licensor 10% royalty per unit (their opinion
+    rises).
+  - Measured, Kestrel for a frugal power: own line 192M / 70 days; license from Ordun 115M / 49 days.
+- **Maturity** (the learning curve, `prodUnits`): every unit built at launch adds 8%·(1 − m). Price per unit runs from
+  ×1.25 (new line) to ×0.75 (mature), plus 0.1 if licensed (`prodLineK`). Measured: pod + tank + Kestrel imported
+  38.9M → first line units 35.6M → after 25 units 30.6M (88% maturity).
+- **Quality:** an immature line's engines fail to ignite more often (×(2 − m)). A first, simple form of the part-quality
+  idea.
+- **Building it teaches it:** line parts start with more know-how (+0.2 + 0.2·m) and certification (CERT0 − 0.2·(1 − m)).
+- **Lines belong to the country:** `sourceOf` prefers a working line of ours, so sanctions don't touch it (a license keeps
+  running), and after a defection the old home's lines are no longer ours.
+- **UI:** a Production section in the Program panel lists our lines (tooling up / maturity / units / price) and, for each
+  part bought abroad in the current design, "Own line" and "License from …" buttons with cost, days and the reason when
+  it isn't possible. Know-how labels show "own line, maturity N%" or "licensed line".
+- **Found while building:** my first `lineOf` collided with the builder's `lineOf(nd)` (a JS function declaration
+  silently replaces an earlier one with the same name), which broke `assemble()`. Mine are now `prodLine`,
+  `prodLineK`, `prodQuote`, `startProdLine`, `prodUnits`.
+- **Not yet:** the career runner doesn't build lines yet; supplier quality beyond line maturity; vertical integration
+  across tiers.
+
+`test.mjs` §26: 3 new checks.
+
 ## v1.30 — know-how (2026-10-07)
 
 The first slice of the parts-progression design ("The whole parts system, assessed"): owning a part is not knowing how
@@ -1559,7 +1895,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29). Next: surface properties by biome (friction, softness, boulders) for the touchdown verdict, then the remaining slice-B follow-ups in § v1.27.
+0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29); ~~surface properties by biome~~ done in v1.37 (§ v1.37). Next: the slice-B follow-ups in § v1.27, then slices C–E.
 1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
@@ -1648,6 +1984,42 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
+
+The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
+
+- **Parts.** *Crew capsule* (`crew`): a pod-kind part (so it's a command part, the root of the tree and drawn as the pod)
+  with `crew: 2`, 1.4 t, 30M. *Escape tower* (`les`): a solid motor, 150 kN for 3 s, 0.6 t, 6M. Its thrust was picked so a
+  pad abort stays under the 8 g limit: (150 kN on ~2.1 t) ≈ 7 g.
+- **Abort** (Backspace, recorded on the autopilot tape as `['A']`): everything below the capsule is dropped (`detach`), the
+  tower's thrust goes into `physStep`'s force sum along the axis, and at burnout it's jettisoned and the chute armed. On a
+  nominal flight, the tower is jettisoned at the first staging above 30 km.
+- **Crew rule.** Flight safety puts **people** aboard only once the tower is qualified (the max-q abort); before that the
+  capsule flies test dummies, whose g and cabin are measured all the same. Crew limits are the passenger's (8 g averaged
+  over 1 s, cabin 330 K), plus 10 days of air. A lost or hurt crew is a big opinion hit (`failHit −20`), and a closed regime
+  hushes it up.
+
+| Mission | Pays | Needs | What the sim checks |
+|---|---|---|---|
+| Pad abort test | 60M | passenger orbit | abort under 200 m, capsule lands intact, < 8 g |
+| Max-q abort test | 90M | pad abort | abort at **≥ 15 kPa**, capsule lands intact, < 8 g; qualifies the tower |
+| Crew around Selene | 300M | max-q abort, far side | crewed capsule in Selene's SOI, then home safe |
+| Crew on Selene | 600M | crew around, soft landing | crewed landing on Selene (< 4 m/s), then home safe |
+
+**Measured** (§25, 6 checks):
+
+| Abort | Conditions | Apex | Peak g | Landing |
+|---|---|---|---|---|
+| Pad | 4 m up | 840 m | 6.8 | 6.4 m/s under the chute |
+| Max-q | 18 kPa, 1.9 km up (straight up at full throttle) | 4.5 km | 6.1 | 6.4 m/s |
+
+Also checked: no abort without a tower; the automatic jettison above 30 km; after qualification the capsule is crewed and a
+trip into Selene's SOI and home completes "Crew around Selene"; a crashed crewed capsule loses its crew. The Big Lunar preset
+(lander, heat shield, return) is the natural base for the crewed landing: swap its pod for a crew capsule and add a tower.
+
+**Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
+"Other"); crew transfer and EVA; a crewed preset.
+
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
 Built from the economy's epoch plan: utility satellites that keep doing a job. Weather and TV are flight missions (read by
@@ -2588,6 +2960,31 @@ Two halves launched together (or a module you just released) can now dock to eac
 - **Not yet:** a vessel docked into a stack and saved at the end of the flight comes back next time as a passive part of
   the stack (A2: vessels that stay flyable across flights).
 
+### Phase B built: the cargo bay (sats session, 2026-10-07)
+
+- **Part:** *Cargo bay* (palette *Structure*): a floor (its stack height, 0.25 m), walls 4 m tall (1.6 m across, 1.4 m
+  inside: room for 1.25 m modules), and a clamshell roof of two doors. Payloads stack on its floor the ordinary way, so
+  the editor needed nothing new; a part on top of the bay sits *inside* it. Its centre of mass is up the walls (`cm`).
+- **Enclosure** (`assemble`, next to the interstage's): a part is in the bay (`p.inBay`) if it sits on the floor within
+  the walls and under the roof; anything sticking out stays exposed. Geometric, so it doesn't matter where the root is.
+- **Shielding:** while the doors are shut, enclosed parts are out of the airflow entirely (no air load, no heating; the
+  bay's outline is its whole closed shape, roof included). From the moment the doors are told to open until they're
+  shut again, the payload is exposed and the bay's outline has no roof. Measured: 0 vs 123 kN on the payload at 400 m/s,
+  8 km up. (First version left it shielded after opening: the outline was rebuilt at 0 % open.)
+- **Doors:** 2 s to open or close on the flight clock (deterministic, recorded: tape op `['B', op]`); key **B** or the
+  HUD's *Bay* row. A reversal mid-swing continues from where the doors are. The mesh is rebuilt while they move.
+- **Release** (HUD button, doors fully open): the payload leaves through the top along the bay's axis at 0.3 m/s,
+  momentum shared, as a vessel whether or not it has a command part (*Payload N* otherwise, so a satellite released
+  from a bay doesn't vanish as debris). Refused with the doors shut, or if the vessel's own command part is inside.
+- **Contact:** the bay is hollow (walls, floor, a roof only while shut), so the payload slides out without touching it:
+  15 s later it's still parting at 0.3006 m/s, its base clear of the rim.
+- Checks (`test.mjs` §29): enclosure; shielding shut vs open; release refused shut, then a vessel at 0.3000 m/s with
+  momentum exact; a clean exit; a payload without a command part is a vessel; the hollow contact shape. Browser: the
+  bay in the editor, doors opening, release, the payload leaving.
+- **Not yet:** the arm taking a payload out (Phase D), or putting one back in for the trip home (retrieval); a side-
+  opening shuttle-style bay (needs an "inside" attach in the editor); a 2.5 m bay; the doors' look (they read a little
+  oddly mid-swing, for the visuals session); the editor doesn't yet say whether a payload fits.
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -3131,6 +3528,205 @@ pressure.
   Kepler legs through the star's SOI, so the propagator already handles them.
 - Warp: transfers take months; rails warp is exact at any rate, but the top step (1e5×) may need another notch.
 
+## Rich programs: projects, waste heat and routine runs — design (2026-10-08, economy session with Caio; nothing built)
+
+**The problem.** The v1.36 balance pass made sinks absorb strong programs' money, but sinks aren't goals. A rich program
+stays fun only if money isn't enough. It should need flights, logistics, time and physics it has to solve. So
+megaprojects are **built by flying them there, piece by piece**, never bought with a button. Wealth becomes launch
+rate, and launch rate is the core game.
+
+### A ladder of projects (near → far)
+
+1. **Ground:**
+   - ground stations and antenna arrays. These exist on the planning branch, where contact time drives imagery
+     sales; arrays for deep space come next.
+   - more pads and launch sites (terrain did sites; the economy's site-access hook is still to build);
+   - factories, which tie into production lines.
+2. **Tellus orbit:**
+   - propellant depots (reach through launch rate: fuel up in orbit, go further);
+   - large stations from modules (the sats session's plan, phases A–E);
+   - **orbital datacenters**, a revenue stream that brings in waste heat (below).
+3. **Selene and beyond** (bodies session):
+   - colonies, where windows and transfer times turn money into planning;
+   - mining resources on site: water becomes propellant and feeds the depots;
+   - a mass driver on Selene (the O'Neill step: material up cheaply).
+4. **Heliocentric** (the steps short of a Dyson sphere):
+   - asteroid capture and mining (material that never fought Tellus's well);
+   - building in space (structures too big to launch);
+   - space solar power beamed down (sold to the world);
+   - large stations in solar orbit for power or compute, a miniature swarm.
+
+### Waste heat — the physics that scales with ambition
+
+In space, heat leaves only by radiation: P = εσAT⁴.
+- **Radiators:** at 300 K a two-sided radiator sheds ~0.8 kW/m², so 1 MW of compute needs ~1,200 m².
+- **Solar panels:** at Tellus's distance they give ~300 W/m² of electricity, so the same 1 MW needs ~3,300 m².
+- **A datacenter is therefore mostly panels and radiators.** Its mass, and so its launch count, is set by thermal
+  design.
+- **Running hotter shrinks radiators as 1/T⁴,** but chips get worse: a real trade-off with a sweet spot to find.
+- **Attitude and orbit matter:**
+  - radiators must face away from the sun;
+  - a dawn-dusk sun-synchronous orbit avoids eclipse (no batteries);
+  - closer to the sun there's more power but it's harder to stay cool. That's the heliocentric stations' core tension.
+- **The same limit comes back everywhere:**
+  - nuclear-electric propulsion is bounded by its radiators;
+  - habitats dump life-support heat;
+  - deep-space probes need heaters instead.
+
+**Mechanic, in steps:**
+1. A **steady-state temperature per vessel**, calculated directly with no time stepping:
+   - heat in: absorbed sunlight α·A·S/r² plus internal power;
+   - heat out: εσAT⁴;
+   - parts get operating ranges (electronics, crew, propellant boil-off);
+   - radiators and solar panels are parts with area and mass per m²;
+   - the builder shows "this design runs at 340 K, above the chips' limit".
+2. A **transient model** later (heat capacity, eclipses, burns).
+
+The flight sim already has a per-part skin thermal pass for re-entry (radiation, plus convection since the capsule fix).
+Orbital thermal is a separate, slower system, but it can share the radiation term.
+
+### Routine runs — automation, and pads as the scarce resource
+
+Refuelling a station or resupplying a datacenter is fun once and tedious the tenth time. **A route you've flown
+becomes a routine run** that the program flies on a schedule, with no player in the loop.
+
+What exists:
+- **autopilot tapes**, one per exact design and sim version, replaying a recorded flight deterministically ("tapes
+  replay identically");
+- the **logbook** keeps a record flight's design and tape.
+
+Both still need you watching in real time. What doesn't exist is concurrency. **The program is serial today:** each
+launch advances the one calendar by its stacking days (`R.prep`), so pads aren't a resource yet.
+
+**Proposal:**
+- **A routine** = design + tape + site + target, valid while the design and sim version match. It's created from a
+  flight that completed the job.
+- **Resolved without the physics (cheap).** The tape's measured result (cargo delivered, Δv margin) is the outcome, and
+  risk comes from what isn't deterministic: ignition rolls from know-how, certification and part wear. A failure costs
+  the vehicle and the cargo, never the destination.
+- **Optional:** a full headless re-simulation as an audit when something changes (new sim version, rescaled planet).
+- **Launch windows.** A rendezvous needs the target's phase and plane, so a routine's slots follow its target's window
+  cycle. Windows times pads is a scheduling puzzle.
+- **Pads become slots on a calendar.** Each launch occupies a pad for stacking, launch and pad turnaround (bigger
+  rockets wear the pad more). Manual flights and routines compete for the same pads.
+  - The integration hall becomes stacking capacity (bays), separate from pads.
+  - More pads, more sites and faster turnaround are what rich programs buy.
+  - The UI wants a Gantt view of the pads (UI session).
+- **No upkeep misery.** A project left without its routine **pauses** (stops earning or producing); it never decays
+  or dies. Routines are how a project earns, not a tax on owning it.
+- **Routine operations get cheaper** with repetition (ops know-how, like production-line maturity) and earn little
+  prestige, so firsts stay manual and memorable.
+- **Contracts too.** Repeatable contracts (satellite deployments, resupply, crew rotation from the sats plan) can be
+  handed to a routine once flown once.
+
+### Compute — a resource across eras (decided with Caio, 2026-10-08)
+
+First slice built in v1.38: eras, access lag, the computing centre, trajectory studies.
+
+
+Compute is the cause behind two existing ideas:
+- "the tools only know what the program knows" (the planning branch's logbook and era maps);
+- the avionics generations from the parking lot.
+
+Today both are gated by milestones. With compute behind them, eras have a cause and the economy has something to trade.
+
+**The arc: scarce, then abundant, then scarce again.**
+1. **Human computers.** A trajectory study is an order: money **and days** (it adds to prep time, since timing is a
+   core mechanic), with coarse precision. The map shows only what has been computed, with wide error bars, and a
+   changed plan means a new study.
+2. **Mainframes.** A computing centre is a facility, time-shared and queued but faster and more precise. Compute can
+   also be rented abroad, so sanctions reach it.
+3. **Onboard computers** (the Apollo guidance computer step):
+   - compute on the vessel, at a cost in mass and power;
+   - out of contact with a ground station, a vessel can only do what its own computer can, which gives ground
+     stations a second job;
+   - onboard autonomy gates the autopilot features and routine runs.
+4. **Abundance.** Planning is instant and precise: the modern UI.
+5. **The AI era.** World demand explodes and compute is scarce again, at a world price. Ground datacenters hit limits
+   on power, cooling and permits, and **space datacenters become viable** for programs whose cost per kg to orbit is
+   low enough. That threshold isn't scripted: it falls out of the player's reusability, lines and pads, and the
+   waste-heat physics sets the kg needed per MW.
+
+**Decided:**
+- **What drives the eras:** the **world date**, with nudges. The world's technology advances on its own; the program
+  can speed it up (contributing to the frontier), and powers differ (closed powers push domestic compute, open ones buy
+  abroad, frugal ones live longer in careful hand-planning).
+- **Studies add days,** not only money and precision.
+
+**Rules:**
+- **Compute never blocks flying.** You can always fly without a study and accept bigger error bars, which is how the
+  early era should feel.
+- **Compute is a facility and a market, not a fourth wallet** next to money, data and know-how.
+- **Chips are an industrial good** with home, import or grey-market sources, like parts. Export controls on compute are
+  a lever between powers.
+- **Automation arrives with compute,** so a career changes feel from hands-on to managed.
+
+**Owners:**
+- **planning:** tool gating, prediction precision and error bars, the era look;
+- **economy:** the computing centre, study orders and their days, the world compute price, chip sourcing and
+  sanctions, datacenter revenue;
+- **builder:** onboard computers as parts.
+
+### How the economy plugs in
+
+- **Projects are staged construction:** a bill of modules, each delivered by a flight to the right orbit or surface.
+  Progress stops when deliveries stop.
+- **Some projects earn:** datacenters sell compute (by uptime, power and temperature), space solar sells power, depots
+  sell fuel, including to other powers.
+- **Consortia.** Big projects can be co-funded by several powers: shares, defections, and sanctions that freeze a
+  half-built station.
+- **Prestige for the firsts:** first depot, first colony, first megawatt in orbit.
+
+### Proposed order and owners
+
+0. **Compute eras** (below the ladder in time, but they gate routines and datacenters): the world compute era and study
+   orders first, with planning.
+1. **Economy: the routine and the pad calendar.** This changes the time model from serial to concurrent; the career
+   runner and the UI need to follow.
+2. **Ground antenna arrays** for deep space (planning).
+3. **The orbital datacenter with steady-state thermal:**
+   - radiator and panel parts (builder);
+   - the thermal solve (physics: builder's or a new session);
+   - revenue (economy).
+4. **Depots** (sats Phase C), then Selene mining and heliocentric projects (bodies).
+
+## Platform direction: native desktop later, the browser for now (Caio, 2026-10-08)
+
+**Decision.** The finished game is a **native desktop** app; the browser was the experimental start. For now, keep the
+single HTML file with no build step: rapid iteration and the parallel sessions matter more than raw speed at this
+stage. Note the port's considerations here, don't act on them yet.
+
+**Where the time goes today** (RTX 3050, 1024×768, measured 2026-10-07):
+- **The GPU dominates.** The sky and terrain shader costs ~3–9 ms a frame (worst: low views across rugged terrain);
+  ~2–2.6 ms without terrain. That's GLSL and algorithm-bound. A native port helps only through what a native GPU API
+  allows (compute shaders, bindless textures, async compute), not through the CPU language.
+- **CPU per frame** is ~0.3–2 ms.
+- **The CPU costs that hurt are bursty:**
+  - page load ~1.5–1.8 s (world generation, sites, cities);
+  - prediction and warp loops;
+  - the test suite.
+
+**Cheap wins before any port:**
+- world generation in a worker, or baked on the GPU, and cached;
+- no small-array allocations in the vector maths of hot loops (`add`/`sub` return new arrays: GC churn);
+- typed arrays in hot loops.
+
+**When native pays:**
+- the simulation becomes the bottleneck: many vessels, n-body everywhere, part-level physics, big debris fields,
+  long warps with physics on;
+- a real desktop build. Likely Rust with wgpu, which also opens compute shaders for terrain and generation.
+
+**How to keep the port cheap, starting now:**
+- **The SIM block stays pure** (no DOM/GL). It is the part that ports mechanically.
+- **The headless checks are the oracle.** A port of `physStep`, `kepler` or `makeWorld` must reproduce their numbers.
+  Golden fingerprints of world generation and flights (LESSONS #16) make that exact.
+- **Shaders:** GLSL ES 3.00 translates to WGSL/SPIR-V almost line by line. Keep shader logic in plain functions, as
+  the terrain code is (`hgtG`, `terr`, `march`).
+- **CPU/GPU parity tricks carry over unchanged.** Integer hashes, `texelFetch` with your own weights, a hand-written
+  `atan2`, float64 on the CPU with camera-relative float32 on the GPU (§ v1.25).
+- **Piecemeal is possible even before the full port.** A hot kernel can move to WebAssembly behind the same function
+  signature, with the JS version kept as the reference.
+
 ## Precision tricks worth keeping
 
 - **Ray–sphere in float32 at 2 m above a 600 km planet.** The CPU sends `cc = (d−R)(d+R)` in
@@ -3142,8 +3738,147 @@ pressure.
 - **Log depth** is written per fragment (`gl_FragDepth = log2(1+w)·Fc/2`). The vertex shader writes
   a matching log z, so nothing gets near/far clipped.
 
+## UI: screens and navigation — spec (2026-10-07, ui session with Caio; nothing built yet)
+
+**The problem.** The app has two screens (`mode` = editor/flight) plus a `view` toggle for the map. Everything else
+was added to whichever panel was nearest when it got built. The whole career (ownership, contracts, race, ground stations,
+satellites, 5 epochs, world, know-how) sits in the Assembly left panel, above the parts. The career start and choices
+that expire are mixed into that same panel, and nothing stops a launch. A flight has no debrief: `missionEnd` results
+only show up as truncated `#news` lines. `#info` can grow past 20 rows and run into `#stages`. `#help` and `#nodep` share
+a spot. Revert and Assembly leave a flight with no confirmation. `R` does three things depending on context. Many actions
+can only be done with a key. `#news` and `#perf` are visible on every screen.
+
+**Decisions (Caio, 2026-10-07):** Program becomes its own screen. Rollout becomes a checkpoint before launch. The flight
+HUD is a core plus cards that appear on demand.
+
+### The map
+```
+ Program (HQ) ──▶ Assembly ──▶ Rollout ──▶ Flight ⇄ Map
+     ▲   ◀────────────┘   ◀────────┘          │
+     └──────────── Debrief ◀──────────────────┘
+ Overlays on any screen: Logbook (L) · Help (H, shows the current screen's keys) · Esc menu
+```
+One state variable, `screen` ∈ `program | assembly | rollout | flight | map | debrief`, with a single `go(screen)` that
+shows and hides layers and decides which keys work. `mode`/`view` stay as derived aliases until every caller has been
+switched over (additive first). Overlays are a stack: Esc closes the top one; with nothing open, Esc opens the Esc menu.
+
+### What each screen shows (and doesn't)
+- **Program**, the home screen, entered at load:
+  - Header: date, funds, standing, and an Inbox badge.
+  - Tabs: **Inbox** (decisions with their deadlines, contract offers, news since the last visit), **Missions** (epochs),
+    **Contracts** (active, board, race), **Fleet** (satellites in orbit, ground stations, docked craft), **World**
+    (powers, relations, sanctions, election), **Know-how** (bars plus "What we know"), **Company** (ownership, shares, reset).
+  - First run: a full-screen "Whose program?" then "How does it start?" choice. It must be made before anything else.
+  - Exits: **Build** goes to Assembly; **Logbook**.
+  - *Not here:* parts, the ship.
+- **Assembly**, building only:
+  - A thin strip at the top: funds, date, Inbox count, ← Program.
+  - Left: the parts palette and presets. Right: the toolbar, staging, and the selected part's options. Below that, a
+    short summary (Δv and TWR per stage, total, cost against funds). Stability, loads and the long aero text fold into a
+    collapsed "Aero & structure" block.
+  - Exit: **Roll out ▶**.
+  - *Not here:* contracts, missions, the site picker.
+- **Rollout**, the checkpoint (it can be a panel over the ship on the pad):
+  - Site picker and its description.
+  - The contracts and missions this flight can satisfy.
+  - Cost, days to stack, and the ops fee.
+  - Warnings: over budget, site refused or doesn't fit, TWR < 1, unstable, unanswered decisions.
+  - Exits: **Launch** or ← Assembly.
+  - Owns `renderSites`, which leaves Assembly (as NOTES § v1.27 asked).
+- **Flight**:
+  - Fixed core (top left): MET, altitude (radar altitude when low), vertical speed, speed, Ap/Pe, stage and total Δv.
+  - Bottom: navball, throttle, SAS. Bottom left: stages.
+  - Cards appear in a right-hand column while their condition holds, and each can be pinned:
+    - **Ascent** (Mach, AoA, q, heat, structure), while in air with q above a threshold or heat rising;
+    - **Target** (target, closest approach, line-up, docking), while a target is set;
+    - **Payload** (passenger, instruments, contracts), during payload events and on demand;
+    - **Fleet** (vessels, switching), when more than one vessel exists;
+    - **Bay/Claw/Port**, while armed.
+  - The column is capped in height; the oldest unpinned card collapses first.
+  - Top right: Map, warp (shown *and* clickable), ☰ (the Esc menu).
+  - *Gone from the HUD:* Revert, Assembly, Save tape and Logbook, which move to the Esc menu.
+- **Map**:
+  - Orbit information (Ap/Pe, period, inclination, SOI, encounter), the node panel, target info, and a focus body picker
+    (clickable as well as Tab).
+  - The navball shrinks to a heading readout; the cards hide except Target.
+- **Debrief**, entered when a flight ends (landed, crashed, in orbit and you choose "End flight", or Revert/Assembly
+  from the Esc menu):
+  - Sections, in order: outcome, pay, refurbishment, damages, certifications, records, incidents, and the know-how gained.
+  - Exits: **Program**, **Assembly** (same design), **Fly again**.
+  - `missionEnd` returns a summary record and Debrief renders it, instead of results going to `#news`.
+
+### Overlays and keys
+- **Esc menu:** Resume, Revert to launch, Back to Assembly, End flight (a confirmation shows what you lose), Save
+  autopilot tape, Settings (modern look, perf readout off by default, which keys).
+- **Help** is generated from one key table per screen, so it can't drift from the handlers. One table, two consumers.
+- **Keys:**
+  - `L` logbook.
+  - `R` is only revert, after landing or a crash. RCS moves to `V`. The editor's radial decoupler keeps `R` (screens
+    don't share keys).
+  - `F5` quicksave stays out of scope.
+- **`#news`:** shown in Flight and Program only. In Program its lines go into the Inbox.
+
+### Slices
+1. The `screen` state, `go()`, the overlay stack and Esc, and per-screen key tables that feed Help. No visible changes
+   apart from Help and Esc.
+2. The Program screen: move the `renderProgram` sections into tabs, with the first-run gate. Needs the **economy** and
+   **bodies** sessions told; they own those render functions. The HTML they produce moves into tabs; their code stays.
+3. Debrief: `missionEnd` → summary record → screen.
+4. Flight cards and the core; the Map trims the HUD.
+5. Rollout: the site picker and checks move out of Assembly; then trim the Assembly right panel.
+
+Each slice merges to `main` on its own. test.mjs gets a check per slice: every screen reachable from every other along
+the arrows, and every key in the handlers present in its Help table.
+
+### Slice 1 built (2026-10-07): screen state, overlays, keys
+- `screenNow()` names the screen (`assembly | flight | map` so far). `go(s)` is now the only code that assigns
+  `mode`/`view`: LAUNCH, Assembly, Revert, `R` and `M` all go through it. test.mjs §32 fails if a `mode=`/`view=`
+  assignment appears anywhere else.
+- `KEYS` holds one table per screen plus `all`; each row is `{k: e.key names, l: label, d: what it does}`. The Help
+  overlay (`#help`, now centred and outside `#hud`, so it no longer covers `#nodep`) is generated from it, for
+  whichever screen you're on. Map shows its own rows, then Flight's. §32 reads every `k==='…'` and `keys.has('…')` in the
+  flight, shared and builder key handlers and fails if one isn't listed, or if a key means two things on one screen.
+  **Anyone adding a key: add its row to `KEYS`.**
+- Overlays (`escm`, `help`, `logbook`) stack. Esc closes the top one; with none open it opens the Esc menu (`#escm`,
+  also the ☰ button). In Assembly, a part in hand or a selected part keeps Esc for the builder. The menu has Close, and
+  during a flight Revert, Back to Assembly and Save as autopilot, then Logbook, Keys, and a performance-readout checkbox
+  (`#perf` is now off by default; localStorage `launchpad-perf`). Revert and Back to Assembly ask twice while
+  the ship is in the air; on the pad or after landing they act at once.
+- Keys: `H` help and `F` logbook work on every screen. **The logbook is on F, not L as planned: L is held for RCS
+  translate.** RCS on/off moved from R to **V**; `R` in flight is only revert.
+- Not done yet: the top bar still has Revert/Assembly/Logbook/Save as autopilot (slice 4 takes them off). The Esc menu
+  does not pause the game. That's still open: KSP pauses, and here warp would have to drop to 1× and then come back.
+
+### Slice 2 built (2026-10-08): the Program screen
+- The page opens on **Program** (`#prog`), a panel over the ship waiting on the pad. Header: date and funds, Logbook,
+  **BUILD ▶** (or `B`). Assembly gets back with `P`, the "← Program" button in its new top strip (date, funds, Inbox
+  count), or the Esc menu. Internally `mode` stays `'editor'` and `atHQ` hides the Assembly panels. Only `go()` sets it
+  (§32), and builder.js's key handler ignores keys while `atHQ` is set.
+- Rows in `KEYS` can carry `go:'<screen>'`; the shared key handler acts on them, so screen keys need no handler code.
+- **How sections reach tabs.** `renderProgram` (economy/bodies) is unchanged and still writes one column into a hidden
+  `#program`. A wrapper calls `progLayout()` after it, which moves each section into a tab according to its heading
+  (`progTabOf`):
+  - Inbox: decisions with deadlines (always first), contract offers.
+  - Missions: the epochs.
+  - Contracts: active contracts, standing, the race.
+  - Fleet: ground stations, in orbit.
+  - World.
+  - Industry: know-how, test stand, facilities, development, production, what we know.
+  - Company: ownership, shares, history, reset.
+
+  A heading it doesn't know goes to a "More" tab. **§32 fails if any `class="ep">Heading` literal in the page would land
+  there.** Whoever adds a section adds its heading to `progTabOf`. Click handlers are delegated on `document`, so moving
+  the nodes doesn't break them.
+- **First run gate:** while "Whose program?" / "How does it start?" are showing, Program shows only that choice and Build
+  is disabled (and `go('assembly')` refuses). This closes "nothing makes you choose before launching".
+- Not yet: Inbox doesn't collect news (the `#news` ticker still runs as before); the Assembly right panel is untouched
+  (slice 5); the CoM/CoP markers still draw behind the Program panel.
+
+---
+
 ## Picking this up cold
 
+- **Direction:** native desktop eventually, the browser for now (§ "Platform direction"). Keep the SIM pure: it is what ports.
 - Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
   extracts it with `new Function` and drives it headless. Keep that boundary.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
