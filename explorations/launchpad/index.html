@@ -3194,18 +3194,20 @@ layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uLo,uHi;uniform f
 void main(){vL=mix(uLo,uHi,aP*.5+.5);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
 const IMP_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
-uniform vec3 uLo,uHi,uCam,uIP,uCo,uMa,uVa,uSo;uniform vec4 uK,uIg;uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform sampler3D uN;
+uniform vec3 uLo,uHi,uCam,uCo,uMa,uVa,uSo;uniform vec4 uK,uIg,uIP[4];uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform int uNH;uniform sampler3D uN;
 void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
  float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
- const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
+ const int N=28;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
  vec3 C=vec3(0.),Tr=vec3(1.);
  for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float h=p.y;if(h<0.)break;
-  vec2 q=p.xz-uIP.xz;float rho=length(q),a=p.z,re=uRe;
-  float th=re*(.45+.2*rho/re),sp=exp(-rho/(re*3.2))*exp(-h/th)*(1.-.6*uCh);
+  // the splash round each impact (uIP[k] = x, z, jet strength); q, rho: the nearest, for the swirl and the cooling
+  float a=p.z,re=uRe,sp=0.,rho=1e9;vec2 q=vec2(0.);
+  for(int k=0;k<4;k++){if(k>=uNH)break;vec2 qk=p.xz-uIP[k].xy;float rk=length(qk);sp+=uIP[k].z*exp(-rk/(re*3.2))*exp(-h/(re*(.45+.2*rk/re)));if(rk<rho){rho=rk;q=qk;}}
+  sp*=1.-.6*uCh;
   float cm=uCh*smoothstep(3.6,2.4,abs(p.x))*smoothstep(-1.,4.,a),thc=1.3+.1*max(a,0.),ch=cm*exp(-max(a,0.)/35.)*exp(-h/thc);
   if(sp+ch<.003)continue;
   vec2 dr=q/max(rho,1e-3);float n1=texture(uN,vec3(p.x,p.y*1.5,p.z-uT*14.*uCh)*.18-vec3(dr*uT*1.2*(1.-uCh),0.).xzy).r,n2=texture(uN,vec3(p.xz*.5,p.y*.8-uT*2.).xzy+.3).r;
-  float d=uW*(sp+ch)*(.15+1.5*n1*n2),tau=mix(exp(-rho/(re*3.)),exp(-max(a,0.)/12.),ch/(sp+ch+1e-4));
+  float d=(sp+uW*ch)*(.15+1.5*n1*n2),tau=mix(exp(-rho/(re*3.)),exp(-max(a,0.)/12.),ch/(sp+ch+1e-4));
   vec3 e=uI*(uCo*uK.x*.15*tau*tau*tau+uMa*2.2*tau*(1.+uIg.w)+uVa*.4*tau)*d*(1.-.85*min(1.,uIg.r+uIg.g+uIg.b))+uIg.rgb*1.5*tau*d;   // + the igniter's flash, fuel-rich start
   C+=Tr*e*st;Tr*=exp(-(uSo*uK.w*1.4*(1.-tau)+uOp*.3*tau+.08)*d*st);if(max(Tr.r,max(Tr.g,Tr.b))<.02)break;}
  vec3 c=pow(1.-exp(-C),vec3(1./1.5));float al=1.-dot(Tr,vec3(.333));o=vec4(c,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
@@ -3461,16 +3463,23 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniform3fv(u.uPlC,PLT.c);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
+// one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).
+// Drawing one per engine overdrew the whole flame channel once per engine: ~6 ms for the Heavy's three on the pad.
+const IPA=new Float32Array(16);
 function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(CUBE.vao);
   const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
-  for(const h of hits){const P=h.P2,ip=loc(h.P),Rs=h.re*9,H=h.re*4+(G.pad?5:2),
-      lo=[ip[0]-Rs,0,ip[2]-Rs],hi=[ip[0]+Rs,H,ip[2]+Rs];if(G.pad){lo[0]=Math.min(lo[0],-4.2);hi[0]=Math.max(hi[0],4.2);hi[2]=Math.max(hi[2],38)}
-    const inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
-    gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3fv(u.uIP,ip);
-    gl.uniform3fv(u.uCo,P.co);gl.uniform3fv(u.uMa,P.ma);gl.uniform3fv(u.uVa,P.va);gl.uniform3fv(u.uSo,P.so);gl.uniform4fv(u.uK,P.K);gl.uniform1f(u.uOp,P.op);
-    gl.uniform4fv(u.uIg,h.ig||[0,0,0,0]);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.max(h.w,.7*(h.ig?h.ig[3]:0)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,h.re);
-    gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,CUBE.n)}
+  hits.sort((a,b)=>b.w*b.re*b.re-a.w*a.re*a.re);const H4=hits.slice(0,4),top=H4[0],P=top.P2;
+  let lo=[1e9,0,1e9],hi=[-1e9,0,-1e9],W=0,re=0,ig=[0,0,0,0];IPA.fill(0);
+  H4.forEach((h,k)=>{const ip=loc(h.P),Rs=h.re*9,w=Math.max(h.w,.7*(h.ig?h.ig[3]:0));IPA.set([ip[0],ip[2],w,0],k*4);
+    lo=[Math.min(lo[0],ip[0]-Rs),0,Math.min(lo[2],ip[2]-Rs)];hi=[Math.max(hi[0],ip[0]+Rs),Math.max(hi[1],h.re*4+(G.pad?5:2)),Math.max(hi[2],ip[2]+Rs)];
+    W=Math.max(W,w);re=Math.max(re,h.re);if(h.ig)for(let c=0;c<4;c++)ig[c]=Math.max(ig[c],h.ig[c])});
+  if(G.pad){lo[0]=Math.min(lo[0],-4.2);hi[0]=Math.max(hi[0],4.2);hi[2]=Math.max(hi[2],38)}
+  const inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
+  gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);gl.uniform4fv(u['uIP[0]'],IPA);gl.uniform1i(u.uNH,H4.length);
+  gl.uniform3fv(u.uCo,P.co);gl.uniform3fv(u.uMa,P.ma);gl.uniform3fv(u.uVa,P.va);gl.uniform3fv(u.uSo,P.so);gl.uniform4fv(u.uK,P.K);gl.uniform1f(u.uOp,P.op);
+  gl.uniform4fv(u.uIg,ig);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.min(1.3,W*(.7+.3*H4.length)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,re);
+  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,CUBE.n);
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the

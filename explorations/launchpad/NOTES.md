@@ -1003,6 +1003,31 @@ Reference views: `refView(73)` the Orbiter's Kestrel 0.15 s after cutoff at 3 km
 `76` staging at 30 km; `77` the Heavy dropping its side boosters. They climb unrendered, reset the engines' ignition
 clocks (else the first render would replay their ignition), then render every step through the action and freeze.
 
+## Performance pass: all the engine and air FX together (2026-10-07, aerofx session)
+
+Each effect had been measured alone. The heaviest scene: the Heavy at night, ~10 m up (three plumes on the pad, the
+ground cloud, plume light, floodlights). 1280×800, RS 1, RTX 5050 laptop. Frame frozen; each configuration removes one
+effect; the configurations are interleaved over 4 rounds (alternating order) after a 6 s warm-up; median of the middle two.
+
+| configuration | before | after |
+|---|---|---|
+| all on | 30.0 ms | 25.9 ms |
+| without plume light | 29.7 | 25.7 |
+| without the impingement volume | 24.0 | 24.2 |
+| without smoke | 27.6 | 23.7 |
+| without plumes (and so impingement) | 23.0 | 23.2 |
+| all off | 20.9 | 21.1 |
+
+- **The fix:** the impingement volume was drawn once per engine, and on the pad every copy's box spans the whole 38 m
+  flame channel, so the Heavy marched the channel three times (~6 ms). Now one volume holds up to 4 impact points
+  (`uIP[4]`: x, z, jet strength); the splashes sum, the channel takes the strongest jet (× 0.7 + 0.3 per extra engine,
+  capped), the propellant is the strongest engine's. Then 40 → 28 steps, with no visible change (side-by-side at view 60):
+  ~6 → 1.7 ms.
+- Total for the FX in this scene: 9.1 → 4.8 ms. What's left: smoke ~2.2 ms (big puffs overdrawing near the camera; the
+  trail predates this session), plumes ~1 ms for three, impingement 1.7, plume light ~0.2.
+- **Measuring on this laptop:** the GPU idles at 0 MHz and ramps its clock under load, so back-to-back samples drifted by
+  ±10 ms and removing an effect could read slower. A warm-up plus interleaved rounds gave spreads under 0.5 ms.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
