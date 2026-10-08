@@ -1235,6 +1235,28 @@ widens and fades over ~1.2 s, lit like the smoke. Fin rings and radial fins both
 - Reference views `refView(101)` an 8° pull and `102` a 15° pull at 1.5 km, the camera square to the turn. They hold the
   attitude, since the sim weathervanes back within a second.
 
+## Spent stages re-entering (2026-10-09, aerofx session)
+
+Dropped stages (debris) now heat up and glow on the way down, render-side (`debrisHeat`, `DEBH`): a stagnation heat flux
+per piece from its speed through the air (Sutton–Graves with its widest radius as the nose, the same `SG`/`HEAT_GAIN` as
+the ship), smoothed over 0.5 s. Above 15 kW/m² it gets:
+- **the ship's plasma**, now a function, `drawPlasma(VP, camW, body, pos, q, all)`, drawn per hot piece within 20 km (the
+  piece's geometry from `debrisGeo`; `hullProfile(s, all)` takes detached parts);
+- **char** on its parts (the flight-marks `char`, windward), so a recovered or photographed stage is scorched;
+- **sparks** shed from it (`fxPuff`) and a **dark smoke trail** (planet-fixed puffs, thin at altitude).
+
+What you see depends on the case. A stage dropped during the climb is far below and behind by the time it heats, and
+debris more than 40 km from the ship is removed, so mostly you won't. A stage dropped just before re-entry (a tank or
+service module shed above the atmosphere) comes in beside the capsule. A light empty tank brakes much harder than a
+capsule: in the reference case it is 55 m away at 82.5 km, 360 m at 78 km and 1.8 km at 72 km, while its heating rises
+from 34 to 67 kW/m². Hot and close only briefly.
+
+Reference views `refView(103)` (82.5 km, the stage 55 m behind) and `104` (80 km), the camera beyond the capsule looking
+back along the capsule→stage line.
+
+**Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
+state, and this pass is render-only.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
