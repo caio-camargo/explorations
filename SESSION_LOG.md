@@ -1978,6 +1978,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   program (studies, buildings, budget days, elections, eras, deadline and decision warnings), and Wait moves the
   calendar event by event, stopping where you're needed. Design note: planning before the flight (the study is the
   plan). All tests pass. Merged to `main` (`36ae7ad`).
+- **v1.44 (2026-10-08, economy worktree):** staged pay for long missions. Missions to Selene and Nyx pay 20% when
+  a flight is on course (its predicted trajectory enters the body's sphere of influence), 20% on arrival and the rest
+  on completion, for the same total; crewed missions only on crewed flights; advances kept if the flight fails. All
+  tests pass. Merged to `main` (`54c8c9f`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
