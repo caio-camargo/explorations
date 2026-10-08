@@ -2390,6 +2390,47 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('a narrow rocket keeps the old service position; a wide one gets the gantry stopped further back', zOrb === -3.3 && zCL < -3.3, `Orbiter ${zOrb} m, Crewed Lunar ${zCL?.toFixed(2)} m`);
 }
 
+// 39. Selene tidally locked; rover power and contact (sats session, rovers R3). Own sim instance.
+{
+  const D = new Function(src + 'return {rvNew,rvRun,rvPowerStep,rvSunPF,bodyTheta,bodyOmega,rvFieldTick,rvContact,rvCommand,rvEntry,bodyRel,bodyPos,fromPF,surfVel,SELENE,TELLUS,PROG,HOOK,DAY_S,get orb(){return ORB_T0},set orb(v){ORB_T0=v}};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {};
+  const B = D.SELENE, P = D.PROG, orbit = 2 * Math.PI / B.n;
+  // locked: the near side (planet-fixed −X) faces Tellus all orbit; a spot's sun goes round once an orbit; the ground moves
+  let worst = 1, lo = 1, hi = -1; for (let i = 0; i < 24; i++) { const t = orbit * i / 24, w = D.fromPF(B, [-1, 0, 0], t), toT = norm(sub(D.bodyPos(D.TELLUS, t), D.bodyPos(B, t)));
+    worst = Math.min(worst, dot(w, toT)); const s = dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, t))); lo = Math.min(lo, s); hi = Math.max(hi, s); }
+  const ve = len(D.surfVel(B, [B.R, 0, 0]));
+  check('Selene is tidally locked: its near side faces Tellus all orbit, a day there lasts an orbit, its ground moves', worst > 1 - 1e-9 && lo < -0.95 && hi > 0.95 && Math.abs(ve - B.R * Math.abs(D.bodyOmega(B))) < 1e-6 && ve > 5,
+    `near side off Tellus by ${(Math.acos(Math.min(1, worst)) * 180 / Math.PI).toExponential(1)}°; a day of ${(orbit / 3600).toFixed(0)} h; the equator moves at ${ve.toFixed(2)} m/s`);
+  const p0 = D.bodyRel(B, 5000)[0]; D.orb = 12345; const p1 = D.bodyRel(B, 5000 - 12345)[0]; D.orb = 0;
+  check('the moons run on program time: a flight that starts later finds them further along', len(sub(p0, p1)) < 1e-6, `${len(sub(p0, p1)).toExponential(1)} m`);
+  // power at a near-side spot: panels charge it by day; without panels or an RTG it freezes in the night; an RTG keeps it going
+  const mk = (slots, E = 1, pf = [-B.R, 0, 0]) => { const R = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots }, B, pf, [0, 1, 0], {}); R.name = 'x'; R.sleep = true; R.E = R.Emax * E; return R; };
+  const run = (R, t0, t1) => { for (let t = t0; t < t1; t += 600) D.rvPowerStep(R, 600, D.rvSunPF(B, D.bodyTheta(B, t))); };
+  let noon = 0; while (dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, noon))) < 0.99) noon += 600;
+  const a = mk(['cam', 'bat', 'ant', 'sol', null], 0.5), e0 = a.E; run(a, noon - 6 * 3600, noon + 6 * 3600);
+  const b = mk(['cam', 'bat', 'ant', null, null], 0.2), c = mk(['cam', 'bat', 'ant', 'rtg', null], 0.2); run(b, noon, noon + orbit); run(c, noon, noon + orbit);
+  check('rover power: panels charge it by day; with no panels and no RTG it freezes in the night; an RTG keeps it going', a.E > e0 && b.dead && !c.dead && c.E > 0,
+    `+${((a.E - e0) / 3.6e6).toFixed(2)} kWh around noon; froze: ${b.dead}; with the RTG ${(c.E / 3.6e6).toFixed(2)} kWh after an orbit`);
+  // between flights: one with panels lives through Selene's nights; one without freezes, and the news says so
+  P.rvOut = [{ ...D.rvEntry(mk(['cam', 'bat', 'ant', 'sol', null])), name: 'Panels' }, { ...D.rvEntry(mk(['cam', 'bat', 'ant', null, null])), name: 'NoPanels' }];
+  D.rvFieldTick(0, 40 * D.DAY_S);
+  check('between flights a rover with panels lives through Selene\'s nights; one without freezes, and the news says so', !P.rvOut[0].dead && P.rvOut[1].dead && news.some(m => /NoPanels froze/.test(m)),
+    `40 days: Panels ${(P.rvOut[0].E / 3.6e6).toFixed(2)} kWh; NoPanels froze`);
+  // contact: the near side talks home directly (a light-time round trip late); the far side can't; without a high-gain
+  // antenna it needs a relay in sight (a lander 1 km away, but not 6 km: over the horizon)
+  const near = mk(['cam', 'bat', 'ant', 'sol', null]), far = mk(['cam', 'bat', 'ant', 'sol', null], 1, [B.R, 0, 0]), lg = mk(['cam', 'bat', null, 'sol', null]);
+  const rel = km => [{ body: B, pf: mul([-Math.cos(km * 1e3 / B.R), 0, Math.sin(km * 1e3 / B.R)], B.R), h: 4, name: 'Lander' }];
+  const cN = D.rvContact(near, 0, []), cF = D.rvContact(far, 0, []), c0 = D.rvContact(lg, 0, []), c1 = D.rvContact(lg, 0, rel(1)), c6 = D.rvContact(lg, 0, rel(6));
+  const lt = 2 * len(sub(D.bodyPos(B, 0), D.bodyPos(D.TELLUS, 0))) / 299792458;
+  check('rover contact: near side direct to home, a light-time late; far side none; without a high-gain antenna only through a lander in sight', cN.ok && cN.via === 'home' && Math.abs(cN.delay - lt) < 0.01 && !cF.ok && !c0.ok && c1.ok && c1.via === 'Lander' && !c6.ok,
+    `round trip ${(cN.delay * 1000).toFixed(0)} ms; far ${cF.ok}; low-gain alone ${c0.ok}, lander at 1 km ${c1.ok}, at 6 km ${c6.ok}`);
+  // commands: out of contact it holds still; in contact, a command acts a round trip later
+  D.rvCommand(far, { thr: 1, steer: 0, brake: false }, cF); const held = far.in.thr === 0 && far.in.brake;
+  near.sleep = false; D.rvCommand(near, { thr: 1, steer: 0, brake: false }, cN); const early = near.in.thr; D.rvRun(near, 0.2); D.rvRun(near, 0.2); D.rvCommand(near, { thr: 1, steer: 0, brake: false }, cN);
+  check('rover commands: out of contact it holds still; in contact a command acts a round trip late', held && early === 0 && near.in.thr === 1, `held ${held}; at once ${early}, after ${(cN.delay * 1000).toFixed(0)} ms ${near.in.thr}`);
+  P.rvOut = [];
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

@@ -1535,7 +1535,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);rvFieldTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -3255,7 +3255,8 @@ function rvStats(d){const G=rvGeom(d),Wk=G.Wk,D=Math.PI/180;
     const ePm=crr*G.m*g/RV_ETA+RV_HOTEL/vTop;
     return{g:gk,h,climb:lims[0][0]/D,lim:lims[0][1],vTop,turnR:Rt,vTurn:Math.sqrt(Math.min(aTip,aSl)*Rt),turnBy:aTip<aSl?'tips':'slides',range:G.kWh*3.6e6/ePm/1000,
       tipSide:Math.atan(side/h)/D,tipFwd:Math.atan(fwd/h)/D,tipBack:thB/D}};
-  return{mass:G.m,crew:G.crew,kWh:G.kWh,track:G.track,base:G.base,clear:(1-RV_SAG)*Wk.tr+Wk.r,T:at(1,SURF[6]),S:at(RV_GS,SURF_MOON)}}
+  const pw=rvPow(d),nightH=Math.PI/SELENE.n/3600,need=pw.rtg?0:(RV_SLEEP+RV_HEAT)*nightH*3600;   // Selene's night: half an orbit
+  return{mass:G.m,crew:G.crew,kWh:G.kWh,track:G.track,base:G.base,clear:(1-RV_SAG)*Wk.tr+Wk.r,T:at(1,SURF[6]),S:at(RV_GS,SURF_MOON),sol:pw.sol,rtg:pw.rtg,hg:pw.hg,nightH,nightKWh:need/3.6e6}}
 
 // the test yard beside the pad: three ramps (10°, 20°, 30°) and two side slopes (20°, 35°), all 2.5 m high, on the
 // concrete apron 320 m east of the pad. Yard axes: x east, z north; every mound has 40° shoulders.
@@ -3300,7 +3301,7 @@ function rvStep(R,dt){const G=R.G,Wk=G.Wk,b=R.body;if(R.wet)return;R.t+=dt;
   const up=norm(R.p),M=G.m,mu=R.su.mu;R.v=madd(R.v,up,-R.gk*b.mu/dot(R.p,R.p)*dt);
   const Iinv=v=>{const l=qrot(qconj(R.q),v);return qrot(R.q,[l[0]/G.I[0],l[1]/G.I[1],l[2]/G.I[2]])},
     imp=(r,j)=>{R.v=madd(R.v,j,1/M);R.w=add(R.w,Iinv(cross(r,j)))},meff=(r,u)=>{const a=cross(r,u);return 1/(1/M+dot(a,Iinv(a)))},vel=r=>add(R.v,cross(R.w,r));
-  const down=qrot(R.q,[0,-1,0]),fwd=qrot(R.q,[0,0,1]),vf=dot(R.v,fwd),drive=R.E>0&&!R.in.brake?R.in.thr:0,brake=R.in.brake||!R.in.thr&&Math.abs(vf)<.25;
+  const down=qrot(R.q,[0,-1,0]),fwd=qrot(R.q,[0,0,1]),vf=dot(R.v,fwd),drive=R.E>0&&!R.dead&&!R.in.brake?R.in.thr:0,brake=R.dead||R.in.brake||!R.in.thr&&Math.abs(vf)<.25;
   // the springs first, every wheel; then grip, solved together over a few passes (one wheel's grip moves the others'
   // contact points), each wheel's total kept inside its friction circle
   let Pd=0,onG=0;const K=[];
@@ -3327,7 +3328,7 @@ function rvStep(R,dt){const G=R.G,Wk=G.Wk,b=R.body;if(R.wet)return;R.t+=dt;
     const A=madd(O.c,O.u,y),a=add(qrot(qconj(R.q),sub(A,R.p)),G.cm),hx=G.track/2+Wk.w/2,hz=G.C.L/2,c=[clamp(a[0],-hx,hx),a[1],clamp(a[2],-hz,hz)],dd=sub(a,c),dl=Math.hypot(dd[0],dd[2]);
     let n,dep;if(dl>1e-6){dep=O.r-dl;n=qrot(R.q,[-dd[0]/dl,0,-dd[2]/dl])}else{const ex=hx-Math.abs(a[0]),ez=hz-Math.abs(a[2]);dep=O.r+Math.min(ex,ez);n=qrot(R.q,ex<ez?[-Math.sign(a[0])||1,0,0]:[0,0,-Math.sign(a[2])||1])}
     if(dep<=0)continue;n=norm(madd(n,O.u,-dot(n,O.u)));const r=qrot(R.q,sub(c,G.cm)),jn=Math.max(0,-1.2*dot(vel(r),n)+.1*dep/dt)*meff(r,n);if(jn>0)imp(r,mul(n,jn))}
-  R.E=Math.max(0,R.E-(Pd+RV_HOTEL)*dt);
+  R.E=Math.max(0,R.E-Pd*dt);
   R.p=madd(R.p,R.v,dt);const wl=len(R.w);if(wl>1e-9)R.q=qnorm(qmul(qaxis(mul(R.w,1/wl),wl*dt),R.q));
   // the test record: distance on the ground, top speed, the steepest slope climbed (pitch smoothed over a second), tip-overs
   const sp=len(R.v),pit=Math.asin(clamp(dot(fwd,up),-1,1)),tilt=Math.acos(clamp(dot(qrot(R.q,[0,1,0]),up),-1,1));R.pitchS+=(pit-R.pitchS)*Math.min(1,dt);
@@ -3401,15 +3402,56 @@ function rvObsOf(vs){return vs.filter(v=>v&&v.alive&&v.landed&&v.pf).map(v=>{con
 // the same for objects left landed (registry entries: their saved shape), within 300 m of pf on body b
 function rvObsQ(b,pf){return landedUp().filter(q=>q.bodyName===b.name&&q.shape&&len(sub(q.pf,pf))<300).map(q=>{const u=norm(q.pf),Ul=qrot(q.ql,[0,1,0]);let r=.5,h=1;
   for(const o of q.shape){const d=PARTS[o.k];if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
-function rvFlight(dt){for(const R of FROV){if(R.wet)continue;if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
+function rvFlight(dt){for(const R of FROV){if(R.wet)continue;rvPowerStep(R,dt,rvSunPF(R.body,bodyTheta(R.body,simT)));if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
 // at the flight's end, every rover still on its wheels (or not) stays where it is
-const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped});
+const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead});
 function rvEnd(){PROG.rvOut=PROG.rvOut||[];for(const R of FROV){if(R.wet)continue;R.dep=null;PROG.rvOut.push(rvEntry(R))}FROV.length=0;RVA=null}
 function rvFromEntry(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,R=rvNew(e.d,b,e.p,[0,0,1],{yard:rvYardNear(b,e.p)});
-  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped});return R}
+  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false});return R}
 // rovers left in the field come back into a flight on the same body within LOAD_R of the vessel
 function rvLoadNear(s){const L=PROG.rvOut||[];if(!s||!s.alive||!L.length)return 0;const pf=toPF(s.body,s.r,simT);let n=0;
   for(let i=L.length-1;i>=0;i--){const e=L[i];if(e.bodyName!==s.body.name||len(sub(e.p,pf))>LOAD_R)continue;L.splice(i,1);FROV.push(rvFromEntry(e));n++}return n}
+// ---- R3: power and contact (sats session; NOTES § "R3 built")
+// Power: solar panels (flat on the deck: their output follows the sun's height over the rover's own deck, nothing below
+// the horizon) and an RTG (steady, and it keeps the rover warm). The draw: 30 W of electronics awake, 10 W asleep, and
+// on an airless body at night a 25 W heater unless an RTG keeps it warm. A battery that runs flat in the night with no
+// RTG means the rover froze: it is lost. Selene's night lasts half an orbit (about 52 h); between flights the battery is
+// worked out over program time, half an hour at a time (rvFieldTick).
+// Contact: a rover is driven by radio. On Tellus, always. Elsewhere, directly with a high-gain antenna while Tellus is
+// over its horizon, or through a relay it can see: a lander or a landed object of yours with an antenna that sees Tellus
+// itself, within radio horizon (√(2Rh₁)+√(2Rh₂), antenna heights). Commands arrive a light-time round trip late. A crew
+// riding it needs no radio.
+RV_IT.sol={name:'Solar panels',m:18,W:330,sz:[.9,.06,1.1]};
+RV_IT.rtg={name:'RTG',m:35,rtgW:60,sz:[.35,.5,.35]};
+const RV_HEAT=25,RV_SLEEP=10,RV_HG=1.2,RV_LG=.8,RV_CLIGHT=299792458;
+const rvPow=d=>{const G=rvGeom(d);let sol=0,rtg=0,hg=false;for(const t of G.items){sol+=t.it.W||0;rtg+=t.it.rtgW||0;if(t.k==='ant')hg=true}return{sol,rtg,hg}};
+// the body's turn at program time T (a moon's from its orbit at T itself, whatever flight is running)
+function thAbs(b,T){if(b===TELLUS)return absTh(T);if(!b.lock)return 0;const s=ORB_T0;ORB_T0=0;const th=lockTh(b,T);ORB_T0=s;return th}
+const rvSunPF=(b,th)=>rotY(SUN_DIR,-th);   // the sun's direction in the body's own frame, when it has turned th
+function rvPowerStep(R,dt,sun){const P=R.pw||(R.pw=rvPow(R.d)),u=norm(R.p),el=dot(u,sun),night=el<0,cold=!R.body.atm&&night&&!P.rtg;
+  const gen=(el>0?P.sol*Math.max(0,dot(qrot(R.q,[0,1,0]),sun)):0)+P.rtg,use=(R.sleep?RV_SLEEP:RV_HOTEL)+(cold?RV_HEAT:0);
+  Object.assign(R,{pGen:gen,pUse:use,sunEl:Math.asin(clamp(el,-1,1))*180/Math.PI});if(R.dead)return;
+  R.E=clamp(R.E+(gen-use)*dt,0,R.Emax);if(R.E<=0&&cold){R.dead=true;R.v=[0,0,0];R.w=[0,0,0];HOOK.msg(`${R.name||'The rover'} froze in the night: its battery ran flat with no heat`)}}
+// between flights: every rover left in the field, over program time T0 → T1
+function rvFieldTick(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead)continue;const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,P=rvPow(e.d),G=rvGeom(e.d),Emax=G.kWh*3.6e6,u=norm(e.p),up=qrot(e.q,[0,1,0]);
+  for(let T=T0;T<T1;T+=1800){const h=Math.min(1800,T1-T),sun=rvSunPF(b,thAbs(b,T+h/2)),el=dot(u,sun),cold=!b.atm&&el<0&&!P.rtg;
+    e.E=clamp(e.E+((el>0?P.sol*Math.max(0,dot(up,sun)):0)+P.rtg-RV_SLEEP-(cold?RV_HEAT:0))*h,0,Emax);
+    if(e.E<=0&&cold){e.dead=true;HOOK.news(`${e.name} froze in the night on ${e.bodyName}: its battery ran flat with no heat`,'bad');break}}}}
+// who can hear the rover: {ok, via ('crew' | 'home' | a relay's name), d (m, to the relay), delay (s, the round trip)}
+function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',delay:0};if(R.d&&rvGeom(R.d).crew&&R.crewed!==false&&!R.remote)return{ok:true,via:'crew',delay:0};
+  const b=R.body,P=R.pw||(R.pw=rvPow(R.d)),w=add(bodyPos(b,t),fromPF(b,R.p,t)),up=norm(fromPF(b,R.p,t)),toT=sub(bodyPos(TELLUS,t),w),lt=2*len(toT)/RV_CLIGHT;
+  if(P.hg&&dot(up,norm(toT))>Math.sin(1*Math.PI/180))return{ok:true,via:'home',delay:lt};
+  const hR=P.hg?RV_HG:RV_LG;let best=null;
+  for(const q of relays||[]){if(q.body!==b)continue;const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
+    const qu=norm(fromPF(b,q.pf,t)),qT=norm(sub(bodyPos(TELLUS,t),add(bodyPos(b,t),fromPF(b,q.pf,t))));if(dot(qu,qT)<Math.sin(Math.PI/180))continue;
+    if(!best||d<best.d)best={ok:true,via:q.name,d,delay:lt}}
+  return best||{ok:false,via:null,delay:lt}}
+// relays on a body: vessels in this flight and objects left landed, with an antenna (their base, height, name)
+function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.landed||!v.pf||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
+  for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant'))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),name:q.name})}return out}
+// a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
+function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
+  (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -5178,11 +5220,12 @@ function rvSpot(){const site=curSite(),k=site.id+':'+rvGround;if(rvSpots[k])retu
 function rvSpawn(){const d=rvDesigns()[rvSel],P=rvSpot();RV=rvNew(d,TELLUS,P.pf,P.head,{gk:rvGK,yard:P.yard});rvCamHold=0}
 // the yard is drawn wherever it is (it's part of the home pad), whichever ground the drive is on
 const rvYards={},rvYardShown=()=>{const site=curSite();return rvYards[site.id]||(rvYards[site.id]=yardOf(site))};
-function rvEnter(){rvDesigns();if(rvRemote){RV=rvFromEntry(rvRemote);RV.remote=rvRemote}else rvSpawn();cam.dist=11;cam.pitch=.28;renderRover()}
+function rvEnter(){rvDesigns();if(rvRemote){ORB_T0=PROG.day*DAY_S-simT;RV=rvFromEntry(rvRemote);RV.remote=rvRemote}else rvSpawn();cam.dist=11;cam.pitch=.28;renderRover()}
 function rvLeave(){if(RV&&RV.remote){const e=RV.remote;Object.assign(e,rvEntry(RV),{id:e.id})}else if(RV)rvFold(RV);HOOK.save();RV=null;rvRemote=null}
 function rvReset(){if(RV&&RV.remote){HOOK.msg('Nobody can put it back: it drives on as it is');return}if(RV)rvFold(RV);HOOK.save();rvSpawn();renderRover()}
 const rvWorld=R=>add(bodyPos(R.body,simT),fromPF(R.body,R.p,simT)),rvQW=R=>qmul(qBody(R.body,simT),R.q);
-function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);RV.in.thr=(keys.has('w')?1:0)-(keys.has('s')?1:0);RV.in.steer=(keys.has('d')?1:0)-(keys.has('a')?1:0);RV.in.brake=keys.has(' ');
+function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);
+  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
   rvRun(RV,dtR);if(performance.now()-rvHudAt>100){rvHudAt=performance.now();rvHud()}
   rvChase(RV,dtR)}
 addEventListener('keydown',e=>{if(mode!=='drive'||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
@@ -5217,6 +5260,9 @@ function renderRover(){const el=$('rvDes');if(!el)return;
     +row('full-lock turn',`${T.turnBy} > ${rvF(T.vTurn*3.6)} km/h`,`${Sx.turnBy} > ${rvF(Sx.vTurn*3.6)} km/h`)
     +row('range (flat)',`${rvF(T.range)} km`,`${rvF(Sx.range)} km`)+`</table><div class="sub">Tellus figures on grass; Selene's on regolith.</div>`;
   const tr=d.test||{},tl=(t,n)=>t?`<div>${n}: ${t.km.toFixed(2)} km · climbed ${t.climb.toFixed(0)}° · ${(t.vmax*3.6).toFixed(0)} km/h${t.tips?` · <span class="warn">tipped ${t.tips}×</span>`:''}</div>`:'';
+  h+=`<h2>Power and contact</h2><div>${st.sol?`panels ${st.sol} W at noon`:'no panels'}${st.rtg?` · RTG ${st.rtg} W`:''} · draws ${RV_HOTEL} W awake, ${RV_SLEEP} W asleep</div>`
+    +`<div class="${st.rtg||st.kWh>=st.nightKWh*1.15?'':'warn'}">Selene's night, ${st.nightH.toFixed(0)} h: ${st.rtg?'the RTG keeps it warm':`its heater needs ${st.nightKWh.toFixed(1)} kWh; the battery holds ${st.kWh}`}</div>`
+    +`<div class="sub">${st.hg?'High-gain antenna: talks to home whenever Tellus is up.':'No high-gain antenna: off Tellus it needs a relay in sight (a lander with an antenna).'}</div>`;
   h+=`<h2>Tested</h2>`+(tr.T||tr.S?tl(tr.T,'at Tellus g')+tl(tr.S,'as a lunar trainer'):'<div class="dim">not yet: drive it</div>');
   h+=`<h2>Test drive</h2><div class="ndrow"><button data-rv="gr" data-k="yard"${on('yard',rvGround)}>Test yard</button><button data-rv="gr" data-k="country"${on('country',rvGround)}>Open country</button></div>`
     +`<div class="ndrow">gravity <button data-rv="g" data-k="1"${on(1,rvGK)}>Tellus</button><button data-rv="g" data-k="s"${on(true,rvGK<1)} title="Selene's gravity on Tellus's ground, as Apollo crews trained on a 1/6-g rover">Lunar trainer</button></div>`
@@ -5250,6 +5296,8 @@ function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw
     <tr><td class="dim">roll</td><td class="${tc(ti.roll,X.tipSide)}">${Math.round(ti.roll)+0}° <span class="dim">of ${X.tipSide.toFixed(0)}</span></td></tr>
     <tr><td class="dim">ground</td><td>${R.su?R.su.name:'—'}${R.dep?' · <span class="acc">deploying</span>':`${slip?' · <span class="warn">slipping</span>':''}${air?' · <span class="warn">airborne</span>':''}`}</td></tr>
     <tr><td class="dim">battery</td><td>${G.kWh?(100*R.E/R.Emax).toFixed(0)+' %':'—'}</td></tr>
+    <tr><td class="dim">power</td><td>${R.dead?'<span class="bad">frozen</span>':R.pGen==null?'—':`sun ${Math.round(R.sunEl)+0}° · <span class="${R.pGen>=R.pUse?'ok':'warn'}">${R.pGen>=R.pUse?'+':''}${Math.round(R.pGen-R.pUse)} W</span>`}</td></tr>
+    <tr><td class="dim">contact</td><td>${!R.contact?'—':!R.contact.ok?'<span class="bad">none: it holds still</span>':R.contact.via==='crew'?'crew aboard':R.contact.via==='home'?`home${R.contact.delay?` · ${(R.contact.delay*1000).toFixed(0)} ms`:''}`:`via ${rvEsc(R.contact.via)}`}</td></tr>
     <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr></table>
     <div class="sub" style="margin-top:4px">W S drive · A D steer · Space brake · ${home?'R start again':mode==='flight'?'[ back to the lander':'P Program'}</div>`}
 
@@ -5269,6 +5317,8 @@ function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
     else if(t.k==='arm'){box(a,[x,y+.06,z],.08,.06,.08,C.ST);box(a,[x,y+.16,z-.05],.04,.04,.4,C.W);box(a,[x,y+.28,z+.05],.035,.035,.38,C.W);box(a,[x,y+.28,z+.44],.06,.06,.06,C.AU)}
     else if(t.k==='spec'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.AU);box(a,[x,y+sy+.04,z+.05],.04,.04,.04,C.GL)}
     else if(t.k==='seis'){box(a,[x,y+.1,z],sx/2,.1,sz/2,C.W);for(const o of[-.1,.1])lathe(a,[[.07,0,C.AU],[.07,.18,C.AU]],[x+o,y+.2,z],12)}
+    else if(t.k==='sol'){box(a,[x,y+.08,z],.03,.08,.03,C.ST);box(a,[x,y+.17,z],sx/2,.012,sz/2,C.ST);box(a,[x,y+.185,z],sx/2-.02,.006,sz/2-.02,[.07,.09,.22,4])}
+    else if(t.k==='rtg'){lathe(a,[[.1,0,C.D],[.1,.45,C.D],[0,.48,C.D]],[x,y,z],12);for(let i=0;i<6;i++){const g=i*Math.PI/3;box(a,[x+Math.cos(g)*.14,y+.22,z+Math.sin(g)*.14],.04+.0*g,.2,.04,C.G)}}
     else if(t.k==='drill'){for(const o of[[-.1,-.1],[.1,-.1],[0,.1]])box(a,[x+o[0],y+.6,z+o[1]],.02,.6,.02,C.ST);lathe(a,[[.04,-.15,C.D],[.04,1.1,C.D]],[x,y,z],10);box(a,[x,y+1.15,z],.12,.08,.12,C.W)}}
   return a}
 function rvWheelMesh(k){const key='w'+k;if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvWheelArr(k)));return rvMeshC.get(key)}
@@ -5304,6 +5354,9 @@ function rvLabels(octx,project){const k=Math.min(devicePixelRatio||1,1.5),Y=rvYa
 // Rovers left in the field come back into any flight within LOAD_R of them; an uncrewed one can be driven from home
 // (the Program screen's "Rovers in the field", which opens the drive screen wherever it is: Lunokhod was driven from Earth).
 let rvLoadT=0,rvFHudAt=0,rvRemote=null;
+const rvKeys=()=>({thr:(keys.has('w')?1:0)-(keys.has('s')?1:0),steer:(keys.has('d')?1:0)-(keys.has('a')?1:0),brake:keys.has(' ')});
+// a rover in the field, as home sees it now: who can hear it
+function rvFieldContact(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,s=ORB_T0;ORB_T0=PROG.day*DAY_S-simT;const c=rvContact({body:b,p:e.p,d:e.d,remote:true},simT,rvRelays([]));ORB_T0=s;return c}
 const rvPack=()=>{const d=JSON.parse(JSON.stringify(rvDesigns()[rvSel]));delete d.test;return d};   // what the builder packs into a new rover part
 const rvPoseW=R=>{const P=rvPose(R);return{p:add(bodyPos(R.body,simT),fromPF(R.body,P.p,simT)),q:qmul(qBody(R.body,simT),P.q)}};
 function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-dtR);if(rvCamHold||len(R.v)<.3)return;
@@ -5311,13 +5364,13 @@ function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-
   let dy=want-cam.yaw;dy-=2*Math.PI*Math.round(dy/(2*Math.PI));cam.yaw+=dy*Math.min(1,dtR*1.5)}
 function rvFlightTick(dt,dtR){if(!S)return;const obs=rvObsOf([S,...FLEET]);for(const R of FROV)R.obs=obs;
   if(RVA&&(RVA.wet||!FROV.includes(RVA)))RVA=null;
-  if(RVA){RVA.in.thr=(keys.has('w')?1:0)-(keys.has('s')?1:0);RVA.in.steer=(keys.has('d')?1:0)-(keys.has('a')?1:0);RVA.in.brake=keys.has(' ');if(view!=='map')rvChase(RVA,dtR)}
+  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
   rvFlight(dt);
   if((rvLoadT-=dtR)<=0){rvLoadT=1;const n=rvLoadNear(S);if(n)HOOK.msg(`${n>1?n+' rovers':'A rover'} of yours nearby: ] to drive`)}
   const el=$('rvFHud');if(el){el.classList.toggle('hidden',!RVA);if(RVA&&performance.now()-rvFHudAt>100){rvFHudAt=performance.now();rvHud(el,RVA)}}}
 // ] from the lander drives the first rover, then the next; [ goes back to the lander
 function rvCycle(dir){const L=FROV.filter(R=>!R.wet);if(!L.length||(!RVA&&dir<0))return false;
-  const j=RVA?L.indexOf(RVA)+dir:0;RVA=j<0||j>=L.length?null:L[j];if(RVA){RVA.sleep=false;cam.dist=Math.min(cam.dist,14)}
+  if(RVA){RVA.in={thr:0,steer:0,brake:false};RVA.cq=[]}const j=RVA?L.indexOf(RVA)+dir:0;RVA=j<0||j>=L.length?null:L[j];if(RVA){RVA.sleep=false;cam.dist=Math.min(cam.dist,14)}
   HOOK.msg(RVA?`Driving the ${RVA.name}: W S A D, Space brakes · [ back`:'Back to the lander');return true}
 const rvFlightKey=k=>[' ','z','x','t','backspace','shift','control'].includes(k);   // keys the lander mustn't get while you drive
 function rvRows(){if(!S)return[];const out=[];
@@ -5331,7 +5384,7 @@ document.addEventListener('click',e=>{const i=e.target.dataset&&e.target.dataset
 function rvFieldHTML(){const L=PROG.rvOut||[];if(!L.length)return'';
   return'<div class="ep">Rovers in the field</div>'+L.map(e=>{const G=rvGeom(e.d);
     return`<div class="ms"><b>${rvEsc(e.name)}</b> on ${e.bodyName}${e.tipped?' <span class="bad">on its side</span>':''} · battery ${G.kWh?(100*e.E/(G.kWh*3.6e6)).toFixed(0)+' %':'none'} · ${e.km.toFixed(2)} km driven `+
-      (G.crew?'<span class="dim">· its crew drives it: fly a crewed lander there</span>':`<button data-rvdrive="${e.id}">Drive from home</button>`)+`</div>`}).join('')}
+      (e.dead?'<span class="bad">· froze in the night</span>':G.crew?'<span class="dim">· its crew drives it: fly a crewed lander there</span>':(c=>c.ok?`<button data-rvdrive="${e.id}">Drive from home</button> <span class="dim">${(c.delay*1000).toFixed(0)} ms${c.via!=='home'?' via '+rvEsc(c.via):''}</span>`:'<span class="warn">· out of contact</span>')(rvFieldContact(e)))+`</div>`}).join('')}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.rvdrive;if(id==null)return;const q=(PROG.rvOut||[]).find(x=>String(x.id)===id);if(!q)return;rvRemote=q;go('rover')});
 
 // ============================================================ main loop
