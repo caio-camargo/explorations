@@ -1943,6 +1943,13 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   regimes and higher for home-made parts. Low know-how means riskier ignitions (one-line `igniteOK` hook in `stage()`,
   flagged in ACTIVE_WORK), slower stacking and lower instrument yield. `test.mjs` 190/190 after merging main. Merged to
   `main` (`af2acb5`).
+- **v1.31–v1.32 (2026-10-07, economy worktree):** production lines (own line, needing know-how; or a license with
+  royalties; a learning curve makes home-built parts cheaper than imports; sanction-proof; they stay with the country)
+  and a second balance pass. The career runner now plays know-how, lines and support packages. It found know-how
+  learned ~85% in one orbital flight (now one step per flight), weak agencies stuck topping up (running costs, budget
+  day and starts retuned) and lines that never paid back (setup halved; they now pay back over ~6 years, except for
+  resource states, which do better buying). Support packages are a real trade-off; still provisional. Also fixed a
+  name clash with the builder's `lineOf`. `test.mjs` 220/220. Merged to `main` (`a0ac3cb`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
