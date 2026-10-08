@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1162,6 +1162,71 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.43 — reaction wheels that saturate; the builder's control readout (2026-10-08, control session)
+
+The second slice of the control review (v1.40). The pod's wheels were 8× a KSP Mk1 pod and never filled up, so they
+steered everything. Now they are a resource.
+
+**What changed**
+- **Wheels store what they give** (`wheelGive`): the vessel gets τ and the wheels' momentum H (body frame) changes by
+  −τ·dt. Past `hmax` they can't push that way. Pod and crew capsule 40 → **10 kN·m**, 100 kN·m·s; probe core 4 → **2 kN·m**,
+  20 kN·m·s; parts without `hmax` store 10 s of their torque (`WHEEL_S`). The rails attitude step goes through the same
+  limit.
+- **They unload** whenever something else can hold the vessel while they spin down (time constant `WHEEL_DUMP` = 4 s,
+  at most half that channel's authority). A burning gimbal or steerable fins unload them for free from 2 %. RCS spends
+  gas, so it only keeps them usable: from 80 % down to 60 %. When there's no gimbal or fins channel, RCS also covers what
+  saturated wheels can't give.
+- **A reaction wheel part** (`rwheel`, *Control*, 0.12 t, 15 kN·m, 150 kN·m·s, 5 M) to stack where turning big things
+  matters.
+- **HUD row** `Wheels n% saturated` once they hold ≥ 5 %, with the hint of what unloads them.
+- **Builder: a Control block.** Holding 5° off the airflow at max-q (25 kPa, M1.2), burning and coasting: what it takes
+  against wheels + gimbal + fins + RCS, as **holds** / **weathervanes** (short of authority but stable) / **flips**
+  (short and unstable). Roll authority by source. A 90° turn in vacuum on wheels (capped at storage ÷ inertia) and with
+  the first stage lit (`controlReport`, `turnTime`). The old "controls can't hold 5°" line moved here and now counts fins.
+  The no-wheels warning says what still steers.
+- **Bug fixed from v1.40:** `partBody` picks meshes by part key, so `cfin`/`cfins` drew as plain cylinders. They now draw
+  as the fins they are.
+
+**Numbers**
+
+| | v1.40 | v1.43 |
+|---|---|---|
+| 90° turn in vacuum on wheels, Orbiter / Heavy / Lunar / Crewed Lunar (readout; flown) | 5.5 / 7.3 / 21 / 38 s | **11.1 / 14.6 / 56 / 151 s** (flown 11.5 / 15.3 / 54 / 145) |
+| Same with the first stage lit (gimbal) | 3.4 / 3.3 / 4.9 s | 3.5 / 3.4 / 5.0 s |
+| Orbiter, pitch key held 30 s, SAS off | spins up without limit | levels off at hmax/I = 0.512 rad/s |
+| Unloading from 90 %, holding attitude, 45 s | — | nothing: 90 % · burning gimbal: 2 %, within 0.31° · cold-gas RCS: 73 % for all 30 kg |
+| Coasting at max-q, Orbiter: need / have | 18 / 40 kN·m (holds) | 18 / 10 on wheels (weathervanes); 264 with a steerable ring |
+| Physics step, Lunar / Heavy (back to back) | 37 / 55 µs | 39 / 58 µs |
+
+**What it taught**
+- **Quartering the wheels broke no check.** Every scripted flight (ascents, aborts, the crewed Selene mission,
+  docking, re-entries) steers on the gimbal while burning, and the capsules are aerodynamically stable shield-first. The
+  wheels had been doing almost nothing the tests could see. Where they do matter is turning in vacuum, now 2–4× slower,
+  and holding off the airflow while coasting.
+- **Wheel storage, not torque, sets a big stack's turn rate.** With 100 kN·m·s on a 192 t·m² Orbiter the turn tops out
+  at 0.51 rad/s; on the Crewed Lunar at ~0.03 rad/s, a 2½-minute 90°. The readout has to cap by storage or it is 3×
+  optimistic for the big stacks.
+- **Cold gas is a poor way to unload a pod's wheels**: 90 → 60 % (30 kN·m·s) is ~29 kg at Isp 70 with this lever. Hence
+  the 80 → 60 % band: RCS keeps the wheels usable rather than emptying them, and a short burn is the cheap way.
+- **Saturation in the air is hard to isolate.** Holding a rocket off the airflow, the airflow swings round to meet the
+  nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
+  vacuum.
+
+**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
+
+**For other sessions**
+- **ui:** the `Wheels` HUD row sits before the RCS row (`wheelRows`). The Control block is in `editorChanged`
+  (`controlHTML`).
+- **builder:** `rwheel` is in *Control* (one edit to `CAT`). It draws with the default banded drum.
+- **visuals:** `rwheel` could use a look of its own.
+- **economy:** `PRICE.rwheel = 5`, `tierOf` gives it 1.
+- **anyone scripting flights in vacuum with big stacks:** turns on wheels alone are slow now; light the engine (the
+  gimbal) or add RCS / a wheel part.
+
+**Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
+fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
 
 ## v1.42 — the event timeline (2026-10-08, economy session)
 
@@ -3495,6 +3560,77 @@ Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright o
 
 **Needed from others:** Selene's terrain (craters, maria and highlands, boulders, slopes) from the terrain session:
 today Selene is a smooth sphere apart from the regolith model; power (R3) is new everywhere.
+
+### R1 built: the Rover yard (sats session, 2026-10-08)
+
+- **Screen.** *Rover yard*, from a button in the Program header (`go('rover')`, `mode='drive'`). On the left is the
+  designer; on the right a readout: speed, heading, pitch and roll against the tip angles, ground, battery, this drive.
+  Designs live in `PROG.rovers` (name, chassis `ch`, wheels `wh`, count `n` 4/6, springs set for `spr` Tellus/Selene,
+  deck `slots`).
+- **Parts.** Three chassis (`RV_CH`: 3/5/8 slots), three wheels with hub motors (`RV_WH`; the wire-mesh one is the lunar
+  rover's: 0.82 m, 190 W), and deck items (`RV_IT`): battery, crew seat (occupant included), camera mast, high-gain
+  antenna, sample arm, spectrometer, seismometer pack, drill. Instruments are only mass and height until R4.
+- **On paper** (`rvStats`), for Tellus on grass and Selene on regolith:
+  - centre-of-mass height;
+  - tip angles sideways, forward and back;
+  - steepest climb and what limits it (traction, motors, tipping backwards);
+  - top speed (gearing or power against rolling resistance);
+  - the speed at which a full-lock turn tips or slides it;
+  - range on the flat.
+- **Physics** (`rvNew`/`rvStep`/`rvRun`, in the SIM block, 1/240 s steps, in the planet's frame):
+  - one rigid body;
+  - per-wheel spring and damper along the chassis's down axis (compression rate from the mount's approach speed);
+  - grip solved over four passes, each wheel's impulse kept inside its friction circle (μ × load);
+  - hub motors limited by torque, power and gearing;
+  - a parking brake when stopped;
+  - rolling resistance `rvCrr` (soft ground, eased by bigger wheels);
+  - bumps on rough ground (value noise, a quarter of the biome's `rough` in metres);
+  - the chassis corners, deck-item tops and hubs touch the ground too, so tipping over is real and nothing rights it;
+  - a battery, drained by the motors and 30 W of electronics.
+- **Where to drive:**
+  - the **test yard**, 320 m east of the pad (`yardOf`, `RV_YARD`): ramps of 10°, 20° and 30° and side slopes of 20°
+    and 35°, all 2.5 m high and made of gravel (μ 0.65, so 35° is past its grip);
+  - **open country** (`countryOf`): gentle land 5–8 km out, on the biome's real ground;
+  - either at Tellus's gravity or as a **lunar trainer** (Selene's gravity on Tellus's ground).
+
+  The sea ends a drive. Off the pad itself the levelled ground drives as grass.
+- **Records.** Each drive's record is kept per design and per gravity (`d.test.T` / `.S`): km, steepest climb, top
+  speed, tip-overs. Each wheel kind also accumulates its tested km (`PROG.wheelKm`), for R2's reliability.
+- **What it shows:**
+  - The default two-seat rover is sized like Apollo's. At home it climbs only 7° and stalls on the 20° ramp: its hub
+    motors are sized for a sixth of the weight, as the real one's were; it couldn't carry its crew on Earth.
+  - As a lunar trainer it tops all three ramps; the 30° one is at the edge of the gravel's grip.
+  - At Selene's gravity a full-lock turn lets go at under half the speed it does at home.
+  - A top-heavy rover (three crew on a small chassis, 38° on paper) tips on the 35° slope. The springs lean it a few
+    degrees past the rigid figure: keep a margin.
+- **Checks:** `test.mjs` §34, 7 checks:
+  - the stats;
+  - settling where the designer says;
+  - the designer's top speed (2.14 against 2.15 m/s);
+  - the ramp at home against the trainer;
+  - holding on 20° and sliding on 35°;
+  - a top-heavy rover tipping where a low one doesn't;
+  - no battery, no drive, and the record folding.
+
+  Mutation-tested: dropping the friction circle, solving grip in one pass, removing the body contacts or ignoring the
+  battery each fails a check.
+- **Not yet:**
+  - science (R4);
+  - deployment (R2);
+  - power generation (R3);
+  - trees as obstacles (rough ground is only bumps);
+  - a shadow under the rover;
+  - era gating and prices for rover parts (economy).
+
+**Overlap with "Planning before the flight"** (economy's spec, above):
+- **R5's drive plans are a surface leg of the mission plan,** not a system of their own. A traverse is waypoints on the
+  same timeline (v1.42), executed between flights at the era's error, with results arriving as events.
+- **The deploy check (R2) belongs to the planner too.** Choosing a landing site there should already say whether the
+  rover can deploy and drive away. That draws on its *tested* climb and tip figures from R1, much as the trajectory
+  study sets a trajectory's precision.
+- **Traverse planning needs a map of the ground.** How well a route can be planned depends on how well the site has
+  been imaged from orbit, which ties the imaging satellites to surface work, as Lunar Orbiter's photos did for Apollo.
+- **Rover instruments (R4) use the same pointing and activity timeline** as orbital instruments (Owners and order, item 3).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
