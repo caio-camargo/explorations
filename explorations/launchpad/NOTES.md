@@ -3493,6 +3493,51 @@ launch advances the one calendar by its stacking days (`R.prep`), so pads aren't
 - **Contracts too.** Repeatable contracts (satellite deployments, resupply, crew rotation from the sats plan) can be
   handed to a routine once flown once.
 
+### Compute — a resource across eras (decided with Caio, 2026-10-08)
+
+Compute is the cause behind two existing ideas:
+- "the tools only know what the program knows" (the planning branch's logbook and era maps);
+- the avionics generations from the parking lot.
+
+Today both are gated by milestones. With compute behind them, eras have a cause and the economy has something to trade.
+
+**The arc: scarce, then abundant, then scarce again.**
+1. **Human computers.** A trajectory study is an order: money **and days** (it adds to prep time, since timing is a
+   core mechanic), with coarse precision. The map shows only what has been computed, with wide error bars, and a
+   changed plan means a new study.
+2. **Mainframes.** A computing centre is a facility, time-shared and queued but faster and more precise. Compute can
+   also be rented abroad, so sanctions reach it.
+3. **Onboard computers** (the Apollo guidance computer step):
+   - compute on the vessel, at a cost in mass and power;
+   - out of contact with a ground station, a vessel can only do what its own computer can, which gives ground
+     stations a second job;
+   - onboard autonomy gates the autopilot features and routine runs.
+4. **Abundance.** Planning is instant and precise: the modern UI.
+5. **The AI era.** World demand explodes and compute is scarce again, at a world price. Ground datacenters hit limits
+   on power, cooling and permits, and **space datacenters become viable** for programs whose cost per kg to orbit is
+   low enough. That threshold isn't scripted: it falls out of the player's reusability, lines and pads, and the
+   waste-heat physics sets the kg needed per MW.
+
+**Decided:**
+- **What drives the eras:** the **world date**, with nudges. The world's technology advances on its own; the program
+  can speed it up (contributing to the frontier), and powers differ (closed powers push domestic compute, open ones buy
+  abroad, frugal ones live longer in careful hand-planning).
+- **Studies add days,** not only money and precision.
+
+**Rules:**
+- **Compute never blocks flying.** You can always fly without a study and accept bigger error bars, which is how the
+  early era should feel.
+- **Compute is a facility and a market, not a fourth wallet** next to money, data and know-how.
+- **Chips are an industrial good** with home, import or grey-market sources, like parts. Export controls on compute are
+  a lever between powers.
+- **Automation arrives with compute,** so a career changes feel from hands-on to managed.
+
+**Owners:**
+- **planning:** tool gating, prediction precision and error bars, the era look;
+- **economy:** the computing centre, study orders and their days, the world compute price, chip sourcing and
+  sanctions, datacenter revenue;
+- **builder:** onboard computers as parts.
+
 ### How the economy plugs in
 
 - **Projects are staged construction:** a bill of modules, each delivered by a flight to the right orbit or surface.
@@ -3505,6 +3550,8 @@ launch advances the one calendar by its stacking days (`R.prep`), so pads aren't
 
 ### Proposed order and owners
 
+0. **Compute eras** (below the ladder in time, but they gate routines and datacenters): the world compute era and study
+   orders first, with planning.
 1. **Economy: the routine and the pad calendar.** This changes the time model from serial to concurrent; the career
    runner and the UI need to follow.
 2. **Ground antenna arrays** for deep space (planning).
