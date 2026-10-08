@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1132,6 +1132,29 @@ widgets, slice 4 decides where they sit.
 **For slice 4:** the widgets can split into separate cards (the tape in the core, q/Mach/heat in the Ascent card): each
 block in `drawGauges` is independent, with its own offsets inside the strip.
 
+## PLAYTEST #7: the planet flashing in space (2026-10-08, aerofx session)
+
+**Symptom (Caio):** the planet sometimes flashes when the camera moves while looking down at it from space.
+
+**Cause:** `depthTarget(w, h)` (the terrain's half-resolution depth pre-pass) reallocates its texture when the canvas size
+changes, and bound it on whichever texture unit was active. At that point in `render()` that is unit 0, where the sky pass
+had just been given the city-lights texture (`uCity`). For that one frame the sky shader read the depth buffer as city
+lights, so the night side's land turned solid white (in daylight the change was smaller but present). The canvas size
+changes whenever adaptive resolution (`RS`, v1.1) steps, and it steps when the GPU load changes, typically while the
+camera moves: hence "sometimes, while moving".
+
+**How it was found:** a sweep of 3,240 frames of camera motion (yaw steps of 0.025 rad; pitches 0.3–1.56; distances
+15 m to 20 km; 40 km to 20,000 km; day and night), with adaptive resolution off, found no flash. Then each resolution step
+was rendered twice: the first render after a step differed from an identical second one every time (night side at
+150 km: mean brightness 19.3 vs 3.9), and never without a step. Reproducing the bad frame by hand (depth texture on unit
+0, sky redrawn) showed the night-side land lit white.
+
+**Fix:** `depthTarget` binds on unit 5, the depth texture's own unit (where the sky reads it), and restores unit 0. After the
+fix, first and second renders match at every step. Lesson: anything that (re)allocates a texture mid-frame must not bind
+on the active unit (LESSONS #33).
+
+Also: the HUD gauges now hide with the HUD (`.ui` visibility), so the bare reference views stay clean.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1162,6 +1185,92 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.46 — avionics generations: SAS grows with the computing eras (2026-10-08, control session)
+
+The third slice of the control review. The NOTES' eras idea ("early guidance computers have stability-only SAS") on the
+compute eras of v1.38. Caio's choice: **two steps by era**.
+
+| Avionics | Comes with | SAS modes | Loop (gain · fastest turn · deadband) |
+|---|---|---|---|
+| Gyro autopilot | human computers (year 0) | Stability only | 2/s · 0.3 rad/s · 0.5° |
+| Analog autopilot | mainframes (year 3) | + Prograde, Retro, Normal, Anti-normal, Radial in/out | 3/s · 0.45 rad/s · 0.2° |
+| Guidance computer | onboard computers (year 7) | + Maneuver, Target, Anti-target, Relative pro/retro, Docking | 4/s · 0.6 rad/s · 0 |
+
+- The program's era is `compEra()`, so a power that lags in computing gets each step later (up to 4 years).
+- `s.av` is fixed when the vessel is made (`avNow()`), and a vessel split off keeps its parent's. With no program running
+  (sandbox, physics tests: `khOn()` false) it is the guidance computer, and so are ground-guided procedures (`s.proc`):
+  nothing that existed before changes outside a career.
+- A mode the avionics lack holds the attitude (`sasTarget`). In flight those buttons are dimmed, with a tooltip naming the
+  generation and era that bring them; *SAS → node* explains instead of switching. The builder's Control block opens with
+  the flight's avionics and what comes next.
+
+**Measured** (90° turn in vacuum under SAS; how tight it holds after settling)
+
+| | gyro | analog | computer |
+|---|---|---|---|
+| Bare pod (wheels) | 5.6 s | 3.7 s | 2.8 s |
+| Orbiter, first stage lit (gimbal) | 5.1 s | 4.0 s | 3.5 s |
+| Orbiter on wheels alone | 11.2 s, ±0.30° | 11.4 s, ±0.11° | 11.5 s, ±0 |
+| Lunar on wheels alone | 53.9 s | 54.1 s | 54.2 s |
+
+**What it taught**
+- **The loop only shows where authority is spare.** Big stacks on wheels turn at the limit of their torque and wheel
+  storage (peak 0.23 rad/s on the Orbiter, under even the gyro's 0.3), so all three generations turn them alike and the
+  difference is how tightly they hold. On a pod or under a gimbal the generations separate 2×.
+- **The modes are the real gate.** In the first three years an orbit is flown on Stability plus the pitch keys
+  (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
+  SAS holds retrograde. That is how Vostok and Mercury flew.
+
+**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+
+**For other sessions**
+- **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
+  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
+  register flies with the best.
+- **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
+- **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
+
+## v1.45 — launch-site follow-ups: the sea platform, weather scrubs, the downrange warning (2026-10-08, terrain session)
+
+The three follow-ups listed in § v1.27.
+
+- **The sea platform** (`kind:'sea'`, "Sea Platform"): one per world, on the equator in open ocean.
+  - **Placement:** ≥ 300 km from any land, over ≥ 500 m of water, the spot nearest the home site. On seed 13: 4,751 m
+    of water, 100% water downrange.
+  - **It floats:** nothing is levelled under it (`terrainH` and the shader's `uSites` take land pads only), so there's
+    no instant island. The deck is `SEA_DECK` = 12 m above the water.
+  - **Drawn** as a deck on columns and pontoons (`seaHull`), with the launch complex on it. The deck covers the whole
+    `PAD` mesh (x −256…86, z −194…80 m), so it's a big platform. A sea-specific complex (tower and table only) would
+    be smaller; that's the visuals session's call.
+  - **Who may use it:** the sea is no one's, so by default the platform is open to any program (a service, like Sea
+    Launch). Economy's `siteAccess`, when it exists, can price or refuse it.
+  - **Why it matters:** a power with no equatorial land (Ordun, Haval) can still reach the equator.
+- **Weather scrubs:**
+  - `siteWeather(site, T)` reads the cloud field the sky draws (`cloudAt`).
+  - On the launch day `weatherHold(s)` slips the launch a day at a time while the pad is under storm-grade cloud
+    (> 0.9), up to `SCRUB_MAX` = 5 days, with a news line.
+  - It's called from economy's `missionTick` launch line, one hook: `{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}`.
+  - The picker shows today's sky at the site.
+  - At the home site storms scrub 18 of 400 days (4.5%).
+- **The downrange warning** (`downrangeWarning(site)`) names the powers whose land lies under the site's corridor,
+  other than ours and the host's (the host's own land is the host's business). Shown in the picker, and in the news at
+  launch as a warning, not a block: the politics are economy's. On seed 13 one site is warned: Selhav Field II, over
+  the Republic of Fentor.
+- **Tests:** `test.mjs` §36, 3 checks (299 total after merging):
+  - the platform's placement, deck and access;
+  - a 2-day storm slips the launch exactly 2 days, while a clear day launches on time;
+  - the warning names only other powers.
+
+  §23 now levels land pads only.
+- **Trap:** a weather slip moves the shared world seed (`PROG.wseed`) for every later test. §35 (the event timeline)
+  had relied on a contract offer arriving by chance and failed; the bodies session hit the same fragility and made the
+  same fix (rebuild the board if it's empty).
+- **Next on this line:**
+  - a movable sea platform (sail it to any latitude: polar launches from the sea);
+  - weather by season and region (the storm belts of the climate map), not only the drifting cloud field;
+  - winds aloft for max-q loads per site.
 
 ## v1.44 — staged pay for long missions (2026-10-08, economy session)
 
@@ -1247,7 +1356,7 @@ readout's turn times within 10 % of flown ones, and the coasting max-q case on w
 - **anyone scripting flights in vacuum with big stacks:** turns on wheels alone are slow now; light the engine (the
   gimbal) or add RCS / a wheel part.
 
-**Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
+**Next on this line:** ~~era-gated SAS quality~~ (done, v1.46); the gimbal and
 fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
 
 ## v1.42 — the event timeline (2026-10-08, economy session)
@@ -1947,9 +2056,8 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
      (`physAlt`, `h<b.atm`, drag bands) are correctly sea-level based; touchdown, chutes and warp are not.
   - Tests to add: a capsule coming down over a 4–5 km plateau lands under its main; warp drops before ground contact
     over a range.
-- A sea-launch platform (`kind:'sea'`).
-- Per-site weather scrubs (`cloudAt`).
-- Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
+- ~~A sea-launch platform, per-site weather scrubs, a pre-launch downrange warning~~: done in v1.45 (§ v1.45).
+- (original note) Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
   downrange over a neighbour before launch).
 - Then slices C–E (§ v1.25).
 
@@ -2338,6 +2446,49 @@ In the browser: ▶ Procedure → ascent → coast (warp) → circularisation �
 - **A landed craft with its engines off is on rails,** where `advPhys` never runs, so the first in-game version sat on the pad.
   The procedure now lights the engines when started, and the game loop keeps a procedure on physics except during its coast.
 
+### Procedures v2: whole missions (2026-10-08)
+
+A mission procedure is the ascent plus a list of **phases**, each a guidance law with the parameters the flight chose:
+`transfer {to, pass}`, `capture {pe, ap}`, `land`, `surface {t}`, `ascend {stage, pitchH, pe, ap}`, `return {perigee}`. They are
+ported from `fly_crewlunar.mjs` but **steered through SAS** (`aimAt`: a burn waits until the nose is on its direction).
+Corrections are impulses found with the predictor (`solveDv`). Coasts set a wake time, so the game warps to them.
+
+**Extraction.** After the ascent, the recorder keeps a mission log (`procMission`, sampled in `advPhys` *and* `advRails`):
+- SOI entries and exits;
+- the pass, as the osculating periapsis right after SOI entry or the last trim (what the executor's trim aims at);
+- the last closed orbit before landing (the capture);
+- landing, take-off, and the stages dropped on the surface;
+- the orbit after take-off;
+- the **vacuum perigee the craft came in on** at the top of the air.
+
+When the craft is home and well (the crew alive, if crewed), that becomes a procedure for the design and the mission
+(`Selene:land`, `Selene:orbit`), kept only if it spent less Δv in all. The pad shows one button per procedure of the design.
+
+**Measured** (§27): the hand-written flight is recorded as `transfer 39.8 km → capture 30×220 → land → 600 s → ascend 15×18 →
+return 45.7 km` (8,672 m/s). The executor flies it through SAS: crew on Selene and home in 1.85 days, 4.0 g, splashdown 6.5
+m/s. Its 8,600 m/s **replaces** the hand-flown 8,672, so the procedure improves itself. In the browser the "Selene land" button
+flies ascent → transfer → capture → landing → take-off through the game loop.
+
+**What it taught:**
+- **Record where the decision is measured, not where its effect ends up.** Two recorder mistakes would each have killed the crew:
+  the "pass" read near closest approach (12 km, after three hours of Tellus's tide) instead of right after the trim (39.8); the
+  return "perigee" taken as the lowest point of the entry, which is the ground (0.55 km → 26 g). The fix is the quantity the
+  executor itself targets, measured at the moment it targets it.
+- **A search needs a slope.** Twice, an objective clamped at the ground (the integrated path's lowest point on an impact leg) left
+  the optimiser nothing to follow: a 2 m/s "correction" into a −0.6 km perigee, 8 g. On impact legs the osculating perigee
+  (negative) gives it one.
+- **Choose the smallest burn that's good enough, within what's aboard.** The return scan weighted 1 m/s against 20 m of perigee
+  error, picked 620 m/s with 554 aboard, and stranded the crew. Now it takes the smallest burn within 90 % of the fuel that gets
+  within 50 km (the correction does the rest).
+- **In the game, engines-off in orbit is on rails:** the recorder runs in `advRails` too, or it would never see an ascent end.
+  It runs *after* each physics step, so it sees a landing in the step that made it. Starting from the first second off the
+  ground, it also covers flights that light their engines before their first step.
+- **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
+  raised apoapsis to 805 km; the new one is robust to timing.
+
+**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+(economy) can now run whole missions headless.
+
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
 the economy decides, this is what the physics side offers:
 - **Real outcomes, cheaply.** A procedure flown headless is the game's own physics: ~1 s of CPU for an ascent; 15 s for the
@@ -2353,6 +2504,71 @@ the economy decides, this is what the physics side offers:
   4. Risk shown before dispatch (from the procedure's margin and the parts' know-how)?
   5. How results reach the player: a news line, the logbook, a short replay?
   6. Should a first in the world ever be dispatchable, or only repeats?
+
+**Dispatch — the economy's answers, decided with Caio (2026-10-08, economy session).** Dispatch is what routine runs (§
+"Rich programs") are built on: a stored procedure flown on the game's own physics, not a dice roll.
+
+1. **What can be dispatched:** contracts whose target a stored procedure has proven it can reach with that design. Only
+   ever **repeats**: every kind of flight needs a manual run-through first. A player may automate *part* of a run they
+   previously flew by hand (below).
+2. **Same pay as a flight flown by hand,** including any precision bonus, which comes from the real result. The
+   incentive to keep playing (possible, never required) is a more efficient procedure: a better hand-flown flight
+   replaces it.
+3. **Same stacking days, launch fees and studies** as a flown launch. Dispatches queue on the timeline and take pad
+   slots. **No automatic improvement with repetition** (Caio: improvements are player-led). What gets better is the
+   success chance, through part data the player earned.
+4. **Risk shown before dispatch,** from all the part data, not just ignition:
+   - the procedure's margin;
+   - know-how (ignition, stacking);
+   - certification (how well the loads are known);
+   - test-stand and flight data.
+
+   **Good part data narrows the estimate** (a tight range instead of a wide one) **and raises the chance of success.**
+   This deepens what part data is worth.
+5. **Results:** a timeline event, a news line and a logbook entry. **Two modes, as in Bannerlord's battles:**
+   - **auto-resolve:** headless, about a second for an ascent;
+   - **watch:** the same flight rendered, which you can **jump into** while it's in progress.
+
+   The random factors (ignition rolls are already deterministic per flight, kick and part) are **fixed by a seed at
+   dispatch**, so watching and auto-resolving give the same outcome as long as you don't touch anything. No re-rolls.
+   **Taking control breaks the dispatch:** the rest of that mission is manual.
+6. **Firsts in the world are never dispatched.** Only repeats.
+
+**From these, the parts that make it a game:**
+- **Deviation, not bare failure.** When a procedure can't meet its goal (an engine that didn't light, Δv short, the
+  compute era's guidance error), it doesn't just fail. The flight deviates and **calls for you**:
+  - time stops with the flight at that moment (a timeline stop, like a deadline);
+  - you take over, sometimes in a crisis: a stage that didn't light, an orbit decaying.
+
+  With auto-resolve, the headless run stops at the moment of deviation and the game drops you into that same state.
+- **No revert on a dispatched or taken-over flight.** Otherwise you'd re-roll the launch until it went well. More
+  punishing than KSP, deliberately (Caio).
+- **Partial dispatch, both ways:**
+  - dispatch *up to* a point (e.g. to parking orbit), then hand over;
+  - fly the first part yourself and hand a later phase to a procedure, but only a phase that design has flown by hand
+    before.
+
+  Each handover is a timeline event.
+
+**How much change to a part or design needs a new run-through?** (open, Caio unsure) Proposal:
+- **Development that doesn't touch physics never invalidates a procedure.** The v1.34 goals (cheaper, more reliable,
+  more durable) change price, ignition odds and wear, not the trajectory. The stack and its parts are unchanged, so
+  `procKey` already keeps the procedure.
+- **Anything that changes the physics** (a different part, mass, thrust, staging) makes a new design. Rather than a fixed
+  rule, **measure it:**
+  - The trajectory office **dry-runs** the old design's procedure on the new design, headless. That dry run is a
+    trajectory study (v1.38): the era's days and money.
+  - If it reaches the goal with margin, the procedure becomes **provisional** for the new design: dispatchable, with a
+    wider risk estimate.
+  - Flying the new design by hand once makes it the design's own.
+  - A dry run that fails, or a change in staging structure (stage count, engine roles), needs a manual run-through.
+- The §28 checks show this is the right shape: the Orbiter's procedure flies a +2 t variant to orbit, but a much lower
+  thrust-to-weight variant arrives ~70 m/s short. Margin is measurable; a rule would be guesswork.
+
+**Owners:**
+- economy: the dispatch order, pad calendar, risk estimate, pay, the deviation stop on the timeline, no-revert;
+- bodies: headless dispatch runs, deviation detection in `procStep`, phases and partial procedures, the dry run;
+- UI / app: watch mode, jumping in, the handover.
 
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
@@ -4763,3 +4979,42 @@ the arrows, and every key in the handlers present in its Help table.
    Selene and Nyx missions built (§ "Out there" missions). Next on that line: debris near the moons ignores tides;
    registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
+
+## The tester menu (2026-10-08, tester session; PLAYTEST #1)
+
+Cheats for playtesting. Open the page with **`?tester`** in the URL (`index.html?tester`); a yellow TESTER badge shows at
+the top, and **F2**, the badge or the Esc menu open the menu. Without the flag nothing changes: no badge, no key, no row
+in Help.
+
+**Never touches the career.** In tester mode the program saves to its own slot, `launchpad-program-tester`
+(`PROG_KEY` follows `TEST.on`); `launchpad-program-v1` is neither read nor written. The menu can copy the career into the
+sandbox or wipe the sandbox (both click twice, then reload). The cheat switches persist per browser in
+`launchpad-tester-flags`.
+
+| Control | What it does | Where it acts |
+|---|---|---|
+| Infinite money | funds never below 100,000M | `testTopUp()`: each frame, at load, after every menu action |
+| Full know-how and certification | every part at use 1 and certified 100 %; flight safety signs off | `khUse`, `certOf` |
+| All tools | impact prediction, maneuver planning, encounter forecasts without the logbook facts | `toolOK` |
+| No ignition failures | engines always light | `igniteOK` |
+| Instant stacking | a launch takes no preparation days | `R.prep` in `missionTick` |
+| Epoch 1–5 | marks every mission of the earlier epochs done (`done[id].test=true`), clears later ones; range streak to 3 | `testEpoch(n)` |
+| World date +1 d … +1 year | a day at a time through `advanceDays`, so budget, elections, rivals, eras and news all run | `testAdvance(d)` |
+| Finish every job | facilities, design bureau, test stand, production lines, trajectory studies done now | `testFinishJobs()` |
+
+Epoch and date are disabled during a flight (the flight's clock owns the date then).
+
+**For other sessions.** The rules live in the SIM tester block after `advanceDays` (`TEST`, `testTopUp`, `testEpoch`,
+`testAdvance`, `testFinishJobs`); the menu is after the shared keydown handler (`renderTester`). Each cheat is one read of
+a `TEST` flag in your code: keep it if you rework `khUse`, `certOf`, `toolOK`, `igniteOK` or the `R.prep` line. A new
+cheat = a flag in `TEST`, a row in `TEST_FLAGS`, one read where the rule lives, a check in test.mjs §37. KEYS rows can
+carry `tester:true` (Help shows them only in tester mode).
+
+**Found on the way: two missions shared an id.** Epoch 3's "Weather satellite" was `id:'weather'`, the same as epoch 1's
+"Above the weather". `PROG.done` is keyed by id, so the sounding flight also ticked off the satellite and opened
+Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 checks follow). §37 checks every mission id is
+unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
+is right.
+
+**Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
+"skip to an era" shortcut for the compute eras.
