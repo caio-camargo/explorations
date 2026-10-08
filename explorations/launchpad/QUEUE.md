@@ -71,7 +71,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
 | Q11 | **`dispatchRun(D, v, c)`**: a headless, seeded procedure run → {ok, orb, dv, why} or a deviation. Unblocks dispatch on real physics, watch mode, dry runs | M | ⚙ | ✓ bodies (dispatch flown; dry runs `procAdopt`; NOTES § "Dispatch, the physics side") |
-| Q12 | Deviation rules in `procStep`: Δv-to-go vs Δv left ✓ (bodies, `procDev`); still open: a corridor around the recorded profile | S | ⚙ | ready |
+| Q12 | Deviation rules in `procStep`: Δv-to-go vs Δv left ✓ (bodies, `procDev`); still open: a corridor around the recorded profile | S | ⚙ | → bodies 2026-10-08 |
 | Q13 | Landing on a chosen crater: the capture picks its plane and periapsis longitude | M | ⚙ | ready |
 
 ### control — attitude
