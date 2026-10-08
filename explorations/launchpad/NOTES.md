@@ -2542,7 +2542,30 @@ correction to the perigee, shed the stage, entry, chute). The recorder keeps a f
 records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
 and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
 
-**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
+**Aiming a free return (2026-10-08).** When the phase after a transfer is `home`, its corrections (and the trim inside the moon's
+SOI) aim at **the perigee it will come home on after the flyby** (`homePe`, read off the predictor's chained legs), with the
+pass allowed anywhere within half its planned height. The same free return as before now needs **4.9 m/s** on the way home
+instead of 286 (two mid-course corrections of ~50 m/s set up a pass that comes back by itself); 5,812 m/s in all instead of
+6,025.
+
+**Debris** near the moons now feels their tides too (`stepDebris`, the same pointwise test as `physStep`).
+
+**Registered satellites still ride pure Kepler, deliberately, for now.** Measured against the integrated orbit:
+
+| orbit | off the Kepler path after 30 days | Ap / Pe change |
+|---|---|---|
+| low, 300 km | 5 km | ±0.2 km |
+| polar, 1,000 km | 39 km | ±0.75 km |
+| navigation, 3,000 km | 500 km | ±6 km |
+| **stationary (TV)** | **10,750 km** | +31 / −144 km |
+
+Nyx is heavy and close, much more so than the Moon is to Earth, so a stationary satellite would really drift a quarter of the way
+round in a month. Giving the registry the tides would make the TV mission pay for days unless satellites carry propellant
+to hold their slot. That's the design notes' "satellites age" idea: **a satellite's life = station-keeping propellant ÷
+drift rate**, with servicing or replacement missions after. It's a gameplay decision for Caio with the sats and economy
+sessions, not a physics fix to slip in.
+
+**Open:** station-keeping and satellite lifetimes (above); dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever

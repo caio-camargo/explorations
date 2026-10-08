@@ -1138,7 +1138,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
       const Rf = s.rec, fb = P.procs[base + '|Selene:flyby'], frp = P.procs[base + '|Selene:free-return'];
       check('procedures v2: a free return (transfer, then home) flies "Crew around Selene", and is recorded as a flyby and a free-return procedure',
-        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home',
+        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home' && frp.dv < 5950,   // aimed as a true free return: small correction home
         `home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rf.cgMax || 0).toFixed(1)} g; procedures: flyby ${!!fb}, free-return ${frp ? frp.dv.toFixed(0) + ' m/s' : 'none'}`); } }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
