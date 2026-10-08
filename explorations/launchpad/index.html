@@ -117,6 +117,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
     <tr><td>, . /</td><td>warp down / up / 1×</td></tr>
     <tr><td>M</td><td>map view · Tab cycles focus</td></tr>
     <tr><td>map click</td><td>place a maneuver node on your orbit</td></tr>
+    <tr><td>B</td><td>cargo bay doors open/close (release from the HUD)</td></tr>
     <tr><td>[ ]</td><td>switch to another vessel in this flight</td></tr>
     <tr><td>R (flying)</td><td>RCS on/off</td></tr>
     <tr><td>I K · J L · U O</td><td>RCS translate: forward/back along the nose · sideways · sideways (the other axis)</td></tr>
@@ -333,6 +334,8 @@ const PARTS={
   // Isp 70 s) and the bottle that feeds it (15 kg of nitrogen). off: how far the body stands out from the skin.
   rcs:{name:'RCS quad (cold gas)',kind:'rcs',surf:true,noAero:true,m:0.02,h:0.2,r:0.07,off:0.06,C:900,T:600,B:200,rcsF:0.15,isp:70},
   gas:{name:'Gas bottle',kind:'gas',surf:true,noAero:true,m:0.03,h:0.6,r:0.17,off:0.19,res0:{gas:0.015},C:900,T:600,B:200},
+  // cargo bay (sats session): floor (h), walls bayL tall (inner radius bayIn), a clamshell roof roofH high; cm 8.4 × h ≈ 2.1 m up
+  bay:{name:'Cargo bay',kind:'bay',m:0.6,h:0.25,r:0.8,cm:8.4,bayL:4,bayIn:0.7,roofH:0.6,C:2500,T:1200,B:450,prof:[[.8,0],[.8,4.25],[.62,4.6],[0,4.85]],profOpen:[[.8,0],[.8,4.25]]},
   // probe core (sats session): a command part without crew, so a separated module is a vessel you can fly
   core:{name:'Probe core',kind:'core',m:0.08,h:0.25,torque:4000,C:900,T:600,B:200},
   // docking port (sats session): 1.25 m, its face on top; two capture when they meet slowly and nearly aligned
@@ -480,6 +483,9 @@ function assemble(stack){
   // an interstage's shell reaches up around the part right above it on its line (an engine): that part is enclosed
   for(const p of parts)if(p.d.istage){const a=parts.find(q=>q!==p&&!q.inst.rdec&&!q.inst.surf&&q.inst.line===p.inst.line&&Math.abs(q.y0-(p.y0+p.h))<1e-6);
     if(a){p.shell=a.h;p.xm=0.1*a.h;a.encBy=p}}
+  // a cargo bay encloses whatever sits on its floor within its walls and under its roof (shielded while its doors are shut)
+  for(const b of parts)if(b.d.kind==='bay'){const fl=b.y0+b.h,top=fl+b.d.bayL;
+    for(const q of parts)if(q!==b&&q.y0>=fl-1e-6&&q.y0+q.h<=top+1e-6&&Math.hypot(q.pos[0]-b.pos[0],q.pos[2]-b.pos[2])+(q.d.off||0)+q.d.r<=b.d.bayIn+1e-6)q.inBay=b}
   // radial groups: one per radial placement (all its symmetric copies)
   const groups=[],gOf=new Map();
   for(const q of L.inst){if(!radAt(q.nd.at)||q.rdec||q.line<0)continue;const nd=q.nd;if(gOf.has(nd))continue;
@@ -635,9 +641,9 @@ function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;
 // stack, so joints between equal radii are not surfaces), fins, the parachute, and a children-first joint order.
 function rebuildShape(s){
   const ps=s.parts.filter(p=>p.on),lines=new Map();
-  for(const p of ps){if(p.d.noAero)continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
+  for(const p of ps){if(p.d.noAero||shielded(p))continue;const k=p.pos[0].toFixed(3)+','+p.pos[2].toFixed(3);if(!lines.has(k))lines.set(k,[]);lines.get(k).push(p)}
   s.lines=[];
-  for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of p.d.prof)pts.push([r,p.y0+y,p]);
+  for(const lp of lines.values()){lp.sort((a,b)=>a.y0-b.y0);const pts=[];for(const p of lp)for(const[r,y]of profOf(p))pts.push([r,p.y0+y,p]);
     // an interstage shell fills out everything it encloses to its own radius, and owns that surface
     for(const q of lp)if(q.shell){const y0=q.y0+q.h-1e-6,y1=y0+q.shell+2e-6;for(const pt of pts)if(pt[1]>=y0&&pt[1]<=y1&&pt[0]<q.d.r){pt[0]=q.d.r;pt[2]=q}}
     const all=[[0,pts[0][1],pts[0][2]],...pts,[0,pts[pts.length-1][1],pts[pts.length-1][2]]],E=[];
@@ -784,13 +790,13 @@ function structLoads(s,aNg,al,w,tauCtrl,probe){
 function subtree(p){const out=[p];for(const c of p.children)if(c.on)out.push(...subtree(c));return out}
 // Take parts off the vessel (staging or structural failure). They leave as one debris body with the velocity
 // their centre of mass had, including the spin, plus a kick (body frame).
-function detach(s,list,kick,spin){
+function detach(s,list,kick,spin,asVessel){
   list=list.filter(p=>p.on);if(!list.length)return;s.kickN=(s.kickN||0)+1;
   geom(s);const c0=s.cm.slice();let dm=0,dc=[0,0,0];for(const p of list){const m=partMass(p);dm+=m;dc=madd(dc,partC(p),m)}dc=mul(dc,1/dm);
   for(const p of list)p.on=false;
   geom(s);rebuildShape(s);
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
-  if(list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
+  if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
   else HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
     w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0});
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
@@ -1292,7 +1298,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -1950,7 +1956,7 @@ const hitBase=d=>d.kind==='tank'?d.dry:d.m;          // a satellite's part masse
 function hitProf(P,y){if(y<=P[0][1])return P[0][0];for(let i=1;i<P.length;i++)if(y<=P[i][1]){const[a,ya]=P[i-1],[b,yb]=P[i];return yb>ya?a+(b-a)*(y-ya)/(yb-ya):Math.max(a,b)}return P[P.length-1][0]}
 const HIT_GEO=new WeakMap();
 // a part's contact geometry in the vessel frame: axis base o, profile, height, sample points, centre and bounding radius
-function hitGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.phi!=null?d.off:0,o=[p.pos[0]+so*Math.cos(p.phi||0),p.y0,p.pos[2]+so*Math.sin(p.phi||0)];
+function hitGeo(p,d){if(d.kind==='bay')return bayGeo(p,d);let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.phi!=null?d.off:0,o=[p.pos[0]+so*Math.cos(p.phi||0),p.y0,p.pos[2]+so*Math.sin(p.phi||0)];
   let prof=d.sc&&PARTS[d.base]?PARTS[d.base].prof.map(([r,y])=>[r*d.sc,y*d.sc]):d.prof;
   if(d.kind==='fins')prof=[[d.r+(d.span||0),0],[d.r+(d.span||0),h]];   // the fin ring as its swept disc
   const pts=[],ny=Math.max(1,Math.ceil(h/0.2));
@@ -1960,7 +1966,7 @@ function hitGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.
     if(i===0||i===ny)pts.push([o[0],o[1]+y,o[2]])}
   const rmax=Math.max(...prof.map(x=>x[0]));
   g={o,prof,h,pts,c:[o[0],o[1]+h/2,o[2]],R:Math.hypot(rmax,h/2)};HIT_GEO.set(p,g);return g}
-function partSDF(g,x,y,z){const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
+function partSDF(g,x,y,z){if(g.bay)return baySDF(g.bay,x,y,z);const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
 function sdfN(g,l){const e=1e-3,f=(x,y,z)=>partSDF(g,x,y,z),[x,y,z]=l;
   return norm([f(x+e,y,z)-f(x-e,y,z),f(x,y+e,z)-f(x,y-e,z),f(x,y,z+e)-f(x,y,z-e)])}
 const hitW=(B,pt)=>add(B.r,qrot(B.q,sub(pt,B.cm))),hitL=(B,w)=>add(qrot(qconj(B.q),sub(w,B.r)),B.cm);
@@ -2165,7 +2171,7 @@ let vesselN=0;
 // a vessel built from parts leaving s: clones (the originals stay off in s), re-indexed, their tree, segments and the
 // staging events that concern only them; same vessel frame, so it starts exactly where those parts were
 function vesselFrom(s,list,r,v,w){const map=new Map(),parts=list.map((p,i)=>{const c={...p,i,on:true,children:[],F:[0,0,0],L:[0,0,0],res:{...p.res},cap:{...p.cap}};map.set(p,c);return c});
-  for(const p of list){const c=map.get(p);c.parent=map.get(p.parent)||null;if(c.parent)c.parent.children.push(c)}
+  for(const p of list){const c=map.get(p);c.parent=map.get(p.parent)||null;if(c.parent)c.parent.children.push(c);if(c.inBay)c.inBay=map.get(c.inBay)||null}
   const oldSegs=[...new Set(parts.map(c=>c.seg))],segN=new Map(oldSegs.map((k,i)=>[k,i]));for(const c of parts)c.seg=segN.get(c.seg);
   const segs=oldSegs.map(k=>({...s.segs[k]})),inSet=k=>segN.has(k),hasChute=parts.some(c=>c.d.kind==='chute');
   const events=s.events.slice(s.evIdx).filter(e=>[...e.decouple,...e.ignite].every(inSet)&&(e.decouple.length||e.ignite.length||(e.chute&&hasChute)))
@@ -2174,7 +2180,7 @@ function vesselFrom(s,list,r,v,w){const map=new Map(),parts=list.map((p,i)=>{con
   const n=++vesselN,cmd=parts.find(isCommand);
   const ns={stack:s.stack,parts,segs,events,root:parts.find(c=>!c.parent),groups:[],evIdx:0,body:s.body,alive:true,landed:false,
     throttle:0,sas:false,sasMode:'stab',hold:null,w:w.slice(),chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:r.slice(),v:v.slice(),q:s.q.slice(),att:[],
-    fleet:true,name:`${cmd.d.kind==='pod'?'Capsule':'Probe'} ${n}`,site:s.site,rec:{launched:true,day0:s.rec&&s.rec.day0,ended:false,mini:true}};
+    fleet:true,name:`${cmd?cmd.d.kind==='pod'?'Capsule':'Probe':'Payload'} ${n}`,site:s.site,rec:{launched:true,day0:s.rec&&s.rec.day0,ended:false,mini:true}};
   geom(ns);rebuildShape(ns);HOOK.cloned&&HOOK.cloned(list,parts);FLEET.push(ns);HOOK.msg(`${ns.name} separates: a vessel of its own ([ / ] to switch)`);return ns}
 // one physics step of a vessel that isn't S, at the same instant as S's (the clock is S's to advance)
 function fleetPhys(v,dt){const t0=simT;physStep(v,dt);simT=t0;if(v.alive)contactStep(v,dt);simT=t0}
@@ -2202,6 +2208,41 @@ function switchTo(i){const v=FLEET[i];if(!v||!v.alive)return false;FLEET.splice(
   HOOK.rebuild();HOOK.msg(`Flying ${S.name||'the vessel'}`);return true}
 // the end of a flight: every other vessel left in a stable orbit is registered (with whatever it has docked)
 function fleetEnd(R){for(const v of FLEET){if(!v.alive)continue;satRegister(v,{day0:R.day0});dockEnd(v)}FLEET.length=0}
+// ---- the cargo bay (sats session; stations plan Phase B). A floor with walls and clamshell roof doors: whatever is
+// stacked on its floor and fits inside its walls and under its roof is enclosed (p.inBay, set in assemble), shielded from
+// the air and its heat while the doors are shut. The doors take DOOR_S of flight time to open or close (p.open, p.doorT;
+// on the flight clock, so tapes replay them). With them open the payload is released through the top: pushed out along
+// the bay's axis at BAY_PUSH, a vessel of its own whether or not it has a command part.
+const DOOR_S=2,BAY_PUSH=0.3;
+const doorF=p=>{if(p.doorT==null)return p.open?1:0;const f=clamp((simT-p.doorT)/DOOR_S,0,1);return p.open?f:1-f};   // 0 shut … 1 open
+const shielded=p=>!!(p.inBay&&p.inBay.on&&!p.inBay.open&&doorF(p.inBay)===0);   // exposed from the moment the doors are told to open until they're shut again
+const profOf=p=>p.d.kind==='bay'&&(p.open||doorF(p)>0)?p.d.profOpen:p.d.prof;   // an open bay's outline has no roof
+function bayDoors(s,open){let n=0;for(const p of s.parts){if(!p.on||p.d.kind!=='bay'||!!p.open===open)continue;const f=doorF(p);
+    p.open=open;p.doorT=simT-(open?f:1-f)*DOOR_S;n++;if(!open)s.bayShut=Math.max(s.bayShut||0,simT+f*DOOR_S)}   // mid-swing reversals keep their place
+  if(!n)return false;if(open)rebuildShape(s);HOOK.msg(open?'Bay doors opening':'Bay doors closing');return true}
+// the doors finishing shut make the payload shielded again (the outline changes back)
+function bayTick(s){if(s&&s.bayShut!=null&&simT>=s.bayShut){s.bayShut=null;rebuildShape(s)}}
+function bayRelease(s){const bays=s.parts.filter(p=>p.on&&p.d.kind==='bay');if(!bays.length)return false;let n=0;
+  for(const b of bays){const list=b.children.filter(c=>c.on&&c.inBay===b).flatMap(subtree);if(!list.length)continue;
+    if(doorF(b)<1){HOOK.msg('Open the bay doors first');continue}
+    if(list.includes(s.root)){HOOK.msg("The vessel's own command part is in the bay");continue}
+    const dm=list.reduce((a,p)=>a+partMass(p),0)*1000,ms=s.mass-dm;detach(s,list,[0,BAY_PUSH*ms/(ms+dm),0],0,true);n++}   // 0.3 m/s apart, momentum shared
+  if(!n&&bays.every(b=>!b.children.some(c=>c.on&&c.inBay===b)))HOOK.msg('Nothing in the bay');return n>0}
+function bayOp(s,op){return op==='open'?bayDoors(s,true):op==='close'?bayDoors(s,false):op==='rel'?bayRelease(s):false}
+// contact: the bay is hollow (walls, floor, and a roof only while shut), so a payload can leave without touching it
+const BAY_GEO=new WeakMap();
+function bayGeo(p,d){const shut=doorF(p)===0;let g=BAY_GEO.get(p);if(g&&g.shut===shut)return g;
+  const o=[p.pos[0],p.y0,p.pos[2]],hf=d.h,top=d.h+d.bayL,R=d.r,ri=d.bayIn,pts=[];
+  const ring=(r,y)=>{const n=Math.max(8,Math.ceil(6.2832*r/0.25));for(let k=0;k<n;k++){const a=k/n*6.2832;pts.push([o[0]+r*Math.cos(a),o[1]+y,o[2]+r*Math.sin(a)])}};
+  const ny=Math.ceil(top/0.2);for(let i=0;i<=ny;i++){const y=top*i/ny;ring(R,y);if(y>hf+0.05)ring(ri,y)}   // outer and inner walls
+  for(let r=R-0.25;r>0.05;r-=0.25)ring(r,0);pts.push(o.slice());   // the floor's underside
+  if(shut){for(let r=R-0.25;r>0.05;r-=0.25)ring(r,top+0.1);pts.push([o[0],o[1]+top+0.1,o[2]])}   // the shut roof
+  g={o,bay:{hf,top,R,ri,shut},prof:[[R,0],[R,top]],h:top,pts,c:[o[0],o[1]+top/2,o[2]],R:Math.hypot(R,top/2+0.1),shut};BAY_GEO.set(p,g);return g}
+function baySDF(b,x,y,z){const rad=Math.hypot(x,z),box=(...ds)=>{const pos=ds.filter(v=>v>0);return pos.length?Math.hypot(...pos):Math.max(...ds)};
+  let d=box(Math.abs(rad-(b.R+b.ri)/2)-(b.R-b.ri)/2,-y,y-b.top);   // the walls
+  d=Math.min(d,box(rad-b.R,-y,y-b.hf));                             // the floor
+  if(b.shut)d=Math.min(d,box(rad-b.R,b.top-y,y-(b.top+0.1)));       // the roof
+  return d}
 // ---- RCS (sats session). Thrusters are real forces at real points (addF), so translating with unbalanced quads also turns
 // the vessel, as it should. Jet selection: for each of the 12 signed axes (± force x, y, z; ± torque x, y, z) a set of
 // non-negative duties that produces that axis alone as nearly as the layout allows (non-negative least squares, solved
@@ -2333,11 +2374,11 @@ const eraOf=()=>PROG.done&&PROG.done.beeper?2:1;
 // flight bit for bit (the planet's spin and Selene's position depend only on time, which starts at 0).
 const CHUTE_G=3;   // chutes are reefed: the canopy opens in stages so its own drag never exceeds this many g
 const TAPE_V='lp-1.12';   // 1.12: the drogue waits for subsonic-ish speed
-function advPhys(s){fleetPhysAll(DT);physStep(s,DT);contactStep(s,DT);fleetContacts(DT);stepDebris(DT);missionTick(s,DT,true)}
+function advPhys(s){fleetPhysAll(DT);physStep(s,DT);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true)}
 function advRails(s,dt,warp){
   if(!s.landed){if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(s,dt/n)}
     else{s.w=[0,0,0];if(s.sas&&s.sasMode!=='stab'){const tg=sasTarget(s);if(tg)s.q=qnorm(qmul(qFromTo(qrot(s.q,[0,1,0]),tg),s.q))}}}
-  const t0=simT,ok=rails(s,dt),el=simT-t0;if(FLEET.length){simT=t0;for(const v of FLEET)if(v.alive)fleetRails(v,el);simT=t0+el}missionTick(s,dt,false);
+  const t0=simT,ok=rails(s,dt),el=simT-t0;if(FLEET.length){simT=t0;for(const v of FLEET)if(v.alive)fleetRails(v,el);simT=t0+el}missionTick(s,dt,false);bayTick(s);FLEET.forEach(bayTick);
   if(warp>4){for(const d of debris)d.mesh&&d.mesh.free&&d.mesh.free();debris.length=0}else stepDebris(dt);
   return ok}
 function controls(s){return{th:s.throttle,p:INP.pitch,y:INP.yaw,r:INP.roll,tx:INP.tx,ty:INP.ty,tz:INP.tz,rcs:!!s.rcs,tg:s.tgtV?'v:'+s.tgtV.name:s.target??null,sas:s.sas,mode:s.sasMode,
@@ -2352,6 +2393,7 @@ function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='
 function tapeRails(T,s,dt,warp){tapeCtl(T,s);T.ops.push(['R',dt,warp]);return advRails(s,dt,warp)}
 function tapeStage(T,s){tapeCtl(T,s);T.ops.push(['S']);stage(s)}
 function tapeAbort(T,s){tapeCtl(T,s);T.ops.push(['A']);abort(s)}
+function tapeBay(T,s,op){tapeCtl(T,s);T.ops.push(['B',op]);bayOp(s,op)}
 function tapeSwitch(T,s,i){tapeCtl(T,s);T.ops.push(['V',i]);switchTo(i)}
 function tapeUndock(T,s,id){tapeCtl(T,s);T.ops.push(['D',id]);undock(s,id)}
 function tapeDuration(T){let d=0;for(const o of T.ops)d+=o[0]==='P'?o[1]*DT:o[0]==='R'?o[1]:0;return d}
@@ -2363,6 +2405,7 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
     else if(o[0]==='A'){abort(s);pl.i++}
     else if(o[0]==='D'){undock(s,o[1]);pl.i++}
     else if(o[0]==='V'){switchTo(o[1]);s=S;pl.i++}
+    else if(o[0]==='B'){bayOp(s,o[1]);pl.i++}
     else if(o[0]==='R'){advRails(s,o[1],o[2]);pl.i++;budget--}
     else{const k=Math.min(budget,o[1]-pl.n);for(let j=0;j<k;j++)advPhys(s);pl.n+=k;budget-=k;if(pl.n>=o[1]){pl.i++;pl.n=0}}}
   return pl.i<ops.length&&s.alive}
@@ -3026,7 +3069,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -3066,6 +3109,12 @@ function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][
     lathe(out,[[.035,yt*.55,C.K],[.035,yt-.05,C.K]],[px,o[1],pz],8,[false,false]);
     lathe(out,[[.05,yt+.02,G],[.05,yt+.16,G]],[o[0]-rt-.08,o[1],o[2]],10,[true,true])}
   PK=K}
+// one roof half of a cargo bay: a quarter-dome on side sd (±x), swung by th about its hinge on the rim; two-sided
+function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),nu=6,na=12;
+  const P=(u,a)=>{const r=R*Math.cos(u*Math.PI/2),yy=H*Math.sin(u*Math.PI/2),dx=r*Math.cos(a)-R,dy=yy;   // in the half's own frame (x toward its hinge)
+    return[o[0]+sd*(R+dx*c+dy*sn),o[1]+top-dx*sn+dy*c,o[2]+r*Math.sin(a)]};
+  for(let i=0;i<nu;i++)for(let j=0;j<na;j++){const u0=i/nu,u1=(i+1)/nu,a0=-Math.PI/2+j/na*Math.PI,a1=-Math.PI/2+(j+1)/na*Math.PI,A=P(u0,a0),B=P(u1,a0),Cc=P(u1,a1),D=P(u0,a1);
+    let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),col);pv(out,y,mul(n,-1),col);pv(out,x,mul(n,-1),col)}}}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
@@ -3081,6 +3130,9 @@ function partBody(out,p){
         const b=a+1.0472;box(out,[x+Math.cos(b)*.48,y+.31,z+Math.sin(b)*.48],.03,.025,.03,C.D)}break;
     // claw: a drive housing with a bolted base flange and a hazard band, a turntable, and three jointed fingers (a
     // hinge knuckle at the base and the elbow, a hydraulic ram along each, rubber-padded tips) around a dark contact plate
+    case'bay':{const top=h+d.bayL,th=doorF(p)*1.75;
+      lathe(out,[[d.r,0,C.W],[d.r,top,C.W],[d.r,top,C.G],[d.bayIn,top,C.G],[d.bayIn,h,C.D],[0,h,C.D]],o,32,[true,false]);
+      for(const sd of[1,-1])bayDoor(out,o,d.r,top,d.roofH,sd,th,C.W)}break;
     // probe core: a guidance and avionics ring, foil between bolted rings; four equipment boxes on the band (two with
     // thermal louvers), a sun sensor, a status lamp, and two whip antennas on the top ring
     case'core':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.6,.04,C.AU],[.6,.21,C.AU],[.625,.21,C.D],[.625,.25,C.D]],o);
@@ -3609,6 +3661,7 @@ addEventListener('keydown',e=>{
   else if(k==='/'){warpTo=null;warpIdx=0}
   else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%(BODIES.length+1);const fb=BODIES[cam.focus-1];cam.mDist=fb&&fb.parent?fb.R*9.15:5*TELLUS.R}
   else if(k==='g')cycleTarget();
+  else if(k==='b'&&S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'))tapeBay(recTape,S,S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open)?'close':'open');
   else if((k==='['||k===']')&&FLEET.length)tapeSwitch(recTape,S,k===']'?0:FLEET.length-1);
   else if(k==='r'&&S.alive&&!S.landed&&rcsJets(S)){S.rcs=!S.rcs;renderSAS();HOOK.msg(S.rcs?'RCS on':'RCS off')}
   else if(k==='n')nodeAtApoapsis();
@@ -3751,6 +3804,7 @@ function render(){
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
+  {const k=bayKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
   if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=S.body===TELLUS?groundAlt(TELLUS,toPF(TELLUS,sub(p,bc),simT)):0,hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
     if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const P0=sub(madd(bc,up,S.body.R+gA+0.04),camW),L=SUN,ln=dot(L,up),d0=dot(P0,up)/ln;
       const Pr=[1-L[0]*up[0]/ln,-L[1]*up[0]/ln,-L[2]*up[0]/ln,0, -L[0]*up[1]/ln,1-L[1]*up[1]/ln,-L[2]*up[1]/ln,0, -L[0]*up[2]/ln,-L[1]*up[2]/ln,1-L[2]*up[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
@@ -4020,7 +4074,8 @@ const SAT_MESH=new WeakMap();   // registry entry → its mesh, built on first s
 function satMesh(q){let me=SAT_MESH.get(q.shape);if(!me){const parts=q.shape.filter(o=>PARTS[o.k]).map(o=>({...o,d:PARTS[o.k]}));
     for(const p of parts)if(p.mk)MARKS.set(p,{soot:p.mk[0],char:p.mk[1],cd:p.mk.slice(2),frost:0,glow:0});SAT_MESH.set(q.shape,me={mesh:partsMesh(parts),parts})}return me}   // keyed by shape: a part broken off is a new shape
 const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it loses parts (parts only ever come off)
-function fleetMesh(v){const on=v.parts.filter(p=>p.on);let e=FLEET_MESH.get(v);if(!e||e.n!==on.length){if(e)e.mesh.free();e={n:on.length,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
+function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
+const bayKey=s=>s?s.parts.filter(p=>p.on&&p.d.kind==='bay').map(p=>Math.round(doorF(p)*40)).join():'';
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
 function satsHTML(){const L=satsUp();const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -4133,6 +4188,10 @@ function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J
   return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${g.toFixed(1)} kg · Δv ${dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
 // offset (the target port's position from ours in our body axes: L/J move us +X/−X, U/O +Z/−Z)
+function bayRows(){const B=S.parts.filter(p=>p.on&&p.d.kind==='bay');if(!B.length)return[];const f=Math.min(...B.map(doorF)),op=B.some(b=>b.open),
+    load=B.some(b=>b.children.some(c=>c.on&&c.inBay===b)),st=f===0?'shut':f===1?'open':`${op?'opening':'closing'} ${(f*100).toFixed(0)}%`;
+  return[['Bay',`${st} <button data-bay="${op?'close':'open'}">${op?'close':'open'} [B]</button>${load&&f===1?' <button data-bay="rel">release payload</button>':load?'':' <span class="dim">empty</span>'}`]]}
+document.addEventListener('click',e=>{const op=e.target.dataset&&e.target.dataset.bay;if(!op||mode!=='flight'||!S)return;tapeBay(recTape,S,op)});
 function fleetRows(){const L=FLEET.filter(v=>v.alive);return L.length?[['Vessels',L.map(v=>`${v.name} ${fmtD(len(sub(v.r,S.r)))}`).join(' · ')+' <span class="dim">· [ ] switch</span>']]:[]}
 function dockRows(){const out=[],D=S.att||[];
   if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} <button data-undock="${a.e.id}">${a.kind==='claw'?'release':'undock'}</button>`).join(' · ')]);
@@ -4165,7 +4224,7 @@ function updateHUD(){
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
     ['Impact',!toolOK('impact')?'<span class="dim">no trajectory data yet</span>':impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
     ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
-    ...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...payloadRows(),
+    ...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...payloadRows(),
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';

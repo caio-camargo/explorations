@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.16.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2598,6 +2598,31 @@ Two halves launched together (or a module you just released) can now dock to eac
   target with `G`, guidance, latch, undock by the button, fly the module.
 - **Not yet:** a vessel docked into a stack and saved at the end of the flight comes back next time as a passive part of
   the stack (A2: vessels that stay flyable across flights).
+
+### Phase B built: the cargo bay (sats session, 2026-10-07)
+
+- **Part:** *Cargo bay* (palette *Structure*): a floor (its stack height, 0.25 m), walls 4 m tall (1.6 m across, 1.4 m
+  inside: room for 1.25 m modules), and a clamshell roof of two doors. Payloads stack on its floor the ordinary way, so
+  the editor needed nothing new; a part on top of the bay sits *inside* it. Its centre of mass is up the walls (`cm`).
+- **Enclosure** (`assemble`, next to the interstage's): a part is in the bay (`p.inBay`) if it sits on the floor within
+  the walls and under the roof; anything sticking out stays exposed. Geometric, so it doesn't matter where the root is.
+- **Shielding:** while the doors are shut, enclosed parts are out of the airflow entirely (no air load, no heating; the
+  bay's outline is its whole closed shape, roof included). From the moment the doors are told to open until they're
+  shut again, the payload is exposed and the bay's outline has no roof. Measured: 0 vs 123 kN on the payload at 400 m/s,
+  8 km up. (First version left it shielded after opening: the outline was rebuilt at 0 % open.)
+- **Doors:** 2 s to open or close on the flight clock (deterministic, recorded: tape op `['B', op]`); key **B** or the
+  HUD's *Bay* row. A reversal mid-swing continues from where the doors are. The mesh is rebuilt while they move.
+- **Release** (HUD button, doors fully open): the payload leaves through the top along the bay's axis at 0.3 m/s,
+  momentum shared, as a vessel whether or not it has a command part (*Payload N* otherwise, so a satellite released
+  from a bay doesn't vanish as debris). Refused with the doors shut, or if the vessel's own command part is inside.
+- **Contact:** the bay is hollow (walls, floor, a roof only while shut), so the payload slides out without touching it:
+  15 s later it's still parting at 0.3006 m/s, its base clear of the rim.
+- Checks (`test.mjs` §29): enclosure; shielding shut vs open; release refused shut, then a vessel at 0.3000 m/s with
+  momentum exact; a clean exit; a payload without a command part is a vessel; the hollow contact shape. Browser: the
+  bay in the editor, doors opening, release, the payload leaving.
+- **Not yet:** the arm taking a payload out (Phase D), or putting one back in for the trip home (retrieval); a side-
+  opening shuttle-style bay (needs an "inside" attach in the editor); a 2.5 m bay; the doors' look (they read a little
+  oddly mid-swing, for the visuals session); the editor doesn't yet say whether a payload fits.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
