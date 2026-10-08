@@ -6,7 +6,7 @@ import { flyLadder } from './fly_ladder.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -2537,7 +2537,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); s.landed = false; const home = api.SITES[0];
   s.r = api.fromPF(TELLUS, mul(home.u, R + 30e3), 0); const l1 = api.linkOf(s);
   s.r = api.fromPF(TELLUS, mul(mul(home.u, -1), R + 150e3), 0); const l2 = api.linkOf(s);
-  s.r = api.fromPF(TELLUS, mul(home.u, R + 60e3), 0); s.qHeat = 2e5; const l3 = api.linkOf(s); s.qHeat = 0;
+  s.r = api.fromPF(TELLUS, mul(home.u, R + 60e3), 0); s.qHeat = 2e5; s.v = add(api.surfVel(TELLUS, s.r), mul(api.localFrame(s.r).e, 3000)); const l3 = api.linkOf(s); s.qHeat = 0; s.v = api.surfVel(TELLUS, s.r);
   check('link: the pad sees the climb; the far side of the planet has no station in view; re-entry plasma blacks the link out',
     l1.ok && l1.st && !l2.ok && /no station/.test(l2.why) && !l3.ok && /blackout/.test(l3.why), `${l1.st && l1.st.name} · ${l2.why} · ${l3.why}`);
   // telemetry: out of contact, strain data goes to the recorder, not straight to certification
@@ -2690,6 +2690,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('atlas is wired: C in KEYS.map and the key handler, the bake before the sky pass, the tint after the clouds, overlay and ink called',
     km.includes("{k:['c'],l:'C'") && pg.includes("k==='c'&&view==='map')cycleAtlas()") && pg.includes("atlasTick();\n  // ---- sky / planets") &&
     /cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)[^]{0,200}\n if\(atl\.a>0\.\)col=mix/.test(pg) && pg.includes('atlasOverlay(era,camW,') && pg.includes('if(atlasMode)atlasInk(era,'));
+}
+
+// 37f. Plasma blackout needs speed, not just heat (terrain session, QUEUE Q17 / PLAYTEST #17): an ordinary climb through
+// dense air reaches the heat flux at ~1 km/s and must keep its link; an orbital-speed entry still blacks out.
+{
+  const { TELLUS: T } = api, sv = r => api.surfVel(T, r), V = (s, va) => { s.v = add(sv(s.r), mul(api.localFrame(s.r).e, va)); };
+  const s = api.newShip(api.PRESETS.Orbiter); s.landed = false; s.r = api.fromPF(T, mul(api.SITES[0].u, T.R + 20e3), 0);
+  s.qHeat = 7.7e4; V(s, 1041); const climb = api.linkOf(s);   // the robot's Heavy: 77 kW/m² at Mach 3.5, 20 km
+  s.qHeat = 1.9e5; V(s, 2600); const entry = api.linkOf(s), on = api.plasmaOn(s); s.qHeat = 0; const cool = api.plasmaOn(s);
+  check('blackout: a hot climb at 1 km/s keeps its link; a hot entry at 2.6 km/s blacks out; fast but cool air does not',
+    climb.ok && !/blackout/.test(climb.why) && !entry.ok && /blackout/.test(entry.why) && on && !cool && api.PLASMA_V > 1800 && api.PLASMA_V < 2600,
+    `PLASMA_V ${api.PLASMA_V} m/s · climb: ${climb.ok ? (climb.st ? climb.st.name : climb.why) : climb.why} · entry: ${entry.why}`);
+  // flown: the Heavy's gravity turn never blacks out; a capsule's return from orbit does, for a while
+  const turn = name => { api.t = 0; const x = api.newShip(api.PRESETS[name]); api.S = x; x.sas = false; x.throttle = 1; api.stage(x); let k = 0, n = 0, vmax = 0;
+    while (k++ < 300000 && x.alive) { const h = len(x.r) - T.R, el = elements(x.r, x.v, T.mu), f = api.localFrame(x.r), p = Math.PI / 2 * (1 - Math.pow(Math.min(1, Math.max(0, (h - 1000 * AS) / (44000 * AS))), 0.6));
+      const Y = norm(add(mul(f.e, Math.cos(p)), mul(f.up, Math.sin(p)))), X = norm(cross(Y, f.n)); x.q = api.qFromBasis(X, Y, cross(X, Y)); x.w = [0, 0, 0];
+      if (el.ap - T.R > ATM + 10000 && h > ATM) break; if (api.dvRemaining(x).cur <= 0.5 && x.evIdx < x.events.length) api.stage(x);
+      api.physStep(x, api.DT); if (x.qHeat > api.BLACKOUT_Q) vmax = Math.max(vmax, len(sub(x.v, sv(x.r)))); if (api.plasmaOn(x)) n++; }
+    return { n: n * api.DT, vmax }; };
+  const heavy = turn('Heavy');
+  api.t = 0; const x = api.newShip(['chute', 'bio', 'pod', 'shield']); api.S = x; x.landed = false; const f = api.localFrame([T.R + ATM + 5000, 0, 0]);
+  x.r = [T.R + ATM + 5000, 0, 0]; x.v = add(mul(f.e, VENT), mul(f.up, -60)); { const d = norm(x.v), Y = mul(d, -1), X = norm(cross(Y, f.n)); x.q = api.qFromBasis(X, Y, cross(X, Y)); }
+  x.sas = true; x.sasMode = 'retro'; x.rec.launched = true; let k = 0, nb = 0; while (x.alive && !x.landed && k++ < 400000) { api.physStep(x, api.DT); if (api.plasmaOn(x)) nb++; }
+  check('blackout, flown: the Heavy climb never loses its link to plasma; a capsule returning from orbit is blacked out for a while',
+    heavy.n === 0 && nb * api.DT > 30, `Heavy: hot up to ${heavy.vmax.toFixed(0)} m/s, ${heavy.n.toFixed(0)} s of plasma · entry: ${(nb * api.DT).toFixed(0)} s of blackout`);
 }
 
 function moonPos(t) { return api.moonPos(t); }

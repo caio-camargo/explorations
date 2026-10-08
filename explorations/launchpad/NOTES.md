@@ -1250,7 +1250,7 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
-## v1.51 — the atlas: biomes, borders and coasts on the map (2026-10-08, terrain session)
+## v1.52 — the atlas: biomes, borders and coasts on the map (2026-10-08, terrain session)
 
 Open thread 5 of § v1.25: make the generated geography readable in play. **C** in the map cycles biomes → powers → off
 (remembered in `localStorage` `launchpad-atlas`). Tests in `test.mjs` §37e.
@@ -1332,6 +1332,12 @@ Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs`
 - `linkOf(s)`: the flight's own link. Deep space counts as linked (no deep-space network yet), on the ground too;
   re-entry plasma (`qHeat > BLACKOUT_Q` = 5e4) blacks it out; otherwise the first station in view. HUD row "Link"
   (the station, or the reason and "· recorder").
+  **Fix (QUEUE Q17, PLAYTEST #17):** the heat alone blacked out ordinary climbs. Dense air reaches 50 kW/m² at only
+  ~1 km/s (the Heavy at Mach 3.5, 20 km). Now `plasmaOn(s)` also needs airspeed over `PLASMA_V` = 0.65 × circular
+  speed at the top of the air (~2.2 km/s; the shuttle's blackout ended near 5 of 7.8 km/s). Measured headless: hot
+  ascents peak at 1.1–1.7 km/s (Orbiter, Heavy, Asparagus); an orbital entry is hot from 3.1 down to 1.1 km/s and
+  still blacks out for its fast part. aerofx's plasma shell (Q20) can use `plasmaOn`/`PLASMA_V` for the same line.
+  test.mjs §37f.
 - Telemetry follows the link. Strain data (`R.sf`, the certification feed) is written only while linked; out of
   contact it goes to the recorder `R.sfRec`, which `missionEnd` merges into `R.sf` only if the instrument package came
   home (`R.recSci`). Economy: that one line before the cert loop is the only change in `missionEnd`'s certification.
@@ -1360,7 +1366,7 @@ Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs`
   searches the news. If another session's test pins a specific offer, that is why.
 
 **Next on this line:** recovery that takes days and a recovery ship to send; stations bought at a chosen site (the mask
-makes the choice a real trade-off); ~~the atlas view~~ (done, § v1.51).
+makes the choice a real trade-off); ~~the atlas view~~ (done, § v1.52).
 
 ## v1.47 — dispatch, the economy side (2026-10-08, economy session)
 
@@ -2599,7 +2605,7 @@ Shading:
      slope (unconfirmed).
 4. ~~**Stations with terrain (C), recovery (D), biome science (E)**~~: done in v1.48 (§ v1.48), with what's left listed there.
 5. ~~**The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
-   in play.~~ Done in v1.51 (§ v1.51).
+   in play.~~ Done in v1.52 (§ v1.52).
 
 ## v1.24 — power flavours, first slice (2026-10-07)
 
@@ -5440,7 +5446,7 @@ the arrows, and every key in the handlers present in its Help table.
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
   Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27. Station horizons,
   the flight's link, recovery and geographic disasters/contracts: § v1.48.
-  The map's atlas (biomes, powers, coasts, borders; the C key; `ATLAS`/`atlasBake`/`atlasAt`): § v1.51.
+  The map's atlas (biomes, powers, coasts, borders; the C key; `ATLAS`/`atlasBake`/`atlasAt`): § v1.52.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.

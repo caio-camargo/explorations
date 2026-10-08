@@ -1480,6 +1480,11 @@ function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
 // low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
 const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,BLACKOUT_Q=5e4,gsMasks=new Map();
+// re-entry plasma: hot air (stagnation flux over BLACKOUT_Q) AND fast enough to ionise it. Dense air reaches that flux at
+// ~1 km/s on an ordinary climb (PLAYTEST #17: Mach 3.5 at 20 km); ionisation wants orbital-class speed. The shuttle's
+// blackout ended near 5 of 7.8 km/s, so ~2/3 of circular speed at the top of the air, scaled to this world: ~2.2 km/s.
+// Measured: hot ascents peak at 1.7 km/s, an orbital entry is hot from 3.1 down to 1.1 km/s. aerofx: the shell can use it.
+const PLASMA_V=Math.round(0.65*Math.sqrt(TELLUS.mu/(TELLUS.R+TELLUS.atm))),plasmaOn=s=>s.qHeat>BLACKOUT_Q&&len(sub(s.v,surfVel(TELLUS,s.r)))>PLASMA_V;
 function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
   const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
   for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
@@ -1493,7 +1498,7 @@ function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),
 // the flight's radio link: the first station that sees the vessel, or a plasma blackout during re-entry heating. Away
 // from Tellus (Selene, Nyx) the deep-space antennas are assumed to hold the link.
 function linkOf(s){if(s.body!==TELLUS)return{ok:true,st:null,why:'deep space'};if(s.landed)return{ok:true,st:null,why:'on the ground'};
-  if(s.qHeat>BLACKOUT_Q)return{ok:false,st:null,why:'plasma blackout'};
+  if(plasmaOn(s))return{ok:false,st:null,why:'plasma blackout'};
   const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf))return{ok:true,st,why:''};return{ok:false,st:null,why:'no station in view'}}
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
