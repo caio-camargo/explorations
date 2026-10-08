@@ -1006,7 +1006,10 @@ clocks (else the first render would replay their ignition), then render every st
 ## Performance pass: all the engine and air FX together (2026-10-07, aerofx session)
 
 Each effect had been measured alone. The heaviest scene: the Heavy at night, ~10 m up (three plumes on the pad, the
-ground cloud, plume light, floodlights). 1280×800, RS 1, RTX 5050 laptop. Frame frozen; each configuration removes one
+ground cloud, plume light, floodlights). 1280×800, RS 1. **Correction (2026-10-08):** headless Chrome was on the Intel
+iGPU for these, not the RTX 5050 (`GPU_NAME` was never checked; `--force_high_performance_gpu` picks the RTX). The
+before/after comparisons are valid (same GPU throughout), but the absolute times are iGPU times; the same scenes take
+4–6 ms on the RTX. The same likely holds for the per-effect costs quoted in the sections above from this session. Frame frozen; each configuration removes one
 effect; the configurations are interleaved over 4 rounds (alternating order) after a 6 s warm-up; median of the middle two.
 
 | configuration | before | after |
@@ -1027,6 +1030,42 @@ effect; the configurations are interleaved over 4 rounds (alternating order) aft
   trail predates this session), plumes ~1 ms for three, impingement 1.7, plume light ~0.2.
 - **Measuring on this laptop:** the GPU idles at 0 MHz and ramps its clock under load, so back-to-back samples drifted by
   ±10 ms and removing an effect could read slower. A warm-up plus interleaved rounds gave spreads under 0.5 ms.
+
+## Clouds with depth near the camera (2026-10-08, aerofx session)
+
+Caio: the clouds look good from space, but at launch they are a flat layer. The deck was one infinitely thin shell at
+3 km. Now, below ~20 km, the deck within 40 km is a raymarched slab from 2 to 5.5 km. The shell still draws beyond that
+and from orbit, so space views are unchanged.
+
+- **Coverage is unchanged, only given height.** The volume reads `cloudCovF`, the same function the shell uses and that
+  `cloudAt` ports to the CPU for satellite imaging, so pictures and the drawn sky still agree. It is baked into a 512²
+  texture over ±50 km round the point under the camera (gnomonic; `COV_FS` is sliced out of `SKY_FS`'s own source, so
+  there is one copy of the noise), re-baked after 5 km of travel or noticeable weather drift. Calling `cloudCovF` per
+  step would cost 15 value-noise calls × 40+ steps per pixel.
+- **Shape (`cloudDens`):** a column's top height rises with its cover (thin cover makes low puffs, thick cover towers),
+  times a km-scale noise so neighbouring columns differ; flat bases; two octaves of 3D noise (650 m, 230 m,
+  planet-fixed, drifting with the weather) erode it into billows.
+- **March:** 72 steps, spaced as x² so they are dense near the camera; the volume hands over to the shell between 50 %
+  and 100 % of 40 km. Extinction 1/180 m⁻¹ at full density; the sky depth is written where the cloud passes 50 %
+  opacity (meshes behind it hide).
+- **Light:** two steps toward the sun (250 m, 800 m) for self-shadowing, plus a multiple-scattering stand-in
+  (max(e^(−2.2 d), 0.4 e^(−0.35 d))); without it the inside of a cloud was mid-grey instead of bright grey-white. Tops
+  brighter than bellies; sky ambient; aerial perspective as the shell's.
+- `CLOUD_VOL = false` restores the flat shell everywhere. `CLOUD_DT` shifts the *drawn* weather in time for reference
+  views only (`cloudAt` ignores it). Views 80–83 search it for ~60 % cover under the rocket.
+- **Cost:** no measurable change on the RTX 5050 (pad 4.1 vs 4.4 ms, 3 km 5.6 vs 5.6, 8 km 5.4 vs 5.7, on vs off):
+  within 40 km it replaces the shell's near-detail term. Also no worse on the Intel iGPU.
+
+**Bugs on the way:** (1) the bake's centre used the transpose of the shader's `uProt` (planet rotation), so the texture
+sat over the wrong place and the volume saw zero cover: the clouds just vanished. (2) the first reference views found
+clear sky: the weather at the pad was simply clear, hence `CLOUD_DT`; then the 8 km view was clear because the rocket is
+downrange of the pad by then, so the search is now under the rocket. (3) bank tops against the sky were sawtoothed at
+48 uniform steps (grazing rays 40 km long); x² spacing and 72 steps fixed it.
+
+Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `83` 25 km (shell only).
+
+**Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
+anvils; the deck from 8 km is still fairly uniform in brightness.
 
 ## Program design — direction and parking lot (2026-10-06)
 

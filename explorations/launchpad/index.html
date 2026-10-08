@@ -2659,6 +2659,7 @@ uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
 vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
@@ -2826,6 +2827,18 @@ float cloudCovF(vec3 u,float fw){vec3 w=vec3(vn(u*4.+uCT*.3),vn(u*4.+vec3(5.2,1.
  vec3 q=(u+w*.22)*vec3(6.,11.,6.)+vec3(uCT,0.,uCT*.6);
  float c=fbm(q)+.35*(fbm(u*1.7+vec3(4.,1.,uCT*.2))-.5),k=clamp(fw*60.,0.,.3);return smoothstep(.55-k,.72+k*.4,c)*(1.-k*.8);}
 float cloudCov(vec3 u){return cloudCovF(u,0.);}
+// the deck with depth, near a low camera (uVk > 0: the camera is under ~20 km): a slab from 2 to 5.5 km marched out to
+// uVD. Coverage comes from uCov, cloudCovF baked round the point under the camera (gnomonic, half-extent uCvX m; the
+// same coverage the shell and cloudAt use), and sets each column's height: thin cover makes low puffs, thick cover
+// towers. Two octaves of 3D value noise (planet-fixed, drifting) erode it into billows. Lit by height in the column (tops
+// bright, bellies dark), one step toward the sun, and the sky; aerial perspective like the shell's.
+float covNear(vec3 cu){float g=dot(cu,uCv0);vec2 uv=uPR*vec2(dot(cu,uCvE),dot(cu,uCvN))/(g*uCvX)*.5+.5;
+ if(g<=0.||any(lessThan(uv,vec2(.002)))||any(greaterThan(uv,vec2(.998))))return 0.;return texture(uCov,uv).r;}
+float cloudDens(vec3 q){float r=length(q);vec3 u=q/r,cu=uProt*u;float hf=(r-uPR-2000.)/3500.;if(hf<0.||hf>1.)return 0.;
+ float c=covNear(cu);if(c<.01)return 0.;
+ vec3 w=cu*uPR+vec3(uCT*400.,0.,uCT*250.);float n=vn(w/650.)*.65+vn(w/230.)*.35,tw=vn(w/2600.);
+ float top=mix(.15,1.,c*c*(3.-2.*c))*(.45+1.1*tw),shape=smoothstep(0.,.06,hf)*smoothstep(top,top*.5,hf);
+ return clamp(c*shape*1.9-(1.-n)*.85,0.,1.);}
 float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
@@ -2875,15 +2888,29 @@ void main(){
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
  float tC=-1.,tD=tH;
+ if(uVk>0.&&uCR>0.){float r0=length(uPc),RB=uPR+2000.,RT=uPR+5500.;vec2 hb=sph(uPc,r0*r0-RB*RB,d),ht=sph(uPc,r0*r0-RT*RT,d);float tA=-1.,tB=-1.;
+  if(r0<RB){tA=hb.y;tB=ht.y;}else if(r0<RT){tA=0.;tB=hb.x>0.?hb.x:ht.y;}else if(ht.x>0.){tA=ht.x;tB=hb.x>0.?hb.x:ht.y;}
+  tB=min(min(tB,tH),uVD);
+  if(tA>=0.&&tB>tA){const int N=72;float L=tB-tA,j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),T=1.;vec3 C=vec3(0.);
+   vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tB+1.);
+   vec3 sT=sunTrans(d*(.5*(tA+tB))-uPc)*5.,amb=vec3(.42,.5,.62)*(.12+.88*clamp(dot(normalize(-uPc),uSun)*3.+.3,0.,1.));
+   for(int i=0;i<N;i++){float x=(float(i)+j)/float(N),t=tA+L*x*x,ds=L*2.*x/float(N)+L/float(N*N);   // steps grow with distance
+    vec3 q=d*t-uPc;float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
+    float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),.4*exp(-dl*.35));   // two steps toward the sun; the second term stands in for multiple scattering (deep cloud is grey-white, not black)
+    vec3 cs=vec3(.9)*(sT*(.08+.92*lt)*(.5+.5*smoothstep(0.,.8,hf))*.8+amb*(.35+.4*hf)*.6);
+    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(t/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
+    C+=T*a*(cs*tr+ic);T*=1.-a;if(T<.5&&tD>=tH)tD=t;if(T<.02)break;}
+   col=col*(1.-uVk*(1.-T))+uVk*C;}}
  if(uCR>0.){vec2 hc=sph(uPc,uCcc,d);tC=uCcc>0.?(hc.x>0.&&hc.x<=hc.y?hc.x:-1.):hc.y;}
- if(tC>0.&&tC<tH){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
+ float shW=1.-uVk*(1.-smoothstep(.5*uVD,uVD,tC));   // inside uVD the volume stands in for the shell
+ if(tC>0.&&tC<tH&&shW>.001){vec3 cp=d*tC-uPc,cn=normalize(cp),cu=uProt*cn;float mu=abs(dot(d,cn)),fw=tC*uPix/max(mu,1e-3)/uCR,cov=cloudCovF(cu,fw)*smoothstep(.0,.035,mu);
   // up close: billowy detail on top of the weather-scale coverage (fades out with distance, so orbit views pay nothing)
   float near=smoothstep(60000.,4000.,tC),dn=0.;if(near>0.&&cov>.002){dn=vn(cu*2600.+uCT*3.)*.6+vn(cu*7800.)*.4;cov=clamp(cov+(dn-.55)*1.6*near*smoothstep(0.,.3,cov),0.,1.);}   // breaks the deck into lumps and holes up close
   if(cov>.002){float ndl=dot(cn,uSun),below=uCcc<0.?1.:0.,lit=clamp(ndl*.6+.4,0.,1.)*smoothstep(-.15,.1,ndl);
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95);if(cov>.5)tD=tC;}}
+   col=mix(col,cc*tr+ic,cov*.95*shW);if(cov*shW>.5)tD=min(tD,tC);}}
  col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
@@ -3260,7 +3287,16 @@ const POOL_FS=`#version 300 es
 precision highp float;in vec2 vG;in float vW;out vec4 o;uniform vec3 uPlC;uniform float uLh,uR0,uFc,uR,uDk;
 void main(){float d2=dot(vG,vG)+uLh*uLh,E=uLh*inversesqrt(d2)/(d2+uR0*uR0);vec3 c=uPlC*E*.3*uDk*smoothstep(uR,uR*.6,length(vG));
  o=vec4(1.-exp(-c*1.6),1.);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// the coverage bake for the near cloud volume: cloudCovF over a gnomonic patch round the point under the camera, sliced
+// out of SKY_FS so the noise and the coverage are the very same code
+const COV_FS=(()=>{const a=SKY_FS.indexOf('float h3('),b=SKY_FS.indexOf('float hp('),c=SKY_FS.indexOf('float fbm('),e=SKY_FS.indexOf('\n',c),
+    f=SKY_FS.indexOf('float cloudCovF('),g=SKY_FS.indexOf('float cloudCov(');
+  if([a,b,c,e,f,g].some(x=>x<0))throw new Error('COV_FS: SKY_FS markers moved');
+  return `#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform float uCT,uPR,uCvX;uniform vec3 uCv0,uCvE,uCvN;
+${SKY_FS.slice(a,b)}${SKY_FS.slice(c,e+1)}${SKY_FS.slice(f,g)}
+void main(){vec2 xy=vNdc*uCvX;vec3 u=normalize(uCv0+(xy.x*uCvE+xy.y*uCvN)/uPR);o=vec4(cloudCovF(u,0.),0.,0.,1.);}`})();
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -3490,6 +3526,22 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
 // the plumes' light, one point light for all burning engines: at the flame's bright part (a quarter of the plume down,
 // lower when the jet reaches the ground), coloured from the propellant's core and mantle, strength ∝ exit area × spool,
 // with the plume's flicker. PLT = {p: [camera-relative position, core radius], c: colour × strength, g: ground info}.
+let CLOUD_VOL=true;   // false: the flat shell everywhere (A/B)
+let CLOUD_DT=0;   // debug/reference views only: shifts the drawn weather in time (s). cloudAt (satellites) ignores it
+// the coverage texture for the near cloud volume: 512² over ±50 km round the point under the camera (planet-fixed,
+// gnomonic). Re-baked when the camera has moved 5 km or the weather has drifted (uCT) noticeably.
+const COV={tex:null,fb:null,n0:512,ext:5e4,vd:4e4,c0:[0,1,0],e:[1,0,0],n:[0,0,1],ct:-1};
+function covBake(camW){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th),u=norm(camW),
+    c0=[c*u[0]-s*u[2],u[1],s*u[0]+c*u[2]],ct=((tNow()+CLOUD_DT)*2e-4)%500;   // the camera's direction, planet-fixed: uProt·u (uProt's columns are (c,0,s), (0,1,0), (−s,0,c))
+  if(COV.tex&&dot(c0,COV.c0)>Math.cos(5000/TELLUS.R)&&Math.abs(ct-COV.ct)<.02)return;
+  if(!COV.tex){COV.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,COV.n0,COV.n0,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+    COV.fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,COV.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,COV.tex,0)}
+  const e=norm(cross([0,1,0],c0)),n=cross(c0,e);Object.assign(COV,{c0,e,n,ct});
+  const u2=PCOV.u;gl.useProgram(PCOV.p);gl.bindFramebuffer(gl.FRAMEBUFFER,COV.fb);gl.viewport(0,0,COV.n0,COV.n0);gl.disable(gl.DEPTH_TEST);
+  gl.uniform1f(u2.uCT,ct);gl.uniform1f(u2.uPR,TELLUS.R);gl.uniform1f(u2.uCvX,COV.ext);gl.uniform3fv(u2.uCv0,c0);gl.uniform3fv(u2.uCvE,e);gl.uniform3fv(u2.uCvN,n);
+  gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.enable(gl.DEPTH_TEST)}
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
@@ -4126,6 +4178,8 @@ function render(){
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
+  // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
+  const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   // ---- sky / planets: one full-screen ray-cast
   for(const prog of PDEPTH?[PDEPTH,PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
@@ -4140,8 +4194,10 @@ function render(){
    {const RT=TELLUS.R+TERR_TOP;gl.uniform2f(u.uGen,Math.cos(-WORLD.lon0),Math.sin(-WORLD.lon0));gl.uniform1f(u.uTcc,(d-RT)*(d+RT))}
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
-   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,(tNow()*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000))}}
+   const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
+   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000));
+   gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
+    gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
   if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
     gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,W,H);
