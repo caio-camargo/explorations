@@ -1163,6 +1163,46 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.45 — launch-site follow-ups: the sea platform, weather scrubs, the downrange warning (2026-10-08, terrain session)
+
+The three follow-ups listed in § v1.27.
+
+- **The sea platform** (`kind:'sea'`, "Sea Platform"): one per world, on the equator in open ocean.
+  - **Placement:** ≥ 300 km from any land, over ≥ 500 m of water, the spot nearest the home site. On seed 13: 4,751 m
+    of water, 100% water downrange.
+  - **It floats:** nothing is levelled under it (`terrainH` and the shader's `uSites` take land pads only), so there's
+    no instant island. The deck is `SEA_DECK` = 12 m above the water.
+  - **Drawn** as a deck on columns and pontoons (`seaHull`), with the launch complex on it. The deck covers the whole
+    `PAD` mesh (x −256…86, z −194…80 m), so it's a big platform. A sea-specific complex (tower and table only) would
+    be smaller; that's the visuals session's call.
+  - **Who may use it:** the sea is no one's, so by default the platform is open to any program (a service, like Sea
+    Launch). Economy's `siteAccess`, when it exists, can price or refuse it.
+  - **Why it matters:** a power with no equatorial land (Ordun, Haval) can still reach the equator.
+- **Weather scrubs:**
+  - `siteWeather(site, T)` reads the cloud field the sky draws (`cloudAt`).
+  - On the launch day `weatherHold(s)` slips the launch a day at a time while the pad is under storm-grade cloud
+    (> 0.9), up to `SCRUB_MAX` = 5 days, with a news line.
+  - It's called from economy's `missionTick` launch line, one hook: `{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}`.
+  - The picker shows today's sky at the site.
+  - At the home site storms scrub 18 of 400 days (4.5%).
+- **The downrange warning** (`downrangeWarning(site)`) names the powers whose land lies under the site's corridor,
+  other than ours and the host's (the host's own land is the host's business). Shown in the picker, and in the news at
+  launch as a warning, not a block: the politics are economy's. On seed 13 one site is warned: Selhav Field II, over
+  the Republic of Fentor.
+- **Tests:** `test.mjs` §36, 3 checks (299 total after merging):
+  - the platform's placement, deck and access;
+  - a 2-day storm slips the launch exactly 2 days, while a clear day launches on time;
+  - the warning names only other powers.
+
+  §23 now levels land pads only.
+- **Trap:** a weather slip moves the shared world seed (`PROG.wseed`) for every later test. §35 (the event timeline)
+  had relied on a contract offer arriving by chance and failed; the bodies session hit the same fragility and made the
+  same fix (rebuild the board if it's empty).
+- **Next on this line:**
+  - a movable sea platform (sail it to any latitude: polar launches from the sea);
+  - weather by season and region (the storm belts of the climate map), not only the drifting cloud field;
+  - winds aloft for max-q loads per site.
+
 ## v1.44 — staged pay for long missions (2026-10-08, economy session)
 
 Long missions pay along the way (design: "Time, long missions and communication").
@@ -1947,9 +1987,8 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
      (`physAlt`, `h<b.atm`, drag bands) are correctly sea-level based; touchdown, chutes and warp are not.
   - Tests to add: a capsule coming down over a 4–5 km plateau lands under its main; warp drops before ground contact
     over a range.
-- A sea-launch platform (`kind:'sea'`).
-- Per-site weather scrubs (`cloudAt`).
-- Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
+- ~~A sea-launch platform, per-site weather scrubs, a pre-launch downrange warning~~: done in v1.45 (§ v1.45).
+- (original note) Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
   downrange over a neighbour before launch).
 - Then slices C–E (§ v1.25).
 
@@ -2337,6 +2376,49 @@ In the browser: ▶ Procedure → ascent → coast (warp) → circularisation �
   cut-off as a 0 throttle setting. Both are fixed: the cut-off apoapsis is kept, and only powered samples go into the tables.
 - **A landed craft with its engines off is on rails,** where `advPhys` never runs, so the first in-game version sat on the pad.
   The procedure now lights the engines when started, and the game loop keeps a procedure on physics except during its coast.
+
+### Procedures v2: whole missions (2026-10-08)
+
+A mission procedure is the ascent plus a list of **phases**, each a guidance law with the parameters the flight chose:
+`transfer {to, pass}`, `capture {pe, ap}`, `land`, `surface {t}`, `ascend {stage, pitchH, pe, ap}`, `return {perigee}`. They are
+ported from `fly_crewlunar.mjs` but **steered through SAS** (`aimAt`: a burn waits until the nose is on its direction).
+Corrections are impulses found with the predictor (`solveDv`). Coasts set a wake time, so the game warps to them.
+
+**Extraction.** After the ascent, the recorder keeps a mission log (`procMission`, sampled in `advPhys` *and* `advRails`):
+- SOI entries and exits;
+- the pass, as the osculating periapsis right after SOI entry or the last trim (what the executor's trim aims at);
+- the last closed orbit before landing (the capture);
+- landing, take-off, and the stages dropped on the surface;
+- the orbit after take-off;
+- the **vacuum perigee the craft came in on** at the top of the air.
+
+When the craft is home and well (the crew alive, if crewed), that becomes a procedure for the design and the mission
+(`Selene:land`, `Selene:orbit`), kept only if it spent less Δv in all. The pad shows one button per procedure of the design.
+
+**Measured** (§27): the hand-written flight is recorded as `transfer 39.8 km → capture 30×220 → land → 600 s → ascend 15×18 →
+return 45.7 km` (8,672 m/s). The executor flies it through SAS: crew on Selene and home in 1.85 days, 4.0 g, splashdown 6.5
+m/s. Its 8,600 m/s **replaces** the hand-flown 8,672, so the procedure improves itself. In the browser the "Selene land" button
+flies ascent → transfer → capture → landing → take-off through the game loop.
+
+**What it taught:**
+- **Record where the decision is measured, not where its effect ends up.** Two recorder mistakes would each have killed the crew:
+  the "pass" read near closest approach (12 km, after three hours of Tellus's tide) instead of right after the trim (39.8); the
+  return "perigee" taken as the lowest point of the entry, which is the ground (0.55 km → 26 g). The fix is the quantity the
+  executor itself targets, measured at the moment it targets it.
+- **A search needs a slope.** Twice, an objective clamped at the ground (the integrated path's lowest point on an impact leg) left
+  the optimiser nothing to follow: a 2 m/s "correction" into a −0.6 km perigee, 8 g. On impact legs the osculating perigee
+  (negative) gives it one.
+- **Choose the smallest burn that's good enough, within what's aboard.** The return scan weighted 1 m/s against 20 m of perigee
+  error, picked 620 m/s with 554 aboard, and stranded the crew. Now it takes the smallest burn within 90 % of the fuel that gets
+  within 50 km (the correction does the rest).
+- **In the game, engines-off in orbit is on rails:** the recorder runs in `advRails` too, or it would never see an ascent end.
+  It runs *after* each physics step, so it sees a landing in the step that made it. Starting from the first second off the
+  ground, it also covers flights that light their engines before their first step.
+- **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
+  raised apoapsis to 805 km; the new one is robust to timing.
+
+**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+(economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
 the economy decides, this is what the physics side offers:
