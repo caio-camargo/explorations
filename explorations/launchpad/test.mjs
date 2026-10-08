@@ -1963,7 +1963,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     tallFlat.s.landed && !tallSlope.s.alive && /Toppled/.test(tallSlope.last), `flat: ${tallFlat.last} · ${tiltSpot.su.name} at ${(tiltSpot.sl / D).toFixed(0)}°: ${tallSlope.last}`);
 }
 
-// 35. Engine gimbal and steerable fins (control session): the nozzle really turns, within its range and slew rate; a single
+// control-1. Engine gimbal and steerable fins (control session): the nozzle really turns, within its range and slew rate; a single
 // engine on the axis cannot roll the vessel, side boosters can; the nozzle centres again when nothing asks for torque.
 // All-moving fins steer in air in proportion to q, and roll.
 {
@@ -2008,7 +2008,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
 }
-// 38. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// control-2. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
 // they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
 {
   const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
@@ -2343,7 +2343,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
-// 39. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
+// control-3. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
 // an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
 {
   const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,satRegister,vesselOf,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
