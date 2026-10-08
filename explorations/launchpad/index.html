@@ -698,11 +698,11 @@ const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
 // computer with every mode and the full-speed loop (onboard computers). k: rate-loop gain (1/s), w: fastest commanded turn
 // (rad/s), db: attitude deadband (rad). A vessel keeps the avionics it launched with (s.av); with no program running
-// (sandbox, physics tests) and on ground-guided procedures it has the best.
+// (sandbox, physics tests), with the tester's all-tools cheat, and on ground-guided procedures it has the best.
 const AV=[{name:'Gyro autopilot',modes:['stab'],k:2,w:0.3,db:0.0087,era:0},
   {name:'Analog autopilot',modes:['stab','pro','retro','normal','anti','radout','radin'],k:3,w:0.45,db:0.0035,era:1},
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
-const avNow=()=>khOn()?Math.min(AV.length-1,compEra()):AV.length-1;
+const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics
 const avOf=s=>AV[s.proc?AV.length-1:s.av??AV.length-1];
 const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
 const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
@@ -2695,9 +2695,9 @@ function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(st&&st
 // whatever is docked. Vessels split off another keep their parts' design indices (p.oi, p.oseg), so any descendant of a
 // design rebuilds the same way. Entries registered before this have no design and stay passive.
 const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loaded into the flight)
-const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute});
+const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av});   // av: its avionics (control session)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
-function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);
+function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew)p.crewAboard=o.crew}
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});
   // the next staging event: the first that hasn't happened (something still there to drop, a segment not yet lit, a chute)

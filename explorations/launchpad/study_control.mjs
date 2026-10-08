@@ -21,7 +21,7 @@ function ascent(name, stack) {
   const A = { name, n: 0, sat: 0, satPow: 0, nPow: 0, gimShare: 0, tauTot: 0, magicRoll: 0, peakA: 0, peakAq: 0, peakC: 0, peakAuth: 0,
     aoaPow: 0, aoaCoast: 0, wheel: s.torque, lost: '' };
   while (api.t < 900 && s.alive && ph !== 'done') {
-    api.INP.pitch = (api.t >= 8 && api.t < 8.8) ? 1 : 0; if (api.t > 9.8) s.sasMode = 'pro';
+    api.INP.pitch = (api.t >= 8 && api.t < 9.2) ? 1 : 0; if (api.t > 10.2) s.sasMode = 'pro';   // the kick test §12 uses since v1.40's exact prograde tracking
     const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - R;
     if (ph === 'asc' && el.ap - R > ATM + 10000) { s.throttle = 0; ph = 'coast'; }
     if (ph === 'coast' && h > ATM && api.timeToNu(el, Math.PI) < 25) { s.throttle = 1; ph = 'circ'; }

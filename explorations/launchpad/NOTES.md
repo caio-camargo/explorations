@@ -1222,13 +1222,16 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
-gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+**Tests** §39 (3 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
+still flies its gyro. 315 pass.
 
 **For other sessions**
 - **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
-  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
-  register flies with the best.
+  would set `s.av` (or move `avNow`). Registered vessels keep theirs (`vstOf` stores `av`, `vesselOf` restores it;
+  entries from before v1.46.1 get today's).
+- **tester:** *All tools* also gives the best avionics (`avNow`); the epoch picker doesn't move the date, so without it
+  a tester at epoch 4 flies a gyro.
 - **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
 - **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
 
@@ -1344,7 +1347,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** §38 (3 checks; numbered §36 until v1.46.1): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
