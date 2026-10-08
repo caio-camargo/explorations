@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.16.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1034,6 +1034,90 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.33 — the test stand (2026-10-07)
+
+A first capital investment: a one-off facility with no upkeep, chosen by the player.
+
+- **Building it:** 40M and 60 days (`buildStand`), stored in `PROG.stand2` (`PROG.stand` already holds the contract
+  sources' standing).
+- **Campaigns** (`startTest`, ticked daily by `standTick`), one at a time. Each buys a unit of the part at its current
+  sourced price and burns 1.5M a day.
+  - *Qualification run* (10 + 10·tier days): the regimes a stand can reproduce (fly, structural load, heat, and burn for
+    engines), learned at 60% of a flight's weight; certification rises as if the part had been loaded to 60%. A stand
+    never teaches vacuum or orbit. Measured: a frugal power's Kestrel, 48M over 20 days → know-how 20 → 29% (a flight
+    through the same regimes: +14.5 points), certified 70 → 85%.
+  - *Test to destruction* (5 + 5·tier days): certified 100% (true limits known), a little know-how, the unit destroyed.
+    A Condor: 60M over 15 days.
+- `khLearn(R, w)` takes a weight; ground tests use 0.6.
+- **UI:** a Test stand section in the Program panel: build, construction progress, the running campaign, and Qualify /
+  To destruction buttons for parts in the current design or already known.
+- **Not yet:** the career runner doesn't use the stand, so its effect on balance is untested. Development projects (the
+  next sink) can build on it: stress data from the stand counts toward a part's history.
+
+`test.mjs` §30: 3 new checks; 223 total.
+
+## v1.32 — balance pass 2: know-how, lines and support in simulated careers (2026-10-07)
+
+`career.mjs` now plays the new systems:
+- upper-stage ignitions can fail by know-how (a first-stage failure is a scrub);
+- each abstracted flight records the regimes its parts went through, so the game's own `khLearn` runs;
+- three policies, picked with `node career.mjs [years] [seeds] [base|lines|support] [starts]`:
+  - *base:* buy everything;
+  - *lines:* license or build a line for any part flown three times, if 120M stays in reserve;
+  - *support:* a runner-only model of support packages (fee 1.5× the part's price on first purchase; that part
+    starts at 45% use).
+
+**What it found:**
+1. **Know-how grew far too fast.** Each regime added its own step, and an orbital flight passes through about nine, so
+   one flight took a part from 20% to ~85% (90–96% for every program after a year; zero ignition failures). My v1.30
+   check only exercised three regimes, which hid it. Now **one step per flight**: Δuse = (1 − use)·(1 −
+   e^(−0.05·Σ novelty)). Measured on a Kestrel through the same three regimes ten times: +11, +5, +3 … +0.8 points, 48%
+   after ten. Varied orbital flights reach the high 70s in about ten. (This supersedes the v1.30 numbers.)
+2. **Weak agencies bled.** Running costs exceeded a neutral budget day, so frugal/resource agencies needed 7–22 top-ups
+   in 3 years: the upkeep misery Caio warned about. Running costs are now 0.06 + 0.015·capacity M/day, the budget day
+   15M per 100 days, and the agency and consortium starts 80M. Top-ups in 3 years: 0.7–4.7 (frugal leanest).
+3. **Lines didn't pay back.** At 8× price setup they never did within 3 years. Now 4× price × (1 + tier), and
+   maturity +12% per unit. Over 6 years (2 seeds), agencies' final funds without → with lines: rising 1,668 → 1,854M;
+   frugal 356 → 661M (it affords 59 flights instead of 32); security 1,698 → 2,488M; but resource 1,174 → 698M. A
+   resource state with no industry is better off buying. That's the archetype doing its job, and buying and building
+   coexist as designed.
+4. **Support packages are a real trade-off** (3 years): resource 332 → 737M and frugal 367 → 455M, but rising
+   830 → 579M and security 885 → 571M. Good for import-dependent programs, a drain for others. It stays provisional,
+   now with evidence that it's a choice and not a dominant strategy.
+
+**Still open:** superpowers reach 2,400–3,300M by year 6. Money sinks for the strongest programs are the next job:
+test stands and development projects.
+
+## v1.31 — production lines (2026-10-07)
+
+The second visible number per part: production. Learning to manufacture a part is different from buying it.
+
+- **Setting up a line** (`prodQuote`, `startProdLine`): about 8 × the part's price × (1 + tier), and 40 + 30·tier days to
+  tool up.
+  - *Own line* (reverse-engineering): needs real know-how of the part (use ≥ 40%), so you have to fly it first.
+  - *License*: from a supplier that makes it, is friendly (relation > 0.2) and isn't sanctioning us. 60% of the cost,
+    70% of the time, starts at 30% maturity instead of 5%, and pays the licensor 10% royalty per unit (their opinion
+    rises).
+  - Measured, Kestrel for a frugal power: own line 192M / 70 days; license from Ordun 115M / 49 days.
+- **Maturity** (the learning curve, `prodUnits`): every unit built at launch adds 8%·(1 − m). Price per unit runs from
+  ×1.25 (new line) to ×0.75 (mature), plus 0.1 if licensed (`prodLineK`). Measured: pod + tank + Kestrel imported
+  38.9M → first line units 35.6M → after 25 units 30.6M (88% maturity).
+- **Quality:** an immature line's engines fail to ignite more often (×(2 − m)). A first, simple form of the part-quality
+  idea.
+- **Building it teaches it:** line parts start with more know-how (+0.2 + 0.2·m) and certification (CERT0 − 0.2·(1 − m)).
+- **Lines belong to the country:** `sourceOf` prefers a working line of ours, so sanctions don't touch it (a license keeps
+  running), and after a defection the old home's lines are no longer ours.
+- **UI:** a Production section in the Program panel lists our lines (tooling up / maturity / units / price) and, for each
+  part bought abroad in the current design, "Own line" and "License from …" buttons with cost, days and the reason when
+  it isn't possible. Know-how labels show "own line, maturity N%" or "licensed line".
+- **Found while building:** my first `lineOf` collided with the builder's `lineOf(nd)` (a JS function declaration
+  silently replaces an earlier one with the same name), which broke `assemble()`. Mine are now `prodLine`,
+  `prodLineK`, `prodQuote`, `startProdLine`, `prodUnits`.
+- **Not yet:** the career runner doesn't build lines yet; supplier quality beyond line maturity; vertical integration
+  across tiers.
+
+`test.mjs` §26: 3 new checks.
+
 ## v1.30 — know-how (2026-10-07)
 
 The first slice of the parts-progression design ("The whole parts system, assessed"): owning a part is not knowing how
@@ -1623,6 +1707,42 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
+
+The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
+
+- **Parts.** *Crew capsule* (`crew`): a pod-kind part (so it's a command part, the root of the tree and drawn as the pod)
+  with `crew: 2`, 1.4 t, 30M. *Escape tower* (`les`): a solid motor, 150 kN for 3 s, 0.6 t, 6M. Its thrust was picked so a
+  pad abort stays under the 8 g limit: (150 kN on ~2.1 t) ≈ 7 g.
+- **Abort** (Backspace, recorded on the autopilot tape as `['A']`): everything below the capsule is dropped (`detach`), the
+  tower's thrust goes into `physStep`'s force sum along the axis, and at burnout it's jettisoned and the chute armed. On a
+  nominal flight, the tower is jettisoned at the first staging above 30 km.
+- **Crew rule.** Flight safety puts **people** aboard only once the tower is qualified (the max-q abort); before that the
+  capsule flies test dummies, whose g and cabin are measured all the same. Crew limits are the passenger's (8 g averaged
+  over 1 s, cabin 330 K), plus 10 days of air. A lost or hurt crew is a big opinion hit (`failHit −20`), and a closed regime
+  hushes it up.
+
+| Mission | Pays | Needs | What the sim checks |
+|---|---|---|---|
+| Pad abort test | 60M | passenger orbit | abort under 200 m, capsule lands intact, < 8 g |
+| Max-q abort test | 90M | pad abort | abort at **≥ 15 kPa**, capsule lands intact, < 8 g; qualifies the tower |
+| Crew around Selene | 300M | max-q abort, far side | crewed capsule in Selene's SOI, then home safe |
+| Crew on Selene | 600M | crew around, soft landing | crewed landing on Selene (< 4 m/s), then home safe |
+
+**Measured** (§25, 6 checks):
+
+| Abort | Conditions | Apex | Peak g | Landing |
+|---|---|---|---|---|
+| Pad | 4 m up | 840 m | 6.8 | 6.4 m/s under the chute |
+| Max-q | 18 kPa, 1.9 km up (straight up at full throttle) | 4.5 km | 6.1 | 6.4 m/s |
+
+Also checked: no abort without a tower; the automatic jettison above 30 km; after qualification the capsule is crewed and a
+trip into Selene's SOI and home completes "Crew around Selene"; a crashed crewed capsule loses its crew. The Big Lunar preset
+(lander, heat shield, return) is the natural base for the crewed landing: swap its pod for a crew capsule and add a tower.
+
+**Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
+"Other"); crew transfer and EVA; a crewed preset.
+
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
 Built from the economy's epoch plan: utility satellites that keep doing a job. Weather and TV are flight missions (read by
@@ -2562,6 +2682,31 @@ Two halves launched together (or a module you just released) can now dock to eac
   target with `G`, guidance, latch, undock by the button, fly the module.
 - **Not yet:** a vessel docked into a stack and saved at the end of the flight comes back next time as a passive part of
   the stack (A2: vessels that stay flyable across flights).
+
+### Phase B built: the cargo bay (sats session, 2026-10-07)
+
+- **Part:** *Cargo bay* (palette *Structure*): a floor (its stack height, 0.25 m), walls 4 m tall (1.6 m across, 1.4 m
+  inside: room for 1.25 m modules), and a clamshell roof of two doors. Payloads stack on its floor the ordinary way, so
+  the editor needed nothing new; a part on top of the bay sits *inside* it. Its centre of mass is up the walls (`cm`).
+- **Enclosure** (`assemble`, next to the interstage's): a part is in the bay (`p.inBay`) if it sits on the floor within
+  the walls and under the roof; anything sticking out stays exposed. Geometric, so it doesn't matter where the root is.
+- **Shielding:** while the doors are shut, enclosed parts are out of the airflow entirely (no air load, no heating; the
+  bay's outline is its whole closed shape, roof included). From the moment the doors are told to open until they're
+  shut again, the payload is exposed and the bay's outline has no roof. Measured: 0 vs 123 kN on the payload at 400 m/s,
+  8 km up. (First version left it shielded after opening: the outline was rebuilt at 0 % open.)
+- **Doors:** 2 s to open or close on the flight clock (deterministic, recorded: tape op `['B', op]`); key **B** or the
+  HUD's *Bay* row. A reversal mid-swing continues from where the doors are. The mesh is rebuilt while they move.
+- **Release** (HUD button, doors fully open): the payload leaves through the top along the bay's axis at 0.3 m/s,
+  momentum shared, as a vessel whether or not it has a command part (*Payload N* otherwise, so a satellite released
+  from a bay doesn't vanish as debris). Refused with the doors shut, or if the vessel's own command part is inside.
+- **Contact:** the bay is hollow (walls, floor, a roof only while shut), so the payload slides out without touching it:
+  15 s later it's still parting at 0.3006 m/s, its base clear of the rim.
+- Checks (`test.mjs` §29): enclosure; shielding shut vs open; release refused shut, then a vessel at 0.3000 m/s with
+  momentum exact; a clean exit; a payload without a command part is a vessel; the hollow contact shape. Browser: the
+  bay in the editor, doors opening, release, the payload leaving.
+- **Not yet:** the arm taking a payload out (Phase D), or putting one back in for the trip home (retrieval); a side-
+  opening shuttle-style bay (needs an "inside" attach in the editor); a 2.5 m bay; the doors' look (they read a little
+  oddly mid-swing, for the visuals session); the editor doesn't yet say whether a payload fits.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
