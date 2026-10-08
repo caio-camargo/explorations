@@ -57,6 +57,9 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #help{width:min(440px,92vw)}#help td:first-child{color:var(--acc);white-space:nowrap;padding-right:10px;vertical-align:top}#help td:last-child{text-align:left}#help h3{margin:8px 0 2px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:normal}
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
+#tester{width:min(400px,92vw)}#tester h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#tester label{display:block;margin:2px 0}
+#tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
+#testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #prog{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
@@ -144,6 +147,8 @@ body.noperf #perf{display:none}
 <div id="logbook" class="hidden"></div>
 <div id="help" class="ovl hidden"></div>
 <div id="escm" class="ovl hidden"></div>
+<div id="tester" class="ovl hidden"></div>
+<div id="testerBadge" class="hidden" title="Tester mode: cheats on, saved apart from your career. F2 opens the menu">TESTER</div>
 <div id="msg"></div>
 <div id="news" class="hidden"></div>
 <div id="perf"></div>
@@ -1453,9 +1458,26 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
 function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
+// ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
+// then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
+// place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
+// fast → the stacking days in missionTick. Epochs, the date and finishing jobs are actions, not flags.
+const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false},TEST_FUNDS=1e5;
+function testTopUp(){if(TEST.on&&TEST.money&&!(PROG.funds>=TEST_FUNDS))PROG.funds=TEST_FUNDS}
+// an epoch's missions open when the earlier epochs are done: mark those done (flagged test:true) and clear any later ones
+function testEpoch(n){for(const M of MISSIONS){const d=PROG.done[M.id];
+    if(M.ep<n&&!d)PROG.done[M.id]={flight:PROG.flights,day:PROG.day,test:true};else if(M.ep>=n&&d)delete PROG.done[M.id]}
+  if(n>1)PROG.streak=Math.max(PROG.streak||0,3)}
+// the world date moves a day at a time, so every daily rule (budget, elections, news, rivals, eras) runs as in play
+function testAdvance(days){const end=PROG.day+days;while(PROG.day<end-1e-9){advanceDays(Math.min(1,end-PROG.day));testTopUp()}}
+// every job in progress (facility, design bureau, test stand, production line, trajectory study) finishes now
+function testFinishJobs(){const D=PROG.day;for(const id in PROG.fac||{}){const b=PROG.fac[id].building;if(b)b.ready=D}
+  if(PROG.devJob)PROG.devJob.end=D;const S2=PROG.stand2;if(S2){S2.ready=Math.min(S2.ready,D);if(S2.job)S2.job.end=D}
+  for(const k in PROG.lines||{}){const L=PROG.lines[k];if(L.ready>D)L.ready=D}for(const j of PROG.studyQ||[])j.end=D;
+  advanceDays(1e-6)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
-const certOf=k=>Math.min(1,PROG.cert[k]??cert0(k));
+const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)
 const ATM_BANDS=Math.ceil(TELLUS.atm/1e4),BANDS=[...Array(ATM_BANDS).keys()];
 const atmU=h=>{const k=Math.floor(h/1e4);return k>=0&&k<ATM_BANDS&&!PROG.atm[k]?0.25:0};
 const NYX_TRACK_H=12,TV_RATE=0.4,NAV_MIN=0.95,NAV_WAIT=1800;
@@ -1479,11 +1501,11 @@ const MISSIONS=[
   {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
   // epoch 3, utility (bodies session): satellites that do a job. Flight missions read outThere(); world ones (world:true)
   // are checked between flights by utilTick(), from the registry.
-  {id:'weather',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change.',
+  {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change.',
    win:'the whole planet\'s weather, every day',ok:R=>R.weather},
   {id:'tv',pay:120,ep:3,req:['beeper'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there.`,
    win:'the capital watches the launch on TV',ok:R=>R.tv},
-  {id:'diswatch',pay:60,ep:3,req:['weather'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
+  {id:'diswatch',pay:60,ep:3,req:['wxsat'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
    win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
   {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments).`,
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
@@ -1577,7 +1599,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1708,7 +1730,7 @@ const TIER_NAME=['structure and tanks','small engines','big engines and avionics
 const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.05,IGN_FAIL=0.08;
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
 function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
-const khUse=k=>((PROG.kh||{})[k]?.use)??use0(k);
+const khUse=k=>TEST.kh?1:((PROG.kh||{})[k]?.use)??use0(k);   // (tester: full know-how)
 const khBar=k=>clamp(0.6*khUse(k)+0.4*(certOf(k)-0.5)/0.5,0,1);
 const khYield=()=>0.5+0.5*khUse('sci');
 // price-weighted familiarity of a vessel (for stacking time)
@@ -1878,7 +1900,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
   HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name} will be built under license (${Q.days} days to tool up)`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
-function igniteOK(s,k){if(!khOn()||!s.rec)return true;
+function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
@@ -2829,7 +2851,7 @@ function logNote(s,id,v,by){const F=LOGF.find(f=>f.id===id),L=(PROG.log=PROG.log
 // trajectory data; maneuver planning needs a measured orbit; encounter forecasts need someone to have felt another
 // body's pull. (Range safety keeps working underneath: it's the display that's gated, not the safety officer.)
 const TOOLS={impact:{fact:'apex',name:'impact prediction'},nodes:{fact:'orbit',name:'maneuver planning'},encounters:{fact:'selene',name:'encounter forecasts'}};
-const toolOK=k=>!!(PROG.log&&PROG.log[TOOLS[k].fact]);
+const toolOK=k=>TEST.tools||!!(PROG.log&&PROG.log[TOOLS[k].fact]);   // (tester: every tool)
 // the interface ages with the program: a handwritten notebook, then (with something in orbit) a monochrome terminal
 const eraOf=()=>PROG.done&&PROG.done.beeper?2:1;
 // ---- deterministic stepping + flight tapes. Everything that advances the flight goes through advPhys / advRails, and a
@@ -4127,7 +4149,10 @@ function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.ki
   for(let i=0;i<26;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=8+18*R();   // sparks: small, hot, fast, short-lived
     fxPuff(add(at,mul(u,r*.8)),add(S.v,mul(u,sp)),{s0:.05+.05*R(),grow:0,a0:.9,life:.25+.45*R(),hot:1.6})}}
 // the program persists in browser storage (best effort: a private window just starts fresh each time)
-const PROG_KEY='launchpad-program-v1';
+// tester mode (?tester in the URL) keeps its own program, so cheats never reach the career (TEST: the SIM tester block)
+TEST.on=(()=>{try{return new URLSearchParams(location.search).has('tester')}catch(e){return false}})();
+if(TEST.on)try{Object.assign(TEST,JSON.parse(localStorage.getItem('launchpad-tester-flags')||'{}'),{on:true})}catch(e){}
+const PROG_KEY=TEST.on?'launchpad-program-tester':'launchpad-program-v1';
 try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked}}catch(e){}   // a flight in progress doesn't survive a reload
 if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
 HOOK.save=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
@@ -4291,7 +4316,7 @@ function go(s){const from=screenNow();if(s===from)return;
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to (the shared
 // handler acts on it). Map shows its own rows, then Flight's.
 const KEYS={
-  all:[{k:['h'],l:'H',d:'this list'},{k:['f'],l:'F',d:'logbook'},{k:['escape'],l:'Esc',d:'close the top panel · menu'}],
+  all:[{k:['h'],l:'H',d:'this list'},{k:['f2'],l:'F2',d:'tester menu',tester:true},{k:['f'],l:'F',d:'logbook'},{k:['escape'],l:'Esc',d:'close the top panel · menu'}],
   flight:[{k:[' '],l:'Space',d:'next stage (ignite / decouple / chute)'},{k:['backspace'],l:'Backspace',d:'abort'},
     {k:['shift','control'],l:'Shift / Ctrl',d:'throttle up / down (hold)'},{k:['z','x'],l:'Z / X',d:'full / cut throttle'},
     {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},
@@ -4311,13 +4336,13 @@ const KEYS={
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}]};
 const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
-    sec=(t,L)=>`<h3>${t}</h3><table>${L.map(row).join('')}</table>`;
+    sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
     +sec('Everywhere',KEYS.all)+`<div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first during a flight.</div>`}
 function toggleHelp(){if($('help').classList.contains('hidden'))renderHelp();ovToggle('help')}
 // Overlays stack: Esc closes the one opened last. Panels opened by their own buttons (the logbook's) still count.
-const OVS=['escm','help','logbook'],OV=[];
-const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc()},
+const OVS=['escm','help','logbook','tester'],OV=[];
+const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc();if(id==='tester')renderTester()},
   ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null},
   ovToggle=id=>$(id).classList.contains('hidden')?ovOpen(id):ovClose(id),
   ovTop=()=>[...OV].reverse().find(id=>!$(id).classList.contains('hidden'))||OVS.find(id=>!$(id).classList.contains('hidden'));
@@ -4329,7 +4354,7 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}</h2>`+b('close','Close  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +(screenNow()==='assembly'?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')
+    +(screenNow()==='assembly'?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+(TEST.on?b('tester','Tester menu  [F2]'):'')
     +`<label><input type="checkbox" id="escPerf"${perfOn?' checked':''}> performance readout</label>`;
   $('escPerf').onchange=e=>{perfOn=e.target.checked;document.body.classList.toggle('noperf',!perfOn);try{localStorage.setItem('launchpad-perf',perfOn?'1':'0')}catch(x){}}}
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
@@ -4339,13 +4364,45 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if((a==='revert'||a==='assembly')&&flying()&&escArm!==a){escArm=a;renderEsc();return}
   ovClose('escm');
   if(a==='revert')$('bRevert').click();else if(a==='assembly')go('assembly');else if(a==='tape')$('bSaveTape').click();else if(a==='program')go('program');
-  else if(a==='log'){ovClose('help');toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')}else if(a==='keys')toggleHelp()});
+  else if(a==='log'){ovClose('help');toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')}else if(a==='keys')toggleHelp();else if(a==='tester')ovOpen('tester')});
 // Keys every screen shares. Registered before builder.js's handler, so a part in hand (or selected) keeps Esc for itself.
 addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
   if(k==='escape'){if(screenNow()==='assembly'&&BLD.st&&(BLD.st.held||BLD.st.sel))return;const t=ovTop();if(t)ovClose(t);else ovOpen('escm')}
   else if(k==='h')toggleHelp();
+  else if(k==='f2'&&TEST.on){e.preventDefault();ovToggle('tester')}
   else if(k==='f'){toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook');else ovClose('logbook')}
   else{const r=(KEYS[screenNow()]||[]).find(r=>r.go&&r.k.includes(k));if(r)go(r.go)}});
+// ---- the tester menu (tester session; PLAYTEST #1). Only reachable with ?tester. Flags persist per browser in
+// 'launchpad-tester-flags'; the sandbox program lives in 'launchpad-program-tester'. The rules it bends are in the SIM tester block.
+const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_FUNDS)],['kh','Full know-how and certification','every part flies as if well known; flight safety signs off'],
+  ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days']];
+let testArm=null;
+const testEpochNow=()=>Math.min(6,...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep));
+function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mode==='flight',ep=testEpochNow(),
+    act=(a,t,arm)=>`<button data-test-act="${a}"${testArm===a?' class="arm"':''}>${testArm===a?arm:t}</button>`;
+  el.innerHTML=`<span class="x" data-ov="tester">✕</span><h2>Tester</h2><div class="sub">A sandbox program, saved apart from your career. Cheats:</div>`
+    +TEST_FLAGS.map(([k,l,d])=>`<label title="${d}"><input type="checkbox" data-test-flag="${k}"${TEST[k]?' checked':''}> ${l}</label>`).join('')
+    +`<h3>Epoch</h3><div>${[1,2,3,4,5].map(n=>`<button data-test-ep="${n}"${n===ep?' class="on"':''}${fl?' disabled':''}>${n}</button>`).join('')}</div>`
+    +`<div class="sub">Marks every mission of the earlier epochs done, and clears the later ones.</div>`
+    +`<h3>World date · ${fmtDate(PROG.day)}</h3><div>${[[1,'+1 day'],[10,'+10 days'],[100,'+100 days'],[YEAR_D,'+1 year']].map(([d,l])=>`<button data-test-day="${d}"${fl?' disabled':''}>${l}</button>`).join('')}</div>`
+    +(fl?'<div class="sub">Epoch and date wait until the flight is over.</div>':'')
+    +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
+    +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
+    +`${act('leave','Leave tester mode')}`}
+function testDone(){testTopUp();HOOK.save();renderProgram();renderTester();if(screenNow()==='assembly')editorChanged()}
+document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.testFlag;if(!k||!TEST.on)return;TEST[k]=e.target.checked;
+  try{const f={};for(const[x]of TEST_FLAGS)f[x]=TEST[x];localStorage.setItem('launchpad-tester-flags',JSON.stringify(f))}catch(x){}testDone()});
+document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)return;
+  if(e.target.id==='testerBadge'){ovToggle('tester');return}
+  if(d.testEp){testEpoch(+d.testEp);HOOK.msg(`Tester: epoch ${d.testEp}`);testDone();return}
+  if(d.testDay){testAdvance(+d.testDay);testDone();return}
+  const a=d.testAct;if(!a)return;
+  if((a==='copy'||a==='fresh')&&testArm!==a){testArm=a;renderTester();return}testArm=null;
+  if(a==='jobs'){testFinishJobs();HOOK.msg('Tester: every job finished');testDone()}
+  else if(a==='copy'||a==='fresh'){try{if(a==='copy')localStorage.setItem(PROG_KEY,localStorage.getItem('launchpad-program-v1')||'null');else localStorage.removeItem(PROG_KEY)}catch(x){}
+    HOOK.save=()=>{};location.reload()}   // (no save on the way out: it would write the old sandbox back)
+  else if(a==='leave'){const u=new URL(location.href);u.searchParams.delete('tester');location.href=u.href}});
+if(TEST.on){$('testerBadge').classList.remove('hidden');testTopUp()}   // (also each frame, and after every menu action)
 // ---- the Program screen (slice 2). renderProgram (economy/bodies) still writes one long column into the hidden #program;
 // progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
@@ -4426,7 +4483,7 @@ function simulate(dtR){
     if(stepsN>=800)physAcc=0}}
 function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
-  const t0s=simT;simulate(dtR);emitSmoke(simT-t0s);
+  testTopUp();const t0s=simT;simulate(dtR);emitSmoke(simT-t0s);
   if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=Math.min(devicePixelRatio||1,1.5);
     S.node.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}
   adaptRes(dtR);

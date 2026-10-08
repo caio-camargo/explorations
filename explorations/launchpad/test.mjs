@@ -1026,8 +1026,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const orbit = (alt, incDeg, ph = 0) => { const r = TELLUS.R + alt, v = Math.sqrt(TELLUS.mu / r), i = incDeg * Math.PI / 180;
     return [rot([r * Math.cos(ph), 0, -r * Math.sin(ph)], i), rot([-v * Math.sin(ph), 0, -v * Math.cos(ph)], i)]; };
   // weather: polar counts, equatorial doesn't
-  reset(['beeper']); let [r, v] = orbit(300e3, 90); let s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const polar = !!P.done.weather;
-  reset(['beeper']); [r, v] = orbit(300e3, 0); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const eq = !!P.done.weather;
+  reset(['beeper']); let [r, v] = orbit(300e3, 90); let s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const polar = !!P.done.wxsat;
+  reset(['beeper']); [r, v] = orbit(300e3, 0); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const eq = !!P.done.wxsat;
   check('epoch 3: a weather satellite needs a polar orbit (an equatorial one doesn\'t count)', polar && !eq, `polar ${polar}, equatorial ${eq}`);
   // TV: stationary, over the capital's longitude; it pays every day it stays there, and a sloppy one drifts away
   const cap = api.capital(), T0 = P.day * api.DAY_S, ua = api.rotY(norm([cap.u[0], 0, cap.u[2]]), api.absTh(T0));   // over the capital's longitude, now
@@ -1039,7 +1039,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('epoch 3: TV for the capital from a stationary orbit pays daily; one 0.2 % too fast misses the mark and drifts out of the sky', tvOK && Math.abs(paid - 10 * 0.4) < 1e-9 && !sloppy && lostDay !== null,
     `capital ${cap.name} (${(Math.asin(cap.u[1]) * 57.3).toFixed(0)}°), ${(api.STAT_R / 1e3 - TELLUS.R / 1e3).toFixed(0)} km up: ${tvOK ? 'done' : 'not done'}, ${paid.toFixed(1)}M over 10 days; the sloppy one ${sloppy ? 'counted (wrong)' : 'not counted'}, out of sight after ${lostDay} days`);
   // disaster watch: a polar camera satellite with an antenna delivers pictures within 12 h of the call
-  reset(['beeper', 'weather']); [r, v] = orbit(300e3, 90); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.satRegister(s, s.rec);
+  reset(['beeper', 'wxsat']); [r, v] = orbit(300e3, 90); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.satRegister(s, s.rec);
   const ci = api.CITIES.map((c, i) => ({ i, d: Math.acos(Math.min(1, dot(c.u, [1, 0, 0]))) })).sort((a, b) => a.d - b.d)[0].i;   // a city near the pad (a station in reach)
   let got = null;
   for (let k = 0; k < 8 && !got; k++) { P.active = [{ id: 900 + k, type: 'image', src: 'gov', client: 0, p: { ci, res: 8, dis: 'Floods', pay: 30, dur: 5 }, posted: P.day, deadline: P.day + 5 }]; P.disDone = [];
@@ -2089,6 +2089,53 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   c.target = q.id; const T = D.tgtOf(c);
   check('moonbase: a base can be the target of a landing', T && T.landed && T.q === q && len(T.dr) > 100, `${T ? T.q.name + ' at ' + (len(T.dr) / 1000).toFixed(2) + ' km' : 'no target'}`);
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
+}
+
+// 36. The tester menu (tester session; PLAYTEST #1): cheats that only act in tester mode, an epoch picker, the date,
+// finishing jobs, and a save slot apart from the career. Its own copy of the SIM, so no other section sees the flags.
+{
+  const D = new Function(src + 'return {TEST,TEST_FUNDS,testTopUp,testEpoch,testAdvance,testFinishJobs,PROG,MISSIONS,missionOpen,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart,buildFac,facLv,khUse,certOf,toolOK,newShip,missionTick,PRESETS,set S(v){S=v},set t(v){simT=v}};')();
+  const P = D.PROG, T = D.TEST; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], fac: {} });
+  D.chooseStart('agency'); P.funds = 0;
+  // off by default, and the flags do nothing until tester mode is on
+  const k0 = D.khUse('kestrel'), c0 = D.certOf('kestrel'), tools0 = D.toolOK('nodes');
+  T.money = true; D.testTopUp(); const offMoney = P.funds; T.money = false;
+  check('tester: everything off by default; infinite money does nothing outside tester mode', !T.on && !T.kh && !T.tools && !T.nofail && !T.fast && offMoney === 0 && k0 < 1 && c0 < 1 && !tools0,
+    `know-how ${k0.toFixed(2)}, cert ${c0.toFixed(2)}, funds ${offMoney}`);
+  // infinite money: broke, yet a facility can be bought
+  T.on = true; T.money = true; D.testTopUp(); const bought = D.buildFac('hall'); D.testTopUp();
+  check('tester: infinite money tops the program up, so anything can be bought', bought && P.funds === D.TEST_FUNDS, `funds ${P.funds}, hall ordered: ${bought}`);
+  // finishing jobs: the hall under construction is done now, not in N days
+  const lv0 = D.facLv('hall'); D.testFinishJobs();
+  check('tester: "finish every job" completes a facility under construction at once', lv0 === 0 && D.facLv('hall') === 1, `hall level ${lv0} → ${D.facLv('hall')}`);
+  // know-how and certification, tools
+  T.kh = true; T.tools = true;
+  check('tester: full know-how and certification, every tool', D.khUse('kestrel') === 1 && D.certOf('kestrel') === 1 && ['impact', 'nodes', 'encounters'].every(D.toolOK));
+  // mission ids are keys of PROG.done: two missions with one id complete together (epoch 3's weather satellite was once
+  // 'weather', the same id as epoch 1's sounding flight, so that flight also ticked off the satellite)
+  const ids = D.MISSIONS.map(m => m.id), dupIds = ids.filter((k, i) => ids.indexOf(k) !== i);
+  check('every mission has its own id', !dupIds.length, dupIds.join(' ') || `${ids.length} missions`);
+  // the epoch picker: epoch 4 means epochs 1–3 done and the first Selene missions open; back to 2 clears the later ones
+  D.testEpoch(4); const M = D.MISSIONS, done4 = M.filter(m => P.done[m.id]), open4 = M.filter(m => m.ep === 4 && !P.done[m.id] && D.missionOpen(m)).map(m => m.id);
+  check('tester: epoch 4 marks epochs 1–3 done and opens the first Selene missions', done4.length === M.filter(m => m.ep < 4).length && done4.every(m => m.ep < 4 && P.done[m.id].test) && open4.includes('farside') && open4.includes('padabort'),
+    `${done4.length} done; open in epoch 4: ${open4.join(', ')}`);
+  D.testEpoch(2);
+  check('tester: going back to epoch 2 clears everything from epoch 2 on', M.every(m => !!P.done[m.id] === (m.ep < 2)), `done: ${Object.keys(P.done).join(', ')}`);
+  // the date: a hundred days pass, one day at a time
+  const d0 = P.day; D.testAdvance(100);
+  check('tester: the world date moves forward by the days asked', Math.abs(P.day - d0 - 100) < 1e-6, `day ${d0.toFixed(1)} → ${P.day.toFixed(1)}`);
+  // instant stacking: no preparation days on launch
+  const prep = fast => { T.fast = fast; P.day = 0; const x = D.newShip(D.PRESETS.Orbiter); D.S = x; x.landed = false; D.t = 0; D.missionTick(x, 0, false); return x.rec.prep; };
+  const slow = prep(false), quick = prep(true);
+  check('tester: instant stacking skips the preparation days', slow > 1 && quick === 0, `Orbiter ${slow.toFixed(1)} → ${quick} days`);
+  Object.assign(T, { on: false, money: false, kh: false, tools: false, nofail: false, fast: false });
+  // the page: the save slot follows the mode, and the menu's key shows in Help only in tester mode
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const writes = [...page.matchAll(/localStorage\.setItem\(([^,]+),/g)].map(m => m[1]).filter(k => /program/i.test(k) || k === 'PROG_KEY');
+  check('tester: the program saves to PROG_KEY only, a separate slot in tester mode', /const PROG_KEY=TEST\.on\?'launchpad-program-tester':'launchpad-program-v1'/.test(page) && writes.length && writes.every(k => k === 'PROG_KEY'),
+    `program writes: ${writes.join(', ')}`);
+  check('tester: the F2 row is hidden from Help outside tester mode', /\{k:\['f2'\][^}]*tester:true\}/.test(page) && /L\.filter\(r=>!r\.tester\|\|TEST\.on\)/.test(page));
 }
 
 function moonPos(t) { return api.moonPos(t); }
