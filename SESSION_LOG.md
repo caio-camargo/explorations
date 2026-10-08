@@ -3239,3 +3239,23 @@ mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
 - [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
 - [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
 
+## 2026-10-08 — Launchpad: the robot playtester, first pass (playtest session, run by the sound session)
+
+### Summary
+Caio can't playtest, so `explorations/launchpad/playtest.mjs` walks TESTING.md rows itself: headless Chrome on the real
+GPU, per-row scene setup, screenshots, console errors and measured values; Claude judged the screenshots against each
+row's "looks right if". First pass: **58 of 113 rows judged, 37 ✓, 4 ✗, 17 ~ (mostly "numbers fine, feel needs a
+human"), 55 not tried** (hand-flying feel, builder mouse work, docking/stations/moons, city flights). Nine PLAYTEST items
+filed, #15–#23 (the worst: SAS off + a held pitch key spins the Orbiter's upper stage apart; plasma blackout shown on an
+ordinary ascent at Mach 3.5; a landed flight settles only at the next launch). Spot-checked against the screenshots.
+Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--force_high_performance_gpu` gets the RTX.
+
+### Files
+- `explorations/launchpad/playtest.mjs` (new), `TESTING.md` (results in `#` cells, `(robot)`), `PLAYTEST.md` #15–#23,
+  `NOTES.md` § "The robot playtester"
+- Output outside git: `C:/Users/caioa/dev/playtest-out/` (`report.md`, PNGs, `results.json`)
+
+### Next steps
+- [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
+- [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
+
