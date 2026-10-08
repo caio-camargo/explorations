@@ -3260,8 +3260,11 @@ void main(){vL=mix(uLo,uHi,aP*.5+.5);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=
 const IMP_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uLo,uHi,uCam,uCo,uMa,uVa,uSo;uniform vec4 uK,uIg,uIP[4];uniform float uFc,uT,uIn,uI,uOp,uW,uCh,uRe;uniform int uNH;uniform sampler3D uN;
-void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
- float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
+void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
+ float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
+ // (VBOX's faces wind outward: outside, its front faces are drawn; inside, its back faces. Either way the march runs
+ // over the ray's whole stretch inside the box, from the entry, or the eye)
+ vec3 p0=uCam+rd*tN;float t1=max(0.,tF-tN);
  const int N=28;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/max(uRe,.3);
  vec3 C=vec3(0.),Tr=vec3(1.);
  for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));float h=p.y;if(h<0.)break;
@@ -3300,8 +3303,11 @@ void main(){vec2 xy=vNdc*uCvX;vec3 u=normalize(uCv0+(xy.x*uCvE+xy.y*uCvN)/uPR);o
 const DUST_FS=`#version 300 es
 precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
 uniform vec3 uLo,uHi,uCam,uSunL,uAlb;uniform vec4 uIP;uniform float uFc,uT,uIn,uRd,uLit;uniform sampler3D uN;
-void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
- float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
+void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
+ float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
+ // (VBOX's faces wind outward: outside, its front faces are drawn; inside, its back faces. Either way the march runs
+ // over the ray's whole stretch inside the box, from the entry, or the eye)
+ vec3 p0=uCam+rd*tN;float t1=max(0.,tF-tN);
  const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
  float T=1.,L=0.;
  for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));if(p.y<0.)break;
@@ -3314,7 +3320,34 @@ void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv
  float ph=.55+.45*smoothstep(-.2,1.,dot(-rd,uSunL));   // dust scatters forward: brighter looking toward the sun
  vec3 c=uAlb*(uLit*ph+.02)*(L/max(1.-T,1e-4));c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
  float al=1.-T;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// explosions: a raymarched fireball that turns into a rising, lit smoke cloud (in air) or flashes and thins out (vacuum).
+// Local frame: y up (radial), origin at the blast; the box proxy (IMP_VS) follows the cloud. uA: age (s), uR: radius (m),
+// uRise: the cloud's centre height (m), uAir: 1 in thick air → 0 in vacuum.
+const BOOM_FS=`#version 300 es
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uLo,uHi,uCam,uSunL,uLight,uAmb;uniform float uFc,uT,uIn,uA,uR,uRise,uAir,uSeed;uniform sampler3D uN;
+vec3 heat(float k){return k>.66?mix(vec3(1.,.75,.35),vec3(1.,.95,.8),(k-.66)*3.):k>.33?mix(vec3(1.,.38,.08),vec3(1.,.75,.35),(k-.33)*3.):mix(vec3(.35,.05,.01),vec3(1.,.38,.08),k*3.);}
+void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*iv,tn3=min(ta,tb),tf3=max(ta,tb);
+ float tN=max(max(tn3.x,tn3.y),max(tn3.z,0.)),tF=min(min(tf3.x,tf3.y),tf3.z);
+ // (VBOX's faces wind outward: outside, its front faces are drawn; inside, its back faces. Either way the march runs
+ // over the ray's whole stretch inside the box, from the entry, or the eye)
+ vec3 p0=uCam+rd*tN;float t1=max(0.,tF-tN);
+ const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715)))),st=ds/uR;
+ float F=exp(-uA/(.35+.5*uAir)),sm=uAir*(1.-exp(-uA/.6))*(1.-smoothstep(7.,14.,uA))+.35*(1.-uAir)*exp(-uA/.8);
+ vec3 C=vec3(0.);float T=1.,L=0.,A=0.;
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j)),q=(p-vec3(0.,uRise,0.))/uR;q.y*=1.+.25*uAir*smoothstep(1.,5.,uA);   // the cloud flattens a little as it rises
+  float r=length(q);if(r>1.5)continue;
+  vec3 w=q*1.4+uSeed+vec3(0.,-uT*.25,0.);float n=texture(uN,w*.3).r*.55+texture(uN,w*.85+.4).r*.3+texture(uN,w*2.2+.7).r*.15;   // big billows, then detail
+  float e=r+.85*(n-.5),dens=smoothstep(1.,.6,e);if(dens<.01)continue;
+  float hk=clamp(F*(1.35-1.15*e)*(.6+.8*n),0.,1.);vec3 em=heat(hk)*pow(hk,1.4)*24.*dens;
+  float sg=dens*(sm*5.+F*.7),a=1.-exp(-sg*st);
+  float lt=.35+.65*smoothstep(-.4,.9,dot(normalize(q+vec3(1e-4)),uSunL)+.35*(n-.5));
+  C+=T*em*st;L+=T*a*lt;A+=T*a;T*=1.-a;if(T<.02)break;}
+ vec3 sc=mix(vec3(.07,.065,.06),vec3(.3,.29,.28),smoothstep(1.,6.,uA));   // black soot first, greying as it cools and spreads
+ vec3 smk=sc*(uLight*(L/max(A,1e-4))+uAmb*.2)*A;   // sunlit side brighter
+ vec3 c=smk+C;c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
+ float al=1.-T;if(al<.003&&max(c.r,max(c.g,c.b))<.003)discard;o=vec4(pow(c,vec3(1./2.2)),al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -3580,6 +3613,18 @@ function drawPlumePool(VP){const g=PLT.g;if(!g)return;const u=PPOOL.u,F=g.F,Rp=M
   gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,mat4(F.X,F.Y,F.Z,g.foot));gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uR,Rp);
   const dk=1-sstep(-.05,.2,dot(norm(S.r),SUN));gl.uniform1f(u.uDk,.12+.88*dk);   // added onto already-lit ground: in daylight a flame pool barely shows
   gl.uniform3fv(u.uPlC,PLT.c);gl.uniform1f(u.uLh,g.h);gl.uniform1f(u.uR0,PLT.p[3]);gl.bindVertexArray(DISC.vao);gl.drawArrays(gl.TRIANGLES,0,DISC.n);gl.useProgram(PMESH.p)}
+// an explosion's flash, as the scene's point light (PLT) while it outshines the plumes: decays over ~0.3 s, then the
+// fireball's glow lingers dimmer for ~1 s
+function boomLight(camW){const now=performance.now();let best=null,bk=0;
+  for(const bm of booms){const a=(now-bm.t0)/1000;if(a<0||a>2)continue;const k=bm.sz*(900*Math.exp(-a/.12)+120*Math.exp(-a/.8));if(k>bk){bk=k;best=[bm,a]}}
+  if(!best||bk<PLT.c[0]+PLT.c[1]+PLT.c[2])return;const[bm,a]=best,ps=fromPF(bm.b,bm.pf,simT),P=sub(add(bodyPos(bm.b,simT),ps),camW),R0=bm.sz*(2+6*Math.sqrt(a));
+  PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
+  if(bm.b===TELLUS){const Y=norm(ps),g=groundR(TELLUS,toPF(TELLUS,ps,simT)),h=len(ps)-g;
+    if(h>-1&&h<80){const X=norm(cross(Y,Math.abs(Y[1])<.9?[0,1,0]:[1,0,0]));PLT.g={F:{X,Y,Z:cross(X,Y)},h:Math.max(h,R0*.5),foot:sub(P,mul(Y,h))}}}}
+const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
+  for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
+  const vao=gl.createVertexArray(),buf=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,12,0);gl.bindVertexArray(null);return{vao,n:36}})();
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).
@@ -3594,10 +3639,10 @@ function drawDust(G,hits,VP){let h=null,best=0;for(const x of hits){const k=x.th
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
   gl.uniform4f(u.uIP,ip[0],ip[2],w,h.re*2+.15*h.sg);gl.uniform1f(u.uRd,Rd);gl.uniform3fv(u.uSunL,sl);gl.uniform3f(u.uAlb,.78,.76,.72);gl.uniform1f(u.uLit,4*Math.max(0,sl[1])+.05);
   gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
-  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(CUBE.vao);gl.drawArrays(gl.TRIANGLES,0,CUBE.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
+  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const IPA=new Float32Array(16);
 function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
-  gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(CUBE.vao);
+  gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(VBOX.vao);
   const loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]);
   hits.sort((a,b)=>b.w*b.re*b.re-a.w*a.re*a.re);const H4=hits.slice(0,4),top=H4[0],P=top.P2;
   let lo=[1e9,0,1e9],hi=[-1e9,0,-1e9],W=0,re=0,ig=[0,0,0,0];IPA.fill(0);
@@ -3609,7 +3654,7 @@ function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMa
   gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);gl.uniform4fv(u['uIP[0]'],IPA);gl.uniform1i(u.uNH,H4.length);
   gl.uniform3fv(u.uCo,P.co);gl.uniform3fv(u.uMa,P.ma);gl.uniform3fv(u.uVa,P.va);gl.uniform3fv(u.uSo,P.so);gl.uniform4fv(u.uK,P.K);gl.uniform1f(u.uOp,P.op);
   gl.uniform4fv(u.uIg,ig);gl.uniform1f(u.uI,1);gl.uniform1f(u.uW,Math.min(1.3,W*(.7+.3*H4.length)));gl.uniform1f(u.uCh,G.pad?1:0);gl.uniform1f(u.uRe,re);
-  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,CUBE.n);
+  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(VBOX.vao);gl.drawArrays(gl.TRIANGLES,0,VBOX.n);
   gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const SPOOL=new WeakMap();
 // the spool: the plume follows the throttle with a lag (0.12 s; 0.3 s while starting); a start from (near) zero stamps the
@@ -3870,7 +3915,10 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
   const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('')};
 let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
-HOOK.boom=(b,r,t,sz)=>booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz});
+HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/b.rho0*3,0,1):0;
+  booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz,air,seed:Math.random()*40});
+  if(b!==TELLUS)return;const v0=S&&S.body===b&&len(sub(S.r,r))<200?S.v:surfVel(b,r),R=Math.random,k=Math.sqrt(sz);   // sparks and burning fragments
+  for(let i=0;i<30+20*k;i++){const u=norm([R()-.5,R()-.5,R()-.5]),sp=(15+45*R())*k;fxPuff(r,add(v0,mul(u,sp)),{s0:.08+.08*R()*k,grow:0,a0:.9,life:.3+.9*R(),hot:1.8})}};
 HOOK.rebuild=()=>{shipMesh&&shipMesh.free();shipMesh=partsMesh(S.parts.filter(p=>p.on));renderStages();renderSAS()};
 HOOK.debris=d=>{d.mesh=partsMesh(d.parts);debris.push(d);sepFx(d);d.impact=d.body.atm||d.body.parent?debrisImpact(d):null;
   if(d.impact){d.verdict=dropVerdict(d.impact.b,d.impact.pf);if(S)missionDrop(S,{...d.verdict,pf:d.impact.pf,parts:d.parts});d.name=d.parts.find(p=>p.d.kind==='engine')?.d.name.split(' ')[0]||d.parts[0].d.name;pendingDrops.push(d)}};
@@ -4258,7 +4306,7 @@ function render(){
   gl.useProgram(PMESH.p);const m=PMESH.u;gl.uniformMatrix4fv(m.uVP,false,VP);gl.uniform3fv(m.uSun,SUN);gl.uniform1f(m.uFc,FC);gl.uniform1f(m.uGlow,0);gl.uniform1f(m.uShadow,0);gl.uniform1f(m.uSeam,0);
   {const E=lightEnv(camW);gl.uniform3fv(m.uSunCol,E.sun);gl.uniform3fv(m.uSky,E.sky);gl.uniform3fv(m.uGnd,E.gnd);gl.uniform3fv(m.uUp,E.up)}
   const lit=p=>{for(const b of BODIES){const q=sub(p,bodyPos(b,simT)),d=dot(q,SUN);if(d<0&&dot(q,q)-d*d<b.R*b.R)return 0}return 1};
-  marksTick();padSync();padLights(m,camW);plumeLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform3fv(m.uPlC,PLT.c);
+  marksTick();padSync();padLights(m,camW);plumeLight(camW);boomLight(camW);gl.uniform4fv(m.uPl,PLT.p);gl.uniform3fv(m.uPlC,PLT.c);
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
@@ -4344,9 +4392,19 @@ function render(){
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));
       gl.uniformMatrix4fv(m.uM,false,modelQ(q,sub(add(p,qrot(S.q,sub(z.at,S.cm))),camW),0,[.14,.4,.14]));gl.uniform1f(m.uGlow,.6*(1-age/.08));gl.bindVertexArray(PUFF.vao);gl.drawArrays(gl.TRIANGLES,0,PUFF.n)}}
   const nowMs=performance.now();
-  for(let i=booms.length-1;i>=0;i--){const bm=booms[i],a=(nowMs-bm.t0)/1000;if(a>4&&S.alive){booms.splice(i,1);continue}if(a>4)continue;
-    const p=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),s=bm.sz*(2+14*Math.sqrt(a));
-    gl.uniformMatrix4fv(m.uM,false,mat4([s,0,0],[0,s,0],[0,0,s],sub(p,camW)));gl.uniform1f(m.uGlow,Math.max(0,1.6*(1-a/4)));gl.bindVertexArray(FIRE.vao);gl.drawArrays(gl.TRIANGLES,0,FIRE.n)}
+  if(booms.length){const u=PBOOM.u,E=lightEnv(camW);gl.useProgram(PBOOM.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,nowMs/1000%1000);
+    gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+    gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
+    gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.enable(gl.CULL_FACE);gl.bindVertexArray(VBOX.vao);
+    for(let i=booms.length-1;i>=0;i--){const bm=booms[i],a=(nowMs-bm.t0)/1000,life=bm.air>.05?14:3;if(a>life){if(S.alive||a>60)booms.splice(i,1);continue}
+      const ps=fromPF(bm.b,bm.pf,simT),p=add(bodyPos(bm.b,simT),ps),Y=norm(ps),X=norm(cross(Y,Math.abs(Y[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,Y),
+        R=bm.sz*(2+12*Math.sqrt(Math.min(a,1.2)))*(1.4-.4*bm.air)+bm.sz*2.5*bm.air*Math.max(0,a-1.2),rise=bm.air*bm.sz*3.5*Math.pow(a,1.2),
+        lo=[-1.6*R,rise-1.6*R,-1.6*R],hi=[1.6*R,rise+1.6*R,1.6*R],O=sub(p,camW),cl=[-dot(O,X),-dot(O,Y),-dot(O,Z)],
+        inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2];
+      gl.uniformMatrix4fv(u.uM,false,mat4(X,Y,Z,O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
+      gl.uniform3f(u.uSunL,dot(SUN,X),dot(SUN,Y),dot(SUN,Z));gl.uniform1f(u.uA,a);gl.uniform1f(u.uR,R);gl.uniform1f(u.uRise,rise);gl.uniform1f(u.uAir,bm.air);gl.uniform1f(u.uSeed,bm.seed);
+      gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,VBOX.n)}
+    gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   gl.disable(gl.BLEND);gl.depthMask(true);
   // ---- 2D overlay
   octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];
