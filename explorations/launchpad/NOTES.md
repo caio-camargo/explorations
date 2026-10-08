@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.20.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3300,6 +3300,33 @@ Two halves launched together (or a module you just released) can now dock to eac
 - **Not yet:** the arm passing through the stack's own structure on its way (no self-collision for held bodies); a
   manual mode (joint-by-joint or end-effector keys); grappling debris; the arm taking a held body into a bay that is
   part of a docked module rather than our own parts.
+
+### E built: moonbases (sats session, 2026-10-08)
+
+- **Landed objects persist.** A vessel that ends a flight resting on a body other than home is registered in that
+  body's frame (`q.landed`, `q.bodyName`, `q.pf` its centre of mass, `q.ql` its attitude), with its shape, design and
+  state like any entry. It's drawn when near, labelled on the map, listed in the Program panel under *On the surface*
+  (Fleet tab), and flyable: **Fly** starts the flight standing where it stood, and it lifts off under power. The
+  register's orbit-only code (`satsUp`) no longer sees landed objects; they have their own list (`landedUp`).
+- **Bases:** a *Base beacon* (palette *Station*) makes a landing site a base (named *Selene Base N*); everything landed
+  within 500 m of it, along the surface, on the same body belongs to it. Berths, crew (crewed capsules landed there, up
+  to the berths), labs and supplies add up across the members, and between flights a base works exactly as a station
+  does (one shared `crewTick`): supplies used, lab-days earned, headlines when low or out.
+- **Landing on a target:** a landed object can be the target (`G` cycles those on the body you're at). The HUD's
+  *Landing* row gives the distance along the surface, the bearing, and how far the predicted impact point is from it
+  (green inside the base's 500 m); the flight view marks it.
+- **Contact** now runs on any body: landed objects are immovable (and, for now, take no damage); the orbital register is
+  still only around Tellus. A capsule dropping onto a habitat at 1 m/s rebounds at 0.33 m/s; the habitat doesn't move.
+- Checks (`test.mjs` §33): saved in Selene's frame (and out of the orbit lists); flown again from the surface and lifting
+  off; a base of four with a fifth habitat 2 km away left out; 10 days at the base (20 lab-days, 200 kg used) and a day
+  of the orbit code with landed objects present; the bounce off a module; a base as the target. Another session's guard
+  (every Program heading must have a tab) caught my new heading; it's in the Fleet tab. Browser: a base of four on
+  Selene seen from the beacon lander, and its Program panel lines.
+- **Not yet:** surface docking or rovers between modules; damage to landed modules; landed objects on Tellus away from
+  home (a vessel landing at home is recovered, as before); power and in-situ fuel at a base.
+
+**The stations plan is built end to end** (A, A2, B, C, D, E). What it needs next is mostly the economy session's:
+contracts for stations, bases, retrieval and crew rotation, and the rules for flights from orbit.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
