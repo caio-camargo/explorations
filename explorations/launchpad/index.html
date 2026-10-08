@@ -1449,6 +1449,25 @@ const aglAt=(b,r,t)=>len(r)-b.R-groundAlt(b,toPF(b,r,t));   // height above the 
 const mainChuteOK=(b,h,r,t)=>h<TERR_TOP+MAIN_AGL&&aglAt(b,r,t)<MAIN_AGL;   // h is the sea-level height (a cheap early out)
 // the gap between the ship's bottom and the ground under it (the warp's time-to-ground uses this)
 const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
+// ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
+// above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
+// low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
+const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,BLACKOUT_Q=5e4,gsMasks=new Map();
+function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
+  const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
+  for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
+      const e=Math.atan2(groundAlt(TELLUS,q)-h0-d*d/(2*R),d);if(e>mx)mx=e}m.el[a]=mx}
+  gsMasks.set(key,m);return m}
+// does station st see the planet-fixed position pf (a vector from Tellus's centre)?
+function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<1)return true;
+  const sinE=dot(d,st.u)/dl;if(sinE<STA_MIN)return false;
+  const f=siteFrame(st.u),az=Math.atan2(dot(d,f.e),dot(d,f.n)),i=Math.round(((az+2*Math.PI)%(2*Math.PI))/(2*Math.PI)*GS_AZ)%GS_AZ;
+  return Math.asin(clamp(sinE,-1,1))>m.el[i]}
+// the flight's radio link: the first station that sees the vessel, or a plasma blackout during re-entry heating. Away
+// from Tellus (Selene, Nyx) the deep-space antennas are assumed to hold the link.
+function linkOf(s){if(s.body!==TELLUS)return{ok:true,st:null,why:'deep space'};if(s.landed)return{ok:true,st:null,why:'on the ground'};
+  if(s.qHeat>BLACKOUT_Q)return{ok:false,st:null,why:'plasma blackout'};
+  const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf))return{ok:true,st,why:''};return{ok:false,st:null,why:'no station in view'}}
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;
@@ -1689,7 +1708,8 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
     for(const p of s.parts)if(p.on){const f=p.T/p.d.Tmax;if(f>(p.wT||0))p.wT=f}
     if(R.launched)khMark(s,R)}
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
-    for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(R.sf[k]||0))R.sf[k]=f}}
+    if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
+    for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv);logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
@@ -1734,6 +1754,7 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+  if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
@@ -2883,7 +2904,7 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0;
-    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)>=STA_MIN))n++}
+    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>gsSees(st,pf)))n++}
     if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0)));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R()<1-Math.exp(-d/45)){const ci=R()*CITIES.length|0,[dis,head]=DIS[R()*DIS.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
@@ -2897,7 +2918,7 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
       for(const c of want){if(q.pending.includes(c.id))continue;const u=CITIES[c.p.ci].u,dd=Math.acos(clamp(dot(un,u),-1,1))*TELLUS.R;
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
-      if(q.ant&&q.pending.length)for(const st of GS){if(dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)<STA_MIN)continue;
+      if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;
         for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
 // ---- the logbook: what the program has *measured*. Nothing here is given: each fact is filled in by a real flight, with
 // who flew it and when, and improved by better flights (the old values kept, struck through in the notebook). Records
@@ -5924,7 +5945,7 @@ function updateHUD(){
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   const met='T+'+fmtT(simT);
-  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]]:[]),
+  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]]:[]),...(S.body===TELLUS&&!S.landed?[['Link',(()=>{const k=linkOf(S);return k.ok?`<span class="ok">${k.st?k.st.name:k.why}</span>`:`<span class="warn">${k.why}</span> <span class="dim">· recorder</span>`})()]]:[]),
     ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
     ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],

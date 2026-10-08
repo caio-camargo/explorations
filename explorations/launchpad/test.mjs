@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,gsMask,gsSees,linkOf,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -2388,6 +2388,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const sOrb = D.newShip(D.PRESETS.Orbiter); D.S = sOrb; const zOrb = D.buildRig(20, D.padRig(20)).zS;
   const sCL = D.newShip(D.PRESETS['Crewed Lunar']); D.S = sCL; const zCL = D.buildRig(45, D.padRig(45)).zS;
   check('a narrow rocket keeps the old service position; a wide one gets the gantry stopped further back', zOrb === -3.3 && zCL < -3.3, `Orbiter ${zOrb} m, Crewed Lunar ${zCL?.toFixed(2)} m`);
+}
+
+// 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
+// only certifies what reaches the ground (linked) or comes home on the recorder.
+{
+  const R = TELLUS.R, D = Math.PI / 180, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  // a station at the foot of a range: find a spot whose horizon rises above 10° in some direction
+  let st = null, azHi = -1, azLo = -1;
+  for (let la = -60; la <= 60 && !st; la += 1) for (let lo = -180; lo < 180 && !st; lo += 1) {
+    const u = U(la, lo); if (api.terrainH(u) < 0) continue; const cand = { name: 'test', u };
+    // cheap pre-check: a big rise within 30 km
+    let rise = 0; for (let a = 0; a < 8; a++) rise = Math.max(rise, api.terrainH(api.alongAz(u, a * Math.PI / 4, 20e3 / R)) - api.terrainH(u)); if (rise < 2500) continue;
+    const m = api.gsMask(cand); let hi = -1, lo2 = -1; for (let i = 0; i < m.el.length; i++) { if (m.el[i] > 10 * D && hi < 0) hi = i; if (m.el[i] < 2 * D && lo2 < 0) lo2 = i; }
+    if (hi >= 0 && lo2 >= 0) { st = cand; azHi = hi; azLo = lo2; } }
+  const m = api.gsMask(st), P = mul(st.u, R + m.h0), f = api.siteFrame(st.u);
+  const target = (azi, el, dist) => { const az = azi * 2 * Math.PI / m.el.length, dir = add(mul(f.n, Math.cos(az)), mul(f.e, Math.sin(az)));
+    return add(P, mul(add(mul(dir, Math.cos(el)), mul(st.u, Math.sin(el))), dist)); };
+  const behind = api.gsSees(st, target(azHi, 8 * D, 800e3)), open = api.gsSees(st, target(azLo, 8 * D, 800e3)), high = api.gsSees(st, target(azHi, 45 * D, 800e3));
+  check('stations: a mountain masks a target at 8° elevation behind it; the same elevation over open ground is seen; overhead is always seen',
+    !behind && open && high, `horizon ${(m.el[azHi] / D).toFixed(1)}° one way, ${(m.el[azLo] / D).toFixed(1)}° the other`);
+  // the flight's link: the pad station sees a climbing rocket; the far side of the planet sees nothing; plasma blacks out
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); s.landed = false; const home = api.SITES[0];
+  s.r = api.fromPF(TELLUS, mul(home.u, R + 30e3), 0); const l1 = api.linkOf(s);
+  s.r = api.fromPF(TELLUS, mul(mul(home.u, -1), R + 150e3), 0); const l2 = api.linkOf(s);
+  s.r = api.fromPF(TELLUS, mul(home.u, R + 60e3), 0); s.qHeat = 2e5; const l3 = api.linkOf(s); s.qHeat = 0;
+  check('link: the pad sees the climb; the far side of the planet has no station in view; re-entry plasma blacks the link out',
+    l1.ok && l1.st && !l2.ok && /no station/.test(l2.why) && !l3.ok && /blackout/.test(l3.why), `${l1.st && l1.st.name} · ${l2.why} · ${l3.why}`);
+  // telemetry: out of contact, strain data goes to the recorder, not straight to certification
+  const x = api.newShip(['sci', 'pod']); x.landed = false; x.rec.launched = true; x.r = api.fromPF(TELLUS, mul(mul(home.u, -1), R + 50e3), 0);
+  x.v = api.surfVel(TELLUS, x.r); api.physStep(x, api.DT); for (const p of x.order) if (p.on && p.sk1) { p.sf1 = 0.3; p.sf2 = 0.3; } x.rec.lkT = undefined; api.missionTick(x, api.DT, true);   // one step sets the joints' strain keys
+  const recOnly = Object.keys(x.rec.sfRec || {}).length > 0 && Object.keys(x.rec.sf).length === 0;
+  check('telemetry: out of contact the strain data goes to the recorder (it certifies only if the package comes home)', recOnly,
+    `recorder ${Object.keys(x.rec.sfRec || {}).join(', ')}; downlinked ${Object.keys(x.rec.sf).join(', ') || 'nothing'}`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
