@@ -1203,6 +1203,22 @@ same fresh rocket with frost forced to 0.
 - A diagnostic trap, for the record: overriding a top-level function from the page (`window.padLights = …`) did not take
   effect, so a "floodlights off" test proved nothing; logging the uniforms per draw call showed the floodlights were on.
 
+## Bloom (2026-10-09, aerofx session)
+
+Bright lights now glow. The frame is drawn into an offscreen target (`sceneTarget`: 4× multisampled colour + depth/stencil,
+so the MSAA the canvas had is kept), resolved, and its near-white pixels are shrunk through ½, ¼, ⅛ and 1/16 resolution
+(a 4-tap box each step, so the chain blurs them; `BLOOM_FS`), then added back while the frame is copied to the screen
+(`COMP_FS`, tent-filtered on the small levels). `bloomBegin` / `bloomEnd` wrap `render()`'s 3D part; passes that render
+elsewhere mid-frame (the cloud coverage bake, the depth pre-pass) return to `sceneFB()` instead of the screen.
+
+- **The catch:** the scene is already tone-mapped, so a bright daytime sky is as near-white as the sun. The first version
+  (threshold 0.8) turned the horizon haze into a white band on every daytime ascent. Now the threshold is 0.93 on the max
+  channel, and the glow is added in proportion to (1 − luminance)^1.6 of the frame under it: strong over space, night and
+  the dark side of things, faint over bright sky. A true HDR pipeline (float targets, tone mapping once at the end) would
+  do this properly; it would mean touching every shader's output.
+- Cost on the RTX 5050 at 1280×800: +0.1–0.2 ms (pad view, A/B). `BLOOM = false` draws straight to the screen.
+- What glows: the sun in space, explosions, ignition flashes and plume cores at night, the floodlight lamps.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1234,7 +1250,7 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
-## v1.50 — spin stabilisation (2026-10-08, control session)
+## v1.51 — spin stabilisation (2026-10-08, control session)
 
 The fourth slice of the control review. The rotation step applied τ/I and nothing else: Euler's equations were missing
 their gyroscopic term (ω×Iω). So a spinning stage turned to every torque as if it weren't spinning, never wobbled, and
@@ -1306,7 +1322,7 @@ term fails the first two; dropping the roll guard fails the second.
 **Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
 deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 
-## v1.49 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
+## v1.50 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
 
 The handover from "Dispatch — the economy's answers". Deviation instead of bare failure: the flight calls for you.
 
@@ -2883,6 +2899,70 @@ the economy decides, this is what the physics side offers:
 - bodies: headless dispatch runs, deviation detection in `procStep`, phases and partial procedures, the dry run;
 - UI / app: watch mode, jumping in, the handover.
 
+### The ladders, proven with real rockets (2026-10-08)
+
+Every epoch 4–5 uncrewed mission has now been flown from the pad by the procedure executor. Each flight starts with only
+that mission's prerequisites done, and the mission's own check decides whether it counts. The flights are in
+`fly_ladder.mjs` (`node fly_ladder.mjs [ids] [-v]`), and test.mjs § bodies-1 runs them all in about a minute.
+
+**Presets** (both in `PRESETS`):
+- **Probe**: antenna, camera, instruments and a core on t4 t4 + Petrel, carried by the Lunar launcher. It has
+  ~1,900 m/s to spare past a transfer.
+- **Sample Return**: chute, pod, instruments and shield, on a t2 + Wren return stage. Below that, a t4 t4 t2 + Petrel
+  transfer-and-descent stage, carried by the Big Lunar launcher with two radial boosters.
+
+| Mission (pay) | Preset | Phases | Δv in all | Left | Days |
+|---|---|---|---|---|---|
+| farside (150) | Probe | transfer: far side, sunlit on arrival, 150 km pass | 5,837 | 2,926 | 2.8 |
+| selimp (120) | Probe | transfer: near side, pass −0.4 R (an impact) | 5,789 | — | 0.8 |
+| selland (250) | Probe | transfer (near) · capture 20×200 km · land | 7,129 | 1,634 | 0.8 |
+| selsample (400) | Sample Return | transfer · capture 15×100 · land · surface · ascend · return | 8,389 | ~300 at the burn home | 1.3 |
+| nyxfind (120) | Probe | transfer to Nyx (tracked on the way) | 5,740 | 3,023 | 2.7 |
+| nyxfly (150) | Probe | transfer, 200 km pass | 5,713 | 3,050 | 1.5 |
+| nyxorb (250) | Probe | transfer (retrograde) · capture 30×80 km | 6,201 | 2,561 | 4.3 |
+| nyxland (300) | Probe | transfer · capture · land | 6,601 | 2,161 | 1.7 |
+
+The Probe costs 127–156M and the Sample Return 188–217M. Price depends on program state: fresh, or with know-how and
+production.
+
+**New transfer options.** These are phase fields, scored as penalties on the predicted pass:
+- `side: 'near'|'far'`: which side of the moon holds periapsis, as seen from its parent. For an impact, it is the
+  impact point.
+- `sunFar`: wait for a departure that arrives with the moon on the sun's side, so the far side is lit.
+- `retro: true|false`: whether the pass runs against or with the moon's orbit.
+
+Landing-site targeting is near side or far side for now. A specific crater would need the capture phase to choose its
+plane and periapsis longitude; that is still open.
+
+**What broke, and the fixes.** All are in the executor or the predictor, so every procedure benefits.
+- `passScore` crashed on any predicted miss. A `const` had been swallowed onto a comment line. This was latent on
+  `main`.
+- The trim scored the osculating periapsis at SOI entry. Tellus's tide moves it by tens of km over the ~3 h to
+  periapsis: a 31 km aim became 114 km flown, and a 15 km aim became −20 km, an impact. The trim and the corrections now
+  score the integrated pass. A path that hits the ground is scored by the osculating periapsis at impact, which gives a
+  search a slope to follow.
+- The capture and landing burns re-time themselves on waking, 10 min out, because the tide shifts when periapsis comes
+  too.
+- The landing deorbits first: a small burn at apoapsis brings periapsis down to 5 km (`ph.pe`). Braking at 30–40 km and
+  then falling cost ~√(2gh), about 300 m/s. This saved 130–150 m/s on the probes. The crewed v2 mission now reaches its
+  burn home with 955 m/s aboard instead of 525.
+- Braking hysteresis. At 15 m/s of drift, the descent kept flipping back into braking, which holds the throttle while it
+  aligns. A Probe fell 2 km that way and crashed at 80 m/s. It now brakes once and tilts out whatever drift is left.
+  The braking uses main's velocity over the ground (Selene now rotates).
+- The ascent leaves behind a stage that can't reach orbit by itself, when there is one under it that can. A lander
+  stage that finished the descent itself, with no high drop, had tried to lift a crew on 136 m/s.
+
+**Found while flying (for the economy session):**
+- **nyxfind comes free.** A probe with instruments and an antenna, flying to Selene, collects its 12 h of residual
+  ≥ 1e-3 on the way, so nyxfind completes on the farside flight. Either that is fine (the first lunar probes discover
+  Nyx), or the threshold should be higher, or tracking should need a deliberate high orbit.
+- **Two missions pay less than the rocket costs.** selimp (120) and nyxfind (120) each take a 127–156M Probe plus
+  operations. A smaller impactor would do, since it needs no capture or landing Δv, but no preset is sized for it yet.
+  selland (250) and nyxland (300) clear their cost; selsample (400) pays about twice its rocket.
+- **"Watch which way round you go" is real.** The same 30×80 km Nyx orbit lasts two Nyx periods when retrograde. Forced
+  prograde (`retro: false`), it hits Nyx 61 h after capture. A 100×300 km orbit is stripped within 27 h either way,
+  because Nyx's SOI shrinks to ~260 km altitude at Nyx's periapsis.
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
@@ -4302,10 +4382,89 @@ surface.
 
 **Not yet:**
 - terrain shadows and horizons (Selene is still smooth: hills will block both sun and radio);
-- a relay in Selene orbit;
+- ~~a relay in Selene orbit~~ (built: "The Selene relay" below);
 - the clock running while you drive from home;
 - eclipses by Tellus;
 - Nyx's spin.
+
+### The Selene relay built: orbits about a moon in the registry (sats session, 2026-10-08)
+
+R3 left the far side without contact because the registry kept only Tellus orbits. Now a vessel left in orbit
+around a moon stays on the register in that moon's frame, and one with an antenna relays for rovers.
+
+**The registry** (`satRegister`, `orbBody`, `moonSats`):
+- An orbit about a moon is kept with `q.bodyName`, and its `r`/`v` relative to that moon. `satAt` uses the moon's μ.
+- It is accepted if its periapsis is at least 5 km up (`MOON_PE`: airless, and no relief yet) and its apoapsis is inside
+  the SOI (`soiMin`).
+- **`satsUp()` is still Tellus orbits only**, so none of its ~30 callers changed. Moon orbiters come from `moonSats(b)`.
+- An orbiter whose only payload is an antenna is named *Relay N*.
+- Flying it again (`vesselOf`) starts the flight around its moon.
+- `stationTick` includes moon orbiters: a crew left in Selene orbit eats supplies.
+- They show in the flight view (markers and meshes), on the map (orbit lines, labels), and under *In orbit around
+  Selene* in the Program's Fleet tab.
+
+**Between flights the tide moves them** (`moonOrbStep`, from `advanceDays`). The orbit is stepped with Tellus's tide
+(`pertAcc`, RK4 at 1/120 of an orbit), on program time. The reason is a measurement. Two-body Kepler would keep any
+orbit forever, but Tellus pumps the eccentricity of a high, steeply inclined orbit (Lidov–Kozai):
+
+| Orbit (circular at the start; days are Tellus days of 8 h) | Fate |
+|---|---|
+| 1,000 km, in Selene's orbital plane | keeps its shape: 1,002–1,019 km after 45 days |
+| 1,000 km, 60° | 941–1,054 km after 90 days |
+| 1,500 km, 75° | meets the ground on day 79.5 |
+| 2,000 km, polar | meets the ground on day 41.3 |
+| 3,000 km, polar | leaves Selene's SOI on day 20.9 and orbits Tellus (it moves to Tellus's registry, with news) |
+
+- **Hitting the ground is judged on the path, not on the osculating periapsis.** A first version called an orbit lost
+  when its osculating periapsis dipped below the ground. On the 2,000 km polar orbit that happened 4 days early: the
+  osculating value read −6 km on a pass that really cleared the ground. Now, on an inbound leg, the Kepler time to
+  r = R is compared with the step.
+- **Against a 5 s RK4 reference** that stops at real contact, every fate above agrees to within one step (e.g.
+  41.25 vs 41.34 days). Positions: 0.36 km off after 21 days at 1,000 km, 3 km off at 100 km (along-track).
+- **Cost:** 5 orbiters × 30 days took 56 ms.
+- **Inside a flight they still ride Kepler from their last state.** Over 24 h of flight that is 18 km along-track at
+  100 km and 320 km at 1,000 km. That's fine for markers and relays; it would matter for rendezvous (Not yet).
+
+**Contact through an orbiting relay** (`rvContact`, `rvRelays`). The relay must be over the rover's horizon (1°), and
+the line from it to Tellus must clear Selene. The delay is a round trip over rover → relay → Tellus. Registered
+orbiters with an antenna count, and so does any vessel of the current flight in orbit around that body that carries
+an antenna. The relays have no range or power limit yet.
+
+For a rover at the centre of the far side, with one relay in Selene's orbital plane (3 orbits sampled):
+
+| Relay height | Time in contact | Round trip |
+|---|---|---|
+| 100 km | 0 % (needs ≳ 145 km: it must see both the rover and, past the limb, Tellus) | — |
+| 300 km | 13 % | ≤ 263 ms |
+| 600 km | 26 % | ≤ 267 ms |
+| 1,000 km | 35 % | ≤ 272 ms |
+| 2,000 km | 46 % | ≤ 285 ms |
+| 4,000 km | 45 % | ≤ 312 ms |
+
+A single relay can't reach half the time: it has to be on the rover's side and past the limb as Tellus sees it. More
+relays, phased, fill in the gaps. A far-side relay should also be equatorial; the high polar orbits are the ones the
+tide brings down.
+
+**Checks:** `test.mjs` §40, 3 checks:
+- registration (frame, name, the two refusals, flown again around Selene);
+- far-side contact (none alone, about a third via a 1,000 km relay, none at 100 km, the relay's extra leg in the delay,
+  a vessel of the flight relaying);
+- the tide over 45 days (the equatorial orbit holds, 2,000 km polar comes down, 3,000 km polar moves to Tellus).
+
+Mutation-tested: each of 10 deliberate breaks fails at least one check. The breaks: no tide, no Selene occlusion, no
+rover horizon, `satsUp` including moon orbits, the direct delay, no ground contact, no SOI exit, no SOI gate,
+flight vessels not relaying, `vesselOf` on Tellus. Browser: two orbiters listed under *In orbit around Selene*; the
+far-side rover's *Drive from home* button appears in its windows (268 ms via Lookout 1); flying one shows the other's
+marker 2.7 km away; no console errors.
+
+**Not yet:**
+- rendezvous and docking with a registered moon orbiter (`tgtOf`, `contactStep`, `nearbyFlyable` and target cycling
+  are Tellus-only);
+- cameras in Selene orbit (`satTick` is Tellus's);
+- relay range and power;
+- Nyx orbits work in code but are untested;
+- **economy:** a contract for a far-side relay (or a relay network: share of the far side covered).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -5415,7 +5574,8 @@ the arrows, and every key in the handlers present in its Help table.
 6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations~~ done for Nyx and Selene, nodes included (§ "6b").
    Selene and Nyx missions built (§ "Out there" missions). Next on that line: debris near the moons ignores tides;
    registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
-7. **Sound**, a WebAudio rumble driven by thrust × density.
+7. ~~**Sound**~~ first pass done (§ "Sound", 2026-10-08). Next on that line: per-engine voices (pitch by size), spatial audio for
+   other vessels and debris, re-entry plasma crackle tuned against the heating model, a volume slider.
 
 ## The tester menu (2026-10-08, tester session; PLAYTEST #1)
 
@@ -5487,3 +5647,43 @@ counted as obstacles at every angle and nothing ever turned. It now skips everyt
 test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
 presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
 old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).
+
+## Sound (2026-10-08, sound session; open thread 7)
+
+All synthesised in WebAudio, no samples: looped noise buffers (white, brown, and a sparse "pop" buffer for crackle)
+through filters, two low sine tones for the sub-bass, a 6.5 Hz LFO for buffet, and one-shot filtered bursts with a
+falling thump for events. A compressor on the master. **F4** toggles (remembered per browser); the context starts on
+the first click or key, as browsers require. Render-side only: `sndTick(dtR)` is one call in `frame()` after `emitSmoke`,
+outside `render()`, reading SIM state and diffing it frame to frame. No SIM changes.
+
+**The model: the listener rides the ship, like the crew.** Two paths reach them:
+- **Through the air:** loudness ∝ (thrust / 4 MN)^0.3 (Stevens' law on an acoustic power ∝ thrust), × √(ρ/ρ₀) (the
+  same source power in thinner air makes a smaller pressure swing), × a ground-reflection boost below 150 m, × a Mach
+  factor that drops 80 % between Mach 0.9 and 1.3 (the exhaust's noise can't run forward faster than sound). Its lowpass
+  closes from ~3.6 kHz at sea level to ~550 Hz at ρ/ρ₀ = 0.05: thin air sounds dark before it sounds quiet.
+- **Through the structure:** a 110 Hz-lowpassed rumble whenever an engine burns, at any altitude. In vacuum that is all
+  there is. Apollo crews described the engines as felt more than heard; this is that.
+
+Plus: wind from dynamic pressure (bandpass rising with airspeed, full at 40 kPa), buffet (the wind amplitude-modulated
+near Mach 1, Gaussian in M with σ = 0.12), a high hiss when the hottest part passes 35 % of its limit under q, an RCS
+hiss while jets fire, crackle weighted to solid motors (escape tower included).
+
+**Events** (diffed, so they need no hooks in the SIM): fewer parts on → separation thunk; an engine burning that wasn't
+→ ignition (a sharp crack for solids, a soft whoomp for liquids); `chuteA` crossing 1 (drogue) and 7 (main) m² → chute;
+`landed` turning true → touchdown thump scaled by `touchV`; a new entry in `booms` → a blast, through `sndBoom`: our own
+ship is heard through the structure even in vacuum, anything else only through air, **late by d/340 s**, with gain
+∝ √air · 250/(250+d) and its highs eaten with distance. Switching ship, reverting or a new flight resets quietly.
+
+**Measured** (test.mjs sound-1, an Orbiter ascent on the SIM, the mix sampled every second): roar 0.41 at the pad →
+0.25 at Mach 1 (5.8 km, buffet 1.0) → 0.04 at 10.5 km (supersonic) → 0.01 at 30 km → 0 by 70 km; wind 0.82 at Mach 1,
+0.89 at max-q (33 kPa, T+52), 0.53 at 30 km, 0.05 at 70 km. A blast 5 km away: 0.03 of its 100 m gain, 14.7 s late,
+lowpass 417 Hz. In headless Chrome on the real page: the context runs, the Orbiter at full thrust on the pad measures
+−23 dBFS RMS at the master (silent at idle, −73 dB after cutoff); ignition, both stages' ignitions, separation and a
+blast all fire; F4 mutes (master to 0.001) and back; leaving flight fades to 0; the map plays at 35 %.
+
+**Negative result worth keeping:** counting active engines misses the upper stage's ignition (one engine out, one in:
+the count stays 1). Events are diffed by engine identity (`p.i`) instead.
+
+**Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
+in `sndTick` are the knobs.
+

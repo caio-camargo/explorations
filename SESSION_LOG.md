@@ -1987,7 +1987,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   uncertainty; good data raises the chance and narrows the range), pads as calendar reservations plus a Launch pads
   facility, a hand-flown launch waiting for a free pad, a seed fixed at ordering, the same pay as by hand. An interim
   resolver rolls the estimate until the bodies session's `dispatchRun`. All tests pass. Merged to `main` (`98638f6`).
-- **v1.49 (2026-10-08, economy worktree, first slice after the repo left Drive):** deviation. A dispatch that can't
+- **v1.50 (2026-10-08, economy worktree, first slice after the repo left Drive; renumbered from v1.49, which sound took):** deviation. A dispatch that can't
   meet its goal hands the flight to you, rebuilt at that moment from a registry entry. Time stops until you take
   control or let it go; ignored, it's lost; no revert on a handed-over flight. The interim resolver deviates on a failed
   relight or propellant short of the margin (the top stage at apoapsis, periapsis in the air). All tests pass.
@@ -3100,6 +3100,34 @@ designer's power box.
 - [ ] R4 science; R5 drive plans (a surface leg of the mission planner); the clock while driving from home
 - [x] Pushed with the repo move (GitHub `main` has R1–R3)
 
+## 2026-10-08 — Launchpad: the Selene and Nyx ladders, proven with real rockets (bodies session, cont.)
+
+Every epoch 4–5 uncrewed mission flown from the pad by the procedure executor, with only its prerequisites done: farside,
+selimp, selland, selsample, nyxfind, nyxfly, nyxorb, nyxland all pass. A prograde control at Nyx fails, as the brief says it should.
+- New presets **Probe** and **Sample Return**. New transfer options `side` (near/far, the impact point for impacts),
+  `sunFar`, `retro`.
+- Executor and predictor fixes:
+  - a latent `passScore` crash on predicted misses (on `main`);
+  - the trim and corrections now score the integrated pass, since Tellus's tide moved a 15 km aim to an impact;
+  - capture and landing re-time on waking;
+  - landing deorbits to 5 km first (saves ~150 m/s; the crewed v2 mission now reaches its burn home with 955 m/s, was 525);
+  - braking hysteresis;
+  - the ascent drops a stage that can't make orbit.
+- Merged main (rotating Selene: braking uses ground speed). 351 checks pass.
+- First work after the repo left Drive. This clone's `origin` was re-pointed from the Drive folder to
+  `C:/Users/caioa/dev/explorations`.
+
+**Files:**
+- `explorations/launchpad/index.html` (presets, MP transfer/capture/land/ascend, passScore/passShape, numLeg `endV`)
+- `test.mjs` (§ bodies-1)
+- `fly_ladder.mjs` (new)
+- `NOTES.md` (§ "The ladders, proven with real rockets")
+- INDEX, ACTIVE_WORK
+
+### Next steps
+- [ ] Economy: nyxfind comes free on a Selene flight; selimp and nyxfind pay less than a Probe costs (a small impactor preset?)
+- [ ] Landing-site targeting beyond near/far side (capture plane and periapsis longitude)
+
 ## 2026-10-08 — Launchpad: playtest list and tech scouting (notes session)
 
 ### Summary
@@ -3132,3 +3160,82 @@ in the Drive folder and lost in the move; re-added here.
 
 ### Next steps
 - [ ] Caio: delete the frozen Drive folder when sure; keep `_backup/drive-git-2026-10-08` a while longer
+
+## 2026-10-08 — Launchpad v1.49: sound; repo-move step 8 (sound session)
+
+### Summary
+- **Repo move step 8** (runbook `docs/leaving-drive.md`): `docs/coordination.md` (claims by push/pull), ACTIVE_WORK's
+  worktree section (merging from the main clone) and pause note lifted, LESSONS #22 updated, a memory note under the new
+  home's key. Pushed as `21f41c0`. Step 6 (freeze) was then done by Caio (`e5f26b6`).
+- **Sound** (open thread 7): synthesised WebAudio, heard from aboard. Air path ∝ (T/4 MN)^0.3 · √(ρ/ρ₀), lowpass closing
+  with density, dropping past Mach 1, louder near the ground; a structure path in vacuum; wind/buffet from q and Mach;
+  one-shots for ignition, separation, chutes, touchdown, blasts (late by d/340 s, none through vacuum). F4 mutes.
+  Measured on an Orbiter ascent and live in headless Chrome (−23 dBFS on the pad); NOTES § "Sound".
+- A robot playtester for TESTING.md was started in parallel (worktree `launchpad-playtest`); its own entry follows.
+- Merging: `main` moved four times during the merge; one SESSION_LOG conflict (same block, two orders), kept `origin`'s.
+
+### Files
+- `explorations/launchpad/index.html` (sound block, one call in `frame()`, F4 in KEYS), `test.mjs` (sound-1, 5 checks),
+  `NOTES.md` (§ Sound, open thread 7), `TESTING.md` row 114, `explorations/README.md` (v1.49)
+- `docs/coordination.md`, `docs/leaving-drive.md`, `ACTIVE_WORK.md`, `LESSONS_LEARNED.md` #22
+
+### Next steps
+- [ ] Caio: TESTING row 114 (does it sound good? levels are first guesses; the knobs are the gains in `sndTick`)
+- [ ] Sound next: per-engine voices, spatial audio for other vessels, a volume slider
+
+
+## 2026-10-08 — Launchpad: the Selene relay (sats session, `pc_de_varginha`)
+
+### Summary
+- Resumed from R3's next step. The registry now keeps orbits about a moon, in that moon's frame (`q.bodyName`). `satsUp()`
+  stays Tellus-only (none of its ~30 callers changed); moon orbiters come from `moonSats()`. They are flyable again
+  around their moon, eat supplies if crewed, and show in the flight view, on the map and in Program > Fleet.
+- **Measured first:** plain Kepler would keep any orbit forever, but Tellus's tide pumps high, inclined orbits
+  (Lidov–Kozai). 2,000 km polar meets the ground on day 41; 3,000 km polar leaves the SOI on day 21. So between flights
+  `moonOrbStep` steps them with the tide (RK4). It agrees with a 5 s reference to within one step; 5 orbiters × 30 days
+  cost 56 ms.
+- **A mistake caught by measuring:** the first ground test used the osculating periapsis, which said "crashed" 4 days
+  early on a pass that cleared. It now checks the actual path within the step.
+- Far-side rovers hear home through an orbiting relay. The relay must be over the rover's horizon, Tellus must not be
+  behind Selene, and the round trip includes the extra leg. One equatorial relay at 1,000 km gives ~35 % of the time;
+  at 100 km, never.
+- Housekeeping: this machine had no `launchpad-sats` worktree registered, but `C:/Users/caioa/dev/launchpad-sats` is a
+  full clone on `sats` (origin = the main clone), so I worked there. The main clone has no git identity set; I committed
+  with the one every recent commit uses (`-c user.name/email`), with no config change.
+
+### Files
+- `explorations/launchpad/index.html`: `satRegister` (moon orbits, *Relay N*), `satAt`/`orbBody`/`moonSats`/`moonOrbStep`/
+  `moonOrbTick`/`MOON_PE`, `advanceDays`, `stationTick`, `vesselOf`, `rvContact`/`rvRelays`, `moonSatsHTML`, and the
+  flight markers, meshes, map orbits and labels
+- `explorations/launchpad/test.mjs` §40 (3 checks); `NOTES.md` § "The Selene relay built"; `TESTING.md` row 115;
+  `explorations/README.md` launchpad row; `ACTIVE_WORK.md` (claim cleared, heads-up)
+
+### Verification
+`test.mjs`: 363 passed on the merged branch. Each of 10 deliberate breaks fails a §40 check. Browser (headless Chrome,
+real GPU): the moon section in Fleet; the far-side rover gets *Drive from home · 268 ms via Lookout 1* in its windows;
+flying one orbiter draws the other's marker 2.7 km away; no console errors.
+
+### Next steps
+- [ ] Rendezvous/docking with moon orbiters (`tgtOf`, `contactStep`, `nearbyFlyable`, target cycling)
+- [ ] Economy: a far-side relay (network) contract; relay range/power limits
+- [ ] R4 science; R5 drive plans; the clock while driving from home (rovers plan)
+- [ ] Caio: TESTING row 115
+
+## 2026-10-08 — Launchpad economy session: paused for a resume in the new folder
+
+### Summary
+Since v1.35 (balance pass 3 on): v1.36 money sinks in simulated careers; design notes on rich programs, waste heat,
+routine runs, compute eras, time and long missions, communication, pre-flight planning and gravity assists, and
+dispatch decisions; v1.38 compute eras and trajectory studies; v1.41 no daily overhead; v1.42 the event timeline;
+v1.44 staged pay; v1.47 dispatch (economy side); v1.50 deviation handover (renumbered from v1.49). The repo left Drive
+mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
+
+### Files
+- `explorations/launchpad/index.html`, `test.mjs`, `career.mjs`, `NOTES.md`: the slices above
+- `explorations/launchpad/HANDOFF-economy.md`: new, how to resume this session
+- `INDEX.md`: career.mjs and the handoff added to the launchpad row; `ACTIVE_WORK.md`: economy row marked paused
+
+### Next steps
+- [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
+- [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
+

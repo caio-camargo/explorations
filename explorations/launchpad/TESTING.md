@@ -54,8 +54,8 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 105 | Fly steerable fins on a rocket and a probe dart | Builder: swap the Orbiter's fin ring for **Steerable fin ring**; or Probe core + Tank 1 t + Steerable fin ring + Sparrow | Coasting through the air it obeys SAS (the builder said "coasting holds"); in vacuum the fins do nothing. They look like fins (they don't move visibly yet) | v1.40 | control |
 | 106 | Read the builder's Control block on several designs | Builder: Orbiter, Heavy, Sounding, Passenger, Lunar; then add a Reaction wheel (palette *Control*) | "holds / weathervanes / flips", roll and the turn times make sense to a player and change sensibly when you add parts | v1.43 | control |
 | 107 | Feel the gimbal: hand-fly an ascent with SAS off, then on | Orbiter, keys only | The rocket answers the keys with a small, believable lag; no wobble under SAS on any preset (Lunar was the worst before the fix) | v1.40 | control |
-| 114 | Spin a kick stage and fire it | Builder: Probe core + Tank 1 t + Petrel + **Spin-up motors** (palette *Control*) + Decoupler on a first stage; the Control block says ~120 rpm. Stage in orbit, SAS on | "Spin motors firing" at separation; HUD *Spin* row ~120 rpm; the stage visibly spins and its burn goes where it pointed. Time warp keeps the spin. A roll key under SAS spins it down | v1.50 | control |
-| 115 | Spin a stage by hand and watch it wobble | Any small stage in orbit, SAS off: roll key held for a while, then a short pitch tap | The stage cones (HUD *Spin* row shows a wobble angle) instead of turning over; it keeps pointing roughly where it was. Turning SAS on stops the spin (only a stage spun by spin motors keeps it under SAS). Is that split clear? | v1.50 | control |
+| 116 | Spin a kick stage and fire it | Builder: Probe core + Tank 1 t + Petrel + **Spin-up motors** (palette *Control*) + Decoupler on a first stage; the Control block says ~120 rpm. Stage in orbit, SAS on | "Spin motors firing" at separation; HUD *Spin* row ~120 rpm; the stage visibly spins and its burn goes where it pointed. Time warp keeps the spin. A roll key under SAS spins it down | v1.51 | control |
+| 117 | Spin a stage by hand and watch it wobble | Any small stage in orbit, SAS off: roll key held for a while, then a short pitch tap | The stage cones (HUD *Spin* row shows a wobble angle) instead of turning over; it keeps pointing roughly where it was. Turning SAS on stops the spin (only a stage spun by spin motors keeps it under SAS). Is that split clear? | v1.51 | control |
 
 ### Building
 
@@ -110,6 +110,7 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 47 | Check frame rate in the heaviest FX scene | Heavy at night on the pad, perf readout on | Still playable on the RTX and tolerable on the iGPU (≈26 ms measured there) | Performance pass | aerofx |
 | 48 | Read the HUD gauges in flight | Ascent and entry; `refView(94)`–`(96)` | Altitude tape, air column, q dial with max-q pointer, Mach drum, heat bar readable at a glance (layout is PLAYTEST #9) | HUD gauges | aerofx |
 | 49 | Fly past a saved satellite; look at Nyx from the ground and space | Orbit near a registered Lookout (diamond marker); Nyx in the sky | Satellite mesh keeps its marks and attitude; Nyx looks brown and distinct from Selene | Satellites in 3D / Nyx | sats / bodies |
+| 114 | Listen to a launch, staging, a chute and a crash (sound on: F4 toggles) | Any preset from the pad to orbit; a Sounding lob home; a crash. Click once first (browsers start audio on a gesture) | Roar loudest on the pad, buffet near Mach 1, wind peaks at max-q, darker and fainter as the air thins, only a structure hum in vacuum; thunks at separation, a whoomp at the chute, a far blast heard late. Too loud/quiet or annoying is a finding | Sound | sound |
 
 ### Orbits & planning
 
@@ -150,6 +151,7 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 72 | Discover Nyx by tracking | High orbit (~1.3× Nyx distance or near Nyx) with instruments + antenna for 12 h | Player can figure out where to go from the mission text; reveal (name, orbit, SOI) feels like a payoff | Out there | bodies |
 | 73 | Land on Nyx (<3 m/s) | Tester epoch 5; fly to Nyx | Low gravity landing is fun, not bouncy chaos | Out there | bodies |
 | 74 | Fly the epoch 3 utility sats: polar weather, TV stationary, disaster watch, navigation | Tester epoch 3 | Plane change cost felt; TV drift-out news is a fair nudge; nav phasing lesson discoverable | Epoch 3 | bodies |
+| 115 | Put a relay in Selene orbit and drive a far-side rover through it | Tester epoch 4: land a rover on the far side (no high-gain line home), then fly a probe with an antenna to a ~1,000 km orbit in Selene's orbital plane and end the flight there; Program > Fleet | The probe is listed *In orbit around Selene*; the rover's line shows *Drive from home … ms via* the relay for a few hours each orbit (about a third of the time) and *out of contact* otherwise; the delay feels right; a high polar orbit instead comes down within weeks, with news | Selene relay | sats |
 
 ### Program & economy
 
@@ -187,4 +189,4 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | 100 | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state | Tester menu | tester |
 
-Next free number: **108**.
+Next free number: **116**.
