@@ -1155,6 +1155,31 @@ on the active unit (LESSONS #33).
 
 Also: the HUD gauges now hide with the HUD (`.ui` visibility), so the bare reference views stay clean.
 
+## The sky from space: home galaxy, stars, sun (2026-10-08, aerofx session; PLAYTEST #10)
+
+The space background was single-size white stars and a soft sun glow. Now, in `SKY_FS` (the background branch only:
+`galaxy`, `starsAt`, `sunAt`):
+- **A home galaxy generated from the world seed** (Caio's idea: each world's sky different). `GAL` (JS, `rng(WSEED·7919 +
+  101)`) picks a great-circle band (normal `gx`), its centre `gc`, the band's width, bulge size, dust and arm contrast, a
+  tint, a **satellite galaxy** (a small pale smudge) and a **nebula** (a pink patch). The band widens toward the centre and
+  has a warm bulge, dark dust lanes along its midplane, and clumps stretched along it. Everything is sampled on the sphere
+  (no angle coordinates): an `atan`-based first pass had a seam and stripes. Inertial directions, so the sky doesn't turn
+  with the planet.
+- **Stars:** two layers (220 and 560 cells per radian), colours by temperature (blue-white → orange-red), a few bright and
+  many faint, and denser along the band.
+- **The sun:** a limb-darkened disc of the right size (0.27°), a corona and a wide glow, and four camera-fixed diffraction
+  spikes. The old glow was cut off at cos θ = 0.9, which showed as a hard circle once the glow was wider.
+- **Dither:** the sky's output gets ±½ of an 8-bit step of per-pixel noise. Dark gradients (the galaxy, night skies) banded.
+- Reference views `refView(97)` the galactic centre, `98` along the band, `99` the sun, `100` the band over a sunlit limb.
+- Not done: a different galaxy per world needs `WSEED` to vary (it is a constant today); bloom on the sun (a post pass);
+  the planets as points of light (PLAYTEST #11, a star-centred system).
+
+**Also: a regression and its hotfix.** The PLAYTEST #7 commit (`807c1dd`) put a `// comment` mid-line in `gaugeRect`,
+which swallowed a declaration: `render()` threw every frame while the HUD was up. `node --check` and `test.mjs` passed
+(a runtime error), and the reference screenshots hide the HUD. Hotfix `8e070fc` pushed within the hour. Since then every
+commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
+console exception (LESSONS #34).
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

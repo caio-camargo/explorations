@@ -3385,6 +3385,7 @@ uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPde
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
+uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
 vec3 aces(vec3 x){return clamp((x*(2.51*x+.03))/(x*(2.43*x+.59)+.14),0.,1.);}
@@ -3564,6 +3565,36 @@ float cloudDens(vec3 q){float r=length(q);vec3 u=q/r,cu=uProt*u;float hf=(r-uPR-
  vec3 w=cu*uPR+vec3(uCT*400.,0.,uCT*250.);float n=vn(w/650.)*.65+vn(w/230.)*.35,tw=vn(w/2600.);
  float top=mix(.15,1.,c*c*(3.-2.*c))*(.45+1.1*tw),shape=smoothstep(0.,.06,hf)*smoothstep(top,top*.5,hf);
  return clamp(c*shape*1.9-(1.-n)*.85,0.,1.);}
+// ---- the sky behind everything (aerofx; PLAYTEST #10). Inertial directions, so the sky turns as the planet does not.
+// The home galaxy is generated from the world seed (galaxyParams): a band on a great circle (normal uGx) with a bulge at
+// its centre (uGc), dust lanes along its midplane, a satellite galaxy (uGs: direction, size) and a nebula (uGn).
+// uGp = (band half-width, bulge size, dust, arm contrast); uGt = the band's tint.
+vec3 galaxy(vec3 d,out float band){float b=dot(d,uGx),lc=dot(d,uGc),cl=.5+.5*lc,w=uGp.x*(.6+.9*cl*cl);   // the band widens toward the centre
+ band=exp(-b*b/(w*w));float ac=acos(clamp(lc,-1.,1.)),bulge=exp(-ac*ac/(uGp.y*uGp.y))*exp(-b*b/(uGp.y*uGp.y*.35));
+ // everything sampled on the sphere (no angle coordinates, so no seams); clumps stretched along the band by squashing
+ // the noise across it
+ vec3 q=d-uGx*b*.65;float n=vn(q*7.)*.5+vn(q*19.+1.7)*.3+vn(q*53.+4.1)*.2,arm=mix(1.,smoothstep(.3,.75,vn(q*4.+2.)),uGp.w);
+ float dust=uGp.z*smoothstep(.38,.62,vn(q*13.+3.)*.6+vn(q*37.)*.4)*exp(-b*b/(w*w*.15));
+ float I=(band*(.3+1.1*n*n)*arm+bulge*2.2)*(1.-.8*dust)+band*.15;
+ vec3 c=mix(uGt,vec3(1.,.8,.55),clamp(bulge*1.4,0.,1.))*I*.07;
+ float sa=acos(clamp(dot(d,uGs.xyz),-1.,1.));c+=vec3(.8,.86,1.)*exp(-sa*sa/(uGs.w*uGs.w))*(.5+.7*vn(d*70.))*.022;
+ float na=acos(clamp(dot(d,uGn.xyz),-1.,1.));c+=vec3(1.,.32,.42)*exp(-na*na/(uGn.w*uGn.w))*smoothstep(.35,.8,vn(d*26.)*.6+vn(d*80.)*.4)*.05;
+ return c;}
+// stars: two layers on hashed cells; colours by temperature (blue-white → orange-red), a few bright ones, many faint, and
+// more of them along the galactic band
+vec3 starsAt(vec3 d,float band){vec3 c=vec3(0.);
+ for(int k=0;k<2;k++){float sc=k==0?220.:560.;vec3 sd=d*sc,ci=floor(sd),j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));
+  float th=k==0?.993-.004*band:.9965-.012*band;if(h3(ci)<th)continue;
+  float t=h3(ci+5.3),br=(k==0?.25+3.5*pow(h3(ci+9.),5.):.12+.25*h3(ci+9.)),r=length(fract(sd)-j*.6-.2);
+  vec3 tc=t<.12?vec3(.7,.8,1.):t<.55?vec3(.95,.97,1.):t<.8?vec3(1.,.92,.75):vec3(1.,.72,.5);
+  c+=tc*br*smoothstep(k==0?.22:.16,0.,r)*.6;}
+ return c;}
+// the sun: a limb-darkened disc (0.27°), a corona and wide glow, and four diffraction spikes in screen space
+vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos(clamp(sdn,-1.,1.)),r=th/.0047;
+ float disc=r<1.?(1.-.55*(1.-sqrt(1.-r*r))):0.;disc*=smoothstep(1.,.92,r);
+ vec3 q=d-uSun*sdn;float a=atan(dot(q,uU),dot(q,uR));
+ float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
+ return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
 float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
@@ -3605,10 +3636,8 @@ void main(){
   vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
   float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
  }else{
-  vec3 sd=d*220.,ci=floor(sd),j=vec3(h3(ci+3.1),h3(ci+7.7),h3(ci+1.3));
-  float star=step(.993,h3(ci))*smoothstep(.2,0.,length(fract(sd)-j*.6-.2))*(.3+2.*h3(ci+9.));
-  float sdn=dot(d,uSun);
-  col=ins+trans*(vec3(star)*.6+vec3(1.,.95,.85)*(smoothstep(.99996,.99999,sdn)*60.+pow(max(sdn,0.),900.)*2.));
+  float band;vec3 gal=galaxy(d,band);
+  col=ins+trans*(gal+starsAt(d,band)+sunAt(d));
  }
  // the cloud deck in front of whatever the ray hit: lit tops, darker bellies seen from below, the air between applied
  // approximately (transmittance raised to the fraction of the path, in-scatter in proportion to the extinction)
@@ -3637,6 +3666,7 @@ void main(){
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
    col=mix(col,cc*tr+ic,cov*.95*shW);if(cov*shW>.5)tD=min(tD,tC);}}
  col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
+ o.rgb+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))-.5)/255.;   // dither: dark gradients (the galaxy, night skies) band in 8 bits
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
 }`;
 const MESH_VS=`#version 300 es
@@ -4095,6 +4125,7 @@ void main(){
  vec3 alb=uNalb*(base+.12*cr+.25*fade*(det-.5));
  float ndl=max(dot(n,uSun),0.);vec3 col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
  col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
+ o.rgb+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))-.5)/255.;   // dither: dark gradients (the galaxy, night skies) band in 8 bits
  gl_FragDepth=min(log2(1.+tN*dot(d,uF))*uFc*.5,.9999999);
 }`;
 const PMOON=mkProg(QUAD_VS,MOON_FS);
@@ -4440,6 +4471,12 @@ function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S
 function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),m=x/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
 function fmtAlt(v,fine){const a=Math.abs(v);return a>=1e5?(v/1e3).toFixed(0)+' km':a>=1e4?(v/1e3).toFixed(fine?1:0)+' km':a>=1e3?(v/1e3).toFixed(fine?2:1)+' km':v.toFixed(0)+' m'}
+// the home galaxy's look, from the world seed (PLAYTEST #10, Caio: each world's sky different): a great-circle band
+// with a bulge, dust, arms, a satellite galaxy and a nebula, all as directions in the inertial frame
+const GAL=(()=>{const R=rng(WSEED*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
+  const gx=norm(add(dir(),[0,.3,0])),c0=dir(),gc=norm(sub(c0,mul(gx,dot(c0,gx)))),off=a=>norm(add(gc,a));
+  const s=dir(),nb=norm(add(mul(gc,.6),add(mul(gx,.15),mul(dir(),.5))));
+  return{gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}})();
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).
@@ -5344,6 +5381,7 @@ function render(){
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
    gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000));
+   gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
