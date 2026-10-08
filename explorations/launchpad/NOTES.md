@@ -1163,6 +1163,46 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.45 — launch-site follow-ups: the sea platform, weather scrubs, the downrange warning (2026-10-08, terrain session)
+
+The three follow-ups listed in § v1.27.
+
+- **The sea platform** (`kind:'sea'`, "Sea Platform"): one per world, on the equator in open ocean.
+  - **Placement:** ≥ 300 km from any land, over ≥ 500 m of water, the spot nearest the home site. On seed 13: 4,751 m
+    of water, 100% water downrange.
+  - **It floats:** nothing is levelled under it (`terrainH` and the shader's `uSites` take land pads only), so there's
+    no instant island. The deck is `SEA_DECK` = 12 m above the water.
+  - **Drawn** as a deck on columns and pontoons (`seaHull`), with the launch complex on it. The deck covers the whole
+    `PAD` mesh (x −256…86, z −194…80 m), so it's a big platform. A sea-specific complex (tower and table only) would
+    be smaller; that's the visuals session's call.
+  - **Who may use it:** the sea is no one's, so by default the platform is open to any program (a service, like Sea
+    Launch). Economy's `siteAccess`, when it exists, can price or refuse it.
+  - **Why it matters:** a power with no equatorial land (Ordun, Haval) can still reach the equator.
+- **Weather scrubs:**
+  - `siteWeather(site, T)` reads the cloud field the sky draws (`cloudAt`).
+  - On the launch day `weatherHold(s)` slips the launch a day at a time while the pad is under storm-grade cloud
+    (> 0.9), up to `SCRUB_MAX` = 5 days, with a news line.
+  - It's called from economy's `missionTick` launch line, one hook: `{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}`.
+  - The picker shows today's sky at the site.
+  - At the home site storms scrub 18 of 400 days (4.5%).
+- **The downrange warning** (`downrangeWarning(site)`) names the powers whose land lies under the site's corridor,
+  other than ours and the host's (the host's own land is the host's business). Shown in the picker, and in the news at
+  launch as a warning, not a block: the politics are economy's. On seed 13 one site is warned: Selhav Field II, over
+  the Republic of Fentor.
+- **Tests:** `test.mjs` §36, 3 checks (299 total after merging):
+  - the platform's placement, deck and access;
+  - a 2-day storm slips the launch exactly 2 days, while a clear day launches on time;
+  - the warning names only other powers.
+
+  §23 now levels land pads only.
+- **Trap:** a weather slip moves the shared world seed (`PROG.wseed`) for every later test. §35 (the event timeline)
+  had relied on a contract offer arriving by chance and failed; the bodies session hit the same fragility and made the
+  same fix (rebuild the board if it's empty).
+- **Next on this line:**
+  - a movable sea platform (sail it to any latitude: polar launches from the sea);
+  - weather by season and region (the storm belts of the climate map), not only the drifting cloud field;
+  - winds aloft for max-q loads per site.
+
 ## v1.44 — staged pay for long missions (2026-10-08, economy session)
 
 Long missions pay along the way (design: "Time, long missions and communication").
@@ -1947,9 +1987,8 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
      (`physAlt`, `h<b.atm`, drag bands) are correctly sea-level based; touchdown, chutes and warp are not.
   - Tests to add: a capsule coming down over a 4–5 km plateau lands under its main; warp drops before ground contact
     over a range.
-- A sea-launch platform (`kind:'sea'`).
-- Per-site weather scrubs (`cloudAt`).
-- Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
+- ~~A sea-launch platform, per-site weather scrubs, a pre-launch downrange warning~~: done in v1.45 (§ v1.45).
+- (original note) Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
   downrange over a neighbour before launch).
 - Then slices C–E (§ v1.25).
 
