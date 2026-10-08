@@ -1132,6 +1132,29 @@ widgets, slice 4 decides where they sit.
 **For slice 4:** the widgets can split into separate cards (the tape in the core, q/Mach/heat in the Ascent card): each
 block in `drawGauges` is independent, with its own offsets inside the strip.
 
+## PLAYTEST #7: the planet flashing in space (2026-10-08, aerofx session)
+
+**Symptom (Caio):** the planet sometimes flashes when the camera moves while looking down at it from space.
+
+**Cause:** `depthTarget(w, h)` (the terrain's half-resolution depth pre-pass) reallocates its texture when the canvas size
+changes, and bound it on whichever texture unit was active. At that point in `render()` that is unit 0, where the sky pass
+had just been given the city-lights texture (`uCity`). For that one frame the sky shader read the depth buffer as city
+lights, so the night side's land turned solid white (in daylight the change was smaller but present). The canvas size
+changes whenever adaptive resolution (`RS`, v1.1) steps, and it steps when the GPU load changes, typically while the
+camera moves: hence "sometimes, while moving".
+
+**How it was found:** a sweep of 3,240 frames of camera motion (yaw steps of 0.025 rad; pitches 0.3–1.56; distances
+15 m to 20 km; 40 km to 20,000 km; day and night), with adaptive resolution off, found no flash. Then each resolution step
+was rendered twice: the first render after a step differed from an identical second one every time (night side at
+150 km: mean brightness 19.3 vs 3.9), and never without a step. Reproducing the bad frame by hand (depth texture on unit
+0, sky redrawn) showed the night-side land lit white.
+
+**Fix:** `depthTarget` binds on unit 5, the depth texture's own unit (where the sky reads it), and restores unit 0. After the
+fix, first and second renders match at every step. Lesson: anything that (re)allocates a texture mid-frame must not bind
+on the active unit (LESSONS #33).
+
+Also: the HUD gauges now hide with the HUD (`.ui` visibility), so the bare reference views stay clean.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

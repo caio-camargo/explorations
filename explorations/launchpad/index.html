@@ -3626,9 +3626,11 @@ const PDEPTH=gl.getExtension('EXT_color_buffer_float')?mkProg(QUAD_VS,SKY_FS.sli
   'void main(){vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);float hh;o=vec4(march(d,hh,0.),0.,0.,1.);}'):null;
 const DEPTH_RT={tex:null,fb:null,w:0,h:0};
 function depthTarget(w,h){const D=DEPTH_RT;if(D.w===w&&D.h===h)return D;if(!D.tex){D.tex=gl.createTexture();D.fb=gl.createFramebuffer()}
-  gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,w,h,0,gl.RED,gl.FLOAT,null);
+  // on its own unit (5, where the sky reads it): binding it on the active unit replaced whatever texture the sky had just
+  // been given there (unit 0: the city lights) for that one frame, so every resize lit the night side (PLAYTEST #7)
+  gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.R32F,w,h,0,gl.RED,gl.FLOAT,null);
   gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
-  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);D.w=w;D.h=h;return D}
+  gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,D.tex,0);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE0);D.w=w;D.h=h;return D}
 // re-entry plasma: a volume raymarched in a flow-aligned frame (y = upstream, origin ahead of the ship, s = −y downstream)
 // inside the plume's proxy cylinder (uB = [R, L]). The hull is a capped cylinder (axis uA through uM0, radius uRb, half
 // length uHl). Three parts, all scaled by the heat level uK (0 at ~15 kW/m², 1 at an orbital entry's ~160 kW/m² peak):
@@ -4117,7 +4119,7 @@ const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[
 let GAUGES=true;   // false hides the strip
 const GQ={ship:null,peak:0,peakT:0};   // max-q, held per vessel (render-side)
 const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'#1b1a17',red:'#b8322a',amber:'#d79b1c',green:'#4f7f3a',lab:'#b9b29c'};
-function gaugeRect(){const nw=document.getElementById('navwrap');if(!nw||!nw.offsetParent)return null;const r=nw.getBoundingClientRect(),k=ov.width/ov.clientWidth;
+function gaugeRect(){const nw=document.getElementById('navwrap');if(!nw||!nw.offsetParent||getComputedStyle(nw).visibility==='hidden')return null;   // the HUD hidden: no gaugesconst r=nw.getBoundingClientRect(),k=ov.width/ov.clientWidth;
   const x=r.right+14+318<=ov.clientWidth-6?r.right+14:Math.max(6,r.left-14-318);   // right of the navball, or left of it when the window is narrow
   return{x:x*k,y:(r.bottom-150)*k,s:k}}
 function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
