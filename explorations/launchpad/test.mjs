@@ -1657,9 +1657,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 32. Screens and keys (ui session): Help is generated from KEYS, so every key a handler reads must be in its screen's table;
 // and only go() changes the screen (mode/view), so moving between screens has one place to look.
 {
-  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
   const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
-  const page = html.slice(html.indexOf('// ==== SIM END'));
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));   // git may check files out with CRLF
   const KEYS = new Function(cut(page, 'const KEYS={', '\nconst SCREEN_NAME') + ';return KEYS')();
   const read = t => new Set([...t.matchAll(/k===?'([^']+)'/g), ...t.matchAll(/keys\.has\('([^']+)'\)/g)].map(m => m[1]));
   const listed = (...L) => new Set(L.flat().flatMap(r => r.k || []));
