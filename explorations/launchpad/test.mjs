@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,recoveryOf,gsMask,gsSees,linkOf,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -2352,8 +2352,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.day = d0 - 1; const n0 = api.weatherHold(api.newShip(api.PRESETS.Orbiter, home));
   P.day = keepDay; api.HOOK.news = keepNews;
   check('weather: a storm over the pad slips the launch a day at a time until it clears; a clear day launches on time',
-    d0 > 0 && n === bad && clearDay === d0 + bad && (bad === api.SCRUB_MAX || !api.siteWeather(home, clearDay * api.DAY_S).scrub) && n0 === 0 && /Weather scrub/.test(news[0] || ''),
-    `day ${d0}: storms for ${bad} day(s) → slipped ${n}; "${news[0]}"`);
+    d0 > 0 && n === bad && clearDay === d0 + bad && (bad === api.SCRUB_MAX || !api.siteWeather(home, clearDay * api.DAY_S).scrub) && n0 === 0 && news.some(t => /Weather scrub/.test(t)),
+    `day ${d0}: storms for ${bad} day(s) → slipped ${n}; "${news.find(t => /Weather scrub/.test(t))}"`);
   // downrange: a warning names other powers under the corridor (not ours, not the host's own land)
   const warned = SI.filter(t => api.downrangeWarning(t)), quiet = SI.filter(t => t.downrange.over.some(i => i !== t.power) && !api.downrangeWarning(t));
   check('downrange warning: names the other powers under a site\'s corridor; our own land and the host\'s are not warned about',
@@ -2441,6 +2441,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('recovery: the sea near the launch point is fished out, far out it is lost (no fleet); foreign land: returned, worn, or kept by relations',
     rn.factor === 1 && rf.factor === 0 && rFriend.factor === 1 && rTense.factor === 0.8 && rHost.factor === 0 && /keeps/.test(rHost.why),
     `${rn.why} · ${rf.why} · ${rFriend.why} · ${rHost.why}`);
+}
+
+// 37d. Geography in the work (terrain session, slice E): disasters follow the land; field stations and aurora soundings.
+{
+  const C = api.CITIES, n = {}, all = Object.keys(api.HAZ);
+  for (const k of all) n[k] = api.disCities(k).length;
+  const gs = C.map(api.cityGround), volc = api.disCities('Volcano'), fire = api.disCities('Wildfire');
+  check('disasters follow the land: volcanoes only near volcanic ground, wildfire only near forest or savanna, each kind somewhere but not everywhere',
+    all.filter(k => n[k] > 0).length >= 3 && all.every(k => n[k] < C.length) && volc.every(i => gs[i].has[12]) && fire.every(i => gs[i].has[3] || gs[i].has[5] || gs[i].has[9]),
+    all.map(k => `${k} ${n[k]}/${C.length}`).join(', '));
+  const f = api.fieldBiomes(), own = api.biomeAt(api.SITES[0].u).id, CTf = api.CT.field, CTa = api.CT.aurora;
+  let seq = 0.37; const Rg = () => (seq = (seq * 9301 + 0.49297) % 1), p = CTf.gen(Rg), pa = CTa.gen(Rg);
+  check('field stations: biomes within 1,200 km (not the pad\'s own), paid by distance; the landing has to be on that ground, with the package recovered',
+    f.length > 0 && f.every(x => x.b !== own && x.km <= 1200) && f.some(x => x.b === p.b) && CTf.ok({ landed: true, recSci: true, landBiome: p.b }, p)
+      && !CTf.ok({ landed: true, recSci: true, landBiome: (p.b + 1) % 15 }, p) && !CTf.ok({ landed: true, recSci: false, landBiome: p.b }, p),
+    f.map(x => `${api.BIOMES[x.b]} ${x.km} km`).join(', ') + ` → "${CTf.title(p)}" pays ${p.pay}`);
+  check('aurora sounding: needs the package above 100 km poleward of 55°, recovered; pays more the farther the zone is',
+    CTa.ok({ recSci: true, aurora: 1 }, pa) && !CTa.ok({ recSci: true }, pa) && !CTa.ok({ recSci: false, aurora: 1 }, pa) && pa.pay >= 14,
+    `${CTa.brief(pa)} (${api.polarKm().toFixed(0)} km to the zone, pays ${pa.pay})`);
 }
 
 function moonPos(t) { return api.moonPos(t); }

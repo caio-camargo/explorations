@@ -1715,7 +1715,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
   if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
     if(b===TELLUS&&R.logSpace&&h<b.atm&&dot(s.v,s.r)<0){const sp=len(sub(s.v,surfVel(b,s.r)));if(sp>R.vEntry)R.vEntry=sp}}
-  if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h}
+  if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h;if(sci&&h>AURORA_ALT&&Math.abs(norm(s.pf)[1])>Math.sin(AURORA_LAT))R.aurora=1}
   if(phys&&sci&&s.qdyn>0)for(const p of s.parts)if(p.on&&s.qdyn>(R.qPart[p.d.key]||0))R.qPart[p.d.key]=s.qdyn;   // the worst q each part flew through, instrumented
   if(phys&&s.thrust>0)R.dv+=s.thrust/s.mass*dt;   // Δv actually spent, for the logbook
   if(phys){for(const p of s.order)if(p.on){if(p.sf1>(p.wL||0))p.wL=p.sf1;const q=p.parent;if(p.sf2>(q.wL||0))q.wL=p.sf2}
@@ -1733,7 +1733,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
       if(h>b.atm)R.bioSpace=true;
       if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT>AIR_S&&!s.landed)why='ran out of air'}
     if(why){R.bioOK=false;R.bioWhy=why;HOOK.news(`${R.pet} ${why}. The program pauses to reflect`,'bad');HOOK.msg(`Passenger ${why}`)}}
-  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
+  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landBiome=s.water?0:biomeAt(s.pf).id;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
     if(R.logSpace){if(R.vEntry>0)logNote(s,'entry',R.vEntry);logNote(s,'pad',R.landDist)}if(R.hotT>350)logNote(s,'heat',{T:R.hotT,part:R.hotPart});if(R.bio&&R.bioOK&&R.gMax>0)logNote(s,'paxg',R.gMax);
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
@@ -2102,6 +2102,13 @@ const standOf=k=>(PROG.stand||{})[k]??50;
 function standAdd(k,d){PROG.stand=PROG.stand||{};PROG.stand[k]=clamp(standOf(k)+d,0,100)}
 const kmS=x=>(x/1e3).toFixed(0);
 // contract types: who offers them, when they unlock, how they're parameterised, and the check against a flight record
+// geography for contracts (terrain session): the land biomes worth a field station, with how far the nearest is from
+// the first site (≤ 1,200 km, not the pad's own); and how far the auroral zone (|lat| > 55°) is from it
+const AURORA_ALT=1e5,AURORA_LAT=55*Math.PI/180,FIELD_IDS=[1,7,8,10,11,12,13,14];let fieldMemo=null;
+function fieldBiomes(){if(fieldMemo)return fieldMemo;const u0=SITES[0].u,own=biomeAt(u0).id,near={};
+  for(let k=1;k<=60;k++)for(let a=0;a<24;a++){const id=biomeAt(alongAz(u0,a*Math.PI/12,k*20e3/TELLUS.R)).id;if(near[id]==null)near[id]=k*20}
+  fieldMemo=FIELD_IDS.filter(b=>b!==own&&near[b]!=null).map(b=>({b,km:near[b]}));if(!fieldMemo.length)fieldMemo=[{b:own===10?7:10,km:1200}];return fieldMemo}
+const polarKm=()=>Math.max(0,AURORA_LAT-Math.asin(Math.abs(SITES[0].u[1])))*TELLUS.R/1e3;
 const CT={
   apex:{src:['sci'],gen:R=>{const lo=10*(1+(R()*6|0));return{lo,hi:lo+15,pay:6+lo/5,dur:60+R()*60}},
     title:p=>`Sounding experiment, ${p.lo}–${p.hi} km`,brief:p=>`An instrument package with an apex between ${p.lo} and ${p.hi} km, recovered.`,
@@ -2126,6 +2133,13 @@ const CT={
   image:{src:['sci','com','gov'],req:'beeper',gen:R=>{const ci=R()*CITIES.length|0,res=[2,3,5,8][R()*4|0];return{ci,res,pay:12+36/res,dur:40+R()*50}},
     title:p=>`${p.dis?p.dis+': ':''}Image ${CITIES[p.ci].name}`,brief:p=>`Photograph ${CITIES[p.ci].name} at ${p.res} m or better, in daylight under clear skies, and downlink it. Needs a satellite with a camera and an antenna in an orbit that passes over.`,
     ok:()=>false},
+  // geography (terrain session): land an instrument package on a given kind of ground, or fly one through the auroral zone
+  field:{src:['sci'],gen:R=>{const f=fieldBiomes(),x=f[R()*f.length|0];return{b:x.b,km:x.km,pay:Math.round(10+x.km/25),dur:80+R()*60}},
+    title:p=>`Field station: ${BIOMES[p.b]}`,brief:p=>`Land an instrument package on ${BIOMES[p.b]} (the nearest is about ${p.km} km from the pad) and recover it.`,
+    ok:(R,p)=>R.landed&&R.recSci&&R.landBiome===p.b},
+  aurora:{src:['sci'],gen:R=>({lat:AURORA_LAT*180/Math.PI,pay:Math.round(14+polarKm()/40),dur:80+R()*60}),
+    title:()=>`Aurora sounding`,brief:p=>`An instrument package above ${AURORA_ALT/1e3} km poleward of ${p.lat}° (from a high-latitude site, or a long lob), recovered.`,
+    ok:R=>R.recSci&&!!R.aurora},
   lift:{src:['com','gov'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*7|0));return{m,pay:22*m,dur:90+R()*90}},
     title:p=>`${p.m} t to orbit`,brief:p=>`${p.m} t of mass simulators in a stable orbit.`,ok:(R,p)=>R.lift>=p.m-1e-9},
   // tourism: passengers who paid a lot and expect to come home comfortable
@@ -2914,6 +2928,14 @@ function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c
 // keep the pictures until they pass over a ground station, then downlink them. Working ones also sell imagery.
 const DIS=[['Floods','Floods along the river at #: relief agencies ask for pictures from space'],['Wildfire','Wildfire near #: firefighters want to know which way it is heading'],
   ['Volcano','Volcano near # wakes up grumpy; vulcanologists request a look'],['Storm','A storm parks itself over #; insurers request photographs, urgently'],['Locusts','Locust swarm reported near #; farmers want maps']];
+// disasters follow the land (terrain session): what can befall a city depends on the ground around it (sampled out to
+// 120 km): floods on coasts and wetlands, wildfire in forest and savanna, volcanoes near volcanic ground, storms on warm
+// coasts, locusts on grass, steppe and desert edges
+const HAZ={Floods:g=>g.coast||g.has[14]||g.wet>0.7,Wildfire:g=>g.has[3]||g.has[5]||g.has[9],Volcano:g=>g.has[12],
+  Storm:g=>g.coast&&g.T>18,Locusts:g=>g.has[4]||g.has[6]||g.has[9]||g.has[10]};let hazMemo=null;
+function cityGround(c){const b0=biomeAt(c.u),g={has:{},coast:false,T:b0.T,wet:b0.wet};g.has[b0.id]=1;
+  for(const km of[25,60,120])for(let a=0;a<8;a++){const id=biomeAt(alongAz(c.u,a*Math.PI/4,km*1e3/TELLUS.R)).id;g.has[id]=1;if(!id&&km<=60)g.coast=true}return g}
+function disCities(dis){if(!hazMemo){hazMemo={};const gs=CITIES.map(cityGround);for(const k in HAZ)hazMemo[k]=gs.map((g,i)=>HAZ[k](g)?i:-1).filter(i=>i>=0)}return hazMemo[dis]||[]}
 function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
@@ -2922,7 +2944,7 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>gsSees(st,pf)))n++}
     if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0)));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
-  if(R()<1-Math.exp(-d/45)){const ci=R()*CITIES.length|0,[dis,head]=DIS[R()*DIS.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
+  if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
     if(can&&PROG.offers.length<BOARD_MAX+2){PROG.cseq=(PROG.cseq||0)+1;const res=[3,5,8][R()*3|0];
       PROG.offers.push({id:PROG.cseq,type:'image',src:'gov',client:c.power?c.power.i:HOME,p:{ci,res,dis,pay:Math.round(25+60/res),dur:4+R()*3},posted:PROG.day,expires:PROG.day+2})}}
