@@ -108,6 +108,7 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 47 | Check frame rate in the heaviest FX scene | Heavy at night on the pad, perf readout on | Still playable on the RTX and tolerable on the iGPU (≈26 ms measured there) | Performance pass | aerofx |
 | 48 | Read the HUD gauges in flight | Ascent and entry; `refView(94)`–`(96)` | Altitude tape, air column, q dial with max-q pointer, Mach drum, heat bar readable at a glance (layout is PLAYTEST #9) | HUD gauges | aerofx |
 | 49 | Fly past a saved satellite; look at Nyx from the ground and space | Orbit near a registered Lookout (diamond marker); Nyx in the sky | Satellite mesh keeps its marks and attitude; Nyx looks brown and distinct from Selene | Satellites in 3D / Nyx | sats / bodies |
+| 114 | Listen to a launch, staging, a chute and a crash (sound on: F4 toggles) | Any preset from the pad to orbit; a Sounding lob home; a crash. Click once first (browsers start audio on a gesture) | Roar loudest on the pad, buffet near Mach 1, wind peaks at max-q, darker and fainter as the air thins, only a structure hum in vacuum; thunks at separation, a whoomp at the chute, a far blast heard late. Too loud/quiet or annoying is a finding | Sound | sound |
 
 ### Orbits & planning
 
