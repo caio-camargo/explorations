@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1211,6 +1211,52 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.46 — avionics generations: SAS grows with the computing eras (2026-10-08, control session)
+
+The third slice of the control review. The NOTES' eras idea ("early guidance computers have stability-only SAS") on the
+compute eras of v1.38. Caio's choice: **two steps by era**.
+
+| Avionics | Comes with | SAS modes | Loop (gain · fastest turn · deadband) |
+|---|---|---|---|
+| Gyro autopilot | human computers (year 0) | Stability only | 2/s · 0.3 rad/s · 0.5° |
+| Analog autopilot | mainframes (year 3) | + Prograde, Retro, Normal, Anti-normal, Radial in/out | 3/s · 0.45 rad/s · 0.2° |
+| Guidance computer | onboard computers (year 7) | + Maneuver, Target, Anti-target, Relative pro/retro, Docking | 4/s · 0.6 rad/s · 0 |
+
+- The program's era is `compEra()`, so a power that lags in computing gets each step later (up to 4 years).
+- `s.av` is fixed when the vessel is made (`avNow()`), and a vessel split off keeps its parent's. With no program running
+  (sandbox, physics tests: `khOn()` false) it is the guidance computer, and so are ground-guided procedures (`s.proc`):
+  nothing that existed before changes outside a career.
+- A mode the avionics lack holds the attitude (`sasTarget`). In flight those buttons are dimmed, with a tooltip naming the
+  generation and era that bring them; *SAS → node* explains instead of switching. The builder's Control block opens with
+  the flight's avionics and what comes next.
+
+**Measured** (90° turn in vacuum under SAS; how tight it holds after settling)
+
+| | gyro | analog | computer |
+|---|---|---|---|
+| Bare pod (wheels) | 5.6 s | 3.7 s | 2.8 s |
+| Orbiter, first stage lit (gimbal) | 5.1 s | 4.0 s | 3.5 s |
+| Orbiter on wheels alone | 11.2 s, ±0.30° | 11.4 s, ±0.11° | 11.5 s, ±0 |
+| Lunar on wheels alone | 53.9 s | 54.1 s | 54.2 s |
+
+**What it taught**
+- **The loop only shows where authority is spare.** Big stacks on wheels turn at the limit of their torque and wheel
+  storage (peak 0.23 rad/s on the Orbiter, under even the gyro's 0.3), so all three generations turn them alike and the
+  difference is how tightly they hold. On a pod or under a gimbal the generations separate 2×.
+- **The modes are the real gate.** In the first three years an orbit is flown on Stability plus the pitch keys
+  (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
+  SAS holds retrograde. That is how Vostok and Mercury flew.
+
+**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+
+**For other sessions**
+- **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
+  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
+  register flies with the best.
+- **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
+- **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
+
 ## v1.45 — launch-site follow-ups: the sea platform, weather scrubs, the downrange warning (2026-10-08, terrain session)
 
 The three follow-ups listed in § v1.27.
@@ -1335,7 +1381,7 @@ readout's turn times within 10 % of flown ones, and the coasting max-q case on w
 - **anyone scripting flights in vacuum with big stacks:** turns on wheels alone are slow now; light the engine (the
   gimbal) or add RCS / a wheel part.
 
-**Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
+**Next on this line:** ~~era-gated SAS quality~~ (done, v1.46); the gimbal and
 fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
 
 ## v1.42 — the event timeline (2026-10-08, economy session)
