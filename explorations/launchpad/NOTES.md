@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.17.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3353,6 +3353,25 @@ switched over (additive first). Overlays are a stack: Esc closes the top one; wi
 
 Each slice merges to `main` on its own. test.mjs gets a check per slice: every screen reachable from every other along
 the arrows, and every key in the handlers present in its Help table.
+
+### Slice 1 built (2026-10-07): screen state, overlays, keys
+- `screenNow()` names the screen (`assembly | flight | map` so far). `go(s)` is now the only code that assigns
+  `mode`/`view`: LAUNCH, Assembly, Revert, `R` and `M` all go through it. test.mjs §31 fails if a `mode=`/`view=`
+  assignment appears anywhere else.
+- `KEYS` holds one table per screen plus `all`; each row is `{k: e.key names, l: label, d: what it does}`. The Help
+  overlay (`#help`, now centred and outside `#hud`, so it no longer covers `#nodep`) is generated from it, for
+  whichever screen you're on. Map shows its own rows, then Flight's. §31 reads every `k==='…'` and `keys.has('…')` in the
+  flight, shared and builder key handlers and fails if one isn't listed, or if a key means two things on one screen.
+  **Anyone adding a key: add its row to `KEYS`.**
+- Overlays (`escm`, `help`, `logbook`) stack. Esc closes the top one; with none open it opens the Esc menu (`#escm`,
+  also the ☰ button). In Assembly, a part in hand or a selected part keeps Esc for the builder. The menu has Close, and
+  during a flight Revert, Back to Assembly and Save as autopilot, then Logbook, Keys, and a performance-readout checkbox
+  (`#perf` is now off by default; localStorage `launchpad-perf`). Revert and Back to Assembly ask twice while
+  the ship is in the air; on the pad or after landing they act at once.
+- Keys: `H` help and `F` logbook work on every screen. **The logbook is on F, not L as planned: L is held for RCS
+  translate.** RCS on/off moved from R to **V**; `R` in flight is only revert.
+- Not done yet: the top bar still has Revert/Assembly/Logbook/Save as autopilot (slice 4 takes them off). The Esc menu
+  does not pause the game. That's still open: KSP pauses, and here warp would have to drop to 1× and then come back.
 
 ---
 

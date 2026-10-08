@@ -1633,6 +1633,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.resetHome(); Object.assign(P, { own: null, flights: 0, stand2: null, kh: {}, cert: {} });
 }
 
+
+// 31. Screens and keys (ui session): Help is generated from KEYS, so every key a handler reads must be in its screen's table;
+// and only go() changes the screen (mode/view), so moving between screens has one place to look.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const page = html.slice(html.indexOf('// ==== SIM END'));
+  const KEYS = new Function(cut(page, 'const KEYS={', '\nconst SCREEN_NAME') + ';return KEYS')();
+  const read = t => new Set([...t.matchAll(/k===?'([^']+)'/g), ...t.matchAll(/keys\.has\('([^']+)'\)/g)].map(m => m[1]));
+  const listed = (...L) => new Set(L.flat().flatMap(r => r.k || []));
+  const flightSrc = cut(page, "if(mode!=='flight')return;const k=e.key", "addEventListener('keyup'") + page.match(/keys\.has\('[^']+'\)/g).join(' ');
+  const shared = cut(page, '// Keys every screen shares', '\n// ') || cut(page, '// Keys every screen shares', '</script>');
+  const edSrc = cut(bsrc, "addEventListener('keydown',e=>{if(mode!=='editor'", 'palette()}');
+  const fl = listed(KEYS.flight, KEYS.map, KEYS.all), ed = listed(KEYS.assembly, KEYS.all);
+  const missF = [...read(flightSrc), ...read(shared)].filter(k => !fl.has(k)), missE = [...read(edSrc), ...read(shared)].filter(k => !ed.has(k));
+  check('Help lists every key the flight and map handlers read', flightSrc.length > 500 && !missF.length, missF.join(' ') || `${fl.size} keys`);
+  check('Help lists every key the assembly handler reads', edSrc.length > 300 && !missE.length, missE.join(' ') || `${ed.size} keys`);
+  const dup = sc => { const L = (sc === 'assembly' ? [] : KEYS.flight.concat(sc === 'map' ? KEYS.map : [])).concat(sc === 'assembly' ? KEYS.assembly : [], KEYS.all).flatMap(r => r.k || []); return L.filter((k, i) => L.indexOf(k) !== i && !(sc === 'assembly' && k === 'escape')); };
+  const d = ['flight', 'map', 'assembly'].flatMap(dup);
+  check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
+  const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view= assignments outside it but their declaration)', goSrc && outside.length === 2, outside.join(' '));
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
