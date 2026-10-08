@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1633,8 +1633,28 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.resetHome(); Object.assign(P, { own: null, flights: 0, stand2: null, kh: {}, cert: {} });
 }
 
+// 31. Development projects (economy): improving parts we make, for money, time and know-how.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fresh = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null, dev: {}, devJob: null });
+    api.chooseStart('agency'); P.funds = 2000; for (const q of api.POWERS) if (q.i) P.rel[`0-${q.i}`] = 0.5; };
+  // only what we make, and only once we know it
+  fresh('frugal'); const imp = api.devQuote('kestrel', 'cheap'); P.lines = { kestrel: { power: api.home, lic: null, start: 0, ready: 0, m: 0.05, units: 0 } };   // a brand-new own line: we make it, but don't know it yet
+  const green = api.devQuote('kestrel', 'cheap'); P.lines = {}; const known = api.devQuote('t2', 'cheap');   // tanks we've always made: known from the start
+  check('development: only parts we make (not imports), and only once we know them', !imp.ok && /make/.test(imp.why) && !green.ok && /know-how/.test(green.why) && known.ok,
+    `Kestrel imported: "${imp.why}" · Kestrel off a new own line: "${green.why}" · our own tank: ${known.cost.toFixed(0)}M, ${known.days} days`);
+  // a cheaper tank: the design bureau takes time; then the price drops, certification and know-how take a hit
+  const price = () => api.vesselCost(api.newShip(['pod', 't2', 'kestrel']).parts).cost, p0 = price(), c0 = api.certOf('t2'), u0 = api.khUse('t2');
+  const started = api.startDev('t2', 'cheap'), busy = api.startDev('t2', 'rel'); const mid = price(); api.advanceDays(known.days + 1); const p1 = price();
+  check('a cheaper design costs less per unit once done, and has to prove itself again (certification and know-how dip)', started && !busy && Math.abs(mid - p0) < 1e-9 && p1 < p0 && api.devLv('t2', 'cheap') === 1 && api.certOf('t2') < c0 && api.khUse('t2') < u0,
+    `pod+tank+Kestrel ${p0.toFixed(1)} → ${p1.toFixed(1)}M · tank certified ${(c0 * 100).toFixed(0)} → ${(api.certOf('t2') * 100).toFixed(0)}%, know-how ${(u0 * 100).toFixed(0)} → ${(api.khUse('t2') * 100).toFixed(0)}%`);
+  // durability: the same flight wears the part less
+  const part = { d: { key: 't2' }, wL: 0.9, wT: 0.2 }, w0 = api.wearOf(part, 4); P.dev.t2.dur = 2; const w2 = api.wearOf(part, 4);
+  check('a more durable design keeps more of its value after a hard flight', w2 > w0, `90 % load: refurbished value ${(w0 * 100).toFixed(0)}% → ${(w2 * 100).toFixed(0)}% at durability mark 2`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, dev: {}, devJob: null, kh: {}, cert: {} });
+}
 
-// 31. Screens and keys (ui session): Help is generated from KEYS, so every key a handler reads must be in its screen's table;
+// 32. Screens and keys (ui session): Help is generated from KEYS, so every key a handler reads must be in its screen's table;
 // and only go() changes the screen (mode/view), so moving between screens has one place to look.
 {
   const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');

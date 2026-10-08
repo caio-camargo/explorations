@@ -1953,6 +1953,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.33 (2026-10-07, economy worktree):** the test stand, a one-off investment (40M, 60 days, no upkeep). Ground
   campaigns raise a part's know-how (at 60% of a flight's weight; never vacuum or orbit) and certification, or test it to
   destruction for full certification. `test.mjs` 223/223. Merged to `main` (`f35d61d`).
+- **v1.34 (2026-10-07, economy worktree):** development projects: the design bureau makes parts we build cheaper,
+  more reliable (engines) or more durable, up to three levels each, needing know-how, money and time; a redesign dips
+  certification and know-how. Performance goals wait for the variants decision. `test.mjs` 226/226. Merged to `main`
+  (`537df29`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
