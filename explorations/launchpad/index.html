@@ -3160,7 +3160,7 @@ function setControls(s,c){s.throttle=c.th;INP.pitch=c.p;INP.yaw=c.y;INP.roll=c.r
 // procStep flies it through SAS 'stab' holds (real torque, real staging), cutting off on goals (apoapsis, periapsis), not times.
 const PROC_V=1,procKey=stack=>JSON.stringify(stack);
 const tabAt=(tab,h)=>{if(!tab.length)return 0;if(h<=tab[0][0])return tab[0][1];for(let i=1;i<tab.length;i++)if(h<=tab[i][0]){const[a,x]=tab[i-1],[b,y]=tab[i];return x+(y-x)*(h-a)/(b-a)}return tab[tab.length-1][1]};
-function procSample(s){if(s.procRec&&s.procRec.done){procMission(s,s.procRec);return}if(s.body!==TELLUS||s.proc&&s.proc.noRec)return;
+function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMission(s,s.procRec);return}if(s.body!==TELLUS||s.proc&&s.proc.noRec)return;
   if(!s.procRec){if(s.rec&&simT<1&&len(s.r)-TELLUS.R<2000&&(s.landed||s.rec.launched))s.procRec={pts:[],early:[],az:null};return}   // a flight off the ground, from its first second
   const P=s.procRec;if(P.done||s.landed||!s.alive)return;
   const up=norm(s.r),h=len(s.r)-TELLUS.R,nose=qrot(s.q,[0,1,0]),pitch=Math.asin(clamp(dot(nose,up),-1,1))*57.29578,last=P.pts[P.pts.length-1];
@@ -3174,8 +3174,8 @@ function procAscent(s,P){const pitch=[],thr=[];let hm=-1;for(const[h,q,t]of P.pt
   return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
 function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<5)return null;
   const key=procKey(s.stack),old=(PROG.procs=PROG.procs||{})[key],proc=procAscent(s,P);
-  if(old&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;
-  HOOK.news(old?`Procedure improved: ${proc.by} to orbit for ${fmtDv(proc.dv)} (was ${fmtDv(old.dv)}); automated flights use it from now on`:`New procedure: ${proc.by} to orbit for ${fmtDv(proc.dv)}; this design can fly itself there from now on`,'ok');HOOK.save();return proc}
+  if(old&&!old.prov&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;   // a provisional one (borrowed by a dry run) gives way to the design's own first flight
+  HOOK.news(old&&old.prov?`${proc.by} has flown to orbit itself: its own procedure replaces the borrowed one (${fmtDv(proc.dv)})`:old?`Procedure improved: ${proc.by} to orbit for ${fmtDv(proc.dv)} (was ${fmtDv(old.dv)}); automated flights use it from now on`:`New procedure: ${proc.by} to orbit for ${fmtDv(proc.dv)}; this design can fly itself there from now on`,'ok');HOOK.save();return proc}
 // fly a procedure. target overrides the orbit ({pe, ap, inc} in m and degrees): a contract's orbit with the same technique
 // After the ascent, a mission log: SOI entries and exits, the last flyby periapsis before a capture (the pass to aim for),
 // the last closed orbit before a landing (the capture), landing and take-off (and the stages dropped on the surface), the
@@ -3209,6 +3209,9 @@ function procMissionKeep(s,P,M){const E=M.ev,enc=E.find(e=>e.k==='enc');if(!enc|
 function procStart(s,proc,target){const T={...proc.target,...(target||{})};let az=proc.az;const cutAp=target&&target.ap!=null?target.ap:proc.cutAp??proc.target.ap;   // where the ascent's engines go off
   if(target&&target.inc!=null){const lat=Math.asin(clamp(norm(s.r)[1],-1,1)),c=Math.cos(T.inc*Math.PI/180)/Math.cos(lat);az=Math.asin(clamp(c,-1,1));if(Math.cos(proc.az)<0)az=Math.PI-az}
   s.proc={p:proc,T,az,cutAp,phase:'ascent',ei:0,lit:true,done:false};s.sas=true;s.sasMode='stab';s.hold=norm(s.r);s.throttle=Math.max(0.1,tabAt(proc.thr,0));stage(s)}   // light it now: a landed craft with its engines off would sit on rails
+// A deviation: the procedure can't meet its goal from here. It stops and says why; the craft is yours (in a dispatched
+// flight, the dispatch hands it to you). s.procDev keeps what happened, for whoever runs the flight.
+function procDev(s,kind,why){s.procDev={kind,why,t:simT,phase:s.proc&&s.proc.phase};s.proc=null;s.throttle=0;HOOK.msg(`Procedure stopped: ${why}. You have control`)}
 function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
   const dirAt=d=>{const hz=add(mul(f.n,Math.cos(X.az)),mul(f.e,Math.sin(X.az))),r=d*Math.PI/180;return norm(add(mul(hz,Math.cos(r)),mul(up,Math.sin(r))))};
   const dry=()=>s.throttle>0&&dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length;
@@ -3216,13 +3219,16 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T
   if(X.phase==='ascent'){s.sasMode='stab';s.hold=dirAt(tabAt(p.pitch,h));s.throttle=Math.max(0.1,tabAt(p.thr,h));
     if(!X.lit){X.lit=true;stage(s);return}   // ignition
     if(dry())stage(s);else if(X.ei<p.early.length&&h>=p.early[X.ei]){X.ei++;stage(s)}
-    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}return}
+    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);return}
   const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000,0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
   if(X.phase==='coast'){s.sasMode='pro';
+    if(!X.chk&&h>TELLUS.atm){X.chk=1;const need=Math.sqrt(TELLUS.mu/el.ap)-vAp,have=dvRemaining(s).tot;
+      if(have<need-5){procDev(s,'short',`running short of propellant: ${Math.round(need-have)} m/s short of circularising`);return}}
     s.throttle=h<TELLUS.atm&&el.ap-TELLUS.R<X.cutAp-300?0.3:0;   // drag eats the apoapsis while still in the air: top it up
     X.wake=simT+Math.max(0,tAp-tb/2);if(h>TELLUS.atm&&tAp<=tb/2+0.5)X.phase='circ';return}
   if(X.phase==='circ'){const hz=norm(sub(s.v,mul(up,dot(s.v,up)))),d=sub(mul(hz,Math.sqrt(TELLUS.mu/len(s.r))),s.v);   // toward a circular orbit right here: robust to starting late
     s.sasMode='stab';s.hold=norm(d);s.throttle=Math.min(1,Math.max(0.05,len(d)/(engAcc(s)*2||1)));if(dry())stage(s);
+    if(dvRemaining(s).tot<=0.5&&len(d)>=1.5&&el.pe-TELLUS.R<T.pe){procDev(s,'short',`out of propellant circularising, periapsis ${kmS(el.pe-TELLUS.R)} km`);return}
     if(len(d)<1.5||el.pe-TELLUS.R>=T.pe&&el.ap-TELLUS.R<=T.ap+5e3){s.throttle=0;s.sasMode='pro';
       if(p.phases&&p.phases.length){X.phase='mission';X.mi=0;X.sub=null;X.wake=null;HOOK.msg(`Procedure: in orbit; next, ${p.phases[0].k}`)}
       else{X.done=true;X.phase='done';HOOK.msg('Procedure complete: in orbit, you have control')}}return}
@@ -3300,6 +3306,7 @@ const MP={
     if(X.sub==='mcc'){if(!impulse(s,X))return false;const p=predict(s),L=p.find(x=>x.b===B),hp=home!=null?homePe(p,B):null;
       const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3)||passScore(p,B,ph.pass,null,ph)>=3e5;   // wrong side or sense counts as off too
       if(off&&X.mccN<3){X.sub='coast';X.wake=simT+3*3600;return false}   // not there yet: correct again later
+      if(off&&!L){procDev(s,'offcourse',`three corrections and still no encounter with ${B.name}`);return false}
       X.sub='toSOI';X.wake=p[0].endT?p[0].endT+60:simT+3600;return false}
     if(X.sub==='toSOI'){s.throttle=0;s.sasMode='pro';if(s.body!==B){if(simT>=X.wake)X.wake=simT+600;return false}X.wake=null;
       X.dv=home!=null||ph.side||ph.retro!=null||B.pert?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),2,100)   // a moon the tide bends: the integrated pass
@@ -3349,7 +3356,7 @@ const MP={
         for(let dv=200;dv<=Math.min(B.orb&&B.orb.e>0.05?1500:900,0.9*aboard);dv+=B.orb&&B.orb.e>0.05?25:10){const pe=perigee(predictFrom({b:B,r,v:add(v,mul(norm(v),dv)),t:simT+dt}));if(pe==null)continue;
           const p2=predictFrom({b:B,r,v:add(v,mul(norm(v),dv)),t:simT+dt}),late=perigeeAt(p2)-(simT+dt)>2.5*86400;   // home within 2.5 days, not the long way round
           const sc=dv+5*Math.max(0,Math.abs(pe-ph.perigee)-50e3)/1e3+(late?1e5:0);if(!best||sc<best.sc)best={sc,dt,dv,r,v}}}   // the smallest burn that gets within 50 km of the perigee (the correction does the rest); 5 m/s per km beyond
-      if(!best){X.done=true;HOOK.msg('Procedure: no way home found from here');return false}
+      if(!best){procDev(s,'nohome','no way home found from here with what is aboard');return false}
       HOOK.msg(`Procedure: burn home in ${(best.dt/60).toFixed(0)} min, ${best.dv} m/s (${dvRemaining(s).cur.toFixed(0)} m/s aboard)`);
       X.e2=dot(best.v,best.v)+2*best.dv*len(best.v)+best.dv**2-2*B.mu/len(best.r);X.tBurn=simT+Math.max(0,best.dt-best.dv/Math.max(engAcc(s),1e-3)/2);X.wake=X.tBurn-ALIGN;X.sub='wait';return false}
     if(X.sub==='wait'){s.throttle=0;aimAt(s,s.v,5);if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
@@ -3361,6 +3368,59 @@ const MP={
       while(s.evIdx<s.events.length&&s.parts.some(q=>q.on&&q.d.kind==='engine'))stage(s);while(s.evIdx<s.events.length)stage(s);   // drop the return stage, arm the chute
       X.sub='entry';return false}
     s.throttle=0;s.sas=true;s.sasMode='retro';return s.landed||!s.alive}};   // shield first (retrograde to the air), chute
+// ---- a procedure flown headless (bodies session; the physics side of dispatch, NOTES "Procedures: automation that adapts").
+// The same executor and physics as a watched flight, but isolated from whatever else is going on: the flight on screen (if
+// any), the fleet, debris, the moons' clock and the hooks are set aside and put back. Its record is closed (no costs, no
+// missions, no logbook) and it records no procedure. opt: {site, T0 (program time at lift-off), maxT, noRelight (the
+// upper stage won't light for the circularisation: a deviation there), name}. Returns {ok, orb, dv, t, s} in orbit,
+// {dev: {kind, why}, entry, ...} on a deviation (entry: a registry entry of the craft at that moment, for vesselOf), or
+// {ok: false, why} if it was lost.
+function regEntry(s,stack,T,name){const on=s.parts.filter(p=>p.on);
+  return{stack:JSON.parse(JSON.stringify(stack)),shape:shapeOf(on,false),vst:vstOf(s),r:s.r.slice(),v:s.v.slice(),epoch:T,qo:qmul(qconj(orbQ(s.r,s.v)),s.q),cm:(s.cm||[0,0,0]).slice(),name,attached:[]}}
+function procFly(stack,proc,target,opt={}){
+  const keep={S,simT,T0:ORB_T0,fleet:FLEET.splice(0),debris:debris.splice(0),vn:vesselN,hook:{...HOOK}};
+  for(const k of Object.keys(HOOK))if(typeof HOOK[k]==='function'&&k!=='dispatchRun')HOOK[k]=()=>{};const log=[];HOOK.msg=m=>log.push(m);
+  const T0=opt.T0??Math.ceil((PROG.day||0)-1e-9)*DAY_S;if(ORB_ABS)ORB_T0=T0;   // a whole day: the ground under the flight is where it is at T0
+  let out;
+  try{simT=0;const s=newShip(stack,opt.site||homeSites()[0]||curSite());S=s;s.noRec=true;const R=s.rec=recNew();Object.assign(R,{launched:true,ended:true,day0:T0/DAY_S});
+    procStart(s,proc,target);let dv=0,k=0;const lim=opt.maxT??(proc.phases&&proc.phases.length?30*86400:3*3600);
+    while(s.alive&&s.proc&&!s.proc.done&&simT<lim&&k++<3e6){const X=s.proc;
+      if(opt.noRelight&&X.phase==='circ'){procDev(s,'relight','the upper stage failed to relight for the circularisation');break}
+      if(X.wake>simT+2&&railsOK(s))advRails(s,Math.min(600,X.wake-simT),1000);else{const m=s.mass;advPhys(s);dv+=(s.thrust||0)/m*DT}}
+    const name=opt.name||`${designName(stack)||'Flight'}`,el=elements(s.r,s.v,s.body.mu);
+    if(!s.alive)out={ok:false,why:(log.filter(m=>/Destroyed|broke|burn/i.test(m)).pop()||'it was lost').replace(/^Destroyed — /,''),dv,t:simT,s,log};
+    else if(s.procDev)out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s};
+    else if(!s.proc||!s.proc.done){s.procDev={kind:'lost',why:'the procedure lost its way',t:simT};out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s}}
+    else out={ok:true,orb:{pe:el.pe-s.body.R,ap:el.ap-s.body.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI},body:s.body.name,dv,t:simT,s,log};
+  }finally{S=keep.S;simT=keep.simT;ORB_T0=keep.T0;FLEET.length=0;FLEET.push(...keep.fleet);debris.length=0;debris.push(...keep.debris);vesselN=keep.vn;Object.assign(HOOK,keep.hook)}
+  return out}
+// A dry run (the trajectory office's study, NOTES "Procedures: automation that adapts", part 3): another design's procedure
+// flown headless on this design. Margin is what's left aboard in orbit. procAdopt tries every stored orbit procedure whose
+// design has the same number of engine stages (a different staging structure needs a hand-flown run-through) and keeps the
+// cheapest that reaches orbit as this design's, provisional: dispatchable, measured on this design, given way to the
+// design's own first flight. (The economy decides what a study costs and how much wider a provisional estimate is.)
+function dryRun(stack,proc,target){const f=procFly(stack,proc,target);return{...f,margin:f.ok?dvRemaining(f.s).tot:null}}
+const engStages=stack=>dvPlan(newShip(stack),0).length;
+function procAdopt(stack,target){const key=procKey(stack),own=(PROG.procs||{})[key];if(own&&!own.prov)return{ok:false,why:'this design has its own procedure'};
+  const n=engStages(stack),tried=[];let best=null;
+  for(const k in PROG.procs||{}){const pr=PROG.procs[k];if(k===key||pr.kind!=='orbit'||!pr.pitch||pr.prov)continue;let st;try{st=JSON.parse(k)}catch(e){continue}
+    if(engStages(st)!==n){tried.push({by:pr.by,why:'different staging'});continue}
+    const f=dryRun(stack,pr,target);tried.push({by:pr.by,ok:f.ok,why:f.ok?'':f.dev?f.dev.why:f.why,dv:f.dv,margin:f.margin});
+    if(f.ok&&(!best||f.dv<best.f.dv))best={pr,f}}
+  if(!best)return{ok:false,why:tried.length?'no stored procedure gets this design to orbit':'no stored procedure to try',tried};
+  const proc={...best.pr,dv:best.f.dv,by:designName(stack)||'our design',prov:true,from:best.pr.by,day:PROG.day,flight:null};
+  (PROG.procs=PROG.procs||{})[key]=proc;HOOK.news(`Dry run: ${best.pr.by}'s procedure gets ${proc.by} to orbit with ${fmtDv(best.f.margin)} to spare. Provisional until the design flies it itself`,'ok');HOOK.save();
+  return{ok:true,proc,margin:best.f.margin,tried}}
+// dispatch's flight (dispatchTick calls it): what the parts data can't fly is still rolled with the dispatch's seed (breakup
+// from certification, an engine that won't light in the ascent, the upper stage's relight); the rest is flown. Running short
+// is no longer a roll: the procedure flies the design to this contract's orbit and either gets there or hands the craft over
+// where it stopped.
+function dispatchRun(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};if(!e.proc.pitch)return dispatchRoll(D,v,c);   // a procedure with no guidance to fly (an old save's stub): the roll
+  if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
+  const f=procFly(D.stack,e.proc,dispatchTarget(c),{noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`});
+  if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
+  if(!f.ok)return{ok:false,why:f.why};
+  return{ok:true,orb:{...f.orb,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:f.dv}}
 function tapeNew(stack,site){return{v:TAPE_V,stack:JSON.parse(JSON.stringify(stack)),ops:[],lastK:null,site:site?site.id:null}}   // a tape flies from the site it was recorded at
 function tapeCtl(T,s){const c=controls(s),k=JSON.stringify(c);if(k!==T.lastK){T.ops.push(['C',c]);T.lastK=k}}
 function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='P')o[1]++;else T.ops.push(['P',1]);advPhys(s)}
