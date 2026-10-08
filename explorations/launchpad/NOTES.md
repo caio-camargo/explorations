@@ -1155,6 +1155,31 @@ on the active unit (LESSONS #33).
 
 Also: the HUD gauges now hide with the HUD (`.ui` visibility), so the bare reference views stay clean.
 
+## The sky from space: home galaxy, stars, sun (2026-10-08, aerofx session; PLAYTEST #10)
+
+The space background was single-size white stars and a soft sun glow. Now, in `SKY_FS` (the background branch only:
+`galaxy`, `starsAt`, `sunAt`):
+- **A home galaxy generated from the world seed** (Caio's idea: each world's sky different). `GAL` (JS, `rng(WSEED·7919 +
+  101)`) picks a great-circle band (normal `gx`), its centre `gc`, the band's width, bulge size, dust and arm contrast, a
+  tint, a **satellite galaxy** (a small pale smudge) and a **nebula** (a pink patch). The band widens toward the centre and
+  has a warm bulge, dark dust lanes along its midplane, and clumps stretched along it. Everything is sampled on the sphere
+  (no angle coordinates): an `atan`-based first pass had a seam and stripes. Inertial directions, so the sky doesn't turn
+  with the planet.
+- **Stars:** two layers (220 and 560 cells per radian), colours by temperature (blue-white → orange-red), a few bright and
+  many faint, and denser along the band.
+- **The sun:** a limb-darkened disc of the right size (0.27°), a corona and a wide glow, and four camera-fixed diffraction
+  spikes. The old glow was cut off at cos θ = 0.9, which showed as a hard circle once the glow was wider.
+- **Dither:** the sky's output gets ±½ of an 8-bit step of per-pixel noise. Dark gradients (the galaxy, night skies) banded.
+- Reference views `refView(97)` the galactic centre, `98` along the band, `99` the sun, `100` the band over a sunlit limb.
+- Not done: a different galaxy per world needs `WSEED` to vary (it is a constant today); bloom on the sun (a post pass);
+  the planets as points of light (PLAYTEST #11, a star-centred system).
+
+**Also: a regression and its hotfix.** The PLAYTEST #7 commit (`807c1dd`) put a `// comment` mid-line in `gaugeRect`,
+which swallowed a declaration: `render()` threw every frame while the HUD was up. `node --check` and `test.mjs` passed
+(a runtime error), and the reference screenshots hide the HUD. Hotfix `8e070fc` pushed within the hour. Since then every
+commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
+console exception (LESSONS #34).
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -2489,7 +2514,38 @@ flies ascent → transfer → capture → landing → take-off through the game 
 - **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
   raised apoapsis to 805 km; the new one is robust to timing.
 
-**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+**To Nyx through the same phases (2026-10-08).** Nyx is tilted 30° and eccentric, so the transfer meets it at a **node** (where it
+crosses our equatorial plane; `transferNode`), taking the far one (20,355 km, where Nyx is slower) on a Hohmann-like ellipse,
+leaving on the parking-orbit pass nearest the ideal time. The leftover timing is the mid-course correction's job, and when the
+predictor shows no encounter yet, the correction minimises the closest approach (`passScore`), with up to three passes. The
+return scan for an eccentric moon covers a wider burn range (200–1,500 m/s), counts **everything aboard** (an empty stage drops
+on the way), and only accepts trajectories that reach perigee within **2.5 days**.
+
+Crewed Lunar, flown by a "Nyx land" phase list (§27): wait 29 h for Nyx's node passage, burn, a 10 m/s correction, capture
+(~470 m/s), land at **1.2 m/s**, ascend, burn home (425 m/s, dropping the empty lander mid-burn), correct 131 m/s to a 44 km
+perigee, splash down at 6.5 m/s: **3.35 days**, 4.1 g, crew fine, 7,479 m/s in all. It records itself as a "Nyx land" procedure.
+
+What the Nyx flight found (the Selene flights had hidden all of these):
+- **Count parking-orbit passes on the real orbit.** Picking the departure pass by 2πr/v from the current radius drifted by tens of
+  degrees over a 29 h wait (the orbit is 102 × 111 km); the burn left Nyx's node 61° off and the corrections chased a
+  17,000 km miss. `timeToNu` on the actual elements: 2.6°.
+- **On rails, a SAS hold doesn't turn the craft.** After a long coast the stack wakes pointing where it was. Burns now wake
+  `ALIGN` (600 s) early to turn, then fire on time (`X.tBurn` vs `X.wake`).
+- **The suicide burn must count only the upward thrust.** Falling 100 km in Nyx's weak gravity, the stack's nose wandered
+  15–50° on its wheels; the trigger assumed all the thrust pointed up and hit at 120 m/s. Now: the vertical component of
+  thrust, and 30 % in hand.
+- **"Don't stage the capsule loose" must not mean "never stage".** The guard also blocked staging to a full return stage; it now
+  stops only when the current stage is the last with an engine.
+- **The cheapest way home can take 18 days.** It flew outward first; the crew ran out of air at day 10.
+
+**Flybys and free returns (2026-10-08).** A new phase, `home {perigee}` (the back half of `return`: out of the moon's SOI, a
+correction to the perigee, shed the stage, entry, chute). The recorder keeps a flight that passes a moon without capturing as a
+`B:flyby` procedure at the SOI exit (`transfer` only, with its pass), and, if it then lands home well, as `B:free-return`
+(`transfer`, `home`). Crewed Lunar on `transfer Selene 400 km → home 45 km` completes **"Crew around Selene"** in 1.33 days and
+records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
+and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
+
+**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
@@ -3872,6 +3928,66 @@ today Selene is a smooth sphere apart from the regolith model; power (R3) is new
 - **Traverse planning needs a map of the ground.** How well a route can be planned depends on how well the site has
   been imaged from orbit, which ties the imaging satellites to surface work, as Lunar Orbiter's photos did for Apollo.
 - **Rover instruments (R4) use the same pointing and activity timeline** as orbital instruments (Owners and order, item 3).
+
+### R2 built: packed, deployed, driven anywhere, kept in the field (sats session, 2026-10-08)
+
+- **Two mounts** (palette *Surface*):
+  - **Rover, folded (side mount)** (`rvfold`): a surface part, the lunar rover's way. Only small and medium chassis fold.
+  - **Rover deck with ramps** (`rvdeck`): a stack part, Lunokhod's way, for rovers up to 3.8 m long.
+- **Packing.** A new mount packs the rover selected in the Rover yard. Its part options (right-click) choose another or
+  none. The node keeps a copy of the design (`nd.rvd`), and its mass is added as the part's `xm`. A large rover has no
+  mount yet: a cargo bay or a sky crane would be next.
+- **Deploying.** The HUD's *Rover* row has a **deploy** button once landed (`tapeRover`, tape op `Y`). Otherwise it
+  says why not (`rvDeployCheck`):
+  - the lander is moving or not landed;
+  - the rover doesn't fit its mount;
+  - a crewed rover with nobody aboard;
+  - the lander leaning more than 15°;
+  - at the spot where the rover would end up:
+    - sea;
+    - a slope over min(20°, the rover's side tip angle − 15°);
+    - a rover-sized rock (on rough ground a share of 4 m cells has one; regolith is rough, so one side can be blocked
+      and the other clear);
+  - for a deck, ramps steeper than min(25°, the rover's forward tip angle − 10°).
+
+  The deck tries all four sides and takes the gentlest ramps that pass. The ramps telescope 6 m, so a deck on top of a
+  short lander works (24° in the check) and one on a tall stack doesn't (50°).
+- **What a deploy does.** It takes the rover's mass off the lander, keeping the lander where it stands (its centre of
+  mass moves, not the lander). Then a scripted pose, 8 s for an unfold or 10 s down the ramps, ends with the rover
+  physical, upright on its wheels, square to the ground. Nothing in the deploy depends on the player's driving.
+- **Driving in a flight.** `]` from the lander drives a deployed rover (then the next); `[` goes back. W S A D and Space
+  go to the rover, not the lander (the lander's keys are blocked while you drive). The camera follows, and a readout
+  panel shows on the right. The rover steps on any body in that body's frame. Landed vessels are obstacles: upright
+  cylinders the rover's footprint box can't enter. A rover not driven and at rest sleeps.
+- **Kept in the field.** At the flight's end, every rover that isn't in the sea stays where it is (`PROG.rvOut`). A
+  later flight on that body within 2.5 km takes it back in. The lander's saved shape remembers its rover is gone (`rvOut`).
+- **Driving from home.** The Program screen's *Rovers in the field* (Fleet tab) lists them. An uncrewed one has
+  **Drive from home**, which opens the drive screen wherever it is, as Lunokhod was driven from Earth. A crewed one is
+  driven by its crew, from a lander there.
+- Fixed on the way: autopilot tapes replayed arm operations (`['A', op]`) as aborts. Playback now aborts only on a bare
+  `['A']`.
+- Checks: `test.mjs` §35, 6 checks:
+  - mass and refusals;
+  - the side deploy (lighter, unmoved lander, rover upright beside it);
+  - backing into the lander;
+  - kept in the field, taken back, and the saved lander without it;
+  - deck ramps short against tall;
+  - a leaning lander.
+
+  Mutation-tested: no obstacles, a shape that forgets the rover is gone, no packed mass, no lean check, or a lander that
+  isn't held in place each fails a check.
+
+  Browser: on Selene at noon, one side was blocked by a rock and the other deployed. The rover unfolded, drove, and the
+  view went back to the lander. It was then kept in the field and driven from home. The deck with its rover showed in
+  Assembly with its part options.
+- **Not yet:**
+  - a cargo bay or sky crane for large rovers;
+  - an unfold animation that looks folded (the scripted pose moves the whole rover);
+  - time passing while you drive from home (the clock is held);
+  - Selene's real terrain (it is still a smooth sphere with bumps and rocks);
+  - power, contact and the signal's delay (R3);
+  - science (R4);
+  - drive plans (R5).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
