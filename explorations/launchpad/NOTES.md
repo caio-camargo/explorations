@@ -1034,6 +1034,67 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.36 — balance pass 3: the money sinks in simulated careers (2026-10-08)
+
+`career.mjs` now plays the stand, development and facilities. Variant `all` = lines + a prudent investor (`invest()`):
+- it builds the hall, the fleet and the stand;
+- it qualifies the least-known of its six most-used parts while that part is under 70% know-how;
+- it develops parts it has flown ≥ 5 times (cheaper → reliable → durable);
+- it always keeps a 250M reserve (`RESERVE=`).
+
+Other runner changes:
+- `INV=hall|fleet|test|dev` runs one sink at a time;
+- drops now carry their parts and a sea impact point, so the fleet is simulated.
+
+Agency starts, 6 years, 5 seeds. Final funds are in M, and the noise is roughly ±400M between policies.
+
+**Results**
+
+| archetype   | lines only | all (old) | all (tuned) | hall only | tests only | dev only |
+|---|---|---|---|---|---|---|
+| openSuper   | 1193 | 293  | 785  | 759  | 1106 | 1240 |
+| closedSuper | 1744 | 986  | 1094 | 3039 | 1663 | 2221 |
+| rising      | 1565 | 333  | 553  | 1581 | 731  | 1016 |
+| frugal      | 861  | 622  | 313  | 825  | 470  | 542  |
+| resource    | 908  | 1003 | 477  | 1218 | 1158 | 549  |
+| security    | 2914 | 2944 | 1594 | 4010 | 2718 | 2159 |
+
+(The hall, test and dev columns are after tuning.)
+
+- **The pile-up is absorbed.** Strong programs put 1.4–2.6B into sinks over six years and end at 0.8–1.6B instead
+  of 1.2–2.9B. Weak programs stay solvent: frugal and resource end at 300–500M, with as many top-ups as without
+  investing.
+- **What the money buys:**
+  - flights: closedSuper 68 → 106, security 79 → 99 (the hall);
+  - fewer failures for the weak: frugal 13 → 9%, resource 14 → 10%;
+  - more contracts done.
+- **Before tuning, the hall was a money machine.** Time is a busy program's bottleneck: +1,900M back for 210M.
+- **Before tuning, tests and development were near-pure losses:**
+  - qualification taught ~1% on a part already flown (a stand run counted as "seen before", exactly like a flight);
+  - development cost 5 × price × (1 + tier) × (1 + level) against a 12% price cut, so it rarely paid back.
+- **The fleet is about neutral.** Salvage roughly pays for the ships. Left as is.
+
+**Tuning**
+
+- **Hall:** 90M / 220M (was 60 / 150); stacking ×0.8 / ×0.65 (was ×0.75 / ×0.55). It still pays well for busy
+  programs (+1,100 to +1,300M), and is neutral for weak ones.
+- **Stand learning:** a campaign never counts for less than half a fresh regime (`STAND_NOV=0.5`; `khLearn` takes
+  `novMin`). A qualification on a well-flown part now teaches ~3–4% instead of ~1%. Fewer runs are needed, since the
+  runner's runs fell from 61 to 52 for closedSuper.
+- **Development:** costs ~3 × price × (1 + tier) × (1 + level) (was 5). A workhorse part's cheaper level now breaks even
+  around 25 × (1 + tier) units. Its net effect is roughly neutral for superpowers and a cost for weak programs.
+
+**Emergent loop.** A redesign costs know-how (−0.1), the runner then requalifies the part on the stand, and then
+develops it again. That's how real programs work: a new mark means a new qualification. Average know-how sits ~10
+points lower in programs that keep redesigning.
+
+**Open:**
+- the runner is one prudent policy, not a good player; weak programs would do better being choosier;
+- support packages still provisional;
+- sinks for the very rich (prestige projects, ground stations) are still on the backlog.
+
+`test.mjs`: the hall check now reads `FAC.hall.eff[1]` instead of a literal.
+
 ## v1.35 — facilities: integration hall and recovery fleet (2026-10-08)
 
 One-off investments you upgrade, with no upkeep (`FAC`, `buildFac`, `facTick`). While an upgrade is being built, the
@@ -1067,7 +1128,7 @@ uses only goals that don't touch shared part definitions or physics.
   design belongs to the licensor). That's the "develop only what you build" option from the design notes, easy to
   relax later.
 - **Needs:** know-how of the part ≥ 50 / 65 / 80% for levels 1 / 2 / 3 (a Kestrel off a brand-new own line: 41%, not
-  yet). Cost ~5 × price × (1 + tier) × (1 + level); 30 + 20·tier days × (1 + 0.5·level); one project at a time
+  yet). Cost ~5 × price × (1 + tier) × (1 + level) (3× since v1.36); 30 + 20·tier days × (1 + 0.5·level); one project at a time
   (`PROG.devJob`, ticked daily).
 - **A redesign is a new design:** certification −0.1 (floor 50%) and know-how −0.1, to be won back by flying or testing.
 - **UI:** a Development section in the Program panel with the running project, or the three goals per part we make,

@@ -1690,7 +1690,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.chooseStart('agency'); P.funds = 1000;
   const stack = st => { P.day = 0; const x = api.newShip(st); api.S = x; x.landed = false; api.t = 0; const d0 = P.day; api.missionTick(x, 0, false); return { x, days: x.rec.prep }; };
   const t0 = stack(api.PRESETS.Orbiter).days; api.buildFac('hall'); const tBuilding = stack(api.PRESETS.Orbiter).days; P.day = 500; api.advanceDays(1); const t1 = stack(api.PRESETS.Orbiter).days;   // (stack() resets the date)
-  check('integration hall: stacking takes less time once it is built (not while building)', Math.abs(tBuilding - t0) < 1e-9 && Math.abs(t1 / t0 - 0.75) < 1e-9 && api.facLv('hall') === 1, `Orbiter stacking ${t0.toFixed(1)} → ${t1.toFixed(1)} days at hall level 1`);
+  check('integration hall: stacking takes less time once it is built (not while building)', Math.abs(tBuilding - t0) < 1e-9 && Math.abs(t1 / t0 - api.FAC.hall.eff[1]) < 1e-9 && api.facLv('hall') === 1, `Orbiter stacking ${t0.toFixed(1)} → ${t1.toFixed(1)} days at hall level 1`);
   // the fleet: salvages stages that land at sea within range of the launch point, not on land or too far
   api.buildFac('fleet'); P.day = 1000; api.advanceDays(1);
   const { x } = stack(['pod', 't1', 'dec', 't8', 'kestrel']), stagePts = x.parts.filter(p => ['t8', 'kestrel'].includes(p.d.key)), pf0 = x.rec.launchPf, u0 = api.norm(pf0), near = api.norm([u0[0], u0[1] + 0.1, u0[2]]).map(v => v * api.TELLUS.R), far = api.norm([u0[0], u0[1] + 1.0, u0[2]]).map(v => v * api.TELLUS.R);
