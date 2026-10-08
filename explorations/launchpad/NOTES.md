@@ -1067,6 +1067,46 @@ Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `8
 **Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
 anvils; the deck from 8 km is still fairly uniform in brightness.
 
+## Effects for the new features: escape tower, landing dust, explosions (2026-10-08, aerofx session)
+
+Other sessions had added things with no visuals of their own: the crew escape tower (bodies), crewed Selene landings
+(bodies), and PLAYTEST #5 (the explosion was one additive half-sphere).
+
+**Escape tower motor.** While `S.lesT` burns (the bodies session's abort: 150 kN for 3 s), the tower's motor shows as
+four nozzles (`lesNozzles`: 1.33 m up the tower, r 0.26 m, canted 35° outward) drawn as plumes. A new `solid` propellant
+profile: white-yellow, nearly opaque, few diamonds. The nozzles go through the normal plume path (spool, ignition flash,
+tail-off, plume light), and `emitLesSmoke` lays a dense white column (spaced by distance like the main trail; spaced by
+time it broke into beads at speed). Views 84–86.
+
+**Landing dust (airless bodies).** On a body without air, the jet that reaches the ground draws `DUST_FS` instead of the
+hot-gas splash: a sheet of dust 0.45 m + 9 % of the distance thick, thrown radially outward in noise streaks, sunlit
+and forward-scattering, with a patch swept clear under the nozzle. It starts 30–40 m up and thickens as the nozzle
+descends. The first sheet (0.12 m thick) was invisible: 40 steps over a 60 m ray never landed in it. Albedo 0.78, above
+the ground's, so the streaks read against the regolith. Views 87–89 hover a Wren over Selene.
+
+**Explosions (PLAYTEST #5).** `HOOK.boom` (callers unchanged) now also records the air density, sprays sparks and
+fragments (`fxPuff`, hot), and the draw is `BOOM_FS`: a raymarched fireball (three noise octaves for billows; white-yellow
+core → orange → red) that turns into a rising smoke cloud, black soot greying over ~6 s, lasting 14 s in air. In vacuum it
+flashes and thins out in ~3 s. Radius sz·(2 + 12√t) for the first 1.2 s, then a slower spread; the cloud rises
+sz·3.5·t^1.2. The flash takes over the scene's point light (`boomLight`: brighter than the plumes for ~0.3 s, then a
+1 s glow), so it lights the pad, the hull and the ground pool. Views 90–93 (they backdate the boom clock, which is wall
+time).
+- First look: a pale ball with a blue rim. Light smoke under sunlight swamped a weak fire. Darker soot, fire emission
+  ×2.7, and the soot building over 0.6 s instead of 0.3 s fixed it.
+
+**A box-proxy bug in all three box volumes.** The explosion was invisible: the mesh helpers' `box()` is not wound
+consistently, so `cullFace(BACK)` dropped some of the box's near faces. The impingement and dust volumes had used the same
+proxy and only worked because the reference cameras sat inside their boxes. Now `VBOX` (built by hand, wound outward on
+every face) is the proxy for all three, and the shaders compute the ray's entry and exit analytically, so they don't
+depend on which face rasterised. An intermediate fix (draw every face, march only from the far one) broke when the far
+face lay under the ground (the depth test cut it).
+
+**Cost on the RTX 5050** (on/off, same frame): explosion 0.55 ms at 1.2 s (the cloud filling a third of the screen),
+landing dust 0.3 ms, escape motor within noise.
+
+**Still open:** explosions are round; a ground-level fireball has no ground-hugging spread. Fragments don't trail smoke.
+The escape motor's jets don't strike the capsule. The dust doesn't settle on anything and has no effect on visibility.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
