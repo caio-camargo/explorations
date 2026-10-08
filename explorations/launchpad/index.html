@@ -298,7 +298,7 @@ function tPe(el,nu){const e=el.e;
 function timeToNu(el,nu){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return dt}
 function timeToR(el,rt){const c=(el.p/rt-1)/el.e;if(!(c>=-1&&c<=1))return NaN;const dt=timeToNu(el,Math.acos(c));return dt>=0?dt:NaN}
 
-// ---- parts. Masses in tonnes, thrust in kN (vacuum), Isp in s.
+// ---- parts. Masses in tonnes, thrust in kN (vacuum), Isp in s. Engines: gim = gimbal range (°), gimR = its slew rate (°/s).
 // Joint ratings (the weaker side of a joint governs): C compression, T tension, S shear (kN), B bending (kN·m).
 // prof = outer shape as [radius, height] bottom→top; it is both the aero surface and (with colour) the mesh.
 const R0=0.625;   // the 1.25 m class radius; every part carries its own radius d.r
@@ -348,11 +348,14 @@ const PARTS={
   // the claw (sats session): its jaws grab whatever they touch slowly enough, wherever and however it is; a weaker hold
   claw:{name:'Claw',kind:'claw',m:0.15,h:0.55,C:900,T:600,B:200,prof:[[.35,0],[.35,.25],[.3,.32],[.18,.55]],jF:15e3,jM:8e3},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
-  wren:{name:'Wren lander',kind:'engine',m:0.15,h:0.55,cm:.7,thrust:18,ispA:240,ispV:300,exit:0.25,C:500,T:300,B:150,prof:[[.25,0],[.1,.25],[.35,.35],[.625,.5],[.625,.55]]},
+  // steerable fins (control session): the same plates, all-moving, turned about their span up to ctl degrees at ctlR °/s
+  cfin:{name:'Steerable fin',kind:'rfin',surf:true,noAero:true,m:0.09,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9,ctl:20,ctlR:40},
+  cfins:{name:'Steerable fin ring',kind:'fins',m:0.37,h:0.9,C:2500,T:1200,B:450,span:0.9,chord:0.9,ctl:20,ctlR:40},
+  wren:{name:'Wren lander',kind:'engine',m:0.15,h:0.55,cm:.7,thrust:18,gim:6,gimR:20,ispA:240,ispV:300,exit:0.25,C:500,T:300,B:150,prof:[[.25,0],[.1,.25],[.35,.35],[.625,.5],[.625,.55]]},
   // a small sea-level engine: sounding rockets and early hops (a Kestrel empties a 1 t tank in 12 s and leaves a tail-heavy, tumbling hull)
-  sparrow:{name:'Sparrow sounding',kind:'engine',m:0.3,h:0.8,cm:.6,thrust:60,ispA:250,ispV:280,exit:0.3,C:900,T:400,B:200,prof:[[.3,0],[.12,.45],[.3,.55],[.625,.72],[.625,.8]]},
-  petrel:{name:'Petrel vacuum',kind:'engine',m:0.5,h:1.0,cm:.7,thrust:65,ispA:90,ispV:345,exit:0.6,C:1200,T:500,B:250,prof:[[.6,0],[.15,.7],[.3,.8],[.625,.9],[.625,1]]},
-  kestrel:{name:'Kestrel booster',kind:'engine',m:1.3,h:1.3,cm:.65,thrust:230,ispA:285,ispV:315,exit:0.55,C:2000,T:800,B:300,prof:[[.55,0],[.22,.75],[.4,.9],[.625,1.15],[.625,1.3]]},
+  sparrow:{name:'Sparrow sounding',kind:'engine',m:0.3,h:0.8,cm:.6,thrust:60,gim:3,gimR:15,ispA:250,ispV:280,exit:0.3,C:900,T:400,B:200,prof:[[.3,0],[.12,.45],[.3,.55],[.625,.72],[.625,.8]]},
+  petrel:{name:'Petrel vacuum',kind:'engine',m:0.5,h:1.0,cm:.7,thrust:65,gim:3,gimR:10,ispA:90,ispV:345,exit:0.6,C:1200,T:500,B:250,prof:[[.6,0],[.15,.7],[.3,.8],[.625,.9],[.625,1]]},
+  kestrel:{name:'Kestrel booster',kind:'engine',m:1.3,h:1.3,cm:.65,thrust:230,gim:5,gimR:10,ispA:285,ispV:315,exit:0.55,C:2000,T:800,B:300,prof:[[.55,0],[.22,.75],[.4,.9],[.625,1.15],[.625,1.3]]},
   // program payloads: instruments telemeter loads live and bring air samples home; a biocapsule carries a passenger with
   // limits of its own (g, cabin heat, air); a mass simulator is a boilerplate block for lift benchmarks
   sci:{name:'Instrument package',kind:'sci',m:0.08,h:0.45,C:900,T:600,B:200},
@@ -361,10 +364,11 @@ const PARTS={
   // satellite kit: a camera (≈10 µrad, so ~2 m from 200 km) and an antenna to send pictures down. Left in orbit, they keep working.
   cam:{name:'Imaging camera',kind:'cam',m:0.12,h:0.5,C:900,T:600,B:200},
   ant:{name:'Antenna',kind:'ant',m:0.04,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.12],[.3,.3]]},
-  condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
+  condor:{name:'Condor heavy',kind:'engine',m:3.0,h:1.9,cm:.65,thrust:650,gim:4,gimR:8,ispA:280,ispV:305,exit:0.62,C:4000,T:1500,B:600,prof:[[.62,0],[.28,1.1],[.45,1.3],[.625,1.65],[.625,1.9]]},
 };
 for(const k in PARTS){const d=PARTS[k];d.key=k;if(d.kind==='tank'){d.m=d.wet;Object.assign(d,{C:2500,T:1200,B:450})}
   if(d.Tmax==null)d.Tmax={pod:1250,bio:1250,chute:1000,engine:1500,cone:1400,fins:1400}[d.kind]||1300;if(d.kind==='tank')d.res0={fuel:d.wet-d.dry};
+  if(d.kind==='engine'){if(d.gim==null)d.gim=4;if(d.gimR==null)d.gimR=10}
   if(d.r==null)d.r=R0;if(!d.prof)d.prof=[[d.r,0],[d.r,d.h]];if(d.cm==null)d.cm=.5;if(d.S==null)d.S=d.C*0.5}
 // 2.5 m class: the 1.25 m shapes scaled ×2. Tanks hold 8× (volume); compression/tension/shear ratings ×4 (wall area),
 // bending ×8 (section modulus ∝ r²·wall, wall ∝ r) — which is why fat rockets shrug off loads that snap thin ones.
@@ -374,8 +378,9 @@ big('T16','t2',{name:'Tank 16 t (2.5 m)',wet:16,dry:1.76,m:16});
 big('T32','t4',{name:'Tank 32 t (2.5 m)',wet:32,dry:3.6,m:32});
 big('dec25','dec',{name:'Decoupler 2.5 m',m:0.2});
 big('fins25','fins',{name:'Fin ring 2.5 m',m:1.0,span:1.8,chord:1.8});
+big('cfins25','cfins',{name:'Steerable fin ring 2.5 m',m:1.4,span:1.8,chord:1.8});
 big('cone25','cone',{name:'Nose cone 2.5 m',m:0.45});
-big('albatross','kestrel',{name:'Albatross (2.5 m)',m:6,thrust:1100,ispA:285,ispV:310,exit:1.1});
+big('albatross','kestrel',{name:'Albatross (2.5 m)',m:6,thrust:1100,gim:4,gimR:8,ispA:285,ispV:310,exit:1.1});
 // joint reinforcement: strength multiplier and added mass (t) at a 1.25 m joint, scaled by (joint radius / 0.625)²
 const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy',k:4,m:0.18}];
 // A design is the core stack top→bottom; an entry is a part key, or {k, rad:{n, dec, stack}} for a part with a
@@ -688,24 +693,39 @@ function sasTarget(s){
   const pro=norm(vr),h=cross(s.r,s.v);if(len(h)<1e-6)return s.sasMode==='pro'?pro:s.sasMode==='retro'?mul(pro,-1):s.hold;
   const nrm=norm(h),rad=norm(cross(s.v,nrm));
   return{pro,retro:mul(pro,-1),normal:nrm,anti:mul(nrm,-1),radout:rad,radin:mul(rad,-1)}[s.sasMode]}
-function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)tau+=p.d.thrust*1000*thr*0.07*len(sub(thrustPt(p),s.cm));return tau}
-// Control: reaction wheels in the pod plus engine gimbal. Returns the commanded angular acceleration (world frame).
+let SAS_LAG=1,SAS_TI=1;   // see ctrlAccel
+// control authority (N·m) about pitch/yaw: the wheels plus every burning engine's full gimbal at its lever to the CoM
+function ctrlAuthority(s,engs,thr){let tau=s.torque;for(const p of engs)tau+=p.d.thrust*1000*thr*Math.sin(p.d.gim*Math.PI/180)*len(sub(thrustPt(p),s.cm));return tau}
+// ... and about roll: a gimbal only rolls the vessel from off its axis (side boosters, clusters), so one central engine adds nothing
+function ctrlAuthRoll(s,engs,thr){let tau=s.torque;for(const p of engs){const r=sub(thrustPt(p),s.cm);tau+=p.d.thrust*1000*thr*Math.sin(p.d.gim*Math.PI/180)*Math.hypot(r[0],r[2])}return tau}
+// Control: reaction wheels in the pod plus engine gimbal (plus RCS when asked). Returns the commanded angular acceleration
+// (world frame); physStep gives the wheels' share as a torque and turns the nozzles for the rest (gimSteer).
 function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel you fly
   const X=qrot(s.q,[1,0,0]),Y=qrot(s.q,[0,1,0]),Z=qrot(s.q,[0,0,1]);
-  const tau=ctrlAuthority(s,activeEngines(s),s.throttle)+(rcs?rcsTauCap(s):0),aP=tau/Math.max(s.I[0],s.I[2]),aR=Math.min(2,tau/s.I[1]);
-  if(I.pitch||I.yaw||I.roll){s.hold=null;
+  const E=activeEngines(s),rt=rcs?rcsTauCap(s):0,fa=s.finAuth&&s.finT===simT?s.finAuth:null,fP=fa?Math.min(fa[0],fa[2]):0,fR=fa?fa[1]:0;
+  const aP=(ctrlAuthority(s,E,s.throttle)+rt+fP)/Math.max(s.I[0],s.I[2]),aR=Math.min(2,(ctrlAuthRoll(s,E,s.throttle)+rt+fR)/s.I[1]);
+  if(I.pitch||I.yaw||I.roll){s.hold=null;s.sasE=s.sasI=null;
     if(s.sas){ // fly-by-wire: keys command a rotation rate, SAS spends the torque to get there
       const wb=[dot(s.w,X),dot(s.w,Y),dot(s.w,Z)],wd=[I.yaw*.3,-I.roll*.8,-I.pitch*.3];
       return add(add(mul(X,clamp((wd[0]-wb[0])*4,-aP,aP)),mul(Y,clamp((wd[1]-wb[1])*4,-aR,aR))),mul(Z,clamp((wd[2]-wb[2])*4,-aP,aP)))}
     return add(add(mul(X,I.yaw*aP),mul(Y,-I.roll*aR)),mul(Z,-I.pitch*aP))}
-  if(!s.sas)return[0,0,0];
+  if(!s.sas){s.sasE=s.sasI=null;return[0,0,0]}
   if(!s.hold&&len(s.w)<0.02)s.hold=Y;
   const tgr=sasTarget(s);let ax,ang,aE=aP;
   if(tgr&&tgr.q){const e=qmul(tgr.q,qconj(s.q)),sg=e[3]<0?-1:1,v=[e[0]*sg,e[1]*sg,e[2]*sg],sv=len(v);   // a whole attitude, roll included (a side port)
     ang=2*Math.atan2(sv,Math.abs(e[3]));ax=sv>1e-12?mul(v,1/sv):[0,0,0];aE=Math.min(aP,aR)}
   else{const tg=tgr||Y,e=cross(Y,tg),sn=len(e);ang=Math.atan2(sn,dot(Y,tg));ax=sn>1e-9?mul(e,1/sn):(dot(Y,tg)<0?X:[0,0,0])}
-  const wd=mul(ax,Math.min(0.6,Math.sqrt(aE*ang)));
-  const al=mul(sub(wd,s.w),4);
+  // the rate to turn at: braking-limited far off (√(α·θ)), and while engines burn, linear near the target with a time
+  // constant Tc = SAS_LAG × their slowest nozzle's full swing. The bare square root has unbounded gain at zero error, and a
+  // nozzle that takes 0.5 s to swing turns that into a limit cycle (NOTES). Wheels and RCS act at once: no linear zone.
+  // A rate loop alone can't hold against a steady torque (thrust off the CoM, a stable rocket's aero moment): it leaves a
+  // standing error, and asks for no more than its gain × the rate error, which can be less than the wheels already give. So
+  // while the zone is on the rate loop also integrates (time constant SAS_TI), clamped to the authority, reset when it's off.
+  let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
+  if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
+  const Tc=SAS_LAG*lag;let wd=mul(ax,Math.min(0.6,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));
+  let al=mul(sub(wd,s.w),4);
+  if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,s.w),4/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
 function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
   s.q=qnorm([q[0]+.5*dt*d[0],q[1]+.5*dt*d[1],q[2]+.5*dt*d[2],q[3]+.5*dt*d[3]])}
@@ -759,10 +779,11 @@ function aeroPass(s,vb,wb,rho,M,thrusting){
           addF(p,fx/fc*N,0,fz/fc*N,ox,e.ym,oz)}}}}
   // a fin ring is four plates around its own axis; a radial fin is one plate, its root on the host's skin at angle phi
   for(const p of s.fins){const d=p.d,A=d.span*d.chord,py=p.y0+d.chord/2,one=d.kind==='rfin',rr=one?d.span/2:d.r+d.span/2;
-    for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,nx=-az,nz=ax,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+    let j=0;for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const dl=p.fd?p.fd[j]:0;j++;   // a steerable plate's deflection (rad)
+      const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,cd=Math.cos(dl),nx=-az*cd,ny=-Math.sin(dl),nz=ax*cd,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
       const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz;if(f2<1e-6)continue;
-      const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
-      addF(p,nx*N+fx*sf,fy*sf,nz*N+fz*sf,px,py,pz)}}
+      const fl=Math.sqrt(f2),qL=0.5*rho*f2,sa=(fx*nx+fy*ny+fz*nz)/fl,ca=Math.sqrt(Math.max(0,1-sa*sa)),N=qL*A*(3.5*sa*ca+1.2*sa*Math.abs(sa)),sf=qL*A*0.012/fl;
+      addF(p,nx*N+fx*sf,ny*N+fy*sf,nz*N+fz*sf,px,py,pz)}}
   if(s.chute&&s.chuteA>0&&s.chutePart&&s.chutePart.on){const p=s.chutePart,px=p.pos[0],pz=p.pos[2],py=p.y0+p.h+1,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
     const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz,fl=Math.sqrt(f2),D=0.5*rho*f2*s.chuteA/fl;addF(p,fx*D,fy*D,fz*D,px,py,pz)}
   s.nShadow=nShadow}
@@ -814,14 +835,56 @@ function detach(s,list,kick,spin,asVessel){
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
+// ---- engine gimbal (control session). Each engine's nozzle swivels up to d.gim degrees, at most d.gimR °/s. p.gv is its
+// deflection: a vessel-frame vector across its thrust axis, |gv| = sin(angle); the thrust points along tdir + gv, so the
+// steering torque, the side force and the joint loads all come from the turned thrust itself. The torque the wheels can't
+// give (tauB, body frame) is shared out by least squares over every engine's two deflection axes (columns r × t·u), each
+// engine then clipped to its range. An engine on the axis has no roll column: it can't roll the vessel.
+// Steerable fins join the same solve: each plate is one column, the torque its full deflection gives at this step's airflow
+// (finCols, linearised: dN/dδ ≈ 3.5·q·A along the plate's normal); a plate is clipped to ±ctl and slews at ctlR.
+function gimSteer(s,eng,th,tauB,dt,fc=[]){
+  const cols=[],need=len(tauB)>1e-9;
+  if(need)eng.forEach((p,i)=>{const d=tdirOf(p),a=Math.abs(d[0])<0.9?[1,0,0]:[0,0,1],u1=norm(cross(d,a)),u2=cross(d,u1),r=sub(thrustPt(p),s.cm),
+    sm=Math.sin(p.d.gim*Math.PI/180)*th[i];cols.push({p,u:[u1,u2],c:[mul(cross(r,u1),sm),mul(cross(r,u2),sm)]})});
+  if(need)for(const F of fc)cols.push({F,c:[F.c]});
+  const want=new Map(),fin=new Map();
+  if(cols.length){
+    const M=[[0,0,0],[0,0,0],[0,0,0]];let tr=0;for(const C of cols)for(const c of C.c)for(let i=0;i<3;i++)for(let j=0;j<3;j++)M[i][j]+=c[i]*c[j];
+    for(let i=0;i<3;i++)tr+=M[i][i];for(let i=0;i<3;i++)M[i][i]+=1e-9*tr+1e-12;   // ridge: a rank-2 set (no roll column) stays solvable
+    const y=solve3(M,tauB);
+    for(const C of cols){if(C.F){fin.set(C.F,clamp(dot(C.c[0],y),-1,1)*C.F.dm);continue}
+      let a1=dot(C.c[0],y),a2=dot(C.c[1],y);const m=Math.hypot(a1,a2);if(m>1){a1/=m;a2/=m}
+      const k=Math.sin(C.p.d.gim*Math.PI/180);want.set(C.p,add(mul(C.u[0],a1*k),mul(C.u[1],a2*k)))}}
+  for(const p of s.parts){if(!p.on||p.d.kind!=='engine')continue;const g=p.gv||[0,0,0],w=want.get(p)||[0,0,0],dg=sub(w,g),dl=len(dg),
+    st=p.d.gimR*Math.PI/180*dt;p.gv=dl>st?madd(g,dg,st/dl):w}   // slew toward the command (or back to centre when not steering)
+  const cmd=new Map();for(const[F,v]of fin){if(!cmd.has(F.p))cmd.set(F.p,[]);cmd.get(F.p)[F.j]=v}
+  for(const p of s.fins){if(!p.d.ctl)continue;const n=p.d.kind==='rfin'?1:4,st=p.d.ctlR*Math.PI/180*dt,w=cmd.get(p)||[],fd=p.fd||new Array(n).fill(0);
+    p.fd=fd.map((g,j)=>{const t=w[j]||0;return Math.abs(t-g)>st?g+Math.sign(t-g)*st:t})}}
+// the steerable plates' columns at this airflow (body frame): r × n · 3.5·q·A·(−f_y/|f|)·δmax, and the authority they add
+// about each body axis (the torque one axis gets if every plate turns for it alone)
+function finCols(s,vb,wb,rho){const out=[],auth=[0,0,0];if(!(rho>0))return{out,auth};const c=s.cm;
+  for(const p of s.fins){const d=p.d;if(!d.ctl)continue;const A=d.span*d.chord,py=p.y0+d.chord/2,one=d.kind==='rfin',rr=one?d.span/2:d.r+d.span/2,dm=d.ctl*Math.PI/180;
+    let j=0;for(const[ax,az]of one?[[Math.cos(p.phi),Math.sin(p.phi)]]:FIN4){const px=p.pos[0]+ax*rr,pz=p.pos[2]+az*rr,rx=px-c[0],ry=py-c[1],rz=pz-c[2];
+      const fx=-(vb[0]+wb[1]*rz-wb[2]*ry),fy=-(vb[1]+wb[2]*rx-wb[0]*rz),fz=-(vb[2]+wb[0]*ry-wb[1]*rx),f2=fx*fx+fy*fy+fz*fz;
+      if(f2>1e-6){const k=3.5*0.5*rho*f2*A*(-fy/Math.sqrt(f2))*dm,col=mul(cross([rx,ry,rz],[-az,0,ax]),k);out.push({p,j,c:col,dm});for(let i=0;i<3;i++)auth[i]+=Math.abs(col[i])}j++}}
+  return{out,auth}}
+function solve3(M,b){const[a,b_,c]=M[0],[d,e,f]=M[1],[g,h,i]=M[2],A=e*i-f*h,B=f*g-d*i,C=d*h-e*g,det=a*A+b_*B+c*C;if(Math.abs(det)<1e-300)return[0,0,0];
+  const inv=[[A,c*h-b_*i,b_*f-c*e],[B,a*i-c*g,c*d-a*f],[C,b_*g-a*h,a*e-b_*d]];return inv.map(r=>(r[0]*b[0]+r[1]*b[1]+r[2]*b[2])/det)}
 function physStep(s,dt){
   if(s.lesJet){s.lesJet=false;lesJettison(s,true)}
   const b=s.body;geom(s);
   const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
   for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
   const eng=activeEngines(s);let T=0;
-  if(s.throttle>0&&eng.length){const want={};for(const p of eng){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle,pt=thrustPt(p);
-    const d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
+  // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
+  // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
+  const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
+  const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]],tcl=len(tauC),tauW=tcl>s.torque?mul(tauC,s.torque/tcl):tauC;
+  const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
+  gimSteer(s,s.throttle>0?eng:[],thr,sub(tauC,tauW),dt,FC?FC.out:[]);
+  if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
+  if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*1000,t=thr[i],pt=thrustPt(p);
+    const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
     const on=onArr(s),fuel=fuelArr(s),rank=dropRank(s,s.evIdx);for(const g in want)drawFuel(s,on,fuel,s.grp,rank,+g,want[g]);
     s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=fuel[i]})}
   const out=new Set(),next=s.events[s.evIdx];
@@ -836,7 +899,7 @@ function physStep(s,dt){
     if(T*dot(Y,norm(r))>W){s.landed=false;HOOK.msg(simT<1?'Liftoff!':'Takeoff')}
     else{simT+=dt;syncLanded(s);s.gload=1;s.maxLoad=0;return}}
   if(s.node&&T>0)nodeBurn(s,Y,T,dt);
-  const qi=qconj(s.q),vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
+  const vAir=sub(s.v,surfVel(b,r)),vb=qrot(qi,vAir),wb=qrot(qi,s.w),rho=density(b,h),sp=len(vAir);
   s.mach=b.atm?sp/SND(h):0;s.qdyn=0.5*rho*sp*sp;s.aoa=sp>1?Math.acos(clamp(vb[1]/sp,-1,1)):0;
   if(s.chute&&rho>0.03&&s.chutePart&&s.chutePart.on){const tgt=sp<250&&mainChuteOK(b,h,r,simT)?600:sp<400?6:0,cap=Math.min(tgt,CHUTE_G*G0*s.mass/Math.max(s.qdyn,1));if(tgt)s.chuteA=s.chuteA<cap?Math.min(cap,s.chuteA+dt*(tgt>6?140:3)):cap}  // drogue below ~20 km once under 400 m/s (~Mach 1.3: a supersonic drogue would hit a falling capsule with 17 g), main below 3 km above the ground (MAIN_AGL) under 250 m/s
   if(rho>0&&sp>0.05){
@@ -846,15 +909,14 @@ function physStep(s,dt){
     let Fa=[0,0,0];s.parts.forEach((p,i)=>{Fa=add(Fa,sub(p.F,F0[i]))});
     const lim=0.9*sp*s.mass/dt,fa=len(Fa);
     if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}}
-  const alC=qrot(qi,ctrlAccel(s));
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
   if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true));rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0],(alR[1]-alC[1])*s.I[1],(alR[2]-alC[2])*s.I[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
-  const alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
-  const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);s.aB=add(aNg,worst.aSide);s.alB=alB;s.wB=wb;   // for the ports' loads
+  const alB=[(tau[0]+tauW[0])/s.I[0],(tau[1]+tauW[1])/s.I[1],(tau[2]+tauW[2])/s.I[2]];   // the gimbals' torque is already in tau (turned thrust)
+  const worst=structLoads(s,aNg,alB,wb,tauW);s.aB=add(aNg,worst.aSide);s.alB=alB;s.wB=wb;   // for the ports' loads
   s.maxLoad=worst.frac;s.maxLoadP=worst.p;s.maxLoadKind=worst.kind;if(len(aNg)>1e-9)s.kickN=(s.kickN||0)+1;   // non-gravitational: cached node states go stale
   let grav=mul(r,-b.mu/(rl*rl*rl));s.gload=len(aNg)/G0;if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,r,simT,true);if(pa)grav=add(grav,pa)}
   s.v=madd(s.v,add(grav,qrot(s.q,add(aNg,worst.aSide))),dt);s.r=madd(s.r,s.v,dt);
@@ -1370,7 +1432,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.06;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -1621,8 +1683,9 @@ const PRI_OF={sci:'science',com:'commerce',mil:'security',gov:'prestige',tour:'c
 // arrive certified to the usual level.
 const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
+// tier 1 for steerable fins (d.ctl): they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl)return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
