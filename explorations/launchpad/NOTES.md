@@ -3358,6 +3358,43 @@ pressure.
   Kepler legs through the star's SOI, so the propagator already handles them.
 - Warp: transfers take months; rails warp is exact at any rate, but the top step (1e5×) may need another notch.
 
+## Platform direction: native desktop later, the browser for now (Caio, 2026-10-08)
+
+**Decision.** The finished game is a **native desktop** app; the browser was the experimental start. For now, keep the
+single HTML file with no build step: rapid iteration and the parallel sessions matter more than raw speed at this
+stage. Note the port's considerations here, don't act on them yet.
+
+**Where the time goes today** (RTX 3050, 1024×768, measured 2026-10-07):
+- **The GPU dominates.** The sky and terrain shader costs ~3–9 ms a frame (worst: low views across rugged terrain);
+  ~2–2.6 ms without terrain. That's GLSL and algorithm-bound. A native port helps only through what a native GPU API
+  allows (compute shaders, bindless textures, async compute), not through the CPU language.
+- **CPU per frame** is ~0.3–2 ms.
+- **The CPU costs that hurt are bursty:**
+  - page load ~1.5–1.8 s (world generation, sites, cities);
+  - prediction and warp loops;
+  - the test suite.
+
+**Cheap wins before any port:**
+- world generation in a worker, or baked on the GPU, and cached;
+- no small-array allocations in the vector maths of hot loops (`add`/`sub` return new arrays: GC churn);
+- typed arrays in hot loops.
+
+**When native pays:**
+- the simulation becomes the bottleneck: many vessels, n-body everywhere, part-level physics, big debris fields,
+  long warps with physics on;
+- a real desktop build. Likely Rust with wgpu, which also opens compute shaders for terrain and generation.
+
+**How to keep the port cheap, starting now:**
+- **The SIM block stays pure** (no DOM/GL). It is the part that ports mechanically.
+- **The headless checks are the oracle.** A port of `physStep`, `kepler` or `makeWorld` must reproduce their numbers.
+  Golden fingerprints of world generation and flights (LESSONS #16) make that exact.
+- **Shaders:** GLSL ES 3.00 translates to WGSL/SPIR-V almost line by line. Keep shader logic in plain functions, as
+  the terrain code is (`hgtG`, `terr`, `march`).
+- **CPU/GPU parity tricks carry over unchanged.** Integer hashes, `texelFetch` with your own weights, a hand-written
+  `atan2`, float64 on the CPU with camera-relative float32 on the GPU (§ v1.25).
+- **Piecemeal is possible even before the full port.** A hot kernel can move to WebAssembly behind the same function
+  signature, with the JS version kept as the reference.
+
 ## Precision tricks worth keeping
 
 - **Ray–sphere in float32 at 2 m above a 600 km planet.** The CPU sends `cc = (d−R)(d+R)` in
@@ -3509,6 +3546,7 @@ the arrows, and every key in the handlers present in its Help table.
 
 ## Picking this up cold
 
+- **Direction:** native desktop eventually, the browser for now (§ "Platform direction"). Keep the SIM pure: it is what ports.
 - Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
   extracts it with `new Function` and drives it headless. Keep that boundary.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
