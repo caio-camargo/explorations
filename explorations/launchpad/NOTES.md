@@ -1309,13 +1309,16 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
-gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+**Tests** §39 (3 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
+still flies its gyro. 315 pass.
 
 **For other sessions**
 - **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
-  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
-  register flies with the best.
+  would set `s.av` (or move `avNow`). Registered vessels keep theirs (`vstOf` stores `av`, `vesselOf` restores it;
+  entries from before v1.46.1 get today's).
+- **tester:** *All tools* also gives the best avionics (`avNow`); the epoch picker doesn't move the date, so without it
+  a tester at epoch 4 flies a gyro.
 - **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
 - **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
 
@@ -1431,7 +1434,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** §38 (3 checks; numbered §36 until v1.46.1): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
@@ -2604,7 +2607,30 @@ correction to the perigee, shed the stage, entry, chute). The recorder keeps a f
 records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
 and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
 
-**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
+**Aiming a free return (2026-10-08).** When the phase after a transfer is `home`, its corrections (and the trim inside the moon's
+SOI) aim at **the perigee it will come home on after the flyby** (`homePe`, read off the predictor's chained legs), with the
+pass allowed anywhere within half its planned height. The same free return as before now needs **4.9 m/s** on the way home
+instead of 286 (two mid-course corrections of ~50 m/s set up a pass that comes back by itself); 5,812 m/s in all instead of
+6,025.
+
+**Debris** near the moons now feels their tides too (`stepDebris`, the same pointwise test as `physStep`).
+
+**Registered satellites still ride pure Kepler, deliberately, for now.** Measured against the integrated orbit:
+
+| orbit | off the Kepler path after 30 days | Ap / Pe change |
+|---|---|---|
+| low, 300 km | 5 km | ±0.2 km |
+| polar, 1,000 km | 39 km | ±0.75 km |
+| navigation, 3,000 km | 500 km | ±6 km |
+| **stationary (TV)** | **10,750 km** | +31 / −144 km |
+
+Nyx is heavy and close, much more so than the Moon is to Earth, so a stationary satellite would really drift a quarter of the way
+round in a month. Giving the registry the tides would make the TV mission pay for days unless satellites carry propellant
+to hold their slot. That's the design notes' "satellites age" idea: **a satellite's life = station-keeping propellant ÷
+drift rate**, with servicing or replacement missions after. It's a gameplay decision for Caio with the sats and economy
+sessions, not a physics fix to slip in.
+
+**Open:** station-keeping and satellite lifetimes (above); dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever

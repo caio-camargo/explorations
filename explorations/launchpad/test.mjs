@@ -1138,7 +1138,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
       const Rf = s.rec, fb = P.procs[base + '|Selene:flyby'], frp = P.procs[base + '|Selene:free-return'];
       check('procedures v2: a free return (transfer, then home) flies "Crew around Selene", and is recorded as a flyby and a free-return procedure',
-        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home',
+        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home' && frp.dv < 5950,   // aimed as a true free return: small correction home
         `home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rf.cgMax || 0).toFixed(1)} g; procedures: flyby ${!!fb}, free-return ${frp ? frp.dv.toFixed(0) + ' m/s' : 'none'}`); } }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
@@ -2008,7 +2008,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
 }
-// 36. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// 38. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
 // they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
 {
   const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
@@ -2343,10 +2343,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
-// 37. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
+// 39. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
 // an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
 {
-  const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,satRegister,vesselOf,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
   D.HOOK.msg = () => {}; const T = D.TELLUS, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])) * 57.2958;
   const sand = D.avNow(); D.PROG.flights = 1; const gens = [0, 3.5, 8].map(y => { D.PROG.day = y * 400; return [D.avNow(), D.compEra()]; });
   check('avionics: no program, the best SAS; in a program it follows the computing era (gyro, then analog at mainframes, then guidance computer)',
@@ -2361,6 +2361,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('avionics: a gyro only holds (asked for prograde, it holds the attitude), within its ½° deadband; a bare pod\u2019s 90° turn takes it twice as long as a guidance computer',
     g.modes === 'no/no/no' && g.proHolds && !c.proHolds && a.modes === 'yes/no/no' && c.modes === 'yes/yes/yes' && g.reach > 1.8 * c.reach && g.err <= 0.5 + 1e-6,
     `prograde/maneuver/target: gyro ${g.modes} (prograde holds: ${g.proHolds}), analog ${a.modes}, computer ${c.modes}; 90° in ${g.reach.toFixed(1)} / ${a.reach.toFixed(1)} / ${c.reach.toFixed(1)} s; gyro holds within ${g.err.toFixed(2)}°`);
+  // a satellite keeps its avionics through the register: loaded back years later, it still has the gyro it flew with
+  D.t = 0; const sat = D.newShip(['ant', 'core', 't1', 'wren']), rs = T.R + 300e3; D.S = sat; sat.av = 0; D.PROG.day = 8 * 400;
+  Object.assign(sat, { landed: false, alive: true, r: [rs, 0, 0], v: [0, 0, -Math.sqrt(T.mu / rs)], w: [0, 0, 0] }); D.PROG.sats = []; D.satRegister(sat, { day0: 0 });
+  const back = D.PROG.sats.length ? D.vesselOf(D.PROG.sats[0], 0) : null;
+  check('avionics: a gyro-era satellite loaded back from the register in the computer era still flies its gyro', back && back.av === 0 && D.avNow() === 2,
+    `registered ${D.PROG.sats.length}, loaded back with ${back ? D.AV[back.av].name : '—'} (today: ${D.AV[D.avNow()].name})`);
 }
 
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
