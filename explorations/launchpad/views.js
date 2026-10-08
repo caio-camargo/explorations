@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -242,6 +242,17 @@ window.refView = async (n) => {
     cam.yaw = 1.75; cam.pitch = 0.05; cam.dist = 60; window.simulate = () => {}; render(); await settle();
     document.querySelectorAll('.ui').forEach(e => e.style.visibility = ''); render();
     return kind + ' h ' + ((len(S.r) - S.body.R) / 1000).toFixed(1) + ' km q ' + (S.qdyn / 1000).toFixed(1) + ' kPa, max ' + (GQ.peak / 1000).toFixed(1) + ' M ' + S.mach.toFixed(2);
+  }
+  // 97–100: the sky from space. The ship in orbit, the camera aimed along a direction D: 97 the galactic centre, 98 along
+  // the band, 99 the sun, 100 the band over the planet's limb (D horizontal, the camera tipped down a little)
+  if (n >= 97 && n <= 100) {
+    stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
+    let up = D; if (n === 100) { up = norm(cross(D, GAL.gx)); if (dot(up, SUN) < 0) up = mul(up, -1) }   // a sunlit limb
+    const r = TELLUS.R + 300e3; S.r = mul(up, r); S.v = mul(norm(cross(GAL.gx, up)), Math.sqrt(TELLUS.mu / r)); S.throttle = 0; S.w = [0, 0, 0];
+    const f = localFrame(S.r), Dv = n === 100 ? norm(add(D, mul(up, -0.25))) : D;
+    cam.pitch = Math.asin(clamp(-dot(Dv, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(Dv, f.e), dot(Dv, f.n)); cam.dist = 30;
+    window.simulate = () => {}; render(); await settle(); bare(); return 'sky ' + n;
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
