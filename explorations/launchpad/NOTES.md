@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1135,6 +1135,71 @@ Career runner (agency, 6 years, 5 seeds), lines-only:
 
 With the investor (`all`), strong programs still put 1.5–2.9B into sinks and end at 0.6–1.5B. Weak programs end
 safer (frugal 911, resource 504).
+
+## v1.43 — reaction wheels that saturate; the builder's control readout (2026-10-08, control session)
+
+The second slice of the control review (v1.40). The pod's wheels were 8× a KSP Mk1 pod and never filled up, so they
+steered everything. Now they are a resource.
+
+**What changed**
+- **Wheels store what they give** (`wheelGive`): the vessel gets τ and the wheels' momentum H (body frame) changes by
+  −τ·dt. Past `hmax` they can't push that way. Pod and crew capsule 40 → **10 kN·m**, 100 kN·m·s; probe core 4 → **2 kN·m**,
+  20 kN·m·s; parts without `hmax` store 10 s of their torque (`WHEEL_S`). The rails attitude step goes through the same
+  limit.
+- **They unload** whenever something else can hold the vessel while they spin down (time constant `WHEEL_DUMP` = 4 s,
+  at most half that channel's authority). A burning gimbal or steerable fins unload them for free from 2 %. RCS spends
+  gas, so it only keeps them usable: from 80 % down to 60 %. When there's no gimbal or fins channel, RCS also covers what
+  saturated wheels can't give.
+- **A reaction wheel part** (`rwheel`, *Control*, 0.12 t, 15 kN·m, 150 kN·m·s, 5 M) to stack where turning big things
+  matters.
+- **HUD row** `Wheels n% saturated` once they hold ≥ 5 %, with the hint of what unloads them.
+- **Builder: a Control block.** Holding 5° off the airflow at max-q (25 kPa, M1.2), burning and coasting: what it takes
+  against wheels + gimbal + fins + RCS, as **holds** / **weathervanes** (short of authority but stable) / **flips**
+  (short and unstable). Roll authority by source. A 90° turn in vacuum on wheels (capped at storage ÷ inertia) and with
+  the first stage lit (`controlReport`, `turnTime`). The old "controls can't hold 5°" line moved here and now counts fins.
+  The no-wheels warning says what still steers.
+- **Bug fixed from v1.40:** `partBody` picks meshes by part key, so `cfin`/`cfins` drew as plain cylinders. They now draw
+  as the fins they are.
+
+**Numbers**
+
+| | v1.40 | v1.43 |
+|---|---|---|
+| 90° turn in vacuum on wheels, Orbiter / Heavy / Lunar / Crewed Lunar (readout; flown) | 5.5 / 7.3 / 21 / 38 s | **11.1 / 14.6 / 56 / 151 s** (flown 11.5 / 15.3 / 54 / 145) |
+| Same with the first stage lit (gimbal) | 3.4 / 3.3 / 4.9 s | 3.5 / 3.4 / 5.0 s |
+| Orbiter, pitch key held 30 s, SAS off | spins up without limit | levels off at hmax/I = 0.512 rad/s |
+| Unloading from 90 %, holding attitude, 45 s | — | nothing: 90 % · burning gimbal: 2 %, within 0.31° · cold-gas RCS: 73 % for all 30 kg |
+| Coasting at max-q, Orbiter: need / have | 18 / 40 kN·m (holds) | 18 / 10 on wheels (weathervanes); 264 with a steerable ring |
+| Physics step, Lunar / Heavy (back to back) | 37 / 55 µs | 39 / 58 µs |
+
+**What it taught**
+- **Quartering the wheels broke no check.** Every scripted flight (ascents, aborts, the crewed Selene mission,
+  docking, re-entries) steers on the gimbal while burning, and the capsules are aerodynamically stable shield-first. The
+  wheels had been doing almost nothing the tests could see. Where they do matter is turning in vacuum, now 2–4× slower,
+  and holding off the airflow while coasting.
+- **Wheel storage, not torque, sets a big stack's turn rate.** With 100 kN·m·s on a 192 t·m² Orbiter the turn tops out
+  at 0.51 rad/s; on the Crewed Lunar at ~0.03 rad/s, a 2½-minute 90°. The readout has to cap by storage or it is 3×
+  optimistic for the big stacks.
+- **Cold gas is a poor way to unload a pod's wheels**: 90 → 60 % (30 kN·m·s) is ~29 kg at Isp 70 with this lever. Hence
+  the 80 → 60 % band: RCS keeps the wheels usable rather than emptying them, and a short burn is the cheap way.
+- **Saturation in the air is hard to isolate.** Holding a rocket off the airflow, the airflow swings round to meet the
+  nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
+  vacuum.
+
+**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
+
+**For other sessions**
+- **ui:** the `Wheels` HUD row sits before the RCS row (`wheelRows`). The Control block is in `editorChanged`
+  (`controlHTML`).
+- **builder:** `rwheel` is in *Control* (one edit to `CAT`). It draws with the default banded drum.
+- **visuals:** `rwheel` could use a look of its own.
+- **economy:** `PRICE.rwheel = 5`, `tierOf` gives it 1.
+- **anyone scripting flights in vacuum with big stacks:** turns on wheels alone are slow now; light the engine (the
+  gimbal) or add RCS / a wheel part.
+
+**Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
+fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
 
 ## v1.40 — attitude control: a real gimbal, steerable fins, a SAS that holds (2026-10-08, control session)
 

@@ -1882,6 +1882,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
 }
+// 36. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  D.HOOK.msg = () => {}; const T = D.TELLUS, len = D.len, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+  const fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const withRcs = (stack, host, ys) => { const d = D.toV2(JSON.parse(JSON.stringify(stack))), h = fnd(d.root, host);
+    for (const y of ys) h.c.push({ k: 'rcs', at: { y, a: 0, n: 4, cy: 0.1 }, c: [] }); h.c.push({ k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] }); return d; };
+  const space = des => { D.t = 0; const s = D.newShip(des), r0 = T.R + 300e3; D.S = s;
+    Object.assign(s, { landed: false, sas: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0] }); return s; };
+  // the pitch key held for 30 s, SAS off: the rate levels off where the wheels are full
+  const o = space(D.PRESETS.Orbiter); for (let i = 0; i < 30 / D.DT; i++) { D.INP.pitch = 1; D.physStep(o, D.DT); } D.INP.pitch = 0;
+  const cap = o.hmax / Math.max(o.I[0], o.I[2]);
+  check('wheels: the pod gives 10 kN·m and stores 100 kN·m·s; held 30 s, the Orbiter’s pitch rate stops at storage ÷ inertia',
+    o.torque === 10000 && Math.abs(len(o.w) / cap - 1) < 0.02 && len(o.wH) / o.hmax > 0.999, `${len(o.w).toFixed(3)} rad/s vs ${cap.toFixed(3)}; wheels ${(100 * len(o.wH) / o.hmax).toFixed(0)}%`);
+  // unloading from 90 %, holding attitude: nothing else to steer with / a burning gimbal / cold-gas RCS
+  const unload = (des, { rcs = false, thr = 0 } = {}) => { const s = space(des); D.stage(s); Object.assign(s, { throttle: thr, rcs, sas: true, sasMode: 'stab' });
+    s.wH = [0.9 * s.hmax, 0, 0]; const Y0 = D.qrot(s.q, [0, 1, 0]), g0 = D.rcsGas(s); let err = 0;
+    for (let i = 0; i < 45 / D.DT; i++) { D.physStep(s, D.DT); err = Math.max(err, ang(D.qrot(s.q, [0, 1, 0]), Y0) * 57.3); }
+    return { f: len(s.wH) / s.hmax, err, gas: (g0 - D.rcsGas(s)) * 1000 }; };
+  const st = ['chute', 'pod', 't2', 'petrel'], none = unload(st), burn = unload(st, { thr: 1 }), gas = unload(withRcs(st, 't2', [0.1, 1.9]), { rcs: true });
+  check('wheels unload: not with nothing else to steer; a burning gimbal empties them in 45 s holding within 1°; RCS spends gas on it',
+    Math.abs(none.f - 0.9) < 1e-9 && burn.f < 0.05 && burn.err < 1 && gas.f < 0.85 && gas.gas > 1,
+    `nothing ${(100 * none.f).toFixed(0)}% · gimbal ${(100 * burn.f).toFixed(0)}% (max error ${burn.err.toFixed(2)}°) · RCS ${(100 * gas.f).toFixed(0)}% for ${gas.gas.toFixed(1)} kg of gas`);
+  // the readout: its 90° turn time on wheels against a flown one; coasting at max-q, a steerable ring holds where wheels can't
+  const flown = k => { const s = space(D.PRESETS[k]), est = D.controlReport(s).turn.wheels, X0 = D.qrot(s.q, [1, 0, 0]); Object.assign(s, { sas: true, sasMode: 'stab', hold: X0 });
+    let t = 0; while (t < 200) { D.physStep(s, D.DT); t += D.DT; if (ang(D.qrot(s.q, [0, 1, 0]), X0) < 2 / 57.3) break; } return { est, t }; };
+  const fo = flown('Orbiter'), fl = flown('Lunar'), cO = D.controlReport(D.newShip(D.PRESETS.Orbiter)).coast,
+    cS = D.controlReport(D.newShip(D.PRESETS.Orbiter.map(x => x === 'fins' ? 'cfins' : x))).coast;
+  check('control readout: 90° turn times on wheels match flown turns within 10%; coasting at max-q the Orbiter can’t hold 5° on wheels, with a steerable ring it can',
+    Math.abs(fo.est / fo.t - 1) < 0.1 && Math.abs(fl.est / fl.t - 1) < 0.1 && cO.tau > cO.auth && cS.tau < cS.auth,
+    `Orbiter ${fo.est.toFixed(1)} vs ${fo.t.toFixed(1)} s, Lunar ${fl.est.toFixed(1)} vs ${fl.t.toFixed(1)} s; coasting need ${(cO.tau / 1e3).toFixed(0)} kN·m: wheels ${(cO.auth / 1e3).toFixed(0)}, steerable ring ${(cS.auth / 1e3).toFixed(0)}`);
+}
 
 // 30. Stations (sats session, stations plan Phase C): radial ports on any structure, habitat and lab, station state and
 // what passes between flights. Own sim instance.

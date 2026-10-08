@@ -305,12 +305,12 @@ const R0=0.625;   // the 1.25 m class radius; every part carries its own radius 
 const PARTS={
   cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
   chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
-  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   // crew (bodies session, epoch 4): a pod with two people and 10 days of life support; an escape tower (solid motor, 150 kN
   // for 3 s) that pulls it off a failing rocket. Until the tower is qualified (the max-q abort), the capsule flies dummies.
   // ins: the crew cabin lags the skin by an hour (insulated and cooled), where the animal capsule lags it by 10 min: on the
   // way up the bare capsule's skin reaches ~520 K, which would cook a 10-min cabin (387 K) but warms this one by ~20 K.
-  crew:{name:'Crew capsule',kind:'pod',crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  crew:{name:'Crew capsule',kind:'pod',crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   les:{name:'Escape tower',kind:'les',m:0.6,h:2.1,cm:.6,thrust:150,burn:3,C:900,T:500,B:200,prof:[[.18,0],[.18,1.3],[.26,1.42],[.26,1.6],[.1,1.9],[0,2.1]]},
   t1:{name:'Tank 1 t',kind:'tank',wet:1,dry:0.11,h:1.1},
   t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
@@ -344,7 +344,9 @@ const PARTS={
   // cargo bay (sats session): floor (h), walls bayL tall (inner radius bayIn), a clamshell roof roofH high; cm 8.4 × h ≈ 2.1 m up
   bay:{name:'Cargo bay',kind:'bay',m:0.6,h:0.25,r:0.8,cm:8.4,bayL:4,bayIn:0.7,roofH:0.6,C:2500,T:1200,B:450,prof:[[.8,0],[.8,4.25],[.62,4.6],[0,4.85]],profOpen:[[.8,0],[.8,4.25]]},
   // probe core (sats session): a command part without crew, so a separated module is a vessel you can fly
-  core:{name:'Probe core',kind:'core',m:0.08,h:0.25,torque:4000,C:900,T:600,B:200},
+  // reaction wheel unit (control session): an inline drum of wheels, more torque and storage than a pod's own
+  rwheel:{name:'Reaction wheel',kind:'rwheel',m:0.12,h:0.3,torque:15000,hmax:150000,C:900,T:600,B:200},
+  core:{name:'Probe core',kind:'core',m:0.08,h:0.25,torque:2000,hmax:20000,C:900,T:600,B:200},
   // docking port (sats session): 1.25 m, its face on top; two capture when they meet slowly and nearly aligned
   port:{name:'Docking port',kind:'port',m:0.1,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.14],[.5,.2],[.5,.3]],jF:30e3,jM:20e3},
   // the claw (sats session): its jaws grab whatever they touch slowly enough, wherever and however it is; a weaker hold
@@ -644,8 +646,9 @@ function newShip(stack,site=curSite()){
   s.qLocal=qFromBasis(f.e,f.up,f.s);                     // nose up, belly (+X) east, +Z south
   syncLanded(s);
   return s}
-function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque)s.torque+=p.d.torque}
+function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;s.hmax=0;
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque){s.torque+=p.d.torque;s.hmax+=p.d.hmax??p.d.torque*WHEEL_S}}
+  if(s.wH&&len(s.wH)>s.hmax)s.wH=s.hmax>0?mul(s.wH,s.hmax/len(s.wH)):[0,0,0];   // wheels lost with their parts
   s.mOwn=m*1000;s.cmOwn=mul(c,1/m);
   for(const a of s.att||[]){const pm=a.e.mass/1000;m+=pm;c=madd(c,a.p,pm)}   // docked bodies: their own mass at their own centre of mass
   c=mul(c,1/m);let Ix=0,Iy=0,Iz=0;
@@ -731,7 +734,16 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
 function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
   s.q=qnorm([q[0]+.5*dt*d[0],q[1]+.5*dt*d[1],q[2]+.5*dt*d[2],q[3]+.5*dt*d[3]])}
-function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used while on rails)
+// ---- reaction wheels (control session). They store what they give: the vessel gets torque τ, the wheels' momentum H
+// (body frame, N·m·s) changes by −τ·dt. Past hmax they can't push that way any more; they unload whenever something else
+// (a burning gimbal, steerable fins in the air, RCS) can hold the vessel while they spin down (physStep).
+let WHEEL_S=10,WHEEL_DUMP=4;   // storage in seconds of full torque for parts without hmax; unloading time constant (s)
+function wheelGive(s,tau,dt){if(!(s.torque>0))return[0,0,0];const H=s.wH||[0,0,0],tl=len(tau);let t=tl>s.torque?mul(tau,s.torque/tl):tau;
+  let Hn=madd(H,t,-dt);const hn=len(Hn);if(hn>s.hmax){Hn=mul(Hn,s.hmax/hn);t=mul(sub(H,Hn),1/dt)}   // only what stays within storage
+  s.wH=Hn;return t}
+// attitude only (used while on rails): the wheels give what they can
+function attStep(s,dt){const a=qrot(qconj(s.q),ctrlAccel(s)),t=wheelGive(s,[a[0]*s.I[0],a[1]*s.I[1],a[2]*s.I[2]],dt);
+  integrateRot(s,qrot(s.q,[t[0]/s.I[0],t[1]/s.I[1],t[2]/s.I[2]]),dt)}
 
 // ---- aerodynamics: one pass over each stack line's merged surface, per part. Body frame throughout.
 // Newtonian impact pressure on every upstream-facing surface element (8 samples around each ring) with the stagnation
@@ -881,9 +893,15 @@ function physStep(s,dt){
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
-  const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]],tcl=len(tauC),tauW=tcl>s.torque?mul(tauC,s.torque/tcl):tauC;
+  const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
   const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
-  gimSteer(s,s.throttle>0?eng:[],thr,sub(tauC,tauW),dt,FC?FC.out:[]);
+  // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
+  const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
+  // free channels (gimbal, fins) unload from 2 %; RCS costs gas, so it only keeps them usable: past 80 % down to 60 %
+  const hf=s.wH&&s.hmax>0?len(s.wH)/s.hmax:0;s.wDump=steer>0?hf>0.02:rcsCap>0&&(s.wDump?hf>0.6:hf>0.8);
+  let dump=[0,0,0];if(s.wDump){dump=mul(s.wH,1/WHEEL_DUMP);const dl=len(dump),cap=Math.min(s.torque,0.5*(steer>0?steer:rcsCap));if(dl>cap)dump=mul(dump,cap/dl)}
+  const tauW=wheelGive(s,add(tauC,dump),dt),rest=sub(tauC,tauW);   // rest = the law's torque the wheels didn't give, minus the unloading
+  gimSteer(s,s.throttle>0?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
   if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
   if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*1000,t=thr[i],pt=thrustPt(p);
     const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
@@ -912,7 +930,8 @@ function physStep(s,dt){
     const lim=0.9*sp*s.mass/dt,fa=len(Fa);
     if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}}
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
-  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true));rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0],(alR[1]-alC[1])*s.I[1],(alR[2]-alC[2])*s.I[2]])}else{s.rcsFire=0;s.rcsShots=null}
+  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
+    rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
@@ -952,8 +971,8 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
   const pr=Math.exp(-h/TELLUS.H),ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
   if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
-  let Fx=0,Lz=0;
-  if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];
+  let Fx=0,Lz=0,fin=0;
+  if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];fin=finCols(s,vb,[0,0,0],rho).auth[2];   // pitch about z
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());aeroPass(s,vb,[0,0,0],rho,M,T>0);
     s.parts.forEach((p,i)=>{if(p.on){Fx+=p.F[0]-F0[i][0];Lz+=p.L[2]-L0[i][2]}})}
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
@@ -961,7 +980,20 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   const ign=s.segs.map(g=>g.ignited);s.segs.forEach((g,k)=>g.ignited=ls.includes(k));
   const worst=structLoads(s,mul(F,1/s.mass),[0,0,0],[0,0,0],ctl,true);s.segs.forEach((g,k)=>g.ignited=ign[k]);
   // CoP on the axis: −Lz/Fx is only meaningful for a symmetric design, which side groups always are
-  return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth,tau:len(tau),auth}}
+  return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth+fin,tau:len(tau),auth:auth+fin,wheel:s.torque,gim:auth-s.torque,fin}}
+// The builder's control readout (control session). Pitch: what holding 5° off the airflow at max-q takes, burning and
+// coasting, against each source. Roll: wheels, engines off the axis, steerable fins at max-q. Turns: a 90° turn in vacuum
+// as the SAS flies it (accelerate, then brake, at most 0.6 rad/s, and on wheels alone at most their storage ÷ inertia),
+// wheels alone and with the first stage lit. RCS is
+// counted only if the design has quads (it adds to every case).
+function turnTime(alpha,wmax=0.6,th=Math.PI/2){if(!(alpha>0)||!(wmax>0))return Infinity;const w=Math.sqrt(th*alpha);return w<=wmax?2*Math.sqrt(th/alpha):th/wmax+wmax/alpha}   // wmax: the SAS's 0.6 rad/s, or what the wheels can store
+function controlReport(s){geom(s);const ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg)),Ip=Math.max(s.I[0],s.I[2]);
+  const rc=s.rcs;s.rcs=true;s.rcsJ=null;const rcs=rcsTauCap(s);s.rcs=rc;s.rcsJ=null;
+  const MQ={M:1.2,aoa:5,q:25000,h:9000},burn=probe(s,{...MQ,thr:1}),coast=probe(s,{...MQ,thr:0});s.parts.forEach(p=>p.pfrac=0);
+  const v=MQ.M*SND(MQ.h),rho=2*MQ.q/(v*v),fr=finCols(s,[0,v,0],[0,0,0],rho).auth[1];
+  const thrust=E.reduce((a,p)=>a+p.d.thrust*1000,0);
+  return{burn,coast,rcs,roll:{wheel:s.torque,gim:ctrlAuthRoll(s,E,1)-s.torque,fin:fr},
+    turn:{wheels:turnTime((s.torque+rcs)/Ip,rcs>0?0.6:Math.min(0.6,s.hmax/Ip)),burn:turnTime((ctrlAuthority(s,E,1)+rcs)/Ip)},hfull:s.hmax/Ip,steer:s.torque>0||E.some(p=>p.d.gim>0)||s.parts.some(p=>p.on&&p.d.ctl)||rcs>0,thrust}}
 function firstSeg(s){return launchSegs(s)[0]??0}
 // Patched conics: leave the current body's SOI for its parent, or enter one of its moons'.
 function soiSwitch(s,to,how){s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);if(s.node){s.node=null;HOOK.msg(`${how} SOI — maneuver node cleared`)}}
@@ -1157,7 +1189,7 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
   const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
   const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
   s.parts.forEach(p=>{if(ls.includes(p.seg)&&p.res.fuel!=null)p.res.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=saved[i]});
-  geom(s);return{ful,emp,sup,lift,mq}}
+  geom(s);return{ful,emp,sup,lift,mq,ctl:controlReport(s)}}
 
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
 // the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
@@ -1434,7 +1466,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -1686,9 +1718,9 @@ const PRI_OF={sci:'science',com:'commerce',mil:'security',gov:'prestige',tour:'c
 // arrive certified to the usual level.
 const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
-// tier 1 for steerable fins (d.ctl): they carry actuators (control session)
+// tier 1 for steerable fins (d.ctl) and reaction wheels: they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl)return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel')return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
@@ -3623,10 +3655,10 @@ function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
     case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
-    case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
+    case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
-    case'rfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
+    case'rfin':case'cfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
       tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
@@ -4132,6 +4164,16 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+// the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
+function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
+  src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
+  // short of authority, a stable design just turns into the wind; an unstable one goes over
+  row=(lbl,r)=>{const have=r.auth+c.rcs,ok=r.tau<=have,cl=ok?(r.tau<=0.7*have?'ok':'warn'):stable?'warn':'bad';
+    return`<div>${lbl} <b class="${cl}">${ok?'holds':stable?'weathervanes':'flips'}</b> <span class="dim">need ${k(r.tau)} kN·m · ${src(r,c.rcs)}</span></div>`};
+  return`<h2>Control</h2><div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
+    ${row('burning',c.burn)}${row('coasting',c.coast)}
+    <div>Roll <span class="dim">${src(c.roll,c.rcs)} kN·m</span></div>
+    <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>`}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -4145,7 +4187,7 @@ function editorChanged(){
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     <div class="sub">${logHintHTML()}</div>`;
-  if(!S.parts.some(p=>p.d.torque))html+='<div class="warn">No command pod or probe core: no control torque.</div>';
+  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?'<div class="warn">No reaction wheels: it steers only with engines burning, steerable fins in the air, or RCS.</div>':'<div class="warn">No reaction wheels, gimbals, steerable fins or RCS: no control at all.</div>';
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
@@ -4154,7 +4196,8 @@ function editorChanged(){
     full <b class="${cc(cal(a.ful))}">${cal(a.ful).toFixed(2)}</b> · stage-1 dry <b class="${cc(cal(a.emp))}">${cal(a.emp).toFixed(2)}</b> · M1.6 <b class="${cc(cal(a.sup))}">${cal(a.sup).toFixed(2)}</b></div>
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
     <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
-    ${a.mq.trim?'':`<br><span class="warn">controls can't hold 5° here (need ${(a.mq.tau/1000).toFixed(0)} kN·m, have ${(a.mq.auth/1000).toFixed(0)})</span>`}</div>
+</div>
+    ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
     <div class="sub">Negative stability: it flips unless the engines steer it (SAS can hold it while the engine burns, not while coasting).
     Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
@@ -4878,6 +4921,8 @@ function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return nul
   const T0=progT(S),Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,orbit=(r,v,t0)=>{const el=elements(r,v,TELLUS.mu);return el.e<1&&el.pe>TELLUS.R?approach(Q,r,v,t0,2*el.period):null};
   let plan=null;if(S.node){const I=nodeInfo(S);if(I)plan=orbit(I.rN,add(I.vN,I.rem),T0+I.t-simT)}
   return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan}}
+function wheelRows(){if(!(S.hmax>0)||!S.wH)return[];const f=len(S.wH)/S.hmax;if(f<0.05)return[];
+  return[['Wheels',`<span class="${f>0.9?'bad':f>0.6?'warn':'ok'}">${(f*100).toFixed(0)}% saturated</span>${f>0.6?' <span class="dim">(RCS, a burn or steerable fins unload them)</span>':''}`]]}
 function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J.N[0].isp*G0*Math.log(S.mass/Math.max(1,S.mass-g));
   return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${g.toFixed(1)} kg · Δv ${dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
@@ -4934,7 +4979,7 @@ function updateHUD(){
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
     ['Impact',!toolOK('impact')?'<span class="dim">no trajectory data yet</span>':impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
     ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
-    ...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...armRows(),...payloadRows(),
+    ...wheelRows(),...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...armRows(),...payloadRows(),
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
