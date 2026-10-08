@@ -1960,6 +1960,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
 - **v1.35 (2026-10-08, economy worktree):** facilities, upgradeable one-off investments with no upkeep: the
   integration hall (stacking ×0.75 / ×0.55) and the recovery fleet (stages salvaged at sea within 800 / 1,500 km of
   the launch point, 35 / 60% of their value). All tests pass. Merged to `main` (`23e383e`).
+- **v1.36 (2026-10-08, economy worktree):** balance pass 3. The career runner now plays the stand, development and
+  facilities. Sinks absorb the strong programs' pile-up (1.4–2.6B spent over 6 years) without sinking the weak ones.
+  Tuned: the hall was a money machine (now 90/220M, ×0.8/×0.65); stand campaigns teach at least half a fresh regime;
+  development costs 3× price (was 5×). All tests pass. Merged to `main` (`a865120`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
