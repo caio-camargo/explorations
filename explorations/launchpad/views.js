@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -253,6 +253,23 @@ window.refView = async (n) => {
     const f = localFrame(S.r), Dv = n === 100 ? norm(add(D, mul(up, -0.25))) : D;
     cam.pitch = Math.asin(clamp(-dot(Dv, f.up), -1, 1)); cam.yaw = Math.atan2(-dot(Dv, f.e), dot(Dv, f.n)); cam.dist = 30;
     window.simulate = () => {}; render(); await settle(); bare(); return 'sky ' + n;
+  }
+  // 101–102: fin-tip vapor. The Orbiter climbing to alt m, then pitched aoa degrees off its flight path and flown (rendered
+  // every step so the trails record) for 0.8 s; frozen: [alt, aoa, yaw, pitch, dist]
+  const ft = { 101: [1500, 8, 0, 0.05, 30], 102: [1500, 15, 0, 0.05, 30] };   // yaw: offset from square-on to the pull
+  if (ft[n]) {
+    const [alt, aoa, yaw, pitch, dist] = ft[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0;
+    for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } }
+    const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), sd = norm(cross(va, up)), a = aoa / 57.2958;
+    const Y = add(mul(va, Math.cos(a)), mul(norm(cross(sd, va)), Math.sin(a))), X = norm(cross(Y, sd)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null;
+    const hold = () => { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), sd = norm(cross(va, up)), a = aoa / 57.2958;
+      const Y = add(mul(va, Math.cos(a)), mul(norm(cross(sd, va)), Math.sin(a))), X = norm(cross(Y, sd)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0] };   // a held pull (the sim would weathervane back)
+    { const f = localFrame(S.r), va = norm(sub(S.v, surfVel(TELLUS, S.r))), sd = norm(cross(va, norm(S.r))), D = n === 101 ? sd : mul(sd, -1);   // look across the pull
+      cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)) + yaw; }
+    cam.pitch = pitch; cam.dist = dist; const t0 = simT; while (simT - t0 < 0.8) { hold(); advPhys(S); render() }
+    window.simulate = () => {}; await settle(); bare(); return 'fin vapor h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km M ' + S.mach.toFixed(2) + ' q ' + (S.qdyn / 1000).toFixed(1) + ' kPa aoa ' + (S.aoa * 57.3).toFixed(1) + ' trails ' + FTR.size;
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
