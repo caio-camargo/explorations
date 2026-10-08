@@ -1522,6 +1522,41 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
 }
 
+// 29. The cargo bay (sats session, stations plan Phase B): enclosure, shielding, doors, release. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,advPhys,bayOp,doorF,hitGeo,partSDF,FLEET,PARTS,TELLUS,DT,qrot,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS;
+  // a probe module on the floor of a bay, on a pod, a tank and an engine
+  const mk = (pay = ['core', 't1']) => { D.FLEET.length = 0; D.t = 0; const s = D.newShip([...pay, 'bay', 'pod', 't2', 'kestrel']); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  let s = mk(); const bay = s.parts.find(p => p.d.kind === 'bay'), pay = s.parts.filter(p => p.inBay === bay);
+  check('bay: what sits on its floor inside the walls is enclosed', pay.map(p => p.d.key).sort().join() === 'core,t1', `enclosed: ${pay.map(p => p.d.key).join(', ')}`);
+  // in the air at 400 m/s, 8 km up: shut, the payload takes no air load and no heat; open, it does
+  const air = (open) => { const s = mk(); if (open) { D.bayOp(s, 'open'); D.t += 2.01; D.bayOp(s, 'noop'); }
+    const r0 = T.R + 8000, up = [1, 0, 0]; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = add(D.qrot(s.q, [0, 400, 0]), [0, 0, 0]); D.physStep(s, D.DT);
+    const p = s.parts.filter(q => q.inBay), b = s.parts.find(q => q.d.kind === 'bay'); return { pay: p.reduce((a, q) => a + len(q.F) + Math.abs(q.Q), 0), bay: len(b.F) }; };
+  const shut = air(false), open = air(true);
+  check('bay: doors shut, the payload takes no air load or heat; open, it does', shut.pay === 0 && shut.bay > 0 && open.pay > 0, `payload |F|+|Q| shut ${shut.pay.toFixed(1)}, open ${open.pay.toFixed(0)}; bay ${shut.bay.toFixed(0)} N`);
+  // release: refused while shut; open, the payload leaves as a vessel at 0.3 m/s along the bay's axis, momentum kept
+  s = mk(); const r0 = T.R + 300e3; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+  const refused = !D.bayOp(s, 'rel') && !D.FLEET.length;
+  D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); const f = D.doorF(s.parts.find(p => p.d.kind === 'bay'));
+  const Y = D.qrot(s.q, [0, 1, 0]), p0 = mul(s.v, s.mass); D.bayOp(s, 'rel'); const v = D.FLEET[0], sep = v ? dot(sub(v.v, s.v), Y) : NaN, dp = v ? len(sub(add(mul(s.v, s.mass), mul(v.v, v.mass)), p0)) / len(p0) : NaN;
+  check('bay: release is refused with the doors shut; open, the payload leaves as a vessel at 0.3 m/s along the bay, momentum kept', refused && f === 1 && v && v.parts.some(p => p.d.kind === 'core') && Math.abs(sep - 0.3) < 1e-9 && dp < 1e-12,
+    `${v ? v.name : 'no vessel'}; doors ${f}; separation ${sep.toFixed(4)} m/s; momentum error ${dp.toExponential(1)}`);
+  // it leaves without touching the walls: 15 s later (4 m of bay at 0.3 m/s) it's still parting at 0.3 m/s, clear of the top
+  const sb = s.parts.find(p => p.d.kind === 'bay'), topY = sb.y0 + sb.h + sb.d.bayL; for (let k = 0; k < 15 / D.DT; k++) D.advPhys(s);
+  const sep2 = dot(sub(v.v, s.v), Y), bottomV = dot(sub(add(v.r, D.qrot(v.q, sub([0, Math.min(...v.parts.map(p => p.y0)), 0], v.cm))), add(s.r, D.qrot(s.q, sub([0, topY, 0], s.cm)))), Y);
+  check('bay: the payload slides out without touching the walls and clears the top', Math.abs(sep2 - 0.3) < 1e-3 && bottomV > 0, `still parting at ${sep2.toFixed(4)} m/s; its base ${bottomV.toFixed(2)} m above the bay's rim`);
+  // a payload without a command part is a vessel too (not debris that would vanish)
+  s = mk(['cam', 'ant']); s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)]; D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); D.bayOp(s, 'rel');
+  check('bay: a payload with no command part still leaves as a vessel', D.FLEET.length === 1 && /^Payload/.test(D.FLEET[0].name), `${D.FLEET.map(x => x.name + ': ' + x.parts.map(p => p.d.key).join()).join('; ')}`);
+  // the contact shape is hollow: the cavity is outside the bay, the wall inside it; the roof only while shut
+  const g = D.hitGeo(sb, sb.d), mid = D.partSDF(g, 0, 2, 0), wall = D.partSDF(g, 0.75, 2, 0), roof = D.partSDF(g, 0, sb.h + sb.d.bayL + 0.05, 0);
+  check('bay: its contact shape is hollow (the payload can leave), with the roof gone while the doors are open', mid > 0 && wall < 0 && roof > 0, `cavity ${mid.toFixed(2)}, wall ${wall.toFixed(3)}, roof plane ${roof.toFixed(3)} (open)`);
+  D.FLEET.length = 0;
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

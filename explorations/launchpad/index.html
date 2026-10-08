@@ -2180,8 +2180,8 @@ function fleetEnd(R){for(const v of FLEET){if(!v.alive)continue;satRegister(v,{d
 // the bay's axis at BAY_PUSH, a vessel of its own whether or not it has a command part.
 const DOOR_S=2,BAY_PUSH=0.3;
 const doorF=p=>{if(p.doorT==null)return p.open?1:0;const f=clamp((simT-p.doorT)/DOOR_S,0,1);return p.open?f:1-f};   // 0 shut … 1 open
-const shielded=p=>!!(p.inBay&&p.inBay.on&&doorF(p.inBay)===0);
-const profOf=p=>p.d.kind==='bay'&&doorF(p)>0?p.d.profOpen:p.d.prof;   // an open bay's outline has no roof
+const shielded=p=>!!(p.inBay&&p.inBay.on&&!p.inBay.open&&doorF(p.inBay)===0);   // exposed from the moment the doors are told to open until they're shut again
+const profOf=p=>p.d.kind==='bay'&&(p.open||doorF(p)>0)?p.d.profOpen:p.d.prof;   // an open bay's outline has no roof
 function bayDoors(s,open){let n=0;for(const p of s.parts){if(!p.on||p.d.kind!=='bay'||!!p.open===open)continue;const f=doorF(p);
     p.open=open;p.doorT=simT-(open?f:1-f)*DOOR_S;n++;if(!open)s.bayShut=Math.max(s.bayShut||0,simT+f*DOOR_S)}   // mid-swing reversals keep their place
   if(!n)return false;if(open)rebuildShape(s);HOOK.msg(open?'Bay doors opening':'Bay doors closing');return true}
