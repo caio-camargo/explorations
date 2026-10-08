@@ -81,10 +81,10 @@ export function crewLunar(api, say = () => {}) {
   // --- 4. landing: brake at periapsis (retrograde), then a vertical descent that slows toward the ground
   const aMax = () => api.activeEngines(s).reduce((a, p) => a + p.d.thrust * 1000, 0) / s.mass;
   { const e = elements(s.r, s.v, SELENE.mu); coast(Math.max(0, api.timeToNu(e, 0) - 60), 100); let k = 0; s.throttle = 1;
-    while (!s.landed && s.alive && k++ < 400000) { const up = norm(s.r), vv = dot(s.v, up), vhv = sub(s.v, mul(up, vv)), vh = len(vhv), hb = len(s.r) - SELENE.R + s.yBot, g = SELENE.mu / dot(s.r, s.r), A = Math.max(aMax(), 0.1);
+    while (!s.landed && s.alive && k++ < 400000) { const up = norm(s.r), vs = sub(s.v, api.surfVel(SELENE, s.r)), vv = dot(vs, up), vhv = sub(vs, mul(up, vv)), vh = len(vhv), hb = len(s.r) - SELENE.R + s.yBot, g = SELENE.mu / dot(s.r, s.r), A = Math.max(aMax(), 0.1);
       if (k % 1000 === 0) log('descent', (hb / 1e3).toFixed(2), 'km, vv', vv.toFixed(1), 'vh', vh.toFixed(1), 'stage dv', api.dvRemaining(s).cur.toFixed(0), 'thr', s.throttle.toFixed(2), 'A', A.toFixed(2));
       if (vh <= 15 && s.parts.some(p => p.on && p.d.key === 'petrel') && hb > 1500 && api.dvRemaining(s).cur < 1.15 * Math.sqrt(2 * g * hb + vv * vv)) { log('lander short for the descent at', (hb / 1e3).toFixed(1), 'km (', api.dvRemaining(s).cur.toFixed(0), 'm/s left): dropping it, finishing on the return stage'); api.stage(s); continue; }
-      if (vh > 15) { point(mul(s.v, -1)); s.throttle = 1; }   // braking: kill the orbital speed
+      if (vh > 15) { point(mul(vs, -1)); s.throttle = 1; }   // braking: kill the orbital speed
       else { point(sub(mul(up, 1), mul(vhv, 0.08)));
         if (hb > 30) { const need = vv < 0 ? vv * vv / (2 * Math.max(hb - 15, 1)) + g : 0; s.throttle = need > 0.85 * A ? Math.min(1, need / A) : 0; }   // suicide burn: fall until the stop needs 85 % of full thrust
         else { const vt = -Math.max(1.2, 0.08 * hb); s.throttle = Math.min(1, Math.max(0, (g + 1.5 * (vt - vv)) / A)); } }   // the last 30 m, gently

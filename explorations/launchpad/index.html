@@ -211,7 +211,10 @@ function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if
   b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
 addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
 // position and velocity of b relative to its parent at time t
-function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
+// The moons run on program time: ORB_T0 is the program time at the flight's t = 0 (set at lift-off; a replayed tape keeps
+// the one it was recorded with; 0 headless, which is the old fixed start). Tellus needs none: flights start on whole days.
+let ORB_T0=0;const ORB_ABS=typeof document!=='undefined';
+function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*(t+ORB_T0)+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
   const c=Math.cos(E),s=Math.sin(E),q=Math.sqrt(1-e*e),x=o.a*(c-e),y=o.a*q*s,k=b.n*o.a/(1-e*c),vx=-k*s,vy=k*q*c,P=b.P,Q=b.Q;
   return[[x*P[0]+y*Q[0],x*P[1]+y*Q[1],x*P[2]+y*Q[2]],[vx*P[0]+vy*Q[0],vx*P[1]+vy*Q[1],vx*P[2]+vy*Q[2]]]}
 function moonPos(t){return bodyRel(SELENE,t)[0]}
@@ -254,8 +257,12 @@ function coastStep(b,r,v,t,h,pa){if(!pa)return kepler(r,v,h,b.mu);
   [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}   // (pertAcc without a threshold: on for the whole orbit)
 const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
 const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
-const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
-const bodyOmega=b=>b===TELLUS?b.rot:0;
+// Selene is tidally locked (sats session, rovers R3): it turns once per orbit, keeping its near side (planet-fixed -X)
+// toward Tellus. So a lunar day lasts an orbit (about 13 Tellus days), and Tellus stands still in the near side's sky.
+SELENE.lock=true;
+const lockTh=(b,t)=>{const p=bodyRel(b,t)[0];return Math.atan2(-p[2],p[0])};
+const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:b.lock?lockTh(b,t):0;
+const bodyOmega=b=>b===TELLUS?b.rot:b.lock?(b.lockW??(b.lockW=(()=>{const T=ORB_T0;ORB_T0=0;let d=lockTh(b,1)-lockTh(b,0);ORB_T0=T;return d-2*Math.PI*Math.round(d/(2*Math.PI))})())):0;
 const surfVel=(b,r)=>{const w=bodyOmega(b);return[w*r[2],0,-w*r[0]]};   // ω×r with ω along +Y
 const toPF=(b,v,t)=>rotY(v,-bodyTheta(b,t));
 const fromPF=(b,v,t)=>rotY(v,bodyTheta(b,t));
@@ -698,7 +705,8 @@ function rebuildShape(s){
 function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&groupFuel(s,s.grp[p.i])>1e-9)}
 function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
-function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
+// speeds against the surface low in the air, or near an airless body's ground (it turns: Selene's equator moves at 6 m/s)
+function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm?h<b.atm*0.5:h<0.03*b.R)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
 const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // ---- avionics generations (control session). SAS grows with the computing eras (COMP_ERAS): a gyro autopilot that only
 // holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
@@ -1669,7 +1677,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -3083,7 +3091,7 @@ function passScore(p,B,pass){const L=p.find(x=>x.b===B);if(L)return Math.abs(L.e
 function transferNode(s,X,ph,B,b){const o=B.orb,Pv=B.P,Qv=B.Q,p=o.a*(1-o.e*o.e),nu1=Math.atan2(-Pv[1],Qv[1]),cands=[nu1,nu1+Math.PI].map(nu=>({nu,r:p/(1+o.e*Math.cos(nu))}));
   const nd=cands[cands[0].r>cands[1].r?0:1],E=2*Math.atan(Math.sqrt((1-o.e)/(1+o.e))*Math.tan(nd.nu/2)),Mn=E-o.e*Math.sin(E),u=norm(add(mul(Pv,Math.cos(nd.nu)),mul(Qv,Math.sin(nd.nu))));
   const r0=len(s.r),a=(r0+nd.r)/2,tof=Math.PI*Math.sqrt(a**3/b.mu),vc=Math.sqrt(b.mu/r0),dvH=Math.sqrt(b.mu*(2/r0-1/a))-vc,tb=dvH/Math.max(engAcc(s),1e-3);
-  const TP=2*Math.PI/B.n;let tN=(Mn-o.M0)/B.n;while(tN-tof<simT+1800+tb)tN+=TP;while(tN-tof-TP>simT+1800+tb)tN-=TP;   // the next passage we can still make
+  const TP=2*Math.PI/B.n;let tN=(Mn-o.M0)/B.n-ORB_T0;while(tN-tof<simT+1800+tb)tN+=TP;while(tN-tof-TP>simT+1800+tb)tN-=TP;   // the next passage we can still make
   // when we're opposite the node, on the real parking orbit (its period, not 2πr/v from where we happen to be: over a day of
   // waiting that difference was tens of degrees)
   const tD=tN-tof,el=elements(s.r,s.v,b.mu),ang=r=>Math.atan2(-r[2],r[0]),nuDep=ang(mul(u,-1))-ang(el.P);let t1=simT+timeToNu(el,nuDep);
@@ -3117,11 +3125,11 @@ const MP={
     if(!X.sub){const e=elements(s.r,s.v,B.mu);X.tBurn=simT+Math.max(0,timeToNu(e,0)-60);X.wake=X.tBurn-ALIGN;X.sub='wait';return false}
     if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(simT>=X.tBurn-1e-6){X.sub='go';X.wake=null}return false}
     if(s.landed){s.throttle=0;X.noAuto=true;return true}
-    const up=norm(s.r),vv=dot(s.v,up),vhv=sub(s.v,mul(up,vv)),vh=len(vhv),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot,g=B.mu/dot(s.r,s.r),A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
+    const up=norm(s.r),vs=sub(s.v,surfVel(B,s.r)),vv=dot(vs,up),vhv=sub(vs,mul(up,vv)),vh=len(vhv),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot,g=B.mu/dot(s.r,s.r),A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
     // drop a stage that can't finish the descent while there's height to switch, and finish on the next
     if(vh<=15&&plan.length>1&&hb>1500&&dvRemaining(s).cur<1.15*Math.sqrt(2*g*hb+vv*vv)){stage(s);return false}
     if(typeof DEBUG_PROC!=='undefined'&&(X.dbgT==null||simT-X.dbgT>30)){X.dbgT=simT;HOOK.msg(`land: h ${(hb/1e3).toFixed(2)} km vv ${vv.toFixed(1)} vh ${vh.toFixed(1)} thr ${s.throttle.toFixed(2)} nose·up ${dot(qrot(s.q,[0,1,0]),up).toFixed(2)} stage dv ${dvRemaining(s).cur.toFixed(0)} plan ${plan.length} A ${A.toFixed(2)}`)}
-    if(vh>15){burnTo(s,{noAuto:plan.length<2},mul(s.v,-1),10);return false}   // braking: kill the orbital speed
+    if(vh>15){burnTo(s,{noAuto:plan.length<2},mul(vs,-1),10);return false}   // braking: kill the orbital speed
     aimAt(s,sub(up,mul(vhv,0.08)),25);
     const Au=A*Math.max(0.2,dot(qrot(s.q,[0,1,0]),up));   // only the upward part of the thrust stops the fall (a heavy stack on wheels wanders while it coasts)
     if(hb>30){const need=vv<0?vv*vv/(2*Math.max(hb-15,1))+g:0;s.throttle=need>0.7*Au?Math.min(1,need/Au):0}   // suicide burn, with 30 % in hand
@@ -3184,7 +3192,7 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
     else{const k=Math.min(budget,o[1]-pl.n);for(let j=0;j<k;j++)advPhys(s);pl.n+=k;budget-=k;if(pl.n>=o[1]){pl.i++;pl.n=0}}}
   return pl.i<ops.length&&s.alive}
 // the tape so far, when the pilot takes over mid-replay (recording continues from there)
-function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
+function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.orbT0=pl.tape.orbT0;T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
   for(let i=T.ops.length-1;i>=0;i--)if(T.ops[i][0]==='C'){T.lastK=JSON.stringify(T.ops[i][1]);break}return T}
 // ============================================================ rovers (sats session; NOTES § "Rovers: plan", R1)
 // A rover is its own kind of vessel, designed in the Rover yard rather than the rocket builder (rovers lie down, rocket
@@ -3417,7 +3425,7 @@ in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
-uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
@@ -3663,10 +3671,13 @@ void main(){
  }else if(tM<1e29){
   vec3 p=d*tM-uMc,n=normalize(p);
   // crater relief: the height field's slope along the sun direction tilts the lighting (2 evaluations, no normal map)
-  float cr=crat(n*18.)+.5*crat(n*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(d*tM+uMdet):.5;
-  vec3 ts=normalize(uSun-n*dot(uSun,n));float e=.004,cr2=crat(normalize(n+ts*e)*18.)+.5*crat(normalize(n+ts*e)*55.);
+  // Selene turns (tidally locked): its markings and detail are in its own frame (uMrot = cos, sin of its angle)
+  #define MB(v) vec3(uMrot.x*(v).x-uMrot.y*(v).z,(v).y,uMrot.y*(v).x+uMrot.x*(v).z)
+  vec3 nb=MB(n),nb2=MB(normalize(n+normalize(uSun-n*dot(uSun,n))*.004));
+  float cr=crat(nb*18.)+.5*crat(nb*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(MB(d*tM)+uMdet):.5;
+  float cr2=crat(nb2*18.)+.5*crat(nb2*55.);
   float slope=clamp((cr2-cr)*1.4,-.9,1.2);
-  float base=.16+.09*fbm(n*3.)-.07*smoothstep(.5,.65,fbm(n*1.6+3.));
+  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.));
   vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
   float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
  }else{
@@ -5416,7 +5427,7 @@ function render(){
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000));
+   {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
@@ -5757,6 +5768,7 @@ function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||
 function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!q||!flyable(q))return;
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad
+  if(ORB_ABS)ORB_T0=day0*DAY_S;
   const s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
   const R=s.rec=recNew();Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
   S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
@@ -5965,7 +5977,7 @@ function updateAutoBtn(){updateProcBtn();const t=loadTape();$('bAuto').classList
 $('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0)];if(!pr)return;if(pr.site&&siteById(pr.site))PROG.site=pr.site;resetShip();procStart(S,pr);if(recTape)recTape.byProc=true;updateAutoBtn();
   HOOK.msg(`Procedure: ${pr.by}, ${pr.kind==='mission'?pr.sig.replace(':',' '):'to orbit'}, the best flown so far · any control key takes over`)};
 function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
-$('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
+$('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
 $('bSaveTape').onclick=()=>{if(recTape&&recTape.byProc&&!player){HOOK.msg('This flight was flown by a procedure: it is already automated (the ▶ Procedure button)');return}if(recTape&&recTape.fromOrbit&&!player){HOOK.msg('Autopilot tapes start from the pad: this flight began in orbit');return}try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops,site:T.site}));
   HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};
 function nodeAtApoapsis(){if(!S.alive||S.landed)return;if(!toolOK('nodes')){HOOK.msg(gateMsg('nodes'));return}const el=elements(S.r,S.v,S.body.mu);
