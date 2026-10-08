@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.17.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.19.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1006,7 +1006,10 @@ clocks (else the first render would replay their ignition), then render every st
 ## Performance pass: all the engine and air FX together (2026-10-07, aerofx session)
 
 Each effect had been measured alone. The heaviest scene: the Heavy at night, ~10 m up (three plumes on the pad, the
-ground cloud, plume light, floodlights). 1280×800, RS 1, RTX 5050 laptop. Frame frozen; each configuration removes one
+ground cloud, plume light, floodlights). 1280×800, RS 1. **Correction (2026-10-08):** headless Chrome was on the Intel
+iGPU for these, not the RTX 5050 (`GPU_NAME` was never checked; `--force_high_performance_gpu` picks the RTX). The
+before/after comparisons are valid (same GPU throughout), but the absolute times are iGPU times; the same scenes take
+4–6 ms on the RTX. The same likely holds for the per-effect costs quoted in the sections above from this session. Frame frozen; each configuration removes one
 effect; the configurations are interleaved over 4 rounds (alternating order) after a 6 s warm-up; median of the middle two.
 
 | configuration | before | after |
@@ -1027,6 +1030,42 @@ effect; the configurations are interleaved over 4 rounds (alternating order) aft
   trail predates this session), plumes ~1 ms for three, impingement 1.7, plume light ~0.2.
 - **Measuring on this laptop:** the GPU idles at 0 MHz and ramps its clock under load, so back-to-back samples drifted by
   ±10 ms and removing an effect could read slower. A warm-up plus interleaved rounds gave spreads under 0.5 ms.
+
+## Clouds with depth near the camera (2026-10-08, aerofx session)
+
+Caio: the clouds look good from space, but at launch they are a flat layer. The deck was one infinitely thin shell at
+3 km. Now, below ~20 km, the deck within 40 km is a raymarched slab from 2 to 5.5 km. The shell still draws beyond that
+and from orbit, so space views are unchanged.
+
+- **Coverage is unchanged, only given height.** The volume reads `cloudCovF`, the same function the shell uses and that
+  `cloudAt` ports to the CPU for satellite imaging, so pictures and the drawn sky still agree. It is baked into a 512²
+  texture over ±50 km round the point under the camera (gnomonic; `COV_FS` is sliced out of `SKY_FS`'s own source, so
+  there is one copy of the noise), re-baked after 5 km of travel or noticeable weather drift. Calling `cloudCovF` per
+  step would cost 15 value-noise calls × 40+ steps per pixel.
+- **Shape (`cloudDens`):** a column's top height rises with its cover (thin cover makes low puffs, thick cover towers),
+  times a km-scale noise so neighbouring columns differ; flat bases; two octaves of 3D noise (650 m, 230 m,
+  planet-fixed, drifting with the weather) erode it into billows.
+- **March:** 72 steps, spaced as x² so they are dense near the camera; the volume hands over to the shell between 50 %
+  and 100 % of 40 km. Extinction 1/180 m⁻¹ at full density; the sky depth is written where the cloud passes 50 %
+  opacity (meshes behind it hide).
+- **Light:** two steps toward the sun (250 m, 800 m) for self-shadowing, plus a multiple-scattering stand-in
+  (max(e^(−2.2 d), 0.4 e^(−0.35 d))); without it the inside of a cloud was mid-grey instead of bright grey-white. Tops
+  brighter than bellies; sky ambient; aerial perspective as the shell's.
+- `CLOUD_VOL = false` restores the flat shell everywhere. `CLOUD_DT` shifts the *drawn* weather in time for reference
+  views only (`cloudAt` ignores it). Views 80–83 search it for ~60 % cover under the rocket.
+- **Cost:** no measurable change on the RTX 5050 (pad 4.1 vs 4.4 ms, 3 km 5.6 vs 5.6, 8 km 5.4 vs 5.7, on vs off):
+  within 40 km it replaces the shell's near-detail term. Also no worse on the Intel iGPU.
+
+**Bugs on the way:** (1) the bake's centre used the transpose of the shader's `uProt` (planet rotation), so the texture
+sat over the wrong place and the volume saw zero cover: the clouds just vanished. (2) the first reference views found
+clear sky: the weather at the pad was simply clear, hence `CLOUD_DT`; then the 8 km view was clear because the rocket is
+downrange of the pad by then, so the search is now under the rocket. (3) bank tops against the sky were sawtoothed at
+48 uniform steps (grazing rays 40 km long); x² spacing and 72 steps fixed it.
+
+Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `83` 25 km (shell only).
+
+**Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
+anvils; the deck from 8 km is still fairly uniform in brightness.
 
 ## Program design — direction and parking lot (2026-10-06)
 
@@ -1122,7 +1161,7 @@ physical. `study_control.mjs` measures the control budget (`node study_control.m
 nozzle centres when the throttle is cut; the Heavy's boosters add roll authority, the Orbiter's one engine none; the
 steerable dart turns 30° in < 0.6× the passive time, plates within range and rate; fin authority ∝ q and none in vacuum,
 and they roll a wheel-less dart. Changed: §5's yank check now asks for a joint ≥ 80 % (was "snaps", at exactly 100 %);
-§12's tape kick 0.95 → 1.2 s. 247 checks pass.
+§12's tape kick 0.95 → 1.2 s. 247 checks pass on the slice, 262 after merging main (sats Phase C).
 
 **For other sessions**
 - **visuals:** `p.gv` (engine, vessel frame, |gv| = sin of the deflection) and `p.fd` (steerable fin, one angle per
@@ -2097,8 +2136,65 @@ Also checked: no abort without a tower; the automatic jettison above 30 km; afte
 trip into Selene's SOI and home completes "Crew around Selene"; a crashed crewed capsule loses its crew. The Big Lunar preset
 (lander, heat shield, return) is the natural base for the crewed landing: swap its pod for a crew capsule and add a tower.
 
+### The Crewed Lunar preset (2026-10-08)
+
+`PRESETS['Crewed Lunar']`: Big Lunar with a crew capsule (+0.56 t) under an escape tower, a 2 t return tank, a 12 t lander
+(t8 + t4), a stretched core (T32 + T32) and four boosters; 127.6 t. Sized by **flying candidates to orbit** with the test
+ascent and a swept gravity turn, then reading what's left per stage. The budget it has to meet: Hohmann arrival at Selene
+v∞ ≈ 470 m/s, so landing ≈ √(470² + 1,061²) ≈ 1,160 m/s plus losses (~1,250), and the return is the same.
+
+| design (best turn) | to orbit | left: lander / return | verdict |
+|---|---|---|---|
+| Big Lunar (pod, no crew) | 4,289 | 2,698 / 1,456 | the reference |
+| crew + t2 return, t4t4 lander, 2 boosters | 4,308 | 1,808 / 1,832 | lander short |
+| crew + t2 return, t8t4 lander, 4 boosters | never reaches orbit | | 61 kPa max-q, short core |
+| crew + t2 return, t8t4 lander, 2 boosters, T32T32 | never reaches orbit | | |
+| **crew + t2 return, t8t4 lander, 4 boosters, T32T32** | **4,358** | **2,817 / 1,832** | ✔ ~800 m/s spare |
+| same + 1 t more lander tank | 4,361 | 2,889 / 1,832 | +72 m/s, not worth a part |
+
+Lessons from the sizing:
+- **The turn matters as much as the tanks.** The Orbiter-tuned ascent spends 7,289 m/s getting Big Lunar to orbit. Turning
+  from 200 m and flat by 38 km spends 4,358. A crewed Selene mission is a piloting problem as much as a design one.
+- **The builder's TWR column is sea-level thrust.** The Petrel lander reads 0.10 there but is 0.61 in vacuum (≈ 3.7 in Selene's
+  gravity), so landing isn't a thrust problem.
+
+Checks (§26): orbit for 4,358 m/s at 31.6 kPa and 3.5 g, the tower gone, 2,817 / 1,832 m/s left; stable (1.31 cal) with the crew
+capsule as root. It also passes the preset-wide checks (stage maths, loads analysis).
+
+### Flown end to end: a crew to Selene and home (2026-10-08)
+
+`fly_crewlunar.mjs` (run it on its own for the log; `test.mjs` §27 checks it) flies Crewed Lunar through the game's own physics
+from the pad to a splashdown. Attitude is set directly; everything else (thrust, staging, aero, heating, both moons' pull, rails,
+the predictor, crew limits) is the game's. It completes **"Crew on Selene"** in **2.4 days**:
+
+| leg | result |
+|---|---|
+| ascent (vertical to 200 m, flat by 38 km) | 102 × 111 km, 2,817 / 1,832 m/s left, tower gone, cabin 311 K |
+| transfer at the Hohmann phase angle (+1,321) | apoapsis at Selene's distance, aimed at its centre |
+| mid-course correction found with the predictor | 33 m/s → a 38 km pass |
+| capture at periapsis, then periapsis raised at apoapsis | low orbit, 1,087 m/s left in the lander |
+| braking, then a suicide burn | lander dropped at 28.8 km (short for the descent), the return stage lands: **1.2 m/s, upright**, 1,435 m/s left |
+| ascent (pitch over by 3 km) | 15 × 20 km, 553 m/s left |
+| burn home (scan of burn point × size for a 45 km perigee), correction 11 m/s at the integrated lowest point | one clean entry, shield first |
+| entry, chute | splashdown **6.5 m/s**, peak **4.1 g**, cabin 250 K; crew fine |
+
+**What flying it found** (each was wrong until the flight tried it):
+1. **The crew cooked on the way up.** After the tower goes at 30 km the capsule is the nose; its skin reaches 520 K, and the
+   animal capsule's 10-minute cabin lag put the cabin at 387 K. The crew capsule now has `ins: 3600` (cabin lags the skin by an
+   hour, insulated and cooled as real ones were): 311 K.
+2. **A hovering descent is a fuel sink.** Easing down from 30 km at a few m/s spent the whole return stage (0 m/s left). A
+   suicide burn (fall until stopping needs 85 % of full thrust) is the efficient way.
+3. **Stage on need, not on empty.** The lander ran dry 1.6 km up mid-burn and the craft hit at 28 m/s. Comparing what's left with
+   what the descent needs (≈ 1.15·√(2gh + v²)) when braking ends drops it at 28.8 km instead.
+4. **No air on Selene: pitch over at once.** A 12 km pitch program spent 1,034 m/s reaching orbit; 3 km spends ~880.
+5. **A periapsis snapshot isn't where you'll be.** The return correction first aimed with the osculating perigee; the moons'
+   tides moved it ~33 km over the next day, and the capsule **aerobraked through nine passes at 70–78 km** before coming down
+   (alive, at 4.4 days). Aiming at the predictor's integrated path (`minR`) gives one pass.
+6. Small ones: the capture burn's cutoff must not depend on reaching a near-circular orbit (it burned through everything);
+   automatic staging must stop at the last engine stage (it staged the capsule loose and popped the chute in vacuum).
+
 **Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
-"Other"); crew transfer and EVA; a crewed preset.
+"Other"); crew transfer and EVA; the flight script's attitude is set directly (a piloted version, or an autopilot from it, is open).
 
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
@@ -3064,6 +3160,82 @@ Two halves launched together (or a module you just released) can now dock to eac
 - **Not yet:** the arm taking a payload out (Phase D), or putting one back in for the trip home (retrieval); a side-
   opening shuttle-style bay (needs an "inside" attach in the editor); a 2.5 m bay; the doors' look (they read a little
   oddly mid-swing, for the visuals session); the editor doesn't yet say whether a payload fits.
+
+### Phase C built: modules, side ports and station state (sats session, 2026-10-08)
+
+**Caio: keep it modular, ports placeable on any structure.** So there's no hub module: any part with radial ports is a hub.
+
+- **Radial docking port** (palette *Structure*): a surface part (with symmetry, like an RCS quad) that faces out from the
+  side of whatever it's mounted on, its face 0.3 m off the skin. Every port now has its own face and axis (`portGeom`:
+  a stack port faces up its line, a radial one outward), and docking, port loads, undocking, the Port / Line-up rows and
+  the Docking mode all use it. A radial port's contact shape is its cylinder turned onto the radial axis.
+- **The Docking mode now commands a whole attitude**, roll included. Aiming the nose can't bring a side port round when
+  the turn needed is a roll about the nose itself (it sat at 90° doing nothing). It now asks for the minimal rotation
+  that puts our port's axis onto the target port's, and the attitude controller drives the full rotation error. A nose
+  port is unchanged; every other SAS mode keeps its old code path. Measured: a side port 90° off locks on in 10 s and
+  then tracks the target port as it turns with its own orbit (an early check compared against the port's starting
+  direction and read 4.6° after 40 s: that was the target moving, 0.0011 rad/s).
+- **Line up** shows the offset and drift on the two body axes across *our* port's axis, in the RCS keys that fix them
+  (L/J for X, I/K for Y, U/O for Z): a side port's approach distance is no longer reported as a sideways offset.
+- **Modules:** *Habitat module* (berths for three, 300 kg of supplies: 60 crew-days) and *Laboratory module* (palette
+  *Station*). New resource `sup` (supplies).
+- **Crew** builds on the bodies session's crew capsule: a capsule counts if it flew real people (the escape tower
+  qualified), not dummies. Registered shapes now keep each part's resources and mark crewed capsules (`shapeOf`).
+- **A station** is a registry stack with a habitat or a lab (`stationOf`): berths, crew (people in crewed capsules
+  docked to it, up to the berths; each capsule stays as its crew's lifeboat), labs, supplies (pooled across the stack),
+  free ports. **Between flights** (`stationTick`, from `satTick`): the crew uses 5 kg per crew-day; labs work at up to
+  two people each and add lab-days to the station and the program (`PROG.labDays`). Supplies low (under 10 days) and out
+  make headlines; out of supplies, the lab stops (nobody is harmed or evacuated by fiat). The Program panel shows a
+  line per station.
+- Checks (`test.mjs` §30): radial port geometry; a module docking onto a hub's side at right angles; the side port's
+  load and undocking along its axis (0.300000000 m/s); the Docking mode bringing a side port round from 90°; station
+  state (3 berths, crew 2, 1 lab, 30 days); 40 days between flights (supplies out after 30, 60 lab-days, the headline);
+  dummies bring no crew. §28's Docking-mode check updated for the attitude target. Browser: four side ports on a hub,
+  a lab module docking onto one.
+- **Bringing a crew home needs A2** (a capsule left at a station has to be flyable in a later flight). That's next.
+- **Not yet:** power; transferring supplies or fuel explicitly (supplies pool across a station; fuel doesn't cross);
+  a port facing down a stack (parts can't be flipped; side ports and top ports cover most needs).
+
+**Contract types proposed to the economy session** (for them to price and schedule; nothing built on the contract board):
+1. **First station** (flagship, milestone payments): a habitat in a stable orbit with two free ports → a crew visits
+   (a crewed capsule docks) → a lab added → 30 crewed days.
+2. **Resupply** (repeatable, generated from a station's supply days): deliver N kg of supplies to station X before it
+   runs out (dock a module carrying `sup`). Urgency rises as the days fall.
+3. **Lab time** (science or commercial client): N lab-days on station X within D days. Pays per lab-day.
+4. **Crew rotation** (needs A2): bring the crew home and replace them before the supplies or their tour runs out.
+5. **Expansion** (a client's module): dock a module of a given type to station X (e.g. a commercial lab, a hotel
+   habitat once tourism exists).
+6. **Reboost** (once orbits decay): raise station X's periapsis above a floor.
+
+### A2 built: vessels that stay flyable across flights (sats session, 2026-10-08)
+
+- **What a registry entry keeps now:** its design (`q.stack`), its state (`q.vst`: which of the design's stage segments
+  have ignited, SAS mode, RCS, chute) and, per shape part, its index in that design (`o.oi`). Vessels that separated keep
+  their parts' design indices (`p.oi`, `p.oseg`), so any descendant of a design rebuilds the same way. Entries from before
+  this have no design and stay passive (no Fly button).
+- **Rebuilding** (`vesselOf`): assemble the design again, switch off the parts the entry no longer has, restore
+  resources (fuel, supplies), crew aboard (`p.crewAboard`) and flight marks, find the next staging event from what's left
+  (the first with something still to drop, a segment not yet lit, or a chute), carry whatever is docked, and place it on
+  its rails at that moment. Staging is *derived*, not stored as an index, because a separated vessel's stage list is a
+  re-indexed subset of its design's.
+- **Fly** (Program panel, a flyable vessel in the satellites list): a flight that starts in orbit on the next whole day.
+  No hardware to buy; the fixed operations fee (`OPS_FIX`) is charged as for any flight (**economy:** your call). The
+  flight record says `fromOrbit` (and its tape can't be saved as an autopilot: tapes replay from the pad).
+- **In a flight:** `]` / `[` also reach your flyable vessels within 2.5 km, loading them into the flight as you switch
+  (tape op `['L', id]`). Undocking a body that can be flown gives a flyable vessel, not a passive satellite. A vessel that
+  came from the register goes back on it as itself (id, name, history: images, lab-days).
+- **Crew:** a capsule keeps its crew across flights. Switching to a vessel with crew aboard makes them this flight's crew
+  (the bodies session's crew rules then apply: air, g, cabin, home safe). So **crew rotation works**: fly the station,
+  undock the crewed capsule, switch to it, bring it home; a new crew docks theirs.
+- Checks (`test.mjs` §31): rebuild through a save (parts, fuel, mass, place, staging); a separated vessel rebuilds with
+  its engine still lit; identity on re-registration; a station flown again undocks its crewed capsule as a flyable
+  vessel with its crew of 2; a nearby flyable vessel loads into the flight and returns as itself. Browser: the Fly button
+  and a flight starting at 300 km.
+- **For economy:** a flight from orbit could complete orbit contracts with something already up (`R.fromOrbit` lets you
+  rule that out), and whether to charge operations for it is yours.
+- **Not yet:** a design changed in the builder after launch doesn't affect what's in orbit (each entry keeps its own
+  copy), but a part definition changed by an update (heights, masses) shifts a rebuilt vessel slightly from its saved
+  shape; temperatures restart cold.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

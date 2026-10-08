@@ -1,12 +1,13 @@
 // Headless checks for Launchpad's simulation core. Run: node test.mjs
 // Extracts the "SIM BEGIN … SIM END" block from index.html and drives it with no DOM or GL.
 import { readFileSync } from 'node:fs';
+import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -1090,6 +1091,27 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
 }
 
+// 26. The Crewed Lunar preset (bodies session): to orbit on a tuned turn, tower gone, enough left for Selene and home.
+{
+  const r = fly('Crewed Lunar', { turnStart: 200 * AS, turnEnd: 38000 * AS, verbose: false }), s = r.s, plan = api.dvPlan(s, 0).map(x => x.dv);
+  const lander = plan[plan.length - 2] || 0, ret = plan[plan.length - 1] || 0, tower = s.parts.some(p => p.on && p.d.kind === 'les');
+  check('Crewed Lunar reaches orbit, sheds its tower, and keeps ≥ 2,600 m/s in the lander and ≥ 1,250 to come home', r.phase === 'done' && s.alive && !tower && plan.length === 2 && lander >= 2600 && ret >= 1250,
+    `orbit for ${r.dvUsed.toFixed(0)} m/s, max q ${(r.maxQ / 1e3).toFixed(1)} kPa, ${r.maxG.toFixed(1)} g; left: lander ${lander.toFixed(0)}, return ${ret.toFixed(0)} m/s (transfer 1,321 + landing ~1,250; return ~1,250)`);
+  const c = api.newShip(api.PRESETS['Crewed Lunar']), pr = api.probe(c, { M: 0.6, aoa: 4, q: 5000, h: 3000 }), cal = (pr.ycm - pr.ycp) / (2 * c.radius);
+  check('Crewed Lunar is stable (CoM ahead of CoP) and its root is the crew capsule', cal > 0.3 && c.root && c.root.d.key === 'crew', `margin ${cal.toFixed(2)} cal, ${(c.mass / 1000).toFixed(0)} t, root ${c.root && c.root.d.name}`);
+}
+
+// 27. A crewed Selene landing and return, flown end to end on Crewed Lunar (bodies session; the flight is fly_crewlunar.mjs).
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, day: P.day }), H = { ...api.HOOK };
+  const R = crewLunar(api);
+  check('Crewed Lunar flies a crew to Selene and home: a soft landing there, one clean entry here, crew fine, "Crew on Selene" done',
+    R.done && R.home && R.crewed && R.crewOK && R.landing.landed && R.landing.v < 4 && R.landing.tilt < 10 && R.passes.length === 1 && R.g < 8 && R.days < 10,
+    `orbit with ${R.orbit.left.map(x => x.toFixed(0)).join('/')} m/s left, cabin ${R.orbit.cabin.toFixed(0)} K · corrections ${R.mcc.toFixed(0)} + ${R.retCorr.toFixed(0)} m/s · landed at ${R.landing.v.toFixed(1)} m/s with ${R.landing.left.map(x => x.toFixed(0)).join('/')} left · ` +
+    `back in Selene orbit with ${R.ascent.left.map(x => x.toFixed(0)).join('/')} · ${R.passes.length} entry pass · splashdown ${R.touch.toFixed(1)} m/s, peak ${R.g.toFixed(1)} g, cabin ${R.cabin.toFixed(0)} K, ${R.days.toFixed(1)} days`);
+  Object.assign(P, JSON.parse(saved)); Object.assign(api.HOOK, H);
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
@@ -1551,7 +1573,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('vessel docking: two vessels you are not flying dock to each other (the earlier one hosts)', both, `fleet now: ${D.FLEET.map(v => v.name + (v.att.length ? ' + ' + v.att.map(x => x.e.name).join() : '')).join(', ')}`);
   // targeting a vessel: the Docking mode turns the nose against its port
   ({ s, b } = scene({ gap: 3, close: 0 })); b.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + 0.2), s.q); Object.assign(s, { sas: true, sasMode: 'dock', tgtV: b });
-  const want = mul(D.qrot(b.q, [0, 1, 0]), -1), got = D.sasTarget(s), err = Math.acos(Math.min(1, dot(got, want))) * 57.29578;
+  const want = mul(D.qrot(b.q, [0, 1, 0]), -1), got = D.qrot(D.sasTarget(s).q, [0, 1, 0]), err = Math.acos(Math.min(1, dot(got, want))) * 57.29578;   // the mode gives an attitude; our nose port's axis there
   check('vessel docking: a vessel can be the target; the Docking mode aims at its port', err < 1e-4, `aim error ${err.toExponential(1)}°`);
   // a flight ending with a vessel docked: one stack registered, and the save (JSON) works (the kept vessel isn't saved)
   ({ s, b } = scene()); D.fleetContacts(D.DT); D.satRegister(s, { day0: 0 }); D.dockEnd(s); let js = null; try { js = JSON.stringify(P.sats); } catch (e) { js = 'ERR ' + e.message; }
@@ -1836,6 +1858,93 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('steerable fins: authority grows with q (≈4× from 150 to 300 m/s), none in vacuum; they roll a wheel-less dart, a passive ring does not',
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
+}
+
+// 30. Stations (sats session, stations plan Phase C): radial ports on any structure, habitat and lab, station state and
+// what passes between flights. Own sim instance.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,contactStep,satRegister,satAt,satSpin,sasTarget,undock,portsOf,stationOf,stationTick,PROG,TELLUS,DT,qrot,qFromTo,get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3, fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  // a hub: a probe core on a tank, with one radial port on the tank's side (facing +X of the vessel)
+  const hub = () => { D.t = 0; const d = D.toV2(['core', 't2']); fnd(d.root, 't2').c.push({ k: 'rport', at: { y: 1.0, a: 0, n: 1, cy: 0.5 }, c: [] });
+    const s = D.newShip(d); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], q: [0, 0, 0, 1], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    s.rec.launched = true; s.rec.day0 = 0; return s; };
+  let s = hub(); const rp = D.portsOf(s.parts.filter(p => p.on), new Set()).find(x => Math.abs(x.ax[1]) < 1e-9);
+  check('stations: a radial port on a tank faces out from its side, its face 0.3 m off the skin', rp && Math.abs(rp.ax[0] - 1) < 1e-9 && Math.abs(rp.face[0] - 0.925) < 1e-9,
+    rp ? `axis (${rp.ax.map(x => x.toFixed(2)).join(', ')}), face ${rp.face[0].toFixed(3)} m from the axis` : 'no radial port found');
+  // a habitat module with a nose port, registered so its port faces the hub's side port, 0.1 m off
+  const module = (s, gap, axis) => { Object.assign(P, { sats: [], satN: 0 }); const k = D.newShip(['port', 'hab']); k.landed = false; k.rec.launched = true; k.rec.day0 = 0;
+    const n = D.qrot(s.q, [1, 0, 0]), face = add(s.r, D.qrot(s.q, sub(rp.face, s.cm))), Y = axis || mul(n, -1); k.q = D.qFromTo([0, 1, 0], Y);
+    k.r = sub(add(face, mul(n, gap)), mul(Y, k.yTop)); k.v = s.v.slice(); D.satRegister(k, { day0: 0 }); return P.sats[0]; };
+  let q = module(s, 0.1); const n = D.qrot(s.q, [1, 0, 0]); s.v = add(s.v, mul(n, 0.15));
+  for (let i = 0; i < 200 && !s.att.length; i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); }
+  const a = s.att[0], perp = a ? Math.abs(dot(D.qrot(a.q, [0, 1, 0]), [0, 1, 0])) : NaN;
+  check('stations: a module docks onto a hub\'s side port, at right angles to the hub', a && a.e === q && perp < 1e-9, `${a ? a.e.name + ' docked' : 'no latch'}; its axis · the hub's axis = ${perp.toExponential(1)}`);
+  // the side port carries the load like any port, and undocking pushes off along its own axis
+  s.aB = [2, 0, 0]; s.alB = [0, 0, 0]; s.wB = [0, 0, 0]; D.contactStep(s, D.DT); const load = a.load;
+  s.w = [0, 0, 0]; D.undock(s, q.id); const [, vq] = D.satAt(q, D.t), sep = dot(sub(vq, s.v), n);   // (latching off-axis left a slow turn; stop it to measure the push alone)
+  check('stations: the side port carries its load and undocks along its own axis', load > 0 && load < 1 && Math.abs(sep - 0.3) < 1e-6, `load at 2 m/s² sideways ${(load * 100).toFixed(1)} %; separation ${sep.toFixed(9)} m/s along the port`);
+  // the Docking mode turns the hub so its side port faces a target port that points another way (here along +Z)
+  s = hub(); q = module(s, 3, [0, 0, 1]); Object.assign(s, { sas: true, sasMode: 'dock', target: q.id });
+  for (let i = 0; i < 40 / D.DT; i++) D.physStep(s, D.DT);
+  const [qr, qv] = D.satAt(q, D.t), Ab = D.qrot(D.satSpin(q, D.t, qr, qv).q, [0, 1, 0]), off =   // the target port turns with its orbit; aim where it is now
+    Math.acos(Math.min(1, -dot(D.qrot(s.q, [1, 0, 0]), Ab))) * 57.29578;
+  check('stations: the Docking mode turns a side port to face its target (it aims the port, not the nose)', off < 1, `side port ${off.toFixed(2)}° off after 40 s (90° at the start)`);
+  // station state from a registered stack: a crewed capsule, a habitat, a lab
+  Object.assign(P, { sats: [], satN: 0, labDays: 0 }); const st0 = (crewed) => { const k = D.newShip(['crew', 'hab', 'lab']); Object.assign(k, { landed: false, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    k.rec.launched = true; D.satRegister(k, { day0: 0, crewed, crewOK: true }); return P.sats[P.sats.length - 1]; };
+  q = st0(true); let st = D.stationOf(q);
+  check('stations: a crewed capsule, a habitat and a lab make a station: 3 berths, crew 2, 1 lab, 60 crew-days of supplies (30 days for two)', st && st.berths === 3 && st.crew === 2 && st.labs === 1 && Math.abs(st.days - 30) < 1e-9,
+    st ? `berths ${st.berths}, crew ${st.crew}, labs ${st.labs}, supplies ${(st.sup * 1000).toFixed(0)} kg = ${st.days.toFixed(1)} days, ${st.ports} free ports` : 'not a station');
+  // between flights: 10 days use 100 kg and earn 20 lab-days; of 30 more, supplies last 20 (40 more lab-days, 60 in all), and say so
+  const news = []; const nw = q => q; D.stationTick(10); const a10 = D.stationOf(q).sup, l10 = q.labDays; D.stationTick(30); st = D.stationOf(q);
+  check('stations: between flights the crew uses supplies and the lab earns lab-days, until the supplies run out', Math.abs(a10 - 0.2) < 1e-9 && Math.abs(l10 - 20) < 1e-9 && st.sup < 1e-12 && Math.abs(q.labDays - 60) < 1e-9 && q.supOut,
+    `after 10 days ${(a10 * 1000).toFixed(0)} kg and ${l10.toFixed(0)} lab-days; after 40, ${(st.sup * 1000).toFixed(0)} kg and ${q.labDays.toFixed(0)} lab-days (out: ${!!q.supOut})`);
+  // dummies don't count: the same stack flown before the escape tower qualified has no crew
+  Object.assign(P, { sats: [] }); q = st0(false); st = D.stationOf(q);
+  check('stations: a capsule that flew dummies brings no crew', st.crew === 0 && st.seats === 0, `crew ${st.crew}`);
+  Object.assign(P, { sats: [], satN: 0, labDays: 0 });
+}
+
+// 31. Vessels that stay flyable across flights (sats session, stations plan A2): a registered vessel rebuilds from its
+// design (parts, fuel, staging, crew), as itself, through a save; undocking a flyable body gives a vessel; a nearby one
+// loads into the flight. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,geom,stage,satRegister,fleetEnd,dockEnd,fleetContacts,vesselOf,flyable,loadEntry,nearbyFlyable,undock,activeEngines,crewOn,FLEET,PROG,TELLUS,DT,qrot,qmul,qaxis,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3, round = q => JSON.parse(JSON.stringify(q));   // as through a save
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  const fly = (stack, crewed) => { D.FLEET.length = 0; D.t = 0; const s = D.newShip(stack); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; Object.assign(s.rec, { launched: true, day0: 0, crewed: !!crewed, crewOK: true }); D.S = s; return s; };
+  // a probe stage after its booster dropped, some fuel used: registered, saved, rebuilt
+  let s = fly(['core', 't1', 'dec', 't1', 'sparrow']); for (let k = 0; k < 4 && s.evIdx < s.events.length; k++) D.stage(s);
+  const tk = s.parts.find(p => p.on && p.d.key === 't1'); tk.res.fuel = 0.37; D.geom(s); D.satRegister(s, s.rec); let q = round(P.sats[0]); P.sats[0] = q;
+  let v = D.vesselOf(q, 0); const keys = vv => vv.parts.filter(p => p.on).map(p => p.d.key).sort().join(), fuel = v.parts.find(p => p.on && p.d.key === 't1').res.fuel;
+  check('A2: a registered vessel rebuilds from its design through a save: same parts, fuel, mass, place, nothing left to stage', D.flyable(q) && keys(v) === keys(s) && Math.abs(fuel - 0.37) < 1e-12 && Math.abs(v.mass - s.mass) < 1e-6 && len(sub(v.r, s.r)) < 1e-6 && v.evIdx === v.events.length,
+    `${q.name}: ${keys(v)}; fuel ${fuel.toFixed(2)} t; mass ${(v.mass / 1000).toFixed(3)} t (was ${(s.mass / 1000).toFixed(3)}); staging ${v.evIdx}/${v.events.length}`);
+  // a vessel split off another rebuilds too: the separated probe, its engine still lit
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['pod', 't1', 'dec', 'core', 't1', 'sparrow']); for (let k = 0; k < 4 && !D.FLEET.length; k++) D.stage(s);
+  const probe = D.FLEET[0]; D.fleetEnd(s.rec); q = round(P.sats.find(x => x.shape.some(o => o.k === 'core'))); v = D.vesselOf(q, 0); v.throttle = 1;
+  check('A2: a vessel that separated from another rebuilds from the original design, its engine still lit', probe && keys(v) === keys(probe) && D.activeEngines(v).length === 1,
+    `${q.name}: ${keys(v)}; engines lit ${D.activeEngines(v).length}`);
+  // identity: flown again and re-registered, it's the same object (id, name, history)
+  P.sats = [q]; q.labDays = 7; v = D.vesselOf(q, 0); P.sats = []; D.satRegister(v, { day0: 0 }); const back = P.sats[0];
+  check('A2: flown again and re-registered, it is the same object (id, name, its history)', back.id === q.id && back.name === q.name && back.labDays === 7, `${back.name} #${back.id}`);
+  // a crewed capsule docked at a station, saved; the station flown again; the capsule undocks as a flyable vessel, crew aboard
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['port', 'hab'], true); const cap = D.newShip(['port', 'crew']); Object.assign(cap, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], name: 'Capsule' });
+  const Y = D.qrot(s.q, [0, 1, 0]); cap.q = D.qmul(D.qaxis([0, 0, 1], Math.PI), s.q); cap.r = add(s.r, mul(Y, s.yTop + 0.05 + cap.yTop)); cap.v = add(s.v, mul(Y, -0.1)); cap.fleet = true;
+  cap.rec = { launched: true, day0: 0, mini: true }; D.FLEET.push(cap); D.fleetContacts(D.DT); D.satRegister(s, s.rec); D.dockEnd(s);
+  q = round(P.sats[0]); P.sats = [q]; const crewSaved = q.attached[0].e.shape.find(o => o.k === 'crew').crew;
+  // (the flight's record said crewed: the capsule's crew is in the save)
+  const st = D.vesselOf(q, 0); P.sats = []; D.S = st; D.FLEET.length = 0; D.undock(st, q.attached[0].e.id); const cv = D.FLEET[0];
+  check('A2: a station flown again undocks its crew capsule as a flyable vessel, crew aboard', crewSaved === 2 && cv && cv.parts.some(p => p.on && p.d.kind === 'pod') && D.crewOn(cv) === 2 && !P.sats.length,
+    `capsule ${cv ? cv.name : '—'}: crew ${cv ? D.crewOn(cv) : 0}; register now ${P.sats.length} entries (both are flying)`);
+  // a flyable vessel of yours within 2.5 km loads into the flight; at the end it goes back on the register as itself
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['core', 't1']); const near = D.newShip(['core', 't1']); Object.assign(near, { landed: false, r: add(s.r, [0, 0, 800]), v: s.v.slice() }); near.rec.launched = true;
+  D.satRegister(near, { day0: 0 }); q = P.sats[0]; const nb = D.nearbyFlyable(s).length; const lv = D.loadEntry(q, s); const loaded = lv && D.FLEET.includes(lv) && !P.sats.length;
+  D.fleetEnd(s.rec); const again = P.sats.length === 1 && P.sats[0].id === q.id;
+  check('A2: a flyable vessel within 2.5 km loads into the flight, and goes back on the register as itself at the end', nb === 1 && loaded && again, `nearby ${nb}; loaded ${!!loaded}; back as #${P.sats[0] && P.sats[0].id}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
 }
 
 function moonPos(t) { return api.moonPos(t); }
