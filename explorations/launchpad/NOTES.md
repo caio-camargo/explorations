@@ -1180,6 +1180,29 @@ which swallowed a declaration: `render()` threw every frame while the HUD was up
 commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
 console exception (LESSONS #34).
 
+## PLAYTEST #3 and #4: a new rocket that looks new, and the pad at night (2026-10-08, aerofx session; visuals' code)
+
+Taken with a note in the visuals session's claim (it was idle). PLAYTEST #2 (gantry clipping) had already been fixed by
+the tester session.
+
+**#3, "the rocket starts out looking beat up":** it was the LOX frost. A fuelled tank on the pad has frost = 1, and the
+frost was opaque white blotches with the paint showing through as black specks, which reads as peeling paint. Now it is a
+fine translucent rime: 12–38 % cover below the fuel line, a little thicker toward the bottom, with a soft ragged edge and
+faint run-off streaks. The roll pattern stays crisp and the black squares read as frosted grey. Found by rendering the
+same fresh rocket with frost forced to 0.
+
+**#4, the pad at night and the buildings' surfaces:**
+- **Floodlights** were four point lights with almost no falloff inside 30 m and no direction, so lit buildings came out
+  flat white and the rest black. Now each is a spotlight from its 16 m pole aimed at the launch table (`uFlC`), with a soft
+  cone (cos 0.5–0.86) and inverse-square falloff (420 / (d² + 60)), plus a faint spill (5 %) within ~150 m of the pad.
+  The first gain (1500) saturated the red gantry, where the four cones overlap.
+- **Surface detail for the launch complex** (`uPadM`, set only while `PAD` and the rig draw): from the pad-local
+  position and material class. Concrete: formwork seams (1.2 m × 3 m), mottling, rain stains running down. White paint
+  (tanks, LOX sphere, water tower): weld rings every 2.4 m with rust weeping below them. Steel: mill mottling and rust
+  spots. Everything darkens toward its foot. Fades with distance.
+- A diagnostic trap, for the record: overriding a top-level function from the page (`window.padLights = …`) did not take
+  effect, so a "floodlights off" test proved nothing; logging the uniforms per draw call showed the floodlights were on.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

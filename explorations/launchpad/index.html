@@ -3591,7 +3591,7 @@ uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;o
 void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
@@ -3705,10 +3705,29 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
    alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
    rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
-  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fr=mk.y*(1.-smoothstep(lv-.15*sc,lv,v))*smoothstep(.36,.6,nz*.6+nz2*.4+mk.y*.3-.15)*.88;
-   alb=mix(alb,vec3(.82,.87,.93),fr);rough=mix(rough,.95,fr);metal*=1.-fr;nO+=T*(nz2-.5)*.5*fr;}
+  // frost: a fine, translucent rime below the fuel line (the paint shows through it, so a new tank still looks new), a
+  // little thicker toward the bottom, with a soft ragged edge at the fuel line and faint run-off streaks; not opaque
+  // blotches (PLAYTEST #3: those read as worn paint)
+  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fine=vn2(q2*vec2(46.,23.)+7.)*.55+vn2(q2*vec2(120.,60.)+2.)*.45,
+    edge=1.-smoothstep(lv-(.1+.12*nz)*sc,lv,v),run=.75+.25*vn2(vec2(s*30.,v*1.2)),
+    fr=mk.y*edge*run*(.12+.16*fine+.1*(1.-clamp(v/max(lv,.01),0.,1.)));
+   alb=mix(alb,vec3(.86,.9,.95),fr);rough=mix(rough,.8,fr);metal*=1.-fr;nO+=T*(fine-.5)*.15*fr;}
   if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
  }
+ // the launch complex (uPadM, set while the pad and its rig draw; PLAYTEST #4): surface detail from the pad-local position
+ // (metres) and the material class. Concrete: formwork seams, mottling, rain stains running down from the tops. White
+ // paint (tanks, the LOX sphere, the water tower): weld rings every 2.4 m with rust weeping from them. Steel: mill
+ // mottling and rust spots. Everything darkens toward its foot (grime, ground contact). Fades out with distance.
+ if(uPadM>0.){vec3 o=vO,an=abs(vNo);bool vt=an.y<.55;vec2 uv=vt?vec2(an.x>an.z?o.z:o.x,o.y):o.xz;
+  vec2 fw=fwidth(uv);float fd=smoothstep(.25,.03,max(fw.x,fw.y)),n1=vn2(uv*.4),n2=vn2(uv*1.9+3.),n3=vn2(uv*8.+1.);
+  float foot=mix(.62,1.,smoothstep(0.,1.6,o.y));bool white=m==0&&dot(alb,vec3(.333))>.45;
+  if(m==2){float sm=vt?max(lin(o.y,1.2,.012,fw.y),lin(uv.x,3.,.014,fw.x)):max(lin(uv.x,4.,.02,fw.x),lin(uv.y,4.,.02,fw.y));
+   float st=vt?smoothstep(.45,.85,vn2(vec2(uv.x*1.4,o.y*.12))*.75+n2*.25):0.;
+   alb*=(1.-.32*sm*fd)*(.84+.3*n1)*(.93+.14*n3*fd)*(1.-.22*st*fd)*foot;rough=max(rough,.85);}
+  else if(white){float ring=vt?lin(o.y,2.4,.018,fw.y):0.,wk=vt?smoothstep(.6,.9,vn2(vec2(uv.x*2.6,o.y*.35)))*(1.-smoothstep(0.,1.6,fract(o.y/2.4)*2.4)):0.;
+   alb*=(1.-.35*ring*fd)*(.95+.08*n1);alb=mix(alb,alb*vec3(.78,.62,.45),.45*wk*fd);alb*=foot;}
+  else if(m==1){alb*=.8+.35*n2;alb=mix(alb,vec3(.23,.12,.06),smoothstep(.72,.86,n3*.6+n1*.4)*.55*fd);alb*=foot;}
+  else{alb*=(.9+.15*n1)*(.96+.06*n3*fd)*foot;}}
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
@@ -3717,9 +3736,11 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  vec3 sun=uSunCol*uLit,amb=mix(uGnd,uSky,.5+.5*dot(n,uUp));
  vec3 Rr=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(Rr,uUp)));
  vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
- // the pad's floodlights at night (padLights): four warm point lights, falling off past ~30 m
- if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);fl+=max(dot(n,L*inversesqrt(d2)),0.)*900./(d2+900.);}
-  c+=dif*vec3(1.,.88,.7)*fl*uFlI*2.5;}
+ // floodlights: banks on 16 m poles aimed at the pad (uFlC); a soft cone and inverse-square falloff, so the pad and the
+ // near faces of buildings are lit and the far sides and the outskirts fall to dark (PLAYTEST #4)
+ if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);vec3 Ld=L*inversesqrt(d2);
+    float cone=smoothstep(.5,.86,dot(-Ld,normalize(uFlC-uFl[i])));fl+=max(dot(n,Ld),0.)*cone*420./(d2+60.);}
+  c+=dif*vec3(1.,.88,.7)*(fl+.05*smoothstep(160.,40.,length(vP-uFlC)))*uFlI;}   // + faint spill bounced off the apron
  // the engine plumes' light (plumeLight, aerofx): one soft point light in the flame, uPl = (position, core radius)
  if(uPlC.r+uPlC.g>0.){vec3 L=uPl.xyz-vP;float d2=dot(L,L);c+=dif*uPlC*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl.w*uPl.w);}
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
@@ -4591,7 +4612,7 @@ function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return
 // floodlights: on from dusk (the sun 4° above the pad's horizon) to dawn; four point lights for the mesh shader, which
 // lights the rocket, the tower and the pad's buildings with them
 function padLights(u,camW){const F=padFrame(camW),e=dot(norm(sub(F.site,bodyPos(TELLUS,simT))),SUN);padNight=len(F.O)<2e4?1-sstep(-.05,.07,e):0;
-  const P=[];for(const[x,z]of PAD_LIGHTS)P.push(...add(F.O,padW(F,[x*.98,16.2,z*.98])));gl.uniform3fv(u['uFl[0]'],P);gl.uniform1f(u.uFlI,padNight)}
+  const P=[];for(const[x,z]of PAD_LIGHTS)P.push(...add(F.O,padW(F,[x*.98,16.2,z*.98])));gl.uniform3fv(u['uFl[0]'],P);gl.uniform1f(u.uFlI,padNight);gl.uniform3fv(u.uFlC,add(F.O,padW(F,[0,6,4])))}   // aimed at the launch table
 function drawPadGlow(u,camW){if(padNight<.01)return;const F=padFrame(camW);gl.uniformMatrix4fv(u.uM,false,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]));
   gl.uniform1f(u.uGlow,padNight);gl.bindVertexArray(PAD_GLOW.vao);gl.drawArrays(gl.TRIANGLES,0,PAD_GLOW.n)}
 
@@ -5268,8 +5289,8 @@ function render(){
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
-   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);drawMesh(PAD,M,site)}}
-  drawPadRig(drawMesh,camW);   // the pad's moving parts, at the current site (visuals session)
+   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(PAD,M,site);gl.uniform1f(m.uPadM,0)}}
+  gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);   // the pad's moving parts, at the current site (visuals session)
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
