@@ -2595,6 +2595,45 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.sats = [];
 }
 
+// 41. Rendezvous with moon orbiters (sats session): §25's docking scene, moved to a 100 km Selene orbit. The target, the
+// closest approach, contact and capture, undocking back into Selene's register, and loading. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,contactStep,satRegister,satAt,undock,tgtOf,approach,hitNear,nearbyFlyable,moonSats,kepler,FLEET,PROG,SELENE,TELLUS,DT,qrot,qmul,qaxis,HOOK,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {};
+  const B = D.SELENE, P = D.PROG;
+  const scene = ({ gap = 0.3, close = 0.2, tilt = 3 } = {}) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip(['port', 'pod', 't1', 'kestrel']), r0 = B.R + 100e3; Object.assign(s, { body: B, landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(B.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['port', 'pod', 'petrel']); Object.assign(k, { body: B, landed: false }); k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + tilt * Math.PI / 180), s.q); k.r = add(add(s.r, mul(Y, s.yTop + gap + k.yTop)), [0, 0.04, 0]); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, close)); return { s, q: P.sats[0] };
+  };
+  const fly = (s, n, stop) => { for (let i = 0; i < n && !(stop && stop()); i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); } };
+  // the target: found around Selene; a Tellus satellite can't be one from here. Closest approach on Selene's μ, against a fine scan
+  let { s, q } = scene({ gap: 50e3 }); s.target = q.id; const T1 = D.tgtOf(s);
+  const [rt, vt] = D.satAt(q, 1000), [r1, v1] = D.kepler(add(rt, [0, 300, 0]), add(vt, [0, 0, 8]), -1000, B.mu), per = 2 * Math.PI * Math.sqrt(len(r1) ** 3 / B.mu), ca = D.approach(q, r1, v1, 0, per, B.mu);   // a pass 300 m off at t = 1000 s
+  let fine = Infinity; for (let t = 0; t <= per; t += 0.5) fine = Math.min(fine, len(sub(D.kepler(r1, v1, t, B.mu)[0], D.satAt(q, t)[0])));
+  P.sats.push({ id: 99, name: 'Tellus sat', r: [B.R * 10, 0, 0], v: [0, 0, 1], epoch: 0, shape: [] }); s.target = 99; const T2 = D.tgtOf(s);
+  check('rendezvous at Selene: a Selene orbiter is a target, its closest approach found on Selene\'s gravity; a Tellus satellite is not a target from there',
+    T1 && T1.q === q && Math.abs(len(T1.dr) - 50e3) < 10e3 && ca.d <= 300 && Math.abs(ca.d - fine) < 1 && Math.abs(ca.t - 1000) < 60 && !T2,
+    `target ${T1 ? (len(T1.dr) / 1e3).toFixed(1) + ' km' : 'none'}; closest approach ${ca.d.toFixed(1)} m at ${ca.t.toFixed(0)} s (scan ${fine.toFixed(1)} m); Tellus satellite targetable: ${!!T2}`);
+  // contact and capture: 0.2 m/s, 4 cm and 3° off latches; momentum kept, masses summed; rails held off nearby; loadable
+  ({ s, q } = scene()); const near = D.hitNear(s), load = D.nearbyFlyable(s).includes(q), m0 = s.mass, mq = q.mass; let mom = null;
+  for (let i = 0; i < 300 && !s.att.length; i++) { D.physStep(s, D.DT); const [, vq] = D.satAt(q, D.t), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)); D.contactStep(s, D.DT);
+    if (s.att.length) mom = len(sub(mul(s.v, s.mass), p0)) / len(p0); }
+  check('docking at Selene: ports latch as at home (momentum kept, masses summed); physics, not rails, near the target; it can be loaded into the flight',
+    s.att.length === 1 && s.att[0].e === q && q.docked && mom < 1e-12 && Math.abs(s.mass - m0 - mq) < 1e-6 && near && load,
+    `latched ${s.att.length === 1}; momentum error ${mom != null ? mom.toExponential(1) : '—'}; rails held off ${near}; loadable ${load}`);
+  // undocking (it has a pod, so it leaves as a vessel of this flight) leaves it around Selene where it was; at 1 m/s, a bump
+  const cmQ = add(s.r, D.qrot(s.q, sub(s.att[0].p, s.cm))); D.FLEET.length = 0; D.undock(s, q.id); const u = D.FLEET.find(v => v.name === q.name);
+  const back = !q.docked && q.bodyName === 'Selene' && u && u.body === B && len(sub(u.r, cmQ)) < 1;
+  ({ s, q } = scene({ close: 1 })); fly(s, 200, () => q.spin); const bumped = !s.att.length && !!q.spin;
+  check('undocking at Selene leaves the other vessel around Selene, where it was; at 1 m/s the ports bump instead',
+    back && bumped, `undocked around ${u ? u.body.name : '—'}, ${u ? len(sub(u.r, cmQ)).toExponential(1) : '—'} m from where it was; 1 m/s: ${bumped ? 'bumped' : 'latched'}`);
+  P.sats = [];
+}
+
 // 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
 // only certifies what reaches the ground (linked) or comes home on the recorder.
 {
