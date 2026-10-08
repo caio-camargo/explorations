@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1612,6 +1612,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const j = api.POWERS.find(p => p.i !== api.home && api.relOf(api.home, p.i) < 0.6).i; api.careerMove({ kind: 'defect', power: j, amt: 50 });
   check('production lines stay with the country on a defection', api.prodLine('kestrel') === null && api.sourceOf('kestrel').how !== 'line', `after defecting, the Kestrel comes ${api.sourceOf('kestrel').how === 'home' ? 'from the new home\'s industry' : 'from abroad again'}`);
   fresh(null); P.own = null; P.flights = 0; P.lines = {};
+}
+
+// 30. The test stand (economy): ground testing for know-how and certification, at a price.
+{
+  const P = api.PROG; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  api.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], stand2: null });
+  api.chooseStart('agency'); P.funds = 500;
+  const early = api.startTest('kestrel', 'qual'), built = api.buildStand(), stillBuilding = api.startTest('kestrel', 'qual'); api.advanceDays(61);
+  const u0 = api.khUse('kestrel'), c0 = api.certOf('kestrel'), f0 = P.funds, q = api.testQuote('kestrel', 'qual'), ok = api.startTest('kestrel', 'qual'), busy = api.startTest('t2', 'qual');
+  api.advanceDays(q.days + 1); const u1 = api.khUse('kestrel'), c1 = api.certOf('kestrel');
+  check('test stand: built once (it takes time), one campaign at a time; a qualification run raises know-how and certification', !early && built && !stillBuilding && ok && !busy && u1 > u0 && c1 > c0 && P.funds < f0 - q.cost + 1e-9,
+    `Kestrel: know-how ${(u0 * 100).toFixed(0)} → ${(u1 * 100).toFixed(0)}%, certified ${(c0 * 100).toFixed(0)} → ${(c1 * 100).toFixed(0)}%, ${q.cost.toFixed(1)}M over ${q.days} days`);
+  // ground tests teach less than flying the same regimes
+  const flown = (() => { const P2 = JSON.parse(JSON.stringify(P.kh)); P.kh = { kestrel: { use: u0, reg: {} } }; api.khLearn({ khSeen: { kestrel: { fly: 1, maxq: 1, heat: 1, burn: 1 } } }); const v = api.khUse('kestrel'); P.kh = P2; return v; })();
+  check('the stand teaches less than a flight through the same regimes (and never vacuum or orbit)', u1 - u0 < flown - u0, `stand +${((u1 - u0) * 100).toFixed(1)} pts vs a flight +${((flown - u0) * 100).toFixed(1)} pts`);
+  // to destruction: true limits known, the unit lost
+  const r = api.testQuote('condor', 'destroy'); api.startTest('condor', 'destroy'); api.advanceDays(r.days + 1);
+  check('test to destruction: the true rating is known (certified 100 %)', api.certOf('condor') === 1, `Condor, ${r.cost.toFixed(1)}M over ${r.days} days`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, stand2: null, kh: {}, cert: {} });
 }
 
 function moonPos(t) { return api.moonPos(t); }

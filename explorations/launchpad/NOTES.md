@@ -1034,6 +1034,28 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.33 — the test stand (2026-10-07)
+
+A first capital investment: a one-off facility with no upkeep, chosen by the player.
+
+- **Building it:** 40M and 60 days (`buildStand`), stored in `PROG.stand2` (`PROG.stand` already holds the contract
+  sources' standing).
+- **Campaigns** (`startTest`, ticked daily by `standTick`), one at a time. Each buys a unit of the part at its current
+  sourced price and burns 1.5M a day.
+  - *Qualification run* (10 + 10·tier days): the regimes a stand can reproduce (fly, structural load, heat, and burn for
+    engines), learned at 60% of a flight's weight; certification rises as if the part had been loaded to 60%. A stand
+    never teaches vacuum or orbit. Measured: a frugal power's Kestrel, 48M over 20 days → know-how 20 → 29% (a flight
+    through the same regimes: +14.5 points), certified 70 → 85%.
+  - *Test to destruction* (5 + 5·tier days): certified 100% (true limits known), a little know-how, the unit destroyed.
+    A Condor: 60M over 15 days.
+- `khLearn(R, w)` takes a weight; ground tests use 0.6.
+- **UI:** a Test stand section in the Program panel: build, construction progress, the running campaign, and Qualify /
+  To destruction buttons for parts in the current design or already known.
+- **Not yet:** the career runner doesn't use the stand, so its effect on balance is untested. Development projects (the
+  next sink) can build on it: stress data from the stand counts toward a part's history.
+
+`test.mjs` §30: 3 new checks; 223 total.
+
 ## v1.32 — balance pass 2: know-how, lines and support in simulated careers (2026-10-07)
 
 `career.mjs` now plays the new systems:
