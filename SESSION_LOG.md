@@ -1987,7 +1987,7 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   uncertainty; good data raises the chance and narrows the range), pads as calendar reservations plus a Launch pads
   facility, a hand-flown launch waiting for a free pad, a seed fixed at ordering, the same pay as by hand. An interim
   resolver rolls the estimate until the bodies session's `dispatchRun`. All tests pass. Merged to `main` (`98638f6`).
-- **v1.49 (2026-10-08, economy worktree, first slice after the repo left Drive):** deviation. A dispatch that can't
+- **v1.50 (2026-10-08, economy worktree, first slice after the repo left Drive; renumbered from v1.49, which sound took):** deviation. A dispatch that can't
   meet its goal hands the flight to you, rebuilt at that moment from a registry entry. Time stops until you take
   control or let it go; ignored, it's lost; no revert on a handed-over flight. The interim resolver deviates on a failed
   relight or propellant short of the margin (the top stage at apoapsis, periapsis in the air). All tests pass.
@@ -3160,3 +3160,26 @@ in the Drive folder and lost in the move; re-added here.
 
 ### Next steps
 - [ ] Caio: delete the frozen Drive folder when sure; keep `_backup/drive-git-2026-10-08` a while longer
+
+## 2026-10-08 — Launchpad v1.49: sound; repo-move step 8 (sound session)
+
+### Summary
+- **Repo move step 8** (runbook `docs/leaving-drive.md`): `docs/coordination.md` (claims by push/pull), ACTIVE_WORK's
+  worktree section (merging from the main clone) and pause note lifted, LESSONS #22 updated, a memory note under the new
+  home's key. Pushed as `21f41c0`. Step 6 (freeze) was then done by Caio (`e5f26b6`).
+- **Sound** (open thread 7): synthesised WebAudio, heard from aboard. Air path ∝ (T/4 MN)^0.3 · √(ρ/ρ₀), lowpass closing
+  with density, dropping past Mach 1, louder near the ground; a structure path in vacuum; wind/buffet from q and Mach;
+  one-shots for ignition, separation, chutes, touchdown, blasts (late by d/340 s, none through vacuum). F4 mutes.
+  Measured on an Orbiter ascent and live in headless Chrome (−23 dBFS on the pad); NOTES § "Sound".
+- A robot playtester for TESTING.md was started in parallel (worktree `launchpad-playtest`); its own entry follows.
+- Merging: `main` moved four times during the merge; one SESSION_LOG conflict (same block, two orders), kept `origin`'s.
+
+### Files
+- `explorations/launchpad/index.html` (sound block, one call in `frame()`, F4 in KEYS), `test.mjs` (sound-1, 5 checks),
+  `NOTES.md` (§ Sound, open thread 7), `TESTING.md` row 114, `explorations/README.md` (v1.49)
+- `docs/coordination.md`, `docs/leaving-drive.md`, `ACTIVE_WORK.md`, `LESSONS_LEARNED.md` #22
+
+### Next steps
+- [ ] Caio: TESTING row 114 (does it sound good? levels are first guesses; the knobs are the gains in `sndTick`)
+- [ ] Sound next: per-engine voices, spatial audio for other vessels, a volume slider
+
