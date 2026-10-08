@@ -6,7 +6,7 @@ import { flyLadder } from './fly_ladder.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -2660,6 +2660,36 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = H.slice(H.indexOf('// ==== SIM END'));
   check('sound is wired: F4 in KEYS.all, sndTick called from frame() and not from render()',
     /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
+}
+
+// 37e. The atlas (terrain session): the map's grid of biomes and powers, its coasts and borders, the powers' names, the
+// pointer readout, and the page wiring (the C key, the bake before the sky pass, the overlay and the notebook ink).
+{
+  const A = api.ATLAS, t0 = performance.now(); let chunks = 1; while (!api.atlasBake(40)) chunks++;
+  const ms = performance.now() - t0, N = A.W * A.H; let land = 0, orphan = 0;
+  for (let k = 0; k < N; k++) { if (A.bio[k]) { land++; if (!A.pow[k]) orphan++; } else if (A.pow[k]) orphan++; }
+  check('atlas: baked in chunks; every land point has a power, no sea point has one', chunks > 3 && orphan === 0 && land > 0.3 * N && land < 0.7 * N,
+    `${(ms / 1000).toFixed(1)} s in ${chunks} chunks; land ${(100 * land / N).toFixed(1)} % of the grid points`);
+  const R = api.rng(7); let bad = 0;
+  for (let i = 0; i < 300; i++) { const x = R() * A.W | 0, y = R() * A.H | 0, u = api.atlasU(x, y), k = y * A.W + x, b = api.biomeAt(u), p = b.id ? api.powerAt(u) : null;
+    if (A.bio[k] !== b.id || A.pow[k] !== (p ? p.i + 1 : 0)) bad++; const [x2, y2] = api.atlasXY(u); if (x2 !== x || y2 !== y) bad++; }
+  check('atlas: the grid is biomeAt/powerAt at its points, and atlasXY inverts atlasU', bad === 0, `${bad} mismatches in 300 points`);
+  const around = (u, f) => { const out = new Set(), [x, y] = api.atlasXY(u);
+    for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) out.add(f(Math.min(A.H - 1, Math.max(0, y + dy)) * A.W + (x + dx + A.W) % A.W)); return out; };
+  const L = A.lines; let nc = 0, nb = 0, cOff = 0, bOff = 0;
+  for (let i = 0; i < L.coast.length; i += 6 * 37) { nc++; if (around([L.coast[i], L.coast[i + 1], L.coast[i + 2]], k => A.bio[k] > 0).size < 2) cOff++; }
+  for (let i = 0; i < L.border.length; i += 6 * 5) { nb++; const q = around([L.border[i], L.border[i + 1], L.border[i + 2]], k => A.pow[k]); q.delete(0); if (q.size < 2) bOff++; }
+  check('atlas: coast lines run between land and sea, border lines between two powers', nc > 100 && nb > 50 && cOff === 0 && bOff === 0,
+    `${L.coast.length / 6} coast, ${L.border.length / 6} border segments; sampled ${nc} / ${nb}, off ${cOff} / ${bOff}`);
+  check("atlas: each power's name sits on its own land", A.names.length === api.POWERS.length && A.names.every((nm, i) => nm && api.powerAt(nm.u)?.i === i),
+    A.names.map(nm => nm && `${api.POWERS[nm.i].root} ${(Math.asin(nm.u[1]) * 180 / Math.PI).toFixed(0)}°`).join(', '));
+  const u0 = api.SITES[0].u, a = api.atlasAt(u0);
+  check('atlas readout at the first launch site: its biome, its power, its height', a.id > 0 && a.biome === api.biomeAt(u0).name && a.power === api.powerAt(u0) && Math.abs(a.h - api.terrainH(u0)) < 1e-6,
+    `${a.biome} · ${a.power && a.power.name} · ${a.h.toFixed(0)} m · ${a.lat.toFixed(2)}°, ${a.lon.toFixed(2)}°`);
+  const P = html.replace(/\r\n/g, '\n'), pg = P.slice(P.indexOf('// ==== SIM END')), km = pg.slice(pg.indexOf('  map:['), pg.indexOf('  program:['));
+  check('atlas is wired: C in KEYS.map and the key handler, the bake before the sky pass, the tint after the clouds, overlay and ink called',
+    km.includes("{k:['c'],l:'C'") && pg.includes("k==='c'&&view==='map')cycleAtlas()") && pg.includes("atlasTick();\n  // ---- sky / planets") &&
+    /cov\*\.95\*shW\*\(1\.-\.85\*uAtl\)[^]{0,200}\n if\(atl\.a>0\.\)col=mix/.test(pg) && pg.includes('atlasOverlay(era,camW,') && pg.includes('if(atlasMode)atlasInk(era,'));
 }
 
 function moonPos(t) { return api.moonPos(t); }

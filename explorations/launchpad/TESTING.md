@@ -86,6 +86,8 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 111 | Splash down far out, and land abroad | Sounding lob 600+ km to sea; another landing in a neighbour's land (tester: relations) | News says fished out / lost beyond reach / sent back / kept; the refund in the logbook follows it; it feels fair, not arbitrary | v1.48 | terrain |
 | 112 | Fly a field-station and an aurora contract | Contracts (science); tester to finish setup | Briefs say where to go; landing on the named ground (radar row names it) completes it; aurora needs a long northward or southward lob | v1.48 | terrain |
 | 113 | Read the disaster news for a while | Tester: date jumps with a camera satellite up | Disasters fit the place (no volcano by a plain, no wildfire in the desert); offers still come | v1.48 | terrain |
+| 115 | Read the world on the map with the atlas | Map (M), then C: biomes, powers, off; in the modern look and in an early era's notebook/terminal map | Biomes, borders and coasts line up with the ground; names sit on their land; clouds don't hide it; the survey finishes in a few seconds without a stutter | v1.51 | terrain |
+| 116 | Point at places with the atlas on | Map, atlas on; hover land, sea, borders, the night side | The readout names the right biome, power, height or depth; it stays under the pointer as the frame rate changes | v1.51 | terrain |
 
 ### Visuals & effects
 
@@ -186,4 +188,4 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | 100 | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state | Tester menu | tester |
 
-Next free number: **108**.
+Next free number: **117**.
