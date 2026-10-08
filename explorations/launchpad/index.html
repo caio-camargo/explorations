@@ -3199,12 +3199,12 @@ function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMissi
   const up=norm(s.r),h=len(s.r)-TELLUS.R,nose=qrot(s.q,[0,1,0]),pitch=Math.asin(clamp(dot(nose,up),-1,1))*57.29578,last=P.pts[P.pts.length-1];
   if(P.az==null&&h>2000){const f=localFrame(s.r),nh=sub(nose,mul(up,dot(nose,up)));if(len(nh)>1e-3)P.az=Math.atan2(dot(nh,f.e),dot(nh,f.n))}
   const el=elements(s.r,s.v,TELLUS.mu);
-  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle]);
+  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle,len(s.v)]);
     if(s.throttle===0&&h>1000&&P.pts.length>5)P.cut={h,ap:el.ap-TELLUS.R}}   // the first cut-off: the ascent is over
   else if(s.throttle===0&&el.e<1&&el.pe>TELLUS.R+TELLUS.atm){P.done=true;P.target={pe:el.pe-TELLUS.R,ap:el.ap-TELLUS.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578};
     P.dv=s.rec?s.rec.dv:null;procKeep(s)}}
-function procAscent(s,P){const pitch=[],thr=[];let hm=-1;for(const[h,q,t]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)])}   // powered samples only: the cut-off isn't a throttle setting
-  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
+function procAscent(s,P){const pitch=[],thr=[],vel=[];let hm=-1;for(const[h,q,t,v]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)]);if(v!=null)vel.push([Math.round(h),Math.round(v)])}   // powered samples only: the cut-off isn't a throttle setting
+  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,vel,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
 function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<5)return null;
   const key=procKey(s.stack),old=(PROG.procs=PROG.procs||{})[key],proc=procAscent(s,P);
   if(old&&!old.prov&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;   // a provisional one (borrowed by a dry run) gives way to the design's own first flight
@@ -3245,6 +3245,16 @@ function procStart(s,proc,target){const T={...proc.target,...(target||{})};let a
 // A deviation: the procedure can't meet its goal from here. It stops and says why; the craft is yours (in a dispatched
 // flight, the dispatch hands it to you). s.procDev keeps what happened, for whoever runs the flight.
 function procDev(s,kind,why){s.procDev={kind,why,t:simT,phase:s.proc&&s.proc.phase};s.proc=null;s.throttle=0;HOOK.msg(`Procedure stopped: ${why}. You have control`)}
+// The corridor around the recorded climb (Q12): what goes wrong before the propellant does. Stopped early, the craft is
+// still somewhere a pilot can do something with (or bail out of). Kept loose: a variant with less thrust flies lower and
+// slower and is still fine; these catch a climb that has already failed.
+//   control  the nose more than 20° off the commanded climb for 5 s (an unstable design, a tumble, a stuck engine)
+//   falling  coming down under power, below the cut-off (too little thrust for the weight, an engine out)
+//   slow     above 10 km, under 70 % of the speed the recorded flight had at this height
+function procCorridor(s,X,p,h,up){if(simT<10)return;const off=Math.acos(clamp(dot(qrot(s.q,[0,1,0]),s.hold||up),-1,1))*57.29578;
+  X.offT=off>20?(X.offT||0)+DT:0;if(X.offT>=5)return procDev(s,'control',`lost control of the climb: the nose ${off.toFixed(0)}° off for 5 s`);
+  const vv=dot(s.v,up);if(vv<-20&&h<TELLUS.atm)return procDev(s,'falling',`falling back at ${kmS(h)} km before the engines could cut off`);
+  if(p.vel&&p.vel.length>3&&h>10e3&&h<=p.vel[p.vel.length-1][0]){const v0=tabAt(p.vel,h);if(len(s.v)<0.7*v0)return procDev(s,'slow',`far behind the recorded climb: ${Math.round(len(s.v))} m/s at ${kmS(h)} km where it flew ${Math.round(v0)}`)}}
 function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
   const dirAt=d=>{const hz=add(mul(f.n,Math.cos(X.az)),mul(f.e,Math.sin(X.az))),r=d*Math.PI/180;return norm(add(mul(hz,Math.cos(r)),mul(up,Math.sin(r))))};
   const dry=()=>s.throttle>0&&dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length;
@@ -3252,7 +3262,8 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T
   if(X.phase==='ascent'){s.sasMode='stab';s.hold=dirAt(tabAt(p.pitch,h));s.throttle=Math.max(0.1,tabAt(p.thr,h));
     if(!X.lit){X.lit=true;stage(s);return}   // ignition
     if(dry())stage(s);else if(X.ei<p.early.length&&h>=p.early[X.ei]){X.ei++;stage(s)}
-    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);return}
+    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);
+    else procCorridor(s,X,p,h,up);return}
   const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000,0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
   if(X.phase==='coast'){s.sasMode='pro';
     if(!X.chk&&h>TELLUS.atm){X.chk=1;const need=Math.sqrt(TELLUS.mu/el.ap)-vAp,have=dvRemaining(s).tot;

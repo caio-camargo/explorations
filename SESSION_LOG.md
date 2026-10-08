@@ -3350,3 +3350,19 @@ QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedur
 - [ ] Q12 rest: a corridor around the recorded profile (deviate early when the climb strays, not only when Δv runs out)
 - [ ] Economy: the study button and price for `procAdopt`, a wider estimate for `prov`, the measured margin cached
 - [ ] Q13: landing on a chosen crater
+
+## 2026-10-08 — Launchpad: the climb's corridor (bodies session, cont.; QUEUE Q12)
+
+Deviations now catch a climb that has already failed, before the propellant runs out, so the craft is handed over
+alive:
+- `control`: the nose 20° off for 5 s;
+- `falling`: descending under power before cut-off;
+- `slow`: under 70 % of the recorded speed at the same height. The recorder now keeps speed against height.
+
+The rules are loose, so working variants still fly. The +2 t Orbiter variant is now handed over at 58 km instead of
+burning up. A 2 s tumble that the SAS recovers from passes; an 8 s one deviates. 377 checks pass.
+
+**Files:** `index.html` (procCorridor, `vel` in procedures), `test.mjs` (bodies-2), NOTES, QUEUE (Q12 ✓).
+
+### Next steps
+- [ ] Q13: landing on a chosen crater
