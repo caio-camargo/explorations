@@ -2050,6 +2050,50 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
 }
 
+// 34. Rovers (sats session, rovers plan R1): the designer's figures, and the wheel-contact rover in the test yard beside
+// the pad. Own sim instance.
+{
+  const D = new Function(src + 'return {rvNew,rvRun,rvStats,rvDefault,rvTilt,rvFold,rvCrr,yardOf,yardPF,SITES,TELLUS,RV_GS,SURF_MOON,HOOK,PROG};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m);
+  const Y = D.yardOf(D.SITES[0]), lrv = D.rvDefault(), st = D.rvStats(lrv), D2R = Math.PI / 180;
+  const at = (d, x, z, o = {}, h = 0, head = Y.n) => D.rvNew(d, D.TELLUS, D.yardPF(Y, x, z, h), head, { yard: Y, ...o });
+  const run = (R, s) => { for (let i = 0; i < s * 10; i++) D.rvRun(R, 0.1); return R; };
+  const up = R => len(R.p) - D.TELLUS.R - D.SITES[0].h;
+  // on paper: a lunar-rover-sized crewed rover can barely climb at home (its hub motors are sized for a sixth of the
+  // weight); at Selene's gravity the ground's grip is the limit; and a full-lock turn tips or slides at a lower speed there
+  const tr = Math.atan(D.SURF_MOON.mu - D.rvCrr(D.SURF_MOON, 0.41)) / D2R;
+  check('rover stats: the crewed rover climbs little at home (motors), at Selene up to its grip; turns are slower there',
+    st.T.lim === 'motors' && st.T.climb < 10 && st.S.lim === 'traction' && Math.abs(st.S.climb - tr) < 0.2 && st.S.vTurn < st.T.vTurn / 2,
+    `Tellus ${st.T.climb.toFixed(1)}° (${st.T.lim}), Selene ${st.S.climb.toFixed(1)}° (${st.S.lim}); full-lock turn ${st.T.turnBy} above ${st.T.vTurn.toFixed(1)} / ${st.S.vTurn.toFixed(1)} m/s`);
+  // parked on the level: it settles still, its centre of mass where the designer says, and holds there
+  let R = run(at(lrv, -20, -6), 4); const p0 = R.p.slice(); run(R, 5);
+  check('rover: parked on the level it settles where the designer says and stays put', len(R.v) < 1e-4 && len(sub(R.p, p0)) < 1e-3 && Math.abs(up(R) - st.T.h) < 0.03,
+    `centre of mass ${up(R).toFixed(3)} m up (designer ${st.T.h.toFixed(3)}), drifted ${(len(sub(R.p, p0)) * 1000).toFixed(2)} mm in 5 s`);
+  // flat out on the levelled grass beside the pad (away from the ramps): the top speed the designer gave
+  R = at(lrv, -20, -6, {}, 0, mul(Y.n, -1)); R.in.thr = 1; run(R, 15);
+  check('rover: flat out on grass it reaches the designer\'s top speed', Math.abs(len(R.v) - st.T.vTop) < 0.05 * st.T.vTop && R.su.name === 'levelled grass',
+    `${len(R.v).toFixed(2)} m/s (designer ${st.T.vTop.toFixed(2)}), on ${R.su.name}`);
+  // the 20° ramp: at home it stalls partway; as a lunar trainer it gets to the top
+  const climb = gk => { const R = at(lrv, 0, 0, { gk }); R.in.thr = 1; let mh = 0; for (let i = 0; i < 300; i++) { D.rvRun(R, 0.1); mh = Math.max(mh, up(R)); } return mh - up(at(lrv, 0, 0, { gk })); };
+  const hT = climb(1), hS = climb(D.RV_GS);
+  check('rover: the 20° ramp (2.5 m) stalls it at home; the lunar trainer gets to the top', hT < 1.5 && hS > 2.4, `rose ${hT.toFixed(2)} m at home, ${hS.toFixed(2)} m as a trainer`);
+  // parked across the side slopes: the 20° one holds it; the 35° one is steeper than gravel's grip (33°), so it slides
+  const park = (d, x) => { const R = run(at(d, x, 40, {}, 3), 2), a = R.p.slice(); run(R, 5); return { R, moved: len(sub(R.p, a)) }; };
+  const s20 = park(lrv, 39.5), s35 = park(lrv, 58);
+  check('rover: parked across a 20° slope it holds; across 35° (past the gravel\'s grip) it slides', s20.moved < 0.01 && s35.moved > 0.05 && !s35.R.tipped,
+    `${(s20.moved * 1000).toFixed(1)} mm and ${(s35.moved * 100).toFixed(0)} cm in 5 s; roll ${D.rvTilt(s20.R).roll.toFixed(0)}° and ${D.rvTilt(s35.R).roll.toFixed(0)}°`);
+  // a top-heavy rover (three crew on a small chassis) tips over on the 35° slope; a low one doesn't. Nothing rights it.
+  const tall = { name: 'tall', ch: 's', wh: 's', n: 4, spr: 'T', slots: ['seat', 'seat', 'seat'] }, low = { name: 'low', ch: 's', wh: 's', n: 4, spr: 'T', slots: ['ant', 'ant', 'drill'] };
+  msgs.length = 0; const tT = run(park(tall, 58).R, 3), tL = park(low, 58).R;
+  check('rover: top-heavy, it tips over on the 35° slope and stays over; a low one stays on its wheels', tT.tipped && tT.rec.tips === 1 && msgs.includes('Tipped over') && !tL.tipped,
+    `tips sideways at ${D.rvStats(tall).T.tipSide.toFixed(0)}° on paper (the springs lean it further) and ${D.rvStats(low).T.tipSide.toFixed(0)}°`);
+  // no battery, no drive; a drive's record goes to the design and to the wheels' tested distance
+  R = at({ ...lrv, slots: ['seat', 'seat', null, 'cam', null] }, -20, -6, {}, 0, mul(Y.n, -1)); R.in.thr = 1; run(R, 3);
+  const d = JSON.parse(JSON.stringify(lrv)), R2 = at(d, -20, -6, {}, 0, mul(Y.n, -1)); R2.in.thr = 1; run(R2, 10); const km = R2.rec.dist / 1000, w0 = (D.PROG.wheelKm || {}).m || 0; D.rvFold(R2);
+  check('rover: without a battery it can\'t drive; a test drive\'s record goes to the design and the wheels', len(R.v) < 0.01 && Math.abs(d.test.T.km - km) < 1e-9 && Math.abs(D.PROG.wheelKm.m - w0 - km) < 1e-9 && d.test.T.vmax > 2,
+    `${(km * 1000).toFixed(0)} m driven, ${d.test.T.vmax.toFixed(2)} m/s`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
