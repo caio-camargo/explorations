@@ -9,9 +9,9 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,
   PROG,CT,MISSIONS,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
-  TELLUS,HOOK,rng,raceSchedule,PRESETS,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
+  TELLUS,HOOK,rng,raceSchedule,PRESETS,PARTS,PRICE,khUse,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
 const { PROG: P, CT, TELLUS } = api;
-const YEARS = +(process.argv[2] || 3), SEEDS = +(process.argv[3] || 3), DAYS = 400 * YEARS, ATMK = TELLUS.atm / 1e3;
+const YEARS = +(process.argv[2] || 3), SEEDS = +(process.argv[3] || 3), VARIANT = process.argv[4] || 'base', DAYS = 400 * YEARS, ATMK = TELLUS.atm / 1e3;
 const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
 
 // ---- designs: what each costs (real presets) and the flight record it produces
@@ -74,12 +74,32 @@ function fitContract(c) {
 const FIRST_PLAN = { weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => PLANS.qual('kestrel', 40), range: () => PLANS.hop(7.5),
   beeper: () => PLANS.orbit(150, 0), hop: () => PLANS.hop(7.5), orbiter: () => PLANS.passOrbit(5), lift1: () => PLANS.orbit(150, 0, 0.5), lift2: () => PLANS.orbit(150, 0, 2) };
 
-function fly(pl, rnd) {
+// the regimes each part went through, as the game's own khMark would record them for this kind of flight
+function khFill(s, R, pl, ok) {
+  const orbit = pl.kind === 'orbit' || pl.kind === 'passOrbit', high = orbit || (pl.apex || 98) * 1e3 > TELLUS.atm, landed = ok && !(pl.kind === 'orbit');
+  const first = new Set((s.events[0] && s.events[0].ignite) || []);
+  for (const p of s.parts) { const k = p.d.key, set = R.khSeen[k] || (R.khSeen[k] = {}); set.fly = 1; if (!ok) { set.fail = 1; continue; }
+    set.maxq = 1; if (high) set.vac = 1; if (orbit) set.orbit = 1; if (landed && high) set.heat = 1; if (landed) set.land = 1;
+    if (p.d.kind === 'engine') { set.burn = 1; if (high && !first.has(p.seg)) set.vburn = 1; } }
+}
+// an upper-stage engine that won't light loses the flight (a first-stage one just scrubs and is retried)
+function ignitionFails(s) { const first = new Set((s.events[0] && s.events[0].ignite) || []); let okP = 1;
+  for (const p of s.parts) { if (p.d.kind !== 'engine' || first.has(p.seg)) continue; const L = api.prodLine(p.d.key);
+    okP *= 1 - api.IGN_FAIL * (1 - api.khUse(p.d.key)) ** 2 * (L ? 2 - L.m : 1); }
+  return 1 - okP; }
+const SUPPORT_K = 1.5, SUPPORT_USE = 0.45, seenParts = new Set();
+function fly(pl, rnd, m) {
   const { st } = planCost(pl); api.t = 0;
-  const s = api.newShip(st); api.S = s; s.landed = false;
+  const s = api.newShip(st); api.S = s;
+  if (VARIANT === 'support') for (const k of new Set(s.parts.map(q => q.d.key))) {   // runner-only model of a support package
+    if (seenParts.has(k)) continue; seenParts.add(k); const x = api.sourceOf(k); if (x.how !== 'import') continue;
+    P.funds -= SUPPORT_K * (api.PRICE[k] ?? 3); P.kh = P.kh || {}; const e = P.kh[k] || (P.kh[k] = { use: 0, reg: {} }); e.use = Math.max(e.use || 0, SUPPORT_USE); m.support++; }
+  s.landed = false;
   api.missionTick(s, 0, false);                   // the launch: charged, stacking days pass
   const R = s.rec; R._keys = [...new Set(s.parts.map(q => q.d.key))];
-  const ok = rnd() < pl.p;
+  const ign = rnd() < ignitionFails(s); if (ign) m.ign++;
+  const ok = !ign && rnd() < pl.p;
+  khFill(s, R, pl, ok);
   if (!ok) { s.alive = false; R.apex = 5e3; if (R.bio) { R.bioOK = false; R.bioWhy = 'was lost with the vessel'; } }
   else {
     const k = outcome(pl, R, rnd);
@@ -93,12 +113,12 @@ function fly(pl, rnd) {
 }
 
 function run(arch, start, seed) {
-  api.resetWorld();
+  api.resetWorld(); seenParts.clear();
   Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: null, active: [], cdone: 0, stand: {}, recs: {},
     cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
-    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [] });
+    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {} });
   api.resetWorld(); api.chooseStart(start); api.ensureBoard(); news.length = 0;
-  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0 };
+  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {} };
   while (P.day < DAYS && m.fl < 600) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
     for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
@@ -110,22 +130,29 @@ function run(arch, start, seed) {
     // the flight worth most (pay of everything it would complete, minus cost) that we can afford
     const cands = [...P.active.map(fitContract), ...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => FIRST_PLAN[M.id]?.())].filter(Boolean);
     let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds) continue; const v = wouldDo(pl) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
-    if (best && best.v > -5) { const ok = fly(best.pl, rnd); m.fl++; if (!ok) m.fail++; }
+    if (best && best.v > -5) { const ok = fly(best.pl, rnd, m); m.fl++; if (!ok) m.fail++;
+      for (const k of new Set(planCost(best.pl).st)) m.used[k] = (m.used[k] || 0) + 1;
+      // lines policy: a part flown three times and bought abroad gets a line, if there's money to spare
+      if (VARIANT === 'lines') for (const k of Object.keys(m.used).filter(k => m.used[k] >= 3).sort((a, b) => m.used[b] - m.used[a])) {
+        const x = api.sourceOf(k); if (x.how !== 'import' && x.how !== 'grey') continue; if ((P.lines || {})[k]) continue;
+        const q = api.prodQuote(k), mode = q.lic.ok ? 'lic' : q.own.ok ? 'own' : null; if (!mode || P.funds < q[mode].cost + 120) continue;
+        if (api.startProdLine(k, mode)) { m.lines++; m.lineSpend += q[mode].cost; } break; } }
     else { api.advanceDays(10); m.idle += 10; }
     m.minF = Math.min(m.minF, P.funds);
     for (const y of [1, 2, 3, 4, 5]) if (P.day >= 400 * y && m.at[y] == null) m.at[y] = P.funds;
     for (const id in P.done) if (m.firsts[id] == null) m.firsts[id] = Math.round(P.day);
   }
   m.sanc = news.filter(t => /imposes sanctions/.test(t)).length;
-  return { ...m, final: P.funds, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
+  return { ...m, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
     race: api.RACE.map(id => P.done[id] ? (api.raceLost(id) != null ? '2' : '1') : (api.raceLost(id) != null ? 'L' : '-')).join(''), home: api.home };
 }
 
-const avg = xs => xs.reduce((a, b) => a + b, 0) / xs.length, f0 = x => x.toFixed(0).padStart(5);
-console.log(`career runner: ${YEARS} years (${DAYS} days), ${SEEDS} seeds each · race: 1 first, 2 second, L lost (not done), - open (beeper/hop/orbiter)`);
-console.log('archetype    start       flights fail% idle%  firsts  day:beeper/orbiter  contracts  funds y1/y2/final  min  bail debt  op  careers sanc race');
-for (const arch of Object.keys(api.ARCH)) for (const start of ['agency', 'company', 'consortium']) {
+function avg(xs) { return xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0; }
+const f0 = x => x.toFixed(0).padStart(5);
+console.log(`career runner [${VARIANT}]: ${YEARS} years (${DAYS} days), ${SEEDS} seeds each · race: 1 first, 2 second, L lost (not done), - open (beeper/hop/orbiter)`);
+console.log('archetype    start       flights fail% idle%  firsts  day:beeper/orbiter  contracts  funds y1/y2/final  min  bail debt  op  careers sanc race   | ignF  kh%  lines spent  support');
+for (const arch of Object.keys(api.ARCH)) for (const start of (process.argv[5] || 'agency,company,consortium').split(',')) {
   const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + 1));
   const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
-  console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')}`);
+  console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')} | ${(avg(rs.map(r => r.ign))).toFixed(1).padStart(4)} ${f0(100 * avg(rs.map(r => r.kh)))} ${(avg(rs.map(r => r.lines))).toFixed(1).padStart(5)} ${f0(avg(rs.map(r => r.lineSpend)))}  ${(avg(rs.map(r => r.support))).toFixed(1).padStart(5)}`);
 }

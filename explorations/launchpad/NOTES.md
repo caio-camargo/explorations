@@ -1034,6 +1034,38 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.32 — balance pass 2: know-how, lines and support in simulated careers (2026-10-07)
+
+`career.mjs` now plays the new systems:
+- upper-stage ignitions can fail by know-how (a first-stage failure is a scrub);
+- each abstracted flight records the regimes its parts went through, so the game's own `khLearn` runs;
+- three policies, picked with `node career.mjs [years] [seeds] [base|lines|support] [starts]`:
+  - *base:* buy everything;
+  - *lines:* license or build a line for any part flown three times, if 120M stays in reserve;
+  - *support:* a runner-only model of support packages (fee 1.5× the part's price on first purchase; that part
+    starts at 45% use).
+
+**What it found:**
+1. **Know-how grew far too fast.** Each regime added its own step, and an orbital flight passes through about nine, so
+   one flight took a part from 20% to ~85% (90–96% for every program after a year; zero ignition failures). My v1.30
+   check only exercised three regimes, which hid it. Now **one step per flight**: Δuse = (1 − use)·(1 −
+   e^(−0.05·Σ novelty)). Measured on a Kestrel through the same three regimes ten times: +11, +5, +3 … +0.8 points, 48%
+   after ten. Varied orbital flights reach the high 70s in about ten. (This supersedes the v1.30 numbers.)
+2. **Weak agencies bled.** Running costs exceeded a neutral budget day, so frugal/resource agencies needed 7–22 top-ups
+   in 3 years: the upkeep misery Caio warned about. Running costs are now 0.06 + 0.015·capacity M/day, the budget day
+   15M per 100 days, and the agency and consortium starts 80M. Top-ups in 3 years: 0.7–4.7 (frugal leanest).
+3. **Lines didn't pay back.** At 8× price setup they never did within 3 years. Now 4× price × (1 + tier), and
+   maturity +12% per unit. Over 6 years (2 seeds), agencies' final funds without → with lines: rising 1,668 → 1,854M;
+   frugal 356 → 661M (it affords 59 flights instead of 32); security 1,698 → 2,488M; but resource 1,174 → 698M. A
+   resource state with no industry is better off buying. That's the archetype doing its job, and buying and building
+   coexist as designed.
+4. **Support packages are a real trade-off** (3 years): resource 332 → 737M and frugal 367 → 455M, but rising
+   830 → 579M and security 885 → 571M. Good for import-dependent programs, a drain for others. It stays provisional,
+   now with evidence that it's a choice and not a dominant strategy.
+
+**Still open:** superpowers reach 2,400–3,300M by year 6. Money sinks for the strongest programs are the next job:
+test stands and development projects.
+
 ## v1.31 — production lines (2026-10-07)
 
 The second visible number per part: production. Learning to manufacture a part is different from buying it.

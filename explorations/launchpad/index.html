@@ -1275,7 +1275,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
-const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
+const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.06;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
@@ -1515,15 +1515,16 @@ function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:pr
 const cert0=k=>{const x=sourceOf(k);return x.how==='home'?CERT0-0.2*(1-indOf(HOME)):x.how==='line'?CERT0-0.2*(1-x.line.m):CERT0};
 const TIER_NAME=['structure and tanks','small engines','big engines and avionics'];
 // ---- know-how: owning a part is not knowing how to use it. Per part type, two facets:
-//  · use: operational familiarity (PROG.kh[k].use), gained by flying it through regimes (each new regime teaches a
-//    lot, repeats less: novelty 1/(1+times seen)); a part built at home starts higher (the engineers made it).
+//  · use: operational familiarity (PROG.kh[k].use), gained by flying it through regimes: one step per flight, of
+//    (1−use)·(1−e^(−0.05·Σ novelty)) with novelty 1/(1+times that regime was seen) — an orbital flight's first time
+//    teaches about a third of what's left, repeats less; a part built at home starts higher (the engineers made it).
 //  · limits: certification (PROG.cert, unchanged). The player sees one bar: 0.6·use + 0.4·(how far certification is
 //    from 50 % to 100 %).
 // Low use bites through risk, time and yield, never stat cuts: engines can fail to light (8 %·(1−use)²), stacking an
 // unfamiliar vehicle takes up to 1.5× longer, instruments return less (science pay and certification gains scale
 // with 0.5 + 0.5·use of the instrument package). Effects start once the program has started (a start chosen, or a
 // flight flown), so plain physics in the sim is unaffected. Know-how belongs to the team: it carries over on defection.
-const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.18,IGN_FAIL=0.08;
+const KH_REG=['fly','maxq','vac','orbit','heat','land','burn','vburn','fail'],KH_RATE=0.05,IGN_FAIL=0.08;
 const khOn=()=>PROG.flights>0||!!(PROG.own&&PROG.own.chosen);
 function use0(k){const t=tierOf(k),b=[0.5,0.2,0.1][t],x=sourceOf(k);return x.how==='home'?Math.min(0.95,b+0.3*indOf(HOME)):x.how==='line'?Math.min(0.95,b+0.2+0.2*x.line.m):b}
 const khUse=k=>((PROG.kh||{})[k]?.use)??use0(k);
@@ -1540,20 +1541,21 @@ function khMark(s,R){const b=s.body,h=len(s.r)-b.R,vac=h>(b.atm||0),hot=[],orbit
 // at flight end: each regime seen teaches, by novelty
 function khLearn(R){if(!khOn())return;PROG.kh=PROG.kh||{};
   for(const k in R.khSeen){const e=PROG.kh[k]||(PROG.kh[k]={use:use0(k),reg:{}});
-    for(const g in R.khSeen[k]){const n=e.reg[g]||0;e.use+=KH_RATE*(1-e.use)/(1+n);e.reg[g]=n+1}}}
+    let nov=0;for(const g in R.khSeen[k]){const n=e.reg[g]||0;nov+=1/(1+n);e.reg[g]=n+1}
+    e.use+=(1-e.use)*(1-Math.exp(-KH_RATE*nov))}}   // one step per flight, sized by how new the flight was (sum over regimes)
 // an ignition event: each engine in the segment rolls against its know-how (deterministic per flight, kick and part)
 // ---- production lines: learning to manufacture a part is different from buying it. A line costs capital and time to
-// set up: ~8× the part's price × (1 + tier), 40 + 30·tier days. Your own line (reverse-engineering) needs real know-how
+// set up: ~4× the part's price × (1 + tier), 40 + 30·tier days. Your own line (reverse-engineering) needs real know-how
 // of the part (≥ 40 % use); a license from a supplier that makes it (friendly, not sanctioning us) costs 60 %, is
 // quicker, starts more mature, and pays the licensor 10 % royalty per unit. Every unit built raises maturity m
-// (+8 %·(1 − m) per unit): the price per unit runs from ×1.25 at m = 0 to ×0.75 at m = 1, so building at home ends up
+// (+12 %·(1 − m) per unit): the price per unit runs from ×1.25 at m = 0 to ×0.75 at m = 1, so building at home ends up
 // cheaper than buying; an immature line's engines are rougher (ignition failures ×(2 − m)); line parts start with more
 // know-how and certification. Lines belong to the country: they ignore sanctions (a license keeps running) and stay
 // behind on a defection.
 const LINE_ROYALTY=0.1;
 function prodLine(k){const L=(PROG.lines||{})[k];return L&&L.power===HOME&&PROG.day>=L.ready?L:null}
 const prodLineK=L=>(1.25-0.5*L.m)+(L.lic!=null?LINE_ROYALTY:0);
-function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*8*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
+function prodQuote(k){const t=tierOf(k),base=(PRICE[k]??3)*4*(1+t),days=40+30*t,x=sourceOf(k),lic=x.how==='import'?x.from:null;
   const can=khUse(k)>=0.4,licOK=lic!=null&&relOf(HOME,lic)>0.2&&!sanctioned(lic);
   return{own:{cost:base,days,ok:can,why:can?'':'we need to know it better first (fly it: know-how 40 %+)'},lic:{cost:base*0.6,days:Math.round(days*0.7),ok:licOK,from:lic,
     why:lic==null?'no foreign maker to license from':!licOK?`${POWERS[lic].root} won't license it`:''}}}
@@ -1562,7 +1564,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
   if(mode==='lic')opAdd(Q.from,3);else opAdd(HOME,2*natK());
   HOOK.news(mode==='lic'?`License signed: ${POWERS[Q.from].root}'s ${PARTS[k].name} will be built under license (${Q.days} days to tool up)`:`A production line for the ${PARTS[k].name}: ${Q.days} days to tool up`,'ok');HOOK.save();return true}
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
-  for(let i=0;i<n;i++){L.m+=0.08*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
+  for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(!khOn()||!s.rec)return true;
   for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
@@ -1634,7 +1636,7 @@ function worldTick(d){const R=rng(PROG.wseed=(PROG.wseed*1103515245+12345+Math.f
 // with difficulty, the source's standing with us, and (commercial) the business cycle. Government money also arrives
 // as a budget every 100 days, scaled by public opinion at home. Firsts (MISSIONS) stay one-time; these never run out.
 const SRC={sci:{name:'Science',rate:1/14},com:{name:'Commercial',rate:1/18},gov:{name:'Government',rate:1/30},tour:{name:'Tourism',rate:1/22},mil:{name:'Military',rate:1/35}};
-const BOARD_MAX=6,OFFER_LIFE=50,GRANT_100=12;   // M per 100 days at home opinion 50
+const BOARD_MAX=6,OFFER_LIFE=50,GRANT_100=15;   // M per 100 days at home opinion 50
 const capOf=()=>2+Math.min(4,Math.floor((PROG.cdone||0)/3));
 const standOf=k=>(PROG.stand||{})[k]??50;
 function standAdd(k,d){PROG.stand=PROG.stand||{};PROG.stand[k]=clamp(standOf(k)+d,0,100)}
@@ -1734,7 +1736,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
 function econTick(d,R){ensureBoard();
-  if(PROG.flights>0){PROG.funds-=(OVERHEAD+0.03*capOf())*d;   // running the program, from its first launch on (more as it grows)
+  if(PROG.flights>0){PROG.funds-=(OVERHEAD+0.015*capOf())*d;   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
   const c0=PROG.cycle||0;PROG.cyc=(PROG.cyc??R()*6.28)+d*6.2832/700+(R()-.5)*0.15*Math.sqrt(d/10);PROG.cycle=clamp(0.75*Math.sin(PROG.cyc)+(R()-.5)*0.1,-1,1);
@@ -1757,9 +1759,9 @@ function econTick(d,R){ensureBoard();
 //    private one gets a decision: a state rescue for equity, or an investor loan repaid from half of all income
 // Changes arrive as between-flight decisions (privatization, a foreign stake, a rescue) that expire if ignored.
 const START={
-  agency:{name:'National agency',blurb:'Funded by your government: budget days, a safety net, more government work. Opinion at home is everything.',funds:60},
+  agency:{name:'National agency',blurb:'Funded by your government: budget days, a safety net, more government work. Opinion at home is everything.',funds:80},
   company:{name:'Private company',blurb:'Investor capital: more cash up front and more commercial work, no budget day and no safety net, little political flak.',funds:90},
-  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program and its budget. Their opinions all count.',funds:60}};
+  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program and its budget. Their opinions all count.',funds:80}};
 const own=()=>PROG.own||(PROG.own={kind:'agency',st:{[HOME]:1},pv:0,chosen:false});
 const stateShare=()=>Object.values(own().st).reduce((a,x)=>a+x,0);
 function chooseStart(kind){const o={kind,st:{},pv:0,chosen:true,debt:0};
