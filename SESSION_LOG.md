@@ -3095,3 +3095,36 @@ designer's power box.
 - [ ] A relay in Selene orbit (the registry keeps only Tellus orbits): the far side's contact
 - [ ] R4 science; R5 drive plans (a surface leg of the mission planner); the clock while driving from home
 - [x] Pushed with the repo move (GitHub `main` has R1–R3)
+
+## 2026-10-08 — Launchpad: playtest list and tech scouting (notes session)
+
+### Summary
+Started `PLAYTEST.md`: Caio's playtest observations as a running list, roughly prioritised (P1–P3), each with a lead and an
+owning session (items 1–14; several since fixed by other sessions). Also `TECH_SCOUTING.md`: real space-tech advances as of
+Oct 2026 (fusion, NTR and DRACO's cancellation, RDRE, sails, reusable upper stages, kinetic launch, skyhooks, depots,
+aerocapture, ISRU, orbital compute, SBSP), each with a game hook and sources. No code changes. This entry was first written
+in the Drive folder and lost in the move; re-added here.
+
+### Files
+- `explorations/launchpad/PLAYTEST.md`, `explorations/launchpad/TECH_SCOUTING.md` (new; committed in `8ae2ad9`)
+- `INDEX.md`: pointers in the launchpad row
+
+### Next steps
+- [ ] Keep adding playtest observations to `PLAYTEST.md` (in this repo, not the Drive folder)
+
+## 2026-10-08 — The repo left Google Drive: steps 2–6 run (tester session)
+
+### Summary
+- This machine: `check`, `commit` (`8ae2ad9`: shared docs, `PLAYTEST.md`, `TECH_SCOUTING.md`, `pulse-loop/`), `copy`
+  (verified HEAD and fsck; 9 worktrees repaired; 336/336 launchpad tests from the new home), push.
+- A sats session merged rovers R3 into Drive's `main` (`df1e6e0`) after the copy. It was fetched across and pushed; its
+  uncommitted notes were carried over (also committed as `48e11af` by another session).
+- Step 8 was done by another session (`21f41c0`). Once the other machine was working from its copy (the aerofx row says
+  it re-pointed), step 6: Drive's `.git` → `C:/Users/caioa/dev/_backup/drive-git-2026-10-08`, `MOVED.md` written.
+- Fixed in `leaving-drive.sh`: freeze's guard asked the Drive repo about commits only the copy has and stopped falsely;
+  it now asks the copy whether it contains Drive's HEAD. The runbook records the lessons.
+- My mistake, put right: a stash of my own carried-over notes also took the notes session's uncommitted log entry
+  ("playtest list and tech scouting"). It was restored and is committed here. The stash is kept (`git stash list`).
+
+### Next steps
+- [ ] Caio: delete the frozen Drive folder when sure; keep `_backup/drive-git-2026-10-08` a while longer

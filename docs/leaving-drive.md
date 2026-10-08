@@ -1,7 +1,16 @@
 # Leaving Google Drive — runbook for moving the repo out
-**Version**: v1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: v1.0.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Purpose**: Move the git repository out of `G:/Meu Drive/CLAUDE/fun` into a local clone on each machine, synced through
-GitHub, in one short pause. **Status**: run on this machine 2026-10-08 (steps 1–5, 7, 8 done; step 6, the freeze, still Caio's). Script: [`leaving-drive.sh`](leaving-drive.sh).
+GitHub, in one short pause. **Status**: done 2026-10-08, every step on both machines; the Drive folder is frozen. Kept as
+the record. Script: [`leaving-drive.sh`](leaving-drive.sh).
+
+**What the run taught** (for any future move like this):
+- A session merged into Drive's `main` after the first copy. The guard caught it at freeze, and the commits were fetched
+  across first. "No active sessions" is a claim worth checking: compare `git log -1` before freezing.
+- Freeze's first guard asked the Drive repo about the copy's newer commits, which it can't know about, and stopped
+  falsely. Fixed: it now asks the copy whether it contains Drive's HEAD.
+- Before stashing or resetting shared docs in the new home, check whose edits they are. Sessions there may already have
+  uncommitted lines (one log entry was swept into a stash and restored).
 
 ---
 

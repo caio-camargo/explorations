@@ -98,7 +98,8 @@ freeze)
   [ $OTHER = 1 ] || stop "freeze removes .git from Drive for BOTH machines: pass --other-machine-copied once the other machine's copy is verified"
   [ -d "$NEW/.git" ] || stop "no copy at $NEW on this machine"
   [ "$(git -C "$NEW" rev-parse HEAD)" = "$(G rev-parse HEAD)" ] || warn "the copy's HEAD differs from Drive's (new commits since the copy are fine; check it's not the other way round)"
-  [ "$(G rev-list --count "$(git -C "$NEW" rev-parse HEAD)"..HEAD 2>/dev/null || echo 1)" = 0 ] || stop "Drive has commits the copy lacks: fetch them into the copy first"
+  # asked in the copy: it may have newer commits Drive never saw, but it must contain Drive's HEAD
+  git -C "$NEW" merge-base --is-ancestor "$(G rev-parse HEAD)" HEAD 2>/dev/null || stop "Drive has commits the copy lacks: fetch them into the copy first"
   run mkdir -p "$BACKUP"
   run mv "$DRIVE/.git" "$BACKUP/drive-git-$STAMP"
   if [ $GO = 1 ]; then cat > "$DRIVE/MOVED.md" <<EOF
