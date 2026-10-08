@@ -4674,10 +4674,12 @@ function buildRig(TH,rig){const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,
   const g=[],GH=TH+6,GX=PAD_GX,z0=-6,z1=6;
   for(const x of[-GX,GX])for(const z of[z0,z1]){lattice(g,x,z,2.2,GH,RD);box(g,[x,.45,z],1.4,.3,1.8,STL)}
   for(let y=6;y<GH-2;y+=6)box(g,[0,y,z0+3.5],GX+1.1,.15,3.5,[.5,.5,.48]);
-  for(const z of[z0,z1])for(const y of[GH*.33,GH*.66])box(g,[0,y,z],GX,.25,.25,RD);
+  // girders: across the back, and along each side; none across the open front, which rolls past the rocket (PLAYTEST #2)
+  for(const y of[GH*.33,GH*.66]){box(g,[0,y,z0],GX,.25,.25,RD);for(const x of[-GX,GX])box(g,[x,y,(z0+z1)/2],.25,.25,(z1-z0)/2,RD)}
   box(g,[0,GH+.25,0],GX+1.2,.25,7,RD);box(g,[0,GH+1.5,0],1,1,5,STL);box(g,[0,GH+2.6,3],.4,.15,4,RD);
-  const gantry=makeMesh(g);
-  return{arms,holds,gantry,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();gantry.free()}}}
+  // service position: the decks (front edge at z = 1 here) stop 0.5 m short of the stack's widest reach, boosters included
+  const gantry=makeMesh(g),zS=Math.min(-3.3,-((rig?rig.zr:R0)+1.5));
+  return{arms,holds,gantry,zS,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();gantry.free()}}}
 // The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
 // 12.5–60 m. While a rocket stands there (or is being built) the pad holds it: swing arms reach from the tower to the
 // widest thing at each arm's height (boosters included), and hold-downs clamp its base. Ship x is pad x (east) here.
@@ -4685,13 +4687,13 @@ let PAD=buildPad(32),RIG=buildRig(32,null),padTH=32,padKey='',padShip=null,padMo
 function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0,ps=S.parts.filter(p=>p.on);if(!ps.length)return null;
   const bot=ps.filter(p=>p.y0<.01),core=bot.find(p=>Math.abs(p.pos[0])<.05&&Math.abs(p.pos[2])<.05)||bot[0];
   const xAt=h=>{let x=null;for(const p of ps){const y0=p.y0+base;if(h>=y0&&h<=y0+p.h){const e=p.pos[0]+p.d.r;if(x==null||e>x)x=e}}return x};
-  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f)))}}
+  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f))),zr:Math.max(...ps.map(p=>Math.abs(p.pos[2])+p.d.r))}}
 function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!S.mkLift;
   // a flight that starts on the pad starts with the gantry in service position; it rolls back from then (padT0)
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H);
-  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
+  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
   if(key===padKey)return;if(H!==padTH){PAD.free();PAD=buildPad(H);padTH=H}RIG.free();RIG=buildRig(H,rig);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)
@@ -4702,7 +4704,7 @@ const padW=(F,v)=>add(add(mul(F.X,v[0]),mul(F.Y,v[1])),mul(F.Z,v[2]));
 function padMat(F,a,b,c,T){return mat4(padW(F,a),padW(F,b),padW(F,c),add(F.O,padW(F,T)))}
 // rotation by ang about the unit axis k (Rodrigues), as the images of x, y, z
 function rotAx(k,ang){const c=Math.cos(ang),s=Math.sin(ang),R=v=>{const kv=dot(k,v);return add(add(mul(v,c),mul(cross(k,v),s)),mul(k,kv*(1-c)))};return[R([1,0,0]),R([0,1,0]),R([0,0,1])]}
-// Each frame: the rig. Gantry: parked in the editor; on a flight from the pad, rolls from service position (−3.3 m) to
+// Each frame: the rig. Gantry: parked in the editor; on a flight from the pad, rolls from service position (RIG.zS) to
 // its parking spot (−80 m) over 14 s. Swing arms: connected until liftoff, then swing back top first, 1.5 s each, 0.25 s
 // apart; arms with no rocket at their height stay folded. Hold-downs: tip outward 0.9 rad in 0.6 s at liftoff.
 function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return;
@@ -4710,7 +4712,7 @@ function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return
   RIG.arms.forEach((A,i)=>{const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
   const al=pre?0:-.9*sstep(0,1,clamp(tl/.6,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
-  const zg=mode==='editor'?-80:-3.3-76.7*sstep(0,1,clamp((simT-padT0)/14,0,1));drawMesh(RIG.gantry,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,zg]),F.site)}
+  const zg=mode==='editor'?-80:RIG.zS+(-80-RIG.zS)*sstep(0,1,clamp((simT-padT0)/14,0,1));drawMesh(RIG.gantry,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,zg]),F.site)}
 // floodlights: on from dusk (the sun 4° above the pad's horizon) to dawn; four point lights for the mesh shader, which
 // lights the rocket, the tower and the pad's buildings with them
 function padLights(u,camW){const F=padFrame(camW),e=dot(norm(sub(F.site,bodyPos(TELLUS,simT))),SUN);padNight=len(F.O)<2e4?1-sstep(-.05,.07,e):0;

@@ -5137,3 +5137,18 @@ is right.
 
 **Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
 "skip to an era" shortcut for the compute eras.
+
+## The gantry no longer clips the rocket (2026-10-08, tester session; PLAYTEST #2)
+
+**Cause.** The service gantry rolls back toward −z, open front first, yet two girders spanned that open front (at a
+third and two thirds of its height). Over the 14 s roll they swept straight through every rocket, wide or narrow. A
+second, smaller one: the service position was a fixed −3.3 m, so the work decks' front edge sat at z = −2.3 m, inside
+any stack reaching further than that (the Crewed Lunar's boosters reach 2.75 m).
+
+**Fix** (`buildRig`, `padRig`, `drawPadRig`): no girders across the open front; side girders along each pair of columns
+instead. The service position follows the stack: `RIG.zS = min(−3.3, −(zr + 1.5))`, where `padRig` now measures `zr`,
+the widest |z| reach of any part (boosters included), so the decks stop 0.5 m short of it. Narrow rockets keep −3.3 m.
+test.mjs §38 runs the page's own `buildRig`/`padRig` with stubs that record every box and sweeps the whole roll-back
+against each preset's envelope; on the old code it fails (the front girder reaches the Orbiter at −5.2 m).
+
+**For visuals:** the gantry is yours. If you restyle it, keep the open front clear; §38 will tell you.
