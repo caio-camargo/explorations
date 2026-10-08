@@ -704,11 +704,11 @@ const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
 // computer with every mode and the full-speed loop (onboard computers). k: rate-loop gain (1/s), w: fastest commanded turn
 // (rad/s), db: attitude deadband (rad). A vessel keeps the avionics it launched with (s.av); with no program running
-// (sandbox, physics tests) and on ground-guided procedures it has the best.
+// (sandbox, physics tests), with the tester's all-tools cheat, and on ground-guided procedures it has the best.
 const AV=[{name:'Gyro autopilot',modes:['stab'],k:2,w:0.3,db:0.0087,era:0},
   {name:'Analog autopilot',modes:['stab','pro','retro','normal','anti','radout','radin'],k:3,w:0.45,db:0.0035,era:1},
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
-const avNow=()=>khOn()?Math.min(AV.length-1,compEra()):AV.length-1;
+const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics
 const avOf=s=>AV[s.proc?AV.length-1:s.av??AV.length-1];
 const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
 const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
@@ -1121,7 +1121,7 @@ function rails(s,dt){
   return true}
 function stepDebris(dt){
   for(let i=debris.length-1;i>=0;i--){const d=debris[i],b=d.body;d.t+=dt;
-    const rl=len(d.r),h=rl-b.R;let a=mul(d.r,-b.mu/(rl*rl*rl));
+    const rl=len(d.r),h=rl-b.R;let a=mul(d.r,-b.mu/(rl*rl*rl));if(b.pert||b.children.some(c=>c.pert)){const pa=pertAcc(b,d.r,simT,true);if(pa)a=add(a,pa)}   // the moons' tides, as on the craft
     const rho=density(b,h);if(rho>0){const va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp>0.1){let ad=0.5*rho*sp*2.5/d.mass;if(ad*dt>0.9)ad=0.9/dt;a=madd(a,va,-ad)}}
     d.v=madd(d.v,a,dt);d.r=madd(d.r,d.v,dt);
     const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
@@ -1702,7 +1702,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1906,6 +1906,7 @@ function startDev(k,g){if(PROG.devJob)return false;const q=devQuote(k,g);if(!q.o
 //    for 35 / 60 % of their dry price (scaled by wear, as refurbishment), 2M of ship time each; a little know-how too
 const FAC={hall:{name:'Integration hall',lv:[{cost:90,days:60},{cost:220,days:120}],eff:[1,0.8,0.65],what:l=>`stacking ×${[1,0.8,0.65][l]}`},
   fleet:{name:'Recovery fleet',lv:[{cost:50,days:90},{cost:120,days:120}],range:[0,800e3,1500e3],sal:[0,0.35,0.6],what:l=>l?`salvages stages at sea within ${[0,800,1500][l]} km, ${[0,35,60][l]}% of value`:'none'},
+  pads:{name:'Launch pads',lv:[{cost:80,days:120},{cost:160,days:180}],what:l=>`${1+l} pad${l?'s':''}: dispatched and hand-flown launches in parallel`},
   centre:{name:'Computing centre',lv:[{cost:40,days:90},{cost:120,days:180}],ahead:[0,1,2],speed:[1,0.6,0.4],what:l=>l?`studies ×${[1,0.6,0.4][l]} time, ${[0,1,2][l]} yr ahead of our power's computing`:'none: the trajectory office rents what it can'}};
 const facLv=id=>{const f=(PROG.fac||{})[id];return f?f.lv:0};
 function facQuote(id){const lv=facLv(id),f=(PROG.fac||{})[id],step=FAC[id].lv[lv];return step?{...step,ok:!(f&&f.building),why:f&&f.building?'already building':''}:{ok:false,why:'fully built'}}
@@ -1974,6 +1975,7 @@ function computeHTML(){const E=COMP_ERAS[compEra()],W=COMP_ERAS[worldEra()],Q=PR
 // Launch windows and missions in flight join later (planning, sats, bodies).
 function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(day>D+1e-6)E.push({day,kind,text,stop})};
   for(const j of PROG.studyQ||[])add(j.end,'study','A trajectory study is ready');
+  for(const x of PROG.dispatch||[])if(x.status==='queued')add(x.launch,'dispatch',`Dispatched launch: ${x.title}`);
   for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.building)add(f.building.ready,'build',`${FAC[id].name} level ${f.building.lv} opens`)}
   if(PROG.stand2){add(PROG.stand2.ready,'build','The test stand opens');if(PROG.stand2.job)add(PROG.stand2.job.end,'test',`Test stand: the ${PARTS[PROG.stand2.job.k].name} campaign ends`)}
   if(PROG.devJob)add(PROG.devJob.end,'dev',`Design bureau: the ${PARTS[PROG.devJob.k].name} redesign is done`);
@@ -1995,6 +1997,66 @@ function advanceTo(day){const n0=(PROG.decisions||[]).length;let stopped=null,gu
 function timelineHTML(){const E=upcoming().slice(0,8);if(!E.length)return'';
   return`<div class="ep">Coming up</div><div class="sub">`+E.map((e,i)=>`${e.stop?'<b>':''}in ${Math.ceil(e.day-PROG.day-1e-9)} d · ${e.text}${e.stop?'</b>':''}`+
     ` <button data-adv="${e.day}">${i?'Wait until then':'Wait'}</button>`).join('<br>')+`</div>`}
+// ---- dispatch (design: NOTES "Dispatch — the economy's answers"): a contract flown by a stored procedure, without you.
+// Only repeats: it needs a procedure for the design (so the design has flown it by hand), and firsts are never
+// dispatched (missions aren't contracts). Same costs, stacking and pay as a flight flown by hand. It is queued on a pad:
+// pads are reservations on the calendar (one pad, plus the Launch pads facility), and a hand-flown launch waits for a
+// free pad too. The outcome is fixed by a seed taken when it's ordered (no re-rolls). The risk estimate comes from the
+// part data: the procedure's Δv margin for this target, ignition odds from know-how (and line maturity, development),
+// load uncertainty from certification. Good data raises the chance and narrows the range.
+// The flight itself: dispatchRun(D) from the physics side (bodies session: the procedure flown headless, with
+// deviation handing the flight to the player). Until it exists, dispatchRoll rolls the estimate with the seed (interim).
+const DISPATCH_TYPES=['sat','recon'];
+const vRot=()=>TELLUS.R*TELLUS.rot;
+function dispatchTarget(c){const p=c.p;return{pe:p.alt*1e3,ap:p.alt*1e3,inc:p.inc||0}}
+// the estimate for a design (stack) on a contract: {ok, why, p, lo, hi, margin}
+function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];if(!proc||proc.kind!=='orbit')return{ok:false,why:'no procedure for this design: fly it to orbit by hand first'};
+  const v=newShip(stack),T=dispatchTarget(c),R0={orb:{...T,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},cdone:[]};
+  if(!CT[c.type].ok(R0,c.p,{rec:R0,parts:v.parts}))return{ok:false,why:'this design cannot do this contract (its payload)'};
+  const a0=(proc.target?(proc.target.pe+proc.target.ap)/2:T.pe),vc=h=>Math.sqrt(TELLUS.mu/(TELLUS.R+h)),
+    extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=dvRemaining(v).tot-proc.dv-extra;
+  const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
+  const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
+  for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=(1-f)**((p.seg??0)===last?2:1)}   // the top stage lights twice (circularisation)
+  for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
+  const pr=pM*pI*pS,unc=nk?0.4*uc/nk+0.4*uk/nk:0;
+  return{ok:margin>-50,why:margin>-50?'':`${Math.round(-margin)} m/s short for this orbit`,p:pr,lo:clamp(pr*(1-unc),0,1),hi:clamp(pr*(1+unc/2),0,1),margin,proc}}
+const padsN=()=>1+facLv('pads');
+// when each pad is next free, from today (dispatch reservations)
+function padsFree(){const D=PROG.day,f=Array.from({length:padsN()},()=>D);for(const x of PROG.dispatch||[])if(x.status==='queued'&&x.pad<f.length)f[x.pad]=Math.max(f[x.pad],x.launch);return f}
+const padWait=()=>Math.max(0,Math.min(...padsFree())-PROG.day);
+// the designs with a procedure that could fly this contract, best chance first
+function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const out=[];
+  for(const key in PROG.procs||{}){let st;try{st=JSON.parse(key)}catch(e){continue}if(!Array.isArray(st))continue;const e=dispatchEstimate(st,c);if(e.ok)out.push({stack:st,e})}
+  return out.sort((a,b)=>b.e.p-a.e.p)}
+function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),cost=vesselCost(v.parts).cost,
+  prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  const busy=(PROG.dispatch||[]).some(x=>x.status==='queued'&&x.cid===c.id);
+  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost,prep,pad,start,launch:start+prep}}
+function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return false;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
+  PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
+  HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
+// interim resolver: the estimate rolled with the dispatch's own seed, the orbit scattered by the procedure and the compute era
+function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok||R()>=e.p)return{ok:false,why:e.ok?'the flight did not make orbit':e.why};
+  const T=dispatchTarget(c),sk=(3+40*predErr(v))*1e3,j=()=>(R()-0.5)*2*sk,pe=T.pe+j(),ap=T.ap+Math.abs(j());
+  return{ok:true,orb:{pe:Math.min(pe,ap),ap:Math.max(pe,ap),inc:T.inc+(R()-0.5)*0.4,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:e.proc.dv}}
+function dispatchTick(){for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
+  const c=(PROG.active||[]).find(x=>x.id===D.cid);if(!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
+  const site=homeSites()[0]||null;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
+  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
+  PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
+  const res=typeof dispatchRun==='function'?dispatchRun(D,v,c):dispatchRoll(D,v,c);D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
+  const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});
+  if(res.ok){const R={orb:res.orb,cdone:[],dv:res.dv,dispatched:true};contractEval({rec:R,parts:v.parts});
+    HOOK.news(R.cdone.length?`Dispatched flight to orbit: ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, ${R.cdone.join(', ')}`:`Dispatched flight reached ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, outside the contract's window`,R.cdone.length?'ok':'warn')}
+  else HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');
+  HOOK.save()}}
+function dispatchLine(c){const O=dispatchOptions(c);if(!O.length&&!DISPATCH_TYPES.includes(c.type))return'';const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.cid===c.id);
+  if(D)return`<div class="sub dim">Dispatched: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d (~${Math.round(D.est.p*100)}%)</div>`;
+  if(!O.length)return`<div class="sub dim">Dispatch: no stored procedure can fly this yet (fly one to orbit by hand)</div>`;
+  const o=O[0],q=dispatchQuote(c,o.stack),pc=x=>Math.round(x*100);
+  return`<div class="sub">Dispatch ${designName(o.stack)||'our design'}: success ~${pc(o.e.p)}% (${pc(o.e.lo)}–${pc(o.e.hi)}%), launches in ${Math.ceil(q.launch-PROG.day)} d on pad ${q.pad+1}, ${fmtM(q.cost)} `+
+    `<button data-disp="${c.id}" ${q.ok?'':'disabled'}>Dispatch</button></div>`}
 function devTick(){const J=PROG.devJob;if(!J||PROG.day<J.end)return;PROG.devJob=null;PROG.dev=PROG.dev||{};const e=PROG.dev[J.k]||(PROG.dev[J.k]={});e[J.g]=(e[J.g]||0)+1;
   PROG.cert[J.k]=Math.max(0.5,certOf(J.k)-0.1);PROG.kh=PROG.kh||{};const h=PROG.kh[J.k]||(PROG.kh[J.k]={use:use0(J.k),reg:{}});h.use=Math.max(0,h.use-0.1);
   HOOK.news(`New design: the ${PARTS[J.k].name} is ${DEV_GOALS[J.g].toLowerCase()} (mark ${(e.cheap||0)+(e.rel||0)+(e.dur||0)+1}); it has to prove itself again`,'ok');HOOK.save()}
@@ -2209,7 +2271,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
-function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();
+function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();dispatchTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
@@ -2751,9 +2813,9 @@ function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(st&&st
 // whatever is docked. Vessels split off another keep their parts' design indices (p.oi, p.oseg), so any descendant of a
 // design rebuilds the same way. Entries registered before this have no design and stay passive.
 const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loaded into the flight)
-const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute});
+const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av});   // av: its avionics (control session)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
-function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);
+function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew)p.crewAboard=o.crew;if(o.rvOut){p.rvOut=true;p.xm=0}}
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});
   // the next staging event: the first that hasn't happened (something still there to drop, a segment not yet lit, a chute)
@@ -3131,7 +3193,10 @@ function fixPe(s,X,peMin){const B=s.body,e=elements(s.r,s.v,B.mu);if(e.pe-B.R>=p
   s.throttle=aimAt(s,horiz(s),4)?0.3:0;return false}
 // how far a predicted trajectory is from passing B at `pass`: the pass error once it encounters B, else the closest approach
 // (plus a million), so a search that starts with a miss still has a slope toward an encounter
-function passScore(p,B,pass){const L=p.find(x=>x.b===B);if(L)return Math.abs(L.el.pe-B.R-pass);const p0=p[0];let d=Infinity;
+// the perigee a trajectory comes home on after passing B (the leg after B's), or null
+function homePe(p,B){const i=p.findIndex(x=>x.b===B),L=i>=0?p[i+1]:null;if(!L||L.b!==B.parent)return null;return(L.path&&L.endKind!=='impact'?L.minR:L.el.pe)-L.b.R}
+function passScore(p,B,pass,home){const L=p.find(x=>x.b===B);if(L){const e=Math.abs(L.el.pe-B.R-pass);if(home==null)return e;
+    const h=homePe(p,B);return h==null?5e5+e:Math.abs(h-home)+2*Math.max(0,e-0.5*pass)}   // a free return: the way home counts; the pass may sit within half its heightconst p0=p[0];let d=Infinity;
   if(p0.path)for(const[r,t]of p0.path)d=Math.min(d,len(sub(r,bodyRel(B,t)[0])));
   else{const T=p0.el.e<1?p0.el.period:3*86400;for(let i=0;i<=400;i++){const dt=T*i/400;d=Math.min(d,len(sub(kepler(p0.r,p0.v,dt,p0.b.mu)[0],bodyRel(B,p0.t+dt)[0])))}}
   return 1e6+d}
@@ -3156,14 +3221,18 @@ const MP={
       X.sub='wait';X.tBurn=simT+wait;X.wake=X.tBurn-ALIGN;return false}
     if(X.sub==='wait'){s.throttle=0;aimAt(s,s.v,5);if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
     if(X.sub==='burn'){if(elements(s.r,s.v,b.mu).ap>=(X.rTo||B.a*0.995)){if(typeof DEBUG_PROC!=='undefined'&&X.uN){const e=elements(s.r,s.v,b.mu),ad=mul(e.P,-1),tA=simT+timeToNu(e,Math.PI);HOOK.msg(`after the burn: apoapsis ${(e.ap/1e3).toFixed(0)} km at ${(tA/3600).toFixed(2)} h vs node ${(X.tN/3600).toFixed(2)} h; apoapsis direction off the node by ${(Math.acos(Math.min(1,dot(ad,X.uN)))*57.3).toFixed(1)}°`)}s.throttle=0;X.sub='coast';X.wake=simT+2*3600;X.mccN=0;return false}burnTo(s,X,s.v);return false}
+    // a free return (the next phase is 'home'): the corrections also aim at the perigee it will come home on after the flyby
+    const nxt=X.p.phases[X.mi+1],home=nxt&&nxt.k==='home'?nxt.perigee:null;
     if(X.sub==='coast'){s.throttle=0;s.sasMode='pro';if(simT<X.wake)return false;X.wake=null;
-      const sc0=passScore(predict(s),B,ph.pass);X.dv=solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass)+0.01*len(dv),8,400);X.got=0;X.sub='mcc';X.mccN=(X.mccN||0)+1;
-      if(typeof DEBUG_PROC!=='undefined')HOOK.msg(`MCC ${X.mccN}: score ${(sc0/1e3).toFixed(0)} → ${(passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,X.dv),t:simT}),B,ph.pass)/1e3).toFixed(0)} km-ish with ${len(X.dv).toFixed(1)} m/s`);return false}
-    if(X.sub==='mcc'){if(!impulse(s,X))return false;const p=predict(s),L=p.find(x=>x.b===B);
-      if((!L||Math.abs(L.el.pe-B.R-ph.pass)>20e3)&&X.mccN<3){X.sub='coast';X.wake=simT+3*3600;return false}   // not there yet: correct again later
+      const sc0=passScore(predict(s),B,ph.pass,home);X.dv=solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home)+0.01*len(dv),8,400);X.got=0;X.sub='mcc';X.mccN=(X.mccN||0)+1;
+      if(typeof DEBUG_PROC!=='undefined')HOOK.msg(`MCC ${X.mccN}: score ${(sc0/1e3).toFixed(0)} → ${(passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,X.dv),t:simT}),B,ph.pass,home)/1e3).toFixed(0)} km-ish with ${len(X.dv).toFixed(1)} m/s`);return false}
+    if(X.sub==='mcc'){if(!impulse(s,X))return false;const p=predict(s),L=p.find(x=>x.b===B),hp=home!=null?homePe(p,B):null;
+      const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3);
+      if(off&&X.mccN<3){X.sub='coast';X.wake=simT+3*3600;return false}   // not there yet: correct again later
       X.sub='toSOI';X.wake=p[0].endT?p[0].endT+60:simT+3600;return false}
     if(X.sub==='toSOI'){s.throttle=0;s.sasMode='pro';if(s.body!==B){if(simT>=X.wake)X.wake=simT+600;return false}X.wake=null;
-      X.dv=solveDv(s,dv=>{const e=elements(s.r,add(s.v,dv),B.mu);return Math.abs(e.pe-B.R-ph.pass)+0.01*len(dv)},2,100);X.got=0;X.sub='trim';return false}
+      X.dv=home!=null?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home)+0.01*len(dv),2,100)
+        :solveDv(s,dv=>{const e=elements(s.r,add(s.v,dv),B.mu);return Math.abs(e.pe-B.R-ph.pass)+0.01*len(dv)},2,100);X.got=0;X.sub='trim';return false}
     return impulse(s,X)},
   capture(s,X,ph){const B=s.body;
     if(!X.sub){const el=elements(s.r,s.v,B.mu),vp=Math.sqrt(B.mu*(2/el.pe-1/el.a)),vc=Math.sqrt(B.mu/el.pe),tb=(vp-vc)/Math.max(engAcc(s),1e-3);
@@ -3767,7 +3836,7 @@ uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;o
 void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
-uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;
+uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
@@ -3881,10 +3950,29 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
    alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
    rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
-  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fr=mk.y*(1.-smoothstep(lv-.15*sc,lv,v))*smoothstep(.36,.6,nz*.6+nz2*.4+mk.y*.3-.15)*.88;
-   alb=mix(alb,vec3(.82,.87,.93),fr);rough=mix(rough,.95,fr);metal*=1.-fr;nO+=T*(nz2-.5)*.5*fr;}
+  // frost: a fine, translucent rime below the fuel line (the paint shows through it, so a new tank still looks new), a
+  // little thicker toward the bottom, with a soft ragged edge at the fuel line and faint run-off streaks; not opaque
+  // blotches (PLAYTEST #3: those read as worn paint)
+  if(k==1&&mk.y>0.&&side){float lv=mk.z*h,fine=vn2(q2*vec2(46.,23.)+7.)*.55+vn2(q2*vec2(120.,60.)+2.)*.45,
+    edge=1.-smoothstep(lv-(.1+.12*nz)*sc,lv,v),run=.75+.25*vn2(vec2(s*30.,v*1.2)),
+    fr=mk.y*edge*run*(.12+.16*fine+.1*(1.-clamp(v/max(lv,.01),0.,1.)));
+   alb=mix(alb,vec3(.86,.9,.95),fr);rough=mix(rough,.8,fr);metal*=1.-fr;nO+=T*(fine-.5)*.15*fr;}
   if(k==2&&mk.w>0.){float g=mk.w*(1.-smoothstep(.35,.75,clamp(v/max(h,.01),0.,1.)));emis+=mix(vec3(.6,.05,0.),vec3(1.,.55,.15),g)*g*g*4.;}
  }
+ // the launch complex (uPadM, set while the pad and its rig draw; PLAYTEST #4): surface detail from the pad-local position
+ // (metres) and the material class. Concrete: formwork seams, mottling, rain stains running down from the tops. White
+ // paint (tanks, the LOX sphere, the water tower): weld rings every 2.4 m with rust weeping from them. Steel: mill
+ // mottling and rust spots. Everything darkens toward its foot (grime, ground contact). Fades out with distance.
+ if(uPadM>0.){vec3 o=vO,an=abs(vNo);bool vt=an.y<.55;vec2 uv=vt?vec2(an.x>an.z?o.z:o.x,o.y):o.xz;
+  vec2 fw=fwidth(uv);float fd=smoothstep(.25,.03,max(fw.x,fw.y)),n1=vn2(uv*.4),n2=vn2(uv*1.9+3.),n3=vn2(uv*8.+1.);
+  float foot=mix(.62,1.,smoothstep(0.,1.6,o.y));bool white=m==0&&dot(alb,vec3(.333))>.45;
+  if(m==2){float sm=vt?max(lin(o.y,1.2,.012,fw.y),lin(uv.x,3.,.014,fw.x)):max(lin(uv.x,4.,.02,fw.x),lin(uv.y,4.,.02,fw.y));
+   float st=vt?smoothstep(.45,.85,vn2(vec2(uv.x*1.4,o.y*.12))*.75+n2*.25):0.;
+   alb*=(1.-.32*sm*fd)*(.84+.3*n1)*(.93+.14*n3*fd)*(1.-.22*st*fd)*foot;rough=max(rough,.85);}
+  else if(white){float ring=vt?lin(o.y,2.4,.018,fw.y):0.,wk=vt?smoothstep(.6,.9,vn2(vec2(uv.x*2.6,o.y*.35)))*(1.-smoothstep(0.,1.6,fract(o.y/2.4)*2.4)):0.;
+   alb*=(1.-.35*ring*fd)*(.95+.08*n1);alb=mix(alb,alb*vec3(.78,.62,.45),.45*wk*fd);alb*=foot;}
+  else if(m==1){alb*=.8+.35*n2;alb=mix(alb,vec3(.23,.12,.06),smoothstep(.72,.86,n3*.6+n1*.4)*.55*fd);alb*=foot;}
+  else{alb*=(.9+.15*n1)*(.96+.06*n3*fd)*foot;}}
  vec3 n=normalize(mat3(uM)*nO);if(dot(n,vP)>0.)n=-n;
  vec3 F0=mix(vec3(m==4?.06:.04),alb,metal),dif=alb*(1.-metal);
  float ndl=max(dot(n,uSun),0.),nv=max(dot(n,V),0.);vec3 H=normalize(uSun+V);
@@ -3893,9 +3981,11 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  vec3 sun=uSunCol*uLit,amb=mix(uGnd,uSky,.5+.5*dot(n,uUp));
  vec3 Rr=reflect(-V,n),env=mix(uGnd,uSky*1.3,smoothstep(-.15,.25,dot(Rr,uUp)));
  vec3 c=dif*(sun*ndl+amb)+sun*ndl*Fs*spec*.25+env*Fv*(metal+(m==4?1.:.35))+emis;
- // the pad's floodlights at night (padLights): four warm point lights, falling off past ~30 m
- if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);fl+=max(dot(n,L*inversesqrt(d2)),0.)*900./(d2+900.);}
-  c+=dif*vec3(1.,.88,.7)*fl*uFlI*2.5;}
+ // floodlights: banks on 16 m poles aimed at the pad (uFlC); a soft cone and inverse-square falloff, so the pad and the
+ // near faces of buildings are lit and the far sides and the outskirts fall to dark (PLAYTEST #4)
+ if(uFlI>0.){float fl=0.;for(int i=0;i<4;i++){vec3 L=uFl[i]-vP;float d2=dot(L,L);vec3 Ld=L*inversesqrt(d2);
+    float cone=smoothstep(.5,.86,dot(-Ld,normalize(uFlC-uFl[i])));fl+=max(dot(n,Ld),0.)*cone*420./(d2+60.);}
+  c+=dif*vec3(1.,.88,.7)*(fl+.05*smoothstep(160.,40.,length(vP-uFlC)))*uFlI;}   // + faint spill bounced off the apron
  // the engine plumes' light (plumeLight, aerofx): one soft point light in the flame, uPl = (position, core radius)
  if(uPlC.r+uPlC.g>0.){vec3 L=uPl.xyz-vP;float d2=dot(L,L);c+=dif*uPlC*(max(dot(n,L*inversesqrt(d2)),0.)*.85+.15)/(d2+uPl.w*uPl.w);}
  c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2)),1.);}`;
@@ -4672,7 +4762,7 @@ function buildPad(TH){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46
   // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
   lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
   for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
-  for(let i=0;i<4;i++){const t=Math.PI/4+i*Math.PI/2;box(a,[3.4*Math.cos(t),.25,3.4*Math.sin(t)],.3,.25,.3,STL)}
+  // (the four hold-down posts are in the rig, buildRig: they move to clear the rocket's boosters)
   // flame channel running south: low sooted walls on a dark floor (the ground itself can't be dug)
   for(const s of[-1,1])box(a,[3.4*s,.6,21],.4,.6,14.5,CO);box(a,[0,.012,21],3,.01,14.5,DK);
   // the umbilical tower: an orange lattice east of the rocket, a cap platform, a hammerhead jib, a lightning mast, the
@@ -4725,7 +4815,11 @@ function buildRig(TH,rig){const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,
     box(a,[-L/2,0,0],L/2,.35,.45,OR);box(a,[-L-.05,-.1,0],.05,.45,.35,STL);tube(a,[-.6,-.35,.3],[-L-.3,-.55,.3],.07,DK,6);return{mesh:makeMesh(a),h,reach:xr!=null}});
   // hold-downs: from the posts up to clamps on the rocket's base, above its engines (in the editor the ship hangs higher,
   // as in an assembly hall, and they become the launch stool it stands on)
-  const holds=rig?[0,1,2,3].map(i=>{const t=Math.PI/4+i*Math.PI/2,c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=rig.rB+.12,P=[3.4*c,.45,3.4*sn],a=[];
+  // Where they stand comes from padRig (rig.hold): turned off the diagonals if boosters sit there, each clamping the outermost
+  // part on its line, its post 1.2 m beyond. With no rocket the posts stand on the diagonals at 3.4 m.
+  const HD=rig?rig.hold:{t:[0,1,2,3].map(i=>Math.PI/4+i*Math.PI/2),rp:[3.4,3.4,3.4,3.4]},pa=[];
+  HD.t.forEach((t,i)=>box(pa,[HD.rp[i]*Math.cos(t),.25,HD.rp[i]*Math.sin(t)],.3,.25,.3,STL));const posts=makeMesh(pa);
+  const holds=rig?[0,1,2,3].map(i=>{const t=HD.t[i],c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=HD.r[i],P=[HD.rp[i]*c,.45,HD.rp[i]*sn],a=[];
     const E=[r*c-P[0],y-P[1],r*sn-P[2]];tube(a,[0,0,0],E,.14,STL,8);box(a,add(E,[.1*c,0,.1*sn]),.18,.22,.18,OR);return{mesh:makeMesh(a),P,k:[-sn,0,c]}}):[];
   // the gantry, centred on z = 0 here: four lattice columns on rail trucks, work decks across its back half (the open
   // front closes around the rocket in service position), girders, a roof, a bridge crane
@@ -4737,7 +4831,7 @@ function buildRig(TH,rig){const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,
   box(g,[0,GH+.25,0],GX+1.2,.25,7,RD);box(g,[0,GH+1.5,0],1,1,5,STL);box(g,[0,GH+2.6,3],.4,.15,4,RD);
   // service position: the decks (front edge at z = 1 here) stop 0.5 m short of the stack's widest reach, boosters included
   const gantry=makeMesh(g),zS=Math.min(-3.3,-((rig?rig.zr:R0)+1.5));
-  return{arms,holds,gantry,zS,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();gantry.free()}}}
+  return{arms,holds,posts,gantry,zS,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();posts.free();gantry.free()}}}
 // The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
 // 12.5–60 m. While a rocket stands there (or is being built) the pad holds it: swing arms reach from the tower to the
 // widest thing at each arm's height (boosters included), and hold-downs clamp its base. Ship x is pad x (east) here.
@@ -4745,13 +4839,23 @@ let PAD=buildPad(32),RIG=buildRig(32,null),padTH=32,padKey='',padShip=null,padMo
 function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0,ps=S.parts.filter(p=>p.on);if(!ps.length)return null;
   const bot=ps.filter(p=>p.y0<.01),core=bot.find(p=>Math.abs(p.pos[0])<.05&&Math.abs(p.pos[2])<.05)||bot[0];
   const xAt=h=>{let x=null;for(const p of ps){const y0=p.y0+base;if(h>=y0&&h<=y0+p.h){const e=p.pos[0]+p.d.r;if(x==null||e>x)x=e}}return x};
-  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f))),zr:Math.max(...ps.map(p=>Math.abs(p.pos[2])+p.d.r))}}
+  return{base,hE:core?core.h:1,rB:core?core.d.r:R0,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f))),zr:Math.max(...ps.map(p=>Math.abs(p.pos[2])+p.d.r)),hold:holdPlan(ps,core,base)}}
+// the hold-downs: four arms 90° apart, on the diagonals unless something stands there (boosters at 45°, three at 120°…);
+// then the set turns to the angle with the most room between the parts down at clamp height. Each arm clamps the
+// outermost part on its line (the core, or a booster if one is in the way) and its post stands 1.2 m beyond, ≥ 3.4 m.
+function holdPlan(ps,core,base){const yc=base+(core?core.h:1)*.85,low=ps.filter(p=>p.y0+base<=yc+.3),dir=t=>[Math.cos(t),Math.sin(t)];
+  const room=t=>{const[c,s]=dir(t);let m=9;for(const p of low){if(Math.hypot(p.pos[0],p.pos[2])<.05)continue;   // (the core's own stack: that's what it clamps)
+      const x=p.pos[0],z=p.pos[2],a=x*c+z*s;m=Math.min(m,(a>0?Math.abs(z*c-x*s):Math.hypot(x,z))-p.d.r)}return m},
+    reach=t=>{const[c,s]=dir(t);let r=core?core.d.r:R0;for(const p of low){const x=p.pos[0],z=p.pos[2],b=x*c+z*s,D=b*b-(x*x+z*z-p.d.r*p.d.r);if(D>=0)r=Math.max(r,b+Math.sqrt(D))}return r},
+    set=f=>[0,1,2,3].map(i=>Math.PI/4+f+i*Math.PI/2),score=f=>Math.min(...set(f).map(room));
+  let f=0;if(score(0)<.3){let best=score(0);for(let k=1;k<90;k++){const g=score(k*Math.PI/180);if(g>best+1e-9){best=g;f=k*Math.PI/180}}}
+  const t=set(f),r=t.map(x=>reach(x)+.12);return{f,t,r,rp:r.map(x=>Math.max(3.4,x+1.2))}}
 function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!S.mkLift;
   // a flight that starts on the pad starts with the gantry in service position; it rolls back from then (padT0)
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H);
-  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
+  const key=H+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2))].join(','):'free');
   if(key===padKey)return;if(H!==padTH){PAD.free();PAD=buildPad(H);padTH=H}RIG.free();RIG=buildRig(H,rig);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)
@@ -4770,11 +4874,12 @@ function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return
   RIG.arms.forEach((A,i)=>{const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
   const al=pre?0:-.9*sstep(0,1,clamp(tl/.6,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
+  drawMesh(RIG.posts,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]),F.site);
   const zg=mode==='editor'?-80:RIG.zS+(-80-RIG.zS)*sstep(0,1,clamp((simT-padT0)/14,0,1));drawMesh(RIG.gantry,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,zg]),F.site)}
 // floodlights: on from dusk (the sun 4° above the pad's horizon) to dawn; four point lights for the mesh shader, which
 // lights the rocket, the tower and the pad's buildings with them
 function padLights(u,camW){const F=padFrame(camW),e=dot(norm(sub(F.site,bodyPos(TELLUS,simT))),SUN);padNight=len(F.O)<2e4?1-sstep(-.05,.07,e):0;
-  const P=[];for(const[x,z]of PAD_LIGHTS)P.push(...add(F.O,padW(F,[x*.98,16.2,z*.98])));gl.uniform3fv(u['uFl[0]'],P);gl.uniform1f(u.uFlI,padNight)}
+  const P=[];for(const[x,z]of PAD_LIGHTS)P.push(...add(F.O,padW(F,[x*.98,16.2,z*.98])));gl.uniform3fv(u['uFl[0]'],P);gl.uniform1f(u.uFlI,padNight);gl.uniform3fv(u.uFlC,add(F.O,padW(F,[0,6,4])))}   // aimed at the launch table
 function drawPadGlow(u,camW){if(padNight<.01)return;const F=padFrame(camW);gl.uniformMatrix4fv(u.uM,false,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]));
   gl.uniform1f(u.uGlow,padNight);gl.bindVertexArray(PAD_GLOW.vao);gl.drawArrays(gl.TRIANGLES,0,PAD_GLOW.n)}
 
@@ -4943,7 +5048,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},dispatch:[],fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
@@ -5495,8 +5600,8 @@ function render(){
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
-   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);drawMesh(PAD,M,site)}}
-  drawPadRig(drawMesh,camW);   // the pad's moving parts, at the current site (visuals session)
+   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(PAD,M,site);gl.uniform1f(m.uPadM,0)}}
+  gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);   // the pad's moving parts, at the current site (visuals session)
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
@@ -5786,6 +5891,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.stand){if(!buildStand())HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
+  else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
@@ -5795,7 +5901,7 @@ function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%
     (()=>{const r=offerRisk(c),w=[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)];return w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:''})()+
     (act?'':`<button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button>`)+`</div>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
-    (PROG.active.length?PROG.active.map(c=>row(c,true)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
+    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+

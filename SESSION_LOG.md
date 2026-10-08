@@ -1982,6 +1982,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   a flight is on course (its predicted trajectory enters the body's sphere of influence), 20% on arrival and the rest
   on completion, for the same total; crewed missions only on crewed flights; advances kept if the flight fails. All
   tests pass. Merged to `main` (`54c8c9f`).
+- **v1.47 (2026-10-08, economy worktree):** dispatch, the economy side. Satellite and recon contracts can be
+  dispatched to a design with a stored orbit procedure: a risk estimate from part data (margin, ignition odds, load
+  uncertainty; good data raises the chance and narrows the range), pads as calendar reservations plus a Launch pads
+  facility, a hand-flown launch waiting for a free pad, a seed fixed at ordering, the same pay as by hand. An interim
+  resolver rolls the estimate until the bodies session's `dispatchRun`. All tests pass. Merged to `main` (`98638f6`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
@@ -2890,3 +2895,12 @@ computer (every mode, the full loop). Fixed per vessel at launch (`s.av`); sandb
 procedures keep the best. Locked SAS buttons dimmed with a tooltip; the builder's Control block names the avionics.
 A bare pod's 90° turn: 5.6 / 3.7 / 2.8 s by generation; big stacks on wheels turn alike (torque- and storage-limited).
 §37 (2 checks); 314 pass. Fast-forwarded `main` (`42adc71`, not pushed). NOTES § v1.46.
+
+## 2026-10-08 — Launchpad: TESTING.md, a checklist of what still needs a human (control session)
+
+Caio can't playtest for now, so `explorations/launchpad/TESTING.md` lists everything built that nobody has played: 107
+rows in nine areas (what to try, how to get there, what right looks like, owner), compiled from every NOTES section plus
+the control rows. Contract: **sessions add a row when they ship something a person should try**; results go in the `#`
+cell, problems into PLAYTEST.md. Also: registered vessels keep their avionics; the tester's *All tools* gives the best
+avionics (the epoch picker doesn't move the date); control test sections renumbered §38/§39 (they collided with
+terrain's and tester's); `study_control.mjs` kick retuned. 325 pass. `main` at `7dbc698` (not pushed).
