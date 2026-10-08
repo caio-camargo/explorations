@@ -5312,7 +5312,8 @@ the arrows, and every key in the handlers present in its Help table.
 6. ~~More bodies~~ done (body tree + Nyx, § "More bodies"); ~~6b perturbations~~ done for Nyx and Selene, nodes included (§ "6b").
    Selene and Nyx missions built (§ "Out there" missions). Next on that line: debris near the moons ignores tides;
    registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
-7. **Sound**, a WebAudio rumble driven by thrust × density.
+7. ~~**Sound**~~ first pass done (§ "Sound", 2026-10-08). Next on that line: per-engine voices (pitch by size), spatial audio for
+   other vessels and debris, re-entry plasma crackle tuned against the heating model, a volume slider.
 
 ## The tester menu (2026-10-08, tester session; PLAYTEST #1)
 
@@ -5384,3 +5385,43 @@ counted as obstacles at every angle and nothing ever turned. It now skips everyt
 test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
 presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
 old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).
+
+## Sound (2026-10-08, sound session; open thread 7)
+
+All synthesised in WebAudio, no samples: looped noise buffers (white, brown, and a sparse "pop" buffer for crackle)
+through filters, two low sine tones for the sub-bass, a 6.5 Hz LFO for buffet, and one-shot filtered bursts with a
+falling thump for events. A compressor on the master. **F4** toggles (remembered per browser); the context starts on
+the first click or key, as browsers require. Render-side only: `sndTick(dtR)` is one call in `frame()` after `emitSmoke`,
+outside `render()`, reading SIM state and diffing it frame to frame. No SIM changes.
+
+**The model: the listener rides the ship, like the crew.** Two paths reach them:
+- **Through the air:** loudness ∝ (thrust / 4 MN)^0.3 (Stevens' law on an acoustic power ∝ thrust), × √(ρ/ρ₀) (the
+  same source power in thinner air makes a smaller pressure swing), × a ground-reflection boost below 150 m, × a Mach
+  factor that drops 80 % between Mach 0.9 and 1.3 (the exhaust's noise can't run forward faster than sound). Its lowpass
+  closes from ~3.6 kHz at sea level to ~550 Hz at ρ/ρ₀ = 0.05: thin air sounds dark before it sounds quiet.
+- **Through the structure:** a 110 Hz-lowpassed rumble whenever an engine burns, at any altitude. In vacuum that is all
+  there is. Apollo crews described the engines as felt more than heard; this is that.
+
+Plus: wind from dynamic pressure (bandpass rising with airspeed, full at 40 kPa), buffet (the wind amplitude-modulated
+near Mach 1, Gaussian in M with σ = 0.12), a high hiss when the hottest part passes 35 % of its limit under q, an RCS
+hiss while jets fire, crackle weighted to solid motors (escape tower included).
+
+**Events** (diffed, so they need no hooks in the SIM): fewer parts on → separation thunk; an engine burning that wasn't
+→ ignition (a sharp crack for solids, a soft whoomp for liquids); `chuteA` crossing 1 (drogue) and 7 (main) m² → chute;
+`landed` turning true → touchdown thump scaled by `touchV`; a new entry in `booms` → a blast, through `sndBoom`: our own
+ship is heard through the structure even in vacuum, anything else only through air, **late by d/340 s**, with gain
+∝ √air · 250/(250+d) and its highs eaten with distance. Switching ship, reverting or a new flight resets quietly.
+
+**Measured** (test.mjs sound-1, an Orbiter ascent on the SIM, the mix sampled every second): roar 0.41 at the pad →
+0.25 at Mach 1 (5.8 km, buffet 1.0) → 0.04 at 10.5 km (supersonic) → 0.01 at 30 km → 0 by 70 km; wind 0.82 at Mach 1,
+0.89 at max-q (33 kPa, T+52), 0.53 at 30 km, 0.05 at 70 km. A blast 5 km away: 0.03 of its 100 m gain, 14.7 s late,
+lowpass 417 Hz. In headless Chrome on the real page: the context runs, the Orbiter at full thrust on the pad measures
+−23 dBFS RMS at the master (silent at idle, −73 dB after cutoff); ignition, both stages' ignitions, separation and a
+blast all fire; F4 mutes (master to 0.001) and back; leaving flight fades to 0; the map plays at 35 %.
+
+**Negative result worth keeping:** counting active engines misses the upper stage's ignition (one engine out, one in:
+the count stays 1). Events are diffed by engine identity (`p.i`) instead.
+
+**Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
+in `sndTick` are the knobs.
+
