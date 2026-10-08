@@ -3239,3 +3239,22 @@ mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
 - [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
 - [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
 
+
+### Follow-up: rendezvous with moon orbiters (sats session, 2026-10-08)
+A flight now meets the registered orbiters of the body it's at (`orbitsAt(b)`). That covers targets, closest
+approach on that body's μ, contact and capture, rails held off nearby, the arm, loading, and debris and explosions on
+that body. Undocking writes the entry back in the frame it leaves in. No cross-SOI targeting.
+
+### Files
+- `explorations/launchpad/index.html`: `orbitsAt`; `tgtOf`, `approach` (μ argument), `hitNear`, `contactStep`, `satBreak`
+  debris, `undock`, `nearbyFlyable`, the arm's grab, `tgtCA`, `cycleTarget`
+- `test.mjs` §41 (3 checks); `NOTES.md` § "Rendezvous with moon orbiters"; `TESTING.md` row 116
+
+### Verification
+`test.mjs`: 366 passed. Each of 7 deliberate breaks fails a §41 check. Not run in the browser (the preview server had been
+stopped for low memory): the approach readout and target cycling are covered only by the whole-page parse check.
+
+### Next steps
+- [ ] Caio: TESTING rows 115–116; a browser pass on the approach readout at Selene
+- [ ] Economy: a far-side relay (network) contract; relay range/power
+- [ ] R4 science; R5 drive plans; the clock while driving from home

@@ -4386,12 +4386,35 @@ far-side rover's *Drive from home* button appears in its windows (268 ms via Loo
 marker 2.7 km away; no console errors.
 
 **Not yet:**
-- rendezvous and docking with a registered moon orbiter (`tgtOf`, `contactStep`, `nearbyFlyable` and target cycling
-  are Tellus-only);
+- ~~rendezvous and docking with a registered moon orbiter~~ (built: "Rendezvous with moon orbiters" below);
 - cameras in Selene orbit (`satTick` is Tellus's);
 - relay range and power;
 - Nyx orbits work in code but are untested;
 - **economy:** a contract for a far-side relay (or a relay network: share of the far side covered).
+
+#### Rendezvous with moon orbiters (sats session, 2026-10-08)
+
+A flight meets the registered orbiters of the body it is at. `orbitsAt(b)` gives `satsUp()` at Tellus and
+`moonSats(b)` at a moon. Everything that was gated to Tellus goes through it:
+- targets (`tgtOf`, target cycling);
+- contact and capture (`contactStep`, `hitNear`: physics instead of rails near one);
+- the arm's grab and loading (`nearbyFlyable`);
+- collision debris and explosions, on that body.
+
+`approach` takes the μ both orbit, and the closest-approach readout uses the flight's body. Undocking writes the entry
+back in the frame it leaves in (`bodyName` follows `s.body`). A Tellus satellite can't be targeted from Selene's SOI,
+and vice versa. Cross-SOI targeting would need patched-conic closest approach; not built.
+
+**Checks:** `test.mjs` §41, 3 checks: §25's docking scene moved to a 100 km Selene orbit.
+- **Target:** found; a constructed 300 m pass is found at 300.0 m and 1,000 s, the same as a 0.5 s scan; a Tellus
+  satellite isn't a target.
+- **Capture:** latches with momentum kept to 4e-27; rails held off; loadable.
+- **Undocking:** a flyable entry leaves as a vessel of the flight around Selene, 0 m from where it was; at 1 m/s the
+  ports bump.
+
+Each of 7 deliberate breaks fails a check. The breaks: Tellus-only target, every orbit a target, Tellus μ in
+`approach`, Tellus-only `hitNear`, contact and loading, undock dropping the body. Not checked in the browser: the
+approach readout and target cycling (UI code; only the whole-page parse check covers them).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

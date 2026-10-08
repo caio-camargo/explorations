@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -146,6 +146,7 @@ NOTES § "The robot playtester".
 | 65 | Rotate a crew: Fly the station, undock the capsule, bring it home | Program > Fleet > station > Fly | Flow is findable; crew carries over; nothing gets lost across flights | A2 | sats |
 | 66 | Grapple, berth and stow with the arm | Arm on a hub; module within 10 m <0.5 m/s; HUD Arm row | Arm motion looks right (no obvious clipping); berth/stow is satisfying, not slow | D | sats |
 | 67 | Found a moonbase: beacon lander then a module landed nearby | Epoch 4+ via tester; G targets landed object; HUD Landing row | Landing near the target is achievable with the row; base shows in Fleet tab | E | sats |
+| 116 | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* | Moon rendezvous | sats |
 
 ### Moons & crew
 
@@ -196,4 +197,4 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **116**.
+Next free number: **117**.
