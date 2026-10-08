@@ -70,14 +70,14 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### bodies — body tree, procedures, missions out there
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q11 | **`dispatchRun(D, v, c)`**: a headless, seeded procedure run → {ok, orb, dv, why} or a deviation. Unblocks dispatch on real physics, watch mode, dry runs | M | ⚙ | ready |
-| Q12 | Deviation rules in `procStep`: Δv-to-go vs Δv left, a corridor around the recorded profile | M | ⚙ | after Q11 |
+| Q11 | **`dispatchRun(D, v, c)`**: a headless, seeded procedure run → {ok, orb, dv, why} or a deviation. Unblocks dispatch on real physics, watch mode, dry runs | M | ⚙ | ✓ bodies (dispatch flown; dry runs `procAdopt`; NOTES § "Dispatch, the physics side") |
+| Q12 | Deviation rules in `procStep`: Δv-to-go vs Δv left ✓ (bodies, `procDev`); still open: a corridor around the recorded profile | S | ⚙ | → bodies 2026-10-08 |
 | Q13 | Landing on a chosen crater: the capture picks its plane and periapsis longitude | M | ⚙ | ready |
 
 ### control — attitude
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | → control 2026-10-08 |
+| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | ✓ `0c2e701` |
 
 ### tester — the tester menu
 | # | Item | Size | Load | State |
@@ -158,4 +158,8 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | W8 | Hands-on: TESTING rows 100, 108–118, and the robot's `~` rows (feel needs a human) | — |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+
+- economy — dry runs as the trajectory office's study: a button calling `procAdopt(stack)` (days, price); widen `dispatchEstimate` for a `prov` procedure; cache the dry run's measured margin as the estimate's — NOTES § "Dispatch, the physics side"
+- economy — nyxfind completes for free on a Selene flight; selimp and nyxfind pay less than a Probe costs — NOTES § "The ladders, proven with real rockets"
+- ui — watch mode for a dispatched flight (procFly runs headless today; a watched one would fly the same procedure on screen) — NOTES § dispatch brief
 

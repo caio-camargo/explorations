@@ -1404,6 +1404,24 @@ term fails the first two; dropping the roll guard fails the second.
 - **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
 - **builder:** `spin` is in *Control* by kind.
 
+### v1.51.1 — the wheels won't spin a vessel apart (PLAYTEST #18, #23)
+
+The robot playtester held a pitch key with SAS off: the Orbiter's upper stage reached 23 rad/s in 9 s and tore the pod off
+its tank, with the wheels only 89 % full. A bare pod: 66 rad/s in 2 s, chute torn off; without the fix it goes on to
+500 rad/s. 100 kN·m·s of storage (v1.43) is tens of rad/s on a light stage, so storage never ran out before the structure.
+
+- **The wheels' controller won't drive the vessel past `WHEEL_W`** = 1 rad/s in pitch and yaw, 3 rad/s in roll (body
+  axes; `wheelGive`). Torque that would turn it faster that way is cut to what reaches the limit exactly (at a pod's
+  55 rad/s² a plain cut-off overshot to 1.3 rad/s); slowing down is never refused. In effect the storage is sized to the
+  vessel (≤ I·WHEEL_W from rest), which is the playtest's first suggestion, without per-vessel magic. SAS never asks for
+  more than 0.6 rad/s, so nothing it flies changes; big stacks still run out of storage first (Orbiter 0.512 rad/s, full).
+- Gimbal, fins and RCS are not limited: they spin a stage only while burning, in air, or on gas.
+- **Builder wording (#23):** the negative-stability note shows only when a margin is negative, and now names steerable
+  fins too; "Roll nothing" drops the kN·m.
+- Tests: section `control-5` (1 check, mutation-tested: without the limit, 60 and 503 rad/s).
+- The wheels' momentum is still left out of the gyroscopic term: the limit bounds what the keys put in, not what SAS
+  stores against a steady aero torque (a capsule under its chute), which is where it did harm.
+
 **Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
 deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 
@@ -3048,6 +3066,74 @@ for it, and every first pays at least 1.3× its rocket)
 - **"Watch which way round you go" is real.** The same 30×80 km Nyx orbit lasts two Nyx periods when retrograde. Forced
   prograde (`retro: false`), it hits Nyx 61 h after capture. A 100×300 km orbit is stripped within 27 h either way,
   because Nyx's SOI shrinks to ~260 km altitude at Nyx's periapsis.
+
+### Dispatch, the physics side: flown, not rolled (2026-10-08)
+
+This is the bodies half of the dispatch brief (part 3 above). The economy's dispatch (§38–39) left a slot for it:
+`dispatchRun(D, v, c)`. That slot is now filled, so a dispatched contract is **flown** by its procedure. Test § bodies-2
+covers it.
+
+**Deviations in the executor** (`procDev`). A procedure that can't meet its goal now stops, says why, and hands over the
+craft. Before, it flew on and never claimed success. `s.procDev = {kind, why, t, phase}` records what happened. The
+watched game shows "Procedure stopped: … You have control". The kinds:
+- `short`, in the climb: everything burned and apoapsis still low.
+- `short`, at engine cut-off above the air: the propellant aboard is below the circularisation burn. This is the
+  earliest point it's knowable, and the craft is handed over while coasting up to apoapsis, as the economy's
+  deviation state (`devState`) assumed.
+- `short`, while circularising: everything burned with periapsis still below target.
+- `relight`: rolled from part data, not flown (see below).
+- `offcourse`: three mid-course corrections and still no encounter.
+- `nohome`: no burn home within what's aboard. This used to end the procedure silently.
+- `lost`: the procedure's time limit ran out.
+
+**`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
+flight, but in isolation:
+- Whatever is in progress is set aside and put back afterwards: S, the clock, the fleet, debris, the moons' clock
+  (`ORB_T0`) and the hooks.
+- Its record is closed (no costs, missions or logbook), and it records no procedure (`s.noRec`).
+- It launches from the home site at the start of the current day, so the ground under it is where it should be.
+
+It returns one of:
+- `{ok, orb, dv}` in orbit;
+- `{dev, entry}` on a deviation, where `entry` is a registry entry of the craft at that moment and `vesselOf`
+  rebuilds it exactly (position and propellant);
+- `{ok:false, why}` if lost (the reason comes from the flight's last "Destroyed"/"burned up" message).
+
+An ascent takes 0.4–0.7 s of wall time headless, so `dispatchTick` can fly dispatches inline.
+
+**`dispatchRun`**. What the parts data models but the physics doesn't stays a roll, with the dispatch's own seed and in
+the same order as the interim resolver:
+- break-up (certification);
+- an engine that won't light in the ascent (know-how, lines, development);
+- the upper stage's relight. A failed relight is flown up to the circularisation and handed over there.
+
+Running short is no longer rolled from a margin: the physics decides, and the orbit reached is the one flown, not a
+scatter. The same seed flies the same flight. A stored procedure with no guidance to fly falls back to the roll (an old
+save, or the economy's test stubs).
+
+**Dry runs** (`dryRun`, `procAdopt(stack)`). A new design with no procedure of its own tries every stored orbit
+procedure of the same engine-stage count, headless:
+- A different staging structure needs a hand-flown run-through.
+- A borrowed procedure isn't lent on, so there are no chains of borrowing.
+
+The cheapest one that reaches orbit becomes the design's own, **provisional** (`prov: true, from`), with its Δv measured
+on this design. It is dispatchable at once. The design's first real flight replaces it whatever it spends: records only
+improve, but a borrowed one always gives way.
+
+The tests show why this is measured, not ruled:
+- An Orbiter with a tonne more on the upper stage borrows the Orbiter's climb, with 786 m/s to spare.
+- With two tonnes more it has Δv to spare on paper, yet the same climb kills it: lower thrust-to-weight keeps it low
+  and fast, and the pod burns up.
+
+**For the economy:**
+- `procAdopt` is the trajectory office's study. Its days and price are yours: nothing calls it yet, and it needs a
+  button (assembly, or the contract's dispatch line when there's no procedure: "Try our procedures on this design").
+- A provisional procedure should widen the estimate in `dispatchEstimate`. It's marked `prov`, but I left your
+  formula alone.
+- `dispatchEstimate`'s margin is still the formula on the procedure's Δv. A dry run per estimate would cost ~0.5 s per
+  design per contract per render, too slow for the board. Caching a dry run's measured margin per design and target,
+  as part of the study, would make the estimate a measurement.
+- Deviations from real flights now come in more kinds than `relight`/`short`. `takeDeviation` works with any entry.
 
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 

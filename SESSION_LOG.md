@@ -3324,6 +3324,42 @@ open questions W1–W7 proceed on **written defaults** unless Caio overrides.
 - [ ] Caio: pick a freeze window for the file split once platform's plan (ROADMAP § Platform, step 3) is written
 - [ ] Create the `launchpad-platform` worktree (port 8801) when a platform session starts
 
+## 2026-10-08 — Launchpad: dispatch flown, not rolled; deviations; dry runs (bodies session, cont.)
+
+QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedure:
+- `procFly` is headless and isolated: the flight on screen, the fleet, debris, the moons' clock and the hooks are put back.
+- `dispatchRun` fills the economy's slot. Part failures are still seeded rolls; running short, and the orbit reached,
+  come from the flight. The same seed flies the same flight.
+- The executor now deviates instead of flying on (`procDev`: short in the climb, at cut-off or circularising;
+  offcourse; nohome; lost). It hands over a registry entry that `vesselOf` rebuilds exactly.
+- Dry runs (`procAdopt`): a new design borrows a stored procedure, provisionally, if a headless run reaches orbit; its
+  own first flight replaces it. The tests show a variant with Δv to spare on paper that the borrowed climb burns up.
+- An ascent costs 0.4–0.7 s of wall time headless.
+- 370 checks pass before merging main.
+
+**Files:**
+- `explorations/launchpad/index.html` (procDev, procFly, regEntry, dispatchRun, dryRun/procAdopt, procKeep gives way to a borrowed procedure)
+- `test.mjs` (§ bodies-2; the §28 short-variant check now expects a deviation)
+- `fly_ladder.mjs` (exports `handAscent`)
+- `NOTES.md` (§ "Dispatch, the physics side: flown, not rolled")
+- `QUEUE.md` (Q11 ✓, Q12 narrowed, three proposals)
+- `TESTING.md` row 120
+- ACTIVE_WORK
+
+### Next steps
+- [ ] Q12 rest: a corridor around the recorded profile (deviate early when the climb strays, not only when Δv runs out)
+- [ ] Economy: the study button and price for `procAdopt`, a wider estimate for `prov`, the measured margin cached
+- [ ] Q13: landing on a chosen crater
+
+### Follow-up: v1.51.1, the wheels won't spin a vessel apart (control session, 2026-10-08; queue Q14)
+PLAYTEST #18: with SAS off a held key spun the Orbiter's upper stage to 23 rad/s in 9 s and tore it apart (a bare pod:
+66 rad/s in 2 s, chute torn off). The wheels' controller now won't turn a vessel past `WHEEL_W` (1 rad/s pitch/yaw, 3 roll),
+reaching it exactly; SAS (≤ 0.6 rad/s) and big stacks (storage runs out first) are unchanged. #23: the negative-stability
+note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs `control-5` (mutation-tested); all pass on
+the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
+- [ ] Q29: re-run TESTING row 104 with the robot
+
+
 ## 2026-10-08 — Launchpad v1.53: the ladder's balance (economy session, resumed in the new folder)
 
 ### Summary
@@ -3339,7 +3375,7 @@ open questions W1–W7 proceed on **written defaults** unless Caio overrides.
 ### Files
 - `explorations/launchpad/index.html` (MISSIONS pays and nyxfind brief, launch line, `outThere` tracking line),
   `test.mjs` §23 (2 checks), `NOTES.md` § v1.53 (+ a pointer in "The ladders, proven with real rockets"),
-  `TESTING.md` row 120, `QUEUE.md` (Q8 ✓, W1 answered, W9), `ACTIVE_WORK.md`
+  `TESTING.md` row 121, `QUEUE.md` (Q8 ✓, W1 answered, W9), `ACTIVE_WORK.md`
 
 ### Verification
 `test.mjs`: all passed before the merge and 371 on the merged branch. `fly_ladder.mjs farside nyxfind`: farside no
@@ -3348,3 +3384,4 @@ longer finds Nyx; nyxfind still flies (2.74 d).
 ### Next steps
 - [ ] Caio: W9 (count a mission only on a flight launched while it was open?)
 - [ ] Economy: Q6 `siteAccess`, Q7 ballistic target, Q9 station/base/relay contracts (plan first), Q10 rover prices
+>>>>>>> origin/main
