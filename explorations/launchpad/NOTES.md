@@ -2378,7 +2378,31 @@ flies ascent → transfer → capture → landing → take-off through the game 
 - **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
   raised apoapsis to 805 km; the new one is robust to timing.
 
-**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+**To Nyx through the same phases (2026-10-08).** Nyx is tilted 30° and eccentric, so the transfer meets it at a **node** (where it
+crosses our equatorial plane; `transferNode`), taking the far one (20,355 km, where Nyx is slower) on a Hohmann-like ellipse,
+leaving on the parking-orbit pass nearest the ideal time. The leftover timing is the mid-course correction's job, and when the
+predictor shows no encounter yet, the correction minimises the closest approach (`passScore`), with up to three passes. The
+return scan for an eccentric moon covers a wider burn range (200–1,500 m/s), counts **everything aboard** (an empty stage drops
+on the way), and only accepts trajectories that reach perigee within **2.5 days**.
+
+Crewed Lunar, flown by a "Nyx land" phase list (§27): wait 29 h for Nyx's node passage, burn, a 10 m/s correction, capture
+(~470 m/s), land at **1.2 m/s**, ascend, burn home (425 m/s, dropping the empty lander mid-burn), correct 131 m/s to a 44 km
+perigee, splash down at 6.5 m/s: **3.35 days**, 4.1 g, crew fine, 7,479 m/s in all. It records itself as a "Nyx land" procedure.
+
+What the Nyx flight found (the Selene flights had hidden all of these):
+- **Count parking-orbit passes on the real orbit.** Picking the departure pass by 2πr/v from the current radius drifted by tens of
+  degrees over a 29 h wait (the orbit is 102 × 111 km); the burn left Nyx's node 61° off and the corrections chased a
+  17,000 km miss. `timeToNu` on the actual elements: 2.6°.
+- **On rails, a SAS hold doesn't turn the craft.** After a long coast the stack wakes pointing where it was. Burns now wake
+  `ALIGN` (600 s) early to turn, then fire on time (`X.tBurn` vs `X.wake`).
+- **The suicide burn must count only the upward thrust.** Falling 100 km in Nyx's weak gravity, the stack's nose wandered
+  15–50° on its wheels; the trigger assumed all the thrust pointed up and hit at 120 m/s. Now: the vertical component of
+  thrust, and 30 % in hand.
+- **"Don't stage the capsule loose" must not mean "never stage".** The guard also blocked staging to a full return stage; it now
+  stops only when the current stage is the last with an engine.
+- **The cheapest way home can take 18 days.** It flew outward first; the crew ran out of air at day 10.
+
+**Open:** flybys (no capture) aren't procedures yet; dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever

@@ -1121,6 +1121,15 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('procedures v2: the executor flies it end to end through SAS: crew on Selene and home safe; a cheaper run replaces the procedure',
       s.alive && s.landed && s.body === TELLUS && Rp.crewed && Rp.crewOK && !!P.done.crewland && now && now.dv <= dv0,
       `${(api.t / 86400).toFixed(2)} days, peak ${(Rp.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rp.dv.toFixed(0)} m/s in all (procedure ${dv0.toFixed(0)} → ${now ? now.dv.toFixed(0) : '?'})`); }
+  // the same phases to Nyx (inclined 30°, eccentric): met at its far node, landed on, and home, with the recorded ascent
+  { const asc = P.procs && P.procs[api.procKey(api.PRESETS['Crewed Lunar'])];
+    if (asc) { const nyx = { ...asc, phases: [{ k: 'transfer', to: 'Nyx', pass: 100e3 }, { k: 'capture', ap: 300e3, pe: 40e3 }, { k: 'land' }, { k: 'surface', t: 600 }, { k: 'ascend', stage: 0, pitchH: 2000, ap: 30e3, pe: 20e3 }, { k: 'return', perigee: 45e3 }] };
+      api.t = 0; const s = api.newShip(api.PRESETS['Crewed Lunar']); api.S = s; api.advPhys(s); api.procStart(s, nyx); let k = 0, onNyx = false, vNyx = null;
+      while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); if (s.landed && s.body === api.NYX && !onNyx) { onNyx = true; vNyx = s.touchV; } }
+      const Rn = s.rec, kept = P.procs[api.procKey(api.PRESETS['Crewed Lunar']) + '|Nyx:land'];
+      check('procedures v2: the same phases fly a crew to Nyx (met at its node, landed on) and home within the air supply, and record a "Nyx land" procedure',
+        onNyx && vNyx < 4 && s.alive && s.landed && s.body === TELLUS && Rn.crewOK && api.t < 10 * 86400 && !!kept,
+        `landed on Nyx at ${vNyx != null ? vNyx.toFixed(1) : '—'} m/s; home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rn.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rn.dv.toFixed(0)} m/s in all`); } }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
 
