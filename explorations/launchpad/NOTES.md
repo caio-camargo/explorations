@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.19.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.20.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3156,6 +3156,32 @@ Two halves launched together (or a module you just released) can now dock to eac
 - **Not yet:** a design changed in the builder after launch doesn't affect what's in orbit (each entry keeps its own
   copy), but a part definition changed by an update (heights, masses) shifts a rebuilt vessel slightly from its saved
   shape; temperatures restart cold.
+
+### D built: the arm (sats session, 2026-10-08)
+
+- **Part:** *Robotic arm* (palette *Station*): a base on the side of any structure; two 5 m booms (10 m reach) drawn each
+  frame by two-link inverse kinematics from the shoulder to the grapple point, folded along the hull when free. Its
+  grip is weak (3 kN / 4 kN·m): a hard burn while it holds something tears the body loose.
+- **Grapple** (HUD *Arm* row; tape op `['A', op]`): the nearest body within reach moving under 0.5 m/s relative to us
+  (a satellite, a vessel of this flight, or the payload in our own open bay, which leaves the vessel's parts and is held
+  at once) is held where it is, as a passenger (`kind 'arm'`), gripped where the line from the shoulder meets its
+  bounding sphere.
+- **Berth:** the closest pair of free ports (one of ours, not on the held body or anything docked through it; one of
+  its) decides the goal; the arm carries the body (with anything docked through it, rigidly) at 0.15 m/s and 3°/s to a
+  stand-off 0.5 m out, aligned, then straight in, and it latches as a docking (`kind 'port'`). Both poses must be within
+  reach. Physics, not rails, while it moves.
+- **Stow:** into an open, empty cargo bay, its own axis up the bay's, centred, its base on the floor (`kind 'bay'`):
+  from above the rim, then down. Close the doors and fly it home (retrieval: a satellite brought back intact). A stowed
+  body is released from the *Docked* row.
+- **Release:** let go with no push.
+- **Moving a held body is internal motion:** the stack's centre of mass and velocity stay put; the rest of the stack
+  moves the other way. Measured in one step: the hub moved 1.471 mm for the module's 1.5 mm, exactly the mass ratio.
+- Checks (`test.mjs` §32): grapple a lab and berth it on a hub's side port (faces 2e-16 m apart, 58 s); the centre-of-mass
+  bookkeeping; out of reach refused; a payload taken out of the carrier's own bay and berthed on its side port; release
+  without a push (4.5e-13 m/s), grapple again, stow on the bay floor. Browser: the arm reaching, carrying, berthing.
+- **Not yet:** the arm passing through the stack's own structure on its way (no self-collision for held bodies); a
+  manual mode (joint-by-joint or end-effector keys); grappling debris; the arm taking a held body into a bay that is
+  part of a docked module rather than our own parts.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

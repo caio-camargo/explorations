@@ -1899,6 +1899,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
 }
 
+// 32. The arm (sats session, stations plan D): grapple, berth onto a port, unload a bay, stow in a bay, release.
+// Own sim instance.
+{
+  const D = new Function(src + 'return {toV2,newShip,geom,physStep,satRegister,satAt,armOp,armStep,armBase,armBusy,bayOp,doorF,partMass,FLEET,PROG,TELLUS,DT,qrot,qFromTo,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3, fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const vessel = (des) => { D.FLEET.length = 0; D.t = 0; Object.assign(P, { day: 0, sats: [], satN: 0 }); const s = D.newShip(des);
+    Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], q: [0, 0, 0, 1], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] }); s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  // a hub: a core on a tank, a side port facing +X and an arm facing −X
+  const hubDes = (stack = ['core', 't2'], host = 't2') => { const d = D.toV2(stack), h = fnd(d.root, host);
+    h.c.push({ k: 'rport', at: { y: 1.0, a: 0, n: 1, cy: 0.5 }, c: [] }, { k: 'arm', at: { y: 1.0, a: Math.PI, n: 1, cy: 0.3 }, c: [] }); return d; };
+  const run = (s, max) => { let n = 0; while (D.armBusy(s) && n++ < max) { D.physStep(s, D.DT); D.armStep(s); } return n * D.DT; };
+  const W = (s, x) => add(s.r, D.qrot(s.q, sub(x, s.cm)));
+  // a lab module 4 m off the arm's side, drifting with us: grapple it, then berth it on the side port
+  let s = vessel(hubDes()); const armP = s.parts.find(p => p.d.kind === 'arm'), base = W(s, D.armBase(armP).P);
+  let k = D.newShip(['port', 'lab']); Object.assign(k, { landed: false, r: add(base, [0, 0, 0]), v: s.v.slice() }); k.r = add(base, [-4, 0, 0]); k.q = D.qFromTo([0, 1, 0], [0, 0, 1]); k.rec.launched = true;
+  D.satRegister(k, { day0: 0 }); const q = P.sats[0], grabbed = D.armOp(s, 'grab'), a = s.att[0];
+  // the arm moving it: our own parts move the other way, in proportion to the masses (the centre of mass stays put)
+  D.armOp(s, 'berth'); const hp = s.parts.find(p => p.d.key === 't2'), h0 = W(s, hp.pos), g0 = W(s, a.p); D.armStep(s); const dh = sub(W(s, hp.pos), h0), dg = sub(W(s, a.p), g0);
+  const ratio = len(dh) / len(dg), want = a.e.mass / (s.mass - a.e.mass);
+  const took = run(s, 1e5), done = a.kind === 'port' && !a.goal;
+  const rp = s.parts.find(p => p.d.key === 'rport'), face = [rp.pos[0] + 0.3, rp.y0 + rp.h / 2, rp.pos[2]], mp = a.e.shape.find(o => o.k === 'port'), mface = add(a.p, D.qrot(a.q, sub([mp.pos[0], mp.y0 + mp.h, mp.pos[2]], a.e.cm)));
+  check('arm: grapples a module and berths it onto a side port; it latches as a docking, faces together', grabbed && a.e === q && done && len(sub(mface, face)) < 1e-6,
+    `${a.e.name}: ${a.kind}, faces ${len(sub(mface, face)).toExponential(1)} m apart, ${took.toFixed(0)} s at 0.15 m/s`);
+  check('arm: while it carries something, the rest of the stack moves the other way in proportion (centre of mass fixed)', Math.abs(ratio - want) < 1e-6 && dot(dh, dg) < 0,
+    `hub moved ${(len(dh) * 1000).toFixed(3)} mm for the module's ${(len(dg) * 1000).toFixed(1)} mm: ${ratio.toFixed(5)} vs mass ratio ${want.toFixed(5)}`);
+  // out of reach: 20 m away, nothing doing
+  s = vessel(hubDes()); k = D.newShip(['port', 'lab']); Object.assign(k, { landed: false, r: add(s.r, [-20, 0, 0]), v: s.v.slice() }); k.rec.launched = true; D.satRegister(k, { day0: 0 });
+  check('arm: a module 20 m away is out of reach', !D.armOp(s, 'grab') && !s.att.length, 'refused');
+  // a carrier with a bay: a payload (with a port) on its floor; open the doors, the arm takes it out and berths it on the side port
+  const carrier = () => { const d = hubDes(['port', 'core', 't1', 'bay', 'pod', 't2'], 't2'); return vessel(d); };
+  s = carrier(); D.bayOp(s, 'open'); for (let i = 0; i < 2.1 / D.DT; i++) D.physStep(s, D.DT);
+  const took2 = D.armOp(s, 'grab'), held = s.att[0], fromBay = held && held.e.shape.some(o => o.k === 'core') && !D.FLEET.length && !s.parts.some(p => p.on && p.inBay);
+  D.armOp(s, 'berth'); run(s, 1e5);
+  check('arm: takes the payload out of its own open bay and berths it on the side port', took2 && fromBay && held.kind === 'port', `${held ? held.e.name + ' ' + held.kind : 'nothing'}`);
+  // and the way home: a fresh carrier; take the payload out, release it (no push), grapple it again, stow it back in the bay
+  s = carrier(); D.bayOp(s, 'open'); for (let i = 0; i < 2.1 / D.DT; i++) D.physStep(s, D.DT); D.armOp(s, 'grab'); D.armOp(s, 'free'); const relV = D.FLEET.length ? len(sub(D.FLEET[0].v, s.v)) : NaN;
+  const freed = s.att.length === 0 && D.FLEET.length === 1; D.armOp(s, 'grab'); const back = s.att[0], st = D.armOp(s, 'stow'); run(s, 1e5);
+  const bay = s.parts.find(p => p.d.kind === 'bay'), core = back && back.e.shape.find(o => o.k === 'port'), low = back ? Math.min(...back.e.shape.map(o => o.y0)) : 0, baseY = back ? back.p[1] - back.e.cm[1] + low : NaN;
+  check('arm: release lets go without a push; grappled again, it stows back in the bay on the floor', freed && relV < 1e-9 && st && back.kind === 'bay' && Math.abs(baseY - (bay.y0 + bay.h)) < 1e-6,
+    `released at ${relV.toExponential(1)} m/s; stowed: ${back ? back.kind : '—'}, its base ${(baseY - (bay.y0 + bay.h)).toExponential(1)} m off the floor`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

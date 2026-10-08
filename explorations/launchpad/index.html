@@ -4340,9 +4340,11 @@ function render(){
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(mode==='flight'||mode==='editor')for(const v of[S,...(mode==='flight'?FLEET:[])]){if(!v||!v.alive)continue;const vp=add(bodyPos(v.body,simT),v.r);if(len(sub(vp,camW))>2e3)continue;
     for(const arm of v.parts){if(!arm.on||arm.d.kind!=='arm')continue;const B=armBase(arm),W=x=>sub(add(vp,qrot(v.q,sub(x,v.cm))),camW),a=armHeld(v,arm);
-      const sh=W(B.P),tgt=a?W(armGrip(a)):W(add(add(B.P,mul(B.n,0.45)),[0,-ARM_R*0.9,0]));
-      const L=ARM_R/2,d=Math.min(Math.max(len(sub(tgt,sh)),0.05),2*L-1e-3),u=norm(sub(tgt,sh)),nw=qrot(v.q,B.n),bend0=sub(nw,mul(u,dot(nw,u))),bend=len(bend0)>1e-6?norm(bend0):norm(cross(u,[0,1,0])),
-        el=add(add(sh,mul(u,d/2)),mul(bend,Math.sqrt(Math.max(0,L*L-d*d/4)))),end=add(sh,mul(u,d)),buf=[];
+      const sh=W(B.P),L=ARM_R/2,nw=qrot(v.q,B.n),yw=qrot(v.q,[0,1,0]);let el,end,u;
+      if(a){const tgt=W(armGrip(a)),d=Math.min(Math.max(len(sub(tgt,sh)),0.05),2*L-1e-3),bend0=sub(nw,mul(norm(sub(tgt,sh)),dot(nw,norm(sub(tgt,sh)))));u=norm(sub(tgt,sh));
+        const bend=len(bend0)>1e-6?norm(bend0):norm(cross(u,[0,1,0]));el=add(add(sh,mul(u,d/2)),mul(bend,Math.sqrt(Math.max(0,L*L-d*d/4))));end=add(sh,mul(u,d))}
+      else{el=add(add(sh,mul(yw,-L*0.97)),mul(nw,0.18));end=add(add(sh,mul(nw,0.36)),mul(yw,-0.25));u=norm(sub(end,el))}   // free: folded along the hull
+      const buf=[];
       tube(buf,sh,el,.08,C.W,8,true);tube(buf,el,end,.07,C.W,8,true);tube(buf,end,madd(end,u,.3),.11,C.D,8,true);
       const mm=makeMesh(buf);drawMesh(mm,mat4([1,0,0],[0,1,0],[0,0,1],[0,0,0]),vp);mm.free()}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
@@ -4743,7 +4745,7 @@ function cycleVessel(dir){const near=nearbyFlyable(S);if(!FLEET.length&&!near.le
   const q=dir>0?near[0]:near[near.length-1],v=tapeLoad(recTape,S,q.id);if(v)tapeSwitch(recTape,S,FLEET.indexOf(v))}
 function fleetRows(){const L=FLEET.filter(v=>v.alive),N=nearbyFlyable(S);return L.length||N.length?[['Vessels',[...L.map(v=>`${v.name} ${fmtD(len(sub(v.r,S.r)))}`),...N.map(q=>`${q.name} ${fmtD(len(sub(satAt(q,progT(S))[0],S.r)))}`)].join(' · ')+' <span class="dim">· [ ] switch</span>']]:[]}
 function dockRows(){const out=[],D=S.att||[];
-  if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} <button data-undock="${a.e.id}">${a.kind==='claw'?'release':'undock'}</button>`).join(' · ')]);
+  if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} ${a.kind==='arm'?' <span class="dim">(in the arm)</span>':`${a.kind==='bay'?' <span class="dim">(in the bay)</span>':''} <button data-undock="${a.e.id}">${a.kind==='claw'||a.kind==='bay'?'release':'undock'}</button>`}`).join(' · ')]);
   const T=tgtOf(S);if(!T||len(T.dr)>500)return out;const B=tgtBody(S,T),P=dockPair(S,T.q,B);
   const cw=S.parts.find(p=>p.on&&p.d.kind==='claw'&&clawFree(S,p));
   if(cw){const tip=add(S.r,qrot(S.q,sub(clawTip(cw),S.cm))),d=bodyDist(B,tip),u=norm(sub(B.r,tip)),vc=dot(sub(S.v,B.v),u);
