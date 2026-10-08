@@ -2002,13 +2002,15 @@ function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(da
   return E.sort((a,b)=>a.day-b.day)}
 const nextEvent=()=>upcoming()[0]||null;
 // advance the calendar to a day (or the next event), stopping early at an event that needs you or a new decision
-function advanceTo(day){const n0=(PROG.decisions||[]).length;let stopped=null,guard=0;if(day==null){const e=nextEvent();if(!e)return null;day=e.day}
+function advanceTo(day){if(devWaiting().length)return{kind:'deviation',text:'A dispatched flight needs you'};const n0=(PROG.decisions||[]).length;let stopped=null,guard=0;if(day==null){const e=nextEvent();if(!e)return null;day=e.day}
   while(PROG.day<day-1e-9&&guard++<500){const e=nextEvent(),to=e&&e.day<day?e.day:day;advanceDays(to-PROG.day+1e-9);   // (a hair past, so the event's own tick fires)
     if((PROG.decisions||[]).length>n0){stopped={kind:'decision',text:'A decision is waiting'};break}
+    if(devWaiting().length){stopped={kind:'deviation',text:'A dispatched flight needs you'};break}
     if(e&&e.day<day&&e.stop){stopped=e;break}}
   HOOK.save();return stopped}
-function timelineHTML(){const E=upcoming().slice(0,8);if(!E.length)return'';
-  return`<div class="ep">Coming up</div><div class="sub">`+E.map((e,i)=>`${e.stop?'<b>':''}in ${Math.ceil(e.day-PROG.day-1e-9)} d · ${e.text}${e.stop?'</b>':''}`+
+function timelineHTML(){const E=upcoming().slice(0,8),W=devWaiting();if(!E.length&&!W.length)return'';
+  const need=W.map(D=>`<b class="bad">⚠ ${D.title}: ${D.dev.why}.</b> <button data-devtake="${D.id}">Take control</button> <button data-devlose="${D.id}">Let it go</button>`).join('<br>');
+  return`<div class="ep">Coming up</div><div class="sub">`+(need?need+(E.length?'<br>':''):'')+E.map((e,i)=>`${e.stop?'<b>':''}in ${Math.ceil(e.day-PROG.day-1e-9)} d · ${e.text}${e.stop?'</b>':''}`+
     ` <button data-adv="${e.day}">${i?'Wait until then':'Wait'}</button>`).join('<br>')+`</div>`}
 // ---- dispatch (design: NOTES "Dispatch — the economy's answers"): a contract flown by a stored procedure, without you.
 // Only repeats: it needs a procedure for the design (so the design has flown it by hand), and firsts are never
@@ -2030,10 +2032,11 @@ function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];i
     extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=dvRemaining(v).tot-proc.dv-extra;
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
   const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
-  for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=(1-f)**((p.seg??0)===last?2:1)}   // the top stage lights twice (circularisation)
+  let pT=1;for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
+  pI*=pT;
   for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
   const pr=pM*pI*pS,unc=nk?0.4*uc/nk+0.4*uk/nk:0;
-  return{ok:margin>-50,why:margin>-50?'':`${Math.round(-margin)} m/s short for this orbit`,p:pr,lo:clamp(pr*(1-unc),0,1),hi:clamp(pr*(1+unc/2),0,1),margin,proc}}
+  return{ok:margin>-50,why:margin>-50?'':`${Math.round(-margin)} m/s short for this orbit`,p:pr,lo:clamp(pr*(1-unc),0,1),hi:clamp(pr*(1+unc/2),0,1),margin,proc,pM,pS,pRelight:pT,pLow:pI/pT}}
 const padsN=()=>1+facLv('pads');
 // when each pad is next free, from today (dispatch reservations)
 function padsFree(){const D=PROG.day,f=Array.from({length:padsN()},()=>D);for(const x of PROG.dispatch||[])if(x.status==='queued'&&x.pad<f.length)f[x.pad]=Math.max(f[x.pad],x.launch);return f}
@@ -2050,15 +2053,40 @@ function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return f
   PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
 // interim resolver: the estimate rolled with the dispatch's own seed, the orbit scattered by the procedure and the compute era
-function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok||R()>=e.p)return{ok:false,why:e.ok?'the flight did not make orbit':e.why};
+function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};
+  if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
+  if(R()>=e.pM)return{deviation:{kind:'short',why:'running short of propellant: the circularisation can\'t be finished as planned',entry:devState(D,c,'short')}};
+  if(R()>=e.pRelight)return{deviation:{kind:'relight',why:'the upper stage failed to relight for the circularisation',entry:devState(D,c,'relight')}};
   const T=dispatchTarget(c),sk=(3+40*predErr(v))*1e3,j=()=>(R()-0.5)*2*sk,pe=T.pe+j(),ap=T.ap+Math.abs(j());
   return{ok:true,orb:{pe:Math.min(pe,ap),ap:Math.max(pe,ap),inc:T.inc+(R()-0.5)*0.4,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:e.proc.dv}}
-function dispatchTick(){for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
+// ---- deviation: the dispatch can't meet its goal and hands the flight to you. Time stops (advanceTo won't move while a
+// deviation waits), and the flight is yours from that moment: take control, or let it go. If time moves on without you
+// (a hand-flown launch, say), nobody was at the console and it's lost. A handed-over flight can't be reverted, or
+// dispatches could be re-rolled. The state is a registry entry (vesselOf rebuilds it), as the physics side's
+// dispatchRun will give; the interim resolver builds one for its two cases: the upper stage at apoapsis on the ascent's
+// transfer orbit (periapsis in the air), with the propellant the circularisation needs ('relight') or too little ('short').
+const devWaiting=()=>(PROG.dispatch||[]).filter(x=>x.status==='deviated');
+function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,c),T=PROG.day*DAY_S,alt=c.p.alt*1e3,ra=TELLUS.R+alt,rp=TELLUS.R+30e3;
+  let n=0;while(v.events.slice(v.evIdx).some(x=>x.decouple.length)&&n++<20)stage(v);   // drop down to the top stage (lit in the ascent)
+  const va=Math.sqrt(TELLUS.mu*2*rp/(ra*(ra+rp))),need=Math.sqrt(TELLUS.mu/ra)-va,want=kind==='short'?0.6*need:need+Math.max(0,e.margin||0);
+  const tanks=v.parts.filter(p=>p.on&&p.res&&Object.keys(p.res).length),full=tanks.map(p=>({...p.res}));let lo=0,hi=1;
+  const setK=k=>tanks.forEach((p,i)=>{for(const x in p.res)p.res[x]=full[i][x]*k});
+  for(let i=0;i<40;i++){const m=(lo+hi)/2;setK(m);geom(v);if(dvRemaining(v).tot<want)lo=m;else hi=m}setK(hi);geom(v);
+  const site=homeSites()[0]||SITES[0],u=norm(fromPF(TELLUS,site.u,T)),east=norm(cross([0,1,0],u)),dr=0.4,up=norm(add(mul(u,Math.cos(dr)),mul(east,Math.sin(dr)))),pro=norm(cross([0,1,0],up));
+  const rr=mul(up,ra),vv=mul(pro,va),X=norm(cross(pro,up)),q=qFromBasis(X,pro,cross(X,pro));v.r=rr;v.v=vv;v.q=q;
+  const on=v.parts.filter(p=>p.on);
+  return{stack:JSON.parse(JSON.stringify(D.stack)),shape:shapeOf(on,false),vst:vstOf(v),r:rr,v:vv,epoch:T,qo:qmul(qconj(orbQ(rr,vv)),q),cm:(v.cm||[0,0,0]).slice(),name:`${designName(D.stack)||'Dispatch'} ${D.id}`,attached:[]}}
+function loseDeviation(id,why){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status==='deviated');if(!D)return false;D.status='failed';D.why=why||D.dev.why;
+  HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');HOOK.save();return true}
+function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)loseDeviation(D.id,`${D.dev.why}, and nobody was at the console`);
+  for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
   const c=(PROG.active||[]).find(x=>x.id===D.cid);if(!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const site=homeSites()[0]||null;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
   const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
-  const res=typeof dispatchRun==='function'?dispatchRun(D,v,c):dispatchRoll(D,v,c);D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
+  const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=run?run(D,v,c):dispatchRoll(D,v,c);
+  if(res.deviation){D.status='deviated';D.dev={...res.deviation,at:PROG.day};HOOK.news(`⚠ A dispatched flight needs you: ${D.title}. ${res.deviation.why}`,'bad');HOOK.save();continue}
+  D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
   const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});
   if(res.ok){const R={orb:res.orb,cdone:[],dv:res.dv,dispatched:true};contractEval({rec:R,parts:v.parts});
     HOOK.news(R.cdone.length?`Dispatched flight to orbit: ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, ${R.cdone.join(', ')}`:`Dispatched flight reached ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, outside the contract's window`,R.cdone.length?'ok':'warn')}
@@ -5259,7 +5287,7 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
     weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
   $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()}}
 $('bEditor').onclick=()=>go('assembly');
-$('bRevert').onclick=()=>{resetShip();go('flight');HOOK.msg('Reverted to launch')};
+$('bRevert').onclick=()=>{if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}resetShip();go('flight');HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
 $('bHelp').onclick=()=>toggleHelp();$('bMenu').onclick=()=>ovToggle('escm');
 const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver'],['tgt','Target'],['antitgt','Anti-tgt'],['rpro','Rel pro'],['rretro','Rel ret'],['dock','Docking']];
@@ -6136,6 +6164,8 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.stand){if(!buildStand())HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
+  else if(ds.devtake){takeDeviation(+ds.devtake)}
+  else if(ds.devlose){loseDeviation(+ds.devlose,'let go');renderProgram()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
@@ -6163,6 +6193,14 @@ const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it lose
 function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
 const bayKey=s=>s?s.parts.filter(p=>p.on&&p.d.kind==='bay').map(p=>Math.round(doorF(p)*40)).join():'';
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
+// economy: a deviated dispatch, handed over at the moment it deviated (not rounded to a whole day); no revert
+function takeDeviation(id){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status==='deviated');if(!D)return;const q=D.dev.entry;
+  if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
+  const day0=Math.max(PROG.day,q.epoch/DAY_S);advanceDays(day0-PROG.day);if(ORB_ABS)ORB_T0=day0*DAY_S;
+  const s=vesselOf(q,q.epoch+(day0*DAY_S-q.epoch));const R=s.rec=recNew();
+  Object.assign(R,{launched:true,day0,cost:0,ops:0,fromOrbit:true,dispatched:D.id,noRevert:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});
+  D.status='handed';S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
+  HOOK.msg(`${D.dev.why}: the flight is yours (no revert)`);HOOK.save()}
 function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!q||!flyable(q))return;
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad

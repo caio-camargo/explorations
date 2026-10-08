@@ -1250,6 +1250,37 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.50 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
+
+The handover from "Dispatch — the economy's answers". Deviation instead of bare failure: the flight calls for you.
+
+- **The state is a registry entry** (stack, the parts still on with their propellant, staging state, r, v, epoch,
+  attitude), the format `vesselOf` already rebuilds for flyable vessels (sats session, A2). The physics side's
+  `dispatchRun` returns `{deviation: {kind, why, entry}}`; tests and tools can stand in through `HOOK.dispatchRun`.
+- **Time stops for it.**
+  - A deviated dispatch shows at the top of the Inbox's "Coming up": "⚠ … [Take control] [Let it go]".
+  - `advanceTo` won't move while one waits, and stops as soon as one appears.
+  - If time moves on anyway (a hand-flown launch), it's lost: "nobody was at the console".
+  - The contract stays open either way.
+- **Take control** (`takeDeviation`, app): the flight is rebuilt **at the moment it deviated** (not rounded to a whole
+  day, unlike `flyEntry`). It's yours from there; flying it to the contract's orbit pays as usual.
+- **No revert** on a handed-over flight (`R.noRevert`): the Revert button (and the Esc menu's, which calls it) refuses,
+  so dispatches can't be re-rolled. Caio: more punishing than KSP, on purpose.
+- **The interim resolver now deviates too**, until the physics side's real runs:
+  - The estimate keeps its parts: margin, structure, the ascent's ignitions, and the top stage's relight.
+  - A structural break-up or an ascent ignition failure is a loss.
+  - **Fuel short of the margin** and **a failed relight** are deviations. `devState` builds their state: the top
+    stage alone at apoapsis on the ascent's transfer orbit, periapsis 30 km (in the air), with the propellant to
+    circularise plus its margin ('relight') or 60% of what's needed ('short').
+  - Measured: 150 km apoapsis needs 74 m/s; relight case 2,249 m/s aboard, short case 45.
+  - With an unknown Petrel and everything else well known, 400 seeds: 348 in orbit, 27 handed over, 25 lost.
+- **Checked in the app:** a deviation in the Inbox; waiting refuses; Take control puts the top stage at 150 km
+  (periapsis 30 km) on the flight screen; Revert answers "No revert: this flight was handed over from a dispatch". No
+  console errors.
+
+`test.mjs` §39: 4 new checks: the handed-over state; time stops and won't move; ignored, it's lost; the interim
+resolver's handovers.
+
 ## v1.48 — geography in play: stations on real ground, recovery, disasters and field science (2026-10-08, terrain session)
 
 Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs` §37b–37d.

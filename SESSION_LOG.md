@@ -1987,6 +1987,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   uncertainty; good data raises the chance and narrows the range), pads as calendar reservations plus a Launch pads
   facility, a hand-flown launch waiting for a free pad, a seed fixed at ordering, the same pay as by hand. An interim
   resolver rolls the estimate until the bodies session's `dispatchRun`. All tests pass. Merged to `main` (`98638f6`).
+- **v1.50 (2026-10-08, economy worktree, first slice after the repo left Drive; renumbered from v1.49, which sound took):** deviation. A dispatch that can't
+  meet its goal hands the flight to you, rebuilt at that moment from a registry entry. Time stops until you take
+  control or let it go; ignored, it's lost; no revert on a handed-over flight. The interim resolver deviates on a failed
+  relight or propellant short of the margin (the top stage at apoapsis, periapsis in the air). All tests pass.
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
