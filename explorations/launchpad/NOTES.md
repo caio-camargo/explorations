@@ -1098,44 +1098,6 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
-## v1.42 — the event timeline (2026-10-08, economy session)
-
-The first piece of the time model (design: "Time, long missions and communication"). Until now time only moved when
-you launched: there was no way to wait for a building, a study or budget day.
-
-- **`upcoming()`** gathers everything dated in the program:
-  - trajectory studies, facility levels, the test stand and its campaigns, the design bureau, production lines;
-  - budget days (every 100 days), elections, sanctions lapsing, the next computing era;
-  - a day's warning before each contract deadline and each decision's expiry.
-- **`advanceTo(day)`** (or the next event) moves the calendar event by event, so each one happens in turn. It stops
-  early at events marked *stop* (deadline and decision warnings, elections) or when a new decision appears.
-  - It steps a hair past each event (1e-9 days), so the event's own tick fires despite rounding.
-- **UI:** a self-contained `timelineHTML()` section, "Coming up", mapped to the Inbox tab in `progTabOf`. It shows the
-  next eight events with a Wait / Wait until then button each (`data-adv`).
-
-  Checked in the app: from day 62, waiting until budget day landed on day 100 with the study done, the redesign done,
-  the 17M budget in and new offers on the board, with no console errors.
-- **Idle time is neutral** (v1.41): waiting costs nothing; funds only rise on budget days.
-- **Not yet:**
-  - launch windows and missions in flight (planning, sats, bodies);
-  - a timeline view in the UI's own style (the section is a plain list for now);
-  - offers expiring are deliberately left out (noise).
-
-`test.mjs` §35: 4 new checks: listed in order; wait goes to the next event and it happens; a long wait stops a day
-before a contract deadline; waiting never lowers funds.
-
-## v1.41 — no daily overhead (2026-10-08, economy session)
-
-Caio: idle time should be roughly neutral, with no upkeep. `OVERHEAD` and the new `OVERHEAD_CAP` (per unit of capacity)
-are both 0 (were 0.06 and 0.015 M/day); the code path stays, so it can be tuned later.
-
-Career runner (agency, 6 years, 5 seeds), lines-only:
-- final funds rise by ~300–800M;
-- top-ups roughly halve (resource 9.4 → 2.8, frugal 9.8 → 4.6, rising 6.6 → 3.0).
-
-With the investor (`all`), strong programs still put 1.5–2.9B into sinks and end at 0.6–1.5B. Weak programs end
-safer (frugal 911, resource 504).
-
 ## v1.43 — reaction wheels that saturate; the builder's control readout (2026-10-08, control session)
 
 The second slice of the control review (v1.40). The pod's wheels were 8× a KSP Mk1 pod and never filled up, so they
@@ -1200,6 +1162,44 @@ readout's turn times within 10 % of flown ones, and the coasting max-q case on w
 
 **Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
 fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
+
+## v1.42 — the event timeline (2026-10-08, economy session)
+
+The first piece of the time model (design: "Time, long missions and communication"). Until now time only moved when
+you launched: there was no way to wait for a building, a study or budget day.
+
+- **`upcoming()`** gathers everything dated in the program:
+  - trajectory studies, facility levels, the test stand and its campaigns, the design bureau, production lines;
+  - budget days (every 100 days), elections, sanctions lapsing, the next computing era;
+  - a day's warning before each contract deadline and each decision's expiry.
+- **`advanceTo(day)`** (or the next event) moves the calendar event by event, so each one happens in turn. It stops
+  early at events marked *stop* (deadline and decision warnings, elections) or when a new decision appears.
+  - It steps a hair past each event (1e-9 days), so the event's own tick fires despite rounding.
+- **UI:** a self-contained `timelineHTML()` section, "Coming up", mapped to the Inbox tab in `progTabOf`. It shows the
+  next eight events with a Wait / Wait until then button each (`data-adv`).
+
+  Checked in the app: from day 62, waiting until budget day landed on day 100 with the study done, the redesign done,
+  the 17M budget in and new offers on the board, with no console errors.
+- **Idle time is neutral** (v1.41): waiting costs nothing; funds only rise on budget days.
+- **Not yet:**
+  - launch windows and missions in flight (planning, sats, bodies);
+  - a timeline view in the UI's own style (the section is a plain list for now);
+  - offers expiring are deliberately left out (noise).
+
+`test.mjs` §35: 4 new checks: listed in order; wait goes to the next event and it happens; a long wait stops a day
+before a contract deadline; waiting never lowers funds.
+
+## v1.41 — no daily overhead (2026-10-08, economy session)
+
+Caio: idle time should be roughly neutral, with no upkeep. `OVERHEAD` and the new `OVERHEAD_CAP` (per unit of capacity)
+are both 0 (were 0.06 and 0.015 M/day); the code path stays, so it can be tuned later.
+
+Career runner (agency, 6 years, 5 seeds), lines-only:
+- final funds rise by ~300–800M;
+- top-ups roughly halve (resource 9.4 → 2.8, frugal 9.8 → 4.6, rising 6.6 → 3.0).
+
+With the investor (`all`), strong programs still put 1.5–2.9B into sinks and end at 0.6–1.5B. Weak programs end
+safer (frugal 911, resource 504).
 
 ## v1.40 — attitude control: a real gimbal, steerable fins, a SAS that holds (2026-10-08, control session)
 
