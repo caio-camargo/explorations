@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -117,6 +117,7 @@ NOTES § "The robot playtester".
 | ~ 47 (robot) | Check frame rate in the heaviest FX scene | Heavy at night on the pad, perf readout on | Still playable on the RTX and tolerable on the iGPU (≈26 ms measured there) · *Robot: Heavy at night, engines lit on the pad: RTX median 8.3 ms (120 fps, GPU 4.7 ms); Intel iGPU median 36.6 ms, p95 39.4 (≈27 fps), slower than the ≈26 ms noted; adaptive resolution stayed at 100 %.* | Performance pass | aerofx |
 | ✓ 48 (robot) | Read the HUD gauges in flight | Ascent and entry; `refView(94)`–`(96)` | Altitude tape, air column, q dial with max-q pointer, Mach drum, heat bar readable at a glance (layout is PLAYTEST #9) · *Robot: gauges readable (altitude tape, air column, q dial with max-q pointer, Mach, heat). The news box over the readout is P#16.* | HUD gauges | aerofx |
 | 49 | Fly past a saved satellite; look at Nyx from the ground and space | Orbit near a registered Lookout (diamond marker); Nyx in the sky | Satellite mesh keeps its marks and attitude; Nyx looks brown and distinct from Selene | Satellites in 3D / Nyx | sats / bodies |
+| 114 | Listen to a launch, staging, a chute and a crash (sound on: F4 toggles) | Any preset from the pad to orbit; a Sounding lob home; a crash. Click once first (browsers start audio on a gesture) | Roar loudest on the pad, buffet near Mach 1, wind peaks at max-q, darker and fainter as the air thins, only a structure hum in vacuum; thunks at separation, a whoomp at the chute, a far blast heard late. Too loud/quiet or annoying is a finding | Sound | sound |
 
 ### Orbits & planning
 
@@ -157,6 +158,7 @@ NOTES § "The robot playtester".
 | 72 | Discover Nyx by tracking | High orbit (~1.3× Nyx distance or near Nyx) with instruments + antenna for 12 h | Player can figure out where to go from the mission text; reveal (name, orbit, SOI) feels like a payoff | Out there | bodies |
 | 73 | Land on Nyx (<3 m/s) | Tester epoch 5; fly to Nyx | Low gravity landing is fun, not bouncy chaos | Out there | bodies |
 | 74 | Fly the epoch 3 utility sats: polar weather, TV stationary, disaster watch, navigation | Tester epoch 3 | Plane change cost felt; TV drift-out news is a fair nudge; nav phasing lesson discoverable | Epoch 3 | bodies |
+| 115 | Put a relay in Selene orbit and drive a far-side rover through it | Tester epoch 4: land a rover on the far side (no high-gain line home), then fly a probe with an antenna to a ~1,000 km orbit in Selene's orbital plane and end the flight there; Program > Fleet | The probe is listed *In orbit around Selene*; the rover's line shows *Drive from home … ms via* the relay for a few hours each orbit (about a third of the time) and *out of contact* otherwise; the delay feels right; a high polar orbit instead comes down within weeks, with news | Selene relay | sats |
 
 ### Program & economy
 
@@ -194,4 +196,4 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **108**.
+Next free number: **116**.
