@@ -3919,6 +3919,66 @@ today Selene is a smooth sphere apart from the regolith model; power (R3) is new
   been imaged from orbit, which ties the imaging satellites to surface work, as Lunar Orbiter's photos did for Apollo.
 - **Rover instruments (R4) use the same pointing and activity timeline** as orbital instruments (Owners and order, item 3).
 
+### R2 built: packed, deployed, driven anywhere, kept in the field (sats session, 2026-10-08)
+
+- **Two mounts** (palette *Surface*):
+  - **Rover, folded (side mount)** (`rvfold`): a surface part, the lunar rover's way. Only small and medium chassis fold.
+  - **Rover deck with ramps** (`rvdeck`): a stack part, Lunokhod's way, for rovers up to 3.8 m long.
+- **Packing.** A new mount packs the rover selected in the Rover yard. Its part options (right-click) choose another or
+  none. The node keeps a copy of the design (`nd.rvd`), and its mass is added as the part's `xm`. A large rover has no
+  mount yet: a cargo bay or a sky crane would be next.
+- **Deploying.** The HUD's *Rover* row has a **deploy** button once landed (`tapeRover`, tape op `Y`). Otherwise it
+  says why not (`rvDeployCheck`):
+  - the lander is moving or not landed;
+  - the rover doesn't fit its mount;
+  - a crewed rover with nobody aboard;
+  - the lander leaning more than 15°;
+  - at the spot where the rover would end up:
+    - sea;
+    - a slope over min(20°, the rover's side tip angle − 15°);
+    - a rover-sized rock (on rough ground a share of 4 m cells has one; regolith is rough, so one side can be blocked
+      and the other clear);
+  - for a deck, ramps steeper than min(25°, the rover's forward tip angle − 10°).
+
+  The deck tries all four sides and takes the gentlest ramps that pass. The ramps telescope 6 m, so a deck on top of a
+  short lander works (24° in the check) and one on a tall stack doesn't (50°).
+- **What a deploy does.** It takes the rover's mass off the lander, keeping the lander where it stands (its centre of
+  mass moves, not the lander). Then a scripted pose, 8 s for an unfold or 10 s down the ramps, ends with the rover
+  physical, upright on its wheels, square to the ground. Nothing in the deploy depends on the player's driving.
+- **Driving in a flight.** `]` from the lander drives a deployed rover (then the next); `[` goes back. W S A D and Space
+  go to the rover, not the lander (the lander's keys are blocked while you drive). The camera follows, and a readout
+  panel shows on the right. The rover steps on any body in that body's frame. Landed vessels are obstacles: upright
+  cylinders the rover's footprint box can't enter. A rover not driven and at rest sleeps.
+- **Kept in the field.** At the flight's end, every rover that isn't in the sea stays where it is (`PROG.rvOut`). A
+  later flight on that body within 2.5 km takes it back in. The lander's saved shape remembers its rover is gone (`rvOut`).
+- **Driving from home.** The Program screen's *Rovers in the field* (Fleet tab) lists them. An uncrewed one has
+  **Drive from home**, which opens the drive screen wherever it is, as Lunokhod was driven from Earth. A crewed one is
+  driven by its crew, from a lander there.
+- Fixed on the way: autopilot tapes replayed arm operations (`['A', op]`) as aborts. Playback now aborts only on a bare
+  `['A']`.
+- Checks: `test.mjs` §35, 6 checks:
+  - mass and refusals;
+  - the side deploy (lighter, unmoved lander, rover upright beside it);
+  - backing into the lander;
+  - kept in the field, taken back, and the saved lander without it;
+  - deck ramps short against tall;
+  - a leaning lander.
+
+  Mutation-tested: no obstacles, a shape that forgets the rover is gone, no packed mass, no lean check, or a lander that
+  isn't held in place each fails a check.
+
+  Browser: on Selene at noon, one side was blocked by a rock and the other deployed. The rover unfolded, drove, and the
+  view went back to the lander. It was then kept in the field and driven from home. The deck with its rover showed in
+  Assembly with its part options.
+- **Not yet:**
+  - a cargo bay or sky crane for large rovers;
+  - an unfold animation that looks folded (the scripted pose moves the whole rover);
+  - time passing while you drive from home (the clock is held);
+  - Selene's real terrain (it is still a smooth sphere with bumps and rocks);
+  - power, contact and the signal's delay (R3);
+  - science (R4);
+  - drive plans (R5).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.

@@ -118,7 +118,7 @@ function pickUp(p,copy){const n=p.dn,D=design();
   if(!copy&&n===D.root&&kids(n).length){note('That is the root part: everything hangs from it. Pick up the parts around it instead.');return}
   if(copy){st.held=noIds(cl(n));delete st.held.at;st.sel=null;st.ghostKey='';refresh();return}
   snapshot();detachNode(n);st.held=n;st.sel=null;st.ghostKey='';editorChanged()}
-function grab(k){st.held={k,c:[]};st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
+function grab(k){st.held={k,c:[]};if(PARTS[k].kind==='rover'&&typeof rvPack==='function')st.held.rvd=rvPack();st.sel=null;st.ghostKey='';refresh();note(`${name(k)}: click a glowing node or the side of a part`)}
 function drop(){if(!st.held)return;st.held=null;st.ghostKey='';refresh()}
 function del(n){if(!n)return;snapshot();detachNode(n);if(st.sel&&nodes(n).includes(st.sel))st.sel=null;editorChanged()}
 let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target');if(e)e.innerHTML=statusHTML()}
@@ -224,6 +224,14 @@ function panel(){
     btn(r,'−',false,()=>set(c-1),'cant 1° less (below 0 the nozzle tilts inward)');r.appendChild(v);btn(r,'+',false,()=>set(c+1),'cant 1° more: the nozzle tilts outward, the thrust leans in toward the axis');
     btn(r,'balance',false,()=>{const a=aimCant(eng);if(Math.abs(a-c)<0.01)note('Balanced: the engines burning with this one already push through the centre of mass');else set(a)},
       'cant so that all the engines burning with this one push through the centre of mass: no turning moment for the controls to fight')}
+  // a rover mount: which rover is packed on it (a copy of the design as it is now; the Rover yard makes the designs)
+  if(PARTS[n.k].kind==='rover'&&typeof rvDesigns==='function'){const r=row('rover'),L=rvDesigns(),s=document.createElement('select');
+    s.style.cssText='font:inherit;background:rgba(0,0,0,.3);color:inherit;border:1px solid rgba(127,209,255,.22);max-width:160px';
+    s.innerHTML='<option value="">— none —</option>'+L.map((d,i)=>`<option value="${i}">${String(d.name).replace(/</g,'&lt;')}</option>`).join('');
+    s.value=n.rvd?String(Math.max(-1,L.findIndex(d=>d.name===n.rvd.name))):'';
+    s.onchange=()=>{s.blur();edit(()=>{if(s.value===''||s.value==='-1')delete n.rvd;else{const d=JSON.parse(JSON.stringify(L[+s.value]));delete d.test;n.rvd=d}})};r.appendChild(s);
+    const why=n.rvd&&ps[0]?rvMountWhy(ps[0],n.rvd):'',w=document.createElement('div');w.className=why?'warn':'sub';
+    w.textContent=why||(n.rvd?`${Math.round(rvGeom(n.rvd).m)} kg, packed as it was then: changes in the Rover yard need it packed again`:'nothing packed');sel.appendChild(w)}
   const path=rootPath(D.root,n);if(par&&path&&path.slice(1).every(x=>x.at==='u'||x.at==='d'))
     {const r=row('root');btn(r,'make root',false,()=>edit(()=>reroot(path)),'re-hang the design from this part, so a subtree with the old root in it can be picked up (the rocket itself does not change)')}
   {const r=row('');btn(r,'pick up',false,()=>{const p=ps.find(p=>!p.inst.rdec)||ps[0];if(p)pickUp(p,false)});btn(r,'copy',false,()=>{const p=ps[0];if(p)pickUp(p,true)});
@@ -248,7 +256,7 @@ function staging(box){
       btn(c,'◀',false,()=>mv(i,j,-1),'fire one stage earlier');btn(c,'▶',false,()=>mv(i,j,1),'fire one stage later');
       if(s.length>1)btn(c,'⤵',false,()=>mv(i,j,0),'a stage of its own, right after this one');r.appendChild(c)})})}
 function palette(){const pal=el('palette');pal.innerHTML='';
-  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Control',['rcs','gas','rwheel']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover']],['Control',['rcs','gas','rwheel']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
