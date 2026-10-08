@@ -3411,4 +3411,21 @@ longer finds Nyx; nyxfind still flies (2.74 d).
 ### Next steps
 - [ ] Caio: W9 (count a mission only on a flight launched while it was open?)
 - [ ] Economy: Q6 `siteAccess`, Q7 ballistic target, Q9 station/base/relay contracts (plan first), Q10 rover prices
->>>>>>> origin/main
+
+## 2026-10-08 — Launchpad roadmap v1.1: pillars, systems closed, human playtest gate (roadmap session)
+
+### Summary
+Mapped the roadmap against the usual game-development cycle (prototype → vertical slice → production → alpha/beta).
+M1 is the vertical slice. Added what the cycle showed was missing: six **design pillars** drafted from NOTES (Caio to
+edit); **systems declared complete** (Caio: near saturation, now integrating), so a new system needs a pillar and
+Caio's yes; M1's finish line now includes **a person other than Caio playing the first hour**. Caio's playtesting is
+blocked on the construction screen, so M1's first vehicle item is the builder for a newcomer, and QA's first is a
+presets-only playtest route for him.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Caio: edit the pillars
+- [ ] Orchestrator: rank the builder-usability and presets-route items at the top of vehicle and QA
+
