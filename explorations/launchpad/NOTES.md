@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.18.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.19.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3094,6 +3094,36 @@ Two halves launched together (or a module you just released) can now dock to eac
 5. **Expansion** (a client's module): dock a module of a given type to station X (e.g. a commercial lab, a hotel
    habitat once tourism exists).
 6. **Reboost** (once orbits decay): raise station X's periapsis above a floor.
+
+### A2 built: vessels that stay flyable across flights (sats session, 2026-10-08)
+
+- **What a registry entry keeps now:** its design (`q.stack`), its state (`q.vst`: which of the design's stage segments
+  have ignited, SAS mode, RCS, chute) and, per shape part, its index in that design (`o.oi`). Vessels that separated keep
+  their parts' design indices (`p.oi`, `p.oseg`), so any descendant of a design rebuilds the same way. Entries from before
+  this have no design and stay passive (no Fly button).
+- **Rebuilding** (`vesselOf`): assemble the design again, switch off the parts the entry no longer has, restore
+  resources (fuel, supplies), crew aboard (`p.crewAboard`) and flight marks, find the next staging event from what's left
+  (the first with something still to drop, a segment not yet lit, or a chute), carry whatever is docked, and place it on
+  its rails at that moment. Staging is *derived*, not stored as an index, because a separated vessel's stage list is a
+  re-indexed subset of its design's.
+- **Fly** (Program panel, a flyable vessel in the satellites list): a flight that starts in orbit on the next whole day.
+  No hardware to buy; the fixed operations fee (`OPS_FIX`) is charged as for any flight (**economy:** your call). The
+  flight record says `fromOrbit` (and its tape can't be saved as an autopilot: tapes replay from the pad).
+- **In a flight:** `]` / `[` also reach your flyable vessels within 2.5 km, loading them into the flight as you switch
+  (tape op `['L', id]`). Undocking a body that can be flown gives a flyable vessel, not a passive satellite. A vessel that
+  came from the register goes back on it as itself (id, name, history: images, lab-days).
+- **Crew:** a capsule keeps its crew across flights. Switching to a vessel with crew aboard makes them this flight's crew
+  (the bodies session's crew rules then apply: air, g, cabin, home safe). So **crew rotation works**: fly the station,
+  undock the crewed capsule, switch to it, bring it home; a new crew docks theirs.
+- Checks (`test.mjs` §31): rebuild through a save (parts, fuel, mass, place, staging); a separated vessel rebuilds with
+  its engine still lit; identity on re-registration; a station flown again undocks its crewed capsule as a flyable
+  vessel with its crew of 2; a nearby flyable vessel loads into the flight and returns as itself. Browser: the Fly button
+  and a flight starting at 300 km.
+- **For economy:** a flight from orbit could complete orbit contracts with something already up (`R.fromOrbit` lets you
+  rule that out), and whether to charge operations for it is yours.
+- **Not yet:** a design changed in the builder after launch doesn't affect what's in orbit (each entry keeps its own
+  copy), but a part definition changed by an update (heights, masses) shifts a rebuilt vessel slightly from its saved
+  shape; temperatures restart cold.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

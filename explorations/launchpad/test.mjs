@@ -1847,6 +1847,46 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
 }
 
+// 31. Vessels that stay flyable across flights (sats session, stations plan A2): a registered vessel rebuilds from its
+// design (parts, fuel, staging, crew), as itself, through a save; undocking a flyable body gives a vessel; a nearby one
+// loads into the flight. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,geom,stage,satRegister,fleetEnd,dockEnd,fleetContacts,vesselOf,flyable,loadEntry,nearbyFlyable,undock,activeEngines,crewOn,FLEET,PROG,TELLUS,DT,qrot,qmul,qaxis,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3, round = q => JSON.parse(JSON.stringify(q));   // as through a save
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  const fly = (stack, crewed) => { D.FLEET.length = 0; D.t = 0; const s = D.newShip(stack); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; Object.assign(s.rec, { launched: true, day0: 0, crewed: !!crewed, crewOK: true }); D.S = s; return s; };
+  // a probe stage after its booster dropped, some fuel used: registered, saved, rebuilt
+  let s = fly(['core', 't1', 'dec', 't1', 'sparrow']); for (let k = 0; k < 4 && s.evIdx < s.events.length; k++) D.stage(s);
+  const tk = s.parts.find(p => p.on && p.d.key === 't1'); tk.res.fuel = 0.37; D.geom(s); D.satRegister(s, s.rec); let q = round(P.sats[0]); P.sats[0] = q;
+  let v = D.vesselOf(q, 0); const keys = vv => vv.parts.filter(p => p.on).map(p => p.d.key).sort().join(), fuel = v.parts.find(p => p.on && p.d.key === 't1').res.fuel;
+  check('A2: a registered vessel rebuilds from its design through a save: same parts, fuel, mass, place, nothing left to stage', D.flyable(q) && keys(v) === keys(s) && Math.abs(fuel - 0.37) < 1e-12 && Math.abs(v.mass - s.mass) < 1e-6 && len(sub(v.r, s.r)) < 1e-6 && v.evIdx === v.events.length,
+    `${q.name}: ${keys(v)}; fuel ${fuel.toFixed(2)} t; mass ${(v.mass / 1000).toFixed(3)} t (was ${(s.mass / 1000).toFixed(3)}); staging ${v.evIdx}/${v.events.length}`);
+  // a vessel split off another rebuilds too: the separated probe, its engine still lit
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['pod', 't1', 'dec', 'core', 't1', 'sparrow']); for (let k = 0; k < 4 && !D.FLEET.length; k++) D.stage(s);
+  const probe = D.FLEET[0]; D.fleetEnd(s.rec); q = round(P.sats.find(x => x.shape.some(o => o.k === 'core'))); v = D.vesselOf(q, 0); v.throttle = 1;
+  check('A2: a vessel that separated from another rebuilds from the original design, its engine still lit', probe && keys(v) === keys(probe) && D.activeEngines(v).length === 1,
+    `${q.name}: ${keys(v)}; engines lit ${D.activeEngines(v).length}`);
+  // identity: flown again and re-registered, it's the same object (id, name, history)
+  P.sats = [q]; q.labDays = 7; v = D.vesselOf(q, 0); P.sats = []; D.satRegister(v, { day0: 0 }); const back = P.sats[0];
+  check('A2: flown again and re-registered, it is the same object (id, name, its history)', back.id === q.id && back.name === q.name && back.labDays === 7, `${back.name} #${back.id}`);
+  // a crewed capsule docked at a station, saved; the station flown again; the capsule undocks as a flyable vessel, crew aboard
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['port', 'hab'], true); const cap = D.newShip(['port', 'crew']); Object.assign(cap, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], name: 'Capsule' });
+  const Y = D.qrot(s.q, [0, 1, 0]); cap.q = D.qmul(D.qaxis([0, 0, 1], Math.PI), s.q); cap.r = add(s.r, mul(Y, s.yTop + 0.05 + cap.yTop)); cap.v = add(s.v, mul(Y, -0.1)); cap.fleet = true;
+  cap.rec = { launched: true, day0: 0, mini: true }; D.FLEET.push(cap); D.fleetContacts(D.DT); D.satRegister(s, s.rec); D.dockEnd(s);
+  q = round(P.sats[0]); P.sats = [q]; const crewSaved = q.attached[0].e.shape.find(o => o.k === 'crew').crew;
+  // (the flight's record said crewed: the capsule's crew is in the save)
+  const st = D.vesselOf(q, 0); P.sats = []; D.S = st; D.FLEET.length = 0; D.undock(st, q.attached[0].e.id); const cv = D.FLEET[0];
+  check('A2: a station flown again undocks its crew capsule as a flyable vessel, crew aboard', crewSaved === 2 && cv && cv.parts.some(p => p.on && p.d.kind === 'pod') && D.crewOn(cv) === 2 && !P.sats.length,
+    `capsule ${cv ? cv.name : '—'}: crew ${cv ? D.crewOn(cv) : 0}; register now ${P.sats.length} entries (both are flying)`);
+  // a flyable vessel of yours within 2.5 km loads into the flight; at the end it goes back on the register as itself
+  Object.assign(P, { sats: [], satN: 0 }); s = fly(['core', 't1']); const near = D.newShip(['core', 't1']); Object.assign(near, { landed: false, r: add(s.r, [0, 0, 800]), v: s.v.slice() }); near.rec.launched = true;
+  D.satRegister(near, { day0: 0 }); q = P.sats[0]; const nb = D.nearbyFlyable(s).length; const lv = D.loadEntry(q, s); const loaded = lv && D.FLEET.includes(lv) && !P.sats.length;
+  D.fleetEnd(s.rec); const again = P.sats.length === 1 && P.sats[0].id === q.id;
+  check('A2: a flyable vessel within 2.5 km loads into the flight, and goes back on the register as itself at the end', nb === 1 && loaded && again, `nearby ${nb}; loaded ${!!loaded}; back as #${P.sats[0] && P.sats[0].id}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
