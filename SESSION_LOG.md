@@ -3278,3 +3278,27 @@ Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--f
 - [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
 - [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
 
+## 2026-10-08 — Launchpad v1.51: spin stabilisation (control session)
+
+### Summary
+Euler's equations were missing the gyroscopic term (ω×Iω), so a spinning stage turned to every torque as if not spinning
+and never wobbled. Added it (`integrateRot`: body-frame RK4, substeps ≤ 0.05 rad, exact attitude step), a **Spin-up
+motors** part (`spin`, 4,000 N·m·s in 1 s; fires when its stage lights or is released), SAS that leaves a spun stage's roll
+alone (damps the wobble), spin kept through time warp, a HUD *Spin* row and the builder's spin rpm. A kick stage with its
+thrust ½° off-axis: unspun it tumbles; at 1 / 2 / 4 rev/s its axis ends 3.2 / 1.1 / 0.2° off (before: 74 / 61 / 41°).
+Wobble rate matches Euler to four figures; angular momentum kept to 0.017 % (was 0.83 %).
+Negative result: the wheels' stored momentum had to stay out of the gyroscopic term (a pod's 100 kN·m·s pinned capsules
+against their chutes: three capsule checks failed). Same root as the robot playtester's PLAYTEST #18: wheel storage is
+sized far above real hardware.
+
+### Files
+- `explorations/launchpad/index.html`, `builder.js` (`spin` in *Control*), `test.mjs` section `control-4` (3 checks,
+  mutation-tested), `study_spin.mjs` (new), `NOTES.md` § v1.51, `TESTING.md` rows 118–119; README and INDEX rows
+
+### Verification
+`test.mjs` 366 pass on the merged tree. Physics step unchanged beyond noise.
+
+### Next steps
+- [ ] PLAYTEST #18 (control): size wheel storage to real hardware / the vessel, so a light stage saturates before it
+  tears; that would also let the wheels' momentum into the gyroscopic term
+- [ ] Push `main` when Caio says
