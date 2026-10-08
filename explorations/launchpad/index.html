@@ -416,6 +416,11 @@ const PRESETS={
   // crew to Selene and back (bodies session): Big Lunar with a crew capsule (+0.56 t) under an escape tower, a 2 t return
   // tank, a 12 t lander, a stretched core and four boosters. Flown to orbit with a tuned turn (vertical to 200 m, flat by
   // 38 km) it arrives with ~2,800 m/s in the lander (transfer 1,321 + landing ~1,250) and ~1,830 to come home (~1,250).
+  // uncrewed (bodies session): a probe with a camera, an antenna and instruments on a Lunar-class launcher, ~1,900 m/s
+  // spare past orbit, a transfer, a capture and a landing (the far side, impactor, soft landing, and all four Nyx missions);
+  // and Big Lunar with an instrument package in its capsule, to bring a sample back from Selene
+  Probe:['ant','cam','sci','core','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross'],
+  'Sample Return':['chute','pod','sci','shield','dec','t2','wren','dec','t4','t4','t2','petrel','istage','adapt','T32','T16',{k:'fins25',rad:{n:2,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
   'Crewed Lunar':['les','chute','crew','shield','dec','t2','wren','dec','t8','t4','petrel','istage','adapt','T32','T32',{k:'fins25',rad:{n:4,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
@@ -1143,7 +1148,7 @@ function numLeg(st,el,pt){const b=st.b;let r=st.r,v=st.v,t=st.t;
     const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,b.mu),b.R),h=Math.min(tEnd-t,Math.max(0.5,0.25*lim/sp),hP);
     [r,v]=coastStep(b,r,v,t,h,pa);t+=h;const rl=len(r);minR=Math.min(minR,rl);maxR=Math.max(maxR,rl);
     if(t-tLast>=every){path.push([r,t]);tLast=t}
-    if(rl<b.R){path.push([r,t]);pt.end=r;pt.endKind='impact';pt.endT=t;break}
+    if(rl<b.R){path.push([r,t]);pt.end=r;pt.endV=v;pt.endKind='impact';pt.endT=t;break}
     if(b.parent&&rl>soiAt(b,t)){path.push([r,t]);const[bp,bv]=bodyRel(b,t);pt.end=r;pt.endKind='esc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
       return{b:b.parent,r:add(r,bp),v:add(v,bv),t,off:absOff(b.parent,t)}}
     for(const c of b.children){const[cp,cv]=bodyRel(c,t);if(len(sub(r,cp))<soiAt(c,t)){path.push([r,t]);pt.end=r;pt.endKind='enc';pt.endT=t;pt.minR=minR;pt.maxR=maxR;
@@ -3137,8 +3142,15 @@ function fixPe(s,X,peMin){const B=s.body,e=elements(s.r,s.v,B.mu);if(e.pe-B.R>=p
 // (plus a million), so a search that starts with a miss still has a slope toward an encounter
 // the perigee a trajectory comes home on after passing B (the leg after B's), or null
 function homePe(p,B){const i=p.findIndex(x=>x.b===B),L=i>=0?p[i+1]:null;if(!L||L.b!==B.parent)return null;return(L.path&&L.endKind!=='impact'?L.minR:L.el.pe)-L.b.R}
-function passScore(p,B,pass,home){const L=p.find(x=>x.b===B);if(L){const e=Math.abs(L.el.pe-B.R-pass);if(home==null)return e;
-    const h=homePe(p,B);return h==null?5e5+e:Math.abs(h-home)+2*Math.max(0,e-0.5*pass)}   // a free return: the way home counts; the pass may sit within half its heightconst p0=p[0];let d=Infinity;
+// a pass's geometry: on which side of the moon the periapsis falls (relative to the parent), and which way round it goes
+function passShape(L,B){const toP=norm(mul(bodyRel(B,L.t)[0],-1)),nB=norm(cross(B.P,B.Q)),el=L.el;let u=el.P;
+  if(el.pe<B.R){const p=el.a*(1-el.e*el.e),nu=-Math.acos(clamp((p/B.R-1)/el.e,-1,1));u=add(mul(el.P,Math.cos(nu)),mul(el.Q,Math.sin(nu)))}   // an impact: where it hits, on the way in
+  return{side:dot(u,toP),retro:dot(el.h,nB)<0}}
+function passScore(p,B,pass,home,opt){const L=p.find(x=>x.b===B);if(L){let e=Math.abs((L.path?L.endKind==='impact'?elements(L.end,L.endV,B.mu).pe:L.minR:L.el.pe)-B.R-pass);   // the integrated pass where the tide bends it (an impact: the orbit it hits on)
+    if(opt){const g=passShape(L,B);if(opt.side==='near'&&g.side<0.3||opt.side==='far'&&g.side>-0.3)e+=3e5;if(opt.retro!=null&&opt.retro!==g.retro)e+=3e5}
+    if(home==null)return e;
+    const h=homePe(p,B);return h==null?5e5+e:Math.abs(h-home)+2*Math.max(0,e-0.5*pass)}   // a free return: the way home counts; the pass may sit within half its height
+  const p0=p[0];let d=Infinity;
   if(p0.path)for(const[r,t]of p0.path)d=Math.min(d,len(sub(r,bodyRel(B,t)[0])));
   else{const T=p0.el.e<1?p0.el.period:3*86400;for(let i=0;i<=400;i++){const dt=T*i/400;d=Math.min(d,len(sub(kepler(p0.r,p0.v,dt,p0.b.mu)[0],bodyRel(B,p0.t+dt)[0])))}}
   return 1e6+d}
@@ -3160,37 +3172,44 @@ const MP={
     if(!X.sub){const r0=len(s.r),a=(r0+B.a)/2,tof=Math.PI*Math.sqrt(a**3/b.mu),phi=Math.PI-B.n*tof,ang=r=>Math.atan2(-r[2],r[0]);
       const vc=Math.sqrt(b.mu/r0),dvH=Math.sqrt(b.mu*(2/r0-1/a))-vc,tb=dvH/Math.max(engAcc(s),1e-3),wn=vc/r0-B.n;
       const lead=((ang(bodyRel(B,simT)[0])-ang(s.r)-phi)%(2*Math.PI)+4*Math.PI)%(2*Math.PI);let wait=lead/wn-tb/2;if(wait<0)wait+=2*Math.PI/wn;
+      if(ph.sunFar)for(let k=0;k<200&&dot(norm(bodyRel(B,simT+wait+tb/2+tof)[0]),SUN_DIR)<0.4;k++)wait+=2*Math.PI/wn;   // the far side lit at arrival: the moon on the sun's side
       X.sub='wait';X.tBurn=simT+wait;X.wake=X.tBurn-ALIGN;return false}
     if(X.sub==='wait'){s.throttle=0;aimAt(s,s.v,5);if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
     if(X.sub==='burn'){if(elements(s.r,s.v,b.mu).ap>=(X.rTo||B.a*0.995)){if(typeof DEBUG_PROC!=='undefined'&&X.uN){const e=elements(s.r,s.v,b.mu),ad=mul(e.P,-1),tA=simT+timeToNu(e,Math.PI);HOOK.msg(`after the burn: apoapsis ${(e.ap/1e3).toFixed(0)} km at ${(tA/3600).toFixed(2)} h vs node ${(X.tN/3600).toFixed(2)} h; apoapsis direction off the node by ${(Math.acos(Math.min(1,dot(ad,X.uN)))*57.3).toFixed(1)}°`)}s.throttle=0;X.sub='coast';X.wake=simT+2*3600;X.mccN=0;return false}burnTo(s,X,s.v);return false}
     // a free return (the next phase is 'home'): the corrections also aim at the perigee it will come home on after the flyby
     const nxt=X.p.phases[X.mi+1],home=nxt&&nxt.k==='home'?nxt.perigee:null;
     if(X.sub==='coast'){s.throttle=0;s.sasMode='pro';if(simT<X.wake)return false;X.wake=null;
-      const sc0=passScore(predict(s),B,ph.pass,home);X.dv=solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home)+0.01*len(dv),8,400);X.got=0;X.sub='mcc';X.mccN=(X.mccN||0)+1;
-      if(typeof DEBUG_PROC!=='undefined')HOOK.msg(`MCC ${X.mccN}: score ${(sc0/1e3).toFixed(0)} → ${(passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,X.dv),t:simT}),B,ph.pass,home)/1e3).toFixed(0)} km-ish with ${len(X.dv).toFixed(1)} m/s`);return false}
+      const sc0=passScore(predict(s),B,ph.pass,home,ph);X.dv=solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),8,400);X.got=0;X.sub='mcc';X.mccN=(X.mccN||0)+1;
+      if(typeof DEBUG_PROC!=='undefined')HOOK.msg(`MCC ${X.mccN}: score ${(sc0/1e3).toFixed(0)} → ${(passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,X.dv),t:simT}),B,ph.pass,home,ph)/1e3).toFixed(0)} km-ish with ${len(X.dv).toFixed(1)} m/s`);return false}
     if(X.sub==='mcc'){if(!impulse(s,X))return false;const p=predict(s),L=p.find(x=>x.b===B),hp=home!=null?homePe(p,B):null;
-      const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3);
+      const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3)||passScore(p,B,ph.pass,null,ph)>=3e5;   // wrong side or sense counts as off too
       if(off&&X.mccN<3){X.sub='coast';X.wake=simT+3*3600;return false}   // not there yet: correct again later
       X.sub='toSOI';X.wake=p[0].endT?p[0].endT+60:simT+3600;return false}
     if(X.sub==='toSOI'){s.throttle=0;s.sasMode='pro';if(s.body!==B){if(simT>=X.wake)X.wake=simT+600;return false}X.wake=null;
-      X.dv=home!=null?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home)+0.01*len(dv),2,100)
+      X.dv=home!=null||ph.side||ph.retro!=null||B.pert?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),2,100)   // a moon the tide bends: the integrated pass
         :solveDv(s,dv=>{const e=elements(s.r,add(s.v,dv),B.mu);return Math.abs(e.pe-B.R-ph.pass)+0.01*len(dv)},2,100);X.got=0;X.sub='trim';return false}
     return impulse(s,X)},
   capture(s,X,ph){const B=s.body;
     if(!X.sub){const el=elements(s.r,s.v,B.mu),vp=Math.sqrt(B.mu*(2/el.pe-1/el.a)),vc=Math.sqrt(B.mu/el.pe),tb=(vp-vc)/Math.max(engAcc(s),1e-3);
       X.tBurn=simT+Math.max(0,timeToNu(el,0)-tb/2);X.wake=X.tBurn-ALIGN;X.sub='wait';return false}
-    if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
+    if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);
+      if(!X.fine&&simT>=X.wake-1){X.fine=1;const el=elements(s.r,s.v,B.mu),vp=Math.sqrt(B.mu*(2/el.pe-1/el.a)),vc=Math.sqrt(B.mu/el.pe);X.tBurn=simT+Math.max(0,timeToNu(el,0)-(vp-vc)/Math.max(engAcc(s),1e-3)/2)}   // awake, close in: the tide has moved periapsis since the SOI entry
+      if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
     if(X.sub==='burn'){const e=elements(s.r,s.v,B.mu);if(e.e<1&&e.ap-B.R<ph.ap){s.throttle=0;X.sub='fix';return false}burnTo(s,X,mul(s.v,-1));return false}
     return fixPe(s,X,ph.pe)},
   land(s,X,ph){const B=s.body;
-    if(!X.sub){const e=elements(s.r,s.v,B.mu);X.tBurn=simT+Math.max(0,timeToNu(e,0)-60);X.wake=X.tBurn-ALIGN;X.sub='wait';return false}
-    if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(simT>=X.tBurn-1e-6){X.sub='go';X.wake=null}return false}
+    // first bring periapsis down near the ground (a small burn at apoapsis): braking low saves the fall, ~√(2gh) of Δv
+    if(!X.sub){const e=elements(s.r,s.v,B.mu),peT=ph.pe??5e3;if(e.e<1&&e.pe-B.R>peT+2e3){X.tBurn=simT+timeToNu(e,Math.PI);X.wake=X.tBurn-ALIGN;X.sub='dwait';return false}
+      X.tBurn=simT+Math.max(0,timeToNu(e,0)-60);X.wake=X.tBurn-ALIGN;X.sub='wait';X.fine=0;return false}
+    if(X.sub==='dwait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(simT>=X.tBurn-1e-6){X.sub='deorbit';X.wake=null}return false}
+    if(X.sub==='deorbit'){if(elements(s.r,s.v,B.mu).pe-B.R<=(ph.pe??5e3)){s.throttle=0;X.sub=null;return false}burnTo(s,X,mul(s.v,-1));return false}
+    if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(!X.fine&&simT>=X.wake-1){X.fine=1;X.tBurn=simT+Math.max(0,timeToNu(elements(s.r,s.v,B.mu),0)-60)}if(simT>=X.tBurn-1e-6){X.sub='go';X.wake=null}return false}
     if(s.landed){s.throttle=0;X.noAuto=true;return true}
     const up=norm(s.r),vv=dot(s.v,up),vhv=sub(s.v,mul(up,vv)),vh=len(vhv),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot,g=B.mu/dot(s.r,s.r),A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
     // drop a stage that can't finish the descent while there's height to switch, and finish on the next
     if(vh<=15&&plan.length>1&&hb>1500&&dvRemaining(s).cur<1.15*Math.sqrt(2*g*hb+vv*vv)){stage(s);return false}
-    if(typeof DEBUG_PROC!=='undefined'&&(X.dbgT==null||simT-X.dbgT>30)){X.dbgT=simT;HOOK.msg(`land: h ${(hb/1e3).toFixed(2)} km vv ${vv.toFixed(1)} vh ${vh.toFixed(1)} thr ${s.throttle.toFixed(2)} nose·up ${dot(qrot(s.q,[0,1,0]),up).toFixed(2)} stage dv ${dvRemaining(s).cur.toFixed(0)} plan ${plan.length} A ${A.toFixed(2)}`)}
-    if(vh>15){burnTo(s,{noAuto:plan.length<2},mul(s.v,-1),10);return false}   // braking: kill the orbital speed
+    if(typeof DEBUG_PROC!=="undefined"&&(X.dbgT==null||simT-X.dbgT>(hb<4000?0.5:30))){X.dbgT=simT;HOOK.msg(`land: h ${(hb/1e3).toFixed(2)} km r-h ${((len(s.r)-B.R)/1e3).toFixed(2)} vv ${vv.toFixed(1)} vh ${vh.toFixed(1)} thr ${s.throttle.toFixed(2)} nose·up ${dot(qrot(s.q,[0,1,0]),up).toFixed(2)} stage dv ${dvRemaining(s).cur.toFixed(0)} plan ${plan.length} A ${A.toFixed(2)}`)}
+    if(vh>(X.braked?40:15)){burnTo(s,{noAuto:plan.length<2},mul(s.v,-1),10);return false}X.braked=true;   // braking: kill the orbital speed (once; after that the tilt below handles what drift is left)
     aimAt(s,sub(up,mul(vhv,0.08)),25);
     const Au=A*Math.max(0.2,dot(qrot(s.q,[0,1,0]),up));   // only the upward part of the thrust stops the fall (a heavy stack on wheels wanders while it coasts)
     if(hb>30){const need=vv<0?vv*vv/(2*Math.max(hb-15,1))+g:0;s.throttle=need>0.7*Au?Math.min(1,need/Au):0}   // suicide burn, with 30 % in hand
@@ -3198,7 +3217,9 @@ const MP={
     if(s.throttle>0&&plan.length>1&&dvRemaining(s).cur<=0.5)stage(s);return false},
   surface(s,X,ph){s.throttle=0;if(!X.sub){X.sub='wait';X.wake=simT+(ph.t||600)}return simT>=X.wake-1e-6},
   ascend(s,X,ph){const B=s.body;
-    if(!X.sub){for(let i=0;i<(ph.stage||0);i++)stage(s);while(dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length&&dvPlan(s,0).length>0)stage(s);X.sub='up';X.noAuto=true}
+    if(!X.sub){for(let i=0;i<(ph.stage||0);i++)stage(s);while(dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length&&dvPlan(s,0).length>0)stage(s);
+      // a stage that can't reach orbit by itself (the lander came down on it) stays behind, if there's one under it that can
+      const need=1.2*Math.sqrt(B.mu/(B.R+ph.ap));while(dvPlan(s,0).length>1&&dvRemaining(s).cur<need&&s.evIdx<s.events.length)stage(s);X.sub='up';X.noAuto=true}
     if(X.sub==='up'){const up=norm(s.r),h=len(s.r)-B.R,pitch=Math.max(0,90-90*Math.min(1,h/(ph.pitchH||3000)))*Math.PI/180,east=norm(cross([0,1,0],s.r));
       aimAt(s,add(mul(up,Math.sin(pitch)),mul(east,Math.cos(pitch))),20);s.throttle=1;
       if(elements(s.r,s.v,B.mu).ap-B.R>ph.ap){s.throttle=0;X.sub='fix';X.fw=0}return false}
