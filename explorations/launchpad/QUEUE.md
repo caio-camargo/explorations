@@ -77,7 +77,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### control — attitude
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | → control 2026-10-08 |
+| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | ✓ `0c2e701` |
 
 ### tester — the tester menu
 | # | Item | Size | Load | State |

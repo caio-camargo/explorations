@@ -3350,3 +3350,12 @@ QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedur
 - [ ] Q12 rest: a corridor around the recorded profile (deviate early when the climb strays, not only when Δv runs out)
 - [ ] Economy: the study button and price for `procAdopt`, a wider estimate for `prov`, the measured margin cached
 - [ ] Q13: landing on a chosen crater
+
+### Follow-up: v1.51.1, the wheels won't spin a vessel apart (control session, 2026-10-08; queue Q14)
+PLAYTEST #18: with SAS off a held key spun the Orbiter's upper stage to 23 rad/s in 9 s and tore it apart (a bare pod:
+66 rad/s in 2 s, chute torn off). The wheels' controller now won't turn a vessel past `WHEEL_W` (1 rad/s pitch/yaw, 3 roll),
+reaching it exactly; SAS (≤ 0.6 rad/s) and big stacks (storage runs out first) are unchanged. #23: the negative-stability
+note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs `control-5` (mutation-tested); all pass on
+the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
+- [ ] Q29: re-run TESTING row 104 with the robot
+
