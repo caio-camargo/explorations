@@ -3004,18 +3004,22 @@ function procMission(s,P){const M=P.m||(P.m={ev:[],last:s.body,landed:false,surf
   else if(!s.landed&&M.landed){M.landed=false;M.ev.push({k:'takeoff',body:b.name,t,staged:M.surfStage});M.surfStage=0;M.orb=null}
   if(!s.landed&&!(s.throttle>0)&&b!==TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e>=1||el.ap>soiAt(b,t)){if(!M.orb&&M.fresh){M.pass=el.pe-b.R;M.fresh=false}}else if(el.pe>b.R)M.orb={pe:el.pe-b.R,ap:el.ap-b.R}}   // the pass as the executor's trim sees it: osculating, right after SOI entry or a burn
-  const esc=M.ev.find(e=>e.k==='esc');if(!esc&&b!==TELLUS&&M.orb){if(M.ev.some(e=>e.k==='takeoff'&&e.body===b.name))M.orbAfterOff=M.orb;else if(!M.ev.some(e=>e.k==='land'))M.orbBeforeEsc=M.orb}
+  const esc=M.ev.find(e=>e.k==='esc');if(esc&&!M.flybyKept&&!M.ev.some(e=>e.k==='land')&&!M.orbBeforeEsc&&M.pass!=null){M.flybyKept=true;procFlybyKeep(s,P,M,esc.body)}
+  if(!esc&&b!==TELLUS&&M.orb){if(M.ev.some(e=>e.k==='takeoff'&&e.body===b.name))M.orbAfterOff=M.orb;else if(!M.ev.some(e=>e.k==='land'))M.orbBeforeEsc=M.orb}
   if(b===TELLUS&&esc&&!s.landed&&M.entryPe==null&&len(s.r)-b.R<b.atm)M.entryPe=elements(s.r,s.v,b.mu).pe-b.R;   // the vacuum perigee it came in on (what the return aims at), not the lowest point it reached
   if(b===TELLUS&&esc&&s.landed){M.kept=true;const R=s.rec;if(R&&R.crewed&&!R.crewOK)return;procMissionKeep(s,P,M)}}
+function procFlybyKeep(s,P,M,B){if(!P.target||!s.rec)return null;const sig=`${B}:flyby`,key=procKey(s.stack)+'|'+sig,old=(PROG.procs=PROG.procs||{})[key],dv=s.rec.dv;
+  const proc={...procAscent(s,P),kind:'mission',sig,phases:[{k:'transfer',to:B,pass:Math.max(10e3,M.pass)}],dv,crewed:!!s.rec.crewed};if(old&&old.dv<=dv+0.5)return null;PROG.procs[key]=proc;
+  HOOK.news(old?`Procedure improved: ${proc.by}, ${B} flyby, for ${fmtDv(dv)} (was ${fmtDv(old.dv)})`:`New procedure: ${proc.by} can fly a ${B} flyby by itself from now on`,'ok');HOOK.save();return proc}
 function procMissionKeep(s,P,M){const E=M.ev,enc=E.find(e=>e.k==='enc');if(!enc||!P.target)return null;
   const B=enc.body,land=E.find(e=>e.k==='land'&&e.body===B),off=E.find(e=>e.k==='takeoff'&&e.body===B),esc=E.find(e=>e.k==='esc'&&e.body===B);
   const capOrb=land?land.orb:M.orbBeforeEsc||null,phases=[{k:'transfer',to:B,pass:Math.max(10e3,(land?land.pass:M.pass)??40e3)}];
   if(capOrb)phases.push({k:'capture',ap:capOrb.ap+20e3,pe:Math.max(10e3,capOrb.pe)});
   if(land){phases.push({k:'land'},{k:'surface',t:off?off.t-land.t:600});
     const asc=M.orbAfterOff||{pe:15e3,ap:20e3};phases.push({k:'ascend',stage:off?off.staged:0,pitchH:3000,ap:Math.max(asc.pe,asc.ap-2e3),pe:asc.pe})}
-  if(!capOrb&&!land)return null;   // flybys aren't procedures yet
-  phases.push({k:'return',perigee:M.entryPe??45e3});
-  const sig=`${B}:${land?'land':'orbit'}`,key=procKey(s.stack)+'|'+sig,old=(PROG.procs=PROG.procs||{})[key],dv=s.rec?s.rec.dv:null;if(dv==null)return null;
+  if(!capOrb&&!land)phases.push({k:'home',perigee:M.entryPe??45e3});   // a free return: past the moon and home
+  else phases.push({k:'return',perigee:M.entryPe??45e3});
+  const sig=`${B}:${land?'land':capOrb?'orbit':'free-return'}`,key=procKey(s.stack)+'|'+sig,old=(PROG.procs=PROG.procs||{})[key],dv=s.rec?s.rec.dv:null;if(dv==null)return null;
   const proc={...procAscent(s,P),kind:'mission',sig,phases,dv,crewed:!!(s.rec&&s.rec.crewed)};
   if(old&&old.dv<=dv+0.5)return null;PROG.procs[key]=proc;
   HOOK.news(old?`Procedure improved: ${proc.by}, ${sig.replace(':',' ')}, for ${fmtDv(dv)} in all (was ${fmtDv(old.dv)})`:`New procedure: ${proc.by} can fly "${sig.replace(':',' ')}" by itself from now on (${fmtDv(dv)} in all)`,'ok');HOOK.save();return proc}
@@ -3130,6 +3134,7 @@ const MP={
       aimAt(s,add(mul(up,Math.sin(pitch)),mul(east,Math.cos(pitch))),20);s.throttle=1;
       if(elements(s.r,s.v,B.mu).ap-B.R>ph.ap){s.throttle=0;X.sub='fix';X.fw=0}return false}
     return fixPe(s,X,ph.pe)},
+  home(s,X,ph){if(!X.sub){X.sub='out';X.wake=simT+3600}return MP.return(s,X,ph)},   // a free return: out of the moon's SOI, correct the perigee, shed the stage, entry
   return(s,X,ph){const B=s.body,P=B.parent||B,perigee=p=>{const L=p.find((x,i)=>x.b===P&&(i>0||!B.parent));return L?(L.path&&L.endKind!=='impact'?L.minR:L.el.pe)-P.R:null},
       perigeeAt=p=>{const L=p.find((x,i)=>x.b===P&&(i>0||!B.parent));if(!L)return Infinity;if(L.path){let m=Infinity,tm=Infinity;for(const[r,t]of L.path){const d=len(r);if(d<m){m=d;tm=t}}return tm}
         return L.t+(L.el.e<1?timeToNu(L.el,0):Math.max(0,-tPe(L.el,L.el.nu)))};   // when it gets there (the crew has 10 days of air)   // an impact leg's lowest point is the ground: use the orbit's (negative) perigee, so a search has a slope to follow
