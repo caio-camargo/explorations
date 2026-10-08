@@ -3358,6 +3358,118 @@ pressure.
   Kepler legs through the star's SOI, so the propagator already handles them.
 - Warp: transfers take months; rails warp is exact at any rate, but the top step (1e5×) may need another notch.
 
+## Rich programs: projects, waste heat and routine runs — design (2026-10-08, economy session with Caio; nothing built)
+
+**The problem.** The v1.36 balance pass made sinks absorb strong programs' money, but sinks aren't goals. A rich program
+stays fun only if money isn't enough. It should need flights, logistics, time and physics it has to solve. So
+megaprojects are **built by flying them there, piece by piece**, never bought with a button. Wealth becomes launch
+rate, and launch rate is the core game.
+
+### A ladder of projects (near → far)
+
+1. **Ground:**
+   - ground stations and antenna arrays. These exist on the planning branch, where contact time drives imagery
+     sales; arrays for deep space come next.
+   - more pads and launch sites (terrain did sites; the economy's site-access hook is still to build);
+   - factories, which tie into production lines.
+2. **Tellus orbit:**
+   - propellant depots (reach through launch rate: fuel up in orbit, go further);
+   - large stations from modules (the sats session's plan, phases A–E);
+   - **orbital datacenters**, a revenue stream that brings in waste heat (below).
+3. **Selene and beyond** (bodies session):
+   - colonies, where windows and transfer times turn money into planning;
+   - mining resources on site: water becomes propellant and feeds the depots;
+   - a mass driver on Selene (the O'Neill step: material up cheaply).
+4. **Heliocentric** (the steps short of a Dyson sphere):
+   - asteroid capture and mining (material that never fought Tellus's well);
+   - building in space (structures too big to launch);
+   - space solar power beamed down (sold to the world);
+   - large stations in solar orbit for power or compute, a miniature swarm.
+
+### Waste heat — the physics that scales with ambition
+
+In space, heat leaves only by radiation: P = εσAT⁴.
+- **Radiators:** at 300 K a two-sided radiator sheds ~0.8 kW/m², so 1 MW of compute needs ~1,200 m².
+- **Solar panels:** at Tellus's distance they give ~300 W/m² of electricity, so the same 1 MW needs ~3,300 m².
+- **A datacenter is therefore mostly panels and radiators.** Its mass, and so its launch count, is set by thermal
+  design.
+- **Running hotter shrinks radiators as 1/T⁴,** but chips get worse: a real trade-off with a sweet spot to find.
+- **Attitude and orbit matter:**
+  - radiators must face away from the sun;
+  - a dawn-dusk sun-synchronous orbit avoids eclipse (no batteries);
+  - closer to the sun there's more power but it's harder to stay cool. That's the heliocentric stations' core tension.
+- **The same limit comes back everywhere:**
+  - nuclear-electric propulsion is bounded by its radiators;
+  - habitats dump life-support heat;
+  - deep-space probes need heaters instead.
+
+**Mechanic, in steps:**
+1. A **steady-state temperature per vessel**, calculated directly with no time stepping:
+   - heat in: absorbed sunlight α·A·S/r² plus internal power;
+   - heat out: εσAT⁴;
+   - parts get operating ranges (electronics, crew, propellant boil-off);
+   - radiators and solar panels are parts with area and mass per m²;
+   - the builder shows "this design runs at 340 K, above the chips' limit".
+2. A **transient model** later (heat capacity, eclipses, burns).
+
+The flight sim already has a per-part skin thermal pass for re-entry (radiation, plus convection since the capsule fix).
+Orbital thermal is a separate, slower system, but it can share the radiation term.
+
+### Routine runs — automation, and pads as the scarce resource
+
+Refuelling a station or resupplying a datacenter is fun once and tedious the tenth time. **A route you've flown
+becomes a routine run** that the program flies on a schedule, with no player in the loop.
+
+What exists:
+- **autopilot tapes**, one per exact design and sim version, replaying a recorded flight deterministically ("tapes
+  replay identically");
+- the **logbook** keeps a record flight's design and tape.
+
+Both still need you watching in real time. What doesn't exist is concurrency. **The program is serial today:** each
+launch advances the one calendar by its stacking days (`R.prep`), so pads aren't a resource yet.
+
+**Proposal:**
+- **A routine** = design + tape + site + target, valid while the design and sim version match. It's created from a
+  flight that completed the job.
+- **Resolved without the physics (cheap).** The tape's measured result (cargo delivered, Δv margin) is the outcome, and
+  risk comes from what isn't deterministic: ignition rolls from know-how, certification and part wear. A failure costs
+  the vehicle and the cargo, never the destination.
+- **Optional:** a full headless re-simulation as an audit when something changes (new sim version, rescaled planet).
+- **Launch windows.** A rendezvous needs the target's phase and plane, so a routine's slots follow its target's window
+  cycle. Windows times pads is a scheduling puzzle.
+- **Pads become slots on a calendar.** Each launch occupies a pad for stacking, launch and pad turnaround (bigger
+  rockets wear the pad more). Manual flights and routines compete for the same pads.
+  - The integration hall becomes stacking capacity (bays), separate from pads.
+  - More pads, more sites and faster turnaround are what rich programs buy.
+  - The UI wants a Gantt view of the pads (UI session).
+- **No upkeep misery.** A project left without its routine **pauses** (stops earning or producing); it never decays
+  or dies. Routines are how a project earns, not a tax on owning it.
+- **Routine operations get cheaper** with repetition (ops know-how, like production-line maturity) and earn little
+  prestige, so firsts stay manual and memorable.
+- **Contracts too.** Repeatable contracts (satellite deployments, resupply, crew rotation from the sats plan) can be
+  handed to a routine once flown once.
+
+### How the economy plugs in
+
+- **Projects are staged construction:** a bill of modules, each delivered by a flight to the right orbit or surface.
+  Progress stops when deliveries stop.
+- **Some projects earn:** datacenters sell compute (by uptime, power and temperature), space solar sells power, depots
+  sell fuel, including to other powers.
+- **Consortia.** Big projects can be co-funded by several powers: shares, defections, and sanctions that freeze a
+  half-built station.
+- **Prestige for the firsts:** first depot, first colony, first megawatt in orbit.
+
+### Proposed order and owners
+
+1. **Economy: the routine and the pad calendar.** This changes the time model from serial to concurrent; the career
+   runner and the UI need to follow.
+2. **Ground antenna arrays** for deep space (planning).
+3. **The orbital datacenter with steady-state thermal:**
+   - radiator and panel parts (builder);
+   - the thermal solve (physics: builder's or a new session);
+   - revenue (economy).
+4. **Depots** (sats Phase C), then Selene mining and heliocentric projects (bodies).
+
 ## Platform direction: native desktop later, the browser for now (Caio, 2026-10-08)
 
 **Decision.** The finished game is a **native desktop** app; the browser was the experimental start. For now, keep the
