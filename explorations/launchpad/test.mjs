@@ -2715,6 +2715,60 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.sats = [];
 }
 
+// 42. Rover science, R4 first slice (sats session): Selene's geology as drawn; the spectrometer, the panorama camera and
+// the seismic network, each counting only when its data reaches home. Own sim instance.
+{
+  const D = new Function(src + 'return {geoAt,selMare,rvNew,rvSci,rvSciSend,rvContact,rvRelays,rvEntry,rvFromEntry,rvSunPF,thAbs,selSci,advanceDays,satRegister,newShip,PRESETS,SEL_CORE,SELENE,TELLUS,PROG,HOOK,DAY_S,fbm};')();
+  const msgs = []; D.HOOK.news = m => msgs.push(m); D.HOOK.msg = m => msgs.push(m);
+  const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
+  // geology: the unit follows the drawn dark patches (the shader's mask, recomputed here); maria are iron-rich
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 2 * ((i * 0.618034) % 1) - 1, a = i * 2.39996, s = Math.sqrt(1 - z * z); pts.push([s * Math.cos(a), z, s * Math.sin(a)]); }
+  let agree = 0, nm = 0; const fe = { mare: 0, high: 0 }, fn = { mare: 0, high: 0 };
+  for (const u of pts) { const g = D.geoAt(B, mul(u, B.R)), x = Math.min(1, Math.max(0, (D.fbm(u[0] * 1.6 + 3, u[1] * 1.6 + 3, u[2] * 1.6 + 3) - .5) / .15)), M = x * x * (3 - 2 * x);
+    if ((M >= .2) === (g.unit === 'mare')) agree++; if (g.unit === 'mare') nm++; fe[g.unit] += g.FeO; fn[g.unit]++; }
+  const feM = fe.mare / fn.mare, feH = fe.high / fn.high, share = nm / pts.length;
+  check('Selene\'s geology follows the dark patches the sky shader draws: mare basalt (iron-rich) on them, highland rock elsewhere',
+    agree === pts.length && share > .05 && share < .15 && feM > 2 * feH && !D.geoAt(D.TELLUS, [1, 0, 0]),
+    `${(share * 100).toFixed(1)} % mare; FeO ${feM.toFixed(1)} % on mare, ${feH.toFixed(1)} % on highland; unit agrees with the shader's mask at ${agree}/${pts.length} points`);
+  // spots: a near-side highland (talks home directly) and a far-side mare (needs a relay)
+  const far = pts.filter(u => u[0] > .2 && D.geoAt(B, mul(u, B.R)).unit === 'mare').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0], hi = pts.find(u => u[0] < -.8 && D.geoAt(B, mul(u, B.R)).unit === 'high');
+  const mk = (u, slots) => { const R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots }, B, mul(u, B.R), [0, 1, 0], {}); R.name = 'Sci'; R.id = 7; return R; };
+  const kit = ['spec', 'cam', 'seis', 'ant', 'bat', 'sol', null, null];
+  const Rn = mk(hi, kit), Rf = mk(far, kit), Rx = mk(hi, ['bat', 'sol', null, null, null, null, null, null]);
+  Rn.v = [0.5, 0, 0]; const moving = D.rvSci(Rn, 'spec', 0); Rn.v = [0, 0, 0];
+  const g0 = D.geoAt(B, Rn.p), okN = D.rvSci(Rn, 'spec', 0), dup = D.rvSci(Rn, 'spec', 0), none = D.rvSci(Rx, 'spec', 0);
+  const before = !!P.log.sehigh, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.sehigh;
+  check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side highland reading in the logbook',
+    okN && !dup && !none && !moving && !before && sent === 1 && e && Math.abs(e.v.FeO - g0.FeO) < 4 && e.v.n === 1,
+    `read ${okN}, again here ${dup}, without one ${none}, moving ${moving}; logbook before sending ${before}, after: FeO ${e ? e.v.FeO.toFixed(1) : '—'} % (truth ${g0.FeO.toFixed(1)})`);
+  // far side: the reading waits in the field (no contact) until a relay is up, then arrives between flights
+  D.rvSci(Rf, 'spec', 0); const held = D.rvSciSend(Rf, D.rvContact(Rf, 0, [])) === 0 && Rf.data.length === 1;   // no contact: nothing goes
+  P.rvOut = [D.rvEntry(Rf)]; D.advanceDays(2); const waited = held && !P.log.semare && P.rvOut[0].data.length === 1;
+  const sat = D.newShip(D.PRESETS.Probe), a = B.R + 1000e3; Object.assign(sat, { alive: true, landed: false, body: B, r: [a, 0, 0], v: [0, 0, -Math.sqrt(B.mu / a)] }); D.satRegister(sat, { day0: P.day });
+  D.advanceDays(3); const arrived = !!P.log.semare && !P.rvOut[0].data.length;
+  const back = D.rvFromEntry(P.rvOut[0]);
+  check('a far-side reading waits in the field without contact, then reaches home through a relay between flights; field entries keep data, seismometers and read spots',
+    waited && arrived && P.log.semare.v.FeO > 7 && back.reads.length === 1 && back.seisLeft === undefined,
+    `waited ${waited}; arrived via the relay ${arrived} (mare FeO ${P.log.semare ? P.log.semare.v.FeO.toFixed(1) : '—'} %)`);
+  // panoramas: the quality is the sun's height (long shadows best, noon flat, night refused)
+  const elAt = T => Math.asin(dot(norm(Rn.p), D.rvSunPF(B, D.thAbs(B, T)))) * 180 / Math.PI, orbit = 2 * Math.PI / B.n;
+  let tLow = null, tHigh = null, tDark = null; for (let T = 0; T < orbit; T += 600) { const el = elAt(T); if (tLow == null && el > 8 && el < 15) tLow = T; if (tHigh == null && el > 75) tHigh = T; if (tDark == null && el < -5) tDark = T; }
+  Rn.data = []; D.rvSci(Rn, 'pano', tLow); D.rvSci(Rn, 'pano', tHigh); const dark = D.rvSci(Rn, 'pano', tDark), [pl, ph] = Rn.data;
+  check('panorama quality follows the sun: long shadows at a low sun beat a flat noon; at night it refuses', pl && ph && pl.q > .9 && ph.q < .5 && !dark,
+    `sun ${pl ? pl.el.toFixed(0) : '—'}°: ${pl ? (pl.q * 100).toFixed(0) : '—'} %; sun ${ph ? ph.el.toFixed(0) : '—'}°: ${ph ? (ph.q * 100).toFixed(0) : '—'} %; night ${dark}`);
+  // seismic: four stations set out from rovers; a tight array hears quakes but can't place them; a wide one locates
+  // them and brackets the hidden core
+  const nearPt = (az, dist) => { const t = dist / B.R, d = [0, Math.sin(az), Math.cos(az)]; return mul(norm(add(mul([-1, 0, 0], Math.cos(t)), mul(d, Math.sin(t)))), B.R); };
+  const array = (sp, side = 1) => { P.sel = null; P.sats = []; P.rvOut = []; P.log = {}; P.day = 0; const R = mk([-1, 0, 0], ['seis', 'ant', 'bat', 'sol', null, null, null, null]);
+    for (const pf of [[-B.R, 0, 0], nearPt(0, sp), nearPt(2.1, sp), nearPt(4.2, sp)].map(p => [p[0] * side, p[1], p[2]])) { R.p = mul(pf, 1.0001); D.rvSci(R, 'seis', 0); }
+    D.advanceDays(60); const S = D.selSci(); return { left: R.seisLeft, n: S.seis.length, heard: S.quakes.length, loc: S.quakes.filter(q => q.loc).length, c: S.core, buf: S.seis.reduce((a, s) => a + s.buf.length, 0) }; };
+  const tight = array(2e3), farA = array(400e3, -1), wide = array(400e3), C = D.SEL_CORE;   // farA: the same array on the far side, no relay
+  check('a seismic network: a tight array (2 km) hears moonquakes but can\'t place them; on the far side with no relay the records wait; a wide one (400 km) locates them and brackets the hidden core',
+    tight.n === 4 && tight.left === 0 && tight.heard > 20 && tight.loc === 0 && farA.heard > 20 && farA.loc === 0 && farA.buf > 0 && wide.loc > 20 && wide.c && wide.c.lo < C && wide.c.hi > C && wide.c.hi - wide.c.lo < 40e3 && P.log.secore,
+    `tight: ${tight.heard} heard, ${tight.loc} located; far side: ${farA.loc} located, ${farA.buf} records waiting; wide: ${wide.loc} located, core ${wide.c ? (wide.c.lo / 1e3).toFixed(0) + '–' + (wide.c.hi / 1e3).toFixed(0) : '—'} km (truth ${(C / 1e3).toFixed(0)})`);
+  P.sel = null; P.rvOut = []; P.sats = [];
+}
+
 // 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
 // only certifies what reaches the ground (linked) or comes home on the recorder.
 {
