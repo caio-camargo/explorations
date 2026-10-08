@@ -2294,6 +2294,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
+// 37. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
+// an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
+{
+  const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  D.HOOK.msg = () => {}; const T = D.TELLUS, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])) * 57.2958;
+  const sand = D.avNow(); D.PROG.flights = 1; const gens = [0, 3.5, 8].map(y => { D.PROG.day = y * 400; return [D.avNow(), D.compEra()]; });
+  check('avionics: no program, the best SAS; in a program it follows the computing era (gyro, then analog at mainframes, then guidance computer)',
+    sand === 2 && gens.every(([a, e]) => a === Math.min(2, e)) && gens.map(g => g[0]).join() === '0,1,2', `sandbox ${sand}; years 0 / 3.5 / 8 → ${gens.map(g => D.AV[g[0]].name).join(' / ')}`);
+  const pod = av => { D.t = 0; const s = D.newShip(['chute', 'pod']), r0 = T.R + 300e3; D.S = s; s.av = av;
+    Object.assign(s, { landed: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0], sas: true, sasMode: 'stab' });
+    const modes = ['pro', 'node', 'tgt'].map(m => D.sasModeOK(s, m) ? 'yes' : 'no'); s.sasMode = 'pro'; const proHolds = D.sasTarget(s) === s.hold; s.sasMode = 'stab';
+    const X0 = D.qrot(s.q, [1, 0, 0]); s.hold = X0; let t = 0, reach = null, err = 0;
+    while (t < 40) { D.physStep(s, D.DT); t += D.DT; const e = ang(D.qrot(s.q, [0, 1, 0]), X0); if (reach == null && e < 2) reach = t; if (reach != null && t > reach + 15) err = Math.max(err, e); }
+    return { modes: modes.join('/'), proHolds, reach, err }; };
+  const g = pod(0), a = pod(1), c = pod(2);
+  check('avionics: a gyro only holds (asked for prograde, it holds the attitude), within its ½° deadband; a bare pod\u2019s 90° turn takes it twice as long as a guidance computer',
+    g.modes === 'no/no/no' && g.proHolds && !c.proHolds && a.modes === 'yes/no/no' && c.modes === 'yes/yes/yes' && g.reach > 1.8 * c.reach && g.err <= 0.5 + 1e-6,
+    `prograde/maneuver/target: gyro ${g.modes} (prograde holds: ${g.proHolds}), analog ${a.modes}, computer ${c.modes}; 90° in ${g.reach.toFixed(1)} / ${a.reach.toFixed(1)} / ${c.reach.toFixed(1)} s; gyro holds within ${g.err.toFixed(2)}°`);
+}
+
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;
