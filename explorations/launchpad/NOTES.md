@@ -2361,6 +2361,49 @@ In the browser: ▶ Procedure → ascent → coast (warp) → circularisation �
 - **A landed craft with its engines off is on rails,** where `advPhys` never runs, so the first in-game version sat on the pad.
   The procedure now lights the engines when started, and the game loop keeps a procedure on physics except during its coast.
 
+### Procedures v2: whole missions (2026-10-08)
+
+A mission procedure is the ascent plus a list of **phases**, each a guidance law with the parameters the flight chose:
+`transfer {to, pass}`, `capture {pe, ap}`, `land`, `surface {t}`, `ascend {stage, pitchH, pe, ap}`, `return {perigee}`. They are
+ported from `fly_crewlunar.mjs` but **steered through SAS** (`aimAt`: a burn waits until the nose is on its direction).
+Corrections are impulses found with the predictor (`solveDv`). Coasts set a wake time, so the game warps to them.
+
+**Extraction.** After the ascent, the recorder keeps a mission log (`procMission`, sampled in `advPhys` *and* `advRails`):
+- SOI entries and exits;
+- the pass, as the osculating periapsis right after SOI entry or the last trim (what the executor's trim aims at);
+- the last closed orbit before landing (the capture);
+- landing, take-off, and the stages dropped on the surface;
+- the orbit after take-off;
+- the **vacuum perigee the craft came in on** at the top of the air.
+
+When the craft is home and well (the crew alive, if crewed), that becomes a procedure for the design and the mission
+(`Selene:land`, `Selene:orbit`), kept only if it spent less Δv in all. The pad shows one button per procedure of the design.
+
+**Measured** (§27): the hand-written flight is recorded as `transfer 39.8 km → capture 30×220 → land → 600 s → ascend 15×18 →
+return 45.7 km` (8,672 m/s). The executor flies it through SAS: crew on Selene and home in 1.85 days, 4.0 g, splashdown 6.5
+m/s. Its 8,600 m/s **replaces** the hand-flown 8,672, so the procedure improves itself. In the browser the "Selene land" button
+flies ascent → transfer → capture → landing → take-off through the game loop.
+
+**What it taught:**
+- **Record where the decision is measured, not where its effect ends up.** Two recorder mistakes would each have killed the crew:
+  the "pass" read near closest approach (12 km, after three hours of Tellus's tide) instead of right after the trim (39.8); the
+  return "perigee" taken as the lowest point of the entry, which is the ground (0.55 km → 26 g). The fix is the quantity the
+  executor itself targets, measured at the moment it targets it.
+- **A search needs a slope.** Twice, an objective clamped at the ground (the integrated path's lowest point on an impact leg) left
+  the optimiser nothing to follow: a 2 m/s "correction" into a −0.6 km perigee, 8 g. On impact legs the osculating perigee
+  (negative) gives it one.
+- **Choose the smallest burn that's good enough, within what's aboard.** The return scan weighted 1 m/s against 20 m of perigee
+  error, picked 620 m/s with 554 aboard, and stranded the crew. Now it takes the smallest burn within 90 % of the fuel that gets
+  within 50 km (the correction does the rest).
+- **In the game, engines-off in orbit is on rails:** the recorder runs in `advRails` too, or it would never see an ascent end.
+  It runs *after* each physics step, so it sees a landing in the step that made it. Starting from the first second off the
+  ground, it also covers flights that light their engines before their first step.
+- **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
+  raised apoapsis to 805 km; the new one is robust to timing.
+
+**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+(economy) can now run whole missions headless.
+
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
 the economy decides, this is what the physics side offers:
 - **Real outcomes, cheaply.** A procedure flown headless is the game's own physics: ~1 s of CPU for an ascent; 15 s for the

@@ -1109,6 +1109,18 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     R.done && R.home && R.crewed && R.crewOK && R.landing.landed && R.landing.v < 4 && R.landing.tilt < 10 && R.passes.length === 1 && R.g < 8 && R.days < 10,
     `orbit with ${R.orbit.left.map(x => x.toFixed(0)).join('/')} m/s left, cabin ${R.orbit.cabin.toFixed(0)} K · corrections ${R.mcc.toFixed(0)} + ${R.retCorr.toFixed(0)} m/s · landed at ${R.landing.v.toFixed(1)} m/s with ${R.landing.left.map(x => x.toFixed(0)).join('/')} left · ` +
     `back in Selene orbit with ${R.ascent.left.map(x => x.toFixed(0)).join('/')} · ${R.passes.length} entry pass · splashdown ${R.touch.toFixed(1)} m/s, peak ${R.g.toFixed(1)} g, cabin ${R.cabin.toFixed(0)} K, ${R.days.toFixed(1)} days`);
+  // the same flight, recorded, becomes a mission procedure; the executor flies it through SAS, and the better run replaces it
+  const key = api.procKey(api.PRESETS['Crewed Lunar']) + '|Selene:land', ext = P.procs && P.procs[key], ph = ext ? Object.fromEntries(ext.phases.map(x => [x.k, x])) : {};
+  check('procedures v2: the flown mission is recorded as a "Selene land" procedure (transfer, capture, land, surface, ascend, return)',
+    !!ext && ext.phases.map(x => x.k).join() === 'transfer,capture,land,surface,ascend,return' && Math.abs(ph.transfer.pass - 40e3) < 3e3 && ph.return.perigee > 30e3 && ph.return.perigee < 60e3,
+    ext ? `pass ${(ph.transfer.pass / 1e3).toFixed(1)} km, capture ${(ph.capture.pe / 1e3).toFixed(0)}×${(ph.capture.ap / 1e3).toFixed(0)} km, ascend to ${(ph.ascend.pe / 1e3).toFixed(0)}×${(ph.ascend.ap / 1e3).toFixed(0)}, return perigee ${(ph.return.perigee / 1e3).toFixed(1)} km; ${ext.dv.toFixed(0)} m/s in all` : 'none');
+  if (ext) { P.done = Object.fromEntries(['beeper', 'orbiter', 'padabort', 'maxqabort', 'farside', 'selimp', 'selland', 'crewaround'].map(k => [k, { flight: 0, day: 0 }])); const dv0 = ext.dv;
+    api.t = 0; const s = api.newShip(api.PRESETS['Crewed Lunar']); api.S = s; api.advPhys(s); api.procStart(s, ext); let k = 0;
+    while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
+    const Rp = s.rec, now = P.procs[key];
+    check('procedures v2: the executor flies it end to end through SAS: crew on Selene and home safe; a cheaper run replaces the procedure',
+      s.alive && s.landed && s.body === TELLUS && Rp.crewed && Rp.crewOK && !!P.done.crewland && now && now.dv <= dv0,
+      `${(api.t / 86400).toFixed(2)} days, peak ${(Rp.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rp.dv.toFixed(0)} m/s in all (procedure ${dv0.toFixed(0)} → ${now ? now.dv.toFixed(0) : '?'})`); }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
 
@@ -1123,7 +1135,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
       if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 1000 * AS) / (turnEnd - 1000 * AS))); point(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
       else if (phase === 'coast') { point(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0; if (h > ATM && api.timeToNu(el, Math.PI) < 25) phase = 'circ'; }
-      else { const f = api.localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), X = norm(cross(hv, f.n)); s.q = api.qFromBasis(X, hv, cross(X, hv)); s.w = [0, 0, 0]; s.throttle = 1; if (el.pe - TELLUS.R > ATM + 2000) { s.throttle = 0; api.advPhys(s); break; } }
+      else { const f = api.localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), X = norm(cross(hv, f.n)); s.q = api.qFromBasis(X, hv, cross(X, hv)); s.w = [0, 0, 0]; s.throttle = 1; if (el.pe - TELLUS.R > ATM + 2000) { s.throttle = 0; api.advRails(s, 10, 100); break; } }   // as in the game: engines off in orbit, straight onto rails
       if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s);
       api.advPhys(s); }
     return s; };
