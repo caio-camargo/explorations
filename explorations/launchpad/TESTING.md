@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -90,6 +90,8 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 35 | Inspect part close-ups for the 1950s–60s look | `refView(4)`–`(9)`; also new parts (camera, antenna, port, RCS, claw, probe core) in builder | Parts read as period hardware, details don't shimmer; foil looks like foil | Part visuals | visuals |
 | 36 | Look at the rocket after an ascent and after an entry | Fly to orbit, come back; or `refView(12)`, `(13)`, `(14)` | Soot climbs from engines, char on the windward side, Petrel nozzle glows; reads as wear, not dirt | Flight marks | visuals |
 | 37 | Watch liftoff on the pad: tower sized to the rocket, swing arms and hold-downs | Launch Sounding, Orbiter and Big Lunar; `refView(15)`–`(17)` | Tower height suits each rocket; arms swing back top-first, hold-downs tip out on time | Launch complex | visuals |
+| 108 | Watch the service gantry roll back from a wide rocket | Launch Crewed Lunar and Asparagus from the pad (or `refView(18)` with them); watch the first 14 s | The gantry starts snug but never inside the boosters, and nothing passes through the rocket as it rolls away (the front girders are gone: does the open front still look like a structure?) | PLAYTEST #2 | tester |
+| 109 | Put boosters on the diagonals and look at the hold-downs | Builder: radial boosters at 45° (or three around the core); launch | Posts stand clear of the boosters, arms reach the core between them, and they tip away at liftoff without crossing anything | Hold-downs follow the rocket | tester |
 | 38 | Compare plumes at sea level, altitude and vacuum per engine | `refView(30)`–`(36)`; live ascent to 45 km | Tight bright at sea level, diamonds then gone with altitude, wide faint in vacuum; Sparrow colour plausible | Engine plumes | plumes |
 | 39 | Watch the plume hit the pad and the ground cloud | Any launch at the pad; `refView(60)`–`(64)` | Flame goes down the channel, smoke pours out south; no flame through the deck | Plume meeting the ground | aerofx |
 | 40 | Launch at night | Tester date jumps to night; `refView(65)`–`(67)` | Plume lights the hull, tower and ground pool; not blown out next to the nozzle | Plume light | aerofx |

@@ -5237,3 +5237,20 @@ test.mjs §38 runs the page's own `buildRig`/`padRig` with stubs that record eve
 against each preset's envelope; on the old code it fails (the front girder reaches the Orbiter at −5.2 m).
 
 **For visuals:** the gantry is yours. If you restyle it, keep the open front clear; §38 will tell you.
+
+## The hold-downs follow the rocket (2026-10-08, tester session)
+
+The open item from "The launch complex": four hold-down posts stood fixed on the pad's diagonals at 3.4 m, with arms to
+the core's base, so boosters on a diagonal (radial ×4 at 45°, or three at 120° steps) had an arm through them and a post
+under them. Now the posts are part of the rig (`buildRig`, mesh `RIG.posts`, drawn in `drawPadRig`) and `holdPlan`
+(next to `padRig`) places them: on the diagonals if those are clear (every preset: nothing changes), otherwise the set of
+four turns, 1° steps, to the angle with the most room between the parts down at clamp height. Each arm clamps the
+outermost part on its line (the core, or a booster if one is still in the way) and its post stands 1.2 m beyond, never
+inside 3.4 m. The pad mesh keeps no posts.
+
+Bug on the way: the room measure first skipped only the core engine, so the core's own fins and tank (also on the axis)
+counted as obstacles at every angle and nothing ever turned. It now skips everything centred on the axis.
+
+test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
+presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
+old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).
