@@ -1203,6 +1203,22 @@ same fresh rocket with frost forced to 0.
 - A diagnostic trap, for the record: overriding a top-level function from the page (`window.padLights = …`) did not take
   effect, so a "floodlights off" test proved nothing; logging the uniforms per draw call showed the floodlights were on.
 
+## Bloom (2026-10-09, aerofx session)
+
+Bright lights now glow. The frame is drawn into an offscreen target (`sceneTarget`: 4× multisampled colour + depth/stencil,
+so the MSAA the canvas had is kept), resolved, and its near-white pixels are shrunk through ½, ¼, ⅛ and 1/16 resolution
+(a 4-tap box each step, so the chain blurs them; `BLOOM_FS`), then added back while the frame is copied to the screen
+(`COMP_FS`, tent-filtered on the small levels). `bloomBegin` / `bloomEnd` wrap `render()`'s 3D part; passes that render
+elsewhere mid-frame (the cloud coverage bake, the depth pre-pass) return to `sceneFB()` instead of the screen.
+
+- **The catch:** the scene is already tone-mapped, so a bright daytime sky is as near-white as the sun. The first version
+  (threshold 0.8) turned the horizon haze into a white band on every daytime ascent. Now the threshold is 0.93 on the max
+  channel, and the glow is added in proportion to (1 − luminance)^1.6 of the frame under it: strong over space, night and
+  the dark side of things, faint over bright sky. A true HDR pipeline (float targets, tone mapping once at the end) would
+  do this properly; it would mean touching every shader's output.
+- Cost on the RTX 5050 at 1280×800: +0.1–0.2 ms (pad view, A/B). `BLOOM = false` draws straight to the screen.
+- What glows: the sun in space, explosions, ignition flashes and plume cores at night, the floodlight lamps.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
