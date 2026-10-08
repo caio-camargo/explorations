@@ -1098,6 +1098,18 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.41 — no daily overhead (2026-10-08, economy session)
+
+Caio: idle time should be roughly neutral, with no upkeep. `OVERHEAD` and the new `OVERHEAD_CAP` (per unit of capacity)
+are both 0 (were 0.06 and 0.015 M/day); the code path stays, so it can be tuned later.
+
+Career runner (agency, 6 years, 5 seeds), lines-only:
+- final funds rise by ~300–800M;
+- top-ups roughly halve (resource 9.4 → 2.8, frugal 9.8 → 4.6, rising 6.6 → 3.0).
+
+With the investor (`all`), strong programs still put 1.5–2.9B into sinks and end at 0.6–1.5B. Weak programs end
+safer (frugal 911, resource 504).
+
 ## v1.40 — attitude control: a real gimbal, steerable fins, a SAS that holds (2026-10-08, control session)
 
 Caio's review: stability and attitude control are a big part of KSP and felt undercooked here. They weren't missing
@@ -3994,6 +4006,118 @@ Today both are gated by milestones. With compute behind them, eras have a cause 
    - the thermal solve (physics: builder's or a new session);
    - revenue (economy).
 4. **Depots** (sats Phase C), then Selene mining and heliocentric projects (bodies).
+
+## Time, long missions and communication — design (2026-10-08, economy session with Caio; nothing built)
+
+**The problem.** In KSP time barely matters, because nothing in the world changes with it. Here it does: budget
+years, elections, the race, sanctions, the compute eras. And our calendar is serial: a flight's time is added to it,
+and only Tellus orbits survive the end of a flight.
+
+Measured scale:
+- a program day is one Tellus rotation (8 h); a year is 400 days;
+- Selene is ~2.4 days away by Hohmann transfer, Nyx ~0.8;
+- stacking an Orbiter takes ~36 days, so about ten flights a year.
+
+With a sun and planets, transfers would take hundreds of days to years. A probe would either freeze the program for
+years or be lost when the flight ends. Managing time must be forgiving, not a chore.
+
+### Principles
+
+1. Time passes only when you choose (already true).
+2. Nothing you launch is lost to time: long flights continue in the background.
+3. A long mission pays along the way, not only at the end.
+4. Waiting is one click, and nothing slips past you.
+5. Missing something costs a wait, never a failure: windows come round again, and deadlines on long missions are
+   generous or absent.
+6. The world changes while you wait, but waiting doesn't punish you. **Decided:** idle time roughly neutral, no daily
+   overhead (v1.41).
+
+### Mechanics
+
+- **Missions in flight.** Any vessel coasting when you leave its flight joins the registry with its trajectory,
+  around any body or between them. It moves on exact Kepler rails with transitions between bodies' gravity, and
+  raises events: entering another body's gravity, closest approach, planned burns.
+  - "Leave it to mission control" hands a coast off; only the time you actively flew counts on the calendar.
+- **Passive flybys (decided).** A flyby needs no piloting. Its science is worked out from the trajectory and the
+  instrument timeline (below). Only burns need you, or an uploaded burn plan:
+  - with the era's error early on (`predErr`), so you arrive off target and need a correction;
+  - precise once onboard computers come.
+- **One event timeline:**
+  - arrivals and launch windows;
+  - studies and buildings finishing;
+  - budget years and elections;
+  - later, routine runs and pad slots.
+
+  "Advance to next event", or to one you pick. Time stops automatically at anything that needs you, and background
+  events that don't resolve on their own (the KSP Alarm Clock mod idea, built in).
+- **Paying along the way:**
+  - prestige at launch and escape;
+  - public interest during the cruise;
+  - cruise science per day (fields and particles);
+  - the encounter payout, then an extended mission.
+
+  Long contracts pay in stages: a share at launch, the rest at arrival.
+- **The world moving is story:**
+  - a probe launched with human computers arrives in the mainframe era, and the news says so;
+  - probes in flight stay with the program through ownership changes;
+  - a rival's probe can beat yours to a target.
+- **Windows:**
+  - nearby targets come round often;
+  - planetary windows are the one rare timing decision, and off-window launches cost Δv instead of being refused;
+  - "wait for the window" is one click.
+- **The year (decided):** once there's a sun (bodies session), the year **is** Tellus's orbital period. Era lengths and
+  the budget cycle are then tuned so a long probe spans about one era, not three.
+
+### Instruments that have to look, and data that has to come home
+
+**Instruments with pointing** (Caio): a moment of data collection should need the instrument to face what it measures.
+- **Camera:** narrow field, must point at the target, needs light. Resolution comes from distance and aperture
+  (today's camera is ~10 µrad).
+- **Radar:** side-looking or straight down, works at night and through cloud, heavy on power.
+- **Spectrometer:** points like a camera.
+- **Fields and particles:** no pointing; cruise science.
+- **In-situ sensors:** must be inside the thing (an atmosphere probe).
+
+**Pointing in the background.** A probe on rails doesn't simulate its attitude. It follows a **pointing timeline**:
+sun-pointing, home-pointing, target-pointing, or an uploaded sequence ("camera on Nyx from T−1 h to T+1 h, then the
+dish home").
+
+The real tension, as for Voyager and Galileo, is that the camera and the high-gain dish want different directions.
+Imaging time is time you're not downlinking.
+
+**Data is a volume.** Instruments fill an onboard recorder; contact drains it at the link rate. **Pay comes on data
+received, not collected.** A flyby is a burst of capture, then days of downlink.
+
+**The link, from physics:**
+- Rate goes as transmit power × both antennas' gains ÷ distance².
+- A dish's gain grows with its area, so big dishes pay: the ground arrays.
+- Distance squared is what makes deep space hard: Selene is ~16,000× weaker than a 300 km orbit (38,000 km vs 300 km).
+- Omni whips work near home. Deep space needs a dish on the probe, pointed home, and big dishes on the ground.
+
+**The home network:**
+- ground stations at home and abroad (built: contact time already drives imagery sales; foreign sites need relations);
+- relay satellites, which extend contact for low orbits;
+- deep-space dish arrays at three sites ~120° apart, so one always sees the sky. That's the "antenna arrays" idea, and
+  the diplomacy needed to place them abroad.
+
+**Control is forgiving.** Losing contact never makes a vessel uncontrollable or dead. You just can't upload new plans
+until it's back: the vessel follows its last sequence (and onboard autonomy, by era), and data waits on the recorder.
+
+**How KSP does it, for reference** (from memory of the game, not checked against the docs):
+- **CommNet:** a vessel needs a chain of antennas back to home ground stations. Range comes from both ends' antenna
+  power; a weak signal slows science transmission; with no connection, an uncrewed probe loses most control.
+- **KerbNet:** a separate feature, a scanning overlay on the map (terrain, biomes, anomalies) from probe cores and
+  scanners with a field of view.
+
+Ours keeps the network and drops the loss of control.
+
+### Owners and order
+
+1. **The time model:** the event timeline (economy + UI view) and missions in flight in the registry (sats, planning).
+   It comes before routine runs, which are just another source of events.
+2. **Data as a volume plus the link budget** (planning: stations, antennas; economy: pay on received data).
+3. **Instruments with pointing and the pointing timeline** (builder: parts; planning or sats: the timeline).
+4. **The sun, planets and the year** (bodies).
 
 ## Platform direction: native desktop later, the browser for now (Caio, 2026-10-08)
 
