@@ -332,6 +332,8 @@ const PARTS={
   // Isp 70 s) and the bottle that feeds it (15 kg of nitrogen). off: how far the body stands out from the skin.
   rcs:{name:'RCS quad (cold gas)',kind:'rcs',surf:true,noAero:true,m:0.02,h:0.2,r:0.07,off:0.06,C:900,T:600,B:200,rcsF:0.15,isp:70},
   gas:{name:'Gas bottle',kind:'gas',surf:true,noAero:true,m:0.03,h:0.6,r:0.17,off:0.19,res0:{gas:0.015},C:900,T:600,B:200},
+  // base beacon (sats session): what makes a landing site a base; everything landed within 500 m of it belongs to it
+  beacon:{name:'Base beacon',kind:'beacon',m:0.05,h:0.6,r:0.3,C:900,T:600,B:200},
   // robotic arm (sats session): a base on the side of anything; two 5 m booms (drawn per frame); a weak grip
   arm:{name:'Robotic arm',kind:'arm',surf:true,noAero:true,m:0.4,h:0.6,r:0.25,off:0.2,jF:3e3,jM:4e3,C:900,T:600,B:200},
   // radial docking port (sats session): mounts on the side of anything, its face depth out from the skin, facing outward
@@ -1432,7 +1434,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.06;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -2187,7 +2189,7 @@ const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolut
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
 function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':'Object'}
-function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el=elements(s.r,s.v,TELLUS.mu);if(!(el.e<1&&el.pe>TELLUS.R+TELLUS.atm))return;
+function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed||s.body!==TELLUS)return;const el=elements(s.r,s.v,TELLUS.mu);if(!(el.e<1&&el.pe>TELLUS.R+TELLUS.atm))return;
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
@@ -2203,9 +2205,10 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
+  {const lq=s.target!=null&&landedUp().find(x=>x.id===s.target);if(lq&&landedBody(lq)===s.body){const B=landedBody(lq),r=fromPF(B,lq.pf,simT),v=surfVel(B,r);return{q:lq,landed:true,r,v,dr:sub(r,s.r),dv:sub(s.v,v)}}}   // on the surface
   const q=s.target!=null&&s.body===TELLUS&&satsUp().find(x=>x.id===s.target);if(!q)return null;
   const[r,v]=satAt(q,progT(s));return{q,r,v,dr:sub(r,s.r),dv:sub(s.v,v)}}
-const tgtBody=(s,T)=>T.ves?shipBody(T.q):satBody(T.q,progT(s));   // the target as a contact body   // dr: from us to it; dv: our velocity relative to it
+const tgtBody=(s,T)=>T.ves?shipBody(T.q):T.landed?landBody(T.q,simT):satBody(T.q,progT(s));   // the target as a contact body   // dr: from us to it; dv: our velocity relative to it
 // closest approach between a Kepler state (r0, v0 at program time t0) and satellite q over the next span seconds:
 // a coarse scan (240 steps), then golden-section on the best bracket. {t, d, vrel, p (ours), pt (its)} at that moment.
 function approach(q,r0,v0,t0,span){const N=240,d=t=>len(sub(kepler(r0,v0,t-t0,TELLUS.mu)[0],satAt(q,t)[0]));let bi=0,bd=Infinity;
@@ -2312,7 +2315,7 @@ function satBreak(q,B,list,why,T){
   const del=list.filter(x=>!gone.has(x.owner));if(del.length)HOOK.news(`${q.name} loses its ${del.map(x=>x.d.name.toLowerCase()).join(' and ')} in a collision`,'warn')}
 // after each physics step: the ports' loads, then every satellite near enough: docking if two ports meet right, otherwise
 // contact, checked along the step's relative motion
-function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS)return;portLoads(s);if(!s.alive)return;const T=progT(s);let A=null;
+function contactStep(s,dt){if(!s.alive||s.landed)return;portLoads(s);if(!s.alive)return;landContact(s,dt);if(!s.alive||s.body!==TELLUS)return;const T=progT(s);let A=null;
   for(const q of satsUp()){if(!q.shape||!q.shape.length)continue;const[rq,vq]=satAt(q,T),rel=sub(rq,s.r),vrel=sub(vq,s.v);
     if(!A)A=shipBody(s);const M=satMP(q),reach=A.R+M.R+len(vrel)*dt+0.5;if(len(rel)>reach)continue;
     const B=satBody(q,T);if(dockTry(s,q,B,T)){A=null;continue}
@@ -2336,7 +2339,7 @@ function contactStep(s,dt){if(!s.alive||s.landed||s.body!==TELLUS)return;portLoa
 // its rating. Aero, heating and thrust stay with the vessel's own parts for now: docked stacks fly in vacuum. A docked
 // entry stays in PROG.sats flagged `docked` until the flight ends, so a reload mid-flight can't lose it.
 const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
-function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked)}
+function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed)}   // in orbit (landed ones: landedUp)
 // free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
 function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
   return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&(x.d.radial||!P.some(y=>y!==x&&!y.d.surf&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3)))
@@ -2538,13 +2541,17 @@ function stationOf(q){if(!q.shape)return null;const A=q.attached||[],bodies=[{e:
   const ports=bodies.reduce((n,b)=>n+portsOf(b.e.shape||[],usedPorts(A,b.id)).length,0);
   return{berths,labs,seats,crew,sup,ports,days:crew?sup/(crew*SUP_DAY):Infinity,work:sup>0?Math.min(crew,2*labs):0}}
 // between flights: the crew eats, the labs work (two people per lab at most), and the headlines notice when it runs low
-function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(!st||!st.crew)continue;const need=st.crew*d*SUP_DAY;let left=need;
-    for(const e of[q,...(q.attached||[]).map(a=>a.e)])for(const o of e.shape||[])if(o.res&&o.res.sup>0&&left>0){const x=Math.min(left,o.res.sup);o.res.sup-=x;left-=x}
-    const days=(need-left)/(st.crew*SUP_DAY),lab=Math.min(st.crew,2*st.labs)*days;q.labDays=(q.labDays||0)+lab;PROG.labDays=(PROG.labDays||0)+lab;
-    const after=stationOf(q);
-    if(left>1e-12&&!q.supOut){q.supOut=true;HOOK.news(`${q.name}: supplies have run out. The crew is on emergency rations and the lab has stopped`,'bad')}
-    else if(after.sup>0)q.supOut=false;
-    if(after.days<10&&after.sup>0&&!q.supLow){q.supLow=true;HOOK.news(`${q.name}: ${after.days.toFixed(0)} days of supplies left`,'warn')}else if(after.days>=10)q.supLow=false}}
+// between flights: crews eat, labs work (two people per lab at most), headlines when supplies run low or out. Stations
+// (a registry stack) and bases (landed objects around a beacon) work the same way.
+function crewTick(q,ents,st,d,again){const need=st.crew*d*SUP_DAY;let left=need;
+  for(const e of ents)for(const o of e.shape||[])if(o.res&&o.res.sup>0&&left>0){const x=Math.min(left,o.res.sup);o.res.sup-=x;left-=x}
+  const days=(need-left)/(st.crew*SUP_DAY),lab=Math.min(st.crew,2*st.labs)*days;q.labDays=(q.labDays||0)+lab;PROG.labDays=(PROG.labDays||0)+lab;
+  const after=again();
+  if(left>1e-12&&!q.supOut){q.supOut=true;HOOK.news(`${q.name}: supplies have run out. The crew is on emergency rations and the lab has stopped`,'bad')}
+  else if(after.sup>0)q.supOut=false;
+  if(after.days<10&&after.sup>0&&!q.supLow){q.supLow=true;HOOK.news(`${q.name}: ${after.days.toFixed(0)} days of supplies left`,'warn')}else if(after.days>=10)q.supLow=false}
+function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(st&&st.crew)crewTick(q,[q,...(q.attached||[]).map(a=>a.e)],st,d,()=>stationOf(q))}
+  for(const a of landedUp().filter(x=>x.beacon)){const st=baseOf(a);if(st.crew)crewTick(a,st.bodies,st,d,()=>baseOf(a))}}
 // ---- vessels that stay flyable across flights (sats session; stations plan A2). A registry entry keeps its design
 // (q.stack) and state (q.vst: which of the design's stage segments have ignited, SAS, RCS, chute), and each shape part
 // its index in that design (o.oi). Rebuilding (vesselOf) assembles the design again, switches off the parts the entry no
@@ -2561,6 +2568,8 @@ function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,
   const has=k=>s.parts.some(p=>p.on&&p.seg===k);
   s.evIdx=s.events.findIndex(e=>e.decouple.some(has)||e.ignite.some(k=>has(k)&&!ign.has(k))||(e.chute&&!st.chute&&s.parts.some(p=>p.on&&p.d.kind==='chute')));if(s.evIdx<0)s.evIdx=s.events.length;
   s.att=(q.attached||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));geom(s);rebuildShape(s);
+  if(q.landed){HOOK.unshape&&HOOK.unshape(s.parts,by);   // on the surface: in its body's frame
+    Object.assign(s,{body:landedBody(q),pf:q.pf.slice(),qLocal:q.ql.slice(),landed:true,alive:true,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,throttle:0,reg:q});syncLanded(s);return s}
   const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v);HOOK.unshape&&HOOK.unshape(s.parts,by);
   Object.assign(s,{r,v,q:sp.q,w:sp.w.slice(),landed:false,alive:true,body:TELLUS,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,chute:!!st.chute,throttle:0,reg:q});
   return s}
@@ -2630,6 +2639,42 @@ function armStep(s){if(!s||!s.att)return;for(const a of s.att.slice()){const g=a
   delete a.goal;delete a.gp;
   if(g.kind==='berth')Object.assign(a,{kind:'port',host:g.host,hpi:g.hpi,ppi:g.ppi}),HOOK.msg(`Berthed ${a.e.name}`);
   else Object.assign(a,{kind:'bay',host:0,hpi:g.bay,ppi:-1}),HOOK.msg(`${a.e.name} stowed in the bay`)}}
+// ---- moonbases (sats session; stations plan E). A vessel that ends a flight resting on a body other than home is saved
+// in that body's frame (q.landed, q.bodyName, q.pf: its centre of mass, q.ql: its attitude): drawn when near, a target
+// for landing, flyable again (the flight starts on the surface). A base beacon makes a base: everything landed within
+// BASE_R of it (on the surface) belongs to it; berths, crew, labs and supplies add up across them, and between flights
+// they work as a station's do. Landed objects are immovable for contact (and, for now, take no damage).
+const BASE_R=500;
+function landedUp(){return(PROG.sats||[]).filter(q=>q.landed&&!q.docked)}
+const landedBody=q=>BODIES.find(b=>b.name===q.bodyName)||null;
+const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
+// a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
+function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}
+function landRegister(s,R){const on=s.parts.filter(p=>p.on),b=s.body,beacon=on.some(p=>p.d.kind==='beacon'),here=landedUp().filter(x=>x.bodyName===b.name);
+  PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;
+  const q={id:PROG.satN,landed:true,bodyName:b.name,pf:s.pf.slice(),ql:s.qLocal.slice(),mass:s.mOwn??s.mass,cm:(s.cmOwn||s.cm).slice(),born:PROG.day,imgs:0,pending:[],beacon,
+    name:beacon?`${b.name} Base ${here.filter(x=>x.beacon).length+1}`:`${b.name} lander ${here.length+1}`};
+  q.shape=shapeOf(on,R.crewed&&R.crewOK);q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));
+  q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);
+  if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,labDays:o.labDays})}
+  kitSet(q);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
+  const base=!beacon&&baseOfMember(q);HOOK.news(beacon?`${q.name} is set up on ${b.name}`:base?`${q.name} sets down at ${base.name}`:`${q.name} stays on ${b.name}`,'ok')}
+// the base a landed object belongs to (a beacon on the same body within BASE_R), and a base's members and state
+function baseOfMember(q){const b=landedBody(q);return b?landedUp().find(x=>x.beacon&&x.bodyName===q.bodyName&&pfDist(b,x.pf,q.pf)<=BASE_R)||null:null}
+function baseMembers(a){const b=landedBody(a);return b?landedUp().filter(x=>x.bodyName===a.bodyName&&pfDist(b,x.pf,a.pf)<=BASE_R):[]}
+function baseOf(a){const M=baseMembers(a),E=M.flatMap(e=>[e,...(e.attached||[]).map(x=>x.e)]),P=E.flatMap(e=>(e.shape||[]).map(o=>({o,d:PARTS[o.k]}))).filter(x=>x.d);
+  const berths=P.reduce((s,x)=>s+(x.d.berths||0),0),labs=P.filter(x=>x.d.lab).length,seats=P.reduce((s,x)=>s+(x.o.crew||0),0),sup=P.reduce((s,x)=>s+((x.o.res||{}).sup||0),0),crew=Math.min(seats,berths);
+  return{members:M,bodies:E,berths,labs,seats,crew,sup,days:crew?sup/(crew*SUP_DAY):Infinity,work:sup>0?Math.min(crew,2*labs):0}}
+// contact with landed objects on the body we're near
+function landContact(s,dt){let A=null;for(const q of landedUp()){if(landedBody(q)!==s.body||!q.shape||!q.shape.length)continue;
+    const B=landBody(q,simT),rel=sub(B.r,s.r),vrel=sub(B.v,s.v);if(!A)A=shipBody(s);if(len(rel)>A.R+B.R+len(vrel)*dt+0.5)continue;
+    const n=Math.min(400,Math.max(1,Math.ceil(len(vrel)*dt/HIT_STEP)));let c=null;
+    for(let k=0;k<=n&&!c;k++){const o=sub(rel,mul(vrel,dt*(n-k)/n));if(len(o)>A.R+B.R)continue;B.r=add(s.r,o);c=hitFind(A,B)}
+    if(!c)continue;const vn=hitResolve(A,B,c);s.r=A.r;s.v=A.v;s.w=A.w;
+    if(vn>0.3)HOOK.msg(`Contact with ${q.name} at ${vn.toFixed(1)} m/s`);
+    if(vn>HIT_VAPOR){HOOK.boom(s.body,c.p,simT,3);s.alive=false;s.crashSpeed=vn;HOOK.msg(`Destroyed: hit ${q.name} at ${vn.toFixed(0)} m/s`);return}
+    const shp=c.pa&&vn>hitTol(c.pa.d)?c.pa:null;if(shp){if(shp.att){HOOK.msg(`${shp.att.e.name} breaks loose`);undock(s,shp.att.e.id,0)}else{HOOK.msg(`${shp.d.name} broke on ${q.name}`);partLost(s,shp.p)}A=null}
+    if(!s.alive)return}}
 // ---- RCS (sats session). Thrusters are real forces at real points (addF), so translating with unbalanced quads also turns
 // the vessel, as it should. Jet selection: for each of the 12 signed axes (± force x, y, z; ± torque x, y, z) a set of
 // non-negative duties that produces that axis alone as nearly as the layout allows (non-negative least squares, solved
@@ -3498,7 +3543,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:15,lab:15,arm:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:15,lab:15,arm:15,beacon:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -3563,6 +3608,7 @@ function partBody(out,p){
       lathe(a,[[d.r,0,C.D],[d.r,.16,C.G],[.4,.2,C.G],[.4,d.depth,C.W]],[0,0,0],28,[false,true]);
       for(let i=0;i<a.length;i+=VX){const P=add(B,qrot(qr,[a[i],a[i+1],a[i+2]])),N=qrot(qr,[a[i+3],a[i+4],a[i+5]]);a[i]=P[0];a[i+1]=P[1];a[i+2]=P[2];a[i+3]=N[0];a[i+4]=N[1];a[i+5]=N[2]}
       for(const v of a)out.push(v)}break;
+    case'beacon':lathe(out,[[.3,0,C.D],[.3,.08,C.D],[.08,.1,C.G],[.05,.5,C.G],[0,.55,C.G]],o);box(out,[x,y+.57,z],.04,.04,.04,[1,.2,.1]);break;
     case'arm':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)];rbox(out,[x+n[0]*.15,y+h/2,z+n[2]*.15],.15,.3,.25,C.G,p.phi);rbox(out,[x+n[0]*.32,y+h/2,z+n[2]*.32],.05,.12,.12,C.D,p.phi)}break;
     case'hab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);
       for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.63,y+1.9,z+Math.sin(a)*.63],.01,.12,.09,C.GL,a)}break;   // a ring of portholes
@@ -4222,7 +4268,7 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^Offers/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
-  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit)/.test(h)?'fleet':/^The world/.test(h)?'world':
+  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|On the surface)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
@@ -4413,6 +4459,10 @@ function render(){
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
   // satellites left in orbit by earlier flights, on the map's Kepler rails (the one this flight just registered is still S)
+  if(mode==='flight')for(const q of landedUp()){const b=landedBody(q);if(!b||!q.shape||S.rec&&S.rec.satId===q.id)continue;const lp=add(bodyPos(b,simT),fromPF(b,q.pf,simT));if(len(sub(lp,camW))>1e5)continue;
+    const lq=qmul(qBody(b,simT),q.ql),lc=satCM(q),lm=satMesh(q);setMarks(m,lm.parts);gl.uniform1f(m.uSeam,1);drawMesh(lm.mesh,modelQ(lq,sub(lp,camW),mul(lc,-1)),lp);
+    for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(lq,a.q),sub(add(lp,qrot(lq,sub(a.p,lc))),camW),mul(a.e.cm,-1)),lp)}
+    gl.uniform1f(m.uSeam,0);setMarks(m,[])}   // landed objects, in their body's frame
   if(mode==='flight')for(const q of satsUp()){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
     const sq=satSpin(q,tNow(),r,v).q,cc=satCM(q),sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(sq,sub(r,camW),mul(cc,-1)),r);
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
@@ -4512,6 +4562,9 @@ function render(){
     for(const q of satsUp()){if(S.rec&&S.rec.satId===q.id)continue;const p=satAt(q,tNow())[0],d=len(sub(p,me)),s=project(p),tg=q.id===S.target;if(!s||d>2e5&&!tg)continue;
       octx.fillStyle=tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
       if(d<300)continue;octx.fill();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${q.name} · ${fmtD(d)}`,s[0],s[1]-10*k)}}
+  if(mode==='flight'&&view!=='map'){const T=tgtOf(S);if(T&&T.landed){const k=Math.min(devicePixelRatio||1,1.5),q=project(add(bodyPos(S.body,simT),T.r));
+    if(q){octx.fillStyle='#ffb347';octx.beginPath();octx.moveTo(q[0],q[1]-6*k);octx.lineTo(q[0]+6*k,q[1]);octx.lineTo(q[0],q[1]+6*k);octx.lineTo(q[0]-6*k,q[1]);octx.closePath();octx.fill();
+      octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${T.q.name} · ${fmtD(len(T.dr))}`,q[0],q[1]-10*k)}}}
   if(mode==='flight'&&view!=='map'&&FLEET.length){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
@@ -4592,6 +4645,7 @@ function drawMap(VP,camW,labels){
   for(const q of satsUp()){const tg=q.id===S.target;labels.push({p:satAt(q,tNow())[0],mark:'sat',id:q.id,t:tg||cam.mDist<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
   if(impSpread&&impact&&toolOK('impact'))for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
+  for(const q of landedUp()){const b=landedBody(q);if(!b)continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.beacon||q.id===S.target?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
   for(const v of FLEET)if(v.alive)labels.push({p:add(bodyPos(v.body,simT),v.r),mark:'ship',t:v.name,c:'#c9e86a'});
   labels.push({p:shipWorld(),mark:'ship',t:'',c:'#7dffa8'},...BODIES.map(b=>({p:add(bodyPos(b,simT),[0,b.R*(b.parent?1.3:1.15),0]),t:knownBody(b)?b.name:'?',c:'#9ab'})))}
 
@@ -4672,7 +4726,7 @@ const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it lose
 function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
 const bayKey=s=>s?s.parts.filter(p=>p.on&&p.d.kind==='bay').map(p=>Math.round(doorF(p)*40)).join():'';
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
-function flyEntry(id){const q=satsUp().find(x=>x.id===id);if(!q||!flyable(q))return;
+function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!q||!flyable(q))return;
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad
   const s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
@@ -4681,7 +4735,11 @@ function flyEntry(id){const q=satsUp().find(x=>x.id===id);if(!q||!flyable(q))ret
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
-function satsHTML(){const L=satsUp();const T=tNow();
+function satsHTML(){return satsHTML0()+landedHTML()}
+function landedHTML(){const L=landedUp();if(!L.length)return'';
+  return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`}).join('')}
+function satsHTML0(){const L=satsUp();const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
@@ -4780,10 +4838,10 @@ function payloadRows(){const R=S.rec,out=[];if(!R)return out;
   return out}
 // ---- rendezvous UI: choosing a target, the closest-approach cache, the HUD rows
 function setTarget(id,tv=null){S.target=id;S.tgtV=tv;caCache=null;if(id==null&&TGT_M.includes(S.sasMode))S.sasMode='stab';renderSAS();const T=tgtOf(S);HOOK.msg(T?`Target: ${T.q.name}`:'Target cleared')}
-function cycleTarget(){const L=[...satsUp().map(q=>({id:q.id})),...FLEET.filter(v=>v.alive).map(v=>({v}))];if(!L.length){HOOK.msg('Nothing in orbit to target');return}
+function cycleTarget(){const L=[...satsUp().map(q=>({id:q.id})),...landedUp().filter(x=>landedBody(x)===S.body).map(q=>({id:q.id})),...FLEET.filter(v=>v.alive).map(v=>({v}))];if(!L.length){HOOK.msg('Nothing in orbit to target');return}
   const i=L.findIndex(x=>x.v?x.v===S.tgtV:S.tgtV==null&&x.id===S.target),n=L[i+1];if(n)setTarget(n.id??null,n.v||null);else setTarget(null)}   // satellites, then this flight's vessels, then none
 let caCache=null;   // recomputed at most 4× a second of real time, or at once when the target or the node changes
-function tgtCA(){const T=tgtOf(S);if(!T||S.landed||!S.alive)return null;const key=(T.ves?'v:'+T.q.name:S.target)+'|'+(S.node?S.node.t+','+S.node.dv.join():''),now=performance.now();
+function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return null;const key=(T.ves?'v:'+T.q.name:S.target)+'|'+(S.node?S.node.t+','+S.node.dv.join():''),now=performance.now();
   if(caCache&&caCache.key===key&&now-caCache.at<250)return caCache;
   const T0=progT(S),Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,orbit=(r,v,t0)=>{const el=elements(r,v,TELLUS.mu);return el.e<1&&el.pe>TELLUS.R?approach(Q,r,v,t0,2*el.period):null};
   let plan=null;if(S.node){const I=nodeInfo(S);if(I)plan=orbit(I.rN,add(I.vN,I.rem),T0+I.t-simT)}
@@ -4807,8 +4865,13 @@ function cycleVessel(dir){const near=nearbyFlyable(S);if(!FLEET.length&&!near.le
   const pickNear=dir>0?!FLEET.length:near.length>0;if(!pickNear){tapeSwitch(recTape,S,dir>0?0:FLEET.length-1);return}
   const q=dir>0?near[0]:near[near.length-1],v=tapeLoad(recTape,S,q.id);if(v)tapeSwitch(recTape,S,FLEET.indexOf(v))}
 function fleetRows(){const L=FLEET.filter(v=>v.alive),N=nearbyFlyable(S);return L.length||N.length?[['Vessels',[...L.map(v=>`${v.name} ${fmtD(len(sub(v.r,S.r)))}`),...N.map(q=>`${q.name} ${fmtD(len(sub(satAt(q,progT(S))[0],S.r)))}`)].join(' · ')+' <span class="dim">· [ ] switch</span>']]:[]}
+// landing on a target on the surface: how far along the ground, which way, and how far the predicted impact point is from it
+function landingRow(T){const b=S.body,f=localFrame(S.r),d=T.dr,brg=(Math.atan2(dot(d,f.e),dot(d,f.n))*57.29578+360)%360,ds=pfDist(b,toPF(b,S.r,simT),T.q.pf);
+  const imp=impact&&impact.b===b?pfDist(b,impact.pf,T.q.pf):null;
+  return['Landing',`${T.q.name}: ${fmtD(ds)} along the surface, bearing ${brg.toFixed(0)}°${imp!=null?` · impact point <span class="${imp<BASE_R?'ok':'warn'}">${fmtD(imp)}</span> from it`:''}`]}
 function dockRows(){const out=[],D=S.att||[];
   if(D.length)out.push(['Docked',D.map(a=>`${a.e.name}${a.load>0.5?` <span class="${a.load>0.9?'bad':'warn'}">${(a.load*100).toFixed(0)}%</span>`:''} ${a.kind==='arm'?' <span class="dim">(in the arm)</span>':`${a.kind==='bay'?' <span class="dim">(in the bay)</span>':''} <button data-undock="${a.e.id}">${a.kind==='claw'||a.kind==='bay'?'release':'undock'}</button>`}`).join(' · ')]);
+  {const T=tgtOf(S);if(T&&T.landed)out.push(landingRow(T))}
   const T=tgtOf(S);if(!T||len(T.dr)>500)return out;const B=tgtBody(S,T),P=dockPair(S,T.q,B);
   const cw=S.parts.find(p=>p.on&&p.d.kind==='claw'&&clawFree(S,p));
   if(cw){const tip=add(S.r,qrot(S.q,sub(clawTip(cw),S.cm))),d=bodyDist(B,tip),u=norm(sub(B.r,tip)),vc=dot(sub(S.v,B.v),u);
