@@ -2535,7 +2535,14 @@ What the Nyx flight found (the Selene flights had hidden all of these):
   stops only when the current stage is the last with an engine.
 - **The cheapest way home can take 18 days.** It flew outward first; the crew ran out of air at day 10.
 
-**Open:** flybys (no capture) aren't procedures yet; dispatch
+**Flybys and free returns (2026-10-08).** A new phase, `home {perigee}` (the back half of `return`: out of the moon's SOI, a
+correction to the perigee, shed the stage, entry, chute). The recorder keeps a flight that passes a moon without capturing as a
+`B:flyby` procedure at the SOI exit (`transfer` only, with its pass), and, if it then lands home well, as `B:free-return`
+(`transfer`, `home`). Crewed Lunar on `transfer Selene 400 km → home 45 km` completes **"Crew around Selene"** in 1.33 days and
+records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
+and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
+
+**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
