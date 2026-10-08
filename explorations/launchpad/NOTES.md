@@ -1257,6 +1257,26 @@ back along the capsule→stage line.
 **Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
 state, and this pass is render-only.
 
+## Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
+
+The station parts, the arm and the rover had come in from other sessions as plain shapes. Same early-era look as the rest:
+- **Hab and lab** get their own detail branch (`KIND` 16, `MESH_FS`): meteoroid-shield panels on the pressure hull (eight
+  around, 0.55 m tall), seams, a bolt at each panel corner, a slight per-panel tint and pillowing. Geometry: chamfered
+  berthing rings at both ends, yellow handrails on standoffs (`stationTrim`), portholes in dark frames and two radiators on
+  standoffs (hab), a round bolted science window (`labWindow`) and experiment boxes on the gold band (lab).
+- **The arm's base** becomes a turret with a drive ring. **The booms** (drawn per frame, sats' code) get joint drums at
+  the shoulder and elbow, dark bands near each end, and an end effector (a snare drum with a camera).
+- **The rover**: a dark tub inside a tubular frame (rails, uprights, cross-tubes), a floor of panels, fenders as an arc of
+  overlapping plates, and titanium chevrons on the mesh tyres.
+
+**And two bloom fixes** found on the way. The composite sampled the ¼ and ⅛ blur levels with the 1/16 level's texel
+spacing (4× and 2× too wide), so each glow had ghost copies up to 64 px apart: long streaks beside any bright edge. And the
+downsample is now a 3×3 tent, the threshold 0.965. Sunlit white paint is still as bright as the sun once tone-mapped; the
+glow around it is now a soft rim instead of streaks.
+
+**The first-run gate** (ui session) now covers the page on load, so screenshot scripts must click `[data-start]` first
+(as `playtest.mjs` does). The older reference views that start in the editor don't, yet.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -3038,6 +3058,16 @@ watched game shows "Procedure stopped: … You have control". The kinds:
 - `nohome`: no burn home within what's aboard. This used to end the procedure silently.
 - `lost`: the procedure's time limit ran out.
 
+**The corridor (Q12)** (`procCorridor`, during the ascent). These rules catch a climb that has already failed, while the
+craft is still alive and somewhere a pilot can act. They're kept loose on purpose: a heavier variant flies lower and
+slower and is still fine, so there's no tight band around the recorded profile. The recorder now keeps speed against
+height (`proc.vel`).
+- `control`: the nose more than 20° off the commanded climb for 5 s. A 2 s tumble the SAS recovers from doesn't count;
+  an 8 s one does.
+- `falling`: coming down under power below the cut-off. The +2 t Orbiter variant used to burn up three minutes later;
+  it is now handed over alive at 58 km.
+- `slow`: above 10 km, under 70 % of the recorded speed at that height.
+
 **`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
 flight, but in isolation:
 - Whatever is in progress is set aside and put back afterwards: S, the clock, the fleet, debris, the moons' clock
@@ -4305,7 +4335,7 @@ Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright o
   persist as landed, flyable vessels (A2/E machinery).
 - **R3. Power and contact:** solar panels and batteries (Selene's day and night), line of sight to the lander, a relay or
   home (hills block it).
-- **R4. Instruments and science** (each hinging on something the sim computes): samples by terrain unit, brought to the
+- **R4. Instruments and science** (first slice built: "R4 built" below) (each hinging on something the sim computes): samples by terrain unit, brought to the
   lander or an ascent vehicle (sample return); a spectrometer on rocks; camera panoramas (sun angle); seismometers set
   out as an array (spacing is what gives an interior map); ground-penetrating radar along a traverse; a drill or
   heat-flow probe (depth, power); a magnetometer traverse; ice in permanently shadowed polar craters (hard on power).
@@ -4611,6 +4641,80 @@ and vice versa. Cross-SOI targeting would need patched-conic closest approach; n
 Each of 7 deliberate breaks fails a check. The breaks: Tellus-only target, every orbit a target, Tellus μ in
 `approach`, Tellus-only `hitNear`, contact and loading, undock dropping the body. Not checked in the browser: the
 approach readout and target cycling (UI code; only the whole-page parse check covers them).
+
+### R4 built, first slice: Selene's geology, a spectrometer, panoramas, a seismic network (sats session, 2026-10-08)
+
+Scope decided with Caio: the geology, then three instruments, each hinging on something the sim computes. Results go
+into the logbook (a new **On Selene** section) and *What we know*. No money: contract types are proposed below for the
+economy session to price. The sample arm, drill, radar, magnetometer and polar ice come later.
+
+**Geology is what's drawn** (`selMare`, `geoAt`). The sky shader darkens Selene's maria with
+`smoothstep(.5,.65,fbm(n·1.6+3))` in Selene's own frame. The CPU's `h3`/`vn`/`fbm` are that same noise (the clouds'
+port), and the shader's `MB()` is `toPF`. So the CPU's mask *is* the drawn one: the test recomputes it at 3,000 points
+and they all agree.
+- **Where the line is.** Mare starts where a patch has visibly darkened (`MARE_M` = 0.2, about 8 % darker). The first
+  try used 0.5, the patches' dark cores, which left only 3.8 % of Selene as mare.
+- **What it gives:** 9.7 % of Selene is mare. Its hidden composition varies smoothly within each unit: mare FeO ≈ 11 %
+  on average, up to 16 %, with TiO₂ from 0.5 to 11.5 %; highland FeO ≈ 5 % and Al₂O₃ 25–30 %. The two mix across a
+  patch's edge.
+- **Visuals/bodies:** as drawn, the maria lie mostly at high northern latitudes on the far side, with a small patch near
+  the sub-Tellus point. Only 1.2 % of the near side is mare, the reverse of our Moon (31 %). Moving them is an art
+  decision; the geology follows whatever the shader draws.
+
+**The instruments** are HUD buttons, greyed with the reason when they can't work (no instrument, not on Selene,
+moving, out of action, no seismometers left). That's in both the remote-drive and in-flight HUDs. Each result waits in
+the rover (`R.data`, kept in field entries) until there is contact, home or a relay; a crew's rover waits too. A rover
+left in the field sends at the first half hour it has contact between flights (`rvFieldSci`).
+- **Spectrometer** (`spec`): reads the rock under a stopped rover, once per 30 m. Each reading has noise: FeO ±1, TiO₂
+  ±0.6, Al₂O₃ ±1.2 wt %. The logbook keeps each unit's mean, with FeO's standard error and the number of readings.
+- **Panorama** (camera mast): its quality is the sun's height. Long shadows show the relief: 100 % from 3° to 20°. A
+  high sun flattens it, down to 30 %. At night it refuses. Measured: 100 % at 15°, 45 % at 75°.
+- **Seismometers** (`seis`): a pack sets out 4 stations, kept in `PROG.sel.seis`. Between flights (`seisTick`):
+  - deep moonquakes, about 0.75 a day, 40–60 % of the way out;
+  - each station records P and, unless its straight path crossed the liquid core, S;
+  - stations send when they have contact.
+  With 4 stations' P times home, `seisLocate` fits (x, y, z, t₀) by least squares, restarting from 26 directions. If
+  the fit's σ is over 15 km, the array is too small to place the quake. A located quake brackets the core: an S that
+  arrived passed outside it, a missing S went through. Each bound is loosened by 2σ.
+
+**Measured** (60 days, 4 stations, about 45 quakes):
+
+| Array (one station at the sub-Tellus point, 3 around it) | Located | Core bracket (truth 90 km, hidden) |
+|---|---|---|
+| 2 km apart | 0 | — |
+| 30 km | 0 | — |
+| 150 km | 9 (σ 7–15 km) | 0–159 km |
+| 400 km | 45 (σ 2.5–8 km) | 78–98 km |
+| 400 km on the far side, no relay | 0 (180 records waiting) | — |
+
+Spacing is what makes the map, as the plan wanted. 30 days of the network costs ~30 ms.
+- **First version's mistake:** without the 2σ margins, location errors crossed the bounds (90–89 km).
+
+**Simplifications:**
+- straight rays and uniform velocities (P 8 km/s, S 4.5 km/s);
+- P crosses the core at mantle speed (only S is blocked);
+- the scientists know the velocities;
+- stations need no power.
+
+**Checks:** `test.mjs` §42, 5 checks:
+- the geology against the shader's mask;
+- the spectrometer: a stopped rover, once a spot, counting only when sent, near-side highland FeO 4.7 % against 5.2 %;
+- a far-side reading held without contact, then home through a relay between flights; entries keep it;
+- panoramas by sun angle;
+- the arrays: tight, far side without a relay, wide.
+
+Each of 10 deliberate breaks fails a check. Not run in the browser: the HUD buttons and the *What we know* line. They
+are UI code, and only the whole-page parse check covers them (TESTING row 117).
+
+**Contracts proposed to economy** (not built; prices are yours):
+- *Read the dark plains / the bright uplands*: N spectrometer readings of a unit, received.
+- *A panorama of Selene* above a quality.
+- *A seismic network on Selene*: 4 stations; then *locate N moonquakes*; then *bound the core* to a width.
+- *Far-side science*: any result from the far side (needs a relay).
+
+**Not yet:** the sample arm and sample return (rover to lander), drill or heat flow, ground-penetrating radar,
+magnetometer, ice in shadowed polar craters (needs relief), seismometer power and lifetime, curved rays, and science on
+Nyx.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
@@ -5898,6 +6002,55 @@ predictor lands within 50 m; an autopilot replay lands on the recorded position 
 **Rerun.** `python -m http.server 8799 --directory <repo>/explorations`, then from `explorations/launchpad`:
 `node playtest.mjs` (all rows) or `node playtest.mjs 104 110` (some). Add a row: a `ROWS[n]` entry next to its area's
 rows; a row that needs two setups can use a string key (`'82b'`).
+
+## PLAYTEST sweep #15–#22 (2026-10-08, fixes session)
+
+Six items the robot playtest filed (PLAYTEST #15, #16, #19, #20, #21, #22), plus #8, which turned out to be the same
+layout bug as #15. Code commit `5eb1bd4` on branch `fixes`. Checks: test.mjs § `fixes-1` (all four checks fail on the old
+page, pass on the new one), and the robot rows 4, 9, 25, 35, 48, 77, 84, 96, 110 rerun on the RTX (screenshots in
+`C:/Users/caioa/dev/playtest-out/fixes/`, outside the repo).
+
+- **#8 and #15: the toolbar and the TESTER badge.** The flight toolbar `.tr` never had a `position`, so its `right/top`
+  did nothing: it sat in the page flow at the top left, half under the readout, and the badge (top centre) landed on
+  its last button. `.tr` is now absolute at the top right (wraps when the window is narrow, keeps 290 px clear for the
+  readout). `hudLayout()` moves the badge into the toolbar as its last item in flight, and back to the top centre on the
+  other screens (Program, Assembly, Rover yard leave it free).
+- **#16: the news box over the readout.** The news was centred at a fixed `top`; a readout with long rows grows to
+  ~510 px and reached under it. `hudLayout()` (each HUD update at 10 Hz, each headline, each screen change) gives the
+  news a lane: centred if that clears everything, otherwise from 10 px right of the readout to 10 px left of the
+  maneuver-node or rover panel, and below the toolbar where they overlap. With less than 240 px beside the readout it
+  goes under it. Off the flight screens the CSS position is restored. Checked on a landed capsule (Passenger row) and a
+  Lunar climb, at 1280×800 and 1000×700.
+- **#19: "no station in view" for 2 s after liftoff.** Not the terrain mask but the minimum elevation: the pad's
+  station is the pad itself, its antenna `GS_MAST` = 20 m up, so a rocket still below the mast top is at negative
+  elevation, under `STA_MIN` (5°). The elevation limit and the horizon mask describe long paths that graze distant
+  ground; within `GS_NEAR` = 2 km of the antenna the path is direct, so `gsSees` returns true there. Measured: Link
+  "on the ground" → "Fenfen Cape" at T+0 (first airborne step 7 m up); before, "no station in view" until T+2.0, 19 m.
+  `gsSees` also serves satellite downlinks; nothing in orbit comes within 2 km of a station.
+- **#20: LAUNCH below the fold.** The assembly's right panel scrolled LAUNCH to y ≈ 1,160–1,350 px. LAUNCH and a
+  one-line site summary (`#siteLine`: site · latitude · weather, a ⛔ when access or size refuses it, a downrange
+  note) now sit in `#edFoot`, `position: sticky; bottom` inside the same scroller, so nothing else in the panel moved
+  (the robot's `#editor .right` scroll still works). Measured at 1280×800: LAUNCH at y 735–773 for all 11 presets,
+  Crewed Lunar included.
+- **#21: a landed flight settled only at the next launch.** `missionEnd` ran from `resetShip` (LAUNCH, Revert) and,
+  through `editorChanged`, on entering the Assembly; going to the Program left the flight open. Now `go()`, leaving
+  flight or map for any other screen, calls `flightLeave(S)` (in the SIM: the player leaving a flight ends it there;
+  it is `missionEnd`). `missionEnd` already returns at once for a settled flight (`R.ended`), so Revert, a second
+  leave and the next launch pay nothing more. test.mjs: a Sounding flight landed and left pays its refund (+13M), counts
+  the flight and raises Sparrow know-how 0.20 → 0.35 at once; then revert + leave + relaunch leave funds, flights and
+  know-how exactly as they were. The robot's Sounding now reads `settledAtProgram: true`, funds 80 → 103.7M at the
+  Program. **Economy (paused):** nothing inside `missionEnd` changed; it is now also reached from `go()`. The planned
+  Debrief screen (§ "UI: screens and navigation") can hang off `flightLeave`.
+- **#22: reference close-ups.** `views.js` view 8 asked for the Lunar's `t8`, gone since the resize; it centres on
+  `T16` now, and a close-up whose part is missing throws a message naming it. Close-ups 4–9 set `HOOK.noRig` (checked
+  at the top of `drawPadRig`; every `refView` call clears it), so the gantry, swing arms and hold-downs are hidden, and
+  4, 6, 8, 9 look from the west (yaw < 0): the umbilical tower stands east of the rocket (`+X`, the arms at x = 5.5 m), so
+  it is now behind or beside the part instead of in front of it.
+
+Seen on the way, not fixed: in the robot's headless Chrome the flight readout can stay empty for ~30 s after a long
+synchronous `PT.fly`, because the first `requestAnimationFrame` timestamp comes out ~30 s *before* the script's
+`last = performance.now()`, so `dtR` is negative and `hudT` climbs instead of counting down. Same on the old page;
+probably harness-only, but `frame()` could clamp `dtR` at 0.
 
 ## Test shards (2026-10-08, platform session; ROADMAP § Platform lane, step 1)
 

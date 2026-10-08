@@ -8,7 +8,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1236,10 +1236,20 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('dry runs: a heavier variant borrows the Orbiter\'s procedure provisionally (measured on itself); one that can\'t make orbit, or stages differently, does not',
     ad.ok && P.procs[hk] && P.procs[hk].prov && P.procs[hk].from === 'Orbiter' && ad.margin > 0 && !weak.ok && !one.ok && one.tried.every(t => t.why === 'different staging'),
     `heavy: ${ad.ok ? `${ad.proc.dv.toFixed(0)} m/s to orbit, ${ad.margin.toFixed(0)} m/s to spare` : ad.why} · ballast: ${weak.why} (${(weak.tried || []).map(t => t.why).join('; ')}) · single stage: ${one.why}`);
-  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb kills it (two tonnes more, lower thrust-to-weight: it overheats low down)',
-    !hot.ok && hot.tried.some(t => /burned/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
+  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb fails it (two tonnes more, lower thrust-to-weight: it falls back before cut-off)',
+    !hot.ok && hot.tried.some(t => /falling back/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
   const provDv = P.procs[hk] ? P.procs[hk].dv : NaN; handAscent(api, heavy);
   check('dry runs: the design\'s own first flight replaces the borrowed procedure (records only improve, but a borrowed one always gives way)', P.procs[hk] && !P.procs[hk].prov, `borrowed ${provDv.toFixed(0)} m/s → own ${P.procs[hk] ? P.procs[hk].dv.toFixed(0) : '?'} m/s`);
+  // the corridor (Q12): a climb that has already failed is handed over early, alive. Injected faults: an 8 s tumble at
+  // 40 km (a stuck gimbal, say), and a recording that claims a much faster climb than this one can fly
+  const flyWith = (pr, fault) => { api.t = 0; const s = api.newShip(st); api.S = s; s.noRec = true; api.procStart(s, pr); let k = 0;
+    while (s.alive && s.proc && !s.proc.done && k++ < 200000) { if (fault) fault(s); api.advPhys(s); } return s; };
+  let tSpin = null; const spun = flyWith(proc, s => { const h = len(s.r) - TELLUS.R; if (h > 40e3 && tSpin == null) tSpin = api.t; if (tSpin != null && api.t < tSpin + 8) s.w = [0.8, 0, 0]; });
+  let tB = null; const brief = flyWith(proc, s => { const h = len(s.r) - TELLUS.R; if (h > 40e3 && tB == null) tB = api.t; if (tB != null && api.t < tB + 2) s.w = [0.8, 0, 0]; });
+  const fast = flyWith({ ...proc, vel: proc.vel.map(([h, v]) => [h, v * 1.6]) });
+  check('corridor: the climb is handed over early and alive when control is lost (the nose 20° off for 5 s; a 2 s tumble the SAS recovers from is not enough) or it falls far behind its recorded speed',
+    spun.procDev && spun.procDev.kind === 'control' && spun.alive && !brief.procDev && brief.proc && brief.proc.done && fast.procDev && fast.procDev.kind === 'slow' && fast.alive && proc.vel.length > 10,
+    `spun: ${spun.procDev ? spun.procDev.why : 'no deviation'} (${((len(spun.r) - TELLUS.R) / 1e3).toFixed(0)} km) · 2 s tumble: ${brief.procDev ? brief.procDev.why : brief.proc && brief.proc.done ? 'recovered, in orbit' : 'not done'} · fast recording: ${fast.procDev ? fast.procDev.why : 'no deviation'}`);
   // a dispatched contract, flown: the orbit is the procedure's, not a roll; the same seed gives the same flight
   const sst = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];   // a satellite (the economy's §38 design): its own ascent, flown by hand once
   P.procs = {}; handAscent(api, sst); const sproc = P.procs[api.procKey(sst)];
@@ -2704,6 +2714,60 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.sats = [];
 }
 
+// 42. Rover science, R4 first slice (sats session): Selene's geology as drawn; the spectrometer, the panorama camera and
+// the seismic network, each counting only when its data reaches home. Own sim instance.
+{
+  const D = new Function(src + 'return {geoAt,selMare,rvNew,rvSci,rvSciSend,rvContact,rvRelays,rvEntry,rvFromEntry,rvSunPF,thAbs,selSci,advanceDays,satRegister,newShip,PRESETS,SEL_CORE,SELENE,TELLUS,PROG,HOOK,DAY_S,fbm};')();
+  const msgs = []; D.HOOK.news = m => msgs.push(m); D.HOOK.msg = m => msgs.push(m);
+  const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
+  // geology: the unit follows the drawn dark patches (the shader's mask, recomputed here); maria are iron-rich
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 2 * ((i * 0.618034) % 1) - 1, a = i * 2.39996, s = Math.sqrt(1 - z * z); pts.push([s * Math.cos(a), z, s * Math.sin(a)]); }
+  let agree = 0, nm = 0; const fe = { mare: 0, high: 0 }, fn = { mare: 0, high: 0 };
+  for (const u of pts) { const g = D.geoAt(B, mul(u, B.R)), x = Math.min(1, Math.max(0, (D.fbm(u[0] * 1.6 + 3, u[1] * 1.6 + 3, u[2] * 1.6 + 3) - .5) / .15)), M = x * x * (3 - 2 * x);
+    if ((M >= .2) === (g.unit === 'mare')) agree++; if (g.unit === 'mare') nm++; fe[g.unit] += g.FeO; fn[g.unit]++; }
+  const feM = fe.mare / fn.mare, feH = fe.high / fn.high, share = nm / pts.length;
+  check('Selene\'s geology follows the dark patches the sky shader draws: mare basalt (iron-rich) on them, highland rock elsewhere',
+    agree === pts.length && share > .05 && share < .15 && feM > 2 * feH && !D.geoAt(D.TELLUS, [1, 0, 0]),
+    `${(share * 100).toFixed(1)} % mare; FeO ${feM.toFixed(1)} % on mare, ${feH.toFixed(1)} % on highland; unit agrees with the shader's mask at ${agree}/${pts.length} points`);
+  // spots: a near-side highland (talks home directly) and a far-side mare (needs a relay)
+  const far = pts.filter(u => u[0] > .2 && D.geoAt(B, mul(u, B.R)).unit === 'mare').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0], hi = pts.find(u => u[0] < -.8 && D.geoAt(B, mul(u, B.R)).unit === 'high');
+  const mk = (u, slots) => { const R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots }, B, mul(u, B.R), [0, 1, 0], {}); R.name = 'Sci'; R.id = 7; return R; };
+  const kit = ['spec', 'cam', 'seis', 'ant', 'bat', 'sol', null, null];
+  const Rn = mk(hi, kit), Rf = mk(far, kit), Rx = mk(hi, ['bat', 'sol', null, null, null, null, null, null]);
+  Rn.v = [0.5, 0, 0]; const moving = D.rvSci(Rn, 'spec', 0); Rn.v = [0, 0, 0];
+  const g0 = D.geoAt(B, Rn.p), okN = D.rvSci(Rn, 'spec', 0), dup = D.rvSci(Rn, 'spec', 0), none = D.rvSci(Rx, 'spec', 0);
+  const before = !!P.log.sehigh, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.sehigh;
+  check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side highland reading in the logbook',
+    okN && !dup && !none && !moving && !before && sent === 1 && e && Math.abs(e.v.FeO - g0.FeO) < 4 && e.v.n === 1,
+    `read ${okN}, again here ${dup}, without one ${none}, moving ${moving}; logbook before sending ${before}, after: FeO ${e ? e.v.FeO.toFixed(1) : '—'} % (truth ${g0.FeO.toFixed(1)})`);
+  // far side: the reading waits in the field (no contact) until a relay is up, then arrives between flights
+  D.rvSci(Rf, 'spec', 0); const held = D.rvSciSend(Rf, D.rvContact(Rf, 0, [])) === 0 && Rf.data.length === 1;   // no contact: nothing goes
+  P.rvOut = [D.rvEntry(Rf)]; D.advanceDays(2); const waited = held && !P.log.semare && P.rvOut[0].data.length === 1;
+  const sat = D.newShip(D.PRESETS.Probe), a = B.R + 1000e3; Object.assign(sat, { alive: true, landed: false, body: B, r: [a, 0, 0], v: [0, 0, -Math.sqrt(B.mu / a)] }); D.satRegister(sat, { day0: P.day });
+  D.advanceDays(3); const arrived = !!P.log.semare && !P.rvOut[0].data.length;
+  const back = D.rvFromEntry(P.rvOut[0]);
+  check('a far-side reading waits in the field without contact, then reaches home through a relay between flights; field entries keep data, seismometers and read spots',
+    waited && arrived && P.log.semare.v.FeO > 7 && back.reads.length === 1 && back.seisLeft === undefined,
+    `waited ${waited}; arrived via the relay ${arrived} (mare FeO ${P.log.semare ? P.log.semare.v.FeO.toFixed(1) : '—'} %)`);
+  // panoramas: the quality is the sun's height (long shadows best, noon flat, night refused)
+  const elAt = T => Math.asin(dot(norm(Rn.p), D.rvSunPF(B, D.thAbs(B, T)))) * 180 / Math.PI, orbit = 2 * Math.PI / B.n;
+  let tLow = null, tHigh = null, tDark = null; for (let T = 0; T < orbit; T += 600) { const el = elAt(T); if (tLow == null && el > 8 && el < 15) tLow = T; if (tHigh == null && el > 75) tHigh = T; if (tDark == null && el < -5) tDark = T; }
+  Rn.data = []; D.rvSci(Rn, 'pano', tLow); D.rvSci(Rn, 'pano', tHigh); const dark = D.rvSci(Rn, 'pano', tDark), [pl, ph] = Rn.data;
+  check('panorama quality follows the sun: long shadows at a low sun beat a flat noon; at night it refuses', pl && ph && pl.q > .9 && ph.q < .5 && !dark,
+    `sun ${pl ? pl.el.toFixed(0) : '—'}°: ${pl ? (pl.q * 100).toFixed(0) : '—'} %; sun ${ph ? ph.el.toFixed(0) : '—'}°: ${ph ? (ph.q * 100).toFixed(0) : '—'} %; night ${dark}`);
+  // seismic: four stations set out from rovers; a tight array hears quakes but can't place them; a wide one locates
+  // them and brackets the hidden core
+  const nearPt = (az, dist) => { const t = dist / B.R, d = [0, Math.sin(az), Math.cos(az)]; return mul(norm(add(mul([-1, 0, 0], Math.cos(t)), mul(d, Math.sin(t)))), B.R); };
+  const array = (sp, side = 1) => { P.sel = null; P.sats = []; P.rvOut = []; P.log = {}; P.day = 0; const R = mk([-1, 0, 0], ['seis', 'ant', 'bat', 'sol', null, null, null, null]);
+    for (const pf of [[-B.R, 0, 0], nearPt(0, sp), nearPt(2.1, sp), nearPt(4.2, sp)].map(p => [p[0] * side, p[1], p[2]])) { R.p = mul(pf, 1.0001); D.rvSci(R, 'seis', 0); }
+    D.advanceDays(60); const S = D.selSci(); return { left: R.seisLeft, n: S.seis.length, heard: S.quakes.length, loc: S.quakes.filter(q => q.loc).length, c: S.core, buf: S.seis.reduce((a, s) => a + s.buf.length, 0) }; };
+  const tight = array(2e3), farA = array(400e3, -1), wide = array(400e3), C = D.SEL_CORE;   // farA: the same array on the far side, no relay
+  check('a seismic network: a tight array (2 km) hears moonquakes but can\'t place them; on the far side with no relay the records wait; a wide one (400 km) locates them and brackets the hidden core',
+    tight.n === 4 && tight.left === 0 && tight.heard > 20 && tight.loc === 0 && farA.heard > 20 && farA.loc === 0 && farA.buf > 0 && wide.loc > 20 && wide.c && wide.c.lo < C && wide.c.hi > C && wide.c.hi - wide.c.lo < 40e3 && P.log.secore,
+    `tight: ${tight.heard} heard, ${tight.loc} located; far side: ${farA.loc} located, ${farA.buf} records waiting; wide: ${wide.loc} located, core ${wide.c ? (wide.c.lo / 1e3).toFixed(0) + '–' + (wide.c.hi / 1e3).toFixed(0) : '—'} km (truth ${(C / 1e3).toFixed(0)})`);
+  P.sel = null; P.rvOut = []; P.sats = [];
+}
+
 // 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
 // only certifies what reaches the ground (linked) or comes home on the recorder.
 {
@@ -2849,6 +2913,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = H.slice(H.indexOf('// ==== SIM END'));
   check('sound is wired: F4 in KEYS.all, sndTick called from frame() and not from render()',
     /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
+}
+
+// fixes-1. PLAYTEST sweep #15–#22 (fixes session). What the SIM can show: #19, the home station sees its own vessel from the
+// first moment it leaves the pad (no "no station in view" while the rocket is still below the mast top); #21, a landed
+// flight is settled when the player leaves it (refund, flight count, know-how), once: Revert or the next launch then pay
+// nothing more. Also: go() settles a flight it leaves (a page check, as §32 does for screens).
+{
+  const P = api.PROG;
+  // #19: an Orbiter lifting off from the home pad, its link every step of the first 20 s
+  Object.assign(P, { site: api.homeSite ? api.homeSite().id : P.site, stations: [] });
+  api.t = 0; let s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.throttle = 1; api.stage(s);
+  const seen = []; let air = 0;
+  for (let k = 0; k < 20 / api.DT && s.alive; k++) { api.advPhys(s); if (s.landed) continue; air++;
+    const l = api.linkOf(s), w = l.ok ? (l.st ? l.st.name : l.why) : l.why; if (seen[seen.length - 1]?.w !== w) seen.push({ w, t: +api.t.toFixed(1), h: +(len(s.r) - TELLUS.R - api.groundAlt(TELLUS, norm(api.toPF(TELLUS, s.r, api.t)))).toFixed(1) }); }
+  check('fixes-1 #19: from liftoff on, the home station sees the climbing vessel (never "no station in view")',
+    air > 100 && seen.length === 1 && seen[0].w === api.curSite().name, seen.map(x => `T+${x.t} ${x.h} m: ${x.w}`).join(' → '));
+  // #21: a Sounding flight up and back under its chute, then left for the Program
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
+  api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  const f0 = P.funds, fl0 = P.flights, kh0 = api.khUse('sparrow'), out = api.flightLeave ? api.flightLeave(s) : null;
+  const f1 = P.funds, fl1 = P.flights, kh1 = api.khUse('sparrow');
+  check('fixes-1 #21: leaving a landed flight settles it there: refund paid, flight counted, know-how learnt',
+    s.landed && !!out && s.rec.ended && f1 > f0 && s.rec.refund > 0 && fl1 === fl0 + 1 && kh1 > kh0,
+    `funds ${f0.toFixed(2)} → ${f1.toFixed(2)} (refund ${(s.rec.refund || 0).toFixed(2)}), flights ${fl0} → ${fl1}, Sparrow know-how ${kh0.toFixed(2)} → ${kh1.toFixed(2)}`);
+  // then Revert (resetShip → missionEnd on the same ship), leaving again, and the next launch: nothing more is paid
+  const again = [api.missionEnd(s), api.flightLeave ? api.flightLeave(s) : 0];
+  api.t = 0; const s2 = api.newShip(api.PRESETS.Sounding); api.S = s2; api.missionEnd(s);   // the relaunch settles the old ship (resetShip) first
+  check('fixes-1 #21: settled once: a revert, a second leave or the next launch pay nothing more',
+    again.every(x => x === null) && P.funds === f1 && P.flights === fl1 && api.khUse('sparrow') === kh1, `funds ${P.funds.toFixed(2)}, flights ${P.flights}`);
+  const H = html.replace(/\r\n/g, '\n'), gi = H.indexOf('function go(s){'), goSrc = gi < 0 ? '' : H.slice(gi, H.indexOf('\n// ', gi));   // (up to the next comment line)
+  check('fixes-1 #21: go() settles the flight it leaves (flight or map → any other screen)', /from==='flight'\|\|from==='map'[^\n]*flightLeave\(S\)/.test(goSrc));
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

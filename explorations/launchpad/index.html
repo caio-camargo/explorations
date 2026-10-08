@@ -39,7 +39,7 @@ button.big:hover{filter:brightness(1.15)}
 .dim{color:var(--dim)}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.acc{color:var(--acc)}
 table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-align:right}
 .tl{left:12px;top:12px;min-width:250px}
-.tr{right:12px;top:12px;display:flex;gap:6px;align-items:center}
+.tr{position:absolute;right:12px;top:12px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-items:center;max-width:calc(100% - 290px)}
 .bl{left:12px;bottom:12px;min-width:190px}
 #info td:first-child{color:var(--dim);padding-right:12px}
 #navwrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:10px}
@@ -58,6 +58,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
 #tester{width:min(400px,92vw)}#tester h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#tester label{display:block;margin:2px 0}
+.tr #testerBadge{position:static;transform:none;align-self:center}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
@@ -72,6 +73,7 @@ body.noperf #perf{display:none}
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
 #warp{color:var(--warn);min-width:90px;text-align:right}
+#edFoot{position:sticky;bottom:-10px;margin:8px -12px -10px;padding:7px 12px 10px;background:#0b111b;border-top:1px solid var(--line);border-radius:0 0 6px 6px}#edFoot button.big{margin-top:6px}#siteLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #news{position:fixed;left:50%;transform:translateX(-50%);top:46px;max-width:min(560px,70vw);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 10px;pointer-events:none}
 #news div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#news div:first-child::before{content:'NEWS · ';color:var(--acc);letter-spacing:.1em}#news .old{color:var(--dim)}
 #nodep{right:12px;top:52px;width:285px}#nodep td:first-child{padding-right:8px}#nodep button{padding:0 6px}
@@ -82,7 +84,7 @@ body.noperf #perf{display:none}
 #target{color:var(--warn);font-size:11px;margin:-2px 0 6px}
 .jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
 @media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
- .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
+ .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#edFoot{bottom:-8px;margin:6px -8px -8px;padding:6px 8px 8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
 /* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
 #logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
 #logbook .x{position:absolute;right:10px;top:8px;cursor:pointer;opacity:.7}#logbook .lbrow{margin:10px 0}#logbook .lbv{font-size:1.25em}#logbook s{opacity:.55;margin-right:8px}
@@ -114,7 +116,7 @@ body.noperf #perf{display:none}
     <h2>Build</h2><div id="stack"></div>
     <h2>Stages <span class="dim">(Δv vac / sea level)</span></h2><div id="stats"></div>
     <h2>Launch site</h2><div id="sitePick"></div>
-    <button id="launch" class="big">LAUNCH</button>
+    <div id="edFoot"><div id="siteLine" class="dim"></div><button id="launch" class="big">LAUNCH</button></div>
   </div>
 </div>
 
@@ -1514,14 +1516,17 @@ function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a
 // ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
 // low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
-const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,BLACKOUT_Q=5e4,gsMasks=new Map();
+// Near field (GS_NEAR): the minimum elevation and the horizon mask describe long, low paths that graze the ground far
+// away. A target within a couple of km of the antenna (its own pad, the first seconds of a climb, a rocket still below
+// the mast top) is in direct line of sight over flat ground, so the station sees it (fixes session, PLAYTEST #19).
+const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,GS_NEAR=2000,BLACKOUT_Q=5e4,gsMasks=new Map();
 function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
   const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
   for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
       const e=Math.atan2(groundAlt(TELLUS,q)-h0-d*d/(2*R),d);if(e>mx)mx=e}m.el[a]=mx}
   gsMasks.set(key,m);return m}
 // does station st see the planet-fixed position pf (a vector from Tellus's centre)?
-function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<1)return true;
+function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<GS_NEAR)return true;
   const sinE=dot(d,st.u)/dl;if(sinE<STA_MIN)return false;
   const f=siteFrame(st.u),az=Math.atan2(dot(d,f.e),dot(d,f.n)),i=Math.round(((az+2*Math.PI)%(2*Math.PI))/(2*Math.PI)*GS_AZ)%GS_AZ;
   return Math.asin(clamp(sinE,-1,1))>m.el[i]}
@@ -1608,7 +1613,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S);rvFieldSci(T0,PROG.day*DAY_S);seisTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -1815,6 +1820,9 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
+// The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
+// next launch (fixes session, PLAYTEST #21). Once only: Revert or the next launch then find it settled (R.ended).
+function flightLeave(s){return missionEnd(s)}
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
@@ -3145,6 +3153,11 @@ const LOGF=[
   {id:'nyx',sec:'Out there',label:'The second moon, Nyx',fmt:v=>`${(v.m*1e4).toFixed(1)}×10⁻⁴ Tellus masses, ${fmtKm(v.pe)}–${fmtKm(v.ap)} out`,best:'first',hint:'something unexplained in the tracking data'},
   {id:'nyxreach',sec:'Out there',label:'Δv to reach Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has been there'},
   {id:'nyxland',sec:'Out there',label:'Δv to land on Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
+  // on Selene: rover science (R4); n counts readings, so each one updates the line
+  {id:'semare',sec:'On Selene',label:'Mare basalt (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a dark-plains rock'},
+  {id:'sehigh',sec:'On Selene',label:'Highland rock (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a bright-uplands rock'},
+  {id:'sepano',sec:'On Selene',label:'Best panorama of the surface',fmt:v=>`${(v.q*100).toFixed(0)} % (sun ${v.el.toFixed(0)}° up, on ${v.unit==='mare'?'mare':'highland'})`,key:v=>v.q,best:'max',hint:'no rover camera has sent a panorama home'},
+  {id:'secore',sec:'On Selene',label:"Selene's core (seismic network)",fmt:v=>v.hi<Infinity?`radius ${fmtKm(v.lo)}–${fmtKm(v.hi)} · ${v.n} quake${v.n>1?'s':''} located`:`no S-wave shadow yet${v.lo?`: larger than ${fmtKm(v.lo)}`:''} · ${v.n} quake${v.n>1?'s':''} located`,key:v=>v.n,best:'max',hint:'no seismometers on Selene'},
 ];
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
@@ -3203,12 +3216,12 @@ function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMissi
   const up=norm(s.r),h=len(s.r)-TELLUS.R,nose=qrot(s.q,[0,1,0]),pitch=Math.asin(clamp(dot(nose,up),-1,1))*57.29578,last=P.pts[P.pts.length-1];
   if(P.az==null&&h>2000){const f=localFrame(s.r),nh=sub(nose,mul(up,dot(nose,up)));if(len(nh)>1e-3)P.az=Math.atan2(dot(nh,f.e),dot(nh,f.n))}
   const el=elements(s.r,s.v,TELLUS.mu);
-  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle]);
+  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle,len(s.v)]);
     if(s.throttle===0&&h>1000&&P.pts.length>5)P.cut={h,ap:el.ap-TELLUS.R}}   // the first cut-off: the ascent is over
   else if(s.throttle===0&&el.e<1&&el.pe>TELLUS.R+TELLUS.atm){P.done=true;P.target={pe:el.pe-TELLUS.R,ap:el.ap-TELLUS.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578};
     P.dv=s.rec?s.rec.dv:null;procKeep(s)}}
-function procAscent(s,P){const pitch=[],thr=[];let hm=-1;for(const[h,q,t]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)])}   // powered samples only: the cut-off isn't a throttle setting
-  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
+function procAscent(s,P){const pitch=[],thr=[],vel=[];let hm=-1;for(const[h,q,t,v]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)]);if(v!=null)vel.push([Math.round(h),Math.round(v)])}   // powered samples only: the cut-off isn't a throttle setting
+  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,vel,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
 function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<5)return null;
   const key=procKey(s.stack),old=(PROG.procs=PROG.procs||{})[key],proc=procAscent(s,P);
   if(old&&!old.prov&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;   // a provisional one (borrowed by a dry run) gives way to the design's own first flight
@@ -3249,6 +3262,16 @@ function procStart(s,proc,target){const T={...proc.target,...(target||{})};let a
 // A deviation: the procedure can't meet its goal from here. It stops and says why; the craft is yours (in a dispatched
 // flight, the dispatch hands it to you). s.procDev keeps what happened, for whoever runs the flight.
 function procDev(s,kind,why){s.procDev={kind,why,t:simT,phase:s.proc&&s.proc.phase};s.proc=null;s.throttle=0;HOOK.msg(`Procedure stopped: ${why}. You have control`)}
+// The corridor around the recorded climb (Q12): what goes wrong before the propellant does. Stopped early, the craft is
+// still somewhere a pilot can do something with (or bail out of). Kept loose: a variant with less thrust flies lower and
+// slower and is still fine; these catch a climb that has already failed.
+//   control  the nose more than 20° off the commanded climb for 5 s (an unstable design, a tumble, a stuck engine)
+//   falling  coming down under power, below the cut-off (too little thrust for the weight, an engine out)
+//   slow     above 10 km, under 70 % of the speed the recorded flight had at this height
+function procCorridor(s,X,p,h,up){if(simT<10)return;const off=Math.acos(clamp(dot(qrot(s.q,[0,1,0]),s.hold||up),-1,1))*57.29578;
+  X.offT=off>20?(X.offT||0)+DT:0;if(X.offT>=5)return procDev(s,'control',`lost control of the climb: the nose ${off.toFixed(0)}° off for 5 s`);
+  const vv=dot(s.v,up);if(vv<-20&&h<TELLUS.atm)return procDev(s,'falling',`falling back at ${kmS(h)} km before the engines could cut off`);
+  if(p.vel&&p.vel.length>3&&h>10e3&&h<=p.vel[p.vel.length-1][0]){const v0=tabAt(p.vel,h);if(len(s.v)<0.7*v0)return procDev(s,'slow',`far behind the recorded climb: ${Math.round(len(s.v))} m/s at ${kmS(h)} km where it flew ${Math.round(v0)}`)}}
 function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
   const dirAt=d=>{const hz=add(mul(f.n,Math.cos(X.az)),mul(f.e,Math.sin(X.az))),r=d*Math.PI/180;return norm(add(mul(hz,Math.cos(r)),mul(up,Math.sin(r))))};
   const dry=()=>s.throttle>0&&dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length;
@@ -3256,7 +3279,8 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T
   if(X.phase==='ascent'){s.sasMode='stab';s.hold=dirAt(tabAt(p.pitch,h));s.throttle=Math.max(0.1,tabAt(p.thr,h));
     if(!X.lit){X.lit=true;stage(s);return}   // ignition
     if(dry())stage(s);else if(X.ei<p.early.length&&h>=p.early[X.ei]){X.ei++;stage(s)}
-    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);return}
+    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);
+    else procCorridor(s,X,p,h,up);return}
   const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000,0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
   if(X.phase==='coast'){s.sasMode='pro';
     if(!X.chk&&h>TELLUS.atm){X.chk=1;const need=Math.sqrt(TELLUS.mu/el.ap)-vAp,have=dvRemaining(s).tot;
@@ -3699,10 +3723,10 @@ function rvObsQ(b,pf){return landedUp().filter(q=>q.bodyName===b.name&&q.shape&&
   for(const o of q.shape){const d=PARTS[o.k];if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
 function rvFlight(dt){for(const R of FROV){if(R.wet)continue;rvPowerStep(R,dt,rvSunPF(R.body,bodyTheta(R.body,simT)));if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
 // at the flight's end, every rover still on its wheels (or not) stays where it is
-const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead});
+const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead,data:R.data||[],seisLeft:R.seisLeft,reads:R.reads||[]});
 function rvEnd(){PROG.rvOut=PROG.rvOut||[];for(const R of FROV){if(R.wet)continue;R.dep=null;PROG.rvOut.push(rvEntry(R))}FROV.length=0;RVA=null}
 function rvFromEntry(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,R=rvNew(e.d,b,e.p,[0,0,1],{yard:rvYardNear(b,e.p)});
-  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false});return R}
+  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false,data:(e.data||[]).slice(),seisLeft:e.seisLeft,reads:(e.reads||[]).slice()});return R}
 // rovers left in the field come back into a flight on the same body within LOAD_R of the vessel
 function rvLoadNear(s){const L=PROG.rvOut||[];if(!s||!s.alive||!L.length)return 0;const pf=toPF(s.body,s.r,simT);let n=0;
   for(let i=L.length-1;i>=0;i--){const e=L[i];if(e.bodyName!==s.body.name||len(sub(e.p,pf))>LOAD_R)continue;L.splice(i,1);FROV.push(rvFromEntry(e));n++}return n}
@@ -3755,6 +3779,87 @@ function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
   (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}
+// ---- rover science, R4 first slice (sats session, decided with Caio): Selene's geology as drawn, and three instruments
+// whose results hinge on what the sim computes. Results count when they reach home (R3's contact), into the logbook.
+// Geology: the sky shader's dark maria, smoothstep(.5,.65,fbm(n·1.6+3)) in Selene's frame (h3/vn/fbm are its port), so a
+// rover on a dark patch is on mare basalt. The composition under it is hidden truth, varying smoothly within each unit.
+const selMare=pf=>{const u=norm(pf),x=clamp((fbm(u[0]*1.6+3,u[1]*1.6+3,u[2]*1.6+3)-.5)/.15,0,1);return x*x*(3-2*x)};
+function geoAt(b,pf){if(b!==SELENE)return null;const M=selMare(pf),u=norm(pf),f=k=>fbm(u[0]*k+11,u[1]*k+7,u[2]*k+5);
+  const mare={FeO:15+6*f(7),TiO2:.5+11*clamp(fbm(u[0]*4+21,u[1]*4+2,u[2]*4+9)-.3,0,1),Al2O3:9+3*f(5)},high={FeO:3.5+3*f(9),TiO2:.2+.5*f(6),Al2O3:25+5*f(8)};
+  const mix=k=>high[k]+(mare[k]-high[k])*M;return{unit:M>=MARE_M?'mare':'high',M,FeO:mix('FeO'),TiO2:mix('TiO2'),Al2O3:mix('Al2O3')}}
+const GEO_NAME={mare:'mare basalt',high:'highland rock'},MARE_M=.2;   // mare where it has visibly darkened (~8 % darker)
+const SPEC_SD={FeO:1,TiO2:.6,Al2O3:1.2},SPEC_NEAR=30;   // a reading's noise (wt %); a new reading needs 30 m from the last
+const SEIS_PACK=4,SEL_CORE=.26*SELENE.R,QV_P=8000,QV_S=4500,QT_SD=.2,QUAKE_DAY=.6,LOC_MAX=15e3;   // the core is hidden truth
+const selSci=()=>PROG.sel||(PROG.sel={spec:{mare:[],high:[]},panos:[],seis:[],quakes:[],seq:0,core:null});
+const rvItems=(R,k)=>rvGeom(R.d).items.filter(t=>t.k===k).length;
+const gauss=r=>{let s=0;for(let i=0;i<6;i++)s+=r();return(s-3)*Math.SQRT2};   // ~N(0,1), deterministic
+// why an instrument can't work right now ('' if it can)
+function rvSciWhy(R,k){if(!rvItems(R,k==='pano'?'cam':k))return`no ${k==='pano'?'camera mast':RV_IT[k].name.toLowerCase()} on board`;
+  if(R.body!==SELENE)return R.body===TELLUS?'nothing new to learn at home':'only Selene has its geology mapped';
+  if(R.dead||R.tipped||R.wet)return'the rover is out of action';if(len(R.v)>.05)return'stop first';
+  if(k==='seis'&&(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))<=0)return'all its seismometers are set out';return''}
+// the instruments: a spectrometer reading, a panorama (its quality is the sun's: low sun shows the relief in long
+// shadows, a high sun flattens it, none at night), a seismometer set out. Readings wait in R.data until contact.
+function rvSci(R,k,T){const why=rvSciWhy(R,k);if(why){HOOK.msg(`${k==='spec'?'Spectrometer':k==='pano'?'Panorama':'Seismometer'}: ${why}`);return false}
+  const P=selSci(),g=geoAt(R.body,R.p),r=rng(9001+P.seq++);R.data=R.data||[];
+  if(k==='spec'){if((R.reads||[]).some(p=>len(sub(p,R.p))<SPEC_NEAR)){HOOK.msg('Spectrometer: already read here (drive on 30 m)');return false}
+    (R.reads=R.reads||[]).push(R.p.slice());const x={k,unit:g.unit,T,pf:R.p.slice()};for(const c in SPEC_SD)x[c]=Math.max(0,g[c]+SPEC_SD[c]*gauss(r));
+    R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
+  if(k==='pano'){const el=Math.asin(clamp(dot(norm(R.p),rvSunPF(R.body,thAbs(R.body,T))),-1,1))*180/Math.PI;if(el<=0){HOOK.msg('Panorama: too dark (the sun is down)');return false}
+    const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
+  if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),R.body.R),T,buf:[]};st.name=`Seismometer ${st.id}`;
+    P.seis.push(st);HOOK.msg(`${st.name} set out (${R.seisLeft} left on board)`);return true}}
+const panoQ=el=>el<3?.4*el/3:el<=20?1:Math.max(.3,1-.7*(el-20)/70);
+const rvSciSent=R=>R.contact&&R.contact.ok&&R.contact.via!=='crew'?'':' · waits for contact';
+// results reaching home: into the program's science and the logbook
+function sciGot(x,by){const P=selSci();
+  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3});const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
+    logNote(null,x.unit==='mare'?'semare':'sehigh',{FeO:m('FeO'),TiO2:m('TiO2'),Al2O3:m('Al2O3'),se:sd/Math.sqrt(n),n},by)}
+  if(x.k==='pano'){P.panos.push({q:x.q,el:x.el,unit:x.unit});logNote(null,'sepano',{q:x.q,el:x.el,unit:x.unit},by)}}
+function rvSciSend(R,c){if(!R.data||!R.data.length||!c||!c.ok||c.via==='crew')return 0;const n=R.data.length;for(const x of R.data)sciGot(x,R.name);R.data=[];
+  HOOK.msg(`${n} result${n>1?'s':''} from ${R.name} received at home`);return n}
+// contact for something on the ground (a field rover, a station) at program time T: R3's rules, relays where they are then
+function rvFieldSci(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead||!e.data||!e.data.length)continue;const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,hg=rvPow(e.d).hg;
+  for(let T=T0;T<T1;T+=1800)if(radioAt(b,e.p,hg,Math.min(T+1800,T1)).ok){for(const x of e.data)sciGot(x,e.name);HOOK.news(`${e.name} on ${e.bodyName}: ${e.data.length} result${e.data.length>1?'s':''} received`,'ok');e.data=[];break}}}
+function radioAt(b,pf,hg,T){const o=ORB_T0;ORB_T0=T;const c=rvContact({body:b,p:pf,pw:{hg,sol:0,rtg:0},remote:true},0,rvRelays([]));ORB_T0=o;return c}
+// ---- the seismic network. Deep moonquakes (QUAKE_DAY a day, 40–60 % of the way out) happen between flights. Each
+// station records the P wave and, unless its straight path crossed the liquid core (SEL_CORE, hidden), the S wave.
+// Records reach home when the station has contact (each has a small high-gain dish). With 4 stations' P times home, the
+// quake is located by least squares; if the array is too small, the fit can't place it (σ > LOC_MAX). Then every path
+// from the located quake brackets the core: an S that arrived passed outside it, a missing S went through (each
+// bound loosened by twice the location's σ).
+function quakesIn(T0,T1){const out=[];for(let k=Math.floor(T0/DAY_S);k*DAY_S<T1;k++){const r=rng(424243+k*7919);
+  for(let j=0;j<3;j++){if(r()>(j?QUAKE_DAY*.25:QUAKE_DAY))break;const T=(k+r())*DAY_S,z=2*r()-1,a=2*Math.PI*r(),rr=SELENE.R*(.4+.2*r()),s=Math.sqrt(1-z*z);
+    if(T>=T0&&T<T1)out.push({id:k*4+j,T,x:[rr*s*Math.cos(a),rr*z,rr*s*Math.sin(a)]})}}return out.sort((a,b)=>a.T-b.T)}
+const rayMin=(x,p)=>{const d=sub(p,x),u=clamp(-dot(x,d)/dot(d,d),0,1);return len(add(x,mul(d,u)))};
+function seisTick(T0,T1){const P=PROG.sel;if(!P||!P.seis.length)return;const live=P.seis.filter(s=>s.bodyName==='Selene');if(!live.length)return;
+  const Q=quakesIn(T0,T1);let qi=0;
+  for(let T=T0;T<T1;T+=1800){const Te=Math.min(T+1800,T1);
+    for(;qi<Q.length&&Q[qi].T<Te;qi++){const q=Q[qi],r=rng(q.id*31+7);let n=0;
+      for(const st of live){if(st.T>q.T)continue;const L=len(sub(st.pf,q.x)),S=rayMin(q.x,st.pf)>SEL_CORE;n++;
+        st.buf.push({q:q.id,tp:q.T+L/QV_P+QT_SD*gauss(r),s:S,ts:S?q.T+L/QV_S+QT_SD*gauss(r):null})}
+      if(n)P.quakes.push({id:q.id,T:q.T,got:{},loc:null,tried:false})}
+    for(const st of live){if(!st.buf.length)continue;if(!radioAt(SELENE,st.pf,true,Te).ok)continue;
+      for(const x of st.buf){const q=P.quakes.find(y=>y.id===x.q);if(q)q.got[st.id]=x}st.buf=[]}}
+  for(const q of P.quakes)if(!q.tried&&Object.keys(q.got).length>=4)seisLocate(q)}
+// least squares on P times for (x, y, z, t0); restarts from 26 directions at half radius (the array alone can't tell a
+// quake under it from one through the moon); σ from the fit's geometry. Then the core bracket from every path.
+function seisLocate(q){const P=PROG.sel,st=Object.keys(q.got).map(id=>({p:P.seis.find(s=>s.id===+id).pf,...q.got[id]}));q.tried=true;
+  const res=x=>st.map(s=>s.tp-(x[3]+len(sub(x.slice(0,3),s.p))/QV_P)),jac=x=>st.map(s=>{const d=sub(x.slice(0,3),s.p),l=len(d)||1;return[...mul(d,1/(l*QV_P)),1]}),
+    nrm=J=>[0,1,2,3].map(a=>[0,1,2,3].map(b=>J.reduce((t,row)=>t+row[a]*row[b],0)));
+  let best=null;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){if(!i&&!j&&!k)continue;
+    let x=[...mul(norm([i,j,k]),SELENE.R*.5),Math.min(...st.map(s=>s.tp))-40];
+    for(let it=0;it<40;it++){const J=jac(x),r=res(x),A=nrm(J);for(let a=0;a<4;a++)A[a][a]+=1e-12;
+      const g=[0,1,2,3].map(a=>J.reduce((t,row,m)=>t+row[a]*r[m],0)),C=inv4(A);if(!C)break;
+      const dx=C.map(row=>row.reduce((t,v,m)=>t+v*g[m],0));x=x.map((v,m)=>v+dx[m]);if(len(dx.slice(0,3))<1)break}
+    const e=res(x).reduce((t,v)=>t+v*v,0);if(len(x.slice(0,3))<SELENE.R&&(!best||e<best.e))best={x,e}}
+  if(!best)return;const C=inv4(nrm(jac(best.x))),sig=C?QT_SD*Math.sqrt(Math.max(0,C[0][0]+C[1][1]+C[2][2])):Infinity;if(!(sig<LOC_MAX))return;
+  q.loc={x:best.x.slice(0,3),sig};const c=P.core||(P.core={lo:0,hi:Infinity,n:0});c.n++;
+  for(const s of st){const m=rayMin(q.loc.x,s.p);if(s.s)c.hi=Math.min(c.hi,m+2*sig);else c.lo=Math.max(c.lo,m-2*sig)}   // ±2σ: the located quake is only so sure
+  logNote(null,'secore',{lo:c.lo,hi:c.hi,n:c.n},'the seismic network')}
+function inv4(A){const n=4,M=A.map((r,i)=>[...r,...[0,1,2,3].map(j=>i===j?1:0)]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+  if(Math.abs(M[p][c])<1e-30)return null;[M[c],M[p]]=[M[p],M[c]];const d=M[c][c];for(let j=0;j<2*n;j++)M[c][j]/=d;
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c];if(f)for(let j=0;j<2*n;j++)M[r][j]-=f*M[c][j]}}return M.map(r=>r.slice(n))}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -4111,6 +4216,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=mix(vec3(1.),tint*1.25,.65*smoothstep(.35,.7,t));
    float lip=band(v,-.01,.035*sc,fv);alb=mix(alb,vec3(.35,.34,.33),lip);rough=mix(rough,.5,lip);
    if(inside){alb*=.3;rough=.7;}}
+  else if(k==16&&side){                                    // station module: meteoroid-shield panels on the pressure hull
+   float pv=band(v,.1*sc,h-.1*sc,fv),NA=8.,pa=fract(vU.x*NA),ph=.55*sc,pr=v/ph,
+     sa=lin(vU.x*NA,1.,.012*NA/(6.2832*R),fu*NA),sr=lin(v,ph,.006*sc,fv),seam=max(sa,sr)*pv,
+     pid=hh(vec2(floor(vU.x*NA),floor(pr))),pil=(pa-.5)*(fract(pr)-.5),fd=smoothstep(.04,.01,fp);
+   alb*=(1.-.4*seam)*(.94+.1*pid*fd);nO+=T*(pa-.5)*.12*pv*fd;
+   float bl=dots(s,v,ph,6.2832*R/NA,.008*sc,fp)*pv;alb=mix(alb,vec3(.42,.43,.45),bl);}
   else if(k==15){                                          // engine mount: bolt ring under the tank flange
    alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
   else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
@@ -4525,7 +4636,7 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
 const BLOOM_FS=`#version 300 es
 precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);
- for(int i=0;i<4;i++){vec2 d=vec2(i==0||i==2?-1.:1.,i<2?-1.:1.)*uPx;c+=texture(uT,uv+d).rgb;}c*=.25;
+ for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++){float w=(i==0?2.:1.)*(j==0?2.:1.);c+=texture(uT,uv+vec2(i,j)*uPx*2.).rgb*w;}c/=16.;   // a 3×3 tent: no blocks
  if(uTh>0.){float m=max(c.r,max(c.g,c.b));c*=smoothstep(uTh,1.,m)*m;}
  o=vec4(c,1.);}`;
 const COMP_FS=`#version 300 es
@@ -4533,7 +4644,7 @@ precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,u
 vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,uv+vec2(px.x,0.)).rgb*2.+texture(t,uv-vec2(px.x,0.)).rgb*2.+texture(t,uv+vec2(0.,px.y)).rgb*2.+texture(t,uv-vec2(0.,px.y)).rgb*2.;
  c+=texture(t,uv+px).rgb+texture(t,uv-px).rgb+texture(t,uv+vec2(px.x,-px.y)).rgb+texture(t,uv+vec2(-px.x,px.y)).rgb;return c/16.;}
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;
- vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*4.).rgb*.35+tent(uB3,uv,uP4*2.).rgb*.45+tent(uB4,uv,uP4).rgb*.6;
+ vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*.25).rgb*.35+tent(uB3,uv,uP4*.5).rgb*.4+tent(uB4,uv,uP4).rgb*.45;   // each level tent-filtered at its own texel size (uP4 is the 1/16 level's)   // tight glow; the wide levels faint (sunlit white paint is as bright as the sun here, and the wide levels smeared it)
  float L=dot(c,vec3(.3,.5,.2));o=vec4(c+uK*b*pow(1.-L,1.6),1.);}`;   // glow shows over darker surroundings, not on bright sky
 // fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
 // position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
@@ -4587,7 +4698,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:15,lab:15,arm:15,beacon:15,rover:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -4613,6 +4724,12 @@ function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y
   for(const s of[-1,1]){const n=N(0,0,s),Q=q.map(([r,y])=>P(r,y,s*t));tri(Q[0],Q[1],Q[2],n,col);tri(Q[0],Q[2],Q[3],n,col)}
   for(let e=0;e<4;e++){const[r1,y1]=q[e],[r2,y2]=q[(e+1)%4],l=Math.hypot(r2-r1,y2-y1),n=N((y2-y1)/l,-(r2-r1)/l,0),c=e===2?C.ST:col;
     const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}}
+// station trim: yellow handrails along the hull at the given angles, on standoffs (the crew's way along the outside)
+function stationTrim(out,x,y,z,h,angs){const HR=[.85,.65,.12];for(const a of angs){const c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r];
+  tube(out,P(.7,.35),P(.7,h-.35),.018,HR,6);for(let yy=.35;yy<=h-.34;yy+=.6)tube(out,P(.625,yy),P(.7,yy),.012,HR,4)}}
+// a round window on the hull: a dark frame, glass, eight bolts (the lab's science window)
+function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[x+c*.632,y+yy,z+sn*.632],.012,.16,.16,C.D,a);rbox(out,[x+c*.642,y+yy,z+sn*.642],.008,.12,.12,C.GL,a);
+  for(let k=0;k<8;k++){const t=k*Math.PI/4,dy=Math.cos(t)*.14,ds=Math.sin(t)*.14;rbox(out,[x+c*.646-sn*ds,y+yy+dy,z+sn*.646+c*ds],.008,.012,.012,[.5,.5,.52,1],a)}}
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
@@ -4658,10 +4775,18 @@ function partBody(out,p){
          for(const a of[.27,.73])for(const s of[-1,1])rbox(out,[x+n[0]*.41+tg[0]*s*.27,y+h*a,z+n[2]*.41+tg[2]*s*.27],.025,.2,.2,C.BK,p.phi)}}break;
      case'rvdeck':lathe(out,[[d.r,0,C.D],[d.r,.3,C.ST]],o,32);for(const s of[-1,1])box(out,[x+s*(d.r-.08),y+1,z],.05,.7,.5,C.G);
        if(!p.rvOut&&p.dn&&p.dn.rvd)rvOnDeck(out,p.dn.rvd,[x,y+.3,z]);break;
-    case'arm':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)];rbox(out,[x+n[0]*.15,y+h/2,z+n[2]*.15],.15,.3,.25,C.G,p.phi);rbox(out,[x+n[0]*.32,y+h/2,z+n[2]*.32],.05,.12,.12,C.D,p.phi)}break;
-    case'hab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);
-      for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.63,y+1.9,z+Math.sin(a)*.63],.01,.12,.09,C.GL,a)}break;   // a ring of portholes
-    case'lab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,1.2,C.W],[.625,1.2,C.AU],[.625,2.0,C.AU],[.625,2.0,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);break;
+    case'arm':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)];rbox(out,[x+n[0]*.1,y+h/2,z+n[2]*.1],.1,.32,.3,C.G,p.phi);   // the base plate, a turret, its drive ring
+      tube(out,[x+n[0]*.2,y+h/2,z+n[2]*.2],[x+n[0]*.36,y+h/2,z+n[2]*.36],.13,C.W,14,true);tube(out,[x+n[0]*.24,y+h/2,z+n[2]*.24],[x+n[0]*.28,y+h/2,z+n[2]*.28],.145,C.D,14,true)}break;
+    case'hab':lathe(out,[[.6,0,C.D],[.625,.03,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.17,C.D],[.6,3.2,C.D]],o);
+      for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.632,y+1.9,z+Math.sin(a)*.632],.012,.13,.1,C.D,a);rbox(out,[x+Math.cos(a)*.64,y+1.9,z+Math.sin(a)*.64],.01,.1,.075,C.GL,a)}   // portholes in dark frames
+      stationTrim(out,x,y,z,3.2,[.3+Math.PI/6,.3+Math.PI*7/6]);
+      for(const s2 of[1,-1]){const a=.3+Math.PI/2*s2;rbox(out,[x+Math.cos(a)*.72,y+1.1,z+Math.sin(a)*.72],.012,.7,.3,[.9,.9,.92,1],a);   // radiators on standoffs
+        tube(out,[x+Math.cos(a)*.62,y+.6,z+Math.sin(a)*.62],[x+Math.cos(a)*.71,y+.6,z+Math.sin(a)*.71],.02,C.ST,4);tube(out,[x+Math.cos(a)*.62,y+1.6,z+Math.sin(a)*.62],[x+Math.cos(a)*.71,y+1.6,z+Math.sin(a)*.71],.02,C.ST,4)}
+      break;
+    case'lab':lathe(out,[[.6,0,C.D],[.625,.03,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,1.2,C.W],[.625,1.2,C.AU],[.625,2.0,C.AU],[.625,2.0,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.17,C.D],[.6,3.2,C.D]],o);
+      labWindow(out,x,y,z,2.6,1.2);stationTrim(out,x,y,z,3.2,[.6,.6+Math.PI]);
+      for(let k=0;k<3;k++){const a=2.3+k*.45;rbox(out,[x+Math.cos(a)*.7,y+1.6,z+Math.sin(a)*.7],.07,.12+.05*k,.09,k%2?C.ST:[.62,.63,.6],a)}   // external experiment boxes on the gold band
+      break;
     case'bay':{const top=h+d.bayL,th=doorF(p)*1.75;
       lathe(out,[[d.r,0,C.W],[d.r,top,C.W],[d.r,top,C.G],[d.bayIn,top,C.G],[d.bayIn,h,C.D],[0,h,C.D]],o,32,[true,false]);
       for(const sd of[1,-1])bayDoor(out,o,d.r,top,d.roofH,sd,th,C.W)}break;
@@ -4825,7 +4950,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
   const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);let src=T.res;
   T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
-    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.93:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
+    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.965:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);
@@ -5223,7 +5348,7 @@ function rotAx(k,ang){const c=Math.cos(ang),s=Math.sin(ang),R=v=>{const kv=dot(k
 // Each frame: the rig. Gantry: parked in the editor; on a flight from the pad, rolls from service position (RIG.zS) to
 // its parking spot (−80 m) over 14 s. Swing arms: connected until liftoff, then swing back top first, 1.5 s each, 0.25 s
 // apart; arms with no rocket at their height stay folded. Hold-downs: tip outward 0.9 rad in 0.6 s at liftoff.
-function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return;
+function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5||HOOK.noRig)return;   // (noRig: views.js close-ups)
   const pre=mode==='editor'||S&&S.landed&&!S.mkLift,tl=S&&S.mkLiftT!=null?simT-S.mkLiftT:1e9;
   RIG.arms.forEach((A,i)=>{const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
@@ -5323,7 +5448,23 @@ const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:TELLU
 const keys=new Set();
 let msgTimer=0;
 const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});headlines.length=Math.min(headlines.length,3);
-  const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('')};
+  const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('');hudLayout()};
+// Two placements the flight HUD keeps (fixes session, PLAYTEST #15, #16), run on every screen change, each HUD update and
+// each headline. The TESTER badge is the last item of the flight toolbar; elsewhere it sits at the top centre, which no
+// other screen uses (Program, Assembly, Rover yard).
+// The news keeps its own lane: centred if it fits, but never over the flight readout (however wide its rows make it),
+// the toolbar, or a panel on the right (maneuver node, rover); with no room beside the readout, it goes under it.
+function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';
+  if(b&&tr){const home=fl?tr:document.body;if(b.parentNode!==home)home.appendChild(b)}
+  const n=$('news');if(!n||n.classList.contains('hidden'))return;const st=n.style;
+  if(!fl){st.left=st.top=st.maxWidth=st.transform='';return}
+  const box=sel=>{const e=document.querySelector(sel);if(!e||!e.offsetParent)return null;const r=e.getBoundingClientRect();return r.width&&r.height?r:null},
+    info=box('#hud .tl'),bar=box('#hud .tr'),W=innerWidth;
+  let L=info?info.right+10:12,R=W-12;for(const sel of['#nodep','#rvFHud']){const r=box(sel);if(r&&r.left>L)R=Math.min(R,r.left-10)}
+  let top=46;if(R-L<240&&info){L=12;top=info.bottom+8}   // no room beside the readout: under it
+  st.transform='none';st.left='0px';st.maxWidth=Math.max(120,Math.min(560,R-L))+'px';const w=n.offsetWidth,x=Math.min(Math.max(W/2-w/2,L),Math.max(L,R-w));
+  if(bar&&bar.left<x+w&&bar.right>x)top=Math.max(top,bar.bottom+6);
+  st.left=Math.round(x)+'px';st.top=Math.round(top)+'px'}
 let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
 HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/b.rho0*3,0,1):0;
@@ -5399,7 +5540,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
    if(mine.length||cand.length){html+=`<div class="ep">Production</div><div class="sub">`+mine.map(k=>{const l=L[k];return PROG.day<l.ready?`${PARTS[k].name}: tooling up, ready in ${(l.ready-PROG.day).toFixed(0)} days`:`${PARTS[k].name}: ${l.lic!=null?`licensed from ${POWERS[l.lic].root}`:'own line'} · maturity ${(l.m*100).toFixed(0)}% · ${l.units} built · ×${prodLineK(l).toFixed(2)} per unit`}).join('<br>')+
      cand.map(k=>{const q=prodQuote(k),b=(m,o,lbl)=>`<button data-line="${k}:${m}" ${o.ok&&PROG.funds>=o.cost?'':'disabled'} title="${o.why||''}">${lbl} ${fmtM(o.cost)}, ${o.days} d</button>`;
        return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
-  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
+  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}${selKnowHTML()}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},dispatch:[],fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
@@ -5460,7 +5601,9 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
     ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
     weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
-  $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()}}
+  $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()};
+  // the one-line summary pinned above LAUNCH (PLAYTEST #20): the full picker above scrolls with the panel
+  const sl=$('siteLine');if(sl)sl.innerHTML=`${a.ok&&fz.ok?'':'<span style="color:#ff8a7a">⛔</span> '}${cur.name} · ${fmtLat(cur.lat)} · ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?' · <span style="color:#ffc46b">downrange warning</span>':''}`;sl&&(sl.title=a.ok?fz.ok?'':fz.why:a.why)}
 $('bEditor').onclick=()=>go('assembly');
 $('bRevert').onclick=()=>{if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}resetShip();go('flight');HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
@@ -5520,6 +5663,7 @@ function toggleMap(){go(view==='map'?'flight':'map')}
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atHQ?'program':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S)flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
   if(s==='rover'&&from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}
   if(from==='rover')rvLeave();
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
@@ -5528,7 +5672,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
   $('editor').classList.toggle('hidden',mode!=='editor'||atHQ);$('prog').classList.toggle('hidden',!atHQ);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
-  ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp()}
+  ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to (the shared
 // handler acts on it). Map shows its own rows, then Flight's.
@@ -5690,7 +5834,7 @@ function rvLeave(){if(RV&&RV.remote){const e=RV.remote;Object.assign(e,rvEntry(R
 function rvReset(){if(RV&&RV.remote){HOOK.msg('Nobody can put it back: it drives on as it is');return}if(RV)rvFold(RV);HOOK.save();rvSpawn();renderRover()}
 const rvWorld=R=>add(bodyPos(R.body,simT),fromPF(R.body,R.p,simT)),rvQW=R=>qmul(qBody(R.body,simT),R.q);
 function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);
-  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
+  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);if(RV.remote)rvSciSend(RV,RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
   rvRun(RV,dtR);if(performance.now()-rvHudAt>100){rvHudAt=performance.now();rvHud()}
   rvChase(RV,dtR)}
 addEventListener('keydown',e=>{if(mode!=='drive'||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
@@ -5749,6 +5893,16 @@ document.addEventListener('change',e=>{const s=e.target;if(!s.dataset||s.dataset
   d.slots[+s.dataset.slot]=s.value||null;s.blur();rvReset()});
 
 // ---- the readout
+// R4: the instruments on board as buttons (greyed with the reason when they can't work), the ground, what waits to go home
+// What we know: Selene's science so far (the findings themselves are in the logbook)
+function selKnowHTML(){const P=PROG.sel;if(!P)return'';const nq=P.quakes.length,nl=P.quakes.filter(q=>q.loc).length;
+  return`<br>Selene: ${P.spec.mare.length} mare and ${P.spec.high.length} highland rock readings · ${P.panos.length} panorama${P.panos.length===1?'':'s'} · ${P.seis.length} seismometer${P.seis.length===1?'':'s'} out${P.seis.length?`, ${nq} quake${nq===1?'':'s'} heard, ${nl} located${nq&&!nl?(P.seis.length<4?' (it takes 4 stations to place one)':P.quakes.some(q=>q.tried)?' (the array is too small to place them)':' (waiting for their records)'):''}`:''}`}
+function rvSciRows(R){const ks=[['spec','Spectrometer'],['pano','Panorama'],['seis','Set out a seismometer']].filter(([k])=>rvItems(R,k==='pano'?'cam':k));
+  const g=geoAt(R.body,R.p),w=(R.data||[]).length;if(!ks.length&&!g)return'';
+  return`${g?`<tr><td class="dim">rock</td><td>${g.unit==='mare'?'dark plains (mare)':'bright uplands (highland)'}</td></tr>`:''}`+(ks.length?`<tr><td class="dim">science</td><td>${ks.map(([k,l])=>{const why=rvSciWhy(R,k);
+    return`<button data-rvsci="${k}"${why?` disabled title="${why}"`:''}>${l}${k==='seis'?` (${R.seisLeft??SEIS_PACK*rvItems(R,'seis')})`:''}</button>`}).join(' ')}${w?`<div class="dim">${w} result${w>1?'s':''} waiting for contact</div>`:''}</td></tr>`:'')}
+addEventListener('pointerdown',e=>{const k=e.target.dataset&&e.target.dataset.rvsci;if(!k||e.target.disabled)return;const R=mode==='drive'?RV:RVA;if(!R)return;
+  e.preventDefault();rvSci(R,k,ORB_T0+simT);rvSciSend(R,R.contact);HOOK.save();rvHudAt=0;rvFHudAt=0});
 function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw=qrot(R.q,[0,0,1]),vf=dot(R.v,fw),ti=rvTilt(R),st=rvStats(R.d),X=R.gk<1||R.body!==TELLUS?st.S:st.T,home=mode==='drive'&&!R.remote;
   const f=siteFrame(up),hd=Math.round(Math.atan2(dot(fw,f.e),dot(fw,f.n))*180/Math.PI+360)%360,slip=R.wh.some(w=>w.slip&&w.load>0),air=R.wh.every(w=>!w.load);
   const warn=R.wet?`<div class="bad">In the sea: lost.${home?' R starts again.':''}</div>`:R.tipped?`<div class="bad">Tipped over.${home?' R puts it back at the start: on a mission, nobody would.':' Nobody can right it.'}</div>`
@@ -5763,15 +5917,20 @@ function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw
     <tr><td class="dim">battery</td><td>${G.kWh?(100*R.E/R.Emax).toFixed(0)+' %':'—'}</td></tr>
     <tr><td class="dim">power</td><td>${R.dead?'<span class="bad">frozen</span>':R.pGen==null?'—':`sun ${Math.round(R.sunEl)+0}° · <span class="${R.pGen>=R.pUse?'ok':'warn'}">${R.pGen>=R.pUse?'+':''}${Math.round(R.pGen-R.pUse)} W</span>`}</td></tr>
     <tr><td class="dim">contact</td><td>${!R.contact?'—':!R.contact.ok?'<span class="bad">none: it holds still</span>':R.contact.via==='crew'?'crew aboard':R.contact.via==='home'?`home${R.contact.delay?` · ${(R.contact.delay*1000).toFixed(0)} ms`:''}`:`via ${rvEsc(R.contact.via)}`}</td></tr>
-    <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr></table>
+    <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr>${rvSciRows(R)}</table>
     <div class="sub" style="margin-top:4px">W S drive · A D steer · Space brake · ${home?'R start again':mode==='flight'?'[ back to the lander':'P Program'}</div>`}
 
 // ---- meshes: the body (chassis and deck) per design, and one wheel per kind with its axle along X
 const rvMeshC=new Map();
 function rvBodyMesh(d){const key=JSON.stringify([d.ch,d.wh,d.n,d.slots]);if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvBodyArr(d)));return rvMeshC.get(key)}
 function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
-  box(a,[0,0,0],W,Hh,CH.L/2,C.G);box(a,[0,Hh+.01,0],W*.96,.01,CH.L/2*.97,C.D);
-  for(const w of G.wheels){const s=Math.sign(w.x);box(a,[s*(W+G.Wk.w/2+.03),Hh+.04,w.z],G.Wk.w/2+.04,.015,G.Wk.r*.9,C.W);   // fenders
+  const FR=[.55,.56,.58,1];box(a,[0,-Hh*.2,0],W*.94,Hh*.75,CH.L/2*.96,[.25,.26,.28,1]);   // the chassis: a tub inside a tubular frame
+  for(const sx of[-1,1]){tube(a,[sx*W,Hh*.6,-CH.L/2],[sx*W,Hh*.6,CH.L/2],.035,FR,8,true);tube(a,[sx*W,-Hh*.6,-CH.L/2],[sx*W,-Hh*.6,CH.L/2],.035,FR,8,true);
+    for(let i=0;i<=4;i++){const zz=-CH.L/2+i*CH.L/4;tube(a,[sx*W,-Hh*.6,zz],[sx*W,Hh*.6,zz],.025,FR,6)}}
+  for(const zz of[-CH.L/2,CH.L/2])tube(a,[-W,Hh*.6,zz],[W,Hh*.6,zz],.035,FR,8,true);
+  for(let i=0;i<4;i++){const zz=-CH.L/2+CH.L*(i+.5)/4;box(a,[0,Hh+.005,zz],W*.92,.008,CH.L/8*.94,i%2?[.16,.17,.19,1]:[.2,.21,.23,1])}   // floor panels
+  for(const w of G.wheels){const s=Math.sign(w.x),fx=s*(W+G.Wk.w/2+.03),fr=G.Wk.r*1.1;   // fenders: an arc of panels over each wheel
+    for(let k=0;k<7;k++){const t0=(k/7-.5)*2.2,t1=((k+1)/7-.5)*2.2,tm=(t0+t1)/2;box(a,[fx,Hh+.02+fr*(Math.cos(tm)-1)*.35+.04,w.z+Math.sin(tm)*fr*.85],G.Wk.w/2+.04,.012,fr*.85*(t1-t0)/2+.02,[.82,.82,.8])}
     box(a,[s*(W+.02),-Hh-.02,w.z],.05,.05,.06,C.D)}
   for(const t of G.items){const[x,y,z]=[t.x,t.y,t.z],[sx,sy,sz]=t.it.sz;
     if(t.k==='bat'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.D);box(a,[x,y+sy+.01,z],sx/2*.8,.01,sz/2*.8,C.AU)}
@@ -5789,6 +5948,7 @@ function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
 function rvWheelMesh(k){const key='w'+k;if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvWheelArr(k)));return rvMeshC.get(key)}
 function rvWheelArr(k){const Wk=RV_WH[k],a=[],r=Wk.r,w=Wk.w/2,tc=k==='m'?C.AU:C.BK;
   lathe(a,[[r*.55,-w,tc],[r*.95,-w,tc],[r,-w*.7,tc],[r,w*.7,tc],[r*.95,w,tc],[r*.55,w,tc]],[0,0,0],28,[false,false]);
+  if(k==='m')for(let i=0;i<14;i++){const t=i/14*6.2832,c=Math.cos(t),sn=Math.sin(t);for(const sd of[-1,1])box(a,[c*r*1.005,w*.35*sd,sn*r*1.005],.012,w*.32,.04,[.32,.31,.29,1])}   // the mesh tyre's titanium chevrons
   lathe(a,[[r*.55,-w*.6,C.G],[r*.55,w*.6,C.G]],[0,0,0],28,[true,true]);lathe(a,[[r*.2,-w*1.05,C.ST],[r*.2,w*1.05,C.ST]],[0,0,0],14);
   for(let i=0;i<4;i++){const s=[];box(s,[0,0,0],r*.5,w*.25,r*.06,C.D);const c=Math.cos(i*Math.PI/4),sn=Math.sin(i*Math.PI/4);
     for(let j=0;j<s.length;j+=VX){const P=[s[j],s[j+1],s[j+2]],N=[s[j+3],s[j+4],s[j+5]];s[j]=c*P[0]+sn*P[2];s[j+2]=-sn*P[0]+c*P[2];s[j+3]=c*N[0]+sn*N[2];s[j+5]=-sn*N[0]+c*N[2]}
@@ -5829,7 +5989,7 @@ function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-
   let dy=want-cam.yaw;dy-=2*Math.PI*Math.round(dy/(2*Math.PI));cam.yaw+=dy*Math.min(1,dtR*1.5)}
 function rvFlightTick(dt,dtR){if(!S)return;const obs=rvObsOf([S,...FLEET]);for(const R of FROV)R.obs=obs;
   if(RVA&&(RVA.wet||!FROV.includes(RVA)))RVA=null;
-  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
+  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);rvSciSend(RVA,RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
   rvFlight(dt);
   if((rvLoadT-=dtR)<=0){rvLoadT=1;const n=rvLoadNear(S);if(n)HOOK.msg(`${n>1?n+' rovers':'A rover'} of yours nearby: ] to drive`)}
   const el=$('rvFHud');if(el){el.classList.toggle('hidden',!RVA);if(RVA&&performance.now()-rvFHudAt>100){rvFHudAt=performance.now();rvHud(el,RVA)}}}
@@ -6078,7 +6238,11 @@ function render(){
         const bend=len(bend0)>1e-6?norm(bend0):norm(cross(u,[0,1,0]));el=add(add(sh,mul(u,d/2)),mul(bend,Math.sqrt(Math.max(0,L*L-d*d/4))));end=add(sh,mul(u,d))}
       else{el=add(add(sh,mul(yw,-L*0.97)),mul(nw,0.18));end=add(add(sh,mul(nw,0.36)),mul(yw,-0.25));u=norm(sub(end,el))}   // free: folded along the hull
       const buf=[];
-      tube(buf,sh,el,.08,C.W,8,true);tube(buf,el,end,.07,C.W,8,true);tube(buf,end,madd(end,u,.3),.11,C.D,8,true);
+      const jt=(P,a,r)=>{const ax=norm(cross(a,Math.abs(a[1])<.9?[0,1,0]:[1,0,0]));tube(buf,madd(P,ax,-.12),madd(P,ax,.12),r,C.G,12,true);tube(buf,madd(P,ax,-.135),madd(P,ax,-.12),r*.8,C.D,12,true)};   // a joint: a drum across the boom plane
+      const bm=(A,B,r)=>{const d=norm(sub(B,A)),L2=len(sub(B,A));tube(buf,A,B,r,C.W,10,true);for(const f of[.12,.88])tube(buf,madd(A,d,L2*f-.06),madd(A,d,L2*f+.06),r*1.12,C.D,10,true)};
+      bm(sh,el,.085);bm(el,end,.075);jt(sh,norm(sub(el,sh)),.13);jt(el,norm(sub(end,el)),.11);
+      tube(buf,end,madd(end,u,.32),.12,C.G,12,true);tube(buf,madd(end,u,.32),madd(end,u,.36),.13,C.D,12,true);   // the end effector: a snare drum
+      {const cp=madd(madd(end,u,.18),norm(cross(u,[0,1,0])),.13);tube(buf,cp,madd(cp,u,.1),.035,C.D,8,true)}
       const mm=makeMesh(buf);drawMesh(mm,mat4([1,0,0],[0,1,0],[0,0,1],[0,0,0]),vp);mm.free()}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
@@ -6560,7 +6724,7 @@ function updateHUD(){
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
-  renderStages();updateNodePanel();updateAutoBtn();settleDrops();
+  renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
   if(S.alive&&S.rec.orbitSci&&!S.landed&&S.body===TELLUS){const{city,dist}=nearestCity(toPF(TELLUS,S.r,simT));
     if(dist<350e3&&!heard.has(city.name)){heard.add(city.name);HOOK.news(heard.size===1?`Radio hams in ${city.name} pick up a faint beep-beep-beep from orbit`:`${city.name} hears the beeper pass overhead`,'ok')}}

@@ -3278,6 +3278,33 @@ Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--f
 - [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
 - [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
 
+
+### Follow-up: rovers R4 science, first slice (sats session, 2026-10-08)
+Scope set with Caio: geology plus three instruments, paid in knowledge, with contracts proposed rather than priced.
+- **Geology is the drawn maria.** The shader's mask is recomputed on the CPU; it agrees at 3,000/3,000 points. Mare
+  covers 9.7 % of Selene, almost all on the far side, a note for visuals/bodies.
+- **Three instruments:** a spectrometer, panoramas whose quality follows the sun's height, and a seismometer network.
+  The network locates moonquakes by least squares and brackets the hidden core: a 400 km array gives 78–98 km around
+  the true 90; arrays of 2 km and 30 km locate nothing.
+- **Delivery:** results count only when they reach home through R3's contact. Logbook section *On Selene*.
+- **Two mistakes of mine, caught by tests:** my helper `groundContact` silently replaced the existing ground-contact
+  physics of the same name (renamed `radioAt`); and the core bracket first crossed itself without location margins.
+
+### Files
+- `explorations/launchpad/index.html`: R4 block before SIM END (`selMare`, `geoAt`, `rvSci*`, `sciGot`, `rvFieldSci`,
+  `radioAt`, `quakesIn`, `seisTick`, `seisLocate`, `inv4`); `LOGF` On Selene rows; `advanceDays`; `rvEntry`/
+  `rvFromEntry`; the HUD's `rvSciRows` and button handler; `selKnowHTML`
+- `test.mjs` §42 (5 checks); `NOTES.md` § "R4 built, first slice"; `TESTING.md` row 117; `explorations/README.md`
+
+### Verification
+`test.mjs`: 371 passed. Each of 10 deliberate breaks fails a §42 check. Not run in the browser (preview server not
+restarted after the low-memory stop): the HUD buttons and the *What we know* line, covered only by the parse check.
+
+### Next steps
+- [ ] Caio: TESTING row 117 (and 115–116); a browser pass on the science HUD
+- [ ] Economy: price the R4 contracts proposed in NOTES
+- [ ] R4 next: the sample arm and sample return; drill or heat flow; radar; magnetometer; polar ice once Selene has relief
+- [ ] R5 drive plans; the clock while driving from home
 ## 2026-10-08 — Launchpad v1.51: spin stabilisation (control session)
 
 ### Summary
@@ -3358,4 +3385,114 @@ reaching it exactly; SAS (≤ 0.6 rad/s) and big stacks (storage runs out first)
 note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs `control-5` (mutation-tested); all pass on
 the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
 - [ ] Q29: re-run TESTING row 104 with the robot
+
+## 2026-10-08 — Launchpad roadmap v1.1: pillars, systems closed, human playtest gate (roadmap session)
+
+### Summary
+Mapped the roadmap against the usual game-development cycle (prototype → vertical slice → production → alpha/beta).
+M1 is the vertical slice. Added what the cycle showed was missing: six **design pillars** drafted from NOTES (Caio to
+edit); **systems declared complete** (Caio: near saturation, now integrating), so a new system needs a pillar and
+Caio's yes; M1's finish line now includes **a person other than Caio playing the first hour**. Caio's playtesting is
+blocked on the construction screen, so M1's first vehicle item is the builder for a newcomer, and QA's first is a
+presets-only playtest route for him.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Caio: edit the pillars
+- [ ] Orchestrator: rank the builder-usability and presets-route items at the top of vehicle and QA
+
+## 2026-10-08 — Launchpad: the climb's corridor (bodies session, cont.; QUEUE Q12)
+
+Deviations now catch a climb that has already failed, before the propellant runs out, so the craft is handed over
+alive:
+- `control`: the nose 20° off for 5 s;
+- `falling`: descending under power before cut-off;
+- `slow`: under 70 % of the recorded speed at the same height. The recorder now keeps speed against height.
+
+The rules are loose, so working variants still fly. The +2 t Orbiter variant is now handed over at 58 km instead of
+burning up. A 2 s tumble that the SAS recovers from passes; an 8 s one deviates. 377 checks pass.
+
+**Files:** `index.html` (procCorridor, `vel` in procedures), `test.mjs` (bodies-2), NOTES, QUEUE (Q12 ✓).
+
+### Next steps
+- [ ] Q13: landing on a chosen crater
+
+## 2026-10-09 — Launchpad: bloom, fin-tip vapor, spent stages, PLAYTEST #3/#4, design pass on station/arm/rover; repo moved (aerofx session, close)
+
+### Summary
+Since the 2026-10-08 entry, each merged and pushed on Caio's OK:
+- **PLAYTEST #3** (new rocket looked worn: the LOX frost; now a translucent rime) and **#4** (floodlights as aimed spotlights
+  with falloff; procedural concrete/paint/steel detail on the complex). Visuals' code, with a note in its claim.
+- **The repo left Google Drive** (runbook `docs/leaving-drive.md`): this machine's copy step run here; worktrees
+  `launchpad-aerofx`/`launchpad-plumes` re-pointed to `C:/Users/caioa/dev/explorations`. Work now syncs through GitHub.
+- **Bloom** (offscreen MSAA target, a blur chain, glow added where the frame is dark). Two fixes later: the composite
+  sampled blur levels at the wrong texel size (ghost streaks), and a 3×3 tent downsample.
+- **Fin-tip vapor** (loaded fin tips in hard turns, humid low air) and **spent stages re-entering** (plasma via a shared
+  `drawPlasma`, char, sparks, smoke trail; render-side).
+- **Design pass** on hab/lab (KIND 16 shield panels, handrails, portholes, radiators, window), the arm (turret, joints,
+  end effector) and the rover (frame, floor, fenders, chevrons), at Caio's request.
+
+**Process notes:** several sessions share the main clone on this machine; one merge found another session's unpushed
+work in the local `main` (merged both, SESSION_LOG conflict kept both sides). A claim was once pushed as "merged" a few
+minutes before the merge landed: push the claim after the work. The first-run gate (ui) now covers the page on load;
+screenshot scripts click `[data-start]` first; the older editor reference views don't yet.
+
+### Files
+- `explorations/launchpad/index.html`, `views.js` (views 101–104), `NOTES.md` (§ PLAYTEST #3/#4, Bloom, Fin-tip vapor,
+  Spent stages, Design pass)
+- `explorations/launchpad/PLAYTEST.md` (#3, #4 to Done)
+
+### Next steps
+- [ ] Older reference views (editor ones) should pass the first-run gate
+- [ ] Bloom: a true HDR pipeline would separate sunlit paint from the sun
+- [ ] Stage breakup in the sim (render-only so far); the arm's folded pose overhangs short modules (sats' design)
+
+## 2026-10-08 — Launchpad: PLAYTEST sweep #8, #15, #16, #19, #20, #21, #22 (fixes session, run by the sound session)
+
+### Summary
+The robot playtester's finds whose owners were idle, fixed and re-checked by rerunning its rows. TESTER badge into the
+flight toolbar, which now has a real position top-right (also fixed #8); the news keeps its own lane beside the readout
+(`hudLayout`); LAUNCH plus a one-line site summary pinned at the bottom of the assembly panel; the home station sees
+anything within 2 km of its antenna (the rocket was under the mast top's 5° minimum elevation); leaving a flight settles
+it then, not at the next launch (`go()` → `flightLeave` → `missionEnd`, once via `R.ended`); `refView(8)` fixed and
+close-ups hide the pad rig. test.mjs `fixes-1` (4 checks, all fail on the old page). Notes left for ui, economy, builder,
+terrain in ACTIVE_WORK. Left: #17, #18, #23 (aerofx/control were active); the centred event message still crosses the
+readout's Mass row; headless Chrome can hand `frame()` a negative `dtR` (NOTES).
+
+### Files
+- `explorations/launchpad/index.html`, `views.js`, `test.mjs`, `playtest.mjs`, `NOTES.md` § "PLAYTEST sweep",
+  `PLAYTEST.md`, `TESTING.md`; screenshots in `C:/Users/caioa/dev/playtest-out/fixes/`
+
+## 2026-10-08 — Session roles: playtest intake and studio briefs (roadmap session)
+
+### Summary
+Caio wants to start sessions by naming their role. Added `docs/session-roles.md` (roles table, plus full briefs for
+**playtest intake**, which turns raw feedback into PLAYTEST items and Proposed lines, and **studio**, which builds a
+game-development playbook and template in a new Drive folder that is a template only, with the never-run-git-from-Drive
+warning in its README) and one routing line in AGENTS.md.
+
+### Files
+- `docs/session-roles.md` (new), `AGENTS.md` (one pointer), `INDEX.md` (one row)
+
+### Next steps
+- [ ] Orchestrator: regroup QUEUE into the eight lanes (Caio is pasting the instruction)
+- [ ] Studio session: interview Caio, then propose the folder's structure
+
+## 2026-10-08 — Launchpad roadmap v1.2: look & sound split into beats (roadmap session)
+
+### Summary
+Caio: look & sound is the heaviest and most splittable lane, so it never maps to one session. ROADMAP now defines
+**beats** (sub-areas of a lane, one session each): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`,
+port 8802), sound. Recorded where beats collide (`render()` pass order, shared shader helpers, bloom, `views.js`
+numbering) and the real limit: look work is nearly all GPU, so look sessions on one machine take turns through the
+courtesy lock; two machines double throughput.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.1.0 → 1.2.0, `QUEUE.md` (one flag), `docs/session-roles.md` (beat in the kickoff)
+
+### Next steps
+- [ ] Orchestrator: tag look items by beat, at least 2 ready per beat
+- [ ] Create `launchpad-sky` when a sky & bodies session starts
 

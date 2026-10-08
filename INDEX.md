@@ -86,6 +86,7 @@ Owned by [`explorations/README.md`](explorations/README.md) — add rows there, 
 | File | Purpose |
 |------|---------|
 | [`docs/architecture-principles.md`](docs/architecture-principles.md) | The 8 workspace architecture principles (routing tree, machine drains, archive over delete, …) |
+| [`docs/session-roles.md`](docs/session-roles.md) | Standing briefs for named sessions (playtest intake, studio; lanes and orchestrator point onward) |
 | [`docs/coordination.md`](docs/coordination.md) | Session coordination profiles — A (file-based) vs B (DB-backed); choice recorded at setup |
 | [`docs/leaving-drive.md`](docs/leaving-drive.md) | Runbook: moving the repo out of Google Drive (check, commit, copy on both machines, push, freeze); script `docs/leaving-drive.sh` |
 | [`docs/claude-configuration.md`](docs/claude-configuration.md) | Multi-surface Claude configuration patterns (Desktop, Code, Projects) |

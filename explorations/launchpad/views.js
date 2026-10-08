@@ -4,6 +4,7 @@
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
   if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
+  HOOK.noRig = false;   // (close-ups hide the pad's moving parts; every other view shows them)
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
@@ -20,14 +21,18 @@ window.refView = async (n) => {
     while (len(S.r) - TELLUS.R < 3000) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
     INP.pitch = 0; cam.yaw = 1.75; cam.pitch = 0.05; cam.dist = 55; render(); await settle(); bare(); return 'ascent';
   }
-  // 4–9: part close-ups in the editor, for judging part detail: design, the part to centre on, camera yaw/pitch/distance
-  const close = { 4: ['Orbiter', 'kestrel', 0.5, -0.05, 6], 5: ['Orbiter', 'pod', 0.3, 0.1, 5], 6: ['Big Lunar', 'adapt', 0.6, 0.05, 11],
-    7: ['Sounding', 'sci', 0.25, 0.08, 4.5], 8: ['Lunar', 't8', 0.4, 0.02, 16], 9: ['Big Lunar', 'shield', 1.9, 0.15, 7] };
+  // 4–9: part close-ups in the editor, for judging part detail: design, the part to centre on, camera yaw/pitch/distance.
+  // The pad's rig (gantry, swing arms, hold-downs) is hidden for them (HOOK.noRig), and the cameras stay west of the
+  // rocket (yaw < 0), away from the umbilical tower on its east side (PLAYTEST #22). The Lunar lost its Tank 8 when it was
+  // resized: view 8 centres on its Tank 16 instead.
+  const close = { 4: ['Orbiter', 'kestrel', -0.5, -0.05, 6], 5: ['Orbiter', 'pod', 0.3, 0.1, 5], 6: ['Big Lunar', 'adapt', -0.6, 0.05, 11],
+    7: ['Sounding', 'sci', 0.25, 0.08, 4.5], 8: ['Lunar', 'T16', -0.4, 0.02, 16], 9: ['Big Lunar', 'shield', -1.2, 0.15, 7] };
   if (close[n]) {
     const [design, key, yaw, pitch, dist] = close[n];
     if (mode !== 'editor') document.getElementById('bEditor').click();
-    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); HOOK.edStill = true;
+    stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
     const p = S.parts.find(q => q.d.key === key);
+    if (!p) throw new Error(`refView(${n}): ${design} has no ${key}`);
     cam.edY = p.y0 + p.h / 2 - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare(); return design + ':' + key;
   }
   if (n === 10) { // Sounding rocket's Sparrow firing at ~1 km, from below and to the side: the bell interior and the plume root
