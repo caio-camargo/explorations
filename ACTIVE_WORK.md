@@ -46,6 +46,11 @@ the main clone shows this machine's.
 > if / owner). **When you ship something a person should try, add a row** (next free number, your session as owner) in the
 > same commit as your NOTES section, and fix rows your changes make wrong. Problems found go to PLAYTEST.md.
 
+> **For every launchpad session, 2026-10-08 (orchestrator, at Caio's request): pick your work from
+> [`explorations/launchpad/QUEUE.md`](explorations/launchpad/QUEUE.md).** Top `ready` item in your lane, or overflow; mark it
+> taken there and push, then claim here as usual. Follow-ups go under its *Proposed* section. Before running the game in
+> Chrome, check the courtesy lock `C:/Users/caioa/dev/.game-busy` (QUEUE.md § Load): two game runs at once hang or crash.
+
 > **Heads-up, 2026-10-07 (planning): the planet was rescaled on `main` (`ae0fd7b`). Merge `main` before your next slice.**
 > Tellus is now 1,274 km (a fifth of Earth), 9.81 m/s², an 8 h day (`DAY_S` follows the rotation), 100 km of air (scale
 > height 7.5 km); Selene is 348 km at 38,440 km. Heating gain ×3 → ×1. Lunar, Big Lunar and Passenger presets resized.
@@ -104,6 +109,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (orchestrator session) | 2026-10-08 | Launchpad **work queue**: keeps `explorations/launchpad/QUEUE.md` current (~30 min refresh), hands out kickoff lines. Pushes coordination docs only; never merges or pushes code. Worktree `C:/Users/caioa/dev/launchpad-orchestrator` / branch `orchestrator` | `explorations/launchpad/QUEUE.md` (sessions may change their own item's state and append under *Proposed*) |
 > Cleared 2026-10-08: sound session, **v1.49 sound** on `main` (`09a9e85`, pushed). **Everyone:** a render-side block before the main loop (`AUD`, `sndMix`/`sndBoom` between `// ==== SOUND MIX BEGIN/END`, `sndTick`), one `sndTick(dtR)` in `frame()` after `emitSmoke`, F4 in `KEYS.all`. Events are diffed from state (parts on, engines burning by `p.i`, `chuteA`, `landed`, `booms`): no SIM hooks to keep. **Note:** the sim's `SND(h)` is the speed of sound; the audio object is `AUD`. Worktree `launchpad-sound` = main.
 > Cleared 2026-10-08: playtest session, **the robot playtester** on `main` (`a6e7169`, pushed): `launchpad/playtest.mjs` walks TESTING rows in headless Chrome on the RTX (`--force_high_performance_gpu`; note `shot.mjs`'s flags land on the Intel iGPU). First pass: 58 of 113 rows judged (37 ✓, 4 ✗, 17 ~), PLAYTEST #15–#23 filed. **Owners, your items:** tester #15 · builder UI #16 #20 · terrain #17 #19 (with aerofx on #17) · control #18 #23 · economy+UI #21 · visuals #22. Output (not in git): `C:/Users/caioa/dev/playtest-out/`.
 > Cleared 2026-10-08: sats session, **rovers R1** (the Rover yard) on `main` (`d620d8b`, not pushed). **Everyone:** a new screen `go('rover')` with `mode='drive'` (`simulate` hands it to `rvTick`; `screenNow()` returns `'rover'`; `KEYS.rover`); the rover block sits just before SIM END (`RV_*`, `rvNew`/`rvStep`/`rvRun`/`rvStats`, `yardOf`); designs in `PROG.rovers`, tested km in `PROG.wheelKm`. **Economy/planning:** rovers overlap the pre-flight mission planner (drive plans as a surface leg, deploy checks at site choice): launchpad NOTES § "R1 built". Rover parts have no prices or era gates yet.
