@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.17.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1058,6 +1058,86 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.40 — attitude control: a real gimbal, steerable fins, a SAS that holds (2026-10-08, control session)
+
+Caio's review: stability and attitude control are a big part of KSP and felt undercooked here. They weren't missing
+(wheels, gimbal, RCS and passive fins all existed), but control was an **abstract torque budget that was always spent
+perfectly**. Every engine had the same 7 % "gimbal" as a number, nothing ever turned, the controller's acceleration
+was added to the dynamics as is, and a single engine on the axis could roll the vessel. This slice makes the actuators
+physical. `study_control.mjs` measures the control budget (`node study_control.mjs`).
+
+**What changed**
+- **Engine gimbal is a nozzle that turns.** Each engine has a range `gim` (°) and a slew rate `gimR` (°/s): Sparrow 3°/15,
+  Wren 6°/20, Petrel 3°/10, Kestrel 5°/10, Condor 4°/8, Albatross 4°/8 (other sessions' engines default to 4°/10).
+  `p.gv` is the deflection; the thrust points along `tdir + gv`, so the steering torque, the side force and the joint
+  loads all come from the turned thrust. The structural code's separate "gimbal side force" path is now only used by
+  the builder's what-if `probe`.
+- **One allocator** (`gimSteer`): the wheels give what they can of the control law's torque as a pure torque, and the
+  rest is shared out by least squares over every engine's two deflection axes and every steerable plate. An engine on
+  the axis has no roll column, so it can't roll anything. Roll authority (`ctrlAuthRoll`) counts only engines off the
+  axis (side boosters, clusters).
+- **Steerable fins**: `cfin` (radial, 1.2 M), `cfins` (ring, 4.5 M), `cfins25` (2.5 m ring, 11 M). The same plates as
+  the passive ones, all-moving, ±20° at 40 °/s. A plate's normal turns about its span (n' = n·cosδ − Y·sinδ) in the
+  existing flat-plate model. Their columns (`finCols`) are linearised each step at the current airflow, so their
+  authority grows with q, is gone in vacuum, and they roll. They use the existing fin kinds, so palette, mesh, damage and
+  aero all pick them up. Tier 1 in `tierOf` (they have actuators).
+- **SAS**: (1) while lagging actuators carry the load (engines burning, or steerable fins with > 25 % of the wheels'
+  authority), the rate demand is linear near the target with Tc = `SAS_LAG` × the slowest actuator's full swing. (2) The
+  rate loop then also integrates (`SAS_TI` = 1 s), clamped to the authority and **frozen while the command saturates**.
+  Wheel- and RCS-only flight is untouched: no zone, no integral.
+
+**Before / after** (same scripted inputs)
+
+| | main | v1.40 |
+|---|---|---|
+| Lunar, pitch/yaw rate t 20–90 s under SAS prograde (rms) | 0.63 °/s | 0.61 °/s |
+| Heavy, same (rms) | 1.56 °/s | 1.37 °/s |
+| Lone Condor + "balance" cant, max tilt in 50 s (test §22) | 2.2° | **1.3°** |
+| Lunar, 4 s SAS yank at q > 15 kPa, peak joint (test §5) | 100 %, snaps | 88 %, holds |
+| Probe dart (core 4 kN·m) at 300 m/s, 30° turn: passive ring / steerable ring | 11.6 s / — | 11.6 s / **5.5 s** |
+| Steerable ring pitch authority, 150 → 300 m/s at 5 km | — | 7.2 → 28.9 kN·m (∝ q) |
+| Physics step, Lunar / Heavy | 34 / 52 µs | 40 / 53 µs |
+
+**What it taught**
+- **The square-root law limit-cycles with any lag.** √(α·θ) has unbounded gain at zero error. With an instant
+  actuator that was invisible; with a nozzle taking 0.5 s to swing, the Lunar wobbled at ~0.5 Hz (rms rate 4.8 °/s,
+  0.9 nozzle reversals a second). A linear zone of Tc = 1× the swing time cures it; 0.5× doesn't.
+- **A rate loop can't fight a steady moment, and the old one hid it.** The linear zone left a standing error against
+  thrust off the CoM (canted test: 2.2° → 10.1°). Worse, the steerable fins never moved at all: the loop's largest request
+  (gain 4 × 0.6 rad/s × inertia) was 3.6 kN·m on the dart, less than its 4 kN·m wheel, so it never asked the fins for
+  anything while the passive aero moment won. A rate integral fixes both.
+- **…and windup is the integral's whole failure mode.** Clamped to full authority but integrating while saturated, it
+  made the Lunar oscillate at rms 9.8 °/s whatever its time constant (0.5–2 s). Freezing it while the command saturates
+  (conditional integration) took it back to 0.61 °/s. Clamping it at 30 % instead also stopped the wobble, but halved
+  what the fins could do.
+- **The old gravity turns were partly a controller artifact.** The sqrt law trailed prograde with a small standing
+  error on the kick's side, which sped up the pitch-over (34° at 40 s). Exact tracking gives a slower, pure gravity turn
+  (29°), so scripted 0.95 s kicks now need ~1.2 s for the same trajectory. Test §12's tape kick was retuned. Human
+  pilots will notice nothing but slightly lazier turns after a kick.
+- **The magic roll was real but rare**: it only showed when roll was commanded (roll key, roll disturbances). The
+  scripted ascents never asked for roll, so the study's counter read 0 before and after.
+
+**Tests** (§35, 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
+nozzle centres when the throttle is cut; the Heavy's boosters add roll authority, the Orbiter's one engine none; the
+steerable dart turns 30° in < 0.6× the passive time, plates within range and rate; fin authority ∝ q and none in vacuum,
+and they roll a wheel-less dart. Changed: §5's yank check now asks for a joint ≥ 80 % (was "snaps", at exactly 100 %);
+§12's tape kick 0.95 → 1.2 s. 247 checks pass.
+
+**For other sessions**
+- **visuals:** `p.gv` (engine, vessel frame, |gv| = sin of the deflection) and `p.fd` (steerable fin, one angle per
+  plate, rad; ring plates in `FIN4` order) are there to draw: nozzles that swivel, fins that turn. `cfin`/`cfins` draw as
+  the passive fins for now.
+- **builder:** the steerable fins sit in "Aero & recovery" by kind. The "no control torque" warning still looks only
+  for wheels; a wheel-less design can now steer with gimbals or steerable fins.
+- **economy / planning:** prices above; `tierOf` returns 1 for `d.ctl`. Engine gimbal ranges could become a variant
+  or an upgrade axis.
+
+**Next on this line** (the rest of the review, in order): the builder readout (control authority per axis vs the aero
+moment at max-q; time for a 90° turn in vacuum, both of which `study_control.mjs` already computes); weaker wheels
+that saturate (pod 40 → ~5–10 kN·m, a wheel part, momentum dumped with RCS); era-gated SAS quality. The wheels are
+still 8× a KSP Mk1 pod and dominate everything but the biggest stacks: in the study the Orbiter's steady ascent never
+needs its gimbal once the kick is done.
 
 ## v1.39 — real ground contact; snow and Selene boulders (2026-10-08, terrain session)
 
