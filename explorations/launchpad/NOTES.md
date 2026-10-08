@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1067,6 +1067,46 @@ Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `8
 **Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
 anvils; the deck from 8 km is still fairly uniform in brightness.
 
+## Effects for the new features: escape tower, landing dust, explosions (2026-10-08, aerofx session)
+
+Other sessions had added things with no visuals of their own: the crew escape tower (bodies), crewed Selene landings
+(bodies), and PLAYTEST #5 (the explosion was one additive half-sphere).
+
+**Escape tower motor.** While `S.lesT` burns (the bodies session's abort: 150 kN for 3 s), the tower's motor shows as
+four nozzles (`lesNozzles`: 1.33 m up the tower, r 0.26 m, canted 35° outward) drawn as plumes. A new `solid` propellant
+profile: white-yellow, nearly opaque, few diamonds. The nozzles go through the normal plume path (spool, ignition flash,
+tail-off, plume light), and `emitLesSmoke` lays a dense white column (spaced by distance like the main trail; spaced by
+time it broke into beads at speed). Views 84–86.
+
+**Landing dust (airless bodies).** On a body without air, the jet that reaches the ground draws `DUST_FS` instead of the
+hot-gas splash: a sheet of dust 0.45 m + 9 % of the distance thick, thrown radially outward in noise streaks, sunlit
+and forward-scattering, with a patch swept clear under the nozzle. It starts 30–40 m up and thickens as the nozzle
+descends. The first sheet (0.12 m thick) was invisible: 40 steps over a 60 m ray never landed in it. Albedo 0.78, above
+the ground's, so the streaks read against the regolith. Views 87–89 hover a Wren over Selene.
+
+**Explosions (PLAYTEST #5).** `HOOK.boom` (callers unchanged) now also records the air density, sprays sparks and
+fragments (`fxPuff`, hot), and the draw is `BOOM_FS`: a raymarched fireball (three noise octaves for billows; white-yellow
+core → orange → red) that turns into a rising smoke cloud, black soot greying over ~6 s, lasting 14 s in air. In vacuum it
+flashes and thins out in ~3 s. Radius sz·(2 + 12√t) for the first 1.2 s, then a slower spread; the cloud rises
+sz·3.5·t^1.2. The flash takes over the scene's point light (`boomLight`: brighter than the plumes for ~0.3 s, then a
+1 s glow), so it lights the pad, the hull and the ground pool. Views 90–93 (they backdate the boom clock, which is wall
+time).
+- First look: a pale ball with a blue rim. Light smoke under sunlight swamped a weak fire. Darker soot, fire emission
+  ×2.7, and the soot building over 0.6 s instead of 0.3 s fixed it.
+
+**A box-proxy bug in all three box volumes.** The explosion was invisible: the mesh helpers' `box()` is not wound
+consistently, so `cullFace(BACK)` dropped some of the box's near faces. The impingement and dust volumes had used the same
+proxy and only worked because the reference cameras sat inside their boxes. Now `VBOX` (built by hand, wound outward on
+every face) is the proxy for all three, and the shaders compute the ray's entry and exit analytically, so they don't
+depend on which face rasterised. An intermediate fix (draw every face, march only from the far one) broke when the far
+face lay under the ground (the depth test cut it).
+
+**Cost on the RTX 5050** (on/off, same frame): explosion 0.55 ms at 1.2 s (the cloud filling a third of the screen),
+landing dust 0.3 ms, escape motor within noise.
+
+**Still open:** explosions are round; a ground-level fireball has no ground-hugging spread. Fragments don't trail smoke.
+The escape motor's jets don't strike the capsule. The dust doesn't settle on anything and has no effect on visibility.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1097,6 +1137,71 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.43 — reaction wheels that saturate; the builder's control readout (2026-10-08, control session)
+
+The second slice of the control review (v1.40). The pod's wheels were 8× a KSP Mk1 pod and never filled up, so they
+steered everything. Now they are a resource.
+
+**What changed**
+- **Wheels store what they give** (`wheelGive`): the vessel gets τ and the wheels' momentum H (body frame) changes by
+  −τ·dt. Past `hmax` they can't push that way. Pod and crew capsule 40 → **10 kN·m**, 100 kN·m·s; probe core 4 → **2 kN·m**,
+  20 kN·m·s; parts without `hmax` store 10 s of their torque (`WHEEL_S`). The rails attitude step goes through the same
+  limit.
+- **They unload** whenever something else can hold the vessel while they spin down (time constant `WHEEL_DUMP` = 4 s,
+  at most half that channel's authority). A burning gimbal or steerable fins unload them for free from 2 %. RCS spends
+  gas, so it only keeps them usable: from 80 % down to 60 %. When there's no gimbal or fins channel, RCS also covers what
+  saturated wheels can't give.
+- **A reaction wheel part** (`rwheel`, *Control*, 0.12 t, 15 kN·m, 150 kN·m·s, 5 M) to stack where turning big things
+  matters.
+- **HUD row** `Wheels n% saturated` once they hold ≥ 5 %, with the hint of what unloads them.
+- **Builder: a Control block.** Holding 5° off the airflow at max-q (25 kPa, M1.2), burning and coasting: what it takes
+  against wheels + gimbal + fins + RCS, as **holds** / **weathervanes** (short of authority but stable) / **flips**
+  (short and unstable). Roll authority by source. A 90° turn in vacuum on wheels (capped at storage ÷ inertia) and with
+  the first stage lit (`controlReport`, `turnTime`). The old "controls can't hold 5°" line moved here and now counts fins.
+  The no-wheels warning says what still steers.
+- **Bug fixed from v1.40:** `partBody` picks meshes by part key, so `cfin`/`cfins` drew as plain cylinders. They now draw
+  as the fins they are.
+
+**Numbers**
+
+| | v1.40 | v1.43 |
+|---|---|---|
+| 90° turn in vacuum on wheels, Orbiter / Heavy / Lunar / Crewed Lunar (readout; flown) | 5.5 / 7.3 / 21 / 38 s | **11.1 / 14.6 / 56 / 151 s** (flown 11.5 / 15.3 / 54 / 145) |
+| Same with the first stage lit (gimbal) | 3.4 / 3.3 / 4.9 s | 3.5 / 3.4 / 5.0 s |
+| Orbiter, pitch key held 30 s, SAS off | spins up without limit | levels off at hmax/I = 0.512 rad/s |
+| Unloading from 90 %, holding attitude, 45 s | — | nothing: 90 % · burning gimbal: 2 %, within 0.31° · cold-gas RCS: 73 % for all 30 kg |
+| Coasting at max-q, Orbiter: need / have | 18 / 40 kN·m (holds) | 18 / 10 on wheels (weathervanes); 264 with a steerable ring |
+| Physics step, Lunar / Heavy (back to back) | 37 / 55 µs | 39 / 58 µs |
+
+**What it taught**
+- **Quartering the wheels broke no check.** Every scripted flight (ascents, aborts, the crewed Selene mission,
+  docking, re-entries) steers on the gimbal while burning, and the capsules are aerodynamically stable shield-first. The
+  wheels had been doing almost nothing the tests could see. Where they do matter is turning in vacuum, now 2–4× slower,
+  and holding off the airflow while coasting.
+- **Wheel storage, not torque, sets a big stack's turn rate.** With 100 kN·m·s on a 192 t·m² Orbiter the turn tops out
+  at 0.51 rad/s; on the Crewed Lunar at ~0.03 rad/s, a 2½-minute 90°. The readout has to cap by storage or it is 3×
+  optimistic for the big stacks.
+- **Cold gas is a poor way to unload a pod's wheels**: 90 → 60 % (30 kN·m·s) is ~29 kg at Isp 70 with this lever. Hence
+  the 80 → 60 % band: RCS keeps the wheels usable rather than emptying them, and a short burn is the cheap way.
+- **Saturation in the air is hard to isolate.** Holding a rocket off the airflow, the airflow swings round to meet the
+  nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
+  vacuum.
+
+**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
+
+**For other sessions**
+- **ui:** the `Wheels` HUD row sits before the RCS row (`wheelRows`). The Control block is in `editorChanged`
+  (`controlHTML`).
+- **builder:** `rwheel` is in *Control* (one edit to `CAT`). It draws with the default banded drum.
+- **visuals:** `rwheel` could use a look of its own.
+- **economy:** `PRICE.rwheel = 5`, `tierOf` gives it 1.
+- **anyone scripting flights in vacuum with big stacks:** turns on wheels alone are slow now; light the engine (the
+  gimbal) or add RCS / a wheel part.
+
+**Next on this line:** era-gated SAS quality (early avionics: stability only, a weaker or laggier loop); the gimbal and
+fin deflections drawn (visuals); a "kill rotation" / unload-now control if playtests want one.
 
 ## v1.42 — the event timeline (2026-10-08, economy session)
 
@@ -2141,6 +2246,67 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Procedures: automation that adapts, and a dispatch brief (2026-10-08, bodies session)
+
+Caio wants missions that can run themselves, so repetitive flights are optional, with **a better hand-flown flight improving every
+automated one after it**, and exact replay can't do that everywhere. The v1.8 tapes record every input and replay **open-loop**:
+perfect when nothing differs, blind when anything does (an ignition failure the recording didn't have, a moved docking
+target, a contract's different orbit, any design change, a chaotic leg, a physics change).
+
+**1. Tapes can't go stale any more.** `TAPE_V` was the hand-bumped `'lp-1.12'`, unchanged through a dozen physics changes since,
+so a saved tape would have replayed against new physics and silently diverged. It's now a fingerprint (`hashStr`) of the
+functions and data that move a craft (`physStep`, `rails`, `coastStep`, `pertAcc`, `aeroPass`, `thermal`, `structLoads`,
+`stage`, `detach`, `abort`, `igniteOK`, `procStep`, …, plus `PARTS` and the bodies). Any change to them retires old tapes. A
+logbook record whose tape predates the current physics says so when loaded.
+
+**2. Procedures: a flight's intent, not its keypresses** (`procSample`, `procKeep`, `procStart`, `procStep`, `PROG.procs`).
+v1 covers the ascent to orbit, the flight repeated most.
+- *Recorded* from every flight off the pad (sampled in `advPhys`): pitch above the horizon and throttle against altitude, the
+  heading, staging done before a tank ran dry, the first cut-off, and the orbit it ends in.
+- *Kept* per design once the craft is in a stable orbit with its engines off, **only if it beats the stored one** (less Δv
+  spent to orbit). A better hand-flown ascent becomes the procedure, with a news line, and every automated flight after uses it.
+- *Flown* by `procStep` through **SAS `stab` holds** (real torque, real staging), cutting off on **goals** (the ascent's own
+  cut-off apoapsis, then periapsis at the circularisation), not times. A target override retargets the cut-off and the
+  heading (inclination from the site's latitude). In the game: **▶ Procedure** on the pad; any control key takes over; the
+  coast to the burn warps; a procedure-flown flight can't be saved as a tape (it's already automated).
+
+| Check (§28) | Result |
+|---|---|
+| a hand-flown Orbiter ascent → procedure | 448 pitch points, heading 90°, 102 × 118 km, 4,445 m/s |
+| the procedure flies the same design | 103 × 111 km for **4,446 m/s** (hand-flown 4,445) |
+| retargeted to a contract's 180 km | 180 × 184 km for 4,538 m/s |
+| a heavier variant (4 t upper tank: +2 t, TWR 1.41 vs 1.63) | 103 × 110 km for 4,507 m/s |
+| a variant that can't make orbit (+0.5 t, 4,329 m/s in all) | never claims success |
+| a lazier hand flight (4,778 m/s) | doesn't replace the 4,445 procedure |
+
+In the browser: ▶ Procedure → ascent → coast (warp) → circularisation → in orbit at T+287 s.
+
+**What it taught:**
+- **A procedure is a technique tuned to its design.** On a design with much lower thrust-to-weight (+0.5 t payload *and* a 4 t
+  tank: TWR 1.37), the Orbiter's pitch curve reaches space but ends 42 × 102 km, about 70 m/s short after 4,898 m/s. It works,
+  but it wastes Δv. So procedures stay per design, and a new design earns its own by being flown.
+- **The ascent's cut-off isn't the final apoapsis.** The first version aimed the ascent at the final orbit's apoapsis (118 km;
+  the circularisation had raised it from 110), kept burning past the end of its pitch table and fell back. It also stored the
+  cut-off as a 0 throttle setting. Both are fixed: the cut-off apoapsis is kept, and only powered samples go into the tables.
+- **A landed craft with its engines off is on rails,** where `advPhys` never runs, so the first in-game version sat on the pad.
+  The procedure now lights the engines when started, and the game loop keeps a procedure on physics except during its coast.
+
+**3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
+the economy decides, this is what the physics side offers:
+- **Real outcomes, cheaply.** A procedure flown headless is the game's own physics: ~1 s of CPU for an ascent; 15 s for the
+  whole crewed Selene mission (`fly_crewlunar.mjs`). A dispatched flight can run between flights and come back with a real
+  result (orbit reached or not, Δv spent, an ignition failure, a breakup), not a dice roll.
+- **What a procedure can promise:** the orbit it was proven to, retargetable within its design's margin (it reports failure
+  rather than faking success). Today that means orbit only; transfer, landing and return procedures would follow the phases
+  `fly_crewlunar.mjs` already uses.
+- **Questions for the economy:**
+  1. Which contracts can be dispatched? Those whose target a stored procedure can reach, for its design.
+  2. Does an automated flight earn the same? (A pilot's precision bonus, opinion for a first done "by hand"?)
+  3. Time and cost: the same stacking days and launch fees as a flown launch? Can several be queued?
+  4. Risk shown before dispatch (from the procedure's margin and the parts' know-how)?
+  5. How results reach the player: a news line, the logbook, a short replay?
+  6. Should a first in the world ever be dispatchable, or only repeats?
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
@@ -4210,6 +4376,34 @@ back with the era's precision. The plan then drives:
 
 In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
 and the screen is where the player spends their time either way.
+
+**Gravity assists without trial and error** (Caio): slingshotting off Selene (and later planets) should be something
+the planner *solves*, not something you nudge nodes at for an hour as in KSP.
+
+Why KSP is hard here: the outcome of a flyby depends on *where* you pass the moon (the aim point) to a few km, and you
+control it only indirectly through a node hours or days earlier. Real mission design inverts this. You choose the
+flyby, and a solver finds the burn.
+
+- **Goals, not nodes.** The player states what they want after the flyby: raise apoapsis to X, escape Tellus, change
+  inclination to Y°, return to Tellus with periapsis Z (a free-return), or reach Nyx. The planner shows which flybys
+  can deliver it.
+- **B-plane targeting** (the real method). The flyby is described by its aim point on the plane through the moon,
+  perpendicular to the approach. Where you aim sets how far and which way the trajectory is turned.
+  - The screen shows that plane with the aim point you'd hit now and the region that achieves the goal.
+  - Dragging the aim point updates the outgoing orbit live.
+- **A solver.** Unknowns are the departure burn (Δv components and time). Targets are the aim point (or the goal's
+  elements directly). Use Newton iteration with finite differences on `predictFrom` (patched conics are smooth enough
+  away from grazing passes), from a Hohmann-like first guess. Show "no solution" and the closest one, never a silent
+  failure.
+- **Sensitivity made visible.** A fan of outcomes for small errors in the burn shows how touchy a flyby is. With the
+  compute era's error (`predErr`) it becomes an error ellipse on the aim plane, and correction burns (mid-course,
+  days later, small) are planned in. In the human-computer era a slingshot needs corrections; later it doesn't.
+- **Multi-leg plans.** Legs chain: depart, correct, flyby, burn at periapsis (the Oberth trick), next encounter.
+  Each leg is an event on the timeline.
+- **Windows.** For Selene, the phase angle at departure; for planets, porkchop plots (departure date × travel time,
+  coloured by Δv). A gravity assist adds a dimension, so show the best few routes rather than a full grid.
+- **Execution.** The solved plan goes to the autopilot (ascent and burns) and, on long coasts, to missions in flight
+  with burns executed at the era's error. The study (v1.38) is what computing this plan costs in days and money.
 
 **Owners:**
 - the screen: UI;

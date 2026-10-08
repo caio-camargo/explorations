@@ -7,7 +7,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -972,7 +972,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 23. "Out there" missions (bodies session): the Selene ladder and Nyx, each flown through the real flight code.
 {
-  const P = api.PROG, { NYX, bodyRel, SUN_DIR } = api, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active });
+  const P = api.PROG, { NYX, bodyRel, SUN_DIR } = api, saved = JSON.stringify(P);
   const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
   const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1000; };
   const craft = (stack, b, r, v, t) => { api.t = t; const s = api.newShip(stack); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
@@ -1013,12 +1013,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // landing on Nyx
   s = land(NYX, norm([0.3, 0.9, 0.2]), ['sci', 't2', 'petrel'], ['beeper', 'farside', 'nyxfind', 'nyxfly'], 5);
   check('out there: landing on Nyx under 3 m/s', !!P.done.nyxland && !!P.log.nyxland, `touchdown ${(s.touchV || 0).toFixed(2)} m/s`);
-  const S0 = JSON.parse(saved); Object.assign(P, S0); api.HOOK.news = () => {};
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back api.HOOK.news = () => {};
 }
 
 // 24. Epoch 3, satellites that work (bodies session): weather, TV for the capital, disaster watch, navigation.
 {
-  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, satN: P.satN, day: P.day, offers: P.offers, stations: P.stations, disDone: P.disDone });
+  const P = api.PROG, saved = JSON.stringify(P);
   const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
   const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.offers = []; P.funds = 1000; P.sats = []; P.satN = 0; P.day = 10; P.disDone = []; };
   const craft = (stack, r, v) => { api.t = 0; const s = api.newShip(stack); api.S = s; s.landed = false; s.body = TELLUS; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; s.rec.day0 = P.day; return s; };
@@ -1052,12 +1052,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   reg(1000e3, 0, Math.PI); reg(1000e3, Math.PI / 2, Math.PI); api.utilTick(1); const four = P.navCov;
   check('epoch 3: navigation: 2 satellites leave gaps; 4 in two polar planes, phased in pairs, fix anyone within half an hour', !twoOK && !!P.done.nav && four >= 0.95,
     `2 satellites: ${(two * 100).toFixed(0)}% · 4: ${(four * 100).toFixed(1)}% of places and moments`);
-  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {};
 }
 
 // 25. Crew (bodies session, epoch 4): the escape tower, abort tests, then people. Flown through the real flight code.
 {
-  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, day: P.day });
+  const P = api.PROG, saved = JSON.stringify(P);
   const news = [], msgs = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = m => msgs.push(m); api.HOOK.save = () => {};
   const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1e4; news.length = 0; msgs.length = 0; };
   const flyOut = s => { let apex = 0, n = 0; while (s.alive && !(s.landed && s.rec.abort && api.t > s.rec.abort.t + 5) && n++ < 300000) {
@@ -1088,7 +1088,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the landing mission's condition reads the flight record
   const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
   check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
-  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
 }
 
 // 26. The Crewed Lunar preset (bodies session): to orbit on a tuned turn, tower gone, enough left for Selene and home.
@@ -1103,13 +1103,53 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 27. A crewed Selene landing and return, flown end to end on Crewed Lunar (bodies session; the flight is fly_crewlunar.mjs).
 {
-  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, day: P.day }), H = { ...api.HOOK };
+  const P = api.PROG, saved = JSON.stringify(P), H = { ...api.HOOK };
   const R = crewLunar(api);
   check('Crewed Lunar flies a crew to Selene and home: a soft landing there, one clean entry here, crew fine, "Crew on Selene" done',
     R.done && R.home && R.crewed && R.crewOK && R.landing.landed && R.landing.v < 4 && R.landing.tilt < 10 && R.passes.length === 1 && R.g < 8 && R.days < 10,
     `orbit with ${R.orbit.left.map(x => x.toFixed(0)).join('/')} m/s left, cabin ${R.orbit.cabin.toFixed(0)} K · corrections ${R.mcc.toFixed(0)} + ${R.retCorr.toFixed(0)} m/s · landed at ${R.landing.v.toFixed(1)} m/s with ${R.landing.left.map(x => x.toFixed(0)).join('/')} left · ` +
     `back in Selene orbit with ${R.ascent.left.map(x => x.toFixed(0)).join('/')} · ${R.passes.length} entry pass · splashdown ${R.touch.toFixed(1)} m/s, peak ${R.g.toFixed(1)} g, cabin ${R.cabin.toFixed(0)} K, ${R.days.toFixed(1)} days`);
-  Object.assign(P, JSON.parse(saved)); Object.assign(api.HOOK, H);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
+}
+
+// 28. Procedures (bodies session): a hand-flown ascent becomes a guidance plan that flies the design again, adapts, and only improves.
+{
+  const P = api.PROG, saved = JSON.stringify(P), news = [];
+  api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {}; P.procs = {}; P.funds = 1e4;
+  const st = api.PRESETS.Orbiter, key = api.procKey(st), tgt = ATM + 10000;
+  // a flight to orbit (attitude set directly, as in §3, sampled through advPhys like any flight); turnEnd sets how well it's flown
+  const hand = (turnEnd) => { api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); s.sas = false; s.throttle = 1; api.stage(s); let k = 0, phase = 'up';
+    const point = d => { const f = api.localFrame(s.r), r = d * Math.PI / 180, Y = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+    while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+      if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 1000 * AS) / (turnEnd - 1000 * AS))); point(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
+      else if (phase === 'coast') { point(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0; if (h > ATM && api.timeToNu(el, Math.PI) < 25) phase = 'circ'; }
+      else { const f = api.localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), X = norm(cross(hv, f.n)); s.q = api.qFromBasis(X, hv, cross(X, hv)); s.w = [0, 0, 0]; s.throttle = 1; if (el.pe - TELLUS.R > ATM + 2000) { s.throttle = 0; api.advPhys(s); break; } }
+      if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s);
+      api.advPhys(s); }
+    return s; };
+  const fly = (stack, proc, target) => { api.t = 0; const s = api.newShip(stack); api.S = s; api.advPhys(s); api.procStart(s, proc, target); let k = 0;
+    while (s.alive && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
+    return s; };
+  let s = hand(45000 * AS); const pr = P.procs[key], dvHand = s.rec.dv;
+  check('procedures: a hand-flown ascent to orbit becomes a procedure for its design (pitch curve, staging, target, Δv)', !!pr && pr.pitch.length > 20 && Math.abs(pr.dv - dvHand) < 1 && news.some(m => /New procedure/.test(m)),
+    pr ? `${pr.pitch.length} pitch points, heading ${(pr.az * 57.3).toFixed(0)}°, target ${(pr.target.pe / 1e3).toFixed(0)}×${(pr.target.ap / 1e3).toFixed(0)} km, ${pr.dv.toFixed(0)} m/s` : 'no procedure');
+  P.procs = {}; s = hand(45000 * AS); const proc = P.procs[key]; P.procs = { [key]: proc };   // keep it fixed while we fly it
+  let f = fly(st, proc), e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: flown by the procedure (SAS, staging, goal cut-offs), the same design reaches a stable orbit for about the same Δv', f.alive && f.proc.done && e.pe - TELLUS.R > ATM && f.rec.dv < 1.05 * proc.dv,
+    `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s (hand-flown ${proc.dv.toFixed(0)})`);
+  f = fly(st, proc, { pe: 180e3, ap: 180e3 }); e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: the same technique flies to a different target orbit (a contract\'s 180 km)', f.alive && f.proc.done && Math.abs(e.ap - TELLUS.R - 180e3) < 15e3 && e.pe - TELLUS.R > 150e3, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
+  // a heavier, different variant with margin (a 4 t upper tank: 2 t more, liftoff TWR 1.41 not 1.63; 5,550 m/s in all),
+  // and one that can't (the payload alone: 4,329 m/s in total, short of the ~4,450 orbit costs): it must not claim success
+  f = fly(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc); e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: it adapts to a heavier, different variant (2 t more, lower thrust-to-weight): still to orbit', f.alive && f.proc.done && e.pe - TELLUS.R > ATM, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
+  f = fly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
+  check('procedures: a variant that cannot make orbit does not claim to (the procedure never completes)', !f.proc.done, `done ${f.proc.done}, alive ${f.alive}`);
+  // records only improve: a sloppier ascent (late turn) doesn't replace it; a better one would
+  news.length = 0; s = hand(80000 * AS); const kept = P.procs[key] === proc;
+  check('procedures: a worse flight of the design leaves the stored procedure alone', kept && s.rec.dv > proc.dv && !news.some(m => /Procedure improved/.test(m)), `a lazier turn: ${s.rec.dv.toFixed(0)} m/s vs kept ${proc.dv.toFixed(0)}`);
+  check('tapes: the tape version is a fingerprint of the physics (no more hand-bumped string)', /^lp-[0-9a-z]+$/.test(api.TAPE_V) && api.TAPE_V !== 'lp-1.12', api.TAPE_V);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one api.HOOK.news = () => {};
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
@@ -1773,6 +1813,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('timeline: "wait" goes to the next event and it happens (the study lands, then budget day comes)', studied === 1 && Math.abs(d2 - 100) < 1e-6 && d1 < d2 && P.funds > f0,
     `day ${d1.toFixed(1)}: ${studied} design studied · day ${d2.toFixed(1)}: budget day, funds ${f0.toFixed(0)} → ${P.funds.toFixed(0)}M`);
   // a long wait stops a day before a contract deadline, so it isn't missed
+  if (!(P.offers || []).length) P.offers = null;   // (bodies session) the board after 90 days depends on the business cycle earlier sections leave behind; deal a fresh one if it's empty
   api.ensureBoard(); const o = P.offers.find(o => o.p.dur > 20) || P.offers[0]; api.acceptOffer(o.id); const c = P.active[0], st = api.advanceTo(P.day + 1000);
   check('timeline: a long wait stops a day before a contract deadline (not missed)', st && st.kind === 'deadline' && P.active.includes(c) && Math.abs(P.day - (c.deadline - 1)) < 1e-6,
     `stopped at day ${P.day.toFixed(1)}, deadline ${c.deadline.toFixed(1)}: ${st && st.text}`);
@@ -1881,6 +1922,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('steerable fins: authority grows with q (≈4× from 150 to 300 m/s), none in vacuum; they roll a wheel-less dart, a passive ring does not',
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
+}
+// 36. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  D.HOOK.msg = () => {}; const T = D.TELLUS, len = D.len, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+  const fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const withRcs = (stack, host, ys) => { const d = D.toV2(JSON.parse(JSON.stringify(stack))), h = fnd(d.root, host);
+    for (const y of ys) h.c.push({ k: 'rcs', at: { y, a: 0, n: 4, cy: 0.1 }, c: [] }); h.c.push({ k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] }); return d; };
+  const space = des => { D.t = 0; const s = D.newShip(des), r0 = T.R + 300e3; D.S = s;
+    Object.assign(s, { landed: false, sas: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0] }); return s; };
+  // the pitch key held for 30 s, SAS off: the rate levels off where the wheels are full
+  const o = space(D.PRESETS.Orbiter); for (let i = 0; i < 30 / D.DT; i++) { D.INP.pitch = 1; D.physStep(o, D.DT); } D.INP.pitch = 0;
+  const cap = o.hmax / Math.max(o.I[0], o.I[2]);
+  check('wheels: the pod gives 10 kN·m and stores 100 kN·m·s; held 30 s, the Orbiter’s pitch rate stops at storage ÷ inertia',
+    o.torque === 10000 && Math.abs(len(o.w) / cap - 1) < 0.02 && len(o.wH) / o.hmax > 0.999, `${len(o.w).toFixed(3)} rad/s vs ${cap.toFixed(3)}; wheels ${(100 * len(o.wH) / o.hmax).toFixed(0)}%`);
+  // unloading from 90 %, holding attitude: nothing else to steer with / a burning gimbal / cold-gas RCS
+  const unload = (des, { rcs = false, thr = 0 } = {}) => { const s = space(des); D.stage(s); Object.assign(s, { throttle: thr, rcs, sas: true, sasMode: 'stab' });
+    s.wH = [0.9 * s.hmax, 0, 0]; const Y0 = D.qrot(s.q, [0, 1, 0]), g0 = D.rcsGas(s); let err = 0;
+    for (let i = 0; i < 45 / D.DT; i++) { D.physStep(s, D.DT); err = Math.max(err, ang(D.qrot(s.q, [0, 1, 0]), Y0) * 57.3); }
+    return { f: len(s.wH) / s.hmax, err, gas: (g0 - D.rcsGas(s)) * 1000 }; };
+  const st = ['chute', 'pod', 't2', 'petrel'], none = unload(st), burn = unload(st, { thr: 1 }), gas = unload(withRcs(st, 't2', [0.1, 1.9]), { rcs: true });
+  check('wheels unload: not with nothing else to steer; a burning gimbal empties them in 45 s holding within 1°; RCS spends gas on it',
+    Math.abs(none.f - 0.9) < 1e-9 && burn.f < 0.05 && burn.err < 1 && gas.f < 0.85 && gas.gas > 1,
+    `nothing ${(100 * none.f).toFixed(0)}% · gimbal ${(100 * burn.f).toFixed(0)}% (max error ${burn.err.toFixed(2)}°) · RCS ${(100 * gas.f).toFixed(0)}% for ${gas.gas.toFixed(1)} kg of gas`);
+  // the readout: its 90° turn time on wheels against a flown one; coasting at max-q, a steerable ring holds where wheels can't
+  const flown = k => { const s = space(D.PRESETS[k]), est = D.controlReport(s).turn.wheels, X0 = D.qrot(s.q, [1, 0, 0]); Object.assign(s, { sas: true, sasMode: 'stab', hold: X0 });
+    let t = 0; while (t < 200) { D.physStep(s, D.DT); t += D.DT; if (ang(D.qrot(s.q, [0, 1, 0]), X0) < 2 / 57.3) break; } return { est, t }; };
+  const fo = flown('Orbiter'), fl = flown('Lunar'), cO = D.controlReport(D.newShip(D.PRESETS.Orbiter)).coast,
+    cS = D.controlReport(D.newShip(D.PRESETS.Orbiter.map(x => x === 'fins' ? 'cfins' : x))).coast;
+  check('control readout: 90° turn times on wheels match flown turns within 10%; coasting at max-q the Orbiter can’t hold 5° on wheels, with a steerable ring it can',
+    Math.abs(fo.est / fo.t - 1) < 0.1 && Math.abs(fl.est / fl.t - 1) < 0.1 && cO.tau > cO.auth && cS.tau < cS.auth,
+    `Orbiter ${fo.est.toFixed(1)} vs ${fo.t.toFixed(1)} s, Lunar ${fl.est.toFixed(1)} vs ${fl.t.toFixed(1)} s; coasting need ${(cO.tau / 1e3).toFixed(0)} kN·m: wheels ${(cO.auth / 1e3).toFixed(0)}, steerable ring ${(cS.auth / 1e3).toFixed(0)}`);
 }
 
 // 30. Stations (sats session, stations plan Phase C): radial ports on any structure, habitat and lab, station state and
