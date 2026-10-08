@@ -264,7 +264,7 @@ const PROGTAB = t => `(()=>{ go('program'); PT.click('[data-ptab="${t}"]'); retu
 // a Sounding flight: up, chute, down, then back to the Program (that ends the flight); funds and news on the way
 const SOUNDING = `(()=>{ go('assembly'); PT.preset('Sounding'); const f0 = PROG.funds, m0 = PT.log.length; PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200);
   for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); const apex = S.rec && S.rec.apex; go('program'); const fP = PROG.funds, flP = PROG.flights, settledAtProgram = !!S.rec.ended;
-  resetShip();   // what the next launch (or Revert) does: only then is the flight settled (missionEnd)
+  resetShip();   // what the next launch (or Revert) does: since PLAYTEST #21 leaving the flight already settled it, so this pays nothing more
   return {landed: S.landed, apexKm: apex ? +(apex/1000).toFixed(1) : null, fundsBefore: +f0.toFixed(1), fundsAtProgram: +fP.toFixed(1), flightsAtProgram: flP, settledAtProgram, fundsAfterSettling: +PROG.funds.toFixed(1), flights: PROG.flights, log: PT.logSince(m0).filter(l => !/Logbook/.test(l))} })()`;
 ROWS[77] = {title: 'budget gate and recovery refund', flags: NOMONEY, steps: [
   `go('assembly'); PT.preset('Big Lunar'); render(); ({funds: PROG.funds, button: document.getElementById('launch').textContent, cost: vesselCost(S.parts).cost})`,
