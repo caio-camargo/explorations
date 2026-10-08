@@ -1219,6 +1219,44 @@ elsewhere mid-frame (the cloud coverage bake, the depth pre-pass) return to `sce
 - Cost on the RTX 5050 at 1280×800: +0.1–0.2 ms (pad view, A/B). `BLOOM = false` draws straight to the screen.
 - What glows: the sun in space, explosions, ignition flashes and plume cores at night, the floodlight lamps.
 
+## Fin-tip vapor (2026-10-09, aerofx session)
+
+In a hard turn in humid low air, a loaded fin's tip vortex condenses into a white streak. `finTipTick` records each fin
+tip's path (planet-fixed, so the trail stays in the air) with a strength: the cross-flow along the fin's normal (in a
+pitch turn, two fins of a ring trail and two don't), × angle of attack (smoothstep 1–7°), × dynamic pressure (3–15 kPa),
+× humid air (below 5 km, gone by 11) and Mach 0.25–1.8. `drawFinTips` draws each trail as a camera-facing ribbon that
+widens and fades over ~1.2 s, lit like the smoke. Fin rings and radial fins both. `FINTIP_FX = false` turns it off.
+
+- **Drawn after the plumes.** The ribbons don't write depth, so drawn before the plume (with the smoke) they vanished
+  behind the exhaust even where they ran in front of it; they run beside it, a fin span out, so drawing them after is
+  the lesser error.
+- The trail lies along the flight path, and the rocket points up to 15° off it, so trails split away from the exhaust
+  only in a real turn. In a straight climb (AoA ~0) there are none, as it should be.
+- Reference views `refView(101)` an 8° pull and `102` a 15° pull at 1.5 km, the camera square to the turn. They hold the
+  attitude, since the sim weathervanes back within a second.
+
+## Spent stages re-entering (2026-10-09, aerofx session)
+
+Dropped stages (debris) now heat up and glow on the way down, render-side (`debrisHeat`, `DEBH`): a stagnation heat flux
+per piece from its speed through the air (Sutton–Graves with its widest radius as the nose, the same `SG`/`HEAT_GAIN` as
+the ship), smoothed over 0.5 s. Above 15 kW/m² it gets:
+- **the ship's plasma**, now a function, `drawPlasma(VP, camW, body, pos, q, all)`, drawn per hot piece within 20 km (the
+  piece's geometry from `debrisGeo`; `hullProfile(s, all)` takes detached parts);
+- **char** on its parts (the flight-marks `char`, windward), so a recovered or photographed stage is scorched;
+- **sparks** shed from it (`fxPuff`) and a **dark smoke trail** (planet-fixed puffs, thin at altitude).
+
+What you see depends on the case. A stage dropped during the climb is far below and behind by the time it heats, and
+debris more than 40 km from the ship is removed, so mostly you won't. A stage dropped just before re-entry (a tank or
+service module shed above the atmosphere) comes in beside the capsule. A light empty tank brakes much harder than a
+capsule: in the reference case it is 55 m away at 82.5 km, 360 m at 78 km and 1.8 km at 72 km, while its heating rises
+from 34 to 67 kW/m². Hot and close only briefly.
+
+Reference views `refView(103)` (82.5 km, the stage 55 m behind) and `104` (80 km), the camera beyond the capsule looking
+back along the capsule→stage line.
+
+**Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
+state, and this pass is render-only.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1249,6 +1287,78 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.51 — spin stabilisation (2026-10-08, control session)
+
+The fourth slice of the control review. The rotation step applied τ/I and nothing else: Euler's equations were missing
+their gyroscopic term (ω×Iω). So a spinning stage turned to every torque as if it weren't spinning, never wobbled, and
+kept its angular momentum only to ~1 %. Spin is how stages were held before guidance could (Explorer 1's cluster, the
+Vanguard and Delta third stages, the PAM kick stages), so in the gyro era it is a real tool.
+
+**What changed**
+- **Euler's equations** (`integrateRot`): in the body frame I·dω/dt = τ − ω×(I·ω), integrated RK4, cut into substeps of
+  ≤ 0.05 rad (`ROT_STEP`) when spinning fast; the attitude turns exactly by each substep's ω (it was a first-order
+  quaternion step). The rails attitude step goes through the same function.
+- **Spin-up motors** (`spin`, *Control*, 0.03 t, 1 M): a ring of small solids, 4,000 N·m·s in 1 s about the axis, ~2 rev/s
+  on a 1.25 m kick stage. They fire with the event that lights their stage, or, on a stage without engines, the
+  separation that releases it: whichever leaves it the bottom stage (`spinFire`, from `stage`). Never at a booster
+  separation.
+- **SAS on a spun stage** (`s.spun`, set when the motors fire): the rate loop leaves the roll alone, so it damps the
+  wobble (a nutation damper) instead of eating the spin. A roll key under SAS hands the roll back and SAS spins it down;
+  below 0.5 rad/s it is an ordinary vessel again.
+- **Time warp past 4×** keeps a spin about the axis (spun, or SAS off and ≥ 1 rad/s): the wobble is dropped and the axis
+  stays put. Everything else still stops turning on rails, as before.
+- **HUD** row *Spin* (rpm, the wobble's cone angle). **Builder:** the Control block gives each spin motor's rpm on what
+  is left when it fires (tanks full), and warns under 60 rpm.
+
+**Measured** (`study_spin.mjs`: a Probe core + Tank 1 t + Petrel kick stage in orbit, its thrust 0.5° off the axis,
+burned to empty, 46 s)
+
+| Spin | before: axis off at burnout · Δv off | now: axis off · Δv off | now, SAS on |
+|---|---|---|---|
+| none | 119° · 49° (tumbles) | 121° · 44° | — |
+| 0.5 rev/s | 85° · 2.8° | 12° · 5.5° | |
+| 1 rev/s | 74° · 0.54° | 3.2° · 1.3° | 0.9° · 0.01° |
+| 2 rev/s | 61° · 0.11° | 1.1° · 0.34° | 0.26° · 0.00° |
+| 4 rev/s | 41° · 0.03° | 0.2° · 0.09° | |
+
+Free spin at 2 rev/s for 60 s: angular momentum kept to 0.017 % (was 0.83 %); the wobble turns at 6.186 rad/s in the body
+frame, Euler's (I_axis − I_side)/I_side × spin to four figures (was 0). Spin motors on that stage: the builder says 121
+rpm, flown 122. Physics step: no change beyond noise (Lunar / Heavy 73–81 / 82–89 µs, back to back).
+
+**What it taught**
+- **Spin already half-worked without the physics, which hid the gap.** A body-fixed torque that turns with the stage
+  averages out, so before the change the Δv still went roughly straight at 2–4 rev/s while the axis itself wandered
+  40–60°. Only measuring the axis, not just the Δv, showed the gyroscopic term was missing.
+- **The wheels' stored momentum had to stay out of the gyroscopic term.** With it in (the textbook ω×(Iω + H)), three
+  capsule checks failed: a max-q abort, a crew landing on Nyx, and a plateau landing at 146 m/s under a full main. A pod's
+  100 kN·m·s is a gameplay budget (v1.43), about twenty ISS gyroscopes; as a real gyroscope it pinned the capsule against
+  its chute. Real pod numbers (~1–5 kN·m·s) would make it harmless, but that is a v1.43 retune, not this slice. The cost:
+  angular momentum isn't conserved while wheels hold momentum, as before.
+- **The SAS rate integral leaked the spin away.** It sums in the inertial frame, and on a coning stage that sum picks up
+  a roll part: 22 % of a 1 rev/s spin went into the wheels over one burn. The SAS's roll output is now zeroed whole on a
+  spun stage, integral included.
+- **SAS on a spun stage helps more than spin alone** while the engine burns: the rate loop damps the wobble and steers
+  the gimbal, so the Δv error falls from 1.3° to 0.01° at 1 rev/s.
+
+**Not modelled:** energy dissipation, so no Explorer 1 flat spin (a spin about the long axis is stable here forever);
+yo-yo despin; spinning anything but about the long axis; products of inertia (the diagonal is kept, as before).
+
+**Tests** section `control-4` (3 checks): a free spin keeps its angular momentum and wobbles at Euler's rate; the
+misaligned kick stage tumbles unspun and flies within ½° spun, and SAS keeps the spin; the motors fire at the right
+separation, at the builder's rpm, warp keeps the spin, a roll key takes it back. Mutation-tested: dropping the gyroscopic
+term fails the first two; dropping the roll guard fails the second.
+
+**For other sessions**
+- **everyone flying scripted vessels:** `integrateRot` changed (exact attitude step, gyroscopic term). Every check still
+  passes; tapes are retired by the fingerprint as usual (`spinFire` added to it).
+- **visuals:** `spin` draws as the default banded drum; it could have its nozzles. A spinning stage now actually spins on
+  screen at up to several rev/s.
+- **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
+- **builder:** `spin` is in *Control* by kind.
+
+**Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
+deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 
 ## v1.50 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
 
@@ -4454,12 +4564,35 @@ far-side rover's *Drive from home* button appears in its windows (268 ms via Loo
 marker 2.7 km away; no console errors.
 
 **Not yet:**
-- rendezvous and docking with a registered moon orbiter (`tgtOf`, `contactStep`, `nearbyFlyable` and target cycling
-  are Tellus-only);
+- ~~rendezvous and docking with a registered moon orbiter~~ (built: "Rendezvous with moon orbiters" below);
 - cameras in Selene orbit (`satTick` is Tellus's);
 - relay range and power;
 - Nyx orbits work in code but are untested;
 - **economy:** a contract for a far-side relay (or a relay network: share of the far side covered).
+
+#### Rendezvous with moon orbiters (sats session, 2026-10-08)
+
+A flight meets the registered orbiters of the body it is at. `orbitsAt(b)` gives `satsUp()` at Tellus and
+`moonSats(b)` at a moon. Everything that was gated to Tellus goes through it:
+- targets (`tgtOf`, target cycling);
+- contact and capture (`contactStep`, `hitNear`: physics instead of rails near one);
+- the arm's grab and loading (`nearbyFlyable`);
+- collision debris and explosions, on that body.
+
+`approach` takes the μ both orbit, and the closest-approach readout uses the flight's body. Undocking writes the entry
+back in the frame it leaves in (`bodyName` follows `s.body`). A Tellus satellite can't be targeted from Selene's SOI,
+and vice versa. Cross-SOI targeting would need patched-conic closest approach; not built.
+
+**Checks:** `test.mjs` §41, 3 checks: §25's docking scene moved to a 100 km Selene orbit.
+- **Target:** found; a constructed 300 m pass is found at 300.0 m and 1,000 s, the same as a 0.5 s scan; a Tellus
+  satellite isn't a target.
+- **Capture:** latches with momentum kept to 4e-27; rails held off; loadable.
+- **Undocking:** a flyable entry leaves as a vessel of the flight around Selene, 0 m from where it was; at 1 m/s the
+  ports bump.
+
+Each of 7 deliberate breaks fails a check. The breaks: Tellus-only target, every orbit a target, Tellus μ in
+`approach`, Tellus-only `hitNear`, contact and loading, undock dropping the body. Not checked in the browser: the
+approach readout and target cycling (UI code; only the whole-page parse check covers them).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

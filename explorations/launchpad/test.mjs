@@ -2467,6 +2467,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `registered ${D.PROG.sats.length}, loaded back with ${back ? D.AV[back.av].name : '—'} (today: ${D.AV[D.avNow()].name})`);
 }
 
+// control-4. Spin stabilisation (control session): Euler's equations with the gyroscopic term (ω×Iω), spin-up motors, and
+// SAS leaving the roll of a spun stage alone. A spinning stage holds its axis against a misaligned thrust and wobbles at
+// the rate Euler's equations give; before, it turned to every torque as if it weren't spinning. Own instance.
+{
+  const D = new Function(src + 'return {newShip,stage,physStep,advRails,controlReport,qrot,qconj,len,dot,sub,add,mul,TELLUS,HOOK,INP,DT,set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.debris = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.boom = () => {};
+  const T = D.TELLUS, toB = (s, v) => D.qrot(D.qconj(s.q), v), toI = (s, v) => D.qrot(s.q, v), deg = 57.2958;
+  const orbit = stack => { D.t = 0; const s = D.newShip(stack), r0 = T.R + T.atm + 100e3; D.S = s;
+    Object.assign(s, { landed: false, throttle: 0, sas: false, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] }); return s; };
+  const Lof = s => { const w = toB(s, s.w); return toI(s, [s.I[0] * w[0], s.I[1] * w[1], s.I[2] * w[2]]); };
+  // a free kick stage at 2 rev/s with a small wobble: angular momentum kept, the wobble turns at (I_axis − I_side)/I_side × spin
+  {
+    const s = orbit(['core', 't1', 'petrel']), ws = 4 * Math.PI; s.w = toI(s, [0.05, ws, 0.02]); const L0 = Lof(s);
+    let turned = 0, last = Math.atan2(0.02, 0.05), drift = 0;
+    for (let i = 0; i < 1500; i++) { D.physStep(s, D.DT); const w = toB(s, s.w), a = Math.atan2(w[2], w[0]); let d = a - last; d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); turned += d; last = a;
+      drift = Math.max(drift, D.len(D.sub(Lof(s), L0)) / D.len(L0)); }
+    const It = (s.I[0] + s.I[2]) / 2, want = Math.abs((s.I[1] - It) / It * ws), got = Math.abs(turned / 30);
+    check('spin: a free spinning stage keeps its angular momentum, and its wobble turns at the rate Euler\u2019s equations give',
+      drift < 1e-3 && Math.abs(got / want - 1) < 0.01, `L drift ${(drift * 100).toFixed(3)} % in 30 s; wobble ${got.toFixed(3)} rad/s (Euler ${want.toFixed(3)})`);
+  }
+  // a kick stage burning with its thrust 0.5° off the axis, SAS off: unspun it tumbles; at 2 rev/s it flies straight
+  const burn = (rps, sas) => { const s = orbit(['core', 't1', 'petrel']), e = s.parts.find(p => p.d.kind === 'engine'), c = 0.5 / deg;
+    e.tdir = [Math.sin(c), Math.cos(c), 0]; s.w = toI(s, [0, rps * 2 * Math.PI, 0]); D.stage(s); s.throttle = 1; if (sas) Object.assign(s, { sas: true, sasMode: 'stab', spun: true });
+    const Y0 = toI(s, [0, 1, 0]); let dv = [0, 0, 0], t = 0; while (t < 120) { D.physStep(s, D.DT); t += D.DT; if (s.thrust === 0) break; dv = D.add(dv, D.mul(toI(s, s.aB), D.DT)); }
+    const along = D.dot(dv, Y0); return { off: Math.atan2(D.len(D.sub(dv, D.mul(Y0, along))), along) * deg, spin: D.dot(s.w, toI(s, [0, 1, 0])) / 2 / Math.PI }; };
+  const b0 = burn(0), b2 = burn(2), bS = burn(1, true);
+  check('spin: a kick stage with its thrust ½° off the axis tumbles unspun; spun at 2 rev/s its Δv goes within ½° of where it pointed; SAS on a spun stage keeps the spin',
+    b0.off > 20 && b2.off < 0.5 && bS.off < 0.5 && bS.spin > 0.99, `Δv off the axis: unspun ${b0.off.toFixed(1)}°, 2 rev/s ${b2.off.toFixed(2)}°, 1 rev/s with SAS ${bS.off.toFixed(2)}° (spin kept: ${bS.spin.toFixed(3)} rev/s)`);
+  // spin motors under a kick stage fire at the separation that lights it, at the rate the builder said; time warp keeps the
+  // spin; a roll key under SAS takes the roll back and SAS spins it down
+  {
+    const stack = ['core', 't1', 'petrel', 'spin', 'dec', 't2', 'kestrel'], est = D.controlReport(D.newShip(stack)).spin[0];
+    const s = orbit(stack); Object.assign(s, { sas: true, sasMode: 'stab' }); msgs.length = 0;
+    D.stage(s); for (let i = 0; i < 25; i++) D.physStep(s, D.DT); const early = !!s.spun; D.stage(s); s.throttle = 1;
+    for (let i = 0; i < 150; i++) D.physStep(s, D.DT);
+    const rpm = () => D.dot(s.w, toI(s, [0, 1, 0])) * 60 / 2 / Math.PI, flown = rpm(); s.throttle = 0; D.advRails(s, 600, 1000); const warped = rpm();
+    D.INP.roll = 1; D.physStep(s, D.DT); D.INP.roll = 0; for (let i = 0; i < 500; i++) D.physStep(s, D.DT);
+    check('spin motors: fire at the separation that lights their stage, at the rate the builder shows; time warp keeps the spin; a roll key under SAS takes it back',
+      !early && msgs.some(m => /Spin motors firing/.test(m)) && Math.abs(flown / est - 1) < 0.05 && Math.abs(warped / flown - 1) < 0.01 && !s.spun && Math.abs(rpm()) < 0.5 * flown,
+      `builder ${est.toFixed(0)} rpm, flown ${flown.toFixed(0)}, after warp ${warped.toFixed(0)}, after a roll key ${rpm().toFixed(0)} rpm (spun: ${s.spun})`);
+  }
+}
+
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;
@@ -2599,6 +2642,45 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('between flights Tellus\'s tide works on Selene orbits: an equatorial relay keeps its shape; a high polar one is pulled into the ground, a higher one out of the SOI (into Tellus\'s registry)',
     P.sats.includes(qe) && el.pe > B.R + 950e3 && el.ap < B.R + 1050e3 && !P.sats.includes(qg) && D.satsUp().includes(qs) && !qs.bodyName && news.some(m => /came down on Selene/.test(m)) && news.some(m => /slipped out/.test(m)),
     `45 days: equatorial ${((el.pe - B.R) / 1e3).toFixed(0)}–${((el.ap - B.R) / 1e3).toFixed(0)} km; 2,000 km polar ${P.sats.includes(qg) ? 'still up' : 'came down'}; 3,000 km polar ${qs.bodyName ? 'still around Selene' : 'now orbits Tellus'}`);
+  P.sats = [];
+}
+
+// 41. Rendezvous with moon orbiters (sats session): §25's docking scene, moved to a 100 km Selene orbit. The target, the
+// closest approach, contact and capture, undocking back into Selene's register, and loading. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,contactStep,satRegister,satAt,undock,tgtOf,approach,hitNear,nearbyFlyable,moonSats,kepler,FLEET,PROG,SELENE,TELLUS,DT,qrot,qmul,qaxis,HOOK,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {};
+  const B = D.SELENE, P = D.PROG;
+  const scene = ({ gap = 0.3, close = 0.2, tilt = 3 } = {}) => {
+    Object.assign(P, { day: 0, sats: [], satN: 0 }); D.t = 0;
+    const s = D.newShip(['port', 'pod', 't1', 'kestrel']), r0 = B.R + 100e3; Object.assign(s, { body: B, landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(B.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]), k = D.newShip(['port', 'pod', 'petrel']); Object.assign(k, { body: B, landed: false }); k.rec.launched = true; k.rec.day0 = 0;
+    k.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + tilt * Math.PI / 180), s.q); k.r = add(add(s.r, mul(Y, s.yTop + gap + k.yTop)), [0, 0.04, 0]); k.v = s.v.slice(); D.satRegister(k, { day0: 0 });
+    s.v = add(s.v, mul(Y, close)); return { s, q: P.sats[0] };
+  };
+  const fly = (s, n, stop) => { for (let i = 0; i < n && !(stop && stop()); i++) { D.physStep(s, D.DT); D.contactStep(s, D.DT); } };
+  // the target: found around Selene; a Tellus satellite can't be one from here. Closest approach on Selene's μ, against a fine scan
+  let { s, q } = scene({ gap: 50e3 }); s.target = q.id; const T1 = D.tgtOf(s);
+  const [rt, vt] = D.satAt(q, 1000), [r1, v1] = D.kepler(add(rt, [0, 300, 0]), add(vt, [0, 0, 8]), -1000, B.mu), per = 2 * Math.PI * Math.sqrt(len(r1) ** 3 / B.mu), ca = D.approach(q, r1, v1, 0, per, B.mu);   // a pass 300 m off at t = 1000 s
+  let fine = Infinity; for (let t = 0; t <= per; t += 0.5) fine = Math.min(fine, len(sub(D.kepler(r1, v1, t, B.mu)[0], D.satAt(q, t)[0])));
+  P.sats.push({ id: 99, name: 'Tellus sat', r: [B.R * 10, 0, 0], v: [0, 0, 1], epoch: 0, shape: [] }); s.target = 99; const T2 = D.tgtOf(s);
+  check('rendezvous at Selene: a Selene orbiter is a target, its closest approach found on Selene\'s gravity; a Tellus satellite is not a target from there',
+    T1 && T1.q === q && Math.abs(len(T1.dr) - 50e3) < 10e3 && ca.d <= 300 && Math.abs(ca.d - fine) < 1 && Math.abs(ca.t - 1000) < 60 && !T2,
+    `target ${T1 ? (len(T1.dr) / 1e3).toFixed(1) + ' km' : 'none'}; closest approach ${ca.d.toFixed(1)} m at ${ca.t.toFixed(0)} s (scan ${fine.toFixed(1)} m); Tellus satellite targetable: ${!!T2}`);
+  // contact and capture: 0.2 m/s, 4 cm and 3° off latches; momentum kept, masses summed; rails held off nearby; loadable
+  ({ s, q } = scene()); const near = D.hitNear(s), load = D.nearbyFlyable(s).includes(q), m0 = s.mass, mq = q.mass; let mom = null;
+  for (let i = 0; i < 300 && !s.att.length; i++) { D.physStep(s, D.DT); const [, vq] = D.satAt(q, D.t), p0 = add(mul(s.v, s.mass), mul(vq, q.mass)); D.contactStep(s, D.DT);
+    if (s.att.length) mom = len(sub(mul(s.v, s.mass), p0)) / len(p0); }
+  check('docking at Selene: ports latch as at home (momentum kept, masses summed); physics, not rails, near the target; it can be loaded into the flight',
+    s.att.length === 1 && s.att[0].e === q && q.docked && mom < 1e-12 && Math.abs(s.mass - m0 - mq) < 1e-6 && near && load,
+    `latched ${s.att.length === 1}; momentum error ${mom != null ? mom.toExponential(1) : '—'}; rails held off ${near}; loadable ${load}`);
+  // undocking (it has a pod, so it leaves as a vessel of this flight) leaves it around Selene where it was; at 1 m/s, a bump
+  const cmQ = add(s.r, D.qrot(s.q, sub(s.att[0].p, s.cm))); D.FLEET.length = 0; D.undock(s, q.id); const u = D.FLEET.find(v => v.name === q.name);
+  const back = !q.docked && q.bodyName === 'Selene' && u && u.body === B && len(sub(u.r, cmQ)) < 1;
+  ({ s, q } = scene({ close: 1 })); fly(s, 200, () => q.spin); const bumped = !s.att.length && !!q.spin;
+  check('undocking at Selene leaves the other vessel around Selene, where it was; at 1 m/s the ports bump instead',
+    back && bumped, `undocked around ${u ? u.body.name : '—'}, ${u ? len(sub(u.r, cmQ)).toExponential(1) : '—'} m from where it was; 1 m/s: ${bumped ? 'bumped' : 'latched'}`);
   P.sats = [];
 }
 

@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -63,6 +63,8 @@ NOTES § "The robot playtester".
 | ✓ 105 (robot) | Fly steerable fins on a rocket and a probe dart | Builder: swap the Orbiter's fin ring for **Steerable fin ring**; or Probe core + Tank 1 t + Steerable fin ring + Sparrow | Coasting through the air it obeys SAS (the builder said "coasting holds"); in vacuum the fins do nothing. They look like fins (they don't move visibly yet) · *Robot: builder: "coasting holds … fins 25"; the dart coasting at 9 km, M 1.04 swings 20° to a new hold in 0.8 s; the vacuum turn (2.7 s) is the probe core's wheel.* | v1.40 | control |
 | ~ 106 (robot) | Read the builder's Control block on several designs | Builder: Orbiter, Heavy, Sounding, Passenger, Lunar; then add a Reaction wheel (palette *Control*) | "holds / weathervanes / flips", roll and the turn times make sense to a player and change sensibly when you add parts · *Robot: numbers change sensibly (Orbiter + wheel: wheels 10→25 kN·m, coasting weathervanes→holds, 11.1→7.1 s); wording nits in P#23.* | v1.43 | control |
 | ✓ 107 (robot) | Feel the gimbal: hand-fly an ascent with SAS off, then on | Orbiter, keys only | The rocket answers the keys with a small, believable lag; no wobble under SAS on any preset (Lunar was the worst before the fix) · *Robot: powered climbs under SAS on 7 presets: AoA sd ≤ 0.09°, max 1.0° (Big Lunar), no oscillation.* | v1.40 | control |
+| 118 | Spin a kick stage and fire it | Builder: Probe core + Tank 1 t + Petrel + **Spin-up motors** (palette *Control*) + Decoupler on a first stage; the Control block says ~120 rpm. Stage in orbit, SAS on | "Spin motors firing" at separation; HUD *Spin* row ~120 rpm; the stage visibly spins and its burn goes where it pointed. Time warp keeps the spin. A roll key under SAS spins it down | v1.51 | control |
+| 119 | Spin a stage by hand and watch it wobble | Any small stage in orbit, SAS off: roll key held for a while, then a short pitch tap | The stage cones (HUD *Spin* row shows a wobble angle) instead of turning over; it keeps pointing roughly where it was. Turning SAS on stops the spin (only a stage spun by spin motors keeps it under SAS). Is that split clear? | v1.51 | control |
 
 ### Building
 
@@ -146,6 +148,7 @@ NOTES § "The robot playtester".
 | 65 | Rotate a crew: Fly the station, undock the capsule, bring it home | Program > Fleet > station > Fly | Flow is findable; crew carries over; nothing gets lost across flights | A2 | sats |
 | 66 | Grapple, berth and stow with the arm | Arm on a hub; module within 10 m <0.5 m/s; HUD Arm row | Arm motion looks right (no obvious clipping); berth/stow is satisfying, not slow | D | sats |
 | 67 | Found a moonbase: beacon lander then a module landed nearby | Epoch 4+ via tester; G targets landed object; HUD Landing row | Landing near the target is achievable with the row; base shows in Fleet tab | E | sats |
+| 116 | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* | Moon rendezvous | sats |
 
 ### Moons & crew
 
@@ -196,4 +199,4 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **116**.
+Next free number: **117**.
