@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.16.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.16.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3116,6 +3116,100 @@ pressure.
   (`mod(i, P)` in the hash), so re-centring never visibly pops.
 - **Log depth** is written per fragment (`gl_FragDepth = log2(1+w)·Fc/2`). The vertex shader writes
   a matching log z, so nothing gets near/far clipped.
+
+## UI: screens and navigation — spec (2026-10-07, ui session with Caio; nothing built yet)
+
+**The problem.** The app has two screens (`mode` = editor/flight) plus a `view` toggle for the map. Everything else
+was added to whichever panel was nearest when it got built. The whole career (ownership, contracts, race, ground stations,
+satellites, 5 epochs, world, know-how) sits in the Assembly left panel, above the parts. The career start and choices
+that expire are mixed into that same panel, and nothing stops a launch. A flight has no debrief: `missionEnd` results
+only show up as truncated `#news` lines. `#info` can grow past 20 rows and run into `#stages`. `#help` and `#nodep` share
+a spot. Revert and Assembly leave a flight with no confirmation. `R` does three things depending on context. Many actions
+can only be done with a key. `#news` and `#perf` are visible on every screen.
+
+**Decisions (Caio, 2026-10-07):** Program becomes its own screen. Rollout becomes a checkpoint before launch. The flight
+HUD is a core plus cards that appear on demand.
+
+### The map
+```
+ Program (HQ) ──▶ Assembly ──▶ Rollout ──▶ Flight ⇄ Map
+     ▲   ◀────────────┘   ◀────────┘          │
+     └──────────── Debrief ◀──────────────────┘
+ Overlays on any screen: Logbook (L) · Help (H, shows the current screen's keys) · Esc menu
+```
+One state variable, `screen` ∈ `program | assembly | rollout | flight | map | debrief`, with a single `go(screen)` that
+shows and hides layers and decides which keys work. `mode`/`view` stay as derived aliases until every caller has been
+switched over (additive first). Overlays are a stack: Esc closes the top one; with nothing open, Esc opens the Esc menu.
+
+### What each screen shows (and doesn't)
+- **Program**, the home screen, entered at load:
+  - Header: date, funds, standing, and an Inbox badge.
+  - Tabs: **Inbox** (decisions with their deadlines, contract offers, news since the last visit), **Missions** (epochs),
+    **Contracts** (active, board, race), **Fleet** (satellites in orbit, ground stations, docked craft), **World**
+    (powers, relations, sanctions, election), **Know-how** (bars plus "What we know"), **Company** (ownership, shares, reset).
+  - First run: a full-screen "Whose program?" then "How does it start?" choice. It must be made before anything else.
+  - Exits: **Build** goes to Assembly; **Logbook**.
+  - *Not here:* parts, the ship.
+- **Assembly**, building only:
+  - A thin strip at the top: funds, date, Inbox count, ← Program.
+  - Left: the parts palette and presets. Right: the toolbar, staging, and the selected part's options. Below that, a
+    short summary (Δv and TWR per stage, total, cost against funds). Stability, loads and the long aero text fold into a
+    collapsed "Aero & structure" block.
+  - Exit: **Roll out ▶**.
+  - *Not here:* contracts, missions, the site picker.
+- **Rollout**, the checkpoint (it can be a panel over the ship on the pad):
+  - Site picker and its description.
+  - The contracts and missions this flight can satisfy.
+  - Cost, days to stack, and the ops fee.
+  - Warnings: over budget, site refused or doesn't fit, TWR < 1, unstable, unanswered decisions.
+  - Exits: **Launch** or ← Assembly.
+  - Owns `renderSites`, which leaves Assembly (as NOTES § v1.27 asked).
+- **Flight**:
+  - Fixed core (top left): MET, altitude (radar altitude when low), vertical speed, speed, Ap/Pe, stage and total Δv.
+  - Bottom: navball, throttle, SAS. Bottom left: stages.
+  - Cards appear in a right-hand column while their condition holds, and each can be pinned:
+    - **Ascent** (Mach, AoA, q, heat, structure), while in air with q above a threshold or heat rising;
+    - **Target** (target, closest approach, line-up, docking), while a target is set;
+    - **Payload** (passenger, instruments, contracts), during payload events and on demand;
+    - **Fleet** (vessels, switching), when more than one vessel exists;
+    - **Bay/Claw/Port**, while armed.
+  - The column is capped in height; the oldest unpinned card collapses first.
+  - Top right: Map, warp (shown *and* clickable), ☰ (the Esc menu).
+  - *Gone from the HUD:* Revert, Assembly, Save tape and Logbook, which move to the Esc menu.
+- **Map**:
+  - Orbit information (Ap/Pe, period, inclination, SOI, encounter), the node panel, target info, and a focus body picker
+    (clickable as well as Tab).
+  - The navball shrinks to a heading readout; the cards hide except Target.
+- **Debrief**, entered when a flight ends (landed, crashed, in orbit and you choose "End flight", or Revert/Assembly
+  from the Esc menu):
+  - Sections, in order: outcome, pay, refurbishment, damages, certifications, records, incidents, and the know-how gained.
+  - Exits: **Program**, **Assembly** (same design), **Fly again**.
+  - `missionEnd` returns a summary record and Debrief renders it, instead of results going to `#news`.
+
+### Overlays and keys
+- **Esc menu:** Resume, Revert to launch, Back to Assembly, End flight (a confirmation shows what you lose), Save
+  autopilot tape, Settings (modern look, perf readout off by default, which keys).
+- **Help** is generated from one key table per screen, so it can't drift from the handlers. One table, two consumers.
+- **Keys:**
+  - `L` logbook.
+  - `R` is only revert, after landing or a crash. RCS moves to `V`. The editor's radial decoupler keeps `R` (screens
+    don't share keys).
+  - `F5` quicksave stays out of scope.
+- **`#news`:** shown in Flight and Program only. In Program its lines go into the Inbox.
+
+### Slices
+1. The `screen` state, `go()`, the overlay stack and Esc, and per-screen key tables that feed Help. No visible changes
+   apart from Help and Esc.
+2. The Program screen: move the `renderProgram` sections into tabs, with the first-run gate. Needs the **economy** and
+   **bodies** sessions told; they own those render functions. The HTML they produce moves into tabs; their code stays.
+3. Debrief: `missionEnd` → summary record → screen.
+4. Flight cards and the core; the Map trims the HUD.
+5. Rollout: the site picker and checks move out of Assembly; then trim the Assembly right panel.
+
+Each slice merges to `main` on its own. test.mjs gets a check per slice: every screen reachable from every other along
+the arrows, and every key in the handlers present in its Help table.
+
+---
 
 ## Picking this up cold
 
