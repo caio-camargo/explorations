@@ -1606,7 +1606,7 @@ function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,b
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
   return{ok:worst<=1,worst,p:wp}}
-function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
+function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
@@ -1648,7 +1648,26 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
   if(M.ok(s.rec,s))missionComplete(M,s.rec)}}
 // a mission is done: pay it, move opinion, tell the world. rec is the flight's record, or null for a world mission
-function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
+// ---- staged pay for long missions (design: NOTES "Time, long missions and communication"). A mission to another body
+// pays a share when a flight is on course for it (its predicted trajectory enters the body's sphere of influence), a
+// share on arrival (inside it), and the rest on completion: long missions pay along the way. Each share is paid once
+// per mission, to the first open mission bound for that body (crewed ones only on a crewed flight), and an advance is
+// kept if the flight then fails. Once missions fly in the background (sats registry), the same shares pay there.
+const STAGE_PAY={bound:0.2,arrive:0.2};
+for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Selene'],['selsample','Selene'],['crewaround','Selene',1],['crewland','Selene',1],
+  ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
+const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
+const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
+function stagePay(M,k){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);
+  HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
+function stagedTick(s,R){if(!s.alive||s.landed)return;PROG.staged=PROG.staged||{};
+  for(const B of[SELENE,NYX]){const M=stagedMission(B,R);if(!M)continue;const st=PROG.staged[M.id]||(PROG.staged[M.id]={});
+    if(s.body===B){if(!st.bound)stagePay(M,'bound');if(!st.arrive)stagePay(M,'arrive');continue}
+    if(st.bound||s.body!==TELLUS||simT-(R.boundT??-1e9)<30)continue;R.boundT=simT;   // (checked every 30 s of flight)
+    const el=elements(s.r,s.v,TELLUS.mu);if(el.e<1&&el.ap<0.3*B.orb.a*(1-B.orb.e))continue;
+    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound')}}
+const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on course, ${STAGE_PAY.arrive*100}% on arrival${stagePaid(M)?` (${fmtM(stagePaid(M))} paid)`:''}</span>`:'';
+function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
@@ -4279,7 +4298,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
-      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
+      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
@@ -4311,7 +4330,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 // the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
 function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
   src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
