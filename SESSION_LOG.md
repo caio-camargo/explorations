@@ -3480,3 +3480,19 @@ warning in its README) and one routing line in AGENTS.md.
 - [ ] Orchestrator: regroup QUEUE into the eight lanes (Caio is pasting the instruction)
 - [ ] Studio session: interview Caio, then propose the folder's structure
 
+## 2026-10-08 — Launchpad roadmap v1.2: look & sound split into beats (roadmap session)
+
+### Summary
+Caio: look & sound is the heaviest and most splittable lane, so it never maps to one session. ROADMAP now defines
+**beats** (sub-areas of a lane, one session each): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`,
+port 8802), sound. Recorded where beats collide (`render()` pass order, shared shader helpers, bloom, `views.js`
+numbering) and the real limit: look work is nearly all GPU, so look sessions on one machine take turns through the
+courtesy lock; two machines double throughput.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.1.0 → 1.2.0, `QUEUE.md` (one flag), `docs/session-roles.md` (beat in the kickoff)
+
+### Next steps
+- [ ] Orchestrator: tag look items by beat, at least 2 ready per beat
+- [ ] Create `launchpad-sky` when a sky & bodies session starts
+

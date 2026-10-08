@@ -5,7 +5,7 @@ follow its brief after the normal AGENTS.md startup. Add a section when a new st
 
 | Role | Say | Brief |
 |---|---|---|
-| A launchpad lane (flow, economy, vehicle, space, world, look & sound, QA, platform) | "you are the launchpad **space** session" | [`explorations/launchpad/QUEUE.md`](../explorations/launchpad/QUEUE.md): its kickoff line; lanes in [`ROADMAP.md`](../explorations/launchpad/ROADMAP.md) |
+| A launchpad lane (flow, economy, vehicle, space, world, look & sound, QA, platform) | "you are the launchpad **space** session"; look & sound also names a beat: "…**look & sound** session, beat: effects" | [`explorations/launchpad/QUEUE.md`](../explorations/launchpad/QUEUE.md): its kickoff line; lanes in [`ROADMAP.md`](../explorations/launchpad/ROADMAP.md) |
 | Orchestrator | "you are the orchestrator" | Its row in `ACTIVE_WORK.md` and the top of `QUEUE.md` |
 | Playtest intake | "you are the playtest feedback session" | [below](#playtest-intake) |
 | Studio | "you are the studio session" | [below](#studio) |

@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -103,6 +103,28 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 A lane is a scope of code and a kind of work. A lane can host two sessions at once if their items touch different
 functions. The old worktrees are reused; new names are just labels in QUEUE.
 
+**Beats: one lane, several sessions.** A lane can be split into *beats*, sub-areas whose code barely overlaps, each run
+by its own session. **look & sound is always split** (Caio, 2026-10-08): it's the heaviest lane and the most splittable,
+so one session on it would be the bottleneck. Its beats:
+
+| Beat | Covers | Worktree |
+|---|---|---|
+| **parts & pad** | `partShape`/`partBody`, textures, flight marks, the launch complex and rig | `launchpad-visuals` |
+| **effects** | plumes, plasma, vapor, dust, explosions, debris re-entry, bloom | `launchpad-aerofx` |
+| **sky & bodies** | atmosphere, clouds, stars and galaxy, how each planet and moon looks (colour and light; **world** owns height and geography) | `launchpad-sky` (new, port 8802) |
+| **sound** | everything in the sound block | `launchpad-sound` |
+
+More beats as the game grows: a beat per new planet's look, or per part family. QUEUE tags each look item with its
+beat; the kickoff names it ("the launchpad look & sound session, beat: effects").
+
+Where beats do collide: `render()`'s pass order, shared shader helpers, bloom, and the numbering in `views.js`. Changing
+any of them needs a line in `ACTIVE_WORK.md` for the other beats.
+
+**The real limit is the GPU, not the code.** Look work is nearly all 🖥, and two game runs at once on one machine hang
+or crash (QUEUE § Load). Several look sessions on one machine take turns through the courtesy lock. They do their
+writing and reasoning while another holds it, batch their screenshots into one run (`shot.mjs` takes a list of views),
+and keep runs short. Spreading look sessions across both machines doubles the real throughput.
+
 | Lane | Was | Owns | Worktrees |
 |---|---|---|---|
 | **flow** | ui, career pacing | screens, navigation, HUD layout, onboarding, the player's path through a career | `launchpad-ui` |
@@ -110,7 +132,7 @@ functions. The old worktrees are reused; new names are just labels in QUEUE.
 | **vehicle** | builder, control, parts side of planning | parts, the construction screen, attitude control, aero, heating, nodes | `launchpad-builder`, `launchpad-control` |
 | **space** | bodies, sats, planning | bodies, orbits, registry, procedures and dispatch, docking, stations, rovers, the link | `launchpad-sats`, `launchpad-planning2` |
 | **world** | terrain | the planet, sites, geography, Selene's ground | `launchpad-terrain` |
-| **look & sound** | visuals, aerofx, sound | parts' look, pad, FX, sky, sound | `launchpad-visuals`, `launchpad-aerofx`, `launchpad-sound` |
+| **look & sound** | visuals, aerofx, sound | parts' look, pad, FX, sky, sound | one per beat (below) |
 | **QA** | playtest, tester | the robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs | `launchpad-playtest`, `launchpad-tester` |
 | **platform** | new | file split, test speed, saves, perf, port readiness | `launchpad-platform` (new, port 8801) |
 

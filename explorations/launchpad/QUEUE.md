@@ -39,6 +39,7 @@ the feedback I paste into PLAYTEST items.*
 
 ## Flags (read before merging)
 
+- **Orchestrator, 2026-10-08 (roadmap session, Caio's call): look & sound runs as several sessions by beat** (ROADMAP § Lanes, "Beats"): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`, port 8802), sound. Tag each look item with its beat, keep at least 2 ready per beat, and add the beat to the kickoff line.
 - **Fixes × terrain, same functions:** the fixes session (#19) and terrain (Q17) both edit near `linkOf`/`gsSees`. Whoever
   merges second: merge `main` first and re-run test.mjs's link sections.
 - **Q20 waits for Q17:** terrain is adding `PLASMA_V` / `plasmaOn(s)` next to `linkOf`. Aerofx: use that for the plasma
