@@ -2160,7 +2160,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
 }
 
-// 36. The tester menu (tester session; PLAYTEST #1): cheats that only act in tester mode, an epoch picker, the date,
+// 37. The tester menu (tester session; PLAYTEST #1): cheats that only act in tester mode, an epoch picker, the date,
 // finishing jobs, and a save slot apart from the career. Its own copy of the SIM, so no other section sees the flags.
 {
   const D = new Function(src + 'return {TEST,TEST_FUNDS,testTopUp,testEpoch,testAdvance,testFinishJobs,PROG,MISSIONS,missionOpen,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart,buildFac,facLv,khUse,certOf,toolOK,newShip,missionTick,PRESETS,set S(v){S=v},set t(v){simT=v}};')();

@@ -4873,12 +4873,12 @@ Epoch and date are disabled during a flight (the flight's clock owns the date th
 **For other sessions.** The rules live in the SIM tester block after `advanceDays` (`TEST`, `testTopUp`, `testEpoch`,
 `testAdvance`, `testFinishJobs`); the menu is after the shared keydown handler (`renderTester`). Each cheat is one read of
 a `TEST` flag in your code: keep it if you rework `khUse`, `certOf`, `toolOK`, `igniteOK` or the `R.prep` line. A new
-cheat = a flag in `TEST`, a row in `TEST_FLAGS`, one read where the rule lives, a check in test.mjs §36. KEYS rows can
+cheat = a flag in `TEST`, a row in `TEST_FLAGS`, one read where the rule lives, a check in test.mjs §37. KEYS rows can
 carry `tester:true` (Help shows them only in tester mode).
 
 **Found on the way: two missions shared an id.** Epoch 3's "Weather satellite" was `id:'weather'`, the same as epoch 1's
 "Above the weather". `PROG.done` is keyed by id, so the sounding flight also ticked off the satellite and opened
-Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 checks follow). §36 checks every mission id is
+Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 checks follow). §37 checks every mission id is
 unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
 is right.
 
