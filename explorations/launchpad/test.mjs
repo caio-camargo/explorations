@@ -2,11 +2,11 @@
 // Extracts the "SIM BEGIN … SIM END" block from index.html and drives it with no DOM or GL.
 import { readFileSync } from 'node:fs';
 import { crewLunar } from './fly_crewlunar.mjs';
-import { flyLadder } from './fly_ladder.mjs';
+import { flyLadder, handAscent } from './fly_ladder.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1160,7 +1160,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       api.advPhys(s); }
     return s; };
   const fly = (stack, proc, target) => { api.t = 0; const s = api.newShip(stack); api.S = s; api.advPhys(s); api.procStart(s, proc, target); let k = 0;
-    while (s.alive && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
+    while (s.alive && s.proc && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
     return s; };
   let s = hand(45000 * AS); const pr = P.procs[key], dvHand = s.rec.dv;
   check('procedures: a hand-flown ascent to orbit becomes a procedure for its design (pitch curve, staging, target, Δv)', !!pr && pr.pitch.length > 20 && Math.abs(pr.dv - dvHand) < 1 && news.some(m => /New procedure/.test(m)),
@@ -1176,7 +1176,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   f = fly(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc); e = elements(f.r, f.v, TELLUS.mu);
   check('procedures: it adapts to a heavier, different variant (2 t more, lower thrust-to-weight): still to orbit', f.alive && f.proc.done && e.pe - TELLUS.R > ATM, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
   f = fly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
-  check('procedures: a variant that cannot make orbit does not claim to (the procedure never completes)', !f.proc.done, `done ${f.proc.done}, alive ${f.alive}`);
+  check('procedures: a variant that cannot make orbit does not claim to: it stops with a deviation, saying why', !(f.proc && f.proc.done) && !!f.procDev && f.procDev.kind === 'short', f.procDev ? `${f.procDev.kind}: ${f.procDev.why}` : `done ${f.proc && f.proc.done}, alive ${f.alive}`);
   // records only improve: a sloppier ascent (late turn) doesn't replace it; a better one would
   news.length = 0; s = hand(80000 * AS); const kept = P.procs[key] === proc;
   check('procedures: a worse flight of the design leaves the stored procedure alone', kept && s.rec.dv > proc.dv && !news.some(m => /Procedure improved/.test(m)), `a lazier turn: ${s.rec.dv.toFixed(0)} m/s vs kept ${proc.dv.toFixed(0)}`);
@@ -1197,6 +1197,56 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check(`mission ladders: ${id} flown from the pad by procedure (${row(id).preset}): ${what}`, row(id).ok === true, fmt(row(id)));
   const pro = row('nyxorb:pro');
   check('mission ladders: the same Nyx orbit flown prograde does not last (Tellus\'s tide wrecks it: which way round matters)', pro.ok === false && pro.days < 4.3, fmt(pro));
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
+
+// bodies-2. Procedures flown headless, for dispatch (bodies session): procFly flies a stored procedure in isolation (the
+// flight on screen, the fleet, the clock and the hooks put back as they were); a procedure that can't make its goal stops
+// with a deviation and a registry entry of the craft where it stopped; dispatchRun flies dispatched contracts for real.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Orbiter, key = api.procKey(st);
+  api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; handAscent(api, st); const proc = P.procs[key];
+  // isolation: a "flight in progress" (S, its clock, a fleet vessel, the hooks) is exactly as it was afterwards
+  const S0 = api.newShip(['pod']), mark = () => {}; api.S = S0; api.t = 1234.5; api.FLEET.push(S0); api.HOOK.msg = mark; const T00 = api.ORB_T0;
+  let f = api.procFly(st, proc, { pe: 180e3, ap: 180e3 });
+  check('dispatch flights: a procedure flown headless reaches the asked orbit, and the flight in progress is untouched (S, clock, fleet, hooks)',
+    f.ok && Math.abs(f.orb.ap - 180e3) < 15e3 && f.orb.pe > 150e3 && api.S === S0 && api.t === 1234.5 && api.FLEET.length === 1 && api.FLEET[0] === S0 && api.HOOK.msg === mark && api.ORB_T0 === T00 && P.procs[key] === proc,
+    f.ok ? `${(f.orb.pe / 1e3).toFixed(0)}×${(f.orb.ap / 1e3).toFixed(0)} km, ${f.dv.toFixed(0)} m/s, ${(f.t / 60).toFixed(0)} min of flight` : JSON.stringify(f.dev || f.why));
+  api.FLEET.length = 0; api.HOOK.msg = () => {};
+  // short of propellant: the ballast variant (as in §28) deviates, and its entry rebuilds the craft where it stopped
+  f = api.procFly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
+  const vS = f.entry && api.vesselOf(f.entry, f.entry.epoch);
+  check('dispatch flights: a design that can\'t make it deviates ("short") and hands over a registry entry that rebuilds the craft where it stopped',
+    !f.ok && f.dev && f.dev.kind === 'short' && vS && vS.alive && len(sub(vS.r, f.s.r)) < 1 && Math.abs(api.dvRemaining(vS).tot - api.dvRemaining(f.s).tot) < 1,
+    f.dev ? `${f.dev.kind}: ${f.dev.why} (${(f.t / 60).toFixed(1)} min in, ${((len(f.s.r) - TELLUS.R) / 1e3).toFixed(0)} km up)` : JSON.stringify(f.why));
+  // the upper stage won't relight: handed over coasting up to apoapsis, with what circularising needs still aboard
+  f = api.procFly(st, proc, null, { noRelight: true }); const el = elements(f.s.r, f.s.v, TELLUS.mu), need = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a));
+  check('dispatch flights: a relight failure hands the craft over near apoapsis, periapsis in the air, the circularisation still possible by hand',
+    f.dev && f.dev.kind === 'relight' && el.pe - TELLUS.R < ATM && api.dvRemaining(f.s).tot > need,
+    f.dev ? `${((len(f.s.r) - TELLUS.R) / 1e3).toFixed(0)} km up, periapsis ${((el.pe - TELLUS.R) / 1e3).toFixed(0)} km; needs ${need.toFixed(0)} m/s, has ${api.dvRemaining(f.s).tot.toFixed(0)}` : 'no deviation');
+  // dry runs: a new design borrows a stored procedure, provisionally, if a headless run gets it to orbit; its own first flight replaces it
+  P.procs = { [key]: proc }; const heavy = ['chute', 'pod', 't1', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], hk = api.procKey(heavy);   // a tonne more on the upper stage
+  const ad = api.procAdopt(heavy), weak = api.procAdopt(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']), one = api.procAdopt(['sci', 't8', 'kestrel']);
+  const hot = api.procAdopt(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel']);   // two tonnes more: Δv to spare on paper, but slower off the pad
+  check('dry runs: a heavier variant borrows the Orbiter\'s procedure provisionally (measured on itself); one that can\'t make orbit, or stages differently, does not',
+    ad.ok && P.procs[hk] && P.procs[hk].prov && P.procs[hk].from === 'Orbiter' && ad.margin > 0 && !weak.ok && !one.ok && one.tried.every(t => t.why === 'different staging'),
+    `heavy: ${ad.ok ? `${ad.proc.dv.toFixed(0)} m/s to orbit, ${ad.margin.toFixed(0)} m/s to spare` : ad.why} · ballast: ${weak.why} (${(weak.tried || []).map(t => t.why).join('; ')}) · single stage: ${one.why}`);
+  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb kills it (two tonnes more, lower thrust-to-weight: it overheats low down)',
+    !hot.ok && hot.tried.some(t => /burned/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
+  const provDv = P.procs[hk] ? P.procs[hk].dv : NaN; handAscent(api, heavy);
+  check('dry runs: the design\'s own first flight replaces the borrowed procedure (records only improve, but a borrowed one always gives way)', P.procs[hk] && !P.procs[hk].prov, `borrowed ${provDv.toFixed(0)} m/s → own ${P.procs[hk] ? P.procs[hk].dv.toFixed(0) : '?'} m/s`);
+  // a dispatched contract, flown: the orbit is the procedure's, not a roll; the same seed gives the same flight
+  const sst = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];   // a satellite (the economy's §38 design): its own ascent, flown by hand once
+  P.procs = {}; handAscent(api, sst); const sproc = P.procs[api.procKey(sst)];
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: { [api.procKey(sst)]: sproc }, staged: {} });
+  api.chooseStart('agency'); P.funds = 2000; P.day = 10; for (const p of api.newShip(sst).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const c = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
+  const before = JSON.stringify(P), fly = () => { api.orderDispatch(c, sst); const L = P.dispatch[0].launch; let n = 0; while (P.day < L + 1 && n++ < 30) { P.decisions = []; api.advanceTo(L + 1); } return P.dispatch[0]; };
+  const D1 = fly(), o1 = D1.orb && { ...D1.orb }, paid = !P.active.includes(c); Object.assign(P, JSON.parse(before)); P.active = [c]; const D2 = fly();
+  check('dispatch flights: a dispatched contract is flown by its procedure to the contract\'s orbit and paid; the same seed flies the same flight',
+    D1.status === 'done' && o1 && Math.abs((o1.pe + o1.ap) / 2 - 160e3) < 20e3 && paid && D2.status === 'done' && D2.orb && Math.abs(D2.orb.pe - o1.pe) < 1 && Math.abs(D2.orb.ap - o1.ap) < 1,
+    o1 ? `${D1.status}: ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km (contract 160 ± 20), paid ${paid}; again: ${D2.status} ${D2.orb ? (D2.orb.pe / 1e3).toFixed(1) + '×' + (D2.orb.ap / 1e3).toFixed(1) : ''}` : `${D1.status} ${D1.why || ''}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 

@@ -20,7 +20,7 @@ export const LADDER = SR => [
 ];
 // a hand-flown ascent to a low orbit (vertical to 200 m, flat by 38 km, circularised toward circular-orbit velocity); the
 // game records it as the design's procedure
-function handAscent(api, st) {
+export function handAscent(api, st) {
   const { TELLUS, len, norm, add, sub, mul, dot, cross, elements } = api, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000;
   api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); s.sas = false; s.throttle = 1; api.stage(s); let k = 0, phase = 'up';
   const point = Y => { const f = api.localFrame(s.r), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
