@@ -35,6 +35,8 @@ write your session name and the time into it, and delete it when your browser ru
 
 ## Flags (read before merging)
 
+- **The fixes session** (worktree `launchpad-fixes`, branch `fixes`, port 8800) is sweeping PLAYTEST #15, #16, #19, #20, #21, #22.
+  Q5, Q15, Q22 and parts of Q1 and Q17 are its own; ui and terrain, merge `main` after it lands.
 - **Version-number collision, 2026-10-08:** control's spin stabilisation and terrain's atlas both call themselves
   **v1.51**. Control reached the main clone first (not yet pushed when this was written). **Terrain: renumber to v1.52 at
   merge.** Check the latest `## v1.N` on `origin/main` right before numbering.
@@ -49,7 +51,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### ui — screens, navigation, layout
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q1 | PLAYTEST **#8 + #16 + #20**: the readout covers the tabs and the altitude; LAUNCH sits below the fold | M | 🖥 | ready |
+| Q1 | PLAYTEST **#8**: the readout covers the tabs (#16 and #20 are with the fixes session; check its merge first) | S | 🖥 | after fixes merge |
 | Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Do it with Q5 | M | 🖥 | ready |
 | Q3 | **Slice 4**: flight core and cards; place the aerofx gauges (`gaugeRect`); closes PLAYTEST #9 | L | 🖥 | ready |
 | Q4 | **Slice 5, Rollout**: the site picker and launch checks move out of Assembly | M | 🖥 | after Q1 |
@@ -57,7 +59,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### economy — program, contracts, money (session paused: resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q5 | PLAYTEST **#21**: settle `missionEnd` when the player leaves a finished flight, not at the next launch (with ui's `go`) | S | ⚙ | ready |
+| Q5 | PLAYTEST **#21**: settle `missionEnd` when the player leaves a finished flight, not at the next launch (with ui's `go`) | S | ⚙ | → fixes 2026-10-08 |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site`. Unblocks sea-platform pricing, overflight politics, site closures | M | ⚙ | ready |
 | Q7 | Ballistic contract target: still `rg/600` from +X (old radius, not the flight's site) | S | ⚙ | ready |
 | Q8 | Ladder balance: selimp/nyxfind pay less than a Probe costs; nyxfind completes free on a Selene flight | S | ⚙ | blocked: Caio W1 |
@@ -79,14 +81,14 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### tester — the tester menu
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q15 | PLAYTEST **#15**: the TESTER badge covers "Save as autopilot" | S | 🖥 | ready |
+| Q15 | PLAYTEST **#15**: the TESTER badge covers "Save as autopilot" | S | 🖥 | → fixes 2026-10-08 |
 | Q16 | More cheats: any date, set funds, skip to a compute era, per-mission toggles (the robot playtester wants them too) | S | ⚙ | ready |
 
 ### terrain — the world
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M | 🖥 | → terrain 2026-10-08 (on branch, renumber v1.52) |
-| Q17 | PLAYTEST **#19** Link flickers at liftoff + **#17, Link side** (gate `linkOf`'s blackout on speed too). Agree the threshold with Q20 | S | ⚙ | ready |
+| Q17 | PLAYTEST **#17, Link side**: gate `linkOf`'s blackout on speed too; agree the threshold with Q20. (#19 is with the fixes session) | S | ⚙ | ready |
 | Q18 | **Selene terrain**: craters, maria, slopes, shadows, horizons. Unblocks rovers on real ground | L | 🖥 | ready (plan first) |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills) | M | 🖥 | ready |
 
@@ -100,7 +102,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### visuals — part look, pad
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q22 | PLAYTEST **#22**: `refView(8)` throws; hide the pad rig in close-ups 4–9 | S | 🖥 | ready |
+| Q22 | PLAYTEST **#22**: `refView(8)` throws; hide the pad rig in close-ups 4–9 | S | 🖥 | → fixes 2026-10-08 |
 | Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M | 🖥 | ready |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | S | 🖥 | ready |
 
