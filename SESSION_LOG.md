@@ -2703,6 +2703,29 @@ re-landed. Browser: a pod at rest on an 18° slope, shadow on the slope.
 - [ ] Planning (parts): landing legs. Without them tall stacks tip on ~7–12° slopes; `footPoints` will pick up a leg part's feet
 - [ ] Terrain: slice-B follow-ups (§ v1.27), slices C–E; bouncing debris
 
+## 2026-10-08 — Launchpad: procedures (automation that adapts), tape fingerprint, a dispatch brief (bodies session, cont.)
+
+### Summary
+Caio wants automated missions that spare repetition, with better hand-flown flights improving future automated ones, and
+asked what flexibility the replay system has. Answer: tapes are open-loop exact replay (perfect when nothing differs, blind
+otherwise). Built (1) **`TAPE_V` as a fingerprint** of the physics code and data (it had stayed `'lp-1.12'` through a dozen
+physics changes, so old tapes would have silently diverged). (2) **Procedures**: every flight off the pad is sampled (pitch
+and throttle against altitude, heading, early staging, cut-off, final orbit); once in orbit it becomes the design's procedure
+if it beats the stored one (less Δv). `procStep` flies it through SAS holds with goal cut-offs and retargeting. Same design
+4,446 vs 4,445 m/s hand-flown; retargeted to 180 km; a +2 t variant still reaches orbit; an impossible one never claims to;
+in the game, ▶ Procedure flies to orbit by T+287 s. (3) A **dispatch brief** for the economy session in NOTES (not built, per
+Caio). Also fixed test isolation: my sections restore the whole program state; the economy's timeline check had depended on
+the business cycle earlier sections left. Merged `main`; `main` at `e0d79ba`.
+
+### Files
+- `explorations/launchpad/index.html`: `hashStr`/`TAPE_V`; `procSample`/`procKeep`/`procStart`/`procStep`/`tabAt`/`PROG.procs`; `advPhys` and `stage` hooks; ▶ Procedure button, game-loop warp/physics for procedures, takeover keys; logbook stale-tape message
+- `explorations/launchpad/test.mjs`: §28 (7 checks); full PROG snapshot/restore in §23–25, §27–28; the timeline check deals a board if empty
+- `explorations/launchpad/NOTES.md`: § "Procedures: automation that adapts, and a dispatch brief"
+
+### Next steps
+- [ ] **Economy session: dispatch** (NOTES § "Procedures …", part 3, six questions)
+- [ ] Procedures beyond the ascent: transfer, landing, return (the phases `fly_crewlunar.mjs` uses)
+
 ## 2026-10-08 — Launchpad v1.40: attitude control (control session)
 
 ### Summary
@@ -2734,3 +2757,126 @@ Fast-forwarded `main` (`45dd447`, not pushed). Details: NOTES § v1.40; lesson #
 
 ### Next steps
 - Era-gated SAS quality; draw gimbal and fin deflections (visuals); an unload-now control if playtests want it.
+
+### Follow-up: rovers, planned and R1 built (sats session, 2026-10-08)
+Planned rovers with Caio (NOTES § "Rovers: plan", R1–R5). The pain in KSP is getting a rover there and upright, not
+driving it, so deployment is designed (R2). Built R1, the **Rover yard**: a designer (3 chassis, 3 wheel kinds with
+hub motors, 4 or 6 wheels, springs set for Tellus or Selene, a deck of slots) with figures on paper for Tellus and
+Selene. A wheel-contact rigid-body drive: springs, friction circles, rolling resistance, bumps, a battery, and body
+contacts so tipping is real. Drives go in a test yard beside the pad (ramps 10/20/30°, side slopes 20/35°) or in open
+country, at home gravity or as a lunar trainer. Records are kept per design and per wheel kind. Looked at economy's
+"Planning before the flight": rover drive plans should be a surface leg of the mission plan; overlap noted in NOTES.
+
+### Files
+- `explorations/launchpad/index.html`: rover block before SIM END; Rover yard screen (designer, readout, meshes, camera, test-yard mounds); Program-header button; `go`/`screenNow`/`KEYS`/Esc menu
+- `explorations/launchpad/test.mjs`: §34 (7 checks); `explorations/launchpad/NOTES.md` v1.21.3; `explorations/README.md` row
+
+### Verification
+`test.mjs` all passed on the merged `main` (`d620d8b`, not pushed). Mutation-tested: dropping the friction circle, a
+one-pass grip solve, no body contacts, and an ignored battery each fail a check. Browser (headless Chrome): the yard,
+the trainer on top of the 10° ramp, open country, Help and the Program round trip.
+
+### Next steps
+- [ ] R2: stowed package and deployment (folded on the side, ramps, cargo bay); driving on Selene (needs Selene's terrain from the terrain session)
+- [ ] Economy: prices/eras for rover parts; rover legs in the mission planner
+- [ ] Push `main` when Caio says
+
+## 2026-10-08 — Launchpad: procedures v2, whole missions recorded from a flight and flown again (bodies session, cont.)
+
+### Summary
+Mission procedures: the ascent plus phases (transfer, capture, land, surface, ascend, return), each a guidance law with the
+parameters the flight chose, steered through SAS; coasts warp. The recorder keeps a mission log after the ascent (it now
+runs on rails too, and after each step). Home and well, it becomes a procedure per design and mission, kept only if
+cheaper. The `fly_crewlunar` flight is recorded as "Selene land" (8,672 m/s); the executor flies it end to end (crew home,
+1.85 days, 4.0 g) for 8,600 m/s, which replaces it. Pad buttons per procedure; in the browser the Selene procedure flies
+through take-off from Selene in the game loop. Five lessons in NOTES, two of them recorder mistakes that would have killed
+the crew (pass read after three hours of tide; "perigee" taken as the ground). Merged `main`; fast-forwarded.
+
+### Files
+- `explorations/launchpad/index.html`: `MP` phases, `aimAt`/`solveDv`/`impulse`/`fixPe`/`burnTo`, `procMission`/`procMissionKeep`/`procAscent`, `procSample` in `advRails` and after the step, robust circularisation, per-procedure pad buttons, game-loop wake handling
+- `explorations/launchpad/test.mjs`: 2 checks in §27
+- `explorations/launchpad/NOTES.md`: § "Procedures v2: whole missions"
+
+### Verification
+`test.mjs` 298/298 after the merge (suite ~1 min).
+
+### Next steps
+- [ ] Economy: dispatch (can now run whole missions headless)
+- [ ] Flyby procedures; a Nyx mission through the same phases
+
+## 2026-10-08 — Launchpad v1.45: launch-site follow-ups (terrain session)
+
+### Summary
+- **A sea platform:** one per world, on the equator in open ocean, nearest home. It isn't levelled (no instant
+  island), and it's drawn as a deck on columns and pontoons carrying the launch complex. It's open to any program by
+  default, so a power with no equatorial land can still reach the equator.
+- **Weather scrubs:** storm-grade cloud over the pad on the launch day slips the launch a day at a time (up to 5), and
+  the picker shows today's sky.
+- **A downrange warning** names the other powers under a site's corridor, in the picker and the news at launch.
+
+A weather slip moves the shared world seed for later tests, and that broke §35's reliance on a chance contract offer
+(the bodies session made the same fix independently). Fast-forwarded `main` to `98723b1`.
+
+### Files
+- `explorations/launchpad/index.html`: the sea site in `extendSites`, `siteWeather`/`weatherHold`/`downrangeWarning`, land-only levelling, `seaHull`, the picker, the launch news; one hook in economy's `missionTick` launch line (`weatherHold`)
+- `explorations/launchpad/test.mjs`: §36, 3 checks; §23 levels land pads only; `explorations/launchpad/NOTES.md`: § v1.45
+
+### Verification
+`test.mjs` 301/301 on the merged `main`. Browser: the picker shows weather and the warning; the platform renders at
+sea with the rocket on its deck, 12 m above the water.
+
+### Next steps
+- [ ] Economy: price or gate the sea platform in `siteAccess`; the weather hook lives in your launch line
+- [ ] Visuals: a sea-specific complex (tower and table only) would let the platform shrink to a realistic size
+- [ ] Terrain: a movable sea platform, seasonal/regional weather, winds aloft; then slices C–E
+
+## 2026-10-08 — Launchpad: the tester menu, PLAYTEST #1 (tester session)
+
+### Summary
+- **Tester menu:** open `launchpad/index.html?tester`, then F2, the TESTER badge or the Esc menu. Cheats: infinite money,
+  full know-how and certification, all tools, no ignition failures, instant stacking. Actions: epoch picker 1–5, world
+  date +1 d to +1 year (day by day, so every daily rule runs), finish every job now.
+- **Separate save:** tester mode saves to `launchpad-program-tester`; the career slot is never read or written. The menu can
+  copy the career into the sandbox or start a fresh one. Without the flag the page is unchanged (no badge, key or Help row).
+- **Bug fixed on the way:** epoch 3's Weather satellite shared the id `weather` with epoch 1's "Above the weather", so the
+  sounding flight also ticked off the satellite and opened Disaster watch early. Now `wxsat`; a check keeps ids unique.
+- Merged to `main` (`3b1a775`, fast-forward, not pushed). Worktree `C:/Users/caioa/dev/launchpad-tester`, branch `tester`, port 8797.
+
+### Files
+- `explorations/launchpad/index.html`: SIM tester block after `advanceDays`; one flag read each in `khUse`, `certOf`, `toolOK`,
+  `igniteOK` and economy's launch line (`R.prep`); `PROG_KEY`; the panel after the shared keydown; a KEYS row, an Esc entry, `OVS`
+- `explorations/launchpad/test.mjs`: §37 (11 checks); the epoch 3 weather checks use `wxsat`
+- `explorations/launchpad/NOTES.md`: § "The tester menu"; `PLAYTEST.md`: #1 moved to Done
+
+### Verification
+`test.mjs` 312/312 on the merged tree. Browser (port 8797): the menu opens with F2 and from the Esc menu; money, epoch 4
+and +1 year work; the career slot stayed empty; Fresh sandbox wipes and reloads; without `?tester` nothing shows.
+
+### Next steps
+- [ ] Play with it and say which cheats are missing (ideas: any date, set funds to test going broke, per-mission toggles)
+- [ ] FLAG: test.mjs has four sections numbered 36 (economy, control, terrain, and this one before it moved to 37)
+
+### Follow-up: rovers R2 (sats session, 2026-10-08)
+Built R2. Two mounts, a rover folded on a lander's side and a deck with 6 m telescoping ramps, carry a copy of a Rover
+yard design with its mass. **Deploy** (HUD row) checks the lander's lean and, at the spot, sea, slope and rover-sized
+rocks (and the ramps' angle for a deck); it refuses with the reason, or ends with the rover upright on its wheels after
+a scripted unfold or drive down the ramps. `]` drives a deployed rover on any body, `[` returns. Landed vessels are
+obstacles. At the flight's end rovers stay in the field (`PROG.rvOut`): a flight nearby takes them back in, and uncrewed
+ones can be driven from home (Program, Fleet tab). Fixed on the way: tape playback replayed arm ops as aborts. Merged
+`main` twice; `main` had `gaugeRect`'s swallowed `const r` (froze the frame loop), fixed the same way in both lines.
+
+### Files
+- `explorations/launchpad/index.html`: R2 block before SIM END; parts `rvfold`/`rvdeck`; `assemble` (packed mass), `shapeOf`/`vesselOf` (`rvOut`); tape `Y`; `missionEnd` → `rvEnd`; flight driving, HUD rows and panel, camera, meshes; Program list and remote drive
+- `explorations/launchpad/builder.js`: palette *Surface*; new mounts pack the selected rover; the rover picker in part options
+- `explorations/launchpad/test.mjs` §35 (6 checks); `NOTES.md` v1.21.4 § "R2 built"; `LESSONS_LEARNED.md` #29 (a fourth time); `explorations/README.md` row
+
+### Verification
+`test.mjs` all passed on the merged branch (`370a033`). Mutation-tested (5 mutations, each caught). Browser: on Selene a
+rock blocked one side and the other deployed; drove, back to the lander, kept in the field, driven from home; the deck
+in Assembly with its part options.
+
+### Next steps
+- [ ] Fast-forward `main` to `sats` once the Drive folder's uncommitted LESSONS/README edits are committed
+- [ ] R3 power and contact; R4 science; R5 drive plans (as a surface leg of the mission planner)
+- [ ] Terrain: Selene's craters and slopes (rover deploy checks and driving will use them as they are)
+- [ ] Push `main` when Caio says
