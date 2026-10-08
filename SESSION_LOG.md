@@ -2612,3 +2612,18 @@ and the capsule climbs away at 7 g.
 - [ ] Plumes session: the escape tower's motor has no plume
 - [ ] A crewed preset (Big Lunar with a crew capsule and a tower); crew transfer / EVA
 - [ ] Repeatable contracts from the new missions (economy board)
+
+## 2026-10-07 — Launchpad UI: screens spec + slice 1 (ui session, branch `ui`)
+- New session line: worktree `C:/Users/caioa/dev/launchpad-ui`, branch `ui`, port 8795 (preview config `launchpad-ui`).
+- Inventory of the current UI, then a spec agreed with Caio, in launchpad NOTES § "UI: screens and navigation". The screens are
+  Program → Assembly → Rollout → Flight ⇄ Map → Debrief. Program is its own home screen, Rollout is a checkpoint before
+  launch, and the flight HUD is a fixed core plus cards that appear on demand. Five slices.
+- Slice 1 built and merged to `main` (`c421ed0`, not pushed):
+  - `go()` is now the only code that changes screens.
+  - Overlays stack, with an Esc menu. Revert and Back to Assembly ask twice while airborne.
+  - Help is generated from the per-screen `KEYS` tables.
+  - Logbook is on F, RCS on/off on V. The perf readout is off by default.
+  - test.mjs §32 adds 4 checks: key coverage (mutation-tested), one meaning per key per screen, and only `go()` assigning `mode`/`view`.
+- Merge note: economy's §31 (development projects) landed at the same spot in test.mjs; resolved by taking main's file
+  and re-appending the UI checks as §32.
+- Next: slice 2, the Program screen (tabs and a first-run gate). Tell economy/bodies first.
