@@ -3,6 +3,8 @@
 import { readFileSync } from 'node:fs';
 import { crewLunar } from './fly_crewlunar.mjs';
 import { flyLadder, handAscent } from './fly_ladder.mjs';
+// shards (platform session): `node test.mjs --list | --only 12,docking | --smoke | --times`, see shards.mjs
+if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).main(process.argv.slice(2), import.meta.url));
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
@@ -496,7 +498,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   fresh(); P.day = 0; P.active = [ct('apex', { lo: 50, hi: 65 })]; P.active[0].deadline = 30; const st0 = api.standOf('sci'), op1 = api.opOf(1); api.advanceDays(40);
   check('a missed deadline drops the contract, our standing with the source and the client\'s opinion', P.active.length === 0 && api.standOf('sci') < st0 && api.opOf(1) < op1 + 1, `standing ${st0} → ${api.standOf('sci')}`);
   // budget days every 100 days, scaled by home opinion and the cycle
-  fresh(); P.homeArch = 'frugal'; P.day = 0; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home
+  // (platform) the world's dice and the cycle's phase pinned: they were whatever earlier sections left, so run alone this failed
+  fresh(); P.homeArch = 'frugal'; P.day = 0; P.wseed = 4242; P.cyc = Math.PI / 2; P.op = {}; P.op[api.HOME] = 75; const f2 = P.funds; api.advanceDays(100.5); P.homeArch = null;   // a tax-funded home
   check('budget day: every 100 days the home government pays, more when opinion is high', P.funds - f2 > api.GRANT_100 * 1.1 && P.funds - f2 < api.GRANT_100 * 1.5 * 1.3, `opinion 75 → +${(P.funds - f2).toFixed(1)}M (base ${api.GRANT_100}M at opinion 50), economy ${P.cycle.toFixed(2)}`);
   // offers arrive and expire over time; types unlock with firsts; the board never overflows
   const seen = done => { fresh(); P.day = 0; P.offers = null; P.done = done; P.wseed = 7; const types = new Set(); let maxB = 0; api.ensureBoard();
@@ -744,7 +747,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 18. Career moves (economy): when the program does badly (or very well), the team gets offers to defect or be hired.
 {
   const P = api.PROG, news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
-  const fresh = () => { api.resetHome(); Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
+  // (platform) every PROG key cleared first: fields earlier sections left (the cycle's phase, recent bailouts…) changed the outcome
+  const fresh = () => { api.resetHome(); for (const k of Object.keys(P)) delete P[k]; Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], sanc: {}, home: 0, history: [] }); };
   const careerOffers = setup => { fresh(); setup(); P.wseed = 31; for (let d = 0; d < 400 && !P.decisions.some(x => x.kind === 'defect' || x.kind === 'hire'); d += 10) api.advanceDays(10);
     return P.decisions.filter(x => x.kind === 'defect' || x.kind === 'hire').map(x => x.kind); };
   const whenBad = careerOffers(() => { P.bailouts = 2; P.op[0] = 20; }), whenFine = careerOffers(() => { P.op[0] = 50; }), whenGreat = careerOffers(() => { P.op[0] = 80; for (const k of ['weather', 'air', 'loads', 'range', 'beeper']) P.done[k] = {}; });
@@ -2847,6 +2851,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
 }
 
+// ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');

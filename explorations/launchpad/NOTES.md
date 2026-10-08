@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -5684,6 +5684,8 @@ the arrows, and every key in the handlers present in its Help table.
 ## Picking this up cold
 
 - **Direction:** native desktop eventually, the browser for now (§ "Platform direction"). Keep the SIM pure: it is what ports.
+- **Tests:** `node test.mjs --smoke --jobs 4` (~25 s) while working; `node test.mjs --only <your area>` for one area; the full
+  `node test.mjs` (~5 min) before merging. § "Test shards".
 - Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
   extracts it with `new Function` and drives it headless. Keep that boundary.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
@@ -5896,3 +5898,56 @@ predictor lands within 50 m; an autopilot replay lands on the recorded position 
 **Rerun.** `python -m http.server 8799 --directory <repo>/explorations`, then from `explorations/launchpad`:
 `node playtest.mjs` (all rows) or `node playtest.mjs 104 110` (some). Add a row: a `ROWS[n]` entry next to its area's
 rows; a row that needs two setups can use a string key (`'82b'`).
+
+## Test shards (2026-10-08, platform session; ROADMAP § Platform lane, step 1)
+
+`test.mjs` had grown to 82 sections, and every session paid for all of them on each edit. `node test.mjs` with no
+arguments still runs everything in one process, exactly as before: **merges run that**. With arguments, `test.mjs`
+hands over to `shards.mjs`, which cuts the file into sections and runs a chosen subset in a child process:
+
+| Command | What it runs |
+|---|---|
+| `node test.mjs --list` | the 82 sections: position, label, line, title |
+| `node test.mjs --only 12,#53,docking` | by label (every section carrying it), by `#position` from `--list`, or by a word in the header comment |
+| `node test.mjs --skip 27,bodies-1` | everything but these (combines with `--only`) |
+| `node test.mjs --smoke --jobs 4` | everything but the five long flights (`SLOW` in `shards.mjs`): **22 s** in 4 processes, ~55–75 s in one |
+| `node test.mjs --times [--jobs 4]` | the full suite with the seconds per section |
+| `node test.mjs --isolation --jobs 4 [--only …]` | each section alone vs the same section in a full run; lists any whose checks change |
+
+**What a section is.** A comment at column 0, `// 12. Title` or `// control-3. Title`, up to the next one. Everything
+before the first (the SIM, `api`, `check`) and everything after `// ==== END OF SECTIONS` (the summary, the exit code)
+runs in every shard. **New sections go above that line.** A section using a top-level function another section declares
+is run with it (`fly` lives in §3, so 10 sections pull §3 in). Labels repeat (§25 is four sections) because lanes
+numbered in parallel; that's why selectors also take words. Renumbering would break the "§N" references in this file.
+
+**Which sections cover what** (the lane words work as selectors: `--only "sats session"`):
+
+| Area | Selector | Sections |
+|---|---|---|
+| orbits, flight, aero, heating, staging (the oldest core) | `--only 1,2,3,4,5,6,7,8,9,10,11,12,13` | 13 |
+| the program, contracts, money | `"(economy"` plus `14` | 15 |
+| bodies, missions out there, procedures, dispatch | `"bodies session"` (`procedure` for the procedure ones) | 9 (+§3) |
+| registry, rendezvous, docking, stations, rovers | `"sats session"` (`docking`, `station`, `rover`) | 18 |
+| attitude control | `"control session"` | 5 |
+| the world, sites, ground stations, recovery | `"terrain session"` | 7 |
+| logbook, ground stations, registry (planning) | `"planning branch"`, `logbook` | 3 |
+| builder trees, staging editor, canted engines | `#16,#18,#19,#21` | 4 |
+| tester menu, gantry, hold-downs | `"tester session"` | 3 |
+| screens and keys (KEYS ↔ Help, `go()`) | `"ui session"` (§32 at `#53`) | 1 |
+| sound | `sound-1` | 1 |
+
+**Measured (2026-10-08, other sessions running).** The full suite takes **286 s**, not 8 min; 74 % of it is two
+sections: the crewed Selene landing (§27, 111 s) and the ladders (bodies-1, 102 s). Then §14 the program (9 s),
+bodies-2 (6 s), §28 procedures (5 s); the other 77 sections take 53 s together, most under a second. In one process
+there is ~30 % run-to-run noise from machine load.
+
+**Every section stands alone, after one fix.** `--isolation` ran each of the 82 sections by itself: 81 matched the full
+run. §14's *budget day* check failed alone (+16.5M where it needs > 16.5M): `worldTick` seeds its dice from
+`PROG.wseed` and the cycle's phase `PROG.cyc` carries over, and §14's `fresh()` resets neither, so the grant depended on
+what earlier sections had drawn. The check now pins both (`P.wseed = 4242; P.cyc = π/2`). That was a latent flake in the
+full run as well: any section added above §14 that drew from the world's dice could have tipped it. **Economy:** the
+check is yours; the pin is test-only. **Everyone:** a new section should pass alone; `node test.mjs --isolation --only
+<it>` checks that in a few seconds. That's also what makes `--jobs` sound.
+
+**Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
+cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
