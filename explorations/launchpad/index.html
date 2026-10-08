@@ -673,7 +673,7 @@ function sasTarget(s){
   if(s.sasMode==='stab')return s.hold;
   if(s.sasMode==='node'){const I=nodeInfo(s);return I&&len(I.rem)>1e-3?norm(I.rem):s.hold}
   if(TGT_M.includes(s.sasMode)){const T=tgtOf(s);if(!T)return s.hold;   // toward / away from the target; along / against our velocity relative to it
-    if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?qrot(qFromTo(P.Aa,mul(P.Ab,-1)),qrot(s.q,[0,1,0])):s.hold}   // turn our port's axis onto the target port's (a nose port: the nose)
+    if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?{q:qnorm(qmul(qFromTo(P.Aa,mul(P.Ab,-1)),s.q))}:s.hold}   // an attitude: our port's axis onto the target port's (roll too, for a side port)
     if(s.sasMode==='tgt'||s.sasMode==='antitgt'){const u=norm(T.dr);return s.sasMode==='tgt'?u:mul(u,-1)}
     if(len(T.dv)<0.05)return s.hold;const u=norm(T.dv);return s.sasMode==='rpro'?u:mul(u,-1)}
   const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
@@ -692,8 +692,11 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
     return add(add(mul(X,I.yaw*aP),mul(Y,-I.roll*aR)),mul(Z,-I.pitch*aP))}
   if(!s.sas)return[0,0,0];
   if(!s.hold&&len(s.w)<0.02)s.hold=Y;
-  const tg=sasTarget(s)||Y,e=cross(Y,tg),sn=len(e),ang=Math.atan2(sn,dot(Y,tg));
-  const ax=sn>1e-9?mul(e,1/sn):(dot(Y,tg)<0?X:[0,0,0]),wd=mul(ax,Math.min(0.6,Math.sqrt(aP*ang)));
+  const tgr=sasTarget(s);let ax,ang,aE=aP;
+  if(tgr&&tgr.q){const e=qmul(tgr.q,qconj(s.q)),sg=e[3]<0?-1:1,v=[e[0]*sg,e[1]*sg,e[2]*sg],sv=len(v);   // a whole attitude, roll included (a side port)
+    ang=2*Math.atan2(sv,Math.abs(e[3]));ax=sv>1e-12?mul(v,1/sv):[0,0,0];aE=Math.min(aP,aR)}
+  else{const tg=tgr||Y,e=cross(Y,tg),sn=len(e);ang=Math.atan2(sn,dot(Y,tg));ax=sn>1e-9?mul(e,1/sn):(dot(Y,tg)<0?X:[0,0,0])}
+  const wd=mul(ax,Math.min(0.6,Math.sqrt(aE*ang)));
   const al=mul(sub(wd,s.w),4);
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
 function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
@@ -2599,7 +2602,7 @@ const TAPE_V='lp-1.12';   // 1.12: the drogue waits for subsonic-ish speed
 function advPhys(s){fleetPhysAll(DT);physStep(s,DT);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true)}
 function advRails(s,dt,warp){
   if(!s.landed){if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(s,dt/n)}
-    else{s.w=[0,0,0];if(s.sas&&s.sasMode!=='stab'){const tg=sasTarget(s);if(tg)s.q=qnorm(qmul(qFromTo(qrot(s.q,[0,1,0]),tg),s.q))}}}
+    else{s.w=[0,0,0];if(s.sas&&s.sasMode!=='stab'){const tg=sasTarget(s);if(tg)s.q=tg.q?qnorm(tg.q):qnorm(qmul(qFromTo(qrot(s.q,[0,1,0]),tg),s.q))}}}
   const t0=simT,ok=rails(s,dt),el=simT-t0;if(FLEET.length){simT=t0;for(const v of FLEET)if(v.alive)fleetRails(v,el);simT=t0+el}missionTick(s,dt,false);bayTick(s);FLEET.forEach(bayTick);
   if(warp>4){for(const d of debris)d.mesh&&d.mesh.free&&d.mesh.free();debris.length=0}else stepDebris(dt);
   return ok}
@@ -4564,7 +4567,8 @@ function dockRows(){const out=[],D=S.att||[];
   const ang=Math.acos(clamp(-dot(P.Aa,P.Ab),-1,1))*57.29578,db=qrot(qconj(S.q),P.d),va=add(S.v,cross(S.w,sub(P.Pa,S.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r))),
     cl=-dot(sub(vb,va),P.Aa),vr=qrot(qconj(S.q),sub(va,vb)),k=(v,a,b)=>Math.abs(v)<0.005?'':`${v>0?a:b} ${Math.abs(v).toFixed(2)}`,ok=(c,t)=>`<span class="${c?'ok':'warn'}">${t}</span>`;
   out.push(['Port',`${P.dl<10?P.dl.toFixed(2)+' m':fmtD(P.dl)} · ${ok(ang<10,ang.toFixed(1)+'°')} · closing ${ok(cl<PORT_V,cl.toFixed(2)+' m/s')}`],
-    ['Line up',`offset ${[k(db[0],'L','J'),k(db[2],'U','O')].filter(Boolean).join(' · ')||'centred'} m · drift ${[k(-vr[0],'L','J'),k(-vr[2],'U','O')].filter(Boolean).join(' · ')||'none'} m/s`]);
+    ['Line up',(()=>{const K=[['L','J'],['I','K'],['U','O']],av=P.a.av,ax=[0,1,2].sort((i,j)=>Math.abs(av[i])-Math.abs(av[j])).slice(0,2).sort();   // the two body axes across our port's axis
+      return `offset ${ax.map(i=>k(db[i],...K[i])).filter(Boolean).join(' · ')||'centred'} m · drift ${ax.map(i=>k(-vr[i],...K[i])).filter(Boolean).join(' · ')||'none'} m/s`})()]);
   return out}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.undock;if(id==null||mode!=='flight'||!S)return;tapeUndock(recTape,S,+id)});
 function tgtRows(){const T=tgtOf(S);if(!T)return[];const d=len(T.dr),cl=dot(T.dv,T.dr)/Math.max(d,1e-9),ca=tgtCA();

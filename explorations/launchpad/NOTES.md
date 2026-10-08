@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.17.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.18.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2984,6 +2984,52 @@ Two halves launched together (or a module you just released) can now dock to eac
 - **Not yet:** the arm taking a payload out (Phase D), or putting one back in for the trip home (retrieval); a side-
   opening shuttle-style bay (needs an "inside" attach in the editor); a 2.5 m bay; the doors' look (they read a little
   oddly mid-swing, for the visuals session); the editor doesn't yet say whether a payload fits.
+
+### Phase C built: modules, side ports and station state (sats session, 2026-10-08)
+
+**Caio: keep it modular, ports placeable on any structure.** So there's no hub module: any part with radial ports is a hub.
+
+- **Radial docking port** (palette *Structure*): a surface part (with symmetry, like an RCS quad) that faces out from the
+  side of whatever it's mounted on, its face 0.3 m off the skin. Every port now has its own face and axis (`portGeom`:
+  a stack port faces up its line, a radial one outward), and docking, port loads, undocking, the Port / Line-up rows and
+  the Docking mode all use it. A radial port's contact shape is its cylinder turned onto the radial axis.
+- **The Docking mode now commands a whole attitude**, roll included. Aiming the nose can't bring a side port round when
+  the turn needed is a roll about the nose itself (it sat at 90° doing nothing). It now asks for the minimal rotation
+  that puts our port's axis onto the target port's, and the attitude controller drives the full rotation error. A nose
+  port is unchanged; every other SAS mode keeps its old code path. Measured: a side port 90° off locks on in 10 s and
+  then tracks the target port as it turns with its own orbit (an early check compared against the port's starting
+  direction and read 4.6° after 40 s: that was the target moving, 0.0011 rad/s).
+- **Line up** shows the offset and drift on the two body axes across *our* port's axis, in the RCS keys that fix them
+  (L/J for X, I/K for Y, U/O for Z): a side port's approach distance is no longer reported as a sideways offset.
+- **Modules:** *Habitat module* (berths for three, 300 kg of supplies: 60 crew-days) and *Laboratory module* (palette
+  *Station*). New resource `sup` (supplies).
+- **Crew** builds on the bodies session's crew capsule: a capsule counts if it flew real people (the escape tower
+  qualified), not dummies. Registered shapes now keep each part's resources and mark crewed capsules (`shapeOf`).
+- **A station** is a registry stack with a habitat or a lab (`stationOf`): berths, crew (people in crewed capsules
+  docked to it, up to the berths; each capsule stays as its crew's lifeboat), labs, supplies (pooled across the stack),
+  free ports. **Between flights** (`stationTick`, from `satTick`): the crew uses 5 kg per crew-day; labs work at up to
+  two people each and add lab-days to the station and the program (`PROG.labDays`). Supplies low (under 10 days) and out
+  make headlines; out of supplies, the lab stops (nobody is harmed or evacuated by fiat). The Program panel shows a
+  line per station.
+- Checks (`test.mjs` §30): radial port geometry; a module docking onto a hub's side at right angles; the side port's
+  load and undocking along its axis (0.300000000 m/s); the Docking mode bringing a side port round from 90°; station
+  state (3 berths, crew 2, 1 lab, 30 days); 40 days between flights (supplies out after 30, 60 lab-days, the headline);
+  dummies bring no crew. §28's Docking-mode check updated for the attitude target. Browser: four side ports on a hub,
+  a lab module docking onto one.
+- **Bringing a crew home needs A2** (a capsule left at a station has to be flyable in a later flight). That's next.
+- **Not yet:** power; transferring supplies or fuel explicitly (supplies pool across a station; fuel doesn't cross);
+  a port facing down a stack (parts can't be flipped; side ports and top ports cover most needs).
+
+**Contract types proposed to the economy session** (for them to price and schedule; nothing built on the contract board):
+1. **First station** (flagship, milestone payments): a habitat in a stable orbit with two free ports → a crew visits
+   (a crewed capsule docks) → a lab added → 30 crewed days.
+2. **Resupply** (repeatable, generated from a station's supply days): deliver N kg of supplies to station X before it
+   runs out (dock a module carrying `sup`). Urgency rises as the days fall.
+3. **Lab time** (science or commercial client): N lab-days on station X within D days. Pays per lab-day.
+4. **Crew rotation** (needs A2): bring the crew home and replace them before the supplies or their tour runs out.
+5. **Expansion** (a client's module): dock a module of a given type to station X (e.g. a commercial lab, a hotel
+   habitat once tourism exists).
+6. **Reboost** (once orbits decay): raise station X's periapsis above a floor.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
