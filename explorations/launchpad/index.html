@@ -3294,7 +3294,27 @@ const COV_FS=(()=>{const a=SKY_FS.indexOf('float h3('),b=SKY_FS.indexOf('float h
 precision highp float;in vec2 vNdc;out vec4 o;uniform float uCT,uPR,uCvX;uniform vec3 uCv0,uCvE,uCvN;
 ${SKY_FS.slice(a,b)}${SKY_FS.slice(c,e+1)}${SKY_FS.slice(f,g)}
 void main(){vec2 xy=vNdc*uCvX;vec3 u=normalize(uCv0+(xy.x*uCvE+xy.y*uCvN)/uPR);o=vec4(cloudCovF(u,0.),0.,0.,1.);}`})();
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// landing dust on an airless body: a jet reaching the ground there throws a thin sheet of dust outward in radial streaks
+// (no air to slow or loft it), with the ground swept clear right under the nozzle. A volume in the ground frame (the
+// impingement's box, IMP_VS), lit by the sun like the surface. uIP: impact x, z, strength, clear radius; uRd: reach.
+const DUST_FS=`#version 300 es
+precision highp float;precision highp sampler3D;in vec3 vL;in float vW;out vec4 o;
+uniform vec3 uLo,uHi,uCam,uSunL,uAlb;uniform vec4 uIP;uniform float uFc,uT,uIn,uRd,uLit;uniform sampler3D uN;
+void main(){vec3 rd=normalize(vL-uCam),p0=uIn>.5?uCam:vL,iv=1./rd,ta=(uLo-p0)*iv,tb=(uHi-p0)*iv,tf=max(ta,tb);
+ float t1=max(0.,min(min(tf.x,tf.y),tf.z));if(uIn>.5)t1=min(t1,length(vL-uCam));
+ const int N=40;float ds=t1/float(N),j=fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))));
+ float T=1.,L=0.;
+ for(int i=0;i<N;i++){vec3 p=p0+rd*(ds*(float(i)+j));if(p.y<0.)break;
+  vec2 q=p.xz-uIP.xy;float rho=length(q);vec2 dr=q/max(rho,1e-3);
+  float H=.45+.09*rho,clr=smoothstep(uIP.w*.6,uIP.w*1.4,rho),fall=exp(-2.6*rho/uRd);
+  float n1=texture(uN,vec3(dr*2.2,rho*.05-uT*2.2)).r,n2=texture(uN,vec3(dr*5.3+.3,rho*.12-uT*4.)).r,strk=smoothstep(.38,.78,n1*.6+n2*.4);
+  float d=uIP.z*clr*fall*exp(-p.y/H)*(.1+2.2*strk);if(d<.002)continue;
+  float a=1.-exp(-d*2.4*ds);L+=T*a;T*=1.-a;if(T<.03)break;}
+ if(T>.997)discard;
+ float ph=.55+.45*smoothstep(-.2,1.,dot(-rd,uSunL));   // dust scatters forward: brighter looking toward the sun
+ vec3 c=uAlb*(uLit*ph+.02)*(L/max(1.-T,1e-4));c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
+ float al=1.-T;o=vec4(pow(c,vec3(1./2.2))*al,al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -3564,6 +3584,17 @@ let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU 
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).
 // Drawing one per engine overdrew the whole flame channel once per engine: ~6 ms for the Heavy's three on the pad.
+// landing dust (airless bodies): one volume for the strongest jet. It starts ~30–40 m up (more for bigger nozzles) and
+// thickens as the nozzle comes down; the cleared patch under the nozzle widens as it gets close.
+function drawDust(G,hits,VP){let h=null,best=0;for(const x of hits){const k=x.thr*(x.re/.25)**2*sstep(30+40*x.re,2,x.sg);if(k>best){best=k;h=x}}if(!h||best<.01)return;
+  const u=PDUST.u,loc=v=>{const d=sub(v,G.O);return[dot(d,G.X),dot(d,G.Y),dot(d,G.Z)]},cl=loc([0,0,0]),ip=loc(h.P),w=Math.min(1.5,best),
+    Rd=8+28*w,Hb=2+.12*Rd,lo=[ip[0]-Rd*1.6,0,ip[2]-Rd*1.6],hi=[ip[0]+Rd*1.6,Hb,ip[2]+Rd*1.6],
+    inside=cl[0]>lo[0]&&cl[0]<hi[0]&&cl[1]>lo[1]&&cl[1]<hi[1]&&cl[2]>lo[2]&&cl[2]<hi[2],sl=[dot(SUN,G.X),dot(SUN,G.Y),dot(SUN,G.Z)];
+  gl.useProgram(PDUST.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
+  gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.uniform3fv(u.uLo,lo);gl.uniform3fv(u.uHi,hi);gl.uniform3fv(u.uCam,cl);gl.uniform1f(u.uIn,inside?1:0);
+  gl.uniform4f(u.uIP,ip[0],ip[2],w,h.re*2+.15*h.sg);gl.uniform1f(u.uRd,Rd);gl.uniform3fv(u.uSunL,sl);gl.uniform3f(u.uAlb,.78,.76,.72);gl.uniform1f(u.uLit,4*Math.max(0,sl[1])+.05);
+  gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
+  gl.cullFace(inside?gl.FRONT:gl.BACK);gl.bindVertexArray(CUBE.vao);gl.drawArrays(gl.TRIANGLES,0,CUBE.n);gl.bindVertexArray(PLUME.vao);gl.useProgram(PPLUME.p)}
 const IPA=new Float32Array(16);
 function drawImpact(G,hits,VP){const u=PIMP.u;gl.useProgram(PIMP.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,performance.now()/1000%1000);
   gl.uniformMatrix4fv(u.uM,false,mat4(G.X,G.Y,G.Z,G.O));gl.bindVertexArray(CUBE.vao);
@@ -4287,12 +4318,12 @@ function render(){
       gl.uniformMatrix4fv(pu.uM,false,qt?modelQ(Q,sub(p,camW),qrot(qconj(qt),sh)):modelQ(S.q,sub(p,camW),sh));
       {const qi=qconj(Q),n=qrot(qi,GF.Y);gl.uniform4f(pu.uGp,n[0],n[1],n[2],dot(qrot(qi,sub(GF.O,o)),n));   // the ground plane, plume-local
         const dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn,w=thr*sstep(L*1.15,L*.35,sg);
-          if(sg>0&&w>.01)hits.push({P:add(o,mul(dW,sg)),w,re:e.d.exit,P2:P,ig})}}
+          if(sg>0&&(w>.01||!S.body.atm))hits.push({P:add(o,mul(dW,sg)),w,re:e.d.exit,P2:P,ig,sg,thr})}}
       gl.uniform3f(pu.uB,R,L,e.d.exit);gl.uniform3fv(pu.uCam,cl);gl.uniform1f(pu.uIn,inside?1:0);gl.cullFace(inside?gl.BACK:gl.FRONT);
       gl.uniform3fv(pu.uCo,P.co);gl.uniform3fv(pu.uDi,P.di);gl.uniform3fv(pu.uMa,P.ma);gl.uniform3fv(pu.uVa,P.va);gl.uniform3fv(pu.uSo,P.so);gl.uniform4fv(pu.uK,P.K);
       gl.uniform4f(pu.uIg,ig[0],ig[1],ig[2],ig[3]);
       gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
-    if(hits.length&&IMPACT_FX)drawImpact(GF,hits,VP);
+    if(hits.length&&IMPACT_FX){if(S.body.atm)drawImpact(GF,hits,VP);else drawDust(GF,hits,VP)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux
   if(PLASMA_FX&&near&&S.alive&&S.qHeat>1.5e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){

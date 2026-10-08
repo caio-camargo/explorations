@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -200,6 +200,19 @@ window.refView = async (n) => {
     const ok = abort(S); const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); emitSmoke(DT); render() }
     window.simulate = () => {}; await settle(); bare();
     return 'abort ' + ok + ' at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(2) + ' km +' + (simT - t0).toFixed(2) + ' s lesT ' + (S.lesT || 0).toFixed(2);
+  }
+  // 87–89: landing dust on Selene. A pod + tank + Wren hovering with its nozzle h m over the ground, in sunlight, run 1 s
+  // and frozen: [h, yaw, pitch, dist]
+  const dust = { 87: [25, 0.9, 0.12, 30], 88: [8, 0.9, 0.12, 30], 89: [3, 2.3, 0.35, 45] };
+  if (dust[n]) {
+    const [hh, yaw, pitch, dist] = dust[n];
+    stackDef = ['pod', 't1', 'wren']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
+    // a sunlit spot: the sub-solar side of Selene, a little off the sun direction so shadows have length
+    const u = norm(add(SUN, [0, 0.5, 0.3])), pf = mul(u, groundR(SELENE, mul(u, SELENE.R)) - S.yBot + hh);
+    S.body = SELENE; S.r = pf; const X = norm(cross(u, [0, 0, 1])); S.q = qFromBasis(X, u, cross(X, u)); S.w = [0, 0, 0]; S.v = surfVel(SELENE, S.r);
+    S.hold = u; S.sasMode = 'stab'; S.throttle = 0.25; const t0 = simT; while (simT - t0 < 1) { advPhys(S); render() }
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {}; await settle(); bare();
+    return 'Selene, nozzle ' + (len(S.r) - groundR(SELENE, toPF(SELENE, S.r, simT)) + S.yBot).toFixed(1) + ' m up, alive ' + S.alive;
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
