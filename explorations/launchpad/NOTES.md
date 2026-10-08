@@ -2780,6 +2780,70 @@ the economy decides, this is what the physics side offers:
 - bodies: headless dispatch runs, deviation detection in `procStep`, phases and partial procedures, the dry run;
 - UI / app: watch mode, jumping in, the handover.
 
+### The ladders, proven with real rockets (2026-10-08)
+
+Every epoch 4–5 uncrewed mission has now been flown from the pad by the procedure executor. Each flight starts with only
+that mission's prerequisites done, and the mission's own check decides whether it counts. The flights are in
+`fly_ladder.mjs` (`node fly_ladder.mjs [ids] [-v]`), and test.mjs § bodies-1 runs them all in about a minute.
+
+**Presets** (both in `PRESETS`):
+- **Probe**: antenna, camera, instruments and a core on t4 t4 + Petrel, carried by the Lunar launcher. It has
+  ~1,900 m/s to spare past a transfer.
+- **Sample Return**: chute, pod, instruments and shield, on a t2 + Wren return stage. Below that, a t4 t4 t2 + Petrel
+  transfer-and-descent stage, carried by the Big Lunar launcher with two radial boosters.
+
+| Mission (pay) | Preset | Phases | Δv in all | Left | Days |
+|---|---|---|---|---|---|
+| farside (150) | Probe | transfer: far side, sunlit on arrival, 150 km pass | 5,837 | 2,926 | 2.8 |
+| selimp (120) | Probe | transfer: near side, pass −0.4 R (an impact) | 5,789 | — | 0.8 |
+| selland (250) | Probe | transfer (near) · capture 20×200 km · land | 7,129 | 1,634 | 0.8 |
+| selsample (400) | Sample Return | transfer · capture 15×100 · land · surface · ascend · return | 8,389 | ~300 at the burn home | 1.3 |
+| nyxfind (120) | Probe | transfer to Nyx (tracked on the way) | 5,740 | 3,023 | 2.7 |
+| nyxfly (150) | Probe | transfer, 200 km pass | 5,713 | 3,050 | 1.5 |
+| nyxorb (250) | Probe | transfer (retrograde) · capture 30×80 km | 6,201 | 2,561 | 4.3 |
+| nyxland (300) | Probe | transfer · capture · land | 6,601 | 2,161 | 1.7 |
+
+The Probe costs 127–156M and the Sample Return 188–217M. Price depends on program state: fresh, or with know-how and
+production.
+
+**New transfer options.** These are phase fields, scored as penalties on the predicted pass:
+- `side: 'near'|'far'`: which side of the moon holds periapsis, as seen from its parent. For an impact, it is the
+  impact point.
+- `sunFar`: wait for a departure that arrives with the moon on the sun's side, so the far side is lit.
+- `retro: true|false`: whether the pass runs against or with the moon's orbit.
+
+Landing-site targeting is near side or far side for now. A specific crater would need the capture phase to choose its
+plane and periapsis longitude; that is still open.
+
+**What broke, and the fixes.** All are in the executor or the predictor, so every procedure benefits.
+- `passScore` crashed on any predicted miss. A `const` had been swallowed onto a comment line. This was latent on
+  `main`.
+- The trim scored the osculating periapsis at SOI entry. Tellus's tide moves it by tens of km over the ~3 h to
+  periapsis: a 31 km aim became 114 km flown, and a 15 km aim became −20 km, an impact. The trim and the corrections now
+  score the integrated pass. A path that hits the ground is scored by the osculating periapsis at impact, which gives a
+  search a slope to follow.
+- The capture and landing burns re-time themselves on waking, 10 min out, because the tide shifts when periapsis comes
+  too.
+- The landing deorbits first: a small burn at apoapsis brings periapsis down to 5 km (`ph.pe`). Braking at 30–40 km and
+  then falling cost ~√(2gh), about 300 m/s. This saved 130–150 m/s on the probes. The crewed v2 mission now reaches its
+  burn home with 955 m/s aboard instead of 525.
+- Braking hysteresis. At 15 m/s of drift, the descent kept flipping back into braking, which holds the throttle while it
+  aligns. A Probe fell 2 km that way and crashed at 80 m/s. It now brakes once and tilts out whatever drift is left.
+  The braking uses main's velocity over the ground (Selene now rotates).
+- The ascent leaves behind a stage that can't reach orbit by itself, when there is one under it that can. A lander
+  stage that finished the descent itself, with no high drop, had tried to lift a crew on 136 m/s.
+
+**Found while flying (for the economy session):**
+- **nyxfind comes free.** A probe with instruments and an antenna, flying to Selene, collects its 12 h of residual
+  ≥ 1e-3 on the way, so nyxfind completes on the farside flight. Either that is fine (the first lunar probes discover
+  Nyx), or the threshold should be higher, or tracking should need a deliberate high orbit.
+- **Two missions pay less than the rocket costs.** selimp (120) and nyxfind (120) each take a 127–156M Probe plus
+  operations. A smaller impactor would do, since it needs no capture or landing Δv, but no preset is sized for it yet.
+  selland (250) and nyxland (300) clear their cost; selsample (400) pays about twice its rocket.
+- **"Watch which way round you go" is real.** The same 30×80 km Nyx orbit lasts two Nyx periods when retrograde. Forced
+  prograde (`retro: false`), it hits Nyx 61 h after capture. A 100×300 km orbit is stripped within 27 h either way,
+  because Nyx's SOI shrinks to ~260 km altitude at Nyx's periapsis.
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
