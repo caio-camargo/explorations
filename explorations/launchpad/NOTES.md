@@ -4763,3 +4763,42 @@ the arrows, and every key in the handlers present in its Help table.
    Selene and Nyx missions built (§ "Out there" missions). Next on that line: debris near the moons ignores tides;
    registered satellites (`satAt`) are still pure Kepler; more moons are one `addBody` each.
 7. **Sound**, a WebAudio rumble driven by thrust × density.
+
+## The tester menu (2026-10-08, tester session; PLAYTEST #1)
+
+Cheats for playtesting. Open the page with **`?tester`** in the URL (`index.html?tester`); a yellow TESTER badge shows at
+the top, and **F2**, the badge or the Esc menu open the menu. Without the flag nothing changes: no badge, no key, no row
+in Help.
+
+**Never touches the career.** In tester mode the program saves to its own slot, `launchpad-program-tester`
+(`PROG_KEY` follows `TEST.on`); `launchpad-program-v1` is neither read nor written. The menu can copy the career into the
+sandbox or wipe the sandbox (both click twice, then reload). The cheat switches persist per browser in
+`launchpad-tester-flags`.
+
+| Control | What it does | Where it acts |
+|---|---|---|
+| Infinite money | funds never below 100,000M | `testTopUp()`: each frame, at load, after every menu action |
+| Full know-how and certification | every part at use 1 and certified 100 %; flight safety signs off | `khUse`, `certOf` |
+| All tools | impact prediction, maneuver planning, encounter forecasts without the logbook facts | `toolOK` |
+| No ignition failures | engines always light | `igniteOK` |
+| Instant stacking | a launch takes no preparation days | `R.prep` in `missionTick` |
+| Epoch 1–5 | marks every mission of the earlier epochs done (`done[id].test=true`), clears later ones; range streak to 3 | `testEpoch(n)` |
+| World date +1 d … +1 year | a day at a time through `advanceDays`, so budget, elections, rivals, eras and news all run | `testAdvance(d)` |
+| Finish every job | facilities, design bureau, test stand, production lines, trajectory studies done now | `testFinishJobs()` |
+
+Epoch and date are disabled during a flight (the flight's clock owns the date then).
+
+**For other sessions.** The rules live in the SIM tester block after `advanceDays` (`TEST`, `testTopUp`, `testEpoch`,
+`testAdvance`, `testFinishJobs`); the menu is after the shared keydown handler (`renderTester`). Each cheat is one read of
+a `TEST` flag in your code: keep it if you rework `khUse`, `certOf`, `toolOK`, `igniteOK` or the `R.prep` line. A new
+cheat = a flag in `TEST`, a row in `TEST_FLAGS`, one read where the rule lives, a check in test.mjs §36. KEYS rows can
+carry `tester:true` (Help shows them only in tester mode).
+
+**Found on the way: two missions shared an id.** Epoch 3's "Weather satellite" was `id:'weather'`, the same as epoch 1's
+"Above the weather". `PROG.done` is keyed by id, so the sounding flight also ticked off the satellite and opened
+Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 checks follow). §36 checks every mission id is
+unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
+is right.
+
+**Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
+"skip to an era" shortcut for the compute eras.
