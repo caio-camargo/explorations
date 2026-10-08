@@ -744,7 +744,7 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core. **Fixed 2026-10-08:** § "The hold-downs follow the rocket".
 
 ## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
 
