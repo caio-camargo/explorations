@@ -3464,3 +3464,19 @@ readout's Mass row; headless Chrome can hand `frame()` a negative `dtR` (NOTES).
 ### Files
 - `explorations/launchpad/index.html`, `views.js`, `test.mjs`, `playtest.mjs`, `NOTES.md` § "PLAYTEST sweep",
   `PLAYTEST.md`, `TESTING.md`; screenshots in `C:/Users/caioa/dev/playtest-out/fixes/`
+
+## 2026-10-08 — Session roles: playtest intake and studio briefs (roadmap session)
+
+### Summary
+Caio wants to start sessions by naming their role. Added `docs/session-roles.md` (roles table, plus full briefs for
+**playtest intake**, which turns raw feedback into PLAYTEST items and Proposed lines, and **studio**, which builds a
+game-development playbook and template in a new Drive folder that is a template only, with the never-run-git-from-Drive
+warning in its README) and one routing line in AGENTS.md.
+
+### Files
+- `docs/session-roles.md` (new), `AGENTS.md` (one pointer), `INDEX.md` (one row)
+
+### Next steps
+- [ ] Orchestrator: regroup QUEUE into the eight lanes (Caio is pasting the instruction)
+- [ ] Studio session: interview Caio, then propose the folder's structure
+
