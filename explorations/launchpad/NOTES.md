@@ -1034,6 +1034,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.38 — compute eras and trajectory studies (2026-10-08, economy session)
+
+The first slice of "Compute — a resource across eras" (design in "Rich programs" below).
+
+- **Eras follow the world date** (`COMP_ERAS`), by program year:
+  - human computers;
+  - mainframes (3);
+  - onboard computers (7);
+  - cheap compute (14);
+  - the AI boom (25).
+  
+  Each era has a world price index `cpi` (100 → 20 → 5 → 1 → 4: scarce, abundant, scarce again), shown now and to
+  be used by datacenters later. A news item marks each new era reaching the program.
+- **Access lag by power** (`compLag`), like parts sourcing: own industry (4 yr × (1 − industry)), else a friendly
+  supplier (0.5 + 1.5 × (1 − openness) yr), else the grey market (4 yr). A sanction shuts the supplier's door.
+  Measured at world year 4.5: the open superpower is on mainframes (lag 0), the resource state still on human
+  computers (lag 1.6 yr).
+- **Nudges:** a **computing centre** (a new facility: 40M / 90 days, then 120M / 180 days) makes studies ×0.6 / ×0.4
+  as long and puts the program 1 / 2 years ahead of its power. Every level also nudges the world forward by 0.25 yr
+  (the program contributes to the frontier).
+- **Trajectory studies** (`orderStudy`), per exact design (part counts, like autopilot tapes):
+  - **cost and time** come from the era, ×√(cost/50M) clamped to 0.5–3. An Orbiter with human computers: 3.5M, 28 days;
+  - **one at a time**, in order (`PROG.studyQ`);
+  - **a launch waits for its own design's study, then stacks** (`R.studyWait`), so studies add days. One ordered
+    ahead, while other things fly, costs none: planning ahead pays.
+- **What a study buys: precision.**
+  - Unstudied, a design's predictions carry the era's raw error: ±30% with human computers, ±15% with mainframes,
+    ±5% with onboard computers, exact after that.
+  - Studied, they carry the era's studied error: ±10%, ±4%, exact.
+  - The impact predictor reads it as a drag-model error (`predErr`, added to the unsampled-band ±25%). The landing
+    spread widens, and range safety takes the whole spread. So an unstudied early flight near cities is constrained.
+    Measured on a fully sampled atmosphere: ±7.2 km unstudied, ±2.2 km studied, 0 with cheap compute.
+- **Compute never blocks flying:** you can always fly unstudied.
+- **Cross-scope lines (flagged):**
+  - `predictImpact` adds `pe`;
+  - the app's spread no longer vanishes on a sampled atmosphere while `predErr(S)` > 0;
+  - `progTabOf` maps the new "Compute" heading to Industry (UI session's map).
+- **UI:**
+  - Assembly shows "Trajectory: unstudied ±30% [Study 3.5M, 28 d → ±10%]", or "in the office, ready in N d", or
+    "studied";
+  - a self-contained `computeHTML()` section (era, the world, lag, predictions, the office queue);
+  - the centre appears in Facilities.
+  
+  Checked in the app: ordering charges the cost and the line changes, with no console errors.
+- **Not yet:**
+  - planning's tool gating and map error bars, which read `predErr` / `compEra()`;
+  - onboard computers as parts (builder);
+  - the career runner ordering studies;
+  - datacenter revenue on `cpi`.
+
+`test.mjs` §34: 5 new checks. §14's spread check now gives its probe an exact study, so it measures only the air.
+
 ## v1.37 — surfaces: what the ground is like to land on (2026-10-08, terrain session)
 
 The touchdown verdict used to be the same everywhere: under 12 m/s and tilted < 34° → landed, unless the slope was
@@ -3494,6 +3546,9 @@ launch advances the one calendar by its stacking days (`R.prep`), so pads aren't
   handed to a routine once flown once.
 
 ### Compute — a resource across eras (decided with Caio, 2026-10-08)
+
+First slice built in v1.38: eras, access lag, the computing centre, trajectory studies.
+
 
 Compute is the cause behind two existing ideas:
 - "the tools only know what the program knows" (the planning branch's logbook and era maps);

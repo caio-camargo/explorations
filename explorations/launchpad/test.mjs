@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {missionTick,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {missionTick,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -392,7 +392,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const probeShip = () => { api.t = 0; const q = api.newShip(['chute', 'pod']); q.landed = false; q.r = [TELLUS.R + 60000, 0, 0]; q.v = [0, 0, -1200]; q.chute = false; return q; };
   const gc = (a, b) => Math.acos(Math.min(1, dot(norm(a), norm(b)))) * TELLUS.R / 1000;
   fresh(); let q = probeShip(); const i0 = api.predictImpact(q), w0 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
-  [0, 1, 2, 3, 4, 5, 6].forEach(k => P.atm[k] = 1); q = probeShip(); const w1 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);
+  [0, 1, 2, 3, 4, 5, 6].forEach(k => P.atm[k] = 1); q = probeShip(); P.studies = { [api.studyKey(q)]: { err: 0 } }; const w1 = gc(api.predictImpact(q, -1).pf, api.predictImpact(q, 1).pf);   // (studied exactly: only the air counts here)
   check('impact spread: an unsampled atmosphere widens the landing prediction; a sampled one collapses it', w0 > 2 && w1 < 0.01,
     `±25 % density: ${w0.toFixed(1)} km wide → sampled: ${w1.toFixed(3)} km (nominal flight ${(i0.t).toFixed(0)} s)`);
   // a failure is a measurement: the part that broke is fully known afterwards
@@ -1699,6 +1699,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('recovery fleet: one stage fished out at sea within range; the one on land and the one too far are lost', got > 0 && news.some(t => /1 stage fished out/.test(t)) && api.khUse('kestrel') > 0,
     `+${got.toFixed(1)}M for a Kestrel stage ${(Math.acos(api.dot(api.norm(near), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km out (the other ${(Math.acos(api.dot(api.norm(far), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km away: out of range)`);
   api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {} });
+}
+
+// 34. Compute eras and trajectory studies (economy).
+{
+  const P = api.PROG; const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {};
+  const setup = arch => { api.resetHome(); Object.assign(P, { homeArch: arch, day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], compEra: null });
+    api.chooseStart('agency'); P.funds = 1000; };
+  // eras follow the world date; a power arrives late by its access lag
+  setup('openSuper'); const e0 = api.compEra(); P.day = 3.5 * 400; const eOpen = api.compEra(), lagOpen = api.compLag();
+  setup('resource'); P.day = 3.5 * 400; const eRes = api.compEra(), lagRes = api.compLag();
+  check('compute eras: the world date brings mainframes; a resource state with no chip industry gets them late', e0 === 0 && eOpen === 1 && eRes === 0 && lagOpen === 0 && lagRes > 1,
+    `year 4.5: open superpower ${api.COMP_ERAS[eOpen].name} (lag ${lagOpen.toFixed(1)} yr), resource state ${api.COMP_ERAS[eRes].name} (lag ${lagRes.toFixed(1)} yr)`);
+  // a study: costs money, a launch waits for it, and it narrows the prediction error; another design isn't covered
+  setup('openSuper'); const s = api.newShip(api.PRESETS.Orbiter), q = api.studyQuote(s), e1 = api.predErr(s), f0 = P.funds;
+  const okOrder = api.orderStudy(s), paid = f0 - P.funds; api.S = s; s.landed = false; api.t = 0; api.missionTick(s, 0, false);
+  const waited = s.rec.studyWait, prep = s.rec.prep; api.advanceDays(0.01); const e2 = api.predErr(s), other = api.predErr(api.newShip(api.PRESETS.Sounding));
+  check('a trajectory study costs money and days (the launch waits for it, then stacks), and narrows the prediction error for that design only',
+    okOrder && Math.abs(paid - q.cost) < 1e-9 && Math.abs(waited - q.days) < 1e-9 && P.day >= q.days + prep && e1 === 0.3 && e2 === 0.1 && other === 0.3,
+    `Orbiter study ${q.cost.toFixed(1)}M, ${q.days.toFixed(0)} days + ${prep.toFixed(0)} stacking; ±${e1 * 100}% → ±${e2 * 100}% (a Sounding stays ±${other * 100}%)`);
+  // ordered ahead, while time passes, it costs no days at launch
+  setup('openSuper'); const s2 = api.newShip(api.PRESETS.Orbiter); api.orderStudy(s2); api.advanceDays(40); api.S = s2; s2.landed = false; api.t = 0; api.missionTick(s2, 0, false);
+  check('a study ordered ahead of time costs no days at launch', s2.rec.studyWait === 0 && api.predErr(s2) === 0.1, `waited ${s2.rec.studyWait} days`);
+  // the impact predictor reads the error as a drag-model error: an unstudied design's spread is wider; none once compute is cheap
+  setup('openSuper'); for (const k of [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]) P.atm[k] = 1;
+  const f = api.newShip(['pod']); api.S = f; f.landed = false; api.t = 0; const up = api.norm(f.r); f.r = api.add(f.r, api.mul(up, 60e3)); f.v = api.add(api.surfVel(api.TELLUS, f.r), api.add(api.mul(up, 300), api.mul(api.norm(api.cross([0, 1, 0], up)), 1500)));
+  const gc = (a, b) => Math.acos(Math.max(-1, Math.min(1, api.dot(api.norm(a.pf), api.norm(b.pf))))) * api.TELLUS.R / 1e3;
+  const sp = () => { const c = api.predictImpact(f), lo = api.predictImpact(f, -1), hi = api.predictImpact(f, 1); return Math.max(gc(lo, c), gc(hi, c)); };
+  const raw = sp(); P.studies = { [api.studyKey(f)]: { err: 0.1 } }; const studied = sp(); P.day = 15 * 400; const cheap = sp();
+  check('impact spread: an unstudied design lands in a wider spread than a studied one, and cheap compute makes it exact (all air bands sampled)', raw > studied * 2 && studied > 0 && cheap < 1e-6,
+    `±${raw.toFixed(1)} km unstudied, ±${studied.toFixed(1)} km studied, ${cheap.toFixed(3)} km with cheap compute`);
+  // the computing centre: studies faster, the program ahead of its power
+  setup('resource'); P.day = 3.5 * 400; const sR = api.newShip(api.PRESETS.Orbiter), d0 = api.studyQuote(sR).days; api.buildFac('centre'); P.day += 100; api.advanceDays(0.01);
+  check('computing centre: faster studies and a year ahead of our power', api.compEra() === 1 && api.studyQuote(sR).days < d0, `resource state, year 4.8: ${api.COMP_ERAS[api.compEra()].name}; study ${d0.toFixed(0)} d → ${api.studyQuote(sR).days.toFixed(0)} d`);
+  api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {}, studies: {}, studyQ: [], compEra: null, atm: {} });
 }
 
 // 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
