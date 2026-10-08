@@ -3071,3 +3071,60 @@ pointers), `TESTING.md` (rows 110–113, v0.1.2).
 - [ ] Caio: when every session on both machines has paused, follow `docs/leaving-drive.md` § "The pause" (steps 1–9)
 - [ ] Step 8 edits (coordination, LESSONS #22, ACTIVE_WORK worktree text, the memory note) in the first session after
 - FLAG: `grep -c $'\r'` in Git Bash counts every line (CR is stripped from the pattern): use `git ls-files --eol` or `od -c` to check line endings
+
+### Follow-up: rovers R3, and Selene tidally locked (sats session, 2026-10-08)
+R3 needed Selene to have days and nights and a near side, so with Caio's OK: Selene is tidally locked (a 104 h day,
+Tellus fixed in the near side's sky, its equator moving at 5.9 m/s), and the moons run on program time (`ORB_T0`;
+tapes keep their recorded phase; 0 headless). Landing knock-ons were fixed: surface-relative speeds near airless ground,
+surface-relative landing in the procedure executor and `fly_crewlunar.mjs`, and drop tests starting at rest over the
+ground. Rover power: solar panels and an RTG, a night heater, freezing when the battery runs flat in the night, worked
+out between flights over program time. Contact: direct with a high-gain antenna while Tellus is up, or by relay within
+radio horizon; commands a light-time round trip late; held still out of contact.
+
+### Files
+- `explorations/launchpad/index.html`: `lockTh`/`bodyTheta`/`bodyOmega`, `ORB_T0`, `speedRef`, procedure landing, Selene shading (`uMrot`); R3 block (`rvPowerStep`, `rvFieldTick`, `rvContact`, `rvRelays`, `rvCommand`); readout, designer, Program list, meshes
+- `explorations/launchpad/fly_crewlunar.mjs`: surface-relative landing; `test.mjs` §39 (6 checks), three older checks start at rest over the ground; `NOTES.md` § "R3 built"; README row
+
+### Verification
+`test.mjs` all passed on the merged `main` (`df1e6e0`). Mutation-tested: the lock, the heater, the radio horizon and the
+delay were each caught at once; the field tick was caught after routing its check through `advanceDays`. Browser: a
+rover on Selene's near side in sunlight reads +311 W, contact home at 254 ms; the field list shows the delay; the
+designer's power box.
+
+### Next steps
+- [ ] A relay in Selene orbit (the registry keeps only Tellus orbits): the far side's contact
+- [ ] R4 science; R5 drive plans (a surface leg of the mission planner); the clock while driving from home
+- [x] Pushed with the repo move (GitHub `main` has R1–R3)
+
+## 2026-10-08 — Launchpad: playtest list and tech scouting (notes session)
+
+### Summary
+Started `PLAYTEST.md`: Caio's playtest observations as a running list, roughly prioritised (P1–P3), each with a lead and an
+owning session (items 1–14; several since fixed by other sessions). Also `TECH_SCOUTING.md`: real space-tech advances as of
+Oct 2026 (fusion, NTR and DRACO's cancellation, RDRE, sails, reusable upper stages, kinetic launch, skyhooks, depots,
+aerocapture, ISRU, orbital compute, SBSP), each with a game hook and sources. No code changes. This entry was first written
+in the Drive folder and lost in the move; re-added here.
+
+### Files
+- `explorations/launchpad/PLAYTEST.md`, `explorations/launchpad/TECH_SCOUTING.md` (new; committed in `8ae2ad9`)
+- `INDEX.md`: pointers in the launchpad row
+
+### Next steps
+- [ ] Keep adding playtest observations to `PLAYTEST.md` (in this repo, not the Drive folder)
+
+## 2026-10-08 — The repo left Google Drive: steps 2–6 run (tester session)
+
+### Summary
+- This machine: `check`, `commit` (`8ae2ad9`: shared docs, `PLAYTEST.md`, `TECH_SCOUTING.md`, `pulse-loop/`), `copy`
+  (verified HEAD and fsck; 9 worktrees repaired; 336/336 launchpad tests from the new home), push.
+- A sats session merged rovers R3 into Drive's `main` (`df1e6e0`) after the copy. It was fetched across and pushed; its
+  uncommitted notes were carried over (also committed as `48e11af` by another session).
+- Step 8 was done by another session (`21f41c0`). Once the other machine was working from its copy (the aerofx row says
+  it re-pointed), step 6: Drive's `.git` → `C:/Users/caioa/dev/_backup/drive-git-2026-10-08`, `MOVED.md` written.
+- Fixed in `leaving-drive.sh`: freeze's guard asked the Drive repo about commits only the copy has and stopped falsely;
+  it now asks the copy whether it contains Drive's HEAD. The runbook records the lessons.
+- My mistake, put right: a stash of my own carried-over notes also took the notes session's uncommitted log entry
+  ("playtest list and tech scouting"). It was restored and is committed here. The stash is kept (`git stash list`).
+
+### Next steps
+- [ ] Caio: delete the frozen Drive folder when sure; keep `_backup/drive-git-2026-10-08` a while longer

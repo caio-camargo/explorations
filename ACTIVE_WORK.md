@@ -22,7 +22,11 @@
 ## Launchpad worktrees (2026-10-07)
 
 Launchpad coding sessions each work in their own git worktree (outside Google Drive), on their own branch, and merge
-into `main` when a slice is done. The Drive folder stays on `main` for planning and docs.
+into `main` when a slice is done. The main clone (`C:/Users/caioa/dev/explorations`, see the move note below) stays on
+`main` for planning and docs. **Merging:** merge `origin/main` into your branch in your worktree and test there; then in
+the main clone `git pull --ff-only`, `git merge --ff-only <branch>`, `git push origin main` (refused push = `main`
+moved on the other machine: pull and repeat). Not every folder below exists on every machine; `git worktree list` in
+the main clone shows this machine's.
 
 | Session | Folder | Branch | Preview port |
 |---|---|---|---|
@@ -34,6 +38,8 @@ into `main` when a slice is done. The Drive folder stays on `main` for planning 
 | ui (screens, navigation, information layout) | `C:/Users/caioa/dev/launchpad-ui` | `ui` | 8795 |
 | control (attitude: gimbal, control surfaces, wheels, SAS) | `C:/Users/caioa/dev/launchpad-control` | `control` | 8796 |
 | tester (the tester menu, PLAYTEST #1) | `C:/Users/caioa/dev/launchpad-tester` | `tester` | 8797 |
+| sound (WebAudio, open thread 7) | `C:/Users/caioa/dev/launchpad-sound` | `sound` | 8798 |
+| playtest (the robot playtester for TESTING.md) | `C:/Users/caioa/dev/launchpad-playtest` | `playtest` | 8799 |
 
 > **For every launchpad session, 2026-10-08 (control session, at Caio's request): `explorations/launchpad/TESTING.md`.** Caio
 > can't playtest for now, so this lists what nobody has played yet: 107 rows by area (try this / how to get there / looks right
@@ -83,8 +89,12 @@ then removes them from the Drive folder.
 
 > **2026-10-07, bodies session: Drive repo object repaired.** Google Drive renamed the loose object of commit `d28aa2d` (an aerofx merge in `main`'s history) to `.git/objects/d2/8aa2d….corrupt-`, so fetches from the Drive repo failed ("possible repository corruption"). `git fsck --connectivity-only` showed it was the only missing object; it was re-written from the bodies clone's intact copy (same hash, additive) and fsck is clean. The `.corrupt-` file is left in place. If a fetch or merge ever says an object can't be read, run that fsck first and restore from any clone or worktree that has it.
 
-> **2026-10-08 — PAUSE ON: the repo is leaving Google Drive now (replaces the 2026-10-07 visuals plan).** No work in the
-> Drive folder or the worktrees until this note says done. Runbook: [`docs/leaving-drive.md`](docs/leaving-drive.md),
+> **2026-10-08 — PAUSE OVER: the repo has left Google Drive (step 8 done 2026-10-08).** Work from
+> `C:/Users/caioa/dev/explorations` and its worktrees, never from the Drive folder. **Pull before reading this file;
+> commit and push your claim.** Step 6 done 2026-10-08 (tester session): the Drive folder is frozen, with no `.git` and a
+> `MOVED.md`; its repo data is at `C:/Users/caioa/dev/_backup/drive-git-2026-10-08` on the first machine. The move is complete.
+> ~~PAUSE ON: the repo is leaving Google Drive now (replaces the 2026-10-07 visuals plan). No work in the
+> Drive folder or the worktrees until this note says done.~~ Runbook: [`docs/leaving-drive.md`](docs/leaving-drive.md),
 > script `docs/leaving-drive.sh`. New home on each machine: `C:/Users/caioa/dev/explorations` (its own `.git`, synced
 > through GitHub); worktrees stay where they are and are re-pointed. **When the pause is called:** commit your work in
 > your worktree, merge into `main` the usual way, clear your claim, stop. Afterwards claims and shared docs travel by
@@ -94,8 +104,11 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (sound session) | 2026-10-08 | Launchpad **sound** (open thread 7): WebAudio engine rumble from thrust × air density, staging/separation thunks, explosion boom, wind from dynamic pressure, a mute key. Worktree `launchpad-sound` / branch `sound`, port 8798 | in `launchpad/index.html`: a NEW audio block outside SIM (render-side, reads SIM state only), one call per frame in the frame loop (NOT in `render()`: aerofx's bloom owns its end), one `KEYS` row; a new section at the end of `test.mjs` |
+| Caio + Claude (playtest session) | 2026-10-08 | Launchpad **robot playtester**: a new script next to `shot.mjs` that walks TESTING.md rows on the real GPU (scene setup, screenshots, console errors, measurements) and a report. Worktree `launchpad-playtest` / branch `playtest`, port 8799 | new `launchpad/playtest.mjs` (+ an output folder outside git); results written into `TESTING.md` (`#` cells) and new items in `PLAYTEST.md`. No game code changes (a bug found is filed, not fixed) |
 > Cleared 2026-10-08: sats session, **rovers R1** (the Rover yard) on `main` (`d620d8b`, not pushed). **Everyone:** a new screen `go('rover')` with `mode='drive'` (`simulate` hands it to `rvTick`; `screenNow()` returns `'rover'`; `KEYS.rover`); the rover block sits just before SIM END (`RV_*`, `rvNew`/`rvStep`/`rvRun`/`rvStats`, `yardOf`); designs in `PROG.rovers`, tested km in `PROG.wheelKm`. **Economy/planning:** rovers overlap the pre-flight mission planner (drive plans as a surface leg, deploy checks at site choice): launchpad NOTES § "R1 built". Rover parts have no prices or era gates yet.
 > Cleared 2026-10-08: sats session, **rovers R2** (packed on landers, deployed, driven anywhere, kept in the field) is on `main` (`5b2c8de`, not pushed), merged with everything up to `484105f`; all tests pass. **Everyone:** new parts `rvfold`/`rvdeck` (kind `rover`, node field `rvd`), tape op `['Y', partIndex]`; tape playback now aborts only on a bare `['A']` (arm ops `['A', op]` were replayed as aborts); `missionEnd` calls `rvEnd()`; `PROG.rvOut` holds rovers in the field. The `gaugeRect` swallowed `const r` fix is in both.
+> **Heads-up, 2026-10-08, sats session: Selene is now tidally locked, and the moons run on program time** (`main` `df1e6e0`, rovers R3, decided with Caio). **Everyone touching Selene:** `bodyTheta(SELENE,t)` follows its orbit (planet-fixed −X faces Tellus; `bodyOmega` = its mean motion), so its ground moves at up to 5.9 m/s and its frame turns: use `fromPF`/`toPF`, never a planet-fixed vector as a position. `speedRef` is surface-relative near airless ground; the procedure landing and `fly_crewlunar.mjs` null surface-relative velocity. `bodyRel` adds `ORB_T0` (program time at the flight's t = 0: set at lift-off from `day0`; a replayed tape keeps its recorded `orbT0`; 0 headless via `ORB_ABS`), so code that assumes M = n·t + M0 must subtract `ORB_T0` (the procedures' passage timing does). Selene's sky-shader markings turn with it (`uMrot`). **Sats/planning:** a relay in Selene orbit is what the far side needs next (the registry keeps only Tellus orbits). **Bodies:** Nyx doesn't spin yet; eclipses not modelled.
 > Cleared 2026-10-08: tester session, **the tester menu** (PLAYTEST #1) on `main` (`3b1a775`, not pushed). Open `launchpad/index.html?tester`; F2 / badge / Esc menu. **Everyone:** one `TEST.*` read sits in each of `khUse`, `certOf`, `toolOK`, `igniteOK` and economy's launch line (`R.prep=TEST.fast?0:…`): keep it if you rework those. A KEYS row may carry `tester:true` (Help shows it only in tester mode). **Economy/bodies:** epoch 3's Weather satellite is now `id:'wxsat'` (it shared `weather` with epoch 1's sounding flight, so that flight also completed it); test.mjs §37 checks mission ids are unique. Worktree `C:/Users/caioa/dev/launchpad-tester` / branch `tester` = main, port 8797. NOTES § "The tester menu".
 > Cleared 2026-10-08: tester session, **PLAYTEST #2 gantry clipping** fixed on `main` (`35af798`, not pushed). **Visuals:** in your `buildRig`, the girders across the gantry's open front are gone (side girders instead) and the service position is `RIG.zS` (from `padRig`'s new `zr`, the stack's widest |z| reach); `drawPadRig` rolls from it. test.mjs §38 sweeps the roll-back against every preset: keep the open front clear if you restyle. NOTES § "The gantry no longer clips the rocket".
 > Cleared 2026-10-08: tester session, **hold-downs follow the rocket** on `main` (`d10a00d`, not pushed). **Visuals:** the four hold-down posts moved from `buildPad` into the rig (`RIG.posts`, drawn in `drawPadRig`); `holdPlan` (after `padRig`) keeps them on the diagonals unless boosters stand there; presets look exactly as before. test.mjs §39 guards it. TESTING rows 108–109 added.
