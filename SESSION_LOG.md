@@ -2880,3 +2880,13 @@ in Assembly with its part options.
 - [ ] R3 power and contact; R4 science; R5 drive plans (as a surface leg of the mission planner)
 - [ ] Terrain: Selene's craters and slopes (rover deploy checks and driving will use them as they are)
 - [ ] Push `main` when Caio says
+
+## 2026-10-08 — Launchpad v1.46: avionics generations (control session)
+
+### Summary
+SAS now grows with the computing eras (Caio's pick: two steps by era). Gyro autopilot (Stability only, gain 2, 0.3 rad/s,
+½° deadband) until mainframes; analog autopilot (+ prograde/retro/normal/radial) until onboard computers; then a guidance
+computer (every mode, the full loop). Fixed per vessel at launch (`s.av`); sandbox, physics tests and ground-guided
+procedures keep the best. Locked SAS buttons dimmed with a tooltip; the builder's Control block names the avionics.
+A bare pod's 90° turn: 5.6 / 3.7 / 2.8 s by generation; big stacks on wheels turn alike (torque- and storage-limited).
+§37 (2 checks); 314 pass. Fast-forwarded `main` (`42adc71`, not pushed). NOTES § v1.46.

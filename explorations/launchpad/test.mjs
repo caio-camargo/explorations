@@ -1121,6 +1121,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('procedures v2: the executor flies it end to end through SAS: crew on Selene and home safe; a cheaper run replaces the procedure',
       s.alive && s.landed && s.body === TELLUS && Rp.crewed && Rp.crewOK && !!P.done.crewland && now && now.dv <= dv0,
       `${(api.t / 86400).toFixed(2)} days, peak ${(Rp.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rp.dv.toFixed(0)} m/s in all (procedure ${dv0.toFixed(0)} → ${now ? now.dv.toFixed(0) : '?'})`); }
+  // the same phases to Nyx (inclined 30°, eccentric): met at its far node, landed on, and home, with the recorded ascent
+  { const asc = P.procs && P.procs[api.procKey(api.PRESETS['Crewed Lunar'])];
+    if (asc) { const nyx = { ...asc, phases: [{ k: 'transfer', to: 'Nyx', pass: 100e3 }, { k: 'capture', ap: 300e3, pe: 40e3 }, { k: 'land' }, { k: 'surface', t: 600 }, { k: 'ascend', stage: 0, pitchH: 2000, ap: 30e3, pe: 20e3 }, { k: 'return', perigee: 45e3 }] };
+      api.t = 0; const s = api.newShip(api.PRESETS['Crewed Lunar']); api.S = s; api.advPhys(s); api.procStart(s, nyx); let k = 0, onNyx = false, vNyx = null;
+      while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); if (s.landed && s.body === api.NYX && !onNyx) { onNyx = true; vNyx = s.touchV; } }
+      const Rn = s.rec, kept = P.procs[api.procKey(api.PRESETS['Crewed Lunar']) + '|Nyx:land'];
+      check('procedures v2: the same phases fly a crew to Nyx (met at its node, landed on) and home within the air supply, and record a "Nyx land" procedure',
+        onNyx && vNyx < 4 && s.alive && s.landed && s.body === TELLUS && Rn.crewOK && api.t < 10 * 86400 && !!kept,
+        `landed on Nyx at ${vNyx != null ? vNyx.toFixed(1) : '—'} m/s; home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rn.cgMax || 0).toFixed(1)} g, splashdown ${(s.touchV || 0).toFixed(1)} m/s; ${Rn.dv.toFixed(0)} m/s in all`); } }
+  // a free return (transfer, then home): "Crew around Selene"; recorded as a flyby at the SOI exit and a free return at home
+  { const asc = P.procs && P.procs[api.procKey(api.PRESETS['Crewed Lunar'])];
+    if (asc) { P.done = Object.fromEntries(['beeper', 'orbiter', 'padabort', 'maxqabort', 'farside'].map(k => [k, { flight: 0, day: 0 }]));
+      const fr = { ...asc, phases: [{ k: 'transfer', to: 'Selene', pass: 400e3 }, { k: 'home', perigee: 45e3 }] }, base = api.procKey(api.PRESETS['Crewed Lunar']);
+      api.t = 0; const s = api.newShip(api.PRESETS['Crewed Lunar']); api.S = s; api.advPhys(s); api.procStart(s, fr); let k = 0;
+      while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
+      const Rf = s.rec, fb = P.procs[base + '|Selene:flyby'], frp = P.procs[base + '|Selene:free-return'];
+      check('procedures v2: a free return (transfer, then home) flies "Crew around Selene", and is recorded as a flyby and a free-return procedure',
+        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home',
+        `home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rf.cgMax || 0).toFixed(1)} g; procedures: flyby ${!!fb}, free-return ${frp ? frp.dv.toFixed(0) + ' m/s' : 'none'}`); } }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
 
@@ -2281,6 +2300,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${(km * 1000).toFixed(0)} m driven, ${d.test.T.vmax.toFixed(2)} m/s`);
 }
 
+// 35. Rovers packed and deployed (sats session, rovers R2): a folded rover on a lander's side, a deck with ramps; the
+// deploy check; the rover upright on Selene; bumping the lander; left in the field and picked up again. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,syncLanded,groundR,qFromTo,qaxis,qmul,SELENE,PROG,HOOK,rvDeploy,rvDeployCheck,rvFlight,rvTilt,rvEnd,rvLoadNear,rvObsOf,rvGeom,rvDefault,shipPF,satRegister,vesselOf,landedUp,get FROV(){return FROV},get RVA(){return RVA},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m);
+  const B = D.SELENE, P = D.PROG; Object.assign(P, { sats: [], satN: 0, rvOut: [] });
+  const luno = { name: 'Lunokhod', ch: 'm', wh: 'm', n: 6, spr: 'S', slots: ['cam', 'bat', 'ant', 'spec', null] };
+  const lander = (mount, rvd, { tanks = 1, lean = 0 } = {}) => { D.t = 0; let low = { k: 'sparrow', at: 'd' }; for (let i = 0; i < tanks; i++) low = { k: 't1', at: 'd', c: [low] };
+    const root = { k: 'core', c: [low, mount === 'fold' ? { k: 'rvfold', at: { y: .6, a: 0, n: 1 }, rvd } : { k: 'rvdeck', at: 'u', rvd }] };
+    const s = D.newShip({ v: 2, root }), u = [1, 0, 0]; Object.assign(s, { body: B, landed: true, alive: true, sas: false, throttle: 0 });
+    s.pf = mul(u, D.groundR(B, mul(u, B.R)) - s.yBot); s.qLocal = D.qmul(D.qaxis([0, 0, 1], lean * Math.PI / 180), D.qFromTo([0, 1, 0], u)); D.syncLanded(s); s.rec.launched = true; D.S = s; return s; };
+  const rp = s => s.parts.find(p => p.d.kind === 'rover'), run = sec => { for (let i = 0; i < sec * 10; i++) D.rvFlight(0.1); };
+  // packing: the rover's own mass rides on the lander; what doesn't fit, or has no one to drive it, is refused on the spot
+  const bare = lander('fold', null), s = lander('fold', luno), kg = D.rvGeom(luno).m;
+  const big = lander('fold', { ...luno, ch: 'l' }), crewd = lander('fold', D.rvDefault());
+  const cBig = D.rvDeployCheck(big, rp(big)), cCrew = D.rvDeployCheck(crewd, rp(crewd));
+  check('rover R2: a packed rover\'s mass rides on the lander; a large chassis won\'t fold, a crewed rover needs a crew', Math.abs(s.mass - bare.mass - kg) < 1e-6 && !cBig.ok && /doesn't fold/.test(cBig.why) && !cCrew.ok && /crew/.test(cCrew.why),
+    `+${(s.mass - bare.mass).toFixed(0)} kg (the design: ${kg.toFixed(0)}); "${cBig.why}"; "${cCrew.why}"`);
+  // deploy from the side: the lander is lighter and stays where it stood; after the unfold the rover stands on its wheels beside it
+  D.S = s; const o0 = D.shipPF(s, [0, 0, 0]), m0 = s.mass, R = D.rvDeploy(s, rp(s)); run(12);
+  const dist = len(sub(R.p, s.pf)), ti = D.rvTilt(R);
+  check('rover R2: deployed from the side it unfolds onto its wheels beside the lander; the lander is lighter and hasn\'t moved', R && !R.dep && D.RVA === R && Math.abs(m0 - s.mass - kg) < 1e-6 && len(sub(D.shipPF(s, [0, 0, 0]), o0)) < 1e-9 && dist > 2.5 && dist < 6 && Math.abs(ti.pitch) < 5 && Math.abs(ti.roll) < 5 && len(R.v) < 0.01 && !R.tipped,
+    `${dist.toFixed(1)} m out, pitch ${ti.pitch.toFixed(1)}°, roll ${ti.roll.toFixed(1)}°; lander ${(m0 / 1000).toFixed(2)} → ${(s.mass / 1000).toFixed(2)} t`);
+  // it can't drive through the lander: backing into it, it stops against it
+  R.obs = D.rvObsOf([s]); R.in.thr = -1; let close = 1e9; for (let i = 0; i < 100; i++) { D.rvFlight(0.1); close = Math.min(close, len(sub(R.p, s.pf))); } R.in.thr = 0;
+  check('rover R2: backing into the lander it stops against it instead of driving through', close > 1.8 && !R.tipped, `closest ${close.toFixed(2)} m (centre to centre)`);
+  // left in the field at the flight's end; a later flight nearby picks it up again; the lander, saved, remembers it's gone
+  D.satRegister(s, s.rec); const q = P.sats.find(x => x.landed); D.rvEnd(); const out = P.rvOut.slice(), v = D.vesselOf(q, 0);
+  D.S = s; const n = D.rvLoadNear(s);
+  check('rover R2: at the flight\'s end it stays in the field; a flight nearby takes it back in; the saved lander comes back without it', out.length === 1 && out[0].bodyName === 'Selene' && n === 1 && D.FROV[0].name === 'Lunokhod' && len(sub(D.FROV[0].p, out[0].p)) < 1e-9 && Math.abs(v.mass - s.mass) < 1e-6 && rp(v).rvOut,
+    `${out[0] ? out[0].name + ' on ' + out[0].bodyName : 'nothing kept'}; the saved lander ${(v.mass / 1000).toFixed(2)} t`);
+  D.rvEnd(); P.rvOut = [];
+  // a deck with ramps: on top of a short lander the ramps reach at a drivable angle; on a tall one they don't
+  const dk = lander('deck', luno), cD = D.rvDeployCheck(dk, rp(dk)), tall = lander('deck', luno, { tanks: 3 }), cT = D.rvDeployCheck(tall, rp(tall));
+  D.S = dk; const R2 = D.rvDeploy(dk, rp(dk)); run(14); const t2 = D.rvTilt(R2);
+  check('rover R2: down the ramps of a deck on a short lander; a tall lander\'s ramps would be too steep', cD.ok && R2 && !R2.dep && Math.abs(t2.pitch) < 5 && Math.abs(t2.roll) < 5 && rp(dk).on && !cT.ok && /ramps/.test(cT.why),
+    `ramps at ${cD.ang.toFixed(0)}°; on the tall one: "${cT.why}"`);
+  // a lander that came to rest leaning can't deploy
+  const ln = lander('fold', luno, { lean: 20 }), cL = D.rvDeployCheck(ln, rp(ln));
+  check('rover R2: a lander leaning 20° won\'t deploy', !cL.ok && /leans/.test(cL.why), cL.why);
+  D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
+}
+
 // 37. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
 // an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
 {
@@ -2328,6 +2390,34 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     api.downrangeWarning(home) === '' && warned.length > 0 && warned.every(t => t.downrange.over.some(i => i !== api.HOME && i !== t.power))
       && quiet.every(t => t.downrange.over.every(i => i === api.HOME || i === t.power)),
     `${warned.length} site(s) warned, e.g. "${warned[0] ? api.downrangeWarning(warned[0]) : ''}"`);
+}
+
+// 38. The service gantry clears the rocket (tester session; PLAYTEST #2). The page's own buildRig and padRig run with
+// stubs that record every box and lattice column; then the gantry's whole roll-back, from service position to its parking
+// spot, is swept against each preset's envelope (|x|, |z| of its widest reach, up to its top). Before the fix, girders
+// across the open front swept through every rocket, and the decks reached into the Crewed Lunar's boosters.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const rigSrc = cut('function buildRig(TH,rig){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5,BOXES=[];
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=()=>{},makeMesh=a=>({a,free(){}});
+    ${rigSrc}\n${padRigSrc}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const bad = [];
+  for (const [k, st] of Object.entries(D.PRESETS)) {
+    const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig);
+    let xr = 0, zr = 0; for (const p of s.parts) { xr = Math.max(xr, Math.abs(p.pos[0]) + p.d.r); zr = Math.max(zr, Math.abs(p.pos[2]) + p.d.r); }
+    let hit = null;
+    for (let i = 0; i <= 200 && !hit; i++) { const zS = R.zS ?? -3.3, zg = zS + (-80 - zS) * i / 200;   // (-3.3: the fixed service position before)
+      for (const b of R.gantry.a) { const [cx, cy, cz] = b.c, [hx, hy, hz] = b.h;
+        if (Math.abs(cx) - hx < xr && Math.abs(cz + zg) - hz < zr && cy - hy < s.len) { hit = `${k}: box at (${cx.toFixed(1)}, ${cy.toFixed(1)}, ${cz.toFixed(1)}) with the gantry at z ${zg.toFixed(1)}`; break; } } }
+    if (hit) bad.push(hit);
+  }
+  check('the service gantry never touches the rocket, from service position all the way back (every preset, boosters included)', !bad.length, bad.slice(0, 3).join(' | ') || `${Object.keys(D.PRESETS).length} presets`);
+  const sOrb = D.newShip(D.PRESETS.Orbiter); D.S = sOrb; const zOrb = D.buildRig(20, D.padRig(20)).zS;
+  const sCL = D.newShip(D.PRESETS['Crewed Lunar']); D.S = sCL; const zCL = D.buildRig(45, D.padRig(45)).zS;
+  check('a narrow rocket keeps the old service position; a wide one gets the gantry stopped further back', zOrb === -3.3 && zCL < -3.3, `Orbiter ${zOrb} m, Crewed Lunar ${zCL?.toFixed(2)} m`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
