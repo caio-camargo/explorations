@@ -3998,10 +3998,12 @@ function drawPadGlow(u,camW){if(padNight<.01)return;const F=padFrame(camW);gl.un
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
-// the sea platform's hull: a deck on twin pontoons and columns, from the deck (y = 0) down past the waterline (y = −SEA_DECK)
-let SEA_HULL=null;function seaHull(){if(SEA_HULL)return SEA_HULL;const a=[],g=[.42,.43,.45],r=[.62,.22,.16];
-  box(a,[0,-1.5,0],60,1.5,45,g);for(const x of[-40,40])for(const z of[-30,30])box(a,[x,-7,z],4,5.5,4,g);
-  for(const x of[-40,40])box(a,[x,-14,0],7,3,52,r);SEA_HULL=makeMesh(a);return SEA_HULL}
+// the sea platform's hull: a deck on columns and pontoons, from the deck (y = 0) down past the waterline (y = −SEA_DECK).
+// The deck covers the whole launch complex (the PAD mesh spans x −256…86, z −194…80 m in the pad's frame), so nothing
+// stands on open water: a big converted platform. A sea-specific complex (tower and table only) would be smaller.
+let SEA_HULL=null;function seaHull(){if(SEA_HULL)return SEA_HULL;const a=[],g=[.42,.43,.45],r=[.62,.22,.16],cx=-85,cz=-57,hx=180,hz=146;
+  box(a,[cx,-1.5,cz],hx,1.5,hz,g);for(const dx of[-.8,-.27,.27,.8])for(const dz of[-.75,.75])box(a,[cx+dx*hx,-7,cz+dz*hz],7,5.5,7,g);
+  for(const dz of[-.75,.75])box(a,[cx,-15.5,cz+dz*hz],hx*.95,3,11,r);SEA_HULL=makeMesh(a);return SEA_HULL}
 function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=rng(c.seed),n=Math.min(900,Math.round(160+c.pop/2500));
   // the same tangent frame the renderer uses (planet-fixed here): each building stands on the terrain under it, none in the water
   const ex=norm(cross(Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],c.u)),ez=cross(ex,c.u);
