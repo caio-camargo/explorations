@@ -6,7 +6,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -1013,6 +1013,45 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const S0 = JSON.parse(saved); Object.assign(P, S0); api.HOOK.news = () => {};
 }
 
+// 24. Epoch 3, satellites that work (bodies session): weather, TV for the capital, disaster watch, navigation.
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, satN: P.satN, day: P.day, offers: P.offers, stations: P.stations, disDone: P.disDone });
+  const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.offers = []; P.funds = 1000; P.sats = []; P.satN = 0; P.day = 10; P.disDone = []; };
+  const craft = (stack, r, v) => { api.t = 0; const s = api.newShip(stack); api.S = s; s.landed = false; s.body = TELLUS; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; s.rec.day0 = P.day; return s; };
+  const rot = (v, inc) => [v[0], v[1] * Math.cos(inc) - v[2] * Math.sin(inc), v[1] * Math.sin(inc) + v[2] * Math.cos(inc)];   // tilt about +X
+  const orbit = (alt, incDeg, ph = 0) => { const r = TELLUS.R + alt, v = Math.sqrt(TELLUS.mu / r), i = incDeg * Math.PI / 180;
+    return [rot([r * Math.cos(ph), 0, -r * Math.sin(ph)], i), rot([-v * Math.sin(ph), 0, -v * Math.cos(ph)], i)]; };
+  // weather: polar counts, equatorial doesn't
+  reset(['beeper']); let [r, v] = orbit(300e3, 90); let s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const polar = !!P.done.weather;
+  reset(['beeper']); [r, v] = orbit(300e3, 0); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const eq = !!P.done.weather;
+  check('epoch 3: a weather satellite needs a polar orbit (an equatorial one doesn\'t count)', polar && !eq, `polar ${polar}, equatorial ${eq}`);
+  // TV: stationary, over the capital's longitude; it pays every day it stays there, and a sloppy one drifts away
+  const cap = api.capital(), T0 = P.day * api.DAY_S, ua = api.rotY(norm([cap.u[0], 0, cap.u[2]]), api.absTh(T0));   // over the capital's longitude, now
+  const stat = (k = 1) => { const R0 = api.STAT_R, vS = Math.sqrt(TELLUS.mu / R0) * k; return [mul(ua, R0), mul([ua[2], 0, -ua[0]], vS)]; };   // prograde about +Y
+  reset(['beeper']); [r, v] = stat(); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const tvOK = !!P.done.tv;
+  api.satRegister(s, s.rec); const q = P.sats[0], f0 = P.funds; api.utilTick(10); const paid = P.funds - f0;
+  reset(['beeper']); [r, v] = stat(1.002); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const sloppy = !!P.done.tv; api.satRegister(s, s.rec);
+  let lostDay = null; for (let d = 0; d < 200 && lostDay === null; d++) { P.day += 1; api.utilTick(1); if (news.some(m => /drifted out of the capital/.test(m))) lostDay = d; }
+  check('epoch 3: TV for the capital from a stationary orbit pays daily; one 0.2 % too fast misses the mark and drifts out of the sky', tvOK && Math.abs(paid - 10 * 0.4) < 1e-9 && !sloppy && lostDay !== null,
+    `capital ${cap.name} (${(Math.asin(cap.u[1]) * 57.3).toFixed(0)}°), ${(api.STAT_R / 1e3 - TELLUS.R / 1e3).toFixed(0)} km up: ${tvOK ? 'done' : 'not done'}, ${paid.toFixed(1)}M over 10 days; the sloppy one ${sloppy ? 'counted (wrong)' : 'not counted'}, out of sight after ${lostDay} days`);
+  // disaster watch: a polar camera satellite with an antenna delivers pictures within 12 h of the call
+  reset(['beeper', 'weather']); [r, v] = orbit(300e3, 90); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.satRegister(s, s.rec);
+  const ci = api.CITIES.map((c, i) => ({ i, d: Math.acos(Math.min(1, dot(c.u, [1, 0, 0]))) })).sort((a, b) => a.d - b.d)[0].i;   // a city near the pad (a station in reach)
+  let got = null;
+  for (let k = 0; k < 8 && !got; k++) { P.active = [{ id: 900 + k, type: 'image', src: 'gov', client: 0, p: { ci, res: 8, dis: 'Floods', pay: 30, dur: 5 }, posted: P.day, deadline: P.day + 5 }]; P.disDone = [];
+    for (let h = 0; h < 4 && !P.done.diswatch; h++) api.advanceDays(0.125); if (P.done.diswatch) got = (P.disDone[0].t - P.disDone[0].posted * api.DAY_S) / 3600; else api.advanceDays(1); }
+  check('epoch 3: disaster watch: pictures of a disaster delivered within 12 h of the call', got !== null && got <= 12, got !== null ? `delivered ${got.toFixed(1)} h after the call` : 'never within 12 h');
+  // navigation: two satellites aren't enough; four in two polar planes, two per plane phased half an orbit apart, are
+  const reg = (alt, node, ph) => { const R1 = TELLUS.R + alt, vv = Math.sqrt(TELLUS.mu / R1), ry = a => [a[0] * Math.cos(node) + a[2] * Math.sin(node), a[1], -a[0] * Math.sin(node) + a[2] * Math.cos(node)];
+    const [rr, vr] = orbit(alt, 90, ph); P.satN++; P.sats.push({ id: P.satN, name: 'Nav ' + P.satN, ant: 1, cam: 0, sci: 0, ballast: 0, bio: 0, epoch: P.day * api.DAY_S, r: ry(rr), v: ry(vr), pending: [], imgs: 0 }); };
+  reset(['beeper', 'tv']); reg(1000e3, 0, 0); reg(1000e3, Math.PI / 2, 0); api.utilTick(1); const two = P.navCov, twoOK = !!P.done.nav;
+  reg(1000e3, 0, Math.PI); reg(1000e3, Math.PI / 2, Math.PI); api.utilTick(1); const four = P.navCov;
+  check('epoch 3: navigation: 2 satellites leave gaps; 4 in two polar planes, phased in pairs, fix anyone within half an hour', !twoOK && !!P.done.nav && four >= 0.95,
+    `2 satellites: ${(two * 100).toFixed(0)}% · 4: ${(four * 100).toFixed(1)}% of places and moments`);
+  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
@@ -1397,6 +1436,90 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.resetHome(); Object.assign(P, { flights: 0, own: null, kh: {} }); const x = api.newShip(['sci', 't1', 'sparrow']);
   check('know-how stays out of plain physics: no ignition failures before a program has started', !api.khOn() && api.igniteOK(x, x.parts.find(q => q.d.key === 'sparrow').seg));
   fresh(null); P.own = null; P.flights = 0;
+}
+
+// 27. Several vessels in a flight (sats session, stations plan Phase A): separating a probe module makes a vessel; both
+// fly; controls reach only the one you fly; switching; rails; vessel-on-vessel contact; registration. Own sim instance.
+{
+  const D = new Function(src + 'return {toV2,newShip,stage,advPhys,advRails,rails,vesselContact,flightRailsOK,switchTo,fleetEnd,kepler,FLEET,INP,PROG,TELLUS,DT,qrot,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, I = D.INP, zero = () => Object.assign(I, { pitch: 0, yaw: 0, roll: 0, tx: 0, ty: 0, tz: 0 });
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  // a pod on a tank, a decoupler, then a probe module with its own tank and engine; parked in a 300 km orbit
+  const fly = () => { D.FLEET.length = 0; D.t = 0; zero(); const s = D.newShip(['pod', 't1', 'dec', 'core', 't1', 'sparrow']), r0 = T.R + 300e3;
+    Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] }); s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2];
+    s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  const mom = xs => xs.reduce((a, x) => add(a, mul(x.v, x.mass)), [0, 0, 0]), cmw = xs => mul(xs.reduce((a, x) => add(a, mul(x.r, x.mass)), [0, 0, 0]), 1 / xs.reduce((a, x) => a + x.mass, 0));
+  let s = fly(), p0 = mom([s]), c0 = cmw([s]);
+  for (let k = 0; k < 4 && !D.FLEET.length; k++) D.stage(s);
+  const v = D.FLEET[0], dp = v ? len(sub(mom([s, v]), p0)) / len(p0) : NaN, dc = v ? len(sub(cmw([s, v]), c0)) : NaN;
+  check('fleet: separating a probe module makes a vessel (not debris); momentum and centre of mass kept through the push', v && v.parts.some(p => p.d.kind === 'core') && !v.parts.some(p => p.d.kind === 'pod') && dp < 1e-12 && dc < 1e-9,
+    `${v ? v.name + ': ' + v.parts.map(p => p.d.key).join(', ') : 'no vessel'}; momentum error ${dp.toExponential(1)}, centre of mass moved ${dc.toExponential(1)} m`);
+  // both fly, from the same clock; the pilot's controls turn only the vessel being flown
+  s.sas = false; v.sas = false; const t0 = D.t; for (let k = 0; k < 100; k++) { I.pitch = k < 5 ? 1 : 0; D.advPhys(s); } zero();   // a 0.1 s tap
+  const ws = len(s.w), wv = len(v.w), dt = D.t - t0;
+  check('fleet: both vessels step together on one clock; the controls reach only the vessel you fly', Math.abs(dt - 100 * D.DT) < 1e-9 && ws > 1e-3 && wv < 1e-9 && len(sub(v.r, s.r)) > 0,
+    `clock advanced ${dt.toFixed(3)} s for 100 steps; the flown vessel turns at ${ws.toFixed(3)} rad/s, the other at ${wv.toExponential(1)}`);
+  // switching: the flight record follows the pilot, and so do the controls
+  const R = s.rec; D.switchTo(0); const nowS = D.S; for (let k = 0; k < 50; k++) { I.pitch = k < 5 ? 1 : 0; D.advPhys(D.S); } zero();
+  check('fleet: switching flies the other vessel, hands it the flight record, and leaves the first in the fleet', nowS === v && D.FLEET[0] === s && v.rec === R && s.rec.mini && len(v.w) > 1e-3 && Math.abs(len(s.w) - ws) < 1e-9,
+    `now flying ${D.S.name}; the capsule keeps turning at its own ${len(s.w).toFixed(3)} rad/s`);
+  // rails: the other vessel coasts exactly as it would alone (rails include the bodies session's perturbations, so the
+  // reference is rails itself, not bare Kepler)
+  const nearPhys = !D.flightRailsOK(); v.r = add(v.r, mul(norm(v.v), 20e3));   // within 5 km they stay in physics; 20 km apart, rails
+  s.w = [0, 0, 0]; v.w = [0, 0, 0]; const tr = D.t, alone = x => { const c = { ...x, r: x.r.slice(), v: x.v.slice() }; D.t = tr; D.rails(c, 600); D.t = tr; return c.r; };
+  const ks = alone(s), kv = alone(v), ok = D.flightRailsOK(); D.advRails(D.S, 600, 10);
+  check('fleet: close together the vessels stay in physics; apart, on rails, each coasts 600 s exactly as it would alone', nearPhys && ok && Math.abs(D.t - tr - 600) < 1e-9 && len(sub(s.r, ks)) < 1e-6 && len(sub(v.r, kv)) < 1e-6,
+    `errors ${len(sub(s.r, ks)).toExponential(1)} and ${len(sub(v.r, kv)).toExponential(1)} m`);
+  // the two vessels touching: one impulse, momentum kept, they part
+  s.r = add(v.r, mul(D.qrot(v.q, [0, 1, 0]), -(v.yTop - s.yBot) - 30)); s.v = v.v.slice(); s.q = v.q.slice();
+  const Y = D.qrot(v.q, [0, 1, 0]); s.r = add(v.r, mul(Y, v.yTop - s.yBot + 0.5)); s.v = add(v.v, mul(Y, -0.4));
+  s.r = add(v.r, mul(Y, v.yTop - s.yBot - 0.01));   // the capsule's base 1 cm into the module's top, closing at 0.4 m/s
+  const pc = mom([s, v]); D.vesselContact(v, s, D.DT); const sep = dot(sub(s.v, v.v), Y), hit = sep !== -0.4 ? { err: len(sub(mom([s, v]), pc)) / len(pc), sep } : null;
+  check('fleet: two vessels collide (one impulse), keep their total momentum and part', hit && hit.err < 1e-12 && hit.sep > 0 && s.alive && v.alive,
+    `momentum error ${hit ? hit.err.toExponential(1) : '—'}; parting at ${hit ? hit.sep.toFixed(2) : '—'} m/s`);
+  // the end of the flight: the other vessel in orbit is registered
+  D.fleetEnd({ day0: 0 }); const reg = P.sats.length === 1 && P.sats[0].shape.some(o => o.k === 'pod') && !D.FLEET.length;
+  check('fleet: at the end of the flight the other vessel left in orbit is registered', reg, `${P.sats.map(q => q.name).join(', ')}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0; zero();
+}
+
+// 28. Docking two vessels of one flight (sats session): latch, undock back to a flyable vessel, dock two you aren't flying,
+// target a vessel, and register a stack that carries one. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,fleetContacts,undock,switchTo,sasTarget,satRegister,dockEnd,FLEET,INP,PROG,TELLUS,DT,qrot,qmul,qaxis,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS, P = D.PROG, r0 = T.R + 300e3;
+  Object.assign(P, { day: 0, sats: [], satN: 0 });
+  const vessel = (stack, name) => { const v = D.newShip(stack); Object.assign(v, { landed: false, sas: false, throttle: 0, w: [0, 0, 0], name });
+    v.rec.launched = true; v.rec.day0 = 0; return v; };
+  // the flown vessel nose out at 300 km; the other turned to face it, `gap` beyond its port, closing at `close`
+  const scene = ({ gap = 0.08, close = 0.2 } = {}) => { D.FLEET.length = 0; D.t = 0;
+    const s = vessel(['port', 'pod', 't1'], 'Ferry'), b = vessel(['port', 'core', 't1'], 'Module'); s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+    const Y = D.qrot(s.q, [0, 1, 0]); b.q = D.qmul(D.qaxis([0, 0, 1], Math.PI), s.q); b.r = add(s.r, mul(Y, s.yTop + gap + b.yTop)); b.v = add(s.v, mul(Y, -close));
+    b.fleet = true; b.rec = { launched: true, day0: 0, mini: true }; D.S = s; D.FLEET.push(b); return { s, b, Y }; };
+  const mom = xs => xs.reduce((a, x) => add(a, mul(x.v, x.mass)), [0, 0, 0]);
+  // latch: the module becomes a passenger, keeping its vessel for later; momentum and mass kept
+  let { s, b, Y } = scene(), p0 = mom([s, b]), m0 = s.mass + b.mass; D.fleetContacts(D.DT);
+  const a = s.att[0], ok1 = a && a.e._v === b && !D.FLEET.length && len(sub(mom([s]), p0)) / len(p0) < 1e-12 && Math.abs(s.mass - m0) < 1e-6;
+  check('vessel docking: two vessels of one flight latch; the module rides as a passenger and keeps its vessel; momentum and mass kept', ok1,
+    `${a ? a.e.name + ' docked' : 'no latch'}; momentum error ${(len(sub(mom([s]), p0)) / len(p0)).toExponential(1)}; ${(s.mass / 1000).toFixed(3)} t`);
+  // undock: the module is a vessel again, flyable, pushed off at 0.3 m/s, momentum kept, and a save of the stack is fine
+  const p1 = mom([s]); D.undock(s, a.e.id); const back = D.FLEET[0], sep = back ? dot(sub(back.v, s.v), Y) : NaN;
+  const flyable = back === b && D.switchTo(0) && D.S === b; if (flyable) D.switchTo(0);
+  check('vessel docking: undocking gives the vessel back (flyable), 0.3 m/s apart along the port, momentum kept', flyable && Math.abs(sep - 0.3) < 1e-6 && len(sub(mom([s, b]), p1)) / len(p1) < 1e-12,
+    `${back ? back.name : '—'} back in the fleet; separation ${sep.toFixed(4)} m/s`);
+  // two vessels you aren't flying dock to each other; the earlier one is the host
+  ({ s, b } = scene()); const c = vessel(['pod'], 'Bystander'); c.r = add(s.r, [0, 0, 5000]); c.v = s.v.slice(); D.S = c; D.FLEET.splice(0, 0, s); s.fleet = true;
+  D.fleetContacts(D.DT); const both = D.FLEET.length === 1 && D.FLEET[0] === s && s.att.length === 1 && s.att[0].e._v === b;
+  check('vessel docking: two vessels you are not flying dock to each other (the earlier one hosts)', both, `fleet now: ${D.FLEET.map(v => v.name + (v.att.length ? ' + ' + v.att.map(x => x.e.name).join() : '')).join(', ')}`);
+  // targeting a vessel: the Docking mode turns the nose against its port
+  ({ s, b } = scene({ gap: 3, close: 0 })); b.q = D.qmul(D.qaxis([0, 0, 1], Math.PI + 0.2), s.q); Object.assign(s, { sas: true, sasMode: 'dock', tgtV: b });
+  const want = mul(D.qrot(b.q, [0, 1, 0]), -1), got = D.sasTarget(s), err = Math.acos(Math.min(1, dot(got, want))) * 57.29578;
+  check('vessel docking: a vessel can be the target; the Docking mode aims at its port', err < 1e-4, `aim error ${err.toExponential(1)}°`);
+  // a flight ending with a vessel docked: one stack registered, and the save (JSON) works (the kept vessel isn't saved)
+  ({ s, b } = scene()); D.fleetContacts(D.DT); D.satRegister(s, { day0: 0 }); D.dockEnd(s); let js = null; try { js = JSON.stringify(P.sats); } catch (e) { js = 'ERR ' + e.message; }
+  check('vessel docking: a flight ending docked registers one stack carrying the module, and the save serialises', P.sats.length === 1 && P.sats[0].attached[0].e.name === 'Module' && !js.startsWith('ERR') && !js.includes('"_v"'),
+    `${P.sats.map(q => q.name + ' + ' + (q.attached || []).map(x => x.e.name).join()).join('; ')}; save ${js.startsWith('ERR') ? js : (js.length / 1024).toFixed(1) + ' kB'}`);
+  Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
 }
 
 // 26. Production lines (economy): learning to manufacture is different from buying.

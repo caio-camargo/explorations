@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.14.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.16.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -627,6 +627,8 @@ detail, and got a design pass:
   with a service band, straps, valve and a feed line. `port` now takes the bolted-ring detail (`KIND` 7).
 - **Claw:** a drive housing with a hazard band, a turntable and contact plate, three jointed fingers with hinge knuckles,
   hydraulic rams and padded tips, all inside the original envelope.
+- **Probe core:** a guidance ring (Agena/Ranger style): foil between bolted rings (`KIND` 7, so the foil crinkles), four
+  equipment boxes (two with thermal louvers), a sun sensor, a status lamp, two whips angled clear of whatever sits above.
 Re-run the audit when parts are added: list the `PARTS` keys and `big()` bases, and check each against the `case` labels in
 `partBody` (tanks use the default) and its `kind` against `KIND`.
 
@@ -951,6 +953,55 @@ The burning engines light their surroundings: one soft point light per frame for
 
 **Still open:** one light for all engines (a wide Heavy is lit from its centroid); no shadows (the tower's far side
 gets 15 % wrap light); the ground pool is a flat disc, so off-pad slopes take it roughly.
+
+## Engine ignition (2026-10-07, aerofx session)
+
+An engine used to fade in over 0.12 s. Now it lights the way 1950s–60s engines did. The model is render-side, keyed on
+a per-engine ignition clock: `spoolOf` stamps `sp.ig` whenever the spool starts from (near) zero with the throttle up, so
+staging, relights and throttling up from zero all count.
+- **Igniter flash** (`PROPS[...].ig`, `igT`): kerolox engines lit with TEA-TEB, a pyrophoric mix that flashes vivid
+  green (the F-1's start). Here it is [0.25, 1, 0.35], decaying over 0.3 s. Alcohol has a short orange pyrotechnic
+  flash, hypergolics a faint pink pop, hydrolox a dim blue spark. While it flashes, its colour replaces (not adds to)
+  the young flame's, in the plume, the flame-channel volume and the plume light (× (1 − 0.8 gf)). Added on top, the
+  flash only tinted a saturated yellow-white and never read as green.
+- **Fuel-rich start** (`rich` s): for ~0.7 s on kerolox, the plume balloons near the nozzle (rb × up to 2.7), goes
+  orange and lumpy, its shock diamonds off, and makes soot. The plume's length follows max(spool, 0.6 richness), so the
+  start is a burst instead of a slow grow, and the spool's lag is 0.3 s while starting.
+- `ignOf(e, P)` returns [flash colour × strength, richness] for the plume, impingement and light code.
+- Reference views `refView(68–71)`: the Orbiter's Kestrel 0.04, 0.12, 0.3 and 0.7 s after ignition. `72`: 0.06 s at
+  night. They wait 15 s on the pad first, since the service gantry rolls back over 14 s from the start of a flight
+  (`padSync`, visuals), and they render every step so the render-side clock starts on time. Then they freeze the sim
+  for the capture (`window.simulate` is stubbed; the next `refView` restores it), because the page's live frame loop
+  otherwise ran the sim ~0.2 s on before the screenshot.
+- Bug on the way: an inline `//` comment inserted mid-line swallowed the end of a `for` body (`R0=…}`), and the page
+  went black with "Identifier 'W' has already been declared". Check one-line code edits with
+  `node --check` on the extracted script.
+
+**Still open:** shutdown tail-off (the plume still vanishes at cutoff) and staging puffs, both proposed with this.
+
+## Engine shutdown and staging (2026-10-07, aerofx session)
+
+**Shutdown tail-off.** A plume used to vanish the frame its engine left `activeEngines`. Now `plumeEngines()` also
+returns stopped engines (still on the ship) whose spool has not decayed, and `spoolOf(e, on)` drives them to zero
+with a 0.22 s lag. The moment an engine's target drops to zero (cutoff, flameout, throttle to zero) stamps `sp.off`:
+- `ignOf` adds a **tail-off richness** (`PROPS[...].tail`, decaying over 0.5 s), so the dying flame goes orange, lumpy and
+  sooty, the same look as the fuel-rich start. Its length follows the spool only (not the start's burst), so it shrinks.
+- **cutoffPuff**: a handful of puffs of unburnt propellant leave the nozzle, sootier and more numerous for kerolox.
+- The start/stop soot is confined to ~6–14 exit radii from the nozzle. At first it filled the plume's whole length
+  and read as a long brown smoke trail.
+
+**Staging.** `HOOK.debris` now calls `sepFx(d)`: when the dropped piece holds a decoupler, a ring of 18 gas puffs vents
+radially from the seam (a stack decoupler's top face, a radial decoupler's mount) and 26 sparks spray out (tiny, glowing,
+0.25–0.7 s). Breakups without a decoupler get nothing here (`booms` covers those). In thin air the gas spreads wider and
+thinner (grow +3·(1 − pa), opacity × (0.25 + 0.75 pa)). Opaque, it ballooned into a white cloud at 30 km.
+
+**Moving puffs:** cutoff and separation puffs travel with a velocity (`fxPuff`: inertial, Tellus-centred, ballistic)
+instead of hanging in the air like the smoke trail, so they keep up with the ship for their short lives. `drawSmoke`
+takes both kinds, and `hot` sets a puff's glow (sparks ~1.6).
+
+Reference views: `refView(73)` the Orbiter's Kestrel 0.15 s after cutoff at 3 km, `74` 0.6 s after; `75` staging at 3 km;
+`76` staging at 30 km; `77` the Heavy dropping its side boosters. They climb unrendered, reset the engines' ignition
+clocks (else the first render would replay their ignition), then render every step through the action and freeze.
 
 ## Program design — direction and parking lot (2026-10-06)
 
@@ -1602,6 +1653,50 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
+
+Built from the economy's epoch plan: utility satellites that keep doing a job. Weather and TV are flight missions (read by
+`outThere`). Disaster watch and navigation are **world missions** (`world:true`, `okW()`), checked between flights by
+`utilTick(d)`, one call at the end of `worldTick`. The payout moved out of `missionEval` into `missionComplete(M, rec)` so
+world missions pay the same way; the behaviour is unchanged (all prior checks, and `career.mjs` runs).
+
+| Mission | Pays | What the sim checks |
+|---|---|---|
+| Weather satellite | 80M | camera + antenna in a stable orbit inclined **80–100°** (from an equatorial pad: a plane change) |
+| TV for the capital | 120M + **0.4M/day** | antenna in a **stationary orbit** (period = one day to 0.2 %, e < 0.01, i < 2°) at least **15° up in the capital's sky**; it pays daily while it stays there (`isTV`, a looser 1 % tolerance) and the news says when it drifts out |
+| Disaster watch | 60M | disaster pictures delivered **within 12 h** of the call (`imageDone` now records the delivery time) |
+| Navigation constellation | 150M | Transit-style: from **95 %** of (place, moment), a satellite with an antenna passes **≥ 10° up within 30 min** |
+
+- **Stationary orbit after the rescale.** The old notes said "about 2,870 km". For the 8 h day it's r = 6,942 km, **5,668 km up**.
+  The capital is the home power's biggest city (Kamar, 42° S, in the default world). From there the satellite sits ~40° up.
+- **Drift is the maintenance.** A satellite 0.2 % off in speed (0.6 % in period) doesn't count for the mission, and it leaves the
+  capital's sky after **25 days** (`isTV` allows 1 %). A precise insertion pays for much longer.
+- **Navigation metric, measured.** "Three in view everywhere 95 % of the time" (a GPS-like fix) needs **~12 satellites** in 4
+  planes at 3,000 km (93 %); 9 in 3 planes gets 71 %. That's too much for one-satellite-per-flight 1960s play. Transit (the
+  real 1960s system) fixed from a single pass, so the metric is the wait for a pass. Polar orbits at 1,000 km, fix within 30 min:
+
+  | satellites | coverage |
+  |---|---|
+  | 1 | 40 % |
+  | 2 in 2 planes | 68 % |
+  | 3 in 3 planes | 78 % |
+  | 5 in 5 planes | 83 % |
+  | **4 in 2 planes, 2 per plane, half an orbit apart** | **99.4 %** |
+  | 6 in 3 planes at 500 km | 100 % |
+
+  With a 1 h wait, three at 1,000 km already give 99.9 % (too easy on a planet this small). **Phasing within a plane matters more
+  than adding planes**, which is a lesson the mission teaches by itself.
+
+**Checks** (`test.mjs` §24, 4):
+- polar weather counts, equatorial doesn't
+- TV from a stationary orbit over Kamar pays 4.0M in 10 days; the sloppy one isn't counted and drifts out after 25 days
+- disaster pictures delivered 0.9 h after the call (polar camera at 300 km, a city near the pad)
+- navigation: 2 satellites give 60 %, 4 phased in two planes give 99.8 %
+
+**Open:** weather forecasts of upper winds at max-q (the plan's idea; there's no wind model yet); sun-synchronous orbits (no J2);
+launching several satellites in one flight (the registry registers one vessel per flight; a dispenser part would make
+constellations practical); TV audience by city size.
+
 ## "Out there" missions: the Selene ladder and Nyx (2026-10-07, bodies session)
 
 Caio: the economy session works at the high level, so specific missions get built here, from its epoch plan. This slice is epochs
@@ -2415,6 +2510,88 @@ Grab anything, port or not, wherever you touch it.
   regrab; the page parses. In the browser: approach with the *Claw* row, the grab, and release by the button.
 - **Not yet:** grabbing debris (spent stages: contact with debris comes first); a free pivot so the held body can be
   turned to line up; arming/disarming (it grabs whatever its jaws touch slowly).
+
+## Stations, modules and moonbases: plan (2026-10-07, sats session with Caio; Phase A built)
+
+**Decisions (Caio):** stations first, then moonbases. Modules reach a station either as their own rockets or carried in a
+**cargo bay**; once out, **both** you fly them yourself (RCS) **and**, as the more advanced option, an **arm** berths them.
+A winged runway shuttle is a later project of its own; the bay comes first and works on any rocket. **One vessel per
+flight is to be revisited** now, since flying a released module yourself needs it.
+
+**What a station is:** a registry stack (an entry with docked bodies, already built for docking), grown over flights.
+Modules are parts with jobs: habitat (crew capacity), lab (science per crewed day), hub (side-facing ports), power,
+depot (fuel for Selene missions). Its abilities are what's docked. Assembly in orbit gets past what survives max-q.
+
+**Phases:**
+- **A. Several vessels in a flight.** `S` stays the vessel you fly; `FLEET` holds the others. A separation that takes a
+  command part (pod, or a new probe core) makes a vessel, not debris. Every vessel is stepped (physics or rails
+  together), they collide with each other, and you switch with `[` / `]` (a tape op). Controls only reach the vessel
+  you fly; each keeps its own throttle, SAS and RCS. At the end of the flight every vessel left in orbit is registered.
+  Measured before starting: the sim core already takes the vessel as a parameter (16 global `S` references, 3
+  functions read the controls), so this is additive; the 448 `S` references in render/UI mean "the vessel you fly".
+- **A2. Vessels that persist as vessels:** registry entries keep their design and state, so a later flight can take
+  control of a registered vessel (a station's tug, a module waiting in orbit).
+- **B. Cargo bay:** a hollow stack section with doors; contents shielded from air and heat; doors open in orbit; the
+  payload is released (a vessel if it has a command part) or picked out by the arm.
+- **C. Station modules and station state:** habitat, lab, hub (side ports), power, depot; station state from its docked
+  modules; contract types proposed to the economy session (flagship "First station" in milestones; resupply, crew
+  rotation, client experiments, tourists; reboost once orbits decay).
+- **D. The arm:** captures within reach, berths onto a port along a computed path.
+- **E. Moonbase:** objects resting on a body as registry entries (planet-fixed), modules landed near a beacon forming a
+  base, surface functions (science, fuel).
+
+### Phase A built: several vessels in a flight (sats session, 2026-10-07)
+
+- **Probe core** (palette *Command & payload*): a command part without crew, with small reaction wheels (4 kN·m). Wheels
+  are now any part's `torque` (pod or core): the control authority, the structural reaction point and the editor's
+  "no control torque" warning all follow that. The root of a design is a pod, else a probe core, else as before.
+- **Separation makes a vessel** when the parts leaving include a command part (pod or core); otherwise debris, exactly as
+  before. The new vessel is built from clones of those parts (the originals stay off in the vessel they left),
+  re-indexed, with their own part tree, segments and the staging events that concern only them, in the same vessel
+  frame, so it starts exactly where the parts were. Their marks carry over. The separation push now goes both ways:
+  momentum and centre of mass are kept to 1e-20 / 1e-16 m (debris still gets the old one-sided push).
+- **`S` is the vessel you fly; `FLEET` holds the others.** Every tick the others step first from the same instant (the
+  clock is S's to advance; `physStep` advances it, so it's held for them), then S, then every pair is checked for
+  contact. Rails: all coast together, each exactly as it would alone (the bodies session's perturbations included);
+  physics as soon as any vessel needs it. Controls reach only S (`inpOf`); the others keep their own throttle, SAS and
+  RCS.
+- **Switching** with `]` / `[` (cycling through all), recorded on the tape (`['V', i]`); the flight record follows the
+  pilot. Vessels get names when there are two: *Capsule N*, *Probe N*.
+- **The end of the flight** registers every other vessel left in a stable orbit (with anything docked to it).
+- **Shown:** the other vessels drawn (with their docked bodies), a marker with name and distance in the flight view,
+  their orbits and labels on the map, and a HUD *Vessels* row.
+- Checks (`test.mjs` §27): separation (momentum, centre of mass, parts); one clock for both, controls only to the flown
+  one; switching hands over the record; rails exactly as alone; vessel-on-vessel contact (momentum to 2e-16, parting);
+  registration at the end. Browser: separation in orbit, the HUD row, switching with `]`, the map.
+- **Not yet:** ~~docking two vessels of the same flight to each other~~ (done, below);
+  a vessel that keeps its controllability after the flight (A2); fleet vessels' plumes and RCS puffs aren't drawn;
+  a vessel far away is still fully simulated (fine for a few).
+
+### Docking vessels of one flight (sats session, 2026-10-07)
+
+Two halves launched together (or a module you just released) can now dock to each other, and come apart as vessels.
+
+- **Latch** as with a saved satellite (same capture limits, same `join`), checked each tick for every pair of vessels
+  before contact. The vessel you fly is the host; between two you aren't flying, the earlier one is. The other becomes
+  a passenger through a registry-style entry built from its parts (`entryOf`: shape, own mass and centre of mass, kit,
+  whatever it already carries), with its live vessel kept beside the entry out of sight of the save (not enumerable),
+  so a stack registered at the end of a flight serialises normally.
+- **Undock** gives the vessel back: flyable, in the fleet, with anything docked through it, pushed off at 0.3 m/s with
+  momentum kept. The claw grabs vessels too.
+- **Targets:** a vessel of the flight can be the target (`G` cycles satellites, then this flight's vessels, then none);
+  closest approach, the Port / Line-up guidance and the *Docking* SAS mode all work against it.
+- **Tapes now record the target** (`tg` in the controls), so an autopilot mode that depends on it replays the same. That
+  was a gap since rendezvous.
+- **A bug the checks missed:** near another vessel of the same flight the game coasted on rails (the 5 km physics rule
+  only looked at saved satellites), so in play two vessels passed through each other and never docked, while every
+  check passed, because the checks step physics directly. Now `fleetNear` keeps the flight in physics within 5 km of
+  another vessel, and the Phase A check asserts it.
+- Checks (`test.mjs` §28, plus the §27 rails check tightened): latch (momentum exact, mass summed, the vessel kept);
+  undock gives a flyable vessel at 0.3000 m/s; two vessels you aren't flying dock (the earlier hosts); the Docking mode
+  aims at a vessel's port; a stack carrying a vessel registers and serialises (0.9 kB, no hidden vessel in it). Browser:
+  target with `G`, guidance, latch, undock by the button, fly the module.
+- **Not yet:** a vessel docked into a stack and saved at the end of the flight comes back next time as a passive part of
+  the stack (A2: vessels that stay flyable across flights).
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
