@@ -1257,6 +1257,26 @@ back along the capsule→stage line.
 **Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
 state, and this pass is render-only.
 
+## Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
+
+The station parts, the arm and the rover had come in from other sessions as plain shapes. Same early-era look as the rest:
+- **Hab and lab** get their own detail branch (`KIND` 16, `MESH_FS`): meteoroid-shield panels on the pressure hull (eight
+  around, 0.55 m tall), seams, a bolt at each panel corner, a slight per-panel tint and pillowing. Geometry: chamfered
+  berthing rings at both ends, yellow handrails on standoffs (`stationTrim`), portholes in dark frames and two radiators on
+  standoffs (hab), a round bolted science window (`labWindow`) and experiment boxes on the gold band (lab).
+- **The arm's base** becomes a turret with a drive ring. **The booms** (drawn per frame, sats' code) get joint drums at
+  the shoulder and elbow, dark bands near each end, and an end effector (a snare drum with a camera).
+- **The rover**: a dark tub inside a tubular frame (rails, uprights, cross-tubes), a floor of panels, fenders as an arc of
+  overlapping plates, and titanium chevrons on the mesh tyres.
+
+**And two bloom fixes** found on the way. The composite sampled the ¼ and ⅛ blur levels with the 1/16 level's texel
+spacing (4× and 2× too wide), so each glow had ghost copies up to 64 px apart: long streaks beside any bright edge. And the
+downsample is now a 3×3 tent, the threshold 0.965. Sunlit white paint is still as bright as the sun once tone-mapped; the
+glow around it is now a soft rim instead of streaks.
+
+**The first-run gate** (ui session) now covers the page on load, so screenshot scripts must click `[data-start]` first
+(as `playtest.mjs` does). The older reference views that start in the editor don't, yet.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -3037,6 +3057,16 @@ watched game shows "Procedure stopped: … You have control". The kinds:
 - `offcourse`: three mid-course corrections and still no encounter.
 - `nohome`: no burn home within what's aboard. This used to end the procedure silently.
 - `lost`: the procedure's time limit ran out.
+
+**The corridor (Q12)** (`procCorridor`, during the ascent). These rules catch a climb that has already failed, while the
+craft is still alive and somewhere a pilot can act. They're kept loose on purpose: a heavier variant flies lower and
+slower and is still fine, so there's no tight band around the recorded profile. The recorder now keeps speed against
+height (`proc.vel`).
+- `control`: the nose more than 20° off the commanded climb for 5 s. A 2 s tumble the SAS recovers from doesn't count;
+  an 8 s one does.
+- `falling`: coming down under power below the cut-off. The +2 t Orbiter variant used to burn up three minutes later;
+  it is now handed over alive at 58 km.
+- `slow`: above 10 km, under 70 % of the recorded speed at that height.
 
 **`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
 flight, but in isolation:

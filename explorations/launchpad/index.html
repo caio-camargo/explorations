@@ -3216,12 +3216,12 @@ function procSample(s){if(s.noRec)return;if(s.procRec&&s.procRec.done){procMissi
   const up=norm(s.r),h=len(s.r)-TELLUS.R,nose=qrot(s.q,[0,1,0]),pitch=Math.asin(clamp(dot(nose,up),-1,1))*57.29578,last=P.pts[P.pts.length-1];
   if(P.az==null&&h>2000){const f=localFrame(s.r),nh=sub(nose,mul(up,dot(nose,up)));if(len(nh)>1e-3)P.az=Math.atan2(dot(nh,f.e),dot(nh,f.n))}
   const el=elements(s.r,s.v,TELLUS.mu);
-  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle]);
+  if(!P.cut){if(!last||h>last[0]+150||Math.abs(s.throttle-last[2])>0.05)P.pts.push([h,pitch,s.throttle,len(s.v)]);
     if(s.throttle===0&&h>1000&&P.pts.length>5)P.cut={h,ap:el.ap-TELLUS.R}}   // the first cut-off: the ascent is over
   else if(s.throttle===0&&el.e<1&&el.pe>TELLUS.R+TELLUS.atm){P.done=true;P.target={pe:el.pe-TELLUS.R,ap:el.ap-TELLUS.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578};
     P.dv=s.rec?s.rec.dv:null;procKeep(s)}}
-function procAscent(s,P){const pitch=[],thr=[];let hm=-1;for(const[h,q,t]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)])}   // powered samples only: the cut-off isn't a throttle setting
-  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
+function procAscent(s,P){const pitch=[],thr=[],vel=[];let hm=-1;for(const[h,q,t,v]of P.pts){if(h<=hm||t<=0)continue;hm=h;pitch.push([Math.round(h),+q.toFixed(1)]);thr.push([Math.round(h),+t.toFixed(2)]);if(v!=null)vel.push([Math.round(h),Math.round(v)])}   // powered samples only: the cut-off isn't a throttle setting
+  return{v:PROC_V,kind:'orbit',site:s.site?s.site.id:null,az:P.az??Math.PI/2,pitch,thr,vel,early:P.early.filter(h=>h>50),cutAp:P.cut.ap,target:P.target,dv:P.dv,by:designName(s.stack),day:PROG.day,flight:PROG.flights+1}}
 function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<5)return null;
   const key=procKey(s.stack),old=(PROG.procs=PROG.procs||{})[key],proc=procAscent(s,P);
   if(old&&!old.prov&&old.dv<=proc.dv+0.5)return null;PROG.procs[key]=proc;   // a provisional one (borrowed by a dry run) gives way to the design's own first flight
@@ -3262,6 +3262,16 @@ function procStart(s,proc,target){const T={...proc.target,...(target||{})};let a
 // A deviation: the procedure can't meet its goal from here. It stops and says why; the craft is yours (in a dispatched
 // flight, the dispatch hands it to you). s.procDev keeps what happened, for whoever runs the flight.
 function procDev(s,kind,why){s.procDev={kind,why,t:simT,phase:s.proc&&s.proc.phase};s.proc=null;s.throttle=0;HOOK.msg(`Procedure stopped: ${why}. You have control`)}
+// The corridor around the recorded climb (Q12): what goes wrong before the propellant does. Stopped early, the craft is
+// still somewhere a pilot can do something with (or bail out of). Kept loose: a variant with less thrust flies lower and
+// slower and is still fine; these catch a climb that has already failed.
+//   control  the nose more than 20° off the commanded climb for 5 s (an unstable design, a tumble, a stuck engine)
+//   falling  coming down under power, below the cut-off (too little thrust for the weight, an engine out)
+//   slow     above 10 km, under 70 % of the speed the recorded flight had at this height
+function procCorridor(s,X,p,h,up){if(simT<10)return;const off=Math.acos(clamp(dot(qrot(s.q,[0,1,0]),s.hold||up),-1,1))*57.29578;
+  X.offT=off>20?(X.offT||0)+DT:0;if(X.offT>=5)return procDev(s,'control',`lost control of the climb: the nose ${off.toFixed(0)}° off for 5 s`);
+  const vv=dot(s.v,up);if(vv<-20&&h<TELLUS.atm)return procDev(s,'falling',`falling back at ${kmS(h)} km before the engines could cut off`);
+  if(p.vel&&p.vel.length>3&&h>10e3&&h<=p.vel[p.vel.length-1][0]){const v0=tabAt(p.vel,h);if(len(s.v)<0.7*v0)return procDev(s,'slow',`far behind the recorded climb: ${Math.round(len(s.v))} m/s at ${kmS(h)} km where it flew ${Math.round(v0)}`)}}
 function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T=X.T,up=norm(s.r),h=len(s.r)-TELLUS.R,el=elements(s.r,s.v,TELLUS.mu),f=localFrame(s.r);
   const dirAt=d=>{const hz=add(mul(f.n,Math.cos(X.az)),mul(f.e,Math.sin(X.az))),r=d*Math.PI/180;return norm(add(mul(hz,Math.cos(r)),mul(up,Math.sin(r))))};
   const dry=()=>s.throttle>0&&dvRemaining(s).cur<=0.5&&s.evIdx<s.events.length;
@@ -3269,7 +3279,8 @@ function procStep(s){const X=s.proc;if(!X||X.done||!s.alive)return;const p=X.p,T
   if(X.phase==='ascent'){s.sasMode='stab';s.hold=dirAt(tabAt(p.pitch,h));s.throttle=Math.max(0.1,tabAt(p.thr,h));
     if(!X.lit){X.lit=true;stage(s);return}   // ignition
     if(dry())stage(s);else if(X.ei<p.early.length&&h>=p.early[X.ei]){X.ei++;stage(s)}
-    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);return}
+    if(el.ap-TELLUS.R>=X.cutAp){s.throttle=0;X.phase='coast'}else if(dvRemaining(s).tot<=0.5&&X.lit)procDev(s,'short',`out of propellant in the climb, apoapsis ${kmS(el.ap-TELLUS.R)} km`);
+    else procCorridor(s,X,p,h,up);return}
   const thrust=activeEngines(s).reduce((a,q)=>a+q.d.thrust*1000,0)||1,vAp=Math.sqrt(TELLUS.mu*(2/el.ap-1/el.a)),tb=(Math.sqrt(TELLUS.mu/el.ap)-vAp)*s.mass/thrust,tAp=timeToNu(el,Math.PI);
   if(X.phase==='coast'){s.sasMode='pro';
     if(!X.chk&&h>TELLUS.atm){X.chk=1;const need=Math.sqrt(TELLUS.mu/el.ap)-vAp,have=dvRemaining(s).tot;
@@ -4205,6 +4216,12 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    alb*=mix(vec3(1.),tint*1.25,.65*smoothstep(.35,.7,t));
    float lip=band(v,-.01,.035*sc,fv);alb=mix(alb,vec3(.35,.34,.33),lip);rough=mix(rough,.5,lip);
    if(inside){alb*=.3;rough=.7;}}
+  else if(k==16&&side){                                    // station module: meteoroid-shield panels on the pressure hull
+   float pv=band(v,.1*sc,h-.1*sc,fv),NA=8.,pa=fract(vU.x*NA),ph=.55*sc,pr=v/ph,
+     sa=lin(vU.x*NA,1.,.012*NA/(6.2832*R),fu*NA),sr=lin(v,ph,.006*sc,fv),seam=max(sa,sr)*pv,
+     pid=hh(vec2(floor(vU.x*NA),floor(pr))),pil=(pa-.5)*(fract(pr)-.5),fd=smoothstep(.04,.01,fp);
+   alb*=(1.-.4*seam)*(.94+.1*pid*fd);nO+=T*(pa-.5)*.12*pv*fd;
+   float bl=dots(s,v,ph,6.2832*R/NA,.008*sc,fp)*pv;alb=mix(alb,vec3(.42,.43,.45),bl);}
   else if(k==15){                                          // engine mount: bolt ring under the tank flange
    alb=mix(alb,vec3(.05),dots(s,v,h-.035*sc,.06*sc,.008*sc,fp));}
   else if(k==3&&side){                                     // capsule: dark corrugated shingles, a window, a hatch
@@ -4619,7 +4636,7 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
 const BLOOM_FS=`#version 300 es
 precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);
- for(int i=0;i<4;i++){vec2 d=vec2(i==0||i==2?-1.:1.,i<2?-1.:1.)*uPx;c+=texture(uT,uv+d).rgb;}c*=.25;
+ for(int i=-1;i<=1;i++)for(int j=-1;j<=1;j++){float w=(i==0?2.:1.)*(j==0?2.:1.);c+=texture(uT,uv+vec2(i,j)*uPx*2.).rgb*w;}c/=16.;   // a 3×3 tent: no blocks
  if(uTh>0.){float m=max(c.r,max(c.g,c.b));c*=smoothstep(uTh,1.,m)*m;}
  o=vec4(c,1.);}`;
 const COMP_FS=`#version 300 es
@@ -4627,7 +4644,7 @@ precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,u
 vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,uv+vec2(px.x,0.)).rgb*2.+texture(t,uv-vec2(px.x,0.)).rgb*2.+texture(t,uv+vec2(0.,px.y)).rgb*2.+texture(t,uv-vec2(0.,px.y)).rgb*2.;
  c+=texture(t,uv+px).rgb+texture(t,uv-px).rgb+texture(t,uv+vec2(px.x,-px.y)).rgb+texture(t,uv+vec2(-px.x,px.y)).rgb;return c/16.;}
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;
- vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*4.).rgb*.35+tent(uB3,uv,uP4*2.).rgb*.45+tent(uB4,uv,uP4).rgb*.6;
+ vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*.25).rgb*.35+tent(uB3,uv,uP4*.5).rgb*.4+tent(uB4,uv,uP4).rgb*.45;   // each level tent-filtered at its own texel size (uP4 is the 1/16 level's)   // tight glow; the wide levels faint (sunlit white paint is as bright as the sun here, and the wide levels smeared it)
  float L=dot(c,vec3(.3,.5,.2));o=vec4(c+uK*b*pow(1.-L,1.6),1.);}`;   // glow shows over darker surroundings, not on bright sky
 // fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
 // position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
@@ -4681,7 +4698,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:15,lab:15,arm:15,beacon:15,rover:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -4707,6 +4724,12 @@ function fin(out,o,a,r0,sp,ch,t,col){const ca=Math.cos(a),sa=Math.sin(a),P=(rr,y
   for(const s of[-1,1]){const n=N(0,0,s),Q=q.map(([r,y])=>P(r,y,s*t));tri(Q[0],Q[1],Q[2],n,col);tri(Q[0],Q[2],Q[3],n,col)}
   for(let e=0;e<4;e++){const[r1,y1]=q[e],[r2,y2]=q[(e+1)%4],l=Math.hypot(r2-r1,y2-y1),n=N((y2-y1)/l,-(r2-r1)/l,0),c=e===2?C.ST:col;
     const A=P(r1,y1,-t),B=P(r2,y2,-t),Cc=P(r2,y2,t),D=P(r1,y1,t);tri(A,B,Cc,n,c);tri(A,Cc,D,n,c)}}
+// station trim: yellow handrails along the hull at the given angles, on standoffs (the crew's way along the outside)
+function stationTrim(out,x,y,z,h,angs){const HR=[.85,.65,.12];for(const a of angs){const c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r];
+  tube(out,P(.7,.35),P(.7,h-.35),.018,HR,6);for(let yy=.35;yy<=h-.34;yy+=.6)tube(out,P(.625,yy),P(.7,yy),.012,HR,4)}}
+// a round window on the hull: a dark frame, glass, eight bolts (the lab's science window)
+function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[x+c*.632,y+yy,z+sn*.632],.012,.16,.16,C.D,a);rbox(out,[x+c*.642,y+yy,z+sn*.642],.008,.12,.12,C.GL,a);
+  for(let k=0;k<8;k++){const t=k*Math.PI/4,dy=Math.cos(t)*.14,ds=Math.sin(t)*.14;rbox(out,[x+c*.646-sn*ds,y+yy+dy,z+sn*.646+c*ds],.008,.012,.012,[.5,.5,.52,1],a)}}
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
@@ -4752,10 +4775,18 @@ function partBody(out,p){
          for(const a of[.27,.73])for(const s of[-1,1])rbox(out,[x+n[0]*.41+tg[0]*s*.27,y+h*a,z+n[2]*.41+tg[2]*s*.27],.025,.2,.2,C.BK,p.phi)}}break;
      case'rvdeck':lathe(out,[[d.r,0,C.D],[d.r,.3,C.ST]],o,32);for(const s of[-1,1])box(out,[x+s*(d.r-.08),y+1,z],.05,.7,.5,C.G);
        if(!p.rvOut&&p.dn&&p.dn.rvd)rvOnDeck(out,p.dn.rvd,[x,y+.3,z]);break;
-    case'arm':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)];rbox(out,[x+n[0]*.15,y+h/2,z+n[2]*.15],.15,.3,.25,C.G,p.phi);rbox(out,[x+n[0]*.32,y+h/2,z+n[2]*.32],.05,.12,.12,C.D,p.phi)}break;
-    case'hab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);
-      for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.63,y+1.9,z+Math.sin(a)*.63],.01,.12,.09,C.GL,a)}break;   // a ring of portholes
-    case'lab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,1.2,C.W],[.625,1.2,C.AU],[.625,2.0,C.AU],[.625,2.0,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);break;
+    case'arm':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)];rbox(out,[x+n[0]*.1,y+h/2,z+n[2]*.1],.1,.32,.3,C.G,p.phi);   // the base plate, a turret, its drive ring
+      tube(out,[x+n[0]*.2,y+h/2,z+n[2]*.2],[x+n[0]*.36,y+h/2,z+n[2]*.36],.13,C.W,14,true);tube(out,[x+n[0]*.24,y+h/2,z+n[2]*.24],[x+n[0]*.28,y+h/2,z+n[2]*.28],.145,C.D,14,true)}break;
+    case'hab':lathe(out,[[.6,0,C.D],[.625,.03,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.17,C.D],[.6,3.2,C.D]],o);
+      for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.632,y+1.9,z+Math.sin(a)*.632],.012,.13,.1,C.D,a);rbox(out,[x+Math.cos(a)*.64,y+1.9,z+Math.sin(a)*.64],.01,.1,.075,C.GL,a)}   // portholes in dark frames
+      stationTrim(out,x,y,z,3.2,[.3+Math.PI/6,.3+Math.PI*7/6]);
+      for(const s2 of[1,-1]){const a=.3+Math.PI/2*s2;rbox(out,[x+Math.cos(a)*.72,y+1.1,z+Math.sin(a)*.72],.012,.7,.3,[.9,.9,.92,1],a);   // radiators on standoffs
+        tube(out,[x+Math.cos(a)*.62,y+.6,z+Math.sin(a)*.62],[x+Math.cos(a)*.71,y+.6,z+Math.sin(a)*.71],.02,C.ST,4);tube(out,[x+Math.cos(a)*.62,y+1.6,z+Math.sin(a)*.62],[x+Math.cos(a)*.71,y+1.6,z+Math.sin(a)*.71],.02,C.ST,4)}
+      break;
+    case'lab':lathe(out,[[.6,0,C.D],[.625,.03,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,1.2,C.W],[.625,1.2,C.AU],[.625,2.0,C.AU],[.625,2.0,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.17,C.D],[.6,3.2,C.D]],o);
+      labWindow(out,x,y,z,2.6,1.2);stationTrim(out,x,y,z,3.2,[.6,.6+Math.PI]);
+      for(let k=0;k<3;k++){const a=2.3+k*.45;rbox(out,[x+Math.cos(a)*.7,y+1.6,z+Math.sin(a)*.7],.07,.12+.05*k,.09,k%2?C.ST:[.62,.63,.6],a)}   // external experiment boxes on the gold band
+      break;
     case'bay':{const top=h+d.bayL,th=doorF(p)*1.75;
       lathe(out,[[d.r,0,C.W],[d.r,top,C.W],[d.r,top,C.G],[d.bayIn,top,C.G],[d.bayIn,h,C.D],[0,h,C.D]],o,32,[true,false]);
       for(const sd of[1,-1])bayDoor(out,o,d.r,top,d.roofH,sd,th,C.W)}break;
@@ -4919,7 +4950,7 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
   const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);let src=T.res;
   T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
-    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.93:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
+    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.965:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
   gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
   [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);
@@ -5893,8 +5924,13 @@ function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw
 const rvMeshC=new Map();
 function rvBodyMesh(d){const key=JSON.stringify([d.ch,d.wh,d.n,d.slots]);if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvBodyArr(d)));return rvMeshC.get(key)}
 function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
-  box(a,[0,0,0],W,Hh,CH.L/2,C.G);box(a,[0,Hh+.01,0],W*.96,.01,CH.L/2*.97,C.D);
-  for(const w of G.wheels){const s=Math.sign(w.x);box(a,[s*(W+G.Wk.w/2+.03),Hh+.04,w.z],G.Wk.w/2+.04,.015,G.Wk.r*.9,C.W);   // fenders
+  const FR=[.55,.56,.58,1];box(a,[0,-Hh*.2,0],W*.94,Hh*.75,CH.L/2*.96,[.25,.26,.28,1]);   // the chassis: a tub inside a tubular frame
+  for(const sx of[-1,1]){tube(a,[sx*W,Hh*.6,-CH.L/2],[sx*W,Hh*.6,CH.L/2],.035,FR,8,true);tube(a,[sx*W,-Hh*.6,-CH.L/2],[sx*W,-Hh*.6,CH.L/2],.035,FR,8,true);
+    for(let i=0;i<=4;i++){const zz=-CH.L/2+i*CH.L/4;tube(a,[sx*W,-Hh*.6,zz],[sx*W,Hh*.6,zz],.025,FR,6)}}
+  for(const zz of[-CH.L/2,CH.L/2])tube(a,[-W,Hh*.6,zz],[W,Hh*.6,zz],.035,FR,8,true);
+  for(let i=0;i<4;i++){const zz=-CH.L/2+CH.L*(i+.5)/4;box(a,[0,Hh+.005,zz],W*.92,.008,CH.L/8*.94,i%2?[.16,.17,.19,1]:[.2,.21,.23,1])}   // floor panels
+  for(const w of G.wheels){const s=Math.sign(w.x),fx=s*(W+G.Wk.w/2+.03),fr=G.Wk.r*1.1;   // fenders: an arc of panels over each wheel
+    for(let k=0;k<7;k++){const t0=(k/7-.5)*2.2,t1=((k+1)/7-.5)*2.2,tm=(t0+t1)/2;box(a,[fx,Hh+.02+fr*(Math.cos(tm)-1)*.35+.04,w.z+Math.sin(tm)*fr*.85],G.Wk.w/2+.04,.012,fr*.85*(t1-t0)/2+.02,[.82,.82,.8])}
     box(a,[s*(W+.02),-Hh-.02,w.z],.05,.05,.06,C.D)}
   for(const t of G.items){const[x,y,z]=[t.x,t.y,t.z],[sx,sy,sz]=t.it.sz;
     if(t.k==='bat'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.D);box(a,[x,y+sy+.01,z],sx/2*.8,.01,sz/2*.8,C.AU)}
@@ -5912,6 +5948,7 @@ function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
 function rvWheelMesh(k){const key='w'+k;if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvWheelArr(k)));return rvMeshC.get(key)}
 function rvWheelArr(k){const Wk=RV_WH[k],a=[],r=Wk.r,w=Wk.w/2,tc=k==='m'?C.AU:C.BK;
   lathe(a,[[r*.55,-w,tc],[r*.95,-w,tc],[r,-w*.7,tc],[r,w*.7,tc],[r*.95,w,tc],[r*.55,w,tc]],[0,0,0],28,[false,false]);
+  if(k==='m')for(let i=0;i<14;i++){const t=i/14*6.2832,c=Math.cos(t),sn=Math.sin(t);for(const sd of[-1,1])box(a,[c*r*1.005,w*.35*sd,sn*r*1.005],.012,w*.32,.04,[.32,.31,.29,1])}   // the mesh tyre's titanium chevrons
   lathe(a,[[r*.55,-w*.6,C.G],[r*.55,w*.6,C.G]],[0,0,0],28,[true,true]);lathe(a,[[r*.2,-w*1.05,C.ST],[r*.2,w*1.05,C.ST]],[0,0,0],14);
   for(let i=0;i<4;i++){const s=[];box(s,[0,0,0],r*.5,w*.25,r*.06,C.D);const c=Math.cos(i*Math.PI/4),sn=Math.sin(i*Math.PI/4);
     for(let j=0;j<s.length;j+=VX){const P=[s[j],s[j+1],s[j+2]],N=[s[j+3],s[j+4],s[j+5]];s[j]=c*P[0]+sn*P[2];s[j+2]=-sn*P[0]+c*P[2];s[j+3]=c*N[0]+sn*N[2];s[j+5]=-sn*N[0]+c*N[2]}
@@ -6201,7 +6238,11 @@ function render(){
         const bend=len(bend0)>1e-6?norm(bend0):norm(cross(u,[0,1,0]));el=add(add(sh,mul(u,d/2)),mul(bend,Math.sqrt(Math.max(0,L*L-d*d/4))));end=add(sh,mul(u,d))}
       else{el=add(add(sh,mul(yw,-L*0.97)),mul(nw,0.18));end=add(add(sh,mul(nw,0.36)),mul(yw,-0.25));u=norm(sub(end,el))}   // free: folded along the hull
       const buf=[];
-      tube(buf,sh,el,.08,C.W,8,true);tube(buf,el,end,.07,C.W,8,true);tube(buf,end,madd(end,u,.3),.11,C.D,8,true);
+      const jt=(P,a,r)=>{const ax=norm(cross(a,Math.abs(a[1])<.9?[0,1,0]:[1,0,0]));tube(buf,madd(P,ax,-.12),madd(P,ax,.12),r,C.G,12,true);tube(buf,madd(P,ax,-.135),madd(P,ax,-.12),r*.8,C.D,12,true)};   // a joint: a drum across the boom plane
+      const bm=(A,B,r)=>{const d=norm(sub(B,A)),L2=len(sub(B,A));tube(buf,A,B,r,C.W,10,true);for(const f of[.12,.88])tube(buf,madd(A,d,L2*f-.06),madd(A,d,L2*f+.06),r*1.12,C.D,10,true)};
+      bm(sh,el,.085);bm(el,end,.075);jt(sh,norm(sub(el,sh)),.13);jt(el,norm(sub(end,el)),.11);
+      tube(buf,end,madd(end,u,.32),.12,C.G,12,true);tube(buf,madd(end,u,.32),madd(end,u,.36),.13,C.D,12,true);   // the end effector: a snare drum
+      {const cp=madd(madd(end,u,.18),norm(cross(u,[0,1,0])),.13);tube(buf,cp,madd(cp,u,.1),.035,C.D,8,true)}
       const mm=makeMesh(buf);drawMesh(mm,mat4([1,0,0],[0,1,0],[0,0,1],[0,0,0]),vp);mm.free()}}
   if(mode==='editor'&&HOOK.edDraw)HOOK.edDraw(drawMesh,m,modelQ(S.q,sub(shipWorld(),camW),mul(S.cm,-1)),shipWorld());
   gl.uniform1f(m.uSeam,1);for(const d of debris){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<1e5)setMarks(m,d.parts),drawMesh(d.mesh,modelQ(d.q,sub(p,camW),mul(d.cm,-1)),p)}gl.uniform1f(m.uSeam,0);setMarks(m,[]);
