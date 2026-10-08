@@ -6,7 +6,7 @@ import { flyLadder, handAscent } from './fly_ladder.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -2909,6 +2909,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = H.slice(H.indexOf('// ==== SIM END'));
   check('sound is wired: F4 in KEYS.all, sndTick called from frame() and not from render()',
     /all:\[[^\n]*k:\['f4'\]/.test(P) && /function frame\(now\)\{[^]*?sndTick\(dtR\)[^]*?requestAnimationFrame\(frame\)\}/.test(P) && !/function render\(\)\{[^]*?\n\}/.exec(P)?.[0].includes('sndTick'));
+}
+
+// fixes-1. PLAYTEST sweep #15–#22 (fixes session). What the SIM can show: #19, the home station sees its own vessel from the
+// first moment it leaves the pad (no "no station in view" while the rocket is still below the mast top); #21, a landed
+// flight is settled when the player leaves it (refund, flight count, know-how), once: Revert or the next launch then pay
+// nothing more. Also: go() settles a flight it leaves (a page check, as §32 does for screens).
+{
+  const P = api.PROG;
+  // #19: an Orbiter lifting off from the home pad, its link every step of the first 20 s
+  Object.assign(P, { site: api.homeSite ? api.homeSite().id : P.site, stations: [] });
+  api.t = 0; let s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.throttle = 1; api.stage(s);
+  const seen = []; let air = 0;
+  for (let k = 0; k < 20 / api.DT && s.alive; k++) { api.advPhys(s); if (s.landed) continue; air++;
+    const l = api.linkOf(s), w = l.ok ? (l.st ? l.st.name : l.why) : l.why; if (seen[seen.length - 1]?.w !== w) seen.push({ w, t: +api.t.toFixed(1), h: +(len(s.r) - TELLUS.R - api.groundAlt(TELLUS, norm(api.toPF(TELLUS, s.r, api.t)))).toFixed(1) }); }
+  check('fixes-1 #19: from liftoff on, the home station sees the climbing vessel (never "no station in view")',
+    air > 100 && seen.length === 1 && seen[0].w === api.curSite().name, seen.map(x => `T+${x.t} ${x.h} m: ${x.w}`).join(' → '));
+  // #21: a Sounding flight up and back under its chute, then left for the Program
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [] });
+  api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  const f0 = P.funds, fl0 = P.flights, kh0 = api.khUse('sparrow'), out = api.flightLeave ? api.flightLeave(s) : null;
+  const f1 = P.funds, fl1 = P.flights, kh1 = api.khUse('sparrow');
+  check('fixes-1 #21: leaving a landed flight settles it there: refund paid, flight counted, know-how learnt',
+    s.landed && !!out && s.rec.ended && f1 > f0 && s.rec.refund > 0 && fl1 === fl0 + 1 && kh1 > kh0,
+    `funds ${f0.toFixed(2)} → ${f1.toFixed(2)} (refund ${(s.rec.refund || 0).toFixed(2)}), flights ${fl0} → ${fl1}, Sparrow know-how ${kh0.toFixed(2)} → ${kh1.toFixed(2)}`);
+  // then Revert (resetShip → missionEnd on the same ship), leaving again, and the next launch: nothing more is paid
+  const again = [api.missionEnd(s), api.flightLeave ? api.flightLeave(s) : 0];
+  api.t = 0; const s2 = api.newShip(api.PRESETS.Sounding); api.S = s2; api.missionEnd(s);   // the relaunch settles the old ship (resetShip) first
+  check('fixes-1 #21: settled once: a revert, a second leave or the next launch pay nothing more',
+    again.every(x => x === null) && P.funds === f1 && P.flights === fl1 && api.khUse('sparrow') === kh1, `funds ${P.funds.toFixed(2)}, flights ${P.flights}`);
+  const H = html.replace(/\r\n/g, '\n'), gi = H.indexOf('function go(s){'), goSrc = gi < 0 ? '' : H.slice(gi, H.indexOf('\n// ', gi));   // (up to the next comment line)
+  check('fixes-1 #21: go() settles the flight it leaves (flight or map → any other screen)', /from==='flight'\|\|from==='map'[^\n]*flightLeave\(S\)/.test(goSrc));
 }
 
 function moonPos(t) { return api.moonPos(t); }

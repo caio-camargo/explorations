@@ -39,7 +39,7 @@ button.big:hover{filter:brightness(1.15)}
 .dim{color:var(--dim)}.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}.acc{color:var(--acc)}
 table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-align:right}
 .tl{left:12px;top:12px;min-width:250px}
-.tr{right:12px;top:12px;display:flex;gap:6px;align-items:center}
+.tr{position:absolute;right:12px;top:12px;display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px;align-items:center;max-width:calc(100% - 290px)}
 .bl{left:12px;bottom:12px;min-width:190px}
 #info td:first-child{color:var(--dim);padding-right:12px}
 #navwrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:10px}
@@ -58,6 +58,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
 #tester{width:min(400px,92vw)}#tester h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#tester label{display:block;margin:2px 0}
+.tr #testerBadge{position:static;transform:none;align-self:center}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
@@ -72,6 +73,7 @@ body.noperf #perf{display:none}
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
 #warp{color:var(--warn);min-width:90px;text-align:right}
+#edFoot{position:sticky;bottom:-10px;margin:8px -12px -10px;padding:7px 12px 10px;background:#0b111b;border-top:1px solid var(--line);border-radius:0 0 6px 6px}#edFoot button.big{margin-top:6px}#siteLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #news{position:fixed;left:50%;transform:translateX(-50%);top:46px;max-width:min(560px,70vw);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 10px;pointer-events:none}
 #news div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#news div:first-child::before{content:'NEWS · ';color:var(--acc);letter-spacing:.1em}#news .old{color:var(--dim)}
 #nodep{right:12px;top:52px;width:285px}#nodep td:first-child{padding-right:8px}#nodep button{padding:0 6px}
@@ -82,7 +84,7 @@ body.noperf #perf{display:none}
 #target{color:var(--warn);font-size:11px;margin:-2px 0 6px}
 .jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
 @media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
- .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
+ .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#edFoot{bottom:-8px;margin:6px -8px -8px;padding:6px 8px 8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
 /* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
 #logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
 #logbook .x{position:absolute;right:10px;top:8px;cursor:pointer;opacity:.7}#logbook .lbrow{margin:10px 0}#logbook .lbv{font-size:1.25em}#logbook s{opacity:.55;margin-right:8px}
@@ -114,7 +116,7 @@ body.noperf #perf{display:none}
     <h2>Build</h2><div id="stack"></div>
     <h2>Stages <span class="dim">(Δv vac / sea level)</span></h2><div id="stats"></div>
     <h2>Launch site</h2><div id="sitePick"></div>
-    <button id="launch" class="big">LAUNCH</button>
+    <div id="edFoot"><div id="siteLine" class="dim"></div><button id="launch" class="big">LAUNCH</button></div>
   </div>
 </div>
 
@@ -1514,14 +1516,17 @@ function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a
 // ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
 // low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
-const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,BLACKOUT_Q=5e4,gsMasks=new Map();
+// Near field (GS_NEAR): the minimum elevation and the horizon mask describe long, low paths that graze the ground far
+// away. A target within a couple of km of the antenna (its own pad, the first seconds of a climb, a rocket still below
+// the mast top) is in direct line of sight over flat ground, so the station sees it (fixes session, PLAYTEST #19).
+const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,GS_NEAR=2000,BLACKOUT_Q=5e4,gsMasks=new Map();
 function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
   const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
   for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
       const e=Math.atan2(groundAlt(TELLUS,q)-h0-d*d/(2*R),d);if(e>mx)mx=e}m.el[a]=mx}
   gsMasks.set(key,m);return m}
 // does station st see the planet-fixed position pf (a vector from Tellus's centre)?
-function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<1)return true;
+function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<GS_NEAR)return true;
   const sinE=dot(d,st.u)/dl;if(sinE<STA_MIN)return false;
   const f=siteFrame(st.u),az=Math.atan2(dot(d,f.e),dot(d,f.n)),i=Math.round(((az+2*Math.PI)%(2*Math.PI))/(2*Math.PI)*GS_AZ)%GS_AZ;
   return Math.asin(clamp(sinE,-1,1))>m.el[i]}
@@ -1815,6 +1820,9 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
+// The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
+// next launch (fixes session, PLAYTEST #21). Once only: Revert or the next launch then find it settled (R.ended).
+function flightLeave(s){return missionEnd(s)}
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
@@ -5340,7 +5348,7 @@ function rotAx(k,ang){const c=Math.cos(ang),s=Math.sin(ang),R=v=>{const kv=dot(k
 // Each frame: the rig. Gantry: parked in the editor; on a flight from the pad, rolls from service position (RIG.zS) to
 // its parking spot (−80 m) over 14 s. Swing arms: connected until liftoff, then swing back top first, 1.5 s each, 0.25 s
 // apart; arms with no rocket at their height stay folded. Hold-downs: tip outward 0.9 rad in 0.6 s at liftoff.
-function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5)return;
+function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5||HOOK.noRig)return;   // (noRig: views.js close-ups)
   const pre=mode==='editor'||S&&S.landed&&!S.mkLift,tl=S&&S.mkLiftT!=null?simT-S.mkLiftT:1e9;
   RIG.arms.forEach((A,i)=>{const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
@@ -5440,7 +5448,23 @@ const booms=[],cam={yaw:0.35,pitch:0.12,dist:28,mYaw:0.7,mPitch:0.45,mDist:TELLU
 const keys=new Set();
 let msgTimer=0;
 const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});headlines.length=Math.min(headlines.length,3);
-  const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('')};
+  const n=$('news');n.classList.remove('hidden');n.innerHTML=headlines.map((h,i)=>`<div class="${i?'old':h.cls}">${h.t}</div>`).join('');hudLayout()};
+// Two placements the flight HUD keeps (fixes session, PLAYTEST #15, #16), run on every screen change, each HUD update and
+// each headline. The TESTER badge is the last item of the flight toolbar; elsewhere it sits at the top centre, which no
+// other screen uses (Program, Assembly, Rover yard).
+// The news keeps its own lane: centred if it fits, but never over the flight readout (however wide its rows make it),
+// the toolbar, or a panel on the right (maneuver node, rover); with no room beside the readout, it goes under it.
+function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';
+  if(b&&tr){const home=fl?tr:document.body;if(b.parentNode!==home)home.appendChild(b)}
+  const n=$('news');if(!n||n.classList.contains('hidden'))return;const st=n.style;
+  if(!fl){st.left=st.top=st.maxWidth=st.transform='';return}
+  const box=sel=>{const e=document.querySelector(sel);if(!e||!e.offsetParent)return null;const r=e.getBoundingClientRect();return r.width&&r.height?r:null},
+    info=box('#hud .tl'),bar=box('#hud .tr'),W=innerWidth;
+  let L=info?info.right+10:12,R=W-12;for(const sel of['#nodep','#rvFHud']){const r=box(sel);if(r&&r.left>L)R=Math.min(R,r.left-10)}
+  let top=46;if(R-L<240&&info){L=12;top=info.bottom+8}   // no room beside the readout: under it
+  st.transform='none';st.left='0px';st.maxWidth=Math.max(120,Math.min(560,R-L))+'px';const w=n.offsetWidth,x=Math.min(Math.max(W/2-w/2,L),Math.max(L,R-w));
+  if(bar&&bar.left<x+w&&bar.right>x)top=Math.max(top,bar.bottom+6);
+  st.left=Math.round(x)+'px';st.top=Math.round(top)+'px'}
 let evt=false;   // set by any in-flight event message; used to drop out of warp
 HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
 HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/b.rho0*3,0,1):0;
@@ -5577,7 +5601,9 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
     ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
     weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
-  $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()}}
+  $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()};
+  // the one-line summary pinned above LAUNCH (PLAYTEST #20): the full picker above scrolls with the panel
+  const sl=$('siteLine');if(sl)sl.innerHTML=`${a.ok&&fz.ok?'':'<span style="color:#ff8a7a">⛔</span> '}${cur.name} · ${fmtLat(cur.lat)} · ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?' · <span style="color:#ffc46b">downrange warning</span>':''}`;sl&&(sl.title=a.ok?fz.ok?'':fz.why:a.why)}
 $('bEditor').onclick=()=>go('assembly');
 $('bRevert').onclick=()=>{if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}resetShip();go('flight');HOOK.msg('Reverted to launch')};
 $('bMap').onclick=()=>toggleMap();
@@ -5637,6 +5663,7 @@ function toggleMap(){go(view==='map'?'flight':'map')}
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atHQ?'program':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S)flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
   if(s==='rover'&&from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}
   if(from==='rover')rvLeave();
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
@@ -5645,7 +5672,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
   $('editor').classList.toggle('hidden',mode!=='editor'||atHQ);$('prog').classList.toggle('hidden',!atHQ);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
-  ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp()}
+  ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to (the shared
 // handler acts on it). Map shows its own rows, then Flight's.
@@ -6697,7 +6724,7 @@ function updateHUD(){
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
-  renderStages();updateNodePanel();updateAutoBtn();settleDrops();
+  renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
   if(S.alive&&S.rec.orbitSci&&!S.landed&&S.body===TELLUS){const{city,dist}=nearestCity(toPF(TELLUS,S.r,simT));
     if(dist<350e3&&!heard.has(city.name)){heard.add(city.name);HOOK.news(heard.size===1?`Radio hams in ${city.name} pick up a faint beep-beep-beep from orbit`:`${city.name} hears the beeper pass overhead`,'ok')}}
