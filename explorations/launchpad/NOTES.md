@@ -1098,6 +1098,32 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.42 — the event timeline (2026-10-08, economy session)
+
+The first piece of the time model (design: "Time, long missions and communication"). Until now time only moved when
+you launched: there was no way to wait for a building, a study or budget day.
+
+- **`upcoming()`** gathers everything dated in the program:
+  - trajectory studies, facility levels, the test stand and its campaigns, the design bureau, production lines;
+  - budget days (every 100 days), elections, sanctions lapsing, the next computing era;
+  - a day's warning before each contract deadline and each decision's expiry.
+- **`advanceTo(day)`** (or the next event) moves the calendar event by event, so each one happens in turn. It stops
+  early at events marked *stop* (deadline and decision warnings, elections) or when a new decision appears.
+  - It steps a hair past each event (1e-9 days), so the event's own tick fires despite rounding.
+- **UI:** a self-contained `timelineHTML()` section, "Coming up", mapped to the Inbox tab in `progTabOf`. It shows the
+  next eight events with a Wait / Wait until then button each (`data-adv`).
+
+  Checked in the app: from day 62, waiting until budget day landed on day 100 with the study done, the redesign done,
+  the 17M budget in and new offers on the board, with no console errors.
+- **Idle time is neutral** (v1.41): waiting costs nothing; funds only rise on budget days.
+- **Not yet:**
+  - launch windows and missions in flight (planning, sats, bodies);
+  - a timeline view in the UI's own style (the section is a plain list for now);
+  - offers expiring are deliberately left out (noise).
+
+`test.mjs` §35: 4 new checks: listed in order; wait goes to the next event and it happens; a long wait stops a day
+before a contract deadline; waiting never lowers funds.
+
 ## v1.41 — no daily overhead (2026-10-08, economy session)
 
 Caio: idle time should be roughly neutral, with no upkeep. `OVERHEAD` and the new `OVERHEAD_CAP` (per unit of capacity)
@@ -4084,9 +4110,47 @@ until it's back: the vessel follows its last sequence (and onboard autonomy, by 
 
 Ours keeps the network and drops the loss of control.
 
+### Planning before the flight (Caio, 2026-10-08)
+
+For long missions there's little to no manual flying, so planning has to be much more involved than in KSP. That
+means a **mission planning screen before the flight**: the maneuver-node idea moved ahead of launch.
+
+**What KSP does,** from memory, not checked against the docs:
+- **Stock:** maneuver nodes are placed on the vessel's current trajectory, in flight, in the map view. You can drop
+  one while sitting on the pad, but there's no pre-flight mission planner.
+- **Mods:**
+  - Transfer Window Planner: porkchop plots of departure date against travel time;
+  - Kerbal Alarm Clock;
+  - MechJeb: ascent guidance and a maneuver planner that executes nodes;
+  - Principia: a flight plan, a sequence of burns planned ahead and integrated.
+
+  Players build this workflow out of mods.
+
+**Proposal: the study is the plan.** A mission plan is made on the planning screen:
+- target and window (a porkchop plot);
+- ascent profile;
+- burn sequence;
+- the instrument pointing timeline.
+
+The trajectory study (v1.38) is the trajectory office computing that plan. It takes the era's days and money and comes
+back with the era's precision. The plan then drives:
+- the automated flight (the autopilot work in another session) for the ascent and burns;
+- missions in flight on the timeline for the long coasts, with burns executed at the era's error until onboard
+  computers come;
+- events on the timeline: window opens, burn, arrival.
+
+In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
+and the screen is where the player spends their time either way.
+
+**Owners:**
+- the screen: UI;
+- nodes, maps, porkchop: planning;
+- execution: autopilot session, sats registry;
+- studies (cost, days, precision): economy.
+
 ### Owners and order
 
-1. **The time model:** the event timeline (economy + UI view) and missions in flight in the registry (sats, planning).
+1. **The time model:** the event timeline (economy + UI view; first slice built in v1.42) and missions in flight in the registry (sats, planning).
    It comes before routine runs, which are just another source of events.
 2. **Data as a volume plus the link budget** (planning: stations, antennas; economy: pay on received data).
 3. **Instruments with pointing and the pointing timeline** (builder: parts; planning or sats: the timeline).

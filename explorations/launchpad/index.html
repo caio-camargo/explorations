@@ -1816,6 +1816,35 @@ function computeHTML(){const E=COMP_ERAS[compEra()],W=COMP_ERAS[worldEra()],Q=PR
     `<span class="dim">The world: ${W.name.toLowerCase()} · world price index ${W.cpi} · our power ${lag<0.05?'keeps up':`runs ${lag.toFixed(1)} yr behind`}${facLv('centre')?`, the centre puts us ${FAC.centre.ahead[facLv('centre')]} yr ahead of it`:''}</span><br>`+
     `Predictions: ${E.err[0]?`±${Math.round(E.err[0]*100)}% unstudied, ±${Math.round(E.err[1]*100)}% studied`:'exact'} · ${Object.keys(PROG.studies||{}).length} designs studied`+
     (Q.length?`<br>In the office: ${Q.map(j=>`ready day ${Math.ceil(j.end-PROG.day)}`).join(', ')}`:'')+`</div>`}
+// ---- the event timeline (design: NOTES "Time, long missions and communication"). Time passes only when you choose:
+// by flying, or by advancing the calendar to the next thing that happens. upcoming() gathers what is dated in the
+// program: studies, buildings, the design bureau, the test stand, production lines, budget days, elections, sanctions
+// lapsing, a computing era arriving, and a day's warning before each contract deadline and decision expiry. Events
+// marked stop are the ones that need you: advancing past several stops at the first of those, or at any new decision.
+// Launch windows and missions in flight join later (planning, sats, bodies).
+function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(day>D+1e-6)E.push({day,kind,text,stop})};
+  for(const j of PROG.studyQ||[])add(j.end,'study','A trajectory study is ready');
+  for(const id in PROG.fac||{}){const f=PROG.fac[id];if(f.building)add(f.building.ready,'build',`${FAC[id].name} level ${f.building.lv} opens`)}
+  if(PROG.stand2){add(PROG.stand2.ready,'build','The test stand opens');if(PROG.stand2.job)add(PROG.stand2.job.end,'test',`Test stand: the ${PARTS[PROG.stand2.job.k].name} campaign ends`)}
+  if(PROG.devJob)add(PROG.devJob.end,'dev',`Design bureau: the ${PARTS[PROG.devJob.k].name} redesign is done`);
+  for(const k in PROG.lines||{}){const L=PROG.lines[k];if(L.power===HOME&&L.ready)add(L.ready,'line',`Production line for the ${PARTS[k].name} opens`)}
+  add((Math.floor(D/100)+1)*100,'budget','Budget day');
+  if(PROG.nextElection!=null)add(PROG.nextElection,'politics','Election',true);
+  for(const i in PROG.sanc||{})add(PROG.sanc[i],'politics',`${POWERS[i].name}'s sanctions lapse`);
+  const nx=COMP_ERAS[compEra()+1];if(nx)add(D+(nx.yr-compYear())*YEAR_D,'era',`${nx.name} reach the program`);
+  for(const c of PROG.active||[])if(c.deadline!=null)add(c.deadline-1,'deadline',`One day left: ${cTitle(c)}`,true);
+  for(const d of PROG.decisions||[])if(d.expires!=null)add(d.expires-1,'decision',`One day left to decide: ${d.title||d.kind}`,true);
+  return E.sort((a,b)=>a.day-b.day)}
+const nextEvent=()=>upcoming()[0]||null;
+// advance the calendar to a day (or the next event), stopping early at an event that needs you or a new decision
+function advanceTo(day){const n0=(PROG.decisions||[]).length;let stopped=null,guard=0;if(day==null){const e=nextEvent();if(!e)return null;day=e.day}
+  while(PROG.day<day-1e-9&&guard++<500){const e=nextEvent(),to=e&&e.day<day?e.day:day;advanceDays(to-PROG.day+1e-9);   // (a hair past, so the event's own tick fires)
+    if((PROG.decisions||[]).length>n0){stopped={kind:'decision',text:'A decision is waiting'};break}
+    if(e&&e.day<day&&e.stop){stopped=e;break}}
+  HOOK.save();return stopped}
+function timelineHTML(){const E=upcoming().slice(0,8);if(!E.length)return'';
+  return`<div class="ep">Coming up</div><div class="sub">`+E.map((e,i)=>`${e.stop?'<b>':''}in ${Math.ceil(e.day-PROG.day-1e-9)} d · ${e.text}${e.stop?'</b>':''}`+
+    ` <button data-adv="${e.day}">${i?'Wait until then':'Wait'}</button>`).join('<br>')+`</div>`}
 function devTick(){const J=PROG.devJob;if(!J||PROG.day<J.end)return;PROG.devJob=null;PROG.dev=PROG.dev||{};const e=PROG.dev[J.k]||(PROG.dev[J.k]={});e[J.g]=(e[J.g]||0)+1;
   PROG.cert[J.k]=Math.max(0.5,certOf(J.k)-0.1);PROG.kh=PROG.kh||{};const h=PROG.kh[J.k]||(PROG.kh[J.k]={use:use0(J.k),reg:{}});h.use=Math.max(0,h.use-0.1);
   HOOK.news(`New design: the ${PARTS[J.k].name} is ${DEV_GOALS[J.g].toLowerCase()} (mark ${(e.cheap||0)+(e.rel||0)+(e.dur||0)+1}); it has to prove itself again`,'ok');HOOK.save()}
@@ -4043,6 +4072,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
      ks.slice(0,8).map(k=>{const q=testQuote(k,'qual'),r=testQuote(k,'destroy');return`${PARTS[k].name} <button data-test="${k}:qual" ${PROG.funds>=q.cost?'':'disabled'}>Qualify ${fmtM(q.cost)}, ${q.days} d</button> <button data-test="${k}:destroy" ${PROG.funds>=r.cost&&certOf(k)<1?'':'disabled'}>To destruction ${fmtM(r.cost)}, ${r.days} d</button>`}).join('<br>'))+`</div>`}
   html+=facilitiesHTML();   // economy: self-contained section (UI session: move freely)
   html+=computeHTML();   // economy: self-contained section (UI session: move freely)
+  html+=timelineHTML();   // economy: self-contained section (UI session: move freely)
   {const J=PROG.devJob,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]&&(()=>{const x=sourceOf(k);return x.how==='home'||(x.how==='line'&&x.line.lic==null)})());
    if(J||ks.length)html+=`<div class="ep">Development</div><div class="sub">`+(J?`Design bureau: ${DEV_GOALS[J.g].toLowerCase()} ${PARTS[J.k].name}, ${(J.end-PROG.day).toFixed(0)} days left`:
      ks.slice(0,8).map(k=>`${PARTS[k].name}${Object.keys(PROG.dev?.[k]||{}).length?` <span class="dim">(${Object.entries(PROG.dev[k]).map(([g,v])=>`${DEV_GOALS[g].toLowerCase()} ×${v}`).join(', ')})</span>`:''}<br>`+
@@ -4222,7 +4252,7 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
 // progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
-const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^Offers/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
+const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^(Offers|Coming up)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
   /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
@@ -4648,6 +4678,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.stand){if(!buildStand())HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
+  else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
