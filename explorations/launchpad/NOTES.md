@@ -5716,3 +5716,52 @@ predictor lands within 50 m; an autopilot replay lands on the recorded position 
 **Rerun.** `python -m http.server 8799 --directory <repo>/explorations`, then from `explorations/launchpad`:
 `node playtest.mjs` (all rows) or `node playtest.mjs 104 110` (some). Add a row: a `ROWS[n]` entry next to its area's
 rows; a row that needs two setups can use a string key (`'82b'`).
+
+## PLAYTEST sweep #15–#22 (2026-10-08, fixes session)
+
+Six items the robot playtest filed (PLAYTEST #15, #16, #19, #20, #21, #22), plus #8, which turned out to be the same
+layout bug as #15. Code commit `5eb1bd4` on branch `fixes`. Checks: test.mjs § `fixes-1` (all four checks fail on the old
+page, pass on the new one), and the robot rows 4, 9, 25, 35, 48, 77, 84, 96, 110 rerun on the RTX (screenshots in
+`C:/Users/caioa/dev/playtest-out/fixes/`, outside the repo).
+
+- **#8 and #15: the toolbar and the TESTER badge.** The flight toolbar `.tr` never had a `position`, so its `right/top`
+  did nothing: it sat in the page flow at the top left, half under the readout, and the badge (top centre) landed on
+  its last button. `.tr` is now absolute at the top right (wraps when the window is narrow, keeps 290 px clear for the
+  readout). `hudLayout()` moves the badge into the toolbar as its last item in flight, and back to the top centre on the
+  other screens (Program, Assembly, Rover yard leave it free).
+- **#16: the news box over the readout.** The news was centred at a fixed `top`; a readout with long rows grows to
+  ~510 px and reached under it. `hudLayout()` (each HUD update at 10 Hz, each headline, each screen change) gives the
+  news a lane: centred if that clears everything, otherwise from 10 px right of the readout to 10 px left of the
+  maneuver-node or rover panel, and below the toolbar where they overlap. With less than 240 px beside the readout it
+  goes under it. Off the flight screens the CSS position is restored. Checked on a landed capsule (Passenger row) and a
+  Lunar climb, at 1280×800 and 1000×700.
+- **#19: "no station in view" for 2 s after liftoff.** Not the terrain mask but the minimum elevation: the pad's
+  station is the pad itself, its antenna `GS_MAST` = 20 m up, so a rocket still below the mast top is at negative
+  elevation, under `STA_MIN` (5°). The elevation limit and the horizon mask describe long paths that graze distant
+  ground; within `GS_NEAR` = 2 km of the antenna the path is direct, so `gsSees` returns true there. Measured: Link
+  "on the ground" → "Fenfen Cape" at T+0 (first airborne step 7 m up); before, "no station in view" until T+2.0, 19 m.
+  `gsSees` also serves satellite downlinks; nothing in orbit comes within 2 km of a station.
+- **#20: LAUNCH below the fold.** The assembly's right panel scrolled LAUNCH to y ≈ 1,160–1,350 px. LAUNCH and a
+  one-line site summary (`#siteLine`: site · latitude · weather, a ⛔ when access or size refuses it, a downrange
+  note) now sit in `#edFoot`, `position: sticky; bottom` inside the same scroller, so nothing else in the panel moved
+  (the robot's `#editor .right` scroll still works). Measured at 1280×800: LAUNCH at y 735–773 for all 11 presets,
+  Crewed Lunar included.
+- **#21: a landed flight settled only at the next launch.** `missionEnd` ran from `resetShip` (LAUNCH, Revert) and,
+  through `editorChanged`, on entering the Assembly; going to the Program left the flight open. Now `go()`, leaving
+  flight or map for any other screen, calls `flightLeave(S)` (in the SIM: the player leaving a flight ends it there;
+  it is `missionEnd`). `missionEnd` already returns at once for a settled flight (`R.ended`), so Revert, a second
+  leave and the next launch pay nothing more. test.mjs: a Sounding flight landed and left pays its refund (+13M), counts
+  the flight and raises Sparrow know-how 0.20 → 0.35 at once; then revert + leave + relaunch leave funds, flights and
+  know-how exactly as they were. The robot's Sounding now reads `settledAtProgram: true`, funds 80 → 103.7M at the
+  Program. **Economy (paused):** nothing inside `missionEnd` changed; it is now also reached from `go()`. The planned
+  Debrief screen (§ "UI: screens and navigation") can hang off `flightLeave`.
+- **#22: reference close-ups.** `views.js` view 8 asked for the Lunar's `t8`, gone since the resize; it centres on
+  `T16` now, and a close-up whose part is missing throws a message naming it. Close-ups 4–9 set `HOOK.noRig` (checked
+  at the top of `drawPadRig`; every `refView` call clears it), so the gantry, swing arms and hold-downs are hidden, and
+  4, 6, 8, 9 look from the west (yaw < 0): the umbilical tower stands east of the rocket (`+X`, the arms at x = 5.5 m), so
+  it is now behind or beside the part instead of in front of it.
+
+Seen on the way, not fixed: in the robot's headless Chrome the flight readout can stay empty for ~30 s after a long
+synchronous `PT.fly`, because the first `requestAnimationFrame` timestamp comes out ~30 s *before* the script's
+`last = performance.now()`, so `dtR` is negative and `hudT` climbs instead of counting down. Same on the old page;
+probably harness-only, but `frame()` could clamp `dtR` at 0.
