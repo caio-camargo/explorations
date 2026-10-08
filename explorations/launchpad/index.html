@@ -893,15 +893,15 @@ function groundCheck(s){
   if(Math.min(hB,hT)>0)return;
   const up=norm(s.r),sp=len(sub(s.v,surfVel(b,s.r))),tilt=Math.acos(clamp(dot(Y,up),-1,1));
   // the verdict depends on the ground: friction sets the steepest slope it can stand on, softness the speed it forgives,
-  // boulders or trees add to the effective touchdown speed (which is also what the refurbishment sees)
-  const pf0=toPF(b,s.r,simT),slope=terrainSlope(b,pf0),su=surfaceAt(b,pf0),hit=surfaceHit(su,pf0),vE=sp+hit,lim=TOUCH_MAX+su.soft,stand=Math.min(TOPPLE,Math.atan(su.mu));
+  // boulders or trees add to the effective touchdown speed (s.touchHit; the refurbishment adds it to s.touchV, the measured speed)
+  const pf0=toPF(b,s.r,simT),slope=terrainSlope(b,pf0),su=surfaceAt(b,pf0),hit=surfaceHit(su,pf0,b),vE=sp+hit,lim=TOUCH_MAX+su.soft,stand=Math.min(TOPPLE,Math.atan(su.mu));
   s.landSurface={name:su.name,id:su.id??null,hit};
   if(vE<lim&&tilt<0.6&&slope>stand){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,2);HOOK.msg(slope>TOPPLE?`Toppled over on a ${(slope*57.3).toFixed(0)}° slope`:`Slid down a ${(slope*57.3).toFixed(0)}° slope of ${su.name} and toppled`);return}
   if(vE<lim&&tilt<0.6){
     const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
     const q=qFromBasis(X,up,cross(X,up));
     s.landed=true;s.r=mul(up,groundR(b,pf0)-s.yBot);s.water=b===TELLUS&&terrainH(pf0)<0;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
-    s.landedAt=simT;s.touchV=vE;HOOK.msg(`Landed on ${b.name} (${su.name}) at ${sp.toFixed(1)} m/s${hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'} (like ${vE.toFixed(1)} m/s)`:''}`)}
+    s.landedAt=simT;s.touchV=sp;s.touchHit=hit;HOOK.msg(`Landed on ${b.name} (${su.name}) at ${sp.toFixed(1)} m/s${hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'} (like ${vE.toFixed(1)} m/s)`:''}`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'}`:''}`)}}
 // ---- abort (bodies session): the escape tower pulls the crew capsule off a failing rocket. Everything below the capsule
 // is dropped, the tower burns for its 3 s, then it's jettisoned and the chute armed. On a nominal flight the tower goes at
@@ -1264,13 +1264,16 @@ const BIOMES=['sea','ice','tundra','taiga','steppe','temperate forest','grasslan
 const SURF=[{mu:1,soft:2,rough:0},{mu:.1,soft:0,rough:0},{mu:.45,soft:1,rough:.05},{mu:.5,soft:0,rough:.35},{mu:.55,soft:1,rough:.03},
   {mu:.5,soft:0,rough:.4},{mu:.55,soft:1,rough:.02},{mu:.55,soft:1,rough:.08},{mu:.5,soft:0,rough:.6},{mu:.55,soft:1,rough:.05},
   {mu:.45,soft:3,rough:.02},{mu:.6,soft:0,rough:.3},{mu:.7,soft:-2,rough:.3},{mu:.6,soft:0,rough:0},{mu:.3,soft:4,rough:.05}];
-const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolith',mu:.6,soft:1,rough:0},TOUCH_MAX=12;
+const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolith',mu:.6,soft:1,rough:.15},TOUCH_MAX=12;   // regolith: boulders in 15% of cells
 // the ground under a planet-fixed point, as a landing surface: a levelled pad, the sea, or the biome's
 function surfaceAt(b,pf){if(b!==TELLUS)return SURF_MOON;const u=norm(pf);
   if(SITES.some(t=>{const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
-  const bi=biomeAt(u);return{name:bi.name,id:bi.id,...SURF[bi.id]}}
+  const bi=biomeAt(u),su={name:bi.name,id:bi.id,...SURF[bi.id]};
+  // snow lies where the shader paints it: colder than ~−3 °C at that height, on slopes under ~38° (ice is its own biome)
+  if(bi.id!==1&&bi.h>=0&&bi.T<-2.75&&terrainSlope(b,u)<0.66)return{name:'snow',id:bi.id,mu:.3,soft:3,rough:su.rough*.3};
+  return su}
 // boulders or trees where the ship comes down: decided per ~20 m cell (deterministic, so tapes replay the same)
-function surfaceHit(su,pf){if(!su.rough)return 0;const g=mul(norm(pf),TELLUS.R/20),x=Math.floor(g[0]),y=Math.floor(g[1]),z=Math.floor(g[2]);
+function surfaceHit(su,pf,b=TELLUS){if(!su.rough)return 0;const g=mul(norm(pf),b.R/20),x=Math.floor(g[0]),y=Math.floor(g[1]),z=Math.floor(g[2]);
   return ih3(x,y,z+501)<su.rough?2+4*ih3(x,y,z+502):0}
 function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),w4=wSpl(g),e0=w4[0],Tc=wBil(WORLD.T,g)-6.5*Math.max(0,h-Math.max(e0,0))/1000,Wm=wBil(WORLD.W,g),m=w4[1],v=w4[2],sf=w4[3];
   let id;if(h<0)id=0;else if(Tc<-13)id=1;else if(h>2800&&Tc<2)id=11;else if(v>.5&&h>300)id=12;else if(sf>.5)id=13;else if(Wm>.75&&h<60&&m<.1&&Tc>5)id=14;
@@ -1510,7 +1513,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   if(R.bio&&!R.bioOK&&!R.tourist)failHit(-8,`a passenger flight went wrong`);
   if(R.tourist&&!R.bioOK){standAdd('tour',-40);opAdd(HOME,-10);HOOK.news(`Space tourism in crisis after ${R.pet} ${R.bioWhy}; bookings cancelled`,'bad')}
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
-  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=s.touchV||0;let back=0,full=0,worst=null;
+  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0);let back=0,full=0,worst=null;
     for(const p of ps){const w=wearOf(p,tv),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}

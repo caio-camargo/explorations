@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {missionTick,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {missionTick,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1710,10 +1710,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const u = U(la, lo), b = api.biomeAt(u); if (b.h < 0) continue;
     const sl = api.terrainSlope(TELLUS, u), su = api.surfaceAt(TELLUS, u), hit = api.surfaceHit(su, u);
     if (!want.ice && b.id === 1 && sl > 0.14 && sl < 0.35) want.ice = { u, sl, su };
-    if (!want.grip && b.id !== 1 && su.mu >= 0.5 && hit === 0 && sl > 0.14 && sl < Math.min(api.TOPPLE, Math.atan(su.mu)) - 0.02) want.grip = { u, sl, su };
-    if (!want.sand && b.id === 10 && hit === 0 && sl < 0.1) want.sand = { u, sl, su };
-    if (!want.basalt && b.id === 12 && hit === 0 && sl < 0.1) want.basalt = { u, sl, su };
-    if (!want.rain && b.id === 8) want.rain = { u, sl, su }; }
+    if (!want.grip && b.id !== 1 && su.name === b.name && su.mu >= 0.5 && hit === 0 && sl > 0.14 && sl < Math.min(api.TOPPLE, Math.atan(su.mu)) - 0.02) want.grip = { u, sl, su };
+    if (!want.sand && b.id === 10 && su.name === b.name && hit === 0 && sl < 0.1) want.sand = { u, sl, su };
+    if (!want.basalt && b.id === 12 && su.name === b.name && hit === 0 && sl < 0.1) want.basalt = { u, sl, su };
+    if (!want.rain && b.id === 8 && su.name === b.name) want.rain = { u, sl, su }; }
   // set a pod down, upright, just above the ground, coming down at v m/s
   const drop = (spot, v) => { api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
     s.r = api.fromPF(TELLUS, mul(spot.u, R + api.groundAlt(TELLUS, spot.u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
@@ -1732,6 +1732,17 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const h = api.surfaceHit(su, q); if (h > 0) { hits++; if (h < 2 || h > 6) same = false; } if (h !== api.surfaceHit(su, q)) same = false; }
   check('surfaces: rainforest cells have trees at its roughness (60%), adding 2–6 m/s, deterministically', Math.abs(hits / 2000 - su.rough) < 0.05 && same,
     `${(100 * hits / 2000).toFixed(0)}% of 2,000 cells (roughness ${su.rough * 100}%)`);
+  // snow: cold, gentle ground on a non-ice biome is snow (μ 0.3, +3 m/s); Selene's regolith has boulders in 15% of cells
+  let snowFlat = null, snowSteep = null;
+  for (let la = -80; la <= 80 && !(snowFlat && snowSteep); la += 0.5) for (let lo = -180; lo < 180 && !(snowFlat && snowSteep); lo += 0.5) {
+    const u = U(la, lo), sv = api.surfaceAt(TELLUS, u); if (sv.name !== 'snow') continue; const sl = api.terrainSlope(TELLUS, u);
+    if (!snowFlat && sl < 0.1 && api.surfaceHit(sv, u) === 0) snowFlat = { u, sl, su: sv };
+    if (!snowSteep && sl > 0.33 && sl < 0.4 && api.surfaceHit(sv, u) === 0) snowSteep = { u, sl, su: sv }; }
+  const sf = drop(snowFlat, 14.5), ss = drop(snowSteep, 2);
+  let mh = 0; for (let k = 0; k < 2000; k++) { const q = U(-60 + (k % 40) * 0.3, (k / 40 | 0) * 0.7); if (api.surfaceHit(api.SURF_MOON, q, api.SELENE) > 0) mh++; }
+  check('surfaces: snow forgives 14.5 m/s on the flat but cannot hold a 19–23° slope; Selene has boulders in ~15% of cells',
+    sf.s.landed && !ss.s.alive && /Slid/.test(ss.last) && Math.abs(mh / 2000 - 0.15) < 0.04,
+    `snow flat: ${sf.last} · snow at ${(snowSteep.sl / D).toFixed(0)}°: ${ss.last} · Selene ${(100 * mh / 2000).toFixed(0)}% boulder cells`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
