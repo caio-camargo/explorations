@@ -383,6 +383,10 @@ const PRESETS={
   Sounding:['chute','sci','t1','fins','sparrow'],
   Passenger:['chute','bio','dec','t4','fins','sparrow'],   // a 4 t tank since the rescale: space is 100 km up now
   'Big Lunar':['chute','pod','shield','dec','t1','wren','dec','t4','t4','petrel','istage','adapt','T32','T16',{k:'fins25',rad:{n:2,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
+  // crew to Selene and back (bodies session): Big Lunar with a crew capsule (+0.56 t) under an escape tower, a 2 t return
+  // tank, a 12 t lander, a stretched core and four boosters. Flown to orbit with a tuned turn (vertical to 200 m, flat by
+  // 38 km) it arrives with ~2,800 m/s in the lander (transfer 1,321 + landing ~1,250) and ~1,830 to come home (~1,250).
+  'Crewed Lunar':['les','chute','crew','shield','dec','t2','wren','dec','t8','t4','petrel','istage','adapt','T32','T32',{k:'fins25',rad:{n:4,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
 // the vessel is its command pod, else the capsule or the instruments, else its top part: losing the root ends the flight

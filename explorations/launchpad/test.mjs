@@ -1088,6 +1088,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
 }
 
+// 26. The Crewed Lunar preset (bodies session): to orbit on a tuned turn, tower gone, enough left for Selene and home.
+{
+  const r = fly('Crewed Lunar', { turnStart: 200 * AS, turnEnd: 38000 * AS, verbose: false }), s = r.s, plan = api.dvPlan(s, 0).map(x => x.dv);
+  const lander = plan[plan.length - 2] || 0, ret = plan[plan.length - 1] || 0, tower = s.parts.some(p => p.on && p.d.kind === 'les');
+  check('Crewed Lunar reaches orbit, sheds its tower, and keeps ≥ 2,600 m/s in the lander and ≥ 1,250 to come home', r.phase === 'done' && s.alive && !tower && plan.length === 2 && lander >= 2600 && ret >= 1250,
+    `orbit for ${r.dvUsed.toFixed(0)} m/s, max q ${(r.maxQ / 1e3).toFixed(1)} kPa, ${r.maxG.toFixed(1)} g; left: lander ${lander.toFixed(0)}, return ${ret.toFixed(0)} m/s (transfer 1,321 + landing ~1,250; return ~1,250)`);
+  const c = api.newShip(api.PRESETS['Crewed Lunar']), pr = api.probe(c, { M: 0.6, aoa: 4, q: 5000, h: 3000 }), cal = (pr.ycm - pr.ycp) / (2 * c.radius);
+  check('Crewed Lunar is stable (CoM ahead of CoP) and its root is the crew capsule', cal > 0.3 && c.root && c.root.d.key === 'crew', `margin ${cal.toFixed(2)} cal, ${(c.mass / 1000).toFixed(0)} t, root ${c.root && c.root.d.name}`);
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);

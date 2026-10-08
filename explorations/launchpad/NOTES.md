@@ -1992,8 +1992,33 @@ Also checked: no abort without a tower; the automatic jettison above 30 km; afte
 trip into Selene's SOI and home completes "Crew around Selene"; a crashed crewed capsule loses its crew. The Big Lunar preset
 (lander, heat shield, return) is the natural base for the crewed landing: swap its pod for a crew capsule and add a tower.
 
+### The Crewed Lunar preset (2026-10-08)
+
+`PRESETS['Crewed Lunar']`: Big Lunar with a crew capsule (+0.56 t) under an escape tower, a 2 t return tank, a 12 t lander
+(t8 + t4), a stretched core (T32 + T32) and four boosters; 127.6 t. Sized by **flying candidates to orbit** with the test
+ascent and a swept gravity turn, then reading what's left per stage. The budget it has to meet: Hohmann arrival at Selene
+v∞ ≈ 470 m/s, so landing ≈ √(470² + 1,061²) ≈ 1,160 m/s plus losses (~1,250), and the return is the same.
+
+| design (best turn) | to orbit | left: lander / return | verdict |
+|---|---|---|---|
+| Big Lunar (pod, no crew) | 4,289 | 2,698 / 1,456 | the reference |
+| crew + t2 return, t4t4 lander, 2 boosters | 4,308 | 1,808 / 1,832 | lander short |
+| crew + t2 return, t8t4 lander, 4 boosters | never reaches orbit | | 61 kPa max-q, short core |
+| crew + t2 return, t8t4 lander, 2 boosters, T32T32 | never reaches orbit | | |
+| **crew + t2 return, t8t4 lander, 4 boosters, T32T32** | **4,358** | **2,817 / 1,832** | ✔ ~800 m/s spare |
+| same + 1 t more lander tank | 4,361 | 2,889 / 1,832 | +72 m/s, not worth a part |
+
+Lessons from the sizing:
+- **The turn matters as much as the tanks.** The Orbiter-tuned ascent spends 7,289 m/s getting Big Lunar to orbit. Turning
+  from 200 m and flat by 38 km spends 4,358. A crewed Selene mission is a piloting problem as much as a design one.
+- **The builder's TWR column is sea-level thrust.** The Petrel lander reads 0.10 there but is 0.61 in vacuum (≈ 3.7 in Selene's
+  gravity), so landing isn't a thrust problem.
+
+Checks (§26): orbit for 4,358 m/s at 31.6 kPa and 3.5 g, the tower gone, 2,817 / 1,832 m/s left; stable (1.31 cal) with the crew
+capsule as root. It also passes the preset-wide checks (stage maths, loads analysis).
+
 **Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
-"Other"); crew transfer and EVA; a crewed preset.
+"Other"); crew transfer and EVA; a scripted end-to-end crewed landing (the preset is sized by budget, not yet flown to Selene and back).
 
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
