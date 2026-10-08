@@ -4272,6 +4272,34 @@ back with the era's precision. The plan then drives:
 In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
 and the screen is where the player spends their time either way.
 
+**Gravity assists without trial and error** (Caio): slingshotting off Selene (and later planets) should be something
+the planner *solves*, not something you nudge nodes at for an hour as in KSP.
+
+Why KSP is hard here: the outcome of a flyby depends on *where* you pass the moon (the aim point) to a few km, and you
+control it only indirectly through a node hours or days earlier. Real mission design inverts this. You choose the
+flyby, and a solver finds the burn.
+
+- **Goals, not nodes.** The player states what they want after the flyby: raise apoapsis to X, escape Tellus, change
+  inclination to Y°, return to Tellus with periapsis Z (a free-return), or reach Nyx. The planner shows which flybys
+  can deliver it.
+- **B-plane targeting** (the real method). The flyby is described by its aim point on the plane through the moon,
+  perpendicular to the approach. Where you aim sets how far and which way the trajectory is turned.
+  - The screen shows that plane with the aim point you'd hit now and the region that achieves the goal.
+  - Dragging the aim point updates the outgoing orbit live.
+- **A solver.** Unknowns are the departure burn (Δv components and time). Targets are the aim point (or the goal's
+  elements directly). Use Newton iteration with finite differences on `predictFrom` (patched conics are smooth enough
+  away from grazing passes), from a Hohmann-like first guess. Show "no solution" and the closest one, never a silent
+  failure.
+- **Sensitivity made visible.** A fan of outcomes for small errors in the burn shows how touchy a flyby is. With the
+  compute era's error (`predErr`) it becomes an error ellipse on the aim plane, and correction burns (mid-course,
+  days later, small) are planned in. In the human-computer era a slingshot needs corrections; later it doesn't.
+- **Multi-leg plans.** Legs chain: depart, correct, flyby, burn at periapsis (the Oberth trick), next encounter.
+  Each leg is an event on the timeline.
+- **Windows.** For Selene, the phase angle at departure; for planets, porkchop plots (departure date × travel time,
+  coloured by Δv). A gravity assist adds a dimension, so show the best few routes rather than a full grid.
+- **Execution.** The solved plan goes to the autopilot (ascent and burns) and, on long coasts, to missions in flight
+  with burns executed at the era's error. The study (v1.38) is what computing this plan costs in days and money.
+
 **Owners:**
 - the screen: UI;
 - nodes, maps, porkchop: planning;
