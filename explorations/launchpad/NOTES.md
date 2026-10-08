@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3327,6 +3327,48 @@ Two halves launched together (or a module you just released) can now dock to eac
 
 **The stations plan is built end to end** (A, A2, B, C, D, E). What it needs next is mostly the economy session's:
 contracts for stations, bases, retrieval and crew rotation, and the rules for flights from orbit.
+
+## Rovers: plan (2026-10-08, sats session with Caio; nothing built yet)
+
+**The problem (Caio):** in KSP rovers are a chore. Taking one already assembled on a mission is awkward, assembling one
+on another body is worse, and just getting it right side up is a job in itself. The pain is mostly **packaging and
+deployment**, not driving: rovers are built in a rocket editor, ride bolted sideways onto a lander, and arrive by
+"decouple and hope". Real rovers solve it with **deploy mechanisms** (Apollo's rover unfolded off the lander's side,
+Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright on its wheels" a designed outcome.
+
+**Decisions (Caio):**
+1. **A rover designer of its own**, not the rocket builder (rovers are horizontal; our parts can't tilt). A chassis with
+   slots: wheels, power, a mast (camera, antenna), an arm (sampler), instrument bays. Live stats: mass, top speed,
+   steepest climb, **tip-over angle** (centre of mass height against track and wheelbase).
+2. **Wheel-contact physics:** a rigid body with per-wheel suspension (spring and damper), traction limited by the
+   surface's friction and the wheel's load, rolling resistance from soft ground, bumps from rough ground (the terrain
+   session's `SURF` per biome, and `SURF_MOON` regolith), motor power and torque, steering, brakes. Tipping and
+   low-gravity bouncing are real; no magic self-righting (the designer states the tip angle; later an arm or a crew may
+   right a small rover).
+3. **Start with R1** (below): build and test-drive rovers at home before any spaceflight.
+
+**Slices:**
+- **R1. Designer, driving, test drive at home.** The designer and its stats; the rover as its own kind of vessel with
+  its own step; "Test drive" puts it at the launch site on real Tellus terrain (biomes drive differently); an option
+  for lunar weight (NASA trained Apollo crews on a 1/6-g rover, "Grover"). Test drives are engineering data: wheels
+  qualified by distance and slope, a design's measured climb limit and tip angle.
+- **R2. Stowed package and deployment.** In the rocket builder a rover is one part (its stowed size and mass) with a
+  mounting style: folded on a lander's side, on deck with ramps, in a cargo bay; later a sky crane. **"Deploy rover"**
+  on a landed lander checks the ground at the deploy spot and, if it's fit, ends with the rover upright on its wheels
+  after a short scripted unfold or drive-off; if not, it refuses and says why. Then driving on other bodies; rovers
+  persist as landed, flyable vessels (A2/E machinery).
+- **R3. Power and contact:** solar panels and batteries (Selene's day and night), line of sight to the lander, a relay or
+  home (hills block it).
+- **R4. Instruments and science** (each hinging on something the sim computes): samples by terrain unit, brought to the
+  lander or an ascent vehicle (sample return); a spectrometer on rocks; camera panoramas (sun angle); seismometers set
+  out as an array (spacing is what gives an interior map); ground-penetrating radar along a traverse; a drill or
+  heat-flow probe (depth, power); a magnetometer traverse; ice in permanently shadowed polar craters (hard on power).
+  Contract types proposed to economy.
+- **R5. Drive plans:** waypoints a rover carries out *between flights*, with results arriving as news (as the imaging
+  satellites already work): no hours of real-time driving.
+
+**Needed from others:** Selene's terrain (craters, maria and highlands, boulders, slopes) from the terrain session:
+today Selene is a smooth sphere apart from the regolith model; power (R3) is new everywhere.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 
