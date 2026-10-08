@@ -3220,3 +3220,22 @@ flying one orbiter draws the other's marker 2.7 km away; no console errors.
 - [ ] Economy: a far-side relay (network) contract; relay range/power limits
 - [ ] R4 science; R5 drive plans; the clock while driving from home (rovers plan)
 - [ ] Caio: TESTING row 115
+
+## 2026-10-08 — Launchpad economy session: paused for a resume in the new folder
+
+### Summary
+Since v1.35 (balance pass 3 on): v1.36 money sinks in simulated careers; design notes on rich programs, waste heat,
+routine runs, compute eras, time and long missions, communication, pre-flight planning and gravity assists, and
+dispatch decisions; v1.38 compute eras and trajectory studies; v1.41 no daily overhead; v1.42 the event timeline;
+v1.44 staged pay; v1.47 dispatch (economy side); v1.50 deviation handover (renumbered from v1.49). The repo left Drive
+mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
+
+### Files
+- `explorations/launchpad/index.html`, `test.mjs`, `career.mjs`, `NOTES.md`: the slices above
+- `explorations/launchpad/HANDOFF-economy.md`: new, how to resume this session
+- `INDEX.md`: career.mjs and the handoff added to the launchpad row; `ACTIVE_WORK.md`: economy row marked paused
+
+### Next steps
+- [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
+- [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
+
