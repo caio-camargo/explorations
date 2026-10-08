@@ -1,7 +1,7 @@
 # Leaving Google Drive — runbook for moving the repo out
-**Version**: v1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: v1.0.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Purpose**: Move the git repository out of `G:/Meu Drive/CLAUDE/fun` into a local clone on each machine, synced through
-GitHub, in one short pause. **Status**: ready, not run. Script: [`leaving-drive.sh`](leaving-drive.sh).
+GitHub, in one short pause. **Status**: run on this machine 2026-10-08 (steps 1–5, 7, 8 done; step 6, the freeze, still Caio's). Script: [`leaving-drive.sh`](leaving-drive.sh).
 
 ---
 
