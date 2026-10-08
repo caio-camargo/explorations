@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {missionTick,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {missionTick,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1699,6 +1699,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('recovery fleet: one stage fished out at sea within range; the one on land and the one too far are lost', got > 0 && news.some(t => /1 stage fished out/.test(t)) && api.khUse('kestrel') > 0,
     `+${got.toFixed(1)}M for a Kestrel stage ${(Math.acos(api.dot(api.norm(near), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km out (the other ${(Math.acos(api.dot(api.norm(far), api.norm(pf0))) * api.TELLUS.R / 1e3).toFixed(0)} km away: out of range)`);
   api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {} });
+}
+
+// 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
+// stand on (atan μ), softness changes the speed the ground forgives, boulders or trees add to the effective speed.
+{
+  const D = Math.PI / 180, R = TELLUS.R, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  const want = { ice: null, grip: null, sand: null, basalt: null, rain: null };
+  for (let la = -80; la <= 80; la += 0.5) for (let lo = -180; lo < 180; lo += 0.5) {
+    const u = U(la, lo), b = api.biomeAt(u); if (b.h < 0) continue;
+    const sl = api.terrainSlope(TELLUS, u), su = api.surfaceAt(TELLUS, u), hit = api.surfaceHit(su, u);
+    if (!want.ice && b.id === 1 && sl > 0.14 && sl < 0.35) want.ice = { u, sl, su };
+    if (!want.grip && b.id !== 1 && su.mu >= 0.5 && hit === 0 && sl > 0.14 && sl < Math.min(api.TOPPLE, Math.atan(su.mu)) - 0.02) want.grip = { u, sl, su };
+    if (!want.sand && b.id === 10 && hit === 0 && sl < 0.1) want.sand = { u, sl, su };
+    if (!want.basalt && b.id === 12 && hit === 0 && sl < 0.1) want.basalt = { u, sl, su };
+    if (!want.rain && b.id === 8) want.rain = { u, sl, su }; }
+  // set a pod down, upright, just above the ground, coming down at v m/s
+  const drop = (spot, v) => { api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
+    s.r = api.fromPF(TELLUS, mul(spot.u, R + api.groundAlt(TELLUS, spot.u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(api.surfVel(TELLUS, s.r), mul(up, -v)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+    for (let i = 0; i < 200 && s.alive && !s.landed; i++) api.physStep(s, api.DT); return { s, last }; };
+  const ice = drop(want.ice, 2), grip = drop(want.grip, 2);
+  check('surfaces: a slope ice cannot hold (μ 0.1) slides; the same pitch on grippier ground stands',
+    api.SURF.length === api.BIOMES.length && !ice.s.alive && /Slid/.test(ice.last) && grip.s.landed && grip.s.alive && grip.s.landSurface.name === want.grip.su.name,
+    `ice at ${(want.ice.sl / D).toFixed(0)}°: ${ice.last} · ${want.grip.su.name} at ${(want.grip.sl / D).toFixed(0)}°: ${grip.last}`);
+  const sand = drop(want.sand, 13.5), basalt = drop(want.basalt, 10.5), flatRain = drop(want.sand, 10.5);
+  check('surfaces: sand forgives 13.5 m/s; basalt does not forgive 10.5 m/s, which sand takes in its stride',
+    sand.s.landed && !basalt.s.alive && flatRain.s.landed, `sand: ${sand.last} · basalt: ${basalt.last}`);
+  // boulders/trees: the share of hit cells follows the biome's roughness, and the same spot always gives the same answer
+  const su = want.rain.su, f = api.siteFrame(want.rain.u); let hits = 0, same = true;
+  for (let k = 0; k < 2000; k++) { const q = norm(add(want.rain.u, add(mul(f.e, (k % 50) * 37 / R), mul(f.n, Math.floor(k / 50) * 37 / R))));
+    const h = api.surfaceHit(su, q); if (h > 0) { hits++; if (h < 2 || h > 6) same = false; } if (h !== api.surfaceHit(su, q)) same = false; }
+  check('surfaces: rainforest cells have trees at its roughness (60%), adding 2–6 m/s, deterministically', Math.abs(hits / 2000 - su.rough) < 0.05 && same,
+    `${(100 * hits / 2000).toFixed(0)}% of 2,000 cells (roughness ${su.rough * 100}%)`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
