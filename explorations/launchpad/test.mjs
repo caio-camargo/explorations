@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1856,6 +1856,36 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   reset(['beeper', 'farside', 'selimp', 'selland', 'selsample', 'padabort', 'maxqabort']); const s3 = craft(SELENE, mul(u, -soi * 0.9), mul(u, 300)); api.missionTick(s3, 0, false);
   check('staged pay: nothing for a flight not bound anywhere, nor for crewed missions on an uncrewed flight', P.funds === 1000 && g0 === 1000 && !Object.keys(P.staged).length,
     `circular orbit at 7,000 km: +0; uncrewed probe at Selene with only crewed missions open: +0`);
+  Object.assign(P, JSON.parse(saved));
+}
+
+// 38. Dispatch (economy): a contract flown by a stored procedure; risk from part data; pads as reservations; a fixed seed.
+{
+  const P = api.PROG, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
+  api.chooseStart('agency'); P.funds = 2000; P.day = 10;
+  const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], key = api.procKey(st);
+  const sat = (id, alt) => ({ id, type: 'sat', src: 'com', client: 0, p: { alt, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 });
+  const c1 = sat(901, 150), c2 = sat(902, 250), c3 = sat(903, 350); P.active = [c1, c2, c3];   // (apart: one orbit can complete several contracts)
+  const none = api.dispatchEstimate(st, c1); P.procs = { [key]: { kind: 'orbit', target: { pe: 110e3, ap: 118e3 }, dv: 4445 } };
+  const raw = api.dispatchEstimate(st, c1);
+  for (const p of api.newShip(st).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const known = api.dispatchEstimate(st, c1);
+  check('dispatch: needs a procedure; part data raises the chance and narrows the estimate', !none.ok && raw.ok && known.p > raw.p && (known.hi - known.lo) < (raw.hi - raw.lo),
+    `no procedure: "${none.why}" · unknown parts ${(raw.p * 100).toFixed(0)}% (${(raw.lo * 100).toFixed(0)}–${(raw.hi * 100).toFixed(0)}%) · well-known ${(known.p * 100).toFixed(0)}% (${(known.lo * 100).toFixed(0)}–${(known.hi * 100).toFixed(0)}%), margin ${known.margin.toFixed(0)} m/s`);
+  // pads: the second dispatch queues behind the first; a second pad takes the third at once; a hand-flown launch waits
+  const q1 = api.dispatchQuote(c1, st); api.orderDispatch(c1, st); const q2 = api.dispatchQuote(c2, st); api.orderDispatch(c2, st);
+  const waitOne = api.padWait(); P.fac.pads = { lv: 1 }; const q3 = api.dispatchQuote(c3, st);
+  check('dispatch: pads are reservations; a second dispatch waits for the pad, a second pad takes one at once', Math.abs(q2.start - q1.launch) < 1e-9 && q2.pad === 0 && q3.pad === 1 && Math.abs(q3.start - P.day) < 1e-9 && Math.abs(waitOne - (q2.launch - P.day)) < 1e-9,
+    `#1 launches day ${q1.launch.toFixed(0)}, #2 day ${q2.launch.toFixed(0)} (same pad), with two pads #3 day ${q3.launch.toFixed(0)}; a hand-flown launch would wait ${waitOne.toFixed(0)} d`);
+  P.fac.pads = { lv: 0 };
+  // the flights: same seed, same outcome; the contract pays as if flown by hand
+  const before = JSON.stringify(P), f0 = P.funds, fl0 = P.flights; const waitTo = d => { let n = 0; while (P.day < d - 1e-9 && n++ < 50) { P.decisions = []; api.advanceTo(d); } }; waitTo(P.dispatch[1].launch + 8);   // (decisions that come up on the way are waved off)
+  const r1 = P.dispatch.map(d => d.status + (d.orb ? d.orb.pe.toFixed(0) : '')).join(' '), paid = !P.active.includes(c1) && !P.active.includes(c2), df = P.funds - f0;
+  Object.assign(P, JSON.parse(before)); P.active = [c1, c2, c3].filter(c => JSON.parse(before).active.some(x => x.id === c.id)); waitTo(P.dispatch[1].launch + 8);
+  const r2 = P.dispatch.map(d => d.status + (d.orb ? d.orb.pe.toFixed(0) : '')).join(' ');
+  check('dispatch: both fly on their launch days, contracts paid as by hand; the same seed gives the same outcome (no re-rolls)', r1 === r2 && /done/.test(r1) && paid && P.flights === fl0 + 2,
+    `${r1.replace(/(\d{3})\d{3}/g, '$1 km ')} · funds ${df >= 0 ? '+' : ''}${df.toFixed(0)}M net of two launches`);
   Object.assign(P, JSON.parse(saved));
 }
 
