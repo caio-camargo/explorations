@@ -2336,3 +2336,16 @@ fast-forwarded to `d5a2e9c`. NOTES v1.12.0.
 - [ ] Docking port (1.25 m): capture cone, latch, the docked body as a passenger (mass, thrust, contact, render, registry), undock
 - [ ] Then the claw; later RCS eras (monoprop), fine control, plume impingement, ullage
 - [ ] `main` still not pushed
+
+## 2026-10-07 — Launchpad part design passes + git object repair (visuals session, cont.)
+
+### Summary
+Design passes for parts other sessions added after the texture pass: imaging camera, antenna, radial fin, docking port,
+RCS quad, gas bottle, claw, probe core (audit: every `PARTS` key against `partBody` cases, on all branches and worktrees).
+**Repo repair:** `git merge` failed with "loose object d28aa2d … is corrupt". `git fsck` found four zero-filled loose
+objects (written 20:36 and 20:53, three trees and one commit) that broke `main`, `aerofx`, `bodies`, `sats` and
+`origin/main`. GitHub had good copies of all four: the zeroed files moved to the session scratchpad, and the good objects
+were re-written from a temp `--mirror` clone (hashes verified). `fsck` clean, all refs walk, fetch works. Merged and pushed (`0c93ed4`).
+
+### Next steps
+- [ ] Backlog: liveries / per-nation designs; char on the dark capsule; a real flame trench
