@@ -2634,3 +2634,17 @@ and the capsule climbs away at 7 g.
 - Merge note: economy's §31 (development projects) landed at the same spot in test.mjs; resolved by taking main's file
   and re-appending the UI checks as §32.
 - Next: slice 2, the Program screen (tabs and a first-run gate). Tell economy/bodies first.
+
+## 2026-10-08 — Launchpad UI slice 2: the Program screen (ui session, branch `ui`)
+- The page opens on **Program**, a panel over the ship on the pad, with tabs: Inbox (decisions with deadlines, offers),
+  Missions, Contracts, Fleet, World, Industry, Company. The first run shows only "Whose program? / How does it start?",
+  and Build stays disabled until you choose. Assembly lost the whole career column: a strip shows date, funds and Inbox
+  count, with ← Program (`P`). `B` builds.
+- `renderProgram` is untouched. `progLayout()` (a wrapper) deals its sections into tabs by heading. test.mjs §32 fails
+  if a heading literal has no tab. Screen keys come from `KEYS` rows with `go:`.
+- Small cross-scope edits: builder.js ignores keys while `atHQ` is set; the logbook's "Load design" now calls
+  `go('assembly')`.
+- Merging `main` checked `index.html` out with CRLF, which broke §32's string anchors. §32 now normalises line endings.
+  Committed files verified CR-free (lesson #27).
+- Merged to `main` (`641a3d7`, not pushed); 0 failing checks.
+- Next: slice 3, Debrief.
