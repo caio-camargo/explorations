@@ -3418,3 +3418,21 @@ burning up. A 2 s tumble that the SAS recovers from passes; an 8 s one deviates.
 
 ### Next steps
 - [ ] Q13: landing on a chosen crater
+
+## 2026-10-08 — Launchpad: landing on a chosen point (bodies session, cont.; QUEUE Q13)
+
+A `site` (a point in the body's frame, as landed objects are kept) for the transfer and the landing:
+- the transfer aims the orbit's plane through it, scored on the integrated pass, since the tide twists the plane ~5° on
+  the way in;
+- the capture is lowered to ~10×20 km;
+- it waits for the pass that comes closest;
+- `landAt` flies a powered descent at the point.
+
+5 m off on Selene (20°N, 60°N, 85°N, far side) and on Nyx, for 60–150 m/s over an untargeted landing. Recorded landing
+procedures now keep their spot: the crewed re-flight lands 12 m from the hand-flown one. 387 checks pass.
+
+**Files:** `index.html` (siteOff, siteAt, landAt, recorder `pf`), `fly_ladder.mjs` (`flySite`, `siteOf`), `test.mjs`
+(bodies-3; §27 checks the spot), NOTES, QUEUE (Q13 ✓, two proposals), TESTING 121.
+
+### Next steps
+- [ ] Bodies lane is empty in QUEUE: the orchestrator ranks the proposals

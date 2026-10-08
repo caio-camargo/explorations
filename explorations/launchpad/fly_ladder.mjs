@@ -57,6 +57,23 @@ export function flyLadder(api, ids = null, say = () => {}) {
       touch: +(s.touchV || s.crashSpeed || 0).toFixed(1), cost: Math.round(api.vesselCost(api.newShip(st).parts).cost) }); }
   return out;
 }
+// a landing on a chosen point (QUEUE Q13): lat/lon in degrees from the point under Tellus (Y is the spin axis); returns how
+// far from it the craft came down. Needs a Probe-like design (the ascent is hand-flown and recorded first).
+export function siteOf(api, B, lat, lon) {
+  const { norm, mul, add, cross } = api, near = norm(api.toPF(B, norm(mul(api.bodyRel(B, 0)[0], -1)), 0)), east = norm(cross([0, 1, 0], near)), la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
+  return norm(add(mul(add(mul(near, Math.cos(lo)), mul(east, Math.sin(lo))), Math.cos(la)), mul([0, 1, 0], Math.sin(la))));
+}
+export function flySite(api, preset, bodyName, lat, lon) {
+  const { len, sub } = api, P = api.PROG, st = api.PRESETS[preset], key = api.procKey(st), B = api.BODIES.find(b => b.name === bodyName), site = siteOf(api, B, lat, lon);
+  api.HOOK.msg = () => {}; api.HOOK.news = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; handAscent(api, st); const asc = P.procs[key];
+  P.done = Object.fromEntries(['beeper', 'farside', 'selimp', 'nyxfind', 'nyxfly'].map(k => [k, { flight: 0, day: 0 }])); P.log = P.log || {}; P.log.nyx = P.log.nyx || { v: {} };
+  const low = B.name === 'Nyx' ? { pass: 15e3, ap: 25e3, pe: 10e3 } : { pass: 10e3, ap: 20e3, pe: 8e3 };
+  const phases = [{ k: 'transfer', to: B.name, pass: low.pass, site }, { k: 'capture', ap: low.ap, pe: low.pe }, { k: 'land', site }];
+  api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); api.procStart(s, { ...asc, kind: 'mission', phases }); let k = 0;
+  while (s.alive && s.proc && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
+  return { alive: s.alive, landed: s.landed && s.body === B, touch: s.touchV || 0, miss: s.landed ? len(sub(s.r, api.siteAt(B, site, api.t))) : null, left: api.dvRemaining(s).tot, days: api.t / 86400, dev: s.procDev };
+}
 // run directly: build the SIM from index.html, fly, print the table
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('fly_ladder.mjs')) {
   const { readFileSync } = await import('node:fs');

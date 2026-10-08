@@ -3117,6 +3117,46 @@ The tests show why this is measured, not ruled:
   as part of the study, would make the estimate a measurement.
 - Deviations from real flights now come in more kinds than `relight`/`short`. `takeDeviation` works with any entry.
 
+### Landing on a chosen point (2026-10-08, QUEUE Q13)
+
+A phase field `site` is a point in the body's own frame, the frame landed objects are kept in (`q.pf`). It works for
+"this crater" and for "next to Base 1" alike. A base takes in whatever lands within 500 m (`BASE_R`). Test § bodies-3.
+
+1. **Plane, during the transfer.** The corrections and the trim also score the site's distance from the arrival
+   orbit's plane, at the expected landing time (`siteOff`). A transfer still off-plane by more than 3 km counts as off
+   course, so it gets corrected again. The plane is taken at the low point of the integrated pass: on the way into a
+   near-polar site, Tellus's tide twists a hyperbola's plane by ~5°, about 29 km on the ground.
+2. **Down to a low orbit.** If the capture left it high, it brings periapsis down at apoapsis, then apoapsis down at
+   periapsis, to about 10×20 km.
+3. **The pass.** It scans the next day for the pass that comes closest to the site (the moon turns under the orbit)
+   and waits for it.
+4. **Powered descent at the point** (`landAt`). The horizontal velocity it wants is the one that would stop it at the
+   site under 60 % of its thrust, pointed at the site. Close in, it switches to distance / 8 s, so it doesn't chatter
+   across the point. Braking starts when the site is a braking distance ahead along the track; if the site has
+   passed, it plans the next pass. Along-track and cross-track errors are steered out alike. Over the site, the usual
+   suicide burn takes it down, steering out the drift; a lander that can't finish drops off high.
+
+**Results.**
+
+| Site | Off target | Left (untargeted) |
+|---|---|---|
+| Selene 20°N 15°E | 5 m | 1,507 (1,628) |
+| Selene 60°N | 5 m | 1,503 (1,628) |
+| Selene 85°N | 5 m | 1,568 (1,628) |
+| Selene far side | 5 m | 1,475 (1,628) |
+| Nyx (two sites) | 5 m, 9 m | 2,138 (2,161) |
+| Crewed Lunar | 2 m | — |
+
+**Back to the same spot.** A recorded landing mission now keeps where it landed (`land.pf`), and its re-flight goes
+there. The §27 crewed procedure lands 12 m from the hand-flown spot. It also spends less than the hand flight
+(8,411 against 8,657 m/s), so it becomes the procedure. Automated flights to a base land at the base.
+
+**Not yet.**
+- Terrain on the moons is flat. When relief arrives, the descent's ground height is read at the site, but the low
+  orbit (10 km) and the pass scan don't look at mountains.
+- The site is fixed when the procedure is recorded. A dispatched "supply Base 1" would pass the base's `pf` as its
+  site, which is the economy's to wire.
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".

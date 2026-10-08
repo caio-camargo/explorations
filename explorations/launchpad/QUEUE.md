@@ -72,7 +72,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 |---|---|---|---|---|
 | Q11 | **`dispatchRun(D, v, c)`**: a headless, seeded procedure run → {ok, orb, dv, why} or a deviation. Unblocks dispatch on real physics, watch mode, dry runs | M | ⚙ | ✓ bodies (dispatch flown; dry runs `procAdopt`; NOTES § "Dispatch, the physics side") |
 | Q12 | Deviation rules in `procStep`: Δv-to-go vs Δv left, and a corridor around the recorded climb (control, falling, slow) | S | ⚙ | ✓ bodies (`procDev`, `procCorridor`) |
-| Q13 | Landing on a chosen crater: the capture picks its plane and periapsis longitude | M | ⚙ | → bodies 2026-10-08 |
+| Q13 | Landing on a chosen crater: the capture picks its plane and periapsis longitude | M | ⚙ | ✓ bodies (`site`, `landAt`; 5 m on Selene and Nyx; recorded landings return to their spot) |
 
 ### control — attitude
 | # | Item | Size | Load | State |
@@ -157,6 +157,9 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | W8 | Hands-on: TESTING rows 100, 108–118, and the robot's `~` rows (feel needs a human) | — |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+
+- economy — dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) — NOTES § "Landing on a chosen point"
+- ui — pick a landing site on the map (a click on Selene/Nyx → `site` for the procedure) — same
 
 - economy — dry runs as the trajectory office's study: a button calling `procAdopt(stack)` (days, price); widen `dispatchEstimate` for a `prov` procedure; cache the dry run's measured margin as the estimate's — NOTES § "Dispatch, the physics side"
 - economy — nyxfind completes for free on a Selene flight; selimp and nyxfind pay less than a Probe costs — NOTES § "The ladders, proven with real rockets"
