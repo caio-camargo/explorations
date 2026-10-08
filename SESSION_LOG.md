@@ -3303,6 +3303,27 @@ sized far above real hardware.
   tears; that would also let the wheels' momentum into the gyroscopic term
 - [ ] Push `main` when Caio says
 
+## 2026-10-08 — Launchpad roadmap: milestones, lanes, defaults (roadmap session)
+
+### Summary
+Caio asked for a roadmap so the parallel sessions always have work. The diagnosis: features ship much faster than
+anyone plays them (~400 commits, 100+ unplayed TESTING rows); the open PLAYTEST items sit where lanes meet; lanes grew
+out of the code, so narrow ones run dry. Decided with Caio: **M1 "the first hour"** is the next milestone after M0
+stabilize; lanes **consolidate to eight** (flow, economy, vehicle, space, world, look & sound, QA, platform); a
+**platform lane** splits `index.html` into plain ES modules (no build step) after test shards and save versioning;
+open questions W1–W7 proceed on **written defaults** unless Caio overrides.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` (new): milestones M0–M5 with robot-checkable finish lines, M1/M2 items by lane,
+  lanes and evergreen work, the platform plan, refill rules, defaults for W1–W8
+- `explorations/launchpad/QUEUE.md`: one flag asking the orchestrator to restructure from ROADMAP (left the rest to it)
+- `INDEX.md`: ROADMAP in the launchpad row
+
+### Next steps
+- [ ] Orchestrator: regroup QUEUE into the eight lanes, mark W1–W7 defaulted, refill per ROADMAP
+- [ ] Caio: pick a freeze window for the file split once platform's plan (ROADMAP § Platform, step 3) is written
+- [ ] Create the `launchpad-platform` worktree (port 8801) when a platform session starts
+
 ## 2026-10-08 — Launchpad: dispatch flown, not rolled; deviations; dry runs (bodies session, cont.)
 
 QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedure:
