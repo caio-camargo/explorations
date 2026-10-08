@@ -1264,7 +1264,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // the descent steers to the velocity that would stop it there. Mid-latitude, near the pole, the far side, and on Nyx.
 {
   const P = api.PROG, saved = JSON.stringify(P);
-  for (const [preset, body, lat, lon, what] of [['Probe', 'Selene', 20, 15, 'Selene, 20°N 15°E of the point under Tellus'], ['Probe', 'Selene', 85, 0, 'Selene, near the pole (a polar orbit, aimed at Selene\'s doorstep)'],
+  for (const [preset, body, lat, lon, what] of [['Probe', 'Selene', 20, 15, 'Selene, 20°N 15°E of the point under Tellus'], ['Probe', 'Selene', 85, 0, 'Selene, near the pole (a polar orbit)'],
     ['Probe', 'Selene', -10, 170, 'the far side of Selene'], ['Probe', 'Nyx', 30, 20, 'Nyx (inclined, eccentric, its tide strong)']]) {
     const r = flySite(api, preset, body, lat, lon);
     check(`targeted landing: ${what}, within 100 m (a base takes in what lands within 500 m)`, r.landed && r.alive && r.miss < 100 && r.touch < 3,
