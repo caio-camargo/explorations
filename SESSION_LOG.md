@@ -3278,3 +3278,128 @@ Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--f
 - [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
 - [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
 
+
+### Follow-up: rovers R4 science, first slice (sats session, 2026-10-08)
+Scope set with Caio: geology plus three instruments, paid in knowledge, with contracts proposed rather than priced.
+- **Geology is the drawn maria.** The shader's mask is recomputed on the CPU; it agrees at 3,000/3,000 points. Mare
+  covers 9.7 % of Selene, almost all on the far side, a note for visuals/bodies.
+- **Three instruments:** a spectrometer, panoramas whose quality follows the sun's height, and a seismometer network.
+  The network locates moonquakes by least squares and brackets the hidden core: a 400 km array gives 78–98 km around
+  the true 90; arrays of 2 km and 30 km locate nothing.
+- **Delivery:** results count only when they reach home through R3's contact. Logbook section *On Selene*.
+- **Two mistakes of mine, caught by tests:** my helper `groundContact` silently replaced the existing ground-contact
+  physics of the same name (renamed `radioAt`); and the core bracket first crossed itself without location margins.
+
+### Files
+- `explorations/launchpad/index.html`: R4 block before SIM END (`selMare`, `geoAt`, `rvSci*`, `sciGot`, `rvFieldSci`,
+  `radioAt`, `quakesIn`, `seisTick`, `seisLocate`, `inv4`); `LOGF` On Selene rows; `advanceDays`; `rvEntry`/
+  `rvFromEntry`; the HUD's `rvSciRows` and button handler; `selKnowHTML`
+- `test.mjs` §42 (5 checks); `NOTES.md` § "R4 built, first slice"; `TESTING.md` row 117; `explorations/README.md`
+
+### Verification
+`test.mjs`: 371 passed. Each of 10 deliberate breaks fails a §42 check. Not run in the browser (preview server not
+restarted after the low-memory stop): the HUD buttons and the *What we know* line, covered only by the parse check.
+
+### Next steps
+- [ ] Caio: TESTING row 117 (and 115–116); a browser pass on the science HUD
+- [ ] Economy: price the R4 contracts proposed in NOTES
+- [ ] R4 next: the sample arm and sample return; drill or heat flow; radar; magnetometer; polar ice once Selene has relief
+- [ ] R5 drive plans; the clock while driving from home
+## 2026-10-08 — Launchpad v1.51: spin stabilisation (control session)
+
+### Summary
+Euler's equations were missing the gyroscopic term (ω×Iω), so a spinning stage turned to every torque as if not spinning
+and never wobbled. Added it (`integrateRot`: body-frame RK4, substeps ≤ 0.05 rad, exact attitude step), a **Spin-up
+motors** part (`spin`, 4,000 N·m·s in 1 s; fires when its stage lights or is released), SAS that leaves a spun stage's roll
+alone (damps the wobble), spin kept through time warp, a HUD *Spin* row and the builder's spin rpm. A kick stage with its
+thrust ½° off-axis: unspun it tumbles; at 1 / 2 / 4 rev/s its axis ends 3.2 / 1.1 / 0.2° off (before: 74 / 61 / 41°).
+Wobble rate matches Euler to four figures; angular momentum kept to 0.017 % (was 0.83 %).
+Negative result: the wheels' stored momentum had to stay out of the gyroscopic term (a pod's 100 kN·m·s pinned capsules
+against their chutes: three capsule checks failed). Same root as the robot playtester's PLAYTEST #18: wheel storage is
+sized far above real hardware.
+
+### Files
+- `explorations/launchpad/index.html`, `builder.js` (`spin` in *Control*), `test.mjs` section `control-4` (3 checks,
+  mutation-tested), `study_spin.mjs` (new), `NOTES.md` § v1.51, `TESTING.md` rows 118–119; README and INDEX rows
+
+### Verification
+`test.mjs` 366 pass on the merged tree. Physics step unchanged beyond noise.
+
+### Next steps
+- [ ] PLAYTEST #18 (control): size wheel storage to real hardware / the vessel, so a light stage saturates before it
+  tears; that would also let the wheels' momentum into the gyroscopic term
+- [ ] Push `main` when Caio says
+
+## 2026-10-08 — Launchpad roadmap: milestones, lanes, defaults (roadmap session)
+
+### Summary
+Caio asked for a roadmap so the parallel sessions always have work. The diagnosis: features ship much faster than
+anyone plays them (~400 commits, 100+ unplayed TESTING rows); the open PLAYTEST items sit where lanes meet; lanes grew
+out of the code, so narrow ones run dry. Decided with Caio: **M1 "the first hour"** is the next milestone after M0
+stabilize; lanes **consolidate to eight** (flow, economy, vehicle, space, world, look & sound, QA, platform); a
+**platform lane** splits `index.html` into plain ES modules (no build step) after test shards and save versioning;
+open questions W1–W7 proceed on **written defaults** unless Caio overrides.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` (new): milestones M0–M5 with robot-checkable finish lines, M1/M2 items by lane,
+  lanes and evergreen work, the platform plan, refill rules, defaults for W1–W8
+- `explorations/launchpad/QUEUE.md`: one flag asking the orchestrator to restructure from ROADMAP (left the rest to it)
+- `INDEX.md`: ROADMAP in the launchpad row
+
+### Next steps
+- [ ] Orchestrator: regroup QUEUE into the eight lanes, mark W1–W7 defaulted, refill per ROADMAP
+- [ ] Caio: pick a freeze window for the file split once platform's plan (ROADMAP § Platform, step 3) is written
+- [ ] Create the `launchpad-platform` worktree (port 8801) when a platform session starts
+
+## 2026-10-08 — Launchpad: dispatch flown, not rolled; deviations; dry runs (bodies session, cont.)
+
+QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedure:
+- `procFly` is headless and isolated: the flight on screen, the fleet, debris, the moons' clock and the hooks are put back.
+- `dispatchRun` fills the economy's slot. Part failures are still seeded rolls; running short, and the orbit reached,
+  come from the flight. The same seed flies the same flight.
+- The executor now deviates instead of flying on (`procDev`: short in the climb, at cut-off or circularising;
+  offcourse; nohome; lost). It hands over a registry entry that `vesselOf` rebuilds exactly.
+- Dry runs (`procAdopt`): a new design borrows a stored procedure, provisionally, if a headless run reaches orbit; its
+  own first flight replaces it. The tests show a variant with Δv to spare on paper that the borrowed climb burns up.
+- An ascent costs 0.4–0.7 s of wall time headless.
+- 370 checks pass before merging main.
+
+**Files:**
+- `explorations/launchpad/index.html` (procDev, procFly, regEntry, dispatchRun, dryRun/procAdopt, procKeep gives way to a borrowed procedure)
+- `test.mjs` (§ bodies-2; the §28 short-variant check now expects a deviation)
+- `fly_ladder.mjs` (exports `handAscent`)
+- `NOTES.md` (§ "Dispatch, the physics side: flown, not rolled")
+- `QUEUE.md` (Q11 ✓, Q12 narrowed, three proposals)
+- `TESTING.md` row 120
+- ACTIVE_WORK
+
+### Next steps
+- [ ] Q12 rest: a corridor around the recorded profile (deviate early when the climb strays, not only when Δv runs out)
+- [ ] Economy: the study button and price for `procAdopt`, a wider estimate for `prov`, the measured margin cached
+- [ ] Q13: landing on a chosen crater
+
+### Follow-up: v1.51.1, the wheels won't spin a vessel apart (control session, 2026-10-08; queue Q14)
+PLAYTEST #18: with SAS off a held key spun the Orbiter's upper stage to 23 rad/s in 9 s and tore it apart (a bare pod:
+66 rad/s in 2 s, chute torn off). The wheels' controller now won't turn a vessel past `WHEEL_W` (1 rad/s pitch/yaw, 3 roll),
+reaching it exactly; SAS (≤ 0.6 rad/s) and big stacks (storage runs out first) are unchanged. #23: the negative-stability
+note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs `control-5` (mutation-tested); all pass on
+the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
+- [ ] Q29: re-run TESTING row 104 with the robot
+
+## 2026-10-08 — Launchpad roadmap v1.1: pillars, systems closed, human playtest gate (roadmap session)
+
+### Summary
+Mapped the roadmap against the usual game-development cycle (prototype → vertical slice → production → alpha/beta).
+M1 is the vertical slice. Added what the cycle showed was missing: six **design pillars** drafted from NOTES (Caio to
+edit); **systems declared complete** (Caio: near saturation, now integrating), so a new system needs a pillar and
+Caio's yes; M1's finish line now includes **a person other than Caio playing the first hour**. Caio's playtesting is
+blocked on the construction screen, so M1's first vehicle item is the builder for a newcomer, and QA's first is a
+presets-only playtest route for him.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Caio: edit the pillars
+- [ ] Orchestrator: rank the builder-usability and presets-route items at the top of vehicle and QA
+

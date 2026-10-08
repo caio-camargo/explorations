@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -48,6 +48,7 @@ NOTES § "The robot playtester".
 | ✓ 11 (robot) | Save a flight as an autopilot, replay it, then take over mid-flight | Esc menu > Save as autopilot. On the pad, ▶ Autopilot. Press a control key during the replay | The replay matches the flight you recorded, and taking over feels seamless · *Robot: saved a 25 s tape; after Revert "▶ Autopilot (25s)" replays to the same position (0 m); W at 12 s takes over. Needs a human: "seamless".* | v1.8 | core |
 | 12 | Make an ascent procedure, then beat it | Hand-fly the Orbiter to orbit. Next flight: ▶ Procedure. Then fly a more efficient ascent yourself | The procedure reaches orbit by itself. A better hand-flown ascent replaces it and you get a news line about it | Procedures | bodies |
 | 13 | Run the "Selene land" mission procedure | First fly Crewed Lunar to Selene and home by hand, then press the procedure button on the pad | The whole mission flies through the game loop, and it's watchable rather than a long wait | Procedures v2 | bodies |
+| 120 | Dispatch a contract on a real flight, and take over a deviation | Hand-fly a satellite design (instruments) to orbit; dispatch a matching sat contract and wait. Then dispatch a design one tank too short (or a relight failure: an unknown upper engine) and press Take control | The dispatched orbit is the procedure's, not a scatter; the short one stops with "Procedure stopped: … short of circularising" and is handed over coasting up to apoapsis, with the propellant it had left | bodies, dispatch flown | bodies |
 | 14 | Build a lone side booster and set its cant with Balance | Builder: Sparrow core + one Condor radial; open the part options and use cant/Balance | The cant control is understandable. Uncanted flips, balanced flies straight. Is the reason clear to a player? | v1.22 | core |
 | 15 | Fly with low know-how and live with ignition failures | Fresh career (tester "No ignition failures" off): fly new imported engines | A scrub on the pad or an upper stage that won't light reads as a reason, not a bug. Frequency feels fair, not punishing | v1.30 | economy |
 | 16 | Point a launch at a city (change azimuth or staging) | Fly a dogleg toward a city on the map | Range-safety warning, HUD flag and headline appear in time; drop-zone verdicts after staging are understandable | v1.9 | core |
@@ -63,6 +64,8 @@ NOTES § "The robot playtester".
 | ✓ 105 (robot) | Fly steerable fins on a rocket and a probe dart | Builder: swap the Orbiter's fin ring for **Steerable fin ring**; or Probe core + Tank 1 t + Steerable fin ring + Sparrow | Coasting through the air it obeys SAS (the builder said "coasting holds"); in vacuum the fins do nothing. They look like fins (they don't move visibly yet) · *Robot: builder: "coasting holds … fins 25"; the dart coasting at 9 km, M 1.04 swings 20° to a new hold in 0.8 s; the vacuum turn (2.7 s) is the probe core's wheel.* | v1.40 | control |
 | ~ 106 (robot) | Read the builder's Control block on several designs | Builder: Orbiter, Heavy, Sounding, Passenger, Lunar; then add a Reaction wheel (palette *Control*) | "holds / weathervanes / flips", roll and the turn times make sense to a player and change sensibly when you add parts · *Robot: numbers change sensibly (Orbiter + wheel: wheels 10→25 kN·m, coasting weathervanes→holds, 11.1→7.1 s); wording nits in P#23.* | v1.43 | control |
 | ✓ 107 (robot) | Feel the gimbal: hand-fly an ascent with SAS off, then on | Orbiter, keys only | The rocket answers the keys with a small, believable lag; no wobble under SAS on any preset (Lunar was the worst before the fix) · *Robot: powered climbs under SAS on 7 presets: AoA sd ≤ 0.09°, max 1.0° (Big Lunar), no oscillation.* | v1.40 | control |
+| 118 | Spin a kick stage and fire it | Builder: Probe core + Tank 1 t + Petrel + **Spin-up motors** (palette *Control*) + Decoupler on a first stage; the Control block says ~120 rpm. Stage in orbit, SAS on | "Spin motors firing" at separation; HUD *Spin* row ~120 rpm; the stage visibly spins and its burn goes where it pointed. Time warp keeps the spin. A roll key under SAS spins it down | v1.51 | control |
+| 119 | Spin a stage by hand and watch it wobble | Any small stage in orbit, SAS off: roll key held for a while, then a short pitch tap | The stage cones (HUD *Spin* row shows a wobble angle) instead of turning over; it keeps pointing roughly where it was. Turning SAS on stops the spin (only a stage spun by spin motors keeps it under SAS). Is that split clear? | v1.51 | control |
 
 ### Building
 
@@ -160,6 +163,7 @@ NOTES § "The robot playtester".
 | 73 | Land on Nyx (<3 m/s) | Tester epoch 5; fly to Nyx | Low gravity landing is fun, not bouncy chaos | Out there | bodies |
 | 74 | Fly the epoch 3 utility sats: polar weather, TV stationary, disaster watch, navigation | Tester epoch 3 | Plane change cost felt; TV drift-out news is a fair nudge; nav phasing lesson discoverable | Epoch 3 | bodies |
 | 115 | Put a relay in Selene orbit and drive a far-side rover through it | Tester epoch 4: land a rover on the far side (no high-gain line home), then fly a probe with an antenna to a ~1,000 km orbit in Selene's orbital plane and end the flight there; Program > Fleet | The probe is listed *In orbit around Selene*; the rover's line shows *Drive from home … ms via* the relay for a few hours each orbit (about a third of the time) and *out of contact* otherwise; the delay feels right; a high polar orbit instead comes down within weeks, with news | Selene relay | sats |
+| 117 | Do rover science on Selene: spectrometer, panoramas, a seismometer array | Tester epoch 4: a rover with a spectrometer, camera mast, seismometer pack, high-gain antenna and power, landed on Selene; drive from home; the HUD's science buttons; then advance some days | The *rock* row says mare or highland and matches the dark/bright ground you see; buttons grey out with a reason (moving, at home, none left); results reach the logbook's *On Selene* section only with contact; a low-sun panorama scores best; 4 seismometers set ~100+ km apart locate quakes and narrow the core over weeks, while a tight cluster never places one (*What we know* says so) | R4 | sats |
 
 ### Program & economy
 
@@ -197,4 +201,4 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **117**.
+Next free number: **121**.
