@@ -3100,6 +3100,34 @@ designer's power box.
 - [ ] R4 science; R5 drive plans (a surface leg of the mission planner); the clock while driving from home
 - [x] Pushed with the repo move (GitHub `main` has R1–R3)
 
+## 2026-10-08 — Launchpad: the Selene and Nyx ladders, proven with real rockets (bodies session, cont.)
+
+Every epoch 4–5 uncrewed mission flown from the pad by the procedure executor, with only its prerequisites done: farside,
+selimp, selland, selsample, nyxfind, nyxfly, nyxorb, nyxland all pass. A prograde control at Nyx fails, as the brief says it should.
+- New presets **Probe** and **Sample Return**. New transfer options `side` (near/far, the impact point for impacts),
+  `sunFar`, `retro`.
+- Executor and predictor fixes:
+  - a latent `passScore` crash on predicted misses (on `main`);
+  - the trim and corrections now score the integrated pass, since Tellus's tide moved a 15 km aim to an impact;
+  - capture and landing re-time on waking;
+  - landing deorbits to 5 km first (saves ~150 m/s; the crewed v2 mission now reaches its burn home with 955 m/s, was 525);
+  - braking hysteresis;
+  - the ascent drops a stage that can't make orbit.
+- Merged main (rotating Selene: braking uses ground speed). 351 checks pass.
+- First work after the repo left Drive. This clone's `origin` was re-pointed from the Drive folder to
+  `C:/Users/caioa/dev/explorations`.
+
+**Files:**
+- `explorations/launchpad/index.html` (presets, MP transfer/capture/land/ascend, passScore/passShape, numLeg `endV`)
+- `test.mjs` (§ bodies-1)
+- `fly_ladder.mjs` (new)
+- `NOTES.md` (§ "The ladders, proven with real rockets")
+- INDEX, ACTIVE_WORK
+
+### Next steps
+- [ ] Economy: nyxfind comes free on a Selene flight; selimp and nyxfind pay less than a Probe costs (a small impactor preset?)
+- [ ] Landing-site targeting beyond near/far side (capture plane and periapsis longitude)
+
 ## 2026-10-08 — Launchpad: playtest list and tech scouting (notes session)
 
 ### Summary
