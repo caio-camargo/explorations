@@ -1,11 +1,18 @@
 # Session Coordination — choose a profile at setup
 
-**Version**: v1.0.0 · **Date**: 2026-07-30 · **Status**: Active
+**Version**: v1.0.1 · **Date**: 2026-07-30 · **Updated**: 2026-10-08 · **Status**: Active
 **Decision required**: pick Profile A or B during project setup (see `SETUP_CHECKLIST.md`) and record the choice HERE, in this file, under "This project uses". Sessions read this file to know which mechanism applies.
 
 > **This project uses: ☑ Profile A (file-based) ☐ Profile B (DB-backed)**
 > Recorded 2026-08-10. Single operator, personal project, no infrastructure worth provisioning.
 > Claims go in `ACTIVE_WORK.md`; the log is `SESSION_LOG.md`.
+>
+> **Since 2026-10-08 the repo is out of Google Drive** (runbook: [`leaving-drive.md`](leaving-drive.md)). Each machine
+> has its own clone at `C:/Users/caioa/dev/explorations`, synced only through GitHub, so Profile A's files travel by
+> push/pull: **`git pull` before reading `ACTIVE_WORK.md`; commit and push your claim, and its clearing.** A claim that
+> isn't pushed is invisible to the other machine. `SESSION_LOG.md`, `ACTIVE_WORK.md`, `INDEX.md` and the launchpad
+> `TESTING.md`/`PLAYTEST.md` are committed with the work, never left uncommitted; their merge conflicts are append-only
+> (keep both sides). The repo is **public**: pushing publishes.
 
 One template, two coordination profiles. They solve the same problems — *who is working where* (claims), *what happened* (logging), *what was found but not handled* (flags/parked threads) — with different substrates. Profile A has zero dependencies and works anywhere, including client environments where you cannot provision infrastructure. Profile B is strictly better under real concurrency but requires a database you control.
 
@@ -28,7 +35,7 @@ Rules that keep Profile A honest:
 - **Claim before write** on any shared file. The claim file itself is the only file two sessions may both touch, and only in their own row.
 - **Append-only** for logs — never rewrite others' entries.
 - **Low contention by design**: if two sessions regularly need the same file, split the file by domain or upgrade to Profile B.
-- On a sync layer (Drive/Dropbox), know the failure mode: concurrent edits fork or clobber *silently*. Profile A is a convention, not a guarantee — it works because sessions follow protocol, and it degrades visibly (conflicted copies) when they don't.
+- On a sync layer (Drive/Dropbox), know the failure mode (and never keep a live `.git` there; LESSONS #19, #25, #30): concurrent edits fork or clobber *silently*. Profile A is a convention, not a guarantee — it works because sessions follow protocol, and it degrades visibly (conflicted copies) when they don't.
 
 ## Profile B — DB-backed (Supabase/Postgres or any REST-reachable store)
 
