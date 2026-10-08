@@ -1964,6 +1964,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   facilities. Sinks absorb the strong programs' pile-up (1.4–2.6B spent over 6 years) without sinking the weak ones.
   Tuned: the hall was a money machine (now 90/220M, ×0.8/×0.65); stand campaigns teach at least half a fresh regime;
   development costs 3× price (was 5×). All tests pass. Merged to `main` (`a865120`).
+- **v1.38 (2026-10-08, economy worktree):** compute eras and trajectory studies. World compute eras by date (human
+  computers → mainframes → onboard → cheap → AI boom), an access lag per power, and a computing centre facility.
+  Per-design trajectory studies cost money and days (a launch waits for its study) and narrow the impact spread
+  that range safety uses. Design notes cover the rich-programs ladder, waste heat, routine runs and compute.
+  All tests pass. Merged to `main` (`654ba64`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
