@@ -3464,6 +3464,38 @@ readout's Mass row; headless Chrome can hand `frame()` a negative `dtR` (NOTES).
 ### Files
 - `explorations/launchpad/index.html`, `views.js`, `test.mjs`, `playtest.mjs`, `NOTES.md` § "PLAYTEST sweep",
   `PLAYTEST.md`, `TESTING.md`; screenshots in `C:/Users/caioa/dev/playtest-out/fixes/`
+
+## 2026-10-08 — Session roles: playtest intake and studio briefs (roadmap session)
+
+### Summary
+Caio wants to start sessions by naming their role. Added `docs/session-roles.md` (roles table, plus full briefs for
+**playtest intake**, which turns raw feedback into PLAYTEST items and Proposed lines, and **studio**, which builds a
+game-development playbook and template in a new Drive folder that is a template only, with the never-run-git-from-Drive
+warning in its README) and one routing line in AGENTS.md.
+
+### Files
+- `docs/session-roles.md` (new), `AGENTS.md` (one pointer), `INDEX.md` (one row)
+
+### Next steps
+- [ ] Orchestrator: regroup QUEUE into the eight lanes (Caio is pasting the instruction)
+- [ ] Studio session: interview Caio, then propose the folder's structure
+
+## 2026-10-08 — Launchpad roadmap v1.2: look & sound split into beats (roadmap session)
+
+### Summary
+Caio: look & sound is the heaviest and most splittable lane, so it never maps to one session. ROADMAP now defines
+**beats** (sub-areas of a lane, one session each): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`,
+port 8802), sound. Recorded where beats collide (`render()` pass order, shared shader helpers, bloom, `views.js`
+numbering) and the real limit: look work is nearly all GPU, so look sessions on one machine take turns through the
+courtesy lock; two machines double throughput.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.1.0 → 1.2.0, `QUEUE.md` (one flag), `docs/session-roles.md` (beat in the kickoff)
+
+### Next steps
+- [ ] Orchestrator: tag look items by beat, at least 2 ready per beat
+- [ ] Create `launchpad-sky` when a sky & bodies session starts
+
 ## 2026-10-08 — Launchpad: landing on a chosen point (bodies session, cont.; QUEUE Q13)
 
 A `site` (a point in the body's frame, as landed objects are kept) for the transfer and the landing:

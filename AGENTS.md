@@ -67,6 +67,8 @@ should very rarely need to grep to find something.
   that subtree: starting an exploration means adding a row there. Project-specific working
   rules (single-file bias, measure don't guess, record negative results) are in
   [`PROJECT.md`](PROJECT.md) under "Ground Rules".
+- **Named sessions** ("you are the playtest feedback / studio / orchestrator / <lane> session"): find the role
+  in [`docs/session-roles.md`](docs/session-roles.md) and follow its brief after the startup protocol.
 - **A needed grep is a bug report**: if you had to search to locate something, add the missing
   pointer to the owning branch index before finishing the session.
 - **Index on creation**: whenever you create, rename, move, or delete a durable file — update
