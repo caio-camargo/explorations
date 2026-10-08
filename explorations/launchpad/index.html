@@ -3032,7 +3032,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:15,bay:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -3096,7 +3096,15 @@ function partBody(out,p){
     case'bay':{const top=h+d.bayL,th=doorF(p)*1.75;
       lathe(out,[[d.r,0,C.W],[d.r,top,C.W],[d.r,top,C.G],[d.bayIn,top,C.G],[d.bayIn,h,C.D],[0,h,C.D]],o,32,[true,false]);
       for(const sd of[1,-1])bayDoor(out,o,d.r,top,d.roofH,sd,th,C.W)}break;
-    case'core':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.6,.04,C.AU],[.6,.21,C.AU],[.625,.21,C.D],[.625,.25,C.D]],o);box(out,[x+.3,y+.4,z],.012,.15,.012,C.G);break;
+    // probe core: a guidance and avionics ring, foil between bolted rings; four equipment boxes on the band (two with
+    // thermal louvers), a sun sensor, a status lamp, and two whip antennas on the top ring
+    case'core':lathe(out,[[.625,0,C.D],[.625,.04,C.D],[.6,.04,C.AU],[.6,.21,C.AU],[.625,.21,C.D],[.625,.25,C.D]],o);
+      for(let k=0;k<4;k++){const a=.4+k*Math.PI/2,c=Math.cos(a),sn=Math.sin(a),P=r=>[x+c*r,y+.125,z+sn*r];
+        rbox(out,P(.63),.035,.06,.09,k%2?[.62,.63,.6]:C.ST,a);
+        if(k%2)for(let j=-2;j<=2;j++)rbox(out,[x+c*.668,y+.125+j*.022,z+sn*.668],.004,.006,.08,C.D,a)}
+      rbox(out,[x+Math.cos(1.17)*.635,y+.2,z+Math.sin(1.17)*.635],.02,.02,.02,C.BK,1.17);
+      box(out,[x+Math.cos(2.7)*.63,y+.06,z+Math.sin(2.7)*.63],.012,.012,.012,[.9,.25,.15]);
+      for(const a of[.9,4.04]){const c=Math.cos(a),sn=Math.sin(a);tube(out,[x+c*.6,y+.24,z+sn*.6],[x+c*.82,y+.6,z+sn*.82],.006,C.D,4)}break;
     case'claw':lathe(out,[[.35,0,C.D],[.35,.04,C.D],[.35,.04,C.ST],[.35,.15,C.ST],[.35,.15,C.Y],[.35,.22,C.Y],[.3,.25,C.ST],[.24,.27,C.ST],[.24,.3,C.D]],o);
       lathe(out,[[.17,.3,C.BK],[.17,.31,C.BK]],o,24,[false,true]);
       for(let k=0;k<3;k++){const a=k*2.0944,c=Math.cos(a),sn=Math.sin(a),P=(r,yy)=>[x+c*r,y+yy,z+sn*r],t=[-sn,0,c],J=(r,yy)=>tube(out,madd(P(r,yy),t,-.045),madd(P(r,yy),t,.045),.035,C.ST,8,true);
