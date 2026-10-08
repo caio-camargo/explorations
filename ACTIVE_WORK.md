@@ -28,19 +28,29 @@ the main clone `git pull --ff-only`, `git merge --ff-only <branch>`, `git push o
 moved on the other machine: pull and repeat). Not every folder below exists on every machine; `git worktree list` in
 the main clone shows this machine's.
 
-| Session | Folder | Branch | Preview port |
+Lanes since 2026-10-08 ([`ROADMAP.md`](explorations/launchpad/ROADMAP.md) § Lanes; work comes from
+[`QUEUE.md`](explorations/launchpad/QUEUE.md)). A lane can run two sessions at once if their items touch different functions;
+the folders and branches keep their old names.
+
+| Lane | Folder | Branch | Preview port |
 |---|---|---|---|
-| builder | `C:/Users/caioa/dev/launchpad-builder` | `builder` | 8772 |
-| terrain | `C:/Users/caioa/dev/launchpad-terrain` | `terrain` | 8773 |
-| economy | `C:/Users/caioa/dev/launchpad-economy` | `economy` | 8774 |
-| planning (parts & missions) | `C:/Users/caioa/dev/launchpad-planning2` (re-created 2026-10-07: the old registration was pruned; the old folder is a stale copy) | `planning` | 8775 |
-| visuals (part look & textures) | `C:/Users/caioa/dev/launchpad-visuals` | `visuals` | 8776 |
-| ui (screens, navigation, information layout) | `C:/Users/caioa/dev/launchpad-ui` | `ui` | 8795 |
-| control (attitude: gimbal, control surfaces, wheels, SAS) | `C:/Users/caioa/dev/launchpad-control` | `control` | 8796 |
-| tester (the tester menu, PLAYTEST #1) | `C:/Users/caioa/dev/launchpad-tester` | `tester` | 8797 |
-| sound (WebAudio, open thread 7) | `C:/Users/caioa/dev/launchpad-sound` | `sound` | 8798 |
-| playtest (the robot playtester for TESTING.md) | `C:/Users/caioa/dev/launchpad-playtest` | `playtest` | 8799 |
-| platform (test shards, save versions, the file split; ROADMAP § Platform lane) | `C:/Users/caioa/dev/launchpad-platform` | `platform` | 8801 |
+| **flow** (screens, navigation, HUD layout, onboarding) | `C:/Users/caioa/dev/launchpad-ui` | `ui` | 8795 |
+| **economy** (program, contracts, money) | `C:/Users/caioa/dev/launchpad-economy` | `economy` | 8774 |
+| **vehicle** (parts, construction screen, attitude, aero, heating, nodes) | `C:/Users/caioa/dev/launchpad-builder` | `builder` | 8772 |
+| | `C:/Users/caioa/dev/launchpad-control` | `control` | 8796 |
+| **space** (bodies, orbits, registry, procedures, docking, stations, rovers, link) | `C:/Users/caioa/dev/launchpad-sats` | `sats` | — |
+| | `C:/Users/caioa/dev/launchpad-bodies` (machine `pc_de_varginha`) | `bodies` | 8777 |
+| | `C:/Users/caioa/dev/launchpad-planning2` (the old `launchpad-planning` folder is a stale copy) | `planning` | 8775 |
+| **world** (planet, sites, geography, Selene's ground) | `C:/Users/caioa/dev/launchpad-terrain` | `terrain` | 8773 |
+| **look & sound** (part look, pad, FX, sky, sound) | `C:/Users/caioa/dev/launchpad-visuals` | `visuals` | 8776 |
+| | `C:/Users/caioa/dev/launchpad-aerofx` | `aerofx` | — |
+| | `C:/Users/caioa/dev/launchpad-sound` | `sound` | 8798 |
+| **QA** (robot playtester, tester menu, TESTING/PLAYTEST, playtest intake) | `C:/Users/caioa/dev/launchpad-playtest` | `playtest` | 8799 |
+| | `C:/Users/caioa/dev/launchpad-tester` | `tester` | 8797 |
+| **platform** (file split, test speed, saves, perf) | `C:/Users/caioa/dev/launchpad-platform` | `platform` | 8801 |
+| *fixes* (one-off PLAYTEST sweep, 2026-10-08) | `C:/Users/caioa/dev/launchpad-fixes` | `fixes` | 8800 |
+| *orchestrator* (QUEUE.md upkeep, docs only) | `C:/Users/caioa/dev/launchpad-orchestrator` | `orchestrator` | — |
+| *retired:* plumes (now look & sound) | `C:/Users/caioa/dev/launchpad-plumes` | `plumes` | 8791 |
 
 > **For every launchpad session, 2026-10-08 (control session, at Caio's request): `explorations/launchpad/TESTING.md`.** Caio
 > can't playtest for now, so this lists what nobody has played yet: 107 rows by area (try this / how to get there / looks right
