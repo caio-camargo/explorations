@@ -2459,6 +2459,71 @@ the economy decides, this is what the physics side offers:
   5. How results reach the player: a news line, the logbook, a short replay?
   6. Should a first in the world ever be dispatchable, or only repeats?
 
+**Dispatch — the economy's answers, decided with Caio (2026-10-08, economy session).** Dispatch is what routine runs (§
+"Rich programs") are built on: a stored procedure flown on the game's own physics, not a dice roll.
+
+1. **What can be dispatched:** contracts whose target a stored procedure has proven it can reach with that design. Only
+   ever **repeats**: every kind of flight needs a manual run-through first. A player may automate *part* of a run they
+   previously flew by hand (below).
+2. **Same pay as a flight flown by hand,** including any precision bonus, which comes from the real result. The
+   incentive to keep playing (possible, never required) is a more efficient procedure: a better hand-flown flight
+   replaces it.
+3. **Same stacking days, launch fees and studies** as a flown launch. Dispatches queue on the timeline and take pad
+   slots. **No automatic improvement with repetition** (Caio: improvements are player-led). What gets better is the
+   success chance, through part data the player earned.
+4. **Risk shown before dispatch,** from all the part data, not just ignition:
+   - the procedure's margin;
+   - know-how (ignition, stacking);
+   - certification (how well the loads are known);
+   - test-stand and flight data.
+
+   **Good part data narrows the estimate** (a tight range instead of a wide one) **and raises the chance of success.**
+   This deepens what part data is worth.
+5. **Results:** a timeline event, a news line and a logbook entry. **Two modes, as in Bannerlord's battles:**
+   - **auto-resolve:** headless, about a second for an ascent;
+   - **watch:** the same flight rendered, which you can **jump into** while it's in progress.
+
+   The random factors (ignition rolls are already deterministic per flight, kick and part) are **fixed by a seed at
+   dispatch**, so watching and auto-resolving give the same outcome as long as you don't touch anything. No re-rolls.
+   **Taking control breaks the dispatch:** the rest of that mission is manual.
+6. **Firsts in the world are never dispatched.** Only repeats.
+
+**From these, the parts that make it a game:**
+- **Deviation, not bare failure.** When a procedure can't meet its goal (an engine that didn't light, Δv short, the
+  compute era's guidance error), it doesn't just fail. The flight deviates and **calls for you**:
+  - time stops with the flight at that moment (a timeline stop, like a deadline);
+  - you take over, sometimes in a crisis: a stage that didn't light, an orbit decaying.
+
+  With auto-resolve, the headless run stops at the moment of deviation and the game drops you into that same state.
+- **No revert on a dispatched or taken-over flight.** Otherwise you'd re-roll the launch until it went well. More
+  punishing than KSP, deliberately (Caio).
+- **Partial dispatch, both ways:**
+  - dispatch *up to* a point (e.g. to parking orbit), then hand over;
+  - fly the first part yourself and hand a later phase to a procedure, but only a phase that design has flown by hand
+    before.
+
+  Each handover is a timeline event.
+
+**How much change to a part or design needs a new run-through?** (open, Caio unsure) Proposal:
+- **Development that doesn't touch physics never invalidates a procedure.** The v1.34 goals (cheaper, more reliable,
+  more durable) change price, ignition odds and wear, not the trajectory. The stack and its parts are unchanged, so
+  `procKey` already keeps the procedure.
+- **Anything that changes the physics** (a different part, mass, thrust, staging) makes a new design. Rather than a fixed
+  rule, **measure it:**
+  - The trajectory office **dry-runs** the old design's procedure on the new design, headless. That dry run is a
+    trajectory study (v1.38): the era's days and money.
+  - If it reaches the goal with margin, the procedure becomes **provisional** for the new design: dispatchable, with a
+    wider risk estimate.
+  - Flying the new design by hand once makes it the design's own.
+  - A dry run that fails, or a change in staging structure (stage count, engine roles), needs a manual run-through.
+- The §28 checks show this is the right shape: the Orbiter's procedure flies a +2 t variant to orbit, but a much lower
+  thrust-to-weight variant arrives ~70 m/s short. Margin is measurable; a rule would be guesswork.
+
+**Owners:**
+- economy: the dispatch order, pad calendar, risk estimate, pay, the deviation stop on the timeline, no-revert;
+- bodies: headless dispatch runs, deviation detection in `procStep`, phases and partial procedures, the dry run;
+- UI / app: watch mode, jumping in, the handover.
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
