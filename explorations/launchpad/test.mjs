@@ -2460,6 +2460,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   }
 }
 
+// control-5. The wheels won't spin a vessel apart (control session; PLAYTEST #18). With SAS off a held key used to spin the
+// Orbiter's upper stage to 23 rad/s in 9 s and tear the pod off (a bare pod: 66 rad/s in 2 s, chute torn off), because 100
+// kN·m·s of storage is tens of rad/s on a light stage. The wheels now refuse to turn a vessel past WHEEL_W. Own instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,PRESETS,WHEEL_W,len,TELLUS,HOOK,INP,DT,set S(v){S=v},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.debris = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.boom = () => {};
+  const held = stack => { D.t = 0; const s = D.newShip(stack), T = D.TELLUS, r0 = T.R + T.atm + 100e3; D.S = s; msgs.length = 0;
+    Object.assign(s, { landed: false, throttle: 0, sas: false, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    D.INP.pitch = 1; let w = 0; for (let i = 0; i < 3000; i++) { D.physStep(s, D.DT); w = Math.max(w, D.len(s.w)); } D.INP.pitch = 0;
+    return { w, broke: msgs.some(m => /Structural/.test(m)), wheels: D.len(s.wH || [0, 0, 0]) / s.hmax, sat: s.hmax / s.I[0] }; };
+  const up = held(['chute', 'pod', 't2', 'petrel']), pod = held(['chute', 'pod']), orb = held(D.PRESETS.Orbiter);
+  check('wheels: a key held for 60 s with SAS off turns a light stage or a bare pod no faster than the wheels\u2019 limit, and nothing breaks; the Orbiter still runs out of storage first',
+    up.w <= D.WHEEL_W[0] + 1e-6 && pod.w <= D.WHEEL_W[0] + 1e-6 && !up.broke && !pod.broke && orb.wheels > 0.99 && Math.abs(orb.w / orb.sat - 1) < 0.02,
+    `upper stage ${up.w.toFixed(2)} rad/s, pod ${pod.w.toFixed(2)} rad/s (limit ${D.WHEEL_W[0]}); Orbiter ${orb.w.toFixed(3)} rad/s at ${(orb.wheels * 100).toFixed(0)} % full (storage ÷ inertia ${orb.sat.toFixed(3)})`);
+}
+
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;

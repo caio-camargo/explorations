@@ -1335,6 +1335,24 @@ term fails the first two; dropping the roll guard fails the second.
 - **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
 - **builder:** `spin` is in *Control* by kind.
 
+### v1.51.1 — the wheels won't spin a vessel apart (PLAYTEST #18, #23)
+
+The robot playtester held a pitch key with SAS off: the Orbiter's upper stage reached 23 rad/s in 9 s and tore the pod off
+its tank, with the wheels only 89 % full. A bare pod: 66 rad/s in 2 s, chute torn off; without the fix it goes on to
+500 rad/s. 100 kN·m·s of storage (v1.43) is tens of rad/s on a light stage, so storage never ran out before the structure.
+
+- **The wheels' controller won't drive the vessel past `WHEEL_W`** = 1 rad/s in pitch and yaw, 3 rad/s in roll (body
+  axes; `wheelGive`). Torque that would turn it faster that way is cut to what reaches the limit exactly (at a pod's
+  55 rad/s² a plain cut-off overshot to 1.3 rad/s); slowing down is never refused. In effect the storage is sized to the
+  vessel (≤ I·WHEEL_W from rest), which is the playtest's first suggestion, without per-vessel magic. SAS never asks for
+  more than 0.6 rad/s, so nothing it flies changes; big stacks still run out of storage first (Orbiter 0.512 rad/s, full).
+- Gimbal, fins and RCS are not limited: they spin a stage only while burning, in air, or on gas.
+- **Builder wording (#23):** the negative-stability note shows only when a margin is negative, and now names steerable
+  fins too; "Roll nothing" drops the kN·m.
+- Tests: section `control-5` (1 check, mutation-tested: without the limit, 60 and 503 rad/s).
+- The wheels' momentum is still left out of the gyroscopic term: the limit bounds what the keys put in, not what SAS
+  stores against a steady aero torque (a capsule under its chute), which is where it did harm.
+
 **Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
 deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 

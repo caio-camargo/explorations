@@ -795,8 +795,12 @@ function integrateRot(s,al,dt){const I=s.I,a=qrot(qconj(s.q),al);let w=qrot(qcon
 // ---- reaction wheels (control session). They store what they give: the vessel gets torque τ, the wheels' momentum H
 // (body frame, N·m·s) changes by −τ·dt. Past hmax they can't push that way any more; they unload whenever something else
 // (a burning gimbal, steerable fins in the air, RCS) can hold the vessel while they spin down (physStep).
-let WHEEL_S=10,WHEEL_DUMP=4;   // storage in seconds of full torque for parts without hmax; unloading time constant (s)
+// The wheels' controller also won't drive the vessel past WHEEL_W (rad/s about pitch, roll, yaw): beyond it, a torque that
+// would turn it faster that way is refused, as if the wheels were full. A light stage would otherwise reach tens of rad/s on
+// a held key and tear itself apart before 100 kN·m·s filled up (PLAYTEST #18); big stacks still run out of storage first.
+let WHEEL_S=10,WHEEL_DUMP=4,WHEEL_W=[1,3,1];   // storage in seconds of full torque for parts without hmax; unloading time constant (s)
 function wheelGive(s,tau,dt){if(!(s.torque>0))return[0,0,0];const H=s.wH||[0,0,0],tl=len(tau);let t=tl>s.torque?mul(tau,s.torque/tl):tau;
+  const wb=qrot(qconj(s.q),s.w);t=t.map((x,i)=>x*wb[i]>0?Math.sign(x)*Math.min(Math.abs(x),Math.max(0,WHEEL_W[i]-Math.abs(wb[i]))*s.I[i]/dt):x);   // up to the limit, not past it
   let Hn=madd(H,t,-dt);const hn=len(Hn);if(hn>s.hmax){Hn=mul(Hn,s.hmax/hn);t=mul(sub(H,Hn),1/dt)}   // only what stays within storage
   s.wH=Hn;return t}
 // attitude only (used while on rails): the wheels give what they can
@@ -5316,7 +5320,7 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
   return`<h2>Control</h2><div>SAS <b>${A.name}</b> <span class="dim">${A.modes?A.modes.length===1?'attitude hold only':'hold and the velocity-vector modes':'every mode'}${nx?` · ${nx.name.toLowerCase()} with ${COMP_ERAS[nx.era].name.toLowerCase()}`:''}</span></div>
     <div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
     ${row('burning',c.burn)}${row('coasting',c.coast)}
-    <div>Roll <span class="dim">${src(c.roll,c.rcs)} kN·m</span></div>
+    <div>Roll <span class="dim">${src(c.roll,c.rcs)}${src(c.roll,c.rcs)==='nothing'?'':' kN·m'}</span></div>
     <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>
     ${c.spin&&c.spin.length?`<div>Spin motors <b>${c.spin.map(r=>r.toFixed(0)).join(', ')} rpm</b> <span class="dim">when their stage lights${c.spin.some(r=>r<60)?' · under 60 rpm the axis wanders':''}</span></div>`:''}`}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
@@ -5343,8 +5347,8 @@ function editorChanged(){
     <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
 </div>
     ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
-    <div class="sub">Negative stability: it flips unless the engines steer it (SAS can hold it while the engine burns, not while coasting).
-    Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
+    <div class="sub">${Math.min(cal(a.ful),cal(a.emp),cal(a.sup))<0?`Negative stability: it flips unless something steers it: the engines
+    while they burn, steerable fins while there's air (the Control block says which hold). `:''}Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
   renderProgram();
   $('stats').innerHTML=html}
