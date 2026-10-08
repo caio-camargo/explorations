@@ -1247,10 +1247,20 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('dry runs: a heavier variant borrows the Orbiter\'s procedure provisionally (measured on itself); one that can\'t make orbit, or stages differently, does not',
     ad.ok && P.procs[hk] && P.procs[hk].prov && P.procs[hk].from === 'Orbiter' && ad.margin > 0 && !weak.ok && !one.ok && one.tried.every(t => t.why === 'different staging'),
     `heavy: ${ad.ok ? `${ad.proc.dv.toFixed(0)} m/s to orbit, ${ad.margin.toFixed(0)} m/s to spare` : ad.why} · ballast: ${weak.why} (${(weak.tried || []).map(t => t.why).join('; ')}) · single stage: ${one.why}`);
-  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb kills it (two tonnes more, lower thrust-to-weight: it overheats low down)',
-    !hot.ok && hot.tried.some(t => /burned/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
+  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb fails it (two tonnes more, lower thrust-to-weight: it falls back before cut-off)',
+    !hot.ok && hot.tried.some(t => /falling back/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
   const provDv = P.procs[hk] ? P.procs[hk].dv : NaN; handAscent(api, heavy);
   check('dry runs: the design\'s own first flight replaces the borrowed procedure (records only improve, but a borrowed one always gives way)', P.procs[hk] && !P.procs[hk].prov, `borrowed ${provDv.toFixed(0)} m/s → own ${P.procs[hk] ? P.procs[hk].dv.toFixed(0) : '?'} m/s`);
+  // the corridor (Q12): a climb that has already failed is handed over early, alive. Injected faults: an 8 s tumble at
+  // 40 km (a stuck gimbal, say), and a recording that claims a much faster climb than this one can fly
+  const flyWith = (pr, fault) => { api.t = 0; const s = api.newShip(st); api.S = s; s.noRec = true; api.procStart(s, pr); let k = 0;
+    while (s.alive && s.proc && !s.proc.done && k++ < 200000) { if (fault) fault(s); api.advPhys(s); } return s; };
+  let tSpin = null; const spun = flyWith(proc, s => { const h = len(s.r) - TELLUS.R; if (h > 40e3 && tSpin == null) tSpin = api.t; if (tSpin != null && api.t < tSpin + 8) s.w = [0.8, 0, 0]; });
+  let tB = null; const brief = flyWith(proc, s => { const h = len(s.r) - TELLUS.R; if (h > 40e3 && tB == null) tB = api.t; if (tB != null && api.t < tB + 2) s.w = [0.8, 0, 0]; });
+  const fast = flyWith({ ...proc, vel: proc.vel.map(([h, v]) => [h, v * 1.6]) });
+  check('corridor: the climb is handed over early and alive when control is lost (the nose 20° off for 5 s; a 2 s tumble the SAS recovers from is not enough) or it falls far behind its recorded speed',
+    spun.procDev && spun.procDev.kind === 'control' && spun.alive && !brief.procDev && brief.proc && brief.proc.done && fast.procDev && fast.procDev.kind === 'slow' && fast.alive && proc.vel.length > 10,
+    `spun: ${spun.procDev ? spun.procDev.why : 'no deviation'} (${((len(spun.r) - TELLUS.R) / 1e3).toFixed(0)} km) · 2 s tumble: ${brief.procDev ? brief.procDev.why : brief.proc && brief.proc.done ? 'recovered, in orbit' : 'not done'} · fast recording: ${fast.procDev ? fast.procDev.why : 'no deviation'}`);
   // a dispatched contract, flown: the orbit is the procedure's, not a roll; the same seed gives the same flight
   const sst = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];   // a satellite (the economy's §38 design): its own ascent, flown by hand once
   P.procs = {}; handAscent(api, sst); const sproc = P.procs[api.procKey(sst)];

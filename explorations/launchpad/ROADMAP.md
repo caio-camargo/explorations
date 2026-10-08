@@ -64,7 +64,7 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | Lane | Items |
 |---|---|
 | flow | UI slice 3 **debrief** (Q2) · slice 4 **flight core and cards** (Q3, closes PLAYTEST #9) · slice 5 **rollout** (Q4) · **what to do next**: the Program screen always shows one suggested contract and why · **first-run**: the career choices explained in a sentence each · **Esc pauses** in flight (W5) · a **settings** overlay (volume, graphics quality, tester off) · 📝 then build **one visual identity** for the screens (PLAYTEST #13; the hardware's early-era look) with the look lane |
-| economy | Epoch 1–2 **pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) · `siteAccess` (Q6) · the ballistic target from the flight's site (Q7) · selimp/nyxfind pay (Q8, on W1's default) · every offer says **why it appeared** in one line |
+| economy | Epoch 1–2 **pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) · `siteAccess` (Q6) · the ballistic target from the flight's site (Q7) · Selene/Nyx pay floor (Q8 ✓ v1.53; W1 overridden by Caio) · every offer says **why it appeared** in one line |
 | vehicle | **The construction screen usable by a newcomer** (first: it blocks Caio's own playtesting; walk building an Orbiter from scratch, fix what's unclear, Caio's review) · Q14 / PLAYTEST #18 · builder wording (#23) · escape-tower category (Q32) · landing legs (Q31) · the builder **warns before launch** (won't reach the contract's orbit, TWR < 1, no chute on a crewed return) |
 | space | No M1 items: works on M2 groundwork (below) |
 | world | Q17 · merge the atlas · grazing-view cost (Q19): M1 needs a steady frame rate on the default site |
@@ -171,7 +171,7 @@ In order:
 
 | # | Question | Default (work proceeds on this) | Why |
 |---|---|---|---|
-| W1 | nyxfind free on a Selene flight? | **Keep it free**, but raise selimp and nyxfind pay above the cheapest proven Probe | Your own missions revealing things is the design's lens; it's a one-time first, so nothing to farm. The pay gap is the real bug. |
+| W1 | nyxfind free on a Selene flight? | **Overridden by Caio 2026-10-08: not free** (only a flight launched while it is open tracks Nyx; NOTES v1.53). Was: keep it free, but raise selimp and nyxfind pay above the cheapest proven Probe | Your own missions revealing things is the design's lens; it's a one-time first, so nothing to farm. The pay gap is the real bug. |
 | W2 | Satellite lifetimes and station-keeping? | **Yes, as a fuel lifetime.** Station-keeping spends onboard propellant; at zero the satellite drifts off its slot and its service **pauses** (never dies). Reboost and servicing contracts restore it. | The tidal drift (10,750 km a month) is real physics already in the sim, and "pauses, never decays" is the rule already agreed for projects. |
 | W3 | Flights from orbit: fee and contracts? | **Pay a reduced operations fee; may complete orbit contracts accepted before that flight started** | Rewards infrastructure without letting old satellites complete new contracts retroactively. |
 | W4 | Selene firsts in the race? | **Yes**, with rival schedules for Selene firsts starting no earlier than epoch 4; re-run the v1.28 balance | The race is what gives Selene its urgency. |

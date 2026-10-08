@@ -3106,6 +3106,16 @@ watched game shows "Procedure stopped: … You have control". The kinds:
 - `nohome`: no burn home within what's aboard. This used to end the procedure silently.
 - `lost`: the procedure's time limit ran out.
 
+**The corridor (Q12)** (`procCorridor`, during the ascent). These rules catch a climb that has already failed, while the
+craft is still alive and somewhere a pilot can act. They're kept loose on purpose: a heavier variant flies lower and
+slower and is still fine, so there's no tight band around the recorded profile. The recorder now keeps speed against
+height (`proc.vel`).
+- `control`: the nose more than 20° off the commanded climb for 5 s. A 2 s tumble the SAS recovers from doesn't count;
+  an 8 s one does.
+- `falling`: coming down under power below the cut-off. The +2 t Orbiter variant used to burn up three minutes later;
+  it is now handed over alive at 58 km.
+- `slow`: above 10 km, under 70 % of the recorded speed at that height.
+
 **`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
 flight, but in isolation:
 - Whatever is in progress is set aside and put back afterwards: S, the clock, the fleet, debris, the moons' clock

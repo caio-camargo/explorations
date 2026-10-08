@@ -3429,3 +3429,48 @@ presets-only playtest route for him.
 - [ ] Caio: edit the pillars
 - [ ] Orchestrator: rank the builder-usability and presets-route items at the top of vehicle and QA
 
+## 2026-10-08 — Launchpad: the climb's corridor (bodies session, cont.; QUEUE Q12)
+
+Deviations now catch a climb that has already failed, before the propellant runs out, so the craft is handed over
+alive:
+- `control`: the nose 20° off for 5 s;
+- `falling`: descending under power before cut-off;
+- `slow`: under 70 % of the recorded speed at the same height. The recorder now keeps speed against height.
+
+The rules are loose, so working variants still fly. The +2 t Orbiter variant is now handed over at 58 km instead of
+burning up. A 2 s tumble that the SAS recovers from passes; an 8 s one deviates. 377 checks pass.
+
+**Files:** `index.html` (procCorridor, `vel` in procedures), `test.mjs` (bodies-2), NOTES, QUEUE (Q12 ✓).
+
+### Next steps
+- [ ] Q13: landing on a chosen crater
+
+## 2026-10-09 — Launchpad: bloom, fin-tip vapor, spent stages, PLAYTEST #3/#4, design pass on station/arm/rover; repo moved (aerofx session, close)
+
+### Summary
+Since the 2026-10-08 entry, each merged and pushed on Caio's OK:
+- **PLAYTEST #3** (new rocket looked worn: the LOX frost; now a translucent rime) and **#4** (floodlights as aimed spotlights
+  with falloff; procedural concrete/paint/steel detail on the complex). Visuals' code, with a note in its claim.
+- **The repo left Google Drive** (runbook `docs/leaving-drive.md`): this machine's copy step run here; worktrees
+  `launchpad-aerofx`/`launchpad-plumes` re-pointed to `C:/Users/caioa/dev/explorations`. Work now syncs through GitHub.
+- **Bloom** (offscreen MSAA target, a blur chain, glow added where the frame is dark). Two fixes later: the composite
+  sampled blur levels at the wrong texel size (ghost streaks), and a 3×3 tent downsample.
+- **Fin-tip vapor** (loaded fin tips in hard turns, humid low air) and **spent stages re-entering** (plasma via a shared
+  `drawPlasma`, char, sparks, smoke trail; render-side).
+- **Design pass** on hab/lab (KIND 16 shield panels, handrails, portholes, radiators, window), the arm (turret, joints,
+  end effector) and the rover (frame, floor, fenders, chevrons), at Caio's request.
+
+**Process notes:** several sessions share the main clone on this machine; one merge found another session's unpushed
+work in the local `main` (merged both, SESSION_LOG conflict kept both sides). A claim was once pushed as "merged" a few
+minutes before the merge landed: push the claim after the work. The first-run gate (ui) now covers the page on load;
+screenshot scripts click `[data-start]` first; the older editor reference views don't yet.
+
+### Files
+- `explorations/launchpad/index.html`, `views.js` (views 101–104), `NOTES.md` (§ PLAYTEST #3/#4, Bloom, Fin-tip vapor,
+  Spent stages, Design pass)
+- `explorations/launchpad/PLAYTEST.md` (#3, #4 to Done)
+
+### Next steps
+- [ ] Older reference views (editor ones) should pass the first-run gate
+- [ ] Bloom: a true HDR pipeline would separate sunlit paint from the sun
+- [ ] Stage breakup in the sim (render-only so far); the arm's folded pose overhangs short modules (sats' design)
