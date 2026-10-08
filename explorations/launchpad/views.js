@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -186,6 +186,20 @@ window.refView = async (n) => {
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {};
     await settle(); bare(); const u = norm(toPF(TELLUS, S.r, simT));
     return 'clouds h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km, cover here ' + cloudAt(u, tNow() + CLOUD_DT).toFixed(2) + ' (CLOUD_DT ' + CLOUD_DT + ')';
+  }
+  // 84–86: the escape tower firing. The Crewed Lunar preset, aborted on the pad (84, 85) or at alt m in the climb (86); age s
+  // after the abort, rendered every step, then frozen: [alt, age, yaw, pitch, dist]
+  const abt = { 84: [0, 0.4, 0.9, 0.05, 45], 85: [0, 1.5, 0.9, 0.0, 70], 86: [4000, 1.0, 1.75, 0.05, 45] };
+  if (abt[n]) {
+    const [alt, age, yaw, pitch, dist] = abt[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS['Crewed Lunar'])); editorChanged(); document.getElementById('launch').click();
+    if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 400) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0;
+      for (const e of activeEngines(S)) { const sp = SPOOL.get(e); if (sp) { sp.ig = -1e9; sp.k = S.throttle } } }
+    else { const tw = simT; while (simT - tw < 15) advPhys(S) }   // the gantry clear
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render();
+    const ok = abort(S); const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); emitSmoke(DT); render() }
+    window.simulate = () => {}; await settle(); bare();
+    return 'abort ' + ok + ' at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(2) + ' km +' + (simT - t0).toFixed(2) + ' s lesT ' + (S.lesT || 0).toFixed(2);
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

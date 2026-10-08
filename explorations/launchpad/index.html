@@ -3509,8 +3509,10 @@ const PROPS={
   kerolox:{ig:[.25,1,.35],igT:.3,rich:.7,tail:.8,co:[1,.72,.4],di:[1,.88,.65],ma:[1,.42,.1],va:[1,.42,.12],so:[.75,.9,1.05],K:[5,2.5,1.3,.5],op:1.2},
   alcohol:{ig:[1,.75,.35],igT:.15,rich:.4,tail:.4,co:[1,.86,.72],di:[1,.85,.6],ma:[1,.6,.3],va:[.9,.65,.55],so:[.8,.9,1],K:[2.6,2.6,1.6,.04],op:.8},
   hypergolic:{ig:[1,.55,.5],igT:.05,rich:.15,tail:.15,co:[1,.62,.45],di:[1,.72,.52],ma:[1,.48,.36],va:[1,.5,.4],so:[1,1,1],K:[2.4,1.8,.5,0],op:.25},
+  // solid: aluminised composite, blinding white-yellow, nearly opaque, few diamonds; its smoke is white (alumina)
+  solid:{ig:[1,.95,.8],igT:.06,rich:.12,tail:.35,co:[1,.92,.78],di:[1,.9,.75],ma:[1,.62,.3],va:[1,.82,.6],so:[1,1,1],K:[7,.4,1.6,0],op:1.6},
   hydrolox:{ig:[.6,.6,1],igT:.05,rich:.1,tail:.1,co:[.55,.65,1],di:[1,.62,.75],ma:[.6,.5,.95],va:[.45,.55,1],so:[1,1,1],K:[1.2,2.6,.15,0],op:.03}};
-const PFX={sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
+const PFX={les:{prop:'solid',pe:.9},sparrow:{prop:'alcohol',pe:.9},wren:{prop:'hypergolic',pe:.12},petrel:{prop:'kerolox',pe:.025},
   kestrel:{prop:'kerolox',pe:.75},condor:{prop:'kerolox',pe:.8},albatross:{prop:'kerolox',pe:.7}};
 // an engine without an entry: kerolox, with a vacuum nozzle if its sea-level Isp is under half its vacuum one
 const pfxOf=d=>PFX[d.key]||PFX[d.base]||{prop:'kerolox',pe:d.ispA<0.5*d.ispV?.025:.75};
@@ -3584,11 +3586,27 @@ const SPOOL=new WeakMap();
 // on = the engine is still burning (in activeEngines); an engine that stops (cutoff, flameout) keeps a decaying plume, and
 // the moment its target drops to zero stamps sp.off, the cutoff clock for the tail-off (ignOf) and a smoke puff
 function spoolOf(e,on=true){let sp=SPOOL.get(e);if(!sp)SPOOL.set(e,sp={k:0,t:simT,ig:-1e9,off:-1e9,tg:0});const dt=clamp(simT-sp.t,0,5);sp.t=simT;
-  const tg=on?S.throttle:0;if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
+  const tg=on?(e.les?1:S.throttle):0;if(sp.k<.02&&tg>0)sp.ig=simT;if(sp.tg>0&&tg<=0&&sp.k>.2){sp.off=simT;cutoffPuff(e)}sp.tg=tg;
   const a=simT-sp.ig;sp.k+=(tg-sp.k)*(1-Math.exp(-dt/(tg<sp.k?.22:a<.6?.3:.12)));return sp}
 // the engines whose plume shows: the burning ones, and stopped ones still tailing off: [[engine, burning]]
 function plumeEngines(){const A=S.alive?activeEngines(S):[],out=A.map(e=>[e,true]);
-  for(const p of S.parts)if(p.on&&p.d.kind==='engine'&&!A.includes(p)){const sp=SPOOL.get(p);if(sp&&sp.k>.005)out.push([p,false])}return out}
+  for(const p of S.parts)if(p.on&&p.d.kind==='engine'&&!A.includes(p)){const sp=SPOOL.get(p);if(sp&&sp.k>.005)out.push([p,false])}
+  for(const p of S.parts)if(p.on&&p.d.kind==='les')for(const z of lesNozzles(p)){const sp=SPOOL.get(z),on=S.lesT>0;if(on||sp&&sp.k>.005)out.push([z,on])}
+  return out}
+// the escape tower's motor: four nozzles round the bottom of its motor housing (1.33 m up the tower, r 0.26 m), canted 35°
+// outward so the jets clear the capsule. Plume-only stand-ins shaped like engines (the part mesh has no nozzles).
+const LESN=new WeakMap();
+function lesNozzles(p){let z=LESN.get(p);if(z)return z;const a=35/57.2958,d={key:'les',kind:'engine',exit:.1,ispA:250,ispV:270};
+  z=[0,1,2,3].map(k=>{const t=k*Math.PI/2+Math.PI/4,c=Math.cos(t),s=Math.sin(t);
+    return{les:true,i:900+k,d,pos:[p.pos[0]+.26*c,0,p.pos[2]+.26*s],y0:p.y0+1.33,tdir:norm([-Math.sin(a)*c,Math.cos(a),-Math.sin(a)*s])}});
+  LESN.set(p,z);return z}
+// the escape motor's smoke: dense white puffs laid along each jet while it burns (air only)
+let lesAcc=0;
+function emitLesSmoke(dt){const les=S.parts.find(p=>p.on&&p.d.kind==='les');if(!les||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<.02)return;
+  const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=.7+sp*.012,gap=Math.max(.004,.3*s0/Math.max(sp,1));   // spaced by distance, like the main trail
+  lesAcc+=dt;while(lesAcc>gap){lesAcc-=gap;for(const z of lesNozzles(les)){if(smoke.length>2500)smoke.shift();const R=Math.random,dir=qrot(S.q,mul(z.tdir,-1)),
+      at=add(S.r,qrot(S.q,[z.pos[0]-S.cm[0],z.y0-S.cm[1],z.pos[2]-S.cm[2]])),pw=madd(at,dir,1.5+3*R());
+    smoke.push({pf:toPF(TELLUS,pw,simT),t0:simT,s0:s0*(.8+.4*R()),grow:3+2*R(),a0:.7*clamp(rho*1.1,.3,1),life:40+30*R(),rise:.3*R(),seed:R()*97})}}}
 // cutoff: a puff of unburnt propellant at the nozzle (kerolox: a dark sooty one), carried with the ship
 function cutoffPuff(e){if(S.body!==TELLUS)return;const P=PROPS[pfxOf(e.d).prop]||PROPS.kerolox,n=Math.round(4+8*(P.tail||.3)),
     at=add(S.r,qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1]-e.d.exit,e.pos[2]-S.cm[2]])),dn=qrot(S.q,[0,-1,0]),pa=pressure(TELLUS,len(S.r)-TELLUS.R);
@@ -3779,7 +3797,7 @@ function emitGroundSmoke(dt){const t=curSite(),F=siteFrame(t.u),pp=padPF(),spf=t
       else{const up=norm(nz),X=norm(cross(up,Math.abs(up[1])<.9?[0,1,0]:[1,0,0])),Z=cross(X,up),a=R()*6.283,rr=e.d.exit*(5+6*R())+(onPad?3:0);
         pf=add(mul(up,len(nz)-hn+1+R()*1.5),add(mul(X,Math.cos(a)*rr),mul(Z,Math.sin(a)*rr)));s0*=.7}
       smoke.push({pf,t0:simT,s0,grow:6+4*R(),a0:.5,life:40+30*R(),rise:1+1.5*R(),seed:R()*97})}}}
-function emitSmoke(dt){if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
+function emitSmoke(dt){if(mode==='flight'&&S.alive&&S.lesT>0)emitLesSmoke(dt);if(mode!=='flight'||!S.alive||S.thrust<=0||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,rho=density(TELLUS,h);if(rho<0.02)return;
   emitGroundSmoke(dt);
   // spaced by distance, not time: puffs born bigger the faster we go and laid ~70 % of a width apart, so the column stays solid
   const sp=len(sub(S.v,surfVel(TELLUS,S.r))),s0=2.5+sp*.035,gap=Math.max(.008,.35*s0/Math.max(sp,1));smokeAcc+=dt;
