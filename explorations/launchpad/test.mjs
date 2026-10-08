@@ -2515,6 +2515,43 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.rvOut = [];
 }
 
+// 40. The Selene relay (sats session): orbits about a moon in the registry, in its frame; relays for far-side rovers;
+// Tellus's tide between flights. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,satsUp,moonSats,advanceDays,vesselOf,satAt,elements,rvNew,rvContact,rvRelays,bodyPos,SELENE,TELLUS,PROG,HOOK,DAY_S};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {};
+  const B = D.SELENE, P = D.PROG; P.sats = []; P.day = 0;
+  // a Probe (camera, instruments, antenna), or one with only the antenna, at periapsis of an orbit about Selene
+  const put = (alt, inc, e = 0, bare = false) => { const s = D.newShip(D.PRESETS.Probe), rp = B.R + alt, v0 = Math.sqrt(B.mu * (1 + e) / rp), c = Math.cos(inc * Math.PI / 180), si = Math.sin(inc * Math.PI / 180);
+    if (bare) for (const p of s.parts) if (p.d.kind === 'cam' || p.d.kind === 'sci') p.on = false;
+    Object.assign(s, { alive: true, landed: false, body: B, r: [rp, 0, 0], v: [0, v0 * si, -v0 * c] }); return s; };
+  const reg = (...a) => { const n = P.sats.length; D.satRegister(put(...a), { day0: 0 }); return P.sats.length > n ? P.sats.at(-1) : null; };
+  const q1 = reg(1000e3, 0, 0, true), low = reg(3e3, 0), wide = reg(1000e3, 0, 0.9);
+  const v = q1 && D.vesselOf(q1, 5000), dv = v && len(sub(v.r, D.satAt(q1, 5000)[0]));
+  check('a vessel left in Selene orbit is registered in Selene\'s frame (a Relay, if an antenna is all it has); one that skims the ground or leaves the SOI is not',
+    q1 && q1.bodyName === 'Selene' && /^Relay/.test(q1.name) && !D.satsUp().includes(q1) && D.moonSats(B).includes(q1) && !low && !wide && v.body === B && dv < 1e-6,
+    `${q1 ? q1.name : '—'}; Tellus list ${D.satsUp().length}, Selene list ${D.moonSats(B).length}; 3 km periapsis ${low ? 'kept' : 'refused'}, apoapsis past the SOI ${wide ? 'kept' : 'refused'}; flown again around ${v ? v.body.name : '—'}`);
+  // a far-side rover (high-gain antenna, Tellus never up) hears home only through a relay over its horizon that sees Tellus
+  const rov = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots: ['cam', 'bat', 'ant', 'sol', null] }, B, [B.R, 0, 0], [0, 1, 0], {});
+  const frac = (alt, rel) => { const per = 2 * Math.PI * Math.sqrt((B.R + alt) ** 3 / B.mu); let n = 0, N = 0, via = null, dl = 0, tOk = null;
+    for (let t = 0; t < 3 * per; t += per / 300) { const c = D.rvContact(rov, t, rel()); N++; if (c.ok) { n++; via = c.via; dl = Math.max(dl, c.delay); tOk = tOk ?? t; } } return { f: n / N, via, dl, tOk }; };
+  const alone = frac(1000e3, () => []), hi = frac(1000e3, () => D.rvRelays([])), lt = 2 * len(sub(D.bodyPos(B, 0), D.bodyPos(D.TELLUS, 0))) / 299792458;
+  // a vessel of this flight in orbit relays too: put one where the registered relay was in contact, with the register empty
+  const sh = put(1000e3, 0); sh.r = D.satAt(q1, hi.tOk)[0]; P.sats = []; const fl = D.rvContact(rov, hi.tOk, D.rvRelays([sh]));
+  reg(100e3, 0, 0, true); const lo = frac(100e3, () => D.rvRelays([]));
+  check('the far side hears home through a relay in Selene orbit: about a third of the time from 1,000 km, never from 100 km (Selene is in the way), the extra leg up to the relay on its round trip; a vessel of the flight relays too',
+    alone.f === 0 && hi.f > 0.25 && hi.f < 0.45 && /^Relay/.test(hi.via) && hi.dl > lt + 2 * 1000e3 / 299792458 && lo.f === 0 && fl.ok && fl.via === 'the orbiter',
+    `alone ${(alone.f * 100).toFixed(0)}%; relay at 1,000 km ${(hi.f * 100).toFixed(1)}% via ${hi.via}, up to ${(hi.dl * 1000).toFixed(0)} ms (direct ${(lt * 1000).toFixed(0)}); at 100 km ${(lo.f * 100).toFixed(0)}%; the flight's orbiter ${fl.ok ? 'relays' : 'does not'}`);
+  // between flights Tellus's tide works on them: equatorial orbits keep their shape; high polar ones are pumped into the
+  // ground (2,000 km, ~day 41) or out of the SOI (3,000 km, ~day 21; Tellus days of 8 h), matching a 5 s RK4 to within a step (NOTES)
+  P.sats = []; news.length = 0; const qe = reg(1000e3, 0, 0, true), qg = reg(2000e3, 90, 0, true), qs = reg(3000e3, 90, 0, true);
+  D.advanceDays(45); const el = D.elements(qe.r, qe.v, B.mu);
+  check('between flights Tellus\'s tide works on Selene orbits: an equatorial relay keeps its shape; a high polar one is pulled into the ground, a higher one out of the SOI (into Tellus\'s registry)',
+    P.sats.includes(qe) && el.pe > B.R + 950e3 && el.ap < B.R + 1050e3 && !P.sats.includes(qg) && D.satsUp().includes(qs) && !qs.bodyName && news.some(m => /came down on Selene/.test(m)) && news.some(m => /slipped out/.test(m)),
+    `45 days: equatorial ${((el.pe - B.R) / 1e3).toFixed(0)}–${((el.ap - B.R) / 1e3).toFixed(0)} km; 2,000 km polar ${P.sats.includes(qg) ? 'still up' : 'came down'}; 3,000 km polar ${qs.bodyName ? 'still around Selene' : 'now orbits Tellus'}`);
+  P.sats = [];
+}
+
 // 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
 // only certifies what reaches the ground (linked) or comes home on the recorder.
 {

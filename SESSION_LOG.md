@@ -3183,6 +3183,44 @@ in the Drive folder and lost in the move; re-added here.
 - [ ] Caio: TESTING row 114 (does it sound good? levels are first guesses; the knobs are the gains in `sndTick`)
 - [ ] Sound next: per-engine voices, spatial audio for other vessels, a volume slider
 
+
+## 2026-10-08 — Launchpad: the Selene relay (sats session, `pc_de_varginha`)
+
+### Summary
+- Resumed from R3's next step. The registry now keeps orbits about a moon, in that moon's frame (`q.bodyName`). `satsUp()`
+  stays Tellus-only (none of its ~30 callers changed); moon orbiters come from `moonSats()`. They are flyable again
+  around their moon, eat supplies if crewed, and show in the flight view, on the map and in Program > Fleet.
+- **Measured first:** plain Kepler would keep any orbit forever, but Tellus's tide pumps high, inclined orbits
+  (Lidov–Kozai). 2,000 km polar meets the ground on day 41; 3,000 km polar leaves the SOI on day 21. So between flights
+  `moonOrbStep` steps them with the tide (RK4). It agrees with a 5 s reference to within one step; 5 orbiters × 30 days
+  cost 56 ms.
+- **A mistake caught by measuring:** the first ground test used the osculating periapsis, which said "crashed" 4 days
+  early on a pass that cleared. It now checks the actual path within the step.
+- Far-side rovers hear home through an orbiting relay. The relay must be over the rover's horizon, Tellus must not be
+  behind Selene, and the round trip includes the extra leg. One equatorial relay at 1,000 km gives ~35 % of the time;
+  at 100 km, never.
+- Housekeeping: this machine had no `launchpad-sats` worktree registered, but `C:/Users/caioa/dev/launchpad-sats` is a
+  full clone on `sats` (origin = the main clone), so I worked there. The main clone has no git identity set; I committed
+  with the one every recent commit uses (`-c user.name/email`), with no config change.
+
+### Files
+- `explorations/launchpad/index.html`: `satRegister` (moon orbits, *Relay N*), `satAt`/`orbBody`/`moonSats`/`moonOrbStep`/
+  `moonOrbTick`/`MOON_PE`, `advanceDays`, `stationTick`, `vesselOf`, `rvContact`/`rvRelays`, `moonSatsHTML`, and the
+  flight markers, meshes, map orbits and labels
+- `explorations/launchpad/test.mjs` §40 (3 checks); `NOTES.md` § "The Selene relay built"; `TESTING.md` row 115;
+  `explorations/README.md` launchpad row; `ACTIVE_WORK.md` (claim cleared, heads-up)
+
+### Verification
+`test.mjs`: 363 passed on the merged branch. Each of 10 deliberate breaks fails a §40 check. Browser (headless Chrome,
+real GPU): the moon section in Fleet; the far-side rover gets *Drive from home · 268 ms via Lookout 1* in its windows;
+flying one orbiter draws the other's marker 2.7 km away; no console errors.
+
+### Next steps
+- [ ] Rendezvous/docking with moon orbiters (`tgtOf`, `contactStep`, `nearbyFlyable`, target cycling)
+- [ ] Economy: a far-side relay (network) contract; relay range/power limits
+- [ ] R4 science; R5 drive plans; the clock while driving from home (rovers plan)
+- [ ] Caio: TESTING row 115
+
 ## 2026-10-08 — Launchpad economy session: paused for a resume in the new folder
 
 ### Summary
