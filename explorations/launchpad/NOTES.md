@@ -1163,6 +1163,28 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.44 — staged pay for long missions (2026-10-08, economy session)
+
+Long missions pay along the way (design: "Time, long missions and communication").
+
+- **Missions to another body** carry a destination (`M.to`: the Selene missions, and Nyx flyby, orbit and landing;
+  `M.crew` on the two crewed ones). Each pays:
+  - **20% on course:** the flight's predicted trajectory enters the body's sphere of influence. Checked every 30 s
+    of flight, and only once the apoapsis reaches 30% of the way out, so `predict` isn't run for ordinary orbits.
+  - **20% on arrival:** inside the sphere of influence. If you arrive without the on-course share, both are paid.
+  - **The rest on completion.** `missionComplete` pays its usual amount (race bonus and all) less what was paid
+    along the way, never below zero. The total is unchanged.
+- **Who gets the shares:** the first open mission bound for that body, in mission order. Crewed missions only on a
+  crewed flight. Each share is paid once per mission, and an advance is kept if the flight then fails (forgiving).
+- **State:** `PROG.staged[id] = {bound, arrive, paid}`, reset with a new program (and in the career runner).
+- **UI:** news when a share is paid; the mission list shows "pays 20% on course, 20% on arrival (N paid)".
+- **Later:** when missions fly in the background (sats registry), the same shares pay there, and cruise science and
+  public interest join them. Long contracts can use `STAGE_PAY` the same way once there are contracts beyond Tellus.
+
+`test.mjs` §36: 2 new checks.
+- The Far Side pays +30M on course, +30M on arrival, 150M in all (the same as unstaged).
+- Nothing is paid for a flight not bound anywhere, nor for crewed missions on an uncrewed flight.
+
 ## v1.43 — reaction wheels that saturate; the builder's control readout (2026-10-08, control session)
 
 The second slice of the control review (v1.40). The pod's wheels were 8× a KSP Mk1 pod and never filled up, so they

@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1821,6 +1821,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   P.active = []; let lo = P.funds, fell = false; for (let i = 0; i < 6; i++) { api.advanceTo(); if (P.funds < lo - 1e-9) fell = true; lo = P.funds; }
   check('timeline: waiting costs nothing (no daily overhead)', !fell, `six waits to day ${P.day.toFixed(0)}, funds never fell`);
   api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {}, studies: {}, studyQ: [], compEra: null, active: [], offers: [], decisions: [] });
+}
+
+// 36. Staged pay for long missions (economy): on course, on arrival, then the rest on completion; the total is unchanged.
+{
+  const P = api.PROG, { bodyRel, soiAt } = api, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.staged = {}; P.active = []; P.funds = 1000; P.own = null; };
+  const craft = (b, r, v) => { api.t = 0; const s = api.newShip(['ant', 'cam', 't2', 'petrel']); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
+  const M = api.MISSIONS.find(m => m.id === 'farside');
+  // what completing it pays with no staging
+  reset(['beeper']); const fA = P.funds; api.missionComplete(M, null); const whole = P.funds - fA;
+  // on course: just outside Selene's sphere of influence, closing at 300 m/s
+  reset(['beeper']); const [pS, vS] = bodyRel(SELENE, 0), u = norm(pS), soi = soiAt(SELENE, 0), f0 = P.funds;
+  const s = craft(TELLUS, sub(pS, mul(u, soi * 1.2)), add(vS, mul(u, 300))); api.missionTick(s, 0, false); const fBound = P.funds - f0;
+  s.body = SELENE; s.r = mul(u, -soi * 0.9); s.v = mul(u, 300); api.missionTick(s, 0, false); const fArrive = P.funds - f0 - fBound;
+  delete P.done.farside; api.missionComplete(M, null); const total = P.funds - f0;
+  check('staged pay: a Selene mission pays 20% on course, 20% on arrival, and the rest on completion (same total)',
+    Math.abs(fBound - 0.2 * M.pay) < 1e-9 && Math.abs(fArrive - 0.2 * M.pay) < 1e-9 && Math.abs(total - whole) < 1e-9 && news.some(m => /on course for Selene/.test(m)),
+    `${M.name}: +${fBound.toFixed(0)}M on course, +${fArrive.toFixed(0)}M on arrival, ${total.toFixed(0)}M in all (unstaged ${whole.toFixed(0)}M)`);
+  // a flight that isn't headed there pays nothing; a crewed mission's shares need a crew aboard
+  reset(['beeper']); const g0 = P.funds; const s2 = craft(TELLUS, mul(u, 7e6), mul(norm(cross(u, [0, 1, 0])), Math.sqrt(TELLUS.mu / 7e6))); api.missionTick(s2, 0, false);
+  reset(['beeper', 'farside', 'selimp', 'selland', 'selsample', 'padabort', 'maxqabort']); const s3 = craft(SELENE, mul(u, -soi * 0.9), mul(u, 300)); api.missionTick(s3, 0, false);
+  check('staged pay: nothing for a flight not bound anywhere, nor for crewed missions on an uncrewed flight', P.funds === 1000 && g0 === 1000 && !Object.keys(P.staged).length,
+    `circular orbit at 7,000 km: +0; uncrewed probe at Selene with only crewed missions open: +0`);
+  Object.assign(P, JSON.parse(saved));
 }
 
 // 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
