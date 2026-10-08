@@ -1957,6 +1957,9 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   more reliable (engines) or more durable, up to three levels each, needing know-how, money and time; a redesign dips
   certification and know-how. Performance goals wait for the variants decision. `test.mjs` 226/226. Merged to `main`
   (`537df29`).
+- **v1.35 (2026-10-08, economy worktree):** facilities, upgradeable one-off investments with no upkeep: the
+  integration hall (stacking ×0.75 / ×0.55) and the recovery fleet (stages salvaged at sea within 800 / 1,500 km of
+  the launch point, 35 / 60% of their value). All tests pass. Merged to `main` (`23e383e`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
