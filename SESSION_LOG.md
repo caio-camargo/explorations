@@ -1982,6 +1982,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   a flight is on course (its predicted trajectory enters the body's sphere of influence), 20% on arrival and the rest
   on completion, for the same total; crewed missions only on crewed flights; advances kept if the flight fails. All
   tests pass. Merged to `main` (`54c8c9f`).
+- **v1.47 (2026-10-08, economy worktree):** dispatch, the economy side. Satellite and recon contracts can be
+  dispatched to a design with a stored orbit procedure: a risk estimate from part data (margin, ignition odds, load
+  uncertainty; good data raises the chance and narrows the range), pads as calendar reservations plus a Launch pads
+  facility, a hand-flown launch waiting for a free pad, a seed fixed at ordering, the same pay as by hand. An interim
+  resolver rolls the estimate until the bodies session's `dispatchRun`. All tests pass. Merged to `main` (`98638f6`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
