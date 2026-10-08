@@ -1034,6 +1034,25 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.35 — facilities: integration hall and recovery fleet (2026-10-08)
+
+One-off investments you upgrade, with no upkeep (`FAC`, `buildFac`, `facTick`). While an upgrade is being built, the
+facility keeps working at its old level.
+
+- **Integration hall:** level 1 is 60M / 60 days, stacking ×0.75; level 2 is 150M more / 120 days, stacking ×0.55 (as
+  if two vehicles were stacked side by side). Measured: an Orbiter's stacking time, 36.4 → 27.3 days at level 1.
+- **Recovery fleet:** level 1 is 50M / 90 days (800 km, 35%); level 2 is 120M more / 120 days (1,500 km, 60%). Ships
+  salvage spent stages that come down at sea within range of the launch point (`R.launchPf`), for that share of
+  their dry price × REFURB × load/heat wear (not the splash: they're salvaged for parts), minus 2M ship time each. A
+  little know-how too (the "land" regime at 0.3 weight). Measured: a Kestrel stage 127 km out, +2.3M at level 1. A
+  stage on land, or one 1,001 km out, is lost.
+- **Plumbing:** the app's debris hook now passes the dropped parts and their impact point to `missionDrop`. The career
+  runner's drops carry no parts, so the fleet isn't simulated there yet.
+- **UI:** `facilitiesHTML()`, a self-contained section called once from `renderProgram`, so the UI session can move it
+  into a tab (flagged in ACTIVE_WORK).
+
+`test.mjs` §33: 2 new checks.
+
 ## v1.34 — development projects (2026-10-07)
 
 The design bureau improves parts the program makes. The variants-vs-upgrades decision is still on hold, so this slice
