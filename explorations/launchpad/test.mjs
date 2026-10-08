@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1280,7 +1280,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const fields = ['id', 'name', 'u', 'lat', 'h', 'power', 'coastal', 'maxDia', 'downrange', 'polar', 'kind', 'rot', 'minInc'];
   const per = api.POWERS.map(p => SI.filter(t => t.power === p.i).length);
   const gap = Math.min(...SI.flatMap((a, i) => SI.slice(i + 1).map(b => Math.acos(Math.min(1, dot(a.u, b.u))) * R)));
-  const level = SI.every(t => { const f = api.siteFrame(t.u);
+  const level = SI.filter(t => t.kind === 'pad').every(t => { const f = api.siteFrame(t.u);   // a sea platform floats: nothing levelled
     return [0, 1, 2, 3].every(k => Math.abs(api.terrainH(norm(add(t.u, mul(k % 2 ? f.e : f.n, (k < 2 ? 1 : -1) * 1500 / R)))) - t.h) < 1e-9) && api.terrainSlope(TELLUS, t.u) < 0.01; });
   check('sites: generated per power with every field the economy needs; home site first, at +X; ≥ 250 km apart; pads levelled',
     SI.length >= 10 && SI.every(t => fields.every(k => k in t) && t.h > 0 && t.downrange && Array.isArray(t.downrange.over)) && per.every(n => n >= 1)
@@ -1773,7 +1773,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('timeline: "wait" goes to the next event and it happens (the study lands, then budget day comes)', studied === 1 && Math.abs(d2 - 100) < 1e-6 && d1 < d2 && P.funds > f0,
     `day ${d1.toFixed(1)}: ${studied} design studied · day ${d2.toFixed(1)}: budget day, funds ${f0.toFixed(0)} → ${P.funds.toFixed(0)}M`);
   // a long wait stops a day before a contract deadline, so it isn't missed
-  api.ensureBoard(); const o = P.offers.find(o => o.p.dur > 20) || P.offers[0]; api.acceptOffer(o.id); const c = P.active[0], st = api.advanceTo(P.day + 1000);
+  // a fresh board if none arrived by chance (earlier tests move the shared world seed)
+  if (!P.offers.length) P.offers = null; api.ensureBoard(); const o = P.offers.find(o => o.p.dur > 20) || P.offers[0]; api.acceptOffer(o.id); const c = P.active[0], st = api.advanceTo(P.day + 1000);
   check('timeline: a long wait stops a day before a contract deadline (not missed)', st && st.kind === 'deadline' && P.active.includes(c) && Math.abs(P.day - (c.deadline - 1)) < 1e-6,
     `stopped at day ${P.day.toFixed(1)}, deadline ${c.deadline.toFixed(1)}: ${st && st.text}`);
   // idle time is neutral: no overhead, so funds never fall while waiting (they only rise on budget days)
@@ -2048,6 +2049,35 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   c.target = q.id; const T = D.tgtOf(c);
   check('moonbase: a base can be the target of a landing', T && T.landed && T.q === q && len(T.dr) > 100, `${T ? T.q.name + ' at ' + (len(T.dr) / 1000).toFixed(2) + ' km' : 'no target'}`);
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
+}
+
+// 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
+{
+  const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;
+  // a floating pad on the equator in open ocean: not levelled, ≥ 300 km from land, open to any program, the ship on its deck
+  const sea = SI.find(t => t.kind === 'sea');
+  let farLand = true; for (let a = 0; a < 12; a++) for (const km of [100, 200, 300]) if (api.isLand(api.alongAz(sea.u, a * Math.PI / 6, km * 1e3 / R))) farLand = false;
+  const x = api.newShip(api.PRESETS.Orbiter, sea);
+  check('sea platform: on the equator over deep water (not levelled into an island), ≥ 300 km from land, open to anyone, the ship on its deck',
+    sea && Math.abs(sea.lat) < 1 && api.terrainH(sea.u) < -500 && farLand && api.siteAccessOf(sea).ok && sea.downrange.sea > 0.95
+      && Math.abs(len(x.r) - (R + api.SEA_DECK - x.yBot)) < 1e-6,
+    `${sea.name} at ${sea.lat.toFixed(2)}°, ${(-api.terrainH(sea.u)).toFixed(0)} m of water, downrange ${(sea.downrange.sea * 100).toFixed(0)}% water`);
+  // weather: on a storm day at a site, the launch slips day by day until the sky clears
+  const home = SI[0], keepDay = P.day, news = []; const keepNews = api.HOOK.news; api.HOOK.news = t => news.push(t);
+  let d0 = -1; for (let d = 1; d < 4000 && d0 < 0; d++) if (api.siteWeather(home, d * api.DAY_S).scrub && !api.siteWeather(home, (d - 1) * api.DAY_S).scrub) d0 = d;
+  let bad = 0; while (api.siteWeather(home, (d0 + bad) * api.DAY_S).scrub && bad < api.SCRUB_MAX) bad++;
+  P.day = d0; const y = api.newShip(api.PRESETS.Orbiter, home), n = api.weatherHold(y), clearDay = P.day;
+  P.day = d0 - 1; const n0 = api.weatherHold(api.newShip(api.PRESETS.Orbiter, home));
+  P.day = keepDay; api.HOOK.news = keepNews;
+  check('weather: a storm over the pad slips the launch a day at a time until it clears; a clear day launches on time',
+    d0 > 0 && n === bad && clearDay === d0 + bad && (bad === api.SCRUB_MAX || !api.siteWeather(home, clearDay * api.DAY_S).scrub) && n0 === 0 && /Weather scrub/.test(news[0] || ''),
+    `day ${d0}: storms for ${bad} day(s) → slipped ${n}; "${news[0]}"`);
+  // downrange: a warning names other powers under the corridor (not ours, not the host's own land)
+  const warned = SI.filter(t => api.downrangeWarning(t)), quiet = SI.filter(t => t.downrange.over.some(i => i !== t.power) && !api.downrangeWarning(t));
+  check('downrange warning: names the other powers under a site\'s corridor; our own land and the host\'s are not warned about',
+    api.downrangeWarning(home) === '' && warned.length > 0 && warned.every(t => t.downrange.over.some(i => i !== api.HOME && i !== t.power))
+      && quiet.every(t => t.downrange.over.every(i => i === api.HOME || i === t.power)),
+    `${warned.length} site(s) warned, e.g. "${warned[0] ? api.downrangeWarning(warned[0]) : ''}"`);
 }
 
 function moonPos(t) { return api.moonPos(t); }

@@ -1302,7 +1302,7 @@ function hgtGen(g,oct=HOCT){const[e0,m,v,sf]=wSpl(g),lat=Math.abs(g[1]);
 // coast), downrange {az (deg from north), sea (fraction of the first 1,000 km over water), over (powers whose land lies
 // under it)}, polar ('S', 'N', 'NS' or null: a clear corridor that way), kind ('pad'; later 'sea'), role, rot (the free
 // eastward speed, m/s), minInc (deg). Economy owns who may use a site: siteAccess(site), see siteAccessOf.
-const PAD_FLAT=2000,PAD_BLEND=4500,SITE_GAP=250e3,RAIL_DIA=3.9,BARGE_DIA=10;
+const PAD_FLAT=2000,PAD_BLEND=4500,SITE_GAP=250e3,RAIL_DIA=3.9,BARGE_DIA=10,SEA_DECK=12;   // a sea platform's deck stands 12 m above the water
 (function siteSearch(){let best=null;const Wd=WORLD,kmT=2*Math.PI*TELLUS.R/1000/WTW,nF=Math.round(150/kmT),nS=Math.round(600/kmT);   // coast within 150 km, then 600 km of open sea
   for(const j of[WTH/2-1,WTH/2])for(let i=0;i<WTW;i++){const k=j*WTW+i,e=Wd.E[k];if(e<3||e>350||Wd.M[k]>.12)continue;
     let first=-1,sea=0;for(let n=1;n<=nF+nS;n++){const s=Wd.E[j*WTW+(i-n+WTW*2)%WTW]<0;if(first<0){if(s)first=n;else if(n>nF)break}else if(n<=first+nS)sea+=s}
@@ -1319,12 +1319,23 @@ WORLD.site=SITES[0].u;WORLD.siteH=SITES[0].h;   // aliases for the home pad
 const siteById=id=>SITES.find(x=>x.id===id)||null;
 // home sites are whichever belong to HOME now (HOME can change: defection), never a stored list
 const homeSites=()=>SITES.filter(x=>x.power===HOME);
-const sitesNear=(u,n)=>SITES.slice().sort((a,b)=>dot(b.u,u)-dot(a.u,u)).slice(0,n);
+const sitesNear=(u,n)=>SITES.filter(t=>t.kind==='pad').sort((a,b)=>dot(b.u,u)-dot(a.u,u)).slice(0,n);   // the pads near u (for levelling and the painted complex)
 const homeSite=()=>homeSites()[0]||SITES[0];
 const curSite=()=>(typeof PROG!=='undefined'&&PROG.site&&siteById(PROG.site))||homeSite();
 // who may launch where is economy's rule (siteAccess, in the program block). Until it exists: home sites only, free.
 function siteAccessOf(t){if(typeof siteAccess==='function')return siteAccess(t);
+  if(t.kind==='sea')return{ok:true,why:'',fee:0};   // the sea is no one's: the platform is a service (economy may price it)
   return t.power===HOME?{ok:true,why:'',fee:0}:{ok:false,why:`${t.power==null?'nobody':POWERS[t.power].name} won't let us launch from ${t.name}`,fee:0}}
+// the weather at a site at program time T: the cloud field the sky draws (cloudAt). Under storm-grade cloud a launch
+// scrubs and slips a day at a time (weatherHold, called on the launch day), up to SCRUB_MAX days.
+const SCRUB_CLOUD=0.9,SCRUB_MAX=5;
+function siteWeather(t,T){const c=cloudAt(t.u,T);return{cover:c,scrub:c>SCRUB_CLOUD,word:c<0.3?'clear':c<0.7?'some cloud':c<=SCRUB_CLOUD?'overcast':'storms: launches scrub'}}
+function weatherHold(s){const t=s.site;if(!t||s.body!==TELLUS)return 0;let n=0;
+  while(n<SCRUB_MAX&&siteWeather(t,PROG.day*DAY_S).scrub){advanceDays(1);n++}
+  if(n)HOOK.news(`Weather scrub at ${t.name}: storms over the pad, the launch slips ${n} day${n>1?'s':''}`,'warn');return n}
+// before a launch: whose land the spent stages may fall on, along the site's downrange (other than our own)
+function downrangeWarning(t){const f=(t.downrange?t.downrange.over:[]).filter(i=>i!==HOME&&i!==t.power);   // the host's own land is the host's business
+  return f.length?`Downrange from ${t.name} crosses ${f.map(i=>POWERS[i].name).join(' and ')}: spent stages may fall on their land`:''}
 // a stage wider than the site can receive (rail gauge inland, barges at the coast) can't be stacked there
 function siteFits(t,parts){const d=parts.reduce((m,q)=>Math.max(m,2*q.d.r),0);
   return d<=t.maxDia+1e-9?{ok:true,why:''}:{ok:false,why:`${t.name} is inland: nothing wider than ${t.maxDia} m comes by rail (this rocket is ${d.toFixed(2)} m)`}}
@@ -1343,7 +1354,7 @@ function finishSite(t){const D=Math.PI/180,R=TELLUS.R;t.power=(powerAt(t.u)||{i:
   const clear=a=>{const k=siteTrack(t.u,a*D);return k.sea>=.6&&k.over.every(i=>i===t.power)};
   t.polar=(clear(180)?'S':'')+(clear(0)?'N':'')||null;
   const rt=t.power==null?'Open Sea':POWERS[t.power].root,sfx={home:t.coastal?'Cape':'Field',eq:t.coastal?'Cape':'Field',polar:'Polar Range',inland:'Field'}[t.role];
-  t.name=`${rt} ${sfx}`;if(SITES.some(x=>x!==t&&x.name===t.name))t.name+=' II';return t}
+  t.name=t.kind==='sea'?'Sea Platform':`${rt} ${sfx}`;if(SITES.some(x=>x!==t&&x.name===t.name))t.name+=' II';return t}
 function extendSites(){const D=Math.PI/180,R=TELLUS.R,cands=[],gap=Math.cos(SITE_GAP/R),cgap=Math.cos(40e3/R);
   for(let j=8;j<WTH-8;j+=6)for(let i=0;i<WTW;i+=6){const k=j*WTW+i,e=WORLD.E[k];if(e<5||e>1500||WORLD.M[k]>.15)continue;
     const la=((j+.5)/WTH-.5)*Math.PI;if(Math.abs(la)>70*D)continue;const lo=(i+.5)/WTW*2*Math.PI-Math.PI,u=fromGen([Math.cos(la)*Math.cos(lo),Math.sin(la),Math.cos(la)*Math.sin(lo)]);
@@ -1357,11 +1368,18 @@ function extendSites(){const D=Math.PI/180,R=TELLUS.R,cands=[],gap=Math.cos(SITE
     if(P.i!==0)pick('eq',c=>true,c=>-Math.abs(c.lat)+25*c.east);
     pick('polar',c=>c.pol>.85,c=>c.pol-Math.abs(c.lat)/200+(c.coast?.1:0));
     pick('inland',c=>!c.coast,c=>-Math.abs(c.lat))}
+  // the sea platform: a floating pad on the equator in open ocean (≥ 300 km from any land), the one nearest home.
+  // Sea Launch's trick: any program, whatever its latitude, can reach the equator by ship.
+  {let best=null;const home=SITES[0].u,far=Math.cos(300e3/R);
+    for(let i=0;i<WTW;i+=2){const lo=(i+.5)/WTW*2*Math.PI-Math.PI,u=fromGen([Math.cos(lo),0,Math.sin(lo)]);if(!free(u))continue;
+      if(terrainH(u)>-500)continue;let ok=true;for(let a=0;a<12&&ok;a++)for(const km of[100,200,300])if(isLand(alongAz(u,a*Math.PI/6,km*1e3/R))){ok=false;break}
+      if(!ok)continue;const d=dot(u,home);if(!best||d>best.d)best={d,u}}
+    if(best){const t=mkSite(best.u,'sea','s'+SITES.length);t.kind='sea';t.h=SEA_DECK;SITES.push(t)}}
   for(const t of SITES)finishSite(t)}
 // terrain height (m above sea level; negative is sea floor) at a planet-fixed direction. Every pad is levelled: flat to
 // PAD_FLAT, blended back to the land by PAD_BLEND (sites are ≥ SITE_GAP apart, so at most one is ever near).
 function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;
-  for(const t of SITES){const dx=c[0]-t.u[0],dy=c[1]-t.u[1],dz=c[2]-t.u[2],d=Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R;if(d<dmin){dmin=d;near=t}}
+  for(const t of SITES){if(t.kind!=='pad')continue;const dx=c[0]-t.u[0],dy=c[1]-t.u[1],dz=c[2]-t.u[2],d=Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R;if(d<dmin){dmin=d;near=t}}   // a sea platform floats: nothing to level
   if(dmin<PAD_FLAT)return near.h;const h=hgtGen(toGen(pf),oct);return dmin>PAD_BLEND?h:h+(near.h-h)*(1-sstep(PAD_FLAT,PAD_BLEND,dmin))}
 // the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
 const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
@@ -1387,7 +1405,7 @@ const SURF=[{mu:1,soft:2,rough:0},{mu:.1,soft:0,rough:0},{mu:.45,soft:1,rough:.0
 const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolith',mu:.6,soft:1,rough:.15},TOUCH_MAX=12;   // regolith: boulders in 15% of cells
 // the ground under a planet-fixed point, as a landing surface: a levelled pad, the sea, or the biome's
 function surfaceAt(b,pf){if(b!==TELLUS)return SURF_MOON;const u=norm(pf);
-  if(SITES.some(t=>{const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
+  if(SITES.some(t=>{if(t.kind!=='pad')return false;const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
   const bi=biomeAt(u),su={name:bi.name,id:bi.id,...SURF[bi.id]};
   // snow lies where the shader paints it: colder than ~−3 °C at that height, on slopes under ~38° (ice is its own biome)
   if(bi.id!==1&&bi.h>=0&&bi.T<-2.75&&terrainSlope(b,u)<0.66)return{name:'snow',id:bi.id,mu:.3,soft:3,rough:su.rough*.3};
@@ -1576,7 +1594,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -3980,6 +3998,10 @@ function drawPadGlow(u,camW){if(padNight<.01)return;const F=padFrame(camW);gl.un
 
 // buildings: boxes in the city's tangent plane, dropped by the curvature, taller toward the centre; built when first needed
 const cityMeshes=new Map();
+// the sea platform's hull: a deck on twin pontoons and columns, from the deck (y = 0) down past the waterline (y = −SEA_DECK)
+let SEA_HULL=null;function seaHull(){if(SEA_HULL)return SEA_HULL;const a=[],g=[.42,.43,.45],r=[.62,.22,.16];
+  box(a,[0,-1.5,0],60,1.5,45,g);for(const x of[-40,40])for(const z of[-30,30])box(a,[x,-7,z],4,5.5,4,g);
+  for(const x of[-40,40])box(a,[x,-14,0],7,3,52,r);SEA_HULL=makeMesh(a);return SEA_HULL}
 function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=rng(c.seed),n=Math.min(900,Math.round(160+c.pop/2500));
   // the same tangent frame the renderer uses (planet-fixed here): each building stands on the terrain under it, none in the water
   const ex=norm(cross(Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],c.u)),ez=cross(ex,c.u);
@@ -4162,7 +4184,7 @@ function editorChanged(){
   $('stats').innerHTML=html}
 $('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies
 $('launch').onclick=()=>{if(BLD.isEmpty(stackDef))return;BLD.drop();if(vesselCost(S.parts).cost>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}, the program has ${fmtM(PROG.funds)}`);return}
-  {const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts);if(!a.ok){HOOK.msg(a.why);renderSites();return}if(!fz.ok){HOOK.msg(fz.why);renderSites();return}}resetShip();go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
+  {const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts);if(!a.ok){HOOK.msg(a.why);renderSites();return}if(!fz.ok){HOOK.msg(fz.why);renderSites();return}const w=downrangeWarning(t);if(w)HOOK.news(w,'warn')}resetShip();go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
 // ---- the launch-site picker (terrain session): ours first, then abroad (refused until economy's siteAccess allows it).
 // Picking a site moves the ship in the construction screen onto that pad.
 const fmtLat=l=>`${Math.abs(l).toFixed(1)}°${l>=0?'N':'S'}`;
@@ -4173,7 +4195,8 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
   el.innerHTML=`<select id="siteSel" style="width:100%">${own.length?`<optgroup label="ours">${own.map(opt).join('')}</optgroup>`:''}<optgroup label="abroad">${abroad.map(opt).join('')}</optgroup></select>
     <div class="dim" style="margin:4px 0 8px">${fmtLat(cur.lat)} · free ${cur.rot.toFixed(0)} m/s east · lowest inclination ${cur.minInc.toFixed(1)}° · pad at ${cur.h.toFixed(0)} m<br>
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
-    ${cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
+    ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
+    weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
   $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()}}
 $('bEditor').onclick=()=>go('assembly');
 $('bRevert').onclick=()=>{resetShip();go('flight');HOOK.msg('Reverted to launch')};
@@ -4454,7 +4477,7 @@ function render(){
   const drawMesh=(mesh,M,p)=>{gl.uniformMatrix4fv(m.uM,false,M);gl.uniform1f(m.uLit,lit(p));gl.bindVertexArray(mesh.vao);gl.drawArrays(gl.TRIANGLES,0,mesh.n)};
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
-   const f=siteFrame(t.u);drawMesh(PAD,mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW)),site)}}
+   const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);drawMesh(PAD,M,site)}}
   drawPadRig(drawMesh,camW);   // the pad's moving parts, at the current site (visuals session)
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
