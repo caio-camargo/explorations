@@ -1107,6 +1107,31 @@ landing dust 0.3 ms, escape motor within noise.
 **Still open:** explosions are round; a ground-level fireball has no ground-hugging spread. Fragments don't trail smoke.
 The escape motor's jets don't strike the capsule. The dust doesn't settle on anything and has no effect on visibility.
 
+## HUD gauges (2026-10-08, aerofx session; PLAYTEST #9's graphics)
+
+PLAYTEST #9 asks for gauges, atmosphere indicators included. The flight HUD's layout belongs to the ui session (its
+slice 4: a core plus cards), so the split agreed with Caio is: this session builds the instruments as self-contained
+widgets, slice 4 decides where they sit.
+
+- **`drawGauges(x, y, s)`** draws a 318×150 strip on the 2D overlay (`octx`), top-left at (x, y), scale s. Nothing in the
+  HUD's DOM changed. **`gaugeRect()`** is a placeholder position: right of `#navwrap`, or left of it when the window is
+  narrow. Slice 4 replaces that one call. `GAUGES = false` hides the strip.
+- **Altitude tape:** a scale scrolling round the current altitude (span 1.4 × altitude, 1.5–600 km), a lit window with
+  the value, and radar altitude under it when low. Marks: AIR at the top of the atmosphere, the cloud deck (2–5.5 km) as a
+  white band, Ap and Pe as red pointers.
+- **Air:** a column filled to the ambient pressure on a log scale (1 → 10⁻⁴ atm), with the value or VAC.
+- **q dial:** dynamic pressure 0 → max(40 kPa, 1.15 × peak), the needle, a red pointer held at the flight's max-q
+  (`GQ`, render-side, per vessel), and MAX below. The **Mach drum** turns amber through the transonic band (0.85–1.25).
+- **Heat:** the hottest part relative to its limit (skin K over `Tmax`), green → amber → red, with a redline at 85 % and
+  the part's name.
+- Look: cream dial faces, black ink, red limits, amber cautions on a dark panel; Bahnschrift / DIN / Arial Narrow type.
+  A first step toward PLAYTEST #13 (the generic look).
+- Reference views `refView(94)` the Lunar at max-q (10 km), `95` at 40 km, `96` capsule entry at peak heating. They
+  leave the HUD on (other views hide it).
+
+**For slice 4:** the widgets can split into separate cards (the tape in the core, q/Mach/heat in the Ascent card): each
+block in `drawGauges` is independent, with its own offsets inside the strip.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
