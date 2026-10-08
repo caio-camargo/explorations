@@ -6,7 +6,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -1052,6 +1052,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
 }
 
+// 25. Crew (bodies session, epoch 4): the escape tower, abort tests, then people. Flown through the real flight code.
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, day: P.day });
+  const news = [], msgs = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = m => msgs.push(m); api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1e4; news.length = 0; msgs.length = 0; };
+  const flyOut = s => { let apex = 0, n = 0; while (s.alive && !(s.landed && s.rec.abort && api.t > s.rec.abort.t + 5) && n++ < 300000) {
+      if (api.railsOK(s) && !s.landed) api.advRails(s, 1, 1); else api.advPhys(s); apex = Math.max(apex, len(s.r) - TELLUS.R); } return apex; };
+  // pad abort: from a standing start, under 8 g, high enough for the chute
+  reset(['orbiter']); api.t = 0; let s = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = s; api.abort(s); let apex = flyOut(s);
+  check('crew: a pad abort lifts the capsule clear under 8 g and it lands under its chute (dummies aboard)', !!P.done.padabort && s.landed && s.alive && !s.rec.crewed && s.rec.cgMax < 8 && apex > 500,
+    `apex ${(apex / 1e3).toFixed(2)} km, peak ${s.rec.cgMax.toFixed(1)} g, touchdown ${(s.touchV || 0).toFixed(1)} m/s; tower jettisoned: ${!s.parts.some(p => p.on && p.d.kind === 'les')}`);
+  // max-q abort: straight up at full throttle, abort at 18 kPa
+  reset(['orbiter', 'padabort']); api.t = 0; s = api.newShip(['les', 'chute', 'crew', 'dec', 't8', 'kestrel']); api.S = s; s.throttle = 1; api.stage(s);
+  let k = 0; while (s.alive && k++ < 20000) { api.advPhys(s); if ((s.qdyn || 0) >= 18000) { api.abort(s); break; } } apex = flyOut(s);
+  check('crew: a max-q abort (18 kPa) brings the capsule home under 8 g and qualifies the tower', !!P.done.maxqabort && s.landed && s.rec.cgMax < 8,
+    `abort at ${(s.rec.abort.q / 1e3).toFixed(1)} kPa, ${(s.rec.abort.alt / 1e3).toFixed(1)} km up; peak ${s.rec.cgMax.toFixed(1)} g; apex ${(apex / 1e3).toFixed(1)} km`);
+  // no tower, no abort; and on a nominal flight the tower goes at the first staging above 30 km
+  reset(['orbiter']); api.t = 0; s = api.newShip(['chute', 'crew', 't4', 'kestrel']); api.S = s; const noTower = api.abort(s);
+  s = api.newShip(['les', 'chute', 'crew', 'dec', 't4', 'kestrel']); api.S = s; s.landed = false; s.rec.launched = true; s.r = mul(norm(s.r), TELLUS.R + 4e4); api.stage(s);
+  check('crew: no abort without a tower; the tower is jettisoned at the first staging above 30 km', !noTower && !s.parts.some(p => p.on && p.d.kind === 'les') && msgs.some(m => /Escape tower jettisoned/.test(m)), `abort without a tower: ${noTower}`);
+  // once qualified, capsules fly people: around Selene and home counts; a crashed capsule loses its crew
+  const crewFlight = (done) => { reset(done); P.day = 50; api.t = 0; const c = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = c; c.rec.launched = true; c.rec.day0 = P.day; c.rec.dv = 4000;
+    const home = { r: c.r.slice(), pf: c.pf.slice(), q: c.q.slice(), qLocal: c.qLocal.slice() }; return { c, home }; };
+  let { c, home } = crewFlight(['orbiter', 'padabort', 'maxqabort', 'farside']);
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 300e3, 0, 0]; c.v = [0, 0, -Math.sqrt(SELENE.mu / (SELENE.R + 300e3))]; api.advRails(c, 60, 10);
+  const sawSel = c.rec.crewSel; c.body = TELLUS; c.landed = true; Object.assign(c, { pf: home.pf, qLocal: home.qLocal }); api.advRails(c, 1, 1);
+  check('crew: after qualification the capsule carries people; around Selene and home safe completes "Crew around Selene"', c.rec.crewed && sawSel && c.rec.crewOK && !!P.done.crewaround, `crewed ${c.rec.crewed}, in Selene's SOI ${sawSel}, home ${c.rec.capHome}`);
+  ({ c } = crewFlight(['orbiter', 'padabort', 'maxqabort']));
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 20e3, 0, 0]; c.v = [-300, 0, 0]; let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); }
+  check('crew: a crashed crewed capsule loses its crew (news, opinion)', !c.rec.crewOK && news.some(m => /The crew were lost/.test(m)), news.find(m => /crew/.test(m)) || 'no news');
+  // the landing mission's condition reads the flight record
+  const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
+  check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
+  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
+}
+
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
 {
   const P = api.PROG, logged = []; api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.logged = ids => logged.push(...ids);
@@ -1520,6 +1556,41 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('vessel docking: a flight ending docked registers one stack carrying the module, and the save serialises', P.sats.length === 1 && P.sats[0].attached[0].e.name === 'Module' && !js.startsWith('ERR') && !js.includes('"_v"'),
     `${P.sats.map(q => q.name + ' + ' + (q.attached || []).map(x => x.e.name).join()).join('; ')}; save ${js.startsWith('ERR') ? js : (js.length / 1024).toFixed(1) + ' kB'}`);
   Object.assign(P, { sats: [], satN: 0 }); D.FLEET.length = 0;
+}
+
+// 29. The cargo bay (sats session, stations plan Phase B): enclosure, shielding, doors, release. Own sim instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,advPhys,bayOp,doorF,hitGeo,partSDF,FLEET,PARTS,TELLUS,DT,qrot,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = D.TELLUS;
+  // a probe module on the floor of a bay, on a pod, a tank and an engine
+  const mk = (pay = ['core', 't1']) => { D.FLEET.length = 0; D.t = 0; const s = D.newShip([...pay, 'bay', 'pod', 't2', 'kestrel']); Object.assign(s, { landed: false, sas: false, throttle: 0, w: [0, 0, 0] });
+    s.rec.launched = true; s.rec.day0 = 0; D.S = s; return s; };
+  let s = mk(); const bay = s.parts.find(p => p.d.kind === 'bay'), pay = s.parts.filter(p => p.inBay === bay);
+  check('bay: what sits on its floor inside the walls is enclosed', pay.map(p => p.d.key).sort().join() === 'core,t1', `enclosed: ${pay.map(p => p.d.key).join(', ')}`);
+  // in the air at 400 m/s, 8 km up: shut, the payload takes no air load and no heat; open, it does
+  const air = (open) => { const s = mk(); if (open) { D.bayOp(s, 'open'); D.t += 2.01; D.bayOp(s, 'noop'); }
+    const r0 = T.R + 8000, up = [1, 0, 0]; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = add(D.qrot(s.q, [0, 400, 0]), [0, 0, 0]); D.physStep(s, D.DT);
+    const p = s.parts.filter(q => q.inBay), b = s.parts.find(q => q.d.kind === 'bay'); return { pay: p.reduce((a, q) => a + len(q.F) + Math.abs(q.Q), 0), bay: len(b.F) }; };
+  const shut = air(false), open = air(true);
+  check('bay: doors shut, the payload takes no air load or heat; open, it does', shut.pay === 0 && shut.bay > 0 && open.pay > 0, `payload |F|+|Q| shut ${shut.pay.toFixed(1)}, open ${open.pay.toFixed(0)}; bay ${shut.bay.toFixed(0)} N`);
+  // release: refused while shut; open, the payload leaves as a vessel at 0.3 m/s along the bay's axis, momentum kept
+  s = mk(); const r0 = T.R + 300e3; s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)];
+  const refused = !D.bayOp(s, 'rel') && !D.FLEET.length;
+  D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); const f = D.doorF(s.parts.find(p => p.d.kind === 'bay'));
+  const Y = D.qrot(s.q, [0, 1, 0]), p0 = mul(s.v, s.mass); D.bayOp(s, 'rel'); const v = D.FLEET[0], sep = v ? dot(sub(v.v, s.v), Y) : NaN, dp = v ? len(sub(add(mul(s.v, s.mass), mul(v.v, v.mass)), p0)) / len(p0) : NaN;
+  check('bay: release is refused with the doors shut; open, the payload leaves as a vessel at 0.3 m/s along the bay, momentum kept', refused && f === 1 && v && v.parts.some(p => p.d.kind === 'core') && Math.abs(sep - 0.3) < 1e-9 && dp < 1e-12,
+    `${v ? v.name : 'no vessel'}; doors ${f}; separation ${sep.toFixed(4)} m/s; momentum error ${dp.toExponential(1)}`);
+  // it leaves without touching the walls: 15 s later (4 m of bay at 0.3 m/s) it's still parting at 0.3 m/s, clear of the top
+  const sb = s.parts.find(p => p.d.kind === 'bay'), topY = sb.y0 + sb.h + sb.d.bayL; for (let k = 0; k < 15 / D.DT; k++) D.advPhys(s);
+  const sep2 = dot(sub(v.v, s.v), Y), bottomV = dot(sub(add(v.r, D.qrot(v.q, sub([0, Math.min(...v.parts.map(p => p.y0)), 0], v.cm))), add(s.r, D.qrot(s.q, sub([0, topY, 0], s.cm)))), Y);
+  check('bay: the payload slides out without touching the walls and clears the top', Math.abs(sep2 - 0.3) < 1e-3 && bottomV > 0, `still parting at ${sep2.toFixed(4)} m/s; its base ${bottomV.toFixed(2)} m above the bay's rim`);
+  // a payload without a command part is a vessel too (not debris that would vanish)
+  s = mk(['cam', 'ant']); s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(T.mu / r0)]; D.bayOp(s, 'open'); for (let k = 0; k < 2.1 / D.DT; k++) D.advPhys(s); D.bayOp(s, 'rel');
+  check('bay: a payload with no command part still leaves as a vessel', D.FLEET.length === 1 && /^Payload/.test(D.FLEET[0].name), `${D.FLEET.map(x => x.name + ': ' + x.parts.map(p => p.d.key).join()).join('; ')}`);
+  // the contact shape is hollow: the cavity is outside the bay, the wall inside it; the roof only while shut
+  const g = D.hitGeo(sb, sb.d), mid = D.partSDF(g, 0, 2, 0), wall = D.partSDF(g, 0.75, 2, 0), roof = D.partSDF(g, 0, sb.h + sb.d.bayL + 0.05, 0);
+  check('bay: its contact shape is hollow (the payload can leave), with the roof gone while the doors are open', mid > 0 && wall < 0 && roof > 0, `cavity ${mid.toFixed(2)}, wall ${wall.toFixed(3)}, roof plane ${roof.toFixed(3)} (open)`);
+  D.FLEET.length = 0;
 }
 
 // 26. Production lines (economy): learning to manufacture is different from buying.
