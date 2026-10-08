@@ -3448,3 +3448,19 @@ screenshot scripts click `[data-start]` first; the older editor reference views 
 - [ ] Older reference views (editor ones) should pass the first-run gate
 - [ ] Bloom: a true HDR pipeline would separate sunlit paint from the sun
 - [ ] Stage breakup in the sim (render-only so far); the arm's folded pose overhangs short modules (sats' design)
+
+## 2026-10-08 — Launchpad: PLAYTEST sweep #8, #15, #16, #19, #20, #21, #22 (fixes session, run by the sound session)
+
+### Summary
+The robot playtester's finds whose owners were idle, fixed and re-checked by rerunning its rows. TESTER badge into the
+flight toolbar, which now has a real position top-right (also fixed #8); the news keeps its own lane beside the readout
+(`hudLayout`); LAUNCH plus a one-line site summary pinned at the bottom of the assembly panel; the home station sees
+anything within 2 km of its antenna (the rocket was under the mast top's 5° minimum elevation); leaving a flight settles
+it then, not at the next launch (`go()` → `flightLeave` → `missionEnd`, once via `R.ended`); `refView(8)` fixed and
+close-ups hide the pad rig. test.mjs `fixes-1` (4 checks, all fail on the old page). Notes left for ui, economy, builder,
+terrain in ACTIVE_WORK. Left: #17, #18, #23 (aerofx/control were active); the centred event message still crosses the
+readout's Mass row; headless Chrome can hand `frame()` a negative `dtR` (NOTES).
+
+### Files
+- `explorations/launchpad/index.html`, `views.js`, `test.mjs`, `playtest.mjs`, `NOTES.md` § "PLAYTEST sweep",
+  `PLAYTEST.md`, `TESTING.md`; screenshots in `C:/Users/caioa/dev/playtest-out/fixes/`
