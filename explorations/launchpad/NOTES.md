@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.20.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1097,6 +1097,32 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.42 — the event timeline (2026-10-08, economy session)
+
+The first piece of the time model (design: "Time, long missions and communication"). Until now time only moved when
+you launched: there was no way to wait for a building, a study or budget day.
+
+- **`upcoming()`** gathers everything dated in the program:
+  - trajectory studies, facility levels, the test stand and its campaigns, the design bureau, production lines;
+  - budget days (every 100 days), elections, sanctions lapsing, the next computing era;
+  - a day's warning before each contract deadline and each decision's expiry.
+- **`advanceTo(day)`** (or the next event) moves the calendar event by event, so each one happens in turn. It stops
+  early at events marked *stop* (deadline and decision warnings, elections) or when a new decision appears.
+  - It steps a hair past each event (1e-9 days), so the event's own tick fires despite rounding.
+- **UI:** a self-contained `timelineHTML()` section, "Coming up", mapped to the Inbox tab in `progTabOf`. It shows the
+  next eight events with a Wait / Wait until then button each (`data-adv`).
+
+  Checked in the app: from day 62, waiting until budget day landed on day 100 with the study done, the redesign done,
+  the 17M budget in and new offers on the board, with no console errors.
+- **Idle time is neutral** (v1.41): waiting costs nothing; funds only rise on budget days.
+- **Not yet:**
+  - launch windows and missions in flight (planning, sats, bodies);
+  - a timeline view in the UI's own style (the section is a plain list for now);
+  - offers expiring are deliberately left out (noise).
+
+`test.mjs` §35: 4 new checks: listed in order; wait goes to the next event and it happens; a long wait stops a day
+before a contract deadline; waiting never lowers funds.
 
 ## v1.41 — no daily overhead (2026-10-08, economy session)
 
@@ -3336,6 +3362,75 @@ Two halves launched together (or a module you just released) can now dock to eac
   manual mode (joint-by-joint or end-effector keys); grappling debris; the arm taking a held body into a bay that is
   part of a docked module rather than our own parts.
 
+### E built: moonbases (sats session, 2026-10-08)
+
+- **Landed objects persist.** A vessel that ends a flight resting on a body other than home is registered in that
+  body's frame (`q.landed`, `q.bodyName`, `q.pf` its centre of mass, `q.ql` its attitude), with its shape, design and
+  state like any entry. It's drawn when near, labelled on the map, listed in the Program panel under *On the surface*
+  (Fleet tab), and flyable: **Fly** starts the flight standing where it stood, and it lifts off under power. The
+  register's orbit-only code (`satsUp`) no longer sees landed objects; they have their own list (`landedUp`).
+- **Bases:** a *Base beacon* (palette *Station*) makes a landing site a base (named *Selene Base N*); everything landed
+  within 500 m of it, along the surface, on the same body belongs to it. Berths, crew (crewed capsules landed there, up
+  to the berths), labs and supplies add up across the members, and between flights a base works exactly as a station
+  does (one shared `crewTick`): supplies used, lab-days earned, headlines when low or out.
+- **Landing on a target:** a landed object can be the target (`G` cycles those on the body you're at). The HUD's
+  *Landing* row gives the distance along the surface, the bearing, and how far the predicted impact point is from it
+  (green inside the base's 500 m); the flight view marks it.
+- **Contact** now runs on any body: landed objects are immovable (and, for now, take no damage); the orbital register is
+  still only around Tellus. A capsule dropping onto a habitat at 1 m/s rebounds at 0.33 m/s; the habitat doesn't move.
+- Checks (`test.mjs` §33): saved in Selene's frame (and out of the orbit lists); flown again from the surface and lifting
+  off; a base of four with a fifth habitat 2 km away left out; 10 days at the base (20 lab-days, 200 kg used) and a day
+  of the orbit code with landed objects present; the bounce off a module; a base as the target. Another session's guard
+  (every Program heading must have a tab) caught my new heading; it's in the Fleet tab. Browser: a base of four on
+  Selene seen from the beacon lander, and its Program panel lines.
+- **Not yet:** surface docking or rovers between modules; damage to landed modules; landed objects on Tellus away from
+  home (a vessel landing at home is recovered, as before); power and in-situ fuel at a base.
+
+**The stations plan is built end to end** (A, A2, B, C, D, E). What it needs next is mostly the economy session's:
+contracts for stations, bases, retrieval and crew rotation, and the rules for flights from orbit.
+
+## Rovers: plan (2026-10-08, sats session with Caio; nothing built yet)
+
+**The problem (Caio):** in KSP rovers are a chore. Taking one already assembled on a mission is awkward, assembling one
+on another body is worse, and just getting it right side up is a job in itself. The pain is mostly **packaging and
+deployment**, not driving: rovers are built in a rocket editor, ride bolted sideways onto a lander, and arrive by
+"decouple and hope". Real rovers solve it with **deploy mechanisms** (Apollo's rover unfolded off the lander's side,
+Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright on its wheels" a designed outcome.
+
+**Decisions (Caio):**
+1. **A rover designer of its own**, not the rocket builder (rovers are horizontal; our parts can't tilt). A chassis with
+   slots: wheels, power, a mast (camera, antenna), an arm (sampler), instrument bays. Live stats: mass, top speed,
+   steepest climb, **tip-over angle** (centre of mass height against track and wheelbase).
+2. **Wheel-contact physics:** a rigid body with per-wheel suspension (spring and damper), traction limited by the
+   surface's friction and the wheel's load, rolling resistance from soft ground, bumps from rough ground (the terrain
+   session's `SURF` per biome, and `SURF_MOON` regolith), motor power and torque, steering, brakes. Tipping and
+   low-gravity bouncing are real; no magic self-righting (the designer states the tip angle; later an arm or a crew may
+   right a small rover).
+3. **Start with R1** (below): build and test-drive rovers at home before any spaceflight.
+
+**Slices:**
+- **R1. Designer, driving, test drive at home.** The designer and its stats; the rover as its own kind of vessel with
+  its own step; "Test drive" puts it at the launch site on real Tellus terrain (biomes drive differently); an option
+  for lunar weight (NASA trained Apollo crews on a 1/6-g rover, "Grover"). Test drives are engineering data: wheels
+  qualified by distance and slope, a design's measured climb limit and tip angle.
+- **R2. Stowed package and deployment.** In the rocket builder a rover is one part (its stowed size and mass) with a
+  mounting style: folded on a lander's side, on deck with ramps, in a cargo bay; later a sky crane. **"Deploy rover"**
+  on a landed lander checks the ground at the deploy spot and, if it's fit, ends with the rover upright on its wheels
+  after a short scripted unfold or drive-off; if not, it refuses and says why. Then driving on other bodies; rovers
+  persist as landed, flyable vessels (A2/E machinery).
+- **R3. Power and contact:** solar panels and batteries (Selene's day and night), line of sight to the lander, a relay or
+  home (hills block it).
+- **R4. Instruments and science** (each hinging on something the sim computes): samples by terrain unit, brought to the
+  lander or an ascent vehicle (sample return); a spectrometer on rocks; camera panoramas (sun angle); seismometers set
+  out as an array (spacing is what gives an interior map); ground-penetrating radar along a traverse; a drill or
+  heat-flow probe (depth, power); a magnetometer traverse; ice in permanently shadowed polar craters (hard on power).
+  Contract types proposed to economy.
+- **R5. Drive plans:** waypoints a rover carries out *between flights*, with results arriving as news (as the imaging
+  satellites already work): no hours of real-time driving.
+
+**Needed from others:** Selene's terrain (craters, maria and highlands, boulders, slopes) from the terrain session:
+today Selene is a smooth sphere apart from the regolith model; power (R3) is new everywhere.
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -4145,9 +4240,47 @@ until it's back: the vessel follows its last sequence (and onboard autonomy, by 
 
 Ours keeps the network and drops the loss of control.
 
+### Planning before the flight (Caio, 2026-10-08)
+
+For long missions there's little to no manual flying, so planning has to be much more involved than in KSP. That
+means a **mission planning screen before the flight**: the maneuver-node idea moved ahead of launch.
+
+**What KSP does,** from memory, not checked against the docs:
+- **Stock:** maneuver nodes are placed on the vessel's current trajectory, in flight, in the map view. You can drop
+  one while sitting on the pad, but there's no pre-flight mission planner.
+- **Mods:**
+  - Transfer Window Planner: porkchop plots of departure date against travel time;
+  - Kerbal Alarm Clock;
+  - MechJeb: ascent guidance and a maneuver planner that executes nodes;
+  - Principia: a flight plan, a sequence of burns planned ahead and integrated.
+
+  Players build this workflow out of mods.
+
+**Proposal: the study is the plan.** A mission plan is made on the planning screen:
+- target and window (a porkchop plot);
+- ascent profile;
+- burn sequence;
+- the instrument pointing timeline.
+
+The trajectory study (v1.38) is the trajectory office computing that plan. It takes the era's days and money and comes
+back with the era's precision. The plan then drives:
+- the automated flight (the autopilot work in another session) for the ascent and burns;
+- missions in flight on the timeline for the long coasts, with burns executed at the era's error until onboard
+  computers come;
+- events on the timeline: window opens, burn, arrival.
+
+In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
+and the screen is where the player spends their time either way.
+
+**Owners:**
+- the screen: UI;
+- nodes, maps, porkchop: planning;
+- execution: autopilot session, sats registry;
+- studies (cost, days, precision): economy.
+
 ### Owners and order
 
-1. **The time model:** the event timeline (economy + UI view) and missions in flight in the registry (sats, planning).
+1. **The time model:** the event timeline (economy + UI view; first slice built in v1.42) and missions in flight in the registry (sats, planning).
    It comes before routine runs, which are just another source of events.
 2. **Data as a volume plus the link budget** (planning: stations, antennas; economy: pay on received data).
 3. **Instruments with pointing and the pointing timeline** (builder: parts; planning or sats: the timeline).
