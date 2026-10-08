@@ -1969,6 +1969,15 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   Per-design trajectory studies cost money and days (a launch waits for its study) and narrow the impact spread
   that range safety uses. Design notes cover the rich-programs ladder, waste heat, routine runs and compute.
   All tests pass. Merged to `main` (`654ba64`).
+- **v1.41 (2026-10-08, economy worktree):** no daily overhead (Caio: idle time roughly neutral; `OVERHEAD` and
+  `OVERHEAD_CAP` kept at 0); top-ups for weak programs roughly halve in simulated careers. Design notes: time, long
+  missions and communication (missions in flight, passive flybys, one event timeline, pay along the way, the year as
+  Tellus's orbit; instruments that point, data as a volume, a link budget, forgiving loss of contact). All tests
+  pass. Merged to `main` (`ab6e07c`).
+- **v1.42 (2026-10-08, economy worktree):** the event timeline. "Coming up" in the Inbox lists what's dated in the
+  program (studies, buildings, budget days, elections, eras, deadline and decision warnings), and Wait moves the
+  calendar event by event, stopping where you're needed. Design note: planning before the flight (the study is the
+  plan). All tests pass. Merged to `main` (`36ae7ad`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
@@ -2653,3 +2662,39 @@ and the capsule climbs away at 7 g.
   Committed files verified CR-free (lesson #27).
 - Merged to `main` (`641a3d7`, not pushed); 0 failing checks.
 - Next: slice 3, Debrief.
+
+### Follow-up: push, then E (moonbases)
+Pushed `main` to GitHub (`785429c..9fa0357`). Built E: vessels ending a flight landed on another body are registered in
+its frame and drawn, mapped, listed (Program panel, Fleet tab, "On the surface") and flyable from the surface; a base
+beacon makes a base of everything landed within 500 m, working between flights like a station (shared `crewTick`);
+landed objects are landing targets (HUD Landing row) and immovable for contact, which now runs on any body. Another
+session's guard caught my new Program heading (needed a tab). test.mjs §33 (6 checks, all first time). Browser: a base of
+four on Selene from the beacon lander. `main` at `bb66a6d`, not pushed. NOTES v1.21.0. The stations plan (A, A2, B, C,
+D, E) is built end to end.
+
+### Next steps
+- [ ] Economy: contracts for stations, bases, retrieval, crew rotation; flights from orbit
+- [ ] Open items in NOTES (surface docking/rovers, damage to landed modules, power, in-situ fuel, a manual arm mode)
+- [ ] Push `main` when Caio says
+
+## 2026-10-08 — Launchpad v1.39: real ground contact; snow and Selene boulders (terrain session)
+
+### Summary
+Vessels meet the ground through contact points on their base (spring-damper along the terrain normal, Coulomb friction
+by surface), as part forces that also load the joints. They slide, tip, bounce, and land when at rest, pinned in the
+attitude they came to rest in. The speed verdict stays at first touch, judged under the centre. Snow is a surface where
+the shader paints it, and Selene's regolith has boulders. `s.touchV` is the measured speed again: v1.37 had made it the
+effective one, which a Nyx mission rule read. The ship's shadow lies on slopes. Fast-forwarded `main` to `e6f6a50`.
+
+### Files
+- `explorations/launchpad/index.html`: `footPoints`, `groundNormal`, `groundContact` (called from `physStep`'s force sum), `touchdown`, `groundCheck`; snow in `surfaceAt`; `SURF_MOON`; `touchHit` in `missionEnd`'s wear; the shadow plane
+- `explorations/launchpad/test.mjs`: §25 rewritten (5 checks); `explorations/launchpad/NOTES.md`: § v1.39
+
+### Verification
+`test.mjs` 243/243 on the merged `main`, every earlier flown landing unchanged. Ice 13°: slid 65 m in 10 s (theory
+62). Taiga 19°: at rest leaning 19°. The Orbiter topples on 12°, stands on the flat. A TWR-1.05 liftoff isn't
+re-landed. Browser: a pod at rest on an 18° slope, shadow on the slope.
+
+### Next steps
+- [ ] Planning (parts): landing legs. Without them tall stacks tip on ~7–12° slopes; `footPoints` will pick up a leg part's feet
+- [ ] Terrain: slice-B follow-ups (§ v1.27), slices C–E; bouncing debris

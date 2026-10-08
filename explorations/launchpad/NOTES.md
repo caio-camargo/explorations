@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.18.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1138,6 +1138,124 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.42 — the event timeline (2026-10-08, economy session)
+
+The first piece of the time model (design: "Time, long missions and communication"). Until now time only moved when
+you launched: there was no way to wait for a building, a study or budget day.
+
+- **`upcoming()`** gathers everything dated in the program:
+  - trajectory studies, facility levels, the test stand and its campaigns, the design bureau, production lines;
+  - budget days (every 100 days), elections, sanctions lapsing, the next computing era;
+  - a day's warning before each contract deadline and each decision's expiry.
+- **`advanceTo(day)`** (or the next event) moves the calendar event by event, so each one happens in turn. It stops
+  early at events marked *stop* (deadline and decision warnings, elections) or when a new decision appears.
+  - It steps a hair past each event (1e-9 days), so the event's own tick fires despite rounding.
+- **UI:** a self-contained `timelineHTML()` section, "Coming up", mapped to the Inbox tab in `progTabOf`. It shows the
+  next eight events with a Wait / Wait until then button each (`data-adv`).
+
+  Checked in the app: from day 62, waiting until budget day landed on day 100 with the study done, the redesign done,
+  the 17M budget in and new offers on the board, with no console errors.
+- **Idle time is neutral** (v1.41): waiting costs nothing; funds only rise on budget days.
+- **Not yet:**
+  - launch windows and missions in flight (planning, sats, bodies);
+  - a timeline view in the UI's own style (the section is a plain list for now);
+  - offers expiring are deliberately left out (noise).
+
+`test.mjs` §35: 4 new checks: listed in order; wait goes to the next event and it happens; a long wait stops a day
+before a contract deadline; waiting never lowers funds.
+
+## v1.41 — no daily overhead (2026-10-08, economy session)
+
+Caio: idle time should be roughly neutral, with no upkeep. `OVERHEAD` and the new `OVERHEAD_CAP` (per unit of capacity)
+are both 0 (were 0.06 and 0.015 M/day); the code path stays, so it can be tuned later.
+
+Career runner (agency, 6 years, 5 seeds), lines-only:
+- final funds rise by ~300–800M;
+- top-ups roughly halve (resource 9.4 → 2.8, frugal 9.8 → 4.6, rising 6.6 → 3.0).
+
+With the investor (`all`), strong programs still put 1.5–2.9B into sinks and end at 0.6–1.5B. Weak programs end
+safer (frugal 911, resource 504).
+
+## v1.40 — attitude control: a real gimbal, steerable fins, a SAS that holds (2026-10-08, control session)
+
+Caio's review: stability and attitude control are a big part of KSP and felt undercooked here. They weren't missing
+(wheels, gimbal, RCS and passive fins all existed), but control was an **abstract torque budget that was always spent
+perfectly**. Every engine had the same 7 % "gimbal" as a number, nothing ever turned, the controller's acceleration
+was added to the dynamics as is, and a single engine on the axis could roll the vessel. This slice makes the actuators
+physical. `study_control.mjs` measures the control budget (`node study_control.mjs`).
+
+**What changed**
+- **Engine gimbal is a nozzle that turns.** Each engine has a range `gim` (°) and a slew rate `gimR` (°/s): Sparrow 3°/15,
+  Wren 6°/20, Petrel 3°/10, Kestrel 5°/10, Condor 4°/8, Albatross 4°/8 (other sessions' engines default to 4°/10).
+  `p.gv` is the deflection; the thrust points along `tdir + gv`, so the steering torque, the side force and the joint
+  loads all come from the turned thrust. The structural code's separate "gimbal side force" path is now only used by
+  the builder's what-if `probe`.
+- **One allocator** (`gimSteer`): the wheels give what they can of the control law's torque as a pure torque, and the
+  rest is shared out by least squares over every engine's two deflection axes and every steerable plate. An engine on
+  the axis has no roll column, so it can't roll anything. Roll authority (`ctrlAuthRoll`) counts only engines off the
+  axis (side boosters, clusters).
+- **Steerable fins**: `cfin` (radial, 1.2 M), `cfins` (ring, 4.5 M), `cfins25` (2.5 m ring, 11 M). The same plates as
+  the passive ones, all-moving, ±20° at 40 °/s. A plate's normal turns about its span (n' = n·cosδ − Y·sinδ) in the
+  existing flat-plate model. Their columns (`finCols`) are linearised each step at the current airflow, so their
+  authority grows with q, is gone in vacuum, and they roll. They use the existing fin kinds, so palette, mesh, damage and
+  aero all pick them up. Tier 1 in `tierOf` (they have actuators).
+- **SAS**: (1) while lagging actuators carry the load (engines burning, or steerable fins with > 25 % of the wheels'
+  authority), the rate demand is linear near the target with Tc = `SAS_LAG` × the slowest actuator's full swing. (2) The
+  rate loop then also integrates (`SAS_TI` = 1 s), clamped to the authority and **frozen while the command saturates**.
+  Wheel- and RCS-only flight is untouched: no zone, no integral.
+
+**Before / after** (same scripted inputs)
+
+| | main | v1.40 |
+|---|---|---|
+| Lunar, pitch/yaw rate t 20–90 s under SAS prograde (rms) | 0.63 °/s | 0.61 °/s |
+| Heavy, same (rms) | 1.56 °/s | 1.37 °/s |
+| Lone Condor + "balance" cant, max tilt in 50 s (test §22) | 2.2° | **1.3°** |
+| Lunar, 4 s SAS yank at q > 15 kPa, peak joint (test §5) | 100 %, snaps | 88 %, holds |
+| Probe dart (core 4 kN·m) at 300 m/s, 30° turn: passive ring / steerable ring | 11.6 s / — | 11.6 s / **5.5 s** |
+| Steerable ring pitch authority, 150 → 300 m/s at 5 km | — | 7.2 → 28.9 kN·m (∝ q) |
+| Physics step, Lunar / Heavy | 34 / 52 µs | 40 / 53 µs |
+
+**What it taught**
+- **The square-root law limit-cycles with any lag.** √(α·θ) has unbounded gain at zero error. With an instant
+  actuator that was invisible; with a nozzle taking 0.5 s to swing, the Lunar wobbled at ~0.5 Hz (rms rate 4.8 °/s,
+  0.9 nozzle reversals a second). A linear zone of Tc = 1× the swing time cures it; 0.5× doesn't.
+- **A rate loop can't fight a steady moment, and the old one hid it.** The linear zone left a standing error against
+  thrust off the CoM (canted test: 2.2° → 10.1°). Worse, the steerable fins never moved at all: the loop's largest request
+  (gain 4 × 0.6 rad/s × inertia) was 3.6 kN·m on the dart, less than its 4 kN·m wheel, so it never asked the fins for
+  anything while the passive aero moment won. A rate integral fixes both.
+- **…and windup is the integral's whole failure mode.** Clamped to full authority but integrating while saturated, it
+  made the Lunar oscillate at rms 9.8 °/s whatever its time constant (0.5–2 s). Freezing it while the command saturates
+  (conditional integration) took it back to 0.61 °/s. Clamping it at 30 % instead also stopped the wobble, but halved
+  what the fins could do.
+- **The old gravity turns were partly a controller artifact.** The sqrt law trailed prograde with a small standing
+  error on the kick's side, which sped up the pitch-over (34° at 40 s). Exact tracking gives a slower, pure gravity turn
+  (29°), so scripted 0.95 s kicks now need ~1.2 s for the same trajectory. Test §12's tape kick was retuned. Human
+  pilots will notice nothing but slightly lazier turns after a kick.
+- **The magic roll was real but rare**: it only showed when roll was commanded (roll key, roll disturbances). The
+  scripted ascents never asked for roll, so the study's counter read 0 before and after.
+
+**Tests** (§35, 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
+nozzle centres when the throttle is cut; the Heavy's boosters add roll authority, the Orbiter's one engine none; the
+steerable dart turns 30° in < 0.6× the passive time, plates within range and rate; fin authority ∝ q and none in vacuum,
+and they roll a wheel-less dart. Changed: §5's yank check now asks for a joint ≥ 80 % (was "snaps", at exactly 100 %);
+§12's tape kick 0.95 → 1.2 s. 247 checks pass on the slice, 262 after merging main (sats Phase C).
+
+**For other sessions**
+- **visuals:** `p.gv` (engine, vessel frame, |gv| = sin of the deflection) and `p.fd` (steerable fin, one angle per
+  plate, rad; ring plates in `FIN4` order) are there to draw: nozzles that swivel, fins that turn. `cfin`/`cfins` draw as
+  the passive fins for now.
+- **builder:** the steerable fins sit in "Aero & recovery" by kind. The "no control torque" warning still looks only
+  for wheels; a wheel-less design can now steer with gimbals or steerable fins.
+- **economy / planning:** prices above; `tierOf` returns 1 for `d.ctl`. Engine gimbal ranges could become a variant
+  or an upgrade axis.
+
+**Next on this line** (the rest of the review, in order): the builder readout (control authority per axis vs the aero
+moment at max-q; time for a 90° turn in vacuum, both of which `study_control.mjs` already computes); weaker wheels
+that saturate (pod 40 → ~5–10 kN·m, a wheel part, momentum dumped with RCS); era-gated SAS quality. The wheels are
+still 8× a KSP Mk1 pod and dominate everything but the biggest stacks: in the study the Orbiter's steady ascent never
+needs its gimbal once the kick is done.
+
 ## v1.39 — real ground contact; snow and Selene boulders (2026-10-08, terrain session)
 
 The three things v1.37 left out. Vessels no longer snap upright when they touch: they slide, tip, bounce and come to
@@ -2121,8 +2239,40 @@ Lessons from the sizing:
 Checks (§26): orbit for 4,358 m/s at 31.6 kPa and 3.5 g, the tower gone, 2,817 / 1,832 m/s left; stable (1.31 cal) with the crew
 capsule as root. It also passes the preset-wide checks (stage maths, loads analysis).
 
+### Flown end to end: a crew to Selene and home (2026-10-08)
+
+`fly_crewlunar.mjs` (run it on its own for the log; `test.mjs` §27 checks it) flies Crewed Lunar through the game's own physics
+from the pad to a splashdown. Attitude is set directly; everything else (thrust, staging, aero, heating, both moons' pull, rails,
+the predictor, crew limits) is the game's. It completes **"Crew on Selene"** in **2.4 days**:
+
+| leg | result |
+|---|---|
+| ascent (vertical to 200 m, flat by 38 km) | 102 × 111 km, 2,817 / 1,832 m/s left, tower gone, cabin 311 K |
+| transfer at the Hohmann phase angle (+1,321) | apoapsis at Selene's distance, aimed at its centre |
+| mid-course correction found with the predictor | 33 m/s → a 38 km pass |
+| capture at periapsis, then periapsis raised at apoapsis | low orbit, 1,087 m/s left in the lander |
+| braking, then a suicide burn | lander dropped at 28.8 km (short for the descent), the return stage lands: **1.2 m/s, upright**, 1,435 m/s left |
+| ascent (pitch over by 3 km) | 15 × 20 km, 553 m/s left |
+| burn home (scan of burn point × size for a 45 km perigee), correction 11 m/s at the integrated lowest point | one clean entry, shield first |
+| entry, chute | splashdown **6.5 m/s**, peak **4.1 g**, cabin 250 K; crew fine |
+
+**What flying it found** (each was wrong until the flight tried it):
+1. **The crew cooked on the way up.** After the tower goes at 30 km the capsule is the nose; its skin reaches 520 K, and the
+   animal capsule's 10-minute cabin lag put the cabin at 387 K. The crew capsule now has `ins: 3600` (cabin lags the skin by an
+   hour, insulated and cooled as real ones were): 311 K.
+2. **A hovering descent is a fuel sink.** Easing down from 30 km at a few m/s spent the whole return stage (0 m/s left). A
+   suicide burn (fall until stopping needs 85 % of full thrust) is the efficient way.
+3. **Stage on need, not on empty.** The lander ran dry 1.6 km up mid-burn and the craft hit at 28 m/s. Comparing what's left with
+   what the descent needs (≈ 1.15·√(2gh + v²)) when braking ends drops it at 28.8 km instead.
+4. **No air on Selene: pitch over at once.** A 12 km pitch program spent 1,034 m/s reaching orbit; 3 km spends ~880.
+5. **A periapsis snapshot isn't where you'll be.** The return correction first aimed with the osculating perigee; the moons'
+   tides moved it ~33 km over the next day, and the capsule **aerobraked through nine passes at 70–78 km** before coming down
+   (alive, at 4.4 days). Aiming at the predictor's integrated path (`minR`) gives one pass.
+6. Small ones: the capture burn's cutoff must not depend on reaching a near-circular orbit (it burned through everything);
+   automatic staging must stop at the last engine stage (it staged the capsule loose and popped the chute in vacuum).
+
 **Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
-"Other"); crew transfer and EVA; a scripted end-to-end crewed landing (the preset is sized by budget, not yet flown to Selene and back).
+"Other"); crew transfer and EVA; the flight script's attitude is set directly (a piloted version, or an autopilot from it, is open).
 
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
@@ -3135,6 +3285,89 @@ Two halves launched together (or a module you just released) can now dock to eac
    habitat once tourism exists).
 6. **Reboost** (once orbits decay): raise station X's periapsis above a floor.
 
+### A2 built: vessels that stay flyable across flights (sats session, 2026-10-08)
+
+- **What a registry entry keeps now:** its design (`q.stack`), its state (`q.vst`: which of the design's stage segments
+  have ignited, SAS mode, RCS, chute) and, per shape part, its index in that design (`o.oi`). Vessels that separated keep
+  their parts' design indices (`p.oi`, `p.oseg`), so any descendant of a design rebuilds the same way. Entries from before
+  this have no design and stay passive (no Fly button).
+- **Rebuilding** (`vesselOf`): assemble the design again, switch off the parts the entry no longer has, restore
+  resources (fuel, supplies), crew aboard (`p.crewAboard`) and flight marks, find the next staging event from what's left
+  (the first with something still to drop, a segment not yet lit, or a chute), carry whatever is docked, and place it on
+  its rails at that moment. Staging is *derived*, not stored as an index, because a separated vessel's stage list is a
+  re-indexed subset of its design's.
+- **Fly** (Program panel, a flyable vessel in the satellites list): a flight that starts in orbit on the next whole day.
+  No hardware to buy; the fixed operations fee (`OPS_FIX`) is charged as for any flight (**economy:** your call). The
+  flight record says `fromOrbit` (and its tape can't be saved as an autopilot: tapes replay from the pad).
+- **In a flight:** `]` / `[` also reach your flyable vessels within 2.5 km, loading them into the flight as you switch
+  (tape op `['L', id]`). Undocking a body that can be flown gives a flyable vessel, not a passive satellite. A vessel that
+  came from the register goes back on it as itself (id, name, history: images, lab-days).
+- **Crew:** a capsule keeps its crew across flights. Switching to a vessel with crew aboard makes them this flight's crew
+  (the bodies session's crew rules then apply: air, g, cabin, home safe). So **crew rotation works**: fly the station,
+  undock the crewed capsule, switch to it, bring it home; a new crew docks theirs.
+- Checks (`test.mjs` §31): rebuild through a save (parts, fuel, mass, place, staging); a separated vessel rebuilds with
+  its engine still lit; identity on re-registration; a station flown again undocks its crewed capsule as a flyable
+  vessel with its crew of 2; a nearby flyable vessel loads into the flight and returns as itself. Browser: the Fly button
+  and a flight starting at 300 km.
+- **For economy:** a flight from orbit could complete orbit contracts with something already up (`R.fromOrbit` lets you
+  rule that out), and whether to charge operations for it is yours.
+- **Not yet:** a design changed in the builder after launch doesn't affect what's in orbit (each entry keeps its own
+  copy), but a part definition changed by an update (heights, masses) shifts a rebuilt vessel slightly from its saved
+  shape; temperatures restart cold.
+
+### D built: the arm (sats session, 2026-10-08)
+
+- **Part:** *Robotic arm* (palette *Station*): a base on the side of any structure; two 5 m booms (10 m reach) drawn each
+  frame by two-link inverse kinematics from the shoulder to the grapple point, folded along the hull when free. Its
+  grip is weak (3 kN / 4 kN·m): a hard burn while it holds something tears the body loose.
+- **Grapple** (HUD *Arm* row; tape op `['A', op]`): the nearest body within reach moving under 0.5 m/s relative to us
+  (a satellite, a vessel of this flight, or the payload in our own open bay, which leaves the vessel's parts and is held
+  at once) is held where it is, as a passenger (`kind 'arm'`), gripped where the line from the shoulder meets its
+  bounding sphere.
+- **Berth:** the closest pair of free ports (one of ours, not on the held body or anything docked through it; one of
+  its) decides the goal; the arm carries the body (with anything docked through it, rigidly) at 0.15 m/s and 3°/s to a
+  stand-off 0.5 m out, aligned, then straight in, and it latches as a docking (`kind 'port'`). Both poses must be within
+  reach. Physics, not rails, while it moves.
+- **Stow:** into an open, empty cargo bay, its own axis up the bay's, centred, its base on the floor (`kind 'bay'`):
+  from above the rim, then down. Close the doors and fly it home (retrieval: a satellite brought back intact). A stowed
+  body is released from the *Docked* row.
+- **Release:** let go with no push.
+- **Moving a held body is internal motion:** the stack's centre of mass and velocity stay put; the rest of the stack
+  moves the other way. Measured in one step: the hub moved 1.471 mm for the module's 1.5 mm, exactly the mass ratio.
+- Checks (`test.mjs` §32): grapple a lab and berth it on a hub's side port (faces 2e-16 m apart, 58 s); the centre-of-mass
+  bookkeeping; out of reach refused; a payload taken out of the carrier's own bay and berthed on its side port; release
+  without a push (4.5e-13 m/s), grapple again, stow on the bay floor. Browser: the arm reaching, carrying, berthing.
+- **Not yet:** the arm passing through the stack's own structure on its way (no self-collision for held bodies); a
+  manual mode (joint-by-joint or end-effector keys); grappling debris; the arm taking a held body into a bay that is
+  part of a docked module rather than our own parts.
+
+### E built: moonbases (sats session, 2026-10-08)
+
+- **Landed objects persist.** A vessel that ends a flight resting on a body other than home is registered in that
+  body's frame (`q.landed`, `q.bodyName`, `q.pf` its centre of mass, `q.ql` its attitude), with its shape, design and
+  state like any entry. It's drawn when near, labelled on the map, listed in the Program panel under *On the surface*
+  (Fleet tab), and flyable: **Fly** starts the flight standing where it stood, and it lifts off under power. The
+  register's orbit-only code (`satsUp`) no longer sees landed objects; they have their own list (`landedUp`).
+- **Bases:** a *Base beacon* (palette *Station*) makes a landing site a base (named *Selene Base N*); everything landed
+  within 500 m of it, along the surface, on the same body belongs to it. Berths, crew (crewed capsules landed there, up
+  to the berths), labs and supplies add up across the members, and between flights a base works exactly as a station
+  does (one shared `crewTick`): supplies used, lab-days earned, headlines when low or out.
+- **Landing on a target:** a landed object can be the target (`G` cycles those on the body you're at). The HUD's
+  *Landing* row gives the distance along the surface, the bearing, and how far the predicted impact point is from it
+  (green inside the base's 500 m); the flight view marks it.
+- **Contact** now runs on any body: landed objects are immovable (and, for now, take no damage); the orbital register is
+  still only around Tellus. A capsule dropping onto a habitat at 1 m/s rebounds at 0.33 m/s; the habitat doesn't move.
+- Checks (`test.mjs` §33): saved in Selene's frame (and out of the orbit lists); flown again from the surface and lifting
+  off; a base of four with a fifth habitat 2 km away left out; 10 days at the base (20 lab-days, 200 kg used) and a day
+  of the orbit code with landed objects present; the bounce off a module; a base as the target. Another session's guard
+  (every Program heading must have a tab) caught my new heading; it's in the Fleet tab. Browser: a base of four on
+  Selene seen from the beacon lander, and its Program panel lines.
+- **Not yet:** surface docking or rovers between modules; damage to landed modules; landed objects on Tellus away from
+  home (a vessel landing at home is recovered, as before); power and in-situ fuel at a base.
+
+**The stations plan is built end to end** (A, A2, B, C, D, E). What it needs next is mostly the economy session's:
+contracts for stations, bases, retrieval and crew rotation, and the rules for flights from orbit.
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -3839,6 +4072,156 @@ Today both are gated by milestones. With compute behind them, eras have a cause 
    - the thermal solve (physics: builder's or a new session);
    - revenue (economy).
 4. **Depots** (sats Phase C), then Selene mining and heliocentric projects (bodies).
+
+## Time, long missions and communication — design (2026-10-08, economy session with Caio; nothing built)
+
+**The problem.** In KSP time barely matters, because nothing in the world changes with it. Here it does: budget
+years, elections, the race, sanctions, the compute eras. And our calendar is serial: a flight's time is added to it,
+and only Tellus orbits survive the end of a flight.
+
+Measured scale:
+- a program day is one Tellus rotation (8 h); a year is 400 days;
+- Selene is ~2.4 days away by Hohmann transfer, Nyx ~0.8;
+- stacking an Orbiter takes ~36 days, so about ten flights a year.
+
+With a sun and planets, transfers would take hundreds of days to years. A probe would either freeze the program for
+years or be lost when the flight ends. Managing time must be forgiving, not a chore.
+
+### Principles
+
+1. Time passes only when you choose (already true).
+2. Nothing you launch is lost to time: long flights continue in the background.
+3. A long mission pays along the way, not only at the end.
+4. Waiting is one click, and nothing slips past you.
+5. Missing something costs a wait, never a failure: windows come round again, and deadlines on long missions are
+   generous or absent.
+6. The world changes while you wait, but waiting doesn't punish you. **Decided:** idle time roughly neutral, no daily
+   overhead (v1.41).
+
+### Mechanics
+
+- **Missions in flight.** Any vessel coasting when you leave its flight joins the registry with its trajectory,
+  around any body or between them. It moves on exact Kepler rails with transitions between bodies' gravity, and
+  raises events: entering another body's gravity, closest approach, planned burns.
+  - "Leave it to mission control" hands a coast off; only the time you actively flew counts on the calendar.
+- **Passive flybys (decided).** A flyby needs no piloting. Its science is worked out from the trajectory and the
+  instrument timeline (below). Only burns need you, or an uploaded burn plan:
+  - with the era's error early on (`predErr`), so you arrive off target and need a correction;
+  - precise once onboard computers come.
+- **One event timeline:**
+  - arrivals and launch windows;
+  - studies and buildings finishing;
+  - budget years and elections;
+  - later, routine runs and pad slots.
+
+  "Advance to next event", or to one you pick. Time stops automatically at anything that needs you, and background
+  events that don't resolve on their own (the KSP Alarm Clock mod idea, built in).
+- **Paying along the way:**
+  - prestige at launch and escape;
+  - public interest during the cruise;
+  - cruise science per day (fields and particles);
+  - the encounter payout, then an extended mission.
+
+  Long contracts pay in stages: a share at launch, the rest at arrival.
+- **The world moving is story:**
+  - a probe launched with human computers arrives in the mainframe era, and the news says so;
+  - probes in flight stay with the program through ownership changes;
+  - a rival's probe can beat yours to a target.
+- **Windows:**
+  - nearby targets come round often;
+  - planetary windows are the one rare timing decision, and off-window launches cost Δv instead of being refused;
+  - "wait for the window" is one click.
+- **The year (decided):** once there's a sun (bodies session), the year **is** Tellus's orbital period. Era lengths and
+  the budget cycle are then tuned so a long probe spans about one era, not three.
+
+### Instruments that have to look, and data that has to come home
+
+**Instruments with pointing** (Caio): a moment of data collection should need the instrument to face what it measures.
+- **Camera:** narrow field, must point at the target, needs light. Resolution comes from distance and aperture
+  (today's camera is ~10 µrad).
+- **Radar:** side-looking or straight down, works at night and through cloud, heavy on power.
+- **Spectrometer:** points like a camera.
+- **Fields and particles:** no pointing; cruise science.
+- **In-situ sensors:** must be inside the thing (an atmosphere probe).
+
+**Pointing in the background.** A probe on rails doesn't simulate its attitude. It follows a **pointing timeline**:
+sun-pointing, home-pointing, target-pointing, or an uploaded sequence ("camera on Nyx from T−1 h to T+1 h, then the
+dish home").
+
+The real tension, as for Voyager and Galileo, is that the camera and the high-gain dish want different directions.
+Imaging time is time you're not downlinking.
+
+**Data is a volume.** Instruments fill an onboard recorder; contact drains it at the link rate. **Pay comes on data
+received, not collected.** A flyby is a burst of capture, then days of downlink.
+
+**The link, from physics:**
+- Rate goes as transmit power × both antennas' gains ÷ distance².
+- A dish's gain grows with its area, so big dishes pay: the ground arrays.
+- Distance squared is what makes deep space hard: Selene is ~16,000× weaker than a 300 km orbit (38,000 km vs 300 km).
+- Omni whips work near home. Deep space needs a dish on the probe, pointed home, and big dishes on the ground.
+
+**The home network:**
+- ground stations at home and abroad (built: contact time already drives imagery sales; foreign sites need relations);
+- relay satellites, which extend contact for low orbits;
+- deep-space dish arrays at three sites ~120° apart, so one always sees the sky. That's the "antenna arrays" idea, and
+  the diplomacy needed to place them abroad.
+
+**Control is forgiving.** Losing contact never makes a vessel uncontrollable or dead. You just can't upload new plans
+until it's back: the vessel follows its last sequence (and onboard autonomy, by era), and data waits on the recorder.
+
+**How KSP does it, for reference** (from memory of the game, not checked against the docs):
+- **CommNet:** a vessel needs a chain of antennas back to home ground stations. Range comes from both ends' antenna
+  power; a weak signal slows science transmission; with no connection, an uncrewed probe loses most control.
+- **KerbNet:** a separate feature, a scanning overlay on the map (terrain, biomes, anomalies) from probe cores and
+  scanners with a field of view.
+
+Ours keeps the network and drops the loss of control.
+
+### Planning before the flight (Caio, 2026-10-08)
+
+For long missions there's little to no manual flying, so planning has to be much more involved than in KSP. That
+means a **mission planning screen before the flight**: the maneuver-node idea moved ahead of launch.
+
+**What KSP does,** from memory, not checked against the docs:
+- **Stock:** maneuver nodes are placed on the vessel's current trajectory, in flight, in the map view. You can drop
+  one while sitting on the pad, but there's no pre-flight mission planner.
+- **Mods:**
+  - Transfer Window Planner: porkchop plots of departure date against travel time;
+  - Kerbal Alarm Clock;
+  - MechJeb: ascent guidance and a maneuver planner that executes nodes;
+  - Principia: a flight plan, a sequence of burns planned ahead and integrated.
+
+  Players build this workflow out of mods.
+
+**Proposal: the study is the plan.** A mission plan is made on the planning screen:
+- target and window (a porkchop plot);
+- ascent profile;
+- burn sequence;
+- the instrument pointing timeline.
+
+The trajectory study (v1.38) is the trajectory office computing that plan. It takes the era's days and money and comes
+back with the era's precision. The plan then drives:
+- the automated flight (the autopilot work in another session) for the ascent and burns;
+- missions in flight on the timeline for the long coasts, with burns executed at the era's error until onboard
+  computers come;
+- events on the timeline: window opens, burn, arrival.
+
+In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
+and the screen is where the player spends their time either way.
+
+**Owners:**
+- the screen: UI;
+- nodes, maps, porkchop: planning;
+- execution: autopilot session, sats registry;
+- studies (cost, days, precision): economy.
+
+### Owners and order
+
+1. **The time model:** the event timeline (economy + UI view; first slice built in v1.42) and missions in flight in the registry (sats, planning).
+   It comes before routine runs, which are just another source of events.
+2. **Data as a volume plus the link budget** (planning: stations, antennas; economy: pay on received data).
+3. **Instruments with pointing and the pointing timeline** (builder: parts; planning or sats: the timeline).
+4. **The sun, planets and the year** (bodies).
 
 ## Platform direction: native desktop later, the browser for now (Caio, 2026-10-08)
 
