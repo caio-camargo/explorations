@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.17.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.17.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -3418,6 +3418,31 @@ the arrows, and every key in the handlers present in its Help table.
   translate.** RCS on/off moved from R to **V**; `R` in flight is only revert.
 - Not done yet: the top bar still has Revert/Assembly/Logbook/Save as autopilot (slice 4 takes them off). The Esc menu
   does not pause the game. That's still open: KSP pauses, and here warp would have to drop to 1× and then come back.
+
+### Slice 2 built (2026-10-08): the Program screen
+- The page opens on **Program** (`#prog`), a panel over the ship waiting on the pad. Header: date and funds, Logbook,
+  **BUILD ▶** (or `B`). Assembly gets back with `P`, the "← Program" button in its new top strip (date, funds, Inbox
+  count), or the Esc menu. Internally `mode` stays `'editor'` and `atHQ` hides the Assembly panels. Only `go()` sets it
+  (§32), and builder.js's key handler ignores keys while `atHQ` is set.
+- Rows in `KEYS` can carry `go:'<screen>'`; the shared key handler acts on them, so screen keys need no handler code.
+- **How sections reach tabs.** `renderProgram` (economy/bodies) is unchanged and still writes one column into a hidden
+  `#program`. A wrapper calls `progLayout()` after it, which moves each section into a tab according to its heading
+  (`progTabOf`):
+  - Inbox: decisions with deadlines (always first), contract offers.
+  - Missions: the epochs.
+  - Contracts: active contracts, standing, the race.
+  - Fleet: ground stations, in orbit.
+  - World.
+  - Industry: know-how, test stand, facilities, development, production, what we know.
+  - Company: ownership, shares, history, reset.
+
+  A heading it doesn't know goes to a "More" tab. **§32 fails if any `class="ep">Heading` literal in the page would land
+  there.** Whoever adds a section adds its heading to `progTabOf`. Click handlers are delegated on `document`, so moving
+  the nodes doesn't break them.
+- **First run gate:** while "Whose program?" / "How does it start?" are showing, Program shows only that choice and Build
+  is disabled (and `go('assembly')` refuses). This closes "nothing makes you choose before launching".
+- Not yet: Inbox doesn't collect news (the `#news` ticker still runs as before); the Assembly right panel is untouched
+  (slice 5); the CoM/CoP markers still draw behind the Program panel.
 
 ---
 

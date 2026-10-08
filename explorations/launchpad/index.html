@@ -57,6 +57,13 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #help{width:min(440px,92vw)}#help td:first-child{color:var(--acc);white-space:nowrap;padding-right:10px;vertical-align:top}#help td:last-child{text-align:left}#help h3{margin:8px 0 2px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:normal}
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
+#prog{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
+.hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
+.hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
+#progTabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 0;border-bottom:1px solid var(--line)}#progTabs button{border-radius:4px 4px 0 0;border-bottom:0;padding:4px 12px}#progTabs .n{color:var(--warn);margin-left:4px}
+#progBody{overflow:auto;padding:8px 2px 4px;min-height:200px;columns:2 340px;column-gap:28px}#progBody>*{break-inside:avoid}#progBody .ep{font-size:11.5px;margin-top:10px;break-after:avoid}
+#progBody.gate{columns:1}#progBody.gate .ms{margin:8px 0}#progBody .none{color:var(--dim);padding:20px 0}
+#hqStrip{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 4px;font-size:11px}#hqStrip .ep{margin:0}#hqStrip .n{color:var(--warn)}#hqStrip button{padding:1px 7px}
 .stg{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
@@ -95,7 +102,7 @@ body.noperf #perf{display:none}
 <div id="editor" class="ui">
   <div class="panel left">
     <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">assembly · pick a part, then place it on the rocket</div>
-    <h2>Program</h2><div id="program"></div>
+    <div id="hqStrip"></div>
     <h2>Parts</h2><div id="target"></div><div id="palette"></div>
     <h2>Presets</h2><div id="presets"></div>
   </div>
@@ -107,6 +114,10 @@ body.noperf #perf{display:none}
   </div>
 </div>
 
+<div id="prog" class="hidden"><div class="hq">
+  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
+  <div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
+</div></div>
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
   <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
@@ -3753,14 +3764,18 @@ addEventListener('beforeunload',e=>{if(mode==='flight'&&S&&S.alive&&!S.landed){e
 function toggleMap(){go(view==='map'?'flight':'map')}
 // ============================================================ screens, overlays, keys (ui session; NOTES § "UI: screens and navigation")
 // One name for where you are. `mode`/`view` are still the state everything reads; go() is the one place that changes them.
-const screenNow=()=>mode==='editor'?'assembly':view==='map'?'map':'flight';
+let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
+const screenNow=()=>mode==='editor'?(atHQ?'program':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
-  if(s==='assembly'){mode='editor';view='flight';$('editor').classList.remove('hidden');$('hud').classList.add('hidden');editorChanged()}
-  else if(s==='flight'){if(mode!=='flight'){mode='flight';$('editor').classList.add('hidden');$('hud').classList.remove('hidden')}view='flight'}
+  if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
+  else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
+  else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
+  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ);$('prog').classList.toggle('hidden',!atHQ);$('hud').classList.toggle('hidden',mode!=='flight');
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
-// k: the e.key names (lower case) the handlers match; l: label; d: what it does. Map shows its own rows, then Flight's.
+// k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to (the shared
+// handler acts on it). Map shows its own rows, then Flight's.
 const KEYS={
   all:[{k:['h'],l:'H',d:'this list'},{k:['f'],l:'F',d:'logbook'},{k:['escape'],l:'Esc',d:'close the top panel · menu'}],
   flight:[{k:[' '],l:'Space',d:'next stage (ignite / decouple / chute)'},{k:['backspace'],l:'Backspace',d:'abort'},
@@ -3774,12 +3789,13 @@ const KEYS={
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
   map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite'},
     {l:'drag handle',d:'change the node (the further, the faster)'}],
-  assembly:[{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
+  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
+  assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
     {k:['delete','backspace'],l:'Del',d:'delete'},{k:['z','y'],l:'Ctrl+Z · Ctrl+Y',d:'undo · redo (Ctrl+Shift+Z too)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}]};
-const SCREEN_NAME={assembly:'Assembly',flight:'Flight',map:'Map'};
+const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
@@ -3799,21 +3815,52 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}</h2>`+b('close','Close  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +b('log','Logbook  [F]')+b('keys','Keys  [H]')
+    +(screenNow()==='assembly'?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')
     +`<label><input type="checkbox" id="escPerf"${perfOn?' checked':''}> performance readout</label>`;
   $('escPerf').onchange=e=>{perfOn=e.target.checked;document.body.classList.toggle('noperf',!perfOn);try{localStorage.setItem('launchpad-perf',perfOn?'1':'0')}catch(x){}}}
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
+  if(d.go){go(d.go);return}
   const a=d.esc;if(!a)return;
   if((a==='revert'||a==='assembly')&&flying()&&escArm!==a){escArm=a;renderEsc();return}
   ovClose('escm');
-  if(a==='revert')$('bRevert').click();else if(a==='assembly')go('assembly');else if(a==='tape')$('bSaveTape').click();
+  if(a==='revert')$('bRevert').click();else if(a==='assembly')go('assembly');else if(a==='tape')$('bSaveTape').click();else if(a==='program')go('program');
   else if(a==='log'){ovClose('help');toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')}else if(a==='keys')toggleHelp()});
 // Keys every screen shares. Registered before builder.js's handler, so a part in hand (or selected) keeps Esc for itself.
 addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
-  if(k==='escape'){if(mode==='editor'&&BLD.st&&(BLD.st.held||BLD.st.sel))return;const t=ovTop();if(t)ovClose(t);else ovOpen('escm')}
+  if(k==='escape'){if(screenNow()==='assembly'&&BLD.st&&(BLD.st.held||BLD.st.sel))return;const t=ovTop();if(t)ovClose(t);else ovOpen('escm')}
   else if(k==='h')toggleHelp();
-  else if(k==='f'){toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook');else ovClose('logbook')}});
+  else if(k==='f'){toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook');else ovClose('logbook')}
+  else{const r=(KEYS[screenNow()]||[]).find(r=>r.go&&r.k.includes(k));if(r)go(r.go)}});
+// ---- the Program screen (slice 2). renderProgram (economy/bodies) still writes one long column into the hidden #program;
+// progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
+// is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
+const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
+const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^Offers/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
+  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit)/.test(h)?'fleet':/^The world/.test(h)?'world':
+  /^(Know-how|Test stand|Facilities|Development|Production|What we know)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
+let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
+function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
+  const box={gate:[]};for(const[k]of PROG_TABS)box[k]=[];let cur='more';
+  const head=kids.shift();$('progHead').replaceChildren(head);
+  for(const n of kids){if(n.classList.contains('ep'))cur=progTabOf(n.textContent.trim());
+    if(n.id==='progReset')box.company.push(n);
+    else if(n.querySelector('[data-dk]'))box.inbox.unshift(n);   // a decision with a deadline: first thing you see
+    else if(cur==='inbox'&&/^Standing/.test(n.textContent))box.contracts.splice(1,0,n);
+    else box[cur].push(n)}
+  progGate=box.gate.length>0;progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
+  $('bBuild').disabled=progGate;
+  const body=$('progBody');body.classList.toggle('gate',progGate);
+  if(progGate){$('progTabs').replaceChildren();body.replaceChildren(...box.gate)}
+  else{if(!progTab||!box[progTab])progTab=progInbox?'inbox':'missions';
+    $('progTabs').innerHTML=PROG_TABS.filter(([k])=>k!=='more'||box.more.length).map(([k,l])=>
+      `<button data-ptab="${k}" class="${k===progTab?'on':''}">${l}${k==='inbox'&&progInbox?`<span class="n">${progInbox}</span>`:''}</button>`).join('');
+    body.replaceChildren(...box[progTab]);if(!box[progTab].length)body.innerHTML=`<div class="none">${progTab==='inbox'?'Nothing waiting for an answer.':'Nothing here yet.'}</div>`}
+  $('hqStrip').innerHTML=`${head.outerHTML}<span class="sp" style="flex:1"></span>${progInbox?`<span class="n">Inbox ${progInbox}</span>`:''}<button data-go="program">← Program [P]</button>`}
+{const raw=renderProgram;renderProgram=function(){raw();progLayout()}}
+document.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset.ptab;if(!t)return;progTab=t;try{localStorage.setItem('launchpad-progtab',t)}catch(x){}renderProgram()});
+$('bLog3').onclick=()=>{toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')};
+
 
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
@@ -4255,7 +4302,7 @@ function renderLog(){const el=$('logbook'),era=modernUI()?0:eraOf(),cls=['lb-mod
 function toggleLog(){const el=$('logbook');if(el.classList.toggle('hidden'))return;renderLog()}
 $('bLog').onclick=toggleLog;$('bLog2').onclick=toggleLog;
 document.addEventListener('click',e=>{if(e.target.id==='lbHint')toggleLog();const id=e.target.dataset&&e.target.dataset.lbload;if(!id)return;const ent=logF(id);if(!ent||!ent.stack)return;
-  if(mode!=='editor')$('bEditor').click();BLD.load(JSON.parse(JSON.stringify(ent.stack)));
+  go('assembly');BLD.load(JSON.parse(JSON.stringify(ent.stack)));
   // the record flight becomes this design's autopilot, unless the design already has one
   if(ent.tape)try{if(!localStorage.getItem(tapeKey()))localStorage.setItem(tapeKey(),JSON.stringify({v:ent.tape.v,stack:ent.stack,ops:ent.tape.ops,site:ent.tape.site}))}catch(x){}
   $('logbook').classList.add('hidden');HOOK.msg(`Loaded ${ent.by}${ent.tape?' with its record flight as the autopilot':''}`)});
@@ -4419,7 +4466,7 @@ function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.c
   $('nd-sum').innerHTML=n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
     `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${warpTo!==null?' <span class="warn">(warping)</span>':''}`;
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
-renderEditor();
+renderEditor();go('program');
 requestAnimationFrame(frame);
 </script>
 </body>
