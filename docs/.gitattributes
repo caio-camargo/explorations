@@ -1,0 +1,2 @@
+# shell scripts must keep LF line endings: Git Bash fails on CRLF (core.autocrlf is on on these machines)
+*.sh text eol=lf

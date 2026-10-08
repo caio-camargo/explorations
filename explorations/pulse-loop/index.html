@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pulse Loop</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;font:12px/1.4 ui-monospace,Consolas,monospace;color:#ddd}
+  canvas{display:block;width:100vw;height:100vh;object-fit:contain;background:#000}
+  #ui{position:fixed;left:12px;bottom:12px;background:rgba(0,0,0,.72);border:1px solid #333;padding:10px 12px;
+      border-radius:6px;transition:opacity .4s;max-width:calc(100vw - 48px)}
+  #ui.hide{opacity:0;pointer-events:none}
+  #ui .row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:4px 0}
+  #ui label{color:#888;min-width:52px}
+  button{background:#1b1b1b;color:#ddd;border:1px solid #444;border-radius:3px;padding:3px 7px;font:inherit;cursor:pointer}
+  button.on{background:#ddd;color:#000}
+  button.rec{border-color:#a33}
+  input[type=range]{width:110px}
+  input[type=number]{width:52px;background:#111;color:#ddd;border:1px solid #444;font:inherit}
+  #beat{display:inline-block;width:10px;height:10px;border-radius:50%;background:#444}
+  #status{color:#888}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <div class="row"><label>scene</label><span id="scenes"></span></div>
+  <div class="row"><label>palette</label><span id="pals"></span></div>
+  <div class="row"><label>pulse</label><span id="pulses"></span></div>
+  <div class="row"><label>tempo</label>
+    <input id="bpm" type="number" min="60" max="200" step="1" value="124"> bpm
+    <button id="tap">tap [T]</button> <span id="beat"></span>
+    <label style="min-width:auto;margin-left:8px">loop</label><span id="barsBtns"></span> bars
+  </div>
+  <div class="row"><label>pump</label><input id="pump" type="range" min="0" max="1.5" step=".01" value=".8">
+    <label style="min-width:auto">warp</label><input id="warp" type="range" min="0" max="1.5" step=".01" value=".6">
+    <label style="min-width:auto">psy</label><input id="psy" type="range" min="0" max="1.5" step=".01" value=".8"></div>
+  <div class="row"><button id="strobe">strobe [S]</button><button id="fs">fullscreen [F]</button>
+    <button id="rec" class="rec">● record loop 1080p [R]</button> <span id="status"></span></div>
+  <div class="row" style="color:#666">1–9,0,- scene · P palette · B pulse · space pause · H hide panel</div>
+</div>
+<script>
+// ---------------------------------------------------------------------------
+// Everything is a function of loop phase P in [0,1). Every time-dependence in
+// the shader is an integer number of cycles per loop, so P=1 renders exactly
+// like P=0 and the recording is seamless by construction.
+// ---------------------------------------------------------------------------
+const FS = `#extension GL_OES_standard_derivatives : enable
+precision highp float;
+uniform vec2 R; uniform float P, BEATS, PUMP, WARP, STROBE, FRAME, PSY;
+uniform int SCENE, PAL, PULSE;
+#define TAU 6.28318530718
+float kick, s, beat;
+
+// pulse envelope at beat position b. Scenes call it with b = beat - delay so the
+// pulse can travel through space (a heartbeat wave crossing tissue).
+float shapeA(float b, float att){
+  if(PULSE==0){ float f=fract(b); return smoothstep(0.,att,f)*exp(-5.*f)*(mod(floor(b+1e-4),4.)<.5?1.25:1.); } // kick
+  if(PULSE==1){ float f=fract(b);                                                             // heart: lub-dub
+    float lub = smoothstep(0.,att,f)*exp(-f*13.);
+    float g = f-.2;  float dub = g>0. ? smoothstep(0.,att,g)*exp(-g*11.)*.7 : 0.;
+    return (lub+dub)*1.25; }
+  if(PULSE==2){ float f=fract(b*.5); float x=sin(3.14159*pow(f,.55)); return x*x; }            // swell, every 2 beats
+  float f=fract(b*.25); float x=sin(3.14159*pow(f,.8)); return x*x;                            // languid: one slow swell per bar
+}
+float shape(float b){ return shapeA(b, .001); }     // the beat itself: hard attack
+float wave(float b){ return shapeA(b, .09); }       // a pulse travelling through tissue: soft front
+
+// --- gradient noise, periodic in z with period 'per' ------------------------
+// fbm samples z = P*per, so z travels exactly one period per loop: the texture
+// evolves (not just scrolls) and still returns to its starting state.
+vec3 hash33(vec3 p){ p=vec3(dot(p,vec3(127.1,311.7,74.7)),dot(p,vec3(269.5,183.3,246.1)),dot(p,vec3(113.5,271.9,124.6)));
+  return fract(sin(p)*43758.5453)*2.-1.; }
+vec2 hash22(vec2 p){ return fract(sin(vec2(dot(p,vec2(127.1,311.7)),dot(p,vec2(269.5,183.3))))*43758.5453); }
+float hash11(float n){ return fract(sin(n*91.345)*47453.5453); }
+float gcorner(vec3 i, vec3 f, vec3 o, float zz){ return dot(hash33(vec3(i.xy+o.xy, zz)), f-o); }
+float gn(vec3 p, float per){
+  vec3 i=floor(p), f=fract(p), u=f*f*(3.-2.*f);
+  float z0=mod(i.z,per), z1=mod(i.z+1.,per);
+  float a=gcorner(i,f,vec3(0,0,0),z0), b=gcorner(i,f,vec3(1,0,0),z0), c=gcorner(i,f,vec3(0,1,0),z0), d=gcorner(i,f,vec3(1,1,0),z0);
+  float e=gcorner(i,f,vec3(0,0,1),z1), g=gcorner(i,f,vec3(1,0,1),z1), h=gcorner(i,f,vec3(0,1,1),z1), k=gcorner(i,f,vec3(1,1,1),z1);
+  return mix(mix(mix(a,b,u.x),mix(c,d,u.x),u.y), mix(mix(e,g,u.x),mix(h,k,u.x),u.y), u.z);
+}
+float fbm(vec2 p, float per){
+  float v=0., a=.5;
+  for(int i=0;i<4;i++){ v+=a*gn(vec3(p,P*per),per); p=p*2.03+vec2(1.7,9.2); per*=2.; a*=.5; }
+  return v;
+}
+
+// cyclic 4-stop gradient: a -> b -> c -> d -> a over t in [0,1)
+vec3 cyc4(vec3 a, vec3 b, vec3 c, vec3 d, float t){
+  t = fract(t)*4.; float i = floor(t), f = smoothstep(0.,1.,fract(t));
+  vec3 p = i<1. ? a : i<2. ? b : i<3. ? c : d;
+  vec3 q = i<1. ? b : i<2. ? c : i<3. ? d : a;
+  return mix(p,q,f);
+}
+vec3 pal(float t){
+  if(PAL==0) return cyc4(vec3(1.,.12,.55), vec3(.08,.22,1.), vec3(.85,.08,.95), vec3(.08,.75,1.), t);  // candy: hot pink / electric blue / magenta / cyan
+  if(PAL==1) return cyc4(vec3(0.,.85,.95), vec3(.08,.12,.65), vec3(.95,.12,.75), vec3(.45,.2,.95), t); // lagoon: cyan / deep blue / magenta / violet
+  if(PAL==2) return cyc4(vec3(1.,.6,.85), vec3(.55,.6,1.), vec3(1.,.85,.95), vec3(.7,.35,.8), t);      // orchid: pastel pink / periwinkle / blush / mauve
+  if(PAL==3) return mix(vec3(1.,.08,.75), vec3(.05,1.,.9), .5+.5*cos(TAU*t));                         // acid: magenta / cyan
+  if(PAL==4) return .5+.5*cos(TAU*(t+vec3(.0,.33,.67)));                                               // spectrum
+  return cyc4(vec3(.5,.05,.1), vec3(.95,.45,.55), vec3(1.,.55,.4), vec3(.8,.25,.45), t);              // flesh
+}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,-s,s,c);}
+
+// 0 — ring tunnel: one ring arrives per beat
+vec3 tunnel(vec2 uv){
+  uv += .06*WARP*vec2(sin(s), sin(2.*s));
+  float r = length(uv), a = atan(uv.y,uv.x);
+  float z = .35/r;
+  float ring = .5+.5*cos(TAU*(z*2. - P*BEATS));
+  ring = pow(ring, 6.);
+  float seg = .5+.5*cos(8.*a + z*1.2*WARP + 2.*s);
+  float v = ring*(.35+.65*seg);
+  vec3 c = pal(z*.08 + P) * v * (1.+2.*kick*PUMP*ring);
+  return c * smoothstep(.0,.35,r);
+}
+// 1 — hypno spiral, log-polar so the zoom is infinite
+vec3 spiral(vec2 uv){
+  float r = length(uv), a = atan(uv.y,uv.x), lr = log(r);
+  float v1 = cos(3.*a + 7.*lr - TAU*P*BEATS*.5);
+  float v2 = cos(-5.*a + 7.*lr - TAU*P*BEATS*.5 + WARP*sin(s+lr));
+  float w = .15 + .25*kick*PUMP;
+  float m = smoothstep(-w,w,v1) * (.55+.45*smoothstep(-w,w,v2));
+  return pal(lr*.15 - P) * m * smoothstep(0.,.12,r);
+}
+// 2 — moiré: two families of rings from orbiting centres
+vec3 moire(vec2 uv){
+  vec2 c1 = .22*WARP*vec2(cos(s), sin(2.*s));
+  float F = 55. + 10.*kick*PUMP;
+  float d1 = length(uv-c1), d2 = length(uv+c1);
+  float v = sin(d1*F - TAU*P*BEATS*.5) * sin(d2*F - TAU*P*BEATS*.5);
+  float m = smoothstep(-.05,.05,v);
+  return mix(vec3(0.), pal(length(uv)*.6 + P), m) * (.7+.6*kick*PUMP);
+}
+// 3 — kaleidoscope plasma
+vec3 kaleido(vec2 uv){
+  float r = length(uv), a = atan(uv.y,uv.x);
+  float N = 6.;
+  a = abs(mod(a + s, TAU/N) - TAU/(2.*N));
+  vec2 p = r*vec2(cos(a),sin(a)) * (2.2 - .5*kick*PUMP);
+  for(int i=0;i<5;i++){
+    float fi = float(i);
+    p += WARP*.45*vec2(sin(p.y*1.7 + fi + 2.*s), cos(p.x*1.3 - fi + s));
+  }
+  float v = sin(p.x*2.) * cos(p.y*2.);
+  float lines = pow(1.-abs(v), 14.);
+  vec3 c = pal(v*.35 + r*.25 + P) * pow(abs(v), .6);
+  return c + lines*(.6+kick*PUMP)*pal(P+.5);
+}
+// 4 — square tunnel, every level twisted
+vec3 squares(vec2 uv){
+  float r = length(uv);
+  uv = rot(WARP*.6*sin(s)*log(r) + s) * uv;
+  float d = max(abs(uv.x),abs(uv.y));
+  float z = log(d);
+  float st = .5+.5*cos(TAU*(z*2.5 - P*BEATS*.5));
+  float m = smoothstep(.45,.55,st);
+  vec3 c = pal(z*.2 + P) * m;
+  c += pal(P+.5) * kick*PUMP * pow(st,12.);
+  return c * smoothstep(0.,.08,d);
+}
+// 5 — breathing dot grid with a polar wave through it
+vec3 dots(vec2 uv){
+  float r = length(uv);
+  vec2 g = uv*14.;
+  vec2 id = floor(g), f = fract(g)-.5;
+  float rd = length(id/14.);
+  float wave = .5+.5*sin(TAU*(rd*2. - P*BEATS*.5) + WARP*2.*sin(atan(id.y,id.x)*3.+s));
+  float size = .08 + .32*wave*(1.-.5*PUMP) + .3*PUMP*kick*smoothstep(.6,.0,abs(rd-.5*fract(P*BEATS)*1.2));
+  float m = smoothstep(size, size-.04, length(f));
+  return pal(rd*.8 + P) * m;
+}
+
+
+// ============================ biological scenes =============================
+// Colour is not a fixed material: each scene computes a hue coordinate t from
+// its own field (fold height, cell identity, depth, the passing pulse), and the
+// palette is read at three offsets. Shadows take the opposite hue, the light
+// inside takes a quarter-turn, so pink tissue glows blue and vice versa.
+// PSY scales how far t wanders; at 0 the whole frame is one hue drifting with P.
+void mat(float t, out vec3 dp, out vec3 md, out vec3 gl){
+  md = pal(t);
+  dp = pal(t+.5)*.10;
+  gl = pal(t+.15)*1.2;
+}
+// wet, translucent shading of a height field h. Normals come from screen-space
+// derivatives, so a scene evaluates its field once per pixel.
+vec3 shade(float h, vec3 base, vec3 emit, float t){
+  vec3 n = normalize(vec3(-dFdx(h)*R.y*.11, -dFdy(h)*R.y*.11, 1.));
+  vec3 L = normalize(vec3(-.45,.55,.7)), H = normalize(L+vec3(0,0,1));
+  float dif = max((dot(n,L)+.45)/1.45, 0.);                 // wrapped diffuse: light bleeds round the form
+  float nh = max(dot(n,H),0.);
+  float spec = pow(nh,80.)*1.1 + pow(nh,14.)*.08;            // tight wet glint + soft sheen
+  float fres = pow(1.-max(n.z,0.),3.);
+  vec3 c = base*dif + emit + spec*mix(vec3(1.),pal(t+.4),.35*PSY);
+  c += pal(t + n.x*.6 + n.y*.4 + h)*fres*(.3+.7*PSY);        // thin-film sheen: hue follows the surface angle
+  return c;
+}
+
+// 6 — cells, abstracted: three translucent layers of soft cells drifting past
+// each other. No membranes: each pixel's colour is a soft-weighted blend of its
+// neighbouring cells, so hues bleed into one another; density falls off gently
+// toward where cells meet instead of stopping at an edge.
+vec3 cellLayer(vec2 p, float layer, float scale, out float dens){
+  // blend sharpness must stay >~7: a softer kernel reaches cells outside the 3x3
+  // neighbourhood, and truncating them shows up as straight seams on the grid.
+  // Softness comes from the density ramp below instead.
+  const float ROUND = 8.;
+  vec2 id = floor(p), f = fract(p);
+  // One pass, no arrays: sum exp(-K(dj-d1)) = exp(K d1) * sum exp(-K dj), and the
+  // colour blend's normalisation cancels d1. The earlier two-pass version, which
+  // kept 9 distances and colours in arrays, took ~22 s to compile through Direct3D.
+  float d1 = 9., S = 0., wsum = 0.; vec3 col = vec3(0);
+  for(int y=-1;y<=1;y++) for(int x=-1;x<=1;x++){
+    vec2 o = vec2(x,y);
+    vec2 hh = hash22(id+o+layer*17.3);
+    vec2 c = o + .5 + .32*vec2(sin(s+hh.x*TAU), cos(s+hh.y*TAU)) - f;
+    float delay = length(id+o+.5)/scale*2.6 + hh.y*.6;         // the swell rolls slowly outward
+    float w = wave(beat - delay);
+    float dd = length(c)/(1. + .4*PUMP*w);
+    d1 = min(d1, dd);
+    S += exp(-ROUND*dd);
+    float wc = exp(-7.*dd);                                     // colours bleed across cell boundaries
+    col += pal(P + PSY*(hh.x + .3*w + .15*layer)) * (.75 + .5*PUMP*w) * wc; wsum += wc;
+  }
+  col /= wsum;
+  float edge = -log(max(S*exp(ROUND*d1) - 1., 1e-4))/ROUND;    // soft-min gap to the other neighbours
+  dens = .15 + .85*smoothstep(-.05, .5, edge);
+  return col;
+}
+vec3 cells(vec2 uv){
+  vec2 w = uv + .22*WARP*vec2(fbm(uv*1.1,2.), fbm(uv*1.1+5.2,2.));
+  float d0, d1, d2;
+  // each layer drifts on its own closed orbit (whole cycles per loop)
+  vec3 c0 = cellLayer(w*2.2 + .5*vec2(cos(s), sin(s)),        0., 2.2, d0);
+  vec3 c1 = cellLayer(w*3.6 + .6*vec2(-sin(s), cos(2.*s)),    1., 3.6, d1);
+  vec3 c2 = cellLayer(rot(.4)*w*6. + .8*vec2(sin(2.*s), -cos(s)), 2., 6., d2);
+  vec3 col = pal(P+.5)*.06;
+  col += c0*d0*.6;
+  col += c1*d1*.85;
+  col += c2*d2*.3;
+  // soft light on the middle layer only: a broad sheen, no glints
+  vec3 n = normalize(vec3(-dFdx(d1)*R.y*.04, -dFdy(d1)*R.y*.04, 1.));
+  float nh = max(dot(n, normalize(vec3(-.3,.4,1.))), 0.);
+  col += pal(P+.4)*pow(nh, 16.)*.18*d1;
+  col += pal(P + n.x*.5 + n.y*.4)*pow(1.-n.z, 2.)*.5*PSY*d1;   // thin-film tint where the forms curve away
+  return col;
+}
+// 7 — membrane: folded, domain-warped flesh with peristaltic ripples
+vec3 flesh(vec2 uv){
+  float r = length(uv);
+  float p = wave(beat - r*1.6);
+  uv *= 1. - .07*PUMP*p;
+  vec2 q = vec2(fbm(uv*1.4,2.), fbm(uv*1.4+vec2(5.2,1.3),2.));
+  float h = .5 + .95*fbm(uv*2.1 + WARP*2.2*q, 2.);
+  h += .06*sin(r*14. - TAU*beat*.5)*WARP;                     // slow peristaltic rings
+  float folds = smoothstep(.25,.75,h);
+  float t = P + PSY*(1.1*h + .6*q.x - .3*r + .2*p);           // hue marbles along the folds
+  vec3 dp,md,gl; mat(t,dp,md,gl);
+  vec3 base = mix(dp, md, folds);
+  vec3 emit = gl*(1.-folds)*(.15+.5*PUMP*p);                  // thin valleys glow, brighter on the beat
+  return shade(h, base, emit, t);
+}
+// 8 — veins: backlit tissue, the light surging outward on each beat
+vec3 veins(vec2 uv){
+  float r = length(uv);
+  vec2 pp = uv*2.1 + .35*WARP*vec2(fbm(uv*1.3,2.), fbm(uv*1.3+3.1,2.));
+  float v=0., a=.65, per=2.;
+  for(int i=0;i<4;i++){ float n = 1.-abs(gn(vec3(pp,P*per),per)*2.2); v += a*pow(clamp(n,0.,1.),16.); pp=pp*2.1+vec2(3.1,7.7); per*=2.; a*=.5; }
+  v = clamp(v*1.5,0.,1.);
+  float p = wave(beat - r*1.8);
+  float tissue = .5+.6*fbm(uv*3.,2.);
+  float t = P + PSY*(.8*tissue + .9*r - .3*p);                // depth rings of colour; the surge drags hue outward
+  vec3 dp,md,gl; mat(t,dp,md,gl);
+  float back = exp(-r*1.1)*(1. + 1.3*PUMP*p);
+  vec3 emit = md*back*tissue*1.2;
+  emit = mix(emit, dp*.6, v*.9);                              // veins absorb the light...
+  emit += gl*v*p*PUMP*.9*exp(-r*.9);                          // ...until the surge passes through, in the other hue
+  float h = tissue*.25 + v*.03;                               // vessels sit under the surface, not on it
+  return shade(h, dp*.4, emit, t);
+}
+// 9 — anemone: swaying tendrils, the pulse running from base to tip
+vec3 anemone(vec2 uv){
+  float r = length(uv), a = atan(uv.y,uv.x);
+  vec3 dp,md,gl; mat(P,dp,md,gl);
+  float h = 0., tt = P; vec3 base = dp*.25, emit = vec3(0);
+  for(int L=0; L<2; L++){
+    float fl = float(L), N = 30. + 8.*fl;
+    float sway = WARP*.22*r*sin(r*4.5 - TAU*beat*.25 + fl*2. + sin(a*3.+s));
+    float k = (a + sway + fl*.07)*N/TAU;
+    float id = mod(floor(k), N), fx = fract(k)-.5;
+    float hh = hash11(id + fl*50.);
+    float len = .5 + .38*hh;
+    float p = wave(beat - r*2.2 - hh*.4);
+    float wdt = .42*smoothstep(len+.02, .05, r)*(1.+.45*PUMP*p);
+    float xr = fx/max(wdt,1e-3); float cyl = sqrt(max(0., 1.-xr*xr));
+    float m = smoothstep(0.,.25,cyl)*step(r,len);
+    float th = cyl*m*(1.-.3*fl);
+    if(th > h){
+      h = th; tt = P + PSY*(.7*r + .35*hh + .2*p);
+      vec3 d2,m2,g2; mat(tt,d2,m2,g2);
+      base = mix(d2, m2*(.7+.3*hh), .4+.6*cyl)*(1.-.45*fl);
+      emit = g2*smoothstep(len-.14, len, r)*m*(.4+1.2*PUMP*p)   // glowing tips
+           + g2*m*.35*PUMP*p*smoothstep(.0,.3,r);
+    }
+  }
+  float disc = smoothstep(.17,.12,r);                          // oral disc
+  float dh = disc*(.6+.4*sin(a*9.+r*30.-TAU*beat*.5)*.5);
+  if(dh > h){ h = dh; tt = P; base = mix(dp,md,.5); emit = gl*disc*smoothstep(.06,.0,r)*(.3+.8*shape(beat)*PUMP); }
+  // drifting marine snow, rising a whole number of cells per loop
+  vec2 sg = uv*18. + vec2(0., -P*36.); vec2 si = floor(sg), sf = fract(sg)-.5;
+  vec2 sh = hash22(si); float speck = smoothstep(.06,.0,length(sf-(sh-.5)*.7))*step(.85,sh.x);
+  emit += gl*speck*.5*(1.-h);
+  return shade(h, base, emit, tt);
+}
+
+// ================================ 10 — zoom =================================
+// Infinite zoom toward the centre, done in log-polar space: v = log2(r) - zoom.
+// Zooming in is then a plain scroll in v, every octave of scale is one unit,
+// and the loop travels a whole number of octaves (BEATS/2) so it is seamless.
+// Hashes are taken mod Z (octaves per loop) so octave k+Z is octave k again.
+float zoomPos(){
+  float f = fract(beat), e = 1.-pow(1.-f,3.);                  // rush in on the beat, then glide
+  return mix(beat, floor(beat)+e, clamp(.3+.5*PUMP,0.,1.)) * .5; // one octave per 2 beats
+}
+float wrapd(float d){ return abs(fract(d+.5)-.5); }
+float ln(float d, float hw, float fw){ return 1.-smoothstep(hw-fw, hw+fw, d); }   // anti-aliased line
+
+vec3 zoomer(vec2 uv){
+  float r = max(length(uv), 1e-4), a = atan(uv.y, uv.x);
+  float x = fract(a/TAU + P);                                  // one slow turn per loop
+  float L = log2(r);
+  float Z = BEATS*.5, zp = zoomPos();
+  float v = L - zp, oct = floor(v), fv = fract(v), oid = mod(oct, Z);
+  // pixel footprint, analytic (fwidth would explode on the atan seam)
+  float px = 1.4/(r*R.y), fwx = px/TAU, fwv = px/.6931;
+  float detail = smoothstep(.09, .025, fwv);                   // fine structure fades as octaves shrink toward the centre
+  float pls = wave(beat - (L+7.)*.35);                         // a pulse running outward each beat
+  vec3 col = vec3(0);
+
+  // A. organic: soft cells streaming outward. Log-polar is conformal, so with
+  //    N ~ 2*pi*M/ln2 columns the cells stay round at every depth.
+  {
+    const float M = 2., N = 18.;
+    vec2 g = vec2(x*N, v*M), id = floor(g), f = fract(g);
+    float d1 = 9., S = 0., ws = 0.; vec3 cb = vec3(0);
+    for(int y=-1;y<=1;y++) for(int x2=-1;x2<=1;x2++){
+      vec2 o = vec2(x2,y);
+      vec2 hh = hash22(vec2(mod(id.x+o.x, N), mod(id.y+o.y, Z*M)) + 3.7);
+      vec2 c = o + .5 + .3*vec2(sin(s+hh.x*TAU), cos(s+hh.y*TAU)) - f;
+      float dd = length(c)/(1.+.35*PUMP*pls);
+      d1 = min(d1, dd); S += exp(-8.*dd);
+      float wc = exp(-7.*dd); cb += pal(P + PSY*(hh.x + .25*pls))*wc; ws += wc;
+    }
+    float edge = -log(max(S*exp(8.*d1)-1.,1e-4))/8.;
+    vec3 cell = cb/ws*(.1 + .45*smoothstep(-.05,.5,edge));
+    col += mix(pal(P+.5)*.12, cell, smoothstep(.2,.07,fwv));
+  }
+
+  // B. cybernetic HUD, one set of rings per octave
+  float dir = mod(oid,2.)*2.-1.;
+  vec3 neon = pal(P + .3 + oid*.17);
+  float hud = ln(abs(fv-.5), .004, fwv) + exp(-abs(fv-.5)/.025)*.18;               // main ring + halo
+  float band = ln(abs(fv-.37), .035, fwv);
+  hud += band*ln(wrapd(x*64.), .07, fwx*64.)*.7;                                     // ticks
+  hud += ln(abs(fv-.34), .065, fwv)*ln(wrapd(x*8.), .05, fwx*8.)*.9;                // long ticks every 1/8 turn
+  float xs = fract(x + dir*P*(1.+mod(oid,3.)));                                      // arcs counter-rotate per octave
+  float on = step(.45, hash11(floor(xs*12.) + oid*12.7));
+  hud += on*ln(abs(fv-.6), .011, fwv)*ln(abs(fract(xs*12.)-.5), .43, fwx*12.)*.85;
+  float xd = fract(hash11(oid*3.1) + dir*P*(2.+mod(oid,2.)));                       // a comet on the main ring
+  hud += exp(-fract((x-xd)*dir)*30.)*ln(abs(fv-.5), .007, fwv)*2.5;
+  col += neon*hud*detail*(.7 + 1.6*PUMP*pls);
+
+  // C. circuit traces in the outer band of each octave, data flowing along them
+  {
+    float bm = ln(abs(fv-.82), .12, fwv);
+    vec2 gc = vec2(x*48., (fv-.7)*12.), ci = floor(gc), cf = fract(gc);
+    vec2 h = hash22(vec2(mod(ci.x,48.), ci.y + oid*5.));
+    float fx = fwx*48., fy = fwv*12.;
+    float hor = step(.5,h.x)*ln(cf.y, .06, fy), ver = step(.6,h.y)*ln(cf.x, .06, fx);
+    float node = step(.5,h.x)*step(.6,h.y)*ln(length(cf), .16, max(fx,fy));
+    float flow = pow(fract(x*6. - P*BEATS*.5 + h.x), 6.);
+    col += pal(P + .55 + oid*.17)*((max(hor,ver)*(.35 + 1.2*flow) + node)*bm*detail*(.6 + 1.2*PUMP*pls));
+  }
+
+  // D. the light at the end of the tunnel
+  col += pal(P+.5)*exp(-r*14.)*(.5 + 1.8*kick*PUMP) + vec3(1.)*exp(-r*45.)*(.35 + kick*PUMP);
+
+  // E. speed streaks on each rush
+  {
+    float f = fract(beat), vel = 3.*(1.-f)*(1.-f)*clamp(.3+.5*PUMP,0.,1.);
+    float sid = floor(x*240.), hs = hash11(sid*1.7 + 3.);
+    float st = step(.93,hs)*ln(abs(fract(x*240.)-.5), .1, fwx*240.)*smoothstep(.12, .6, r)*smoothstep(1.2*hs, .2, r);
+    col += vec3(.85,.9,1.)*st*vel*.4;
+  }
+
+  // F. EDM spectrum ring: mirrored bars at a fixed radius, new heights each beat
+  {
+    float r0 = .2;
+    float xm = abs(fract(a/TAU + .25) - .5)*2.;                // mirror across the vertical axis
+    float bin = floor(xm*36.);
+    float hb = hash11(bin*7.3 + mod(floor(beat), BEATS)*13.1);
+    float lvl = (.2 + .8*hb)*(.2 + .8*kick)*(.55 + .45*(1.-xm));
+    float len = .015 + .12*lvl*PUMP;
+    float bar = ln(abs(r - r0 - len*.5), len*.5, px)*ln(abs(fract(xm*36.)-.5), .3, fwx*72.);
+    col *= 1. - .7*bar;
+    col += pal(P + (r-r0)*5. + .1)*bar*1.3;
+    col += pal(P+.3)*ln(abs(r - r0 + .012), .0015, px)*.8;
+  }
+  return col;
+}
+
+// dispatch by preprocessor, so only the chosen scene reaches the compiler
+vec3 bio(vec2 uv){
+#if SCENE==6
+  return cells(uv);
+#elif SCENE==7
+  return flesh(uv);
+#elif SCENE==8
+  return veins(uv);
+#elif SCENE==9
+  return anemone(uv);
+#elif SCENE==10
+  return zoomer(uv);
+#else
+  return vec3(0.);
+#endif
+}
+vec3 scene(vec2 uv){
+#if SCENE==0
+  return tunnel(uv);
+#elif SCENE==1
+  return spiral(uv);
+#elif SCENE==2
+  return moire(uv);
+#elif SCENE==3
+  return kaleido(uv);
+#elif SCENE==4
+  return squares(uv);
+#elif SCENE==5
+  return dots(uv);
+#else
+  return vec3(0.);
+#endif
+}
+float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+
+void main(){
+  vec2 uv = (gl_FragCoord.xy - .5*R)/R.y;
+  s = TAU*P;
+  beat = P*BEATS; float bf = fract(beat);
+  kick = shape(beat);
+  vec3 col;
+  if(SCENE>=6){
+    // organic scenes: one evaluation (normals need derivatives), gentle breath, soft tone curve
+    uv *= 1. - .02*kick*PUMP;
+    col = bio(uv);
+    col = col/(1.+.35*col);
+    float l = dot(col, vec3(.299,.587,.114));
+    col = max(mix(vec3(l), col, 1.+.5*PSY), 0.);              // stacked hues average toward grey; push saturation back
+  } else {
+    // whole-frame zoom "breath" on the kick
+    uv *= 1. - .04*kick*PUMP;
+    // chromatic split on the kick: render the scene three times
+    float ca = .006*kick*PUMP + .001;
+    col = vec3(scene(uv*(1.+ca)).r, scene(uv).g, scene(uv*(1.-ca)).b);
+  }
+  if(STROBE>.5 && bf < .07) col = 1. - col;
+  col *= 1. - .55*dot(uv*.9,uv*.9);                          // vignette
+  col += (hash(gl_FragCoord.xy + FRAME) - .5) * .04;         // grain
+  gl_FragColor = vec4(pow(max(col,0.), vec3(.9)), 1.);
+}`;
+
+const cv = document.getElementById('c');
+const gl = cv.getContext('webgl', {preserveDrawingBuffer:false, antialias:false});
+gl.getExtension('OES_standard_derivatives');
+// compile without querying status: a status query forces the compile to finish now
+function sh(t, src){const s=gl.createShader(t);gl.shaderSource(s,src);gl.compileShader(s); return s;}
+// One small program per scene, compiled on first use. SCENE is baked in as a
+// #define, so the compiler drops every other scene's code. A single shader that
+// branched on a SCENE uniform held all eleven scenes at once and grew too big for
+// the Direct3D compiler behind WebGL on Windows: the page hung on load.
+const VS = sh(gl.VERTEX_SHADER, 'attribute vec2 p;void main(){gl_Position=vec4(p,0,1);}');
+const progs = {};
+// KHR_parallel_shader_compile lets the driver compile on background threads; we
+// start every scene at load and keep drawing the current scene until a newly
+// chosen one reports complete, so switching scenes never freezes the picture.
+const pcx = gl.getExtension('KHR_parallel_shader_compile');
+function program(scene){
+  if (progs[scene]) return progs[scene];
+  const prog = gl.createProgram(), fs = sh(gl.FRAGMENT_SHADER, FS.replace('uniform int SCENE, PAL, PULSE;', `#define SCENE ${scene}
+uniform int PAL, PULSE;`));
+  gl.attachShader(prog, VS); gl.attachShader(prog, fs);
+  gl.bindAttribLocation(prog, 0, 'p');
+  gl.linkProgram(prog);
+  return progs[scene] = { prog, fs, U: null };
+}
+function ready(pr){
+  if (pr.U) return true;
+  if (pcx && !gl.getProgramParameter(pr.prog, pcx.COMPLETION_STATUS_KHR)) return false;
+  if (!gl.getProgramParameter(pr.prog, gl.LINK_STATUS)) throw (gl.getShaderInfoLog(pr.fs) || gl.getProgramInfoLog(pr.prog));
+  pr.U = {}; for (const n of ['R','P','BEATS','PUMP','WARP','STROBE','FRAME','PAL','PULSE','PSY']) pr.U[n] = gl.getUniformLocation(pr.prog, n);
+  return true;
+}
+let current = null;
+gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,3,-1,-1,3]), gl.STATIC_DRAW);
+gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0,2,gl.FLOAT,false,0,0);
+
+const SCENES = ['tunnel','spiral','moiré','kaleido','squares','dots','cells','flesh','veins','anemone','zoom'];
+const PULSES = ['kick','heart','swell','languid'];
+const PALS = ['candy','lagoon','orchid','acid','spectrum','flesh'];
+const st = { scene:10, pal:0, pulse:0, psy:.8, bpm:124, bars:4, pump:.8, warp:.6, strobe:false, paused:false };
+let beatPos = 0, frame = 0, recording = null;
+
+// --- UI ---------------------------------------------------------------------
+const $ = id => document.getElementById(id);
+function btnGroup(el, names, key){
+  el.innerHTML = '';
+  names.forEach((n,i) => { const b = document.createElement('button'); b.textContent = n;
+    b.onclick = () => { st[key] = key==='bars' ? +n : i; sync(); }; el.appendChild(b); });
+}
+btnGroup($('scenes'), SCENES, 'scene'); btnGroup($('pulses'), PULSES, 'pulse'); btnGroup($('pals'), PALS, 'pal'); btnGroup($('barsBtns'), ['1','2','4','8'], 'bars');
+function sync(){
+  [...$('scenes').children].forEach((b,i)=>b.classList.toggle('on', i===st.scene));
+  [...$('pulses').children].forEach((b,i)=>b.classList.toggle('on', i===st.pulse));
+  [...$('pals').children].forEach((b,i)=>b.classList.toggle('on', i===st.pal));
+  [...$('barsBtns').children].forEach(b=>b.classList.toggle('on', +b.textContent===st.bars));
+  $('strobe').classList.toggle('on', st.strobe);
+  $('bpm').value = Math.round(st.bpm);
+}
+$('bpm').onchange = e => { st.bpm = Math.min(200, Math.max(60, +e.target.value || 124)); sync(); };
+$('pump').oninput = e => st.pump = +e.target.value;
+$('warp').oninput = e => st.warp = +e.target.value;
+$('psy').oninput = e => st.psy = +e.target.value;
+$('strobe').onclick = () => { st.strobe = !st.strobe; sync(); };
+$('fs').onclick = () => document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+$('rec').onclick = () => startRecording();
+
+// tap tempo: average the last few intervals, and snap the downbeat to the tap
+let taps = [];
+function tap(){
+  const t = performance.now(); taps = taps.filter(x => t - x < 2500); taps.push(t);
+  if (taps.length >= 2) {
+    const iv = (taps[taps.length-1] - taps[0]) / (taps.length-1);
+    st.bpm = Math.min(200, Math.max(60, 60000/iv));
+    beatPos = Math.round(beatPos); sync();
+  }
+}
+$('tap').onclick = tap;
+
+let idle; function poke(){ $('ui').classList.remove('hide'); clearTimeout(idle);
+  if (!hidePinned) idle = setTimeout(()=>$('ui').classList.add('hide'), 3000); }
+let hidePinned = false;
+addEventListener('mousemove', poke);
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  const k = e.key.toLowerCase();
+  if (k >= '0' && k <= '9') st.scene = (+k + 9) % 10;
+  else if (k === '-') st.scene = 10;
+  else if (k === 'b') st.pulse = (st.pulse + 1) % PULSES.length;
+  else if (k === 'p') st.pal = (st.pal + 1) % PALS.length;
+  else if (k === 's') st.strobe = !st.strobe;
+  else if (k === 't') tap();
+  else if (k === 'f') $('fs').onclick();
+  else if (k === 'r') startRecording();
+  else if (k === ' ') { st.paused = !st.paused; e.preventDefault(); }
+  else if (k === 'h') { hidePinned = !hidePinned; $('ui').classList.toggle('hide', hidePinned); return; }
+  sync(); poke();
+});
+
+// --- recording: exactly one loop, starting at phase 0, at 1920x1080 ---------
+function startRecording(){
+  if (recording) return;
+  const mime = ['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(m => MediaRecorder.isTypeSupported(m));
+  cv.width = 1920; cv.height = 1080;
+  const rec = new MediaRecorder(cv.captureStream(60), { mimeType: mime, videoBitsPerSecond: 16e6 });
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const name = `pulse-loop_${SCENES[st.scene].replace('é','e')}_${PALS[st.pal]}_${PULSES[st.pulse]}_${Math.round(st.bpm)}bpm_${st.bars}bars.webm`;
+  rec.onstop = () => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(chunks, {type:'video/webm'}));
+    a.download = name; a.click(); $('status').textContent = 'saved ' + name; resize();
+  };
+  st.paused = false; beatPos = 0;
+  recording = { rec, beats: st.bars*4 };
+  rec.start(250);
+}
+
+// --- loop -------------------------------------------------------------------
+function resize(){
+  if (recording) return;
+  const d = 1;   // 1 CSS px = 1 render px: the organic scenes cost ~12 ms at 1080p, HiDPI would quadruple it
+  cv.width = Math.max(64, Math.round(innerWidth*d)); cv.height = Math.max(36, Math.round(innerHeight*d));
+}
+addEventListener('resize', resize); resize();
+
+let last = performance.now();
+function draw(now){
+  const dt = Math.min((now - last)/1000, .1); last = now;
+  const BEATS = st.bars*4;
+  if (!st.paused) beatPos += dt * st.bpm/60;
+  if (recording) {
+    // the frame at beatPos == beats is the first frame again, so stop before drawing it
+    if (beatPos >= recording.beats) { beatPos -= recording.beats; recording.rec.stop(); recording = null; }
+    else $('status').textContent = `recording ${Math.min(100, beatPos/recording.beats*100|0)}%`;
+  }
+  const P = (beatPos % BEATS) / BEATS;
+  const want = program(st.scene);
+  if (ready(want)) current = want;
+  if (!current) { requestAnimationFrame(draw); return; }
+  const { prog, U } = current;
+  gl.useProgram(prog);
+  gl.viewport(0,0,cv.width,cv.height);
+  gl.uniform2f(U.R, cv.width, cv.height);
+  gl.uniform1f(U.P, P); gl.uniform1f(U.BEATS, BEATS);
+  gl.uniform1f(U.PUMP, st.pump); gl.uniform1f(U.PSY, st.psy); gl.uniform1f(U.WARP, st.warp);
+  gl.uniform1f(U.STROBE, st.strobe ? 1 : 0);
+  gl.uniform1f(U.FRAME, frame++ % 997);
+  gl.uniform1i(U.PAL, st.pal); gl.uniform1i(U.PULSE, st.pulse);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  $('beat').style.background = (beatPos % 1) < .12 ? '#fff' : '#444';
+  requestAnimationFrame(draw);
+}
+sync(); poke(); program(st.scene); requestAnimationFrame(draw);
+// queue the rest in the background (with the extension these don't block)
+if (pcx) setTimeout(() => SCENES.forEach((_, i) => program(i)), 500);
+// for offline frame rendering / tests
+window.pulse = { st, setPhase: p => { beatPos = p * st.bars*4; } };
+</script>
+</body>
+</html>

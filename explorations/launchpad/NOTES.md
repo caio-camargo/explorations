@@ -744,7 +744,7 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core. **Fixed 2026-10-08:** § "The hold-downs follow the rocket".
 
 ## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
 
@@ -1180,6 +1180,29 @@ which swallowed a declaration: `render()` threw every frame while the HUD was up
 commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
 console exception (LESSONS #34).
 
+## PLAYTEST #3 and #4: a new rocket that looks new, and the pad at night (2026-10-08, aerofx session; visuals' code)
+
+Taken with a note in the visuals session's claim (it was idle). PLAYTEST #2 (gantry clipping) had already been fixed by
+the tester session.
+
+**#3, "the rocket starts out looking beat up":** it was the LOX frost. A fuelled tank on the pad has frost = 1, and the
+frost was opaque white blotches with the paint showing through as black specks, which reads as peeling paint. Now it is a
+fine translucent rime: 12–38 % cover below the fuel line, a little thicker toward the bottom, with a soft ragged edge and
+faint run-off streaks. The roll pattern stays crisp and the black squares read as frosted grey. Found by rendering the
+same fresh rocket with frost forced to 0.
+
+**#4, the pad at night and the buildings' surfaces:**
+- **Floodlights** were four point lights with almost no falloff inside 30 m and no direction, so lit buildings came out
+  flat white and the rest black. Now each is a spotlight from its 16 m pole aimed at the launch table (`uFlC`), with a soft
+  cone (cos 0.5–0.86) and inverse-square falloff (420 / (d² + 60)), plus a faint spill (5 %) within ~150 m of the pad.
+  The first gain (1500) saturated the red gantry, where the four cones overlap.
+- **Surface detail for the launch complex** (`uPadM`, set only while `PAD` and the rig draw): from the pad-local
+  position and material class. Concrete: formwork seams (1.2 m × 3 m), mottling, rain stains running down. White paint
+  (tanks, LOX sphere, water tower): weld rings every 2.4 m with rust weeping below them. Steel: mill mottling and rust
+  spots. Everything darkens toward its foot. Fades with distance.
+- A diagnostic trap, for the record: overriding a top-level function from the page (`window.padLights = …`) did not take
+  effect, so a "floodlights off" test proved nothing; logging the uniforms per draw call showed the floodlights were on.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1210,6 +1233,111 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.48 — geography in play: stations on real ground, recovery, disasters and field science (2026-10-08, terrain session)
+
+Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs` §37b–37d.
+
+**C. Ground stations on real ground.**
+- `gsMask(st)`: each station's horizon, cached per station. 36 azimuths, the highest elevation of the ground out to
+  `GS_REACH` = 300 km (24 samples, with the planet's curve), seen from a `GS_MAST` = 20 m mast on the station's ground.
+  `gsSees(st, pf)`: above `STA_MIN` *and* above the mask in that direction. A valley station loses the sky behind its
+  mountains; a hilltop one sees more. This replaces the sea-level sphere test everywhere contact is decided: imagery
+  contact time and downlinks in `satTick` (planning/sats code: the two `gsSees` calls are the only change there).
+- `linkOf(s)`: the flight's own link. Deep space counts as linked (no deep-space network yet), on the ground too;
+  re-entry plasma (`qHeat > BLACKOUT_Q` = 5e4) blacks it out; otherwise the first station in view. HUD row "Link"
+  (the station, or the reason and "· recorder").
+- Telemetry follows the link. Strain data (`R.sf`, the certification feed) is written only while linked; out of
+  contact it goes to the recorder `R.sfRec`, which `missionEnd` merges into `R.sf` only if the instrument package came
+  home (`R.recSci`). Economy: that one line before the cert loop is the only change in `missionEnd`'s certification.
+
+**D. Recovery.** `recoveryOf(s, R)` → `{factor, kind, why}` for a landed ship on Tellus:
+- At sea: recovered if within reach of the launch point: `RECOVER_LOCAL` = 200 km of local boats, or the economy's
+  recovery fleet range `FAC.fleet.range[lv]` when built. Beyond that, lost (factor 0).
+- On land: home or unclaimed land, fine. Another power's land: relation ≥ 0 returns it; −0.2…0 returns it worn (0.8);
+  worse, they keep it.
+- Hook (economy code, `missionEnd`'s refurbishment block): the refund is scaled by `rc.factor`, `R.recovery` = the kind,
+  and a news line explains it. Not modelled: recovery taking days.
+
+**E. Geography in the work.**
+- Disasters follow the land: `cityGround(c)` samples the biome at a city and on rings at 25/60/120 km; `HAZ` says which
+  disasters fit (floods: coast within 60 km, wetland or very wet; wildfire: taiga, temperate forest or savanna;
+  volcano: volcanic ground; storm: warm coast; locusts: steppe, grassland, savanna or hot desert). `disCities(dis)`
+  memoises the eligible cities; `satTick` now picks a disaster kind that has cities, then one of its cities (same two
+  `R()` draws as before). On seed 13: floods 20/32, wildfire 26, volcano 5, storm 8, locusts 28.
+- Two science contracts in `CT` (additive; economy owns the table):
+  - `field`: land an instrument package on a given biome and recover it. `fieldBiomes()` lists ice, cold desert,
+    rainforest, hot desert, alpine, volcanic, salt flat and wetland if one lies within 1,200 km of the first site (not
+    the pad's own biome), with the distance; pay 10 + km/25. Uses `R.landBiome`, set at landing in `missionTick`.
+  - `aurora`: an instrument package above `AURORA_ALT` = 100 km poleward of `AURORA_LAT` = 55°, recovered (`R.aurora`,
+    set in `missionTick`). Pay 14 + (km to the zone)/40: from home that's a 1,200 km lob, or a high-latitude site.
+- Adding CT types shifts every seeded offer board (more types to draw from). One of my tests read `news[0]`; it now
+  searches the news. If another session's test pins a specific offer, that is why.
+
+**Next on this line:** recovery that takes days and a recovery ship to send; stations bought at a chosen site (the mask
+makes the choice a real trade-off); the atlas view (open thread in § v1.25's "Next session" list).
+
+## v1.47 — dispatch, the economy side (2026-10-08, economy session)
+
+The first slice of dispatch (decisions: "Dispatch — the economy's answers"). A contract flown by a stored procedure,
+without you.
+
+- **What can be dispatched:**
+  - satellite and recon contracts (`DISPATCH_TYPES`), for a design with an orbit procedure in `PROG.procs` (so it
+    flew to orbit by hand);
+  - the design must be able to do the contract (its payload), checked with the contract's own `ok`;
+  - missions (the firsts) are never dispatched.
+- **The risk estimate** (`dispatchEstimate`), from the part data:
+  - **margin:** the design's vacuum Δv − the procedure's Δv − the extra for this target (circular-speed difference
+    from the procedure's orbit, plus the lost rotation boost for inclination), through a logistic around 40 m/s;
+  - **ignition:** every engine's odds as `igniteOK` computes them (know-how, development, line maturity); the top
+    stage lights twice;
+  - **loads:** 2% × (1 − certification) per part.
+
+  The range widens with average uncertainty (1 − certification, 1 − know-how). Measured: unknown parts 90%
+  (67–100%), well-known 100% (99–100%).
+- **Pads are reservations** (`padsFree`, `padWait`):
+  - one pad, plus the new **Launch pads** facility (80M then 160M: 2, then 3 pads);
+  - a dispatch takes the earliest free pad and stacks for the same days as a hand-flown launch;
+  - **a hand-flown launch waits for a free pad too** (`R.padWait`, before stacking).
+
+  Measured: two dispatches on one pad launch on days 36 and 63, and a hand-flown launch would wait 53 days; with a
+  second pad the third goes at once.
+- **Resolution** (`dispatchTick`, on the timeline as "Dispatched launch"):
+  - on launch day the weather can scrub it, a day at a time, as for any launch (`siteWeather`);
+  - if money is short it's held 10 days;
+  - otherwise it pays the same launch costs, counts as a flight, uses production-line units and teaches know-how;
+  - the flight comes from `dispatchRun(D, vessel, contract)` if the physics side has defined it;
+  - success builds a flight record with the orbit and runs `contractEval` (same pay, same precision bonus);
+  - a contract already completed by another flight stands the dispatch down (one orbit can complete several).
+- **The seed** is fixed when the dispatch is ordered, so the same state gives the same outcome; no re-rolls.
+- **Interim resolver** (`dispatchRoll`): until `dispatchRun` exists, the estimate is rolled with the seed, and the orbit
+  is scattered by 3 km + 40 km × `predErr` (the compute era).
+- **UI:** each active contract shows its best dispatch option ("success ~90% (67–100%), launches in N d on pad 1, cost
+  [Dispatch]"), or why there's none. News on ordering, launch and outcome.
+
+**For the physics side (bodies):** `dispatchRun(D, v, c)` should return `{ok, orb:{pe, ap, inc, sci, cam}, dv, why}`,
+or a deviation (planned: `{deviation: {t, why, state}}`, which the economy will turn into a timeline stop that hands
+you the flight). `D` carries `stack`, `seed`, `launch` and `pad`.
+
+**Weather and auto-resolve** (Caio's concern). Weather here is deterministic: `cloudAt(place, time)` from the world seed,
+and today it only scrubs launches. A dispatch launching on a given day sees the same weather whether watched or
+auto-resolved. The rule that keeps it so: **every random factor in a flight is a function of the world seed, time and
+place, or of the dispatch's seed**, never a fresh random number. Winds aloft, if they come, would follow the same rule
+and the procedure would fly through them in both modes.
+
+**Deviation, and whether "can't meet its goal" is computable** (Caio). It mostly is, with flight rules: thresholds at
+checkpoints, as real missions use.
+- **Δv to go vs Δv left** (`dvRemaining` already gives the latter): if what's left can't reach the goal from the
+  current orbit, it deviates.
+- **A corridor around the procedure's own recorded profile** (velocity and flight-path angle against altitude): leaving
+  it beyond a threshold deviates.
+- **Events:** an engine that didn't light, staging out of order, structural failure.
+- A failure is just the extreme of deviation. Since the run *is* the simulation, the deviation happens inside it, at a
+  time, with a state; nothing is rolled separately. The thresholds set how forgiving it is. A threshold the player sets
+  ("hand over / abort / carry on") is a possible later option.
+
+`test.mjs` §38: 3 new checks: estimate from part data; pads; outcome, pay and seed.
 
 ## v1.46 — avionics generations: SAS grows with the computing eras (2026-10-08, control session)
 
@@ -1247,13 +1375,16 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
-gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+**Tests** section `control-3` (3 checks; numbered §37, then §39, until v1.46.2): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
+still flies its gyro. 315 pass.
 
 **For other sessions**
 - **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
-  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
-  register flies with the best.
+  would set `s.av` (or move `avNow`). Registered vessels keep theirs (`vstOf` stores `av`, `vesselOf` restores it;
+  entries from before v1.46.1 get today's).
+- **tester:** *All tools* also gives the best avionics (`avNow`); the epoch picker doesn't move the date, so without it
+  a tester at epoch 4 flies a gyro.
 - **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
 - **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
 
@@ -1369,7 +1500,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** section `control-2` (3 checks; numbered §36, then §38, until v1.46.2): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
@@ -1481,7 +1612,7 @@ physical. `study_control.mjs` measures the control budget (`node study_control.m
 - **The magic roll was real but rare**: it only showed when roll was commanded (roll key, roll disturbances). The
   scripted ascents never asked for roll, so the study's counter read 0 before and after.
 
-**Tests** (§35, 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
+**Tests** (section `control-1`, numbered §35 until v1.46.2; 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
 nozzle centres when the throttle is cut; the Heavy's boosters add roll authority, the Orbiter's one engine none; the
 steerable dart turns 30° in < 0.6× the passive time, plates within range and rate; fin authority ∝ q and none in vacuum,
 and they roll a wheel-less dart. Changed: §5's yank check now asks for a joint ≥ 80 % (was "snaps", at exactly 100 %);
@@ -2084,7 +2215,7 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
 - ~~A sea-launch platform, per-site weather scrubs, a pre-launch downrange warning~~: done in v1.45 (§ v1.45).
 - (original note) Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
   downrange over a neighbour before launch).
-- Then slices C–E (§ v1.25).
+- ~~Then slices C–E (§ v1.25)~~: done in v1.48 (§ v1.48).
 
 ## v1.26 — industrial independence (2026-10-07)
 
@@ -2337,7 +2468,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29); ~~surface properties by biome~~ done in v1.37 (§ v1.37). Next: the slice-B follow-ups in § v1.27, then slices C–E.
+0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29); ~~surface properties by biome~~ done in v1.37 (§ v1.37). ~~the slice-B follow-ups~~ (v1.45) and ~~slices C–E~~ (v1.48) done too.
 1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
@@ -2381,7 +2512,7 @@ Shading:
    - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
      slope (unconfirmed).
-4. **Stations with terrain (C), recovery (D), biome science (E):** see the plan above.
+4. ~~**Stations with terrain (C), recovery (D), biome science (E)**~~: done in v1.48 (§ v1.48), with what's left listed there.
 5. **The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
    in play.
 
@@ -2542,7 +2673,30 @@ correction to the perigee, shed the stage, entry, chute). The recorder keeps a f
 records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
 and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
 
-**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
+**Aiming a free return (2026-10-08).** When the phase after a transfer is `home`, its corrections (and the trim inside the moon's
+SOI) aim at **the perigee it will come home on after the flyby** (`homePe`, read off the predictor's chained legs), with the
+pass allowed anywhere within half its planned height. The same free return as before now needs **4.9 m/s** on the way home
+instead of 286 (two mid-course corrections of ~50 m/s set up a pass that comes back by itself); 5,812 m/s in all instead of
+6,025.
+
+**Debris** near the moons now feels their tides too (`stepDebris`, the same pointwise test as `physStep`).
+
+**Registered satellites still ride pure Kepler, deliberately, for now.** Measured against the integrated orbit:
+
+| orbit | off the Kepler path after 30 days | Ap / Pe change |
+|---|---|---|
+| low, 300 km | 5 km | ±0.2 km |
+| polar, 1,000 km | 39 km | ±0.75 km |
+| navigation, 3,000 km | 500 km | ±6 km |
+| **stationary (TV)** | **10,750 km** | +31 / −144 km |
+
+Nyx is heavy and close, much more so than the Moon is to Earth, so a stationary satellite would really drift a quarter of the way
+round in a month. Giving the registry the tides would make the TV mission pay for days unless satellites carry propellant
+to hold their slot. That's the design notes' "satellites age" idea: **a satellite's life = station-keeping propellant ÷
+drift rate**, with servicing or replacement missions after. It's a gameplay decision for Caio with the sats and economy
+sessions, not a physics fix to slip in.
+
+**Open:** station-keeping and satellite lifetimes (above); dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
@@ -5135,7 +5289,8 @@ the arrows, and every key in the handlers present in its Help table.
 - The world: `WORLD` (baked maps) + `terrainH(pf)` (metres above the sea; the sea is the sphere R) + `biomeAt(pf)`.
   The sky shader marches the *same* height (`hgtG`/`terr`); after any change to the height function on either side,
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
-  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27.
+  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27. Station horizons,
+  the flight's link, recovery and geographic disasters/contracts: § v1.48.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.
@@ -5212,3 +5367,20 @@ test.mjs §38 runs the page's own `buildRig`/`padRig` with stubs that record eve
 against each preset's envelope; on the old code it fails (the front girder reaches the Orbiter at −5.2 m).
 
 **For visuals:** the gantry is yours. If you restyle it, keep the open front clear; §38 will tell you.
+
+## The hold-downs follow the rocket (2026-10-08, tester session)
+
+The open item from "The launch complex": four hold-down posts stood fixed on the pad's diagonals at 3.4 m, with arms to
+the core's base, so boosters on a diagonal (radial ×4 at 45°, or three at 120° steps) had an arm through them and a post
+under them. Now the posts are part of the rig (`buildRig`, mesh `RIG.posts`, drawn in `drawPadRig`) and `holdPlan`
+(next to `padRig`) places them: on the diagonals if those are clear (every preset: nothing changes), otherwise the set of
+four turns, 1° steps, to the angle with the most room between the parts down at clamp height. Each arm clamps the
+outermost part on its line (the core, or a booster if one is still in the way) and its post stands 1.2 m beyond, never
+inside 3.4 m. The pad mesh keeps no posts.
+
+Bug on the way: the room measure first skipped only the core engine, so the core's own fins and tank (also on the axis)
+counted as obstacles at every angle and nothing ever turned. It now skips everything centred on the axis.
+
+test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
+presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
+old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).
