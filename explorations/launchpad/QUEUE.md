@@ -35,6 +35,7 @@ write your session name and the time into it, and delete it when your browser ru
 
 ## Flags (read before merging)
 
+- **Orchestrator, 2026-10-08 (roadmap session, decided with Caio): restructure this queue from [`ROADMAP.md`](ROADMAP.md) on your next refresh.** (1) Regroup the lanes into the eight there (flow, economy, vehicle, space, world, look & sound, QA, platform), keeping item numbers. (2) Add a platform lane (worktree `launchpad-platform`, port 8801; not created yet). (3) W1–W7 now have defaults sessions build on (ROADMAP § Defaults): unblock Q8 and move them to a "Defaulted" list Caio can override. (4) Refill per ROADMAP § "Keeping the queue full": current milestone M0, next M1 (the first hour).
 - **The fixes session** (worktree `launchpad-fixes`, branch `fixes`, port 8800) is sweeping PLAYTEST #15, #16, #19, #20, #21, #22.
   Q5, Q15, Q22 and parts of Q1 and Q17 are its own; ui and terrain, merge `main` after it lands.
 - **Version-number collision, 2026-10-08:** control's spin stabilisation and terrain's atlas both call themselves
@@ -88,7 +89,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M | 🖥 | → terrain 2026-10-08 (on branch, renumber v1.52) |
-| Q17 | PLAYTEST **#17, Link side**: gate `linkOf`'s blackout on speed too; agree the threshold with Q20. (#19 is with the fixes session) | S | ⚙ | ready |
+| Q17 | PLAYTEST **#17, Link side**: gate `linkOf`'s blackout on speed too; agree the threshold with Q20. (#19 is with the fixes session) | S | ⚙ | → terrain 2026-10-08 |
 | Q18 | **Selene terrain**: craters, maria, slopes, shadows, horizons. Unblocks rovers on real ground | L | 🖥 | ready (plan first) |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills) | M | 🖥 | ready |
 
