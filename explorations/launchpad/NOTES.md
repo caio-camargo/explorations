@@ -2081,8 +2081,40 @@ Lessons from the sizing:
 Checks (§26): orbit for 4,358 m/s at 31.6 kPa and 3.5 g, the tower gone, 2,817 / 1,832 m/s left; stable (1.31 cal) with the crew
 capsule as root. It also passes the preset-wide checks (stage maths, loads analysis).
 
+### Flown end to end: a crew to Selene and home (2026-10-08)
+
+`fly_crewlunar.mjs` (run it on its own for the log; `test.mjs` §27 checks it) flies Crewed Lunar through the game's own physics
+from the pad to a splashdown. Attitude is set directly; everything else (thrust, staging, aero, heating, both moons' pull, rails,
+the predictor, crew limits) is the game's. It completes **"Crew on Selene"** in **2.4 days**:
+
+| leg | result |
+|---|---|
+| ascent (vertical to 200 m, flat by 38 km) | 102 × 111 km, 2,817 / 1,832 m/s left, tower gone, cabin 311 K |
+| transfer at the Hohmann phase angle (+1,321) | apoapsis at Selene's distance, aimed at its centre |
+| mid-course correction found with the predictor | 33 m/s → a 38 km pass |
+| capture at periapsis, then periapsis raised at apoapsis | low orbit, 1,087 m/s left in the lander |
+| braking, then a suicide burn | lander dropped at 28.8 km (short for the descent), the return stage lands: **1.2 m/s, upright**, 1,435 m/s left |
+| ascent (pitch over by 3 km) | 15 × 20 km, 553 m/s left |
+| burn home (scan of burn point × size for a 45 km perigee), correction 11 m/s at the integrated lowest point | one clean entry, shield first |
+| entry, chute | splashdown **6.5 m/s**, peak **4.1 g**, cabin 250 K; crew fine |
+
+**What flying it found** (each was wrong until the flight tried it):
+1. **The crew cooked on the way up.** After the tower goes at 30 km the capsule is the nose; its skin reaches 520 K, and the
+   animal capsule's 10-minute cabin lag put the cabin at 387 K. The crew capsule now has `ins: 3600` (cabin lags the skin by an
+   hour, insulated and cooled as real ones were): 311 K.
+2. **A hovering descent is a fuel sink.** Easing down from 30 km at a few m/s spent the whole return stage (0 m/s left). A
+   suicide burn (fall until stopping needs 85 % of full thrust) is the efficient way.
+3. **Stage on need, not on empty.** The lander ran dry 1.6 km up mid-burn and the craft hit at 28 m/s. Comparing what's left with
+   what the descent needs (≈ 1.15·√(2gh + v²)) when braking ends drops it at 28.8 km instead.
+4. **No air on Selene: pitch over at once.** A 12 km pitch program spent 1,034 m/s reaching orbit; 3 km spends ~880.
+5. **A periapsis snapshot isn't where you'll be.** The return correction first aimed with the osculating perigee; the moons'
+   tides moved it ~33 km over the next day, and the capsule **aerobraked through nine passes at 70–78 km** before coming down
+   (alive, at 4.4 days). Aiming at the predictor's integrated path (`minR`) gives one pass.
+6. Small ones: the capture burn's cutoff must not depend on reaching a near-circular orbit (it burned through everything);
+   automatic staging must stop at the last engine stage (it staged the capsule loose and popped the chute in vacuum).
+
 **Open:** the tower's motor has no plume (plumes session); no tower option in the builder's palette categories (it shows under
-"Other"); crew transfer and EVA; a scripted end-to-end crewed landing (the preset is sized by budget, not yet flown to Selene and back).
+"Other"); crew transfer and EVA; the flight script's attitude is set directly (a piloted version, or an autopilot from it, is open).
 
 ## Epoch 3 missions: satellites that work (2026-10-07, bodies session)
 
