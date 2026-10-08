@@ -5384,3 +5384,66 @@ counted as obstacles at every angle and nothing ever turned. It now skips everyt
 test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
 presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
 old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).
+
+## The robot playtester (2026-10-08, playtest session)
+
+Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
+`playtest.mjs`. One headless Chrome on the real GPU, driven over CDP like `shot.mjs`, but persistent: many rows per run.
+A Claude session then read every screenshot against the row's "Looks right if".
+
+**How it works.** `ROWS[n]` in `playtest.mjs` is the row table: `steps` (a string is JS evaluated in the page and its value
+logged; `{shot}` captures `r<n>_<name>.png`; `{wait}`, `{key}` and `{hold}` send real key events through CDP; `{click}`
+clicks an element's centre), then `checks` (expressions evaluated at the end) and `expect` (a failed one fails the row).
+Before each row the page's storage is wiped, the tester flags are written by a script that runs before the page's own
+(`Page.addScriptToEvaluateOnNewDocument`), the page loads with `?tester`, and `views.js` plus a helper object `PT` are
+injected. Unless the row asks for the gate, `PT.start()` picks the first career start and goes to the Assembly. `PT` has
+`preset`, `launch`, `fly(cond, tmax, {ascent, autostage, each})` (advPhys in a loop: kick at 8 s, then Prograde, staging
+on burnout), `alt/agl/aoaDeg/orbit`, `look(yaw, pitch, dist)` (HUD back on, camera set), `log` (every `HOOK.msg` and
+`HOOK.news` with its sim time), `hud()`, `msg()`. A row that needs the game's own frame step (tape recording, warp,
+keys) uses `SIM`: the live loop is frozen and `simulate(1/60)` is called by hand. Exceptions thrown in the page fail
+the row. Output goes outside the repo: `C:/Users/caioa/dev/playtest-out/` (PNGs, `results.json`), `PT_OUT` to change it,
+`PT_IGPU=1` for the integrated GPU. `node playtest.mjs --eval "<js>" …` is a probe: a fresh tester page, each expression
+evaluated and screenshotted.
+
+**Coverage.** 58 of the 113 rows judged: 37 ✓, 4 ✗ (104, 110, 84, 97), 17 ~ (mostly "the numbers are right, the feel
+needs a human"). Skipped, and why: the hand-flying and feel rows (1, 12–16, 101, 69, 71, 73, 76, 78, 89, 99); mouse work in
+the builder (17–21, 24); docking, stations, rovers in the field and the moons (49, 50, 53–74 apart from 51), each a
+long multi-flight setup worth its own driver; city and range-safety flights (16, 32, 111–113); the HUD with everything at
+once (98). Rows 23, 31, 45, 80, 81, 83, 92, 94 were left for lack of a reliable setup in the time-box.
+
+**What it found** (PLAYTEST #15–#23): the TESTER badge over "Save as autopilot" (#15); the news box over the flight
+readout's altitude (#16); "plasma blackout" and a plasma shell on an ordinary ascent at Mach 3.5 (#17); holding a pitch key
+with SAS off spins the Orbiter's upper stage until it tears apart before the wheels fill (#18); the Link row says "no
+station in view" for 2 s after liftoff (#19); LAUNCH and the site picker below the fold of the assembly panel (#20); a
+landed flight isn't settled until the next launch, so refund, know-how and logbook news arrive late (#21); `refView(8)`
+throws and the gantry blocks close-ups 4, 6, 9 (#22); two builder wording nits (#23). No page exceptions anywhere else.
+
+**Measurements** (RTX 5050 laptop, headless, 1280×800). Page load to first row ~35 s on a fresh profile (shader
+compiles), then 4–12 s a row; the whole table in ~7 min. A 1,360 s parachute hop runs in about a second of advPhys.
+Heavy at night, engines lit on the pad: RTX median frame 8.3 ms (vsync 120 Hz, GPU 4.7 ms); Intel iGPU median 36.6 ms,
+p95 39.4, adaptive resolution still at 100 % after 3 s (TESTING row 47 had ≈26 ms). Physics numbers are in the rows'
+*Robot:* notes (turn times match the builder within 10 %; boosters leave at 2.4 m/s; polar launch 27.2°; the impact
+predictor lands within 50 m; an autopilot replay lands on the recorded position to 0 m).
+
+**Negative results and traps.**
+- `shot.mjs`'s flags (`--use-angle=d3d11 --enable-gpu`) put headless Chrome on the **Intel iGPU** on this laptop (GPU_NAME
+  "Intel", 24 fps idle). `--force_high_performance_gpu` gets the RTX (120 fps). `playtest.mjs` adds it by default;
+  `shot.mjs` still doesn't, so its screenshots have been iGPU renders.
+- In `--headless=new` requestAnimationFrame ticks at full rate (unlike the hidden preview pane), but long flights are
+  still driven with advPhys loops. That skips what the frame loop does: tape recording (`tapePhys` lives in `simulate`),
+  message timers (a stale "Liftoff!" stays on screen), the HUD's impact row (computed on frames: it shows "—"), and the
+  gantry's roll-back clock, which starts at the first render after launch. Render once right after launch, and use the
+  `SIM` helper when the row is about those.
+- Every launch moves the world date (prep, pad wait, the next whole day), so weather differs between launches. Separate
+  climbs to 36 and 44 km looked like the cloud deck vanished at the hand-over; the same moment rendered from 36–44 km
+  shows no change. Compare renders at one moment.
+- The Program and tester panels re-render on every click, so a saved element reference goes stale after one click:
+  query again each time. `go('program')` while already there is a no-op, so the header isn't refreshed after a
+  `testAdvance` called from JS.
+- Escapes inside the row table's template literals get eaten (`'\n'` became a real newline, `\s` became `s`): use
+  `String.fromCharCode(10)` and `[^]`.
+- Reading screenshots costs context: 2×2 half-size contact sheets with a crop for details made ~300 images reviewable.
+
+**Rerun.** `python -m http.server 8799 --directory <repo>/explorations`, then from `explorations/launchpad`:
+`node playtest.mjs` (all rows) or `node playtest.mjs 104 110` (some). Add a row: a `ROWS[n]` entry next to its area's
+rows; a row that needs two setups can use a string key (`'82b'`).
