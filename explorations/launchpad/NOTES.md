@@ -1266,6 +1266,53 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.53 — the ladder's balance: Nyx is found by looking; the pay floor (2026-10-08, economy session)
+
+This answers the bodies session's note in "The ladders, proven with real rockets" (QUEUE Q8, W1). Both choices were Caio's.
+
+**Why nyxfind came free.** Nyx orbits *inside* Selene's orbit (8,100–27,900 km), so a lunar transfer crosses its region.
+The question was how long each kind of flight spends above the 1e-3 residual on the Tellus leg (scratch measurement,
+procedure-flown ladder flights, 3 days each):
+
+| Flight | Time ≥ 1e-3 | Longest stretch | Peak |
+|---|---|---|---|
+| farside (slow, sun-timed transfer) | 22.7 h | 21.3 h | 1.5e-2 |
+| selimp, selland (~18 h transfers) | 0 | 0 | 8e-4 |
+| nyxfind (to Nyx) | 17.7 h + time inside Nyx's SOI | 8.8 h | 0.23 |
+
+Circular orbits over 72 h, across 8 Nyx phases, spend 8–18 h above 1e-3 at 15,000 km, 21–43 h at 25,000 km and 29–52 h
+at 30,000 km. **No threshold or duration separates a slow lunar flight from a deliberate high orbit**: they cover the same
+ground. Raising the hours to 24 would have excluded farside by 1.3 h, which is too fragile.
+
+**The rule: Nyx is found only by looking.** A flight is tracked closely enough only if it was launched while "Something
+out there" was open: `R.nyxLook`, set in the launch line from `missionOpen`. The farside flight launches before nyxfind
+opens, so it can't find Nyx in passing. Any flight launched after farside can, including a slow lunar flight flown with
+that goal. One condition was added to `outThere`'s tracking line (bodies' code, flagged there).
+
+**The pay floor.** The full cost of a flight is vehicle + `OPS_FIX` + `OPS_FRAC`·vehicle. At fresh-program prices:
+Probe 175M, Sample Return 242M, Crewed Lunar 334M. Epochs 2–3 pay about 1.5× (orbiter 100 for 65). Five of the
+epoch 4–5 firsts paid *less* than the rocket proven to fly them:
+
+| Mission | Was | Ratio | Now | Ratio |
+|---|---|---|---|---|
+| farside | 150 | 0.86 | 230 | 1.31 |
+| selimp | 120 | 0.69 | 230 | 1.31 |
+| nyxfind | 120 | 0.69 | 230 | 1.31 |
+| nyxfly | 150 | 0.86 | 230 | 1.31 |
+| crewaround | 300 | 0.90 | 440 | 1.32 |
+
+The others already cleared the floor: selland and nyxorb 1.43, nyxland 1.71, selsample 1.65, crewland 1.80. **Rule:
+each first pays at least 1.3× the full cost of the cheapest proven vehicle, fresh.** test.mjs §23 checks it for every
+Selene and Nyx mission against the preset that flies it. A new mission, or a price change that breaks the floor, fails
+there. The ladder is flatter at the bottom now (four missions at 230), because they all fly on the same Probe. A
+smaller impactor or flyby preset would let the rule spread them out again.
+
+**Found while checking:** the nyxfind ladder flight also completes **nyxfly**. It enters Nyx's SOI with a camera and
+antenna before the 12 h of tracking finish; once nyxfind is done, nyxfly opens and `R.nyxFly` is already set. That is
+two firsts, 460M, on one Probe. It is the same pattern as above, generalised: chained missions completing on one flight
+(lift1 + lift2 on a 2 t flight does it too). It is left as it is, pending Caio: should a mission count only on a flight
+launched while it was open?
+
 ## v1.50 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
 
 The handover from "Dispatch — the economy's answers". Deviation instead of bare failure: the flight calls for you.
@@ -2896,7 +2943,8 @@ plane and periapsis longitude; that is still open.
 - The ascent leaves behind a stage that can't reach orbit by itself, when there is one under it that can. A lander
   stage that finished the descent itself, with no high drop, had tried to lift a crew on 136 m/s.
 
-**Found while flying (for the economy session):**
+**Found while flying (for the economy session):** (answered in v1.53: Nyx is found only by a flight launched to look
+for it, and every first pays at least 1.3× its rocket)
 - **nyxfind comes free.** A probe with instruments and an antenna, flying to Selene, collects its 12 h of residual
   ≥ 1e-3 on the way, so nyxfind completes on the farside flight. Either that is fine (the first lunar probes discover
   Nyx), or the threshold should be higher, or tracking should need a deliberate high orbit.

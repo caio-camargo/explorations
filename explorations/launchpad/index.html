@@ -1626,9 +1626,9 @@ const MISSIONS=[
   {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments).`,
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
-  {id:'farside',pay:150,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
+  {id:'farside',pay:230,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
-  {id:'selimp',pay:120,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
+  {id:'selimp',pay:230,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
    win:'telemetry to the very end, then silence',ok:R=>R.selImpact},
   {id:'selland',pay:250,ep:4,req:['selimp'],name:'Soft landing on Selene',brief:'Land an instrument package with an antenna on Selene, under 4 m/s, on the side facing Tellus so it can phone home.',
    win:'a machine of ours stands on another world',ok:R=>R.selLand},
@@ -1638,13 +1638,13 @@ const MISSIONS=[
    win:'the tower works from a standing start',ok:R=>R.abort&&R.abort.alt<200&&R.capHome&&R.cgMax<=G_LIM},
   {id:'maxqabort',pay:90,ep:4,req:['padabort'],name:'Max-q abort test',brief:'Abort in flight at 15 kPa or more of dynamic pressure, the worst moment there is, and bring the capsule home intact under 8 g. This qualifies the tower: after it, capsules fly with a crew.',
    win:'the escape system is qualified for people',ok:R=>R.abort&&R.abort.q>=15000&&R.capHome&&R.cgMax<=G_LIM},
-  {id:'crewaround',pay:300,ep:4,req:['maxqabort','farside'],name:'Crew around Selene',brief:`A crew capsule with two people into Selene's sphere of influence and home safe: under 8 g, cabin under ${CABIN_MAX} K, within 10 days of air.`,
+  {id:'crewaround',pay:440,ep:4,req:['maxqabort','farside'],name:'Crew around Selene',brief:`A crew capsule with two people into Selene's sphere of influence and home safe: under 8 g, cabin under ${CABIN_MAX} K, within 10 days of air.`,
    win:'the first people to see the far side',ok:R=>R.crewed&&R.crewOK&&R.crewSel&&R.capHome},
   {id:'crewland',pay:600,ep:4,req:['crewaround','selland'],name:'Crew on Selene',brief:'Land a crew on Selene (under 4 m/s), then bring them home safe, same limits.',
    win:'footprints on Selene',ok:R=>R.crewed&&R.crewOK&&R.crewSelLand&&R.capHome},
-  {id:'nyxfind',pay:120,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it.`,
+  {id:'nyxfind',pay:230,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it.`,
    win:'Nyx weighed, and its orbit on the map',ok:R=>R.nyxFound},
-  {id:'nyxfly',pay:150,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
+  {id:'nyxfly',pay:230,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
    win:'a dark, cratered rock, close up',ok:R=>R.nyxFly},
   {id:'nyxorb',pay:250,ep:5,req:['nyxfly'],name:'An orbit that lasts',brief:`Keep an instrument package in orbit around Nyx for two of Nyx's own orbits (${(4*Math.PI/NYX.n/3600).toFixed(0)} h). Tellus's tide is strong out there: watch which way round you go.`,
    win:'an orbit around Nyx that lasts',ok:R=>R.nyxOrbT>=4*Math.PI/NYX.n},
@@ -1698,7 +1698,9 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   if(!s.alive&&!R.hitDone&&b===SELENE){R.hitDone=true;if(sci&&ant){if(nearSide(b,s.r))R.selImpact=true;else HOOK.news('Our impactor hit the far side of Selene: nobody heard a thing','warn')}}
   if(s.landed&&s.alive&&b===SELENE&&sci){R.selSampled=true;if(!R.selLand&&ant&&(s.touchV||0)<4){if(nearSide(b,s.r))R.selLand=true;else if(!R.farLandNews){R.farLandNews=1;HOOK.news('Down on the far side of Selene, with no way to phone home','warn')}}}
   // Nyx: found by tracking; weighed on discovery (that logbook fact unlocks its orbit on the map and its encounter forecasts)
-  if(s.alive&&sci&&ant&&!(PROG.log&&PROG.log.nyx)&&(b===NYX||b===TELLUS&&nyxResidual(s.r)>=1e-3)){R.nyxTrack=(R.nyxTrack||0)+dt;
+  // (economy: only a flight launched while nyxfind is open is tracked that closely, R.nyxLook; the farside flight's slow
+  // transfer would otherwise find Nyx in passing. NOTES "Nyx is found by looking")
+  if(s.alive&&sci&&ant&&R.nyxLook&&!(PROG.log&&PROG.log.nyx)&&(b===NYX||b===TELLUS&&nyxResidual(s.r)>=1e-3)){R.nyxTrack=(R.nyxTrack||0)+dt;
     if(R.nyxTrack>=NYX_TRACK_H*3600){R.nyxFound=true;logNote(s,'nyx',{m:NYX.mu/TELLUS.mu,pe:NYX.rMin,ap:NYX.rMax});HOOK.news(`Tracking residuals explained: a second moon, Nyx, weighed at ${(NYX.mu/TELLUS.mu*1e4).toFixed(1)}×10⁻⁴ of Tellus`,'ok')}}
   if(b===NYX){if(!R.logNyx){R.logNyx=1;logNote(s,'nyxreach',R.dv)}if(s.alive&&cam&&ant)R.nyxFly=true;
     if(s.alive&&!s.landed&&sci){R.nyxRun=(R.nyxRun||0)+dt;R.nyxOrbT=Math.max(R.nyxOrbT||0,R.nyxRun)}else R.nyxRun=0;
@@ -1715,7 +1717,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
