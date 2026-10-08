@@ -1974,6 +1974,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   missions and communication (missions in flight, passive flybys, one event timeline, pay along the way, the year as
   Tellus's orbit; instruments that point, data as a volume, a link budget, forgiving loss of contact). All tests
   pass. Merged to `main` (`ab6e07c`).
+- **v1.42 (2026-10-08, economy worktree):** the event timeline. "Coming up" in the Inbox lists what's dated in the
+  program (studies, buildings, budget days, elections, eras, deadline and decision warnings), and Wait moves the
+  calendar event by event, stopping where you're needed. Design note: planning before the flight (the study is the
+  plan). All tests pass. Merged to `main` (`36ae7ad`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
