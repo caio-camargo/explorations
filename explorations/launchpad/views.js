@@ -1,8 +1,9 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
+  if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
@@ -171,6 +172,20 @@ window.refView = async (n) => {
     const t0 = simT; while (simT - t0 < age - 1e-9) { advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); render(); }
     window.simulate = () => {};   // freeze for the capture (restored by the next refView)
     await settle(); bare(); return design + ' ' + act + ' at ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km +' + (simT - t0).toFixed(2) + ' s debris ' + debris.length;
+  }
+  // 80–83: clouds with depth. The Orbiter's ascent (pitch kick at 8 s, prograde) to alt m, seen from yaw/pitch/dist; the
+  // sim is frozen for the capture. 80 is on the pad looking up past the rocket. [alt, yaw, pitch, dist]
+  const cl = { 80: [0, 0.9, -0.45, 30], 81: [3000, 1.75, 0.05, 40], 82: [8000, 1.75, 0.45, 60], 83: [25000, 1.75, 0.5, 60] };
+  if (cl[n]) {
+    const [alt, yaw, pitch, dist] = cl[n];
+    stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
+    // weather on demand: the first time offset (5-minute steps) at which the sky under the rocket is about 60 % covered
+    const wx = u => { CLOUD_DT = 0; for (let k = 0; k < 4000; k++) { const c = cloudAt(u, tNow() + k * 300); if (c > 0.55 && c < 0.75) { CLOUD_DT = k * 300; break } } };
+    if (alt) { S.throttle = 1; stage(S); while (S.alive && len(S.r) - TELLUS.R < alt && simT < 600) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S) } INP.pitch = 0 }
+    wx(norm(toPF(TELLUS, S.r, simT)));   // weather on demand: ~60 % cover under the rocket
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); window.simulate = () => {};
+    await settle(); bare(); const u = norm(toPF(TELLUS, S.r, simT));
+    return 'clouds h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km, cover here ' + cloudAt(u, tNow() + CLOUD_DT).toFixed(2) + ' (CLOUD_DT ' + CLOUD_DT + ')';
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();
