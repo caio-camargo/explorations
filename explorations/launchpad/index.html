@@ -309,6 +309,10 @@ const PARTS={
   cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
   chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
   pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  // crew (bodies session, epoch 4): a pod with two people and 10 days of life support; an escape tower (solid motor, 150 kN
+  // for 3 s) that pulls it off a failing rocket. Until the tower is qualified (the max-q abort), the capsule flies dummies.
+  crew:{name:'Crew capsule',kind:'pod',crew:2,m:1.4,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  les:{name:'Escape tower',kind:'les',m:0.6,h:2.1,cm:.6,thrust:150,burn:3,C:900,T:500,B:200,prof:[[.18,0],[.18,1.3],[.26,1.42],[.26,1.6],[.1,1.9],[0,2.1]]},
   t1:{name:'Tank 1 t',kind:'tank',wet:1,dry:0.11,h:1.1},
   t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
   t4:{name:'Tank 4 t',kind:'tank',wet:4,dry:0.45,h:3.8},
@@ -383,7 +387,7 @@ const PRESETS={
 };
 const entryKey=e=>typeof e==='string'?e:e.k;
 // the vessel is its command pod, else the capsule or the instruments, else its top part: losing the root ends the flight
-function rootIdx(stack){for(const k of['pod','bio','sci']){const i=stack.findIndex(e=>entryKey(e)===k);if(i>=0)return i}return 0}
+function rootIdx(stack){for(const k of['crew','pod','bio','sci']){const i=stack.findIndex(e=>entryKey(e)===k);if(i>=0)return i}return 0}
 // ---- design format v2: a tree of part nodes, what the construction screen builds. node = {k, at, j, x, c:[nodes]}.
 // `at` says how a node hangs on its parent: 'u' on the parent's top, 'd' under its bottom, or radial {y, a, n, cy, dec, x}:
 // against the parent's side at height y above the parent's bottom and angle a (radians, in the parent's frame), n
@@ -793,6 +797,7 @@ function detach(s,list,kick,spin){
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
 function physStep(s,dt){
+  if(s.lesJet){s.lesJet=false;lesJettison(s,true)}
   const b=s.body;geom(s);
   const r=s.r,rl=len(r),h=rl-b.R,pr=pressure(b,h);
   for(const p of s.parts){p.F[0]=p.F[1]=p.F[2]=0;p.L[0]=p.L[1]=p.L[2]=0;p.Q=0}
@@ -827,6 +832,7 @@ function physStep(s,dt){
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
   if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true));rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0],(alR[1]-alC[1])*s.I[1],(alR[2]-alC[2])*s.I[2]])}else{s.rcsFire=0;s.rcsShots=null}
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
+  if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
   const alB=[tau[0]/s.I[0]+alC[0],tau[1]/s.I[1]+alC[1],tau[2]/s.I[2]+alC[2]];
   const worst=structLoads(s,aNg,alB,wb,[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]]);s.aB=add(aNg,worst.aSide);s.alB=alB;s.wB=wb;   // for the ports' loads
@@ -892,8 +898,19 @@ function groundCheck(s){
     s.landed=true;s.r=mul(up,groundR(b,pf0)-s.yBot);s.water=b===TELLUS&&terrainH(pf0)<0;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
     s.landedAt=simT;s.touchV=sp;HOOK.msg(`Landed on ${b.name} at ${sp.toFixed(1)} m/s`)}
   else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} at ${sp.toFixed(0)} m/s`)}}
+// ---- abort (bodies session): the escape tower pulls the crew capsule off a failing rocket. Everything below the capsule
+// is dropped, the tower burns for its 3 s, then it's jettisoned and the chute armed. On a nominal flight the tower goes at
+// the first staging above 30 km.
+const LES_JET_ALT=3e4,CREW_AIR=10*86400;
+function abort(s){if(!s.alive)return false;const les=s.parts.find(p=>p.on&&p.d.kind==='les'),cap=s.parts.find(p=>p.on&&p.d.crew);
+  if(!les||!cap){HOOK.msg(les?'Abort: no crew capsule aboard':'Abort: no escape tower');return false}
+  const drop=s.parts.filter(p=>p.on&&p.y0<cap.y0-1e-6),b=s.body;s.throttle=0;
+  if(s.rec&&!s.rec.abort)s.rec.abort={t:simT,q:s.qdyn||0,alt:len(s.r)-b.R-groundAlt(b,toPF(b,s.r,simT))};
+  if(drop.length)detach(s,drop,[0,-2,0],0.3);s.lesT=les.d.burn;s.kickN=(s.kickN||0)+1;HOOK.msg('ABORT: escape tower firing');HOOK.rebuild();return true}
+function lesJettison(s,chute){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(!les)return;detach(s,[les],[0,4,0],0.5);s.lesT=0;
+  if(chute&&s.chutePart){s.chute=true;s.chuteA=0}HOOK.msg(chute?'Tower jettisoned, chute armed':'Escape tower jettisoned')}
 function stage(s){
-  if(!s.alive)return;s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
+  if(!s.alive)return;{const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les&&!(s.lesT>0)&&len(s.r)-s.body.R>LES_JET_ALT)lesJettison(s,false)}s.kickN=(s.kickN||0)+1;const ev=s.events[s.evIdx];if(!ev)return;s.evIdx++;
   for(const k of ev.decouple){const list=s.parts.filter(p=>p.on&&p.seg===k);if(!list.length)continue;
     const rd=list.find(p=>p.d.kind==='rdec');   // side boosters are pushed outward, stages backward
     detach(s,list,rd?[Math.cos(rd.phi)*2.5,-0.5,Math.sin(rd.phi)*2.5]:[0,-1.5,0],rd?0.6:0.3)}
@@ -1274,6 +1291,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 // the government tops the program up (grudgingly): no dead ends, but money still decides what you can fly next.
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
+PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
 PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.1;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -1334,6 +1352,14 @@ const MISSIONS=[
    win:'a machine of ours stands on another world',ok:R=>R.selLand},
   {id:'selsample',pay:400,ep:4,req:['selland'],name:'Sample return',brief:'Land an instrument package on Selene, then bring it back to Tellus and recover it.',
    win:'a handful of Selene on a lab bench',ok:R=>R.selSampled&&R.landed&&R.recSci},
+  {id:'padabort',pay:60,ep:4,req:['orbiter'],name:'Pad abort test',brief:'With a crew capsule (test dummies aboard) under an escape tower on a rocket, abort from the pad (Backspace): the tower must carry the capsule high enough for the chute, under 8 g, and it must land intact.',
+   win:'the tower works from a standing start',ok:R=>R.abort&&R.abort.alt<200&&R.capHome&&R.cgMax<=G_LIM},
+  {id:'maxqabort',pay:90,ep:4,req:['padabort'],name:'Max-q abort test',brief:'Abort in flight at 15 kPa or more of dynamic pressure, the worst moment there is, and bring the capsule home intact under 8 g. This qualifies the tower: after it, capsules fly with a crew.',
+   win:'the escape system is qualified for people',ok:R=>R.abort&&R.abort.q>=15000&&R.capHome&&R.cgMax<=G_LIM},
+  {id:'crewaround',pay:300,ep:4,req:['maxqabort','farside'],name:'Crew around Selene',brief:`A crew capsule with two people into Selene's sphere of influence and home safe: under 8 g, cabin under ${CABIN_MAX} K, within 10 days of air.`,
+   win:'the first people to see the far side',ok:R=>R.crewed&&R.crewOK&&R.crewSel&&R.capHome},
+  {id:'crewland',pay:600,ep:4,req:['crewaround','selland'],name:'Crew on Selene',brief:'Land a crew on Selene (under 4 m/s), then bring them home safe, same limits.',
+   win:'footprints on Selene',ok:R=>R.crewed&&R.crewOK&&R.crewSelLand&&R.capHome},
   {id:'nyxfind',pay:120,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it.`,
    win:'Nyx weighed, and its orbit on the map',ok:R=>R.nyxFound},
   {id:'nyxfly',pay:150,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
@@ -1369,7 +1395,16 @@ function utilTick(d){const T=PROG.day*DAY_S;
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
-function outThere(s,dt){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k),cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
+function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&p.d.kind===k),cam=on('cam'),ant=on('ant'),sci=on('sci'),toT=b.parent?norm(mul(bodyRel(b,simT)[0],-1)):null;
+  // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
+  // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
+  {const cap=s.parts.find(p=>p.on&&p.d.crew);
+    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290}
+    if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/600);
+      if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
+      if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
+    if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT>CREW_AIR&&!R.capHome?'ran out of air':'';
+      if(why){R.crewOK=false;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
@@ -1433,7 +1468,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
-  outThere(s,dt);missionEval(s)}
+  outThere(s,dt,phys);missionEval(s)}
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
   if(M.ok(s.rec,s))missionComplete(M,s.rec)}}
 // a mission is done: pay it, move opinion, tell the world. rec is the flight's record, or null for a world mission
@@ -2316,6 +2351,7 @@ function tapeCtl(T,s){const c=controls(s),k=JSON.stringify(c);if(k!==T.lastK){T.
 function tapePhys(T,s){tapeCtl(T,s);const o=T.ops[T.ops.length-1];if(o&&o[0]==='P')o[1]++;else T.ops.push(['P',1]);advPhys(s)}
 function tapeRails(T,s,dt,warp){tapeCtl(T,s);T.ops.push(['R',dt,warp]);return advRails(s,dt,warp)}
 function tapeStage(T,s){tapeCtl(T,s);T.ops.push(['S']);stage(s)}
+function tapeAbort(T,s){tapeCtl(T,s);T.ops.push(['A']);abort(s)}
 function tapeSwitch(T,s,i){tapeCtl(T,s);T.ops.push(['V',i]);switchTo(i)}
 function tapeUndock(T,s,id){tapeCtl(T,s);T.ops.push(['D',id]);undock(s,id)}
 function tapeDuration(T){let d=0;for(const o of T.ops)d+=o[0]==='P'?o[1]*DT:o[0]==='R'?o[1]:0;return d}
@@ -2324,6 +2360,7 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
   while(budget>0&&pl.i<ops.length&&s.alive){const o=ops[pl.i];
     if(o[0]==='C'){setControls(s,o[1]);pl.i++}
     else if(o[0]==='S'){stage(s);pl.i++}
+    else if(o[0]==='A'){abort(s);pl.i++}
     else if(o[0]==='D'){undock(s,o[1]);pl.i++}
     else if(o[0]==='V'){switchTo(o[1]);s=S;pl.i++}
     else if(o[0]==='R'){advRails(s,o[1],o[2]);pl.i++;budget--}
@@ -3069,7 +3106,8 @@ function partBody(out,p){
       for(const yy of[.17,.44])lathe(out,[[.177,yy,C.D],[.177,yy+.03,C.D]],c,16,[false,false]);
       tube(out,add(c,[0,.59,0]),add(c,[0,.66,0]),.02,C.ST,8,true);box(out,add(c,[0,.68,0]),.03,.02,.03,C.G);
       tube(out,add(c,[0,.68,0]),[x,y+.68,z],.008,C.ST,5,false)}break;
-    case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
+    case'les':lathe(out,[[.18,0,C.D],[.18,1.3,C.R],[.26,1.42,C.D],[.26,1.6,C.R],[.1,1.9,C.R],[0,2.1,C.D]],o);break;
+    case'crew':case'pod':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.62,.06,C.G],[.34,1.0,C.G],[.34,1.0,C.D],[.3,1.06,C.D],[.3,1.06,C.G],[.3,1.2,C.G]],o);break;
     case'cam':lathe(out,[[.625,0,C.D],[.625,.06,C.D],[.625,.06,C.ST],[.625,.44,C.ST],[.625,.44,C.D],[.625,.5,C.D]],o);
       box(out,[x,y+.25,z+.6],.24,.17,.05,C.BK);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.78],.15,C.D,14,false);tube(out,[x,y+.25,z+.56],[x,y+.25,z+.7],.11,C.GL,14,true);
       box(out,[x,y+.25,z-.61],.17,.12,.03,C.G);break;
@@ -3559,8 +3597,9 @@ addEventListener('keydown',e=>{
   if([' ','tab'].includes(k)||e.ctrlKey)e.preventDefault();
   if(e.repeat&&!['shift','control'].includes(k)){keys.add(k);return}
   keys.add(k);
-  if(player&&['w','a','s','d','q','e','z','x','t',' ','shift','control','n','delete'].includes(k))takeOver();
+  if(player&&['w','a','s','d','q','e','z','x','t',' ','shift','control','n','delete','backspace'].includes(k))takeOver();
   if(k===' ')tapeStage(recTape,S);
+  else if(k==='backspace'){e.preventDefault();tapeAbort(recTape,S)}
   else if(k==='z')S.throttle=1;else if(k==='x')S.throttle=0;
   else if(k==='t'){S.sas=!S.sas;S.hold=null;renderSAS()}
   else if(k==='m')toggleMap();

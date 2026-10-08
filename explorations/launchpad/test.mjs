@@ -6,7 +6,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -1050,6 +1050,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('epoch 3: navigation: 2 satellites leave gaps; 4 in two polar planes, phased in pairs, fix anyone within half an hour', !twoOK && !!P.done.nav && four >= 0.95,
     `2 satellites: ${(two * 100).toFixed(0)}% · 4: ${(four * 100).toFixed(1)}% of places and moments`);
   Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
+}
+
+// 25. Crew (bodies session, epoch 4): the escape tower, abort tests, then people. Flown through the real flight code.
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, active: P.active, sats: P.sats, day: P.day });
+  const news = [], msgs = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = m => msgs.push(m); api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.log = {}; P.active = []; P.funds = 1e4; news.length = 0; msgs.length = 0; };
+  const flyOut = s => { let apex = 0, n = 0; while (s.alive && !(s.landed && s.rec.abort && api.t > s.rec.abort.t + 5) && n++ < 300000) {
+      if (api.railsOK(s) && !s.landed) api.advRails(s, 1, 1); else api.advPhys(s); apex = Math.max(apex, len(s.r) - TELLUS.R); } return apex; };
+  // pad abort: from a standing start, under 8 g, high enough for the chute
+  reset(['orbiter']); api.t = 0; let s = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = s; api.abort(s); let apex = flyOut(s);
+  check('crew: a pad abort lifts the capsule clear under 8 g and it lands under its chute (dummies aboard)', !!P.done.padabort && s.landed && s.alive && !s.rec.crewed && s.rec.cgMax < 8 && apex > 500,
+    `apex ${(apex / 1e3).toFixed(2)} km, peak ${s.rec.cgMax.toFixed(1)} g, touchdown ${(s.touchV || 0).toFixed(1)} m/s; tower jettisoned: ${!s.parts.some(p => p.on && p.d.kind === 'les')}`);
+  // max-q abort: straight up at full throttle, abort at 18 kPa
+  reset(['orbiter', 'padabort']); api.t = 0; s = api.newShip(['les', 'chute', 'crew', 'dec', 't8', 'kestrel']); api.S = s; s.throttle = 1; api.stage(s);
+  let k = 0; while (s.alive && k++ < 20000) { api.advPhys(s); if ((s.qdyn || 0) >= 18000) { api.abort(s); break; } } apex = flyOut(s);
+  check('crew: a max-q abort (18 kPa) brings the capsule home under 8 g and qualifies the tower', !!P.done.maxqabort && s.landed && s.rec.cgMax < 8,
+    `abort at ${(s.rec.abort.q / 1e3).toFixed(1)} kPa, ${(s.rec.abort.alt / 1e3).toFixed(1)} km up; peak ${s.rec.cgMax.toFixed(1)} g; apex ${(apex / 1e3).toFixed(1)} km`);
+  // no tower, no abort; and on a nominal flight the tower goes at the first staging above 30 km
+  reset(['orbiter']); api.t = 0; s = api.newShip(['chute', 'crew', 't4', 'kestrel']); api.S = s; const noTower = api.abort(s);
+  s = api.newShip(['les', 'chute', 'crew', 'dec', 't4', 'kestrel']); api.S = s; s.landed = false; s.rec.launched = true; s.r = mul(norm(s.r), TELLUS.R + 4e4); api.stage(s);
+  check('crew: no abort without a tower; the tower is jettisoned at the first staging above 30 km', !noTower && !s.parts.some(p => p.on && p.d.kind === 'les') && msgs.some(m => /Escape tower jettisoned/.test(m)), `abort without a tower: ${noTower}`);
+  // once qualified, capsules fly people: around Selene and home counts; a crashed capsule loses its crew
+  const crewFlight = (done) => { reset(done); P.day = 50; api.t = 0; const c = api.newShip(['les', 'chute', 'crew', 't4', 'kestrel']); api.S = c; c.rec.launched = true; c.rec.day0 = P.day; c.rec.dv = 4000;
+    const home = { r: c.r.slice(), pf: c.pf.slice(), q: c.q.slice(), qLocal: c.qLocal.slice() }; return { c, home }; };
+  let { c, home } = crewFlight(['orbiter', 'padabort', 'maxqabort', 'farside']);
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 300e3, 0, 0]; c.v = [0, 0, -Math.sqrt(SELENE.mu / (SELENE.R + 300e3))]; api.advRails(c, 60, 10);
+  const sawSel = c.rec.crewSel; c.body = TELLUS; c.landed = true; Object.assign(c, { pf: home.pf, qLocal: home.qLocal }); api.advRails(c, 1, 1);
+  check('crew: after qualification the capsule carries people; around Selene and home safe completes "Crew around Selene"', c.rec.crewed && sawSel && c.rec.crewOK && !!P.done.crewaround, `crewed ${c.rec.crewed}, in Selene's SOI ${sawSel}, home ${c.rec.capHome}`);
+  ({ c } = crewFlight(['orbiter', 'padabort', 'maxqabort']));
+  c.landed = false; c.body = SELENE; c.r = [SELENE.R + 20e3, 0, 0]; c.v = [-300, 0, 0]; let n = 0; while (c.alive && n++ < 20000) { if (api.railsOK(c)) api.advRails(c, 1, 1); else api.advPhys(c); }
+  check('crew: a crashed crewed capsule loses its crew (news, opinion)', !c.rec.crewOK && news.some(m => /The crew were lost/.test(m)), news.find(m => /crew/.test(m)) || 'no news');
+  // the landing mission's condition reads the flight record
+  const okLand = api.MISSIONS.find(m => m.id === 'crewland').ok;
+  check('crew: "Crew on Selene" needs a crewed landing there and the crew home safe', okLand({ crewed: true, crewOK: true, crewSelLand: true, capHome: true }) && !okLand({ crewed: true, crewOK: false, crewSelLand: true, capHome: true }) && !okLand({ crewed: false, crewOK: true, crewSelLand: true, capHome: true }), '');
+  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {}; api.HOOK.msg = m => log.push(`[t=${api.t.toFixed(1)}] ${m}`);
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
