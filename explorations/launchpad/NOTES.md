@@ -1211,6 +1211,68 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.47 — dispatch, the economy side (2026-10-08, economy session)
+
+The first slice of dispatch (decisions: "Dispatch — the economy's answers"). A contract flown by a stored procedure,
+without you.
+
+- **What can be dispatched:**
+  - satellite and recon contracts (`DISPATCH_TYPES`), for a design with an orbit procedure in `PROG.procs` (so it
+    flew to orbit by hand);
+  - the design must be able to do the contract (its payload), checked with the contract's own `ok`;
+  - missions (the firsts) are never dispatched.
+- **The risk estimate** (`dispatchEstimate`), from the part data:
+  - **margin:** the design's vacuum Δv − the procedure's Δv − the extra for this target (circular-speed difference
+    from the procedure's orbit, plus the lost rotation boost for inclination), through a logistic around 40 m/s;
+  - **ignition:** every engine's odds as `igniteOK` computes them (know-how, development, line maturity); the top
+    stage lights twice;
+  - **loads:** 2% × (1 − certification) per part.
+
+  The range widens with average uncertainty (1 − certification, 1 − know-how). Measured: unknown parts 90%
+  (67–100%), well-known 100% (99–100%).
+- **Pads are reservations** (`padsFree`, `padWait`):
+  - one pad, plus the new **Launch pads** facility (80M then 160M: 2, then 3 pads);
+  - a dispatch takes the earliest free pad and stacks for the same days as a hand-flown launch;
+  - **a hand-flown launch waits for a free pad too** (`R.padWait`, before stacking).
+
+  Measured: two dispatches on one pad launch on days 36 and 63, and a hand-flown launch would wait 53 days; with a
+  second pad the third goes at once.
+- **Resolution** (`dispatchTick`, on the timeline as "Dispatched launch"):
+  - on launch day the weather can scrub it, a day at a time, as for any launch (`siteWeather`);
+  - if money is short it's held 10 days;
+  - otherwise it pays the same launch costs, counts as a flight, uses production-line units and teaches know-how;
+  - the flight comes from `dispatchRun(D, vessel, contract)` if the physics side has defined it;
+  - success builds a flight record with the orbit and runs `contractEval` (same pay, same precision bonus);
+  - a contract already completed by another flight stands the dispatch down (one orbit can complete several).
+- **The seed** is fixed when the dispatch is ordered, so the same state gives the same outcome; no re-rolls.
+- **Interim resolver** (`dispatchRoll`): until `dispatchRun` exists, the estimate is rolled with the seed, and the orbit
+  is scattered by 3 km + 40 km × `predErr` (the compute era).
+- **UI:** each active contract shows its best dispatch option ("success ~90% (67–100%), launches in N d on pad 1, cost
+  [Dispatch]"), or why there's none. News on ordering, launch and outcome.
+
+**For the physics side (bodies):** `dispatchRun(D, v, c)` should return `{ok, orb:{pe, ap, inc, sci, cam}, dv, why}`,
+or a deviation (planned: `{deviation: {t, why, state}}`, which the economy will turn into a timeline stop that hands
+you the flight). `D` carries `stack`, `seed`, `launch` and `pad`.
+
+**Weather and auto-resolve** (Caio's concern). Weather here is deterministic: `cloudAt(place, time)` from the world seed,
+and today it only scrubs launches. A dispatch launching on a given day sees the same weather whether watched or
+auto-resolved. The rule that keeps it so: **every random factor in a flight is a function of the world seed, time and
+place, or of the dispatch's seed**, never a fresh random number. Winds aloft, if they come, would follow the same rule
+and the procedure would fly through them in both modes.
+
+**Deviation, and whether "can't meet its goal" is computable** (Caio). It mostly is, with flight rules: thresholds at
+checkpoints, as real missions use.
+- **Δv to go vs Δv left** (`dvRemaining` already gives the latter): if what's left can't reach the goal from the
+  current orbit, it deviates.
+- **A corridor around the procedure's own recorded profile** (velocity and flight-path angle against altitude): leaving
+  it beyond a threshold deviates.
+- **Events:** an engine that didn't light, staging out of order, structural failure.
+- A failure is just the extreme of deviation. Since the run *is* the simulation, the deviation happens inside it, at a
+  time, with a state; nothing is rolled separately. The thresholds set how forgiving it is. A threshold the player sets
+  ("hand over / abort / carry on") is a possible later option.
+
+`test.mjs` §38: 3 new checks: estimate from part data; pads; outcome, pay and seed.
+
 ## v1.46 — avionics generations: SAS grows with the computing eras (2026-10-08, control session)
 
 The third slice of the control review. The NOTES' eras idea ("early guidance computers have stability-only SAS") on the
@@ -1247,13 +1309,16 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
-gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+**Tests** §39 (3 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
+still flies its gyro. 315 pass.
 
 **For other sessions**
 - **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
-  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
-  register flies with the best.
+  would set `s.av` (or move `avNow`). Registered vessels keep theirs (`vstOf` stores `av`, `vesselOf` restores it;
+  entries from before v1.46.1 get today's).
+- **tester:** *All tools* also gives the best avionics (`avNow`); the epoch picker doesn't move the date, so without it
+  a tester at epoch 4 flies a gyro.
 - **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
 - **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
 
@@ -1369,7 +1434,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** §38 (3 checks; numbered §36 until v1.46.1): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
@@ -2542,7 +2607,30 @@ correction to the perigee, shed the stage, entry, chute). The recorder keeps a f
 records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
 and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
 
-**Open:** aiming the pass's side (B-plane) for true free returns; dispatch
+**Aiming a free return (2026-10-08).** When the phase after a transfer is `home`, its corrections (and the trim inside the moon's
+SOI) aim at **the perigee it will come home on after the flyby** (`homePe`, read off the predictor's chained legs), with the
+pass allowed anywhere within half its planned height. The same free return as before now needs **4.9 m/s** on the way home
+instead of 286 (two mid-course corrections of ~50 m/s set up a pass that comes back by itself); 5,812 m/s in all instead of
+6,025.
+
+**Debris** near the moons now feels their tides too (`stepDebris`, the same pointwise test as `physStep`).
+
+**Registered satellites still ride pure Kepler, deliberately, for now.** Measured against the integrated orbit:
+
+| orbit | off the Kepler path after 30 days | Ap / Pe change |
+|---|---|---|
+| low, 300 km | 5 km | ±0.2 km |
+| polar, 1,000 km | 39 km | ±0.75 km |
+| navigation, 3,000 km | 500 km | ±6 km |
+| **stationary (TV)** | **10,750 km** | +31 / −144 km |
+
+Nyx is heavy and close, much more so than the Moon is to Earth, so a stationary satellite would really drift a quarter of the way
+round in a month. Giving the registry the tides would make the TV mission pay for days unless satellites carry propellant
+to hold their slot. That's the design notes' "satellites age" idea: **a satellite's life = station-keeping propellant ÷
+drift rate**, with servicing or replacement missions after. It's a gameplay decision for Caio with the sats and economy
+sessions, not a physics fix to slip in.
+
+**Open:** station-keeping and satellite lifetimes (above); dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever

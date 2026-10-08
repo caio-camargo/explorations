@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1138,7 +1138,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       while (s.alive && !s.proc.done && k++ < 3e6) { const X = s.proc; if (X.wake > api.t + 2 && api.railsOK(s)) api.advRails(s, Math.min(600, X.wake - api.t), 1000); else api.advPhys(s); }
       const Rf = s.rec, fb = P.procs[base + '|Selene:flyby'], frp = P.procs[base + '|Selene:free-return'];
       check('procedures v2: a free return (transfer, then home) flies "Crew around Selene", and is recorded as a flyby and a free-return procedure',
-        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home',
+        !!P.done.crewaround && Rf.crewOK && s.landed && s.body === TELLUS && !!fb && !!frp && frp.phases.map(x => x.k).join() === 'transfer,home' && frp.dv < 5950,   // aimed as a true free return: small correction home
         `home in ${(api.t / 86400).toFixed(2)} days, peak ${(Rf.cgMax || 0).toFixed(1)} g; procedures: flyby ${!!fb}, free-return ${frp ? frp.dv.toFixed(0) + ' m/s' : 'none'}`); } }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));   // the whole program state back: later sections see what they would have without this one Object.assign(api.HOOK, H);
 }
@@ -1878,6 +1878,36 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(P, JSON.parse(saved));
 }
 
+// 38. Dispatch (economy): a contract flown by a stored procedure; risk from part data; pads as reservations; a fixed seed.
+{
+  const P = api.PROG, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: {}, staged: {} });
+  api.chooseStart('agency'); P.funds = 2000; P.day = 10;
+  const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], key = api.procKey(st);
+  const sat = (id, alt) => ({ id, type: 'sat', src: 'com', client: 0, p: { alt, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 });
+  const c1 = sat(901, 150), c2 = sat(902, 250), c3 = sat(903, 350); P.active = [c1, c2, c3];   // (apart: one orbit can complete several contracts)
+  const none = api.dispatchEstimate(st, c1); P.procs = { [key]: { kind: 'orbit', target: { pe: 110e3, ap: 118e3 }, dv: 4445 } };
+  const raw = api.dispatchEstimate(st, c1);
+  for (const p of api.newShip(st).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const known = api.dispatchEstimate(st, c1);
+  check('dispatch: needs a procedure; part data raises the chance and narrows the estimate', !none.ok && raw.ok && known.p > raw.p && (known.hi - known.lo) < (raw.hi - raw.lo),
+    `no procedure: "${none.why}" · unknown parts ${(raw.p * 100).toFixed(0)}% (${(raw.lo * 100).toFixed(0)}–${(raw.hi * 100).toFixed(0)}%) · well-known ${(known.p * 100).toFixed(0)}% (${(known.lo * 100).toFixed(0)}–${(known.hi * 100).toFixed(0)}%), margin ${known.margin.toFixed(0)} m/s`);
+  // pads: the second dispatch queues behind the first; a second pad takes the third at once; a hand-flown launch waits
+  const q1 = api.dispatchQuote(c1, st); api.orderDispatch(c1, st); const q2 = api.dispatchQuote(c2, st); api.orderDispatch(c2, st);
+  const waitOne = api.padWait(); P.fac.pads = { lv: 1 }; const q3 = api.dispatchQuote(c3, st);
+  check('dispatch: pads are reservations; a second dispatch waits for the pad, a second pad takes one at once', Math.abs(q2.start - q1.launch) < 1e-9 && q2.pad === 0 && q3.pad === 1 && Math.abs(q3.start - P.day) < 1e-9 && Math.abs(waitOne - (q2.launch - P.day)) < 1e-9,
+    `#1 launches day ${q1.launch.toFixed(0)}, #2 day ${q2.launch.toFixed(0)} (same pad), with two pads #3 day ${q3.launch.toFixed(0)}; a hand-flown launch would wait ${waitOne.toFixed(0)} d`);
+  P.fac.pads = { lv: 0 };
+  // the flights: same seed, same outcome; the contract pays as if flown by hand
+  const before = JSON.stringify(P), f0 = P.funds, fl0 = P.flights; const waitTo = d => { let n = 0; while (P.day < d - 1e-9 && n++ < 50) { P.decisions = []; api.advanceTo(d); } }; waitTo(P.dispatch[1].launch + 8);   // (decisions that come up on the way are waved off)
+  const r1 = P.dispatch.map(d => d.status + (d.orb ? d.orb.pe.toFixed(0) : '')).join(' '), paid = !P.active.includes(c1) && !P.active.includes(c2), df = P.funds - f0;
+  Object.assign(P, JSON.parse(before)); P.active = [c1, c2, c3].filter(c => JSON.parse(before).active.some(x => x.id === c.id)); waitTo(P.dispatch[1].launch + 8);
+  const r2 = P.dispatch.map(d => d.status + (d.orb ? d.orb.pe.toFixed(0) : '')).join(' ');
+  check('dispatch: both fly on their launch days, contracts paid as by hand; the same seed gives the same outcome (no re-rolls)', r1 === r2 && /done/.test(r1) && paid && P.flights === fl0 + 2,
+    `${r1.replace(/(\d{3})\d{3}/g, '$1 km ')} · funds ${df >= 0 ? '+' : ''}${df.toFixed(0)}M net of two launches`);
+  Object.assign(P, JSON.parse(saved));
+}
+
 // 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
 // stand on (atan μ), softness changes the speed the ground forgives, boulders or trees add to the effective speed.
 {
@@ -1978,7 +2008,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
 }
-// 36. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// 38. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
 // they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
 {
   const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
@@ -2313,10 +2343,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
-// 37. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
+// 39. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
 // an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
 {
-  const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,satRegister,vesselOf,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
   D.HOOK.msg = () => {}; const T = D.TELLUS, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2])) * 57.2958;
   const sand = D.avNow(); D.PROG.flights = 1; const gens = [0, 3.5, 8].map(y => { D.PROG.day = y * 400; return [D.avNow(), D.compEra()]; });
   check('avionics: no program, the best SAS; in a program it follows the computing era (gyro, then analog at mainframes, then guidance computer)',
@@ -2331,6 +2361,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('avionics: a gyro only holds (asked for prograde, it holds the attitude), within its ½° deadband; a bare pod\u2019s 90° turn takes it twice as long as a guidance computer',
     g.modes === 'no/no/no' && g.proHolds && !c.proHolds && a.modes === 'yes/no/no' && c.modes === 'yes/yes/yes' && g.reach > 1.8 * c.reach && g.err <= 0.5 + 1e-6,
     `prograde/maneuver/target: gyro ${g.modes} (prograde holds: ${g.proHolds}), analog ${a.modes}, computer ${c.modes}; 90° in ${g.reach.toFixed(1)} / ${a.reach.toFixed(1)} / ${c.reach.toFixed(1)} s; gyro holds within ${g.err.toFixed(2)}°`);
+  // a satellite keeps its avionics through the register: loaded back years later, it still has the gyro it flew with
+  D.t = 0; const sat = D.newShip(['ant', 'core', 't1', 'wren']), rs = T.R + 300e3; D.S = sat; sat.av = 0; D.PROG.day = 8 * 400;
+  Object.assign(sat, { landed: false, alive: true, r: [rs, 0, 0], v: [0, 0, -Math.sqrt(T.mu / rs)], w: [0, 0, 0] }); D.PROG.sats = []; D.satRegister(sat, { day0: 0 });
+  const back = D.PROG.sats.length ? D.vesselOf(D.PROG.sats[0], 0) : null;
+  check('avionics: a gyro-era satellite loaded back from the register in the computer era still flies its gyro', back && back.av === 0 && D.avNow() === 2,
+    `registered ${D.PROG.sats.length}, loaded back with ${back ? D.AV[back.av].name : '—'} (today: ${D.AV[D.avNow()].name})`);
 }
 
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
