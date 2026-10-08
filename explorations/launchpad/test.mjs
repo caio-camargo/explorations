@@ -7,7 +7,7 @@ const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== 
 const api = new Function(src + `
 return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
-  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
+  TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
 // geometry from the planet, not literals: low orbit 10 km above the air, entry 5 km below its top at ~98 % of circular speed
 const ATM = TELLUS.atm, LEO = TELLUS.R + ATM + 10000, VENT = 0.9838 * Math.sqrt(TELLUS.mu / (TELLUS.R + ATM + 5000)), AS = ATM / 7e4;
@@ -1110,6 +1110,46 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `orbit with ${R.orbit.left.map(x => x.toFixed(0)).join('/')} m/s left, cabin ${R.orbit.cabin.toFixed(0)} K · corrections ${R.mcc.toFixed(0)} + ${R.retCorr.toFixed(0)} m/s · landed at ${R.landing.v.toFixed(1)} m/s with ${R.landing.left.map(x => x.toFixed(0)).join('/')} left · ` +
     `back in Selene orbit with ${R.ascent.left.map(x => x.toFixed(0)).join('/')} · ${R.passes.length} entry pass · splashdown ${R.touch.toFixed(1)} m/s, peak ${R.g.toFixed(1)} g, cabin ${R.cabin.toFixed(0)} K, ${R.days.toFixed(1)} days`);
   Object.assign(P, JSON.parse(saved)); Object.assign(api.HOOK, H);
+}
+
+// 28. Procedures (bodies session): a hand-flown ascent becomes a guidance plan that flies the design again, adapts, and only improves.
+{
+  const P = api.PROG, saved = JSON.stringify({ done: P.done, log: P.log, funds: P.funds, procs: P.procs, flights: P.flights }), news = [];
+  api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {}; P.procs = {}; P.funds = 1e4;
+  const st = api.PRESETS.Orbiter, key = api.procKey(st), tgt = ATM + 10000;
+  // a flight to orbit (attitude set directly, as in §3, sampled through advPhys like any flight); turnEnd sets how well it's flown
+  const hand = (turnEnd) => { api.t = 0; const s = api.newShip(st); api.S = s; api.advPhys(s); s.sas = false; s.throttle = 1; api.stage(s); let k = 0, phase = 'up';
+    const point = d => { const f = api.localFrame(s.r), r = d * Math.PI / 180, Y = norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r)))), X = norm(cross(Y, f.n)); s.q = api.qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0]; };
+    while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+      if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 1000 * AS) / (turnEnd - 1000 * AS))); point(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; } }
+      else if (phase === 'coast') { point(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0; if (h > ATM && api.timeToNu(el, Math.PI) < 25) phase = 'circ'; }
+      else { const f = api.localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), X = norm(cross(hv, f.n)); s.q = api.qFromBasis(X, hv, cross(X, hv)); s.w = [0, 0, 0]; s.throttle = 1; if (el.pe - TELLUS.R > ATM + 2000) { s.throttle = 0; api.advPhys(s); break; } }
+      if (s.throttle > 0 && api.dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) api.stage(s);
+      api.advPhys(s); }
+    return s; };
+  const fly = (stack, proc, target) => { api.t = 0; const s = api.newShip(stack); api.S = s; api.advPhys(s); api.procStart(s, proc, target); let k = 0;
+    while (s.alive && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
+    return s; };
+  let s = hand(45000 * AS); const pr = P.procs[key], dvHand = s.rec.dv;
+  check('procedures: a hand-flown ascent to orbit becomes a procedure for its design (pitch curve, staging, target, Δv)', !!pr && pr.pitch.length > 20 && Math.abs(pr.dv - dvHand) < 1 && news.some(m => /New procedure/.test(m)),
+    pr ? `${pr.pitch.length} pitch points, heading ${(pr.az * 57.3).toFixed(0)}°, target ${(pr.target.pe / 1e3).toFixed(0)}×${(pr.target.ap / 1e3).toFixed(0)} km, ${pr.dv.toFixed(0)} m/s` : 'no procedure');
+  P.procs = {}; s = hand(45000 * AS); const proc = P.procs[key]; P.procs = { [key]: proc };   // keep it fixed while we fly it
+  let f = fly(st, proc), e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: flown by the procedure (SAS, staging, goal cut-offs), the same design reaches a stable orbit for about the same Δv', f.alive && f.proc.done && e.pe - TELLUS.R > ATM && f.rec.dv < 1.05 * proc.dv,
+    `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s (hand-flown ${proc.dv.toFixed(0)})`);
+  f = fly(st, proc, { pe: 180e3, ap: 180e3 }); e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: the same technique flies to a different target orbit (a contract\'s 180 km)', f.alive && f.proc.done && Math.abs(e.ap - TELLUS.R - 180e3) < 15e3 && e.pe - TELLUS.R > 150e3, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
+  // a heavier, different variant with margin (a 4 t upper tank: 2 t more, liftoff TWR 1.41 not 1.63; 5,550 m/s in all),
+  // and one that can't (the payload alone: 4,329 m/s in total, short of the ~4,450 orbit costs): it must not claim success
+  f = fly(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc); e = elements(f.r, f.v, TELLUS.mu);
+  check('procedures: it adapts to a heavier, different variant (2 t more, lower thrust-to-weight): still to orbit', f.alive && f.proc.done && e.pe - TELLUS.R > ATM, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
+  f = fly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
+  check('procedures: a variant that cannot make orbit does not claim to (the procedure never completes)', !f.proc.done, `done ${f.proc.done}, alive ${f.alive}`);
+  // records only improve: a sloppier ascent (late turn) doesn't replace it; a better one would
+  news.length = 0; s = hand(80000 * AS); const kept = P.procs[key] === proc;
+  check('procedures: a worse flight of the design leaves the stored procedure alone', kept && s.rec.dv > proc.dv && !news.some(m => /Procedure improved/.test(m)), `a lazier turn: ${s.rec.dv.toFixed(0)} m/s vs kept ${proc.dv.toFixed(0)}`);
+  check('tapes: the tape version is a fingerprint of the physics (no more hand-bumped string)', /^lp-[0-9a-z]+$/.test(api.TAPE_V) && api.TAPE_V !== 'lp-1.12', api.TAPE_V);
+  Object.assign(P, JSON.parse(saved)); api.HOOK.news = () => {};
 }
 
 // 18. The logbook (planning branch): facts measured by real flights, with provenance; records only improve.
