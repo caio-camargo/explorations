@@ -1950,6 +1950,9 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   day and starts retuned) and lines that never paid back (setup halved; they now pay back over ~6 years, except for
   resource states, which do better buying). Support packages are a real trade-off; still provisional. Also fixed a
   name clash with the builder's `lineOf`. `test.mjs` 220/220. Merged to `main` (`a0ac3cb`).
+- **v1.33 (2026-10-07, economy worktree):** the test stand, a one-off investment (40M, 60 days, no upkeep). Ground
+  campaigns raise a part's know-how (at 60% of a flight's weight; never vacuum or orbit) and certification, or test it to
+  destruction for full certification. `test.mjs` 223/223. Merged to `main` (`f35d61d`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
