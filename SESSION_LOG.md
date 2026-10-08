@@ -1978,6 +1978,10 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   program (studies, buildings, budget days, elections, eras, deadline and decision warnings), and Wait moves the
   calendar event by event, stopping where you're needed. Design note: planning before the flight (the study is the
   plan). All tests pass. Merged to `main` (`36ae7ad`).
+- **v1.44 (2026-10-08, economy worktree):** staged pay for long missions. Missions to Selene and Nyx pay 20% when
+  a flight is on course (its predicted trajectory enters the body's sphere of influence), 20% on arrival and the rest
+  on completion, for the same total; crewed missions only on crewed flights; advances kept if the flight fails. All
+  tests pass. Merged to `main` (`54c8c9f`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
@@ -2698,3 +2702,35 @@ re-landed. Browser: a pod at rest on an 18° slope, shadow on the slope.
 ### Next steps
 - [ ] Planning (parts): landing legs. Without them tall stacks tip on ~7–12° slopes; `footPoints` will pick up a leg part's feet
 - [ ] Terrain: slice-B follow-ups (§ v1.27), slices C–E; bouncing debris
+
+## 2026-10-08 — Launchpad v1.40: attitude control (control session)
+
+### Summary
+Caio asked for a review of stability and attitude control ("largely missing — reaction wheels, RCS, fin control"). They
+all existed, but as an abstract torque budget: every engine had the same 7 % "gimbal" as a number, the controller's
+acceleration was applied directly, fins were passive, and one central engine could roll a rocket. Built in a new worktree
+(`launchpad-control`, branch `control`, port 8796): `study_control.mjs` measures the budget; engines gimbal for real
+(range, slew, the thrust turns; one least-squares allocator; no roll from engines on the axis); steerable fins `cfin`,
+`cfins`, `cfins25`; SAS gets a lag-scaled linear zone and a rate integral with conditional integration (three faults the
+instant actuator had hidden: limit cycle, standing error / fins never asked, windup). Lunar wobble 4.8 → 0.61 °/s; a
+probe dart's 30° turn at 300 m/s 11.6 → 5.5 s. Merged with sats Phase C by hand (whole-attitude SAS targets).
+Fast-forwarded `main` (`45dd447`, not pushed). Details: NOTES § v1.40; lesson #33.
+(Re-added: the first copy of this entry was lost in a shared-docs overwrite.)
+
+## 2026-10-08 — Launchpad v1.43: reaction wheels that saturate; the builder's control readout (control session)
+
+### Summary
+- Wheels store momentum (`wheelGive`) and refuse past `hmax`; they unload through a burning gimbal or steerable fins
+  (free) or RCS (gas, 80 → 60 %). Pod 40 → 10 kN·m (100 kN·m·s), probe core 4 → 2. New `rwheel` part. HUD `Wheels n%` row.
+- Assembly screen: a **Control** block (max-q hold burning/coasting by source: holds / weathervanes / flips; roll;
+  90° turn times in vacuum, capped by wheel storage, within 5 % of flown turns).
+- Fixed a v1.40 bug: steerable fins drew as plain cylinders (`partBody` keys by part).
+- Quartering the wheels broke no check: scripted flights steer on the gimbal. Turns in vacuum on wheels are 2–4× slower
+  (Crewed Lunar ~2½ min for 90°).
+- §36 (3 checks); 287 pass. Fast-forwarded `main` (`1866aba`, not pushed).
+
+### Files
+- `explorations/launchpad/index.html`, `builder.js` (`rwheel` in *Control*), `test.mjs` §36, `NOTES.md` § v1.43.
+
+### Next steps
+- Era-gated SAS quality; draw gimbal and fin deflections (visuals); an unload-now control if playtests want it.

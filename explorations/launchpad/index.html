@@ -57,6 +57,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #help{width:min(440px,92vw)}#help td:first-child{color:var(--acc);white-space:nowrap;padding-right:10px;vertical-align:top}#help td:last-child{text-align:left}#help h3{margin:8px 0 2px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:normal}
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
+#rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvHud td:first-child{padding-right:10px}
 #prog{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
@@ -115,7 +116,7 @@ body.noperf #perf{display:none}
 </div>
 
 <div id="prog" class="hidden"><div class="hq">
-  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
+  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
   <div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
 </div></div>
 <div id="hud" class="ui hidden">
@@ -141,6 +142,7 @@ body.noperf #perf{display:none}
     <div class="sub">Drag the coloured handles on the map node; the further you drag, the faster it changes.</div>
   </div>
 </div>
+<div id="rover" class="ui hidden"><div class="panel left" id="rvDes"></div><div class="panel" id="rvHud"></div></div>
 <div id="logbook" class="hidden"></div>
 <div id="help" class="ovl hidden"></div>
 <div id="escm" class="ovl hidden"></div>
@@ -305,12 +307,12 @@ const R0=0.625;   // the 1.25 m class radius; every part carries its own radius 
 const PARTS={
   cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
   chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
-  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   // crew (bodies session, epoch 4): a pod with two people and 10 days of life support; an escape tower (solid motor, 150 kN
   // for 3 s) that pulls it off a failing rocket. Until the tower is qualified (the max-q abort), the capsule flies dummies.
   // ins: the crew cabin lags the skin by an hour (insulated and cooled), where the animal capsule lags it by 10 min: on the
   // way up the bare capsule's skin reaches ~520 K, which would cook a 10-min cabin (387 K) but warms this one by ~20 K.
-  crew:{name:'Crew capsule',kind:'pod',crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:40000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  crew:{name:'Crew capsule',kind:'pod',crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   les:{name:'Escape tower',kind:'les',m:0.6,h:2.1,cm:.6,thrust:150,burn:3,C:900,T:500,B:200,prof:[[.18,0],[.18,1.3],[.26,1.42],[.26,1.6],[.1,1.9],[0,2.1]]},
   t1:{name:'Tank 1 t',kind:'tank',wet:1,dry:0.11,h:1.1},
   t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
@@ -344,7 +346,9 @@ const PARTS={
   // cargo bay (sats session): floor (h), walls bayL tall (inner radius bayIn), a clamshell roof roofH high; cm 8.4 × h ≈ 2.1 m up
   bay:{name:'Cargo bay',kind:'bay',m:0.6,h:0.25,r:0.8,cm:8.4,bayL:4,bayIn:0.7,roofH:0.6,C:2500,T:1200,B:450,prof:[[.8,0],[.8,4.25],[.62,4.6],[0,4.85]],profOpen:[[.8,0],[.8,4.25]]},
   // probe core (sats session): a command part without crew, so a separated module is a vessel you can fly
-  core:{name:'Probe core',kind:'core',m:0.08,h:0.25,torque:4000,C:900,T:600,B:200},
+  // reaction wheel unit (control session): an inline drum of wheels, more torque and storage than a pod's own
+  rwheel:{name:'Reaction wheel',kind:'rwheel',m:0.12,h:0.3,torque:15000,hmax:150000,C:900,T:600,B:200},
+  core:{name:'Probe core',kind:'core',m:0.08,h:0.25,torque:2000,hmax:20000,C:900,T:600,B:200},
   // docking port (sats session): 1.25 m, its face on top; two capture when they meet slowly and nearly aligned
   port:{name:'Docking port',kind:'port',m:0.1,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.14],[.5,.2],[.5,.3]],jF:30e3,jM:20e3},
   // the claw (sats session): its jaws grab whatever they touch slowly enough, wherever and however it is; a weaker hold
@@ -644,8 +648,9 @@ function newShip(stack,site=curSite()){
   s.qLocal=qFromBasis(f.e,f.up,f.s);                     // nose up, belly (+X) east, +Z south
   syncLanded(s);
   return s}
-function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;
-  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque)s.torque+=p.d.torque}
+function geom(s){let m=0,c=[0,0,0],yb=Infinity,yt=-Infinity;s.torque=0;s.hmax=0;
+  for(const p of s.parts){if(!p.on)continue;const pm=partMass(p);m+=pm;c=madd(c,partC(p),pm);yb=Math.min(yb,p.y0);yt=Math.max(yt,p.y0+p.h);if(p.d.torque){s.torque+=p.d.torque;s.hmax+=p.d.hmax??p.d.torque*WHEEL_S}}
+  if(s.wH&&len(s.wH)>s.hmax)s.wH=s.hmax>0?mul(s.wH,s.hmax/len(s.wH)):[0,0,0];   // wheels lost with their parts
   s.mOwn=m*1000;s.cmOwn=mul(c,1/m);
   for(const a of s.att||[]){const pm=a.e.mass/1000;m+=pm;c=madd(c,a.p,pm)}   // docked bodies: their own mass at their own centre of mass
   c=mul(c,1/m);let Ix=0,Iy=0,Iz=0;
@@ -731,7 +736,16 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
 function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
   s.q=qnorm([q[0]+.5*dt*d[0],q[1]+.5*dt*d[1],q[2]+.5*dt*d[2],q[3]+.5*dt*d[3]])}
-function attStep(s,dt){integrateRot(s,ctrlAccel(s),dt)}   // attitude only (used while on rails)
+// ---- reaction wheels (control session). They store what they give: the vessel gets torque τ, the wheels' momentum H
+// (body frame, N·m·s) changes by −τ·dt. Past hmax they can't push that way any more; they unload whenever something else
+// (a burning gimbal, steerable fins in the air, RCS) can hold the vessel while they spin down (physStep).
+let WHEEL_S=10,WHEEL_DUMP=4;   // storage in seconds of full torque for parts without hmax; unloading time constant (s)
+function wheelGive(s,tau,dt){if(!(s.torque>0))return[0,0,0];const H=s.wH||[0,0,0],tl=len(tau);let t=tl>s.torque?mul(tau,s.torque/tl):tau;
+  let Hn=madd(H,t,-dt);const hn=len(Hn);if(hn>s.hmax){Hn=mul(Hn,s.hmax/hn);t=mul(sub(H,Hn),1/dt)}   // only what stays within storage
+  s.wH=Hn;return t}
+// attitude only (used while on rails): the wheels give what they can
+function attStep(s,dt){const a=qrot(qconj(s.q),ctrlAccel(s)),t=wheelGive(s,[a[0]*s.I[0],a[1]*s.I[1],a[2]*s.I[2]],dt);
+  integrateRot(s,qrot(s.q,[t[0]/s.I[0],t[1]/s.I[1],t[2]/s.I[2]]),dt)}
 
 // ---- aerodynamics: one pass over each stack line's merged surface, per part. Body frame throughout.
 // Newtonian impact pressure on every upstream-facing surface element (8 samples around each ring) with the stagnation
@@ -881,9 +895,15 @@ function physStep(s,dt){
   // control first: the wheels take what they can of the law's torque (a pure torque), the gimbals and steerable fins are
   // steered for the rest. The fins' authority depends on the airflow, so their columns come first.
   const qi=qconj(s.q),FC=s.fins.some(p=>p.d.ctl)?finCols(s,qrot(qi,sub(s.v,surfVel(b,r))),qrot(qi,s.w),density(b,h)):null;s.finAuth=FC&&FC.out.length?FC.auth:null;s.finT=simT;
-  const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]],tcl=len(tauC),tauW=tcl>s.torque?mul(tauC,s.torque/tcl):tauC;
+  const alC=qrot(qi,ctrlAccel(s)),tauC=[alC[0]*s.I[0],alC[1]*s.I[1],alC[2]*s.I[2]];
   const thr=s.throttle>0?eng.map(p=>engineMdot(p.d)*1000*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*s.throttle):[];
-  gimSteer(s,s.throttle>0?eng:[],thr,sub(tauC,tauW),dt,FC?FC.out:[]);
+  // what can take the torque the wheels don't give: gimbals and steerable fins (one solve), else RCS
+  const steer=(s.throttle>0&&eng.length?ctrlAuthority(s,eng,s.throttle)-s.torque:0)+(s.finAuth?Math.min(s.finAuth[0],s.finAuth[2]):0),rcsCap=s.rcs?rcsTauCap(s):0;
+  // free channels (gimbal, fins) unload from 2 %; RCS costs gas, so it only keeps them usable: past 80 % down to 60 %
+  const hf=s.wH&&s.hmax>0?len(s.wH)/s.hmax:0;s.wDump=steer>0?hf>0.02:rcsCap>0&&(s.wDump?hf>0.6:hf>0.8);
+  let dump=[0,0,0];if(s.wDump){dump=mul(s.wH,1/WHEEL_DUMP);const dl=len(dump),cap=Math.min(s.torque,0.5*(steer>0?steer:rcsCap));if(dl>cap)dump=mul(dump,cap/dl)}
+  const tauW=wheelGive(s,add(tauC,dump),dt),rest=sub(tauC,tauW);   // rest = the law's torque the wheels didn't give, minus the unloading
+  gimSteer(s,s.throttle>0?eng:[],thr,steer>0?rest:[0,0,0],dt,FC?FC.out:[]);
   if(s.sasE){const I=madd(s.sasI||[0,0,0],s.sasE,dt),m=len(I);s.sasI=m>s.sasA?mul(I,s.sasA/m):I}   // SAS rate integral (ctrlAccel)
   if(s.throttle>0&&eng.length){const want={};for(const[i,p]of eng.entries()){const md=engineMdot(p.d)*1000,t=thr[i],pt=thrustPt(p);
     const d=norm(add(tdirOf(p),p.gv||[0,0,0]));T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2]);const g=s.grp[p.i];want[g]=(want[g]||0)+md*s.throttle*dt/1000}
@@ -912,7 +932,8 @@ function physStep(s,dt){
     const lim=0.9*sp*s.mass/dt,fa=len(Fa);
     if(fa>lim){const k=lim/fa;s.parts.forEach((p,i)=>{p.F=add(F0[i],mul(sub(p.F,F0[i]),k));p.L=add(L0[i],mul(sub(p.L,L0[i]),k))})}}
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
-  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true));rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0],(alR[1]-alC[1])*s.I[1],(alR[2]-alC[2])*s.I[2]])}else{s.rcsFire=0;s.rcsShots=null}
+  if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
+    rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
@@ -952,8 +973,8 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   for(const p of s.parts){p.F=[0,0,0];p.L=[0,0,0]}geom(s);
   const pr=Math.exp(-h/TELLUS.H),ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg));let T=0;
   if(thr>0)for(const p of E){const md=engineMdot(p.d)*1000,t=md*(p.d.ispV+(p.d.ispA-p.d.ispV)*pr)*G0*thr,pt=thrustPt(p),d=tdirOf(p);T+=t*d[1];addF(p,t*d[0],t*d[1],t*d[2],pt[0],pt[1],pt[2])}
-  let Fx=0,Lz=0;
-  if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];
+  let Fx=0,Lz=0,fin=0;
+  if(q>0){const v=M*SND(h),rho=2*q/(v*v),a=aoa*Math.PI/180,vb=[v*Math.sin(a),v*Math.cos(a),0];fin=finCols(s,vb,[0,0,0],rho).auth[2];   // pitch about z
     const F0=s.parts.map(p=>p.F.slice()),L0=s.parts.map(p=>p.L.slice());aeroPass(s,vb,[0,0,0],rho,M,T>0);
     s.parts.forEach((p,i)=>{if(p.on){Fx+=p.F[0]-F0[i][0];Lz+=p.L[2]-L0[i][2]}})}
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
@@ -961,7 +982,20 @@ function probe(s,{M=0.6,aoa=4,q=0,thr=0,h=0}){
   const ign=s.segs.map(g=>g.ignited);s.segs.forEach((g,k)=>g.ignited=ls.includes(k));
   const worst=structLoads(s,mul(F,1/s.mass),[0,0,0],[0,0,0],ctl,true);s.segs.forEach((g,k)=>g.ignited=ign[k]);
   // CoP on the axis: −Lz/Fx is only meaningful for a symmetric design, which side groups always are
-  return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth,tau:len(tau),auth}}
+  return{ycp:Fx!==0?-Lz/Fx:NaN,ycm:s.cm[1],worst,trim:len(tau)<=auth+fin,tau:len(tau),auth:auth+fin,wheel:s.torque,gim:auth-s.torque,fin}}
+// The builder's control readout (control session). Pitch: what holding 5° off the airflow at max-q takes, burning and
+// coasting, against each source. Roll: wheels, engines off the axis, steerable fins at max-q. Turns: a 90° turn in vacuum
+// as the SAS flies it (accelerate, then brake, at most 0.6 rad/s, and on wheels alone at most their storage ÷ inertia),
+// wheels alone and with the first stage lit. RCS is
+// counted only if the design has quads (it adds to every case).
+function turnTime(alpha,wmax=0.6,th=Math.PI/2){if(!(alpha>0)||!(wmax>0))return Infinity;const w=Math.sqrt(th*alpha);return w<=wmax?2*Math.sqrt(th/alpha):th/wmax+wmax/alpha}   // wmax: the SAS's 0.6 rad/s, or what the wheels can store
+function controlReport(s){geom(s);const ls=launchSegs(s),E=s.parts.filter(p=>p.on&&p.d.kind==='engine'&&ls.includes(p.seg)),Ip=Math.max(s.I[0],s.I[2]);
+  const rc=s.rcs;s.rcs=true;s.rcsJ=null;const rcs=rcsTauCap(s);s.rcs=rc;s.rcsJ=null;
+  const MQ={M:1.2,aoa:5,q:25000,h:9000},burn=probe(s,{...MQ,thr:1}),coast=probe(s,{...MQ,thr:0});s.parts.forEach(p=>p.pfrac=0);
+  const v=MQ.M*SND(MQ.h),rho=2*MQ.q/(v*v),fr=finCols(s,[0,v,0],[0,0,0],rho).auth[1];
+  const thrust=E.reduce((a,p)=>a+p.d.thrust*1000,0);
+  return{burn,coast,rcs,roll:{wheel:s.torque,gim:ctrlAuthRoll(s,E,1)-s.torque,fin:fr},
+    turn:{wheels:turnTime((s.torque+rcs)/Ip,rcs>0?0.6:Math.min(0.6,s.hmax/Ip)),burn:turnTime((ctrlAuthority(s,E,1)+rcs)/Ip)},hfull:s.hmax/Ip,steer:s.torque>0||E.some(p=>p.d.gim>0)||s.parts.some(p=>p.on&&p.d.ctl)||rcs>0,thrust}}
 function firstSeg(s){return launchSegs(s)[0]??0}
 // Patched conics: leave the current body's SOI for its parent, or enter one of its moons'.
 function soiSwitch(s,to,how){s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);if(s.node){s.node=null;HOOK.msg(`${how} SOI — maneuver node cleared`)}}
@@ -1158,7 +1192,7 @@ function analyze(s){ // the what-if cases; each joint keeps its worst load acros
   const ful=probe(s,{M:0.6,aoa:4,q:5000,h:3000}),sup=probe(s,{M:1.6,aoa:4,q:5000,h:12000});s.parts.forEach(p=>p.pfrac=0);
   const lift=rec(probe(s,{thr:1})),mq=rec(probe(s,{M:1.2,aoa:5,q:25000,h:9000,thr:1}));
   s.parts.forEach(p=>{if(ls.includes(p.seg)&&p.res.fuel!=null)p.res.fuel=0});const emp=probe(s,{M:0.6,aoa:4,q:5000,h:3000});s.parts.forEach((p,i)=>{if(p.res.fuel!=null)p.res.fuel=saved[i]});
-  geom(s);return{ful,emp,sup,lift,mq}}
+  geom(s);return{ful,emp,sup,lift,mq,ctl:controlReport(s)}}
 
 // ---- impact prediction: a point mass with this vessel's real drag, flown forward from now. Vacuum legs are exact Kepler; in
 // the air it integrates drag from a CdA(Mach) table measured by the aero pass at the angle the vessel is holding to the
@@ -1435,7 +1469,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -1574,7 +1608,7 @@ function recNew(){return{launched:false,landed:false,ended:false,apex:0,sciQ:0,b
 function safetyReview(sh){analyze(sh);let worst=0,wp=null;
   for(const p of sh.parts){if(!p.parent||!p.sk1)continue;const f=p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2));if(f>worst){worst=f;wp=p}}
   return{ok:worst<=1,worst,p:wp}}
-function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
+function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);advanceDays(R.studyWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;   // wait for the daily launch window
@@ -1616,7 +1650,26 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
   if(M.ok(s.rec,s))missionComplete(M,s.rec)}}
 // a mission is done: pay it, move opinion, tell the world. rec is the flight's record, or null for a world mission
-function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1);
+// ---- staged pay for long missions (design: NOTES "Time, long missions and communication"). A mission to another body
+// pays a share when a flight is on course for it (its predicted trajectory enters the body's sphere of influence), a
+// share on arrival (inside it), and the rest on completion: long missions pay along the way. Each share is paid once
+// per mission, to the first open mission bound for that body (crewed ones only on a crewed flight), and an advance is
+// kept if the flight then fails. Once missions fly in the background (sats registry), the same shares pay there.
+const STAGE_PAY={bound:0.2,arrive:0.2};
+for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Selene'],['selsample','Selene'],['crewaround','Selene',1],['crewland','Selene',1],
+  ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
+const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
+const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
+function stagePay(M,k){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);
+  HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
+function stagedTick(s,R){if(!s.alive||s.landed)return;PROG.staged=PROG.staged||{};
+  for(const B of[SELENE,NYX]){const M=stagedMission(B,R);if(!M)continue;const st=PROG.staged[M.id]||(PROG.staged[M.id]={});
+    if(s.body===B){if(!st.bound)stagePay(M,'bound');if(!st.arrive)stagePay(M,'arrive');continue}
+    if(st.bound||s.body!==TELLUS||simT-(R.boundT??-1e9)<30)continue;R.boundT=simT;   // (checked every 30 s of flight)
+    const el=elements(s.r,s.v,TELLUS.mu);if(el.e<1&&el.ap<0.3*B.orb.a*(1-B.orb.e))continue;
+    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound')}}
+const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on course, ${STAGE_PAY.arrive*100}% on arrival${stagePaid(M)?` (${fmtM(stagePaid(M))} paid)`:''}</span>`:'';
+function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
     income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
@@ -1687,9 +1740,9 @@ const PRI_OF={sci:'science',com:'commerce',mil:'security',gov:'prestige',tour:'c
 // arrive certified to the usual level.
 const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
-// tier 1 for steerable fins (d.ctl): they carry actuators (control session)
+// tier 1 for steerable fins (d.ctl) and reaction wheels: they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl)return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel')return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
@@ -3039,6 +3092,146 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
 // the tape so far, when the pilot takes over mid-replay (recording continues from there)
 function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
   for(let i=T.ops.length-1;i>=0;i--)if(T.ops[i][0]==='C'){T.lastK=JSON.stringify(T.ops[i][1]);break}return T}
+// ============================================================ rovers (sats session; NOTES § "Rovers: plan", R1)
+// A rover is its own kind of vessel, designed in the Rover yard rather than the rocket builder (rovers lie down, rocket
+// parts stand up): a chassis, wheels on sprung arms with hub motors, and a deck of slots. Its step is one rigid body on
+// the ground, in the planet's own frame (pf): each wheel a spring and damper; its grip capped by the ground's friction
+// under that wheel's load, one friction circle shared by drive, brakes and cornering; rolling resistance from soft
+// ground (less for big wheels); bumps from rough ground. The chassis and what's on it touch the ground too, so a rover can
+// tip over and come to rest on its side or roof, and nothing rights it. Body axes: +Y up, +Z forward, +X left.
+const RV_CH={s:{name:'Small chassis',L:1.8,W:1.2,H:.22,m:45,slots:3},
+  m:{name:'Medium chassis',L:3,W:1.9,H:.3,m:130,slots:5},
+  l:{name:'Large chassis',L:4.4,W:2.5,H:.45,m:420,slots:8}};
+// wheels, each with its hub motor: radius, width, mass (kg), stall torque (N·m), power (W), geared top speed (m/s),
+// suspension travel (m). The wire-mesh wheel is the lunar rover's: 0.82 m across, a 190 W motor in each hub.
+const RV_WH={s:{name:'Small wheels',r:.2,w:.12,m:5,T:30,P:120,v:2,tr:.12},
+  m:{name:'Wire-mesh wheels',r:.41,w:.23,m:12,T:110,P:190,v:4,tr:.2},
+  l:{name:'Heavy wheels',r:.6,w:.4,m:35,T:600,P:900,v:3,tr:.3}};
+// what goes in a deck slot: mass (kg), its box (m), the height of its centre of mass as a share of its own. A crew seat
+// carries its occupant (170 kg, suited). Instruments ride along as mass and height until science arrives (R4).
+const RV_IT={bat:{name:'Battery',m:40,kWh:4,sz:[.5,.25,.4]},
+  seat:{name:'Crew seat',m:185,crew:1,sz:[.55,1.05,.6],cy:.45},
+  cam:{name:'Camera mast',m:12,sz:[.16,1.5,.16],cy:.7},
+  ant:{name:'High-gain antenna',m:14,sz:[.7,1.1,.7],cy:.65},
+  arm:{name:'Sample arm',m:25,sz:[.3,.35,.9]},
+  spec:{name:'Spectrometer',m:8,sz:[.3,.25,.3]},
+  seis:{name:'Seismometer pack',m:16,sz:[.4,.3,.4]},
+  drill:{name:'Drill',m:30,sz:[.3,1.2,.3],cy:.4}};
+// a step of 1/240 s; steering lock (front wheels one way, rear the other); springs sag 40 % of their travel at the gravity
+// they're set for; damping ratio; motor efficiency; what the electronics draw (W); Selene's gravity as a share of Tellus's
+const RV_DT=1/240,RV_STEER=.45,RV_SAG=.4,RV_ZETA=.5,RV_ETA=.8,RV_HOTEL=30,RV_GS=SELENE.mu/SELENE.R**2/(TELLUS.mu/TELLUS.R**2);
+// rolling resistance: a share of the load, worse on soft ground, eased by a bigger wheel (it sinks less)
+const rvCrr=(su,r)=>(.015+.045*Math.max(0,su.soft))*Math.sqrt(.41/r);
+const rvDefault=()=>({name:'Rover 1',ch:'m',wh:'m',n:4,spr:'T',slots:['seat','seat','bat','cam',null]});
+// the design's geometry and mass properties, in body axes with the origin at the chassis's centre
+function rvGeom(d){const C=RV_CH[d.ch]||RV_CH.m,Wk=RV_WH[d.wh]||RV_WH.m,n=d.n===6?6:4,xw=C.W/2+Wk.w/2+.03,zw=C.L/2-.6*Wk.r,yM=-C.H/2;
+  const wheels=[];for(const z of n===6?[zw,0,-zw]:[zw,-zw])for(const s of[1,-1])wheels.push({x:s*xw,z,steer:z>0?1:z<0?-1:0});
+  const cols=C.W>=1.8?2:1,rows=Math.ceil(C.slots/cols),items=[];
+  (d.slots||[]).slice(0,C.slots).forEach((k,i)=>{if(!k||!RV_IT[k])return;const row=Math.floor(i/cols),col=i%cols;
+    items.push({k,it:RV_IT[k],x:cols===2?(col?-C.W/4:C.W/4):0,z:C.L/2-(row+.5)*C.L/rows,y:C.H/2})});
+  const gs=d.spr==='S'?RV_GS:1,yW=yM-(1-RV_SAG)*Wk.tr,pm=[];
+  for(const w of wheels)pm.push([Wk.m,[w.x,yW,w.z]]);
+  for(const t of items)pm.push([t.it.m,[t.x,t.y+t.it.sz[1]*(t.it.cy??.5),t.z]]);
+  let m=C.m,c=[0,0,0];for(const[mm,p]of pm){m+=mm;c=madd(c,p,mm)}c=mul(c,1/m);
+  const I=[C.m/12*(C.H**2+C.L**2)+C.m*(c[1]**2+c[2]**2),C.m/12*(C.W**2+C.L**2)+C.m*(c[0]**2+c[2]**2),C.m/12*(C.W**2+C.H**2)+C.m*(c[0]**2+c[1]**2)];
+  for(const[mm,p]of pm){const q=sub(p,c);I[0]+=mm*(q[1]**2+q[2]**2);I[1]+=mm*(q[0]**2+q[2]**2);I[2]+=mm*(q[0]**2+q[1]**2)}
+  // what touches the ground when it isn't the tyres: the chassis's corners, the tops of what's on the deck, the hubs' outer faces
+  const pts=[];for(const sx of[-1,1])for(const sy of[-1,1])for(const sz of[-1,1])pts.push([sx*C.W/2,sy*C.H/2,sz*C.L/2]);
+  for(const t of items){const[a,h,b]=t.it.sz;for(const sx of[-1,1])for(const sz of[-1,1])pts.push([t.x+sx*a/2,t.y+h,t.z+sz*b/2])}
+  for(const w of wheels)pts.push([w.x+Math.sign(w.x)*Wk.w/2,yW,w.z],[w.x,yW+Wk.r,w.z]);
+  const share=m/n,k=share*9.81*gs/(RV_SAG*Wk.tr),kWh=items.reduce((a,t)=>a+(t.it.kWh||0),0);
+  return{C,Wk,n,wheels,items,m,cm:c,I,pts,yM,gs,k,cd:2*RV_ZETA*Math.sqrt(k*share),track:2*xw,base:2*zw,kWh,crew:items.reduce((a,t)=>a+(t.it.crew||0),0)}}
+// what the designer shows: for each world (Tellus, and Selene's gravity on regolith), the steepest climb and what limits
+// it, top speed on the flat, the speed at which a full-lock turn tips it (or slides it), and the range on the flat
+function rvStats(d){const G=rvGeom(d),Wk=G.Wk,D=Math.PI/180;
+  const hAt=gk=>{const sag=Math.min(Wk.tr,RV_SAG*Wk.tr*gk/G.gs);return G.cm[1]-(G.yM-(Wk.tr-sag)-Wk.r)};
+  const at=(gk,su)=>{const g=9.81*gk,h=hAt(gk),crr=rvCrr(su,Wk.r),side=G.track/2-Math.abs(G.cm[0]),back=G.base/2+G.cm[2],fwd=G.base/2-G.cm[2];
+    const thT=Math.atan(Math.max(0,su.mu-crr)),thB=Math.atan(back/h);let thM=0;
+    for(let a=0;a<=60;a+=.1){if(G.m*g*(Math.sin(a*D)+crr*Math.cos(a*D))<=G.n*Wk.T/Wk.r)thM=a*D;else break}
+    const lims=[[thT,'traction'],[thM,'motors'],[thB,'tips over backwards']].sort((a,b)=>a[0]-b[0]);
+    const vTop=Math.min(Wk.v,G.n*Wk.P/(crr*G.m*g)),Rt=(G.base/2)/Math.tan(RV_STEER),aTip=g*side/h,aSl=su.mu*g;
+    const ePm=crr*G.m*g/RV_ETA+RV_HOTEL/vTop;
+    return{g:gk,h,climb:lims[0][0]/D,lim:lims[0][1],vTop,turnR:Rt,vTurn:Math.sqrt(Math.min(aTip,aSl)*Rt),turnBy:aTip<aSl?'tips':'slides',range:G.kWh*3.6e6/ePm/1000,
+      tipSide:Math.atan(side/h)/D,tipFwd:Math.atan(fwd/h)/D,tipBack:thB/D}};
+  return{mass:G.m,crew:G.crew,kWh:G.kWh,track:G.track,base:G.base,clear:(1-RV_SAG)*Wk.tr+Wk.r,T:at(1,SURF[6]),S:at(RV_GS,SURF_MOON)}}
+
+// the test yard beside the pad: three ramps (10°, 20°, 30°) and two side slopes (20°, 35°), all 2.5 m high, on the
+// concrete apron 320 m east of the pad. Yard axes: x east, z north; every mound has 40° shoulders.
+const RV_YH=2.5,RV_SH=Math.tan(40*Math.PI/180),RV_YARD=[{k:'ramp',a:10,x:-20},{k:'ramp',a:20,x:0},{k:'ramp',a:30,x:20},{k:'bank',a:20,x:36},{k:'bank',a:35,x:56}];
+function yardFeatH(f,x,z){const H=RV_YH,t=Math.tan(f.a*Math.PI/180);
+  // a ramp climbs north from z = 12 at its angle to a 6 m flat top, then comes down at 12°
+  if(f.k==='ramp'){const z3=12+H/t+6+H/Math.tan(12*Math.PI/180);return Math.max(0,Math.min(H,(z-12)*t,(z3-z)*Math.tan(12*Math.PI/180),(3+H/RV_SH-Math.abs(x-f.x))*RV_SH))}
+  // a side slope rises eastward at its angle (drive north along it, leaning), a 3 m top, gentle 10° ends to get on and off
+  const x1=f.x+H/t,e=Math.tan(10*Math.PI/180);return Math.max(0,Math.min(H,(x-f.x)*t,(x1+3+H/RV_SH-x)*RV_SH,(z-12)*e,(72+2*H/e-z)*e))}
+function yardOf(site){const R=TELLUS.R,u=alongAz(site.u,Math.PI/2,320/R),f=siteFrame(u);return{site:site.id,o:mul(u,R+site.h),e:f.e,n:f.n,up:u}}
+function yardH(Y,pf){const q=sub(pf,Y.o),x=dot(q,Y.e),z=dot(q,Y.n);if(x<-40||x>80||z<0||z>110)return 0;let h=0;for(const f of RV_YARD)h=Math.max(h,yardFeatH(f,x,z));return h}
+const yardPF=(Y,x,z,h=0)=>add(add(Y.o,mul(Y.e,x)),add(mul(Y.n,z),mul(Y.up,h)));
+// open country: the nearest stretch of land 5–8 km from the site that is gentle and not near the sea
+function countryOf(site){const R=TELLUS.R,D=Math.PI/180;let best=null;
+  for(const km of[5,6.5,8])for(let a=0;a<360;a+=30){const u=alongAz(site.u,a*D,km*1e3/R),sl=terrainSlope(TELLUS,u);if(terrainH(u)<20||sl>.12)continue;
+    if([0,90,180,270].some(b=>terrainH(alongAz(u,b*D,600/R))<5))continue;if(!best||sl<best.sl)best={u,sl,a}}
+  return best?best.u:alongAz(site.u,Math.PI/2,320/R)}
+
+// the ground for a rover: the planet's, the yard's mounds, and bumps on rough ground (value noise on a 1.5 m lattice)
+function rvBump(pf){const x=pf[0]/1.5,y=pf[1]/1.5,z=pf[2]/1.5,i=Math.floor(x),j=Math.floor(y),k=Math.floor(z),s=t=>t*t*(3-2*t),a=s(x-i),b=s(y-j),c=s(z-k);let v=0;
+  for(let dx=0;dx<2;dx++)for(let dy=0;dy<2;dy++)for(let dz=0;dz<2;dz++)v+=(dx?a:1-a)*(dy?b:1-b)*(dz?c:1-c)*ih3(i+dx,j+dy,k+dz);return 2*v-1}
+function rvGroundR(R,pf){let h=groundR(R.body,pf);if(R.yard)h+=yardH(R.yard,pf);if(R.rough)h+=R.rough*rvBump(pf);return h}
+function rvNormal(R,pf,h0){const u=norm(pf),e=norm(Math.abs(u[1])<.99?cross([0,1,0],u):cross([1,0,0],u)),n=cross(u,e),d=.3;
+  const he=rvGroundR(R,add(pf,mul(e,d))),hn=rvGroundR(R,add(pf,mul(n,d)));return norm(sub(u,add(mul(e,(he-h0)/d),mul(n,(hn-h0)/d))))}
+// (the pad's levelled ground is grass away from the pad itself: it drives as grass, without the bumps)
+function rvSurface(R,pf){if(R.yard&&yardH(R.yard,pf)>.02)return{name:'gravel ramp',mu:.65,soft:0,rough:0};const su=surfaceAt(R.body,pf);
+  return su===SURF_PAD&&!SITES.some(t=>len(sub(norm(pf),t.u))*TELLUS.R<250)?{name:'levelled grass',id:6,mu:SURF[6].mu,soft:SURF[6].soft,rough:0}:su}
+
+// a rover standing on the ground at pf (any point above the spot), facing `heading` (a pf-frame direction along the ground)
+function rvNew(d,body,pf,heading,o={}){const G=rvGeom(d),R={d,G,body,gk:o.gk||1,yard:o.yard||null,v:[0,0,0],w:[0,0,0],steer:0,acc:0,t:0,
+    E:G.kWh*3.6e6,in:{thr:0,steer:0,brake:false},su:null,suT:0,rough:0,pitchS:0,tipT:0,tipped:false,wet:false,
+    rec:{dist:0,climb:0,vmax:0,tips:0},wh:G.wheels.map(()=>({c:0,cp:0,l:G.Wk.tr,load:0,spin:0,om:0,slip:false}))};
+  R.Emax=R.E;R.su=rvSurface(R,pf);R.rough=(R.su.rough||0)*.25;
+  const u=norm(pf),g=rvGroundR(R,pf),gp=mul(u,g),up=rvNormal(R,gp,g),Z=norm(sub(heading,mul(up,dot(heading,up)))),X=cross(up,Z);R.q=qFromBasis(X,up,Z);   // square to the ground under it
+  // high enough that no wheel starts in the ground (rough ground has bumps)
+  const yG=G.yM-G.Wk.tr-G.Wk.r,lift=Math.max(0,...G.wheels.map(w=>{const q=add(gp,qrot(R.q,[w.x,0,w.z]));return dot(sub(mul(norm(q),rvGroundR(R,q)),gp),up)}));
+  R.p=add(madd(gp,up,-yG+.03+lift),qrot(R.q,G.cm));return R}
+function rvStep(R,dt){const G=R.G,Wk=G.Wk,b=R.body;if(R.wet)return;R.t+=dt;
+  if((R.suT-=dt)<=0){R.suT=.25;R.su=rvSurface(R,R.p);R.rough=(R.su.rough||0)*.25;
+    if(b===TELLUS&&R.su.id===0){R.wet=true;R.v=[0,0,0];R.w=[0,0,0];HOOK.msg('Into the sea: the rover is lost');return}}
+  R.steer+=clamp(-R.in.steer*RV_STEER-R.steer,-dt,dt);   // the steering motors turn the wheels at 1 rad/s
+  const up=norm(R.p),M=G.m,mu=R.su.mu;R.v=madd(R.v,up,-R.gk*b.mu/dot(R.p,R.p)*dt);
+  const Iinv=v=>{const l=qrot(qconj(R.q),v);return qrot(R.q,[l[0]/G.I[0],l[1]/G.I[1],l[2]/G.I[2]])},
+    imp=(r,j)=>{R.v=madd(R.v,j,1/M);R.w=add(R.w,Iinv(cross(r,j)))},meff=(r,u)=>{const a=cross(r,u);return 1/(1/M+dot(a,Iinv(a)))},vel=r=>add(R.v,cross(R.w,r));
+  const down=qrot(R.q,[0,-1,0]),fwd=qrot(R.q,[0,0,1]),vf=dot(R.v,fwd),drive=R.E>0&&!R.in.brake?R.in.thr:0,brake=R.in.brake||!R.in.thr&&Math.abs(vf)<.25;
+  // the springs first, every wheel; then grip, solved together over a few passes (one wheel's grip moves the others'
+  // contact points), each wheel's total kept inside its friction circle
+  let Pd=0,onG=0;const K=[];
+  G.wheels.forEach((w,i)=>{const s=R.wh[i],P=add(R.p,qrot(R.q,sub([w.x,G.yM,w.z],G.cm))),gR=rvGroundR(R,P),n=rvNormal(R,P,gR),dn=dot(down,n);
+    let l=Wk.tr;if(dn<-.3)l=(dot(sub(P,mul(norm(P),gR)),n)-Wk.r)/(-dn);
+    if(l>=Wk.tr){s.l=Wk.tr;s.c=s.cp=s.load=0;s.slip=false;s.om*=.995;s.spin+=s.om*dt;return}
+    const c=Wk.tr-l,cd=dot(vel(sub(P,R.p)),n)/dn;s.cp=c;s.c=c;s.l=l;onG++;   // compression rate: how fast the mount closes on the ground
+    let F=G.k*c+G.cd*cd;if(c>Wk.tr)F+=10*G.k*(c-Wk.tr)+2*G.cd*cd;F=Math.max(0,F);s.load=F;
+    const r=sub(madd(madd(P,down,l),n,-Wk.r),R.p);imp(r,mul(n,F*dt));
+    const st=w.steer*R.steer,wf=qrot(R.q,[Math.sin(st),0,Math.cos(st)]),f=norm(sub(wf,mul(n,dot(wf,n))));
+    K.push({s,r,f,lat:cross(n,f),Jm:mu*F*dt,F,Jl:0,Jt:0,Fd:0})});
+  for(let it=0;it<4;it++)for(const k of K){const{r,f,lat}=k,vc=vel(r),vl=dot(vc,f),vt=dot(vc,lat);let dl=0;
+    if(brake)dl=-vl*meff(r,f);
+    else if(!it){if(drive){k.Fd=drive*Math.min(Wk.T/Wk.r,Wk.P/Math.max(Math.abs(vl),.05));if(drive*vl>0)k.Fd*=clamp((Wk.v*1.05-Math.abs(vl))/(.05*Wk.v),0,1)}
+      dl=k.Fd*dt-Math.sign(vl)*Math.min(rvCrr(R.su,Wk.r)*k.F*dt,Math.abs(vl)*meff(r,f));Pd+=Math.abs(k.Fd)*(Math.abs(vl)+.1)/RV_ETA}
+    let L=k.Jl+dl,T=k.Jt-vt*meff(r,lat);const jj=Math.hypot(L,T);k.s.slip=jj>k.Jm;if(k.s.slip){L*=k.Jm/jj;T*=k.Jm/jj}
+    imp(r,add(mul(f,L-k.Jl),mul(lat,T-k.Jt)));k.Jl=L;k.Jt=T}
+  for(const k of K){const vl=dot(vel(k.r),k.f),s=k.s;s.om=brake?(s.slip?0:vl/Wk.r):s.slip&&k.Fd?vl/Wk.r+Math.sign(k.Fd)*2:vl/Wk.r;s.spin+=s.om*dt}
+  for(const pt of G.pts){const r=qrot(R.q,sub(pt,G.cm)),P=add(R.p,r),gR=rvGroundR(R,P),dep=gR-len(P);if(dep<=0)continue;
+    const n=rvNormal(R,P,gR),vn=dot(vel(r),n),jn=Math.max(0,-1.2*vn+.1*dep/dt)*meff(r,n);if(jn<=0)continue;imp(r,mul(n,jn));
+    const v2=vel(r),vt=sub(v2,mul(n,dot(v2,n))),vtl=len(vt);if(vtl>1e-6){const t=mul(vt,1/vtl);imp(r,mul(t,-Math.min(vtl*meff(r,t),mu*jn)))}}
+  R.E=Math.max(0,R.E-(Pd+RV_HOTEL)*dt);
+  R.p=madd(R.p,R.v,dt);const wl=len(R.w);if(wl>1e-9)R.q=qnorm(qmul(qaxis(mul(R.w,1/wl),wl*dt),R.q));
+  // the test record: distance on the ground, top speed, the steepest slope climbed (pitch smoothed over a second), tip-overs
+  const sp=len(R.v),pit=Math.asin(clamp(dot(fwd,up),-1,1)),tilt=Math.acos(clamp(dot(qrot(R.q,[0,1,0]),up),-1,1));R.pitchS+=(pit-R.pitchS)*Math.min(1,dt);
+  if(onG>=2){R.rec.dist+=sp*dt;R.rec.vmax=Math.max(R.rec.vmax,sp);const cl=vf>.2?R.pitchS:vf<-.2?-R.pitchS:0;R.rec.climb=Math.max(R.rec.climb,cl*180/Math.PI)}
+  if(tilt>75*Math.PI/180&&sp<.5){if((R.tipT+=dt)>1.5&&!R.tipped){R.tipped=true;R.rec.tips++;HOOK.msg('Tipped over')}}else if(tilt<45*Math.PI/180){R.tipT=0;R.tipped=false}}
+function rvRun(R,dt){R.acc=Math.min(R.acc+dt,.25);while(R.acc>=RV_DT){rvStep(R,RV_DT);R.acc-=RV_DT}}
+const rvTilt=R=>{const up=norm(R.p);return{pitch:Math.asin(clamp(dot(qrot(R.q,[0,0,1]),up),-1,1))*180/Math.PI,roll:Math.asin(clamp(dot(qrot(R.q,[1,0,0]),up),-1,1))*180/Math.PI}};
+// a test drive's record goes into the design's (per gravity: Tellus 'T', the lunar trainer 'S') and the wheels' distance
+function rvFold(R){const k=R.gk<1?'S':'T',t=(R.d.test=R.d.test||{})[k]=R.d.test[k]||{km:0,climb:0,vmax:0,tips:0},r=R.rec;
+  t.km+=r.dist/1000;t.climb=Math.max(t.climb,r.climb);t.vmax=Math.max(t.vmax,r.vmax);t.tips+=r.tips;
+  const W=PROG.wheelKm=PROG.wheelKm||{};W[R.d.wh]=(W[R.d.wh]||0)+r.dist/1000;R.rec={dist:0,climb:0,vmax:0,tips:0}}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -3837,10 +4030,10 @@ function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
     case'cone':lathe(out,[[.625,0,C.W],[.6,.3,C.W],[.5,.75,C.W],[.3,1.25,C.W],[.3,1.25,C.D],[0,1.6,C.D]],o);break;
-    case'fins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
+    case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
-    case'rfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
+    case'rfin':case'cfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
       tube(out,[x,y+.27,z],[x,y+.44,z],.035,C.ST,10,false);lathe(out,[[.035,0,C.ST],[.05,.03,C.ST],[0,.07,C.ST]],[x,y+.44,z],10,[false,false]);
@@ -4026,6 +4219,83 @@ const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
   const vao=gl.createVertexArray(),buf=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
   gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,12,0);gl.bindVertexArray(null);return{vao,n:36}})();
+// ---- HUD gauges (aerofx session; PLAYTEST #9's graphics). Self-contained instrument widgets drawn on the 2D overlay:
+// an altitude tape, the atmosphere's depth, dynamic pressure with a max-q pointer, Mach, and the hottest part's skin
+// temperature. drawGauges(x, y, s) draws the whole strip with its top-left at (x, y) in overlay pixels, scale s; where it
+// sits is the HUD layout's business (the ui session's slice 4) — gaugeRect() is a placeholder beside the navball.
+// Look: early-era instruments, cream dial faces with black ink on a dark panel, red limits, amber cautions.
+let GAUGES=true;   // false hides the strip
+const GQ={ship:null,peak:0,peakT:0};   // max-q, held per vessel (render-side)
+const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'#1b1a17',red:'#b8322a',amber:'#d79b1c',green:'#4f7f3a',lab:'#b9b29c'};
+function gaugeRect(){const nw=document.getElementById('navwrap');if(!nw||!nw.offsetParent)return null;const r=nw.getBoundingClientRect(),k=ov.width/ov.clientWidth;
+  const x=r.right+14+318<=ov.clientWidth-6?r.right+14:Math.max(6,r.left-14-318);   // right of the navball, or left of it when the window is narrow
+  return{x:x*k,y:(r.bottom-150)*k,s:k}}
+function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
+function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S.r)-b.R;
+  // the data
+  if(GQ.ship!==S){GQ.ship=S;GQ.peak=0;GQ.peakT=0}if(S.qdyn>GQ.peak){GQ.peak=S.qdyn;GQ.peakT=simT}
+  const el=elements(S.r,S.v,b.mu),low=!S.landed&&h<TERR_TOP+20000,radar=low?Math.max(0,groundGap(S)):null,
+    pa=b.atm&&h<b.atm?pressure(b,h):0,M=S.mach||0,q=S.qdyn||0;
+  let hot=null;for(const p of S.parts)if(p.on&&p.d.Tmax&&(!hot||p.T/p.d.Tmax>hot.T/hot.d.Tmax))hot=p;
+  const W=318,H=150;g.save();g.translate(x0,y0);g.scale(s,s);
+  // the panel
+  g.fillStyle=GC.panel;g.strokeStyle=GC.bezel;g.lineWidth=2;rrect(g,0,0,W,H,7);g.fill();g.stroke();
+  g.textBaseline='middle';
+  // 1. altitude tape: a scrolling scale round the current altitude, span by altitude; marks for the top of the air, the
+  //    cloud deck, Ap and Pe; the window shows the altitude (radar altitude over it when low)
+  {const X=8,Y=8,w=64,hh=H-16,cy=Y+hh/2,span=clamp(h*1.4,1500,6e5),k=hh/span,ty=v=>cy-(v-h)*k;
+    g.save();rrect(g,X,Y,w,hh,4);g.clip();g.fillStyle=GC.face;g.fillRect(X,Y,w,hh);
+    if(b.atm){const t=ty(b.atm);g.fillStyle='#d6dde3';g.fillRect(X,Y,w,Math.max(0,t-Y))}   // above the air: pale
+    if(b===TELLUS){const a=ty(5500),c=ty(2000);g.fillStyle='rgba(255,255,255,.75)';g.fillRect(X,a,w,c-a);g.strokeStyle=GC.faceDim;g.lineWidth=1;g.strokeRect(X+.5,a,w-1,c-a)}
+    const st=niceStep(span/6);g.strokeStyle=GC.ink;g.fillStyle=GC.ink;g.font=gaugeFont(9,1);g.textAlign='left';
+    for(let v=Math.floor((h-span/2)/st)*st;v<=h+span/2;v+=st){if(v<0)continue;const yy=ty(v);g.lineWidth=1.2;g.beginPath();g.moveTo(X+w-12,yy);g.lineTo(X+w,yy);g.stroke();
+      for(let m=1;m<5;m++){const y2=ty(v+st*m/5);g.lineWidth=.6;g.beginPath();g.moveTo(X+w-6,y2);g.lineTo(X+w,y2);g.stroke()}
+      g.fillText(fmtAlt(v),X+3,yy)}
+    const mark=(v,txt,col)=>{const yy=ty(v);if(yy<Y-6||yy>Y+hh+6)return;g.fillStyle=col;g.beginPath();g.moveTo(X+w,yy);g.lineTo(X+w-9,yy-5);g.lineTo(X+w-9,yy+5);g.fill();
+      g.font=gaugeFont(8,1,700);g.textAlign='right';g.fillText(txt,X+w-11,yy);g.textAlign='left'};
+    if(b.atm)mark(b.atm,'AIR',GC.green);
+    if(!S.landed&&el.e<1){mark(el.ap-b.R,'Ap',GC.red);if(el.pe>b.R)mark(el.pe-b.R,'Pe',GC.red)}
+    g.restore();
+    // the window
+    g.fillStyle=GC.ink;g.strokeStyle=GC.amber;g.lineWidth=1.5;rrect(g,X-2,cy-10,w+4,20,3);g.fill();g.stroke();
+    g.fillStyle=GC.face;g.font=gaugeFont(12,1,700);g.textAlign='center';g.fillText(fmtAlt(h,true),X+w/2,cy+.5);
+    g.font=gaugeFont(8,1);g.fillStyle=GC.lab;g.fillText(radar!=null?`RADAR ${fmtAlt(radar,true)}`:'ALTITUDE',X+w/2,Y+hh+4.5);}
+  // 2. the air: a column from sea-level pressure to vacuum, filled to the current pressure (log scale, 1 → 1e-4 atm)
+  {const X=80,Y=14,w=18,hh=H-28;rrect(g,X,Y,w,hh,3);g.fillStyle='#08090b';g.fill();
+    const gr=g.createLinearGradient(0,Y+hh,0,Y);gr.addColorStop(0,'#7fb3e0');gr.addColorStop(.55,'#2b4f8e');gr.addColorStop(1,'#0b1020');
+    const f=pa>0?clamp(1+Math.log10(pa)/4,0,1):0;g.save();rrect(g,X,Y,w,hh,3);g.clip();g.fillStyle=gr;g.fillRect(X,Y+hh*(1-f),w,hh*f);g.restore();
+    g.strokeStyle=GC.bezel;g.lineWidth=1;rrect(g,X,Y,w,hh,3);g.stroke();
+    g.fillStyle=GC.lab;g.font=gaugeFont(8,1);g.textAlign='center';g.fillText('AIR',X+w/2,Y-5);
+    g.fillText(pa>=.01?pa.toFixed(2):pa>0?pa.toExponential(0).replace('e-','e−'):'VAC',X+w/2,Y+hh+6)}
+  // 3. dynamic pressure: a dial 0–qmax (kPa), the needle, a red pointer held at the flight's max-q; Mach in a drum below
+  {const cx=166,cy=72,R=50,qmax=Math.max(40e3,GQ.peak*1.15),a0=Math.PI*.8,a1=Math.PI*2.2,ang=v=>a0+(a1-a0)*clamp(v/qmax,0,1);
+    g.fillStyle=GC.face;g.beginPath();g.arc(cx,cy,R,0,Math.PI*2);g.fill();g.strokeStyle=GC.bezel;g.lineWidth=3;g.stroke();
+    g.strokeStyle=GC.ink;g.fillStyle=GC.ink;g.textAlign='center';g.font=gaugeFont(8,1);const st=niceStep(qmax/5);
+    for(let v=0;v<=qmax+1;v+=st/2){const a=ang(v),big=Math.abs(v/st-Math.round(v/st))<1e-6;g.lineWidth=big?1.4:.7;g.beginPath();
+      g.moveTo(cx+Math.cos(a)*(R-3),cy+Math.sin(a)*(R-3));g.lineTo(cx+Math.cos(a)*(R-(big?10:6)),cy+Math.sin(a)*(R-(big?10:6)));g.stroke();
+      if(big)g.fillText((v/1e3).toFixed(0),cx+Math.cos(a)*(R-17),cy+Math.sin(a)*(R-17))}
+    g.font=gaugeFont(8,1,700);g.fillText('q kPa',cx,cy-17);
+    if(GQ.peak>500){const a=ang(GQ.peak);g.fillStyle=GC.red;g.beginPath();g.moveTo(cx+Math.cos(a)*(R-1),cy+Math.sin(a)*(R-1));
+      g.lineTo(cx+Math.cos(a+.07)*(R+7),cy+Math.sin(a+.07)*(R+7));g.lineTo(cx+Math.cos(a-.07)*(R+7),cy+Math.sin(a-.07)*(R+7));g.fill()}
+    {const a=ang(q);g.strokeStyle=GC.ink;g.lineWidth=2.4;g.beginPath();g.moveTo(cx-Math.cos(a)*8,cy-Math.sin(a)*8);g.lineTo(cx+Math.cos(a)*(R-8),cy+Math.sin(a)*(R-8));g.stroke();
+      g.fillStyle=GC.ink;g.beginPath();g.arc(cx,cy,4,0,Math.PI*2);g.fill()}
+    g.font=gaugeFont(8,1);g.fillStyle=GC.ink;g.fillText(`MAX ${(GQ.peak/1e3).toFixed(1)}`,cx,cy+17);
+    // Mach drum: amber through the transonic band
+    const tr=M>.85&&M<1.25,mw=56;g.fillStyle=tr?GC.amber:GC.ink;rrect(g,cx-mw/2,cy+R+3,mw,17,3);g.fill();
+    g.fillStyle=tr?GC.ink:GC.face;g.font=gaugeFont(11,1,700);g.fillText(`M ${M.toFixed(2)}`,cx,cy+R+12)}
+  // 4. heat: the hottest part's skin temperature against its limit, green → amber → red, with its name
+  {const X=228,Y=14,w=16,hh=H-34,f=hot?clamp((hot.T-250)/(hot.d.Tmax-250),0,1):0,col=f<.6?GC.green:f<.85?GC.amber:GC.red;
+    rrect(g,X,Y,w,hh,3);g.fillStyle='#08090b';g.fill();g.save();rrect(g,X,Y,w,hh,3);g.clip();g.fillStyle=col;g.fillRect(X,Y+hh*(1-f),w,hh*f);g.restore();
+    g.strokeStyle=GC.red;g.lineWidth=1.5;g.beginPath();g.moveTo(X-3,Y+hh*.15);g.lineTo(X+w+3,Y+hh*.15);g.stroke();
+    g.strokeStyle=GC.bezel;g.lineWidth=1;rrect(g,X,Y,w,hh,3);g.stroke();
+    g.fillStyle=GC.lab;g.font=gaugeFont(8,1);g.textAlign='center';g.fillText('HEAT',X+w/2,Y-5);
+    g.textAlign='left';g.font=gaugeFont(10,1,700);g.fillStyle=f>.85?GC.red:GC.face;g.fillText(hot?`${hot.T.toFixed(0)} K`:'—',X+w+7,Y+hh-26);
+    g.font=gaugeFont(8,1);g.fillStyle=GC.lab;g.fillText(hot?`of ${hot.d.Tmax} K`:'',X+w+7,Y+hh-13);
+    g.fillText(hot?hot.d.name.split(' ')[0].toUpperCase():'',X+w+7,Y+hh)}
+  g.restore()}
+function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),m=x/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
+function fmtAlt(v,fine){const a=Math.abs(v);return a>=1e5?(v/1e3).toFixed(0)+' km':a>=1e4?(v/1e3).toFixed(fine?1:0)+' km':a>=1e3?(v/1e3).toFixed(fine?2:1)+' km':v.toFixed(0)+' m'}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).
@@ -4357,7 +4627,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
     for(const M of MISSIONS.filter(m=>m.ep===ep)){const done=PROG.done[M.id],open=missionOpen(M);
       if(done)html+=`<div class="ms done"><b>✔ ${M.name}</b></div>`;
       else if(!open)html+=`<div class="ms lock">🔒 ${M.name} <span>· after ${M.req.filter(r=>!PROG.done[r]).map(r=>MISSIONS.find(m=>m.id===r).name).join(', ')}</span></div>`;
-      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
+      else html+=`<div class="ms"><b>${M.name}</b> <span class="ok">+${fmtM(M.pay)}</span>${stageNote(M)}${M.prog?` <span class="acc">${M.prog()}</span>`:''}<div class="sub">${M.brief}</div></div>`}}
   const bands=BANDS.map(k=>PROG.atm[k]?'■':'□').join(''),ks=Object.keys(PARTS).filter(k=>!PARTS[k].radialOnly),full=ks.filter(k=>certOf(k)>=.999).length,tested=ks.filter(k=>certOf(k)>CERT0+.005).length;
   html=`<div class="ep">${fmtDate(PROG.day)} · Funds <b class="acc" style="font-size:13px">${fmtM(PROG.funds)}</b>${PROG.bailouts?` <span class="dim">· ${PROG.bailouts} top-up${PROG.bailouts>1?'s':''}</span>`:''}</div>`+html;
   const pc=p=>`hsl(${p.hue},70%,68%)`,H=POWERS[HOME];
@@ -4389,7 +4659,17 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+// the Control block of the assembly readout (control session): kN·m per source against the need; turn times in vacuum
+function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500?1:0),sec=t=>isFinite(t)?`${t.toFixed(1)} s`:'never',
+  src=(r,rcs)=>[['wheels',r.wheel],['gimbal',r.gim],['fins',r.fin],['RCS',rcs]].filter(x=>x[1]>0.5).map(([n,x])=>`${n} ${k(x)}`).join(' + ')||'nothing',
+  // short of authority, a stable design just turns into the wind; an unstable one goes over
+  row=(lbl,r)=>{const have=r.auth+c.rcs,ok=r.tau<=have,cl=ok?(r.tau<=0.7*have?'ok':'warn'):stable?'warn':'bad';
+    return`<div>${lbl} <b class="${cl}">${ok?'holds':stable?'weathervanes':'flips'}</b> <span class="dim">need ${k(r.tau)} kN·m · ${src(r,c.rcs)}</span></div>`};
+  return`<h2>Control</h2><div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
+    ${row('burning',c.burn)}${row('coasting',c.coast)}
+    <div>Roll <span class="dim">${src(c.roll,c.rcs)} kN·m</span></div>
+    <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>`}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -4403,7 +4683,7 @@ function editorChanged(){
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     <div class="sub">${logHintHTML()}</div>`;
-  if(!S.parts.some(p=>p.d.torque))html+='<div class="warn">No command pod or probe core: no control torque.</div>';
+  if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?'<div class="warn">No reaction wheels: it steers only with engines burning, steerable fins in the air, or RCS.</div>':'<div class="warn">No reaction wheels, gimbals, steerable fins or RCS: no control at all.</div>';
   BLD.frameCam();
   const a=S.ana,cal=r=>(r.ycm-r.ycp)/(2*S.radius),cc=v=>v<0?'bad':v<0.5?'warn':'ok',lc=f=>f>1?'bad':f>.7?'warn':'ok';
   const jn=w=>w.p?`${w.kind} · ${w.p.d.name} / ${w.p.parent.d.name}`:'';
@@ -4412,7 +4692,8 @@ function editorChanged(){
     full <b class="${cc(cal(a.ful))}">${cal(a.ful).toFixed(2)}</b> · stage-1 dry <b class="${cc(cal(a.emp))}">${cal(a.emp).toFixed(2)}</b> · M1.6 <b class="${cc(cal(a.sup))}">${cal(a.sup).toFixed(2)}</b></div>
     <div style="margin-top:4px">Liftoff <b class="${lc(a.lift.cert.frac)}">${(a.lift.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.lift.cert)}</span></div>
     <div>Max-q 25 kPa · M1.2 · 5° <b class="${lc(a.mq.cert.frac)}">${(a.mq.cert.frac*100).toFixed(0)}%</b> <span class="dim">${jn(a.mq.cert)}</span>
-    ${a.mq.trim?'':`<br><span class="warn">controls can't hold 5° here (need ${(a.mq.tau/1000).toFixed(0)} kN·m, have ${(a.mq.auth/1000).toFixed(0)})</span>`}</div>
+</div>
+    ${controlHTML(a.ctl,Math.min(cal(a.ful),cal(a.sup))>0)}
     <div class="sub">Negative stability: it flips unless the engines steer it (SAS can hold it while the engine burns, not while coasting).
     Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
@@ -4486,13 +4767,16 @@ function toggleMap(){go(view==='map'?'flight':'map')}
 // ============================================================ screens, overlays, keys (ui session; NOTES § "UI: screens and navigation")
 // One name for where you are. `mode`/`view` are still the state everything reads; go() is the one place that changes them.
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
-const screenNow=()=>mode==='editor'?(atHQ?'program':'assembly'):view==='map'?'map':'flight';
+const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atHQ?'program':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
+  if(s==='rover'&&from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}
+  if(from==='rover')rvLeave();
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
+  else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
-  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ);$('prog').classList.toggle('hidden',!atHQ);$('hud').classList.toggle('hidden',mode!=='flight');
+  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ);$('prog').classList.toggle('hidden',!atHQ);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to (the shared
@@ -4515,8 +4799,10 @@ const KEYS={
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
     {k:['delete','backspace'],l:'Del',d:'delete'},{k:['z','y'],l:'Ctrl+Z · Ctrl+Y',d:'undo · redo (Ctrl+Shift+Z too)'},
-    {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}]};
-const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map'};
+    {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],
+  rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
+    {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
+const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
@@ -4536,7 +4822,7 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}</h2>`+b('close','Close  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +(screenNow()==='assembly'?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')
+    +(screenNow()==='assembly'||screenNow()==='rover'?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')
     +`<label><input type="checkbox" id="escPerf"${perfOn?' checked':''}> performance readout</label>`;
   $('escPerf').onchange=e=>{perfOn=e.target.checked;document.body.classList.toggle('noperf',!perfOn);try{localStorage.setItem('launchpad-perf',perfOn?'1':'0')}catch(x){}}}
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
@@ -4604,10 +4890,138 @@ addEventListener('mousemove',e=>{
   if(view==='map'){cam.mYaw-=dx*.005;cam.mPitch=clamp(cam.mPitch+dy*.005,-1.5,1.5)}else{cam.yaw-=dx*.005;cam.pitch=clamp(cam.pitch+dy*.005,-1.45,1.45)}});
 cv.addEventListener('wheel',e=>{e.preventDefault();const f=Math.exp(clamp(e.deltaY,-300,300)*.0025);if(view==='map')cam.mDist=clamp(cam.mDist*f,TELLUS.R*.37,TELLUS.R*333);else cam.dist=clamp(cam.dist*f,4,2e5)},{passive:false});
 
+// ============================================================ the Rover yard (sats session; NOTES § "Rovers: plan", R1)
+// Design a rover (left panel) and drive it at home: the test yard beside the pad (ramps and side slopes on concrete) or
+// open country nearby, at Tellus's gravity or as a lunar trainer (Selene's, on Tellus's ground). The sim is the rover
+// block's (rvNew/rvRun); this is its screen: designs in PROG.rovers, the drive, the camera, the meshes, the readout.
+let RV=null,rvSel=0,rvGround='yard',rvGK=1,rvCamHold=0,rvHudAt=0;const rvSpots={};
+const rvDesigns=()=>{if(!Array.isArray(PROG.rovers)||!PROG.rovers.length)PROG.rovers=[rvDefault()];rvSel=clamp(rvSel,0,PROG.rovers.length-1);return PROG.rovers};
+function rvSpot(){const site=curSite(),k=site.id+':'+rvGround;if(rvSpots[k])return rvSpots[k];const R=TELLUS.R;
+  if(rvGround==='yard'){const Y=yardOf(site);return rvSpots[k]={yard:Y,pf:yardPF(Y,-20,-6),head:Y.n}}
+  const u=countryOf(site),f=siteFrame(u);return rvSpots[k]={yard:null,pf:mul(u,R+terrainH(u)),head:f.n}}
+function rvSpawn(){const d=rvDesigns()[rvSel],P=rvSpot();RV=rvNew(d,TELLUS,P.pf,P.head,{gk:rvGK,yard:P.yard});rvCamHold=0}
+// the yard is drawn wherever it is (it's part of the home pad), whichever ground the drive is on
+const rvYards={},rvYardShown=()=>{const site=curSite();return rvYards[site.id]||(rvYards[site.id]=yardOf(site))};
+function rvEnter(){rvDesigns();rvSpawn();cam.dist=11;cam.pitch=.28;renderRover()}
+function rvLeave(){if(RV){rvFold(RV);HOOK.save()}RV=null}
+function rvReset(){if(RV)rvFold(RV);HOOK.save();rvSpawn();renderRover()}
+const rvWorld=R=>add(bodyPos(TELLUS,simT),fromPF(TELLUS,R.p,simT)),rvQW=R=>qmul(qBody(TELLUS,simT),R.q);
+function rvTick(dtR){if(!RV)return;RV.in.thr=(keys.has('w')?1:0)-(keys.has('s')?1:0);RV.in.steer=(keys.has('d')?1:0)-(keys.has('a')?1:0);RV.in.brake=keys.has(' ');
+  rvRun(RV,dtR);if(performance.now()-rvHudAt>100){rvHudAt=performance.now();rvHud()}
+  // the camera swings back behind the rover while it moves, unless you've just moved it yourself
+  if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-dtR);
+  if(!rvCamHold&&len(RV.v)>.3){const f=localFrame(fromPF(TELLUS,RV.p,simT)),fw=qrot(rvQW(RV),[0,0,1]),want=Math.atan2(-dot(fw,f.e),dot(fw,f.n));let dy=want-cam.yaw;dy-=2*Math.PI*Math.round(dy/(2*Math.PI));cam.yaw+=dy*Math.min(1,dtR*1.5)}}
+addEventListener('keydown',e=>{if(mode!=='drive'||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  if(k===' ')e.preventDefault();keys.add(k);if(k==='r'&&!e.repeat)rvReset()});
+
+// ---- the designer
+const rvF=(x,n=0)=>Number.isFinite(x)?x.toFixed(n):'—';
+function renderRover(){const el=$('rvDes');if(!el)return;const L=rvDesigns(),d=L[rvSel],C=RV_CH[d.ch],st=rvStats(d),T=st.T,Sx=st.S,on=(a,b)=>a===b?' class="on"':'';
+  const opt=k=>`<option value="${k}"${''}>${RV_IT[k].name} · ${RV_IT[k].m} kg</option>`;
+  let h=`<h1>ROVER YARD</h1><div class="sub">design a rover, then drive it here at home</div><div class="ndrow"><button data-go="program">← Program [P]</button></div>`;
+  h+=`<h2>Designs</h2>`+L.map((x,i)=>`<div class="row"><span class="nm">${i===rvSel?'<b class="acc">':''}${rvEsc(x.name)}${i===rvSel?'</b>':''}</span>${i===rvSel?'':`<button data-rv="sel" data-i="${i}">open</button>`}</div>`).join('')
+    +`<div class="ndrow"><button data-rv="new">New</button><button data-rv="copy">Copy</button>${L.length>1?'<button data-rv="del">Delete</button>':''}</div>`;
+  h+=`<h2>Name</h2><input id="rvName" value="${rvEsc(d.name)}" maxlength="28" style="width:100%;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:2px 4px">`;
+  h+=`<h2>Chassis</h2><div class="ndrow">`+Object.entries(RV_CH).map(([k,c])=>`<button data-rv="ch" data-k="${k}"${on(k,d.ch)} title="${c.L} × ${c.W} m, ${c.m} kg">${c.name.split(' ')[0]} · ${c.slots} slots</button>`).join('')+`</div>`;
+  h+=`<h2>Wheels</h2><div class="ndrow">`+Object.entries(RV_WH).map(([k,w])=>`<button data-rv="wh" data-k="${k}"${on(k,d.wh)} title="${(2*w.r).toFixed(2)} m across; a ${w.P} W motor in each hub; ${(w.v*3.6).toFixed(0)} km/h geared${PROG.wheelKm&&PROG.wheelKm[k]?`; ${PROG.wheelKm[k].toFixed(1)} km of testing`:''}">${w.name}</button>`).join('')+`</div>`
+    +`<div class="ndrow">how many <button data-rv="n" data-k="4"${on(4,d.n===6?6:4)}>4</button><button data-rv="n" data-k="6"${on(6,d.n===6?6:4)}>6</button> · springs set for <button data-rv="spr" data-k="T"${on('T',d.spr||'T')}>Tellus</button><button data-rv="spr" data-k="S"${on('S',d.spr)}>Selene</button></div>`;
+  h+=`<h2>Deck</h2>`+Array.from({length:C.slots},(_,i)=>`<div class="row"><span class="dim" style="width:16px">${i+1}</span><select data-slot="${i}" style="flex:1;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line)"><option value="">— empty —</option>${Object.keys(RV_IT).map(opt).join('')}</select></div>`).join('')
+    +`<div class="sub">Instruments ride as mass and height for now; their science comes later (R4).</div>`;
+  const row=(t,a,b,cl='')=>`<tr><td class="dim">${t}</td><td${cl}>${a}</td><td${cl}>${b}</td></tr>`;
+  h+=`<h2>On paper</h2><div class="sub">${rvF(st.mass)} kg${st.crew?`, crew of ${st.crew}`:''} · track ${rvF(st.track,2)} m · wheelbase ${rvF(st.base,2)} m · clearance ${rvF(st.clear,2)} m</div>`
+    +(st.kWh?'':`<div class="bad">No battery: it can't drive.</div>`)
+    +`<table style="margin-top:4px"><tr><td></td><td class="acc">Tellus</td><td class="acc">Selene</td></tr>`
+    +row('centre of mass',`${rvF(T.h,2)} m up`,`${rvF(Sx.h,2)} m up`)
+    +row('tips sideways at',`${rvF(T.tipSide)}°`,`${rvF(Sx.tipSide)}°`)
+    +row('tips fwd · back',`${rvF(T.tipFwd)}° · ${rvF(T.tipBack)}°`,`${rvF(Sx.tipFwd)}° · ${rvF(Sx.tipBack)}°`)
+    +row('steepest climb',`${rvF(T.climb)}°`,`${rvF(Sx.climb)}°`)
+    +row('&nbsp;&nbsp;limited by',T.lim,Sx.lim,' class="dim"')
+    +row('top speed',`${rvF(T.vTop*3.6)} km/h`,`${rvF(Sx.vTop*3.6)} km/h`)
+    +row('full-lock turn',`${T.turnBy} > ${rvF(T.vTurn*3.6)} km/h`,`${Sx.turnBy} > ${rvF(Sx.vTurn*3.6)} km/h`)
+    +row('range (flat)',`${rvF(T.range)} km`,`${rvF(Sx.range)} km`)+`</table><div class="sub">Tellus figures on grass; Selene's on regolith.</div>`;
+  const tr=d.test||{},tl=(t,n)=>t?`<div>${n}: ${t.km.toFixed(2)} km · climbed ${t.climb.toFixed(0)}° · ${(t.vmax*3.6).toFixed(0)} km/h${t.tips?` · <span class="warn">tipped ${t.tips}×</span>`:''}</div>`:'';
+  h+=`<h2>Tested</h2>`+(tr.T||tr.S?tl(tr.T,'at Tellus g')+tl(tr.S,'as a lunar trainer'):'<div class="dim">not yet: drive it</div>');
+  h+=`<h2>Test drive</h2><div class="ndrow"><button data-rv="gr" data-k="yard"${on('yard',rvGround)}>Test yard</button><button data-rv="gr" data-k="country"${on('country',rvGround)}>Open country</button></div>`
+    +`<div class="ndrow">gravity <button data-rv="g" data-k="1"${on(1,rvGK)}>Tellus</button><button data-rv="g" data-k="s"${on(true,rvGK<1)} title="Selene's gravity on Tellus's ground, as Apollo crews trained on a 1/6-g rover">Lunar trainer</button></div>`
+    +`<div class="ndrow"><button data-rv="reset">Back to the start [R]</button></div>`;
+  el.innerHTML=h;el.querySelectorAll('select[data-slot]').forEach(s=>s.value=d.slots[+s.dataset.slot]||'');
+  $('rvName').onchange=e=>{d.name=e.target.value.trim()||d.name;e.target.blur();HOOK.save();renderRover()}}
+const rvEsc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+document.addEventListener('click',e=>{const t=e.target.closest&&e.target.closest('[data-rv]');if(!t||mode!=='drive')return;const a=t.dataset.rv,k=t.dataset.k,L=rvDesigns(),d=L[rvSel];
+  if(a==='sel')rvSel=+t.dataset.i;
+  else if(a==='new'){L.push({...rvDefault(),name:`Rover ${L.length+1}`});rvSel=L.length-1}
+  else if(a==='copy'){const c=JSON.parse(JSON.stringify(d));delete c.test;c.name=d.name+' II';L.push(c);rvSel=L.length-1}
+  else if(a==='del'){if(RV){rvFold(RV);RV=null}L.splice(rvSel,1);rvSel=Math.max(0,rvSel-1)}
+  else if(a==='ch'){d.ch=k;d.slots=(d.slots||[]).slice(0,RV_CH[k].slots)}
+  else if(a==='wh')d.wh=k;else if(a==='n')d.n=+k;else if(a==='spr')d.spr=k;
+  else if(a==='gr')rvGround=k;else if(a==='g')rvGK=k==='s'?RV_GS:1;
+  else if(a!=='reset')return;
+  t.blur();rvReset()});
+document.addEventListener('change',e=>{const s=e.target;if(!s.dataset||s.dataset.slot==null||mode!=='drive')return;const d=rvDesigns()[rvSel];d.slots=d.slots||[];
+  d.slots[+s.dataset.slot]=s.value||null;s.blur();rvReset()});
+
+// ---- the readout
+function rvHud(){const el=$('rvHud');if(!el||!RV)return;const R=RV,G=R.G,up=norm(R.p),fw=qrot(R.q,[0,0,1]),vf=dot(R.v,fw),ti=rvTilt(R),st=rvStats(R.d),X=R.gk<1?st.S:st.T;
+  const f=siteFrame(up),hd=Math.round(Math.atan2(dot(fw,f.e),dot(fw,f.n))*180/Math.PI+360)%360,slip=R.wh.some(w=>w.slip&&w.load>0),air=R.wh.every(w=>!w.load);
+  const warn=R.wet?'<div class="bad">In the sea: lost. R starts again.</div>':R.tipped?'<div class="bad">Tipped over. R puts it back at the start: on a mission, nobody would.</div>'
+    :!R.E&&G.kWh?'<div class="bad">Battery flat.</div>':!G.kWh?'<div class="bad">No battery: it can\'t drive.</div>':'';
+  const tc=(a,lim)=>Math.abs(a)>lim*.8?'bad':Math.abs(a)>lim*.6?'warn':'';
+  el.innerHTML=`<h2 style="margin-top:0">${rvEsc(R.d.name)} · ${R.gk<1?'lunar trainer':'Tellus'}</h2>${warn}<table>
+    <tr><td class="dim">speed</td><td>${(Math.abs(vf)*3.6).toFixed(1)} km/h${vf<-.05?' (reverse)':''}</td></tr>
+    <tr><td class="dim">heading</td><td>${hd.toFixed(0)}°</td></tr>
+    <tr><td class="dim">pitch</td><td class="${tc(ti.pitch,ti.pitch>0?X.tipBack:X.tipFwd)}">${Math.round(ti.pitch)+0}° <span class="dim">of ${(ti.pitch>0?X.tipBack:X.tipFwd).toFixed(0)}</span></td></tr>
+    <tr><td class="dim">roll</td><td class="${tc(ti.roll,X.tipSide)}">${Math.round(ti.roll)+0}° <span class="dim">of ${X.tipSide.toFixed(0)}</span></td></tr>
+    <tr><td class="dim">ground</td><td>${R.su?R.su.name:'—'}${slip?' · <span class="warn">slipping</span>':''}${air?' · <span class="warn">airborne</span>':''}</td></tr>
+    <tr><td class="dim">battery</td><td>${G.kWh?(100*R.E/R.Emax).toFixed(0)+' %':'—'}</td></tr>
+    <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr></table>
+    <div class="sub" style="margin-top:4px">W S drive · A D steer · Space brake · R start again</div>`}
+
+// ---- meshes: the body (chassis and deck) per design, and one wheel per kind with its axle along X
+const rvMeshC=new Map();
+function rvBodyMesh(d){const key=JSON.stringify([d.ch,d.wh,d.n,d.slots]);if(rvMeshC.has(key))return rvMeshC.get(key);const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
+  box(a,[0,0,0],W,Hh,CH.L/2,C.G);box(a,[0,Hh+.01,0],W*.96,.01,CH.L/2*.97,C.D);
+  for(const w of G.wheels){const s=Math.sign(w.x);box(a,[s*(W+G.Wk.w/2+.03),Hh+.04,w.z],G.Wk.w/2+.04,.015,G.Wk.r*.9,C.W);   // fenders
+    box(a,[s*(W+.02),-Hh-.02,w.z],.05,.05,.06,C.D)}
+  for(const t of G.items){const[x,y,z]=[t.x,t.y,t.z],[sx,sy,sz]=t.it.sz;
+    if(t.k==='bat'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.D);box(a,[x,y+sy+.01,z],sx/2*.8,.01,sz/2*.8,C.AU)}
+    else if(t.k==='seat'){box(a,[x,y+.2,z],.24,.04,.24,C.G);box(a,[x,y+.5,z-.24],.24,.3,.03,C.G);
+      box(a,[x,y+.55,z-.05],.17,.3,.12,C.W);box(a,[x,y+.3,z+.15],.15,.08,.18,C.W);lathe(a,[[0,0,C.W],[.12,.03,C.W],[.15,.15,C.Y],[.12,.27,C.W],[0,.3,C.W]],[x,y+.85,z-.05],14)}
+    else if(t.k==='cam'){lathe(a,[[.035,0,C.ST],[.035,1.3,C.ST]],[x,y,z],10);box(a,[x,y+1.38,z],.14,.08,.08,C.W);box(a,[x,y+1.38,z+.09],.04,.04,.02,C.GL)}
+    else if(t.k==='ant'){lathe(a,[[.03,0,C.ST],[.03,.9,C.ST]],[x,y,z],10);lathe(a,[[.02,0,C.W],[.18,.03,C.W],[.33,.12,C.W],[.35,.15,C.W]],[x,y+.92,z],20,[true,false])}
+    else if(t.k==='arm'){box(a,[x,y+.06,z],.08,.06,.08,C.ST);box(a,[x,y+.16,z-.05],.04,.04,.4,C.W);box(a,[x,y+.28,z+.05],.035,.035,.38,C.W);box(a,[x,y+.28,z+.44],.06,.06,.06,C.AU)}
+    else if(t.k==='spec'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.AU);box(a,[x,y+sy+.04,z+.05],.04,.04,.04,C.GL)}
+    else if(t.k==='seis'){box(a,[x,y+.1,z],sx/2,.1,sz/2,C.W);for(const o of[-.1,.1])lathe(a,[[.07,0,C.AU],[.07,.18,C.AU]],[x+o,y+.2,z],12)}
+    else if(t.k==='drill'){for(const o of[[-.1,-.1],[.1,-.1],[0,.1]])box(a,[x+o[0],y+.6,z+o[1]],.02,.6,.02,C.ST);lathe(a,[[.04,-.15,C.D],[.04,1.1,C.D]],[x,y,z],10);box(a,[x,y+1.15,z],.12,.08,.12,C.W)}}
+  const m=makeMesh(a);rvMeshC.set(key,m);return m}
+function rvWheelMesh(k){const key='w'+k;if(rvMeshC.has(key))return rvMeshC.get(key);const Wk=RV_WH[k],a=[],r=Wk.r,w=Wk.w/2,tc=k==='m'?C.AU:C.BK;
+  lathe(a,[[r*.55,-w,tc],[r*.95,-w,tc],[r,-w*.7,tc],[r,w*.7,tc],[r*.95,w,tc],[r*.55,w,tc]],[0,0,0],28,[false,false]);
+  lathe(a,[[r*.55,-w*.6,C.G],[r*.55,w*.6,C.G]],[0,0,0],28,[true,true]);lathe(a,[[r*.2,-w*1.05,C.ST],[r*.2,w*1.05,C.ST]],[0,0,0],14);
+  for(let i=0;i<4;i++){const s=[];box(s,[0,0,0],r*.5,w*.25,r*.06,C.D);const c=Math.cos(i*Math.PI/4),sn=Math.sin(i*Math.PI/4);
+    for(let j=0;j<s.length;j+=VX){const P=[s[j],s[j+1],s[j+2]],N=[s[j+3],s[j+4],s[j+5]];s[j]=c*P[0]+sn*P[2];s[j+2]=-sn*P[0]+c*P[2];s[j+3]=c*N[0]+sn*N[2];s[j+5]=-sn*N[0]+c*N[2]}
+    for(let j=0;j<s.length;j+=VX)s[j+1]+=w*.8;a.push(...s)}
+  for(let j=0;j<a.length;j+=VX){const x=a[j],y=a[j+1],nx=a[j+3],ny=a[j+4];a[j]=y;a[j+1]=-x;a[j+3]=ny;a[j+4]=-nx}   // turn the axle from Y onto X
+  const m=makeMesh(a);rvMeshC.set(key,m);return m}
+// the yard's mounds, a height grid over each one's footprint (yard axes; the mesh's z is south so the frame turns right-handed)
+let rvYardMesh=null;
+function rvYardBuild(){if(rvYardMesh)return rvYardMesh;const a=[],col=[.5,.46,.4],hz=(x,z)=>{let h=0;for(const f of RV_YARD)h=Math.max(h,yardFeatH(f,x,z));return h};
+  for(let x=-30;x<70;x+=.5)for(let z=8;z<102;z+=.5){const H=[[x,z],[x+.5,z],[x+.5,z+.5],[x,z+.5]].map(([u,v])=>hz(u,v));if(Math.max(...H)<=0)continue;
+    const Q=[[x,z],[x+.5,z],[x+.5,z+.5],[x,z+.5]],P=Q.map(([u,v],i)=>[u,H[i]+.02,-v]),N=Q.map(([u,v])=>norm([-(hz(u+.25,v)-hz(u-.25,v))/.5,1,(hz(u,v+.25)-hz(u,v-.25))/.5]));
+    for(const i of Math.abs(H[0]-H[2])<=Math.abs(H[1]-H[3])?[0,1,2,0,2,3]:[0,1,3,1,2,3])pv(a,P[i],N[i],col)}
+  return rvYardMesh=makeMesh(a)}
+function drawRoverScene(drawMesh,camW){const th=bodyTheta(TELLUS,simT),Y=rvYardShown(),o=fromPF(TELLUS,Y.o,simT);
+  if(len(sub(o,camW))<3e3)drawMesh(rvYardBuild(),mat4(rotY(Y.e,th),rotY(Y.up,th),rotY(mul(Y.n,-1),th),sub(o,camW)),o);
+  if(!RV)return;const R=RV,G=R.G,qW=rvQW(R),pW=rvWorld(R),wm=rvWheelMesh(R.d.wh);
+  drawMesh(rvBodyMesh(R.d),modelQ(qW,sub(pW,camW),mul(G.cm,-1)),pW);
+  G.wheels.forEach((w,i)=>{const s=R.wh[i],c=add(pW,qrot(qW,sub([w.x,G.yM-s.l,w.z],G.cm))),q=qmul(qmul(qW,qaxis([0,1,0],w.steer*R.steer)),qaxis([1,0,0],s.spin));
+    drawMesh(wm,modelQ(q,sub(c,camW)),c)})}
+function rvLabels(octx,project){const k=Math.min(devicePixelRatio||1,1.5),Y=rvYardShown();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillStyle='rgba(255,220,160,.9)';
+  for(const f of RV_YARD){const p=add(bodyPos(TELLUS,simT),fromPF(TELLUS,yardPF(Y,f.x+(f.k==='bank'?2:0),f.k==='bank'?20:9,1.2),simT)),q=project(p);if(q&&len(sub(p,HOOK.view.camW))<400)octx.fillText(f.k==='ramp'?`${f.a}° ramp`:`${f.a}° side slope`,q[0],q[1])}}
+
 // ============================================================ main loop
 let last=performance.now(),fpsT=0,fpsN=0,fpsShow=0,frameMs=0,stepsN=0,hudT=0;
 function shipWorld(){return add(bodyPos(S.body,simT),S.r)}
 function simulate(dtR){
+  if(mode==='drive'){rvTick(dtR);return}
   if(mode!=='flight')return;
   if(player){ // autopilot: the tape drives; warp just sets how many steps per frame
     if(!S.alive){player=null;return}
@@ -4668,7 +5082,7 @@ function render(){
     const off=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)];
     camW=madd(foc,off,cam.mDist);Fw=mul(off,-1);R=norm(cross(Fw,[0,1,0]));U=cross(R,Fw);fov=0.9}
   else{
-    let tgt;if(S.alive)tgt=shipWorld();else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
+    let tgt;if(mode==='drive'&&RV)tgt=rvWorld(RV);else if(S.alive)tgt=shipWorld();else{const bm=booms[0];tgt=bm?add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)):shipWorld()}
     if(mode==='editor'&&!HOOK.edStill)cam.yaw+=0.002;
     const f=localFrame(sub(tgt,bodyPos(S.body,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
@@ -4759,6 +5173,7 @@ function render(){
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
+  if(mode==='drive')drawRoverScene(drawMesh,camW);
   if(near&&mode==='flight')drawVapor(VP,camW);
   // ---- map: orbit lines + labels
   const labels=[];
@@ -4825,6 +5240,7 @@ function render(){
   gl.disable(gl.BLEND);gl.depthMask(true);
   // ---- 2D overlay
   octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];
+  if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
@@ -4866,6 +5282,7 @@ function render(){
   if(mode==='flight'&&view!=='map'){const T=tgtOf(S);if(T&&T.landed){const k=Math.min(devicePixelRatio||1,1.5),q=project(add(bodyPos(S.body,simT),T.r));
     if(q){octx.fillStyle='#ffb347';octx.beginPath();octx.moveTo(q[0],q[1]-6*k);octx.lineTo(q[0]+6*k,q[1]);octx.lineTo(q[0],q[1]+6*k);octx.lineTo(q[0]-6*k,q[1]);octx.closePath();octx.fill();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${T.q.name} · ${fmtD(len(T.dr))}`,q[0],q[1]-10*k)}}}
+  if(mode==='drive')rvLabels(octx,project);
   if(mode==='flight'&&view!=='map'&&FLEET.length){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
@@ -5148,6 +5565,8 @@ function tgtCA(){const T=tgtOf(S);if(!T||T.landed||S.landed||!S.alive)return nul
   const T0=progT(S),Q=T.ves?{r:T.q.r,v:T.q.v,epoch:T0}:T.q,orbit=(r,v,t0)=>{const el=elements(r,v,TELLUS.mu);return el.e<1&&el.pe>TELLUS.R?approach(Q,r,v,t0,2*el.period):null};
   let plan=null;if(S.node){const I=nodeInfo(S);if(I)plan=orbit(I.rN,add(I.vN,I.rem),T0+I.t-simT)}
   return caCache={key,at:now,now:orbit(S.r,S.v,T0),plan}}
+function wheelRows(){if(!(S.hmax>0)||!S.wH)return[];const f=len(S.wH)/S.hmax;if(f<0.05)return[];
+  return[['Wheels',`<span class="${f>0.9?'bad':f>0.6?'warn':'ok'}">${(f*100).toFixed(0)}% saturated</span>${f>0.6?' <span class="dim">(RCS, a burn or steerable fins unload them)</span>':''}`]]}
 function rcsRows(){const J=rcsJets(S);if(!J)return[];const g=rcsGas(S)*1000,dv=J.N[0].isp*G0*Math.log(S.mass/Math.max(1,S.mass-g));
   return[['RCS',`${S.rcs?'<span class="ok">on</span>':'off'} · gas ${g.toFixed(1)} kg · Δv ${dv.toFixed(1)} m/s${S.rcsFire?` · ${S.rcsFire} firing`:''}`]]}
 // the line-up: distance between the ports, angle between their axes, closing speed, and which RCS keys close the
@@ -5204,7 +5623,7 @@ function updateHUD(){
     ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
     ['Impact',!toolOK('impact')?'<span class="dim">no trajectory data yet</span>':impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
     ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
-    ...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...armRows(),...payloadRows(),
+    ...wheelRows(),...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...armRows(),...payloadRows(),
     ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
   $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
   const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';

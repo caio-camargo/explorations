@@ -5,7 +5,7 @@ import { crewLunar } from './fly_crewlunar.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
+return {ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1835,6 +1835,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.resetHome(); Object.assign(P, { own: null, flights: 0, fac: {}, kh: {}, studies: {}, studyQ: [], compEra: null, active: [], offers: [], decisions: [] });
 }
 
+// 36. Staged pay for long missions (economy): on course, on arrival, then the rest on completion; the total is unchanged.
+{
+  const P = api.PROG, { bodyRel, soiAt } = api, saved = JSON.stringify(P); const news = []; api.HOOK.news = m => news.push(m); api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  const reset = done => { P.done = Object.fromEntries(done.map(k => [k, { flight: 0, day: 0 }])); P.staged = {}; P.active = []; P.funds = 1000; P.own = null; };
+  const craft = (b, r, v) => { api.t = 0; const s = api.newShip(['ant', 'cam', 't2', 'petrel']); api.S = s; s.landed = false; s.body = b; s.r = r; s.v = v; s.throttle = 0; s.rec.launched = true; s.rec.dv = 5000; return s; };
+  const M = api.MISSIONS.find(m => m.id === 'farside');
+  // what completing it pays with no staging
+  reset(['beeper']); const fA = P.funds; api.missionComplete(M, null); const whole = P.funds - fA;
+  // on course: just outside Selene's sphere of influence, closing at 300 m/s
+  reset(['beeper']); const [pS, vS] = bodyRel(SELENE, 0), u = norm(pS), soi = soiAt(SELENE, 0), f0 = P.funds;
+  const s = craft(TELLUS, sub(pS, mul(u, soi * 1.2)), add(vS, mul(u, 300))); api.missionTick(s, 0, false); const fBound = P.funds - f0;
+  s.body = SELENE; s.r = mul(u, -soi * 0.9); s.v = mul(u, 300); api.missionTick(s, 0, false); const fArrive = P.funds - f0 - fBound;
+  delete P.done.farside; api.missionComplete(M, null); const total = P.funds - f0;
+  check('staged pay: a Selene mission pays 20% on course, 20% on arrival, and the rest on completion (same total)',
+    Math.abs(fBound - 0.2 * M.pay) < 1e-9 && Math.abs(fArrive - 0.2 * M.pay) < 1e-9 && Math.abs(total - whole) < 1e-9 && news.some(m => /on course for Selene/.test(m)),
+    `${M.name}: +${fBound.toFixed(0)}M on course, +${fArrive.toFixed(0)}M on arrival, ${total.toFixed(0)}M in all (unstaged ${whole.toFixed(0)}M)`);
+  // a flight that isn't headed there pays nothing; a crewed mission's shares need a crew aboard
+  reset(['beeper']); const g0 = P.funds; const s2 = craft(TELLUS, mul(u, 7e6), mul(norm(cross(u, [0, 1, 0])), Math.sqrt(TELLUS.mu / 7e6))); api.missionTick(s2, 0, false);
+  reset(['beeper', 'farside', 'selimp', 'selland', 'selsample', 'padabort', 'maxqabort']); const s3 = craft(SELENE, mul(u, -soi * 0.9), mul(u, 300)); api.missionTick(s3, 0, false);
+  check('staged pay: nothing for a flight not bound anywhere, nor for crewed missions on an uncrewed flight', P.funds === 1000 && g0 === 1000 && !Object.keys(P.staged).length,
+    `circular orbit at 7,000 km: +0; uncrewed probe at Selene with only crewed missions open: +0`);
+  Object.assign(P, JSON.parse(saved));
+}
+
 // 25. Surfaces (terrain session): the touchdown verdict depends on the ground. Friction caps the slope a vessel can
 // stand on (atan μ), softness changes the speed the ground forgives, boulders or trees add to the effective speed.
 {
@@ -1934,6 +1958,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('steerable fins: authority grows with q (≈4× from 150 to 300 m/s), none in vacuum; they roll a wheel-less dart, a passive ring does not',
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
+}
+// 36. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
+{
+  const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
+  D.HOOK.msg = () => {}; const T = D.TELLUS, len = D.len, ang = (a, b) => Math.acos(Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]));
+  const fnd = (n, k) => n.k === k ? n : (n.c || []).map(c => fnd(c, k)).find(Boolean);
+  const withRcs = (stack, host, ys) => { const d = D.toV2(JSON.parse(JSON.stringify(stack))), h = fnd(d.root, host);
+    for (const y of ys) h.c.push({ k: 'rcs', at: { y, a: 0, n: 4, cy: 0.1 }, c: [] }); h.c.push({ k: 'gas', at: { y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3 }, c: [] }); return d; };
+  const space = des => { D.t = 0; const s = D.newShip(des), r0 = T.R + 300e3; D.S = s;
+    Object.assign(s, { landed: false, sas: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0] }); return s; };
+  // the pitch key held for 30 s, SAS off: the rate levels off where the wheels are full
+  const o = space(D.PRESETS.Orbiter); for (let i = 0; i < 30 / D.DT; i++) { D.INP.pitch = 1; D.physStep(o, D.DT); } D.INP.pitch = 0;
+  const cap = o.hmax / Math.max(o.I[0], o.I[2]);
+  check('wheels: the pod gives 10 kN·m and stores 100 kN·m·s; held 30 s, the Orbiter’s pitch rate stops at storage ÷ inertia',
+    o.torque === 10000 && Math.abs(len(o.w) / cap - 1) < 0.02 && len(o.wH) / o.hmax > 0.999, `${len(o.w).toFixed(3)} rad/s vs ${cap.toFixed(3)}; wheels ${(100 * len(o.wH) / o.hmax).toFixed(0)}%`);
+  // unloading from 90 %, holding attitude: nothing else to steer with / a burning gimbal / cold-gas RCS
+  const unload = (des, { rcs = false, thr = 0 } = {}) => { const s = space(des); D.stage(s); Object.assign(s, { throttle: thr, rcs, sas: true, sasMode: 'stab' });
+    s.wH = [0.9 * s.hmax, 0, 0]; const Y0 = D.qrot(s.q, [0, 1, 0]), g0 = D.rcsGas(s); let err = 0;
+    for (let i = 0; i < 45 / D.DT; i++) { D.physStep(s, D.DT); err = Math.max(err, ang(D.qrot(s.q, [0, 1, 0]), Y0) * 57.3); }
+    return { f: len(s.wH) / s.hmax, err, gas: (g0 - D.rcsGas(s)) * 1000 }; };
+  const st = ['chute', 'pod', 't2', 'petrel'], none = unload(st), burn = unload(st, { thr: 1 }), gas = unload(withRcs(st, 't2', [0.1, 1.9]), { rcs: true });
+  check('wheels unload: not with nothing else to steer; a burning gimbal empties them in 45 s holding within 1°; RCS spends gas on it',
+    Math.abs(none.f - 0.9) < 1e-9 && burn.f < 0.05 && burn.err < 1 && gas.f < 0.85 && gas.gas > 1,
+    `nothing ${(100 * none.f).toFixed(0)}% · gimbal ${(100 * burn.f).toFixed(0)}% (max error ${burn.err.toFixed(2)}°) · RCS ${(100 * gas.f).toFixed(0)}% for ${gas.gas.toFixed(1)} kg of gas`);
+  // the readout: its 90° turn time on wheels against a flown one; coasting at max-q, a steerable ring holds where wheels can't
+  const flown = k => { const s = space(D.PRESETS[k]), est = D.controlReport(s).turn.wheels, X0 = D.qrot(s.q, [1, 0, 0]); Object.assign(s, { sas: true, sasMode: 'stab', hold: X0 });
+    let t = 0; while (t < 200) { D.physStep(s, D.DT); t += D.DT; if (ang(D.qrot(s.q, [0, 1, 0]), X0) < 2 / 57.3) break; } return { est, t }; };
+  const fo = flown('Orbiter'), fl = flown('Lunar'), cO = D.controlReport(D.newShip(D.PRESETS.Orbiter)).coast,
+    cS = D.controlReport(D.newShip(D.PRESETS.Orbiter.map(x => x === 'fins' ? 'cfins' : x))).coast;
+  check('control readout: 90° turn times on wheels match flown turns within 10%; coasting at max-q the Orbiter can’t hold 5° on wheels, with a steerable ring it can',
+    Math.abs(fo.est / fo.t - 1) < 0.1 && Math.abs(fl.est / fl.t - 1) < 0.1 && cO.tau > cO.auth && cS.tau < cS.auth,
+    `Orbiter ${fo.est.toFixed(1)} vs ${fo.t.toFixed(1)} s, Lunar ${fl.est.toFixed(1)} vs ${fl.t.toFixed(1)} s; coasting need ${(cO.tau / 1e3).toFixed(0)} kN·m: wheels ${(cO.auth / 1e3).toFixed(0)}, steerable ring ${(cS.auth / 1e3).toFixed(0)}`);
 }
 
 // 30. Stations (sats session, stations plan Phase C): radial ports on any structure, habitat and lab, station state and
@@ -2101,6 +2158,50 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   c.target = q.id; const T = D.tgtOf(c);
   check('moonbase: a base can be the target of a landing', T && T.landed && T.q === q && len(T.dr) > 100, `${T ? T.q.name + ' at ' + (len(T.dr) / 1000).toFixed(2) + ' km' : 'no target'}`);
   Object.assign(P, { sats: [], satN: 0, labDays: 0 });
+}
+
+// 34. Rovers (sats session, rovers plan R1): the designer's figures, and the wheel-contact rover in the test yard beside
+// the pad. Own sim instance.
+{
+  const D = new Function(src + 'return {rvNew,rvRun,rvStats,rvDefault,rvTilt,rvFold,rvCrr,yardOf,yardPF,SITES,TELLUS,RV_GS,SURF_MOON,HOOK,PROG};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m);
+  const Y = D.yardOf(D.SITES[0]), lrv = D.rvDefault(), st = D.rvStats(lrv), D2R = Math.PI / 180;
+  const at = (d, x, z, o = {}, h = 0, head = Y.n) => D.rvNew(d, D.TELLUS, D.yardPF(Y, x, z, h), head, { yard: Y, ...o });
+  const run = (R, s) => { for (let i = 0; i < s * 10; i++) D.rvRun(R, 0.1); return R; };
+  const up = R => len(R.p) - D.TELLUS.R - D.SITES[0].h;
+  // on paper: a lunar-rover-sized crewed rover can barely climb at home (its hub motors are sized for a sixth of the
+  // weight); at Selene's gravity the ground's grip is the limit; and a full-lock turn tips or slides at a lower speed there
+  const tr = Math.atan(D.SURF_MOON.mu - D.rvCrr(D.SURF_MOON, 0.41)) / D2R;
+  check('rover stats: the crewed rover climbs little at home (motors), at Selene up to its grip; turns are slower there',
+    st.T.lim === 'motors' && st.T.climb < 10 && st.S.lim === 'traction' && Math.abs(st.S.climb - tr) < 0.2 && st.S.vTurn < st.T.vTurn / 2,
+    `Tellus ${st.T.climb.toFixed(1)}° (${st.T.lim}), Selene ${st.S.climb.toFixed(1)}° (${st.S.lim}); full-lock turn ${st.T.turnBy} above ${st.T.vTurn.toFixed(1)} / ${st.S.vTurn.toFixed(1)} m/s`);
+  // parked on the level: it settles still, its centre of mass where the designer says, and holds there
+  let R = run(at(lrv, -20, -6), 4); const p0 = R.p.slice(); run(R, 5);
+  check('rover: parked on the level it settles where the designer says and stays put', len(R.v) < 1e-4 && len(sub(R.p, p0)) < 1e-3 && Math.abs(up(R) - st.T.h) < 0.03,
+    `centre of mass ${up(R).toFixed(3)} m up (designer ${st.T.h.toFixed(3)}), drifted ${(len(sub(R.p, p0)) * 1000).toFixed(2)} mm in 5 s`);
+  // flat out on the levelled grass beside the pad (away from the ramps): the top speed the designer gave
+  R = at(lrv, -20, -6, {}, 0, mul(Y.n, -1)); R.in.thr = 1; run(R, 15);
+  check('rover: flat out on grass it reaches the designer\'s top speed', Math.abs(len(R.v) - st.T.vTop) < 0.05 * st.T.vTop && R.su.name === 'levelled grass',
+    `${len(R.v).toFixed(2)} m/s (designer ${st.T.vTop.toFixed(2)}), on ${R.su.name}`);
+  // the 20° ramp: at home it stalls partway; as a lunar trainer it gets to the top
+  const climb = gk => { const R = at(lrv, 0, 0, { gk }); R.in.thr = 1; let mh = 0; for (let i = 0; i < 300; i++) { D.rvRun(R, 0.1); mh = Math.max(mh, up(R)); } return mh - up(at(lrv, 0, 0, { gk })); };
+  const hT = climb(1), hS = climb(D.RV_GS);
+  check('rover: the 20° ramp (2.5 m) stalls it at home; the lunar trainer gets to the top', hT < 1.5 && hS > 2.4, `rose ${hT.toFixed(2)} m at home, ${hS.toFixed(2)} m as a trainer`);
+  // parked across the side slopes: the 20° one holds it; the 35° one is steeper than gravel's grip (33°), so it slides
+  const park = (d, x) => { const R = run(at(d, x, 40, {}, 3), 2), a = R.p.slice(); run(R, 5); return { R, moved: len(sub(R.p, a)) }; };
+  const s20 = park(lrv, 39.5), s35 = park(lrv, 58);
+  check('rover: parked across a 20° slope it holds; across 35° (past the gravel\'s grip) it slides', s20.moved < 0.01 && s35.moved > 0.05 && !s35.R.tipped,
+    `${(s20.moved * 1000).toFixed(1)} mm and ${(s35.moved * 100).toFixed(0)} cm in 5 s; roll ${D.rvTilt(s20.R).roll.toFixed(0)}° and ${D.rvTilt(s35.R).roll.toFixed(0)}°`);
+  // a top-heavy rover (three crew on a small chassis) tips over on the 35° slope; a low one doesn't. Nothing rights it.
+  const tall = { name: 'tall', ch: 's', wh: 's', n: 4, spr: 'T', slots: ['seat', 'seat', 'seat'] }, low = { name: 'low', ch: 's', wh: 's', n: 4, spr: 'T', slots: ['ant', 'ant', 'drill'] };
+  msgs.length = 0; const tT = run(park(tall, 58).R, 3), tL = park(low, 58).R;
+  check('rover: top-heavy, it tips over on the 35° slope and stays over; a low one stays on its wheels', tT.tipped && tT.rec.tips === 1 && msgs.includes('Tipped over') && !tL.tipped,
+    `tips sideways at ${D.rvStats(tall).T.tipSide.toFixed(0)}° on paper (the springs lean it further) and ${D.rvStats(low).T.tipSide.toFixed(0)}°`);
+  // no battery, no drive; a drive's record goes to the design and to the wheels' tested distance
+  R = at({ ...lrv, slots: ['seat', 'seat', null, 'cam', null] }, -20, -6, {}, 0, mul(Y.n, -1)); R.in.thr = 1; run(R, 3);
+  const d = JSON.parse(JSON.stringify(lrv)), R2 = at(d, -20, -6, {}, 0, mul(Y.n, -1)); R2.in.thr = 1; run(R2, 10); const km = R2.rec.dist / 1000, w0 = (D.PROG.wheelKm || {}).m || 0; D.rvFold(R2);
+  check('rover: without a battery it can\'t drive; a test drive\'s record goes to the design and the wheels', len(R.v) < 0.01 && Math.abs(d.test.T.km - km) < 1e-9 && Math.abs(D.PROG.wheelKm.m - w0 - km) < 1e-9 && d.test.T.vmax > 2,
+    `${(km * 1000).toFixed(0)} m driven, ${d.test.T.vmax.toFixed(2)} m/s`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
