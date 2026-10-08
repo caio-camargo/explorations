@@ -4341,7 +4341,25 @@ void main(){vec3 rd=normalize(vL-uCam),iv=1./rd,ta=(uLo-uCam)*iv,tb=(uHi-uCam)*i
  vec3 smk=sc*(uLight*(L/max(A,1e-4))+uAmb*.2)*A;   // sunlit side brighter
  vec3 c=smk+C;c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);
  float al=1.-T;if(al<.003&&max(c.r,max(c.g,c.b))<.003)discard;o=vec4(pow(c,vec3(1./2.2)),al);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// ---- bloom (aerofx): the frame is drawn into a multisampled offscreen target, resolved, and its near-white parts are
+// shrunk through ½, ¼, ⅛ and 1/16 resolution (a box filter each step, so the chain blurs them) and added back as a soft
+// glow while the frame is copied to the screen. The scene is already tone-mapped, so the threshold works on display
+// values: only near-white pixels feed it (the sun, explosions, plume cores, lamps), and it is added mostly where the
+// frame is dark, since a bright daytime sky is as near-white as the sun once tone-mapped.
+const BLOOM_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uT;uniform vec2 uPx;uniform float uTh;
+void main(){vec2 uv=vNdc*.5+.5;vec3 c=vec3(0.);
+ for(int i=0;i<4;i++){vec2 d=vec2(i==0||i==2?-1.:1.,i<2?-1.:1.)*uPx;c+=texture(uT,uv+d).rgb;}c*=.25;
+ if(uTh>0.){float m=max(c.r,max(c.g,c.b));c*=smoothstep(uTh,1.,m)*m;}
+ o=vec4(c,1.);}`;
+const COMP_FS=`#version 300 es
+precision highp float;in vec2 vNdc;out vec4 o;uniform sampler2D uS,uB1,uB2,uB3,uB4;uniform vec2 uP4;uniform float uK;
+vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,uv+vec2(px.x,0.)).rgb*2.+texture(t,uv-vec2(px.x,0.)).rgb*2.+texture(t,uv+vec2(0.,px.y)).rgb*2.+texture(t,uv-vec2(0.,px.y)).rgb*2.;
+ c+=texture(t,uv+px).rgb+texture(t,uv-px).rgb+texture(t,uv+vec2(px.x,-px.y)).rgb+texture(t,uv+vec2(-px.x,px.y)).rgb;return c/16.;}
+void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;
+ vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*4.).rgb*.35+tent(uB3,uv,uP4*2.).rgb*.45+tent(uB4,uv,uP4).rgb*.6;
+ float L=dot(c,vec3(.3,.5,.2));o=vec4(c+uK*b*pow(1.-L,1.6),1.);}`;   // glow shows over darker surroundings, not on bright sky
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -4597,7 +4615,37 @@ function covBake(camW){const th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin
   const e=norm(cross([0,1,0],c0)),n=cross(c0,e);Object.assign(COV,{c0,e,n,ct});
   const u2=PCOV.u;gl.useProgram(PCOV.p);gl.bindFramebuffer(gl.FRAMEBUFFER,COV.fb);gl.viewport(0,0,COV.n0,COV.n0);gl.disable(gl.DEPTH_TEST);
   gl.uniform1f(u2.uCT,ct);gl.uniform1f(u2.uPR,TELLUS.R);gl.uniform1f(u2.uCvX,COV.ext);gl.uniform3fv(u2.uCv0,c0);gl.uniform3fv(u2.uCvE,e);gl.uniform3fv(u2.uCvN,n);
-  gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.enable(gl.DEPTH_TEST)}
+  gl.bindVertexArray(quadVAO);gl.drawArrays(gl.TRIANGLES,0,3);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.enable(gl.DEPTH_TEST)}
+let BLOOM=true;   // false draws straight to the screen (A/B)
+const SCN={w:0,h:0,on:false};
+function texRT(w,h){const t=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,t);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,w,h,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+  const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,t,0);return{t,fb,w,h}}
+// the scene target for this frame size (multisampled colour + depth/stencil, a resolve texture, the bloom chain)
+function sceneTarget(w,h){if(SCN.w===w&&SCN.h===h)return SCN;
+  if(SCN.ms){gl.deleteFramebuffer(SCN.ms);gl.deleteRenderbuffer(SCN.rc);gl.deleteRenderbuffer(SCN.rd);for(const x of[SCN.res,...SCN.chain]){gl.deleteTexture(x.t);gl.deleteFramebuffer(x.fb)}}
+  const ns=Math.min(4,gl.getParameter(gl.MAX_SAMPLES)),rc=gl.createRenderbuffer(),rd=gl.createRenderbuffer(),ms=gl.createFramebuffer();
+  gl.bindRenderbuffer(gl.RENDERBUFFER,rc);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.RGBA8,w,h);
+  gl.bindRenderbuffer(gl.RENDERBUFFER,rd);gl.renderbufferStorageMultisample(gl.RENDERBUFFER,ns,gl.DEPTH24_STENCIL8,w,h);
+  gl.bindFramebuffer(gl.FRAMEBUFFER,ms);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.RENDERBUFFER,rc);gl.framebufferRenderbuffer(gl.FRAMEBUFFER,gl.DEPTH_STENCIL_ATTACHMENT,gl.RENDERBUFFER,rd);
+  const ok=gl.checkFramebufferStatus(gl.FRAMEBUFFER)===gl.FRAMEBUFFER_COMPLETE;
+  const res=texRT(w,h),chain=[2,4,8,16].map(k=>texRT(Math.max(1,Math.ceil(w/k)),Math.max(1,Math.ceil(h/k))));
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);Object.assign(SCN,{w,h,ms,rc,rd,res,chain,ok});return SCN}
+// the framebuffer the 3D frame is being drawn into (passes that render elsewhere mid-frame come back to it)
+const sceneFB=()=>SCN.on?SCN.ms:null;
+function bloomBegin(w,h){SCN.on=false;if(!BLOOM)return;const T=sceneTarget(w,h);if(!T.ok)return;SCN.on=true;gl.bindFramebuffer(gl.FRAMEBUFFER,T.ms)}
+function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
+  gl.bindFramebuffer(gl.READ_FRAMEBUFFER,T.ms);gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER,T.res.fb);gl.blitFramebuffer(0,0,w,h,0,0,w,h,gl.COLOR_BUFFER_BIT,gl.NEAREST);
+  gl.disable(gl.DEPTH_TEST);gl.disable(gl.BLEND);gl.disable(gl.CULL_FACE);gl.depthMask(false);gl.bindVertexArray(quadVAO);
+  const u=PBLM.u;gl.useProgram(PBLM.p);gl.activeTexture(gl.TEXTURE0);gl.uniform1i(u.uT,0);let src=T.res;
+  T.chain.forEach((dst,i)=>{gl.bindFramebuffer(gl.FRAMEBUFFER,dst.fb);gl.viewport(0,0,dst.w,dst.h);gl.bindTexture(gl.TEXTURE_2D,src.t);
+    gl.uniform2f(u.uPx,.5/src.w,.5/src.h);gl.uniform1f(u.uTh,i===0?.93:0);gl.drawArrays(gl.TRIANGLES,0,3);src=dst});
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,w,h);const c=PCOMP.u;gl.useProgram(PCOMP.p);
+  [T.res,...T.chain].forEach((x,i)=>{gl.activeTexture(gl.TEXTURE0+i);gl.bindTexture(gl.TEXTURE_2D,x.t)});
+  gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);
+  gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,.9);gl.drawArrays(gl.TRIANGLES,0,3);
+  gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
@@ -5625,7 +5673,7 @@ function render(){
     const bc=bodyPos(CB,simT),rc=sub(camW,bc),ra=len(rc);{const gR=CB.R+1.5+(CB===TELLUS&&ra<CB.R+TERR_TOP+10?groundAlt(TELLUS,toPF(TELLUS,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
-  gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
+  bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   // ---- sky / planets: one full-screen ray-cast
@@ -5649,7 +5697,7 @@ function render(){
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
   if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
-    gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.viewport(0,0,W,H);
+    gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
     gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
   gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
@@ -5774,6 +5822,7 @@ function render(){
       gl.cullFace(inside?gl.FRONT:gl.BACK);gl.drawArrays(gl.TRIANGLES,0,VBOX.n)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
   gl.disable(gl.BLEND);gl.depthMask(true);
+  bloomEnd();
   // ---- 2D overlay
   octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
