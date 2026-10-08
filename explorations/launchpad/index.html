@@ -641,7 +641,7 @@ const debris=[];
 function newShip(stack,site=curSite()){
   const A=assemble(stack);
   const s={stack:JSON.parse(JSON.stringify(stack)),parts:A.parts,segs:A.segs,events:A.events,root:A.root,groups:A.groups,evIdx:0,body:TELLUS,alive:true,landed:true,
-    throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1],att:[]};
+    av:avNow(),throttle:0,sas:true,sasMode:'stab',hold:null,w:[0,0,0],chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:[0,0,0],v:[0,0,0],q:[0,0,0,1],att:[]};
   geom(s);rebuildShape(s);s.rec=recNew();
   s.site=site;const f=siteFrame(site.u);                  // on the levelled pad of the chosen launch site
   s.pf=mul(site.u,TELLUS.R+site.h-s.yBot);
@@ -689,8 +689,20 @@ function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
 const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
+// ---- avionics generations (control session). SAS grows with the computing eras (COMP_ERAS): a gyro autopilot that only
+// holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
+// computer with every mode and the full-speed loop (onboard computers). k: rate-loop gain (1/s), w: fastest commanded turn
+// (rad/s), db: attitude deadband (rad). A vessel keeps the avionics it launched with (s.av); with no program running
+// (sandbox, physics tests) and on ground-guided procedures it has the best.
+const AV=[{name:'Gyro autopilot',modes:['stab'],k:2,w:0.3,db:0.0087,era:0},
+  {name:'Analog autopilot',modes:['stab','pro','retro','normal','anti','radout','radin'],k:3,w:0.45,db:0.0035,era:1},
+  {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
+const avNow=()=>khOn()?Math.min(AV.length-1,compEra()):AV.length-1;
+const avOf=s=>AV[s.proc?AV.length-1:s.av??AV.length-1];
+const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
+const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
 function sasTarget(s){
-  if(s.sasMode==='stab')return s.hold;
+  if(s.sasMode==='stab'||!sasModeOK(s,s.sasMode))return s.hold;
   if(s.sasMode==='node'){const I=nodeInfo(s);return I&&len(I.rem)>1e-3?norm(I.rem):s.hold}
   if(TGT_M.includes(s.sasMode)){const T=tgtOf(s);if(!T)return s.hold;   // toward / away from the target; along / against our velocity relative to it
     if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?{q:qnorm(qmul(qFromTo(P.Aa,mul(P.Ab,-1)),s.q))}:s.hold}   // an attitude: our port's axis onto the target port's (roll too, for a side port)
@@ -713,8 +725,8 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   const aP=(ctrlAuthority(s,E,s.throttle)+rt+fP)/Math.max(s.I[0],s.I[2]),aR=Math.min(2,(ctrlAuthRoll(s,E,s.throttle)+rt+fR)/s.I[1]);
   if(I.pitch||I.yaw||I.roll){s.hold=null;s.sasE=s.sasI=null;
     if(s.sas){ // fly-by-wire: keys command a rotation rate, SAS spends the torque to get there
-      const wb=[dot(s.w,X),dot(s.w,Y),dot(s.w,Z)],wd=[I.yaw*.3,-I.roll*.8,-I.pitch*.3];
-      return add(add(mul(X,clamp((wd[0]-wb[0])*4,-aP,aP)),mul(Y,clamp((wd[1]-wb[1])*4,-aR,aR))),mul(Z,clamp((wd[2]-wb[2])*4,-aP,aP)))}
+      const wb=[dot(s.w,X),dot(s.w,Y),dot(s.w,Z)],wd=[I.yaw*.3,-I.roll*.8,-I.pitch*.3],K=avOf(s).k;
+      return add(add(mul(X,clamp((wd[0]-wb[0])*K,-aP,aP)),mul(Y,clamp((wd[1]-wb[1])*K,-aR,aR))),mul(Z,clamp((wd[2]-wb[2])*K,-aP,aP)))}
     return add(add(mul(X,I.yaw*aP),mul(Y,-I.roll*aR)),mul(Z,-I.pitch*aP))}
   if(!s.sas){s.sasE=s.sasI=null;return[0,0,0]}
   if(!s.hold&&len(s.w)<0.02)s.hold=Y;
@@ -730,9 +742,9 @@ function ctrlAccel(s,rcs){const I=inpOf(s);   // controls reach only the vessel 
   // while the zone is on the rate loop also integrates (time constant SAS_TI), clamped to the authority, reset when it's off.
   let lag=0;if(s.throttle>0)for(const p of E)lag=Math.max(lag,p.d.gim/p.d.gimR);
   if(fP>0.25*s.torque)for(const p of s.fins)if(p.d.ctl)lag=Math.max(lag,p.d.ctl/p.d.ctlR);   // steerable fins, once they carry real weight
-  const Tc=SAS_LAG*lag;let wd=mul(ax,Math.min(0.6,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));
-  let al=mul(sub(wd,s.w),4);
-  if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,s.w),4/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
+  const A=avOf(s),Tc=SAS_LAG*lag;let wd=mul(ax,ang<A.db?0:Math.min(A.w,Math.sqrt(aE*ang),Tc>0?ang/Tc:Infinity));   // inside the deadband: just stop turning
+  let al=mul(sub(wd,s.w),A.k);
+  if(Tc>0){if(s.sasI)al=add(al,s.sasI);s.sasE=len(al)<aP?mul(sub(wd,s.w),A.k/SAS_TI):null;s.sasA=aP}else{s.sasE=null;s.sasI=null}   // frozen while saturated
   return add(add(mul(X,clamp(dot(al,X),-aP,aP)),mul(Y,clamp(dot(al,Y),-aR,aR))),mul(Z,clamp(dot(al,Z),-aP,aP)))}
 function integrateRot(s,al,dt){s.w=madd(s.w,al,dt);const q=s.q,d=qmul([s.w[0],s.w[1],s.w[2],0],q);
   s.q=qnorm([q[0]+.5*dt*d[0],q[1]+.5*dt*d[1],q[2]+.5*dt*d[2],q[3]+.5*dt*d[3]])}
@@ -2537,7 +2549,7 @@ function vesselFrom(s,list,r,v,w){const map=new Map(),parts=list.map((p,i)=>{con
   const nm=x=>x.some(p=>p.on&&p.d.kind==='pod')?'Capsule':'Probe';if(!s.name)s.name=`${nm(s.parts)} ${++vesselN}`;   // the vessel left behind gets a name too, now there are two
   const n=++vesselN,cmd=parts.find(isCommand);
   const ns={stack:s.stack,parts,segs,events,root:parts.find(c=>!c.parent),groups:[],evIdx:0,body:s.body,alive:true,landed:false,
-    throttle:0,sas:false,sasMode:'stab',hold:null,w:w.slice(),chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:r.slice(),v:v.slice(),q:s.q.slice(),att:[],
+    av:s.av,throttle:0,sas:false,sasMode:'stab',hold:null,w:w.slice(),chute:false,chuteA:0,thrust:0,qdyn:0,mach:0,aoa:0,gload:0,maxLoad:0,r:r.slice(),v:v.slice(),q:s.q.slice(),att:[],
     fleet:true,name:`${cmd?cmd.d.kind==='pod'?'Capsule':'Probe':'Payload'} ${n}`,site:s.site,rec:{launched:true,day0:s.rec&&s.rec.day0,ended:false,mini:true}};
   geom(ns);rebuildShape(ns);HOOK.cloned&&HOOK.cloned(list,parts);FLEET.push(ns);HOOK.msg(`${ns.name} separates: a vessel of its own ([ / ] to switch)`);return ns}
 // one physics step of a vessel that isn't S, at the same instant as S's (the clock is S's to advance)
@@ -4556,7 +4568,9 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
   // short of authority, a stable design just turns into the wind; an unstable one goes over
   row=(lbl,r)=>{const have=r.auth+c.rcs,ok=r.tau<=have,cl=ok?(r.tau<=0.7*have?'ok':'warn'):stable?'warn':'bad';
     return`<div>${lbl} <b class="${cl}">${ok?'holds':stable?'weathervanes':'flips'}</b> <span class="dim">need ${k(r.tau)} kN·m · ${src(r,c.rcs)}</span></div>`};
-  return`<h2>Control</h2><div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
+  const A=AV[avNow()],nx=AV[avNow()+1];
+  return`<h2>Control</h2><div>SAS <b>${A.name}</b> <span class="dim">${A.modes?A.modes.length===1?'attitude hold only':'hold and the velocity-vector modes':'every mode'}${nx?` · ${nx.name.toLowerCase()} with ${COMP_ERAS[nx.era].name.toLowerCase()}`:''}</span></div>
+    <div class="dim">Holding 5° off the airflow at max-q (25 kPa, M1.2):</div>
     ${row('burning',c.burn)}${row('coasting',c.coast)}
     <div>Roll <span class="dim">${src(c.roll,c.rcs)} kN·m</span></div>
     <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>`}
@@ -4612,7 +4626,10 @@ const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal',
 function renderSAS(){const el=$('sas');el.innerHTML='';
   const t=document.createElement('button');t.className='wide'+(S.sas?' on':'');t.textContent='SAS '+(S.sas?'ON':'OFF')+' [T]';t.onclick=()=>{S.sas=!S.sas;S.hold=null;renderSAS()};el.appendChild(t);
   if(rcsJets(S)){const b=document.createElement('button');b.className='wide'+(S.rcs?' on':'');b.textContent='RCS '+(S.rcs?'ON':'OFF')+' [V]';b.onclick=()=>{S.rcs=!S.rcs;renderSAS()};el.appendChild(b)}
-  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
+  t.title=avOf(S).name;
+  for(const[k,n]of SASM){if(TGT_M.includes(k)&&S.target==null)continue;const b=document.createElement('button');b.textContent=n;if(k==='stab')b.className='wide';if(S.sas&&S.sasMode===k)b.classList.add('on');
+    if(!sasModeOK(S,k)){const g=avNext(k);b.disabled=true;b.style.opacity=.35;b.title=`${avOf(S).name}: no ${n.toLowerCase()} mode. ${g.name} with ${COMP_ERAS[g.era].name.toLowerCase()}.`}
+    else b.onclick=()=>{S.sas=true;S.sasMode=k;S.hold=null;renderSAS()};el.appendChild(b)}}
 function renderStages(){if(!S)return;const el=$('stages');let html='<h2 style="margin-top:0">Stages</h2>';
   const ev=S.events;for(let i=ev.length-1;i>=S.evIdx;i--){const e=ev[i],parts=[];
     if(e.decouple.length)parts.push(e.radial?'drop '+S.segs[e.decouple[0]].label.split(' (')[0]:'decouple');
@@ -5553,7 +5570,7 @@ $('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.datas
   else if(a[0]==='t'&&!n.burning){const el=elements(S.r,S.v,S.body.mu),P=el.e<1?el.period:0,d=a==='t-o'?-P:a==='t+o'?P:+a.slice(1);
     const end=(predCache&&predCache.p[0]&&predCache.p[0].endT)||Infinity;n.t=clamp(n.t+d,simT+1,end)}
   else if(a==='warp'){const est=nodeBurnTime(S,len(nodeInfo(S).rem));warpTo=n.t-(isFinite(est)?est/2:0)-15;if(warpTo<=simT+1)warpTo=null}
-  else if(a==='sas'){S.sas=true;S.sasMode='node';S.hold=null;renderSAS()}
+  else if(a==='sas'){if(!sasModeOK(S,'node')){HOOK.msg(`${avOf(S).name}: it can't point at a maneuver; hold the burn attitude by hand (Stability)`);return}S.sas=true;S.sasMode='node';S.hold=null;renderSAS()}
   else if(a==='del'){S.node=null;HOOK.msg('Node deleted')}
   updateNodePanel()});
 function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.classList.add('hidden');return}el.classList.remove('hidden');
