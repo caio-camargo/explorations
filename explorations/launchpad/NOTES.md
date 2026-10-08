@@ -1219,6 +1219,22 @@ elsewhere mid-frame (the cloud coverage bake, the depth pre-pass) return to `sce
 - Cost on the RTX 5050 at 1280×800: +0.1–0.2 ms (pad view, A/B). `BLOOM = false` draws straight to the screen.
 - What glows: the sun in space, explosions, ignition flashes and plume cores at night, the floodlight lamps.
 
+## Fin-tip vapor (2026-10-09, aerofx session)
+
+In a hard turn in humid low air, a loaded fin's tip vortex condenses into a white streak. `finTipTick` records each fin
+tip's path (planet-fixed, so the trail stays in the air) with a strength: the cross-flow along the fin's normal (in a
+pitch turn, two fins of a ring trail and two don't), × angle of attack (smoothstep 1–7°), × dynamic pressure (3–15 kPa),
+× humid air (below 5 km, gone by 11) and Mach 0.25–1.8. `drawFinTips` draws each trail as a camera-facing ribbon that
+widens and fades over ~1.2 s, lit like the smoke. Fin rings and radial fins both. `FINTIP_FX = false` turns it off.
+
+- **Drawn after the plumes.** The ribbons don't write depth, so drawn before the plume (with the smoke) they vanished
+  behind the exhaust even where they ran in front of it; they run beside it, a fin span out, so drawing them after is
+  the lesser error.
+- The trail lies along the flight path, and the rocket points up to 15° off it, so trails split away from the exhaust
+  only in a real turn. In a straight climb (AoA ~0) there are none, as it should be.
+- Reference views `refView(101)` an 8° pull and `102` a 15° pull at 1.5 km, the camera square to the turn. They hold the
+  attitude, since the sim weathervanes back within a second.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change

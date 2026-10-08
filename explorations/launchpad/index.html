@@ -4408,7 +4408,16 @@ vec3 tent(sampler2D t,vec2 uv,vec2 px){vec3 c=texture(t,uv).rgb*4.;c+=texture(t,
 void main(){vec2 uv=vNdc*.5+.5;vec3 c=texture(uS,uv).rgb;
  vec3 b=texture(uB1,uv).rgb*.35+tent(uB2,uv,uP4*4.).rgb*.35+tent(uB3,uv,uP4*2.).rgb*.45+tent(uB4,uv,uP4).rgb*.6;
  float L=dot(c,vec3(.3,.5,.2));o=vec4(c+uK*b*pow(1.-L,1.6),1.);}`;   // glow shows over darker surroundings, not on bright sky
-const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
+// fin-tip vapor (aerofx): ribbons of condensed vortex core trailing from loaded fin tips. Vertices: camera-relative
+// position, the side across the ribbon (−1..1), opacity. Lit like the smoke (sun and sky), white, soft-edged.
+const VTR_VS=`#version 300 es
+layout(location=0) in vec3 aP;layout(location=1) in vec2 aS;uniform mat4 uVP;uniform float uFc;out vec2 vS;out float vW;
+void main(){gl_Position=uVP*vec4(aP,1.);vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vS=aS;}`;
+const VTR_FS=`#version 300 es
+precision highp float;in vec2 vS;in float vW;out vec4 o;uniform vec3 uLight,uAmb;uniform float uFc;
+void main(){float e=1.-vS.x*vS.x,a=vS.y*e*e;if(a<.004)discard;vec3 c=vec3(.95,.96,.98)*(uLight*1.1+uAmb*.6);
+ c=clamp((c*.85*(2.51*c*.85+.03))/(c*.85*(2.43*c*.85+.59)+.14),0.,1.);o=vec4(pow(c,vec3(1./2.2))*a,a);gl_FragDepth=log2(1.+vW)*uFc*.5;}`;
+const PSKY=mkProg(QUAD_VS,SKY_FS),PMESH=mkProg(MESH_VS,MESH_FS),PLINE=mkProg(LINE_VS,LINE_FS),PPLUME=mkProg(PLUME_VS,PLUME_FS),PSMOKE=mkProg(SMOKE_VS,SMOKE_FS);const PPLASMA=mkProg(PLASMA_VS,PLASMA_FS);const PIMP=mkProg(IMP_VS,IMP_FS);const PVTR=mkProg(VTR_VS,VTR_FS);const PBLM=mkProg(QUAD_VS,BLOOM_FS),PCOMP=mkProg(QUAD_VS,COMP_FS);const PBOOM=mkProg(IMP_VS,BOOM_FS);const PDUST=mkProg(IMP_VS,DUST_FS);const PCOV=mkProg(QUAD_VS,COV_FS);const PPOOL=mkProg(POOL_VS,POOL_FS);const PVAPOR=mkProg(PLASMA_VS,VAPOR_FS);
 // ---- the small moons (Nyx; Selene stays in SKY_FS): one full-screen ray-cast each, after the sky pass and depth-tested
 // against it. The fragment shader is SKY_FS's helpers (sph, scatter, crat, fbm, detail) plus its own main, so the air in
 // front of a moon seen from the ground is the same air the sky pass draws. SKY_FS itself is left alone.
@@ -4695,6 +4704,41 @@ function bloomEnd(){if(!SCN.on)return;const T=SCN,w=T.w,h=T.h;SCN.on=false;
   gl.uniform1i(c.uS,0);gl.uniform1i(c.uB1,1);gl.uniform1i(c.uB2,2);gl.uniform1i(c.uB3,3);gl.uniform1i(c.uB4,4);
   gl.uniform2f(c.uP4,1/T.chain[3].w,1/T.chain[3].h);gl.uniform1f(c.uK,.9);gl.drawArrays(gl.TRIANGLES,0,3);
   gl.activeTexture(gl.TEXTURE0);gl.depthMask(true);gl.enable(gl.DEPTH_TEST)}
+// ---- fin-tip vapor: each fin tip's recent path, planet-fixed, with how much vapor it shed there. A fin sheds a tip
+// vortex in proportion to its load: the cross-flow component along its normal (so in a turn two fins of a ring trail
+// and two don't), dynamic pressure and angle of attack; condensation needs humid low air and subsonic-to-low-supersonic
+// flow (the same window as the vapor cones, wider in Mach). Render-side; trails last ~1.2 s.
+let FINTIP_FX=true;
+const FTR=new Map(),FTV={buf:null,vao:null,n:0,cap:0};
+function finTips(s){const out=[];for(const p of s.parts){if(!p.on)continue;const k=p.d.kind;
+    if(k==='fins'){const sp=p.d.span,r=(p.d.r||R0)+sp;for(let i=0;i<4;i++){const a=i*Math.PI/2;out.push({key:p,i,pos:[p.pos[0]+r*Math.cos(a),p.y0+p.d.chord*.12,p.pos[2]+r*Math.sin(a)],nrm:[-Math.sin(a),0,Math.cos(a)]})}}
+    else if(k==='rfin'){const a=p.phi||0,sp=p.d.span;out.push({key:p,i:0,pos:[p.pos[0]+sp*Math.cos(a),p.y0+p.h*.12,p.pos[2]+sp*Math.sin(a)],nrm:[-Math.sin(a),0,Math.cos(a)]})}}
+  return out}
+function finTipTick(){if(!FINTIP_FX||mode!=='flight'||!S||!S.alive||S.body!==TELLUS){FTR.clear();return}
+  const h=len(S.r)-TELLUS.R,M=S.mach||0,va=sub(S.v,surfVel(TELLUS,S.r)),sp=len(va);
+  for(const[k,t]of FTR){while(t.pts.length&&simT-t.pts[0].t>1.4)t.pts.shift();if(!t.pts.length)FTR.delete(k)}
+  if(sp<30)return;const vb=qrot(qconj(S.q),mul(va,1/sp)),cr=[vb[0],0,vb[2]],cl=len(cr),aoa=Math.asin(Math.min(1,cl));
+  const env=(1-sstep(5000,11000,h))*(1-sstep(1.3,1.8,M))*sstep(.25,.5,M),base=env*sstep(.02,.12,aoa)*sstep(3e3,15e3,S.qdyn||0);
+  for(const f of finTips(S)){const key=f.key.i*8+f.i,load=cl>1e-6?Math.abs(dot(f.nrm,cr))/cl:0,I=base*load;
+    let t=FTR.get(key);const pw=add(S.r,qrot(S.q,sub(f.pos,S.cm)));
+    if(!t){if(I<.02)continue;t={pts:[]};FTR.set(key,t)}const last=t.pts[t.pts.length-1];
+    if(last&&simT-last.t<1e-4)continue;if(last&&simT<last.t){t.pts.length=0}
+    t.pts.push({pf:toPF(TELLUS,pw,simT),t:simT,I})}}
+function drawFinTips(VP,camW,R,U){if(!FTR.size)return;const th=bodyTheta(TELLUS,simT),c=Math.cos(th),sn=Math.sin(th),v=[];
+  for(const t of FTR.values()){const P=t.pts;if(P.length<2)continue;
+    const W=P.map(q=>{const x=q.pf[0],y=q.pf[1],z=q.pf[2];return[c*x+sn*z-camW[0],y-camW[1],-sn*x+c*z-camW[2]]});
+    for(let i=0;i<P.length-1;i++){const a=W[i],b=W[i+1],d=sub(b,a);const ln=len(d);if(ln<1e-4)continue;
+      const mid=mul(add(a,b),.5),side=norm(cross(d,mid)),age0=simT-P[i].t,age1=simT-P[i+1].t;
+      const w0=.2+1.1*Math.sqrt(age0),w1=.2+1.1*Math.sqrt(age1),al0=Math.min(.85,P[i].I*1.4)*Math.exp(-age0/.6),al1=Math.min(.85,P[i+1].I*1.4)*Math.exp(-age1/.6);
+      const A0=madd(a,side,-w0),A1=madd(a,side,w0),B0=madd(b,side,-w1),B1=madd(b,side,w1);
+      v.push(...A0,-1,al0,...A1,1,al0,...B1,1,al1,...A0,-1,al0,...B1,1,al1,...B0,-1,al1)}}
+  const n=v.length/5;if(!n)return;
+  if(!FTV.vao){FTV.vao=gl.createVertexArray();FTV.buf=gl.createBuffer();gl.bindVertexArray(FTV.vao);gl.bindBuffer(gl.ARRAY_BUFFER,FTV.buf);
+    gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,20,0);gl.enableVertexAttribArray(1);gl.vertexAttribPointer(1,2,gl.FLOAT,false,20,12)}
+  gl.bindVertexArray(FTV.vao);gl.bindBuffer(gl.ARRAY_BUFFER,FTV.buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.DYNAMIC_DRAW);
+  const E=lightEnv(camW),u=PVTR.u;gl.useProgram(PVTR.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);
+  gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
 let PLUME_LIGHT=true;   // false turns the plume light off (A/B)
 const PLT={p:new Float32Array(4),c:new Float32Array(3),g:null};
 const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[false,false]);return makeMesh(a)})();
@@ -5887,6 +5931,7 @@ function render(){
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
+  finTipTick();
   if(near&&(mode==='drive'||mode==='flight'))drawRoverScene(drawMesh,camW);
   if(near&&mode==='flight')drawVapor(VP,camW);
   // ---- map: orbit lines + labels
@@ -5919,6 +5964,9 @@ function render(){
       gl.uniform4f(pu.uS,n,tn,sstep(.02,.25,pa)*sstep(8,2,n),pa);const tt=simT*7+e.i*1.7;gl.uniform1f(pu.uI,(.45+.55*thr)*(.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7)));gl.uniform1f(pu.uOp,P.op);gl.drawArrays(gl.TRIANGLES,0,PLUME.n)}
     if(hits.length&&IMPACT_FX){if(S.body.atm)drawImpact(GF,hits,VP);else drawDust(GF,hits,VP)}
     gl.disable(gl.CULL_FACE);gl.blendFunc(gl.ONE,gl.ONE);gl.useProgram(PMESH.p)}
+  // fin-tip vapor after the plumes: the trails don't write depth, so drawn before they'd vanish behind the exhaust even
+  // where they're in front of it (they run beside it, a fin span out)
+  if(near){drawFinTips(VP,camW,R,U);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false)}
   // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux
   if(PLASMA_FX&&near&&S.alive&&S.qHeat>1.5e4){const p=shipWorld(),va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){
     const f=mul(va,1/vl),k=clamp(Math.log(S.qHeat/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
