@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -270,6 +270,23 @@ window.refView = async (n) => {
       cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)) + yaw; }
     cam.pitch = pitch; cam.dist = dist; const t0 = simT; while (simT - t0 < 0.8) { hold(); advPhys(S); render() }
     window.simulate = () => {}; await settle(); bare(); return 'fin vapor h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km M ' + S.mach.toFixed(2) + ' q ' + (S.qdyn / 1000).toFixed(1) + ' kPa aoa ' + (S.aoa * 57.3).toFixed(1) + ' trails ' + FTR.size;
+  }
+  // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
+  // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]
+  const sp = { 103: [82.5, 0.12, 0, 14], 104: [80, 0.15, 0, 25] };   // yaw: offset from the capsule→stage line
+  if (sp[n]) {
+    const [alt, yaw, pitch, dist] = sp[n];
+    stackDef = ['chute', 'bio', 'shield', 'dec', 't2']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true;
+    const r = TELLUS.R + 95000, dir = norm([0.9, 0.3, 0.3]), v0 = norm(cross([0, 1, 0], dir)), vc = Math.sqrt(TELLUS.mu / r);
+    S.r = mul(dir, r); S.v = add(mul(v0, vc * 1.01), mul(dir, -vc * 0.035)); S.throttle = 0; S.sasMode = 'retro';
+    const Y0 = mul(norm(S.v), -1), X0 = norm(cross(Y0, dir)); S.q = qFromBasis(X0, Y0, cross(X0, Y0)); S.w = [0, 0, 0];
+    let staged = false; const t0 = simT;
+    while (S.alive && len(S.r) - TELLUS.R > alt * 1000 && simT - t0 < 900) { advPhys(S); if (!staged && len(S.r) - TELLUS.R < 85000) { stage(S); staged = true } if (staged) { debrisHeat(); marksTick() } }
+    { const d = debris[debris.length - 1]; if (d) { const f = localFrame(S.r), D = norm(sub(S.r, d.r)), Dv = norm(add(D, mul(f.up, 0.25)));   // the camera beyond the capsule, looking back at the stage
+        cam.pitch = Math.asin(clamp(dot(Dv, f.up), -1, 1)); cam.yaw = Math.atan2(dot(Dv, f.e), -dot(Dv, f.n)) + yaw } }
+    cam.dist = dist; render(); window.simulate = () => {}; await settle(); bare();
+    const d = debris[debris.length - 1], g = d && DEBH.get(d);
+    return 'stage re-entry: capsule ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km q ' + (S.qHeat / 1e3).toFixed(0) + ' kW/m2; stage ' + (d ? ((len(d.r) - TELLUS.R) / 1000).toFixed(1) + ' km, ' + len(sub(d.r, S.r)).toFixed(0) + ' m away, q ' + (g ? g.q / 1e3 : 0).toFixed(0) + ' kW/m2' : 'none');
   }
   if (n === 3) { // Orbiter upper stage in a 200 km orbit over the day side, planet filling the lower half
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); document.getElementById('launch').click();

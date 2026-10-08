@@ -1235,6 +1235,28 @@ widens and fades over ~1.2 s, lit like the smoke. Fin rings and radial fins both
 - Reference views `refView(101)` an 8° pull and `102` a 15° pull at 1.5 km, the camera square to the turn. They hold the
   attitude, since the sim weathervanes back within a second.
 
+## Spent stages re-entering (2026-10-09, aerofx session)
+
+Dropped stages (debris) now heat up and glow on the way down, render-side (`debrisHeat`, `DEBH`): a stagnation heat flux
+per piece from its speed through the air (Sutton–Graves with its widest radius as the nose, the same `SG`/`HEAT_GAIN` as
+the ship), smoothed over 0.5 s. Above 15 kW/m² it gets:
+- **the ship's plasma**, now a function, `drawPlasma(VP, camW, body, pos, q, all)`, drawn per hot piece within 20 km (the
+  piece's geometry from `debrisGeo`; `hullProfile(s, all)` takes detached parts);
+- **char** on its parts (the flight-marks `char`, windward), so a recovered or photographed stage is scorched;
+- **sparks** shed from it (`fxPuff`) and a **dark smoke trail** (planet-fixed puffs, thin at altitude).
+
+What you see depends on the case. A stage dropped during the climb is far below and behind by the time it heats, and
+debris more than 40 km from the ship is removed, so mostly you won't. A stage dropped just before re-entry (a tank or
+service module shed above the atmosphere) comes in beside the capsule. A light empty tank brakes much harder than a
+capsule: in the reference case it is 55 m away at 82.5 km, 360 m at 78 km and 1.8 km at 72 km, while its heating rises
+from 34 to 67 kW/m². Hot and close only briefly.
+
+Reference views `refView(103)` (82.5 km, the stage 55 m behind) and `104` (80 km), the camera beyond the capsule looking
+back along the capsule→stage line.
+
+**Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
+state, and this pass is render-only.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1265,6 +1287,96 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.51 — spin stabilisation (2026-10-08, control session)
+
+The fourth slice of the control review. The rotation step applied τ/I and nothing else: Euler's equations were missing
+their gyroscopic term (ω×Iω). So a spinning stage turned to every torque as if it weren't spinning, never wobbled, and
+kept its angular momentum only to ~1 %. Spin is how stages were held before guidance could (Explorer 1's cluster, the
+Vanguard and Delta third stages, the PAM kick stages), so in the gyro era it is a real tool.
+
+**What changed**
+- **Euler's equations** (`integrateRot`): in the body frame I·dω/dt = τ − ω×(I·ω), integrated RK4, cut into substeps of
+  ≤ 0.05 rad (`ROT_STEP`) when spinning fast; the attitude turns exactly by each substep's ω (it was a first-order
+  quaternion step). The rails attitude step goes through the same function.
+- **Spin-up motors** (`spin`, *Control*, 0.03 t, 1 M): a ring of small solids, 4,000 N·m·s in 1 s about the axis, ~2 rev/s
+  on a 1.25 m kick stage. They fire with the event that lights their stage, or, on a stage without engines, the
+  separation that releases it: whichever leaves it the bottom stage (`spinFire`, from `stage`). Never at a booster
+  separation.
+- **SAS on a spun stage** (`s.spun`, set when the motors fire): the rate loop leaves the roll alone, so it damps the
+  wobble (a nutation damper) instead of eating the spin. A roll key under SAS hands the roll back and SAS spins it down;
+  below 0.5 rad/s it is an ordinary vessel again.
+- **Time warp past 4×** keeps a spin about the axis (spun, or SAS off and ≥ 1 rad/s): the wobble is dropped and the axis
+  stays put. Everything else still stops turning on rails, as before.
+- **HUD** row *Spin* (rpm, the wobble's cone angle). **Builder:** the Control block gives each spin motor's rpm on what
+  is left when it fires (tanks full), and warns under 60 rpm.
+
+**Measured** (`study_spin.mjs`: a Probe core + Tank 1 t + Petrel kick stage in orbit, its thrust 0.5° off the axis,
+burned to empty, 46 s)
+
+| Spin | before: axis off at burnout · Δv off | now: axis off · Δv off | now, SAS on |
+|---|---|---|---|
+| none | 119° · 49° (tumbles) | 121° · 44° | — |
+| 0.5 rev/s | 85° · 2.8° | 12° · 5.5° | |
+| 1 rev/s | 74° · 0.54° | 3.2° · 1.3° | 0.9° · 0.01° |
+| 2 rev/s | 61° · 0.11° | 1.1° · 0.34° | 0.26° · 0.00° |
+| 4 rev/s | 41° · 0.03° | 0.2° · 0.09° | |
+
+Free spin at 2 rev/s for 60 s: angular momentum kept to 0.017 % (was 0.83 %); the wobble turns at 6.186 rad/s in the body
+frame, Euler's (I_axis − I_side)/I_side × spin to four figures (was 0). Spin motors on that stage: the builder says 121
+rpm, flown 122. Physics step: no change beyond noise (Lunar / Heavy 73–81 / 82–89 µs, back to back).
+
+**What it taught**
+- **Spin already half-worked without the physics, which hid the gap.** A body-fixed torque that turns with the stage
+  averages out, so before the change the Δv still went roughly straight at 2–4 rev/s while the axis itself wandered
+  40–60°. Only measuring the axis, not just the Δv, showed the gyroscopic term was missing.
+- **The wheels' stored momentum had to stay out of the gyroscopic term.** With it in (the textbook ω×(Iω + H)), three
+  capsule checks failed: a max-q abort, a crew landing on Nyx, and a plateau landing at 146 m/s under a full main. A pod's
+  100 kN·m·s is a gameplay budget (v1.43), about twenty ISS gyroscopes; as a real gyroscope it pinned the capsule against
+  its chute. Real pod numbers (~1–5 kN·m·s) would make it harmless, but that is a v1.43 retune, not this slice. The cost:
+  angular momentum isn't conserved while wheels hold momentum, as before.
+- **The SAS rate integral leaked the spin away.** It sums in the inertial frame, and on a coning stage that sum picks up
+  a roll part: 22 % of a 1 rev/s spin went into the wheels over one burn. The SAS's roll output is now zeroed whole on a
+  spun stage, integral included.
+- **SAS on a spun stage helps more than spin alone** while the engine burns: the rate loop damps the wobble and steers
+  the gimbal, so the Δv error falls from 1.3° to 0.01° at 1 rev/s.
+
+**Not modelled:** energy dissipation, so no Explorer 1 flat spin (a spin about the long axis is stable here forever);
+yo-yo despin; spinning anything but about the long axis; products of inertia (the diagonal is kept, as before).
+
+**Tests** section `control-4` (3 checks): a free spin keeps its angular momentum and wobbles at Euler's rate; the
+misaligned kick stage tumbles unspun and flies within ½° spun, and SAS keeps the spin; the motors fire at the right
+separation, at the builder's rpm, warp keeps the spin, a roll key takes it back. Mutation-tested: dropping the gyroscopic
+term fails the first two; dropping the roll guard fails the second.
+
+**For other sessions**
+- **everyone flying scripted vessels:** `integrateRot` changed (exact attitude step, gyroscopic term). Every check still
+  passes; tapes are retired by the fingerprint as usual (`spinFire` added to it).
+- **visuals:** `spin` draws as the default banded drum; it could have its nozzles. A spinning stage now actually spins on
+  screen at up to several rev/s.
+- **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
+- **builder:** `spin` is in *Control* by kind.
+
+### v1.51.1 — the wheels won't spin a vessel apart (PLAYTEST #18, #23)
+
+The robot playtester held a pitch key with SAS off: the Orbiter's upper stage reached 23 rad/s in 9 s and tore the pod off
+its tank, with the wheels only 89 % full. A bare pod: 66 rad/s in 2 s, chute torn off; without the fix it goes on to
+500 rad/s. 100 kN·m·s of storage (v1.43) is tens of rad/s on a light stage, so storage never ran out before the structure.
+
+- **The wheels' controller won't drive the vessel past `WHEEL_W`** = 1 rad/s in pitch and yaw, 3 rad/s in roll (body
+  axes; `wheelGive`). Torque that would turn it faster that way is cut to what reaches the limit exactly (at a pod's
+  55 rad/s² a plain cut-off overshot to 1.3 rad/s); slowing down is never refused. In effect the storage is sized to the
+  vessel (≤ I·WHEEL_W from rest), which is the playtest's first suggestion, without per-vessel magic. SAS never asks for
+  more than 0.6 rad/s, so nothing it flies changes; big stacks still run out of storage first (Orbiter 0.512 rad/s, full).
+- Gimbal, fins and RCS are not limited: they spin a stage only while burning, in air, or on gas.
+- **Builder wording (#23):** the negative-stability note shows only when a margin is negative, and now names steerable
+  fins too; "Roll nothing" drops the kN·m.
+- Tests: section `control-5` (1 check, mutation-tested: without the limit, 60 and 503 rad/s).
+- The wheels' momentum is still left out of the gyroscopic term: the limit bounds what the keys put in, not what SAS
+  stores against a steady aero torque (a capsule under its chute), which is where it did harm.
+
+**Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
+deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 
 ## v1.50 — deviation: a dispatch that can't meet its goal hands the flight to you (2026-10-08, economy session)
 
@@ -2906,6 +3018,74 @@ plane and periapsis longitude; that is still open.
 - **"Watch which way round you go" is real.** The same 30×80 km Nyx orbit lasts two Nyx periods when retrograde. Forced
   prograde (`retro: false`), it hits Nyx 61 h after capture. A 100×300 km orbit is stripped within 27 h either way,
   because Nyx's SOI shrinks to ~260 km altitude at Nyx's periapsis.
+
+### Dispatch, the physics side: flown, not rolled (2026-10-08)
+
+This is the bodies half of the dispatch brief (part 3 above). The economy's dispatch (§38–39) left a slot for it:
+`dispatchRun(D, v, c)`. That slot is now filled, so a dispatched contract is **flown** by its procedure. Test § bodies-2
+covers it.
+
+**Deviations in the executor** (`procDev`). A procedure that can't meet its goal now stops, says why, and hands over the
+craft. Before, it flew on and never claimed success. `s.procDev = {kind, why, t, phase}` records what happened. The
+watched game shows "Procedure stopped: … You have control". The kinds:
+- `short`, in the climb: everything burned and apoapsis still low.
+- `short`, at engine cut-off above the air: the propellant aboard is below the circularisation burn. This is the
+  earliest point it's knowable, and the craft is handed over while coasting up to apoapsis, as the economy's
+  deviation state (`devState`) assumed.
+- `short`, while circularising: everything burned with periapsis still below target.
+- `relight`: rolled from part data, not flown (see below).
+- `offcourse`: three mid-course corrections and still no encounter.
+- `nohome`: no burn home within what's aboard. This used to end the procedure silently.
+- `lost`: the procedure's time limit ran out.
+
+**`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
+flight, but in isolation:
+- Whatever is in progress is set aside and put back afterwards: S, the clock, the fleet, debris, the moons' clock
+  (`ORB_T0`) and the hooks.
+- Its record is closed (no costs, missions or logbook), and it records no procedure (`s.noRec`).
+- It launches from the home site at the start of the current day, so the ground under it is where it should be.
+
+It returns one of:
+- `{ok, orb, dv}` in orbit;
+- `{dev, entry}` on a deviation, where `entry` is a registry entry of the craft at that moment and `vesselOf`
+  rebuilds it exactly (position and propellant);
+- `{ok:false, why}` if lost (the reason comes from the flight's last "Destroyed"/"burned up" message).
+
+An ascent takes 0.4–0.7 s of wall time headless, so `dispatchTick` can fly dispatches inline.
+
+**`dispatchRun`**. What the parts data models but the physics doesn't stays a roll, with the dispatch's own seed and in
+the same order as the interim resolver:
+- break-up (certification);
+- an engine that won't light in the ascent (know-how, lines, development);
+- the upper stage's relight. A failed relight is flown up to the circularisation and handed over there.
+
+Running short is no longer rolled from a margin: the physics decides, and the orbit reached is the one flown, not a
+scatter. The same seed flies the same flight. A stored procedure with no guidance to fly falls back to the roll (an old
+save, or the economy's test stubs).
+
+**Dry runs** (`dryRun`, `procAdopt(stack)`). A new design with no procedure of its own tries every stored orbit
+procedure of the same engine-stage count, headless:
+- A different staging structure needs a hand-flown run-through.
+- A borrowed procedure isn't lent on, so there are no chains of borrowing.
+
+The cheapest one that reaches orbit becomes the design's own, **provisional** (`prov: true, from`), with its Δv measured
+on this design. It is dispatchable at once. The design's first real flight replaces it whatever it spends: records only
+improve, but a borrowed one always gives way.
+
+The tests show why this is measured, not ruled:
+- An Orbiter with a tonne more on the upper stage borrows the Orbiter's climb, with 786 m/s to spare.
+- With two tonnes more it has Δv to spare on paper, yet the same climb kills it: lower thrust-to-weight keeps it low
+  and fast, and the pod burns up.
+
+**For the economy:**
+- `procAdopt` is the trajectory office's study. Its days and price are yours: nothing calls it yet, and it needs a
+  button (assembly, or the contract's dispatch line when there's no procedure: "Try our procedures on this design").
+- A provisional procedure should widen the estimate in `dispatchEstimate`. It's marked `prov`, but I left your
+  formula alone.
+- `dispatchEstimate`'s margin is still the formula on the procedure's Δv. A dry run per estimate would cost ~0.5 s per
+  design per contract per render, too slow for the board. Caching a dry run's measured margin per design and target,
+  as part of the study, would make the estimate a measurement.
+- Deviations from real flights now come in more kinds than `relight`/`short`. `takeDeviation` works with any entry.
 
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
