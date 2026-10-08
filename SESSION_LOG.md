@@ -2890,3 +2890,12 @@ computer (every mode, the full loop). Fixed per vessel at launch (`s.av`); sandb
 procedures keep the best. Locked SAS buttons dimmed with a tooltip; the builder's Control block names the avionics.
 A bare pod's 90° turn: 5.6 / 3.7 / 2.8 s by generation; big stacks on wheels turn alike (torque- and storage-limited).
 §37 (2 checks); 314 pass. Fast-forwarded `main` (`42adc71`, not pushed). NOTES § v1.46.
+
+## 2026-10-08 — Launchpad: TESTING.md, a checklist of what still needs a human (control session)
+
+Caio can't playtest for now, so `explorations/launchpad/TESTING.md` lists everything built that nobody has played: 107
+rows in nine areas (what to try, how to get there, what right looks like, owner), compiled from every NOTES section plus
+the control rows. Contract: **sessions add a row when they ship something a person should try**; results go in the `#`
+cell, problems into PLAYTEST.md. Also: registered vessels keep their avionics; the tester's *All tools* gives the best
+avionics (the epoch picker doesn't move the date); control test sections renumbered §38/§39 (they collided with
+terrain's and tester's); `study_control.mjs` kick retuned. 325 pass. `main` at `7dbc698` (not pushed).
