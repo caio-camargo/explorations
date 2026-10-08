@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -82,6 +82,10 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 32 | Visit cities by day and night | Fly near a city; tester date jumps for night | Lights on night side, streets up close, buildings within 60 km; nothing floats or pops | v1.9 / v1.10 | core |
 | 33 | Land pods on slopes, ice, snow, sand, forest | Hop flights at different biomes (radar alt row names the ground) | Slides/tips/leans look natural, no jitter at rest; messages ("Toppled over on a 12° slope of taiga") are fair | v1.37 / v1.39 | terrain |
 | 34 | Test-drive rovers in the Rover yard (home, then lunar trainer) | Program header > Rover yard; default two-seat rover; ramps and side slopes | Driving is fun, not fiddly; stalling at home vs climbing as trainer is understood; tip-overs feel earned | R1 | sats |
+| 110 | Watch the Link row through a flight | Fly Orbiter; watch HUD "Link" on the climb, over the far side, and on re-entry | Names the station in view; "no station in view" past the horizon; "plasma blackout · recorder" in the hot part of re-entry; nothing flickers | v1.48 | terrain |
+| 111 | Splash down far out, and land abroad | Sounding lob 600+ km to sea; another landing in a neighbour's land (tester: relations) | News says fished out / lost beyond reach / sent back / kept; the refund in the logbook follows it; it feels fair, not arbitrary | v1.48 | terrain |
+| 112 | Fly a field-station and an aurora contract | Contracts (science); tester to finish setup | Briefs say where to go; landing on the named ground (radar row names it) completes it; aurora needs a long northward or southward lob | v1.48 | terrain |
+| 113 | Read the disaster news for a while | Tester: date jumps with a camera satellite up | Disasters fit the place (no volcano by a plain, no wildfire in the desert); offers still come | v1.48 | terrain |
 
 ### Visuals & effects
 

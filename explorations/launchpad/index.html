@@ -211,7 +211,10 @@ function addBody(b,parent){b.parent=parent||null;b.children=[];BODIES.push(b);if
   b.soiK=Math.pow(b.mu/parent.mu,0.4);b.soi=o.e?b.rMax*b.soiK:o.a*b.soiK;b.soiMin=o.e?b.rMin*b.soiK:b.soi;b.soiRate=o.e?b.soiK*b.vMax:0;return b}
 addBody(TELLUS);addBody(SELENE,TELLUS);addBody(NYX,TELLUS);
 // position and velocity of b relative to its parent at time t
-function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*t+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
+// The moons run on program time: ORB_T0 is the program time at the flight's t = 0 (set at lift-off; a replayed tape keeps
+// the one it was recorded with; 0 headless, which is the old fixed start). Tellus needs none: flights start on whole days.
+let ORB_T0=0;const ORB_ABS=typeof document!=='undefined';
+function bodyRel(b,t){const o=b.orb,e=o.e,M=b.n*(t+ORB_T0)+o.M0;let E=M;for(let k=0;k<30;k++){const d=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));E-=d;if(Math.abs(d)<1e-15)break}
   const c=Math.cos(E),s=Math.sin(E),q=Math.sqrt(1-e*e),x=o.a*(c-e),y=o.a*q*s,k=b.n*o.a/(1-e*c),vx=-k*s,vy=k*q*c,P=b.P,Q=b.Q;
   return[[x*P[0]+y*Q[0],x*P[1]+y*Q[1],x*P[2]+y*Q[2]],[vx*P[0]+vy*Q[0],vx*P[1]+vy*Q[1],vx*P[2]+vy*Q[2]]]}
 function moonPos(t){return bodyRel(SELENE,t)[0]}
@@ -254,8 +257,12 @@ function coastStep(b,r,v,t,h,pa){if(!pa)return kepler(r,v,h,b.mu);
   [r,v]=kepler(r,madd(v,pa,h/2),h,b.mu);const pb=pertAcc(b,r,t+h);return[r,pb?madd(v,pb,h/2):v]}   // (pertAcc without a threshold: on for the whole orbit)
 const soiAt=(b,t)=>b.orb&&b.orb.e?len(bodyRel(b,t)[0])*b.soiK:b.soi;
 const bodyPos=(b,t)=>!b.parent?[0,0,0]:!b.parent.parent?bodyRel(b,t)[0]:add(bodyPos(b.parent,t),bodyRel(b,t)[0]);
-const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:0;
-const bodyOmega=b=>b===TELLUS?b.rot:0;
+// Selene is tidally locked (sats session, rovers R3): it turns once per orbit, keeping its near side (planet-fixed -X)
+// toward Tellus. So a lunar day lasts an orbit (about 13 Tellus days), and Tellus stands still in the near side's sky.
+SELENE.lock=true;
+const lockTh=(b,t)=>{const p=bodyRel(b,t)[0];return Math.atan2(-p[2],p[0])};
+const bodyTheta=(b,t)=>b===TELLUS?b.th0+b.rot*t:b.lock?lockTh(b,t):0;
+const bodyOmega=b=>b===TELLUS?b.rot:b.lock?(b.lockW??(b.lockW=(()=>{const T=ORB_T0;ORB_T0=0;let d=lockTh(b,1)-lockTh(b,0);ORB_T0=T;return d-2*Math.PI*Math.round(d/(2*Math.PI))})())):0;
 const surfVel=(b,r)=>{const w=bodyOmega(b);return[w*r[2],0,-w*r[0]]};   // ω×r with ω along +Y
 const toPF=(b,v,t)=>rotY(v,-bodyTheta(b,t));
 const fromPF=(b,v,t)=>rotY(v,bodyTheta(b,t));
@@ -703,7 +710,8 @@ function rebuildShape(s){
 function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&groupFuel(s,s.grp[p.i])>1e-9)}
 function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
-function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm&&h<b.atm*0.5)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
+// speeds against the surface low in the air, or near an airless body's ground (it turns: Selene's equator moves at 6 m/s)
+function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm?h<b.atm*0.5:h<0.03*b.R)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
 const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // ---- avionics generations (control session). SAS grows with the computing eras (COMP_ERAS): a gyro autopilot that only
 // holds an attitude, then an analog autopilot that can also follow the velocity vector (mainframes), then a guidance
@@ -1454,6 +1462,39 @@ const aglAt=(b,r,t)=>len(r)-b.R-groundAlt(b,toPF(b,r,t));   // height above the 
 const mainChuteOK=(b,h,r,t)=>h<TERR_TOP+MAIN_AGL&&aglAt(b,r,t)<MAIN_AGL;   // h is the sea-level height (a cheap early out)
 // the gap between the ship's bottom and the ground under it (the warp's time-to-ground uses this)
 const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
+// ---- recovery by geography (slice D): a vessel that came home whole still has to be collected. At sea, a ship must
+// reach it: the recovery fleet's range from the launch point when built, otherwise local boats (RECOVER_LOCAL). On our
+// land or no one's, it's trucked home. On another power's land it depends on relations: friendly powers return it,
+// tense ones return it worn after long talks, hostile ones keep it. The factor scales the refurbishment refund.
+const RECOVER_LOCAL=200e3;
+function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};const u=norm(s.pf);
+  if(s.water){const from=R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,
+      lv=typeof facLv==='function'?facLv('fleet'):0,reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);
+    return d<=reach?{factor:1,kind:'sea',why:`fished out of the sea ${(d/1e3).toFixed(0)} km out`}:{factor:0,kind:'lost',why:`came down ${(d/1e3).toFixed(0)} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
+  const p=powerAt(u);if(!p||p.i===HOME)return{factor:1,kind:'land',why:''};
+  const rel=relOf(HOME,p.i);
+  if(rel>=0)return{factor:1,kind:'returned',why:`landed in ${p.name}, which sends it back`};
+  if(rel>=-0.2)return{factor:0.8,kind:'returned',why:`landed in ${p.name}: returned, worn, after long talks`};
+  return{factor:0,kind:'kept',why:`landed in ${p.name}, which keeps it`}}
+// ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
+// above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
+// low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
+const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,BLACKOUT_Q=5e4,gsMasks=new Map();
+function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
+  const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
+  for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
+      const e=Math.atan2(groundAlt(TELLUS,q)-h0-d*d/(2*R),d);if(e>mx)mx=e}m.el[a]=mx}
+  gsMasks.set(key,m);return m}
+// does station st see the planet-fixed position pf (a vector from Tellus's centre)?
+function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),dl=len(d);if(dl<1)return true;
+  const sinE=dot(d,st.u)/dl;if(sinE<STA_MIN)return false;
+  const f=siteFrame(st.u),az=Math.atan2(dot(d,f.e),dot(d,f.n)),i=Math.round(((az+2*Math.PI)%(2*Math.PI))/(2*Math.PI)*GS_AZ)%GS_AZ;
+  return Math.asin(clamp(sinE,-1,1))>m.el[i]}
+// the flight's radio link: the first station that sees the vessel, or a plasma blackout during re-entry heating. Away
+// from Tellus (Selene, Nyx) the deep-space antennas are assumed to hold the link.
+function linkOf(s){if(s.body!==TELLUS)return{ok:true,st:null,why:'deep space'};if(s.landed)return{ok:true,st:null,why:'on the ground'};
+  if(s.qHeat>BLACKOUT_Q)return{ok:false,st:null,why:'plasma blackout'};
+  const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf))return{ok:true,st,why:''};return{ok:false,st:null,why:'no station in view'}}
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;
@@ -1532,7 +1573,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;PROG.day+=d;worldTick(d)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);rvFieldTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -1674,7 +1715,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -1687,14 +1728,15 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
   if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
     if(b===TELLUS&&R.logSpace&&h<b.atm&&dot(s.v,s.r)<0){const sp=len(sub(s.v,surfVel(b,s.r)));if(sp>R.vEntry)R.vEntry=sp}}
-  if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h}
+  if(b===TELLUS){R.apex=Math.max(R.apex,h);if(sci&&h<b.atm&&h>=0)R.bands[Math.floor(h/1e4)]=1;if(sci&&h>R.apexSci)R.apexSci=h;if(sci&&h>AURORA_ALT&&Math.abs(norm(s.pf)[1])>Math.sin(AURORA_LAT))R.aurora=1}
   if(phys&&sci&&s.qdyn>0)for(const p of s.parts)if(p.on&&s.qdyn>(R.qPart[p.d.key]||0))R.qPart[p.d.key]=s.qdyn;   // the worst q each part flew through, instrumented
   if(phys&&s.thrust>0)R.dv+=s.thrust/s.mass*dt;   // Δv actually spent, for the logbook
   if(phys){for(const p of s.order)if(p.on){if(p.sf1>(p.wL||0))p.wL=p.sf1;const q=p.parent;if(p.sf2>(q.wL||0))q.wL=p.sf2}
     for(const p of s.parts)if(p.on){const f=p.T/p.d.Tmax;if(f>(p.wT||0))p.wT=f}
     if(R.launched)khMark(s,R)}
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
-    for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(R.sf[k]||0))R.sf[k]=f}}
+    if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
+    for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv);logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
@@ -1704,7 +1746,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
       if(h>b.atm)R.bioSpace=true;
       if(R.gMax>G_LIM)why=`was hurt by ${R.gMax.toFixed(1)} g`;else if(R.cabin>CABIN_MAX)why=`overheated (cabin ${R.cabin.toFixed(0)} K)`;else if(simT>AIR_S&&!s.landed)why='ran out of air'}
     if(why){R.bioOK=false;R.bioWhy=why;HOOK.news(`${R.pet} ${why}. The program pauses to reflect`,'bad');HOOK.msg(`Passenger ${why}`)}}
-  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
+  if(s.landed&&!R.landed&&s.alive&&b===TELLUS){R.landed=true;R.recSci=!!sci;R.landBiome=s.water?0:biomeAt(s.pf).id;R.landDist=Math.acos(clamp(dot(norm(s.pf),(s.site||SITES[0]).u),-1,1))*b.R;
     if(R.logSpace){if(R.vEntry>0)logNote(s,'entry',R.vEntry);logNote(s,'pad',R.landDist)}if(R.hotT>350)logNote(s,'heat',{T:R.hotT,part:R.hotPart});if(R.bio&&R.bioOK&&R.gMax>0)logNote(s,'paxg',R.gMax);
     if(sci){const ks=Object.keys(R.bands).filter(k=>!PROG.atm[k]);for(const k of ks)PROG.atm[k]=1;
       if(ks.length)HOOK.news(`Air samples from ${ks.map(k=>k*10+'–'+(+k+1)*10+' km').join(', ')} analysed: impact predictions tighten`,'ok')}
@@ -1739,6 +1781,7 @@ function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),d
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
 // a flight ends when it's reverted or abandoned; the range streak and the certification summary are settled then
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+  if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
   if(R.drops.length){const clean=R.drops.every(v=>v.kind!=='city'&&v.kind!=='near');PROG.streak=clean?PROG.streak+1:0}
@@ -1751,8 +1794,9 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   if(R.bio&&!R.bioOK&&!R.tourist)failHit(-8,`a passenger flight went wrong`);
   if(R.tourist&&!R.bioOK){standAdd('tour',-40);opAdd(HOME,-10);HOOK.news(`Space tourism in crisis after ${R.pet} ${R.bioWhy}; bookings cancelled`,'bad')}
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
-  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0);let back=0,full=0,worst=null;
-    for(const p of ps){const w=wearOf(p,tv),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
+  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0),rc=recoveryOf(s,R);let back=0,full=0,worst=null;R.recovery=rc.kind;   // recovery by geography (terrain session)
+    if(rc.why)HOOK.news(`Recovery: ${rc.why}`,rc.factor>=1?'ok':rc.factor>0?'warn':'bad');
+    for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
   const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
@@ -2133,6 +2177,13 @@ const standOf=k=>(PROG.stand||{})[k]??50;
 function standAdd(k,d){PROG.stand=PROG.stand||{};PROG.stand[k]=clamp(standOf(k)+d,0,100)}
 const kmS=x=>(x/1e3).toFixed(0);
 // contract types: who offers them, when they unlock, how they're parameterised, and the check against a flight record
+// geography for contracts (terrain session): the land biomes worth a field station, with how far the nearest is from
+// the first site (≤ 1,200 km, not the pad's own); and how far the auroral zone (|lat| > 55°) is from it
+const AURORA_ALT=1e5,AURORA_LAT=55*Math.PI/180,FIELD_IDS=[1,7,8,10,11,12,13,14];let fieldMemo=null;
+function fieldBiomes(){if(fieldMemo)return fieldMemo;const u0=SITES[0].u,own=biomeAt(u0).id,near={};
+  for(let k=1;k<=60;k++)for(let a=0;a<24;a++){const id=biomeAt(alongAz(u0,a*Math.PI/12,k*20e3/TELLUS.R)).id;if(near[id]==null)near[id]=k*20}
+  fieldMemo=FIELD_IDS.filter(b=>b!==own&&near[b]!=null).map(b=>({b,km:near[b]}));if(!fieldMemo.length)fieldMemo=[{b:own===10?7:10,km:1200}];return fieldMemo}
+const polarKm=()=>Math.max(0,AURORA_LAT-Math.asin(Math.abs(SITES[0].u[1])))*TELLUS.R/1e3;
 const CT={
   apex:{src:['sci'],gen:R=>{const lo=10*(1+(R()*6|0));return{lo,hi:lo+15,pay:6+lo/5,dur:60+R()*60}},
     title:p=>`Sounding experiment, ${p.lo}–${p.hi} km`,brief:p=>`An instrument package with an apex between ${p.lo} and ${p.hi} km, recovered.`,
@@ -2157,6 +2208,13 @@ const CT={
   image:{src:['sci','com','gov'],req:'beeper',gen:R=>{const ci=R()*CITIES.length|0,res=[2,3,5,8][R()*4|0];return{ci,res,pay:12+36/res,dur:40+R()*50}},
     title:p=>`${p.dis?p.dis+': ':''}Image ${CITIES[p.ci].name}`,brief:p=>`Photograph ${CITIES[p.ci].name} at ${p.res} m or better, in daylight under clear skies, and downlink it. Needs a satellite with a camera and an antenna in an orbit that passes over.`,
     ok:()=>false},
+  // geography (terrain session): land an instrument package on a given kind of ground, or fly one through the auroral zone
+  field:{src:['sci'],gen:R=>{const f=fieldBiomes(),x=f[R()*f.length|0];return{b:x.b,km:x.km,pay:Math.round(10+x.km/25),dur:80+R()*60}},
+    title:p=>`Field station: ${BIOMES[p.b]}`,brief:p=>`Land an instrument package on ${BIOMES[p.b]} (the nearest is about ${p.km} km from the pad) and recover it.`,
+    ok:(R,p)=>R.landed&&R.recSci&&R.landBiome===p.b},
+  aurora:{src:['sci'],gen:R=>({lat:AURORA_LAT*180/Math.PI,pay:Math.round(14+polarKm()/40),dur:80+R()*60}),
+    title:()=>`Aurora sounding`,brief:p=>`An instrument package above ${AURORA_ALT/1e3} km poleward of ${p.lat}° (from a high-latitude site, or a long lob), recovered.`,
+    ok:R=>R.recSci&&!!R.aurora},
   lift:{src:['com','gov'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*7|0));return{m,pay:22*m,dur:90+R()*90}},
     title:p=>`${p.m} t to orbit`,brief:p=>`${p.m} t of mass simulators in a stable orbit.`,ok:(R,p)=>R.lift>=p.m-1e-9},
   // tourism: passengers who paid a lot and expect to come home comfortable
@@ -2945,15 +3003,23 @@ function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c
 // keep the pictures until they pass over a ground station, then downlink them. Working ones also sell imagery.
 const DIS=[['Floods','Floods along the river at #: relief agencies ask for pictures from space'],['Wildfire','Wildfire near #: firefighters want to know which way it is heading'],
   ['Volcano','Volcano near # wakes up grumpy; vulcanologists request a look'],['Storm','A storm parks itself over #; insurers request photographs, urgently'],['Locusts','Locust swarm reported near #; farmers want maps']];
+// disasters follow the land (terrain session): what can befall a city depends on the ground around it (sampled out to
+// 120 km): floods on coasts and wetlands, wildfire in forest and savanna, volcanoes near volcanic ground, storms on warm
+// coasts, locusts on grass, steppe and desert edges
+const HAZ={Floods:g=>g.coast||g.has[14]||g.wet>0.7,Wildfire:g=>g.has[3]||g.has[5]||g.has[9],Volcano:g=>g.has[12],
+  Storm:g=>g.coast&&g.T>18,Locusts:g=>g.has[4]||g.has[6]||g.has[9]||g.has[10]};let hazMemo=null;
+function cityGround(c){const b0=biomeAt(c.u),g={has:{},coast:false,T:b0.T,wet:b0.wet};g.has[b0.id]=1;
+  for(const km of[25,60,120])for(let a=0;a<8;a++){const id=biomeAt(alongAz(c.u,a*Math.PI/4,km*1e3/TELLUS.R)).id;g.has[id]=1;if(!id&&km<=60)g.coast=true}return g}
+function disCities(dis){if(!hazMemo){hazMemo={};const gs=CITIES.map(cityGround);for(const k in HAZ)hazMemo[k]=gs.map((g,i)=>HAZ[k](g)?i:-1).filter(i=>i>=0)}return hazMemo[dis]||[]}
 function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0;
-    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)>=STA_MIN))n++}
+    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>gsSees(st,pf)))n++}
     if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0)));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
-  if(R()<1-Math.exp(-d/45)){const ci=R()*CITIES.length|0,[dis,head]=DIS[R()*DIS.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
+  if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
     if(can&&PROG.offers.length<BOARD_MAX+2){PROG.cseq=(PROG.cseq||0)+1;const res=[3,5,8][R()*3|0];
       PROG.offers.push({id:PROG.cseq,type:'image',src:'gov',client:c.power?c.power.i:HOME,p:{ci,res,dis,pay:Math.round(25+60/res),dur:4+R()*3},posted:PROG.day,expires:PROG.day+2})}}
@@ -2964,7 +3030,7 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
       for(const c of want){if(q.pending.includes(c.id))continue;const u=CITIES[c.p.ci].u,dd=Math.acos(clamp(dot(un,u),-1,1))*TELLUS.R;
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
-      if(q.ant&&q.pending.length)for(const st of GS){if(dot(norm(sub(pf,mul(st.u,TELLUS.R))),st.u)<STA_MIN)continue;
+      if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;
         for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
 // ---- the logbook: what the program has *measured*. Nothing here is given: each fact is filled in by a real flight, with
 // who flew it and when, and improved by better flights (the old values kept, struck through in the notebook). Records
@@ -3160,7 +3226,7 @@ function passScore(p,B,pass,home,opt){const L=p.find(x=>x.b===B);if(L){let e=Mat
 function transferNode(s,X,ph,B,b){const o=B.orb,Pv=B.P,Qv=B.Q,p=o.a*(1-o.e*o.e),nu1=Math.atan2(-Pv[1],Qv[1]),cands=[nu1,nu1+Math.PI].map(nu=>({nu,r:p/(1+o.e*Math.cos(nu))}));
   const nd=cands[cands[0].r>cands[1].r?0:1],E=2*Math.atan(Math.sqrt((1-o.e)/(1+o.e))*Math.tan(nd.nu/2)),Mn=E-o.e*Math.sin(E),u=norm(add(mul(Pv,Math.cos(nd.nu)),mul(Qv,Math.sin(nd.nu))));
   const r0=len(s.r),a=(r0+nd.r)/2,tof=Math.PI*Math.sqrt(a**3/b.mu),vc=Math.sqrt(b.mu/r0),dvH=Math.sqrt(b.mu*(2/r0-1/a))-vc,tb=dvH/Math.max(engAcc(s),1e-3);
-  const TP=2*Math.PI/B.n;let tN=(Mn-o.M0)/B.n;while(tN-tof<simT+1800+tb)tN+=TP;while(tN-tof-TP>simT+1800+tb)tN-=TP;   // the next passage we can still make
+  const TP=2*Math.PI/B.n;let tN=(Mn-o.M0)/B.n-ORB_T0;while(tN-tof<simT+1800+tb)tN+=TP;while(tN-tof-TP>simT+1800+tb)tN-=TP;   // the next passage we can still make
   // when we're opposite the node, on the real parking orbit (its period, not 2πr/v from where we happen to be: over a day of
   // waiting that difference was tens of degrees)
   const tD=tN-tof,el=elements(s.r,s.v,b.mu),ang=r=>Math.atan2(-r[2],r[0]),nuDep=ang(mul(u,-1))-ang(el.P);let t1=simT+timeToNu(el,nuDep);
@@ -3205,11 +3271,11 @@ const MP={
     if(X.sub==='deorbit'){if(elements(s.r,s.v,B.mu).pe-B.R<=(ph.pe??5e3)){s.throttle=0;X.sub=null;return false}burnTo(s,X,mul(s.v,-1));return false}
     if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(s.v,-1),5);if(!X.fine&&simT>=X.wake-1){X.fine=1;X.tBurn=simT+Math.max(0,timeToNu(elements(s.r,s.v,B.mu),0)-60)}if(simT>=X.tBurn-1e-6){X.sub='go';X.wake=null}return false}
     if(s.landed){s.throttle=0;X.noAuto=true;return true}
-    const up=norm(s.r),vv=dot(s.v,up),vhv=sub(s.v,mul(up,vv)),vh=len(vhv),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot,g=B.mu/dot(s.r,s.r),A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
+    const up=norm(s.r),vs=sub(s.v,surfVel(B,s.r)),vv=dot(vs,up),vhv=sub(vs,mul(up,vv)),vh=len(vhv),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot,g=B.mu/dot(s.r,s.r),A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
     // drop a stage that can't finish the descent while there's height to switch, and finish on the next
     if(vh<=15&&plan.length>1&&hb>1500&&dvRemaining(s).cur<1.15*Math.sqrt(2*g*hb+vv*vv)){stage(s);return false}
     if(typeof DEBUG_PROC!=="undefined"&&(X.dbgT==null||simT-X.dbgT>(hb<4000?0.5:30))){X.dbgT=simT;HOOK.msg(`land: h ${(hb/1e3).toFixed(2)} km r-h ${((len(s.r)-B.R)/1e3).toFixed(2)} vv ${vv.toFixed(1)} vh ${vh.toFixed(1)} thr ${s.throttle.toFixed(2)} nose·up ${dot(qrot(s.q,[0,1,0]),up).toFixed(2)} stage dv ${dvRemaining(s).cur.toFixed(0)} plan ${plan.length} A ${A.toFixed(2)}`)}
-    if(vh>(X.braked?40:15)){burnTo(s,{noAuto:plan.length<2},mul(s.v,-1),10);return false}X.braked=true;   // braking: kill the orbital speed (once; after that the tilt below handles what drift is left)
+    if(vh>(X.braked?40:15)){burnTo(s,{noAuto:plan.length<2},mul(vs,-1),10);return false}X.braked=true;   // braking: kill the speed over the ground (once; after that the tilt below handles what drift is left)
     aimAt(s,sub(up,mul(vhv,0.08)),25);
     const Au=A*Math.max(0.2,dot(qrot(s.q,[0,1,0]),up));   // only the upward part of the thrust stops the fall (a heavy stack on wheels wanders while it coasts)
     if(hb>30){const need=vv<0?vv*vv/(2*Math.max(hb-15,1))+g:0;s.throttle=need>0.7*Au?Math.min(1,need/Au):0}   // suicide burn, with 30 % in hand
@@ -3274,7 +3340,7 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
     else{const k=Math.min(budget,o[1]-pl.n);for(let j=0;j<k;j++)advPhys(s);pl.n+=k;budget-=k;if(pl.n>=o[1]){pl.i++;pl.n=0}}}
   return pl.i<ops.length&&s.alive}
 // the tape so far, when the pilot takes over mid-replay (recording continues from there)
-function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
+function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.orbT0=pl.tape.orbT0;T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
   for(let i=T.ops.length-1;i>=0;i--)if(T.ops[i][0]==='C'){T.lastK=JSON.stringify(T.ops[i][1]);break}return T}
 // ============================================================ rovers (sats session; NOTES § "Rovers: plan", R1)
 // A rover is its own kind of vessel, designed in the Rover yard rather than the rocket builder (rovers lie down, rocket
@@ -3337,7 +3403,8 @@ function rvStats(d){const G=rvGeom(d),Wk=G.Wk,D=Math.PI/180;
     const ePm=crr*G.m*g/RV_ETA+RV_HOTEL/vTop;
     return{g:gk,h,climb:lims[0][0]/D,lim:lims[0][1],vTop,turnR:Rt,vTurn:Math.sqrt(Math.min(aTip,aSl)*Rt),turnBy:aTip<aSl?'tips':'slides',range:G.kWh*3.6e6/ePm/1000,
       tipSide:Math.atan(side/h)/D,tipFwd:Math.atan(fwd/h)/D,tipBack:thB/D}};
-  return{mass:G.m,crew:G.crew,kWh:G.kWh,track:G.track,base:G.base,clear:(1-RV_SAG)*Wk.tr+Wk.r,T:at(1,SURF[6]),S:at(RV_GS,SURF_MOON)}}
+  const pw=rvPow(d),nightH=Math.PI/SELENE.n/3600,need=pw.rtg?0:(RV_SLEEP+RV_HEAT)*nightH*3600;   // Selene's night: half an orbit
+  return{mass:G.m,crew:G.crew,kWh:G.kWh,track:G.track,base:G.base,clear:(1-RV_SAG)*Wk.tr+Wk.r,T:at(1,SURF[6]),S:at(RV_GS,SURF_MOON),sol:pw.sol,rtg:pw.rtg,hg:pw.hg,nightH,nightKWh:need/3.6e6}}
 
 // the test yard beside the pad: three ramps (10°, 20°, 30°) and two side slopes (20°, 35°), all 2.5 m high, on the
 // concrete apron 320 m east of the pad. Yard axes: x east, z north; every mound has 40° shoulders.
@@ -3382,7 +3449,7 @@ function rvStep(R,dt){const G=R.G,Wk=G.Wk,b=R.body;if(R.wet)return;R.t+=dt;
   const up=norm(R.p),M=G.m,mu=R.su.mu;R.v=madd(R.v,up,-R.gk*b.mu/dot(R.p,R.p)*dt);
   const Iinv=v=>{const l=qrot(qconj(R.q),v);return qrot(R.q,[l[0]/G.I[0],l[1]/G.I[1],l[2]/G.I[2]])},
     imp=(r,j)=>{R.v=madd(R.v,j,1/M);R.w=add(R.w,Iinv(cross(r,j)))},meff=(r,u)=>{const a=cross(r,u);return 1/(1/M+dot(a,Iinv(a)))},vel=r=>add(R.v,cross(R.w,r));
-  const down=qrot(R.q,[0,-1,0]),fwd=qrot(R.q,[0,0,1]),vf=dot(R.v,fwd),drive=R.E>0&&!R.in.brake?R.in.thr:0,brake=R.in.brake||!R.in.thr&&Math.abs(vf)<.25;
+  const down=qrot(R.q,[0,-1,0]),fwd=qrot(R.q,[0,0,1]),vf=dot(R.v,fwd),drive=R.E>0&&!R.dead&&!R.in.brake?R.in.thr:0,brake=R.dead||R.in.brake||!R.in.thr&&Math.abs(vf)<.25;
   // the springs first, every wheel; then grip, solved together over a few passes (one wheel's grip moves the others'
   // contact points), each wheel's total kept inside its friction circle
   let Pd=0,onG=0;const K=[];
@@ -3409,7 +3476,7 @@ function rvStep(R,dt){const G=R.G,Wk=G.Wk,b=R.body;if(R.wet)return;R.t+=dt;
     const A=madd(O.c,O.u,y),a=add(qrot(qconj(R.q),sub(A,R.p)),G.cm),hx=G.track/2+Wk.w/2,hz=G.C.L/2,c=[clamp(a[0],-hx,hx),a[1],clamp(a[2],-hz,hz)],dd=sub(a,c),dl=Math.hypot(dd[0],dd[2]);
     let n,dep;if(dl>1e-6){dep=O.r-dl;n=qrot(R.q,[-dd[0]/dl,0,-dd[2]/dl])}else{const ex=hx-Math.abs(a[0]),ez=hz-Math.abs(a[2]);dep=O.r+Math.min(ex,ez);n=qrot(R.q,ex<ez?[-Math.sign(a[0])||1,0,0]:[0,0,-Math.sign(a[2])||1])}
     if(dep<=0)continue;n=norm(madd(n,O.u,-dot(n,O.u)));const r=qrot(R.q,sub(c,G.cm)),jn=Math.max(0,-1.2*dot(vel(r),n)+.1*dep/dt)*meff(r,n);if(jn>0)imp(r,mul(n,jn))}
-  R.E=Math.max(0,R.E-(Pd+RV_HOTEL)*dt);
+  R.E=Math.max(0,R.E-Pd*dt);
   R.p=madd(R.p,R.v,dt);const wl=len(R.w);if(wl>1e-9)R.q=qnorm(qmul(qaxis(mul(R.w,1/wl),wl*dt),R.q));
   // the test record: distance on the ground, top speed, the steepest slope climbed (pitch smoothed over a second), tip-overs
   const sp=len(R.v),pit=Math.asin(clamp(dot(fwd,up),-1,1)),tilt=Math.acos(clamp(dot(qrot(R.q,[0,1,0]),up),-1,1));R.pitchS+=(pit-R.pitchS)*Math.min(1,dt);
@@ -3483,15 +3550,56 @@ function rvObsOf(vs){return vs.filter(v=>v&&v.alive&&v.landed&&v.pf).map(v=>{con
 // the same for objects left landed (registry entries: their saved shape), within 300 m of pf on body b
 function rvObsQ(b,pf){return landedUp().filter(q=>q.bodyName===b.name&&q.shape&&len(sub(q.pf,pf))<300).map(q=>{const u=norm(q.pf),Ul=qrot(q.ql,[0,1,0]);let r=.5,h=1;
   for(const o of q.shape){const d=PARTS[o.k];if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
-function rvFlight(dt){for(const R of FROV){if(R.wet)continue;if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
+function rvFlight(dt){for(const R of FROV){if(R.wet)continue;rvPowerStep(R,dt,rvSunPF(R.body,bodyTheta(R.body,simT)));if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
 // at the flight's end, every rover still on its wheels (or not) stays where it is
-const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped});
+const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead});
 function rvEnd(){PROG.rvOut=PROG.rvOut||[];for(const R of FROV){if(R.wet)continue;R.dep=null;PROG.rvOut.push(rvEntry(R))}FROV.length=0;RVA=null}
 function rvFromEntry(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,R=rvNew(e.d,b,e.p,[0,0,1],{yard:rvYardNear(b,e.p)});
-  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped});return R}
+  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false});return R}
 // rovers left in the field come back into a flight on the same body within LOAD_R of the vessel
 function rvLoadNear(s){const L=PROG.rvOut||[];if(!s||!s.alive||!L.length)return 0;const pf=toPF(s.body,s.r,simT);let n=0;
   for(let i=L.length-1;i>=0;i--){const e=L[i];if(e.bodyName!==s.body.name||len(sub(e.p,pf))>LOAD_R)continue;L.splice(i,1);FROV.push(rvFromEntry(e));n++}return n}
+// ---- R3: power and contact (sats session; NOTES § "R3 built")
+// Power: solar panels (flat on the deck: their output follows the sun's height over the rover's own deck, nothing below
+// the horizon) and an RTG (steady, and it keeps the rover warm). The draw: 30 W of electronics awake, 10 W asleep, and
+// on an airless body at night a 25 W heater unless an RTG keeps it warm. A battery that runs flat in the night with no
+// RTG means the rover froze: it is lost. Selene's night lasts half an orbit (about 52 h); between flights the battery is
+// worked out over program time, half an hour at a time (rvFieldTick).
+// Contact: a rover is driven by radio. On Tellus, always. Elsewhere, directly with a high-gain antenna while Tellus is
+// over its horizon, or through a relay it can see: a lander or a landed object of yours with an antenna that sees Tellus
+// itself, within radio horizon (√(2Rh₁)+√(2Rh₂), antenna heights). Commands arrive a light-time round trip late. A crew
+// riding it needs no radio.
+RV_IT.sol={name:'Solar panels',m:18,W:330,sz:[.9,.06,1.1]};
+RV_IT.rtg={name:'RTG',m:35,rtgW:60,sz:[.35,.5,.35]};
+const RV_HEAT=25,RV_SLEEP=10,RV_HG=1.2,RV_LG=.8,RV_CLIGHT=299792458;
+const rvPow=d=>{const G=rvGeom(d);let sol=0,rtg=0,hg=false;for(const t of G.items){sol+=t.it.W||0;rtg+=t.it.rtgW||0;if(t.k==='ant')hg=true}return{sol,rtg,hg}};
+// the body's turn at program time T (a moon's from its orbit at T itself, whatever flight is running)
+function thAbs(b,T){if(b===TELLUS)return absTh(T);if(!b.lock)return 0;const s=ORB_T0;ORB_T0=0;const th=lockTh(b,T);ORB_T0=s;return th}
+const rvSunPF=(b,th)=>rotY(SUN_DIR,-th);   // the sun's direction in the body's own frame, when it has turned th
+function rvPowerStep(R,dt,sun){const P=R.pw||(R.pw=rvPow(R.d)),u=norm(R.p),el=dot(u,sun),night=el<0,cold=!R.body.atm&&night&&!P.rtg;
+  const gen=(el>0?P.sol*Math.max(0,dot(qrot(R.q,[0,1,0]),sun)):0)+P.rtg,use=(R.sleep?RV_SLEEP:RV_HOTEL)+(cold?RV_HEAT:0);
+  Object.assign(R,{pGen:gen,pUse:use,sunEl:Math.asin(clamp(el,-1,1))*180/Math.PI});if(R.dead)return;
+  R.E=clamp(R.E+(gen-use)*dt,0,R.Emax);if(R.E<=0&&cold){R.dead=true;R.v=[0,0,0];R.w=[0,0,0];HOOK.msg(`${R.name||'The rover'} froze in the night: its battery ran flat with no heat`)}}
+// between flights: every rover left in the field, over program time T0 → T1
+function rvFieldTick(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead)continue;const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,P=rvPow(e.d),G=rvGeom(e.d),Emax=G.kWh*3.6e6,u=norm(e.p),up=qrot(e.q,[0,1,0]);
+  for(let T=T0;T<T1;T+=1800){const h=Math.min(1800,T1-T),sun=rvSunPF(b,thAbs(b,T+h/2)),el=dot(u,sun),cold=!b.atm&&el<0&&!P.rtg;
+    e.E=clamp(e.E+((el>0?P.sol*Math.max(0,dot(up,sun)):0)+P.rtg-RV_SLEEP-(cold?RV_HEAT:0))*h,0,Emax);
+    if(e.E<=0&&cold){e.dead=true;HOOK.news(`${e.name} froze in the night on ${e.bodyName}: its battery ran flat with no heat`,'bad');break}}}}
+// who can hear the rover: {ok, via ('crew' | 'home' | a relay's name), d (m, to the relay), delay (s, the round trip)}
+function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',delay:0};if(R.d&&rvGeom(R.d).crew&&R.crewed!==false&&!R.remote)return{ok:true,via:'crew',delay:0};
+  const b=R.body,P=R.pw||(R.pw=rvPow(R.d)),w=add(bodyPos(b,t),fromPF(b,R.p,t)),up=norm(fromPF(b,R.p,t)),toT=sub(bodyPos(TELLUS,t),w),lt=2*len(toT)/RV_CLIGHT;
+  if(P.hg&&dot(up,norm(toT))>Math.sin(1*Math.PI/180))return{ok:true,via:'home',delay:lt};
+  const hR=P.hg?RV_HG:RV_LG;let best=null;
+  for(const q of relays||[]){if(q.body!==b)continue;const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
+    const qu=norm(fromPF(b,q.pf,t)),qT=norm(sub(bodyPos(TELLUS,t),add(bodyPos(b,t),fromPF(b,q.pf,t))));if(dot(qu,qT)<Math.sin(Math.PI/180))continue;
+    if(!best||d<best.d)best={ok:true,via:q.name,d,delay:lt}}
+  return best||{ok:false,via:null,delay:lt}}
+// relays on a body: vessels in this flight and objects left landed, with an antenna (their base, height, name)
+function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.landed||!v.pf||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
+  for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant'))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),name:q.name})}return out}
+// a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
+function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
+  (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -3507,7 +3615,7 @@ in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
-uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
@@ -3753,10 +3861,13 @@ void main(){
  }else if(tM<1e29){
   vec3 p=d*tM-uMc,n=normalize(p);
   // crater relief: the height field's slope along the sun direction tilts the lighting (2 evaluations, no normal map)
-  float cr=crat(n*18.)+.5*crat(n*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(d*tM+uMdet):.5;
-  vec3 ts=normalize(uSun-n*dot(uSun,n));float e=.004,cr2=crat(normalize(n+ts*e)*18.)+.5*crat(normalize(n+ts*e)*55.);
+  // Selene turns (tidally locked): its markings and detail are in its own frame (uMrot = cos, sin of its angle)
+  #define MB(v) vec3(uMrot.x*(v).x-uMrot.y*(v).z,(v).y,uMrot.y*(v).x+uMrot.x*(v).z)
+  vec3 nb=MB(n),nb2=MB(normalize(n+normalize(uSun-n*dot(uSun,n))*.004));
+  float cr=crat(nb*18.)+.5*crat(nb*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(MB(d*tM)+uMdet):.5;
+  float cr2=crat(nb2*18.)+.5*crat(nb2*55.);
   float slope=clamp((cr2-cr)*1.4,-.9,1.2);
-  float base=.16+.09*fbm(n*3.)-.07*smoothstep(.5,.65,fbm(n*1.6+3.));
+  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.));
   vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
   float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
  }else{
@@ -5293,11 +5404,12 @@ function rvSpot(){const site=curSite(),k=site.id+':'+rvGround;if(rvSpots[k])retu
 function rvSpawn(){const d=rvDesigns()[rvSel],P=rvSpot();RV=rvNew(d,TELLUS,P.pf,P.head,{gk:rvGK,yard:P.yard});rvCamHold=0}
 // the yard is drawn wherever it is (it's part of the home pad), whichever ground the drive is on
 const rvYards={},rvYardShown=()=>{const site=curSite();return rvYards[site.id]||(rvYards[site.id]=yardOf(site))};
-function rvEnter(){rvDesigns();if(rvRemote){RV=rvFromEntry(rvRemote);RV.remote=rvRemote}else rvSpawn();cam.dist=11;cam.pitch=.28;renderRover()}
+function rvEnter(){rvDesigns();if(rvRemote){ORB_T0=PROG.day*DAY_S-simT;RV=rvFromEntry(rvRemote);RV.remote=rvRemote}else rvSpawn();cam.dist=11;cam.pitch=.28;renderRover()}
 function rvLeave(){if(RV&&RV.remote){const e=RV.remote;Object.assign(e,rvEntry(RV),{id:e.id})}else if(RV)rvFold(RV);HOOK.save();RV=null;rvRemote=null}
 function rvReset(){if(RV&&RV.remote){HOOK.msg('Nobody can put it back: it drives on as it is');return}if(RV)rvFold(RV);HOOK.save();rvSpawn();renderRover()}
 const rvWorld=R=>add(bodyPos(R.body,simT),fromPF(R.body,R.p,simT)),rvQW=R=>qmul(qBody(R.body,simT),R.q);
-function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);RV.in.thr=(keys.has('w')?1:0)-(keys.has('s')?1:0);RV.in.steer=(keys.has('d')?1:0)-(keys.has('a')?1:0);RV.in.brake=keys.has(' ');
+function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);
+  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
   rvRun(RV,dtR);if(performance.now()-rvHudAt>100){rvHudAt=performance.now();rvHud()}
   rvChase(RV,dtR)}
 addEventListener('keydown',e=>{if(mode!=='drive'||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
@@ -5332,6 +5444,9 @@ function renderRover(){const el=$('rvDes');if(!el)return;
     +row('full-lock turn',`${T.turnBy} > ${rvF(T.vTurn*3.6)} km/h`,`${Sx.turnBy} > ${rvF(Sx.vTurn*3.6)} km/h`)
     +row('range (flat)',`${rvF(T.range)} km`,`${rvF(Sx.range)} km`)+`</table><div class="sub">Tellus figures on grass; Selene's on regolith.</div>`;
   const tr=d.test||{},tl=(t,n)=>t?`<div>${n}: ${t.km.toFixed(2)} km · climbed ${t.climb.toFixed(0)}° · ${(t.vmax*3.6).toFixed(0)} km/h${t.tips?` · <span class="warn">tipped ${t.tips}×</span>`:''}</div>`:'';
+  h+=`<h2>Power and contact</h2><div>${st.sol?`panels ${st.sol} W at noon`:'no panels'}${st.rtg?` · RTG ${st.rtg} W`:''} · draws ${RV_HOTEL} W awake, ${RV_SLEEP} W asleep</div>`
+    +`<div class="${st.rtg||st.kWh>=st.nightKWh*1.15?'':'warn'}">Selene's night, ${st.nightH.toFixed(0)} h: ${st.rtg?'the RTG keeps it warm':`its heater needs ${st.nightKWh.toFixed(1)} kWh; the battery holds ${st.kWh}`}</div>`
+    +`<div class="sub">${st.hg?'High-gain antenna: talks to home whenever Tellus is up.':'No high-gain antenna: off Tellus it needs a relay in sight (a lander with an antenna).'}</div>`;
   h+=`<h2>Tested</h2>`+(tr.T||tr.S?tl(tr.T,'at Tellus g')+tl(tr.S,'as a lunar trainer'):'<div class="dim">not yet: drive it</div>');
   h+=`<h2>Test drive</h2><div class="ndrow"><button data-rv="gr" data-k="yard"${on('yard',rvGround)}>Test yard</button><button data-rv="gr" data-k="country"${on('country',rvGround)}>Open country</button></div>`
     +`<div class="ndrow">gravity <button data-rv="g" data-k="1"${on(1,rvGK)}>Tellus</button><button data-rv="g" data-k="s"${on(true,rvGK<1)} title="Selene's gravity on Tellus's ground, as Apollo crews trained on a 1/6-g rover">Lunar trainer</button></div>`
@@ -5365,6 +5480,8 @@ function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw
     <tr><td class="dim">roll</td><td class="${tc(ti.roll,X.tipSide)}">${Math.round(ti.roll)+0}° <span class="dim">of ${X.tipSide.toFixed(0)}</span></td></tr>
     <tr><td class="dim">ground</td><td>${R.su?R.su.name:'—'}${R.dep?' · <span class="acc">deploying</span>':`${slip?' · <span class="warn">slipping</span>':''}${air?' · <span class="warn">airborne</span>':''}`}</td></tr>
     <tr><td class="dim">battery</td><td>${G.kWh?(100*R.E/R.Emax).toFixed(0)+' %':'—'}</td></tr>
+    <tr><td class="dim">power</td><td>${R.dead?'<span class="bad">frozen</span>':R.pGen==null?'—':`sun ${Math.round(R.sunEl)+0}° · <span class="${R.pGen>=R.pUse?'ok':'warn'}">${R.pGen>=R.pUse?'+':''}${Math.round(R.pGen-R.pUse)} W</span>`}</td></tr>
+    <tr><td class="dim">contact</td><td>${!R.contact?'—':!R.contact.ok?'<span class="bad">none: it holds still</span>':R.contact.via==='crew'?'crew aboard':R.contact.via==='home'?`home${R.contact.delay?` · ${(R.contact.delay*1000).toFixed(0)} ms`:''}`:`via ${rvEsc(R.contact.via)}`}</td></tr>
     <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr></table>
     <div class="sub" style="margin-top:4px">W S drive · A D steer · Space brake · ${home?'R start again':mode==='flight'?'[ back to the lander':'P Program'}</div>`}
 
@@ -5384,6 +5501,8 @@ function rvBodyArr(d){const G=rvGeom(d),CH=G.C,a=[],W=CH.W/2,Hh=CH.H/2;
     else if(t.k==='arm'){box(a,[x,y+.06,z],.08,.06,.08,C.ST);box(a,[x,y+.16,z-.05],.04,.04,.4,C.W);box(a,[x,y+.28,z+.05],.035,.035,.38,C.W);box(a,[x,y+.28,z+.44],.06,.06,.06,C.AU)}
     else if(t.k==='spec'){box(a,[x,y+sy/2,z],sx/2,sy/2,sz/2,C.AU);box(a,[x,y+sy+.04,z+.05],.04,.04,.04,C.GL)}
     else if(t.k==='seis'){box(a,[x,y+.1,z],sx/2,.1,sz/2,C.W);for(const o of[-.1,.1])lathe(a,[[.07,0,C.AU],[.07,.18,C.AU]],[x+o,y+.2,z],12)}
+    else if(t.k==='sol'){box(a,[x,y+.08,z],.03,.08,.03,C.ST);box(a,[x,y+.17,z],sx/2,.012,sz/2,C.ST);box(a,[x,y+.185,z],sx/2-.02,.006,sz/2-.02,[.07,.09,.22,4])}
+    else if(t.k==='rtg'){lathe(a,[[.1,0,C.D],[.1,.45,C.D],[0,.48,C.D]],[x,y,z],12);for(let i=0;i<6;i++){const g=i*Math.PI/3;box(a,[x+Math.cos(g)*.14,y+.22,z+Math.sin(g)*.14],.04+.0*g,.2,.04,C.G)}}
     else if(t.k==='drill'){for(const o of[[-.1,-.1],[.1,-.1],[0,.1]])box(a,[x+o[0],y+.6,z+o[1]],.02,.6,.02,C.ST);lathe(a,[[.04,-.15,C.D],[.04,1.1,C.D]],[x,y,z],10);box(a,[x,y+1.15,z],.12,.08,.12,C.W)}}
   return a}
 function rvWheelMesh(k){const key='w'+k;if(!rvMeshC.has(key))rvMeshC.set(key,makeMesh(rvWheelArr(k)));return rvMeshC.get(key)}
@@ -5419,6 +5538,9 @@ function rvLabels(octx,project){const k=Math.min(devicePixelRatio||1,1.5),Y=rvYa
 // Rovers left in the field come back into any flight within LOAD_R of them; an uncrewed one can be driven from home
 // (the Program screen's "Rovers in the field", which opens the drive screen wherever it is: Lunokhod was driven from Earth).
 let rvLoadT=0,rvFHudAt=0,rvRemote=null;
+const rvKeys=()=>({thr:(keys.has('w')?1:0)-(keys.has('s')?1:0),steer:(keys.has('d')?1:0)-(keys.has('a')?1:0),brake:keys.has(' ')});
+// a rover in the field, as home sees it now: who can hear it
+function rvFieldContact(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,s=ORB_T0;ORB_T0=PROG.day*DAY_S-simT;const c=rvContact({body:b,p:e.p,d:e.d,remote:true},simT,rvRelays([]));ORB_T0=s;return c}
 const rvPack=()=>{const d=JSON.parse(JSON.stringify(rvDesigns()[rvSel]));delete d.test;return d};   // what the builder packs into a new rover part
 const rvPoseW=R=>{const P=rvPose(R);return{p:add(bodyPos(R.body,simT),fromPF(R.body,P.p,simT)),q:qmul(qBody(R.body,simT),P.q)}};
 function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-dtR);if(rvCamHold||len(R.v)<.3)return;
@@ -5426,13 +5548,13 @@ function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-
   let dy=want-cam.yaw;dy-=2*Math.PI*Math.round(dy/(2*Math.PI));cam.yaw+=dy*Math.min(1,dtR*1.5)}
 function rvFlightTick(dt,dtR){if(!S)return;const obs=rvObsOf([S,...FLEET]);for(const R of FROV)R.obs=obs;
   if(RVA&&(RVA.wet||!FROV.includes(RVA)))RVA=null;
-  if(RVA){RVA.in.thr=(keys.has('w')?1:0)-(keys.has('s')?1:0);RVA.in.steer=(keys.has('d')?1:0)-(keys.has('a')?1:0);RVA.in.brake=keys.has(' ');if(view!=='map')rvChase(RVA,dtR)}
+  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
   rvFlight(dt);
   if((rvLoadT-=dtR)<=0){rvLoadT=1;const n=rvLoadNear(S);if(n)HOOK.msg(`${n>1?n+' rovers':'A rover'} of yours nearby: ] to drive`)}
   const el=$('rvFHud');if(el){el.classList.toggle('hidden',!RVA);if(RVA&&performance.now()-rvFHudAt>100){rvFHudAt=performance.now();rvHud(el,RVA)}}}
 // ] from the lander drives the first rover, then the next; [ goes back to the lander
 function rvCycle(dir){const L=FROV.filter(R=>!R.wet);if(!L.length||(!RVA&&dir<0))return false;
-  const j=RVA?L.indexOf(RVA)+dir:0;RVA=j<0||j>=L.length?null:L[j];if(RVA){RVA.sleep=false;cam.dist=Math.min(cam.dist,14)}
+  if(RVA){RVA.in={thr:0,steer:0,brake:false};RVA.cq=[]}const j=RVA?L.indexOf(RVA)+dir:0;RVA=j<0||j>=L.length?null:L[j];if(RVA){RVA.sleep=false;cam.dist=Math.min(cam.dist,14)}
   HOOK.msg(RVA?`Driving the ${RVA.name}: W S A D, Space brakes · [ back`:'Back to the lander');return true}
 const rvFlightKey=k=>[' ','z','x','t','backspace','shift','control'].includes(k);   // keys the lander mustn't get while you drive
 function rvRows(){if(!S)return[];const out=[];
@@ -5446,7 +5568,7 @@ document.addEventListener('click',e=>{const i=e.target.dataset&&e.target.dataset
 function rvFieldHTML(){const L=PROG.rvOut||[];if(!L.length)return'';
   return'<div class="ep">Rovers in the field</div>'+L.map(e=>{const G=rvGeom(e.d);
     return`<div class="ms"><b>${rvEsc(e.name)}</b> on ${e.bodyName}${e.tipped?' <span class="bad">on its side</span>':''} · battery ${G.kWh?(100*e.E/(G.kWh*3.6e6)).toFixed(0)+' %':'none'} · ${e.km.toFixed(2)} km driven `+
-      (G.crew?'<span class="dim">· its crew drives it: fly a crewed lander there</span>':`<button data-rvdrive="${e.id}">Drive from home</button>`)+`</div>`}).join('')}
+      (e.dead?'<span class="bad">· froze in the night</span>':G.crew?'<span class="dim">· its crew drives it: fly a crewed lander there</span>':(c=>c.ok?`<button data-rvdrive="${e.id}">Drive from home</button> <span class="dim">${(c.delay*1000).toFixed(0)} ms${c.via!=='home'?' via '+rvEsc(c.via):''}</span>`:'<span class="warn">· out of contact</span>')(rvFieldContact(e)))+`</div>`}).join('')}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.rvdrive;if(id==null)return;const q=(PROG.rvOut||[]).find(x=>String(x.id)===id);if(!q)return;rvRemote=q;go('rover')});
 
 // ============================================================ main loop
@@ -5542,7 +5664,7 @@ function render(){
    const mp=moonPos(simT),Cm=sub(mp,camW),dm=len(Cm);
    gl.uniform3fv(u.uMc,Cm);gl.uniform1f(u.uMcc,(dm-SELENE.R)*(dm+SELENE.R));gl.uniform1f(u.uMR,SELENE.R);
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
-   gl.uniform3fv(u.uMdet,sub(camW,mp).map(x=>x-Math.round(x/1000)*1000));
+   {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
@@ -5884,6 +6006,7 @@ function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||
 function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!q||!flyable(q))return;
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
   const day0=Math.ceil(PROG.day-1e-9);advanceDays(day0-PROG.day);   // a flight starts on a whole day, from orbit as from the pad
+  if(ORB_ABS)ORB_T0=day0*DAY_S;
   const s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
   const R=s.rec=recNew();Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
   S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
@@ -6051,7 +6174,7 @@ function updateHUD(){
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
   const met='T+'+fmtT(simT);
-  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]]:[]),
+  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]]:[]),...(S.body===TELLUS&&!S.landed?[['Link',(()=>{const k=linkOf(S);return k.ok?`<span class="ok">${k.st?k.st.name:k.why}</span>`:`<span class="warn">${k.why}</span> <span class="dim">· recorder</span>`})()]]:[]),
     ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
     ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
     ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
@@ -6092,7 +6215,7 @@ function updateAutoBtn(){updateProcBtn();const t=loadTape();$('bAuto').classList
 $('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0)];if(!pr)return;if(pr.site&&siteById(pr.site))PROG.site=pr.site;resetShip();procStart(S,pr);if(recTape)recTape.byProc=true;updateAutoBtn();
   HOOK.msg(`Procedure: ${pr.by}, ${pr.kind==='mission'?pr.sig.replace(':',' '):'to orbit'}, the best flown so far · any control key takes over`)};
 function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
-$('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
+$('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
 $('bSaveTape').onclick=()=>{if(recTape&&recTape.byProc&&!player){HOOK.msg('This flight was flown by a procedure: it is already automated (the ▶ Procedure button)');return}if(recTape&&recTape.fromOrbit&&!player){HOOK.msg('Autopilot tapes start from the pad: this flight began in orbit');return}try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops,site:T.site}));
   HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};
 function nodeAtApoapsis(){if(!S.alive||S.landed)return;if(!toolOK('nodes')){HOOK.msg(gateMsg('nodes'));return}const el=elements(S.r,S.v,S.body.mu);

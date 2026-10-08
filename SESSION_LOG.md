@@ -2896,6 +2896,86 @@ procedures keep the best. Locked SAS buttons dimmed with a tooltip; the builder'
 A bare pod's 90° turn: 5.6 / 3.7 / 2.8 s by generation; big stacks on wheels turn alike (torque- and storage-limited).
 §37 (2 checks); 314 pass. Fast-forwarded `main` (`42adc71`, not pushed). NOTES § v1.46.
 
+## 2026-10-08 — Launchpad: a crewed Nyx mission and free returns through procedure phases (bodies session, cont.)
+
+### Summary
+Procedures v2 extended to Nyx (inclined, eccentric): the transfer meets it at its far node; corrections chase the closest
+approach until there's an encounter; the return scan counts every stage and wants perigee within 2.5 days. A crewed Nyx
+landing and return through the phases: 1.2 m/s on Nyx, home in 3.35 days, crew fine; recorded as a "Nyx land" procedure. It
+exposed five executor bugs the Selene flights had hidden (departure pass from an approximate period, 61° off; SAS doesn't turn
+a craft on rails, so burns now wake 600 s early; a suicide burn counting all thrust as upward, 120 m/s crash; a staging guard
+that also blocked a full return stage; an 18-day way home). Then flybys and free returns: a `home` phase, and recording as
+`B:flyby` / `B:free-return`. A free return flies "Crew around Selene" in 1.33 days and records both. Landed on `main`
+(`13dea8c`, then `386bf23`). Drive repo: twice another machine's fresh commits arrived before their objects (control, then
+gantry); waited for sync instead of touching the repo.
+
+### Files
+- `explorations/launchpad/index.html`: `transferNode`, `passScore`, `ALIGN`/`tBurn`, tilt-aware suicide burn, `dryStage`, return scan (all stages, 2.5 days), `home` phase, `procFlybyKeep`, free-return recording
+- `explorations/launchpad/test.mjs`: 2 checks in §27 (Nyx; free return)
+- `explorations/launchpad/NOTES.md`: Nyx and flyby paragraphs under "Procedures v2"
+
+### Verification
+`test.mjs` 322/322 (suite ~95 s).
+
+### Next steps
+- [ ] Aim a pass's side (B-plane) for true free returns
+- [ ] Economy: dispatch
+
+## 2026-10-08 — Launchpad: the gantry no longer clips the rocket, PLAYTEST #2 (tester session)
+
+### Summary
+- **Cause:** the service gantry rolls back open front first, but two girders spanned that front and swept through every
+  rocket during the 14 s roll. Also, the fixed service position (−3.3 m) put the work decks inside wide stacks' boosters.
+- **Fix:** no girders across the open front (side girders instead); the service position follows the stack's widest
+  reach (`padRig`'s new `zr`, `RIG.zS`), so the decks stop 0.5 m short. Narrow rockets keep −3.3 m.
+- Merged to `main` (`35af798`, fast-forward, not pushed). Branch `gantry` in the `launchpad-tester` worktree.
+
+### Files
+- `explorations/launchpad/index.html`: `buildRig` (girders, `zS`), `padRig` (`zr`), `padSync`'s rebuild key, `drawPadRig` (roll from `RIG.zS`)
+- `explorations/launchpad/test.mjs`: §38 (2 checks; fails on the old code)
+- `explorations/launchpad/NOTES.md`: § "The gantry no longer clips the rocket"; `PLAYTEST.md`: #2 moved to Done
+
+### Verification
+`test.mjs` 324/324 on the merged tree. Headless screenshots (`shot.mjs`, view 18 with the Crewed Lunar, before/after):
+the front girder no longer crosses the rocket, and nothing passes through it during the roll.
+
+### Next steps
+- [ ] Visuals: the gantry is yours to restyle; keep the open front clear (§38 checks it)
+- [ ] NOTES § launch complex still lists the hold-downs (at r 3.4 m) poking through boosters of wide stacks: a sibling of this bug
+
+## 2026-10-08 — Launchpad: clouds, new-feature FX, gauges, PLAYTEST #5/#7/#9/#10 (aerofx session, cont.)
+
+### Summary
+Each slice merged to `main` and pushed on Caio's OK (last `484105f`):
+- **Clouds with depth near the camera:** below ~20 km the deck within 40 km is a raymarched slab (2–5.5 km) shaped from the
+  same coverage the shell and `cloudAt` use (baked locally by a pass sliced from `SKY_FS`). Flying through cloud, towers,
+  a rolling deck from above. Orbit view unchanged.
+- **FX for other sessions' features:** escape-tower motor (four canted solid-propellant jets, white smoke), landing dust
+  on airless bodies (radial streaked sheet, Selene), explosions (fireball → sooty cloud, sparks, the flash lights the
+  scene; PLAYTEST #5 done). Found a box-proxy winding bug that the impingement and dust volumes had been hiding.
+- **HUD gauge widgets** (PLAYTEST #9's graphics): altitude tape, air depth, q dial with max-q, Mach, heat. Drawn on the
+  overlay beside the navball until the ui session's slice 4 places them.
+- **PLAYTEST #7 fixed:** the planet flash was `depthTarget` re-allocating on the sky's city-lights texture unit at every
+  adaptive-resolution step (LESSONS #33).
+- **PLAYTEST #10 done:** a home galaxy from the world seed, temperature-coloured stars, a proper sun.
+
+**Incidents:** (1) the #7 commit broke flight for everyone (a mid-line comment swallowed a declaration in `gaugeRect`;
+`render()` threw every frame with the HUD up); hotfix `8e070fc` within the hour, warning left in ACTIVE_WORK, and a live
+smoke test before every commit since (LESSONS #34). (2) A merge failed on a missing object: Drive synced another session's
+commit before its objects; seconds later fsck was clean and the merge went through. (3) The performance-pass timings of
+the day before were on the Intel iGPU (LESSONS #32; NOTES corrected).
+
+### Files
+- `explorations/launchpad/index.html`, `views.js` (views 80–100), `NOTES.md` (§ clouds, new-feature FX, HUD gauges,
+  PLAYTEST #7, the sky from space)
+- `explorations/launchpad/PLAYTEST.md`: #5, #7, #10 to Done; #9 annotated
+- `LESSONS_LEARNED.md` #32–#34
+
+### Next steps
+- [ ] (Now, agreed with Caio) PLAYTEST #2 gantry clipping, #3 worn rocket on the first flight, #4 pad buildings at night
+  (lighting and surface detail): the visuals session's code, taken with a note in its claim
+- [ ] Sun bloom; vary `WSEED` per world; spent stages glowing on the way down; fin-tip vapor
+
 ## 2026-10-08 — Launchpad: TESTING.md, a checklist of what still needs a human (control session)
 
 Caio can't playtest for now, so `explorations/launchpad/TESTING.md` lists everything built that nobody has played: 107
@@ -2904,3 +2984,114 @@ the control rows. Contract: **sessions add a row when they ship something a pers
 cell, problems into PLAYTEST.md. Also: registered vessels keep their avionics; the tester's *All tools* gives the best
 avionics (the epoch picker doesn't move the date); control test sections renumbered §38/§39 (they collided with
 terrain's and tester's); `study_control.mjs` kick retuned. 325 pass. `main` at `7dbc698` (not pushed).
+
+## 2026-10-08 — Launchpad: free returns aimed at the way home; debris tides; satellite drift measured (bodies session, cont.)
+
+### Summary
+A transfer followed by `home` now aims its corrections at the perigee after the flyby (`homePe` from the predictor's chained
+legs): the correction on the way home drops from 286 to 4.9 m/s ("Crew around Selene", 5,812 m/s in all). Debris near the moons
+feels their tides. Registered satellites stay on pure Kepler, deliberately: measured drift over 30 days is 5 km (low orbit),
+39 km (1,000 km polar), 500 km (3,000 km), **10,750 km for a stationary TV satellite** (Nyx is heavy and close). Giving the
+registry the tides needs a station-keeping / satellite-lifetime mechanic: **a decision for Caio with the sats and economy
+sessions** (NOTES). Landed on `main` (`e2d3807`).
+
+### Files
+- `explorations/launchpad/index.html`: `homePe`, `passScore(…, home)`, transfer corrections and trim; `stepDebris` tides
+- `explorations/launchpad/test.mjs`: the free-return check requires < 5,950 m/s
+- `explorations/launchpad/NOTES.md`: free-return aiming, debris, satellite drift table
+
+### Next steps
+- [ ] Caio + sats/economy: station-keeping and satellite lifetimes
+- [ ] Economy: dispatch
+
+## 2026-10-08 — Launchpad: the hold-downs follow the rocket (tester session)
+
+### Summary
+- The open item from "The launch complex": hold-down posts fixed on the diagonals at 3.4 m, so boosters on a diagonal had
+  an arm through them. Posts are now in the rig; `holdPlan` keeps the diagonals when clear (all presets unchanged) and
+  otherwise turns the four into the gaps; each arm clamps the outermost part on its line, post 1.2 m beyond (≥ 3.4 m).
+- TESTING.md rows 108 (gantry, PLAYTEST #2) and 109 (hold-downs), per the control session's checklist contract.
+- Merged to `main` (`d10a00d`, fast-forward, not pushed). Branch `holds` in the `launchpad-tester` worktree.
+
+### Files
+- `explorations/launchpad/index.html`: `buildPad` (posts removed), `buildRig` (posts mesh, arms from `rig.hold`), `holdPlan` (new, after `padRig`), `padRig` (`hold`), `padSync` key, `drawPadRig` (draws posts)
+- `explorations/launchpad/test.mjs`: §39 (fails on the old code); `NOTES.md` § "The hold-downs follow the rocket"; `TESTING.md` rows 108–109
+
+### Verification
+`test.mjs` 329/329 on the merged tree. Headless screenshot (Asparagus at the pad): posts and arms where they were.
+
+### Next steps
+- [ ] Caio: TESTING rows 100 (tester menu), 108, 109 when there's time to play
+
+## 2026-10-08 — Launchpad v1.48: geography in play, slices C–E (terrain session)
+
+**Operator:** Caio. Worktree `launchpad-terrain`, branch `terrain`; merged main, fast-forwarded `main` to `d32081c` (not pushed).
+
+### Done
+- **C. Ground stations on real ground:** terrain horizon masks per station (`gsMask`/`gsSees`), used for satellite contact
+  and downlinks; the flight's link (`linkOf`: station in view, no station, re-entry plasma blackout) with a HUD "Link" row;
+  strain telemetry goes to a recorder out of contact and certifies only if the package comes home.
+- **D. Recovery by geography:** `recoveryOf` — sea landings within 200 km (or the recovery fleet's range) are fished out,
+  beyond that lost; another power's land returns, wears or keeps the hardware by relations. Scales the refurbishment refund.
+- **E.** Disasters fit the place (`HAZ`, `disCities`: floods on coasts, volcanoes near volcanic ground…); two science
+  contracts: `field` (land on a named biome within 1,200 km) and `aurora` (above 100 km poleward of 55°).
+
+### Files
+`explorations/launchpad/index.html`, `test.mjs` (§37b–37d; a weather test now searches the news), `NOTES.md` (§ v1.48 and
+pointers), `TESTING.md` (rows 110–113, v0.1.2).
+
+### Verification
+`test.mjs` 336/336 on the merged tree. Browser: the HUD Link row renders (names the station in view); no console errors.
+
+### Next steps
+- [ ] Caio: TESTING rows 110–113
+- [ ] Recovery that takes days and a ship to send; stations bought at a chosen site; the atlas view (NOTES § v1.48)
+
+## 2026-10-08 — Leaving Google Drive: runbook and script ready, not run (tester session)
+
+### Summary
+- Caio's decisions: sync through GitHub (public repo: pushing publishes), new home `C:/Users/caioa/dev/explorations` on
+  each machine, Drive folder frozen afterwards (`.git` to `C:/Users/caioa/dev/_backup`, `MOVED.md`), deleted later.
+- `docs/leaving-drive.sh` (check / commit / copy / freeze, dry-run unless `--go`) copies `.git` out of Drive rather than
+  cloning, so all 14 local branches, the stash and the worktree registrations survive; `git worktree repair` re-points
+  each machine's own worktrees in place, `prune` drops the other machine's from that copy only. It also carries
+  untracked and ignored files (framework copy, neuromechfly raw 237 MB, the dragon mp4, `.claude/launch.json` with
+  paths rewritten) and copies Claude Code's memory to the new folder's key.
+- Rehearsed end to end in a sandbox (a path with a space, a worktree with uncommitted changes, an "other machine"
+  registration, ignored files, memory): all steps behave; `freeze` refuses without `--other-machine-copied`.
+- Real `check` on this machine: fsck clean; all branches merged into `main`; `main` 6 ahead of GitHub (as of the fetch);
+  untracked-but-linked `PLAYTEST.md`, `TECH_SCOUTING.md`, `explorations/pulse-loop/` (the `commit` step takes them).
+- `ACTIVE_WORK.md`: the 2026-10-07 "move PLANNED" note replaced by the heads-up and what to do when the pause is called.
+
+### Files
+- `docs/leaving-drive.md`, `docs/leaving-drive.sh`, `docs/.gitattributes` (`*.sh` stays LF) — on `main` (`cb472d0`)
+- `ACTIVE_WORK.md` (heads-up), `INDEX.md` (row)
+
+### Next steps
+- [ ] Caio: when every session on both machines has paused, follow `docs/leaving-drive.md` § "The pause" (steps 1–9)
+- [ ] Step 8 edits (coordination, LESSONS #22, ACTIVE_WORK worktree text, the memory note) in the first session after
+- FLAG: `grep -c $'\r'` in Git Bash counts every line (CR is stripped from the pattern): use `git ls-files --eol` or `od -c` to check line endings
+
+### Follow-up: rovers R3, and Selene tidally locked (sats session, 2026-10-08)
+R3 needed Selene to have days and nights and a near side, so with Caio's OK: Selene is tidally locked (a 104 h day,
+Tellus fixed in the near side's sky, its equator moving at 5.9 m/s), and the moons run on program time (`ORB_T0`;
+tapes keep their recorded phase; 0 headless). Landing knock-ons were fixed: surface-relative speeds near airless ground,
+surface-relative landing in the procedure executor and `fly_crewlunar.mjs`, and drop tests starting at rest over the
+ground. Rover power: solar panels and an RTG, a night heater, freezing when the battery runs flat in the night, worked
+out between flights over program time. Contact: direct with a high-gain antenna while Tellus is up, or by relay within
+radio horizon; commands a light-time round trip late; held still out of contact.
+
+### Files
+- `explorations/launchpad/index.html`: `lockTh`/`bodyTheta`/`bodyOmega`, `ORB_T0`, `speedRef`, procedure landing, Selene shading (`uMrot`); R3 block (`rvPowerStep`, `rvFieldTick`, `rvContact`, `rvRelays`, `rvCommand`); readout, designer, Program list, meshes
+- `explorations/launchpad/fly_crewlunar.mjs`: surface-relative landing; `test.mjs` §39 (6 checks), three older checks start at rest over the ground; `NOTES.md` § "R3 built"; README row
+
+### Verification
+`test.mjs` all passed on the merged `main` (`df1e6e0`). Mutation-tested: the lock, the heater, the radio horizon and the
+delay were each caught at once; the field tick was caught after routing its check through `advanceDays`. Browser: a
+rover on Selene's near side in sunlight reads +311 W, contact home at 254 ms; the field list shows the delay; the
+designer's power box.
+
+### Next steps
+- [ ] A relay in Selene orbit (the registry keeps only Tellus orbits): the far side's contact
+- [ ] R4 science; R5 drive plans (a surface leg of the mission planner); the clock while driving from home
+- [x] Pushed with the repo move (GitHub `main` has R1–R3)

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.4 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1234,6 +1234,49 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.48 — geography in play: stations on real ground, recovery, disasters and field science (2026-10-08, terrain session)
+
+Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs` §37b–37d.
+
+**C. Ground stations on real ground.**
+- `gsMask(st)`: each station's horizon, cached per station. 36 azimuths, the highest elevation of the ground out to
+  `GS_REACH` = 300 km (24 samples, with the planet's curve), seen from a `GS_MAST` = 20 m mast on the station's ground.
+  `gsSees(st, pf)`: above `STA_MIN` *and* above the mask in that direction. A valley station loses the sky behind its
+  mountains; a hilltop one sees more. This replaces the sea-level sphere test everywhere contact is decided: imagery
+  contact time and downlinks in `satTick` (planning/sats code: the two `gsSees` calls are the only change there).
+- `linkOf(s)`: the flight's own link. Deep space counts as linked (no deep-space network yet), on the ground too;
+  re-entry plasma (`qHeat > BLACKOUT_Q` = 5e4) blacks it out; otherwise the first station in view. HUD row "Link"
+  (the station, or the reason and "· recorder").
+- Telemetry follows the link. Strain data (`R.sf`, the certification feed) is written only while linked; out of
+  contact it goes to the recorder `R.sfRec`, which `missionEnd` merges into `R.sf` only if the instrument package came
+  home (`R.recSci`). Economy: that one line before the cert loop is the only change in `missionEnd`'s certification.
+
+**D. Recovery.** `recoveryOf(s, R)` → `{factor, kind, why}` for a landed ship on Tellus:
+- At sea: recovered if within reach of the launch point: `RECOVER_LOCAL` = 200 km of local boats, or the economy's
+  recovery fleet range `FAC.fleet.range[lv]` when built. Beyond that, lost (factor 0).
+- On land: home or unclaimed land, fine. Another power's land: relation ≥ 0 returns it; −0.2…0 returns it worn (0.8);
+  worse, they keep it.
+- Hook (economy code, `missionEnd`'s refurbishment block): the refund is scaled by `rc.factor`, `R.recovery` = the kind,
+  and a news line explains it. Not modelled: recovery taking days.
+
+**E. Geography in the work.**
+- Disasters follow the land: `cityGround(c)` samples the biome at a city and on rings at 25/60/120 km; `HAZ` says which
+  disasters fit (floods: coast within 60 km, wetland or very wet; wildfire: taiga, temperate forest or savanna;
+  volcano: volcanic ground; storm: warm coast; locusts: steppe, grassland, savanna or hot desert). `disCities(dis)`
+  memoises the eligible cities; `satTick` now picks a disaster kind that has cities, then one of its cities (same two
+  `R()` draws as before). On seed 13: floods 20/32, wildfire 26, volcano 5, storm 8, locusts 28.
+- Two science contracts in `CT` (additive; economy owns the table):
+  - `field`: land an instrument package on a given biome and recover it. `fieldBiomes()` lists ice, cold desert,
+    rainforest, hot desert, alpine, volcanic, salt flat and wetland if one lies within 1,200 km of the first site (not
+    the pad's own biome), with the distance; pay 10 + km/25. Uses `R.landBiome`, set at landing in `missionTick`.
+  - `aurora`: an instrument package above `AURORA_ALT` = 100 km poleward of `AURORA_LAT` = 55°, recovered (`R.aurora`,
+    set in `missionTick`). Pay 14 + (km to the zone)/40: from home that's a 1,200 km lob, or a high-latitude site.
+- Adding CT types shifts every seeded offer board (more types to draw from). One of my tests read `news[0]`; it now
+  searches the news. If another session's test pins a specific offer, that is why.
+
+**Next on this line:** recovery that takes days and a recovery ship to send; stations bought at a chosen site (the mask
+makes the choice a real trade-off); the atlas view (open thread in § v1.25's "Next session" list).
+
 ## v1.47 — dispatch, the economy side (2026-10-08, economy session)
 
 The first slice of dispatch (decisions: "Dispatch — the economy's answers"). A contract flown by a stored procedure,
@@ -2172,7 +2215,7 @@ ship onto that pad (`builder.js` `changed()` now hangs it over `S.site`).
 - ~~A sea-launch platform, per-site weather scrubs, a pre-launch downrange warning~~: done in v1.45 (§ v1.45).
 - (original note) Range safety and drop zones per site and heading (they already follow the flight, but nothing warns about a
   downrange over a neighbour before launch).
-- Then slices C–E (§ v1.25).
+- ~~Then slices C–E (§ v1.25)~~: done in v1.48 (§ v1.48).
 
 ## v1.26 — industrial independence (2026-10-07)
 
@@ -2425,7 +2468,7 @@ Shading:
   The scripts lived in the session scratchpad, so rebuild them from this description: about 30 lines each.
 
 ### Next session: where to pick up
-0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29); ~~surface properties by biome~~ done in v1.37 (§ v1.37). Next: the slice-B follow-ups in § v1.27, then slices C–E.
+0. ~~**Ground awareness**~~ done in v1.29 (§ v1.29); ~~surface properties by biome~~ done in v1.37 (§ v1.37). ~~the slice-B follow-ups~~ (v1.45) and ~~slices C–E~~ (v1.48) done too.
 1. ~~**Launch sites (slice B).**~~ Done in v1.27 (§ v1.27). The original brief, kept for reference: see the plan above for the design and numbers. Start with a `SITES` list in the world
    block, generated by a generalised `siteSearch`: flat, low, a coast within ~150 km, open water downrange, any
    latitude. Then a site per flight, and replace the +X assumptions.
@@ -2469,7 +2512,7 @@ Shading:
    - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
      slope (unconfirmed).
-4. **Stations with terrain (C), recovery (D), biome science (E):** see the plan above.
+4. ~~**Stations with terrain (C), recovery (D), biome science (E)**~~: done in v1.48 (§ v1.48), with what's left listed there.
 5. **The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
    in play.
 
@@ -4097,6 +4140,69 @@ today Selene is a smooth sphere apart from the regolith model; power (R3) is new
   - science (R4);
   - drive plans (R5).
 
+
+### R3 built: Selene tidally locked; rover power and contact (sats session, 2026-10-08)
+
+**Selene is tidally locked (decided with Caio).** Before this, Selene didn't turn and the sun never moves, so each spot
+on Selene was in permanent day or permanent night, and Tellus circled the sky of every spot once an orbit. Now
+`bodyTheta(SELENE, t)` follows its orbit (`lockTh`). Its planet-fixed −X always faces Tellus (the near side), and
+`bodyOmega` is its mean motion.
+- **A day lasts an orbit:** 104 h, so a 52 h night (about 6.5 Tellus days each way).
+- **Its ground moves:** the equator at 5.9 m/s.
+- **Speeds near an airless body's ground are now against the surface** (`speedRef` below 3 % of the radius; the navball
+  says SURFACE).
+- **Landings adjusted.** The procedure executor's landing and the crewed-lunar test script now null surface-relative
+  velocity. Tests that drop a vessel start it at rest over the ground. The moonbase test takes a module's position from
+  `fromPF`.
+- **Selene's markings turn with it** in the sky shader (`uMrot`; detail in its own frame, `uMdet` rotated).
+
+**The moons run on program time.** `ORB_T0`, the program time at the flight's t = 0, is added inside `bodyRel`:
+- set at lift-off from `day0`, and for flights from orbit;
+- a replayed autopilot tape keeps the `orbT0` it was recorded with (older tapes have none: 0, the old fixed start), so
+  replays still meet Selene where they did;
+- headless it stays 0 (`ORB_ABS` is false without a document), so every flown test is unchanged;
+- the procedures' passage timing subtracts it.
+
+This was a bodies-session matter; done here because R3 needs it. Selene's position on a given day is now the same in
+every flight, and a lunar day's time of day carries across flights.
+
+**Power** (`rvPowerStep`; between flights `rvFieldTick`, from `advanceDays`, half an hour at a time):
+- New deck items: **Solar panels** (330 W at the sun overhead, 18 kg; output follows the sun's height over the deck,
+  nothing once the sun is down) and an **RTG** (60 W steady, 35 kg).
+- Draw: 30 W awake, 10 W asleep. On an airless body at night, a 25 W heater, unless an RTG keeps it warm.
+- **A battery that runs flat in the night with no RTG: it froze**, and it is lost (a headline between flights).
+- The designer's *Power and contact* box says whether the battery carries the heater through Selene's night.
+
+**Contact** (`rvContact`; the relays come from `rvRelays`):
+- On Tellus, always.
+- Elsewhere, directly with the high-gain antenna (deck item) while Tellus is over the rover's horizon.
+- Otherwise through a relay in sight: a lander in the flight, or a landed object of yours, with an antenna, that sees
+  Tellus itself, within radio horizon √(2Rh₁)+√(2Rh₂) (rover 1.2 m with the high-gain, 0.8 m without). On Selene,
+  about 2.4 km to a 4 m lander.
+- A crew riding it needs none.
+- **Commands arrive a light-time round trip late** (0.25 s from Tellus; `rvCommand`). Out of contact the rover holds
+  still.
+- The Program list shows the delay and the relay, or *out of contact*; it offers no Drive button without contact.
+- The far side has no contact until a relay can orbit Selene: the registry keeps only Tellus orbits. That relay is the
+  next thing for the orbital registry (sats/planning).
+
+**Checks:** `test.mjs` §39, 6 checks:
+- the lock (near side within 1e-6°, a 104 h day, the ground's speed);
+- program time;
+- power by day, freezing, the RTG;
+- 40 days between flights with and without panels;
+- contact (direct, far side, relay at 1 km against 6 km);
+- commands (held out of contact; a round trip late in it).
+
+The lock's knock-on changes are covered by the existing lunar-landing checks, which failed until the landings used the
+surface.
+
+**Not yet:**
+- terrain shadows and horizons (Selene is still smooth: hills will block both sun and radio);
+- a relay in Selene orbit;
+- the clock running while you drive from home;
+- eclipses by Tellus;
+- Nyx's spin.
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -5183,7 +5289,8 @@ the arrows, and every key in the handlers present in its Help table.
 - The world: `WORLD` (baked maps) + `terrainH(pf)` (metres above the sea; the sea is the sphere R) + `biomeAt(pf)`.
   The sky shader marches the *same* height (`hgtG`/`terr`); after any change to the height function on either side,
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
-  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27.
+  Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27. Station horizons,
+  the flight's link, recovery and geographic disasters/contracts: § v1.48.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.
