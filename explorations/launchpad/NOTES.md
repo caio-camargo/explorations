@@ -1034,6 +1034,33 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.34 — development projects (2026-10-07)
+
+The design bureau improves parts the program makes. The variants-vs-upgrades decision is still on hold, so this slice
+uses only goals that don't touch shared part definitions or physics.
+
+- **Goals** (`DEV_GOALS`), up to three levels each, stored in `PROG.dev[k]`:
+  - *cheaper*: unit price −12% per level (`devPriceK`, for home-made and own-line parts);
+  - *more reliable* (engines only): ignition failures ×0.6 per level;
+  - *more durable*: wear ×0.75 per level, so more of the value comes back after a hard flight. Measured at 90% load:
+    44% → 72% at mark 2.
+- **Who can develop:** only parts we make (home industry or our own line). Not imports, and not licensed lines (the
+  design belongs to the licensor). That's the "develop only what you build" option from the design notes, easy to
+  relax later.
+- **Needs:** know-how of the part ≥ 50 / 65 / 80% for levels 1 / 2 / 3 (a Kestrel off a brand-new own line: 41%, not
+  yet). Cost ~5 × price × (1 + tier) × (1 + level); 30 + 20·tier days × (1 + 0.5·level); one project at a time
+  (`PROG.devJob`, ticked daily).
+- **A redesign is a new design:** certification −0.1 (floor 50%) and know-how −0.1, to be won back by flying or testing.
+- **UI:** a Development section in the Program panel with the running project, or the three goals per part we make,
+  with cost, days and the reason when a goal isn't possible.
+- **Not yet:**
+  - performance goals (thrust, Isp, mass), pending the variants decision;
+  - licensing our designs to others;
+  - the career runner using development;
+  - stand data counting directly toward a project (today it counts through know-how).
+
+`test.mjs` §31: 3 new checks; 226 total.
+
 ## v1.33 — the test stand (2026-10-07)
 
 A first capital investment: a one-off facility with no upkeep, chosen by the player.

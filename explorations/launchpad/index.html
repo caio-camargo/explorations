@@ -1301,12 +1301,12 @@ PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
 PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.06;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
-const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.
 // Tracking is one comparison per part per step: the structure and heat passes already computed the numbers.
-const wearOf=(p,touch)=>(1-0.7*clamp(((p.wL||0)-.5)/.5,0,1))*(1-0.7*clamp(((p.wT||0)-.5)/.5,0,1))*clamp(1-(touch-TOUCH_OK)/6*0.6,0.4,1);
+const wearOf=(p,touch)=>{const dk=1-0.25*(p.d?devLv(p.d.key,'dur'):0);return(1-0.7*dk*clamp(((p.wL||0)-.5)/.5,0,1))*(1-0.7*dk*clamp(((p.wT||0)-.5)/.5,0,1))*clamp(1-(touch-TOUCH_OK)/6*0.6,0.4,1)};   // durability development: wear ×0.75 per level
 function vesselCost(parts){let c=0,dry=0;for(const p of parts){const q=partPrice(p);c+=q+(p.cap.fuel||0)*FUEL_PRICE;dry+=q}return{cost:c,dry}}
 const fmtM=k=>(k<0?'−':'')+Math.abs(k).toFixed(Math.abs(k)<10?1:0)+'M';
 const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:12345,rel:{},op:{}};
@@ -1596,6 +1596,25 @@ function buildStand(){if(PROG.stand2||PROG.funds<STAND_COST)return false;PROG.fu
 function testQuote(k,mode){const t=tierOf(k),days=mode==='destroy'?5+5*t:10+10*t,unit=(PRICE[k]??3)*sourceOf(k).k;return{days,cost:unit+STAND_DAY*days}}
 function startTest(k,mode){if(!standReady()||PROG.stand2.job)return false;const q=testQuote(k,mode);if(PROG.funds<q.cost)return false;
   PROG.funds-=q.cost;PROG.stand2.job={k,mode,end:PROG.day+q.days};HOOK.news(`On the test stand: ${PARTS[k].name}, ${mode==='destroy'?'to destruction':'qualification run'} (${q.days} days)`,'');HOOK.save();return true}
+// ---- development projects: improving a part we make (home industry or our own line; not imports, and not a licensed
+// design, which belongs to the licensor). Goals that don't touch the physics: cheaper (unit price −12 % per level),
+// more reliable (ignition failures ×0.6 per level), more durable (wear ×0.75 per level). Up to three levels per goal,
+// each needing real know-how of the part (use ≥ 50 / 65 / 80 %) and money and design-bureau time (one project at a
+// time; cost ~5 × price × (1 + tier) × (1 + level), 30 + 20·tier days × (1 + 0.5·level)). A redesign is a new design:
+// certification −0.1 and know-how −0.1, to be won back by flying it. Performance goals (thrust, Isp, mass) wait for the
+// variants-or-upgrades decision (they change shared part definitions).
+const DEV_GOALS={cheap:'Cheaper',rel:'More reliable',dur:'More durable'},DEV_MAX=3,DEV_USE=[0.5,0.65,0.8];
+const devLv=(k,g)=>((PROG.dev||{})[k]||{})[g]||0;
+const devPriceK=k=>{const x=sourceOf(k);return x.how==='home'||(x.how==='line'&&x.line.lic==null)?1-0.12*devLv(k,'cheap'):1};
+function devQuote(k,g){const lv=devLv(k,g),t=tierOf(k),x=sourceOf(k),mine=x.how==='home'||(x.how==='line'&&x.line.lic==null);
+  const cost=(PRICE[k]??3)*5*(1+t)*(1+lv),days=Math.round((30+20*t)*(1+0.5*lv)),need=DEV_USE[lv];
+  const why=g==='rel'&&PARTS[k]?.kind!=='engine'?'reliability only matters for engines (for now)':!mine?(x.how==='line'?'a licensed design belongs to the licensor':'we can only develop what we make'):lv>=DEV_MAX?'fully developed':khUse(k)<need?`needs know-how ${(need*100).toFixed(0)}% (now ${(khUse(k)*100).toFixed(0)}%)`:'';
+  return{lv,cost,days,ok:!why,why}}
+function startDev(k,g){if(PROG.devJob)return false;const q=devQuote(k,g);if(!q.ok||PROG.funds<q.cost)return false;PROG.funds-=q.cost;
+  PROG.devJob={k,g,end:PROG.day+q.days};HOOK.news(`Design bureau: ${DEV_GOALS[g].toLowerCase()} ${PARTS[k].name} (mark ${q.lv+2}), ${q.days} days`,'');HOOK.save();return true}
+function devTick(){const J=PROG.devJob;if(!J||PROG.day<J.end)return;PROG.devJob=null;PROG.dev=PROG.dev||{};const e=PROG.dev[J.k]||(PROG.dev[J.k]={});e[J.g]=(e[J.g]||0)+1;
+  PROG.cert[J.k]=Math.max(0.5,certOf(J.k)-0.1);PROG.kh=PROG.kh||{};const h=PROG.kh[J.k]||(PROG.kh[J.k]={use:use0(J.k),reg:{}});h.use=Math.max(0,h.use-0.1);
+  HOOK.news(`New design: the ${PARTS[J.k].name} is ${DEV_GOALS[J.g].toLowerCase()} (mark ${(e.cheap||0)+(e.rel||0)+(e.dur||0)+1}); it has to prove itself again`,'ok');HOOK.save()}
 function standTick(){const S2=PROG.stand2;if(!S2||!S2.job||PROG.day<S2.job.end)return;const{k,mode}=S2.job,d=PARTS[k];S2.job=null;S2.done++;
   const seen={fly:1,maxq:1,heat:1};if(d&&d.kind==='engine')seen.burn=1;
   if(mode==='destroy'){PROG.cert[k]=1;khLearn({khSeen:{[k]:{fail:1}}},STAND_W);HOOK.news(`Tested to destruction: the ${d.name}'s true limits are known`,'ok')}
@@ -1624,7 +1643,7 @@ function startProdLine(k,mode){const Q=prodQuote(k)[mode];if(!Q.ok||PROG.funds<Q
 function prodUnits(s){for(const k of new Set(s.parts.map(p=>p.d.key))){const L=prodLine(k);if(!L)continue;const n=s.parts.filter(p=>p.d.key===k).length;
   for(let i=0;i<n;i++){L.m+=0.12*(1-L.m);L.units++}if(L.lic!=null)opAdd(L.lic,0.2)}}
 function igniteOK(s,k){if(!khOn()||!s.rec)return true;
-  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
+  for(const p of s.parts){if(!p.on||p.seg!==k||p.d.kind!=='engine')continue;const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);   // early units from a young line are rougher
     const x=((Math.sin((PROG.flights+1)*12.9898+(s.kickN||0)*78.233+p.i*37.719)*43758.5453)%1+1)%1;
     if(x<f){const set=s.rec.khSeen[p.d.key]||(s.rec.khSeen[p.d.key]={});set.fail=1;
       HOOK.msg(`${p.d.name} failed to ignite (we're still learning it)`);return false}}
@@ -1793,7 +1812,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
-function econTick(d,R){ensureBoard();standTick();
+function econTick(d,R){ensureBoard();standTick();devTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+0.015*capOf())*d;   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory
@@ -3619,6 +3638,11 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
    html+=`<div class="ep">Test stand</div><div class="sub">`+(!S2?`<button data-stand="build" ${PROG.funds>=STAND_COST?'':'disabled'}>Build a test stand ${fmtM(STAND_COST)}, ${STAND_DAYS} d</button> <span class="dim">ground tests: know-how and certification without flying</span>`:
      PROG.day<S2.ready?`Under construction, ready in ${(S2.ready-PROG.day).toFixed(0)} days`:S2.job?`Testing the ${PARTS[S2.job.k].name} (${S2.job.mode==='destroy'?'to destruction':'qualification'}), ${(S2.job.end-PROG.day).toFixed(0)} days left`:
      ks.slice(0,8).map(k=>{const q=testQuote(k,'qual'),r=testQuote(k,'destroy');return`${PARTS[k].name} <button data-test="${k}:qual" ${PROG.funds>=q.cost?'':'disabled'}>Qualify ${fmtM(q.cost)}, ${q.days} d</button> <button data-test="${k}:destroy" ${PROG.funds>=r.cost&&certOf(k)<1?'':'disabled'}>To destruction ${fmtM(r.cost)}, ${r.days} d</button>`}).join('<br>'))+`</div>`}
+  {const J=PROG.devJob,ks=[...new Set([...(S?S.parts.map(p=>p.d.key):[]),...Object.keys(PROG.kh||{})])].filter(k=>PARTS[k]&&(()=>{const x=sourceOf(k);return x.how==='home'||(x.how==='line'&&x.line.lic==null)})());
+   if(J||ks.length)html+=`<div class="ep">Development</div><div class="sub">`+(J?`Design bureau: ${DEV_GOALS[J.g].toLowerCase()} ${PARTS[J.k].name}, ${(J.end-PROG.day).toFixed(0)} days left`:
+     ks.slice(0,8).map(k=>`${PARTS[k].name}${Object.keys(PROG.dev?.[k]||{}).length?` <span class="dim">(${Object.entries(PROG.dev[k]).map(([g,v])=>`${DEV_GOALS[g].toLowerCase()} ×${v}`).join(', ')})</span>`:''}<br>`+
+       Object.keys(DEV_GOALS).map(g=>{const q=devQuote(k,g);return`<button data-dev="${k}:${g}" ${q.ok&&PROG.funds>=q.cost?'':'disabled'} title="${q.why}">${DEV_GOALS[g]} ${fmtM(q.cost)}, ${q.days} d</button>`}).join(' ')+
+       (devQuote(k,'cheap').why&&devQuote(k,'rel').why?`<br><span class="dim">${devQuote(k,'rel').why}</span>`:'')).join('<br>'))+`</div>`}
   {const L=PROG.lines||{},mine=Object.keys(L).filter(k=>L[k].power===HOME),cand=S?[...new Set(S.parts.map(p=>p.d.key))].filter(k=>{const x=sourceOf(k);return(x.how==='import'||x.how==='grey')&&!(L[k]&&L[k].power===HOME)}):[];
    if(mine.length||cand.length){html+=`<div class="ep">Production</div><div class="sub">`+mine.map(k=>{const l=L[k];return PROG.day<l.ready?`${PARTS[k].name}: tooling up, ready in ${(l.ready-PROG.day).toFixed(0)} days`:`${PARTS[k].name}: ${l.lic!=null?`licensed from ${POWERS[l.lic].root}`:'own line'} · maturity ${(l.m*100).toFixed(0)}% · ${l.units} built · ×${prodLineK(l).toFixed(2)} per unit`}).join('<br>')+
      cand.map(k=>{const q=prodQuote(k),b=(m,o,lbl)=>`<button data-line="${k}:${m}" ${o.ok&&PROG.funds>=o.cost?'':'disabled'} title="${o.why||''}">${lbl} ${fmtM(o.cost)}, ${o.days} d</button>`;
@@ -3626,7 +3650,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
   html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
-    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
+    Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
@@ -4104,6 +4128,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.dk){const[i,k]=ds.dk.split(':');resolveDecision(+i,k);renderProgram();editorChanged()}
   else if(ds.line){const[k,m]=ds.line.split(':');if(!startProdLine(k,m))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.stand){if(!buildStand())HOOK.msg('Not possible right now');renderProgram()}
+  else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
