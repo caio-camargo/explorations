@@ -2400,6 +2400,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `registered ${D.PROG.sats.length}, loaded back with ${back ? D.AV[back.av].name : '—'} (today: ${D.AV[D.avNow()].name})`);
 }
 
+// control-4. Spin stabilisation (control session): Euler's equations with the gyroscopic term (ω×Iω), spin-up motors, and
+// SAS leaving the roll of a spun stage alone. A spinning stage holds its axis against a misaligned thrust and wobbles at
+// the rate Euler's equations give; before, it turned to every torque as if it weren't spinning. Own instance.
+{
+  const D = new Function(src + 'return {newShip,stage,physStep,advRails,controlReport,qrot,qconj,len,dot,sub,add,mul,TELLUS,HOOK,INP,DT,set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.debris = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.boom = () => {};
+  const T = D.TELLUS, toB = (s, v) => D.qrot(D.qconj(s.q), v), toI = (s, v) => D.qrot(s.q, v), deg = 57.2958;
+  const orbit = stack => { D.t = 0; const s = D.newShip(stack), r0 = T.R + T.atm + 100e3; D.S = s;
+    Object.assign(s, { landed: false, throttle: 0, sas: false, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] }); return s; };
+  const Lof = s => { const w = toB(s, s.w); return toI(s, [s.I[0] * w[0], s.I[1] * w[1], s.I[2] * w[2]]); };
+  // a free kick stage at 2 rev/s with a small wobble: angular momentum kept, the wobble turns at (I_axis − I_side)/I_side × spin
+  {
+    const s = orbit(['core', 't1', 'petrel']), ws = 4 * Math.PI; s.w = toI(s, [0.05, ws, 0.02]); const L0 = Lof(s);
+    let turned = 0, last = Math.atan2(0.02, 0.05), drift = 0;
+    for (let i = 0; i < 1500; i++) { D.physStep(s, D.DT); const w = toB(s, s.w), a = Math.atan2(w[2], w[0]); let d = a - last; d -= 2 * Math.PI * Math.round(d / (2 * Math.PI)); turned += d; last = a;
+      drift = Math.max(drift, D.len(D.sub(Lof(s), L0)) / D.len(L0)); }
+    const It = (s.I[0] + s.I[2]) / 2, want = Math.abs((s.I[1] - It) / It * ws), got = Math.abs(turned / 30);
+    check('spin: a free spinning stage keeps its angular momentum, and its wobble turns at the rate Euler\u2019s equations give',
+      drift < 1e-3 && Math.abs(got / want - 1) < 0.01, `L drift ${(drift * 100).toFixed(3)} % in 30 s; wobble ${got.toFixed(3)} rad/s (Euler ${want.toFixed(3)})`);
+  }
+  // a kick stage burning with its thrust 0.5° off the axis, SAS off: unspun it tumbles; at 2 rev/s it flies straight
+  const burn = (rps, sas) => { const s = orbit(['core', 't1', 'petrel']), e = s.parts.find(p => p.d.kind === 'engine'), c = 0.5 / deg;
+    e.tdir = [Math.sin(c), Math.cos(c), 0]; s.w = toI(s, [0, rps * 2 * Math.PI, 0]); D.stage(s); s.throttle = 1; if (sas) Object.assign(s, { sas: true, sasMode: 'stab', spun: true });
+    const Y0 = toI(s, [0, 1, 0]); let dv = [0, 0, 0], t = 0; while (t < 120) { D.physStep(s, D.DT); t += D.DT; if (s.thrust === 0) break; dv = D.add(dv, D.mul(toI(s, s.aB), D.DT)); }
+    const along = D.dot(dv, Y0); return { off: Math.atan2(D.len(D.sub(dv, D.mul(Y0, along))), along) * deg, spin: D.dot(s.w, toI(s, [0, 1, 0])) / 2 / Math.PI }; };
+  const b0 = burn(0), b2 = burn(2), bS = burn(1, true);
+  check('spin: a kick stage with its thrust ½° off the axis tumbles unspun; spun at 2 rev/s its Δv goes within ½° of where it pointed; SAS on a spun stage keeps the spin',
+    b0.off > 20 && b2.off < 0.5 && bS.off < 0.5 && bS.spin > 0.99, `Δv off the axis: unspun ${b0.off.toFixed(1)}°, 2 rev/s ${b2.off.toFixed(2)}°, 1 rev/s with SAS ${bS.off.toFixed(2)}° (spin kept: ${bS.spin.toFixed(3)} rev/s)`);
+  // spin motors under a kick stage fire at the separation that lights it, at the rate the builder said; time warp keeps the
+  // spin; a roll key under SAS takes the roll back and SAS spins it down
+  {
+    const stack = ['core', 't1', 'petrel', 'spin', 'dec', 't2', 'kestrel'], est = D.controlReport(D.newShip(stack)).spin[0];
+    const s = orbit(stack); Object.assign(s, { sas: true, sasMode: 'stab' }); msgs.length = 0;
+    D.stage(s); for (let i = 0; i < 25; i++) D.physStep(s, D.DT); const early = !!s.spun; D.stage(s); s.throttle = 1;
+    for (let i = 0; i < 150; i++) D.physStep(s, D.DT);
+    const rpm = () => D.dot(s.w, toI(s, [0, 1, 0])) * 60 / 2 / Math.PI, flown = rpm(); s.throttle = 0; D.advRails(s, 600, 1000); const warped = rpm();
+    D.INP.roll = 1; D.physStep(s, D.DT); D.INP.roll = 0; for (let i = 0; i < 500; i++) D.physStep(s, D.DT);
+    check('spin motors: fire at the separation that lights their stage, at the rate the builder shows; time warp keeps the spin; a roll key under SAS takes it back',
+      !early && msgs.some(m => /Spin motors firing/.test(m)) && Math.abs(flown / est - 1) < 0.05 && Math.abs(warped / flown - 1) < 0.01 && !s.spun && Math.abs(rpm()) < 0.5 * flown,
+      `builder ${est.toFixed(0)} rpm, flown ${flown.toFixed(0)}, after warp ${warped.toFixed(0)}, after a roll key ${rpm().toFixed(0)} rpm (spun: ${s.spun})`);
+  }
+}
+
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;

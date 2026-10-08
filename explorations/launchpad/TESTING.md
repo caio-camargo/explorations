@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -54,6 +54,8 @@ so use *All tools* (it gives the best avionics) or the date jumps.
 | 105 | Fly steerable fins on a rocket and a probe dart | Builder: swap the Orbiter's fin ring for **Steerable fin ring**; or Probe core + Tank 1 t + Steerable fin ring + Sparrow | Coasting through the air it obeys SAS (the builder said "coasting holds"); in vacuum the fins do nothing. They look like fins (they don't move visibly yet) | v1.40 | control |
 | 106 | Read the builder's Control block on several designs | Builder: Orbiter, Heavy, Sounding, Passenger, Lunar; then add a Reaction wheel (palette *Control*) | "holds / weathervanes / flips", roll and the turn times make sense to a player and change sensibly when you add parts | v1.43 | control |
 | 107 | Feel the gimbal: hand-fly an ascent with SAS off, then on | Orbiter, keys only | The rocket answers the keys with a small, believable lag; no wobble under SAS on any preset (Lunar was the worst before the fix) | v1.40 | control |
+| 114 | Spin a kick stage and fire it | Builder: Probe core + Tank 1 t + Petrel + **Spin-up motors** (palette *Control*) + Decoupler on a first stage; the Control block says ~120 rpm. Stage in orbit, SAS on | "Spin motors firing" at separation; HUD *Spin* row ~120 rpm; the stage visibly spins and its burn goes where it pointed. Time warp keeps the spin. A roll key under SAS spins it down | v1.50 | control |
+| 115 | Spin a stage by hand and watch it wobble | Any small stage in orbit, SAS off: roll key held for a while, then a short pitch tap | The stage cones (HUD *Spin* row shows a wobble angle) instead of turning over; it keeps pointing roughly where it was. Turning SAS on stops the spin (only a stage spun by spin motors keeps it under SAS). Is that split clear? | v1.50 | control |
 
 ### Building
 
