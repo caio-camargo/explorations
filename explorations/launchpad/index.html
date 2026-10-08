@@ -1449,6 +1449,20 @@ const aglAt=(b,r,t)=>len(r)-b.R-groundAlt(b,toPF(b,r,t));   // height above the 
 const mainChuteOK=(b,h,r,t)=>h<TERR_TOP+MAIN_AGL&&aglAt(b,r,t)<MAIN_AGL;   // h is the sea-level height (a cheap early out)
 // the gap between the ship's bottom and the ground under it (the warp's time-to-ground uses this)
 const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
+// ---- recovery by geography (slice D): a vessel that came home whole still has to be collected. At sea, a ship must
+// reach it: the recovery fleet's range from the launch point when built, otherwise local boats (RECOVER_LOCAL). On our
+// land or no one's, it's trucked home. On another power's land it depends on relations: friendly powers return it,
+// tense ones return it worn after long talks, hostile ones keep it. The factor scales the refurbishment refund.
+const RECOVER_LOCAL=200e3;
+function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};const u=norm(s.pf);
+  if(s.water){const from=R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,
+      lv=typeof facLv==='function'?facLv('fleet'):0,reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);
+    return d<=reach?{factor:1,kind:'sea',why:`fished out of the sea ${(d/1e3).toFixed(0)} km out`}:{factor:0,kind:'lost',why:`came down ${(d/1e3).toFixed(0)} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
+  const p=powerAt(u);if(!p||p.i===HOME)return{factor:1,kind:'land',why:''};
+  const rel=relOf(HOME,p.i);
+  if(rel>=0)return{factor:1,kind:'returned',why:`landed in ${p.name}, which sends it back`};
+  if(rel>=-0.2)return{factor:0.8,kind:'returned',why:`landed in ${p.name}: returned, worn, after long talks`};
+  return{factor:0,kind:'kept',why:`landed in ${p.name}, which keeps it`}}
 // ---- ground stations on real ground (slice C). A station's antenna stands GS_MAST above its ground; it sees a target
 // above the higher of its minimum elevation (STA_MIN, 5°) and the terrain's horizon in that direction (mountains mask
 // low passes). The horizon mask, 36 azimuths out to 300 km, is computed once per station and cached.
@@ -1767,8 +1781,9 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
   if(R.bio&&!R.bioOK&&!R.tourist)failHit(-8,`a passenger flight went wrong`);
   if(R.tourist&&!R.bioOK){standAdd('tour',-40);opAdd(HOME,-10);HOOK.news(`Space tourism in crisis after ${R.pet} ${R.bioWhy}; bookings cancelled`,'bad')}
   // the books: refurbishment for what came home whole, damages for what came down on towns, the floor
-  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0);let back=0,full=0,worst=null;
-    for(const p of ps){const w=wearOf(p,tv),q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
+  if(s.alive&&s.landed&&s.body===TELLUS){const ps=s.parts.filter(p=>p.on),tv=(s.touchV||0)+(s.touchHit||0),rc=recoveryOf(s,R);let back=0,full=0,worst=null;R.recovery=rc.kind;   // recovery by geography (terrain session)
+    if(rc.why)HOOK.news(`Recovery: ${rc.why}`,rc.factor>=1?'ok':rc.factor>0?'warn':'bad');
+    for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
   const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
