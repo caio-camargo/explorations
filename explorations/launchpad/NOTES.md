@@ -2206,6 +2206,67 @@ nationalism, the start choice and the security state's regime change. Industry a
 
 `test.mjs` §19: 8 new checks; 118 total. Two older checks were pinned to an archetype, because the generated home is a
 closed superpower (patronage budget, 2× firsts).
+## Procedures: automation that adapts, and a dispatch brief (2026-10-08, bodies session)
+
+Caio wants missions that can run themselves, so repetitive flights are optional, with **a better hand-flown flight improving every
+automated one after it**, and exact replay can't do that everywhere. The v1.8 tapes record every input and replay **open-loop**:
+perfect when nothing differs, blind when anything does (an ignition failure the recording didn't have, a moved docking
+target, a contract's different orbit, any design change, a chaotic leg, a physics change).
+
+**1. Tapes can't go stale any more.** `TAPE_V` was the hand-bumped `'lp-1.12'`, unchanged through a dozen physics changes since,
+so a saved tape would have replayed against new physics and silently diverged. It's now a fingerprint (`hashStr`) of the
+functions and data that move a craft (`physStep`, `rails`, `coastStep`, `pertAcc`, `aeroPass`, `thermal`, `structLoads`,
+`stage`, `detach`, `abort`, `igniteOK`, `procStep`, …, plus `PARTS` and the bodies). Any change to them retires old tapes. A
+logbook record whose tape predates the current physics says so when loaded.
+
+**2. Procedures: a flight's intent, not its keypresses** (`procSample`, `procKeep`, `procStart`, `procStep`, `PROG.procs`).
+v1 covers the ascent to orbit, the flight repeated most.
+- *Recorded* from every flight off the pad (sampled in `advPhys`): pitch above the horizon and throttle against altitude, the
+  heading, staging done before a tank ran dry, the first cut-off, and the orbit it ends in.
+- *Kept* per design once the craft is in a stable orbit with its engines off, **only if it beats the stored one** (less Δv
+  spent to orbit). A better hand-flown ascent becomes the procedure, with a news line, and every automated flight after uses it.
+- *Flown* by `procStep` through **SAS `stab` holds** (real torque, real staging), cutting off on **goals** (the ascent's own
+  cut-off apoapsis, then periapsis at the circularisation), not times. A target override retargets the cut-off and the
+  heading (inclination from the site's latitude). In the game: **▶ Procedure** on the pad; any control key takes over; the
+  coast to the burn warps; a procedure-flown flight can't be saved as a tape (it's already automated).
+
+| Check (§28) | Result |
+|---|---|
+| a hand-flown Orbiter ascent → procedure | 448 pitch points, heading 90°, 102 × 118 km, 4,445 m/s |
+| the procedure flies the same design | 103 × 111 km for **4,446 m/s** (hand-flown 4,445) |
+| retargeted to a contract's 180 km | 180 × 184 km for 4,538 m/s |
+| a heavier variant (4 t upper tank: +2 t, TWR 1.41 vs 1.63) | 103 × 110 km for 4,507 m/s |
+| a variant that can't make orbit (+0.5 t, 4,329 m/s in all) | never claims success |
+| a lazier hand flight (4,778 m/s) | doesn't replace the 4,445 procedure |
+
+In the browser: ▶ Procedure → ascent → coast (warp) → circularisation → in orbit at T+287 s.
+
+**What it taught:**
+- **A procedure is a technique tuned to its design.** On a design with much lower thrust-to-weight (+0.5 t payload *and* a 4 t
+  tank: TWR 1.37), the Orbiter's pitch curve reaches space but ends 42 × 102 km, about 70 m/s short after 4,898 m/s. It works,
+  but it wastes Δv. So procedures stay per design, and a new design earns its own by being flown.
+- **The ascent's cut-off isn't the final apoapsis.** The first version aimed the ascent at the final orbit's apoapsis (118 km;
+  the circularisation had raised it from 110), kept burning past the end of its pitch table and fell back. It also stored the
+  cut-off as a 0 throttle setting. Both are fixed: the cut-off apoapsis is kept, and only powered samples go into the tables.
+- **A landed craft with its engines off is on rails,** where `advPhys` never runs, so the first in-game version sat on the pad.
+  The procedure now lights the engines when started, and the game loop keeps a procedure on physics except during its coast.
+
+**3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
+the economy decides, this is what the physics side offers:
+- **Real outcomes, cheaply.** A procedure flown headless is the game's own physics: ~1 s of CPU for an ascent; 15 s for the
+  whole crewed Selene mission (`fly_crewlunar.mjs`). A dispatched flight can run between flights and come back with a real
+  result (orbit reached or not, Δv spent, an ignition failure, a breakup), not a dice roll.
+- **What a procedure can promise:** the orbit it was proven to, retargetable within its design's margin (it reports failure
+  rather than faking success). Today that means orbit only; transfer, landing and return procedures would follow the phases
+  `fly_crewlunar.mjs` already uses.
+- **Questions for the economy:**
+  1. Which contracts can be dispatched? Those whose target a stored procedure can reach, for its design.
+  2. Does an automated flight earn the same? (A pilot's precision bonus, opinion for a first done "by hand"?)
+  3. Time and cost: the same stacking days and launch fees as a flown launch? Can several be queued?
+  4. Risk shown before dispatch (from the procedure's margin and the parts' know-how)?
+  5. How results reach the player: a news line, the logbook, a short replay?
+  6. Should a first in the world ever be dispatchable, or only repeats?
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
@@ -4275,6 +4336,34 @@ back with the era's precision. The plan then drives:
 
 In the human-computer era, planning is the slow, deliberate core of a deep-space mission. Later it becomes instant,
 and the screen is where the player spends their time either way.
+
+**Gravity assists without trial and error** (Caio): slingshotting off Selene (and later planets) should be something
+the planner *solves*, not something you nudge nodes at for an hour as in KSP.
+
+Why KSP is hard here: the outcome of a flyby depends on *where* you pass the moon (the aim point) to a few km, and you
+control it only indirectly through a node hours or days earlier. Real mission design inverts this. You choose the
+flyby, and a solver finds the burn.
+
+- **Goals, not nodes.** The player states what they want after the flyby: raise apoapsis to X, escape Tellus, change
+  inclination to Y°, return to Tellus with periapsis Z (a free-return), or reach Nyx. The planner shows which flybys
+  can deliver it.
+- **B-plane targeting** (the real method). The flyby is described by its aim point on the plane through the moon,
+  perpendicular to the approach. Where you aim sets how far and which way the trajectory is turned.
+  - The screen shows that plane with the aim point you'd hit now and the region that achieves the goal.
+  - Dragging the aim point updates the outgoing orbit live.
+- **A solver.** Unknowns are the departure burn (Δv components and time). Targets are the aim point (or the goal's
+  elements directly). Use Newton iteration with finite differences on `predictFrom` (patched conics are smooth enough
+  away from grazing passes), from a Hohmann-like first guess. Show "no solution" and the closest one, never a silent
+  failure.
+- **Sensitivity made visible.** A fan of outcomes for small errors in the burn shows how touchy a flyby is. With the
+  compute era's error (`predErr`) it becomes an error ellipse on the aim plane, and correction burns (mid-course,
+  days later, small) are planned in. In the human-computer era a slingshot needs corrections; later it doesn't.
+- **Multi-leg plans.** Legs chain: depart, correct, flyby, burn at periapsis (the Oberth trick), next encounter.
+  Each leg is an event on the timeline.
+- **Windows.** For Selene, the phase angle at departure; for planets, porkchop plots (departure date × travel time,
+  coloured by Δv). A gravity assist adds a dimension, so show the best few routes rather than a full grid.
+- **Execution.** The solved plan goes to the autopilot (ascent and burns) and, on long coasts, to missions in flight
+  with burns executed at the era's error. The study (v1.38) is what computing this plan costs in days and money.
 
 **Owners:**
 - the screen: UI;
