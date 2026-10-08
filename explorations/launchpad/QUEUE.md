@@ -103,7 +103,7 @@ A lane with nothing ready: take the top line of its **evergreen** list in ROADMA
 | Q27 | Relay range and power | M2 | M | ⚙ | ready |
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ready (plan first) |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first) |
-| Q13 | Landing on a chosen crater | M3 | M | 📝 | design only (gate) |
+| Q13 | Landing on a chosen crater | M3 | M | ⚙ | → bodies 2026-10-08 (claimed before the gate reached this queue; Caio may let it run or redirect to Q50/Q25) |
 
 ### world — the planet, sites, geography, Selene's ground (was terrain)
 | # | Item | M | Size | Load | State |
