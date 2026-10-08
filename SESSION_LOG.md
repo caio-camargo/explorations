@@ -1969,6 +1969,11 @@ keyboard play was NOT exercised end-to-end, because rAF barely ticks in the hidd
   Per-design trajectory studies cost money and days (a launch waits for its study) and narrow the impact spread
   that range safety uses. Design notes cover the rich-programs ladder, waste heat, routine runs and compute.
   All tests pass. Merged to `main` (`654ba64`).
+- **v1.41 (2026-10-08, economy worktree):** no daily overhead (Caio: idle time roughly neutral; `OVERHEAD` and
+  `OVERHEAD_CAP` kept at 0); top-ups for weak programs roughly halve in simulated careers. Design notes: time, long
+  missions and communication (missions in flight, passive flybys, one event timeline, pay along the way, the year as
+  Tellus's orbit; instruments that point, data as a volume, a link budget, forgiving loss of contact). All tests
+  pass. Merged to `main` (`ab6e07c`).
 
 ## 2026-10-07 — Launchpad part visuals (visuals session, branch `visuals`)
 
