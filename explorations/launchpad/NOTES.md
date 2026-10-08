@@ -1234,6 +1234,68 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.47 — dispatch, the economy side (2026-10-08, economy session)
+
+The first slice of dispatch (decisions: "Dispatch — the economy's answers"). A contract flown by a stored procedure,
+without you.
+
+- **What can be dispatched:**
+  - satellite and recon contracts (`DISPATCH_TYPES`), for a design with an orbit procedure in `PROG.procs` (so it
+    flew to orbit by hand);
+  - the design must be able to do the contract (its payload), checked with the contract's own `ok`;
+  - missions (the firsts) are never dispatched.
+- **The risk estimate** (`dispatchEstimate`), from the part data:
+  - **margin:** the design's vacuum Δv − the procedure's Δv − the extra for this target (circular-speed difference
+    from the procedure's orbit, plus the lost rotation boost for inclination), through a logistic around 40 m/s;
+  - **ignition:** every engine's odds as `igniteOK` computes them (know-how, development, line maturity); the top
+    stage lights twice;
+  - **loads:** 2% × (1 − certification) per part.
+
+  The range widens with average uncertainty (1 − certification, 1 − know-how). Measured: unknown parts 90%
+  (67–100%), well-known 100% (99–100%).
+- **Pads are reservations** (`padsFree`, `padWait`):
+  - one pad, plus the new **Launch pads** facility (80M then 160M: 2, then 3 pads);
+  - a dispatch takes the earliest free pad and stacks for the same days as a hand-flown launch;
+  - **a hand-flown launch waits for a free pad too** (`R.padWait`, before stacking).
+
+  Measured: two dispatches on one pad launch on days 36 and 63, and a hand-flown launch would wait 53 days; with a
+  second pad the third goes at once.
+- **Resolution** (`dispatchTick`, on the timeline as "Dispatched launch"):
+  - on launch day the weather can scrub it, a day at a time, as for any launch (`siteWeather`);
+  - if money is short it's held 10 days;
+  - otherwise it pays the same launch costs, counts as a flight, uses production-line units and teaches know-how;
+  - the flight comes from `dispatchRun(D, vessel, contract)` if the physics side has defined it;
+  - success builds a flight record with the orbit and runs `contractEval` (same pay, same precision bonus);
+  - a contract already completed by another flight stands the dispatch down (one orbit can complete several).
+- **The seed** is fixed when the dispatch is ordered, so the same state gives the same outcome; no re-rolls.
+- **Interim resolver** (`dispatchRoll`): until `dispatchRun` exists, the estimate is rolled with the seed, and the orbit
+  is scattered by 3 km + 40 km × `predErr` (the compute era).
+- **UI:** each active contract shows its best dispatch option ("success ~90% (67–100%), launches in N d on pad 1, cost
+  [Dispatch]"), or why there's none. News on ordering, launch and outcome.
+
+**For the physics side (bodies):** `dispatchRun(D, v, c)` should return `{ok, orb:{pe, ap, inc, sci, cam}, dv, why}`,
+or a deviation (planned: `{deviation: {t, why, state}}`, which the economy will turn into a timeline stop that hands
+you the flight). `D` carries `stack`, `seed`, `launch` and `pad`.
+
+**Weather and auto-resolve** (Caio's concern). Weather here is deterministic: `cloudAt(place, time)` from the world seed,
+and today it only scrubs launches. A dispatch launching on a given day sees the same weather whether watched or
+auto-resolved. The rule that keeps it so: **every random factor in a flight is a function of the world seed, time and
+place, or of the dispatch's seed**, never a fresh random number. Winds aloft, if they come, would follow the same rule
+and the procedure would fly through them in both modes.
+
+**Deviation, and whether "can't meet its goal" is computable** (Caio). It mostly is, with flight rules: thresholds at
+checkpoints, as real missions use.
+- **Δv to go vs Δv left** (`dvRemaining` already gives the latter): if what's left can't reach the goal from the
+  current orbit, it deviates.
+- **A corridor around the procedure's own recorded profile** (velocity and flight-path angle against altitude): leaving
+  it beyond a threshold deviates.
+- **Events:** an engine that didn't light, staging out of order, structural failure.
+- A failure is just the extreme of deviation. Since the run *is* the simulation, the deviation happens inside it, at a
+  time, with a state; nothing is rolled separately. The thresholds set how forgiving it is. A threshold the player sets
+  ("hand over / abort / carry on") is a possible later option.
+
+`test.mjs` §38: 3 new checks: estimate from part data; pads; outcome, pay and seed.
+
 ## v1.46 — avionics generations: SAS grows with the computing eras (2026-10-08, control session)
 
 The third slice of the control review. The NOTES' eras idea ("early guidance computers have stability-only SAS") on the
@@ -1270,13 +1332,16 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §37 (2 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
-gyro holds", the pod's turn time ratio and the gyro's deadband. 314 pass after merging main.
+**Tests** §39 (3 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
+still flies its gyro. 315 pass.
 
 **For other sessions**
 - **economy / planning:** `AV`, `avNow()`, `avOf(s)`. A facility, import or purchase that buys better avionics early
-  would set `s.av` (or move `avNow`). Registered satellites don't remember `av` yet: a vessel loaded back from the
-  register flies with the best.
+  would set `s.av` (or move `avNow`). Registered vessels keep theirs (`vstOf` stores `av`, `vesselOf` restores it;
+  entries from before v1.46.1 get today's).
+- **tester:** *All tools* also gives the best avionics (`avNow`); the epoch picker doesn't move the date, so without it
+  a tester at epoch 4 flies a gyro.
 - **ui:** locked SAS buttons are `disabled` with a `title`; the SAS toggle's title names the avionics.
 - **anyone writing career flight scripts:** in a program before year 3, `sasMode='pro'` holds the attitude.
 
@@ -1392,7 +1457,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §36 (3 checks): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** §38 (3 checks; numbered §36 until v1.46.1): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
@@ -2534,7 +2599,61 @@ flies ascent → transfer → capture → landing → take-off through the game 
 - **Circularise toward a circular-orbit velocity, not "hold the horizon until periapsis".** Started a little late, the old law
   raised apoapsis to 805 km; the new one is robust to timing.
 
-**Open:** flybys (no capture) aren't procedures yet; Nyx missions should work through the same phases but are untested; dispatch
+**To Nyx through the same phases (2026-10-08).** Nyx is tilted 30° and eccentric, so the transfer meets it at a **node** (where it
+crosses our equatorial plane; `transferNode`), taking the far one (20,355 km, where Nyx is slower) on a Hohmann-like ellipse,
+leaving on the parking-orbit pass nearest the ideal time. The leftover timing is the mid-course correction's job, and when the
+predictor shows no encounter yet, the correction minimises the closest approach (`passScore`), with up to three passes. The
+return scan for an eccentric moon covers a wider burn range (200–1,500 m/s), counts **everything aboard** (an empty stage drops
+on the way), and only accepts trajectories that reach perigee within **2.5 days**.
+
+Crewed Lunar, flown by a "Nyx land" phase list (§27): wait 29 h for Nyx's node passage, burn, a 10 m/s correction, capture
+(~470 m/s), land at **1.2 m/s**, ascend, burn home (425 m/s, dropping the empty lander mid-burn), correct 131 m/s to a 44 km
+perigee, splash down at 6.5 m/s: **3.35 days**, 4.1 g, crew fine, 7,479 m/s in all. It records itself as a "Nyx land" procedure.
+
+What the Nyx flight found (the Selene flights had hidden all of these):
+- **Count parking-orbit passes on the real orbit.** Picking the departure pass by 2πr/v from the current radius drifted by tens of
+  degrees over a 29 h wait (the orbit is 102 × 111 km); the burn left Nyx's node 61° off and the corrections chased a
+  17,000 km miss. `timeToNu` on the actual elements: 2.6°.
+- **On rails, a SAS hold doesn't turn the craft.** After a long coast the stack wakes pointing where it was. Burns now wake
+  `ALIGN` (600 s) early to turn, then fire on time (`X.tBurn` vs `X.wake`).
+- **The suicide burn must count only the upward thrust.** Falling 100 km in Nyx's weak gravity, the stack's nose wandered
+  15–50° on its wheels; the trigger assumed all the thrust pointed up and hit at 120 m/s. Now: the vertical component of
+  thrust, and 30 % in hand.
+- **"Don't stage the capsule loose" must not mean "never stage".** The guard also blocked staging to a full return stage; it now
+  stops only when the current stage is the last with an engine.
+- **The cheapest way home can take 18 days.** It flew outward first; the crew ran out of air at day 10.
+
+**Flybys and free returns (2026-10-08).** A new phase, `home {perigee}` (the back half of `return`: out of the moon's SOI, a
+correction to the perigee, shed the stage, entry, chute). The recorder keeps a flight that passes a moon without capturing as a
+`B:flyby` procedure at the SOI exit (`transfer` only, with its pass), and, if it then lands home well, as `B:free-return`
+(`transfer`, `home`). Crewed Lunar on `transfer Selene 400 km → home 45 km` completes **"Crew around Selene"** in 1.33 days and
+records both. Its home correction is 286 m/s: whether a pass returns by itself depends on which *side* of the moon it goes,
+and the transfer phase only aims for an altitude. A hand-flown free return that needs less will replace it.
+
+**Aiming a free return (2026-10-08).** When the phase after a transfer is `home`, its corrections (and the trim inside the moon's
+SOI) aim at **the perigee it will come home on after the flyby** (`homePe`, read off the predictor's chained legs), with the
+pass allowed anywhere within half its planned height. The same free return as before now needs **4.9 m/s** on the way home
+instead of 286 (two mid-course corrections of ~50 m/s set up a pass that comes back by itself); 5,812 m/s in all instead of
+6,025.
+
+**Debris** near the moons now feels their tides too (`stepDebris`, the same pointwise test as `physStep`).
+
+**Registered satellites still ride pure Kepler, deliberately, for now.** Measured against the integrated orbit:
+
+| orbit | off the Kepler path after 30 days | Ap / Pe change |
+|---|---|---|
+| low, 300 km | 5 km | ±0.2 km |
+| polar, 1,000 km | 39 km | ±0.75 km |
+| navigation, 3,000 km | 500 km | ±6 km |
+| **stationary (TV)** | **10,750 km** | +31 / −144 km |
+
+Nyx is heavy and close, much more so than the Moon is to Earth, so a stationary satellite would really drift a quarter of the way
+round in a month. Giving the registry the tides would make the TV mission pay for days unless satellites carry propellant
+to hold their slot. That's the design notes' "satellites age" idea: **a satellite's life = station-keeping propellant ÷
+drift rate**, with servicing or replacement missions after. It's a gameplay decision for Caio with the sats and economy
+sessions, not a physics fix to slip in.
+
+**Open:** station-keeping and satellite lifetimes (above); dispatch
 (economy) can now run whole missions headless.
 
 **3. Dispatch: a brief for the economy session** (Caio: "dispatch designed with the economy session"). Not built. Whatever
@@ -3918,6 +4037,66 @@ today Selene is a smooth sphere apart from the regolith model; power (R3) is new
   been imaged from orbit, which ties the imaging satellites to surface work, as Lunar Orbiter's photos did for Apollo.
 - **Rover instruments (R4) use the same pointing and activity timeline** as orbital instruments (Owners and order, item 3).
 
+### R2 built: packed, deployed, driven anywhere, kept in the field (sats session, 2026-10-08)
+
+- **Two mounts** (palette *Surface*):
+  - **Rover, folded (side mount)** (`rvfold`): a surface part, the lunar rover's way. Only small and medium chassis fold.
+  - **Rover deck with ramps** (`rvdeck`): a stack part, Lunokhod's way, for rovers up to 3.8 m long.
+- **Packing.** A new mount packs the rover selected in the Rover yard. Its part options (right-click) choose another or
+  none. The node keeps a copy of the design (`nd.rvd`), and its mass is added as the part's `xm`. A large rover has no
+  mount yet: a cargo bay or a sky crane would be next.
+- **Deploying.** The HUD's *Rover* row has a **deploy** button once landed (`tapeRover`, tape op `Y`). Otherwise it
+  says why not (`rvDeployCheck`):
+  - the lander is moving or not landed;
+  - the rover doesn't fit its mount;
+  - a crewed rover with nobody aboard;
+  - the lander leaning more than 15°;
+  - at the spot where the rover would end up:
+    - sea;
+    - a slope over min(20°, the rover's side tip angle − 15°);
+    - a rover-sized rock (on rough ground a share of 4 m cells has one; regolith is rough, so one side can be blocked
+      and the other clear);
+  - for a deck, ramps steeper than min(25°, the rover's forward tip angle − 10°).
+
+  The deck tries all four sides and takes the gentlest ramps that pass. The ramps telescope 6 m, so a deck on top of a
+  short lander works (24° in the check) and one on a tall stack doesn't (50°).
+- **What a deploy does.** It takes the rover's mass off the lander, keeping the lander where it stands (its centre of
+  mass moves, not the lander). Then a scripted pose, 8 s for an unfold or 10 s down the ramps, ends with the rover
+  physical, upright on its wheels, square to the ground. Nothing in the deploy depends on the player's driving.
+- **Driving in a flight.** `]` from the lander drives a deployed rover (then the next); `[` goes back. W S A D and Space
+  go to the rover, not the lander (the lander's keys are blocked while you drive). The camera follows, and a readout
+  panel shows on the right. The rover steps on any body in that body's frame. Landed vessels are obstacles: upright
+  cylinders the rover's footprint box can't enter. A rover not driven and at rest sleeps.
+- **Kept in the field.** At the flight's end, every rover that isn't in the sea stays where it is (`PROG.rvOut`). A
+  later flight on that body within 2.5 km takes it back in. The lander's saved shape remembers its rover is gone (`rvOut`).
+- **Driving from home.** The Program screen's *Rovers in the field* (Fleet tab) lists them. An uncrewed one has
+  **Drive from home**, which opens the drive screen wherever it is, as Lunokhod was driven from Earth. A crewed one is
+  driven by its crew, from a lander there.
+- Fixed on the way: autopilot tapes replayed arm operations (`['A', op]`) as aborts. Playback now aborts only on a bare
+  `['A']`.
+- Checks: `test.mjs` §35, 6 checks:
+  - mass and refusals;
+  - the side deploy (lighter, unmoved lander, rover upright beside it);
+  - backing into the lander;
+  - kept in the field, taken back, and the saved lander without it;
+  - deck ramps short against tall;
+  - a leaning lander.
+
+  Mutation-tested: no obstacles, a shape that forgets the rover is gone, no packed mass, no lean check, or a lander that
+  isn't held in place each fails a check.
+
+  Browser: on Selene at noon, one side was blocked by a rock and the other deployed. The rover unfolded, drove, and the
+  view went back to the lander. It was then kept in the field and driven from home. The deck with its rover showed in
+  Assembly with its part options.
+- **Not yet:**
+  - a cargo bay or sky crane for large rovers;
+  - an unfold animation that looks folded (the scripted pose moves the whole rover);
+  - time passing while you drive from home (the clock is held);
+  - Selene's real terrain (it is still a smooth sphere with bumps and rocks);
+  - power, contact and the signal's delay (R3);
+  - science (R4);
+  - drive plans (R5).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -5066,3 +5245,18 @@ is right.
 
 **Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
 "skip to an era" shortcut for the compute eras.
+
+## The gantry no longer clips the rocket (2026-10-08, tester session; PLAYTEST #2)
+
+**Cause.** The service gantry rolls back toward −z, open front first, yet two girders spanned that open front (at a
+third and two thirds of its height). Over the 14 s roll they swept straight through every rocket, wide or narrow. A
+second, smaller one: the service position was a fixed −3.3 m, so the work decks' front edge sat at z = −2.3 m, inside
+any stack reaching further than that (the Crewed Lunar's boosters reach 2.75 m).
+
+**Fix** (`buildRig`, `padRig`, `drawPadRig`): no girders across the open front; side girders along each pair of columns
+instead. The service position follows the stack: `RIG.zS = min(−3.3, −(zr + 1.5))`, where `padRig` now measures `zr`,
+the widest |z| reach of any part (boosters included), so the decks stop 0.5 m short of it. Narrow rockets keep −3.3 m.
+test.mjs §38 runs the page's own `buildRig`/`padRig` with stubs that record every box and sweeps the whole roll-back
+against each preset's envelope; on the old code it fails (the front girder reaches the Orbiter at −5.2 m).
+
+**For visuals:** the gantry is yours. If you restyle it, keep the open front clear; §38 will tell you.
