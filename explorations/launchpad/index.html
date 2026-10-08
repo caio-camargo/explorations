@@ -833,6 +833,7 @@ function physStep(s,dt){
   const alC=qrot(qi,ctrlAccel(s));
   // RCS: the translation keys, plus whatever the control law wants beyond the wheels and gimbal (real forces, real gas)
   if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true));rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0],(alR[1]-alC[1])*s.I[1],(alR[2]-alC[2])*s.I[2]])}else{s.rcsFire=0;s.rcsShots=null}
+  groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
@@ -887,22 +888,61 @@ function soiSwitch(s,to,how){s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);if(s.n
 function checkSOI(s){const b=s.body;
   if(b.parent&&len(s.r)>soiAt(b,simT)){const[p,v]=bodyRel(b,simT);s.r=add(s.r,p);s.v=add(s.v,v);soiSwitch(s,b.parent,`Escaping ${b.name}`);return}
   for(const c of b.children){const[p,v]=bodyRel(c,simT),d=sub(s.r,p);if(len(d)<soiAt(c,simT)){s.r=d;s.v=sub(s.v,v);soiSwitch(s,c,`Entering ${c.name}`);return}}}
+// ---- ground contact (terrain session). The vessel meets the ground through contact points on its base: the foot of
+// every part whose bottom is within 0.5 m of the lowest point (the core's base, side boosters' bases), 4 per part
+// around its own axis. Each point pushes back with a spring-damper along the ground's normal (2 cm of static
+// deflection at Earth gravity on every body, ζ 0.6) and drags with Coulomb friction (μ from the surface). Tipping,
+// sliding and bouncing follow from those forces, which also load the joints like any other force. The speed verdict
+// (surfaces, boulders) happens at the first touch; a vessel at rest for C_REST s is landed, pinned in the attitude it
+// came to rest in; tilting past C_TOPPLE while touching is toppling. The sea keeps the old splashdown.
+const C_DEFL=0.02,C_ZETA=0.6,C_REST=0.5,C_TOPPLE=1.05,C_GREF=9.81;
+function footPoints(s){const key=s.parts.map(p=>p.on?1:0).join('');if(s.foot&&s.foot.key===key)return s.foot.pts;
+  let yb=Infinity;for(const p of s.parts)if(p.on)yb=Math.min(yb,p.y0);const pts=[];
+  for(const p of s.parts){if(!p.on||p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
+    for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;pts.push({p,pt:[p.pos[0]+r*Math.cos(a),p.y0,p.pos[2]+r*Math.sin(a)]})}}
+  s.foot={key,pts:pts.slice(0,32)};return s.foot.pts}
+// the ground's upward normal at a planet-fixed point, in the inertial frame (finite differences over ±1 m)
+function groundNormal(b,pf){if(b!==TELLUS)return norm(fromPF(b,pf,simT));const u=norm(pf),f=siteFrame(u),d=1/TELLUS.R,h0=groundAlt(b,u);
+  const he=groundAlt(b,norm(add(u,mul(f.e,d)))),hn=groundAlt(b,norm(add(u,mul(f.n,d))));
+  return norm(fromPF(b,norm(sub(u,add(mul(f.e,(he-h0)/TELLUS.R/d),mul(f.n,(hn-h0)/TELLUS.R/d)))),simT))}
+// the touchdown verdict at first contact, judged under the vessel's centre (the base spans more than one boulder cell):
+// the ground forgives TOUCH_MAX + its softness; boulders or trees add to the speed
+function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel(b,s.r))),su=surfaceAt(b,pfC),hit=surfaceHit(su,pfC,b),vE=sp+hit,lim=TOUCH_MAX+su.soft;
+  s.landSurface={name:su.name,id:su.id??null,hit};s.touchV=sp;s.touchHit=hit;s.restT=0;
+  const among=hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'}`:'';
+  if(vE>=lim){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}`);return false}
+  return true}
+function groundContact(s,dt){const b=s.body;
+  if(s.landed||!s.alive||len(s.r)-b.R>TERR_TOP+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
+  const pts=footPoints(s),n=pts.length,mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),ct=0.5*mPer/dt,qi=qconj(s.q);let any=false;
+  for(const fp of pts){const rb=sub(fp.pt,s.cm),rw=qrot(s.q,rb),P=add(s.r,rw),pf=toPF(b,P,simT),gA=groundAlt(b,pf),pen=b.R+gA-len(P);
+    if(pen<=0)continue;if(b===TELLUS&&terrainH(norm(pf))<0)continue;   // over the sea: splashdown (groundCheck)
+    if(!s.inContact){if(!touchdown(s))return;s.inContact=true}
+    any=true;const su=surfaceAt(b,pf),nW=groundNormal(b,pf),vP=add(sub(s.v,surfVel(b,P)),cross(s.w,rw)),vn=dot(vP,nW);
+    const Fn=Math.max(0,k*pen-c*vn),vt=sub(vP,mul(nW,vn)),vtl=len(vt);let Fw=mul(nW,Fn);
+    if(vtl>1e-6)Fw=madd(Fw,vt,-Math.min(su.mu*Fn,ct*vtl)/vtl);
+    const fb=qrot(qi,Fw);addF(fp.p,fb[0],fb[1],fb[2],fp.pt[0],fp.pt[1],fp.pt[2])}
+  if(any)s.touchT=simT}
+// after each step: the nose in the ground, toppling, coming to rest; and splashdowns, which keep the old rule
 function groundCheck(s){
-  const b=s.body,Y=qrot(s.q,[0,1,0]);if(len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
-  const pB=madd(s.r,Y,s.yBot),pT=madd(s.r,Y,s.yTop),hB=len(pB)-groundR(b,toPF(b,pB,simT)),hT=len(pT)-groundR(b,toPF(b,pT,simT));
-  if(Math.min(hB,hT)>0)return;
-  const up=norm(s.r),sp=len(sub(s.v,surfVel(b,s.r))),tilt=Math.acos(clamp(dot(Y,up),-1,1));
-  // the verdict depends on the ground: friction sets the steepest slope it can stand on, softness the speed it forgives,
-  // boulders or trees add to the effective touchdown speed (s.touchHit; the refurbishment adds it to s.touchV, the measured speed)
-  const pf0=toPF(b,s.r,simT),slope=terrainSlope(b,pf0),su=surfaceAt(b,pf0),hit=surfaceHit(su,pf0,b),vE=sp+hit,lim=TOUCH_MAX+su.soft,stand=Math.min(TOPPLE,Math.atan(su.mu));
-  s.landSurface={name:su.name,id:su.id??null,hit};
-  if(vE<lim&&tilt<0.6&&slope>stand){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,2);HOOK.msg(slope>TOPPLE?`Toppled over on a ${(slope*57.3).toFixed(0)}° slope`:`Slid down a ${(slope*57.3).toFixed(0)}° slope of ${su.name} and toppled`);return}
-  if(vE<lim&&tilt<0.6){
-    const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up))));
-    const q=qFromBasis(X,up,cross(X,up));
-    s.landed=true;s.r=mul(up,groundR(b,pf0)-s.yBot);s.water=b===TELLUS&&terrainH(pf0)<0;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);
-    s.landedAt=simT;s.touchV=sp;s.touchHit=hit;HOOK.msg(`Landed on ${b.name} (${su.name}) at ${sp.toFixed(1)} m/s${hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'} (like ${vE.toFixed(1)} m/s)`:''}`)}
-  else{s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'}`:''}`)}}
+  const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
+  const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
+  if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — the nose hit ${b.name} at ${sp.toFixed(0)} m/s`);return}
+  // the sea: a splashdown floats upright, as before
+  if(b===TELLUS&&terrainH(norm(pf0))<0){const pB=madd(s.r,Y,s.yBot);if(len(pB)>b.R)return;
+    if(!touchdown(s))return;
+    if(tilt<0.6){const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up)))),q=qFromBasis(X,up,cross(X,up));
+      s.landed=true;s.water=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);s.landedAt=simT;
+      HOOK.msg(`Landed on ${b.name} (sea) at ${s.touchV.toFixed(1)} m/s`)}
+    else{s.alive=false;s.crashSpeed=s.touchV;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit the sea at ${s.touchV.toFixed(0)} m/s, sideways`)}
+    return}
+  if(!s.inContact)return;
+  if(tilt>C_TOPPLE){const su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0);s.alive=false;s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));HOOK.boom(b,s.r,simT,2);
+    HOOK.msg(`Toppled over on ${sl>0.03?`a ${(sl*57.3).toFixed(0)}° slope of `:''}${su.name}`);return}
+  const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
+  if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
+  if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
+    const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
 // ---- abort (bodies session): the escape tower pulls the crew capsule off a failing rocket. Everything below the capsule
 // is dropped, the tower burns for its 3 s, then it's jettisoned and the chute armed. On a nominal flight the tower goes at
 // the first staging above 30 km.

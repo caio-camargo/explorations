@@ -1715,14 +1715,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     if (!want.basalt && b.id === 12 && su.name === b.name && hit === 0 && sl < 0.1) want.basalt = { u, sl, su };
     if (!want.rain && b.id === 8 && su.name === b.name) want.rain = { u, sl, su }; }
   // set a pod down, upright, just above the ground, coming down at v m/s
-  const drop = (spot, v) => { api.t = 0; const s = api.newShip(['chute', 'pod']); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
+  const drop = (spot, v, stack = ['chute', 'pod'], steps = 2500) => { api.t = 0; const s = api.newShip(stack); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
     s.r = api.fromPF(TELLUS, mul(spot.u, R + api.groundAlt(TELLUS, spot.u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
     s.v = add(api.surfVel(TELLUS, s.r), mul(up, -v)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
-    for (let i = 0; i < 200 && s.alive && !s.landed; i++) api.physStep(s, api.DT); return { s, last }; };
-  const ice = drop(want.ice, 2), grip = drop(want.grip, 2);
-  check('surfaces: a slope ice cannot hold (μ 0.1) slides; the same pitch on grippier ground stands',
-    api.SURF.length === api.BIOMES.length && !ice.s.alive && /Slid/.test(ice.last) && grip.s.landed && grip.s.alive && grip.s.landSurface.name === want.grip.su.name,
-    `ice at ${(want.ice.sl / D).toFixed(0)}°: ${ice.last} · ${want.grip.su.name} at ${(want.grip.sl / D).toFixed(0)}°: ${grip.last}`);
+    let p0 = null; for (let i = 0; i < steps && s.alive && !s.landed; i++) { api.physStep(s, api.DT); if (!p0 && s.inContact) p0 = api.toPF(TELLUS, s.r, api.t); }
+    const moved = p0 ? len(sub(api.toPF(TELLUS, s.r, api.t), p0)) : 0, Y = api.qrot(s.q, [0, 1, 0]), lean = Math.acos(Math.min(1, dot(Y, norm(s.r)))) / D;
+    return { s, last, moved, lean }; };
+  const ice = drop(want.ice, 2, ['chute', 'pod'], 500), grip = drop(want.grip, 2);
+  check('contact: on a slope ice cannot hold (μ 0.1) the pod slides; on grippier ground at a steeper pitch it comes to rest, leaning with the slope',
+    api.SURF.length === api.BIOMES.length && ice.s.alive && !ice.s.landed && ice.moved > 3 && grip.s.landed && grip.moved < 1.5 && Math.abs(grip.lean - want.grip.sl / D) < 4 && grip.s.landSurface.name === want.grip.su.name,
+    `ice at ${(want.ice.sl / D).toFixed(0)}°: slid ${ice.moved.toFixed(1)} m in 10 s · ${want.grip.su.name} at ${(want.grip.sl / D).toFixed(0)}°: ${grip.last} (moved ${grip.moved.toFixed(2)} m)`);
   const sand = drop(want.sand, 13.5), basalt = drop(want.basalt, 10.5), flatRain = drop(want.sand, 10.5);
   check('surfaces: sand forgives 13.5 m/s; basalt does not forgive 10.5 m/s, which sand takes in its stride',
     sand.s.landed && !basalt.s.alive && flatRain.s.landed, `sand: ${sand.last} · basalt: ${basalt.last}`);
@@ -1738,11 +1740,20 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const u = U(la, lo), sv = api.surfaceAt(TELLUS, u); if (sv.name !== 'snow') continue; const sl = api.terrainSlope(TELLUS, u);
     if (!snowFlat && sl < 0.1 && api.surfaceHit(sv, u) === 0) snowFlat = { u, sl, su: sv };
     if (!snowSteep && sl > 0.33 && sl < 0.4 && api.surfaceHit(sv, u) === 0) snowSteep = { u, sl, su: sv }; }
-  const sf = drop(snowFlat, 14.5), ss = drop(snowSteep, 2);
+  const sf = drop(snowFlat, 14.5), ss = drop(snowSteep, 2, ['chute', 'pod'], 500);
   let mh = 0; for (let k = 0; k < 2000; k++) { const q = U(-60 + (k % 40) * 0.3, (k / 40 | 0) * 0.7); if (api.surfaceHit(api.SURF_MOON, q, api.SELENE) > 0) mh++; }
   check('surfaces: snow forgives 14.5 m/s on the flat but cannot hold a 19–23° slope; Selene has boulders in ~15% of cells',
-    sf.s.landed && !ss.s.alive && /Slid/.test(ss.last) && Math.abs(mh / 2000 - 0.15) < 0.04,
-    `snow flat: ${sf.last} · snow at ${(snowSteep.sl / D).toFixed(0)}°: ${ss.last} · Selene ${(100 * mh / 2000).toFixed(0)}% boulder cells`);
+    sf.s.landed && ss.s.alive && !ss.s.landed && ss.moved > 3 && Math.abs(mh / 2000 - 0.15) < 0.04,
+    `snow flat: ${sf.last} · snow at ${(snowSteep.sl / D).toFixed(0)}°: slid ${ss.moved.toFixed(1)} m in 10 s · Selene ${(100 * mh / 2000).toFixed(0)}% boulder cells`);
+  // tipping: a tall, narrow rocket (the Orbiter: 1.25 m base, CoM ~5 m up) set down gently stands on the flat but goes over on a
+  // slope its footprint can't span, however grippy the ground
+  let tiltSpot = null;
+  for (let la = -60; la <= 60 && !tiltSpot; la += 0.5) for (let lo = -180; lo < 180 && !tiltSpot; lo += 0.5) {
+    const u = U(la, lo), sv = api.surfaceAt(TELLUS, u); if (sv.mu < 0.5 || api.surfaceHit(sv, u) > 0) continue; const sl = api.terrainSlope(TELLUS, u);
+    if (sl > 0.2 && sl < 0.3) tiltSpot = { u, sl, su: sv }; }
+  const tallFlat = drop(want.sand, 1, api.PRESETS.Orbiter), tallSlope = drop(tiltSpot, 1, api.PRESETS.Orbiter);
+  check('contact: the Orbiter set down at 1 m/s stands on the flat and topples on a 12–17° slope (its footprint is narrow)',
+    tallFlat.s.landed && !tallSlope.s.alive && /Toppled/.test(tallSlope.last), `flat: ${tallFlat.last} · ${tiltSpot.su.name} at ${(tiltSpot.sl / D).toFixed(0)}°: ${tallSlope.last}`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
