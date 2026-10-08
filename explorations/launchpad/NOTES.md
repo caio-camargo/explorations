@@ -4279,10 +4279,89 @@ surface.
 
 **Not yet:**
 - terrain shadows and horizons (Selene is still smooth: hills will block both sun and radio);
-- a relay in Selene orbit;
+- ~~a relay in Selene orbit~~ (built: "The Selene relay" below);
 - the clock running while you drive from home;
 - eclipses by Tellus;
 - Nyx's spin.
+
+### The Selene relay built: orbits about a moon in the registry (sats session, 2026-10-08)
+
+R3 left the far side without contact because the registry kept only Tellus orbits. Now a vessel left in orbit
+around a moon stays on the register in that moon's frame, and one with an antenna relays for rovers.
+
+**The registry** (`satRegister`, `orbBody`, `moonSats`):
+- An orbit about a moon is kept with `q.bodyName`, and its `r`/`v` relative to that moon. `satAt` uses the moon's μ.
+- It is accepted if its periapsis is at least 5 km up (`MOON_PE`: airless, and no relief yet) and its apoapsis is inside
+  the SOI (`soiMin`).
+- **`satsUp()` is still Tellus orbits only**, so none of its ~30 callers changed. Moon orbiters come from `moonSats(b)`.
+- An orbiter whose only payload is an antenna is named *Relay N*.
+- Flying it again (`vesselOf`) starts the flight around its moon.
+- `stationTick` includes moon orbiters: a crew left in Selene orbit eats supplies.
+- They show in the flight view (markers and meshes), on the map (orbit lines, labels), and under *In orbit around
+  Selene* in the Program's Fleet tab.
+
+**Between flights the tide moves them** (`moonOrbStep`, from `advanceDays`). The orbit is stepped with Tellus's tide
+(`pertAcc`, RK4 at 1/120 of an orbit), on program time. The reason is a measurement. Two-body Kepler would keep any
+orbit forever, but Tellus pumps the eccentricity of a high, steeply inclined orbit (Lidov–Kozai):
+
+| Orbit (circular at the start; days are Tellus days of 8 h) | Fate |
+|---|---|
+| 1,000 km, in Selene's orbital plane | keeps its shape: 1,002–1,019 km after 45 days |
+| 1,000 km, 60° | 941–1,054 km after 90 days |
+| 1,500 km, 75° | meets the ground on day 79.5 |
+| 2,000 km, polar | meets the ground on day 41.3 |
+| 3,000 km, polar | leaves Selene's SOI on day 20.9 and orbits Tellus (it moves to Tellus's registry, with news) |
+
+- **Hitting the ground is judged on the path, not on the osculating periapsis.** A first version called an orbit lost
+  when its osculating periapsis dipped below the ground. On the 2,000 km polar orbit that happened 4 days early: the
+  osculating value read −6 km on a pass that really cleared the ground. Now, on an inbound leg, the Kepler time to
+  r = R is compared with the step.
+- **Against a 5 s RK4 reference** that stops at real contact, every fate above agrees to within one step (e.g.
+  41.25 vs 41.34 days). Positions: 0.36 km off after 21 days at 1,000 km, 3 km off at 100 km (along-track).
+- **Cost:** 5 orbiters × 30 days took 56 ms.
+- **Inside a flight they still ride Kepler from their last state.** Over 24 h of flight that is 18 km along-track at
+  100 km and 320 km at 1,000 km. That's fine for markers and relays; it would matter for rendezvous (Not yet).
+
+**Contact through an orbiting relay** (`rvContact`, `rvRelays`). The relay must be over the rover's horizon (1°), and
+the line from it to Tellus must clear Selene. The delay is a round trip over rover → relay → Tellus. Registered
+orbiters with an antenna count, and so does any vessel of the current flight in orbit around that body that carries
+an antenna. The relays have no range or power limit yet.
+
+For a rover at the centre of the far side, with one relay in Selene's orbital plane (3 orbits sampled):
+
+| Relay height | Time in contact | Round trip |
+|---|---|---|
+| 100 km | 0 % (needs ≳ 145 km: it must see both the rover and, past the limb, Tellus) | — |
+| 300 km | 13 % | ≤ 263 ms |
+| 600 km | 26 % | ≤ 267 ms |
+| 1,000 km | 35 % | ≤ 272 ms |
+| 2,000 km | 46 % | ≤ 285 ms |
+| 4,000 km | 45 % | ≤ 312 ms |
+
+A single relay can't reach half the time: it has to be on the rover's side and past the limb as Tellus sees it. More
+relays, phased, fill in the gaps. A far-side relay should also be equatorial; the high polar orbits are the ones the
+tide brings down.
+
+**Checks:** `test.mjs` §40, 3 checks:
+- registration (frame, name, the two refusals, flown again around Selene);
+- far-side contact (none alone, about a third via a 1,000 km relay, none at 100 km, the relay's extra leg in the delay,
+  a vessel of the flight relaying);
+- the tide over 45 days (the equatorial orbit holds, 2,000 km polar comes down, 3,000 km polar moves to Tellus).
+
+Mutation-tested: each of 10 deliberate breaks fails at least one check. The breaks: no tide, no Selene occlusion, no
+rover horizon, `satsUp` including moon orbits, the direct delay, no ground contact, no SOI exit, no SOI gate,
+flight vessels not relaying, `vesselOf` on Tellus. Browser: two orbiters listed under *In orbit around Selene*; the
+far-side rover's *Drive from home* button appears in its windows (268 ms via Lookout 1); flying one shows the other's
+marker 2.7 km away; no console errors.
+
+**Not yet:**
+- rendezvous and docking with a registered moon orbiter (`tgtOf`, `contactStep`, `nearbyFlyable` and target cycling
+  are Tellus-only);
+- cameras in Selene orbit (`satTick` is Tellus's);
+- relay range and power;
+- Nyx orbits work in code but are untested;
+- **economy:** a contract for a far-side relay (or a relay network: share of the far side covered).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
