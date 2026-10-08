@@ -2300,6 +2300,34 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${warned.length} site(s) warned, e.g. "${warned[0] ? api.downrangeWarning(warned[0]) : ''}"`);
 }
 
+// 38. The service gantry clears the rocket (tester session; PLAYTEST #2). The page's own buildRig and padRig run with
+// stubs that record every box and lattice column; then the gantry's whole roll-back, from service position to its parking
+// spot, is swept against each preset's envelope (|x|, |z| of its widest reach, up to its top). Before the fix, girders
+// across the open front swept through every rocket, and the decks reached into the Crewed Lunar's boosters.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const rigSrc = cut('function buildRig(TH,rig){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5,BOXES=[];
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=()=>{},makeMesh=a=>({a,free(){}});
+    ${rigSrc}\n${padRigSrc}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const bad = [];
+  for (const [k, st] of Object.entries(D.PRESETS)) {
+    const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig);
+    let xr = 0, zr = 0; for (const p of s.parts) { xr = Math.max(xr, Math.abs(p.pos[0]) + p.d.r); zr = Math.max(zr, Math.abs(p.pos[2]) + p.d.r); }
+    let hit = null;
+    for (let i = 0; i <= 200 && !hit; i++) { const zS = R.zS ?? -3.3, zg = zS + (-80 - zS) * i / 200;   // (-3.3: the fixed service position before)
+      for (const b of R.gantry.a) { const [cx, cy, cz] = b.c, [hx, hy, hz] = b.h;
+        if (Math.abs(cx) - hx < xr && Math.abs(cz + zg) - hz < zr && cy - hy < s.len) { hit = `${k}: box at (${cx.toFixed(1)}, ${cy.toFixed(1)}, ${cz.toFixed(1)}) with the gantry at z ${zg.toFixed(1)}`; break; } } }
+    if (hit) bad.push(hit);
+  }
+  check('the service gantry never touches the rocket, from service position all the way back (every preset, boosters included)', !bad.length, bad.slice(0, 3).join(' | ') || `${Object.keys(D.PRESETS).length} presets`);
+  const sOrb = D.newShip(D.PRESETS.Orbiter); D.S = sOrb; const zOrb = D.buildRig(20, D.padRig(20)).zS;
+  const sCL = D.newShip(D.PRESETS['Crewed Lunar']); D.S = sCL; const zCL = D.buildRig(45, D.padRig(45)).zS;
+  check('a narrow rocket keeps the old service position; a wide one gets the gantry stopped further back', zOrb === -3.3 && zCL < -3.3, `Orbiter ${zOrb} m, Crewed Lunar ${zCL?.toFixed(2)} m`);
+}
+
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
 console.log(fails ? `\n${fails} FAILED` : '\nall passed');
