@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -19,6 +19,32 @@ lane splits the file (still no build step); blocked decisions proceed on a defau
 
 ---
 
+## Pillars (draft from NOTES, 2026-10-08; Caio edits)
+
+What the game is about. A feature has to serve at least one; a session can turn down or reshape work that serves none
+without asking. Each line points at where NOTES already said it.
+
+1. **Flying is the centre.** The program exists to create flights worth flying: offers between flights in a light tone,
+   never menus to manage, numbers few enough that a player can say why an offer appeared. (§ "Overlap, powers…", guardrails)
+2. **Every mission is a design problem, posed by physics we really simulate:** loads, heating, g, drop zones, windows.
+   That's the edge over KSP. "Go to X" alone isn't a mission. (§ "Mission design", the lens)
+3. **What you launch stays and matters.** Payloads serve a need and keep doing so; the world reacts. Progression comes from
+   infrastructure and discovery, not points, and money alone is never enough: big things get built by flying them up.
+   (§ "Program design — direction", § "Rich programs")
+4. **Knowing more is progress.** Your own missions shrink the uncertainty: part ratings, the air, the tools' error bars,
+   what's out there. (§ "Mission design", convergence 1; § "Compute")
+5. **Forgiving with time and failure.** Missing something costs a wait, never a failure; nothing decays into chores; losing
+   contact never kills a vessel. (§ "Time, long missions", principles; § "Routine runs")
+6. **Lean and exact** (the engineering pillar). Float64 state, exact rails, one rigid body, a pure SIM block: no Kraken,
+   cheap warp, a port that stays cheap. (§ "The idea", § "Platform direction")
+
+## Systems are complete (2026-10-08)
+
+Caio's read: systems are close to saturation, and the work now is **integration**. So the set of systems is closed:
+what's built, plus those this roadmap already names for M2–M5 (the time model, routine runs, the link budget,
+steady-state thermal, the sun and planets). **A new system needs a pillar and Caio's yes**; put it in *Waiting on Caio*
+with the pillar it serves. Everything else is integration, content (missions, parts, balance) and polish.
+
 ## Milestones
 
 Each milestone has a **finish line the robot playtester can check**. Only the current and the next milestone get code.
@@ -27,7 +53,7 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | | Milestone | Finish line | State |
 |---|---|---|---|
 | M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | **current** |
-| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in the intended number of flights; no box covers another at 1280×800 | **next** (starts now in lanes M0 doesn't need) |
+| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in the intended number of flights; no box covers another at 1280×800; **a person who isn't Caio plays the first hour**, and where they got stuck or bored is written in PLAYTEST | **next** (starts now in lanes M0 doesn't need) |
 | M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, with one routine resupply, using "advance to next event" only | design + groundwork |
 | M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | design only |
 | M4 | **Big projects** (epoch 5) | A depot and a datacenter built over several flights, sized by waste heat, earning | design only |
@@ -39,11 +65,11 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 |---|---|
 | flow | UI slice 3 **debrief** (Q2) · slice 4 **flight core and cards** (Q3, closes PLAYTEST #9) · slice 5 **rollout** (Q4) · **what to do next**: the Program screen always shows one suggested contract and why · **first-run**: the career choices explained in a sentence each · **Esc pauses** in flight (W5) · a **settings** overlay (volume, graphics quality, tester off) · 📝 then build **one visual identity** for the screens (PLAYTEST #13; the hardware's early-era look) with the look lane |
 | economy | Epoch 1–2 **pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) · `siteAccess` (Q6) · the ballistic target from the flight's site (Q7) · selimp/nyxfind pay (Q8, on W1's default) · every offer says **why it appeared** in one line |
-| vehicle | Q14 / PLAYTEST #18 · builder wording (#23) · escape-tower category (Q32) · landing legs (Q31) · the builder **warns before launch** (won't reach the contract's orbit, TWR < 1, no chute on a crewed return) |
+| vehicle | **The construction screen usable by a newcomer** (first: it blocks Caio's own playtesting; walk building an Orbiter from scratch, fix what's unclear, Caio's review) · Q14 / PLAYTEST #18 · builder wording (#23) · escape-tower category (Q32) · landing legs (Q31) · the builder **warns before launch** (won't reach the contract's orbit, TWR < 1, no chute on a crewed return) |
 | space | No M1 items: works on M2 groundwork (below) |
 | world | Q17 · merge the atlas · grazing-view cost (Q19): M1 needs a steady frame rate on the default site |
 | look & sound | Q20 · Q21 · nozzle gimbal and fin drawing (Q23) · **volume slider** (Q35, part 1) · identity with flow |
-| QA | `shot.mjs` on the RTX (Q28) · Q29 re-run · **the new-career robot run** (M1's finish line, written first so it fails until M1 is done) · tester cheats (Q16) · drivers for untried rows (Q30) |
+| QA | **A presets-only playtest route for Caio** (the TESTING rows he can reach by flying presets, in a sensible order, so he can play before the builder is fixed) · `shot.mjs` on the RTX (Q28) · Q29 re-run · **the new-career robot run** (M1's finish line, written first so it fails until M1 is done) · tester cheats (Q16) · drivers for untried rows (Q30) |
 | platform | See its own section: test shards, save versions, the file split |
 
 ### M2 — satellites that work (groundwork can start now)

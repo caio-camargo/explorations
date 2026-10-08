@@ -1257,6 +1257,26 @@ back along the capsule→stage line.
 **Still open:** a breakup that changes the sim (pieces burning up into smaller debris) is not done: debris is sim
 state, and this pass is render-only.
 
+## Design pass: station modules, the arm, the rover (2026-10-09, aerofx session; visuals' and sats' code, Caio's call)
+
+The station parts, the arm and the rover had come in from other sessions as plain shapes. Same early-era look as the rest:
+- **Hab and lab** get their own detail branch (`KIND` 16, `MESH_FS`): meteoroid-shield panels on the pressure hull (eight
+  around, 0.55 m tall), seams, a bolt at each panel corner, a slight per-panel tint and pillowing. Geometry: chamfered
+  berthing rings at both ends, yellow handrails on standoffs (`stationTrim`), portholes in dark frames and two radiators on
+  standoffs (hab), a round bolted science window (`labWindow`) and experiment boxes on the gold band (lab).
+- **The arm's base** becomes a turret with a drive ring. **The booms** (drawn per frame, sats' code) get joint drums at
+  the shoulder and elbow, dark bands near each end, and an end effector (a snare drum with a camera).
+- **The rover**: a dark tub inside a tubular frame (rails, uprights, cross-tubes), a floor of panels, fenders as an arc of
+  overlapping plates, and titanium chevrons on the mesh tyres.
+
+**And two bloom fixes** found on the way. The composite sampled the ¼ and ⅛ blur levels with the 1/16 level's texel
+spacing (4× and 2× too wide), so each glow had ghost copies up to 64 px apart: long streaks beside any bright edge. And the
+downsample is now a 3×3 tent, the threshold 0.965. Sunlit white paint is still as bright as the sun once tone-mapped; the
+glow around it is now a soft rim instead of streaks.
+
+**The first-run gate** (ui session) now covers the page on load, so screenshot scripts must click `[data-start]` first
+(as `playtest.mjs` does). The older reference views that start in the editor don't, yet.
+
 ## Program design — direction and parking lot (2026-10-06)
 
 **Direction agreed with Caio:** every payload *serves a need* and keeps doing so once it's in the right orbit. Services change
@@ -1356,6 +1376,24 @@ term fails the first two; dropping the roll guard fails the second.
   screen at up to several rev/s.
 - **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
 - **builder:** `spin` is in *Control* by kind.
+
+### v1.51.1 — the wheels won't spin a vessel apart (PLAYTEST #18, #23)
+
+The robot playtester held a pitch key with SAS off: the Orbiter's upper stage reached 23 rad/s in 9 s and tore the pod off
+its tank, with the wheels only 89 % full. A bare pod: 66 rad/s in 2 s, chute torn off; without the fix it goes on to
+500 rad/s. 100 kN·m·s of storage (v1.43) is tens of rad/s on a light stage, so storage never ran out before the structure.
+
+- **The wheels' controller won't drive the vessel past `WHEEL_W`** = 1 rad/s in pitch and yaw, 3 rad/s in roll (body
+  axes; `wheelGive`). Torque that would turn it faster that way is cut to what reaches the limit exactly (at a pod's
+  55 rad/s² a plain cut-off overshot to 1.3 rad/s); slowing down is never refused. In effect the storage is sized to the
+  vessel (≤ I·WHEEL_W from rest), which is the playtest's first suggestion, without per-vessel magic. SAS never asks for
+  more than 0.6 rad/s, so nothing it flies changes; big stacks still run out of storage first (Orbiter 0.512 rad/s, full).
+- Gimbal, fins and RCS are not limited: they spin a stage only while burning, in air, or on gas.
+- **Builder wording (#23):** the negative-stability note shows only when a margin is negative, and now names steerable
+  fins too; "Roll nothing" drops the kN·m.
+- Tests: section `control-5` (1 check, mutation-tested: without the limit, 60 and 503 rad/s).
+- The wheels' momentum is still left out of the gyroscopic term: the limit bounds what the keys put in, not what SAS
+  stores against a steady aero torque (a capsule under its chute), which is where it did harm.
 
 **Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
 deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
@@ -4297,7 +4335,7 @@ Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright o
   persist as landed, flyable vessels (A2/E machinery).
 - **R3. Power and contact:** solar panels and batteries (Selene's day and night), line of sight to the lander, a relay or
   home (hills block it).
-- **R4. Instruments and science** (each hinging on something the sim computes): samples by terrain unit, brought to the
+- **R4. Instruments and science** (first slice built: "R4 built" below) (each hinging on something the sim computes): samples by terrain unit, brought to the
   lander or an ascent vehicle (sample return); a spectrometer on rocks; camera panoramas (sun angle); seismometers set
   out as an array (spacing is what gives an interior map); ground-penetrating radar along a traverse; a drill or
   heat-flow probe (depth, power); a magnetometer traverse; ice in permanently shadowed polar craters (hard on power).
@@ -4603,6 +4641,80 @@ and vice versa. Cross-SOI targeting would need patched-conic closest approach; n
 Each of 7 deliberate breaks fails a check. The breaks: Tellus-only target, every orbit a target, Tellus μ in
 `approach`, Tellus-only `hitNear`, contact and loading, undock dropping the body. Not checked in the browser: the
 approach readout and target cycling (UI code; only the whole-page parse check covers them).
+
+### R4 built, first slice: Selene's geology, a spectrometer, panoramas, a seismic network (sats session, 2026-10-08)
+
+Scope decided with Caio: the geology, then three instruments, each hinging on something the sim computes. Results go
+into the logbook (a new **On Selene** section) and *What we know*. No money: contract types are proposed below for the
+economy session to price. The sample arm, drill, radar, magnetometer and polar ice come later.
+
+**Geology is what's drawn** (`selMare`, `geoAt`). The sky shader darkens Selene's maria with
+`smoothstep(.5,.65,fbm(n·1.6+3))` in Selene's own frame. The CPU's `h3`/`vn`/`fbm` are that same noise (the clouds'
+port), and the shader's `MB()` is `toPF`. So the CPU's mask *is* the drawn one: the test recomputes it at 3,000 points
+and they all agree.
+- **Where the line is.** Mare starts where a patch has visibly darkened (`MARE_M` = 0.2, about 8 % darker). The first
+  try used 0.5, the patches' dark cores, which left only 3.8 % of Selene as mare.
+- **What it gives:** 9.7 % of Selene is mare. Its hidden composition varies smoothly within each unit: mare FeO ≈ 11 %
+  on average, up to 16 %, with TiO₂ from 0.5 to 11.5 %; highland FeO ≈ 5 % and Al₂O₃ 25–30 %. The two mix across a
+  patch's edge.
+- **Visuals/bodies:** as drawn, the maria lie mostly at high northern latitudes on the far side, with a small patch near
+  the sub-Tellus point. Only 1.2 % of the near side is mare, the reverse of our Moon (31 %). Moving them is an art
+  decision; the geology follows whatever the shader draws.
+
+**The instruments** are HUD buttons, greyed with the reason when they can't work (no instrument, not on Selene,
+moving, out of action, no seismometers left). That's in both the remote-drive and in-flight HUDs. Each result waits in
+the rover (`R.data`, kept in field entries) until there is contact, home or a relay; a crew's rover waits too. A rover
+left in the field sends at the first half hour it has contact between flights (`rvFieldSci`).
+- **Spectrometer** (`spec`): reads the rock under a stopped rover, once per 30 m. Each reading has noise: FeO ±1, TiO₂
+  ±0.6, Al₂O₃ ±1.2 wt %. The logbook keeps each unit's mean, with FeO's standard error and the number of readings.
+- **Panorama** (camera mast): its quality is the sun's height. Long shadows show the relief: 100 % from 3° to 20°. A
+  high sun flattens it, down to 30 %. At night it refuses. Measured: 100 % at 15°, 45 % at 75°.
+- **Seismometers** (`seis`): a pack sets out 4 stations, kept in `PROG.sel.seis`. Between flights (`seisTick`):
+  - deep moonquakes, about 0.75 a day, 40–60 % of the way out;
+  - each station records P and, unless its straight path crossed the liquid core, S;
+  - stations send when they have contact.
+  With 4 stations' P times home, `seisLocate` fits (x, y, z, t₀) by least squares, restarting from 26 directions. If
+  the fit's σ is over 15 km, the array is too small to place the quake. A located quake brackets the core: an S that
+  arrived passed outside it, a missing S went through. Each bound is loosened by 2σ.
+
+**Measured** (60 days, 4 stations, about 45 quakes):
+
+| Array (one station at the sub-Tellus point, 3 around it) | Located | Core bracket (truth 90 km, hidden) |
+|---|---|---|
+| 2 km apart | 0 | — |
+| 30 km | 0 | — |
+| 150 km | 9 (σ 7–15 km) | 0–159 km |
+| 400 km | 45 (σ 2.5–8 km) | 78–98 km |
+| 400 km on the far side, no relay | 0 (180 records waiting) | — |
+
+Spacing is what makes the map, as the plan wanted. 30 days of the network costs ~30 ms.
+- **First version's mistake:** without the 2σ margins, location errors crossed the bounds (90–89 km).
+
+**Simplifications:**
+- straight rays and uniform velocities (P 8 km/s, S 4.5 km/s);
+- P crosses the core at mantle speed (only S is blocked);
+- the scientists know the velocities;
+- stations need no power.
+
+**Checks:** `test.mjs` §42, 5 checks:
+- the geology against the shader's mask;
+- the spectrometer: a stopped rover, once a spot, counting only when sent, near-side highland FeO 4.7 % against 5.2 %;
+- a far-side reading held without contact, then home through a relay between flights; entries keep it;
+- panoramas by sun angle;
+- the arrays: tight, far side without a relay, wide.
+
+Each of 10 deliberate breaks fails a check. Not run in the browser: the HUD buttons and the *What we know* line. They
+are UI code, and only the whole-page parse check covers them (TESTING row 117).
+
+**Contracts proposed to economy** (not built; prices are yours):
+- *Read the dark plains / the bright uplands*: N spectrometer readings of a unit, received.
+- *A panorama of Selene* above a quality.
+- *A seismic network on Selene*: 4 stations; then *locate N moonquakes*; then *bound the core* to a width.
+- *Far-side science*: any result from the far side (needs a relay).
+
+**Not yet:** the sample arm and sample return (rover to lander), drill or heat flow, ground-penetrating radar,
+magnetometer, ice in shadowed polar craters (needs relief), seismometer power and lifetime, curved rays, and science on
+Nyx.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

@@ -77,7 +77,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 ### control — attitude
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
-| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | → control 2026-10-08 |
+| Q14 | PLAYTEST **#18**: a held pitch key spins the upper stage apart (size wheel storage to the vessel, or rate-limit manual input) + **#23** wording nits | S | ⚙ | ✓ `0c2e701` |
 
 ### tester — the tester menu
 | # | Item | Size | Load | State |
@@ -161,4 +161,4 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 - economy — dry runs as the trajectory office's study: a button calling `procAdopt(stack)` (days, price); widen `dispatchEstimate` for a `prov` procedure; cache the dry run's measured margin as the estimate's — NOTES § "Dispatch, the physics side"
 - economy — nyxfind completes for free on a Selene flight; selimp and nyxfind pay less than a Probe costs — NOTES § "The ladders, proven with real rockets"
 - ui — watch mode for a dispatched flight (procFly runs headless today; a watched one would fly the same procedure on screen) — NOTES § dispatch brief
-
+- platform — ROADMAP § Platform step 1, **test shards** (`--only`, `--smoke`): → platform 2026-10-08 (the lane has no table here yet; worktree `launchpad-platform`, port 8801) — ROADMAP § Platform lane

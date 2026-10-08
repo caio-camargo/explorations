@@ -3278,6 +3278,33 @@ Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--f
 - [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
 - [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
 
+
+### Follow-up: rovers R4 science, first slice (sats session, 2026-10-08)
+Scope set with Caio: geology plus three instruments, paid in knowledge, with contracts proposed rather than priced.
+- **Geology is the drawn maria.** The shader's mask is recomputed on the CPU; it agrees at 3,000/3,000 points. Mare
+  covers 9.7 % of Selene, almost all on the far side, a note for visuals/bodies.
+- **Three instruments:** a spectrometer, panoramas whose quality follows the sun's height, and a seismometer network.
+  The network locates moonquakes by least squares and brackets the hidden core: a 400 km array gives 78–98 km around
+  the true 90; arrays of 2 km and 30 km locate nothing.
+- **Delivery:** results count only when they reach home through R3's contact. Logbook section *On Selene*.
+- **Two mistakes of mine, caught by tests:** my helper `groundContact` silently replaced the existing ground-contact
+  physics of the same name (renamed `radioAt`); and the core bracket first crossed itself without location margins.
+
+### Files
+- `explorations/launchpad/index.html`: R4 block before SIM END (`selMare`, `geoAt`, `rvSci*`, `sciGot`, `rvFieldSci`,
+  `radioAt`, `quakesIn`, `seisTick`, `seisLocate`, `inv4`); `LOGF` On Selene rows; `advanceDays`; `rvEntry`/
+  `rvFromEntry`; the HUD's `rvSciRows` and button handler; `selKnowHTML`
+- `test.mjs` §42 (5 checks); `NOTES.md` § "R4 built, first slice"; `TESTING.md` row 117; `explorations/README.md`
+
+### Verification
+`test.mjs`: 371 passed. Each of 10 deliberate breaks fails a §42 check. Not run in the browser (preview server not
+restarted after the low-memory stop): the HUD buttons and the *What we know* line, covered only by the parse check.
+
+### Next steps
+- [ ] Caio: TESTING row 117 (and 115–116); a browser pass on the science HUD
+- [ ] Economy: price the R4 contracts proposed in NOTES
+- [ ] R4 next: the sample arm and sample return; drill or heat flow; radar; magnetometer; polar ice once Selene has relief
+- [ ] R5 drive plans; the clock while driving from home
 ## 2026-10-08 — Launchpad v1.51: spin stabilisation (control session)
 
 ### Summary
@@ -3350,6 +3377,31 @@ QUEUE Q11, and half of Q12. Dispatched contracts are now flown by their procedur
 - [ ] Q12 rest: a corridor around the recorded profile (deviate early when the climb strays, not only when Δv runs out)
 - [ ] Economy: the study button and price for `procAdopt`, a wider estimate for `prov`, the measured margin cached
 - [ ] Q13: landing on a chosen crater
+
+### Follow-up: v1.51.1, the wheels won't spin a vessel apart (control session, 2026-10-08; queue Q14)
+PLAYTEST #18: with SAS off a held key spun the Orbiter's upper stage to 23 rad/s in 9 s and tore it apart (a bare pod:
+66 rad/s in 2 s, chute torn off). The wheels' controller now won't turn a vessel past `WHEEL_W` (1 rad/s pitch/yaw, 3 roll),
+reaching it exactly; SAS (≤ 0.6 rad/s) and big stacks (storage runs out first) are unchanged. #23: the negative-stability
+note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs `control-5` (mutation-tested); all pass on
+the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
+- [ ] Q29: re-run TESTING row 104 with the robot
+
+## 2026-10-08 — Launchpad roadmap v1.1: pillars, systems closed, human playtest gate (roadmap session)
+
+### Summary
+Mapped the roadmap against the usual game-development cycle (prototype → vertical slice → production → alpha/beta).
+M1 is the vertical slice. Added what the cycle showed was missing: six **design pillars** drafted from NOTES (Caio to
+edit); **systems declared complete** (Caio: near saturation, now integrating), so a new system needs a pillar and
+Caio's yes; M1's finish line now includes **a person other than Caio playing the first hour**. Caio's playtesting is
+blocked on the construction screen, so M1's first vehicle item is the builder for a newcomer, and QA's first is a
+presets-only playtest route for him.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Caio: edit the pillars
+- [ ] Orchestrator: rank the builder-usability and presets-route items at the top of vehicle and QA
 
 ## 2026-10-08 — Launchpad: the climb's corridor (bodies session, cont.; QUEUE Q12)
 
