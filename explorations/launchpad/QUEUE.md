@@ -88,7 +88,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | # | Item | Size | Load | State |
 |---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M | 🖥 | → terrain 2026-10-08 (on branch, renumber v1.52) |
-| Q17 | PLAYTEST **#17, Link side**: gate `linkOf`'s blackout on speed too; agree the threshold with Q20. (#19 is with the fixes session) | S | ⚙ | ready |
+| Q17 | PLAYTEST **#17, Link side**: gate `linkOf`'s blackout on speed too; agree the threshold with Q20. (#19 is with the fixes session) | S | ⚙ | → terrain 2026-10-08 |
 | Q18 | **Selene terrain**: craters, maria, slopes, shadows, horizons. Unblocks rovers on real ground | L | 🖥 | ready (plan first) |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills) | M | 🖥 | ready |
 
