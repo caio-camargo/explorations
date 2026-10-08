@@ -1034,6 +1034,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.39 — real ground contact; snow and Selene boulders (2026-10-08, terrain session)
+
+The three things v1.37 left out. Vessels no longer snap upright when they touch: they slide, tip, bounce and come to
+rest.
+
+**Contact dynamics** (`footPoints`, `groundNormal`, `groundContact`, `touchdown`, `groundCheck`):
+- **Contact points:** 4 per part whose foot is within 0.5 m of the lowest point, around that part's own axis. So side
+  boosters widen the footprint.
+- **Ground force per point:** a spring-damper along the terrain normal. Stiffness gives 2 cm of static deflection at
+  Earth gravity on *every* body; with local gravity, tiny Nyx would let a 2 m/s touchdown sink over a metre. ζ 0.6.
+- **Friction:** Coulomb, μ from the surface under that point, regularised to stop within ~2 steps.
+- **They are part forces:** they go into `p.F`/`p.L` like aero and thrust, so landing loads reach the joints and the
+  structural checks.
+- **The speed verdict** (`touchdown`) happens at first touch and is judged under the vessel's centre. Its base spans
+  more than one boulder cell, so judging at the first rim point made the result depend on timing.
+- **Outcomes:**
+  - tilting past 60° while touching: "Toppled over on a 12° slope of taiga";
+  - the nose in the ground: a crash;
+  - at rest (< 0.15 m/s, < 0.03 rad/s) for 0.5 s, and not while the engines push (a slow liftoff is not a landing):
+    landed, pinned in the attitude it came to rest in ("leaning 19°");
+  - the sea keeps the old upright splashdown.
+- **Measured:**
+  - a pod set down on a 13° ice slope slid 65 m in 10 s; theory g(sin θ − μ cos θ) gives 62 m;
+  - a pod on 19° taiga comes to rest leaning 19°;
+  - the Orbiter (1.25 m base, CoM ~5 m up) set down at 1 m/s stands on the flat but topples on a 12° slope, as
+    atan(r/h) predicts;
+  - a TWR-1.05 liftoff climbs without being re-landed.
+  - Every flown landing already in the suite (chutes, Selene, Nyx, the plateau drop) passes unchanged.
+- **The ship's ground shadow** lies on the terrain's own plane, so it reads correctly on slopes.
+
+**Snow** is a surface where the shader paints it: a non-ice biome colder than ~−3 °C at that height, on slopes under
+~38° (μ 0.3, +3 m/s, boulders mostly buried). **Selene regolith** has boulders in 15% of cells.
+
+**`touchV` is the measured speed again.** v1.37 had made it the effective one, boulders included, and mission rules
+read it: Nyx's "under 3 m/s" saw 5.6. Now `s.touchHit` holds what boulders or trees added, and only the refurbishment's
+wear adds it in (`missionEnd`, one token in economy code).
+
+**What it means for play:** without landing legs a tall rocket's footprint is its bottom rim, so it tips on slopes of
+roughly atan(r/h_cm): ~7–12° for an upper stage, ~30° for a squat pod. That's real, and it makes **landing legs** a
+natural next part (a wider footprint is just more contact points: `footPoints` would pick up a leg part's feet). Parts
+are the planning session's domain; suggest it there.
+
+**Tests:** `test.mjs` §25 rewritten for emergent outcomes, 5 checks (243 total after merging):
+- ice and steep snow slide (distance);
+- grippy ground holds, leaning with the slope;
+- speed limits;
+- boulder share;
+- the Orbiter stands on the flat and topples on a slope.
+
+**Not yet:** legs; bouncing debris (debris still dies on contact); wheels and rolling; Selene's boulders as terrain
+(they only change the verdict); a contact sound and dust.
+
 ## v1.38 — compute eras and trajectory studies (2026-10-08, economy session)
 
 The first slice of "Compute — a resource across eras" (design in "Rich programs" below).
@@ -1125,10 +1177,7 @@ over 24°. Now it depends on the biome under the ship (`SURF`, indexed like `BIO
   - ice at 13° slides where taiga holds at 19°;
   - sand forgives 13.7 m/s, basalt not 11;
   - rainforest has trees in 59% of 2,000 cells against its 60% roughness, deterministically.
-- **Not yet:**
-  - real contact dynamics (legs, sliding, bouncing): the vessel still snaps upright when it lands;
-  - snow cover on a non-ice biome (slopes above the snow line are still their biome's surface);
-  - Selene boulders (they'd make existing Selene landings random; give the moon its own rough map first).
+- **Not yet:** ~~contact dynamics, snow cover, Selene boulders~~, all done in v1.39 (§ v1.39).
 
 ## v1.36 — balance pass 3: the money sinks in simulated careers (2026-10-08)
 
