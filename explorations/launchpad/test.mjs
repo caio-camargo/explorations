@@ -2392,7 +2392,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // 39. Selene tidally locked; rover power and contact (sats session, rovers R3). Own sim instance.
 {
-  const D = new Function(src + 'return {rvNew,rvRun,rvPowerStep,rvSunPF,bodyTheta,bodyOmega,rvFieldTick,rvContact,rvCommand,rvEntry,bodyRel,bodyPos,fromPF,surfVel,SELENE,TELLUS,PROG,HOOK,DAY_S,get orb(){return ORB_T0},set orb(v){ORB_T0=v}};')();
+  const D = new Function(src + 'return {advanceDays,rvNew,rvRun,rvPowerStep,rvSunPF,bodyTheta,bodyOmega,rvFieldTick,rvContact,rvCommand,rvEntry,bodyRel,bodyPos,fromPF,surfVel,SELENE,TELLUS,PROG,HOOK,DAY_S,get orb(){return ORB_T0},set orb(v){ORB_T0=v}};')();
   const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {};
   const B = D.SELENE, P = D.PROG, orbit = 2 * Math.PI / B.n;
   // locked: the near side (planet-fixed −X) faces Tellus all orbit; a spot's sun goes round once an orbit; the ground moves
@@ -2406,14 +2406,14 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // power at a near-side spot: panels charge it by day; without panels or an RTG it freezes in the night; an RTG keeps it going
   const mk = (slots, E = 1, pf = [-B.R, 0, 0]) => { const R = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots }, B, pf, [0, 1, 0], {}); R.name = 'x'; R.sleep = true; R.E = R.Emax * E; return R; };
   const run = (R, t0, t1) => { for (let t = t0; t < t1; t += 600) D.rvPowerStep(R, 600, D.rvSunPF(B, D.bodyTheta(B, t))); };
-  let noon = 0; while (dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, noon))) < 0.99) noon += 600;
+  let noon = 0; while (noon < orbit && dot([-1, 0, 0], D.rvSunPF(B, D.bodyTheta(B, noon))) < 0.99) noon += 600;
   const a = mk(['cam', 'bat', 'ant', 'sol', null], 0.5), e0 = a.E; run(a, noon - 6 * 3600, noon + 6 * 3600);
   const b = mk(['cam', 'bat', 'ant', null, null], 0.2), c = mk(['cam', 'bat', 'ant', 'rtg', null], 0.2); run(b, noon, noon + orbit); run(c, noon, noon + orbit);
   check('rover power: panels charge it by day; with no panels and no RTG it freezes in the night; an RTG keeps it going', a.E > e0 && b.dead && !c.dead && c.E > 0,
     `+${((a.E - e0) / 3.6e6).toFixed(2)} kWh around noon; froze: ${b.dead}; with the RTG ${(c.E / 3.6e6).toFixed(2)} kWh after an orbit`);
   // between flights: one with panels lives through Selene's nights; one without freezes, and the news says so
   P.rvOut = [{ ...D.rvEntry(mk(['cam', 'bat', 'ant', 'sol', null])), name: 'Panels' }, { ...D.rvEntry(mk(['cam', 'bat', 'ant', null, null])), name: 'NoPanels' }];
-  D.rvFieldTick(0, 40 * D.DAY_S);
+  P.day = 0; D.advanceDays(40);
   check('between flights a rover with panels lives through Selene\'s nights; one without freezes, and the news says so', !P.rvOut[0].dead && P.rvOut[1].dead && news.some(m => /NoPanels froze/.test(m)),
     `40 days: Panels ${(P.rvOut[0].E / 3.6e6).toFixed(2)} kWh; NoPanels froze`);
   // contact: the near side talks home directly (a light-time round trip late); the far side can't; without a high-gain
