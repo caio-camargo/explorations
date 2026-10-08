@@ -63,7 +63,7 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when the player leaves a finished flight, not at the next launch (with ui's `go`) | S | ⚙ | → fixes 2026-10-08 |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site`. Unblocks sea-platform pricing, overflight politics, site closures | M | ⚙ | ready |
 | Q7 | Ballistic contract target: still `rg/600` from +X (old radius, not the flight's site) | S | ⚙ | ready |
-| Q8 | Ladder balance: selimp/nyxfind pay less than a Probe costs; nyxfind completes free on a Selene flight | S | ⚙ | blocked: Caio W1 |
+| Q8 | Ladder balance: selimp/nyxfind pay less than a Probe costs; nyxfind completes free on a Selene flight | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
 | Q9 | Station, base, relay and rendezvous contracts (first station, resupply, lab time, crew rotation, far-side relay) | L | ⚙ | ready (plan first) |
 | Q10 | Rover part prices and era gates | S | ⚙ | ready |
 
@@ -147,7 +147,8 @@ Sizes: S (hours) · M (a slice) · L (several slices; plan first).
 
 | # | Question | Unblocks |
 |---|---|---|
-| W1 | Should nyxfind come free on a Selene flight, or need a deliberate high orbit / a higher threshold? | Q8 |
+| ~~W1~~ | ~~Should nyxfind come free on a Selene flight?~~ Answered 2026-10-08: only a flight launched while it's open tracks Nyx (NOTES v1.53) | Q8 ✓ |
+| W9 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
 | W2 | Station-keeping and satellite lifetimes: a stationary satellite drifts 10,750 km a month under the tides. Add a lifetime/fuel mechanic? | servicing missions, reboost |
 | W3 | Flights from orbit: do they pay the operations fee, and may they complete orbit contracts? | economy contracts |
 | W4 | Selene and far-side firsts in the race against rivals? (shifts rival schedules and the v1.28 balance) | economy race |
