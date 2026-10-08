@@ -330,6 +330,11 @@ const PARTS={
   // Isp 70 s) and the bottle that feeds it (15 kg of nitrogen). off: how far the body stands out from the skin.
   rcs:{name:'RCS quad (cold gas)',kind:'rcs',surf:true,noAero:true,m:0.02,h:0.2,r:0.07,off:0.06,C:900,T:600,B:200,rcsF:0.15,isp:70},
   gas:{name:'Gas bottle',kind:'gas',surf:true,noAero:true,m:0.03,h:0.6,r:0.17,off:0.19,res0:{gas:0.015},C:900,T:600,B:200},
+  // radial docking port (sats session): mounts on the side of anything, its face depth out from the skin, facing outward
+  rport:{name:'Radial docking port',kind:'port',radial:true,surf:true,noAero:true,m:0.12,h:1.0,r:0.5,depth:0.3,C:900,T:600,B:200,jF:30e3,jM:20e3},
+  // station modules (sats session): a habitat (berths for three, 300 kg of supplies: 60 crew-days) and a laboratory
+  hab:{name:'Habitat module',kind:'hab',m:2.0,h:3.2,berths:3,res0:{sup:0.3},C:2500,T:1200,B:450},
+  lab:{name:'Laboratory module',kind:'lab',lab:1,m:2.4,h:3.2,C:2500,T:1200,B:450},
   // cargo bay (sats session): floor (h), walls bayL tall (inner radius bayIn), a clamshell roof roofH high; cm 8.4 × h ≈ 2.1 m up
   bay:{name:'Cargo bay',kind:'bay',m:0.6,h:0.25,r:0.8,cm:8.4,bayL:4,bayIn:0.7,roofH:0.6,C:2500,T:1200,B:450,prof:[[.8,0],[.8,4.25],[.62,4.6],[0,4.85]],profOpen:[[.8,0],[.8,4.25]]},
   // probe core (sats session): a command part without crew, so a separated module is a vessel you can fly
@@ -550,7 +555,7 @@ function stageAtoms(auto,keys,sPar,segs,parts,stg){
 function engineMdot(d){return d.thrust/(d.ispV*G0)}   // t/s at full throttle
 // ---- resources: each part holds res {name: amount} up to cap; mass = dry + Σ amount × density. Only propellant exists
 // today (tonnes, so density 1); power or life support would be new entries here plus producers/consumers with rates.
-const RES={fuel:{density:1,unit:'t'},ablator:{density:1,unit:'t'},gas:{density:1,unit:'t'}};
+const RES={fuel:{density:1,unit:'t'},ablator:{density:1,unit:'t'},gas:{density:1,unit:'t'},sup:{density:1,unit:'t'}};
 function dryMass(p){return(p.d.kind==='tank'?p.d.dry:p.d.m)+(p.jm||0)+(p.xm||0)}
 function partMass(p){let m=dryMass(p);for(const k in p.res)m+=p.res[k]*RES[k].density;return m}
 // Fuel flow follows the part tree: it crosses every joint except a decoupler's own (decoupler ↔ the part it holds on to),
@@ -668,7 +673,7 @@ function sasTarget(s){
   if(s.sasMode==='stab')return s.hold;
   if(s.sasMode==='node'){const I=nodeInfo(s);return I&&len(I.rem)>1e-3?norm(I.rem):s.hold}
   if(TGT_M.includes(s.sasMode)){const T=tgtOf(s);if(!T)return s.hold;   // toward / away from the target; along / against our velocity relative to it
-    if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?mul(P.Ab,-1):s.hold}   // nose against its free port's axis
+    if(s.sasMode==='dock'){const P=dockPair(s,T.q,tgtBody(s,T));return P&&P.a.body===0?qrot(qFromTo(P.Aa,mul(P.Ab,-1)),qrot(s.q,[0,1,0])):s.hold}   // turn our port's axis onto the target port's (a nose port: the nose)
     if(s.sasMode==='tgt'||s.sasMode==='antitgt'){const u=norm(T.dr);return s.sasMode==='tgt'?u:mul(u,-1)}
     if(len(T.dv)<0.05)return s.hold;const u=norm(T.dv);return s.sasMode==='rpro'?u:mul(u,-1)}
   const vr=speedRef(s).v;if(len(vr)<0.5)return s.hold;
@@ -1354,7 +1359,7 @@ function dropVerdict(b,pf){if(b!==TELLUS)return{kind:'away',where:b.name};const{
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0.06;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M)
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
 const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -2114,7 +2119,7 @@ function satRegister(s,R){if(!s.alive||s.landed||s.body!==TELLUS)return;const el
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
-  const on=s.parts.filter(p=>p.on);q.shape=on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o});
+  const on=s.parts.filter(p=>p.on);q.shape=shapeOf(on,R.crewed&&R.crewOK);
   q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=(s.cmOwn||s.cm).slice();R.satId=q.id;
   q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -2143,7 +2148,7 @@ const hitBase=d=>d.kind==='tank'?d.dry:d.m;          // a satellite's part masse
 function hitProf(P,y){if(y<=P[0][1])return P[0][0];for(let i=1;i<P.length;i++)if(y<=P[i][1]){const[a,ya]=P[i-1],[b,yb]=P[i];return yb>ya?a+(b-a)*(y-ya)/(yb-ya):Math.max(a,b)}return P[P.length-1][0]}
 const HIT_GEO=new WeakMap();
 // a part's contact geometry in the vessel frame: axis base o, profile, height, sample points, centre and bounding radius
-function hitGeo(p,d){if(d.kind==='bay')return bayGeo(p,d);let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.phi!=null?d.off:0,o=[p.pos[0]+so*Math.cos(p.phi||0),p.y0,p.pos[2]+so*Math.sin(p.phi||0)];
+function hitGeo(p,d){if(d.kind==='bay')return bayGeo(p,d);if(d.radial)return radialGeo(p,d);let g=HIT_GEO.get(p);if(g)return g;const h=d.h,so=d.off&&p.phi!=null?d.off:0,o=[p.pos[0]+so*Math.cos(p.phi||0),p.y0,p.pos[2]+so*Math.sin(p.phi||0)];
   let prof=d.sc&&PARTS[d.base]?PARTS[d.base].prof.map(([r,y])=>[r*d.sc,y*d.sc]):d.prof;
   if(d.kind==='fins')prof=[[d.r+(d.span||0),0],[d.r+(d.span||0),h]];   // the fin ring as its swept disc
   const pts=[],ny=Math.max(1,Math.ceil(h/0.2));
@@ -2153,7 +2158,7 @@ function hitGeo(p,d){if(d.kind==='bay')return bayGeo(p,d);let g=HIT_GEO.get(p);i
     if(i===0||i===ny)pts.push([o[0],o[1]+y,o[2]])}
   const rmax=Math.max(...prof.map(x=>x[0]));
   g={o,prof,h,pts,c:[o[0],o[1]+h/2,o[2]],R:Math.hypot(rmax,h/2)};HIT_GEO.set(p,g);return g}
-function partSDF(g,x,y,z){if(g.bay)return baySDF(g.bay,x,y,z);const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
+function partSDF(g,x,y,z){if(g.bay)return baySDF(g.bay,x,y,z);if(g.rot)[x,y,z]=qrot(qconj(g.rot),[x,y,z]);const ds=Math.hypot(x,z)-hitProf(g.prof,clamp(y,0,g.h)),dc=Math.max(-y,y-g.h);return ds>0&&dc>0?Math.hypot(ds,dc):Math.max(ds,dc)}
 function sdfN(g,l){const e=1e-3,f=(x,y,z)=>partSDF(g,x,y,z),[x,y,z]=l;
   return norm([f(x+e,y,z)-f(x-e,y,z),f(x,y+e,z)-f(x,y-e,z),f(x,y,z+e)-f(x,y,z-e)])}
 const hitW=(B,pt)=>add(B.r,qrot(B.q,sub(pt,B.cm))),hitL=(B,w)=>add(qrot(qconj(B.q),sub(w,B.r)),B.cm);
@@ -2258,14 +2263,14 @@ const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PO
 function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked)}
 // free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
 function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
-  return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&!P.some(y=>y!==x&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3))
-    .map(x=>({i:x.o.i,face:[x.o.pos[0],x.o.y0+x.o.h,x.o.pos[2]]}))}
+  return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&(x.d.radial||!P.some(y=>y!==x&&!y.d.surf&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3)))
+    .map(x=>({i:x.o.i,...portGeom(x.o,x.d)}))}
 const usedPorts=(att,id)=>new Set(att.flatMap(a=>[...(a.host===id?[a.hpi]:[]),...(a.e.id===id?[a.ppi]:[])]));
 // the vessel's free ports (its own and its passengers'), in the vessel frame: face point and outward axis
-function shipPorts(s){const A=s.att||[],out=portsOf(s.parts.filter(p=>p.on),usedPorts(A,0)).map(x=>({...x,body:0,fv:x.face,av:[0,1,0]}));
-  for(const a of A)for(const x of portsOf(a.e.shape,usedPorts(A,a.e.id)))out.push({...x,body:a.e.id,fv:add(a.p,qrot(a.q,sub(x.face,a.e.cm))),av:qrot(a.q,[0,1,0])});return out}
+function shipPorts(s){const A=s.att||[],out=portsOf(s.parts.filter(p=>p.on),usedPorts(A,0)).map(x=>({...x,body:0,fv:x.face,av:x.ax}));
+  for(const a of A)for(const x of portsOf(a.e.shape,usedPorts(A,a.e.id)))out.push({...x,body:a.e.id,fv:add(a.p,qrot(a.q,sub(x.face,a.e.cm))),av:qrot(a.q,x.ax)});return out}
 // the closest pair of free ports between the vessel and satellite q (body B): world points, axes, offset
-const tgtPorts=q=>q.parts?shipPorts(q).filter(x=>x.body===0):portsOf(q.shape,usedPorts(q.attached||[],0)).map(x=>({...x,fv:x.face,av:[0,1,0]}));
+const tgtPorts=q=>q.parts?shipPorts(q).filter(x=>x.body===0):portsOf(q.shape,usedPorts(q.attached||[],0)).map(x=>({...x,fv:x.face,av:x.ax}));
 function dockPair(s,q,B){let best=null;const qp=tgtPorts(q);if(!qp.length)return null;
   for(const a of shipPorts(s)){const Pa=add(s.r,qrot(s.q,sub(a.fv,s.cm))),Aa=qrot(s.q,a.av);
     for(const b of qp){const Pb=add(B.r,qrot(B.q,sub(b.fv,B.cm))),Ab=qrot(B.q,b.av),d=sub(Pb,Pa),dl=len(d);if(!best||dl<best.dl)best={a,b,Pa,Aa,Pb,Ab,d,dl}}}
@@ -2283,7 +2288,7 @@ function dockTryV(a,b){if(b.undockT!=null&&progT(a)-b.undockT<PORT_COOL)return f
 // the vessel itself rides along out of sight of the save (not enumerable), so undocking gives back a flyable vessel
 function entryOf(v){PROG.satN=(PROG.satN||0)+1;const on=v.parts.filter(p=>p.on);
   const e={id:PROG.satN,name:v.name||`Vessel ${PROG.satN}`,mass:v.mOwn,cm:v.cmOwn.slice(),imgs:0,pending:[],
-    shape:on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;return o}),
+    shape:shapeOf(on,S&&S.rec&&S.rec.crewed&&S.rec.crewOK),
     attached:(v.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}))};
   HOOK.satLook&&HOOK.satLook(e.shape,on);kitSet(e);Object.defineProperty(e,'_v',{value:v,enumerable:false,writable:true});return e}
 // latch: the target's port is pulled onto ours (turned so the faces oppose, moved so they meet), the two become one rigid
@@ -2317,7 +2322,7 @@ function bodyDist(B,w){let d=Infinity;for(const b of B.parts){const l=sub(hitVi(
 function dockGroup(s,a){const g=[a];for(let k=0;k<g.length;k++)for(const b of s.att)if(!g.includes(b)&&b.host===g[k].e.id)g.push(b);return g}
 // a host's port, in the vessel frame: face point and axis
 function hostPort(s,a){const h=a.host?s.att.find(x=>x.e.id===a.host):null,L=h?h.e.shape:s.parts,po=L.find(o=>o.i===a.hpi);if(!po)return null;
-  const face=[po.pos[0],po.y0+po.h,po.pos[2]],d=po.d||PARTS[po.k];return h?{P:add(h.p,qrot(h.q,sub(face,h.e.cm))),ax:qrot(h.q,[0,1,0]),d}:{P:face,ax:[0,1,0],d}}
+  const d=po.d||PARTS[po.k],G=portGeom(po,d);return h?{P:add(h.p,qrot(h.q,sub(G.face,h.e.cm))),ax:qrot(h.q,G.ax),d}:{P:G.face,ax:G.ax,d}}
 // what each port carries: the force and bending moment that make everything beyond it follow the vessel's motion
 // (non-gravitational acceleration plus rotation). Above its rating it lets go, and the body leaves with its momentum.
 function portLoads(s){const A=s.att||[];if(!A.length||!s.aB)return;const aB=s.aB,al=s.alB,wb=s.wB;
@@ -2394,7 +2399,7 @@ const flightRailsOK=()=>railsOK(S)&&FLEET.every(v=>!v.alive||railsOK(v));
 function switchTo(i){const v=FLEET[i];if(!v||!v.alive)return false;FLEET.splice(i,1);FLEET.push(S);S.fleet=true;v.fleet=false;const R=S.rec;S.rec=v.rec;v.rec=R;S=v;
   HOOK.rebuild();HOOK.msg(`Flying ${S.name||'the vessel'}`);return true}
 // the end of a flight: every other vessel left in a stable orbit is registered (with whatever it has docked)
-function fleetEnd(R){for(const v of FLEET){if(!v.alive)continue;satRegister(v,{day0:R.day0});dockEnd(v)}FLEET.length=0}
+function fleetEnd(R){for(const v of FLEET){if(!v.alive)continue;satRegister(v,{day0:R.day0,crewed:R.crewed,crewOK:R.crewOK});dockEnd(v)}FLEET.length=0}
 // ---- the cargo bay (sats session; stations plan Phase B). A floor with walls and clamshell roof doors: whatever is
 // stacked on its floor and fits inside its walls and under its roof is enclosed (p.inBay, set in assemble), shielded from
 // the air and its heat while the doors are shut. The doors take DOOR_S of flight time to open or close (p.open, p.doorT;
@@ -2430,6 +2435,36 @@ function baySDF(b,x,y,z){const rad=Math.hypot(x,z),box=(...ds)=>{const pos=ds.fi
   d=Math.min(d,box(rad-b.R,-y,y-b.hf));                             // the floor
   if(b.shut)d=Math.min(d,box(rad-b.R,b.top-y,y-(b.top+0.1)));       // the roof
   return d}
+// ---- stations (sats session; stations plan Phase C). Ports can sit on any structure: a stack port faces up its line, a
+// radial port faces out from the side of whatever it's mounted on (portGeom). A station is a registry stack with a
+// habitat or a lab; what it can do comes from what's docked: berths (habitats), crew (the people in crewed capsules
+// docked to it, as many as there are berths: each capsule stays as its crew's lifeboat), labs, supplies (pooled across
+// the stack, SUP_DAY per crew-day between flights; out of supplies, the labs stop) and free ports.
+const SUP_DAY=0.005;   // t of supplies per crew-day (food, water, air without recycling)
+const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi||0)];return{face:madd([o.pos[0],o.y0+o.h/2,o.pos[2]],n,d.depth),ax:n}}
+  return{face:[o.pos[0],o.y0+o.h,o.pos[2]],ax:[0,1,0]}};
+// a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
+// carried a real crew (dummies don't count)
+function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i};if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
+  if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&crewed)o.crew=p.d.crew;return o})}
+// a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
+function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
+  const ring=(r,y)=>{const m=Math.max(6,Math.ceil(6.2832*r/0.25));for(let k=0;k<m;k++){const a=k/m*6.2832;pts.push(add(B,qrot(q,[r*Math.cos(a),y,r*Math.sin(a)])))}};
+  const ny=Math.max(1,Math.ceil(h/0.2));for(let i=0;i<=ny;i++)ring(d.r,h*i/ny);for(let rr=d.r-0.25;rr>0.05;rr-=0.25)ring(rr,h);pts.push(add(B,mul(n,h)));
+  g={o:B,rot:q,prof:[[d.r,0],[d.r,h]],h,pts,c:madd(B,n,h/2),R:Math.hypot(d.r,h/2)};HIT_GEO.set(p,g);return g}
+function stationOf(q){if(!q.shape)return null;const A=q.attached||[],bodies=[{e:q,id:0},...A.map(a=>({e:a.e,id:a.e.id}))],P=bodies.flatMap(b=>(b.e.shape||[]).map(o=>({o,d:PARTS[o.k]})).filter(x=>x.d));
+  const berths=P.reduce((a,x)=>a+(x.d.berths||0),0),labs=P.filter(x=>x.d.lab).length;if(!berths&&!labs)return null;
+  const seats=P.reduce((a,x)=>a+(x.o.crew||0),0),sup=P.reduce((a,x)=>a+((x.o.res||{}).sup||0),0),crew=Math.min(seats,berths);
+  const ports=bodies.reduce((n,b)=>n+portsOf(b.e.shape||[],usedPorts(A,b.id)).length,0);
+  return{berths,labs,seats,crew,sup,ports,days:crew?sup/(crew*SUP_DAY):Infinity,work:sup>0?Math.min(crew,2*labs):0}}
+// between flights: the crew eats, the labs work (two people per lab at most), and the headlines notice when it runs low
+function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(!st||!st.crew)continue;const need=st.crew*d*SUP_DAY;let left=need;
+    for(const e of[q,...(q.attached||[]).map(a=>a.e)])for(const o of e.shape||[])if(o.res&&o.res.sup>0&&left>0){const x=Math.min(left,o.res.sup);o.res.sup-=x;left-=x}
+    const days=(need-left)/(st.crew*SUP_DAY),lab=Math.min(st.crew,2*st.labs)*days;q.labDays=(q.labDays||0)+lab;PROG.labDays=(PROG.labDays||0)+lab;
+    const after=stationOf(q);
+    if(left>1e-12&&!q.supOut){q.supOut=true;HOOK.news(`${q.name}: supplies have run out. The crew is on emergency rations and the lab has stopped`,'bad')}
+    else if(after.sup>0)q.supOut=false;
+    if(after.days<10&&after.sup>0&&!q.supLow){q.supLow=true;HOOK.news(`${q.name}: ${after.days.toFixed(0)} days of supplies left`,'warn')}else if(after.days>=10)q.supLow=false}}
 // ---- RCS (sats session). Thrusters are real forces at real points (addF), so translating with unbalanced quads also turns
 // the vessel, as it should. Jet selection: for each of the 12 signed axes (± force x, y, z; ± torque x, y, z) a set of
 // non-negative duties that produces that axis alone as nearly as the layout allows (non-negative least squares, solved
@@ -2491,7 +2526,7 @@ function imageDone(c,sat,st,t){const i=PROG.active.indexOf(c);if(i<0)return;if(c
 // keep the pictures until they pass over a ground station, then downlink them. Working ones also sell imagery.
 const DIS=[['Floods','Floods along the river at #: relief agencies ask for pictures from space'],['Wildfire','Wildfire near #: firefighters want to know which way it is heading'],
   ['Volcano','Volcano near # wakes up grumpy; vulcanologists request a look'],['Storm','A storm parks itself over #; insurers request photographs, urgently'],['Locusts','Locust swarm reported near #; farmers want maps']];
-function satTick(d,R){const sats=satsUp().filter(q=>q.cam);ensureBoard();
+function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
@@ -3258,7 +3293,7 @@ function makeMesh(arr){const data=new Float32Array(arr),vao=gl.createVertexArray
 // surface frame for the mesh shader's detail: (turns around the part's axis, height above its bottom, its nominal radius,
 // its height) and (detail kind, part index). PK is the part being built; outside partShape it is PK0 (kind 0 = no detail).
 const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
-const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15};
+const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:15,lab:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
   out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
@@ -3319,6 +3354,13 @@ function partBody(out,p){
         const b=a+1.0472;box(out,[x+Math.cos(b)*.48,y+.31,z+Math.sin(b)*.48],.03,.025,.03,C.D)}break;
     // claw: a drive housing with a bolted base flange and a hazard band, a turntable, and three jointed fingers (a
     // hinge knuckle at the base and the elbow, a hydraulic ram along each, rubber-padded tips) around a dark contact plate
+    case'rport':{const n=[Math.cos(p.phi),0,Math.sin(p.phi)],qr=qFromTo([0,1,0],n),B=[x,y+h/2,z],a=[];   // built along +Y, then turned to face out
+      lathe(a,[[d.r,0,C.D],[d.r,.16,C.G],[.4,.2,C.G],[.4,d.depth,C.W]],[0,0,0],28,[false,true]);
+      for(let i=0;i<a.length;i+=VX){const P=add(B,qrot(qr,[a[i],a[i+1],a[i+2]])),N=qrot(qr,[a[i+3],a[i+4],a[i+5]]);a[i]=P[0];a[i+1]=P[1];a[i+2]=P[2];a[i+3]=N[0];a[i+4]=N[1];a[i+5]=N[2]}
+      for(const v of a)out.push(v)}break;
+    case'hab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);
+      for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;rbox(out,[x+Math.cos(a)*.63,y+1.9,z+Math.sin(a)*.63],.01,.12,.09,C.GL,a)}break;   // a ring of portholes
+    case'lab':lathe(out,[[.625,0,C.D],[.625,.1,C.D],[.625,.1,C.W],[.625,1.2,C.W],[.625,1.2,C.AU],[.625,2.0,C.AU],[.625,2.0,C.W],[.625,3.1,C.W],[.625,3.1,C.D],[.625,3.2,C.D]],o);break;
     case'bay':{const top=h+d.bayL,th=doorF(p)*1.75;
       lathe(out,[[d.r,0,C.W],[d.r,top,C.W],[d.r,top,C.G],[d.bayIn,top,C.G],[d.bayIn,h,C.D],[0,h,C.D]],o,32,[true,false]);
       for(const sd of[1,-1])bayDoor(out,o,d.r,top,d.roofH,sd,th,C.W)}break;
@@ -4394,10 +4436,12 @@ const FLEET_MESH=new WeakMap();   // a fleet vessel's mesh, rebuilt when it lose
 function fleetMesh(v){const on=v.parts.filter(p=>p.on),k=on.length+bayKey(v);let e=FLEET_MESH.get(v);if(!e||e.n!==k){if(e)e.mesh.free();e={n:k,mesh:partsMesh(on)};FLEET_MESH.set(v,e)}return e.mesh}
 const bayKey=s=>s?s.parts.filter(p=>p.on&&p.d.kind==='bay').map(p=>Math.round(doorF(p)*40)).join():'';
 function tNow(){return(S&&S.rec&&S.rec.launched?S.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT}
+function stationLine(q){const st=stationOf(q);if(!st)return'';
+  return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
 function satsHTML(){const L=satsUp();const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
-    return`<div class="sub"><b>${q.name}</b> · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
+    return`<div class="sub"><b>${q.name}</b> · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
 function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
   const have=stationsAll().map(g=>`<span style="color:${pc(g.power)}">${g.name}</span>`).join(' · ');
   const sites=gsSites().map(ci=>{const c=CITIES[ci],v=gsCheck(ci),pw=c.power?c.power.i:HOME;
