@@ -4326,10 +4326,89 @@ surface.
 
 **Not yet:**
 - terrain shadows and horizons (Selene is still smooth: hills will block both sun and radio);
-- a relay in Selene orbit;
+- ~~a relay in Selene orbit~~ (built: "The Selene relay" below);
 - the clock running while you drive from home;
 - eclipses by Tellus;
 - Nyx's spin.
+
+### The Selene relay built: orbits about a moon in the registry (sats session, 2026-10-08)
+
+R3 left the far side without contact because the registry kept only Tellus orbits. Now a vessel left in orbit
+around a moon stays on the register in that moon's frame, and one with an antenna relays for rovers.
+
+**The registry** (`satRegister`, `orbBody`, `moonSats`):
+- An orbit about a moon is kept with `q.bodyName`, and its `r`/`v` relative to that moon. `satAt` uses the moon's μ.
+- It is accepted if its periapsis is at least 5 km up (`MOON_PE`: airless, and no relief yet) and its apoapsis is inside
+  the SOI (`soiMin`).
+- **`satsUp()` is still Tellus orbits only**, so none of its ~30 callers changed. Moon orbiters come from `moonSats(b)`.
+- An orbiter whose only payload is an antenna is named *Relay N*.
+- Flying it again (`vesselOf`) starts the flight around its moon.
+- `stationTick` includes moon orbiters: a crew left in Selene orbit eats supplies.
+- They show in the flight view (markers and meshes), on the map (orbit lines, labels), and under *In orbit around
+  Selene* in the Program's Fleet tab.
+
+**Between flights the tide moves them** (`moonOrbStep`, from `advanceDays`). The orbit is stepped with Tellus's tide
+(`pertAcc`, RK4 at 1/120 of an orbit), on program time. The reason is a measurement. Two-body Kepler would keep any
+orbit forever, but Tellus pumps the eccentricity of a high, steeply inclined orbit (Lidov–Kozai):
+
+| Orbit (circular at the start; days are Tellus days of 8 h) | Fate |
+|---|---|
+| 1,000 km, in Selene's orbital plane | keeps its shape: 1,002–1,019 km after 45 days |
+| 1,000 km, 60° | 941–1,054 km after 90 days |
+| 1,500 km, 75° | meets the ground on day 79.5 |
+| 2,000 km, polar | meets the ground on day 41.3 |
+| 3,000 km, polar | leaves Selene's SOI on day 20.9 and orbits Tellus (it moves to Tellus's registry, with news) |
+
+- **Hitting the ground is judged on the path, not on the osculating periapsis.** A first version called an orbit lost
+  when its osculating periapsis dipped below the ground. On the 2,000 km polar orbit that happened 4 days early: the
+  osculating value read −6 km on a pass that really cleared the ground. Now, on an inbound leg, the Kepler time to
+  r = R is compared with the step.
+- **Against a 5 s RK4 reference** that stops at real contact, every fate above agrees to within one step (e.g.
+  41.25 vs 41.34 days). Positions: 0.36 km off after 21 days at 1,000 km, 3 km off at 100 km (along-track).
+- **Cost:** 5 orbiters × 30 days took 56 ms.
+- **Inside a flight they still ride Kepler from their last state.** Over 24 h of flight that is 18 km along-track at
+  100 km and 320 km at 1,000 km. That's fine for markers and relays; it would matter for rendezvous (Not yet).
+
+**Contact through an orbiting relay** (`rvContact`, `rvRelays`). The relay must be over the rover's horizon (1°), and
+the line from it to Tellus must clear Selene. The delay is a round trip over rover → relay → Tellus. Registered
+orbiters with an antenna count, and so does any vessel of the current flight in orbit around that body that carries
+an antenna. The relays have no range or power limit yet.
+
+For a rover at the centre of the far side, with one relay in Selene's orbital plane (3 orbits sampled):
+
+| Relay height | Time in contact | Round trip |
+|---|---|---|
+| 100 km | 0 % (needs ≳ 145 km: it must see both the rover and, past the limb, Tellus) | — |
+| 300 km | 13 % | ≤ 263 ms |
+| 600 km | 26 % | ≤ 267 ms |
+| 1,000 km | 35 % | ≤ 272 ms |
+| 2,000 km | 46 % | ≤ 285 ms |
+| 4,000 km | 45 % | ≤ 312 ms |
+
+A single relay can't reach half the time: it has to be on the rover's side and past the limb as Tellus sees it. More
+relays, phased, fill in the gaps. A far-side relay should also be equatorial; the high polar orbits are the ones the
+tide brings down.
+
+**Checks:** `test.mjs` §40, 3 checks:
+- registration (frame, name, the two refusals, flown again around Selene);
+- far-side contact (none alone, about a third via a 1,000 km relay, none at 100 km, the relay's extra leg in the delay,
+  a vessel of the flight relaying);
+- the tide over 45 days (the equatorial orbit holds, 2,000 km polar comes down, 3,000 km polar moves to Tellus).
+
+Mutation-tested: each of 10 deliberate breaks fails at least one check. The breaks: no tide, no Selene occlusion, no
+rover horizon, `satsUp` including moon orbits, the direct delay, no ground contact, no SOI exit, no SOI gate,
+flight vessels not relaying, `vesselOf` on Tellus. Browser: two orbiters listed under *In orbit around Selene*; the
+far-side rover's *Drive from home* button appears in its windows (268 ms via Lookout 1); flying one shows the other's
+marker 2.7 km away; no console errors.
+
+**Not yet:**
+- rendezvous and docking with a registered moon orbiter (`tgtOf`, `contactStep`, `nearbyFlyable` and target cycling
+  are Tellus-only);
+- cameras in Selene orbit (`satTick` is Tellus's);
+- relay range and power;
+- Nyx orbits work in code but are untested;
+- **economy:** a contract for a far-side relay (or a relay network: share of the far side covered).
+
 ## v1.18 — radial fins and make-root (2026-10-07)
 
 First slice built in the `launchpad-builder` worktree (branch `builder`), merged to `main` when done.
@@ -5552,3 +5631,65 @@ the count stays 1). Events are diffed by engine identity (`p.i`) instead.
 **Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
 in `sndTick` are the knobs.
 
+## The robot playtester (2026-10-08, playtest session)
+
+Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
+`playtest.mjs`. One headless Chrome on the real GPU, driven over CDP like `shot.mjs`, but persistent: many rows per run.
+A Claude session then read every screenshot against the row's "Looks right if".
+
+**How it works.** `ROWS[n]` in `playtest.mjs` is the row table: `steps` (a string is JS evaluated in the page and its value
+logged; `{shot}` captures `r<n>_<name>.png`; `{wait}`, `{key}` and `{hold}` send real key events through CDP; `{click}`
+clicks an element's centre), then `checks` (expressions evaluated at the end) and `expect` (a failed one fails the row).
+Before each row the page's storage is wiped, the tester flags are written by a script that runs before the page's own
+(`Page.addScriptToEvaluateOnNewDocument`), the page loads with `?tester`, and `views.js` plus a helper object `PT` are
+injected. Unless the row asks for the gate, `PT.start()` picks the first career start and goes to the Assembly. `PT` has
+`preset`, `launch`, `fly(cond, tmax, {ascent, autostage, each})` (advPhys in a loop: kick at 8 s, then Prograde, staging
+on burnout), `alt/agl/aoaDeg/orbit`, `look(yaw, pitch, dist)` (HUD back on, camera set), `log` (every `HOOK.msg` and
+`HOOK.news` with its sim time), `hud()`, `msg()`. A row that needs the game's own frame step (tape recording, warp,
+keys) uses `SIM`: the live loop is frozen and `simulate(1/60)` is called by hand. Exceptions thrown in the page fail
+the row. Output goes outside the repo: `C:/Users/caioa/dev/playtest-out/` (PNGs, `results.json`), `PT_OUT` to change it,
+`PT_IGPU=1` for the integrated GPU. `node playtest.mjs --eval "<js>" …` is a probe: a fresh tester page, each expression
+evaluated and screenshotted.
+
+**Coverage.** 58 of the 113 rows judged: 37 ✓, 4 ✗ (104, 110, 84, 97), 17 ~ (mostly "the numbers are right, the feel
+needs a human"). Skipped, and why: the hand-flying and feel rows (1, 12–16, 101, 69, 71, 73, 76, 78, 89, 99); mouse work in
+the builder (17–21, 24); docking, stations, rovers in the field and the moons (49, 50, 53–74 apart from 51), each a
+long multi-flight setup worth its own driver; city and range-safety flights (16, 32, 111–113); the HUD with everything at
+once (98). Rows 23, 31, 45, 80, 81, 83, 92, 94 were left for lack of a reliable setup in the time-box.
+
+**What it found** (PLAYTEST #15–#23): the TESTER badge over "Save as autopilot" (#15); the news box over the flight
+readout's altitude (#16); "plasma blackout" and a plasma shell on an ordinary ascent at Mach 3.5 (#17); holding a pitch key
+with SAS off spins the Orbiter's upper stage until it tears apart before the wheels fill (#18); the Link row says "no
+station in view" for 2 s after liftoff (#19); LAUNCH and the site picker below the fold of the assembly panel (#20); a
+landed flight isn't settled until the next launch, so refund, know-how and logbook news arrive late (#21); `refView(8)`
+throws and the gantry blocks close-ups 4, 6, 9 (#22); two builder wording nits (#23). No page exceptions anywhere else.
+
+**Measurements** (RTX 5050 laptop, headless, 1280×800). Page load to first row ~35 s on a fresh profile (shader
+compiles), then 4–12 s a row; the whole table in ~7 min. A 1,360 s parachute hop runs in about a second of advPhys.
+Heavy at night, engines lit on the pad: RTX median frame 8.3 ms (vsync 120 Hz, GPU 4.7 ms); Intel iGPU median 36.6 ms,
+p95 39.4, adaptive resolution still at 100 % after 3 s (TESTING row 47 had ≈26 ms). Physics numbers are in the rows'
+*Robot:* notes (turn times match the builder within 10 %; boosters leave at 2.4 m/s; polar launch 27.2°; the impact
+predictor lands within 50 m; an autopilot replay lands on the recorded position to 0 m).
+
+**Negative results and traps.**
+- `shot.mjs`'s flags (`--use-angle=d3d11 --enable-gpu`) put headless Chrome on the **Intel iGPU** on this laptop (GPU_NAME
+  "Intel", 24 fps idle). `--force_high_performance_gpu` gets the RTX (120 fps). `playtest.mjs` adds it by default;
+  `shot.mjs` still doesn't, so its screenshots have been iGPU renders.
+- In `--headless=new` requestAnimationFrame ticks at full rate (unlike the hidden preview pane), but long flights are
+  still driven with advPhys loops. That skips what the frame loop does: tape recording (`tapePhys` lives in `simulate`),
+  message timers (a stale "Liftoff!" stays on screen), the HUD's impact row (computed on frames: it shows "—"), and the
+  gantry's roll-back clock, which starts at the first render after launch. Render once right after launch, and use the
+  `SIM` helper when the row is about those.
+- Every launch moves the world date (prep, pad wait, the next whole day), so weather differs between launches. Separate
+  climbs to 36 and 44 km looked like the cloud deck vanished at the hand-over; the same moment rendered from 36–44 km
+  shows no change. Compare renders at one moment.
+- The Program and tester panels re-render on every click, so a saved element reference goes stale after one click:
+  query again each time. `go('program')` while already there is a no-op, so the header isn't refreshed after a
+  `testAdvance` called from JS.
+- Escapes inside the row table's template literals get eaten (`'\n'` became a real newline, `\s` became `s`): use
+  `String.fromCharCode(10)` and `[^]`.
+- Reading screenshots costs context: 2×2 half-size contact sheets with a crop for details made ~300 images reviewable.
+
+**Rerun.** `python -m http.server 8799 --directory <repo>/explorations`, then from `explorations/launchpad`:
+`node playtest.mjs` (all rows) or `node playtest.mjs 104 110` (some). Add a row: a `ROWS[n]` entry next to its area's
+rows; a row that needs two setups can use a string key (`'82b'`).

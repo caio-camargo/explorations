@@ -3183,3 +3183,79 @@ in the Drive folder and lost in the move; re-added here.
 - [ ] Caio: TESTING row 114 (does it sound good? levels are first guesses; the knobs are the gains in `sndTick`)
 - [ ] Sound next: per-engine voices, spatial audio for other vessels, a volume slider
 
+
+## 2026-10-08 — Launchpad: the Selene relay (sats session, `pc_de_varginha`)
+
+### Summary
+- Resumed from R3's next step. The registry now keeps orbits about a moon, in that moon's frame (`q.bodyName`). `satsUp()`
+  stays Tellus-only (none of its ~30 callers changed); moon orbiters come from `moonSats()`. They are flyable again
+  around their moon, eat supplies if crewed, and show in the flight view, on the map and in Program > Fleet.
+- **Measured first:** plain Kepler would keep any orbit forever, but Tellus's tide pumps high, inclined orbits
+  (Lidov–Kozai). 2,000 km polar meets the ground on day 41; 3,000 km polar leaves the SOI on day 21. So between flights
+  `moonOrbStep` steps them with the tide (RK4). It agrees with a 5 s reference to within one step; 5 orbiters × 30 days
+  cost 56 ms.
+- **A mistake caught by measuring:** the first ground test used the osculating periapsis, which said "crashed" 4 days
+  early on a pass that cleared. It now checks the actual path within the step.
+- Far-side rovers hear home through an orbiting relay. The relay must be over the rover's horizon, Tellus must not be
+  behind Selene, and the round trip includes the extra leg. One equatorial relay at 1,000 km gives ~35 % of the time;
+  at 100 km, never.
+- Housekeeping: this machine had no `launchpad-sats` worktree registered, but `C:/Users/caioa/dev/launchpad-sats` is a
+  full clone on `sats` (origin = the main clone), so I worked there. The main clone has no git identity set; I committed
+  with the one every recent commit uses (`-c user.name/email`), with no config change.
+
+### Files
+- `explorations/launchpad/index.html`: `satRegister` (moon orbits, *Relay N*), `satAt`/`orbBody`/`moonSats`/`moonOrbStep`/
+  `moonOrbTick`/`MOON_PE`, `advanceDays`, `stationTick`, `vesselOf`, `rvContact`/`rvRelays`, `moonSatsHTML`, and the
+  flight markers, meshes, map orbits and labels
+- `explorations/launchpad/test.mjs` §40 (3 checks); `NOTES.md` § "The Selene relay built"; `TESTING.md` row 115;
+  `explorations/README.md` launchpad row; `ACTIVE_WORK.md` (claim cleared, heads-up)
+
+### Verification
+`test.mjs`: 363 passed on the merged branch. Each of 10 deliberate breaks fails a §40 check. Browser (headless Chrome,
+real GPU): the moon section in Fleet; the far-side rover gets *Drive from home · 268 ms via Lookout 1* in its windows;
+flying one orbiter draws the other's marker 2.7 km away; no console errors.
+
+### Next steps
+- [ ] Rendezvous/docking with moon orbiters (`tgtOf`, `contactStep`, `nearbyFlyable`, target cycling)
+- [ ] Economy: a far-side relay (network) contract; relay range/power limits
+- [ ] R4 science; R5 drive plans; the clock while driving from home (rovers plan)
+- [ ] Caio: TESTING row 115
+
+## 2026-10-08 — Launchpad economy session: paused for a resume in the new folder
+
+### Summary
+Since v1.35 (balance pass 3 on): v1.36 money sinks in simulated careers; design notes on rich programs, waste heat,
+routine runs, compute eras, time and long missions, communication, pre-flight planning and gravity assists, and
+dispatch decisions; v1.38 compute eras and trajectory studies; v1.41 no daily overhead; v1.42 the event timeline;
+v1.44 staged pay; v1.47 dispatch (economy side); v1.50 deviation handover (renumbered from v1.49). The repo left Drive
+mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
+
+### Files
+- `explorations/launchpad/index.html`, `test.mjs`, `career.mjs`, `NOTES.md`: the slices above
+- `explorations/launchpad/HANDOFF-economy.md`: new, how to resume this session
+- `INDEX.md`: career.mjs and the handoff added to the launchpad row; `ACTIVE_WORK.md`: economy row marked paused
+
+### Next steps
+- [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
+- [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
+
+## 2026-10-08 — Launchpad: the robot playtester, first pass (playtest session, run by the sound session)
+
+### Summary
+Caio can't playtest, so `explorations/launchpad/playtest.mjs` walks TESTING.md rows itself: headless Chrome on the real
+GPU, per-row scene setup, screenshots, console errors and measured values; Claude judged the screenshots against each
+row's "looks right if". First pass: **58 of 113 rows judged, 37 ✓, 4 ✗, 17 ~ (mostly "numbers fine, feel needs a
+human"), 55 not tried** (hand-flying feel, builder mouse work, docking/stations/moons, city flights). Nine PLAYTEST items
+filed, #15–#23 (the worst: SAS off + a held pitch key spins the Orbiter's upper stage apart; plasma blackout shown on an
+ordinary ascent at Mach 3.5; a landed flight settles only at the next launch). Spot-checked against the screenshots.
+Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--force_high_performance_gpu` gets the RTX.
+
+### Files
+- `explorations/launchpad/playtest.mjs` (new), `TESTING.md` (results in `#` cells, `(robot)`), `PLAYTEST.md` #15–#23,
+  `NOTES.md` § "The robot playtester"
+- Output outside git: `C:/Users/caioa/dev/playtest-out/` (`report.md`, PNGs, `results.json`)
+
+### Next steps
+- [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
+- [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
+

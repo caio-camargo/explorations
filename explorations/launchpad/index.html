@@ -1573,7 +1573,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);rvFieldTick(T0,PROG.day*DAY_S)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -2441,7 +2441,7 @@ function resolveDecision(id,key){const i=(PROG.decisions||[]).findIndex(x=>x.id=
 // the daily launch window (a whole day), so a flight's own frame (its clock starting at 0) is this frame exactly and a
 // satellite registered at the end of one flight is in the right place, over the right ground, in the next.
 // (Selene's phase still restarts with each flight; nothing in the registry depends on it yet.)
-const absTh=T=>TELLUS.th0+TELLUS.rot*T,satAt=(q,T)=>kepler(q.r,q.v,T-q.epoch,TELLUS.mu);
+const absTh=T=>TELLUS.th0+TELLUS.rot*T,satAt=(q,T)=>kepler(q.r,q.v,T-q.epoch,orbBody(q).mu);   // in its body's frame (orbBody)
 const SAT_FOV=30*Math.PI/180,SAT_IFOV=1e-5,SUN_MIN=Math.sin(10*Math.PI/180),STA_MIN=Math.sin(5*Math.PI/180),CLEAR=0.35,SAT_STEP=30;
 // ground stations: the pad, plus any the program builds at cities. At home a station is just a purchase; on another
 // power's land it needs their permission (friendly relations with home, a fair opinion of us), costs more, pays a lease
@@ -2483,9 +2483,10 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4;
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':'Object'}
-function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed||s.body!==TELLUS)return;const el=elements(s.r,s.v,TELLUS.mu);if(!(el.e<1&&el.pe>TELLUS.R+TELLUS.atm))return;
-  const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};
+function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
+function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
+  const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE)&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
+  const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
@@ -2496,6 +2497,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);   // A2: what it takes to fly it again
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,imgs:o.imgs||0,pending:o.pending||[],labDays:o.labDays,contact:o.contact})}   // the same object, back on the register
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+  if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}`,'ok');
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
@@ -2634,7 +2636,7 @@ function contactStep(s,dt){if(!s.alive||s.landed)return;portLoads(s);if(!s.alive
 // its rating. Aero, heating and thrust stay with the vessel's own parts for now: docked stacks fly in vacuum. A docked
 // entry stays in PROG.sats flagged `docked` until the flight ends, so a reload mid-flight can't lose it.
 const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
-function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed)}   // in orbit (landed ones: landedUp)
+function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed&&!q.bodyName)}   // in Tellus orbit (landed ones: landedUp; a moon's: moonSats)
 // free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
 function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
   return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&(x.d.radial||!P.some(y=>y!==x&&!y.d.surf&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3)))
@@ -2845,7 +2847,7 @@ function crewTick(q,ents,st,d,again){const need=st.crew*d*SUP_DAY;let left=need;
   if(left>1e-12&&!q.supOut){q.supOut=true;HOOK.news(`${q.name}: supplies have run out. The crew is on emergency rations and the lab has stopped`,'bad')}
   else if(after.sup>0)q.supOut=false;
   if(after.days<10&&after.sup>0&&!q.supLow){q.supLow=true;HOOK.news(`${q.name}: ${after.days.toFixed(0)} days of supplies left`,'warn')}else if(after.days>=10)q.supLow=false}
-function stationTick(d){for(const q of satsUp()){const st=stationOf(q);if(st&&st.crew)crewTick(q,[q,...(q.attached||[]).map(a=>a.e)],st,d,()=>stationOf(q))}
+function stationTick(d){for(const q of[...satsUp(),...moonSats()]){const st=stationOf(q);if(st&&st.crew)crewTick(q,[q,...(q.attached||[]).map(a=>a.e)],st,d,()=>stationOf(q))}
   for(const a of landedUp().filter(x=>x.beacon)){const st=baseOf(a);if(st.crew)crewTick(a,st.bodies,st,d,()=>baseOf(a))}}
 // ---- vessels that stay flyable across flights (sats session; stations plan A2). A registry entry keeps its design
 // (q.stack) and state (q.vst: which of the design's stage segments have ignited, SAS, RCS, chute), and each shape part
@@ -2866,7 +2868,7 @@ function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,
   if(q.landed){HOOK.unshape&&HOOK.unshape(s.parts,by);   // on the surface: in its body's frame
     Object.assign(s,{body:landedBody(q),pf:q.pf.slice(),qLocal:q.ql.slice(),landed:true,alive:true,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,throttle:0,reg:q});syncLanded(s);return s}
   const[r,v]=satAt(q,T),sp=satSpin(q,T,r,v);HOOK.unshape&&HOOK.unshape(s.parts,by);
-  Object.assign(s,{r,v,q:sp.q,w:sp.w.slice(),landed:false,alive:true,body:TELLUS,name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,chute:!!st.chute,throttle:0,reg:q});
+  Object.assign(s,{r,v,q:sp.q,w:sp.w.slice(),landed:false,alive:true,body:orbBody(q),name:q.name,sas:!!st.sas,sasMode:st.sasMode||'stab',rcs:!!st.rcs,chute:!!st.chute,throttle:0,reg:q});
   return s}
 // a flyable registry vessel near s, loaded into this flight (it leaves the register until the flight ends)
 const nearbyFlyable=s=>s&&s.body===TELLUS&&!s.landed?satsUp().filter(q=>flyable(q)&&len(sub(satAt(q,progT(s))[0],s.r))<LOAD_R):[];
@@ -2942,6 +2944,26 @@ function armStep(s){if(!s||!s.att)return;for(const a of s.att.slice()){const g=a
 const BASE_R=500;
 function landedUp(){return(PROG.sats||[]).filter(q=>q.landed&&!q.docked)}
 const landedBody=q=>BODIES.find(b=>b.name===q.bodyName)||null;
+// ---- orbits about a moon (sats session: the Selene relay). Kept in the moon's frame (q.bodyName; r, v relative to it).
+// In a flight they ride Kepler (satAt). Between flights Tellus's tide steps them (RK4, ~120 steps an orbit), because it
+// matters: it pumps a high, steeply inclined orbit's eccentricity (Lidov-Kozai) into the ground or out of the SOI within
+// days (NOTES, "The Selene relay"). One that leaves the SOI joins its parent's registry; one that meets the ground is lost.
+const MOON_PE=5e3;   // the lowest periapsis height a moon's orbit is registered with (airless, and no relief yet)
+const orbBody=q=>q.bodyName&&BODIES.find(b=>b.name===q.bodyName)||TELLUS;
+function moonSats(b){return(PROG.sats||[]).filter(q=>q.bodyName&&!q.landed&&!q.docked&&(!b||q.bodyName===b.name))}
+function moonOrbStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,t=q.epoch,out=null;   // program time: the moons' phase is ORB_T0 + t
+  const acc=(r,t)=>{const rl=len(r),a=mul(r,-B.mu/(rl*rl*rl)),p=pertAcc(B,r,t,false);return p?add(a,p):a};
+  while(t<T1){const el=elements(r,v,B.mu);if(len(r)>soiAt(B,t)){out='soi';break}
+    const h=Math.min(T1-t,600,el.e<1?el.period/120:600);
+    if(el.pe<B.R&&dot(r,v)<0){const nR=-Math.acos(clamp((el.p/B.R-1)/el.e,-1,1));if(el.nu>=nR||tPe(el,nR)-tPe(el,el.nu)<=h){out='ground';break}}   // inbound, and its path meets the ground within this step
+    const a1=acc(r,t),r2=add(r,mul(v,h/2)),v2=add(v,mul(a1,h/2)),a2=acc(r2,t+h/2),r3=add(r,mul(v2,h/2)),v3=add(v,mul(a2,h/2)),
+      a3=acc(r3,t+h/2),r4=add(r,mul(v3,h)),v4=add(v,mul(a3,h)),a4=acc(r4,t+h);
+    r=add(r,mul(add(add(v,mul(v2,2)),add(mul(v3,2),v4)),h/6));v=add(v,mul(add(add(a1,mul(a2,2)),add(mul(a3,2),a4)),h/6));t+=h}
+  if(out==='soi'){const[R0,V0]=bodyRel(B,t);r=add(r,R0);v=add(v,V0);if(B.parent===TELLUS)delete q.bodyName;else q.bodyName=B.parent.name}
+  ORB_T0=o;q.r=r;q.v=v;q.epoch=t;
+  if(out==='ground'){const i=(PROG.sats||[]).indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(`${q.name} came down on ${B.name}: Tellus's pull stretched its orbit into the ground`,'bad')}
+  if(out==='soi')HOOK.news(`${q.name} slipped out of ${B.name}'s pull and now orbits ${B.parent.name}`,'warn');return out}
+function moonOrbTick(T1){for(const q of moonSats())if(q.epoch<T1)moonOrbStep(q,T1)}
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}
@@ -3618,12 +3640,20 @@ function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',dela
   const b=R.body,P=R.pw||(R.pw=rvPow(R.d)),w=add(bodyPos(b,t),fromPF(b,R.p,t)),up=norm(fromPF(b,R.p,t)),toT=sub(bodyPos(TELLUS,t),w),lt=2*len(toT)/RV_CLIGHT;
   if(P.hg&&dot(up,norm(toT))>Math.sin(1*Math.PI/180))return{ok:true,via:'home',delay:lt};
   const hR=P.hg?RV_HG:RV_LG;let best=null;
-  for(const q of relays||[]){if(q.body!==b)continue;const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
+  const Tb=sub(bodyPos(TELLUS,t),bodyPos(b,t)),wr=fromPF(b,R.p,t),sin1=Math.sin(Math.PI/180);   // Tellus and the rover, in b's frame
+  for(const q of relays||[]){if(q.body!==b)continue;
+    if(q.at){const Q=q.at(t),dq=sub(Q,wr),d=len(dq),qT=sub(Tb,Q),u=norm(qT),c=-dot(Q,u);   // in orbit: over the rover's horizon, and Tellus not behind b
+      if(dot(up,dq)<d*sin1||c>0&&len(add(Q,mul(u,c)))<b.R)continue;
+      const dl=2*(d+len(qT))/RV_CLIGHT;if(!best||d<best.d)best={ok:true,via:q.name,d,delay:dl};continue}
+    const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
     const qu=norm(fromPF(b,q.pf,t)),qT=norm(sub(bodyPos(TELLUS,t),add(bodyPos(b,t),fromPF(b,q.pf,t))));if(dot(qu,qT)<Math.sin(Math.PI/180))continue;
     if(!best||d<best.d)best={ok:true,via:q.name,d,delay:lt}}
   return best||{ok:false,via:null,delay:lt}}
-// relays on a body: vessels in this flight and objects left landed, with an antenna (their base, height, name)
-function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.landed||!v.pf||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
+// relays on a body: vessels in this flight and objects left landed, with an antenna (their base, height, name), and
+// relays in its orbit (at: flight time → position in its frame): vessels of this flight and registered ones
+function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;
+    if(!v.landed){if(v.body!==TELLUS)out.push({body:v.body,at:()=>v.r,name:v.name||'the orbiter'});continue}if(!v.pf)continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
+  for(const q of moonSats())if(q.ant)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],name:q.name});
   for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant'))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),name:q.name})}return out}
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
@@ -5926,8 +5956,8 @@ function render(){
     const lq=qmul(qBody(b,simT),q.ql),lc=satCM(q),lm=satMesh(q);setMarks(m,lm.parts);gl.uniform1f(m.uSeam,1);drawMesh(lm.mesh,modelQ(lq,sub(lp,camW),mul(lc,-1)),lp);
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(lq,a.q),sub(add(lp,qrot(lq,sub(a.p,lc))),camW),mul(a.e.cm,-1)),lp)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}   // landed objects, in their body's frame
-  if(mode==='flight')for(const q of satsUp()){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r,v]=satAt(q,tNow());if(len(sub(r,camW))>1e5)continue;
-    const sq=satSpin(q,tNow(),r,v).q,cc=satCM(q),sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(sq,sub(r,camW),mul(cc,-1)),r);
+  if(mode==='flight')for(const q of[...satsUp(),...moonSats()]){if(!q.shape||S.rec&&S.rec.satId===q.id)continue;const[r0,v]=satAt(q,tNow()),r=add(bodyPos(orbBody(q),simT),r0);if(len(sub(r,camW))>1e5)continue;   // r: absolute
+    const sq=satSpin(q,tNow(),r0,v).q,cc=satCM(q),sm=satMesh(q);setMarks(m,sm.parts);gl.uniform1f(m.uSeam,1);drawMesh(sm.mesh,modelQ(sq,sub(r,camW),mul(cc,-1)),r);
     for(const a of q.attached||[]){const am=satMesh(a.e);setMarks(m,am.parts);drawMesh(am.mesh,modelQ(qmul(sq,a.q),sub(add(r,qrot(sq,sub(a.p,cc))),camW),mul(a.e.cm,-1)),r)}
     gl.uniform1f(m.uSeam,0);setMarks(m,[])}
   if(near)drawSmoke(VP,camW,R,U);
@@ -6039,7 +6069,7 @@ function render(){
       octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();
       octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`impact · ${fmtD(d)}`,q[0],q[1]-12*k)}}
   if(mode==='flight'&&view!=='map'){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();
-    for(const q of satsUp()){if(S.rec&&S.rec.satId===q.id)continue;const p=satAt(q,tNow())[0],d=len(sub(p,me)),s=project(p),tg=q.id===S.target;if(!s||d>2e5&&!tg)continue;
+    for(const q of[...satsUp(),...moonSats()]){if(S.rec&&S.rec.satId===q.id)continue;const p=add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),d=len(sub(p,me)),s=project(p),tg=q.id===S.target;if(!s||d>2e5&&!tg)continue;
       octx.fillStyle=tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0';octx.beginPath();octx.moveTo(s[0],s[1]-5*k);octx.lineTo(s[0]+5*k,s[1]);octx.lineTo(s[0],s[1]+5*k);octx.lineTo(s[0]-5*k,s[1]);octx.closePath();
       if(d<300)continue;octx.fill();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';octx.fillText(`${q.name} · ${fmtD(d)}`,s[0],s[1]-10*k)}}
   if(mode==='flight'&&view!=='map'){const T=tgtOf(S);if(T&&T.landed){const k=Math.min(devicePixelRatio||1,1.5),q=project(add(bodyPos(S.body,simT),T.r));
@@ -6096,7 +6126,7 @@ function drawMap(VP,camW,labels){
     const bp=bodyPos(b,simT),so=soiAt(b,simT);prev=null;for(let i=0;i<=96;i++){const f=i/96*6.2832,p=add(bp,[so*Math.cos(f),0,so*Math.sin(f)]);if(prev)seg(prev,p,[.5,.5,.55,.25]);prev=p}}
   for(const fv of FLEET){if(!fv.alive||fv.body!==TELLUS||fv.landed)continue;const el=elements(fv.r,fv.v,TELLUS.mu);if(!(el.e<1))continue;let pv=null;   // the other vessels' orbits
     for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,[.79,.91,.42,.5]);pv=p}}
-  for(const q of satsUp()){const[r,v]=satAt(q,tNow()),el=elements(r,v,TELLUS.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
+  for(const q of[...satsUp(),...moonSats()]){const B=orbBody(q),o=bodyPos(B,simT),[r,v]=satAt(q,tNow()),el=elements(r,v,B.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(o,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
   drawPatches(gateLegs(predCache.p,labels),camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];
@@ -6123,7 +6153,7 @@ function drawMap(VP,camW,labels){
     labels.push({p:cp,mark:'city',t:cam.mDist<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
-  for(const q of satsUp()){const tg=q.id===S.target;labels.push({p:satAt(q,tNow())[0],mark:'sat',id:q.id,t:tg||cam.mDist<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
+  for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||cam.mDist<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
   if(impSpread&&impact&&toolOK('impact'))for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   for(const q of landedUp()){const b=landedBody(q);if(!b)continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.beacon||q.id===S.target?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}
@@ -6229,7 +6259,11 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
-function satsHTML(){return satsHTML0()+landedHTML()+rvFieldHTML()}
+function satsHTML(){return satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}
+function moonSatsHTML(){const L=moonSats(),T=tNow();if(!L.length)return'';
+  return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+    const kit=[q.ant&&'antenna: a relay for rovers',q.cam&&'camera',q.sci&&'instruments'].filter(Boolean).join(' + ');
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}</div>`}).join('')).join('')}
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`}).join('')}
