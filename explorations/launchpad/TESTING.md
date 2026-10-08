@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -160,6 +160,7 @@ NOTES § "The robot playtester".
 | 73 | Land on Nyx (<3 m/s) | Tester epoch 5; fly to Nyx | Low gravity landing is fun, not bouncy chaos | Out there | bodies |
 | 74 | Fly the epoch 3 utility sats: polar weather, TV stationary, disaster watch, navigation | Tester epoch 3 | Plane change cost felt; TV drift-out news is a fair nudge; nav phasing lesson discoverable | Epoch 3 | bodies |
 | 115 | Put a relay in Selene orbit and drive a far-side rover through it | Tester epoch 4: land a rover on the far side (no high-gain line home), then fly a probe with an antenna to a ~1,000 km orbit in Selene's orbital plane and end the flight there; Program > Fleet | The probe is listed *In orbit around Selene*; the rover's line shows *Drive from home … ms via* the relay for a few hours each orbit (about a third of the time) and *out of contact* otherwise; the delay feels right; a high polar orbit instead comes down within weeks, with news | Selene relay | sats |
+| 117 | Do rover science on Selene: spectrometer, panoramas, a seismometer array | Tester epoch 4: a rover with a spectrometer, camera mast, seismometer pack, high-gain antenna and power, landed on Selene; drive from home; the HUD's science buttons; then advance some days | The *rock* row says mare or highland and matches the dark/bright ground you see; buttons grey out with a reason (moving, at home, none left); results reach the logbook's *On Selene* section only with contact; a low-sun panorama scores best; 4 seismometers set ~100+ km apart locate quakes and narrow the core over weeks, while a tight cluster never places one (*What we know* says so) | R4 | sats |
 
 ### Program & economy
 
@@ -197,4 +198,4 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **117**.
+Next free number: **118**.

@@ -3278,3 +3278,30 @@ Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--f
 - [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
 - [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
 
+
+### Follow-up: rovers R4 science, first slice (sats session, 2026-10-08)
+Scope set with Caio: geology plus three instruments, paid in knowledge, with contracts proposed rather than priced.
+- **Geology is the drawn maria.** The shader's mask is recomputed on the CPU; it agrees at 3,000/3,000 points. Mare
+  covers 9.7 % of Selene, almost all on the far side, a note for visuals/bodies.
+- **Three instruments:** a spectrometer, panoramas whose quality follows the sun's height, and a seismometer network.
+  The network locates moonquakes by least squares and brackets the hidden core: a 400 km array gives 78–98 km around
+  the true 90; arrays of 2 km and 30 km locate nothing.
+- **Delivery:** results count only when they reach home through R3's contact. Logbook section *On Selene*.
+- **Two mistakes of mine, caught by tests:** my helper `groundContact` silently replaced the existing ground-contact
+  physics of the same name (renamed `radioAt`); and the core bracket first crossed itself without location margins.
+
+### Files
+- `explorations/launchpad/index.html`: R4 block before SIM END (`selMare`, `geoAt`, `rvSci*`, `sciGot`, `rvFieldSci`,
+  `radioAt`, `quakesIn`, `seisTick`, `seisLocate`, `inv4`); `LOGF` On Selene rows; `advanceDays`; `rvEntry`/
+  `rvFromEntry`; the HUD's `rvSciRows` and button handler; `selKnowHTML`
+- `test.mjs` §42 (5 checks); `NOTES.md` § "R4 built, first slice"; `TESTING.md` row 117; `explorations/README.md`
+
+### Verification
+`test.mjs`: 371 passed. Each of 10 deliberate breaks fails a §42 check. Not run in the browser (preview server not
+restarted after the low-memory stop): the HUD buttons and the *What we know* line, covered only by the parse check.
+
+### Next steps
+- [ ] Caio: TESTING row 117 (and 115–116); a browser pass on the science HUD
+- [ ] Economy: price the R4 contracts proposed in NOTES
+- [ ] R4 next: the sample arm and sample return; drill or heat flow; radar; magnetometer; polar ice once Selene has relief
+- [ ] R5 drive plans; the clock while driving from home
