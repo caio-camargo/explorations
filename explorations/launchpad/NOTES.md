@@ -1377,6 +1377,24 @@ term fails the first two; dropping the roll guard fails the second.
 - **economy:** `PRICE.spin = 1`, `tierOf` gives it 1.
 - **builder:** `spin` is in *Control* by kind.
 
+### v1.51.1 — the wheels won't spin a vessel apart (PLAYTEST #18, #23)
+
+The robot playtester held a pitch key with SAS off: the Orbiter's upper stage reached 23 rad/s in 9 s and tore the pod off
+its tank, with the wheels only 89 % full. A bare pod: 66 rad/s in 2 s, chute torn off; without the fix it goes on to
+500 rad/s. 100 kN·m·s of storage (v1.43) is tens of rad/s on a light stage, so storage never ran out before the structure.
+
+- **The wheels' controller won't drive the vessel past `WHEEL_W`** = 1 rad/s in pitch and yaw, 3 rad/s in roll (body
+  axes; `wheelGive`). Torque that would turn it faster that way is cut to what reaches the limit exactly (at a pod's
+  55 rad/s² a plain cut-off overshot to 1.3 rad/s); slowing down is never refused. In effect the storage is sized to the
+  vessel (≤ I·WHEEL_W from rest), which is the playtest's first suggestion, without per-vessel magic. SAS never asks for
+  more than 0.6 rad/s, so nothing it flies changes; big stacks still run out of storage first (Orbiter 0.512 rad/s, full).
+- Gimbal, fins and RCS are not limited: they spin a stage only while burning, in air, or on gas.
+- **Builder wording (#23):** the negative-stability note shows only when a margin is negative, and now names steerable
+  fins too; "Roll nothing" drops the kN·m.
+- Tests: section `control-5` (1 check, mutation-tested: without the limit, 60 and 503 rad/s).
+- The wheels' momentum is still left out of the gyroscopic term: the limit bounds what the keys put in, not what SAS
+  stores against a steady aero torque (a capsule under its chute), which is where it did harm.
+
 **Next on this line:** energy dissipation (flat spin) and yo-yo despin if spun payloads become a thing; the gimbal and fin
 deflections drawn (visuals); a pitch programmer for the gyro era if row 101 says ascents are a chore.
 
@@ -3021,6 +3039,74 @@ plane and periapsis longitude; that is still open.
   prograde (`retro: false`), it hits Nyx 61 h after capture. A 100×300 km orbit is stripped within 27 h either way,
   because Nyx's SOI shrinks to ~260 km altitude at Nyx's periapsis.
 
+### Dispatch, the physics side: flown, not rolled (2026-10-08)
+
+This is the bodies half of the dispatch brief (part 3 above). The economy's dispatch (§38–39) left a slot for it:
+`dispatchRun(D, v, c)`. That slot is now filled, so a dispatched contract is **flown** by its procedure. Test § bodies-2
+covers it.
+
+**Deviations in the executor** (`procDev`). A procedure that can't meet its goal now stops, says why, and hands over the
+craft. Before, it flew on and never claimed success. `s.procDev = {kind, why, t, phase}` records what happened. The
+watched game shows "Procedure stopped: … You have control". The kinds:
+- `short`, in the climb: everything burned and apoapsis still low.
+- `short`, at engine cut-off above the air: the propellant aboard is below the circularisation burn. This is the
+  earliest point it's knowable, and the craft is handed over while coasting up to apoapsis, as the economy's
+  deviation state (`devState`) assumed.
+- `short`, while circularising: everything burned with periapsis still below target.
+- `relight`: rolled from part data, not flown (see below).
+- `offcourse`: three mid-course corrections and still no encounter.
+- `nohome`: no burn home within what's aboard. This used to end the procedure silently.
+- `lost`: the procedure's time limit ran out.
+
+**`procFly(stack, proc, target, opt)`** flies a procedure headless. It runs the same executor and physics as a watched
+flight, but in isolation:
+- Whatever is in progress is set aside and put back afterwards: S, the clock, the fleet, debris, the moons' clock
+  (`ORB_T0`) and the hooks.
+- Its record is closed (no costs, missions or logbook), and it records no procedure (`s.noRec`).
+- It launches from the home site at the start of the current day, so the ground under it is where it should be.
+
+It returns one of:
+- `{ok, orb, dv}` in orbit;
+- `{dev, entry}` on a deviation, where `entry` is a registry entry of the craft at that moment and `vesselOf`
+  rebuilds it exactly (position and propellant);
+- `{ok:false, why}` if lost (the reason comes from the flight's last "Destroyed"/"burned up" message).
+
+An ascent takes 0.4–0.7 s of wall time headless, so `dispatchTick` can fly dispatches inline.
+
+**`dispatchRun`**. What the parts data models but the physics doesn't stays a roll, with the dispatch's own seed and in
+the same order as the interim resolver:
+- break-up (certification);
+- an engine that won't light in the ascent (know-how, lines, development);
+- the upper stage's relight. A failed relight is flown up to the circularisation and handed over there.
+
+Running short is no longer rolled from a margin: the physics decides, and the orbit reached is the one flown, not a
+scatter. The same seed flies the same flight. A stored procedure with no guidance to fly falls back to the roll (an old
+save, or the economy's test stubs).
+
+**Dry runs** (`dryRun`, `procAdopt(stack)`). A new design with no procedure of its own tries every stored orbit
+procedure of the same engine-stage count, headless:
+- A different staging structure needs a hand-flown run-through.
+- A borrowed procedure isn't lent on, so there are no chains of borrowing.
+
+The cheapest one that reaches orbit becomes the design's own, **provisional** (`prov: true, from`), with its Δv measured
+on this design. It is dispatchable at once. The design's first real flight replaces it whatever it spends: records only
+improve, but a borrowed one always gives way.
+
+The tests show why this is measured, not ruled:
+- An Orbiter with a tonne more on the upper stage borrows the Orbiter's climb, with 786 m/s to spare.
+- With two tonnes more it has Δv to spare on paper, yet the same climb kills it: lower thrust-to-weight keeps it low
+  and fast, and the pod burns up.
+
+**For the economy:**
+- `procAdopt` is the trajectory office's study. Its days and price are yours: nothing calls it yet, and it needs a
+  button (assembly, or the contract's dispatch line when there's no procedure: "Try our procedures on this design").
+- A provisional procedure should widen the estimate in `dispatchEstimate`. It's marked `prov`, but I left your
+  formula alone.
+- `dispatchEstimate`'s margin is still the formula on the procedure's Δv. A dry run per estimate would cost ~0.5 s per
+  design per contract per render, too slow for the board. Caching a dry run's measured margin per design and target,
+  as part of the study, would make the estimate a measurement.
+- Deviations from real flights now come in more kinds than `relight`/`short`. `takeDeviation` works with any entry.
+
 ## Crew: the escape tower, abort tests, people to Selene (2026-10-07, bodies session)
 
 The rest of epoch 4 from the economy's plan: "abort tests (pad, then max-q) qualify an escape tower before crew fly".
@@ -4239,7 +4325,7 @@ Lunokhod drove down ramps, Curiosity was lowered on cables) that make "upright o
   persist as landed, flyable vessels (A2/E machinery).
 - **R3. Power and contact:** solar panels and batteries (Selene's day and night), line of sight to the lander, a relay or
   home (hills block it).
-- **R4. Instruments and science** (each hinging on something the sim computes): samples by terrain unit, brought to the
+- **R4. Instruments and science** (first slice built: "R4 built" below) (each hinging on something the sim computes): samples by terrain unit, brought to the
   lander or an ascent vehicle (sample return); a spectrometer on rocks; camera panoramas (sun angle); seismometers set
   out as an array (spacing is what gives an interior map); ground-penetrating radar along a traverse; a drill or
   heat-flow probe (depth, power); a magnetometer traverse; ice in permanently shadowed polar craters (hard on power).
@@ -4545,6 +4631,80 @@ and vice versa. Cross-SOI targeting would need patched-conic closest approach; n
 Each of 7 deliberate breaks fails a check. The breaks: Tellus-only target, every orbit a target, Tellus μ in
 `approach`, Tellus-only `hitNear`, contact and loading, undock dropping the body. Not checked in the browser: the
 approach readout and target cycling (UI code; only the whole-page parse check covers them).
+
+### R4 built, first slice: Selene's geology, a spectrometer, panoramas, a seismic network (sats session, 2026-10-08)
+
+Scope decided with Caio: the geology, then three instruments, each hinging on something the sim computes. Results go
+into the logbook (a new **On Selene** section) and *What we know*. No money: contract types are proposed below for the
+economy session to price. The sample arm, drill, radar, magnetometer and polar ice come later.
+
+**Geology is what's drawn** (`selMare`, `geoAt`). The sky shader darkens Selene's maria with
+`smoothstep(.5,.65,fbm(n·1.6+3))` in Selene's own frame. The CPU's `h3`/`vn`/`fbm` are that same noise (the clouds'
+port), and the shader's `MB()` is `toPF`. So the CPU's mask *is* the drawn one: the test recomputes it at 3,000 points
+and they all agree.
+- **Where the line is.** Mare starts where a patch has visibly darkened (`MARE_M` = 0.2, about 8 % darker). The first
+  try used 0.5, the patches' dark cores, which left only 3.8 % of Selene as mare.
+- **What it gives:** 9.7 % of Selene is mare. Its hidden composition varies smoothly within each unit: mare FeO ≈ 11 %
+  on average, up to 16 %, with TiO₂ from 0.5 to 11.5 %; highland FeO ≈ 5 % and Al₂O₃ 25–30 %. The two mix across a
+  patch's edge.
+- **Visuals/bodies:** as drawn, the maria lie mostly at high northern latitudes on the far side, with a small patch near
+  the sub-Tellus point. Only 1.2 % of the near side is mare, the reverse of our Moon (31 %). Moving them is an art
+  decision; the geology follows whatever the shader draws.
+
+**The instruments** are HUD buttons, greyed with the reason when they can't work (no instrument, not on Selene,
+moving, out of action, no seismometers left). That's in both the remote-drive and in-flight HUDs. Each result waits in
+the rover (`R.data`, kept in field entries) until there is contact, home or a relay; a crew's rover waits too. A rover
+left in the field sends at the first half hour it has contact between flights (`rvFieldSci`).
+- **Spectrometer** (`spec`): reads the rock under a stopped rover, once per 30 m. Each reading has noise: FeO ±1, TiO₂
+  ±0.6, Al₂O₃ ±1.2 wt %. The logbook keeps each unit's mean, with FeO's standard error and the number of readings.
+- **Panorama** (camera mast): its quality is the sun's height. Long shadows show the relief: 100 % from 3° to 20°. A
+  high sun flattens it, down to 30 %. At night it refuses. Measured: 100 % at 15°, 45 % at 75°.
+- **Seismometers** (`seis`): a pack sets out 4 stations, kept in `PROG.sel.seis`. Between flights (`seisTick`):
+  - deep moonquakes, about 0.75 a day, 40–60 % of the way out;
+  - each station records P and, unless its straight path crossed the liquid core, S;
+  - stations send when they have contact.
+  With 4 stations' P times home, `seisLocate` fits (x, y, z, t₀) by least squares, restarting from 26 directions. If
+  the fit's σ is over 15 km, the array is too small to place the quake. A located quake brackets the core: an S that
+  arrived passed outside it, a missing S went through. Each bound is loosened by 2σ.
+
+**Measured** (60 days, 4 stations, about 45 quakes):
+
+| Array (one station at the sub-Tellus point, 3 around it) | Located | Core bracket (truth 90 km, hidden) |
+|---|---|---|
+| 2 km apart | 0 | — |
+| 30 km | 0 | — |
+| 150 km | 9 (σ 7–15 km) | 0–159 km |
+| 400 km | 45 (σ 2.5–8 km) | 78–98 km |
+| 400 km on the far side, no relay | 0 (180 records waiting) | — |
+
+Spacing is what makes the map, as the plan wanted. 30 days of the network costs ~30 ms.
+- **First version's mistake:** without the 2σ margins, location errors crossed the bounds (90–89 km).
+
+**Simplifications:**
+- straight rays and uniform velocities (P 8 km/s, S 4.5 km/s);
+- P crosses the core at mantle speed (only S is blocked);
+- the scientists know the velocities;
+- stations need no power.
+
+**Checks:** `test.mjs` §42, 5 checks:
+- the geology against the shader's mask;
+- the spectrometer: a stopped rover, once a spot, counting only when sent, near-side highland FeO 4.7 % against 5.2 %;
+- a far-side reading held without contact, then home through a relay between flights; entries keep it;
+- panoramas by sun angle;
+- the arrays: tight, far side without a relay, wide.
+
+Each of 10 deliberate breaks fails a check. Not run in the browser: the HUD buttons and the *What we know* line. They
+are UI code, and only the whole-page parse check covers them (TESTING row 117).
+
+**Contracts proposed to economy** (not built; prices are yours):
+- *Read the dark plains / the bright uplands*: N spectrometer readings of a unit, received.
+- *A panorama of Selene* above a quality.
+- *A seismic network on Selene*: 4 stations; then *locate N moonquakes*; then *bound the core* to a width.
+- *Far-side science*: any result from the far side (needs a relay).
+
+**Not yet:** the sample arm and sample return (rover to lander), drill or heat flow, ground-penetrating radar,
+magnetometer, ice in shadowed polar craters (needs relief), seismometer power and lifetime, curved rays, and science on
+Nyx.
 
 ## v1.18 — radial fins and make-root (2026-10-07)
 

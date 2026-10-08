@@ -2,11 +2,11 @@
 // Extracts the "SIM BEGIN … SIM END" block from index.html and drives it with no DOM or GL.
 import { readFileSync } from 'node:fs';
 import { crewLunar } from './fly_crewlunar.mjs';
-import { flyLadder } from './fly_ladder.mjs';
+import { flyLadder, handAscent } from './fly_ladder.mjs';
 const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {engAcc,ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1160,7 +1160,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       api.advPhys(s); }
     return s; };
   const fly = (stack, proc, target) => { api.t = 0; const s = api.newShip(stack); api.S = s; api.advPhys(s); api.procStart(s, proc, target); let k = 0;
-    while (s.alive && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
+    while (s.alive && s.proc && !s.proc.done && k++ < 400000) { if (s.proc.phase === 'coast' && api.railsOK(s) && s.proc.wake > api.t + 2) api.advRails(s, Math.min(60, s.proc.wake - api.t), 100); else api.advPhys(s); }
     return s; };
   let s = hand(45000 * AS); const pr = P.procs[key], dvHand = s.rec.dv;
   check('procedures: a hand-flown ascent to orbit becomes a procedure for its design (pitch curve, staging, target, Δv)', !!pr && pr.pitch.length > 20 && Math.abs(pr.dv - dvHand) < 1 && news.some(m => /New procedure/.test(m)),
@@ -1176,7 +1176,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   f = fly(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc); e = elements(f.r, f.v, TELLUS.mu);
   check('procedures: it adapts to a heavier, different variant (2 t more, lower thrust-to-weight): still to orbit', f.alive && f.proc.done && e.pe - TELLUS.R > ATM, `${((e.pe - TELLUS.R) / 1e3).toFixed(0)}×${((e.ap - TELLUS.R) / 1e3).toFixed(0)} km for ${f.rec.dv.toFixed(0)} m/s`);
   f = fly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
-  check('procedures: a variant that cannot make orbit does not claim to (the procedure never completes)', !f.proc.done, `done ${f.proc.done}, alive ${f.alive}`);
+  check('procedures: a variant that cannot make orbit does not claim to: it stops with a deviation, saying why', !(f.proc && f.proc.done) && !!f.procDev && f.procDev.kind === 'short', f.procDev ? `${f.procDev.kind}: ${f.procDev.why}` : `done ${f.proc && f.proc.done}, alive ${f.alive}`);
   // records only improve: a sloppier ascent (late turn) doesn't replace it; a better one would
   news.length = 0; s = hand(80000 * AS); const kept = P.procs[key] === proc;
   check('procedures: a worse flight of the design leaves the stored procedure alone', kept && s.rec.dv > proc.dv && !news.some(m => /Procedure improved/.test(m)), `a lazier turn: ${s.rec.dv.toFixed(0)} m/s vs kept ${proc.dv.toFixed(0)}`);
@@ -1197,6 +1197,56 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check(`mission ladders: ${id} flown from the pad by procedure (${row(id).preset}): ${what}`, row(id).ok === true, fmt(row(id)));
   const pro = row('nyxorb:pro');
   check('mission ladders: the same Nyx orbit flown prograde does not last (Tellus\'s tide wrecks it: which way round matters)', pro.ok === false && pro.days < 4.3, fmt(pro));
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
+
+// bodies-2. Procedures flown headless, for dispatch (bodies session): procFly flies a stored procedure in isolation (the
+// flight on screen, the fleet, the clock and the hooks put back as they were); a procedure that can't make its goal stops
+// with a deviation and a registry entry of the craft where it stopped; dispatchRun flies dispatched contracts for real.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Orbiter, key = api.procKey(st);
+  api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; handAscent(api, st); const proc = P.procs[key];
+  // isolation: a "flight in progress" (S, its clock, a fleet vessel, the hooks) is exactly as it was afterwards
+  const S0 = api.newShip(['pod']), mark = () => {}; api.S = S0; api.t = 1234.5; api.FLEET.push(S0); api.HOOK.msg = mark; const T00 = api.ORB_T0;
+  let f = api.procFly(st, proc, { pe: 180e3, ap: 180e3 });
+  check('dispatch flights: a procedure flown headless reaches the asked orbit, and the flight in progress is untouched (S, clock, fleet, hooks)',
+    f.ok && Math.abs(f.orb.ap - 180e3) < 15e3 && f.orb.pe > 150e3 && api.S === S0 && api.t === 1234.5 && api.FLEET.length === 1 && api.FLEET[0] === S0 && api.HOOK.msg === mark && api.ORB_T0 === T00 && P.procs[key] === proc,
+    f.ok ? `${(f.orb.pe / 1e3).toFixed(0)}×${(f.orb.ap / 1e3).toFixed(0)} km, ${f.dv.toFixed(0)} m/s, ${(f.t / 60).toFixed(0)} min of flight` : JSON.stringify(f.dev || f.why));
+  api.FLEET.length = 0; api.HOOK.msg = () => {};
+  // short of propellant: the ballast variant (as in §28) deviates, and its entry rebuilds the craft where it stopped
+  f = api.procFly(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], proc);
+  const vS = f.entry && api.vesselOf(f.entry, f.entry.epoch);
+  check('dispatch flights: a design that can\'t make it deviates ("short") and hands over a registry entry that rebuilds the craft where it stopped',
+    !f.ok && f.dev && f.dev.kind === 'short' && vS && vS.alive && len(sub(vS.r, f.s.r)) < 1 && Math.abs(api.dvRemaining(vS).tot - api.dvRemaining(f.s).tot) < 1,
+    f.dev ? `${f.dev.kind}: ${f.dev.why} (${(f.t / 60).toFixed(1)} min in, ${((len(f.s.r) - TELLUS.R) / 1e3).toFixed(0)} km up)` : JSON.stringify(f.why));
+  // the upper stage won't relight: handed over coasting up to apoapsis, with what circularising needs still aboard
+  f = api.procFly(st, proc, null, { noRelight: true }); const el = elements(f.s.r, f.s.v, TELLUS.mu), need = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a));
+  check('dispatch flights: a relight failure hands the craft over near apoapsis, periapsis in the air, the circularisation still possible by hand',
+    f.dev && f.dev.kind === 'relight' && el.pe - TELLUS.R < ATM && api.dvRemaining(f.s).tot > need,
+    f.dev ? `${((len(f.s.r) - TELLUS.R) / 1e3).toFixed(0)} km up, periapsis ${((el.pe - TELLUS.R) / 1e3).toFixed(0)} km; needs ${need.toFixed(0)} m/s, has ${api.dvRemaining(f.s).tot.toFixed(0)}` : 'no deviation');
+  // dry runs: a new design borrows a stored procedure, provisionally, if a headless run gets it to orbit; its own first flight replaces it
+  P.procs = { [key]: proc }; const heavy = ['chute', 'pod', 't1', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], hk = api.procKey(heavy);   // a tonne more on the upper stage
+  const ad = api.procAdopt(heavy), weak = api.procAdopt(['chute', 'pod', 'ballast', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel']), one = api.procAdopt(['sci', 't8', 'kestrel']);
+  const hot = api.procAdopt(['chute', 'pod', 't4', 'petrel', 'dec', 't8', 'fins', 'kestrel']);   // two tonnes more: Δv to spare on paper, but slower off the pad
+  check('dry runs: a heavier variant borrows the Orbiter\'s procedure provisionally (measured on itself); one that can\'t make orbit, or stages differently, does not',
+    ad.ok && P.procs[hk] && P.procs[hk].prov && P.procs[hk].from === 'Orbiter' && ad.margin > 0 && !weak.ok && !one.ok && one.tried.every(t => t.why === 'different staging'),
+    `heavy: ${ad.ok ? `${ad.proc.dv.toFixed(0)} m/s to orbit, ${ad.margin.toFixed(0)} m/s to spare` : ad.why} · ballast: ${weak.why} (${(weak.tried || []).map(t => t.why).join('; ')}) · single stage: ${one.why}`);
+  check('dry runs: a variant with Δv to spare on paper is still refused when the borrowed climb kills it (two tonnes more, lower thrust-to-weight: it overheats low down)',
+    !hot.ok && hot.tried.some(t => /burned/.test(t.why)), `${hot.why}: ${(hot.tried || []).map(t => t.why).join('; ')}`);
+  const provDv = P.procs[hk] ? P.procs[hk].dv : NaN; handAscent(api, heavy);
+  check('dry runs: the design\'s own first flight replaces the borrowed procedure (records only improve, but a borrowed one always gives way)', P.procs[hk] && !P.procs[hk].prov, `borrowed ${provDv.toFixed(0)} m/s → own ${P.procs[hk] ? P.procs[hk].dv.toFixed(0) : '?'} m/s`);
+  // a dispatched contract, flown: the orbit is the procedure's, not a roll; the same seed gives the same flight
+  const sst = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'];   // a satellite (the economy's §38 design): its own ascent, flown by hand once
+  P.procs = {}; handAscent(api, sst); const sproc = P.procs[api.procKey(sst)];
+  api.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, done: { beeper: { flight: 0, day: 0 } }, kh: {}, lines: {}, flights: 3, own: null, decisions: [], active: [], offers: [], fac: {}, studies: {}, studyQ: [], dispatch: [], procs: { [api.procKey(sst)]: sproc }, staged: {} });
+  api.chooseStart('agency'); P.funds = 2000; P.day = 10; for (const p of api.newShip(sst).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
+  const c = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
+  const before = JSON.stringify(P), fly = () => { api.orderDispatch(c, sst); const L = P.dispatch[0].launch; let n = 0; while (P.day < L + 1 && n++ < 30) { P.decisions = []; api.advanceTo(L + 1); } return P.dispatch[0]; };
+  const D1 = fly(), o1 = D1.orb && { ...D1.orb }, paid = !P.active.includes(c); Object.assign(P, JSON.parse(before)); P.active = [c]; const D2 = fly();
+  check('dispatch flights: a dispatched contract is flown by its procedure to the contract\'s orbit and paid; the same seed flies the same flight',
+    D1.status === 'done' && o1 && Math.abs((o1.pe + o1.ap) / 2 - 160e3) < 20e3 && paid && D2.status === 'done' && D2.orb && Math.abs(D2.orb.pe - o1.pe) < 1 && Math.abs(D2.orb.ap - o1.ap) < 1,
+    o1 ? `${D1.status}: ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km (contract 160 ± 20), paid ${paid}; again: ${D2.status} ${D2.orb ? (D2.orb.pe / 1e3).toFixed(1) + '×' + (D2.orb.ap / 1e3).toFixed(1) : ''}` : `${D1.status} ${D1.why || ''}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 
@@ -2460,6 +2510,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   }
 }
 
+// control-5. The wheels won't spin a vessel apart (control session; PLAYTEST #18). With SAS off a held key used to spin the
+// Orbiter's upper stage to 23 rad/s in 9 s and tear the pod off (a bare pod: 66 rad/s in 2 s, chute torn off), because 100
+// kN·m·s of storage is tens of rad/s on a light stage. The wheels now refuse to turn a vessel past WHEEL_W. Own instance.
+{
+  const D = new Function(src + 'return {newShip,physStep,PRESETS,WHEEL_W,len,TELLUS,HOOK,INP,DT,set S(v){S=v},set t(v){simT=v}};')();
+  const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.debris = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.boom = () => {};
+  const held = stack => { D.t = 0; const s = D.newShip(stack), T = D.TELLUS, r0 = T.R + T.atm + 100e3; D.S = s; msgs.length = 0;
+    Object.assign(s, { landed: false, throttle: 0, sas: false, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)] });
+    D.INP.pitch = 1; let w = 0; for (let i = 0; i < 3000; i++) { D.physStep(s, D.DT); w = Math.max(w, D.len(s.w)); } D.INP.pitch = 0;
+    return { w, broke: msgs.some(m => /Structural/.test(m)), wheels: D.len(s.wH || [0, 0, 0]) / s.hmax, sat: s.hmax / s.I[0] }; };
+  const up = held(['chute', 'pod', 't2', 'petrel']), pod = held(['chute', 'pod']), orb = held(D.PRESETS.Orbiter);
+  check('wheels: a key held for 60 s with SAS off turns a light stage or a bare pod no faster than the wheels\u2019 limit, and nothing breaks; the Orbiter still runs out of storage first',
+    up.w <= D.WHEEL_W[0] + 1e-6 && pod.w <= D.WHEEL_W[0] + 1e-6 && !up.broke && !pod.broke && orb.wheels > 0.99 && Math.abs(orb.w / orb.sat - 1) < 0.02,
+    `upper stage ${up.w.toFixed(2)} rad/s, pod ${pod.w.toFixed(2)} rad/s (limit ${D.WHEEL_W[0]}); Orbiter ${orb.w.toFixed(3)} rad/s at ${(orb.wheels * 100).toFixed(0)} % full (storage ÷ inertia ${orb.sat.toFixed(3)})`);
+}
+
 // 36. Launch-site follow-ups (terrain session): the sea platform, weather scrubs, and the downrange warning.
 {
   const P = api.PROG, SI = api.SITES, R = TELLUS.R, D = Math.PI / 180;
@@ -2632,6 +2698,60 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('undocking at Selene leaves the other vessel around Selene, where it was; at 1 m/s the ports bump instead',
     back && bumped, `undocked around ${u ? u.body.name : '—'}, ${u ? len(sub(u.r, cmQ)).toExponential(1) : '—'} m from where it was; 1 m/s: ${bumped ? 'bumped' : 'latched'}`);
   P.sats = [];
+}
+
+// 42. Rover science, R4 first slice (sats session): Selene's geology as drawn; the spectrometer, the panorama camera and
+// the seismic network, each counting only when its data reaches home. Own sim instance.
+{
+  const D = new Function(src + 'return {geoAt,selMare,rvNew,rvSci,rvSciSend,rvContact,rvRelays,rvEntry,rvFromEntry,rvSunPF,thAbs,selSci,advanceDays,satRegister,newShip,PRESETS,SEL_CORE,SELENE,TELLUS,PROG,HOOK,DAY_S,fbm};')();
+  const msgs = []; D.HOOK.news = m => msgs.push(m); D.HOOK.msg = m => msgs.push(m);
+  const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
+  // geology: the unit follows the drawn dark patches (the shader's mask, recomputed here); maria are iron-rich
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 2 * ((i * 0.618034) % 1) - 1, a = i * 2.39996, s = Math.sqrt(1 - z * z); pts.push([s * Math.cos(a), z, s * Math.sin(a)]); }
+  let agree = 0, nm = 0; const fe = { mare: 0, high: 0 }, fn = { mare: 0, high: 0 };
+  for (const u of pts) { const g = D.geoAt(B, mul(u, B.R)), x = Math.min(1, Math.max(0, (D.fbm(u[0] * 1.6 + 3, u[1] * 1.6 + 3, u[2] * 1.6 + 3) - .5) / .15)), M = x * x * (3 - 2 * x);
+    if ((M >= .2) === (g.unit === 'mare')) agree++; if (g.unit === 'mare') nm++; fe[g.unit] += g.FeO; fn[g.unit]++; }
+  const feM = fe.mare / fn.mare, feH = fe.high / fn.high, share = nm / pts.length;
+  check('Selene\'s geology follows the dark patches the sky shader draws: mare basalt (iron-rich) on them, highland rock elsewhere',
+    agree === pts.length && share > .05 && share < .15 && feM > 2 * feH && !D.geoAt(D.TELLUS, [1, 0, 0]),
+    `${(share * 100).toFixed(1)} % mare; FeO ${feM.toFixed(1)} % on mare, ${feH.toFixed(1)} % on highland; unit agrees with the shader's mask at ${agree}/${pts.length} points`);
+  // spots: a near-side highland (talks home directly) and a far-side mare (needs a relay)
+  const far = pts.filter(u => u[0] > .2 && D.geoAt(B, mul(u, B.R)).unit === 'mare').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0], hi = pts.find(u => u[0] < -.8 && D.geoAt(B, mul(u, B.R)).unit === 'high');
+  const mk = (u, slots) => { const R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots }, B, mul(u, B.R), [0, 1, 0], {}); R.name = 'Sci'; R.id = 7; return R; };
+  const kit = ['spec', 'cam', 'seis', 'ant', 'bat', 'sol', null, null];
+  const Rn = mk(hi, kit), Rf = mk(far, kit), Rx = mk(hi, ['bat', 'sol', null, null, null, null, null, null]);
+  Rn.v = [0.5, 0, 0]; const moving = D.rvSci(Rn, 'spec', 0); Rn.v = [0, 0, 0];
+  const g0 = D.geoAt(B, Rn.p), okN = D.rvSci(Rn, 'spec', 0), dup = D.rvSci(Rn, 'spec', 0), none = D.rvSci(Rx, 'spec', 0);
+  const before = !!P.log.sehigh, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.sehigh;
+  check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side highland reading in the logbook',
+    okN && !dup && !none && !moving && !before && sent === 1 && e && Math.abs(e.v.FeO - g0.FeO) < 4 && e.v.n === 1,
+    `read ${okN}, again here ${dup}, without one ${none}, moving ${moving}; logbook before sending ${before}, after: FeO ${e ? e.v.FeO.toFixed(1) : '—'} % (truth ${g0.FeO.toFixed(1)})`);
+  // far side: the reading waits in the field (no contact) until a relay is up, then arrives between flights
+  D.rvSci(Rf, 'spec', 0); const held = D.rvSciSend(Rf, D.rvContact(Rf, 0, [])) === 0 && Rf.data.length === 1;   // no contact: nothing goes
+  P.rvOut = [D.rvEntry(Rf)]; D.advanceDays(2); const waited = held && !P.log.semare && P.rvOut[0].data.length === 1;
+  const sat = D.newShip(D.PRESETS.Probe), a = B.R + 1000e3; Object.assign(sat, { alive: true, landed: false, body: B, r: [a, 0, 0], v: [0, 0, -Math.sqrt(B.mu / a)] }); D.satRegister(sat, { day0: P.day });
+  D.advanceDays(3); const arrived = !!P.log.semare && !P.rvOut[0].data.length;
+  const back = D.rvFromEntry(P.rvOut[0]);
+  check('a far-side reading waits in the field without contact, then reaches home through a relay between flights; field entries keep data, seismometers and read spots',
+    waited && arrived && P.log.semare.v.FeO > 7 && back.reads.length === 1 && back.seisLeft === undefined,
+    `waited ${waited}; arrived via the relay ${arrived} (mare FeO ${P.log.semare ? P.log.semare.v.FeO.toFixed(1) : '—'} %)`);
+  // panoramas: the quality is the sun's height (long shadows best, noon flat, night refused)
+  const elAt = T => Math.asin(dot(norm(Rn.p), D.rvSunPF(B, D.thAbs(B, T)))) * 180 / Math.PI, orbit = 2 * Math.PI / B.n;
+  let tLow = null, tHigh = null, tDark = null; for (let T = 0; T < orbit; T += 600) { const el = elAt(T); if (tLow == null && el > 8 && el < 15) tLow = T; if (tHigh == null && el > 75) tHigh = T; if (tDark == null && el < -5) tDark = T; }
+  Rn.data = []; D.rvSci(Rn, 'pano', tLow); D.rvSci(Rn, 'pano', tHigh); const dark = D.rvSci(Rn, 'pano', tDark), [pl, ph] = Rn.data;
+  check('panorama quality follows the sun: long shadows at a low sun beat a flat noon; at night it refuses', pl && ph && pl.q > .9 && ph.q < .5 && !dark,
+    `sun ${pl ? pl.el.toFixed(0) : '—'}°: ${pl ? (pl.q * 100).toFixed(0) : '—'} %; sun ${ph ? ph.el.toFixed(0) : '—'}°: ${ph ? (ph.q * 100).toFixed(0) : '—'} %; night ${dark}`);
+  // seismic: four stations set out from rovers; a tight array hears quakes but can't place them; a wide one locates
+  // them and brackets the hidden core
+  const nearPt = (az, dist) => { const t = dist / B.R, d = [0, Math.sin(az), Math.cos(az)]; return mul(norm(add(mul([-1, 0, 0], Math.cos(t)), mul(d, Math.sin(t)))), B.R); };
+  const array = (sp, side = 1) => { P.sel = null; P.sats = []; P.rvOut = []; P.log = {}; P.day = 0; const R = mk([-1, 0, 0], ['seis', 'ant', 'bat', 'sol', null, null, null, null]);
+    for (const pf of [[-B.R, 0, 0], nearPt(0, sp), nearPt(2.1, sp), nearPt(4.2, sp)].map(p => [p[0] * side, p[1], p[2]])) { R.p = mul(pf, 1.0001); D.rvSci(R, 'seis', 0); }
+    D.advanceDays(60); const S = D.selSci(); return { left: R.seisLeft, n: S.seis.length, heard: S.quakes.length, loc: S.quakes.filter(q => q.loc).length, c: S.core, buf: S.seis.reduce((a, s) => a + s.buf.length, 0) }; };
+  const tight = array(2e3), farA = array(400e3, -1), wide = array(400e3), C = D.SEL_CORE;   // farA: the same array on the far side, no relay
+  check('a seismic network: a tight array (2 km) hears moonquakes but can\'t place them; on the far side with no relay the records wait; a wide one (400 km) locates them and brackets the hidden core',
+    tight.n === 4 && tight.left === 0 && tight.heard > 20 && tight.loc === 0 && farA.heard > 20 && farA.loc === 0 && farA.buf > 0 && wide.loc > 20 && wide.c && wide.c.lo < C && wide.c.hi > C && wide.c.hi - wide.c.lo < 40e3 && P.log.secore,
+    `tight: ${tight.heard} heard, ${tight.loc} located; far side: ${farA.loc} located, ${farA.buf} records waiting; wide: ${wide.loc} located, core ${wide.c ? (wide.c.lo / 1e3).toFixed(0) + '–' + (wide.c.hi / 1e3).toFixed(0) : '—'} km (truth ${(C / 1e3).toFixed(0)})`);
+  P.sel = null; P.rvOut = []; P.sats = [];
 }
 
 // 37b. Ground stations on real ground (terrain session, slice C): terrain masks the horizon; the flight's link; telemetry
