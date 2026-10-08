@@ -744,7 +744,7 @@ Caio wasn't sold on the buildings, and the tower was too tall for the rocket. Bo
 
 ### Still open
 - A real trench and flame bucket would need a cut in the ground (terrain's shader).
-- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core.
+- Wide side-booster rockets: the hold-downs at r 3.4 m can poke through boosters of a 2.5 m core. **Fixed 2026-10-08:** § "The hold-downs follow the rocket".
 
 ## Engine plumes — a raymarched volume with propellant profiles (2026-10-07, plumes session, branch `plumes`)
 
@@ -1332,7 +1332,7 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
   (re-aim the hold as the flight path bends), and a capsule comes home shield-first because it is stable, not because
   SAS holds retrograde. That is how Vostok and Mercury flew.
 
-**Tests** §39 (3 checks): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
+**Tests** section `control-3` (3 checks; numbered §37, then §39, until v1.46.2): the generation follows the era (and the sandbox gets the best); the mode table, "prograde on a
 gyro holds", the pod's turn time ratio and the gyro's deadband; a gyro-era satellite loaded back from the register
 still flies its gyro. 315 pass.
 
@@ -1457,7 +1457,7 @@ steered everything. Now they are a resource.
   nose (the vessel's own lift), so the needed torque fades and the wheels level off short of full. The clean tests are in
   vacuum.
 
-**Tests** §38 (3 checks; numbered §36 until v1.46.1): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
+**Tests** section `control-2` (3 checks; numbered §36, then §38, until v1.46.2): the saturated rate equals storage ÷ inertia; unloading by nothing / gimbal / RCS; the
 readout's turn times within 10 % of flown ones, and the coasting max-q case on wheels vs a steerable ring. 280 pass.
 
 **For other sessions**
@@ -1569,7 +1569,7 @@ physical. `study_control.mjs` measures the control budget (`node study_control.m
 - **The magic roll was real but rare**: it only showed when roll was commanded (roll key, roll disturbances). The
   scripted ascents never asked for roll, so the study's counter read 0 before and after.
 
-**Tests** (§35, 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
+**Tests** (section `control-1`, numbered §35 until v1.46.2; 4 checks): one Sparrow pitches a wheel-less probe but can't roll it, nozzle ≤ 3° at ≤ 15 °/s; the
 nozzle centres when the throttle is cut; the Heavy's boosters add roll authority, the Orbiter's one engine none; the
 steerable dart turns 30° in < 0.6× the passive time, plates within range and rate; fin authority ∝ q and none in vacuum,
 and they roll a wheel-less dart. Changed: §5's yank check now asks for a joint ≥ 80 % (was "snaps", at exactly 100 %);
@@ -5260,3 +5260,20 @@ test.mjs §38 runs the page's own `buildRig`/`padRig` with stubs that record eve
 against each preset's envelope; on the old code it fails (the front girder reaches the Orbiter at −5.2 m).
 
 **For visuals:** the gantry is yours. If you restyle it, keep the open front clear; §38 will tell you.
+
+## The hold-downs follow the rocket (2026-10-08, tester session)
+
+The open item from "The launch complex": four hold-down posts stood fixed on the pad's diagonals at 3.4 m, with arms to
+the core's base, so boosters on a diagonal (radial ×4 at 45°, or three at 120° steps) had an arm through them and a post
+under them. Now the posts are part of the rig (`buildRig`, mesh `RIG.posts`, drawn in `drawPadRig`) and `holdPlan`
+(next to `padRig`) places them: on the diagonals if those are clear (every preset: nothing changes), otherwise the set of
+four turns, 1° steps, to the angle with the most room between the parts down at clamp height. Each arm clamps the
+outermost part on its line (the core, or a booster if one is still in the way) and its post stands 1.2 m beyond, never
+inside 3.4 m. The pad mesh keeps no posts.
+
+Bug on the way: the room measure first skipped only the core engine, so the core's own fins and tank (also on the axis)
+counted as obstacles at every angle and nothing ever turned. It now skips everything centred on the axis.
+
+test.mjs §39 checks arms (to 90 % of their length, short of the clamp) and posts against every part's cylinder, for the
+presets and for Asparagus/Crewed Lunar with their boosters turned 45° (and one with three boosters). It fails on the
+old code: an arm through the turned Asparagus's booster engine. TESTING rows 108 (gantry) and 109 (hold-downs).

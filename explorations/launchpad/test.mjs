@@ -1963,7 +1963,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     tallFlat.s.landed && !tallSlope.s.alive && /Toppled/.test(tallSlope.last), `flat: ${tallFlat.last} · ${tiltSpot.su.name} at ${(tiltSpot.sl / D).toFixed(0)}°: ${tallSlope.last}`);
 }
 
-// 35. Engine gimbal and steerable fins (control session): the nozzle really turns, within its range and slew rate; a single
+// control-1. Engine gimbal and steerable fins (control session): the nozzle really turns, within its range and slew rate; a single
 // engine on the axis cannot roll the vessel, side boosters can; the nozzle centres again when nothing asks for torque.
 // All-moving fins steer in air in proportion to q, and roll.
 {
@@ -2008,7 +2008,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     vac.auth0 === null && lo.auth0 && hi.auth0 && Math.abs(hi.auth0[0] / lo.auth0[0] - 4) < 0.5 && Math.abs(rs.w[1]) > 0.5 && Math.abs(rp.w[1]) < 1e-6,
     `pitch authority ${(lo.auth0[0] / 1e3).toFixed(1)} → ${(hi.auth0[0] / 1e3).toFixed(1)} kN·m; roll rate after 2 s: steerable ${rs.w[1].toFixed(2)}, passive ${rp.w[1].toExponential(1)} rad/s`);
 }
-// 38. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
+// control-2. Reaction wheels that saturate, and the builder's control readout (control session). The wheels store what they give;
 // they unload through a burning gimbal (free) or RCS (gas, only past 80 %); the readout's numbers match flown turns.
 {
   const D = new Function(src + 'return {toV2,newShip,physStep,stage,controlReport,qrot,rcsGas,TELLUS,HOOK,INP,DT,len,PRESETS,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
@@ -2343,7 +2343,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.rvEnd(); Object.assign(P, { sats: [], satN: 0, rvOut: [] });
 }
 
-// 39. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
+// control-3. Avionics generations (control session): SAS grows with the computing eras. A gyro autopilot holds an attitude only;
 // an analog autopilot adds the velocity-vector modes; a guidance computer has every mode and the fastest loop. Own instance.
 {
   const D = new Function(src + 'return {avNow,compEra,AV,PROG,sasModeOK,satRegister,vesselOf,newShip,physStep,sasTarget,qrot,len,TELLUS,HOOK,DT,get t(){return simT},set t(v){simT=v},set S(v){S=v}};')();
@@ -2424,6 +2424,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const sOrb = D.newShip(D.PRESETS.Orbiter); D.S = sOrb; const zOrb = D.buildRig(20, D.padRig(20)).zS;
   const sCL = D.newShip(D.PRESETS['Crewed Lunar']); D.S = sCL; const zCL = D.buildRig(45, D.padRig(45)).zS;
   check('a narrow rocket keeps the old service position; a wide one gets the gantry stopped further back', zOrb === -3.3 && zCL < -3.3, `Orbiter ${zOrb} m, Crewed Lunar ${zCL?.toFixed(2)} m`);
+}
+
+// 39. The hold-downs clear the boosters (tester session). Four arms 90° apart, from posts to clamps on the rocket's base:
+// on the diagonals unless boosters stand there, then turned into the gaps, each clamping the outermost part on its line.
+// The page's own buildRig/padRig/holdPlan run with stubs; arms (up to 90 % of their length, short of the clamp) and posts
+// are checked against every part's cylinder, for the presets and for boosters turned onto the diagonals.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),makeMesh=a=>({a,free(){}});
+    ${cut('function buildRig(TH,rig){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const turn = (s, ang, drop) => { const c = Math.cos(ang), n = Math.sin(ang);
+    if (drop != null) s.parts = s.parts.filter(p => Math.hypot(p.pos[0], p.pos[2]) < 0.05 || Math.abs(Math.atan2(p.pos[2], p.pos[0]) - drop) > 0.1);
+    for (const p of s.parts) { const [x, , z] = p.pos; p.pos = [x * c - z * n, p.pos[1], x * n + z * c]; } return s; };
+  const cases = Object.entries(D.PRESETS).map(([k, st]) => [k, D.newShip(st)]);
+  cases.push(['Asparagus turned 45°', turn(D.newShip(D.PRESETS.Asparagus), Math.PI / 4)], ['Crewed Lunar turned 45°', turn(D.newShip(D.PRESETS['Crewed Lunar']), Math.PI / 4)],
+    ['Crewed Lunar, 3 boosters', turn(D.newShip(D.PRESETS['Crewed Lunar']), Math.PI / 4, -Math.PI / 2)]);
+  const bad = [], moved = [];
+  for (const [k, s] of cases) {
+    D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig);
+    const inside = (q, r) => s.parts.find(p => { const y0 = p.y0 + rig.base; return q[1] >= y0 && q[1] <= y0 + p.h && Math.hypot(q[0] - p.pos[0], q[2] - p.pos[2]) < p.d.r + r; });
+    for (const Hd of R.holds) { const t = Hd.mesh.a[0];
+      for (let i = 0; i <= 36; i++) { const u = 0.9 * i / 36, q = t.A.map((v, j) => Hd.P[j] + v + (t.B[j] - v) * u), p = inside(q, t.r); if (p) { bad.push(`${k}: arm through ${p.d.key}`); break; } } }
+    const posts = R.posts ? R.posts.a : [0, 1, 2, 3].map(i => { const a = Math.PI / 4 + i * Math.PI / 2; return { c: [3.4 * Math.cos(a), .25, 3.4 * Math.sin(a)], h: [.3, .25, .3] }; });   // (before: fixed on the diagonals)
+    for (const b of posts) for (const y of [0.05, 0.45]) { const p = inside([b.c[0], y, b.c[2]], b.h[0] * Math.SQRT2); if (p) bad.push(`${k}: post in ${p.d.key}`); }
+    const hd = rig.hold || { f: 0, rp: [3.4, 3.4, 3.4, 3.4], r: [0, 1, 2, 3].map(() => rig.rB + .12) };
+    if (hd.f) moved.push(`${k} ${(hd.f * 180 / Math.PI).toFixed(0)}°`);
+    if (D.PRESETS[k] && (hd.f || hd.rp.some(x => x !== 3.4) || hd.r.some(x => Math.abs(x - rig.rB - .12) > 1e-9))) bad.push(`${k}: a preset's hold-downs moved`);
+  }
+  check('hold-downs: arms and posts clear every part, boosters on the diagonals included; the presets keep theirs as before', !bad.length, bad.slice(0, 4).join(' | ') || `${cases.length} rockets; turned: ${moved.join(', ')}`);
 }
 
 function moonPos(t) { return api.moonPos(t); }
