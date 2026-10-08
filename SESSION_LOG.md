@@ -3239,3 +3239,42 @@ mid-session; the worktree now points at `C:/Users/caioa/dev/explorations`.
 - [ ] Economy: the bodies session's balance note (nyxfind free on a Selene flight; selimp/nyxfind pay under a Probe's cost)
 - [ ] Economy: career runner with dispatch; then `dispatchRun` integration when the bodies session ships it
 
+
+### Follow-up: rendezvous with moon orbiters (sats session, 2026-10-08)
+A flight now meets the registered orbiters of the body it's at (`orbitsAt(b)`). That covers targets, closest
+approach on that body's μ, contact and capture, rails held off nearby, the arm, loading, and debris and explosions on
+that body. Undocking writes the entry back in the frame it leaves in. No cross-SOI targeting.
+
+### Files
+- `explorations/launchpad/index.html`: `orbitsAt`; `tgtOf`, `approach` (μ argument), `hitNear`, `contactStep`, `satBreak`
+  debris, `undock`, `nearbyFlyable`, the arm's grab, `tgtCA`, `cycleTarget`
+- `test.mjs` §41 (3 checks); `NOTES.md` § "Rendezvous with moon orbiters"; `TESTING.md` row 116
+
+### Verification
+`test.mjs`: 366 passed. Each of 7 deliberate breaks fails a §41 check. Not run in the browser (the preview server had been
+stopped for low memory): the approach readout and target cycling are covered only by the whole-page parse check.
+
+### Next steps
+- [ ] Caio: TESTING rows 115–116; a browser pass on the approach readout at Selene
+- [ ] Economy: a far-side relay (network) contract; relay range/power
+- [ ] R4 science; R5 drive plans; the clock while driving from home
+## 2026-10-08 — Launchpad: the robot playtester, first pass (playtest session, run by the sound session)
+
+### Summary
+Caio can't playtest, so `explorations/launchpad/playtest.mjs` walks TESTING.md rows itself: headless Chrome on the real
+GPU, per-row scene setup, screenshots, console errors and measured values; Claude judged the screenshots against each
+row's "looks right if". First pass: **58 of 113 rows judged, 37 ✓, 4 ✗, 17 ~ (mostly "numbers fine, feel needs a
+human"), 55 not tried** (hand-flying feel, builder mouse work, docking/stations/moons, city flights). Nine PLAYTEST items
+filed, #15–#23 (the worst: SAS off + a held pitch key spins the Orbiter's upper stage apart; plasma blackout shown on an
+ordinary ascent at Mach 3.5; a landed flight settles only at the next launch). Spot-checked against the screenshots.
+Found on the way: `shot.mjs`'s flags put headless Chrome on the Intel iGPU; `--force_high_performance_gpu` gets the RTX.
+
+### Files
+- `explorations/launchpad/playtest.mjs` (new), `TESTING.md` (results in `#` cells, `(robot)`), `PLAYTEST.md` #15–#23,
+  `NOTES.md` § "The robot playtester"
+- Output outside git: `C:/Users/caioa/dev/playtest-out/` (`report.md`, PNGs, `results.json`)
+
+### Next steps
+- [ ] Owners: PLAYTEST #15–#23 (see the claim note in ACTIVE_WORK)
+- [ ] Caio: the `~` rows and the 55 untried ones need hands; rerun with `node playtest.mjs [rows…]`
+
