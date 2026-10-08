@@ -1573,7 +1573,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S);rvFieldSci(T0,PROG.day*DAY_S);seisTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -3110,6 +3110,11 @@ const LOGF=[
   {id:'nyx',sec:'Out there',label:'The second moon, Nyx',fmt:v=>`${(v.m*1e4).toFixed(1)}×10⁻⁴ Tellus masses, ${fmtKm(v.pe)}–${fmtKm(v.ap)} out`,best:'first',hint:'something unexplained in the tracking data'},
   {id:'nyxreach',sec:'Out there',label:'Δv to reach Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has been there'},
   {id:'nyxland',sec:'Out there',label:'Δv to land on Nyx',fmt:fmtDv,best:'min',design:true,hint:'nobody has landed there'},
+  // on Selene: rover science (R4); n counts readings, so each one updates the line
+  {id:'semare',sec:'On Selene',label:'Mare basalt (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a dark-plains rock'},
+  {id:'sehigh',sec:'On Selene',label:'Highland rock (spectrometer)',fmt:v=>`FeO ${v.FeO.toFixed(1)} ± ${v.se.toFixed(1)} %, TiO₂ ${v.TiO2.toFixed(1)} %, Al₂O₃ ${v.Al2O3.toFixed(0)} % · ${v.n} reading${v.n>1?'s':''}`,key:v=>v.n,best:'max',hint:'no rover has read a bright-uplands rock'},
+  {id:'sepano',sec:'On Selene',label:'Best panorama of the surface',fmt:v=>`${(v.q*100).toFixed(0)} % (sun ${v.el.toFixed(0)}° up, on ${v.unit==='mare'?'mare':'highland'})`,key:v=>v.q,best:'max',hint:'no rover camera has sent a panorama home'},
+  {id:'secore',sec:'On Selene',label:"Selene's core (seismic network)",fmt:v=>v.hi<Infinity?`radius ${fmtKm(v.lo)}–${fmtKm(v.hi)} · ${v.n} quake${v.n>1?'s':''} located`:`no S-wave shadow yet${v.lo?`: larger than ${fmtKm(v.lo)}`:''} · ${v.n} quake${v.n>1?'s':''} located`,key:v=>v.n,best:'max',hint:'no seismometers on Selene'},
 ];
 function designName(stack){const j=JSON.stringify(stack);for(const k in PRESETS)if(JSON.stringify(PRESETS[k])===j)return k;
   let h=0;for(let i=0;i<j.length;i++)h=(h*31+j.charCodeAt(i))|0;return'Design '+(h>>>0).toString(36).slice(-4).toUpperCase()}
@@ -3603,10 +3608,10 @@ function rvObsQ(b,pf){return landedUp().filter(q=>q.bodyName===b.name&&q.shape&&
   for(const o of q.shape){const d=PARTS[o.k];if(!d)continue;h=Math.max(h,o.y0+o.h);if(!d.surf)r=Math.max(r,Math.hypot(o.pos[0],o.pos[2])+d.r)}return{c:mul(u,rvGroundR(rvProbe(b,q.pf),q.pf)),u:Ul,r,h}})}
 function rvFlight(dt){for(const R of FROV){if(R.wet)continue;rvPowerStep(R,dt,rvSunPF(R.body,bodyTheta(R.body,simT)));if(R===RVA||R.dep)R.sleep=false;else if(len(R.v)<.02&&len(R.w)<.02&&R.t>1)R.sleep=true;if(!R.sleep)rvRun(R,dt)}}
 // at the flight's end, every rover still on its wheels (or not) stays where it is
-const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead});
+const rvEntry=R=>({id:R.id,name:R.name,d:R.d,bodyName:R.body.name,p:R.p.slice(),q:R.q.slice(),E:R.E,km:(R.km0||0)+R.rec.dist/1000,day:PROG.day,tipped:R.tipped,dead:!!R.dead,data:R.data||[],seisLeft:R.seisLeft,reads:R.reads||[]});
 function rvEnd(){PROG.rvOut=PROG.rvOut||[];for(const R of FROV){if(R.wet)continue;R.dep=null;PROG.rvOut.push(rvEntry(R))}FROV.length=0;RVA=null}
 function rvFromEntry(e){const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,R=rvNew(e.d,b,e.p,[0,0,1],{yard:rvYardNear(b,e.p)});
-  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false});return R}
+  Object.assign(R,{id:e.id,name:e.name,p:e.p.slice(),q:e.q.slice(),E:Math.min(e.E,R.Emax),km0:e.km||0,tipped:!!e.tipped,dead:!!e.dead,crewed:false,data:(e.data||[]).slice(),seisLeft:e.seisLeft,reads:(e.reads||[]).slice()});return R}
 // rovers left in the field come back into a flight on the same body within LOAD_R of the vessel
 function rvLoadNear(s){const L=PROG.rvOut||[];if(!s||!s.alive||!L.length)return 0;const pf=toPF(s.body,s.r,simT);let n=0;
   for(let i=L.length-1;i>=0;i--){const e=L[i];if(e.bodyName!==s.body.name||len(sub(e.p,pf))>LOAD_R)continue;L.splice(i,1);FROV.push(rvFromEntry(e));n++}return n}
@@ -3659,6 +3664,87 @@ function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
   (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}
+// ---- rover science, R4 first slice (sats session, decided with Caio): Selene's geology as drawn, and three instruments
+// whose results hinge on what the sim computes. Results count when they reach home (R3's contact), into the logbook.
+// Geology: the sky shader's dark maria, smoothstep(.5,.65,fbm(n·1.6+3)) in Selene's frame (h3/vn/fbm are its port), so a
+// rover on a dark patch is on mare basalt. The composition under it is hidden truth, varying smoothly within each unit.
+const selMare=pf=>{const u=norm(pf),x=clamp((fbm(u[0]*1.6+3,u[1]*1.6+3,u[2]*1.6+3)-.5)/.15,0,1);return x*x*(3-2*x)};
+function geoAt(b,pf){if(b!==SELENE)return null;const M=selMare(pf),u=norm(pf),f=k=>fbm(u[0]*k+11,u[1]*k+7,u[2]*k+5);
+  const mare={FeO:15+6*f(7),TiO2:.5+11*clamp(fbm(u[0]*4+21,u[1]*4+2,u[2]*4+9)-.3,0,1),Al2O3:9+3*f(5)},high={FeO:3.5+3*f(9),TiO2:.2+.5*f(6),Al2O3:25+5*f(8)};
+  const mix=k=>high[k]+(mare[k]-high[k])*M;return{unit:M>=MARE_M?'mare':'high',M,FeO:mix('FeO'),TiO2:mix('TiO2'),Al2O3:mix('Al2O3')}}
+const GEO_NAME={mare:'mare basalt',high:'highland rock'},MARE_M=.2;   // mare where it has visibly darkened (~8 % darker)
+const SPEC_SD={FeO:1,TiO2:.6,Al2O3:1.2},SPEC_NEAR=30;   // a reading's noise (wt %); a new reading needs 30 m from the last
+const SEIS_PACK=4,SEL_CORE=.26*SELENE.R,QV_P=8000,QV_S=4500,QT_SD=.2,QUAKE_DAY=.6,LOC_MAX=15e3;   // the core is hidden truth
+const selSci=()=>PROG.sel||(PROG.sel={spec:{mare:[],high:[]},panos:[],seis:[],quakes:[],seq:0,core:null});
+const rvItems=(R,k)=>rvGeom(R.d).items.filter(t=>t.k===k).length;
+const gauss=r=>{let s=0;for(let i=0;i<6;i++)s+=r();return(s-3)*Math.SQRT2};   // ~N(0,1), deterministic
+// why an instrument can't work right now ('' if it can)
+function rvSciWhy(R,k){if(!rvItems(R,k==='pano'?'cam':k))return`no ${k==='pano'?'camera mast':RV_IT[k].name.toLowerCase()} on board`;
+  if(R.body!==SELENE)return R.body===TELLUS?'nothing new to learn at home':'only Selene has its geology mapped';
+  if(R.dead||R.tipped||R.wet)return'the rover is out of action';if(len(R.v)>.05)return'stop first';
+  if(k==='seis'&&(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))<=0)return'all its seismometers are set out';return''}
+// the instruments: a spectrometer reading, a panorama (its quality is the sun's: low sun shows the relief in long
+// shadows, a high sun flattens it, none at night), a seismometer set out. Readings wait in R.data until contact.
+function rvSci(R,k,T){const why=rvSciWhy(R,k);if(why){HOOK.msg(`${k==='spec'?'Spectrometer':k==='pano'?'Panorama':'Seismometer'}: ${why}`);return false}
+  const P=selSci(),g=geoAt(R.body,R.p),r=rng(9001+P.seq++);R.data=R.data||[];
+  if(k==='spec'){if((R.reads||[]).some(p=>len(sub(p,R.p))<SPEC_NEAR)){HOOK.msg('Spectrometer: already read here (drive on 30 m)');return false}
+    (R.reads=R.reads||[]).push(R.p.slice());const x={k,unit:g.unit,T,pf:R.p.slice()};for(const c in SPEC_SD)x[c]=Math.max(0,g[c]+SPEC_SD[c]*gauss(r));
+    R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
+  if(k==='pano'){const el=Math.asin(clamp(dot(norm(R.p),rvSunPF(R.body,thAbs(R.body,T))),-1,1))*180/Math.PI;if(el<=0){HOOK.msg('Panorama: too dark (the sun is down)');return false}
+    const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
+  if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),R.body.R),T,buf:[]};st.name=`Seismometer ${st.id}`;
+    P.seis.push(st);HOOK.msg(`${st.name} set out (${R.seisLeft} left on board)`);return true}}
+const panoQ=el=>el<3?.4*el/3:el<=20?1:Math.max(.3,1-.7*(el-20)/70);
+const rvSciSent=R=>R.contact&&R.contact.ok&&R.contact.via!=='crew'?'':' · waits for contact';
+// results reaching home: into the program's science and the logbook
+function sciGot(x,by){const P=selSci();
+  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3});const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
+    logNote(null,x.unit==='mare'?'semare':'sehigh',{FeO:m('FeO'),TiO2:m('TiO2'),Al2O3:m('Al2O3'),se:sd/Math.sqrt(n),n},by)}
+  if(x.k==='pano'){P.panos.push({q:x.q,el:x.el,unit:x.unit});logNote(null,'sepano',{q:x.q,el:x.el,unit:x.unit},by)}}
+function rvSciSend(R,c){if(!R.data||!R.data.length||!c||!c.ok||c.via==='crew')return 0;const n=R.data.length;for(const x of R.data)sciGot(x,R.name);R.data=[];
+  HOOK.msg(`${n} result${n>1?'s':''} from ${R.name} received at home`);return n}
+// contact for something on the ground (a field rover, a station) at program time T: R3's rules, relays where they are then
+function rvFieldSci(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead||!e.data||!e.data.length)continue;const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,hg=rvPow(e.d).hg;
+  for(let T=T0;T<T1;T+=1800)if(radioAt(b,e.p,hg,Math.min(T+1800,T1)).ok){for(const x of e.data)sciGot(x,e.name);HOOK.news(`${e.name} on ${e.bodyName}: ${e.data.length} result${e.data.length>1?'s':''} received`,'ok');e.data=[];break}}}
+function radioAt(b,pf,hg,T){const o=ORB_T0;ORB_T0=T;const c=rvContact({body:b,p:pf,pw:{hg,sol:0,rtg:0},remote:true},0,rvRelays([]));ORB_T0=o;return c}
+// ---- the seismic network. Deep moonquakes (QUAKE_DAY a day, 40–60 % of the way out) happen between flights. Each
+// station records the P wave and, unless its straight path crossed the liquid core (SEL_CORE, hidden), the S wave.
+// Records reach home when the station has contact (each has a small high-gain dish). With 4 stations' P times home, the
+// quake is located by least squares; if the array is too small, the fit can't place it (σ > LOC_MAX). Then every path
+// from the located quake brackets the core: an S that arrived passed outside it, a missing S went through (each
+// bound loosened by twice the location's σ).
+function quakesIn(T0,T1){const out=[];for(let k=Math.floor(T0/DAY_S);k*DAY_S<T1;k++){const r=rng(424243+k*7919);
+  for(let j=0;j<3;j++){if(r()>(j?QUAKE_DAY*.25:QUAKE_DAY))break;const T=(k+r())*DAY_S,z=2*r()-1,a=2*Math.PI*r(),rr=SELENE.R*(.4+.2*r()),s=Math.sqrt(1-z*z);
+    if(T>=T0&&T<T1)out.push({id:k*4+j,T,x:[rr*s*Math.cos(a),rr*z,rr*s*Math.sin(a)]})}}return out.sort((a,b)=>a.T-b.T)}
+const rayMin=(x,p)=>{const d=sub(p,x),u=clamp(-dot(x,d)/dot(d,d),0,1);return len(add(x,mul(d,u)))};
+function seisTick(T0,T1){const P=PROG.sel;if(!P||!P.seis.length)return;const live=P.seis.filter(s=>s.bodyName==='Selene');if(!live.length)return;
+  const Q=quakesIn(T0,T1);let qi=0;
+  for(let T=T0;T<T1;T+=1800){const Te=Math.min(T+1800,T1);
+    for(;qi<Q.length&&Q[qi].T<Te;qi++){const q=Q[qi],r=rng(q.id*31+7);let n=0;
+      for(const st of live){if(st.T>q.T)continue;const L=len(sub(st.pf,q.x)),S=rayMin(q.x,st.pf)>SEL_CORE;n++;
+        st.buf.push({q:q.id,tp:q.T+L/QV_P+QT_SD*gauss(r),s:S,ts:S?q.T+L/QV_S+QT_SD*gauss(r):null})}
+      if(n)P.quakes.push({id:q.id,T:q.T,got:{},loc:null,tried:false})}
+    for(const st of live){if(!st.buf.length)continue;if(!radioAt(SELENE,st.pf,true,Te).ok)continue;
+      for(const x of st.buf){const q=P.quakes.find(y=>y.id===x.q);if(q)q.got[st.id]=x}st.buf=[]}}
+  for(const q of P.quakes)if(!q.tried&&Object.keys(q.got).length>=4)seisLocate(q)}
+// least squares on P times for (x, y, z, t0); restarts from 26 directions at half radius (the array alone can't tell a
+// quake under it from one through the moon); σ from the fit's geometry. Then the core bracket from every path.
+function seisLocate(q){const P=PROG.sel,st=Object.keys(q.got).map(id=>({p:P.seis.find(s=>s.id===+id).pf,...q.got[id]}));q.tried=true;
+  const res=x=>st.map(s=>s.tp-(x[3]+len(sub(x.slice(0,3),s.p))/QV_P)),jac=x=>st.map(s=>{const d=sub(x.slice(0,3),s.p),l=len(d)||1;return[...mul(d,1/(l*QV_P)),1]}),
+    nrm=J=>[0,1,2,3].map(a=>[0,1,2,3].map(b=>J.reduce((t,row)=>t+row[a]*row[b],0)));
+  let best=null;for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++)for(let k=-1;k<=1;k++){if(!i&&!j&&!k)continue;
+    let x=[...mul(norm([i,j,k]),SELENE.R*.5),Math.min(...st.map(s=>s.tp))-40];
+    for(let it=0;it<40;it++){const J=jac(x),r=res(x),A=nrm(J);for(let a=0;a<4;a++)A[a][a]+=1e-12;
+      const g=[0,1,2,3].map(a=>J.reduce((t,row,m)=>t+row[a]*r[m],0)),C=inv4(A);if(!C)break;
+      const dx=C.map(row=>row.reduce((t,v,m)=>t+v*g[m],0));x=x.map((v,m)=>v+dx[m]);if(len(dx.slice(0,3))<1)break}
+    const e=res(x).reduce((t,v)=>t+v*v,0);if(len(x.slice(0,3))<SELENE.R&&(!best||e<best.e))best={x,e}}
+  if(!best)return;const C=inv4(nrm(jac(best.x))),sig=C?QT_SD*Math.sqrt(Math.max(0,C[0][0]+C[1][1]+C[2][2])):Infinity;if(!(sig<LOC_MAX))return;
+  q.loc={x:best.x.slice(0,3),sig};const c=P.core||(P.core={lo:0,hi:Infinity,n:0});c.n++;
+  for(const s of st){const m=rayMin(q.loc.x,s.p);if(s.s)c.hi=Math.min(c.hi,m+2*sig);else c.lo=Math.max(c.lo,m-2*sig)}   // ±2σ: the located quake is only so sure
+  logNote(null,'secore',{lo:c.lo,hi:c.hi,n:c.n},'the seismic network')}
+function inv4(A){const n=4,M=A.map((r,i)=>[...r,...[0,1,2,3].map(j=>i===j?1:0)]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
+  if(Math.abs(M[p][c])<1e-30)return null;[M[c],M[p]]=[M[p],M[c]];const d=M[c][c];for(let j=0;j<2*n;j++)M[c][j]/=d;
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c];if(f)for(let j=0;j<2*n;j++)M[r][j]-=f*M[c][j]}}return M.map(r=>r.slice(n))}
 // ==== SIM END
 
 // ============================================================ rendering (raw WebGL2)
@@ -5270,7 +5356,7 @@ function renderProgram(){const el=$('program');if(!el)return;const EP={1:'Epoch 
    if(mine.length||cand.length){html+=`<div class="ep">Production</div><div class="sub">`+mine.map(k=>{const l=L[k];return PROG.day<l.ready?`${PARTS[k].name}: tooling up, ready in ${(l.ready-PROG.day).toFixed(0)} days`:`${PARTS[k].name}: ${l.lic!=null?`licensed from ${POWERS[l.lic].root}`:'own line'} · maturity ${(l.m*100).toFixed(0)}% · ${l.units} built · ×${prodLineK(l).toFixed(2)} per unit`}).join('<br>')+
      cand.map(k=>{const q=prodQuote(k),b=(m,o,lbl)=>`<button data-line="${k}:${m}" ${o.ok&&PROG.funds>=o.cost?'':'disabled'} title="${o.why||''}">${lbl} ${fmtM(o.cost)}, ${o.days} d</button>`;
        return `<div style="margin-top:3px">${PARTS[k].name} <span class="dim">(bought abroad)</span><br>${b('own',q.own,'Own line')} ${b('lic',q.lic,q.lic.from!=null?`License from ${POWERS[q.lic.from].root}`:'License')}${!q.own.ok?`<br><span class="dim">${q.own.why}</span>`:''}</div>`}).join('')+`</div>`}}
-  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}</div>
+  html+=`<div class="ep">What we know</div><div class="sub">Atmosphere 0–${(TELLUS.atm/1e3).toFixed(0)} km <span class="acc">${bands}</span> (sampled bands)<br>Parts: ${tested} with flight data, ${full} fully proven, of ${ks.length}<br>Flights ${PROG.flights}${PROG.streak?` · clean-range streak ${PROG.streak}`:''}${selKnowHTML()}</div>
     <button id="progReset" style="margin-top:6px;font-size:10.5px">reset program</button>`;
   el.innerHTML=html.replace(/^(<div class="ep">.*?<\/div>)/,m=>m+ownershipHTML()+contractsHTML()+satsHTML());$('progReset').onclick=()=>{if(!confirm('Forget all missions and everything the program has learned?'))return;
     Object.assign(PROG,{done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,bailouts:0,day:0,rel:{},op:{},offers:null,active:[],cdone:0,stand:{},recs:{},cycle:0,cyc:null,own:null,decisions:[],home:0,history:[],homeArch:null,nat:{},hush:0,hushPen:0,bmult:1,demand:null,cancelled:false,nextElection:null,comm:0,commPh:null,kh:{},lines:{},stand2:null,dev:{},devJob:null,studies:{},studyQ:[],compEra:null,staged:{},dispatch:[],fac:{}});HOME=0;RIVALS=raceSchedule();ensureBoard();HOOK.save();editorChanged()}}
@@ -5560,7 +5646,7 @@ function rvLeave(){if(RV&&RV.remote){const e=RV.remote;Object.assign(e,rvEntry(R
 function rvReset(){if(RV&&RV.remote){HOOK.msg('Nobody can put it back: it drives on as it is');return}if(RV)rvFold(RV);HOOK.save();rvSpawn();renderRover()}
 const rvWorld=R=>add(bodyPos(R.body,simT),fromPF(R.body,R.p,simT)),rvQW=R=>qmul(qBody(R.body,simT),R.q);
 function rvTick(dtR){if(!RV)return;if(RV.remote&&!RV.obs)RV.obs=rvObsQ(RV.body,RV.p);
-  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
+  RV.contact=rvContact(RV,simT,RV.remote?rvRelays([]):[]);rvCommand(RV,rvKeys(),RV.contact);if(RV.remote)rvSciSend(RV,RV.contact);rvPowerStep(RV,dtR,rvSunPF(RV.body,bodyTheta(RV.body,simT)));
   rvRun(RV,dtR);if(performance.now()-rvHudAt>100){rvHudAt=performance.now();rvHud()}
   rvChase(RV,dtR)}
 addEventListener('keydown',e=>{if(mode!=='drive'||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
@@ -5619,6 +5705,16 @@ document.addEventListener('change',e=>{const s=e.target;if(!s.dataset||s.dataset
   d.slots[+s.dataset.slot]=s.value||null;s.blur();rvReset()});
 
 // ---- the readout
+// R4: the instruments on board as buttons (greyed with the reason when they can't work), the ground, what waits to go home
+// What we know: Selene's science so far (the findings themselves are in the logbook)
+function selKnowHTML(){const P=PROG.sel;if(!P)return'';const nq=P.quakes.length,nl=P.quakes.filter(q=>q.loc).length;
+  return`<br>Selene: ${P.spec.mare.length} mare and ${P.spec.high.length} highland rock readings · ${P.panos.length} panorama${P.panos.length===1?'':'s'} · ${P.seis.length} seismometer${P.seis.length===1?'':'s'} out${P.seis.length?`, ${nq} quake${nq===1?'':'s'} heard, ${nl} located${nq&&!nl?(P.seis.length<4?' (it takes 4 stations to place one)':P.quakes.some(q=>q.tried)?' (the array is too small to place them)':' (waiting for their records)'):''}`:''}`}
+function rvSciRows(R){const ks=[['spec','Spectrometer'],['pano','Panorama'],['seis','Set out a seismometer']].filter(([k])=>rvItems(R,k==='pano'?'cam':k));
+  const g=geoAt(R.body,R.p),w=(R.data||[]).length;if(!ks.length&&!g)return'';
+  return`${g?`<tr><td class="dim">rock</td><td>${g.unit==='mare'?'dark plains (mare)':'bright uplands (highland)'}</td></tr>`:''}`+(ks.length?`<tr><td class="dim">science</td><td>${ks.map(([k,l])=>{const why=rvSciWhy(R,k);
+    return`<button data-rvsci="${k}"${why?` disabled title="${why}"`:''}>${l}${k==='seis'?` (${R.seisLeft??SEIS_PACK*rvItems(R,'seis')})`:''}</button>`}).join(' ')}${w?`<div class="dim">${w} result${w>1?'s':''} waiting for contact</div>`:''}</td></tr>`:'')}
+addEventListener('pointerdown',e=>{const k=e.target.dataset&&e.target.dataset.rvsci;if(!k||e.target.disabled)return;const R=mode==='drive'?RV:RVA;if(!R)return;
+  e.preventDefault();rvSci(R,k,ORB_T0+simT);rvSciSend(R,R.contact);HOOK.save();rvHudAt=0;rvFHudAt=0});
 function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw=qrot(R.q,[0,0,1]),vf=dot(R.v,fw),ti=rvTilt(R),st=rvStats(R.d),X=R.gk<1||R.body!==TELLUS?st.S:st.T,home=mode==='drive'&&!R.remote;
   const f=siteFrame(up),hd=Math.round(Math.atan2(dot(fw,f.e),dot(fw,f.n))*180/Math.PI+360)%360,slip=R.wh.some(w=>w.slip&&w.load>0),air=R.wh.every(w=>!w.load);
   const warn=R.wet?`<div class="bad">In the sea: lost.${home?' R starts again.':''}</div>`:R.tipped?`<div class="bad">Tipped over.${home?' R puts it back at the start: on a mission, nobody would.':' Nobody can right it.'}</div>`
@@ -5633,7 +5729,7 @@ function rvHud(el=$('rvHud'),R=RV){if(!el||!R)return;const G=R.G,up=norm(R.p),fw
     <tr><td class="dim">battery</td><td>${G.kWh?(100*R.E/R.Emax).toFixed(0)+' %':'—'}</td></tr>
     <tr><td class="dim">power</td><td>${R.dead?'<span class="bad">frozen</span>':R.pGen==null?'—':`sun ${Math.round(R.sunEl)+0}° · <span class="${R.pGen>=R.pUse?'ok':'warn'}">${R.pGen>=R.pUse?'+':''}${Math.round(R.pGen-R.pUse)} W</span>`}</td></tr>
     <tr><td class="dim">contact</td><td>${!R.contact?'—':!R.contact.ok?'<span class="bad">none: it holds still</span>':R.contact.via==='crew'?'crew aboard':R.contact.via==='home'?`home${R.contact.delay?` · ${(R.contact.delay*1000).toFixed(0)} ms`:''}`:`via ${rvEsc(R.contact.via)}`}</td></tr>
-    <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr></table>
+    <tr><td class="dim">this drive</td><td>${R.rec.dist<1000?R.rec.dist.toFixed(0)+' m':(R.rec.dist/1000).toFixed(2)+' km'} · climbed ${R.rec.climb.toFixed(0)}°</td></tr>${rvSciRows(R)}</table>
     <div class="sub" style="margin-top:4px">W S drive · A D steer · Space brake · ${home?'R start again':mode==='flight'?'[ back to the lander':'P Program'}</div>`}
 
 // ---- meshes: the body (chassis and deck) per design, and one wheel per kind with its axle along X
@@ -5699,7 +5795,7 @@ function rvChase(R,dtR){if(drag)rvCamHold=2;else rvCamHold=Math.max(0,rvCamHold-
   let dy=want-cam.yaw;dy-=2*Math.PI*Math.round(dy/(2*Math.PI));cam.yaw+=dy*Math.min(1,dtR*1.5)}
 function rvFlightTick(dt,dtR){if(!S)return;const obs=rvObsOf([S,...FLEET]);for(const R of FROV)R.obs=obs;
   if(RVA&&(RVA.wet||!FROV.includes(RVA)))RVA=null;
-  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
+  if(RVA){RVA.contact=rvContact(RVA,simT,rvRelays([S,...FLEET]));rvCommand(RVA,rvKeys(),RVA.contact);rvSciSend(RVA,RVA.contact);if(view!=='map')rvChase(RVA,dtR)}
   rvFlight(dt);
   if((rvLoadT-=dtR)<=0){rvLoadT=1;const n=rvLoadNear(S);if(n)HOOK.msg(`${n>1?n+' rovers':'A rover'} of yours nearby: ] to drive`)}
   const el=$('rvFHud');if(el){el.classList.toggle('hidden',!RVA);if(RVA&&performance.now()-rvFHudAt>100){rvFHudAt=performance.now();rvHud(el,RVA)}}}
