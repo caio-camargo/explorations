@@ -1568,14 +1568,14 @@ function khMark(s,R){const b=s.body,h=len(s.r)-b.R,vac=h>(b.atm||0),hot=[],orbit
 // at flight end: each regime seen teaches, by novelty
 function khLearn(R,w=1){if(!khOn())return;PROG.kh=PROG.kh||{};
   for(const k in R.khSeen){const e=PROG.kh[k]||(PROG.kh[k]={use:use0(k),reg:{}});
-    let nov=0;for(const g in R.khSeen[k]){const n=e.reg[g]||0;nov+=1/(1+n);e.reg[g]=n+1}
+    let nov=0;for(const g in R.khSeen[k]){const n=e.reg[g]||0;nov+=Math.max(1/(1+n),R.novMin||0);e.reg[g]=n+1}
     e.use+=(1-e.use)*(1-Math.exp(-KH_RATE*nov*w))}}   // one step per flight, sized by how new the flight was (sum over regimes); w < 1 for ground tests
 // ---- the test stand: a one-off facility (40M, 60 days, no upkeep) for ground campaigns, one at a time. Each campaign
 // buys a unit of the part and burns 1.5M a day. A qualification run (10 + 10·tier days) puts it through what a stand can
 // reproduce (burns for engines, structural load, heat), teaching at 60 % of a flight's rate (a stand never shows
 // vacuum or orbit) and certifying as if loaded to 60 %. A test to destruction (half the time) finds the true limits
 // (certified 100 %), teaches a little, and destroys the unit.
-const STAND_COST=40,STAND_DAYS=60,STAND_DAY=1.5,STAND_W=0.6;
+const STAND_COST=40,STAND_DAYS=60,STAND_DAY=1.5,STAND_W=0.6,STAND_NOV=0.5;   // a campaign is hours of burn: never worth less than half a fresh regime
 const standReady=()=>!!(PROG.stand2&&PROG.day>=PROG.stand2.ready);
 function buildStand(){if(PROG.stand2||PROG.funds<STAND_COST)return false;PROG.funds-=STAND_COST;PROG.stand2={ready:PROG.day+STAND_DAYS,job:null,done:0};
   HOOK.news(`Ground broken for a test stand: ready in ${STAND_DAYS} days`,'ok');HOOK.save();return true}
@@ -1586,24 +1586,24 @@ function startTest(k,mode){if(!standReady()||PROG.stand2.job)return false;const 
 // design, which belongs to the licensor). Goals that don't touch the physics: cheaper (unit price −12 % per level),
 // more reliable (ignition failures ×0.6 per level), more durable (wear ×0.75 per level). Up to three levels per goal,
 // each needing real know-how of the part (use ≥ 50 / 65 / 80 %) and money and design-bureau time (one project at a
-// time; cost ~5 × price × (1 + tier) × (1 + level), 30 + 20·tier days × (1 + 0.5·level)). A redesign is a new design:
+// time; cost ~3 × price × (1 + tier) × (1 + level), 30 + 20·tier days × (1 + 0.5·level)). A redesign is a new design:
 // certification −0.1 and know-how −0.1, to be won back by flying it. Performance goals (thrust, Isp, mass) wait for the
 // variants-or-upgrades decision (they change shared part definitions).
 const DEV_GOALS={cheap:'Cheaper',rel:'More reliable',dur:'More durable'},DEV_MAX=3,DEV_USE=[0.5,0.65,0.8];
 const devLv=(k,g)=>((PROG.dev||{})[k]||{})[g]||0;
 const devPriceK=k=>{const x=sourceOf(k);return x.how==='home'||(x.how==='line'&&x.line.lic==null)?1-0.12*devLv(k,'cheap'):1};
 function devQuote(k,g){const lv=devLv(k,g),t=tierOf(k),x=sourceOf(k),mine=x.how==='home'||(x.how==='line'&&x.line.lic==null);
-  const cost=(PRICE[k]??3)*5*(1+t)*(1+lv),days=Math.round((30+20*t)*(1+0.5*lv)),need=DEV_USE[lv];
+  const cost=(PRICE[k]??3)*3*(1+t)*(1+lv),days=Math.round((30+20*t)*(1+0.5*lv)),need=DEV_USE[lv];
   const why=g==='rel'&&PARTS[k]?.kind!=='engine'?'reliability only matters for engines (for now)':!mine?(x.how==='line'?'a licensed design belongs to the licensor':'we can only develop what we make'):lv>=DEV_MAX?'fully developed':khUse(k)<need?`needs know-how ${(need*100).toFixed(0)}% (now ${(khUse(k)*100).toFixed(0)}%)`:'';
   return{lv,cost,days,ok:!why,why}}
 function startDev(k,g){if(PROG.devJob)return false;const q=devQuote(k,g);if(!q.ok||PROG.funds<q.cost)return false;PROG.funds-=q.cost;
   PROG.devJob={k,g,end:PROG.day+q.days};HOOK.news(`Design bureau: ${DEV_GOALS[g].toLowerCase()} ${PARTS[k].name} (mark ${q.lv+2}), ${q.days} days`,'');HOOK.save();return true}
 // ---- facilities: one-off investments you upgrade, with no upkeep. An upgrade takes money and time; until it's built
 // the facility keeps working at its old level.
-//  · integration hall: stacking time ×0.75 at level 1, ×0.55 at level 2 (as if two vehicles were stacked side by side)
+//  · integration hall: stacking time ×0.8 at level 1 (90M), ×0.65 at level 2 (220M): two bays, two vehicles in work at once
 //  · recovery fleet: ships salvage spent stages that come down at sea within range of the launch point (800 / 1,500 km),
 //    for 35 / 60 % of their dry price (scaled by wear, as refurbishment), 2M of ship time each; a little know-how too
-const FAC={hall:{name:'Integration hall',lv:[{cost:60,days:60},{cost:150,days:120}],eff:[1,0.75,0.55],what:l=>`stacking ×${[1,0.75,0.55][l]}`},
+const FAC={hall:{name:'Integration hall',lv:[{cost:90,days:60},{cost:220,days:120}],eff:[1,0.8,0.65],what:l=>`stacking ×${[1,0.8,0.65][l]}`},
   fleet:{name:'Recovery fleet',lv:[{cost:50,days:90},{cost:120,days:120}],range:[0,800e3,1500e3],sal:[0,0.35,0.6],what:l=>l?`salvages stages at sea within ${[0,800,1500][l]} km, ${[0,35,60][l]}% of value`:'none'}};
 const facLv=id=>{const f=(PROG.fac||{})[id];return f?f.lv:0};
 function facQuote(id){const lv=facLv(id),f=(PROG.fac||{})[id],step=FAC[id].lv[lv];return step?{...step,ok:!(f&&f.building),why:f&&f.building?'already building':''}:{ok:false,why:'fully built'}}
@@ -1625,8 +1625,8 @@ function devTick(){const J=PROG.devJob;if(!J||PROG.day<J.end)return;PROG.devJob=
   HOOK.news(`New design: the ${PARTS[J.k].name} is ${DEV_GOALS[J.g].toLowerCase()} (mark ${(e.cheap||0)+(e.rel||0)+(e.dur||0)+1}); it has to prove itself again`,'ok');HOOK.save()}
 function standTick(){const S2=PROG.stand2;if(!S2||!S2.job||PROG.day<S2.job.end)return;const{k,mode}=S2.job,d=PARTS[k];S2.job=null;S2.done++;
   const seen={fly:1,maxq:1,heat:1};if(d&&d.kind==='engine')seen.burn=1;
-  if(mode==='destroy'){PROG.cert[k]=1;khLearn({khSeen:{[k]:{fail:1}}},STAND_W);HOOK.news(`Tested to destruction: the ${d.name}'s true limits are known`,'ok')}
-  else{const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*Math.min(1,0.6/0.4));khLearn({khSeen:{[k]:seen}},STAND_W);HOOK.news(`Qualification run complete: ${d.name}`,'ok')}
+  if(mode==='destroy'){PROG.cert[k]=1;khLearn({khSeen:{[k]:{fail:1}},novMin:STAND_NOV},STAND_W);HOOK.news(`Tested to destruction: the ${d.name}'s true limits are known`,'ok')}
+  else{const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*Math.min(1,0.6/0.4));khLearn({khSeen:{[k]:seen},novMin:STAND_NOV},STAND_W);HOOK.news(`Qualification run complete: ${d.name}`,'ok')}
   HOOK.save()}
 // an ignition event: each engine in the segment rolls against its know-how (deterministic per flight, kick and part)
 // ---- production lines: learning to manufacture a part is different from buying it. A line costs capital and time to
