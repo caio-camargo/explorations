@@ -17,7 +17,9 @@ function go(s){const from=screenNow();if(s===from)return;
   if(s==='rollout'&&(mode!=='editor'||BLD.isEmpty(stackDef)))return;   // only from the Assembly, with something on the pad
   atDeb=s==='debrief';atRoll=s==='rollout';
   if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
-  if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
+  if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();
+    if(S&&S.rec&&S.rec.launched&&!BLD.isEmpty(stackDef))editorChanged();   // a flown craft behind the Program: back to the design on the pad (Q145; the Debrief keeps the flight's end)
+    renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1596,6 +1596,17 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## v1.77.1 — dispatched flights launch from their procedure's site and pay its lease (2026-10-09, economy session, QUEUE Q95)
+
+A dispatched flight used to launch from home whatever its procedure (`dispatchRun` passed no site to `procFly`). Now
+`procSiteOf(stack)` is the site the design's procedure was flown from (`proc.site`), or home:
+- `dispatchQuote` and `baseRunQuote` refuse when `siteAccessOf` refuses that site, and add its lease (v1.56) to the
+  price (`fee`, `site` on the quote);
+- `dispatchTick` stands a queued dispatch down if the site has closed to us since (relations, sanctions), checks that
+  site's weather for scrubs, and charges the lease with operations;
+- `dispatchRun` (bodies' code, one argument) and `baseRun` fly from that site.
+Test `econ-10` (mutation-tested): home 49M, the same dispatch from a leased site abroad 55M, refused when hostile.
 
 ## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
 
@@ -7081,6 +7092,10 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
 - Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
   Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
+- **The Program sits over the pad again after a flight** (Q145, PLAYTEST #27's second half): opening the Program while the
+  ship is a flown one (`S.rec.launched`) rebuilds the design on the pad (`editorChanged`), so the backdrop is the pad,
+  not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
+  40 km, Debrief, then Program: the pad.
 
 ---
 
@@ -7246,6 +7261,15 @@ the count stays 1). Events are diffed by engine identity (`p.i`) instead.
 **Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
 in `sndTick` are the knobs.
 
+### Per-engine voices (2026-10-09, effects session for the sound beat, QUEUE Q66)
+Every engine used to sum into one roar. Now each kind of engine burning gets its own band of noise (`sndVoices`, in the
+pure mix block), centred on its jet's peak frequency f ≈ St·U/D (Strouhal 0.2, exhaust ~2.5 km/s, D the exit diameter):
+Wren 1000 Hz, Sparrow 833, Kestrel 455, Petrel 417, Condor 403, Albatross 227. Same-kind engines are one voice (a
+Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust shares first; gain ∝ √share × the airborne
+level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
+drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
+- Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
+- test.mjs `aerofx-3` (engine voices).
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:

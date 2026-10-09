@@ -4034,6 +4034,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('withdraw: taken contracts show the button', pg.includes('data-wd="${c.id}"') && pg.includes('withdrawContract(+ds.wd)'));
 }
 
+// econ-10. Dispatched flights launch from their procedure's site and pay its lease (economy session, QUEUE Q95).
+{
+  const D = new Function(src + 'return {dispatchQuote,dispatchSite,baseRunQuote,siteAccess,procKey,SITES,PROG,HOOK,pairKey,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {}, dispatch: [],
+    done: { beeper: { flight: 0, day: 0 } }, flights: 3, funds: 2000 }); D.chooseStart('agency');
+  const st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], key = D.procKey(st), abroad = D.SITES.find(t => t.power != null && t.power !== 0 && t.kind !== 'sea');
+  const c = { id: 941, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 };
+  P.procs = { [key]: { kind: 'orbit', dv: 4300, target: { pe: 160e3, ap: 160e3 }, site: null } }; const qHome = D.dispatchQuote(c, st);
+  P.procs[key].site = abroad.id; P.rel[D.pairKey(0, abroad.power)] = 0; const qAbroad = D.dispatchQuote(c, st), fee = D.siteAccess(abroad).fee;
+  P.rel[D.pairKey(0, abroad.power)] = -0.8; const qBad = D.dispatchQuote(c, st);
+  check('dispatch abroad: launches from the procedure\'s site, its lease on the price; refused when the site is closed to us',
+    qHome.ok && qHome.fee === 0 && qAbroad.ok && qAbroad.site === abroad.id && Math.abs(qAbroad.cost - qHome.cost - fee) < 1e-9 && fee > 0 && !qBad.ok && /relations/.test(qBad.why),
+    `home ${qHome.cost.toFixed(1)}M · ${abroad.name} ${qAbroad.cost.toFixed(1)}M (lease ${fee}M) · hostile: ${qBad.why}`);
+}
+
 // aerofx-3. A different galaxy each playthrough (look & sound effects beat, QUEUE Q21): the sky's galaxy comes from the
 // program's own seed PROG.gseed, drawn once and kept (saved with PROG); a different seed gives a different sky; a program
 // reset clears it; the reference views pin it to WSEED so they stay the same pictures.
@@ -4069,6 +4085,19 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
     pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
       && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
+  // QUEUE Q66: per-engine voices. Smaller nozzles sing higher; voices go by kind of engine (two Kestrels are one voice), the
+  // biggest thrust shares first, at most four; nothing when nothing burns; equal shares sum to the airborne level in power
+  {
+    const blk = H.slice(H.indexOf('// ==== SOUND MIX BEGIN'), H.indexOf('// ==== SOUND MIX END'));
+    const { sndVoices } = new Function(blk + ';return {sndVoices}')();
+    const wren = sndVoices([{ key: 'wren', T: 18e3, exit: 0.25 }], 1), alb = sndVoices([{ key: 'albatross', T: 1.1e6, exit: 1.1 }], 1);
+    const mix = sndVoices([{ key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'condor', T: 460e3, exit: 0.62 }], 0.8);
+    const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
+    check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off',
+      wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+        && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
+      `Wren ${wren[0].f.toFixed(0)} Hz, Albatross ${alb[0].f.toFixed(0)} Hz, Kestrel×2 + Condor: ${mix.map(v => v.f.toFixed(0) + ' Hz ' + v.g.toFixed(2)).join(', ')}`);
+  }
   // QUEUE Q24: char on dark paint heat-tints (it can't blacken black); a bay door's inside is a different colour from its
   // outside, and it has hinge brackets
   check('char on dark paint tints; bay doors have an inside and hinges',

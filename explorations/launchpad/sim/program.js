@@ -561,10 +561,15 @@ const padWait=()=>Math.max(0,Math.min(...padsFree())-PROG.day);
 function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const out=[];
   for(const key in PROG.procs||{}){let st;try{st=JSON.parse(key)}catch(e){continue}if(!Array.isArray(st))continue;const e=dispatchEstimate(st,c);if(e.ok)out.push({stack:st,e})}
   return out.sort((a,b)=>b.e.p-a.e.p)}
+// where a dispatched flight launches (QUEUE Q95): the site its procedure was flown from (a tape flies from where it was
+// recorded), or home; that site's lease is paid per launch, and a site we may no longer use refuses the dispatch
+function procSiteOf(stack){const pr=(PROG.procs||{})[procKey(stack)];return(pr&&pr.site&&siteById(pr.site))||homeSites()[0]||curSite()}
+function dispatchSite(stack){const t=procSiteOf(stack),a=siteAccessOf(t);return{t,ok:a.ok,why:a.ok?'':a.why,fee:a.ok?a.fee||0:0}}
 function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),cost=vesselCost(v.parts).cost,
   prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const busy=(PROG.dispatch||[]).some(x=>x.status==='queued'&&x.cid===c.id);
-  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost,prep,pad,start,launch:start+prep}}
+  const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
+  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:start+prep}}
 function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return false;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
@@ -607,8 +612,9 @@ function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'no
   if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
+  const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
   const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
-  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost,prep,pad,start,launch:start+prep}}
+  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:start+prep}}
 function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
   PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
   HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days`,'');HOOK.save();return{...q,ok:true}}
@@ -619,15 +625,16 @@ function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status===
 // the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
 function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
   const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
-  const f=procFly(D.stack,proc,null,{name:`${designName(D.stack)||'Supply run'} ${D.id}`});const s=f.s;
+  const f=procFly(D.stack,proc,null,{name:`${designName(D.stack)||'Supply run'} ${D.id}`,site:procSiteOf(D.stack)});const s=f.s;
   if(!s||!s.alive)return{ok:false,why:f.why||'it was lost'};if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
   if(!s.landed||s.body!==B||!s.pf)return{ok:false,why:'it did not land'};const miss=pfDist(B,s.pf,base.pf);
   s.rec.day0=PROG.day;const q=landRegister(s,s.rec);return{ok:true,landed:q,miss,joined:miss<=BASE_R,dv:f.dv}}
 function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)loseDeviation(D.id,`${D.dev.why}, and nobody was at the console`);
   for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
   const c=D.base!=null?null:(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
-  const site=homeSites()[0]||null;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
-  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
+  const dsx=dispatchSite(D.stack);if(!dsx.ok){D.status='cancelled';D.why=dsx.why;HOOK.news(`Dispatch stood down: ${D.title}. ${dsx.why}`,'warn');continue}
+  const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
+  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
   const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
   if(D.base!=null&&!res.deviation){D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';const sb=(PROG.sats||[]).find(q=>q.id===D.base);   // a supply run: no contract to settle
