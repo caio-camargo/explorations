@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {footPoints,legOp,legsDown,tapeLegs,toV2,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -3127,6 +3127,49 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester menu: day, era, funds and mission controls are drawn, and disabled in flight', ['id="testDayIn"', 'data-test-era=', 'id="testFundsIn"', 'data-test-mis='].every(s => pg.includes(s)) && /data-test-mis="\$\{M\.id\}"[^`]*\$\{dis\}/.test(pg));
   Object.assign(T, { on: false, money: false, kh: false, tools: false, nofail: false, fast: false });
+}
+
+// vehicle-1. Landing legs (vehicle session, QUEUE Q31; NOTES § "Vehicle parts"): a deployed leg is one contact point at its
+// foot, so a lander stands on slopes its bare rim tips on, and a hard landing snaps legs through the joint loads. The contact
+// model's caps by effective mass (rotation included) and its stiction keep wide feet from chattering, spinning or creeping.
+{
+  const D = Math.PI / 180, R = TELLUS.R, U = (la, lo) => [Math.cos(la * D) * Math.cos(lo * D), Math.sin(la * D), Math.cos(la * D) * Math.sin(lo * D)];
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean);
+  const spots = {};
+  for (let la = -60; la <= 60 && !(spots.flat && spots.s13 && spots.s20); la += 0.5) for (let lo = -180; lo < 180; lo += 0.5) {
+    const u = U(la, lo); if (api.biomeAt(u).h < 0) continue; const su = api.surfaceAt(TELLUS, u); if (su.mu < 0.5 || api.surfaceHit(su, u) > 0) continue;
+    const sl = api.terrainSlope(TELLUS, u);
+    if (!spots.flat && sl < 0.03) spots.flat = { u, sl, su };
+    if (!spots.s13 && sl > 0.21 && sl < 0.25) spots.s13 = { u, sl, su };
+    if (!spots.s20 && sl > 0.33 && sl < 0.37) spots.s20 = { u, sl, su }; }
+  const L0 = ['pod', 't1', 'wren'], legs = () => { const d = api.toV2(JSON.parse(JSON.stringify(L0))); find(d.root, 't1').c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }); return d; };
+  // set a stack down upright, its lowest point 0.2 m above the ground (uphill feet included), coming down at v m/s, or turning at w rad/s
+  const drop = (spot, v, stack, dep, w = 0, steps = 3000) => { api.t = 0; const s = api.newShip(stack); api.S = s; let last = ''; api.HOOK.msg = m => { last = m; }; s.landed = false;
+    if (dep) api.legOp(s, 'down'); const F = api.footPoints(s), fy = Math.min(...F.map(f => f.pt[1])) - s.cm[1], fr = Math.max(...F.map(f => Math.hypot(f.pt[0], f.pt[2])));
+    s.r = api.fromPF(TELLUS, mul(spot.u, R + api.groundAlt(TELLUS, spot.u) - fy + 0.2 + Math.tan(spot.sl) * fr), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(api.surfVel(TELLUS, s.r), mul(up, -v)); s.q = api.qFromBasis(e, up, cross(e, up)); s.w = mul(up, w); s.sas = true; s.sasMode = 'stab';
+    const n0 = s.parts.filter(p => p.on && p.d.kind === 'leg').length;
+    for (let i = 0; i < steps && s.alive && !s.landed; i++) api.physStep(s, api.DT);
+    return { s, last, lost: n0 - s.parts.filter(p => p.on && p.d.kind === 'leg').length }; };
+  const sh = api.newShip(legs()), stowed = api.footPoints(sh).length, dn = api.legOp(sh, 'down'), F = api.footPoints(sh);
+  check('legs: four legs deployed are the only contact points, at their feet (reach 1.5 m, a metre below the leg); stowed they are none',
+    dn === 4 && stowed === 4 && F.length === 4 && F.every(f => f.p.d.kind === 'leg') && api.footPoints(sh).every(f => Math.abs(Math.hypot(f.pt[0], f.pt[2]) - 2.125) < 0.05) && api.legsDown(sh),
+    `stowed ${stowed} rim points; deployed ${F.length} feet at r ${Math.hypot(F[0].pt[0], F[0].pt[2]).toFixed(2)} m`);
+  const b13 = drop(spots.s13, 1, L0, false), l13 = drop(spots.s13, 1, legs(), true), b20 = drop(spots.s20, 1, L0, false), l20 = drop(spots.s20, 1, legs(), true), lf = drop(spots.flat, 1, legs(), true);
+  check('legs: a pod-tank-Wren lander topples on 12–14° and 19–21° slopes bare, and stands on both with legs, leaning with the slope',
+    !b13.s.alive && /Toppled/.test(b13.last) && !b20.s.alive && l13.s.landed && l20.s.landed && lf.s.landed && l13.lost + l20.lost === 0,
+    `${(spots.s13.sl / D).toFixed(0)}°: bare "${b13.last}", legs "${l13.last}" · ${(spots.s20.sl / D).toFixed(0)}°: bare "${b20.last}", legs "${l20.last}"`);
+  const v8 = drop(spots.flat, 8, legs(), true), v11 = drop(spots.flat, 11, legs(), true);
+  check('legs: the lander takes 8 m/s on its legs; at 11 m/s (under the ground\'s 12) the landing loads snap legs and it goes over',
+    v8.s.landed && v8.lost === 0 && v11.lost > 0 && !v11.s.alive, `8 m/s: ${v8.last} · 11 m/s: ${v11.lost} legs lost, ${v11.last}`);
+  // the contact fixes: spun about the vertical, a stack on its rim and a lander on wide feet both stop turning and come to rest
+  const sO = drop(spots.flat, 0.5, api.PRESETS.Orbiter, false, 0.3), sL = drop(spots.flat, 0.5, legs(), true, 0.3), rest = drop(spots.flat, 1, legs(), true, 0, 600);
+  check('contact: spun at 0.3 rad/s, the Orbiter on its rim and the lander on its feet stop turning and land (no friction-pumped spin, no chatter)',
+    sO.s.landed && sL.s.landed && rest.s.landed && rest.s.landedAt < 12, `Orbiter: ${sO.last} · lander: ${sL.last} · at rest by ${rest.s.landedAt?.toFixed(1)} s`);
+  // a tape records the legs going down and replays it
+  { const s = api.newShip(legs()); api.S = s; const T = api.tapeNew(legs()); api.tapeLegs(T, s, 'down'); const s2 = api.newShip(legs()); api.S = s2;
+    const pl = { tape: T, i: 0 }; api.tapePlay(pl, s2, 10);
+    check('legs: an autopilot tape records the legs going down and replays it', api.legsDown(s) && api.legsDown(s2) && T.ops.some(o => o[0] === 'G' && o[1] === 'down')); }
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

@@ -14,11 +14,19 @@ function checkSOI(s){const b=s.body;
 // (surfaces, boulders) happens at the first touch; a vessel at rest for C_REST s is landed, pinned in the attitude it
 // came to rest in; tilting past C_TOPPLE while touching is toppling. The sea keeps the old splashdown.
 const C_DEFL=0.02,C_ZETA=0.6,C_REST=0.5,C_TOPPLE=1.05,C_GREF=9.81;
-function footPoints(s){const key=s.parts.map(p=>p.on?1:0).join('');if(s.foot&&s.foot.key===key)return s.foot.pts;
-  let yb=Infinity;for(const p of s.parts)if(p.on)yb=Math.min(yb,p.y0);const pts=[];
-  for(const p of s.parts){if(!p.on||p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
+// Landing legs (vehicle session, Q31): a deployed leg is one point, at its foot; a stowed one lies on the skin and is none.
+// The lowest point counts the feet too, so with legs down (their feet a metre below the rims) the stack stands on its feet.
+const legFoot=p=>{const a=p.phi||0;return[p.pos[0]+p.d.reach*Math.cos(a),p.y0-p.d.drop,p.pos[2]+p.d.reach*Math.sin(a)]};
+function footPoints(s){const key=s.parts.map(p=>p.on?(p.dep?2:1):0).join('');if(s.foot&&s.foot.key===key)return s.foot.pts;
+  let yb=Infinity;for(const p of s.parts)if(p.on&&(p.d.kind!=='leg'||p.dep))yb=Math.min(yb,p.d.kind==='leg'?legFoot(p)[1]:p.y0);const pts=[];
+  for(const p of s.parts){if(!p.on)continue;if(p.d.kind==='leg'){if(p.dep){const f=legFoot(p);if(f[1]<=yb+0.5)pts.push({p,pt:f})}continue}
+    if(p.y0>yb+0.5)continue;const r=Math.max(p.d.r*0.95,0.05);
     for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;pts.push({p,pt:[p.pos[0]+r*Math.cos(a),p.y0,p.pos[2]+r*Math.sin(a)]})}}
   s.foot={key,pts:pts.slice(0,32)};return s.foot.pts}
+// legs down (op 'down') or up ('up'): instant for now (the look beat can animate the swing); returns how many moved
+function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;n++}
+  if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
+const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
 // the ground's upward normal at a planet-fixed point, in the inertial frame (finite differences over ±1 m)
 function groundNormal(b,pf){if(b!==TELLUS)return norm(fromPF(b,pf,simT));const u=norm(pf),f=siteFrame(u),d=1/TELLUS.R,h0=groundAlt(b,u);
   const he=groundAlt(b,norm(add(u,mul(f.e,d)))),hn=groundAlt(b,norm(add(u,mul(f.n,d))));
@@ -32,13 +40,26 @@ function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel
   return true}
 function groundContact(s,dt){const b=s.body;
   if(s.landed||!s.alive||len(s.r)-b.R>TERR_TOP+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
-  const pts=footPoints(s),n=pts.length,mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),ct=0.5*mPer/dt,qi=qconj(s.q);let any=false;
+  const pts=footPoints(s),n=pts.length,mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),qi=qconj(s.q);let any=false;
   for(const fp of pts){const rb=sub(fp.pt,s.cm),rw=qrot(s.q,rb),P=add(s.r,rw),pf=toPF(b,P,simT),gA=groundAlt(b,pf),pen=b.R+gA-len(P);
-    if(pen<=0)continue;if(b===TELLUS&&terrainH(norm(pf))<0)continue;   // over the sea: splashdown (groundCheck)
+    if(pen<=0){fp.a=null;continue}if(b===TELLUS&&terrainH(norm(pf))<0)continue;   // over the sea: splashdown (groundCheck)
     if(!s.inContact){if(!touchdown(s))return;s.inContact=true}
     any=true;const su=surfaceAt(b,pf),nW=groundNormal(b,pf),vP=add(sub(s.v,surfVel(b,P)),cross(s.w,rw)),vn=dot(vP,nW);
-    const Fn=Math.max(0,k*pen-c*vn),vt=sub(vP,mul(nW,vn)),vtl=len(vt);let Fw=mul(nW,Fn);
-    if(vtl>1e-6)Fw=madd(Fw,vt,-Math.min(su.mu*Fn,ct*vtl)/vtl);
+    const nb=qrot(qi,nW),cn=cross(rb,nb),mN=1/(n*(1/s.mass+cn[0]*cn[0]/s.I[0]+cn[1]*cn[1]/s.I[1]+cn[2]*cn[2]/s.I[2]));   // its effective mass along the normal
+    // the spring and damper are capped by it (vehicle, Q31): legs put points ~2 m off a light lander's axis, where a quarter of the
+    // mass is ~8× too much, and the damper then overshot every step (the lander chattered until it toppled on the flat). The caps
+    // are halved because the normal and the friction forces below a tall stack push on the same pitch: each alone at full gain
+    // was stable, together they rang at two steps' period.
+    const Fn=Math.max(0,Math.min(k,0.5*mN/(dt*dt))*pen-Math.min(c,0.5*mN/dt)*vn),vt=sub(vP,mul(nW,vn));let Fw=mul(nW,Fn);
+    // friction (vehicle, Q31): a tangential spring to where the point first touched (stiction: it holds on a slope instead of
+    // creeping, which a velocity-only cap can't do), plus a damper; both capped by the point's effective mass along the slip,
+    // rotation included. Past μ·Fn the point slides and its anchor follows, so a slide is Coulomb as before.
+    if(!fp.a)fp.a=pf;let d=sub(P,fromPF(b,fp.a,simT));d=sub(d,mul(nW,dot(d,nW)));const dl=len(d),vtl=len(vt);
+    const u=dl>1e-9?mul(d,1/dl):vtl>1e-9?mul(vt,1/vtl):null;
+    if(u){const cc=cross(rb,qrot(qi,u)),mT=1/(n*(1/s.mass+cc[0]*cc[0]/s.I[0]+cc[1]*cc[1]/s.I[1]+cc[2]*cc[2]/s.I[2])),kt=Math.min(k,0.25*mT/(dt*dt)),ct=Math.min(c,0.5*mT/dt);
+      let Ft=add(mul(d,-kt),mul(vt,-ct));const fl=len(Ft),cap=su.mu*Fn;
+      if(fl>cap){Ft=mul(Ft,cap/fl);if(dl>1e-9)fp.a=toPF(b,sub(P,mul(d,Math.min(1,cap/(kt*dl)))),simT)}
+      Fw=add(Fw,Ft)}
     const fb=qrot(qi,Fw);addF(fp.p,fb[0],fb[1],fb[2],fp.pt[0],fp.pt[1],fp.pt[2])}
   if(any)s.touchT=simT}
 // after each step: the nose in the ground, toppling, coming to rest; and splashdowns, which keep the old rule
