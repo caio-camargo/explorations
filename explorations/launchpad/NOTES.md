@@ -8161,3 +8161,31 @@ player may know better, and the flight is how they find out.
   parachute) and `vehicle-5` (auto legs at 3 km / 1.2 km / climbing / by hand; legs and wings through the register);
 - the full suite, 527/527;
 - the robot's `m1` run passes; a tester probe shows the Hopper's "Short of orbit for The beeper" and a chute-less Passenger Orbiter's "No parachute" in the Rollout panel.
+
+## v1.80 — a Docking preset; power's second slice: an RTG, the budget at the flight's aim, charge kept (2026-10-09, vehicle session, QUEUE Q78, Q131)
+
+**Q78: the Docking preset.** A docking head on the Orbiter's launcher, so the docking rows (TESTING 58–67, 98, 116) can
+be flown without the builder: a port on top, a probe core with an onboard computer (Docking SAS needs one on a probe,
+v1.68) and a battery, two rings of four RCS quads and two gas bottles on the upper 2 t tank. It's the first preset built
+as a v2 tree (surface parts), made at the end of `sim/vessel.js` once `toV2` exists.
+- **Measured:** it reaches orbit (periapsis 103 km) with 646 m/s spare and its 30 kg of gas untouched.
+- **To dock:** launch it twice, one as the target, or chase any satellite with a port. Docking SAS comes in the
+  onboard-computer era (or with the tester's tools).
+
+**Q131: power, second slice** (`sim/power.js`):
+- **An RTG** (`rtg`, surface part, 35 kg, 60 W day and night, price 15; *Power* palette): `powRTG` is added in the
+  physics step, in long rails steps and in the steady state. The battery only has to cover the load the RTGs don't.
+  Placeholder mesh: a dark finned drum on a strut.
+- **The budget at the flight's aim:** the builder's power line works out the orbit the flight is aimed at (the highest
+  accepted satellite contract, `flightAims` from v1.79), else low Tellus orbit. It still assumes the sun in the orbit's
+  plane (β 0), the longest shadow, and says so. At 1,000 km the shadow is 19% of the orbit, against 37% low down.
+- **The charge is kept:** the vessel's saved state (`vstOf`) carries `E`, and `vesselOf` restores it, so a satellite
+  loaded back has the battery it was left with (each new flight still starts full).
+
+**Checked:** `test.mjs` sections `vehicle-6` (the Docking preset to orbit: quads, gas, port, Docking SAS with its
+computer) and `vehicle-7` (RTG at night, the higher orbit's shorter shadow, the charge through the register); the full
+suite 541/541 with Q78; the smoke shard and the power, legs and docking sections after Q131; `playtest.mjs m1` passes;
+in the page, a core + antenna + RTG reads "Power +60 W / −5 W (low orbit average, the sun in its plane) · shadow 16 min
+needs 0 Wh".
+
+**Not yet:** a choice of β or orbit in the builder itself; what a flat battery does to a satellite's service (space, Q27).
