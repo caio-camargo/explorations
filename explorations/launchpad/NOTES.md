@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -7427,6 +7427,29 @@ Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive f
 Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
+
+## v1.69 — dispatch to a base: supply runs (2026-10-09, economy session, QUEUE Q61)
+
+A **supply run** sends a design to a base, unflown by hand, and what lands joins the base (`sim/program.js`):
+- **The flight** is built, not recorded: the design's own ascent procedure, then the bodies session's mission phases
+  as `fly_ladder.mjs`'s `flySite` uses them: a transfer aimed through the base, a low capture, and `landAt` on the
+  beacon's `pf` (`baseRunProc`). It ends on the surface: no ascent or return. `procFly` flies it for real, so a
+  design without the Δv is lost or doesn't land. Measured: the Probe lands **1 m** from the beacon.
+- **What it brings:** the lander is registered where it stands (`landRegister`) and joins the base if within
+  `BASE_R` (500 m): its supplies, berths and labs count. Crew aboard aren't counted as arrived yet (the headless flight
+  has no crew record).
+- **Rules:** repeats only, as dispatch: refused before the body's landing first (`selland`, `nyxland`), for a design
+  with no ascent procedure, and while a run to that base is queued. Pads, stacking days and price as any dispatch
+  (`baseRunQuote`; the Probe: 175M, launch in ~113 days of stacking). No contract pays it: it keeps a base alive.
+  A deviation hands over like any dispatch's.
+- **The button:** each base's line in the Fleet tab (*On the surface*) offers *Supply run with ⟨design in Assembly⟩*
+  or says why not (`baseRunLine`; one line and a `data-baserun` handler in `app/program-ui.js`, flagged for space/flow).
+  Queued runs are dispatch entries with `base` instead of `cid`; `dispatchTick` settles them with news.
+
+Test `econ-7` (2 checks, 9 s; an untargeted landing, mutation, ends 819 km away and fails).
+
+**Not yet:** crew rotation (crew arriving, the old crew flying home); a supply contract (Q9) that pays for this;
+supplies as cargo you choose (today: whatever supply parts the design carries).
 
 ## v1.68 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
 

@@ -22,6 +22,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.devtake){takeDeviation(+ds.devtake)}
   else if(ds.devlose){loseDeviation(+ds.devlose,'let go');renderProgram()}
+  else if(ds.baserun){const b=(PROG.sats||[]).find(x=>x.id===+ds.baserun),r=b&&orderBaseRun(b,stackDef);HOOK.msg(r&&r.ok?`Supply run dispatched to ${b.name}`:`Supply run: ${r?r.why:'no such base'}`);renderProgram()}   // economy (Q61)
   else if(ds.dry){const r=orderDryRun(stackDef);HOOK.msg(r.ok?`Dry run: ${r.proc.from}'s procedure flies it, ${fmtDv(r.margin)} to spare (provisional)`:`Trajectory office: ${r.why}`);renderProgram();editorChanged()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
@@ -80,7 +81,7 @@ function moonSatsHTML(){const L=moonSats(),T=tNow();if(!L.length)return'';
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}${slotLine(q)}</div>`}).join('')).join('')}
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`}).join('')}
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`+(base?baseRunLine(q,stackDef):'')}).join('')}
 function satsHTML0(){const L=satsUp();const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
