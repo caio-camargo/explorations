@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,63 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.57 — the ballistic test aims from the program's site (2026-10-08, economy session, QUEUE Q7)
+
+`CT.ballistic` used to place its target `rg/600` radians from planet-fixed +X: the old 600 km radius (every range 2.1×
+longer than stated) and from no particular pad. Now:
+- the target is `alongAz(site.u, az, rg·1000/R)` from **the program's current site** (`curSite()`) when the offer is
+  made: at sea, 300–900 km away, the stated distance exact (test: within 0.5 km);
+- the contract keeps `p.site` and `p.sname`; the brief says "Launch from ⟨site⟩"; it **counts only when flown from
+  that site** (`R.site`, v1.56): a ballistic test belongs to its range. Saved contracts without `p.site` count from
+  anywhere;
+- if no sea target is found in 200 tries (an inland site deep in a continent), there is no offer: `genOffer` now skips
+  a generator that returns null. The old fallback put a target at a fixed point regardless of the site.
+
+Test `econ-3` (3 checks, mutation-tested). The map marker (`app/render.js`) reads `c.p.u` as before.
+
+## v1.56 — who may launch where: siteAccess (2026-10-08, economy session, QUEUE Q6)
+
+The terrain session's launch gate (`siteAccessOf`, `sim/world.js`) now finds economy's **`siteAccess(site)` → `{ok, why,
+fee, how}`** in `sim/program.js`:
+- **our sites:** free;
+- **a sea platform:** open to anyone, `SEA_FEE` = 4M a launch (a service);
+- **a consortium member's site:** shared, free;
+- **any other power's site:** leased, `LEASE` = 6M × (1 − ½ relation): 3M with the best friends, 6M at neutral,
+  refused below relation −0.25 (`LEASE_REL`), and closed while that power sanctions the program (or home does);
+- **nobody's land** (`power` null, not sea): refused, there is nobody to lease it from.
+
+**Charged at launch** on `missionTick`'s launch line with hardware and operations; the record keeps `R.site` (the id)
+and `R.siteFee`. The debrief lists *Site lease*, and now also *Sponsor covers the failed attempt* (v1.55's `R.cover`).
+Two lines in `app/editor.js` (flagged for vehicle/flow): the over-budget check counts the fee, and the picker shows how
+you'd use the site and the fee ("leased from X: 6M a launch"). Test `econ-2` (6 checks, mutation-tested).
+
+**Not yet:**
+- dispatched flights (`orderDispatch`) don't charge a lease: procedures fly from where they were recorded; when a
+  procedure's site is abroad, charge it there;
+- overflight politics (`site.downrange.over`), westward launches, sites closed by a war (relations already cover the
+  slow version), a lease line on budget day for a standing lease;
+- contracts that name a site (Q7 is next: the ballistic target from the flight's site).
+
+## v1.55 — a failed attempt at the next step is mostly covered (2026-10-08, economy session, W12)
+
+Caio answered W12 with option 1 (below). **Built:** `coverLoss(s,R)` in `sim/program.js`, called in `missionEnd`'s books
+after refurbishment and before the floor check. A flight gets `COVER` = 75 % of its loss (price − refurbishment) back when:
+- it flew **the priciest rocket yet** (`PROG.recs.maxCost`): that's how the game tells an attempt at the next step,
+  since nothing names a flight's target (the proposal's "the flight names its first" turned out to need a target picker
+  that doesn't exist);
+- it came to nothing: no first, no contract, under a quarter back as refurbishment;
+- the sponsor hasn't covered one in this epoch yet. The epoch is **the newest one with firsts open**, not the oldest:
+  epoch-1 firsts (air, range) stay open while you go for orbit, and keying to them let an early lost loads flight use up
+  the orbit's cover (caught by the runner, `WHY=1`).
+
+The sponsor is named in the news: the home government, investors, or the member states. State in `PROG.recs.cover`
+(a new game already resets `recs`; no app change). Test `econ-1`, mutation-tested (the epoch key, the first rule).
+
+**Measured** (`PACE=1 FAILFIRST=orbit node career.mjs 2 5`; before → after): flights to orbit 6–10 → 5–8; bailouts before
+orbit 1.0–4.6 → 0.2–2.0; companies in poor worlds reach orbit in 4 of 5 runs (were 2–3 of 5). The runs that still don't
+are repeated orbital losses (only the first is covered) in a frugal or resource world, where cheap work barely pays:
+the *pay floors by world* follow-up. With no forced failure: 4–6 flights to orbit, as before.
 
 ## Epoch 1–2 pacing for a new player, measured (QUEUE Q44, 2026-10-08, economy session)
 

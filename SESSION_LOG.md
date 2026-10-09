@@ -3681,3 +3681,59 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 ### Next steps
 - [ ] World: G2, Selene's baked map plus crater bands on the CPU, maria moved to the near side (default held), `study_ground.mjs`
 - [ ] Not browser-checked: the camera clamp and shadow-plane edits are render code. They're neutral by construction (same values for every body today); QA's robot run will cover them
+
+## 2026-10-08 — Launchpad v1.55 economy: a failed first attempt is mostly covered (W12; economy session)
+
+### Summary
+- Caio answered W12 (option 1). `coverLoss` in `sim/program.js`: a lost flight on the priciest rocket yet (no first,
+  no contract, under a quarter refurbished) gets 75 % of its loss back from the sponsor, once per epoch (the newest
+  epoch with firsts open). Nothing in the game names a flight's target, so "priciest rocket yet" stands for the attempt.
+- `career.mjs`, one failed orbit attempt: flights to orbit 6–10 → 5–8, bailouts before orbit 1–4.6 → 0.2–2; poor-world
+  companies reach orbit in 4 of 5 runs (were 2–3). The rest is the poor-world grind (Proposed: pay floors by world).
+
+### Verification
+- New test `econ-1` (7 checks, mutation-tested); full suite passes in 4 processes after merging `main` (test.mjs
+  conflict with world's `ground-1`: both kept).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `career.mjs`, `NOTES.md` § v1.55, `TESTING.md` row 128, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 128 (lose your first orbit attempt: fair second chance or too soft?)
+- [ ] Economy: Q6 `siteAccess`; pay floors by world (Proposed)
+
+## 2026-10-08 — Launchpad v1.56 economy: siteAccess, who may launch where (QUEUE Q6; economy session)
+
+### Summary
+- `siteAccess(site)` → `{ok, why, fee, how}` in `sim/program.js`: own sites free; sea platforms 4M; a consortium
+  member's site free; other powers' sites leased at 6M × (1 − ½ relation), refused below −0.25 or under sanctions.
+- Launch charges the fee and records `R.site` and `R.siteFee`; the debrief lists *Site lease*, and v1.55's cover.
+- Builder (`app/editor.js`, flagged in ACTIVE_WORK): the budget check counts the fee; the picker shows it.
+
+### Verification
+- New test `econ-2` (6 checks, mutation-tested); full suite passes in 4 processes.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/debrief.js`, `app/editor.js`, `test.mjs`, `NOTES.md` § v1.56, `TESTING.md` row 129, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 129 (launch from abroad; is the fee a real choice?)
+- [ ] Economy: Q7 (ballistic target from the flight's site, now that `R.site` exists); Proposed: dispatch leases, overflight politics
+
+## 2026-10-08 — Launchpad v1.57 economy: the ballistic test aims from the program's site (QUEUE Q7; economy session)
+
+### Summary
+- `CT.ballistic`: the target is now the stated distance downrange of the program's current site (was `rg/600` rad
+  from +X, so 2.1× long and from no pad); the brief names the site, and the test counts only when flown from there
+  (`R.site`). Old saved contracts count from anywhere. `genOffer` skips a generator that finds nothing.
+
+### Verification
+- New test `econ-3` (3 checks, mutation-tested); full suite passes in 4 processes; career runner unchanged in shape.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `test.mjs`, `NOTES.md` § v1.57, `TESTING.md` row 130, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 130
+- [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+

@@ -122,6 +122,7 @@ function fly(pl, rnd, m) {
     const pf = u.map((c, k) => (c * Math.cos(a) + (e1[k] * Math.cos(t) + e2[k] * Math.sin(t)) * Math.sin(a)) * TELLUS.R);
     api.missionDrop(s, { kind: x < 0.85 ? 'sea' : x < 0.97 ? 'land' : 'near', power: null, pf, parts }); }
   api.t = pl.dur; api.missionEnd(s);
+  if (process.env.WHY && !ok && pl.first) console.log(`  lost ${pl.first} d${Math.round(P.day)} cost ${s.rec.cost.toFixed(0)} max ${(P.recs.maxCost||0).toFixed(0)} cover ${(s.rec.cover||0).toFixed(0)} covers ${JSON.stringify(Object.keys(P.recs.cover||{}))}`);
   if (!ok && pl.first && process.env.KEEP) P.funds += +process.env.KEEP * planCost(pl).c;   // experiment: a sponsor covers part of a failed first
   if (ok) { const b = back[pl.kind] || (back[pl.kind] = { n: 0, sum: 0 }); b.n++; b.sum += R.refund || 0; }
   return ok;

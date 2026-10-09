@@ -86,7 +86,7 @@ function editorChanged(){
   renderProgram();
   $('stats').innerHTML=html}
 $('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies
-$('launch').onclick=()=>{if(BLD.isEmpty(stackDef))return;BLD.drop();if(vesselCost(S.parts).cost>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}, the program has ${fmtM(PROG.funds)}`);return}
+$('launch').onclick=()=>{if(BLD.isEmpty(stackDef))return;BLD.drop();{const fee=siteAccessOf(curSite()).fee||0;if(vesselCost(S.parts).cost+fee>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}${fee?` plus ${fmtM(fee)} for the site`:''}, the program has ${fmtM(PROG.funds)}`);return}}
   {const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts);if(!a.ok){HOOK.msg(a.why);renderSites();return}if(!fz.ok){HOOK.msg(fz.why);renderSites();return}const w=downrangeWarning(t);if(w)HOOK.news(w,'warn')}resetShip();go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};
 // ---- the launch-site picker (terrain session): ours first, then abroad (refused until economy's siteAccess allows it).
 // Picking a site moves the ship in the construction screen onto that pad.
@@ -99,7 +99,7 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
     <div class="dim" style="margin:4px 0 8px">${fmtLat(cur.lat)} · free ${cur.rot.toFixed(0)} m/s east · lowest inclination ${cur.minInc.toFixed(1)}° · pad at ${cur.h.toFixed(0)} m<br>
     downrange ${dr.az}°: ${(dr.sea*100).toFixed(0)}% water${forn.length?`, over ${forn.map(pn).join(', ')}`:''} · polar corridor ${cur.polar||'none'}<br>
     ${cur.kind==='sea'?'a floating platform: stages of any size come by ship':cur.coastal?'coastal: stages of any size come by barge':`inland: stages up to ${cur.maxDia} m come by rail`}<br>
-    weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?'':bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
+    weather today: ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?`<br><span style="color:#ffc46b">${downrangeWarning(cur)}</span>`:''}${a.ok?(a.fee?`<br>${a.how}: ${fmtM(a.fee)} a launch`:''):bad(a.why)}${fz.ok?'':bad(fz.why)}</div>`;
   $('siteSel').onchange=e=>{PROG.site=e.target.value;HOOK.save();editorChanged();renderSites()};
   // the one-line summary pinned above LAUNCH (PLAYTEST #20): the full picker above scrolls with the panel
   const sl=$('siteLine');if(sl)sl.innerHTML=`${a.ok&&fz.ok?'':'<span style="color:#ff8a7a">⛔</span> '}${cur.name} · ${fmtLat(cur.lat)} · ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?' · <span style="color:#ffc46b">downrange warning</span>':''}`;sl&&(sl.title=a.ok?fz.ok?'':fz.why:a.why)}

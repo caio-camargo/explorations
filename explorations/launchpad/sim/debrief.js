@@ -27,7 +27,7 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
   if(R.bio)D.passenger={who:R.pet,ok:R.bioOK,why:R.bioWhy,tourist:!!R.tourist};
   // money: what we know line by line; the rest is the days that passed (budget, upkeep, income, debt)
   const M=D.money,add=(l,v,k)=>{if(Math.abs(v)>=0.05)M.push({l,v,k})};
-  add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');
+  add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');
   for(const p of R.paid||[]){add(p.k==='contract'?`Contract: ${p.l}`:p.k==='stage'?`${p.l} (share)`:p.l,p.pay,p.k);if(p.k==='mission')D.missions.push({l:p.l,pay:p.pay,first:!!p.first})}
   add(`Refurbishment${R.recovery?` (${R.recovery})`:''}`,R.refund||0,'refund');add('Damages to towns',-(R.dmg||0),'dmg');
   if(b){D.net=PROG.funds-b.funds;const rest=D.net-M.reduce((a,m)=>a+m.v,0);add(`${Math.max(0,PROG.day-b.day).toFixed(0)} days passing (budget, upkeep, debt)`,rest,'days')}
