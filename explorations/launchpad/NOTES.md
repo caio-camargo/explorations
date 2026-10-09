@@ -1479,6 +1479,50 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
+## v1.69 — station-keeping re-tuned: a good satellite outlasts its era (2026-10-09, space session, MIDGAME § Satellites)
+
+[`MIDGAME.md`](MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite
+outlasts its era, replacement is for upgrades, and maintenance as a chore is out. v1.60's numbers made a TV satellite with
+100 m/s of tanks last ~270 days, i.e. careless by default. Re-tuned, still on the real physics:
+
+- **Holding pays the orbit's size and shape, not its tilt.** About 70 % of v1.60's cost was the plane. Real geostationary
+  satellites late in life stop holding it too and fly on inclined. `slotRate` now pays the net change in size and shape
+  between one-orbit means 20 days apart (`SK_D` 5 → 20, so Nyx's 4.2-day and Selene's 13-day pulls mostly cancel); the
+  tilt rate is kept as `q.skTilt`.
+- **The tilt really wanders.** `tiltStep` turns a held orbit's angular momentum by the tide's torque averaged over one orbit
+  (24 points, steps of half a day), keeping size, shape and phase. Against the full RK4 after 20 days: a stationary orbit
+  tilts 0.165° (RK4 0.175°), the normals 0.017° apart. Orbits tilting under `TILT_MIN` (~0.7° a year: low ones) are left alone.
+- **TV pays while the capital sees it 15° up all day** (six times through the day), not only under 3°. The mission that
+  sets it up still asks for under 2°.
+- `SK_MIN` 0.1 → 0.02 m/s a day (size and shape cost less than the old total).
+
+**Measurements** (`node study_slot.mjs`, part C: a TV satellite held over the capital, 42°S, plenty of propellant):
+
+| year | 1 | 2 | 4 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|
+| tilt | 3.6° | 7.4° | 14.9° | 23.1° | 27.1° | 31.2° |
+| TV days | 100 % | 100 % | 100 % | 100 % | 8 % | 0 % |
+| m/s spent | 89 | 177 | 354 | 531 | 620 | 708 |
+
+The tilt peaks near 37° in year 10 and turns back: the plane precesses about Nyx's (30° inclined; Tellus has no
+oblateness to hold it near the equator). Hold costs: ~0.1–0.2 m/s a day stationary (the start phase matters about 2×), ~0.04
+at 3,000 km, nothing in low orbit. So **a TV satellite with ~500 m/s in its tanks (a fifth of its mass at Isp 300) keeps
+TV about six years**, and then its tilt ends the job anyway: the natural moment for MIDGAME's upgrade. One with 50 m/s
+lasts about eight months.
+
+**Negative results.** (1) Paying every swing in size (read every 2 days) gave 0.35 m/s a day: it paid for Nyx's 4-day
+wobble, which hardly moves the satellite along its orbit. (2) A deadband controller on the full physics (burn to reverse
+the drift when it strays 5°/20°/40° in longitude) gave 120–460 m/s a year, but its burns pumped the eccentricity to
+0.2–0.6, so it measured a bad controller, not the need. The orbit's size does swing ±40 km over months with no trend (no
+secular change, as averaging theory says), and its eccentricity grows steadily (~0.03 a year stationary). A proper
+controller would be the better measure, later.
+
+**Not changed:** a dry satellite still drifts (full RK4) and, if low, decays (v1.64). Whether a dry one should re-enter at
+all is **W17** (default: yes). The builder lifetime readout is a vehicle + space follow-up.
+
+`space-1` reworked (5 checks: the held orbit keeps size and shape exactly while its tilt moves; a held TV satellite past 3°
+still pays for 800 days; mutations caught: no tilt step, TV under 3° again, the plane paid again). Full suite 512 pass.
+
 ## v1.64 — orbital decay: low orbits come down (2026-10-09, space session, QUEUE Q25)
 
 The air the flight flies through stops at 100 km. Above it, **a thin upper atmosphere now drags on registered orbits
