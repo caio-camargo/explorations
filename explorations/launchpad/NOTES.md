@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1855,6 +1855,47 @@ Slice 1 of § "Plan: missions in flight" (below).
 Test `space-8` (2 checks; mutations caught: moon reach ignored, no cruise entries, halt not held, `satsUp` including
 cruise entries). Test 40 updated: the two Selene orbits it refused (3 km periapsis, apoapsis past the SOI) are now in
 flight, still not satellites. Full suite 583 pass; `career.mjs` unchanged. TESTING row 168.
+## Why a company in a poor world stagnates (2026-10-09, economy session, QUEUE Q150; runner only, no game change)
+
+Re-measured on today's code (`SELENE=1 node career.mjs 4 3 base company`): after v1.77's floors and W11, a private
+company in a frugal world ends four years at **187M** (was 25M), a resource-world company at **64M**, while companies
+elsewhere end at 700–1,400M; funds sit flat (~72–75M) through years 1–2. **What it lacks is recurring income**: a
+company has no budget day, so it lives on contracts and firsts, and a poor world's work only just pays.
+
+**The game already offers the remedy:** a friendly power's **stake** (`decisionTick`: 15 % of the valuation in cash,
+plus a share of that power's budget days and its contracts), offered after the first first. The runner's scripted
+player declined everything but a rescue loan, so it never took one. With `ACCEPT=stake` (new runner switch) it accepts
+2–3 stakes in four years and the frugal company ends at **392M**, the resource company at **415M** (others 1.0–1.9 G).
+
+**Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
+partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
+conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
+
+POWERS.md's economy fan-out, in `sim/program.js` (after the archetypes) and `sim/contracts.js` (the race's news):
+- **A school per power** (`p.school`): drawn from its archetype's affinities (`SCHOOL_W`, POWERS.md's weights) with
+  **exactly the draw the look lane's `schoolOf` used** (`rng(WSEED·7907 + i·131 + 17)`), so every rocket keeps the look
+  it had; `schoolOf` (`app/gl.js`, one line) now reads `POWERS[i].school` first: one source of truth. A **resource
+  state** has none of its own: it takes its **contractor's**, the power whose alignment is nearest (`p.contractor`).
+  The superpowers' affinities don't overlap, so their schools differ; two powers sharing a school get hues 120° apart.
+- **Names from the school** (`SCHOOLS[k].syl`, syllable counts per school: Cape and Arsenal 1–2, Steppe and Coastal
+  2–3, Mountain 3, Isle 2) and **the form of government from the archetype** (`ARCH_FORMS`, with the new People's
+  Republic, Emirate, Sultanate and State), unique within the world, on their own seeded draws after the archetypes: the
+  world's places, economies and relations are unchanged, and the launch sites take the new roots (`extendSites` runs
+  after). This build's world: *Dunnzar Republic* (home, rising, Arsenal), *Asaro Commonwealth* (open superpower,
+  Coastal), *Mirtov Federation* (closed superpower, Steppe), *Republic of Dunndag* (rising, Arsenal), *Sultanate of
+  Natovtov* (resource state, Mirtov's Steppe). Names aren't saved, so old saves show the new names.
+- **Rivals' news by archetype** (`raceNews`, `RIVAL_WIN`): the open superpower **announces each attempt 30 days
+  ahead**; the closed superpower's attempts are preceded by **rumours from the open press** 10 days before, and its
+  wins come as a state bulletin; the others launch unannounced; each archetype wins in its own tone (live coverage; a
+  bulletin; "joins the front rank"; "on a shoestring"; "claims a world record"; a "satellite test"). The race's
+  schedule is unchanged (rising powers copying, frugal ones partnering: a later slice, with LATE_GAME round 7's rivals).
+
+**Not yet:** headline tone for the program's *own* news by archetype (mission control's voice); the home name doesn't
+follow a different archetype chosen at a career's start (the look does, as before); flags and roundels (flow, look).
+Test `econ-13` (4 checks; the announcements mutation-tested). Traps hit, again: a mid-line `//` comment in `gl.js`
+swallowed `const aff=` (the suite's page-parse check caught it), and an apostrophe in a heredoc ("People's").
 
 ## Plan: missions in flight (2026-10-09, space session, QUEUE Q49; plan only)
 

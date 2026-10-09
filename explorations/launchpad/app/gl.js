@@ -949,7 +949,7 @@ function partShape(out,p){
 const SCHOOL_IDS={cape:0,steppe:1},SCHOOL_AFF={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},
   rising:{arsenal:.4,mountain:.4,steppe:.2},frugal:{coastal:.5,mountain:.3,isle:.2},security:{arsenal:.6,steppe:.3,mountain:.1}};
 let SCHOOL_FORCE=null;
-function schoolOf(i){if(typeof POWERS==='undefined'||!POWERS[i])return 0;const aff=SCHOOL_AFF[typeof archOf==='function'?archOf(i):POWERS[i].arch];if(!aff)return 0;   // a resource state has none: its parts are its sellers'
+function schoolOf(i){if(typeof POWERS==='undefined'||!POWERS[i])return 0;if(POWERS[i].school&&!(i===0&&PROG.homeArch&&PROG.homeArch!==POWERS[0].arch))return SCHOOL_IDS[POWERS[i].school]??0;/* the SIM's school (economy, Q103): one source of truth */const aff=SCHOOL_AFF[typeof archOf==='function'?archOf(i):POWERS[i].arch];if(!aff)return 0;   // a resource state has none: its parts are its sellers'
   const R=rng(WSEED*7907+i*131+17),x=R()*Object.values(aff).reduce((a,b)=>a+b,0);let acc=0;for(const k in aff){acc+=aff[k];if(x<acc)return SCHOOL_IDS[k]??0}return 0}
 function partMaker(p){try{const src=typeof sourceOf==='function'&&p.d?sourceOf(p.d.base||p.d.key):null;return src&&src.how==='import'?src.from:HOME}catch(e){return 0}}
 function partSchool(p){if(SCHOOL_FORCE!=null)return SCHOOL_FORCE;return schoolOf(partMaker(p))}

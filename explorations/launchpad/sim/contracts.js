@@ -121,8 +121,17 @@ function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=nu
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;
-function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
-  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news(`${POWERS[r.i].name} gets there first: ${M.name.replace(/^Passenger: /,'')}!`,relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
+// rivals' news by archetype (QUEUE Q103, POWERS.md § archetypes): the open superpower announces its attempts in advance,
+// the closed one only after success (rumours from the open press first), the others never; each wins in its own tone
+const RIVAL_ANN={openSuper:30,closedSuper:-10},RIVAL_WIN={openSuper:(n,m)=>`Live on every channel: ${n} gets there first, ${m}!`,
+  closedSuper:(n,m)=>`${n} state bulletin: "${m}" accomplished as planned. A first in the world`,rising:(n,m)=>`${n} joins the front rank: ${m}, and first`,
+  frugal:(n,m)=>`${n} gets there first, on a shoestring: ${m}`,resource:(n,m)=>`${n} claims a world record: ${m}, the first`,
+  security:(n,m)=>`${n} reports a successful "satellite test". Observers say: ${m}, a first`};
+function raceNews(id,r){const a=POWERS[r.i].arch,d=RIVAL_ANN[a];if(d==null||PROG.done[id]||(PROG.raceAnn||{})[id])return;if(PROG.day<r.day-Math.abs(d))return;
+  (PROG.raceAnn=PROG.raceAnn||{})[id]=1;const M=MISSIONS.find(m=>m.id===id),nm=M.name.replace(/^Passenger: /,'');
+  HOOK.news(d>0?`${POWERS[r.i].name} announces an attempt at ${nm}, in about ${Math.max(1,Math.round(r.day-PROG.day))} days`:`Rumours from ${POWERS[r.i].root}: a probable attempt at ${nm} soon`,'warn')}
+function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const r=RIVALS[id];if(r&&PROG.raceLost[id]==null)raceNews(id,r);if(!r||PROG.done[id]||PROG.raceLost[id]!=null||PROG.day<r.day)continue;
+  PROG.raceLost[id]=r.i;const M=MISSIONS.find(m=>m.id===id);HOOK.news((RIVAL_WIN[POWERS[r.i].arch]||((n,m)=>`${n} gets there first: ${m}!`))(POWERS[r.i].name,M.name.replace(/^Passenger: /,'')),relOf(HOME,r.i)<0?'bad':'warn');if(relOf(HOME,r.i)<0)opAdd(HOME,-4*natK())}}
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}

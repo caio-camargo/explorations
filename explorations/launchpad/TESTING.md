@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.34 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.35 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -229,6 +229,7 @@ NOTES § "The robot playtester".
 | 149 | Climb back from the floor as a company in a poor world | New career, a *frugal* or *resource* world, private company; lose the first orbit attempt; Program → Contracts | Cheap offers (sounding, samples) still pay more than the flight nets; a taken contract you can no longer afford has *Withdraw* (standing drops as for a missed deadline) and frees the slot. You get back to orbit without waiting months. | v1.77 | economy |
 | 154 | Dispatch a flight whose procedure was flown abroad | Fly a satellite design to orbit by hand from a leased site abroad (Assembly's site picker), then take a satellite contract | The dispatch line's price includes the site's lease; the dispatched flight launches from that site (its weather scrubs it); if relations sour until the site is refused, the dispatch is stood down with the reason. | v1.77.1 | economy |
 | 163 | Watch a satellite fall behind, then service it | A TV satellite in the capital's sky; tester: skip to the next computing era; Program → Contracts | News: the satellite is a generation behind and earns 74 %; a *Service TV 1* offer appears (gov or commercial); fly a docking mission to it: the contract pays and the news says it's up to date. Is replacing it the better deal? | v1.80 | economy |
+| 168 | Meet the world's powers and their rivals' news | A new career: Program → the world section and the race; play until a rival's first | Names sound like their hardware school (Cape short and hard, Steppe long vowels, Coastal lilting, Mountain open syllables) and their archetype's government (a Federation or a People's Republic for the closed superpower, an Emirate or Sultanate for a resource state); the open superpower announces its attempts a month ahead; the closed one's are preceded by rumours; each rival's win reads in its own tone. Legible, or noise? | v1.89 | economy |
 
 ### UI & screens
 
