@@ -40,7 +40,7 @@ const KEYS={
     {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
-  map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite'},
+  map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
   rollout:[{k:['b'],l:'B',d:'back to Assembly',go:'assembly'},{l:'LAUNCH',d:'the button: checks, then the pad'}],
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Assembly: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
@@ -172,6 +172,10 @@ document.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset
 $('bLog3').onclick=()=>{toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')};
 
 
+// a click on a moon in the map: the landing site for this design's procedures that land there (they fly to it)
+function pickLandSite(m){const V=HOOK.view;if(!V)return;const d=norm(add(V.Fw,add(mul(V.R,(2*m[0]/V.W-1)*V.tanX),mul(V.U,(1-2*m[1]/V.H)*V.tanY)))),hit=surfacePick(V.camW,d,simT);if(!hit)return;
+  if(!procsOf(stackDef).some(pr=>procLandsOn(pr,hit.body))){HOOK.msg(`No procedure of this design lands on ${hit.body} yet: land there once by hand`);return}
+  landPick=hit;updateAutoBtn();HOOK.msg(`Landing site on ${hit.body}: ${sitePlace(hit.pf)} · ▶ Procedure lands there`)}
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
 const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*Math.min(devicePixelRatio||1,1.5);
@@ -183,7 +187,8 @@ cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX
 addEventListener('mouseup',e=>{
   if(!hDrag&&!nDrag&&downAt&&view==='map'&&mode==='flight'&&e.target===cv&&Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5){
     const st=(mapUI.sats||[]).find(x=>near(toCv(e),[x.x,x.y],9)),q=st?null:pickOrbit(toCv(e));if(st)setTarget(S.target===st.id?null:st.id);
-    if(q&&S.alive&&!S.landed&&!S.node&&!toolOK('nodes'))HOOK.msg(gateMsg('nodes'));
+    if(!st&&!q)pickLandSite(toCv(e));   // nothing else under the click: a point on a moon is a landing site (Q62)
+    else if(q&&S.alive&&!S.landed&&!S.node&&!toolOK('nodes'))HOOK.msg(gateMsg('nodes'));
     else if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
   drag=null;downAt=null;hDrag=null;nDrag=false});
 addEventListener('mousemove',e=>{
