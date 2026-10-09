@@ -15,6 +15,7 @@ function go(s){const from=screenNow();if(s===from)return;
   if(s==='map'&&mode!=='flight')return;
   if(from==='rover')rvLeave();
   atDeb=s==='debrief';
+  if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
@@ -55,15 +56,15 @@ function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}
     +sec('Everywhere',KEYS.all)+`<div class="sub" style="margin-top:6px">Careful: Ctrl+W closes the tab in most browsers — the page will ask first during a flight.</div>`}
 function toggleHelp(){if($('help').classList.contains('hidden'))renderHelp();ovToggle('help')}
 // Overlays stack: Esc closes the one opened last. Panels opened by their own buttons (the logbook's) still count.
-const OVS=['escm','help','logbook','tester'],OV=[];
-const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc();if(id==='tester')renderTester()},
+const OVS=['escm','help','logbook','tester','settings'],OV=[];
+const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.filter(x=>x!==id),id);if(id==='escm')renderEsc();if(id==='tester')renderTester();if(id==='settings')renderSettings()},
   ovClose=id=>{$(id).classList.add('hidden');const i=OV.indexOf(id);if(i>=0)OV.splice(i,1);if(id==='escm')escArm=null},
   ovToggle=id=>$(id).classList.contains('hidden')?ovOpen(id):ovClose(id),
   ovTop=()=>[...OV].reverse().find(id=>!$(id).classList.contains('hidden'))||OVS.find(id=>!$(id).classList.contains('hidden'));
 // The Esc menu. Leaving a flight that is still going asks twice: the second click is the confirmation.
 // It pauses the game (W5, QUEUE Q39): while it's open the frame loop skips the simulation (flight, warp, rover), the mix
 // goes quiet and the flight keys do nothing; closing it carries on where it was, at the same warp.
-const gamePaused=()=>!$('escm').classList.contains('hidden');
+const gamePaused=()=>!$('escm').classList.contains('hidden')||!$('settings').classList.contains('hidden');   // (Settings, opened from it, too)
 let escArm=null;
 const flying=()=>mode==='flight'&&S&&S.alive&&!S.landed;
 let perfOn=false;try{perfOn=localStorage.getItem('launchpad-perf')==='1'}catch(e){}
@@ -71,9 +72,7 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +(['assembly','rover','debrief'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+(TEST.on?b('tester','Tester menu  [F2]'):'')
-    +`<label><input type="checkbox" id="escPerf"${perfOn?' checked':''}> performance readout</label>`;
-  $('escPerf').onchange=e=>{perfOn=e.target.checked;document.body.classList.toggle('noperf',!perfOn);try{localStorage.setItem('launchpad-perf',perfOn?'1':'0')}catch(x){}}}
+    +(['assembly','rover','debrief'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
   if(d.go){go(d.go);return}
@@ -81,7 +80,7 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if((a==='revert'||a==='assembly'||a==='end')&&flying()&&escArm!==a){escArm=a;renderEsc();return}
   ovClose('escm');
   if(a==='revert')$('bRevert').click();else if(a==='assembly')go('assembly');else if(a==='end')go('debrief');else if(a==='tape')$('bSaveTape').click();else if(a==='program')go('program');
-  else if(a==='log'){ovClose('help');toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')}else if(a==='keys')toggleHelp();else if(a==='tester')ovOpen('tester')});
+  else if(a==='log'){ovClose('help');toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')}else if(a==='keys')toggleHelp();else if(a==='settings')ovOpen('settings');else if(a==='tester')ovOpen('tester')});
 // Keys every screen shares. Registered before builder.js's handler, so a part in hand (or selected) keeps Esc for itself.
 addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.target&&/INPUT|TEXTAREA|SELECT/.test(e.target.tagName))return;const k=e.key.toLowerCase();
   if(k==='escape'){if(screenNow()==='assembly'&&BLD.st&&(BLD.st.held||BLD.st.sel))return;const t=ovTop();if(t)ovClose(t);else ovOpen('escm')}
@@ -141,19 +140,22 @@ if(TEST.on){$('testerBadge').classList.remove('hidden');testTopUp()}   // (also 
 // progLayout() sorts its sections into tabs by their heading. A heading it doesn't know goes to "More", so a new section
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
-const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^(Offers|Coming up)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
+const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
   /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|On the surface|Rovers in the field)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;
   const box={gate:[]};for(const[k]of PROG_TABS)box[k]=[];let cur='more';
   const head=kids.shift();$('progHead').replaceChildren(head);
+  {const tp=document.createElement('template');tp.innerHTML=newsHTML();kids.push(...tp.content.children)}   // the news, last in the Inbox (Q99)
   for(const n of kids){if(n.classList.contains('ep'))cur=progTabOf(n.textContent.trim());
     if(n.id==='progReset')box.company.push(n);
     else if(n.querySelector('[data-dk]'))box.inbox.unshift(n);   // a decision with a deadline: first thing you see
     else if(cur==='inbox'&&/^Standing/.test(n.textContent))box.contracts.splice(1,0,n);
     else box[cur].push(n)}
   progGate=box.gate.length>0;progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
+  const nx=progGate?null:nextStep(),pn=$('progNext');pn.classList.toggle('hidden',!nx);   // what to do next (Q40), above the tabs
+  if(nx)pn.innerHTML=`<b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span>${nx.how?` <span class="acc">· try ${nx.how}</span>`:''}<button data-ptab="${nx.tab}">${PROG_TABS.find(t=>t[0]===nx.tab)[1]} ▸</button>`;
   $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);
   const body=$('progBody');body.classList.toggle('gate',progGate);
   if(progGate){$('progTabs').replaceChildren();body.replaceChildren(...box.gate)}

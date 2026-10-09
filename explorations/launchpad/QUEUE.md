@@ -92,15 +92,15 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q76 | PLAYTEST #26: `#msg` ("Mission complete") over the flight readout: give it a lane in `hudLayout()` (fails `playtest.mjs m1`) | M1 | S | 🖥 | ✓ `a25c119` (`msgLayout`) |
 | Q39 | **Esc pauses** in flight and on every screen (W5 default) | M1 | S | 🖥 | ✓ `a25c119` (robot m1: 0 s while paused) |
 | Q41 | **First-run:** each career choice explained in one sentence | M1 | S | 🖥 | ✓ `31cace4` |
-| Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | → flow 2026-10-08 |
-| Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | → flow 2026-10-08 |
+| Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
+| Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 | Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); build 4a after Caio reads it (W15) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ready |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
-| Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | → flow 2026-10-08 |
-| Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | ready |
+| Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | ✓ `f0133e4` |
+| Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | → flow 2026-10-08 |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | after Q31 |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
@@ -142,7 +142,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
-| Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | ready |
+| Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | → vehicle 2026-10-09 |
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M2 | M | ⚙ | after Q34a |
 | Q36 | Heat conduction between parts; heating from an engine's own plume (evergreen) | — | M | ⚙ | ready |
 | Q37 | Hypersonic capsule lift in the impact predictor (evergreen) | — | M | ⚙ | ready |
@@ -299,7 +299,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - space — Q51's plan (data + link budget) should include LATE_GAME 1.1.0 § "Comms": **contact gates automation** (a routine burns only in contact or within its computer's tier), solar conjunction, relays as nodes — LATE_GAME.md
 - vehicle — 📝 the **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths); **shielding gets a design review with Caio before it's built** — LATE_GAME.md § Habitats (M4+)
-- QA — robot drivers for the last undriven rows: 65 crew rotation, 115 Selene relay + far-side rover, 116 docking at Selene, 117 rover science (NOTES § Q30 slice 3) — Q30
+- QA — robot driver for the last undriven station row: 65 crew rotation (115, 116, 117 done: `e376452`, `44d97d1`) — Q30
 - vehicle — legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) — NOTES § v1.61
 - look & sound, parts & pad — draw the landing leg (folded and deployed; `app/gl.js` case `leg` is a placeholder) — NOTES § v1.61, TESTING 135
 - world — read NOTES § v1.61 "The contact model needed three fixes": `groundContact` now sizes each point by its effective mass and holds with stiction (anchors) — v1.61
