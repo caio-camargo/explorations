@@ -1,10 +1,13 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
 **How it relates to [`PLAYTEST.md`](PLAYTEST.md):** this list says *what to try*; PLAYTEST collects *what you noticed*. When a
 row turns up a problem, file it in PLAYTEST (symptom + lead) and point the row at it.
+
+**Playing it with presets only:** [`PLAYROUTE.md`](PLAYROUTE.md) puts every row you can reach without placing a part in
+seven sittings, the first hour first, and lists the rest (builder, docking, already judged by the robot).
 
 **Marking a row:** put the result in the `#` cell: `✓ 12` (fine), `✗ 12 → P#15` (problem, filed as PLAYTEST #15), or
 `~ 12` (tried, unsure; add a word in the row). Leave untried rows alone.

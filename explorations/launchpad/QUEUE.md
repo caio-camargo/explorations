@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,8 +13,8 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **D1 `SYSTEM.md`**, the star system's catalog | design desk + **Caio approves** | one work package per body across every lane (look, ground, orbits, missions, a tester cheat); M5; PLAYTEST #11/#12 |
-| 2 | **Q17** plasma blackout gated on airspeed | world (in progress) | Q20 (plasma shell), then Q29, the re-run that is **M0's finish line** |
-| 3 | **Q58** the split plan, then **W10** your freeze window | platform, then Caio | Q59 the file split: fewer merge conflicts for all eight lanes |
+| 2 | **Q20** plasma shell on `plasmaOn(s)` (Q17 ✓ `c227ed6`) | look & sound, effects (in progress) | Q29, the re-run that is **M0's finish line** |
+| 3 | **Q54** a presets-only playtest route for you | QA | W8, your hands-on pass: M1's human playtest |
 | 4 | **D2 `CREW.md`** art direction (pick from mock-ups) | design desk + a look session + Caio | crew visuals, EVA, crew-loss tone |
 | 5 | **Q3** UI slice 4 (plan first) | flow | Q43 watch mode, the gauges' final place, PLAYTEST #9 |
 
@@ -51,13 +51,18 @@ the feedback I paste into PLAYTEST items.*
 
 ## Flags (read before merging)
 
-- **Fixes landed** (`ae3d4aa`): `gsSees` now has `GS_NEAR` = 2 km, `go()` calls `flightLeave(S)`, `hudLayout()` runs on every
-  screen change, LAUNCH is a sticky footer (`#edFoot`). **Terrain (Q17):** merge `main` before you finish; you edit next to
-  `gsSees`. **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
-- **Q20 waits for Q17:** terrain is adding `PLASMA_V` / `plasmaOn(s)` next to `linkOf`. Aerofx: use that for the plasma
-  shell instead of a second threshold.
-- **Version numbers:** control took **v1.51** (and v1.51.1). Terrain's atlas is labelled v1.51 on its branch: **renumber to
-  v1.52 at merge.** Check the latest `## v1.N` on `origin/main` right before numbering.
+- **The file split landed** (`00e3e31`): the script is now `sim/*.js` and `app/*.js`. **Every branch: merge `main` before
+  your next edit**; a branch cut before the split re-applies its changes into the new files (NOTES § "The file split").
+- **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
+- **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
+  second threshold.
+- **Version numbers:** latest on `main` is v1.53 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
+  Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
+  **Effects:** after Q20, Q63 and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
+  Q21, Q24, Q66, Q67, then the look & sound evergreen list. Claim each item and keep to its beat's files.
+  **Flow:** Q3 is **plan only tonight** (default, Caio may override): write the plan in NOTES and don't build it. Take Q4
+  and Q62 next. **QA:** Q29 becomes ready as soon as Q20 is on `main`; it is M0's finish line, so it jumps the QA queue.
 - **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the
   space lane's M2 groundwork. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
 
@@ -73,13 +78,13 @@ A lane with nothing ready: take the top line of its **evergreen** list in ROADMA
 Worktree `launchpad-ui` (branch `ui`, port 8795).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | ready |
+| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | → flow 2026-10-08 |
 | Q39 | **Esc pauses** in flight and on every screen (W5 default) | M1 | S | 🖥 | ready |
 | Q41 | **First-run:** each career choice explained in one sentence | M1 | S | 🖥 | ready |
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ready |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ready |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | ready (plan first) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | ready (plan only tonight; build after Caio reads it) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ready |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -131,7 +136,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | done on branch `76bcdcf`; merge as **v1.52** |
-| Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | → terrain 2026-10-08 |
+| Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | ready |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ready (plan only) |
@@ -163,7 +168,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ready |
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | after Q42 |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ready |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ready |
 
@@ -172,12 +177,12 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q60 | **Standing role, playtest intake:** when Caio pastes raw feedback ("the gantry looks odd at night"), turn it into PLAYTEST items: symptom, a lead, a priority (P1–P3), an owner lane; one line per item under *Proposed* here; a TESTING row's `#` cell pointed at it if one applies. **No game code.** Never closes: start one whenever Caio has feedback | — | S | 📝 | standing |
-| Q54 | **A presets-only playtest route for Caio**: the TESTING rows he can reach by flying presets, in a sensible order, so he can play before the builder is fixed. **Top priority** | M1 | S | 📝 | ready |
+| Q54 | **A presets-only playtest route for Caio**: the TESTING rows he can reach by flying presets, in a sensible order, so he can play before the builder is fixed. **Top priority** | M1 | S | 📝 | ✓ [`PLAYROUTE.md`](PLAYROUTE.md) (seven sittings, the first hour first) |
 | Q55 | **The new-career robot run** (M1's finish line): first-run gate → first orbit → debrief, no tester flags. Written first, fails until M1 is done | M1 | M | 🖥🖥 | ready |
 | Q28 | `shot.mjs` on the RTX (`--force_high_performance_gpu`) | M0 | S | 🖥 | ready |
 | Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | ready |
 | Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | after Q17, Q20 merge (fixes and Q14 ✓) |
+| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | after Q20 merges (fixes, Q14, Q17 ✓) |
 | Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ready (plan first; run when few others are in the browser) |
 
 ### platform — file split, test speed, saves, perf (new)
@@ -188,6 +193,9 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | ready |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
 | Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | ✓ `00e3e31` (21 classic scripts in `sim/`, `app/`; NOTES § "The file split". **Everyone: merge `main` before your next edit**) |
+| Q68 | `test.mjs` into per-area files (`tests/*.mjs`, same runner and shards): every lane appends to it, the next conflict hotspot (NOTES § "The file split") | M1 | M | ⚙ | ready |
+| Q69 | Split `app/gl.js` (1,532 lines) by what it draws: setup, shaders, meshes, planet/sky, plume, pad | — | M | ⚙ | after Q20 (effects is in the shaders) |
+| Q70 | 📝 ES modules, one area at a time, once an area's cross-file names are few (ROADMAP § Platform step 4) | — | L | 📝 | ready (plan only) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
@@ -224,6 +232,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- platform — `test.mjs` into per-area files (`tests/*.mjs`, run by the same runner): 3,000 lines that every lane appends to, the next conflict hotspot after `index.html` — NOTES § "The file split"
-- platform — split `app/gl.js` (1,532 lines: setup, shaders, meshes, planet/sky/plume/pad drawing) by what it draws — NOTES § "The file split"
-- platform — ES modules, one area at a time, once an area's cross-file names are few (classic scripts for now: imported bindings are read-only) — ROADMAP § Platform step 4
+
+- vehicle — a **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder — PLAYROUTE § Not on this route
+- QA — once flow's Q2/Q39–Q41 land, ask Caio to replay PLAYROUTE sitting 1 (the M1 human pass; W8) — PLAYROUTE
