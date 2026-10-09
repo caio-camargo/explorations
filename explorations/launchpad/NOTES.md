@@ -7098,3 +7098,21 @@ together, row 62 stalled for minutes; alone it takes 49 s.
 The setups are §26, §30, §32 and §33, and the Program's Fleet tab is read after the flight is left. Everything works as
 specified (TESTING notes). Still undriven: 65 (crew rotation), 115/117 (relay and rover science on Selene), 116 (docking
 at Selene). Each needs a rover or crew set up on another body, and is the next driver if Q30 is extended.
+
+## The tester's "go to body" view (2026-10-08, QA session; QUEUE Q79)
+
+So the look items for SYSTEM.md's bodies (Q80–Q85) have something to paint before M5 puts the planets in the sky. Tester
+menu → **Go to body** (or `refView(200 + 3·i + k)`, i in `BODY_CAT` order, k 0/1/2 = near at 1.6 R, whole disc at 4.5 R,
+far at 30 R). ◀ ▶ change body, 1 2 3 change distance, drag turns the camera, Esc returns.
+
+**How.** `app/bodyview.js` (new, loaded last). `render()` hands it the frame while it's open (one line at the top), so
+`gl.js` isn't touched. One full-screen fragment shader ray-traces the body in body radii: an ellipsoid (flattening along
+the spin axis), the spin axis tilted about X, a ring annulus in the equatorial plane with the planet's shadow on it and
+its shadow on the clouds, latitude bands and a limb haze. `BODY_CAT` holds SYSTEM.md's radius and tilt for all 11 bodies,
+and test.mjs `qa-2` reads SYSTEM.md and checks them. **Placeholders:** Hyperion's flattening 0.08 (SYSTEM.md gives none;
+from its 3.3 h day), and every colour, band and haze value. Those belong to the look items. When a body gets a real look,
+it should move into the main renderer (or this shader), and its row here should stay the place its numbers come from
+until the space lane gives the catalogue a home in `sim/` at M5.
+
+**Not yet:** no ground detail, no moons beside their planet, no star in the frame, and one fixed sun direction (from the
+camera's right).
