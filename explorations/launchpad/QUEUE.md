@@ -56,7 +56,7 @@ the feedback I paste into PLAYTEST items.*
 - **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
-- **Version numbers:** latest on `main` is v1.53 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.55 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -253,7 +253,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W9~~ | ~~Edit the pillars~~ **answered 2026-10-08 (design desk)**: ROADMAP 1.5.0, eight pillars; 1 is now "pushing the boundary of what's possible" (the economy counts), 8 "an era, into the near future" is new, 7 tone is provisional | what sessions may turn down |
 | ~~W10~~ | ~~Pick a freeze window for the file split~~ answered 2026-10-08: Caio stopped all sessions; split done | Q59 ✓ |
 | W11 | **Defaulted 2026-10-08 (design desk; Caio silent, may override): yes, a mission counts only on a flight launched while it was open**, as W1's rule for nyxfind. Was: should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
-| ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; economy building it (→ economy 2026-10-08) | Q44's fix |
+| ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; ✓ v1.55 (`coverLoss`: the priciest rocket yet stands for the attempt; once per epoch) | Q44's fix |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - **✓ v1.54 (`5cdf43d`)** world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
@@ -261,7 +261,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - world — GROUND.md G3–G6: the march on Selene, shadows, consumers (with space for `landAt`), Nyx — 🖥, M3 — GROUND.md § Slices
 - world — GROUND.md G7+: per-planet ground items (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps), after G3 and Q79 — GROUND.md § The bodies
 - design desk / Caio — GROUND.md decisions: **all three defaults hold (2026-10-08, Caio silent when asked; may override)**: maria to the near side, G1–G2 before M3, relief in real metres — GROUND.md § Decisions
-- economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
 - economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
 - vehicle — **Q34a** onboard computer, solar panels (body cells + deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills — NOTES § "Vehicle parts" (⚙, M2)
 - vehicle — **Q34b** radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter — NOTES § "Vehicle parts" (⚙, M2–M3)

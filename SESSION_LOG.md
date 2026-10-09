@@ -3681,3 +3681,24 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 ### Next steps
 - [ ] World: G2, Selene's baked map plus crater bands on the CPU, maria moved to the near side (default held), `study_ground.mjs`
 - [ ] Not browser-checked: the camera clamp and shadow-plane edits are render code. They're neutral by construction (same values for every body today); QA's robot run will cover them
+
+## 2026-10-08 — Launchpad v1.55 economy: a failed first attempt is mostly covered (W12; economy session)
+
+### Summary
+- Caio answered W12 (option 1). `coverLoss` in `sim/program.js`: a lost flight on the priciest rocket yet (no first,
+  no contract, under a quarter refurbished) gets 75 % of its loss back from the sponsor, once per epoch (the newest
+  epoch with firsts open). Nothing in the game names a flight's target, so "priciest rocket yet" stands for the attempt.
+- `career.mjs`, one failed orbit attempt: flights to orbit 6–10 → 5–8, bailouts before orbit 1–4.6 → 0.2–2; poor-world
+  companies reach orbit in 4 of 5 runs (were 2–3). The rest is the poor-world grind (Proposed: pay floors by world).
+
+### Verification
+- New test `econ-1` (7 checks, mutation-tested); full suite passes in 4 processes after merging `main` (test.mjs
+  conflict with world's `ground-1`: both kept).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `career.mjs`, `NOTES.md` § v1.55, `TESTING.md` row 128, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 128 (lose your first orbit attempt: fair second chance or too soft?)
+- [ ] Economy: Q6 `siteAccess`; pay floors by world (Proposed)
+
