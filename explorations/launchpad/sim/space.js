@@ -517,19 +517,59 @@ const MOON_PE=5e3;   // how far above its highest ground (bodyTop) a moon's orbi
 const orbBody=q=>q.bodyName&&BODIES.find(b=>b.name===q.bodyName)||TELLUS;
 function moonSats(b){return(PROG.sats||[]).filter(q=>q.bodyName&&!q.landed&&!q.docked&&(!b||q.bodyName===b.name))}
 const orbitsAt=b=>b===TELLUS?satsUp():moonSats(b);   // registered orbiters about body b (what a flight there can meet)
+// one RK4 step of an orbit about B under its tides (pertAcc), in program time (ORB_T0 = 0)
+function tideRK4(B,r,v,t,h){const acc=(r,t)=>{const rl=len(r),a=mul(r,-B.mu/(rl*rl*rl)),p=pertAcc(B,r,t,false);return p?add(a,p):a};
+  const a1=acc(r,t),r2=add(r,mul(v,h/2)),v2=add(v,mul(a1,h/2)),a2=acc(r2,t+h/2),r3=add(r,mul(v2,h/2)),v3=add(v,mul(a2,h/2)),
+    a3=acc(r3,t+h/2),r4=add(r,mul(v3,h)),v4=add(v,mul(a3,h)),a4=acc(r4,t+h);
+  return[add(r,mul(add(add(v,mul(v2,2)),add(mul(v3,2),v4)),h/6)),add(v,mul(add(add(a1,mul(a2,2)),add(mul(a3,2),a4)),h/6))]}
 function moonOrbStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,t=q.epoch,out=null;   // program time: the moons' phase is ORB_T0 + t
-  const acc=(r,t)=>{const rl=len(r),a=mul(r,-B.mu/(rl*rl*rl)),p=pertAcc(B,r,t,false);return p?add(a,p):a};
+  const floor=B.R+(B.atm||0);   // Tellus's orbiters (only ones adrift, below) end in the air
   while(t<T1){const el=elements(r,v,B.mu);if(len(r)>soiAt(B,t)){out='soi';break}
     const h=Math.min(T1-t,600,el.e<1?el.period/120:600);
-    if(el.pe<B.R&&dot(r,v)<0){const nR=-Math.acos(clamp((el.p/B.R-1)/el.e,-1,1));if(el.nu>=nR||tPe(el,nR)-tPe(el,el.nu)<=h){out='ground';break}}   // inbound, and its path meets the ground within this step
-    const a1=acc(r,t),r2=add(r,mul(v,h/2)),v2=add(v,mul(a1,h/2)),a2=acc(r2,t+h/2),r3=add(r,mul(v2,h/2)),v3=add(v,mul(a2,h/2)),
-      a3=acc(r3,t+h/2),r4=add(r,mul(v3,h)),v4=add(v,mul(a3,h)),a4=acc(r4,t+h);
-    r=add(r,mul(add(add(v,mul(v2,2)),add(mul(v3,2),v4)),h/6));v=add(v,mul(add(add(a1,mul(a2,2)),add(mul(a3,2),a4)),h/6));t+=h}
+    if(el.pe<floor&&dot(r,v)<0){const nR=-Math.acos(clamp((el.p/floor-1)/el.e,-1,1));if(el.nu>=nR||tPe(el,nR)-tPe(el,el.nu)<=h){out='ground';break}}   // inbound, and its path meets the ground within this step
+    [r,v]=tideRK4(B,r,v,t,h);t+=h}
   if(out==='soi'){const[R0,V0]=bodyRel(B,t);r=add(r,R0);v=add(v,V0);if(B.parent===TELLUS)delete q.bodyName;else q.bodyName=B.parent.name}
   ORB_T0=o;q.r=r;q.v=v;q.epoch=t;
-  if(out==='ground'){const i=(PROG.sats||[]).indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(`${q.name} came down on ${B.name}: Tellus's pull stretched its orbit into the ground`,'bad')}
+  if(out==='ground'){const i=(PROG.sats||[]).indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(B===TELLUS?`${q.name} sank into the air and burned up: with nothing left to hold it, the moons' tides stretched its orbit down`:`${q.name} came down on ${B.name}: Tellus's pull stretched its orbit into the ground`,'bad')}
   if(out==='soi')HOOK.news(`${q.name} slipped out of ${B.name}'s pull and now orbits ${B.parent.name}`,'warn');return out}
-function moonOrbTick(T1){for(const q of moonSats())if(q.epoch<T1)moonOrbStep(q,T1)}
+// ---- station-keeping (space session, QUEUE Q50; ROADMAP W2). A satellite holds its orbit (its slot) by spending its own
+// propellant against the moons' tides, at a rate measured once for its orbit (slotRate; study_slot.mjs: ~0.03 m/s a day at
+// 1,000 km, ~0.3 at 3,000, ~0.4 stationary; NOTES § "Station-keeping"). Held, it stays on its exact Kepler rails. Dry, it
+// drifts: between flights the tide steps it as it steps every orbit about a moon, so whatever needed the slot (TV in the
+// capital's sky) stops by itself, and nothing is destroyed for running out. Orbits the flight treats as unperturbed
+// (pertNear), or so weakly that the drift is a few km a month (SK_MIN: low Tellus orbits), cost nothing and never drift. A flight that docks with it or flies it re-registers it:
+// a new slot, and its tanks as they are then.
+const SK_D=5,SK_MIN=0.1;   // days of tide a rate is measured over (secular drift; the wobble within an orbit averages out);
+// m/s a day below which the tide is ignored both ways (no cost, no drift): low orbits drift a few km a month (study_slot.mjs)
+function slotRate(q){if(q.skRate!=null)return q.skRate;const B=orbBody(q),el0=elements(q.r,q.v,B.mu);
+  if(!(el0.e<1)||!pertNear(B,el0))return q.skRate=0;
+  const o=ORB_T0;ORB_T0=0;const P=el0.period,h=Math.min(600,P/120),N=16;let r=q.r,v=q.v,t=q.epoch;const T1=t+SK_D*DAY_S;
+  while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}
+  let hv=[0,0,0],a=0,e=0;for(let k=0;k<N;k++){const x=elements(r,v,B.mu);hv=add(hv,mul(x.h,1/(x.hl*N)));a+=x.a/N;e+=x.e/N;for(let j=0;j<8;j++){[r,v]=tideRK4(B,r,v,t,P/N/8);t+=P/N/8}}   // one orbit's mean
+  ORB_T0=o;const vc=Math.sqrt(B.mu/el0.a),ang=Math.acos(clamp(dot(hv,el0.h)/(len(hv)*el0.hl),-1,1)),k=(vc*ang+vc/2*Math.abs(a-el0.a)/el0.a+vc/2*Math.abs(e-el0.e))/SK_D;   // plane + size + shape; phase is free
+  return q.skRate=k<SK_MIN?0:k}
+// what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
+const SK_GAS_ISP=PARTS.rcs.isp;
+function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV);if(d.kind==='rcs')rcs=true}
+  return[isp&&{k:'fuel',isp},rcs&&{k:'gas',isp:SK_GAS_ISP}].filter(Boolean)}
+// tonnes (entries keep their mass in kg; tanks hold tonnes)
+const skMass=q=>((q.mass||0)+(q.attached||[]).reduce((a,x)=>a+(x.e.mass||0),0))/1000,skAmt=(q,k)=>(q.shape||[]).reduce((a,o)=>a+(o.res&&o.res[k]||0),0);
+function skDv(q){let m=skMass(q),dv=0;for(const p of skProp(q)){const f=Math.min(skAmt(q,p.k),m*0.999);if(f>0){dv+=p.isp*G0*Math.log(m/(m-f));m-=f}}return dv}
+// spend dv m/s of station-keeping from its tanks; returns what it couldn't pay
+function skSpend(q,dv){for(const p of skProp(q)){if(!(dv>0))break;const m=skMass(q),have=skAmt(q,p.k);if(!(have>0))continue;
+  const can=p.isp*G0*Math.log(m/(m-Math.min(have,m*0.999))),use=Math.min(dv,can),dm=use>=can?have:m*(1-Math.exp(-use/(p.isp*G0)));
+  for(const o of q.shape)if(o.res&&o.res[p.k]>0)o.res[p.k]=Math.max(0,o.res[p.k]-dm*o.res[p.k]/have);q.mass-=dm*1000;dv-=use}
+  SAT_C.delete(q);return dv>1e-9?dv:0}
+const skLife=q=>{const k=slotRate(q);return q.adrift!=null?0:k>0?skDv(q)/k:Infinity};   // days it can still hold its orbit
+// between flights (advanceDays, program time T0 → T1): held orbits pay for the time; dry ones, and every orbit about a moon
+// with nothing to hold it, drift under the tides
+function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
+  if(q.adrift==null){const k=slotRate(q);
+    if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(!left)continue;
+      const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});
+      if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it drifts`,'warn')}   // (one that never had any just drifts)
+    else if(!q.bodyName)continue}   // nothing pulls it off its rails
+  if(q.epoch<T1)moonOrbStep(q,T1)}}
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}
