@@ -4480,6 +4480,35 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('our own first is announced in the home archetype\'s voice (frugal: the science desk)', news.some(t => /FIRST IN THE WORLD/.test(t) && /motorway bridge/.test(t)), news.find(t => /FIRST/.test(t)));
 }
 
+// space-9. Missions in flight, slice 2 (space session, QUEUE Q49): cruise events on the timeline, and "no silent
+// misses": entering a moon's sphere and the closest approach there stop time once per vessel and body; an atmosphere or
+// an impact course always stops it (an impact 3 h ahead, so it can be flown).
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,advanceTo,upcoming,cruiseEvents,cruiseSeen,predictFrom,elements,tPe,satAt,TELLUS,SELENE,PROG,HOOK,DAY_S,len,set ORB_T0(v){ORB_T0=v}};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, Sl = D.SELENE, R = T.R; D.ORB_T0 = 0;
+  const reg = (r, v) => { const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r, v }); D.satRegister(s, { day0: 0 }); return P.sats.at(-1); };
+  const reset = () => { P.sats = []; P.day = 0; news.length = 0; P.decisions = []; P.active = []; P.dispatch = []; };
+  const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
+  for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
+    if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
+  reset(); const q = reg(tr.r, tr.v), ev1 = D.upcoming().find(x => x.kind === 'cruise'), arr = tr.L[0].endT / D.DAY_S;
+  const st1 = D.advanceTo(arr + 20), day1 = P.day, ev2 = D.upcoming().find(x => x.kind === 'cruise'), st2 = D.advanceTo(arr + 20), day2 = P.day;
+  const [rq, vq] = D.satAt(q, day2 * D.DAY_S), eq = D.elements(rq, vq, Sl.mu), toPe = (D.tPe(eq, 0) - D.tPe(eq, eq.nu)) / D.DAY_S;
+  check('in flight: the arrival at Selene is on the timeline and stops time there; the next stop is the closest approach (or an impact warning) 3 h ahead',
+    ev1 && /enters Selene/.test(ev1.text) && ev1.stop && Math.abs(ev1.day - arr) < 1e-6 && st1 && st1.kind === 'cruise' && Math.abs(day1 - arr) < 1e-3 && q.bodyName === 'Selene' && q.seen && q.seen['enc:Selene'] &&
+    ev2 && ev2.stop && /capture burn|strike/.test(ev2.text) && st2 && st2.kind === 'cruise' && day2 > day1 && (!/capture burn/.test(ev2.text) || Math.abs(toPe - 3 / 24) < 0.01),
+    `listed: ${ev1 ? ev1.text + ' (day ' + ev1.day.toFixed(2) + ')' : '—'}; stopped on day ${day1.toFixed(3)}; next: ${ev2 ? ev2.text : '—'}, stopped on day ${day2.toFixed(3)}, ${(toPe * 24).toFixed(2)} h before periapsis`);
+  // seen once: the same kind of stop for that body doesn't stop time again
+  const evs = D.cruiseEvents(P.day * D.DAY_S), again = evs.find(x => x.key), seenOK = !again || (D.cruiseSeen(again), !D.cruiseEvents(P.day * D.DAY_S).find(x => x.key === again.key && x.stop));
+  // a return to Tellus stops at the top of the air
+  reset(); const ra = R + 5000e3, rp = R + 50e3, aa = (ra + rp) / 2, va = Math.sqrt(T.mu * (2 / ra - 1 / aa)), qr = reg([ra, 0, 0], [0, 0, -va]);
+  const ea = D.upcoming().find(x => x.kind === 'cruise'), sta = D.advanceTo(5);
+  check('in flight: a stop seen once is shown but doesn’t stop time again; a return stops at the top of the air, where it waits',
+    seenOK && ea && /reaches Tellus's air/.test(ea.text) && ea.stop && sta && sta.kind === 'cruise' && qr.halt && Math.abs(P.day - ea.day) < 1e-3,
+    `return: ${ea ? ea.text + ' on day ' + ea.day.toFixed(3) : '—'}; stopped on day ${P.day.toFixed(3)}, halted ${!!qr.halt}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

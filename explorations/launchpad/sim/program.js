@@ -529,6 +529,7 @@ function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(da
   const nx=COMP_ERAS[compEra()+1];if(nx)add(D+(nx.yr-compYear())*YEAR_D,'era',`${nx.name} reach the program`);
   for(const c of PROG.active||[])if(c.deadline!=null)add(c.deadline-1,'deadline',`One day left: ${cTitle(c)}`,true);
   for(const d of PROG.decisions||[])if(d.expires!=null)add(d.expires-1,'decision',`One day left to decide: ${d.title||d.kind}`,true);
+  for(const c of cruiseEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'cruise',text:c.text,stop:!!c.stop,cruise:c});   // space Q49: missions in flight
   return E.sort((a,b)=>a.day-b.day)}
 const nextEvent=()=>upcoming()[0]||null;
 // advance the calendar to a day (or the next event), stopping early at an event that needs you or a new decision
@@ -536,7 +537,7 @@ function advanceTo(day){if(devWaiting().length)return{kind:'deviation',text:'A d
   while(PROG.day<day-1e-9&&guard++<500){const e=nextEvent(),to=e&&e.day<day?e.day:day;advanceDays(to-PROG.day+1e-9);   // (a hair past, so the event's own tick fires)
     if((PROG.decisions||[]).length>n0){stopped={kind:'decision',text:'A decision is waiting'};break}
     if(devWaiting().length){stopped={kind:'deviation',text:'A dispatched flight needs you'};break}
-    if(e&&e.day<day&&e.stop){stopped=e;break}}
+    if(e&&e.day<day&&e.stop){stopped=e;if(e.cruise)cruiseSeen(e.cruise);break}}
   HOOK.save();return stopped}
 function timelineHTML(){const E=upcoming().slice(0,8),W=devWaiting();if(!E.length&&!W.length)return'';
   const need=W.map(D=>`<b class="bad">⚠ ${D.title}: ${D.dev.why}.</b> <button data-devtake="${D.id}">Take control</button> <button data-devlose="${D.id}">Let it go</button>`).join('<br>');

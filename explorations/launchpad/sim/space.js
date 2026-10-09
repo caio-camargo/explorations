@@ -192,6 +192,22 @@ function cruiseStep(q,T1){const o=ORB_T0;ORB_T0=0;let guard=0;
     const B2=orbBody(q),e2=elements(q.r,q.v,B2.mu);
     if(settled(B2,e2)){delete q.cruise;q.skRate=null;HOOK.news(`${q.name} has settled into an orbit around ${B2.name} (${kmS(e2.pe-B2.R)}–${kmS(e2.ap-B2.R)} km)`,'ok');return}}}
   finally{ORB_T0=o}}
+// ---- missions in flight, slice 2 (Q49): cruise events on the timeline (economy's upcoming()). "No silent misses"
+// (LATE_GAME § "Keeping flight in play"): reaching an atmosphere or an impact course always stops time (an impact
+// CRUISE_LEAD ahead, so there's time to fly it); entering a moon's sphere, and the closest approach there (CRUISE_LEAD
+// ahead: the moment for a capture burn), stop it once per vessel and body (q.seen), then only show.
+const CRUISE_LEAD=3/24;   // days
+function cruiseEvents(T){const out=[],o=ORB_T0;ORB_T0=0;
+  try{for(const q of PROG.sats||[]){if(!q.cruise||q.halt||q.docked)continue;const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,fl=B.R+(B.atm||0),seen=q.seen||{};let ev=null;
+      if(el.pe<fl&&!(el.hl<1e-3)){const nuF=-Math.acos(clamp((el.p/fl-1)/el.e,-1,1)),dt=dot(r,v)<0||el.e>=1?tPe(el,nuF)-tPe(el,el.nu):timeToNu(el,nuF);
+        if(dt>=0&&!(L.endKind&&L.endT<T+dt))ev=B.atm?{t:T+dt,text:`${q.name} reaches ${B.name}'s air`,stop:true}:{t:Math.max(T,T+dt-CRUISE_LEAD*DAY_S),text:`${q.name} will strike ${B.name} unless it's flown`,stop:true}}
+      if(!ev&&L.endKind==='enc'){const c=B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01);if(c)ev={t:L.endT,text:`${q.name} enters ${c.name}'s sphere of influence`,key:'enc:'+c.name}}
+      if(!ev&&B.parent&&(el.e<1||dot(r,v)<0)){const dt=el.e<1?timeToNu(el,0):tPe(el,0)-tPe(el,el.nu);
+        if(dt>0&&!(L.endKind&&L.endT<T+dt))ev={t:Math.max(T,T+dt-CRUISE_LEAD*DAY_S),text:`${q.name} passes ${kmS(el.pe-B.R)} km above ${B.name}: the moment for a capture burn`,key:'pe:'+B.name}}
+      if(ev){if(ev.key)ev.stop=!seen[ev.key];out.push({...ev,id:q.id,day:ev.t/DAY_S})}}}
+  finally{ORB_T0=o}return out}
+// a stop at a cruise event is seen: it won't stop time again for that vessel and body (advanceTo calls this)
+function cruiseSeen(ev){const q=(PROG.sats||[]).find(x=>x.id===ev.id);if(q&&ev.key)(q.seen=q.seen||{})[ev.key]=1}
 // what a cruise entry is doing next, for lists: {text, days} (program time T)
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;
