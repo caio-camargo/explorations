@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -7529,6 +7529,22 @@ screen, below, plus a compact copy in the Fleet tab.
   the registry, the dispatch queue, `padsN` and `upcoming`. **Economy:** when `netModel` lands, its `fleet` and `pads`
   replace the fallback with no change here; delete `netFallback` then.
 - Not yet (N2–N4): the schematic of nodes and routes, goods, the bottleneck line, the compact copy in the Fleet tab.
+
+### `netModel()` built (2026-10-09, economy session, QUEUE Q154; v1.89.1)
+The network screen's one SIM function, in `sim/program.js` beside dispatch, in the plan's shape
+`{nodes, routes, bottleneck, fleet, pads}`:
+- **fleet** and **pads**: exactly what `netFallback` built (registered craft with their next event; queued dispatches;
+  each pad's bookings), plus **dispatches waiting for you** after a deviation ("needs you: …", time 0, so first).
+  The screen already prefers `netModel()` (`netData`), so it switched over with no change. **Flow:** `netFallback` can
+  go now, as your note says.
+- **nodes** (N2's groundwork, today's things): our launch sites, ground stations, every registered craft by body and
+  slot (`surface`, or the orbit band: `low` under 2,000 km, `high`, `stationary` past 20,000 km), stations and bases
+  (a base's members fold into it) with **stock and need** in kg of supplies, days left, and `paused` (adrift, or out
+  of supplies).
+- **routes**: empty until routines exist (N3).
+- **bottleneck**: the crewed node with the fewest days of supplies once under 30 ("Selene Base 1 has 10 days of supplies
+  left"); the largest-shortfall rule across goods comes with routes.
+Test `econ-14` (3 checks; the bottleneck mutation-tested).
 
 ---
 

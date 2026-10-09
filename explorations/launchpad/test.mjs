@@ -4412,6 +4412,30 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `Selene ${sel.L ? (sel.L.v.p / 60).toFixed(1) + ' min' : '—'} (logged while burning: ${sel.burning}); Tellus ${tel.L ? (tel.L.v.p / 60).toFixed(1) + ' min' : '—'} (while burning: ${tel.burning})`);
 }
 
+// econ-14. The network screen's model (economy session, QUEUE Q154): netModel() gives the screen its fleet and pads (as
+// flow's fallback did), today's nodes with stock and need, no routes yet, and the bottleneck (the crewed node shortest of
+// supplies). The screen reads it and computes nothing.
+{
+  const D = new Function(src + 'return {netModel,padsN,TELLUS,SELENE,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, fac: {}, stations: [] }); D.chooseStart('agency');
+  const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0), u = [-1, 0, 0].map(x => x * D.SELENE.R);
+  const sat = { id: 41, name: 'Lookout 1', cam: 1, ant: 1, r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [] };
+  const base = { id: 42, name: 'Selene Base 1', landed: true, beacon: true, bodyName: 'Selene', pf: u, ql: [0, 0, 0, 1], shape: [{ k: 'hab', crew: 2, res: { sup: 0.1 } }], pending: [], imgs: 0 };
+  P.sats = [sat, base];
+  P.dispatch = [{ id: 1, title: 'Supply run to Selene Base 1', base: 42, stack: ['sci', 't8', 'kestrel'], pad: 0, launch: 140, ordered: 100, status: 'queued' },
+    { id: 2, title: 'Dispatched: a satellite contract', cid: 9, stack: ['sci', 't8', 'kestrel'], pad: 0, launch: 90, status: 'deviated', dev: { why: 'the upper stage failed to relight' } }];
+  const M = D.netModel(), bn = M.nodes.find(n => n.id === 'reg:42'), sn = M.nodes.find(n => n.id === 'reg:41');
+  check('network model: fleet (craft, queued and deviated dispatches) and the pads\' bookings, as the screen draws them',
+    M.fleet.length === 4 && M.fleet.some(f => /needs you/.test(f.next)) && M.pads.length === D.padsN() && M.pads[0].bars.length === 1 && M.pads[0].bars[0].to === 140 && Array.isArray(M.routes) && !M.routes.length,
+    M.fleet.map(f => `${f.name}: ${f.next}`).join(' · '));
+  check('network model: nodes for our sites, the satellite by orbit band, the base with its stock and need; the bottleneck names it',
+    M.nodes.some(n => n.kind === 'site') && sn && sn.slot === 'low' && bn && bn.kind === 'base' && bn.stock.supplies === 100 && bn.need.supplies === 10 && Math.round(bn.days) === 10
+    && M.bottleneck && M.bottleneck.node === 'reg:42' && /10 days of supplies/.test(M.bottleneck.text), M.bottleneck ? M.bottleneck.text : 'no bottleneck');
+  const N = readFileSync(new URL('./app/network.js', import.meta.url), 'utf8');
+  check('network model: the screen reads netModel() when it exists', /typeof netModel==='function'\?netModel\(\)/.test(N));
+}
+
 // space-8. Missions in flight, slice 1 (space session, QUEUE Q49): a vessel still coasting above the air at flight end
 // that isn't in a lasting orbit becomes a cruise entry, carried between flights leg by leg as the predictor sees it.
 {
