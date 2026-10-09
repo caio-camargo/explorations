@@ -1,6 +1,6 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: draft, ready to play
-**Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the eleven presets**, so Caio can play before
+**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: draft, ready to play
+**Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the presets** (fourteen since the Beeper, Passenger Orbiter and Docking were added), so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
 
@@ -10,17 +10,19 @@ TESTING rows. The rows hold the full "looks right if" text. This file is only th
   has already measured a row (`(robot)` in TESTING), that row is listed only when it says *needs a human*.
 - **Marking:** put the result in the row's `#` cell in TESTING.md: `✓ n`, `~ n` plus a word, or `✗ n → P#…`. Or just
   tell the playtest intake session what you noticed ("you are the playtest feedback session"), and it files the items.
-- Sitting 1 is the one M1 is about. Do it first, and **again** once flow's M1 items land (Q39 Esc pause,
-  Q40 next contract, Q41 first-run sentences; the Debrief, Q2, has landed). The other sittings can go in any order. Each one says how long it takes.
+- Sitting 1 is the one M1 is about. **The robot's half of M1 passes** (2026-10-09: `playtest.mjs m1`, a new career to
+  the beeper on presets with Esc pause, Debriefs and no overlapping boxes), so a person's first hour is what's left. Do
+  it first. The other sittings can go in any order. Each one says how long it takes.
 
 **Where to play:** <https://caio-camargo.github.io/explorations/explorations/launchpad/index.html> (what's on `main`), or
 locally `python -m http.server 8799 --directory C:/Users/caioa/dev/explorations/explorations` and
-`http://localhost:8799/launchpad/index.html`. Add **`?tester`** for sittings 2–7. The tester has its own save and never
+`http://localhost:8799/launchpad/index.html`. Add **`?tester`** for sittings 2–8. The tester has its own save and never
 touches the career.
 
-**Tester setup (sittings 2–7), once:** F2 → *Infinite money*, *Full know-how*, *All tools*, *No ignition failures*,
+**Tester setup (sittings 2–8), once:** F2 → *Infinite money*, *Full know-how*, *All tools*, *No ignition failures*,
 *Instant stacking* on. Esc menu → perf readout on. Click once on the page and press F4 for sound. While you're in the
-menu, try each control once (row **100**, robot ✓; it's on W8's list).
+menu, try each control once (row **100**, robot ✓; it's on W8's list), and the newer ones: go to a day, set funds, era
+skip, mission ticks (row 126).
 
 ---
 
@@ -30,13 +32,14 @@ Plain URL, no `?tester`. If you have a career save, play it in a private window 
 
 | Step | Do | Rows |
 |---|---|---|
-| 1 | Start a career: read "Whose program?" / "How does it start?" as if you'd never seen them | 75 (robot ✓: here it's about whether you *understand* the choices) |
+| 1 | Start a career: read "Whose program?" / "How does it start?" as if you'd never seen them; meet the world's powers | 75 (robot ✓: here it's about whether you *understand* the choices), **137**, 173 |
 | 2 | Look round the Program tabs and the contract board; take one or two contracts | 79 (*needs a human: rewarding*), 99 |
-| 3 | BUILD → preset **Sounding** → read the cost line and the Δv table, ROLL OUT, LAUNCH. Watch the know-how and the logbook after you land | 23, 22, 84 |
+| 3 | BUILD → preset **Sounding** → read the cost line and the Δv table, ROLL OUT (read its checks), LAUNCH. Watch the know-how and the logbook after you land | 23, 22, 84, **157**, 152 |
 | 4 | **Passenger**, then **Hopper** hops. Fly with ignition failures on (that's the career default) | 15, 9 |
 | 5 | **Beeper** to orbit for *The beeper*, then **Passenger Orbiter**: once round and home for *Passenger: one orbit* (both v1.73 presets, the Orbiter's launcher with the payload in the pod's place). Gyro-era SAS (Stability + pitch keys only). Count the tries | **1**, **101**, 147 |
-| 6 | Between launches: the stacking days, "Coming up", Wait | 78, 91 |
-| 7 | End flights three ways (land, crash, end in orbit; ☰ → End flight in orbit). Read the Debrief each time: can you tell what you earned or lost? | **97**, **127** |
+| 6 | Between launches: the stacking days, "Coming up", Wait; follow the NEXT line; read the Inbox's news | 78, 91, **156**, 141 |
+| 7 | End flights three ways (land, crash, end in orbit; ☰ → End flight in orbit). Read the Debrief each time: can you tell what you earned or lost? Esc mid-flight on one of them; reload the page once and open *Last flight* | **97**, **127**, 136, 172 |
+| 7b | ☰ → Settings: sound, quality, readouts; reload | 155 |
 | 8 | Overall: where were you stuck, where were you bored, did the money feel tight but fair? | 76 |
 
 **The first-orbit missions can be flown on presets** since v1.73 (PLAYTEST #24): the Beeper reaches orbit with ~1.5 km/s
@@ -59,6 +62,7 @@ written in PLAYTEST").
 | 7 | Picker → **Sea Platform**; orbit the camera round the pad. Silly or fine? | **27** |
 | 8 | Program header → **Rover yard**, the default rover: ramps, side slopes, trainer mode | **34** |
 | 9 | Map (M), C for the atlas: biomes, borders, hover over places | 123, 124 |
+| 10 | **Hopper** or **Sounding** low over a pole | 146 |
 
 ## Sitting 3 — big rockets and the ascent (tester, ~30 min)
 
@@ -69,7 +73,8 @@ written in PLAYTEST").
 | 3 | **Heavy** at night on the pad, perf readout on: still playable? | **47**, 40 |
 | 4 | **Lunar**: hand-fly with SAS off, then on; then yank it hard at max-q (W for 3–4 s around 15–25 kPa) | 107, **3** |
 | 5 | Any flight: how do the controls, zoom and frame rate feel? | **2** |
-| 6 | Sound on: a launch, staging, a chute, a crash | **114** |
+| 6 | Sound on: a launch, staging, a chute, a crash; each engine (Sounding, Heavy, a Wren lander); an entry and boosters falling away | **114**, 158, 159 |
+| 6b | **Orbiter** climb, camera low behind the engine: the bell swivels under SAS | 150 |
 | 7 | Some quick refView looks, if you want them (TESTING header says how): 4–9 parts, 30–36 plumes | 35 |
 
 ## Sitting 4 — Orbiter in orbit and home again (tester, ~30 min)
@@ -83,6 +88,8 @@ written in PLAYTEST").
 | 5 | Retro burn, the bare pod home from low orbit: are the heat readouts easy to follow? | **8** (low-orbit half) |
 | 6 | On the pad: ▶ Autopilot, press a key midway. Is taking over seamless? | **11** (*needs a human*) |
 | 7 | Next flight: ▶ Procedure. Then hand-fly a better ascent and look for the news line | **12** |
+| 8 | From orbit, note the galaxy band; later, after a Fresh sandbox, look again | 151 |
+| 9 | Stage in orbit so a spent stage stays up; end the flight and find it in the Program | 148 |
 
 ## Sitting 5 — Selene (tester epoch 4, ~90 min, can split)
 
@@ -94,7 +101,8 @@ written in PLAYTEST").
 | 4 | **Big Lunar** or **Sample Return** home, shield first: does the shield clearly matter? | **8** (Selene half), 68 (sample return) |
 | 5 | **Crewed Lunar** on the pad: Backspace at the pad, then again at ≥ 15 kPa | **70**, 108 |
 | 6 | **Crewed Lunar** to Selene and back by hand, in one sitting | **71** |
-| 7 | On the pad afterwards: ▶ the "Selene land" procedure, and the re-fly to the spot you landed on | 13, 125 |
+| 7 | On the pad afterwards: ▶ the "Selene land" procedure, and the re-fly to the spot you landed on; then M, Tab to Selene, click a crater and ▶ Procedure | 13, 125, **166** |
+| 8 | **Probe** on a Selene transfer: chain two nodes (N, N, ◀ ▶ in the node panel); End flight while it coasts and watch it arrive under Program → Fleet → *In flight* | **167**, 168 |
 
 ## Sitting 6 — satellites, contracts, Nyx (tester, ~60 min)
 
@@ -113,6 +121,9 @@ contracts complete during the flight, so a low reconnaissance orbit still pays; 
 | 5 | Orbit near a saved satellite (diamond marker; one parked above ~250 km in an earlier flight, so it's still up) and fly past it; G to target, close the distance | 49, 56 |
 | 6 | Epoch 4: the far-side flight shouldn't find Nyx; a **Probe** to ~25,000 km should weigh it in 12 h. Is the reveal a payoff? | **72**, **121** |
 | 7 | Epoch 5: look at Nyx from the ground and from space; a prograde and a retrograde orbit round it; land under 3 m/s | 49, **55**, **73** |
+| 8 | **Beeper** in the Assembly: its Lifetime line, before and after accepting a satellite contract | 165 |
+| 9 | Program → Network [N] with satellites up and a dispatch booked; skip to the next computing era and service a TV satellite that falls behind | 164, 163 |
+| 10 | A **Beeper** flown by hand from a leased site abroad, then a satellite contract dispatched on it | 154 |
 
 ## Sitting 7 — the program with the tester (~30 min, no flying)
 
@@ -126,13 +137,29 @@ contracts complete during the flight, so a low reconnaissance orbit still pays; 
 | 6 | Logbook (F): a record, Copy this design, LOAD DESIGN, fly its tape | 53 |
 | 7 | Builder panels, reading only: the Control block on Orbiter, Heavy, Sounding, Passenger, Lunar; the eras arriving with date jumps (*All tools* off) | **106**, **102** |
 | 8 | Two to three in-game years of flights and date jumps: neither broke nor drowning? | 89 |
+| 9 | A Fresh sandbox as a company in a frugal or resource world: lose the first orbit attempt (set funds low), then read the offers | 149 |
+| 10 | Tester → Go to body: each SYSTEM.md body at three distances (shapes, not colours) | 138 |
+
+## Sitting 8 — docking on the Docking preset (tester, ~40 min)
+
+The **Docking** preset (a probe core with a port, RCS and gas on an Orbiter-class launcher) puts the docking rows on the
+presets-only route. The robot docks in about 3½ minutes from 50 m (rows 59, 116); this sitting is about whether a person can.
+
+| Step | Do | Rows |
+|---|---|---|
+| 1 | Launch a **Docking** to ~250 km and leave it there (End flight) | 160 |
+| 2 | Launch a second; G to target the first; close in with RCS (V on; I/K, J/L, U/O); watch the gas Δv row | **58**, **56** |
+| 3 | Docking SAS from ~50 m, the Port and Line up rows; latch; then undock | **59**, 60, 160 |
+| 4 | Undocked and close by: is the HUD still readable with RCS, a target and two vessels? ] / [ to switch | 98, 62 |
 
 ---
 
 ## Not on this route
 
-- **Need the builder** (after the vehicle lane's newcomer pass, ROADMAP M1): 4, 14, 17–21, 24, 105, 118.
-- **Need docking ports or RCS, which no preset has**: 58–67, 98, 116. Rover science on Selene needs a built rover: 115, 117.
+- **Need the builder** (after the vehicle lane's newcomer pass, ROADMAP M1): 4, 14, 17–21, 24, 105, 118, and the newer
+  part rows 144, 153, 161 (power, legs, RTG).
+- **Need a built station, bay, claw, arm, base or rover** (two Dockings are not a station): 60's claw half, 61, 63–67,
+  169–171, 116 (the Docking hasn't the Δv for Selene), 115, 117, 142, 143, 145.
 - **Can't be reached**: 29 (the only downrange warning is on a foreign site you can't launch from).
 - **The robot already judged them, and they need no human feel** (glance at them as they come up): 5, 6, 25, 26, 28, 36–44,
-  46, 48, 51, 52, 77, 84, 85, 87, 88, 90, 95, 96, 100, 107–110.
+  46, 48, 51, 52, 61, 62, 77, 84, 85, 87, 88, 90, 92, 95, 96, 98, 100, 107–110, 115, 122, 125.
