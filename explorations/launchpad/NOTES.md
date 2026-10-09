@@ -1479,7 +1479,6 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
-<<<<<<< HEAD
 ## v1.75 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
 Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
@@ -1500,7 +1499,7 @@ orbit is reached, upper stages left in orbit, and anything dropped on the way to
 
 Test `space-3` (3 checks; mutations caught: never noted, no orbit check, loud re-entry, no size floor, any flight's
 pieces). Full suite passes. TESTING row 148. Next: slice 2, conjunctions between flights (active entries only).
-=======
+
 ## v1.74 — staged pay only for missions flown for; supply runs wait for onboard computers (2026-10-09, economy session, Q112, D7)
 
 - **Staged pay (QUEUE Q112, PLAYTEST #28).** A probe parked at Nyx collected the first two shares (20 % + 20 %) of
@@ -1512,7 +1511,6 @@ pieces). Full suite passes. TESTING row 148. Next: slice 2, conjunctions between
 - **Supply runs follow the automation ladder (D7, Caio: option a).** MIDGAME.md: uncrewed runs to the moons arrive
   with onboard computers. `baseRunQuote` refuses before that era (`BASE_ERA`): "needs onboard computers". `econ-7`
   now checks the refusal and moves the date to the era (day ~3,010 in its world) before flying the run.
->>>>>>> origin/main
 
 ## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
 
