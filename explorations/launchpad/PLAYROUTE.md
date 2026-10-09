@@ -1,5 +1,5 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: draft, ready to play
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: draft, ready to play
 **Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the eleven presets**, so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
@@ -38,6 +38,10 @@ Plain URL, no `?tester`. If you have a career save, play it in a private window 
 | 6 | Between launches: the stacking days, "Coming up", Wait | 78, 91 |
 | 7 | End flights three ways (land, crash, end in orbit). After each, can you tell what you earned or lost? | **97** |
 | 8 | Overall: where were you stuck, where were you bored, did the money feel tight but fair? | 76 |
+
+**Until PLAYTEST #24 lands, no preset completes the first-orbit missions** (the beeper needs an instrument package in
+orbit, the passenger orbit a biocapsule). Step 5's orbit still counts as your first orbit, but the career stays in epoch 1:
+judge the flying, not the progress. Once a *Beeper* preset exists, fly it in step 5 instead.
 
 Write the answer to step 8 down even if it's one line. It's M1's finish line ("where they got stuck or bored is
 written in PLAYTEST").

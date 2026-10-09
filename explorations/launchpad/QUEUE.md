@@ -243,3 +243,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 - vehicle — a **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder — PLAYROUTE § Not on this route
 - QA — once flow's Q2/Q39–Q41 land, ask Caio to replay PLAYROUTE sitting 1 (the M1 human pass; W8) — PLAYROUTE
+- vehicle — PLAYTEST #24 (P1): Beeper and Passenger Orbiter presets (Orbiter with `sci` / `bio` for `pod`); unblocks the presets-only first hour — PLAYTEST #24
+- flow — PLAYTEST #25: the builder key strip overlaps both assembly panels at 1280×800 — PLAYTEST #25
+- flow — PLAYTEST #26: `#msg` ("Mission complete") over the flight readout; give it a lane in `hudLayout()` — PLAYTEST #26
+- vehicle — PLAYTEST #27: `builder.js` `overlay()` draws NaN% joint labels on the Program screen after a flight (missing `atHQ` check) — PLAYTEST #27
