@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -186,7 +186,7 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 |---|---|---|---|---|
 | G1 | ✓ **built** (v1.54, NOTES § v1.54) — **The layer, no new relief.** `b.ground`, `bodyH`, the dispatch in `groundAlt`/`groundR`/`terrainSlope`/`groundNormal`, per-body `TERR_TOP` and `MOON_PE`, camera clamp, shadow plane (`surfaceAt` moved to G2: recipes get their own surfaces). Selene and Nyx return 0. | M | ⚙ | the whole suite passes unchanged (proof the dispatch is neutral) |
 | G2 | ✓ **built** (v1.58, NOTES § v1.58; `geoAt` reading the bake moves to G3, with the shader) — **Selene's map and craters on the CPU.** The baked map (basins, maria flooded from the baked mare mask), the crater bands, `geoAt` on the bake (test §42 retargeted). A Node study, `study_ground.mjs`: crater counts against N(>D), slope histograms per unit, relief range, flat-site share, the polar dark area. | M | ⚙ | the numbers behind every parameter, before any pixel |
-| G3 | **The march on Selene.** The march generalised (body uniforms, the recipe as a compile-time define), Selene's program, its colour through the `groundCol` hook (today's albedo and maria). `terrainProbe` per body; `gpuMs` at fixed views: lander at 2 m, rover, 1 km, 20 km, low orbit. | L | 🖥 | CPU/GPU agreement in mm near the camera; a frame budget (target: Tellus's pad view or better) |
+| G3 | (port plan: § "G3: the port plan" below) **The march on Selene.** The march generalised (body uniforms, the recipe as a compile-time define), Selene's program, its colour through the `groundCol` hook (today's albedo and maria). `terrainProbe` per body; `gpuMs` at fixed views: lander at 2 m, rover, 1 km, 20 km, low orbit. | L | 🖥 | CPU/GPU agreement in mm near the camera; a frame budget (target: Tellus's pad view or better) |
 | G4 | **Shadows.** The sun-horizon map plus near shadow rays. | M | 🖥 | shadow cost; a low-sun view and an orbit terminator view |
 | G5 | **Consumers.** Landing hazard checks and orbit clearance (with space: `landAt` is theirs, so the change is an `ACTIVE_WORK.md` line), line-of-sight contact on bodies (`gsSees` generalised), polar dark floors as an R4 deposit mask, rover tests on relief. | M | ⚙ | the crater-landing M3 finish line is flyable |
 | G6 | **Nyx.** Its recipe (mild lump plus craters) in the same program. | S | ⚙ + 🖥 | the recipe system is real, not Selene-shaped |
@@ -205,6 +205,110 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 
 ---
 
+## G3: the port plan (Selene's relief in the sky shader)
+
+Plan only (world session, 2026-10-08; QUEUE Q91, which waits for the milestone gate). It's written so the session that
+has the GPU can start at step G3.0 cold. The rules are v1.25's (NOTES § v1.25 "CPU/GPU agreement is designed in" and the
+negative results), applied to `sim/ground.js`.
+
+### What the shader does today (app/gl.js, SKY_FS)
+- Tellus is one ray-march, `march(d,hh,tS)`, through the shell from R to R + `TERR_TOP`. It skips air on the climate
+  texture's bound, drops octaves by pixel footprint and distance (`octF`/`octT`), and ends with 5 bisection steps. The
+  quarter-resolution pre-pass `PDEPTH` (the same SKY_FS with a main that only marches) seeds it through `coarseStart()`.
+- Selene is a ray-cast sphere: `sph(uMc,uMcc,d)` in `main`. Its look is `crat()` slope shading (a float cellular
+  noise), a mare albedo term and `detail()` within 3 km, all in Selene's frame through `MB()`/`uMrot`. Nyx is a separate
+  pass (`MOON_FS`) and isn't part of G3.
+
+### Shape of the change
+- **A second march, generated from the first.** `march()` becomes a JS template that emits one march per body: its
+  uniforms (centre, R, top, rotation), its height function and its bound. SKY_FS gets `marchT()` (Tellus, unchanged
+  code) and `marchS()` (Selene). In `main`, `tM` comes from `marchS` instead of `sph`, and the nearer hit wins, as now.
+  GLSL has no function pointers, and the code already injects JS constants into the shader, so a template costs nothing
+  at run time.
+- **The pre-pass writes the nearer of the two hits.** `coarseStart()`'s value is a safe start for both marches, because
+  it's never past either hit.
+- **Always march Selene, no handover.** Its shell is at most ~6 km thick (−4 to +1.6 km, plus the bands), so a ray that
+  misses the shell costs one sphere test, and from Tellus orbit Selene covers a few hundred pixels. So the far look and
+  the near look are the same code. **Measure that first** (G3.1): if Selene at full screen from high orbit costs more
+  than its shading does today, add a distance cut on the bands, not a second look.
+- **Colour through one hook,** `selCol(pf, n, mare, fresh)`. The look lane (sky & bodies beat, Q80–Q85) owns what's
+  inside; the world lane owns the height, the march and the masks. This replaces `crat()` and the float mare term on
+  Selene: relief normals do the shading, and the mare mask comes from the map texture.
+
+### The height function in GLSL
+- **The map:** one RGBA32F texture, 1024×512 (8 MB; NEAREST, read with `texelFetch`). Channels:
+  - `E`, the base height;
+  - `M`, the mare mask;
+  - `U`, an upper bound: the max of `E` over ±2 texels, plus the bands' largest possible rims;
+  - a spare channel for G5's dark-floor mask.
+  The B-spline is `wTexUV` generalised to a texture and its size. `patan` replaces `atan`, and the UV is computed the
+  same way as `mapSpl`'s.
+- **The bands:** a loop over the 3 axes, skipping faces with |u_ax| < 0.5. Each face does a 3×3 cell loop, which exits
+  after the first hash for the ~62 % of cells with no crater. Each band's constants (`n`, `Dhi`, `Dlo`, `λ`) are
+  injected from `grBands(R)`. The hash calls are `ih(ivec3(key, zz, 7001…7006))`, the same integers as `ih3` on the
+  CPU.
+- **What must be bit-identical, and how:**
+
+| Quantity | Risk | Fix |
+|---|---|---|
+| crater centres (`Math.tan` of the equiangular coordinate) | GLSL `tan` ~1e-5 rad off: **up to 3.5 m on Selene**, a visible wall offset on a 100 m crater | **G3.0:** CPU and GPU both use one polynomial, `ptan` (a Padé form on ±π/4, good to ~1e-8). The CPU changes first, so the CPU's ground *is* the formula |
+| the cell index (`Math.atan` of u_p1/u_ax) | a flip at a cell border | harmless: the 0.8-of-the-narrowest-cell margin covers a one-cell shift (a crater two cells away can't reach). Use `patan` anyway, on both sides |
+| presence and thinning tests (`hash < λ`, `hash < 0.85·sstep(M)`) | a hash within float error of the threshold flips a whole crater | inject `λ` as `Math.fround(λ)` and compare with fround on the CPU too. Thinning reads `M` at the crater centre by `texelFetch` NEAREST (no interpolation), so both sides read the same texel; a centre on a texel border is the only flip left, expected about 1 crater on all of Selene. Accepted; `terrainProbe` would show it |
+| powers (`r^1.6`, `(D/Dt)^0.301`) | GLSL `pow` ~1e-6 relative | ≤ 4 mm on a 4 km crater: accepted |
+| distance to a centre, \|u − c\|·R | float32 unit vectors: ~3 cm on R = 348 km | as Tellus (mm–cm near the camera); computed from `pf` as Tellus does |
+
+- **Level of detail:** like `octF`/`octT`.
+  - Drop a band once its largest crater is under ~2 pixels across.
+  - Keep all six within 2 km of the camera (the physics' ground, to the centimetre); ease to 3 bands by 20 km.
+  - The bound for the dropped bands is the sum of their largest rims, `.036·Dhi` each. It plays the role of Tellus's
+    `bnd` term, and the march steps on it as it does now.
+- **Cost estimate (to replace with measurements).** Tellus's full-detail height is 9 octaves × 8 hashes ≈ 72 hashes and
+  9 fetches. Selene's is 6 bands × 9 cells, with an early exit: about 54 + 0.38·54·5 ≈ 160 hashes, plus 9 fetches and
+  one `pow` per crater. So **about 2× Tellus per height** at full detail. Selene's thin shell and close horizon end
+  rays sooner. Expect the same order as Tellus's pad view (4.2 ms at 1024×768 on the RTX 3050 laptop); grazing views are
+  the risk, as on Tellus.
+- **Fallbacks if it's over budget**, cheapest first:
+  1. stop the finest band (80–200 m) beyond 300 m;
+  2. a baked **crater tile**: one periodic texture of small craters indexed by cube-cell coordinates, read by
+     `texelFetch` on both sides (still exact), replacing the two finest bands;
+  3. Tellus's own unexplored idea, reusing last frame's depth.
+
+### Steps (each one a commit with its own check)
+
+| Step | What | Load | Done when |
+|---|---|---|---|
+| G3.0 | CPU: `ptan` and a JS `patan` in the band geometry; `λ` through `Math.fround` | ⚙ | `study_ground.mjs` shows the same counts, slopes and seams; ground-2 passes; heights move by under 1 cm (an old/new diff at 10,000 points) |
+| G3.1 | GPU: Selene's map texture, `marchS` with the map only (no bands), the pre-pass with both hits; `terrainProbe(SELENE)` against `seleneH(pf, 0)` | 🖥 | agreement as Tellus (median ≤ 2 mm, p99 ≤ 3 cm, max ≤ 15 cm); `gpuMs` in the five views below vs today |
+| G3.2 | GPU: the bands, one at a time, with level of detail and the dropped-band bound | 🖥 | probe agreement within 2 km of the camera; `gpuMs` per band count (the decision point for the fallbacks) |
+| G3.3 | shading through `selCol`: relief normals, mare from `M`, fresh craters brighter (the band loop also returns the freshest crater's freshness under the point); `geoAt` reads the bake (§42 compares it to the bake) | 🖥 | the look lane's review from stills; TESTING 131 re-judged |
+| G3.4 | **Going live**, below | ⚙ + 🖥 | the full suite, the robot run, TESTING rows for landing and driving on relief |
+
+**Views for timing and stills** (add to `views.js`, after Q79's numbering): a lander 2 m over a mare flat; a crater rim
+at a 5° sun; rover eye height in the highlands; 1 km over the highlands; 20 km; low orbit (30 km); Selene from Tellus
+orbit.
+
+### Going live (G3.4): what flips when `SELENE.ground = SELENE_GROUND`
+- **Saves:** anything landed on Selene was stored on the smooth sphere (`R`): landed registry entries, rovers in the
+  field (`PROG.rvOut`), bases, recorded landing spots (`land.pf`). Relief is −4 to +1.6 km, so on load they'd be
+  buried or floating. Migration: re-seat each one's `pf` onto `groundR` along its own direction, once, keyed on a save
+  version. This needs Q57 (save versions, platform lane).
+- **Tapes:** `TAPE_V` fingerprints the *code* that moves a craft (procedures.js:13). Switching the recipe on changes
+  *data*, so old Selene tapes would replay unretired onto new ground. Add the recipe (`gen` plus a hash of
+  `seleneH`'s source and the band constants) to the fingerprint. Procedures survive, as designed.
+- **Tests that land on Selene** (§27 crewed Selene, bodies-1 ladders, bodies-3 landing sites, the rover sections, §42)
+  were measured on a sphere. Re-run them, record what moved (touchdown speeds, Δv left, landing error), and re-pick sites
+  on flat ground where a check depends on a flat landing. `landAt`'s 5 m precision should hold: it reads the ground at
+  the site.
+- **`MOON_PE`** = 5 km + `top`. With `top` 4 km the lowest registered orbit becomes 9 km. Tighten `top` to the measured
+  bound (≈ 2 km: 1.6 km map max + band rims) so it's 7 km. The 10×20 km landing orbit then stays registered.
+- **The bake's 1 s:** going live makes the first approach to Selene bake mid-flight. Bake at idle after load
+  (`requestIdleCallback`; the CPU and the GPU upload together), and share Q38's worker if that has landed.
+- **Who to tell** (`ACTIVE_WORK.md` lines): space (procedures, rovers, §42); look & sound, sky & bodies beat (`selCol`,
+  SKY_FS's `main`); effects (the landing dust uses the ground under the ship: it should already follow `groundAlt`);
+  QA (the robot's Selene rows).
+
+---
+
 ## Decisions for Caio (defaults hold if silent)
 
 1. **Where Selene's maria sit.** Today they're mostly on the far side: 1.2 % of the near side is mare, against the
@@ -219,6 +323,7 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 ---
 
 ## Version history
+- **0.1.3 (2026-10-08):** § "G3: the port plan": the march as a per-body template, what must be bit-identical (`ptan` for crater centres), cost estimate and fallbacks, steps G3.0–G3.4, and what flips when the recipe goes live (saves, tapes, tests, `MOON_PE`, the bake).
 - **0.1.2 (2026-10-08):** G2 built (v1.58): the recipe is in `sim/ground.js`, not live until G3; the measured numbers are in NOTES § v1.58.
 - **0.1.1 (2026-10-08):** G1 built (v1.54).
 - **0.1.0 (2026-10-08):** first plan (world session): code survey, the layer, eight generators, the per-body table,

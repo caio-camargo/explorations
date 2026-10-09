@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -201,6 +201,7 @@ NOTES § "The robot playtester".
 | 128 | Lose your first orbit attempt in a new career | New career (any start); fly the hop, then lose the first orbital rocket (cut its engine on the way up) | A news line: the government (agency), investors (company) or member states (consortium) cover 75 % of the loss; you can afford the retry. Losing the retry, or a cheaper rocket, is not covered. Does it feel like a fair second chance, or too soft? | v1.55 | economy |
 | 129 | Launch from a site abroad | Assembly → site picker: pick a site under *abroad*; then a sea platform if the world has one | The picker says how you'd use it ("leased from X: 6M a launch", a member's site, or why it's refused); LAUNCH charges the fee (over-budget message counts it); the Debrief lists *Site lease*. Is the fee a real choice, or noise? | v1.56 | economy |
 | 130 | Fly a ballistic test contract | Career after *Above the weather*; take a "Ballistic test" offer (military board); fly from the site its brief names | The brief names the launch site; the map marker sits at sea, at about the stated distance from that site (not from the old +X point, not 2× too far); landing within 40 km counts, from another site it doesn't. | v1.57 | economy |
+| 133 | Read why each offer appeared | Program → Contracts, over a few hundred days of a career (do a first, wait through a boom or a recession) | Every offer has a *Why:* line: new since a first, tension, boom/recession, the client's priorities, your standing, or routine work. Does it explain the board, or is it noise? Too much "Routine"? | v1.59 | economy |
 
 ### UI & screens
 
