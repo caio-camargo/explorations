@@ -96,7 +96,7 @@ const RES_C=new WeakMap();
 function resid(q){let c=RES_C.get(q);if(c&&c.ep===q.epoch&&c.r===q.r)return c;const el=elements(q.r,q.v,TELLUS.mu),f=new Float64Array(BAND_N),N=72;
   if(el.e<1)for(let i=0;i<N;i++){const M=2*Math.PI*(i+.5)/N;let E=M;for(let k=0;k<6;k++)E-=(E-el.e*Math.sin(E)-M)/(1-el.e*Math.cos(E));
     const b=Math.floor((el.a*(1-el.e*Math.cos(E))-TELLUS.R-TELLUS.atm)/BAND_W);if(b>=0&&b<BAND_N)f[b]+=1/N}
-  c={ep:q.epoch,r:q.r,f,hn:mul(el.h,1/el.hl),R:satMP(q).R};RES_C.set(q,c);return c}
+  c={ep:q.epoch,r:q.r,f,hn:mul(el.h,1/el.hl),R:q.shape&&q.shape.length&&q.cm?satMP(q).R:1};RES_C.set(q,c);return c}
 // hits a day between two Tellus orbits (at full, "real" rates)
 function pairRate(A,B){const a=resid(A),b=resid(B),ci=Math.cos(Math.acos(clamp(dot(a.hn,b.hn),-1,1))/2),Rs=a.R+b.R;let s=0;
   for(let k=0;k<BAND_N;k++)if(a.f[k]&&b.f[k]){const r=bandR(k);s+=a.f[k]*b.f[k]*Math.sqrt(TELLUS.mu/r)/(r*r)}
@@ -114,6 +114,57 @@ function conjTick(T0,T1,roll){const K=PRESSURE_K[pressureOf('debris')]||0,days=(
     const h=len(satAt(a,T1)[0])-TELLUS.R;PROG.sats=PROG.sats.filter(x=>x!==a&&x!==o);
     (PROG.breakups=PROG.breakups||[]).push({day:T1/DAY_S,h,mass:(a.mass||0)+(o.mass||0),a:a.name,o:o.name});
     HOOK.news(`${a.name} was struck by ${o.name}${debrisTracked()?'':', which nobody was tracking'}: both are gone in a cloud of fragments`,'bad')}}
+// ---- debris, slice 3 (space session, QUEUE Q147): fragments as a density per band (ESA MASTER style), PROG.frag[b] =
+// fragments of 1 cm or more in band b. Sources: breakups (slice 2's collisions, fragments shattering big objects, an
+// anti-satellite test), by NASA's standard breakup model, spread over the bands around the breakup's height. Drag drains
+// each band into the one below (a centimetre fragment, Cd·A/m FRAG_K). A fragment hit (4 n R² v: the pair rate averaged
+// over random crossings, the fragment's own size negligible) kills an uncrewed entry (nobody tracks a 1 cm piece): it goes
+// silent and stays up as a dead hulk, a big object. Only a fragment big enough to bring 40 J per gram of the target
+// (NASA's catastrophic threshold; FRAG_RHO for its mass from its size) shatters it into more fragments: the cascade,
+// which needs the rare large pieces (a 2 t stage at 2.7 km/s: ~35 cm and up). Crewed entries are never hit by surprise: a warning instead,
+// once, when their band turns risky. A band whose objects make fragments faster than drag removes them "feeds itself":
+// news once (and a warning before). All of it scaled by the debris setting, like slice 2.
+const CASC_YR=50,FRAG_K=0.2,FRAG_SIG=100e3,FRAG_LC=0.01,CREW_WARN=1e-3,FRAG_RHO=1000,CAT_E=4e4;   // m²/kg; m spread; 1 cm; hits a year
+// for a crewed warning; kg/m³ of a fragment's sphere (hollow, crumpled); J/kg to shatter a target
+const fragsOf=m=>0.1*Math.pow(m,0.75)*Math.pow(FRAG_LC,-1.71);   // NASA SBM, catastrophic: N(≥Lc) = 0.1 M^0.75 Lc^-1.71
+const bandV=b=>{const r0=TELLUS.R+TELLUS.atm+b*BAND_W;return 4/3*Math.PI*((r0+BAND_W)**3-r0**3)};
+function fragBands(){const F=PROG.frag;if(F&&F.length===BAND_N)return F;return PROG.frag=new Array(BAND_N).fill(0)}
+// a breakup of mass kg at height h: fragments spread as a normal of FRAG_SIG over the bands; what falls below the air is gone
+function breakup(h,mass){const F=fragBands(),N=fragsOf(mass),w=[];let W=0;
+  for(let b=-8;b<BAND_N+8;b++){const x=Math.exp(-0.5*((TELLUS.atm+(b+.5)*BAND_W-h)/FRAG_SIG)**2);w.push([b,x]);W+=x}
+  for(const[b,x]of w)if(b>=0&&b<BAND_N)F[b]+=N*x/W;return N}
+// seconds a centimetre fragment takes to sink through band b (circular orbit at its middle)
+const FRAG_TAU=[],CASC_STAT=[];   // CASC_STAT[b]: {R0, gen (years)} from the last tick, for views (not saved)
+const fragTau=b=>FRAG_TAU[b]??(FRAG_TAU[b]=BAND_W/Math.max(1e-30,-dragRates(bandR(b),0,FRAG_K).da));
+// the share of fragments big enough to shatter mass M (kg) at speed v: N(≥L) ∝ L^-1.71
+const catFrac=(M,v)=>{const L=Math.cbrt(2*CAT_E*M/(v*v)/(FRAG_RHO*Math.PI/6));return Math.min(1,Math.pow(L/FRAG_LC,-1.71))};
+// hits a day on an entry from the fragment bands (real rates)
+function fragRate(q){const F=fragBands(),c=resid(q);let s=0;for(let b=0;b<BAND_N;b++)if(c.f[b]&&F[b])s+=c.f[b]*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b));return 4*c.R*c.R*s*DAY_S}
+function asatTest(name,h,mass=1000){const n=breakup(h,mass);HOOK.news(`${name} tests an anti-satellite weapon at ${Math.round(h/1e3)} km: about ${Math.round(n/1e3)},000 new fragments in that band`,'bad');return n}
+function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0))return;
+  for(const x of PROG.breakups||[])if(!x.frag){breakup(x.h,x.mass);x.frag=1}
+  // drain, in steps of at most a day: band b loses 1 − e^(−dt/τ) of its fragments to the band below
+  for(let t=0;t<days-1e-9;){const dt=Math.min(1,days-t)*DAY_S;t+=dt/DAY_S;
+    for(let b=0;b<BAND_N;b++){if(!F[b])continue;const out=F[b]*(1-Math.exp(-dt/fragTau(b)));F[b]-=out;if(b>0)F[b-1]+=out}}
+  const K=PRESSURE_K[pressureOf('debris')]||0;if(!(K>0)||!F.some(x=>x>0))return;
+  const T=Math.floor(T1/DAY_S),rho=new Array(BAND_N).fill(0),mJ=new Array(BAND_N).fill(0),wJ=new Array(BAND_N).fill(0);
+  for(const q of satsUp()){if(!PROG.sats.includes(q))continue;const r=fragRate(q);if(!(r>0))continue;const c=resid(q);
+    const cf=catFrac(q.mass||0,Math.sqrt(TELLUS.mu/(TELLUS.R+TELLUS.atm+BAND_W*c.f.indexOf(Math.max(...c.f)))));
+    if(q.junk)for(let b=0;b<BAND_N;b++)if(c.f[b]){rho[b]+=c.f[b]*4*c.R*c.R*Math.sqrt(TELLUS.mu/bandR(b))/bandV(b)*cf;mJ[b]+=c.f[b]*(q.mass||0);wJ[b]+=c.f[b]}   // per fragment a second
+    if(entryCrewed(q)){if(r*K*YEAR_D>=CREW_WARN&&!q.fragWarn){q.fragWarn=T;HOOK.news(`${q.name}'s crew are warned: the fragment cloud in their orbit is thick enough to matter (about one hit in ${Math.round(1/(r*K*YEAR_D))} years); shielding and a higher orbit are the answers`,'warn')}continue}
+    const L=r*K*days*(q.junk?cf:1),u=(roll||rng((T*130363+q.id*15485863)|0))();if(u>=1-Math.exp(-L))continue;
+    const h=len(satAt(q,T1)[0])-TELLUS.R;
+    if(q.junk||u<(1-Math.exp(-L))*cf){PROG.sats=PROG.sats.filter(x=>x!==q);const n=breakup(h,q.mass||0);   // shattered
+      HOOK.news(q.junk?`${q.name} was shattered by a large fragment: about ${Math.round(n/1e3)},000 more pieces at ${Math.round(h/1e3)} km`:`${q.name} was shattered by a large fragment nobody could track: about ${Math.round(n/1e3)},000 more pieces`,'bad');continue}
+    Object.assign(q,{junk:1,dead:T,name:`${q.name} (dead)`,cam:0,ant:0,sci:0,bio:0,ballast:0,adrift:q.adrift??T});   // killed: a hulk, a big object now
+    HOOK.news(`${q.name.replace(/ \(dead\)$/,'')} has gone silent: struck by a fragment nobody could track. Its hulk stays in orbit`,'bad')}
+  // the cascade (Kessler's chain reaction): a band is critical when one breakup's fragments are expected to shatter at
+  // least one more of its big objects before drag clears them (R0 = fragments × their shattering rate × their time there
+  // ≥ 1); it's news when the next breakup is due within CASC_YR years (a warning at R0 ≥ ½, within 4×)
+  PROG.casc=PROG.casc||{};CASC_STAT.length=0;for(let b=0;b<BAND_N;b++){if(!(rho[b]>0)||F[b]<100)continue;const k=PROG.casc[b]||0,lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
+    R0=fragsOf(mJ[b]/wJ[b])*rho[b]*K*fragTau(b),gen=1/(F[b]*rho[b]*K)/DAY_S/YEAR_D;CASC_STAT[b]={R0,gen};
+    if(R0>=1&&gen<=CASC_YR&&k<2){PROG.casc[b]=2;HOOK.news(`The ${lo}–${lo+50} km band now feeds itself: each breakup there now sets off more before the air can clear them. It will stay unusable for decades`,'bad')}
+    else if(R0>=0.5&&gen<=4*CASC_YR&&k<1){PROG.casc[b]=1;HOOK.news(`Warning: the ${lo}–${lo+50} km band is filling with fragments; one more breakup there could start a cascade`,'warn')}}}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
@@ -685,7 +736,7 @@ function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.lande
     if(q.adrift==null){if(q.epoch<T1&&slotTilt(q)>TILT_MIN)tiltStep(q,T1);continue}}   // held (or nothing to hold): only the tilt moves
   if(!(q.epoch<T1))continue;
   if(q.bodyName||tideMatters(q))moonOrbStep(q,T1);else decayStep(q,T1)}
-  conjTick(T0,T1)}   // debris, slice 2
+  conjTick(T0,T1);fragTick(T0,T1)}   // debris, slices 2 and 3
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}

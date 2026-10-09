@@ -33,3 +33,35 @@ for (const di of [90, 60, 30, 10]) { const m = mc(6, di * deg, 1000, 200000), f 
 // B. what it means: a 2 m satellite among N spent stages (2.5 m) in its band, crossing at ~60°, per year (400 days)
 console.log('B. a satellite (Rs 4.5 m with the stage) sharing a 50 km band at 400 km with N pieces of debris, crossing at 60°:');
 for (const N of [10, 100, 1000]) { const lam = formula(6, 60 * deg, 4.5) * N * 400; console.log(`  N ${String(N).padStart(4)}: real ${lam.toExponential(2)} hits a year (1 in ${(1 / lam).toFixed(0)} years), light ${(lam / 10).toExponential(2)}`); }
+// C (slice 3, Q147): fragment bands with the game's own code. (1) how long a centimetre fragment lasts in each band;
+// (2) one 1 t breakup: what's left over the years, and the risk to a 2 m satellite in the thickest band; (3) the cascade:
+// N spent stages (2 t each, random planes) at 800–850 km and one breakup there, real rates, 40 years.
+{
+  const G = new Function(src + `return {TELLUS,DAY_S,YEAR_D,BAND_W,BAND_N,bandR,bandV,fragTau,fragsOf,breakup,fragBands,fragTick,advanceDays,CASC_STAT,newShip,PRESETS,detach,junkRegister,PROG,HOOK,satsUp};`)();
+  const P = G.PROG, news = []; G.HOOK.news = m => news.push(m); G.HOOK.msg = () => {}; G.HOOK.save = () => {};
+  const yrs = s => s / G.DAY_S / G.YEAR_D, km = b => Math.round((G.TELLUS.atm + b * G.BAND_W) / 1e3);
+  console.log('\nC1. a centimetre fragment (Cd·A/m 0.2) sinking through each band, and from there to re-entry (years):');
+  let acc = 0; const out = [];
+  for (let b = 0; b < G.BAND_N; b++) { acc += G.fragTau(b); if ([0, 2, 4, 6, 8, 10, 14, 18, 22, 28, 37].includes(b)) out.push(`${km(b)} km: ${yrs(G.fragTau(b)).toPrecision(2)} (${yrs(acc).toPrecision(2)} down)`); }
+  console.log('  ' + out.join(' · '));
+  for (const h of [400e3, 800e3]) {
+    P.frag = null; P.sats = []; P.breakups = []; P.day = 0; const n = G.breakup(h, 1000), F = G.fragBands(), peak = F.indexOf(Math.max(...F));
+    const rate = Fb => 4 * 2 * 2 * Fb / G.bandV(peak) * Math.sqrt(G.TELLUS.mu / G.bandR(peak)) * G.DAY_S * G.YEAR_D;   // 2 m radius
+    const line = [`${Math.round(n)} fragments; peak ${km(peak)}–${km(peak) + 50} km: ${Math.round(F[peak])}, a 2 m satellite there hit ${rate(F[peak]).toExponential(1)}/year (real)`];
+    let d = 0; for (const y of [1, 5, 20, 50]) { G.fragTick(d * G.DAY_S, y * G.YEAR_D * G.DAY_S); d = y * G.YEAR_D; line.push(`${y} y: ${Math.round(G.fragBands().reduce((a, x) => a + x, 0))} left`); }
+    console.log(`C2. 1 t breakup at ${h / 1e3} km: ` + line.join('; '));
+  }
+  console.log('C3. N spent stages (2 t) at 800–850 km plus one 1 t breakup there, real rates, 40 years (stages left/fragments in the band):');
+  for (const N of [100, 400, 1500]) {
+    P.frag = null; P.sats = []; P.breakups = []; P.casc = {}; P.day = 0; P.pressures = { debris: 'real' }; news.length = 0; let seed = 7;
+    const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < N; i++) { const s = G.newShip(G.PRESETS.Orbiter), a = G.TELLUS.R + 805e3 + R() * 40e3, vc = Math.sqrt(G.TELLUS.mu / a), inc = R() * Math.PI, ph = R() * 2 * Math.PI;
+      const r = [a * Math.cos(ph), 0, a * Math.sin(ph)], t = [-Math.sin(ph), 0, Math.cos(ph)], v = [vc * (t[0] * Math.cos(inc)), vc * Math.sin(inc), vc * (t[2] * Math.cos(inc))];
+      Object.assign(s, { alive: true, landed: false, body: G.TELLUS, r, v, rec: { launched: true, day0: 0 } }); const ev = s.events.find(e => e.decouple.length);
+      G.detach(s, s.parts.filter(p => p.on && ev.decouple.includes(p.seg)), [0, -1, 0], 0); G.junkRegister(s.rec); P.sats.at(-1).mass = 2000; }
+    G.breakup(825e3, 1000); const row = [];
+    for (let y = 5; y <= 40; y += 5) { G.advanceDays(5 * G.YEAR_D); row.push(`${y}y ${G.satsUp().length}/${Math.round(G.fragBands()[14] / 1e3)}k`); }
+    const cs = G.CASC_STAT[14] || {};
+    console.log(`  N ${String(N).padStart(4)}: R0 ${cs.R0?.toFixed(2)}, next breakup due in ~${cs.gen?.toFixed(0)} years; stages left / fragments in the band: ${row.join(' · ')}; ${news.filter(m => /feeds itself|filling/.test(m)).map(m => m.slice(0, 60)).join(' | ') || 'no cascade news'}`);
+  }
+}

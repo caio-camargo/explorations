@@ -4240,6 +4240,48 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `paid ${(P.funds - f0).toFixed(0)}M; ${c.p.name}, ${c.p.n} era behind`);
 }
 
+// space-5. Debris, slice 3 (space session, QUEUE Q147): fragments as a density per band. Breakups add 1 cm+ fragments
+// by NASA's model, spread around their height; drag drains each band into the one below; a hit kills an uncrewed entry
+// (a dead hulk stays up) and only a large fragment shatters it; crewed entries are warned, never hit by surprise; the
+// cascade (R0 ≥ 1 and the next breakup due within 50 years) is news; an anti-satellite test fouls a band.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,detach,junkRegister,fragTick,breakup,fragsOf,fragBands,fragRate,catFrac,asatTest,CASC_STAT,BAND_N,TELLUS,PROG,HOOK,DAY_S,YEAR_D};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R, deg = Math.PI / 180, sum = () => D.fragBands().reduce((a, x) => a + x, 0);
+  const reset = mode => { P.sats = []; P.day = 0; P.frag = null; P.breakups = []; P.casc = {}; P.pressures = { debris: mode }; news.length = 0; };
+  const orbit = (s, alt, inc) => { const a = R + alt, vc = Math.sqrt(T.mu / a); Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(inc * deg), -vc * Math.cos(inc * deg)] }); return s; };
+  const sat = (alt, inc, crew = false) => { D.satRegister(orbit(D.newShip(D.PRESETS.Probe), alt, inc), { day0: 0 }); const q = P.sats.at(-1); if (crew) q.shape[0].crew = 2; return q; };
+  const junk = (alt, inc) => { const s = orbit(D.newShip(D.PRESETS.Orbiter), alt, inc); s.rec = { launched: true, day0: 0 }; const ev = s.events.find(e => e.decouple.length);
+    D.detach(s, s.parts.filter(p => p.on && ev.decouple.includes(p.seg)), [0, -1, 0], 0); D.junkRegister(s.rec); const q = P.sats.at(-1); q.mass = 2000; return q; };
+  reset('real'); const n1 = D.breakup(800e3, 1000), F = D.fragBands(), pk = F.indexOf(Math.max(...F)), s1 = sum();
+  reset('real'); D.breakup(150e3, 1000); const lowKept = sum() / D.fragsOf(1000);
+  check('fragments: a 1 t breakup makes ~47,000 pieces of 1 cm and more (NASA), spread around its height; a low one loses what falls below the air',
+    Math.abs(n1 - 0.1 * 1000 ** 0.75 * 0.01 ** -1.71) < 1 && (pk === 13 || pk === 14) && Math.abs(s1 / n1 - 1) < 1e-6 && lowKept < 0.9,
+    `${Math.round(n1)} fragments, peak band ${pk}; a breakup at 150 km keeps ${(lowKept * 100).toFixed(0)} % in the bands`);
+  reset('off'); D.breakup(400e3, 1000); D.breakup(800e3, 1000); const lo0 = D.fragBands().slice(0, 9).reduce((a, x) => a + x, 0), hi0 = D.fragBands().slice(12).reduce((a, x) => a + x, 0);
+  D.fragTick(0, D.YEAR_D * D.DAY_S); const lo1 = D.fragBands().slice(0, 9).reduce((a, x) => a + x, 0), hi1 = D.fragBands().slice(12).reduce((a, x) => a + x, 0);
+  check('fragments: drag drains low bands within a year and barely touches 800 km (even with the setting off, drag is physics)',
+    lo1 / lo0 < 0.7 && hi1 / hi0 > 0.99, `below 550 km ${(lo1 / lo0 * 100).toFixed(0)} % left, above 700 km ${(hi1 / hi0 * 100).toFixed(1)} %`);
+  // a thick cloud at 425 km: an uncrewed satellite dies (a hulk stays), a crewed one is warned and lives, a big object shatters
+  reset('real'); D.breakup(425e3, 1e9); const a = sat(425e3, 0), c = sat(425e3, 0, true), o = junk(425e3, 60), nB = sum();
+  const La = D.fragRate(a), cf = D.catFrac(a.mass, 3000); D.fragTick(0, D.DAY_S, () => 0.001);
+  const dead = P.sats.includes(a) && a.junk && /\(dead\)$/.test(a.name) && a.ant === 0, crewOK = P.sats.includes(c) && !c.junk && news.some(m => /crew are warned/.test(m));
+  const shattered = !P.sats.includes(o) && sum() > nB * 0.99 && news.some(m => /shattered by a large fragment/.test(m)) && news.some(m => /gone silent/.test(m));
+  check('fragments: in a thick cloud an uncrewed satellite goes silent (its hulk stays up as debris), a crewed one is warned and lives, a spent stage is shattered into more',
+    La > 1 && cf < 0.01 && dead && crewOK && shattered, `hits a day ${La.toFixed(1)}, shattering share ${cf.toExponential(1)}; dead ${dead}, crew ${crewOK}, shattered ${shattered}`);
+  // a thinner cloud, the same roll: the satellite dies, the stage (only large fragments can shatter it) survives
+  reset('real'); D.breakup(425e3, 1e7); const a3 = sat(425e3, 0), o3 = junk(425e3, 60); D.fragTick(0, D.DAY_S, () => 0.01);
+  check('fragments: a hit that kills a satellite leaves a spent stage whole (shattering takes 40 J per gram of it)',
+    a3.junk && P.sats.includes(o3), `satellite ${a3.junk ? 'dead' : 'alive'}, stage ${P.sats.includes(o3) ? 'whole' : 'shattered'}`);
+  reset('off'); D.breakup(425e3, 1e7); const a2 = sat(425e3, 0); D.fragTick(0, D.DAY_S, () => 0); const offOK = P.sats.includes(a2) && !a2.junk;
+  // the cascade: thirty spent stages at 800–850 km and a big breakup there: R0 ≥ 1, the next breakup due within 50 years, news once
+  reset('real'); for (let i = 0; i < 30; i++) junk(825e3, (i * 37) % 180); D.breakup(825e3, 2e5); D.fragTick(0, D.DAY_S, () => 0.999999); D.fragTick(D.DAY_S, 2 * D.DAY_S, () => 0.999999);
+  const cs = D.CASC_STAT[14] || {}, casc = news.filter(m => /feeds itself/.test(m)).length;
+  const asat = (P.frag = null, D.asatTest('A rival', 600e3)), asatOK = asat > 4e4 && D.fragBands()[9] > 1000 && news.some(m => /anti-satellite/.test(m));
+  check('fragments: off spares satellites; a crowded band past R0 = 1 with the next breakup due within 50 years is news, once; an anti-satellite test fouls its band',
+    offOK && cs.R0 >= 1 && cs.gen <= 50 && casc === 1 && asatOK, `R0 ${cs.R0?.toFixed(1)}, next in ${cs.gen?.toFixed(1)} years, news ${casc}; ASAT ${Math.round(asat)} fragments`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

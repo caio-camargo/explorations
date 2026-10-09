@@ -1819,6 +1819,43 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.83 — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
+
+Slice 3 of § "Plan: debris and Kessler": fragments as a density per band (ESA MASTER style), `fragTick` after `conjTick`.
+- **Sources** (`breakup(h, kg)`): slice 2's collisions, fragments shattering big objects, and `asatTest(name, h)` (the
+  POWERS hook for a security state's test). Fragments of 1 cm and more by NASA's standard breakup model,
+  N = 0.1 M^0.75 Lc^-1.71 (a 1 t breakup: 46,774), spread as a normal of 100 km around the height; below the air is lost.
+- **Drain:** each band loses 1 − e^(−dt/τ) to the one below a day, τ the time a centimetre fragment (Cd·A/m 0.2) takes
+  to sink through it. Drag is physics, so it runs with the setting off too.
+- **Hits** (4 n R² v a day: slice 2's pair rate averaged over random crossings, the fragment's size negligible):
+  an uncrewed entry is killed, not tracked (nobody tracks 1 cm): it goes silent and **stays up as a dead hulk**, a big
+  object (`junk`, *(dead)*). Only a fragment that brings 40 J per gram of the target (NASA's catastrophic threshold, a
+  fragment's mass from a 1,000 kg/m³ sphere) shatters it into more fragments: a 2 t stage at 2.7 km/s needs ~35 cm and
+  up, ~0.2 % of fragments. Crewed entries are never hit by surprise: one warning when their band passes one hit in
+  1,000 years. My first version let every 1 cm fragment shatter a 2 t stage, and 20 stages fouled their band within 20
+  years; the threshold is what real breakups need.
+- **The cascade** (Kessler's chain reaction): a band is critical when one breakup's fragments are expected to shatter
+  at least one more of its big objects before drag clears them, R0 = N · (their shattering rate) · τ ≥ 1. High bands
+  clear so slowly that R0 > 1 comes easily; what makes it news is the next breakup being due soon: R0 ≥ 1 and due within
+  50 years → *the band now feeds itself* (once); R0 ≥ ½ and within 200 → a warning. (Two cheaper tests failed first:
+  "growth beats drag" fires at 800 km for any population, since drag there takes centuries; "e-folding within 50 years"
+  was dominated by the expectation of rare huge breakups and fired with nothing due for centuries.) `CASC_STAT[b]`
+  keeps R0 and the wait per band for views (Q148), unsaved.
+- The Program screen adds one line: fragments of 1 cm and more, the thickest band, a 2 m satellite's odds there, and any
+  band feeding itself.
+
+**Measurements** (`node study_debris.mjs`, part C; real rates; game years of 400 days):
+- A centimetre fragment sinks through the 300–350 km band in 0.28 years and is down from there in 0.43; from 400 km in
+  2.9 years; 500 km 15; 600 km 72; 800 km ~930; 1,000 km ~4,700. The Kessler asymmetry, on this planet.
+- One 1 t breakup at 400 km: 46,774 fragments, 9,043 in the thickest band (a 2 m satellite there: 3 × 10⁻³ hits a year);
+  27,000 left after a year, 12,000 after 5, 1,100 after 50. The same at 800 km: 44,900 still there after 50 years.
+- Spent stages (2 t) at 800–850 km plus one 1 t breakup: 100 stages R0 ≈ 10, the next breakup due in ~350 years (quiet);
+  400 → R0 ≈ 39, ~90 years (the warning); 1,500 → R0 ≈ 150, ~23 years (*feeds itself*). On the light setting (a tenth),
+  ten times the clutter for the same.
+
+Test `space-5` (6 checks; mutations caught: no catastrophic threshold, crew hit, no flow down, no R0, double count).
+Full suite 572 pass. No TESTING row yet: nothing in the UI makes fragments by hand (Q148's band view and a tester ASAT).
+
 ## v1.82 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
 
 Slice 2 of § "Plan: debris and Kessler". `conjTick` runs at the end of `orbTick` (each `advanceDays`), Tellus orbits only.
@@ -7468,7 +7505,7 @@ drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
   both ends; highs fade with distance; one brown-noise layer through a stereo panner, panned by the power-weighted
   direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
   explosions have one). `AUD.Q67 = false` turns both off.
-- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
+- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
 ### The volume slider (2026-10-09, effects session for the sound beat, QUEUE Q35)
 In the Settings overlay's Sound row (flow's `#setSound`): 0–100 % in steps of 5, `AUD.vol` live, kept in
 `localStorage['launchpad-volume']` and read at start. `renderSettings` calls `sndSettings(el)` (one additive line in flow's
