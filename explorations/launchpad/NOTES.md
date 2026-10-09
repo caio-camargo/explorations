@@ -6562,3 +6562,27 @@ at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap her
 - economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
 - Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
   session builds the gating.
+
+## Plan: robot drivers for docking, stations and moons (2026-10-08, QA session; QUEUE Q30)
+
+The rows nobody has driven are mostly ones a person can't reach quickly either: two vessels in orbit, a station, a moon.
+The page has every function `test.mjs` uses (the SIM is the same globals), so **each driver copies its setup from the
+test section that already proves the mechanism**, steps it with `advPhys`/`advRails`, measures the row's "looks right if"
+numbers, and takes one to three shots. It doesn't fly there: setups are placed (`r`/`v`/`q` set directly), as §21–§42 do.
+Feel stays a human row (59 "minutes, not an hour", 69 "learnable", 73 "fun"); the robot adds numbers and shots.
+
+**Shared helpers** (in `PT`, next to `PT.ascent`): `orbitAt(body, km)` (the flown ship in a circular orbit, nose
+prograde; §23 `craft()`, §40 `put()`), `twin(stack, offset, {fleet|registered})` (a second vessel beside it: a `FLEET`
+member per §27/§28, or a registered entry per §21/§25 via `satRegister`), `dockTo()` (Docking SAS plus a proportional RCS
+controller on `tgtOf(S).dr/dv`, the scripted closer §25 uses), `boxes()` (already there, for row 98).
+
+| Slice | Rows | Setup borrowed from | Measures |
+|---|---|---|---|
+| 1 moons | 68, 72, 121, 73, 55, 54, 13, 125, 92 | `fly_ladder.mjs` LADDER + `procStart` phases; `flySite`; §23 nyxfind | each mission's news and pay (staged pay, row 92), Nyx's reveal text, prograde vs retrograde "Impact … (perturbed)" on the map, landing miss distance; shots of the map forecast and each landing |
+| 2 docking | 56, 58, 59, 60, 61, 62, 63, 116 | §21 Rendezvous, §24 RCS, §25 Docking, §26 Claw, §22 Contact, §27/§28 fleet, §29 bay, §41 moon orbiters | time to close from 2 km and to latch, gas used, latch snap distance, push-off speeds, bump spin at 1 and 6 m/s, door swing frames, `[`/`]` labels; HUD shots |
+| 3 stations | 64, 65, 66, 67, 115, 117, 98 | §30 Stations, §31 flyable vessels, §32 Arm, §33 Moonbases, §40 relay, §42 rover science | station line (crew, supplies, lab-days) after `stationTick`, Fleet → Fly round trip, arm berth/stow time, base listing, relay contact fraction over an orbit, science buttons' greyed reasons; row 98 = docked + RCS + target + three vessels, then `PT.boxes()` |
+
+Each slice is a few rows of `playtest.mjs` (1–3 min of browser each, run as one batch when the lock is free) and the usual
+write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (the ladder is already scripted end to end,
+so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
+Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
