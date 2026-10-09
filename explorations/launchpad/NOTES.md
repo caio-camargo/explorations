@@ -1385,7 +1385,7 @@ bands.
 - in the physics: a pod rests on a 0.9° mare flat at the ground's height (gap 0.00 m), and slides 164 m off a 34° wall.
 
 Mutations caught: the recipe live at load, only the point's own cube face (a 90° cliff at the seams), and no flooding.
-§42 updated as above. Full suite: 457 pass, 0 fail. TESTING row 129: the maria seen from Tellus (the one change you can
+§42 updated as above. Full suite: 457 pass, 0 fail. TESTING row 131: the maria seen from Tellus (the one change you can
 see).
 
 **Not yet** (GROUND.md):
