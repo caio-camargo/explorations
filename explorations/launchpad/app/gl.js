@@ -1358,12 +1358,16 @@ function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S
 function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),m=x/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
 function fmtAlt(v,fine){const a=Math.abs(v);return a>=1e5?(v/1e3).toFixed(0)+' km':a>=1e4?(v/1e3).toFixed(fine?1:0)+' km':a>=1e3?(v/1e3).toFixed(fine?2:1)+' km':v.toFixed(0)+' m'}
-// the home galaxy's look, from the world seed (PLAYTEST #10, Caio: each world's sky different): a great-circle band
+// the home galaxy's look, from a seed (PLAYTEST #10, Caio: each world's sky different): a great-circle band
 // with a bulge, dust, arms, a satellite galaxy and a nebula, all as directions in the inertial frame
-const GAL=(()=>{const R=rng(WSEED*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
+function makeGal(seed){const R=rng(seed*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
   const gx=norm(add(dir(),[0,.3,0])),c0=dir(),gc=norm(sub(c0,mul(gx,dot(c0,gx)))),off=a=>norm(add(gc,a));
   const s=dir(),nb=norm(add(mul(gc,.6),add(mul(gx,.15),mul(dir(),.5))));
-  return{gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}})();
+  return{seed,gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}}
+// a different galaxy each playthrough (QUEUE Q21): the program's own seed PROG.gseed, drawn the first time the sky is
+// drawn and saved with the program (a reset clears it; the tester's sandbox has its own). The planet stays WSEED's.
+let GAL=makeGal(WSEED);
+function galaxy(){if(PROG.gseed==null)PROG.gseed=1+Math.floor(Math.random()*2147483646);if(GAL.seed!==PROG.gseed)GAL=makeGal(PROG.gseed);return GAL}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).

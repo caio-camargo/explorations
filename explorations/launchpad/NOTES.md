@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1250,6 +1250,15 @@ which swallowed a declaration: `render()` threw every frame while the HUD was up
 commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
 console exception (LESSONS #34).
 
+### A galaxy per program (2026-10-09, effects beat, QUEUE Q21)
+`GAL` came from `WSEED`, the planet's seed, a constant: every playthrough had the same sky. The planet should stay fixed
+(sites, coasts, powers all hang on it), so the galaxy gets its own seed instead: `PROG.gseed`, drawn the first time the
+sky is drawn (`galaxy()`, called from `render()`) and saved with the program. `makeGal(seed)` is the old recipe.
+- A program reset clears it (`gseed:null` in the reset in `app/editor.js`), so a new playthrough gets a new sky; the
+  tester's sandbox is a separate saved program, so it has its own. An old save without the field draws one on load.
+- Reference views set `PROG.gseed = WSEED` (13), so views 97–100 stay the pictures they were tuned on.
+- Seen: `refView(97)` (aimed at seed 13's centre) shows the band; seeds 424242 and 99 put their galaxies elsewhere.
+- test.mjs `aerofx-3`.
 ## PLAYTEST #3 and #4: a new rocket that looks new, and the pad at night (2026-10-08, aerofx session; visuals' code)
 
 Taken with a note in the visuals session's claim (it was idle). PLAYTEST #2 (gantry clipping) had already been fixed by
@@ -1536,6 +1545,17 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
+## v1.77.1 — dispatched flights launch from their procedure's site and pay its lease (2026-10-09, economy session, QUEUE Q95)
+
+A dispatched flight used to launch from home whatever its procedure (`dispatchRun` passed no site to `procFly`). Now
+`procSiteOf(stack)` is the site the design's procedure was flown from (`proc.site`), or home:
+- `dispatchQuote` and `baseRunQuote` refuse when `siteAccessOf` refuses that site, and add its lease (v1.56) to the
+  price (`fee`, `site` on the quote);
+- `dispatchTick` stands a queued dispatch down if the site has closed to us since (relations, sanctions), checks that
+  site's weather for scrubs, and charges the lease with operations;
+- `dispatchRun` (bodies' code, one argument) and `baseRun` fly from that site.
+Test `econ-10` (mutation-tested): home 49M, the same dispatch from a leased site abroad 55M, refused when hostile.
+
 ## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
 
 `career.mjs`'s own stacks for the first orbits were stand-ins: the `passOrbit` one (biocapsule, pod, shield, no
@@ -1565,6 +1585,30 @@ is large at 2 seeds (±400M, as the handoff warns).
 
 **Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
 rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
+
+## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
+
+The first step of GROUND.md § "G3: the port plan", allowed before the milestone gate. Headless, and no visible change.
+The crater bands placed their crater centres with `Math.tan`, and found a point's cell with `Math.atan`. GLSL's built-ins
+are good to ~1e-5 rad, which would put the shader's craters up to 3.5 m from the CPU's on Selene. Both sides now use one
+formula:
+- **`ptan`:** a Padé form on ±π/4, good to **1.9e-13**. It places the centres.
+- **`patanJ`:** SKY_FS's own `patan`, ported to JS, good to **2.3e-8 rad** (under 1 cm on Selene). It only picks a point's
+  cell, where a flip is harmless (the half-cell margin).
+- **λ** (a cell's chance of a crater) is now the float32 the shader will compare with (`Math.fround`).
+
+**Measured:** Selene's 3,000 reference heights moved by at most **2.7e-8 m**, against a 1 cm budget, and no crater
+appeared or vanished. Crater counts and seams in `study_ground.mjs` are unchanged.
+
+**Tests:** `ground-9` checks the approximations' accuracy, that `craterBands` calls neither `Math.tan` nor `Math.atan`
+(putting one back is caught), and that λ is a float32. `ground-3`'s λ-scaling check now allows float32 rounding (1e-6).
+Full suite 544 pass, 0 fail.
+
+**Also checked, on this machine's GPU (now allowed):**
+- **TESTING 131:** Selene from 900 km over its near side, nearly full. The maria are on the near side, a large dark patch
+  over about a third of the face. They're subtle (the shader darkens them by 0.07); the look lane may want them darker.
+- **TESTING 146:** can't be judged by eye. At seed 13 Tellus's north pole is open sea, and the south pole never sees the
+  fixed sun. The pole fix stays covered by `ground-6`'s CPU check; the north pole renders cleanly.
 
 ## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
 

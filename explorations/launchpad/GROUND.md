@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.10 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -277,7 +277,7 @@ negative results), applied to `sim/ground.js`.
 
 | Step | What | Load | Done when |
 |---|---|---|---|
-| G3.0 | CPU: `ptan` and a JS `patan` in the band geometry; `λ` through `Math.fround` | ⚙ | `study_ground.mjs` shows the same counts, slopes and seams; ground-2 passes; heights move by under 1 cm (an old/new diff at 10,000 points) |
+| G3.0 ✓ (v1.78) | CPU: `ptan` and a JS `patan` in the band geometry; `λ` through `Math.fround` | ⚙ | `study_ground.mjs` shows the same counts, slopes and seams; ground-2 passes; heights move by under 1 cm (an old/new diff at 10,000 points) |
 | G3.1 | GPU: Selene's map texture, `marchS` with the map only (no bands), the pre-pass with both hits; `terrainProbe(SELENE)` against `seleneH(pf, 0)` | 🖥 | agreement as Tellus (median ≤ 2 mm, p99 ≤ 3 cm, max ≤ 15 cm); `gpuMs` in the five views below vs today |
 | G3.2 | GPU: the bands, one at a time, with level of detail and the dropped-band bound | 🖥 | probe agreement within 2 km of the camera; `gpuMs` per band count (the decision point for the fallbacks) |
 | G3.3 | shading through `selCol`: relief normals, mare from `M`, fresh craters brighter (the band loop also returns the freshest crater's freshness under the point); `geoAt` reads the bake (§42 compares it to the bake) | 🖥 | the look lane's review from stills; TESTING 131 re-judged |
@@ -323,6 +323,7 @@ orbit.
 ---
 
 ## Version history
+- **0.1.10 (2026-10-09):** G3.0 built (v1.78): `ptan` turned out good to 1.9e-13, so heights moved by 2.7e-8 m.
 - **0.1.9 (2026-10-09):** the seeded small bodies' ground, a recipe factory (v1.75). G7 is complete on the CPU; nothing is live until the space lane's bodies (Q87) and the shader (G3).
 - **0.1.8 (2026-10-09):** Erebus's ground built on the CPU (v1.72, not live; stub body): every hand-made body now has ground on the CPU.
 - **0.1.7 (2026-10-09):** Hyperion's moons built on the CPU (v1.70, not live; stub bodies); the maps' polar rows fixed (a step at every body's poles, Tellus's included); crater bands safe on tiny bodies.
