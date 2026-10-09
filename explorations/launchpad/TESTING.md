@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -258,5 +258,6 @@ NOTES § "The robot playtester".
 
 | 126 | Use the new tester controls: go to a day (forward and back), set funds, skip to a computing era, tick missions one by one | `index.html?tester`, F2 | Each does what its line says; going back a few days leaves a playable program; an era skip lands on the era's first day with its news; ticking a mission opens the next one in the Missions tab | Q16 | QA |
 | 138 | Look at every SYSTEM.md body in the tester's "go to body" view | `index.html?tester`, F2 → Go to body; ◀ ▶ for the next body, 1 2 3 for near / whole disc / far, drag to turn, Esc back; or `refView(200 + 3·i + k)` | Sizes and tilts read right (Hyperion's rings open at 27°, Hesper upside down at 177°, Erebus on its side); the rings shade the planet and the planet shades the rings. The colours are placeholders: judge the shapes, not the looks (Q80–Q85) | Q79 | QA |
+| 173 | The planets on the map (Q175) | Any career, a flight, **M**; scroll out; try the notebook, terminal and modern maps (Settings) and a later date | Helios (a sun with rays) and Hesper, Enyo, Astraea, Hyperion, Erebus on a dashed ring around the map's centre, each labelled with its distance in TU; the ring stays on screen at every zoom; marks behind Tellus hidden; the positions move from one year to the next | ~ robot: stills in `output/launchpad/q175-planets/` |
 
-Next free number: **165** (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **174** (flow, 2026-10-09: the counter said 165 while rows ran to 172) (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).

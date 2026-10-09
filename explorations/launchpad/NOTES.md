@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1938,6 +1938,26 @@ trickle (100 bit/s).
 **Tests to write first** (slice 1): the contact shares `satTick` measures today (polar 300 km and the pad ~10 %, a
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
+
+## v1.98 — the planets on the map (2026-10-09, flow session, QUEUE Q175 = Q87 slice 1's drawing; closes PLAYTEST #11)
+
+Helios and the five other planets are on the map from epoch 1, on a dashed **ring in the ecliptic** around the map's
+centre. Each one sits at its ecliptic longitude that day, with its real distance in the label (`Enyo · 2.36 TU`), as a
+disc sized by class: Hyperion 6 px, Hesper and Enyo ~2.5, Astraea and Erebus at the 2 px floor, and Helios a 7 px sun
+with rays. The ring's radius is 0.3 × the camera distance, so it stays on screen at every zoom. Marks behind Tellus are
+hidden. It works in all three map styles: notebook (era ink), terminal, and modern (GL ring, depth-tested behind the planet).
+- `planetMarks(T)` (end of `sim/system.js`, additive; space's file): `{name, p, u, d, R, color, px}`. `p` from
+  `fromTellus`, `u` = `p`'s direction laid into the ecliptic (`eclFrame().N` removed), `d` in TU. Drawn in `drawMap`
+  (`app/render.js`), before the GL line pass so the ring is in `MAPSEGS` too; new mark `planet`, text priority 5 (lowest).
+- **Negative result: their real places don't work on this map.** Drawn at infinity in their true directions, all six
+  were 99–137° from the default map camera's axis, behind it. The map looks down on Tellus at 26°, so the ecliptic's
+  horizon is above the top of the screen. That's why there's a ring: it shows the true longitudes (which matter for windows and the sun's side) and drops
+  the ±23° of latitude.
+- Test `flow-4` (1 check; mutation caught: `u` not laid into the ecliptic). Stills (local, gitignored):
+  `output/launchpad/q175-planets/`.
+- **Open:** two planets close on the ring (a conjunction) lose one label to the overlap rule (#31); the dot stays. The
+  sky's sun still sits at the fixed `SUN_DIR` while the map's Helios moves with the year (slice 3, space). In the era
+  maps the ring is drawn over Tellus, as all their lines are (no depth on the overlay).
 
 ## v1.97 — the last Debrief survives a reload (2026-10-09, space session as overflow, QUEUE Q100)
 
