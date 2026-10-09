@@ -174,7 +174,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q12 | Deviation rules + the climb's corridor | M2 | S | ⚙ | ✓ bodies (`c1d7afb`) |
 | Q50 | **Station-keeping as a fuel lifetime** (W2 default): propellant at zero → the satellite drifts and its service pauses, never dies | M2 | M | ⚙ | ✓ v1.60 `60a7660` (TESTING 134) |
 | Q25 | **Orbital decay** for low satellites (unblocks reboost) | M2 | M | ⚙ | ✓ `21bbfa1` (v1.64: `thinAir`, `dragK`, `decayStep`; NOTES § v1.64; TESTING 140) |
-| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | → space 2026-10-09 (plan in NOTES, then slice 1: big pieces as registry objects) |
+| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 under *Proposed* |
 | Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | ready (Q34a ✓) |
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ready (plan first; include LATE_GAME.md § "Keeping flight in play": the fleet strip, "no silent misses") |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
@@ -333,3 +333,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - **orchestrator — M0 check:** Q74 and Q77 (vehicle) are done in v1.73; PLAYTEST #24, #27 struck. **Main's builder palette was empty from v1.68 to v1.73** (a swallowed statement, NOTES § v1.73): anyone who tried the construction screen in that window saw no parts
 - QA — PLAYROUTE sitting 1 past step 4 can use the **Beeper** and **Passenger Orbiter** presets now; and `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics — NOTES § v1.73
 - flow — after a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) — NOTES § v1.73
+- space — Q26 slice 2: conjunctions between flights, big objects vs active entries only (Öpik flux, seeded roll; tracked → warned and dodged from the tanks; crewed always warned) — NOTES § "Plan: debris and Kessler"
+- space — Q26 slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) — same plan
+- space + flow — Q26 slice 4: the world setting off / light / real (default light) on slices 2–3; the map's band view; economy: cleanup contracts — same plan
+- space — dispatched routine flights leave no debris yet (`procFly` restores the list) — NOTES v1.76

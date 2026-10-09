@@ -4231,3 +4231,30 @@ window. **GROUND.md G7 is complete on the CPU.**
 - [ ] Space (Q87, M4/M5): real bodies in the tree, each with its recipe (`<NAME>_GROUND`, or `smallBodyGround` for seeded ones)
 - [ ] GPU session, when Q91 opens: GROUND.md § "G3: the port plan", starting at G3.0
 - [ ] Someone with the GPU: TESTING 131 (Selene's maria) and 146 (Tellus's poles)
+
+## 2026-10-09 — Launchpad v1.76: debris plan, and slice 1: spent stages stay in orbit (QUEUE Q26; space session)
+
+### Summary
+- Found the design: LATE_GAME.md round 5 § "Debris and Kessler" (big pieces as objects, fragments as bands, tracking,
+  uncrewed may be destroyed, crewed always warned, off/light/real setting). Wrote the plan in NOTES (four slices).
+- Slice 1: `detach` notes every dropped piece (sim-side, `junkNote`); at flight end pieces of 100 kg or more in a closed
+  orbit clear of the air join the registry as Debris: targetable (G), grabbable, hit in flight, never flyable or held;
+  rails + decay only; low ones re-enter quietly. Program screen sums them in one line. Dry runs leave none.
+
+### Verification
+- New test `space-3` (3 checks, 5 mutations caught). Full suite 539 pass / 0 fail on `main` as pushed (`7918837`).
+  `career.mjs` unchanged. Not browser-checked (one summary line in the Program screen).
+- Version numbers collided four times while merging (vehicle v1.73, economy v1.74, world v1.75): this is v1.76, TESTING 148.
+- **Slip:** a one-shot merge-and-push script committed NOTES.md with conflict markers via `commit -a` and pushed them
+  (`2deed0f`); fixed a minute later (`7918837`), no code affected. LESSONS #42.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (junk list, `junkRegister`, `orbTick`, quiet decay), `sim/vessel.js` (one
+  call in `detach`), `sim/program.js` (one call at flight end), `sim/procedures.js` (dry runs save the list),
+  `app/program-ui.js` (summary line), `test.mjs` (`space-3`), `NOTES.md` (plan + § v1.76), `TESTING.md` row 148, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim made and cleared), `LESSONS_LEARNED.md` #42
+
+### Next steps
+- [ ] Human: TESTING 148
+- [ ] Space: Q26 slices 2–4 (under *Proposed*): conjunctions, fragment bands, the world setting
+- [ ] Orchestrator: version numbers race every few minutes now (LESSONS #37); consider dropping them from NOTES headings
