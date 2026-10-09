@@ -282,6 +282,8 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W14 | **Pick a visual identity** from the mock-ups: (a) paperwork, (b) instrument panel, (c) mid-century poster, or a mix (office screens in one, cockpit in another). Open `mockups/identity/index.html` or the stills in `output/launchpad/mockups/identity/`; trade-offs in [`mockups/README.md`](mockups/README.md) | Q53, PLAYTEST #13 |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- world — GROUND.md G3.0: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm); the first step of Q91, headless, so it could go before the gate (orchestrator's call) — GROUND.md § G3: the port plan
+- platform → world — Q57 (save versions) is a prerequisite for Selene's ground going live: landed things on Selene need re-seating onto the relief, keyed on a save version — GROUND.md § G3, going live
 - space — **Q49's plan** (missions in flight) should include LATE_GAME.md § "Keeping flight in play": the fleet strip and "no silent misses" (an unplanned chance worth a burn stops time, once) — LATE_GAME.md
 - space — 📝 a **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to maintain it, taxi rendezvous Δv — LATE_GAME.md § "The interplanetary network" (M5)
 - vehicle + space — 📝 plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP — LATE_GAME.md § ceiling, TECH_SCOUTING (M5+)

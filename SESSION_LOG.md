@@ -3779,3 +3779,23 @@ Negative results: a paraboloid bowl is too steep (now r^1.6); test §42's 3,000 
 - [ ] Human: TESTING 133 (do the reasons explain the board?)
 - [ ] Economy: Q46, Q10, Q61; Proposed: pay floors by world, dispatch leases, overflight politics
 
+
+## 2026-10-08 — Launchpad: the G3 port plan for Selene's relief (world session)
+
+### Summary
+Docs only. GROUND.md 0.1.3 § "G3: the port plan", for the session with the GPU (QUEUE Q91, held by the milestone gate):
+- the march as a JS template that emits one march per body (`marchT` unchanged, `marchS` new); always march Selene, no
+  handover; colour through a `selCol` hook the look lane owns;
+- a table of what must be bit-identical and how. **Found:** GLSL `tan` would put crater centres up to 3.5 m off the CPU's,
+  so step G3.0 moves the CPU's band geometry onto a shared `ptan`/`patan` first;
+- a cost estimate (~2× Tellus per height at full detail), level of detail, three fallbacks, steps G3.0–G3.4 with what
+  "done" means for each, and seven timing views;
+- what flips when the recipe goes live. **Found:** `TAPE_V` fingerprints physics *code*, so switching on a recipe (data)
+  wouldn't retire old Selene tapes; and landed things on Selene need re-seating, which needs Q57 save versions.
+
+### Files
+- `explorations/launchpad/GROUND.md` 0.1.3; `QUEUE.md` (two lines under *Proposed*); `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Orchestrator: G3.0 is headless and could go before the gate (your call); Q57 now gates G3.4
+- [ ] GPU session, when Q91 opens: start at G3.0
