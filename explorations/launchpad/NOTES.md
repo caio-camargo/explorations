@@ -6273,6 +6273,30 @@ the arrows, and every key in the handlers present in its Help table.
   answer to), and every option is a row with its own sentence on screen (it used to be a hover tooltip for the powers,
   so only the chosen power's line showed). "Random world" names what it rolled. The consortium's blurb became one
   sentence. Same buttons and `data-arch` / `data-start` attributes, so the robot rows and handlers are unchanged.
+- **Settings** (Q42): ☰ → Settings (`app/settings.js`, `#settings`, loaded last). Sound on/off (same switch as F4;
+  `#setSound` is the empty slot for the volume slider, Q35), graphics quality, the performance readout (moved out of the
+  Esc menu), the flight gauges, the era look ("modern look", the same switch as the logbook's), and leaving tester mode.
+  Each kept per browser (`launchpad-quality`, `-gauges`, and the existing `-sound`, `-perf`, `-modern-ui`). **Quality**
+  is a preset over aerofx's A/B flags plus a cap on the adaptive resolution (`RS_MAX` in render.js, which `adaptRes`
+  never climbs past): High = everything; Medium = flat clouds (`CLOUD_VOL`), no plume ground glow (`IMPACT_FX`), up to
+  80 %; Low = also no bloom, plume light or vapor cones, up to 60 %. The re-entry plasma stays at every level: it tells
+  you something. Settings open pauses the game like the Esc menu. **Look & sound:** a new costly effect should get a
+  line in `QUAL`.
+- **What to do next** (Q40): one line above the Program tabs, **NEXT**, with why and, when a preset is known to fly it,
+  which. `nextStep()` (`sim/next.js`, pure, test `flow-2`) picks, in order: a decision waiting for an answer (soonest
+  deadline); an accepted contract (soonest deadline); an open mission, preferring ones a preset flies (`NEXT_PRESET`:
+  weather and loads → Sounding, beeper → Orbiter with an instrument package, hop → Passenger; all flown by the robot)
+  within one epoch of the earliest open one, then the earliest epoch, then the smallest pay; else the best offer. The
+  why names the pay, what it opens, and "be first" for a race mission nobody has won. Its button opens the right tab.
+  **Economy/bodies:** a mission a preset can fly may get a line in `NEXT_PRESET` (only when a flight has proved it).
+- **Results off the ticker; news in the Inbox** (Q99): `missionEnd` is wrapped app-side (`settling`), and headlines raised
+  while a flight settles (refurbishment, telemetry, records, missions completed at the end) skip the `#news` ticker:
+  the Debrief shows them. Headlines during the flight still show live. Every headline goes to `NEWS` (last 40, with the
+  day); the Inbox ends with a **News** section, the ones since you last left the Program marked.
+  **Caught on the way (the split's rule 1, app side):** the Program layout runs at start-up, at the end of
+  `program-ui.js`, so anything it calls must live in that file or an earlier one. A first cut kept `newsHTML` in
+  `debrief.js` (later): the page stopped at load, on the Assembly with a black view. `platform-1` only checks the SIM
+  files; robot `m1` on the plain page (no `?tester`) caught it.
 
 ### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
 **Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
