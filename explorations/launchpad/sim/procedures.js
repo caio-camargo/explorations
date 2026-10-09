@@ -349,6 +349,7 @@ function dispatchRun(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if
   if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
   const f=procFly(D.stack,e.proc,dispatchTarget(c),{site:typeof procSiteOf==='function'?procSiteOf(D.stack):undefined,noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`,keepJunk:true});
   if(f.junk&&f.junk.length)junkAdd(f.junk,f.T0);   // space Q149: what a dispatched flight drops in orbit stays there, as from a flight flown by hand
+  if(f.ok&&f.s&&f.s.alive)satRegister(f.s,{day0:f.T0/DAY_S,T:f.T0+f.t});   // space Q49: and so does its payload (a satellite, or in flight)
   if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
   if(!f.ok)return{ok:false,why:f.why};
   return{ok:true,orb:{...f.orb,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:f.dv}}

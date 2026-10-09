@@ -1888,6 +1888,14 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.92 — a dispatched flight's payload stays up (2026-10-09, space session, Q49 follow-up)
+
+`dispatchRun` settled the contract and dropped the vessel (pillar 3: what you launch stays). It now registers `f.s`
+like a hand-flown flight's end does: a satellite if its orbit is settled, else a vessel in flight (v1.90). `satRegister`
+takes `R.T` for the epoch when the flight's own clock isn't `simT` (a headless flight's, restored by `procFly`).
+`career.mjs` is unchanged (its flights are abstracted). `bodies-2`'s "same seed, same flight" now restores the registry
+between its two runs: the first payload sat on the second's path, and flying near it is physics, not rails.
+
 ## v1.91 — missions in flight, slice 2: on the timeline, no silent misses (2026-10-09, space session, QUEUE Q49)
 
 `cruiseEvents(T)` gives each vessel in flight its next event, and the economy's `upcoming()` lists them (one line in
