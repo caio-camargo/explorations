@@ -787,3 +787,8 @@ function controlReport(s){geom(s);const ls=launchSegs(s),E=s.parts.filter(p=>p.o
   return{burn,coast,rcs,spin,roll:{wheel:s.torque,gim:ctrlAuthRoll(s,E,1)-s.torque,fin:fr},
     turn:{wheels:turnTime((s.torque+rcs)/Ip,rcs>0?0.6:Math.min(0.6,s.hmax/Ip)),burn:turnTime((ctrlAuthority(s,E,1)+rcs)/Ip)},hfull:s.hmax/Ip,steer:s.torque>0||E.some(p=>p.d.gim>0)||s.parts.some(p=>p.on&&p.d.ctl)||rcs>0,thrust}}
 function firstSeg(s){return launchSegs(s)[0]??0}
+// the Docking preset (vehicle session, Q78): a docking head on the Orbiter's launcher, so the docking rows can be flown from
+// presets. A port on top, a probe core with an onboard computer (Docking SAS needs one on a probe, v1.68) and a battery,
+// two RCS rings and two gas bottles on the upper tank. Launch it twice, one as the target; or chase a satellite with a port.
+PRESETS.Docking=(()=>{const d=toV2(['port','core','ocomp','batt','t2','petrel','dec','t8','fins','kestrel']),f=n=>n.k==='t2'?n:(n.c||[]).map(f).find(Boolean),h=f(d.root);
+  for(const y of[0.2,1.8])h.c.push({k:'rcs',at:{y,a:0,n:4,cy:0.1},c:[]});h.c.push({k:'gas',at:{y:1.0,a:Math.PI/4,n:2,cy:0.3},c:[]});return d})();

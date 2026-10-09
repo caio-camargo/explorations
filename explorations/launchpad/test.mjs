@@ -4057,6 +4057,17 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       && /const legFoot=p=>\{const a=p\.phi\|\|0;return\[p\.pos\[0\]\+p\.d\.reach\*Math\.cos\(a\),p\.y0-p\.d\.drop/.test(H));
 }
 
+// vehicle-6. The Docking preset (vehicle session, QUEUE Q78): a docking head on the Orbiter's launcher reaches orbit with its
+// gas full, can translate on RCS, and has a computer for Docking SAS on a probe.
+{
+  const d = api.PRESETS.Docking, s = handAscent(api, d), el = api.elements(s.r, s.v, TELLUS.mu), P = api.PROG, f0 = P.flights, tl = api.TEST.tools;
+  const gas = s.parts.filter(p => p.on && p.d.kind === 'gas').reduce((a, p) => a + (p.res.gas || 0), 0), rcs = s.parts.filter(p => p.on && p.d.kind === 'rcs').length;
+  P.flights = Math.max(1, f0); api.TEST.tools = false; s.av = api.AV.length - 1; const av = api.avOf(s).name; P.flights = f0; api.TEST.tools = tl;
+  check('presets: Docking reaches orbit with both gas bottles full, eight RCS quads and the port on top; its computer gives Docking SAS in the onboard-computer era',
+    s.alive && el.pe - TELLUS.R > TELLUS.atm && rcs === 8 && Math.abs(gas - 0.03) < 1e-9 && s.parts.some(p => p.on && p.d.kind === 'port') && av === api.AV[api.AV.length - 1].name && api.designName(d) === 'Docking',
+    `periapsis ${((el.pe - TELLUS.R) / 1e3).toFixed(0)} km, ${api.dvRemaining(s).cur.toFixed(0)} m/s spare, ${rcs} quads, ${(gas * 1000).toFixed(0)} kg gas, SAS ${av}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
