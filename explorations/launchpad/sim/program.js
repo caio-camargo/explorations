@@ -597,6 +597,30 @@ function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);i
 // dispatchRun will give; the interim resolver builds one for its two cases: the upper stage at apoapsis on the ascent's
 // transfer orbit (periapsis in the air), with the propellant the circularisation needs ('relight') or too little ('short').
 const devWaiting=()=>(PROG.dispatch||[]).filter(x=>x.status==='deviated');
+// ---- the network screen's model (QUEUE Q154; NOTES § UI "Network screen plan"): one pure function the screen draws
+// from, so it never computes. N1's fleet and pads (as flow's netFallback built them, plus dispatches waiting for you),
+// N2's nodes as they exist today (our sites, ground stations, satellites by body and orbit band, stations and bases
+// with their supplies), no routes until routines exist, and the bottleneck: the crewed node shortest of supplies.
+const NET_BAND=h=>h<2e6?'low':h<2e7?'high':'stationary';
+function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*DAY_S;
+  for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
+    fleet.push({name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
+      next:q.landed?'on the surface':q.adrift!=null?'adrift: out of propellant':isFinite(life)?`holds its orbit ${Math.floor(life)} more days`:'holds its orbit',t:isFinite(life)?life:null})}
+  for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
+    else if(x.status==='deviated')fleet.push({name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
+  for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
+    .map(x=>({from:Math.max(D,x.ordered??D),to:x.launch,kind:'dispatch',title:`${x.title} · ${designName(x.stack)||'our design'}`}))});
+  for(const t of homeSites())nodes.push({id:`site:${t.id}`,kind:'site',body:'Tellus',slot:'surface',name:t.name,stock:{},need:{}});
+  for(const g of stationsAll())if(g.ci!=null)nodes.push({id:`gs:${g.ci}`,kind:'ground station',body:'Tellus',slot:'surface',name:g.name,stock:{},need:{}});
+  for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus';let slot='surface';
+    if(!q.landed){const B=BODIES.find(b=>b.name===body)||TELLUS;try{const[r]=q.bodyName?[q.r]:satAt(q,T);slot=NET_BAND(len(r)-B.R)}catch(e){slot='low'}}
+    const st=q.beacon?baseOf(q):q.landed?null:stationOf(q),crewed=st&&st.crew>0;
+    if(q.landed&&!q.beacon&&baseOfMember(q))continue;   // a base's member is part of the base's node
+    nodes.push({id:`reg:${q.id}`,kind:q.beacon?'base':st&&(st.berths||st.labs)?'station':satKind(q).toLowerCase(),body,slot,name:q.name,
+      stock:st?{supplies:Math.round(st.sup*1000)}:{},need:crewed?{supplies:Math.round(st.crew*SUP_DAY*1000)}:{},days:crewed?st.days:null,paused:!!(q.adrift!=null||q.supOut)})}
+  let worst=null;for(const n of nodes)if(n.days!=null&&n.days<30&&(!worst||n.days<worst.days))worst=n;
+  const bottleneck=worst?{text:`${worst.name} has ${Math.floor(worst.days)} day${Math.floor(worst.days)===1?'':'s'} of supplies left`,node:worst.id,good:'supplies'}:null;
+  return{nodes,routes,bottleneck,fleet,pads}}
 function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,c),T=PROG.day*DAY_S,alt=c.p.alt*1e3,ra=TELLUS.R+alt,rp=TELLUS.R+30e3;
   let n=0;while(v.events.slice(v.evIdx).some(x=>x.decouple.length)&&n++<20)stage(v);   // drop down to the top stage (lit in the ascent)
   const va=Math.sqrt(TELLUS.mu*2*rp/(ra*(ra+rp))),need=Math.sqrt(TELLUS.mu/ra)-va,want=kind==='short'?0.6*need:need+Math.max(0,e.margin||0);
