@@ -257,6 +257,14 @@ ROWS[110] = {title: 'the Link row through a flight', steps: [
      // de-orbit: 8 % off the speed, retrograde hold, down to 20 km
      S.v = mul(S.v, 0.92); S.sas = true; S.sasMode = 'retro'; PT.fly(() => PT.alt() < 20000, 3000, {each: () => note('entry')});
      return seen })()`, `PT.look(2.2, -0.3, 12)`, {shot: 'entry_end'}]};
+// PLAYTEST #17 / Q17 + Q20: hard climbs through max heating show no blackout on the Link row and draw no plasma shell
+// (plasmaHeat over render.js's 1.5e4 gate); the entry half is row 110's
+ROWS[122] = {title: 'no blackout or plasma shell on a hard climb', steps: ['Heavy', 'Asparagus'].flatMap(d => [
+  `(()=>{ go('assembly'); PT.preset('${d}'); PT.launch(); S.throttle = 1; stage(S); const seen = new Set(); let qMax = 0, shell = 0, at = null;
+     PT.fly(() => PT.orbit().ap > 150000 || PT.alt() > 90000, 600, {ascent: true, autostage: true, each: () => { const l = linkOf(S); seen.add(l.ok ? (l.st ? 'station' : l.why) : l.why);
+       const h = plasmaHeat(S.body, S.r, S.v, S.qHeat || 0); if (S.qHeat > qMax) { qMax = S.qHeat; at = {t: +simT.toFixed(0), km: +(PT.alt()/1000).toFixed(1), mach: +S.mach.toFixed(1), v: Math.round(len(sub(S.v, surfVel(S.body, S.r))))} } shell = Math.max(shell, h) }});
+     PT.look(1.75, 0.05, 45); return {design: '${d}', link: [...seen], qHeatMax: Math.round(qMax), atMax: at, plasmaShellMax: Math.round(shell), shellDrawn: shell > 1.5e4, PLASMA_V} })()`, {shot: d.toLowerCase() + '_top'}]),
+  checks: {blackout: `false`}};
 
 // Program & economy
 const NOMONEY = {kh: true, tools: true, nofail: true, fast: true};
@@ -266,6 +274,17 @@ const SOUNDING = `(()=>{ go('assembly'); PT.preset('Sounding'); const f0 = PROG.
   for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); const apex = S.rec && S.rec.apex; go('program'); const fP = PROG.funds, flP = PROG.flights, settledAtProgram = !!S.rec.ended;
   resetShip();   // what the next launch (or Revert) does: since PLAYTEST #21 leaving the flight already settled it, so this pays nothing more
   return {landed: S.landed, apexKm: apex ? +(apex/1000).toFixed(1) : null, fundsBefore: +f0.toFixed(1), fundsAtProgram: +fP.toFixed(1), flightsAtProgram: flP, settledAtProgram, fundsAfterSettling: +PROG.funds.toFixed(1), flights: PROG.flights, log: PT.logSince(m0).filter(l => !/Logbook/.test(l))} })()`;
+// row 97: three ways to end a flight, each settled when you leave it for the Program (PLAYTEST #21 rerun for crash and
+// orbit); a debrief, once flow's Q2 lands, would show here too
+const ENDING = (how, design, fly) => `(()=>{ go('assembly'); PT.preset('${design}'); const f0 = PROG.funds, fl0 = PROG.flights, m0 = PT.log.length; PT.launch(); ${fly}
+  const end = {landed: S.landed, alive: S.alive, alt: Math.round(PT.alt())}; go('program');
+  return {how: '${how}', end, settled: !!S.rec.ended, flights: [fl0, PROG.flights], funds: +(PROG.funds - f0).toFixed(1), debrief: /debrief/.test(screenNow()) || !!document.querySelector('[id*=debrief]:not(.hidden),[class*=debrief]:not(.hidden)'),
+    news: PT.logSince(m0).filter(l => !/Logbook|Space to ignite/.test(l)).slice(-8)} })()`;
+ROWS[97] = {title: 'finish flights three ways', flags: NOMONEY, steps: [
+  ENDING('landed', 'Sounding', `S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000);`), {shot: 'landed'},
+  ENDING('crashed', 'Sounding', `S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); PT.fly(() => S.landed || !S.alive, 3000);`), {shot: 'crashed'},
+  ENDING('in orbit', 'Orbiter', `${ORBIT.replace(/;$/, '')}; PT.fly(() => false, 60);`), {shot: 'orbit'}],
+  checks: {settled: `true`}};
 ROWS[77] = {title: 'budget gate and recovery refund', flags: NOMONEY, steps: [
   `go('assembly'); PT.preset('Big Lunar'); render(); ({funds: PROG.funds, button: document.getElementById('launch').textContent, cost: vesselCost(S.parts).cost})`,
   `(()=>{ const m0 = PT.log.length; document.getElementById('launch').click(); return {screen: screenNow(), log: PT.logSince(m0)} })()`,
@@ -392,6 +411,164 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
   `PT.click('[data-arch="closedSuper"]'); ({arch: PROG.homeArch})`, {shot: 'arch'},
   `PT.click('[data-start="company"]'); ({gate: progGate, build: document.getElementById('bBuild').disabled, funds: PROG.funds, name: progName()})`, {shot: 'started'}],
   checks: {gate: `progGate`}, expect: {gate: v => v === false}};
+
+// M1's finish line (QUEUE Q55, ROADMAP § M1): a new career, no tester flags, from the first-run gate to the first orbit
+// and its debrief. Written before M1 is done, so it FAILS until the flow lane's M1 items land; each check names its item.
+// Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). No preset carries
+// one to orbit (PLAYTEST #24), so the robot swaps the Orbiter's pod for the package, as career.mjs assumes. The ascent
+// is fly_ladder.mjs's handAscent: attitude set directly, so it proves the career path, not that the rocket is flyable.
+// Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
+const M1_HELPERS = String.raw`
+PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e => { if (e.tagName === 'CANVAS' || e.closest('.hidden')) return false; const cs = getComputedStyle(e);
+    if (!/absolute|fixed|sticky/.test(cs.position) || cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) return false; const r = e.getBoundingClientRect(); return r.width > 4 && r.height > 4 && r.width * r.height < 0.5 * innerWidth * innerHeight && e.innerText.trim() });   // full-screen layers are containers, not boxes
+  const top = els.filter(e => !els.some(o => o !== e && o.contains(e))), name = e => e.id ? '#' + e.id : e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '');
+  const out = []; for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) { const A = top[i].getBoundingClientRect(), B = top[j].getBoundingClientRect();
+    const w = Math.min(A.right, B.right) - Math.max(A.left, B.left), h = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top); if (w > 0 && h > 0 && w * h >= 40) out.push(name(top[i]) + ' × ' + name(top[j]) + ' ' + Math.round(w * h) + ' px²') }
+  return out };
+PT.debrief = () => /debrief/.test(screenNow()) || [...document.querySelectorAll('[id*=debrief],[class*=debrief]')].some(e => !e.closest('.hidden') && e.getBoundingClientRect().height > 0);
+PT.ascent = () => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up';
+  const point = Y => { const f = localFrame(s.r), X = norm(cross(Y, f.n)); s.q = qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0] };
+  const pitch = d => { const f = localFrame(s.r), r = d * Math.PI / 180; point(norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r))))) };
+  while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast' } }
+    else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
+      const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) phase = 'circ' }
+    else { const f = localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); point(norm(need)); s.throttle = 1;
+      if (el.pe - TELLUS.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; break } }
+    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) stage(s);
+    advPhys(s) }
+  const o = PT.orbit(); return {alive: s.alive, pe: Math.round(o.pe / 1e3), ap: Math.round(o.ap / 1e3), atm: TELLUS.atm / 1e3, t: Math.round(simT)} };
+PT.state = () => ({screen: screenNow(), day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), flights: PROG.flights, done: Object.keys(PROG.done)});
+true`;
+ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
+  // the first-run gate, with real clicks
+  {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,
+  {click: '[data-start="agency"]'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
+  `PT.m1 = {boxes: {program: PT.boxes()}}; PT.m1.boxes.program`,
+  // flight 1: Sounding, "Above the weather"
+  {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
+  {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
+  `PT.m1.live = +(simT - PT.m1.t0).toFixed(2); PT.m1.boxes.flight = PT.boxes(); ({live: PT.m1.live, alt: Math.round(PT.alt())})`, {shot: 'climb'},
+  // Esc pauses (Q39): the sim clock stands still while the Esc menu is open
+  {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
+  `({fly: PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}})`,
+  `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
+  // flight 2: the beeper
+  `go('assembly'); stackDef = PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
+  {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
+  `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
+  `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
+  checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,
+    escPauses: `PT.m1.escRun`, debrief: `[PT.m1.deb1, PT.m1.deb2]`, boxes: `Object.entries(PT.m1.boxes).filter(([k, v]) => v.length).map(([k, v]) => k + ': ' + v.join(', '))`},
+  expect: {tester: v => !v, weather: v => v === true, beeper: v => v === true,
+    escPauses: v => v === 0,                       // flow Q39
+    debrief: v => v[0] === true && v[1] === true,  // flow Q2
+    boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
+
+// Moons (QUEUE Q30 slice 1, NOTES § "Plan: robot drivers…"): the Selene and Nyx ladders flown in the page by the game's
+// own procedures, with fly_ladder.mjs (fetched, its Node-only tail cut, imported from a blob) driving them. Its HOOK is a
+// dummy, so the page's HUD and news (and PT.log) see everything a player would. Each mission is one step, then shots.
+const MOON_HELPERS = String.raw`
+PT.ladder = async () => { if (PT.L) return PT.L; const src = await (await fetch('fly_ladder.mjs')).text(); const cut = src.slice(0, src.indexOf('// run directly'));
+  PT.L = await import(URL.createObjectURL(new Blob([cut], {type: 'text/javascript'}))); return PT.L };
+PT.api = () => ({PRESETS, TELLUS, SELENE, BODIES, MISSIONS, newShip, stage, advPhys, advRails, railsOK, localFrame, qFromBasis, elements, timeToNu, dvRemaining, dvPlan, engAcc,
+  HOOK: {}, PROG, len, norm, add, sub, mul, dot, cross, procStart, procKey, vesselCost, bodyRel, toPF, siteAt, get S() { return S }, set S(v) { S = v }, get t() { return simT }, set t(v) { simT = v }});
+PT.fly1 = async id => { const L = await PT.ladder(), n0 = PT.log.length, f0 = PROG.funds; const rows = L.flyLadder(PT.api(), [id]); PT.showUI();
+  return {id, rows, at: S.body.name, alt: Math.round(PT.alt() / 1e3), landed: S.landed, funds: +(PROG.funds - f0).toFixed(1), news: PT.logSince(n0).filter(l => /news|Mission/.test(l)).slice(-10)} };
+PT.mapShot = () => { go('map'); render(); return true };
+true`;
+const MOON = (id, shots = true) => [`PT.fly1(${JSON.stringify(id)})`, ...(shots ? [`PT.look(0.9, 0.15, 25)`, {shot: id.replace(':', '_')}, `PT.mapShot()`, {shot: id.replace(':', '_') + '_map'}, `go('flight'); true`] : [])];
+const MOONSTART = [MOON_HELPERS, `PT.preset('Probe'); PT.launch(); testEpoch(4); true`];
+ROWS[68] = {title: 'the Selene ladder by procedure (with 54, 92, 13)', steps: [...MOONSTART, ...MOON('farside'), ...MOON('selimp'), ...MOON('selland'), ...MOON('selsample')]};
+ROWS[72] = {title: 'Nyx: found by tracking, flown past (with 121)', steps: [...MOONSTART, ...MOON('nyxfind'), ...MOON('nyxfly')]};
+// after each capture, up to 400 h on: the prograde orbit should come down or leave, the retrograde one stay
+const NYXWAIT = `(()=>{ const t0 = simT; for (let k = 0; k < 400 && S.alive && S.body.name === 'Nyx' && !S.landed; k++) { if (railsOK(S)) advRails(S, 3600, 1000); else advPhys(S) }
+  return {days: +((simT - t0) / 86400).toFixed(1), body: S.body.name, alive: S.alive, landed: S.landed, alt: Math.round(PT.alt() / 1e3), log: PT.log.slice(-4)} })()`;
+ROWS[55] = {title: 'Nyx orbits: retrograde lasts, prograde is wrecked', steps: [...MOONSTART, ...MOON('nyxorb'), NYXWAIT, ...MOON('nyxorb:pro'), NYXWAIT]};
+ROWS[73] = {title: 'land on Nyx by procedure', steps: [...MOONSTART, ...MOON('nyxland')]};
+// flySite twice at one point: the landing procedure is repeatable to within metres
+ROWS[125] = {title: 'land on the same Selene spot twice', steps: [...MOONSTART,
+  `(async()=>{ const L = await PT.ladder(); const a = L.flySite(PT.api(), 'Probe', 'Selene', 10, 20), b = L.flySite(PT.api(), 'Probe', 'Selene', 10, 20); PT.showUI(); return {first: a, second: b} })()`, `PT.look(0.9, 0.15, 25)`, {shot: 'landed'}]};
+
+// Docking (QUEUE Q30 slice 2): test.mjs §22/§25/§27/§29's scenes placed in the page (a 300 km orbit, the clock at 0), the
+// flown vessel a port-pod-tank-engine stack with two RCS rings and gas (§24's design). PT.dockIn is a pilot: Docking SAS
+// holds the attitude, and RCS pulses (INP.tx/ty/tz, ±1 like the keys) close at up to vmax and null the sideways drift.
+const DOCK_HELPERS = String.raw`
+PT.zero = () => Object.assign(INP, {pitch: 0, yaw: 0, roll: 0, tx: 0, ty: 0, tz: 0});
+PT.rcsDesign = (stack, host) => { const d = toV2(JSON.parse(JSON.stringify(stack))), f = n => n.k === host ? n : (n.c || []).map(f).find(Boolean), h = f(d.root);
+  for (const y of [0.15, 0.95]) h.c.push({k: 'rcs', at: {y, a: 0, n: 4, cy: 0.1}, c: []}); h.c.push({k: 'gas', at: {y: 0.5, a: Math.PI / 4, n: 2, cy: 0.3}, c: []}); return d };
+PT.park = s => { const r0 = TELLUS.R + 300e3; Object.assign(s, {landed: false, sas: false, throttle: 0, w: [0, 0, 0]}); s.rec.launched = true; s.rec.day0 = PROG.day;
+  s.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; s.r = [r0, 0, 0]; s.v = [0, 0, -Math.sqrt(TELLUS.mu / r0)]; S = s; return s };
+PT.dockScene = ({gap = 50, lat = 2, close = 0, tgt = ['port', 'cam', 'petrel'], me = null} = {}) => { FLEET.length = 0; PROG.sats = []; PROG.satN = 0; simT = 0; PT.zero();
+  const s = PT.park(newShip(me || PT.rcsDesign(['port', 'pod', 't1', 'kestrel'], 't1'))), Y = qrot(s.q, [0, 1, 0]), k = newShip(tgt); k.landed = false; k.rec.launched = true; k.rec.day0 = PROG.day;
+  k.q = qmul(qaxis([0, 0, 1], Math.PI), s.q); k.r = add(add(s.r, mul(Y, s.yTop + gap + k.yTop)), [0, lat, 0]); k.v = s.v.slice(); satRegister(k, {day0: PROG.day});
+  s.v = add(s.v, mul(Y, close)); const q = PROG.sats[PROG.sats.length - 1]; s.target = q.id; PT.q = q; return {target: q.name, gap, lat, gas: +(rcsGas(S) * 1000).toFixed(1)} };
+PT.rel = q => { const [rq, vq] = satAt(q, simT), qi = qconj(S.q); return {p: qrot(qi, sub(rq, S.r)), u: qrot(qi, sub(S.v, vq))} };
+PT.dockIn = ({vmax = 0.5, tmax = 1800, stopAt = 0} = {}) => { const q = PT.q; S.sas = true; S.sasMode = 'dock'; S.rcs = true; const g0 = rcsGas(S), t0 = simT, tr = []; let k = 0, d = 0;
+  while (!S.att.length && S.alive && simT - t0 < tmax) { const {p, u} = PT.rel(q); d = len(p); if (stopAt && d < stopAt) break;
+    const want = [clamp(0.05 * p[0], -0.2, 0.2), Math.min(vmax, 0.1 + 0.02 * Math.max(0, p[1] - S.yTop - 2)), clamp(0.05 * p[2], -0.2, 0.2)], e = want.map((w, i) => w - u[i]);
+    INP.tx = Math.abs(e[0]) > 0.01 ? Math.sign(e[0]) : 0; INP.ty = Math.abs(e[1]) > 0.01 ? Math.sign(e[1]) : 0; INP.tz = Math.abs(e[2]) > 0.01 ? Math.sign(e[2]) : 0;
+    advPhys(S); if (k++ % 500 === 0) tr.push([Math.round(simT - t0), +d.toFixed(1), +u[1].toFixed(2)]) }
+  PT.zero(); return {latched: !!S.att.length, secs: Math.round(simT - t0), dist: +d.toFixed(2), gasKg: +((g0 - rcsGas(S)) * 1000).toFixed(2), docked: !!PT.q.docked, track: tr.slice(0, 10),
+    hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Target|Closest|Port|Line|Dock|RCS|Gas|Vessel/.test(l))} };
+PT.steps = sec => { const t0 = simT; while (simT - t0 < sec && S.alive) advPhys(S); return +(simT - t0).toFixed(1) };
+true`;
+const DOCKSTART = [DOCK_HELPERS, `PT.preset('Orbiter'); PT.launch(); true`];
+ROWS[59] = {title: 'dock to a port from 50 m with RCS and Docking SAS (with 58)', steps: [...DOCKSTART, `PT.dockScene({gap: 50, lat: 2})`, `PT.look(2.4, 0.15, 30)`, {shot: 'start'},
+  `PT.dockIn({stopAt: 12})`, `PT.look(2.4, 0.15, 20)`, {shot: 'close'}, `PT.dockIn()`, `PT.look(2.4, 0.15, 20)`, {shot: 'latched'}],
+  checks: {latched: `S.att.length > 0`}, expect: {latched: v => v === true}};
+ROWS[60] = {title: 'undock and push off', steps: [...DOCKSTART, `PT.dockScene({gap: 8, lat: 0.3})`, `PT.dockIn()`,
+  `(()=>{ const q = PT.q; undock(S, q.id); PT.steps(5); const {u, p} = PT.rel(q); return {sep: +(-u[1]).toFixed(3), dist: +len(p).toFixed(2), docked: !!q.docked, att: S.att.length} })()`, `PT.look(2.4, 0.15, 25)`, {shot: 'undocked'}]};
+// §22: a camera satellite, antenna toward us, 1 m beyond the nose, closing at 1 and 6 m/s with no pilot
+const BUMP = v => [`PT.dockScene({gap: 1, lat: 0, close: ${v}, tgt: ['ant', 'cam', 'petrel'], me: ['pod', 't1', 'kestrel']})`,
+  `(()=>{ const q = PT.q, n0 = PT.log.length; let k = 0; while (!q.spin && S.alive && k++ < 2000) advPhys(S); PT.steps(3); return {v: ${v}, spin: q.spin ? +len(q.spin.w).toFixed(3) : null, kit: (q.shape || []).map(o => o.k), alive: S.alive, sats: PROG.sats.length, log: PT.logSince(n0)} })()`,
+  `PT.look(2.4, 0.15, 20)`, {shot: 'bump' + v}];
+ROWS[61] = {title: 'bump a satellite at 1 and 6 m/s', steps: [...DOCKSTART, ...BUMP(1), ...BUMP(6)]};
+ROWS[56] = {title: 'rendezvous: G to target, close from 300 m', steps: [...DOCKSTART, `PT.dockScene({gap: 300, lat: 25})`, `S.target = null; S.tgtV = null; true`, {key: 'g'},
+  `({target: S.target, name: (PROG.sats.find(q => q.id === S.target) || {}).name, hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Target|Closest/.test(l))})`, `PT.look(2.4, 0.15, 30)`, {shot: 'targeted'},
+  `PT.dockIn({vmax: 2, stopAt: 15})`, `PT.look(2.4, 0.15, 30)`, {shot: 'close'}]};
+ROWS[62] = {title: 'split a flight into two vessels and switch', steps: [...DOCKSTART,
+  `(()=>{ FLEET.length = 0; PROG.sats = []; simT = 0; PT.park(newShip(['pod', 't1', 'dec', 'core', 't1', 'sparrow'])); for (let k = 0; k < 4 && !FLEET.length; k++) stage(S); PT.steps(20); return {fleet: FLEET.map(v => v.name), flying: S.name, hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Vessel/.test(l))} })()`,
+  `PT.look(2.4, 0.15, 25)`, {shot: 'split'}, {key: ']'}, `({flying: S.name, parts: S.parts.filter(p => p.on).map(p => p.d.key), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Vessel/.test(l))})`, `PT.look(2.4, 0.15, 25)`, {shot: 'switched'}]};
+ROWS[63] = {title: 'open the cargo bay and release the payload', steps: [...DOCKSTART,
+  `(()=>{ FLEET.length = 0; PROG.sats = []; simT = 0; PT.park(newShip(['core', 't1', 'bay', 'pod', 't2', 'kestrel'])); bayOp(S, 'open'); PT.steps(1); return doorF(S.parts.find(p => p.d.kind === 'bay')) })()`, `PT.look(2.4, 0.15, 18)`, {shot: 'doors_half'},
+  `PT.steps(1.2); bayOp(S, 'rel'); PT.steps(15); ({fleet: FLEET.map(v => v.name), sep: FLEET[0] ? +len(sub(FLEET[0].v, S.v)).toFixed(3) : null})`, `PT.look(2.4, 0.15, 25)`, {shot: 'released'}]};
+
+// Stations (QUEUE Q30 slice 3): §26 claw, §30 radial ports and a habitat, §32 the arm, §33 a beacon on Selene; and the
+// busiest HUD (row 98). The Program side is read after the flight is left (Debrief first, then the Program's Fleet tab).
+const ST_HELPERS = String.raw`
+PT.hubDes = (arm) => { const d = toV2(['core', 't2']), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean), h = f(d.root); h.c.push({k: 'rport', at: {y: 1.0, a: 0, n: 1, cy: 0.5}, c: []});
+  if (arm) h.c.push({k: 'arm', at: {y: 1.0, a: Math.PI, n: 1, cy: 0.3}, c: []}); return d };
+PT.hub = arm => { FLEET.length = 0; PROG.sats = []; PROG.satN = 0; simT = 0; PT.zero(); const s = PT.park(newShip(PT.hubDes(arm))); s.q = [0, 0, 0, 1]; return s };
+PT.W = x => add(S.r, qrot(S.q, sub(x, S.cm)));
+PT.fleetTab = () => { go('program'); if (screenNow() === 'debrief') go('program'); PT.click('[data-ptab="fleet"]'); return document.getElementById('progBody').innerText.slice(0, 900) };
+true`;
+const STSTART = [DOCK_HELPERS, ST_HELPERS, `PT.preset('Orbiter'); PT.launch(); true`];
+ROWS['60c'] = {title: 'grab and release with the claw', steps: [...STSTART,
+  `(()=>{ const r = PT.dockScene({gap: 0.3, lat: 0, close: 0.4, tgt: ['ant', 'cam', 'petrel'], me: ['claw', 'pod', 't1', 'kestrel']}); const k = PROG.sats[0]; let n = 0; while (!S.att.length && n++ < 2000) advPhys(S);
+     return {grabbed: S.att.length ? S.att[0].kind : null, secs: +(n * DT).toFixed(1), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Dock|Claw/.test(l))} })()`, `PT.look(2.4, 0.15, 14)`, {shot: 'grabbed'},
+  `(()=>{ undock(S, PT.q.id); PT.steps(5); const {u, p} = PT.rel(PT.q); return {sep: +(-u[1]).toFixed(3), dist: +len(p).toFixed(2), att: S.att.length} })()`, `PT.look(2.4, 0.15, 14)`, {shot: 'released'}]};
+// §30's module: a habitat with a nose port, 0.3 m off the hub's side port, closing at 0.15 m/s; then the flight is left
+ROWS[64] = {title: 'a habitat on a radial port, and the station line', steps: [...STSTART,
+  `(()=>{ const s = PT.hub(false), rp = portsOf(s.parts.filter(p => p.on), new Set()).find(x => Math.abs(x.ax[1]) < 1e-9), n = qrot(s.q, [1, 0, 0]), face = PT.W(rp.face);
+     const k = newShip(['port', 'hab']); k.landed = false; k.rec.launched = true; k.rec.day0 = PROG.day; k.q = qFromTo([0, 1, 0], mul(n, -1)); k.r = sub(add(face, mul(n, 0.3)), mul(mul(n, -1), k.yTop)); k.v = add(s.v.slice(), mul(n, -0.15));
+     satRegister(k, {day0: PROG.day}); PT.q = PROG.sats.at(-1); let i = 0; while (!S.att.length && i++ < 3000) advPhys(S); return {docked: S.att.length ? S.att[0].kind : null, secs: +(i * DT).toFixed(1), station: stationOf(PROG.sats.at(-1)), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Dock|Station/.test(l))} })()`,
+  `PT.look(1.2, 0.2, 16)`, {shot: 'berthed'}, `PT.fleetTab()`, {shot: 'fleet'}, `testAdvance(30); PT.fleetTab()`]};
+ROWS[66] = {title: 'grapple and berth with the arm', steps: [...STSTART,
+  `(()=>{ const s = PT.hub(true), armP = s.parts.find(p => p.d.kind === 'arm'), base = PT.W(armBase(armP).P); const k = newShip(['port', 'lab']); Object.assign(k, {landed: false, v: s.v.slice()}); k.r = add(base, [-4, 0, 0]); k.q = qFromTo([0, 1, 0], [0, 0, 1]); k.rec.launched = true;
+     satRegister(k, {day0: PROG.day}); PT.q = PROG.sats.at(-1); const g = armOp(S, 'grab'); let n = 0; while (armBusy(S) && n++ < 20000) advPhys(S); return {grab: g, secs: +(n * DT).toFixed(1), att: S.att.map(a => a.kind), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Arm|Dock/.test(l))} })()`,
+  `PT.look(1.2, 0.25, 22)`, {shot: 'grappled'},
+  `(()=>{ const b = armOp(S, 'berth'); let n = 0; const tr = []; while (armBusy(S) && n++ < 40000) { advPhys(S); if (n % 500 === 0) tr.push(PT.hud().split(String.fromCharCode(10)).filter(l => /Arm/.test(l)).join('')) } return {berth: b, secs: +(n * DT).toFixed(1), att: S.att.map(a => a.kind), arm: tr.slice(0, 6)} })()`,
+  `PT.look(1.2, 0.25, 22)`, {shot: 'berthed'}]};
+// §33: a beacon lander standing on Selene, the flight left there
+ROWS[67] = {title: 'a beacon on Selene: a moonbase in the Fleet tab', steps: [...STSTART,
+  `(()=>{ FLEET.length = 0; PROG.sats = []; simT = 0; const B = SELENE, s = newShip(['beacon', 'core', 't1', 'sparrow']), u = [1, 0, 0]; Object.assign(s, {body: B, landed: true, alive: true, sas: false, throttle: 0});
+     s.pf = mul(u, groundR(B, mul(u, B.R)) - s.yBot); s.qLocal = qFromTo([0, 1, 0], u); syncLanded(s); Object.assign(s.rec, {launched: true, day0: PROG.day, crewed: false, crewOK: true}); S = s; return {body: S.body.name, landed: S.landed} })()`,
+  `PT.look(0.9, 0.15, 14)`, {shot: 'beacon'}, `PT.fleetTab()`, {shot: 'fleet'}]};
+// everything at once: RCS, a target 8 m off, a second vessel in the flight, docking rows; every box must stay apart
+ROWS[98] = {title: 'the HUD in a busy flight', steps: [M1_HELPERS, ...STSTART,
+  `(()=>{ PT.dockScene({gap: 40, lat: 1.5, me: PT.rcsDesign(['port', 'pod', 't1', 'dec', 'core', 't1', 'sparrow'], 't1')}); for (let k = 0; k < 5 && !FLEET.length; k++) stage(S); S.throttle = 0; return {fleet: FLEET.map(v => v.name)} })()`,
+  `PT.dockIn({stopAt: 10})`, `PT.showUI(); ({rows: PT.hud().split(String.fromCharCode(10)).map(l => l.split(String.fromCharCode(9))[0]), boxes: PT.boxes()})`, {shot: 'busy'}], checks: {boxes: `PT.boxes()`}, expect: {boxes: v => v.length === 0}};
 
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);

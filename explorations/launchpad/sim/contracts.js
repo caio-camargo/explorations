@@ -64,10 +64,12 @@ const CT={
   recon:{src:['mil'],req:'beeper',gen:R=>{const alt=10*Math.round(11+R()*7),inc=5*Math.round(12+R()*6);return{alt,tol:20,inc,itol:5,pay:(45+inc*0.6)*1.6,dur:90+R()*60}},
     title:p=>`Reconnaissance orbit, ${p.alt} km at ${p.inc}°`,brief:p=>`An instrument package in orbit at ${p.alt}±${p.tol} km, inclination ${p.inc}±${p.itol}°. Classified.`,
     ok:(R,p)=>{const o=R.orb;return!!o&&o.sci&&o.pe>=(p.alt-p.tol)*1e3&&o.ap<=(p.alt+p.tol)*1e3&&Math.abs(o.inc-p.inc)<=p.itol}},
-  ballistic:{src:['mil'],req:'weather',gen:R=>{for(let k=0;k<200;k++){const rg=300+R()*600,az=R()*6.2832,a=rg/600,u=[Math.cos(a),Math.sin(a)*Math.sin(az),Math.sin(a)*Math.cos(az)];
-      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60}}return{u:[Math.cos(.8),0,Math.sin(.8)],rg:480,rad:40,pay:70,dur:80}},
-    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km from the pad (marked on the map). Classified.`,
-    ok:(R,p)=>!!R.endPf&&R.endSci&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
+  // the target lies downrange of the program's current site (QUEUE Q7), and the test counts only when flown from there:
+  // a ballistic test belongs to its range. Contracts saved before Q7 have no p.site and count from anywhere.
+  ballistic:{src:['mil'],req:'weather',gen:R=>{const t=curSite();for(let k=0;k<200;k++){const rg=300+R()*600,u=alongAz(t.u,R()*6.2832,rg*1e3/TELLUS.R);
+      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60,site:t.id,sname:t.name}}return null},
+    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Launch from ${p.sname||'the pad'} and bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km away (marked on the map). Classified.`,
+    ok:(R,p)=>!!R.endPf&&R.endSci&&(!p.site||R.site===p.site)&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
@@ -99,11 +101,25 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
+// why an offer appeared, in one line (QUEUE Q45): the strongest true reason among the things that make offers: a first
+// that opened the type, tension (military), the business cycle (commercial), what the client cares about, the program's
+// standing with that kind of client, home's own government. Worked out once, when the offer is made, and kept on it.
+const WHY_NEW=60,WHY_PRI=0.35,WHY_STAND=70;
+function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':C.root,req=CT[type].req,d=req&&PROG.done[req],pri=PRI_OF[src];
+  if(d&&d.day!=null&&PROG.day-d.day<=WHY_NEW){const M=MISSIONS.find(m=>m.id===req);return`New since you did “${M?M.name.replace(/^Passenger: /,''):req}”`}
+  if(src==='mil'&&tensionOf(client)>0.4)return`${who} is nervous about its neighbours`;
+  if(src==='com'&&(PROG.cycle||0)>0.45)return'Boom times: operators are hiring launches';
+  if(src==='com'&&(PROG.cycle||0)<-0.45)return`A rare order in a recession: ${who} still needs it`;
+  if(src==='tour')return`Tourism standing ${standOf('tour').toFixed(0)}: people want to fly`;
+  if(src==='gov'&&client===HOME)return'Your government wants results';
+  if(flav(client).pri[pri]>=WHY_PRI)return`${who} cares about ${pri}`;
+  if(standOf(src)>=WHY_STAND)return`Your ${SRC[src].name.toLowerCase()} standing (${standOf(src).toFixed(0)}) brings work`;
+  return`Routine ${SRC[src].name.toLowerCase()} work${client===HOME?'':` from ${who}`}`}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
-  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
+  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
-  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
+  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:whyOf(type,src,client)}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
@@ -114,7 +130,7 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;   // a leak's sanctions can shrink the list mid-loop
-    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
+    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay);PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
@@ -146,7 +162,7 @@ function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();
 const START={
   agency:{name:'National agency',blurb:'Funded by your government: budget days, a safety net, more government work. Opinion at home is everything.',funds:80},
   company:{name:'Private company',blurb:'Investor capital: more cash up front and more commercial work, no budget day and no safety net, little political flak.',funds:90},
-  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program and its budget. Their opinions all count.',funds:80}};
+  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program, its budget and a say in it: all three opinions count.',funds:80}};
 const own=()=>PROG.own||(PROG.own={kind:'agency',st:{[HOME]:1},pv:0,chosen:false});
 const stateShare=()=>Object.values(own().st).reduce((a,x)=>a+x,0);
 function chooseStart(kind){const o={kind,st:{},pv:0,chosen:true,debt:0};

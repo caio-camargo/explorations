@@ -2,6 +2,9 @@
 // in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
+  if (typeof bodyViewClose === 'function') bodyViewClose();
+  // 200 + 3·i + k: SYSTEM.md body i (BODY_CAT order in app/bodyview.js) at distance k (0 near, 1 whole disc, 2 far): QUEUE Q79
+  if (n >= 200 && typeof BODY_CAT !== 'undefined' && n < 200 + 3 * BODY_CAT.length) { const b = BODY_CAT[(n - 200) / 3 | 0]; bodyViewOpen(b.name, (n - 200) % 3); render(); return b.name + ' ' + BV_DNAME[(n - 200) % 3] }
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
   if (typeof CLOUD_DT !== 'undefined') CLOUD_DT = 0;
   HOOK.noRig = false;   // (close-ups hide the pad's moving parts; every other view shows them)

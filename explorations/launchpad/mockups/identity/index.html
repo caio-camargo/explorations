@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launchpad identity mock-ups</title>
+<!-- QUEUE Q73 / Q53, flow session 2026-10-08. Static mock-ups of three visual directions for Launchpad's screens: never
+     loaded by the game. ?d=paper|panel|poster  &s=program|flight  &era=1|3  &still=1 (no controls, for screenshots).
+     Fonts come from Google Fonts here; the game itself uses system fonts only, so the chosen direction would bundle its
+     font or fall back to the system one named after it. Backdrops are real frames from the game (UI hidden). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:wght@400;700&family=VT323&family=Share+Tech+Mono&family=Jost:wght@400;600;800&family=Bebas+Neue&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0f16;--fg:#e8e8e8}
+*{box-sizing:border-box}
+html,body{margin:0;background:#111;color:#ddd;font:13px/1.4 system-ui,sans-serif}
+#bar{display:flex;gap:14px;align-items:center;padding:6px 12px;background:#1b1f27;flex-wrap:wrap}
+#bar a{color:#9cf;text-decoration:none;padding:2px 6px;border-radius:3px}#bar a.on{background:#9cf;color:#111}
+#bar b{color:#888;font-weight:normal}
+body.still #bar{display:none}
+#wrap{display:flex;justify-content:center;padding:10px}body.still #wrap{padding:0}
+#stage{position:relative;width:1280px;height:800px;overflow:hidden;background:#345 center/cover no-repeat;transform-origin:top left}
+body.s-program #stage{background-image:url(bg-pad.jpg)}body.s-flight #stage{background-image:url(bg-climb.jpg)}
+.prog,.hud{display:none}body.s-program .prog{display:block}body.s-flight .hud{display:block}
+.tagline{position:absolute;right:10px;bottom:8px;font:11px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.55);padding:3px 8px;border-radius:3px;z-index:50}
+.only{display:none}
+
+/* ---------- shared layout (the game's real layout: Program = centred panel over the pad; HUD = readout TL, toolbar TR,
+   stages BL, navball bottom centre, cards in a right column) ---------- */
+.prog .scrim{position:absolute;inset:0}
+.prog .hq{position:absolute;left:200px;top:40px;width:880px;min-height:500px;display:flex;flex-direction:column;padding:18px 22px}
+.hqHead{display:flex;align-items:center;gap:14px}
+.hqHead h1{margin:0}.hqHead .who{flex:1}.hqHead .who .n{font-size:13px}.hqHead .who .d{font-size:11.5px}
+.tabs{display:flex;gap:4px;margin-top:14px}.tabs span{padding:5px 13px}
+.body{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px 26px;padding-top:12px;align-content:start}
+.hqHead .btns{align-items:center}.sec h3{margin:0 0 6px}.item{margin:0 0 8px;padding:6px 9px}.item .t{font-weight:bold}.item .s{font-size:11.5px;opacity:.8}
+.item .pay{float:right}.btns{margin-top:5px;display:flex;gap:6px}.btns span{padding:2px 10px;font-size:11.5px}
+.hud .readout{position:absolute;left:14px;top:14px;width:270px;padding:10px 12px}
+.readout table{width:100%;border-collapse:collapse}.readout td{padding:1.5px 0}.readout td:last-child{text-align:right}
+.hud .tool{position:absolute;right:14px;top:14px;display:flex;gap:6px;align-items:center}.tool span{padding:4px 10px}
+.hud .stages{position:absolute;left:14px;bottom:14px;width:250px;padding:8px 10px}
+.stages .st{padding:4px 6px;margin:3px 0}.stages .st.burn{font-weight:bold}
+.hud .navwrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:12px}
+.thr{width:16px;height:150px;position:relative}.thr i{position:absolute;left:0;right:0;bottom:0;height:100%}
+.ball{width:170px;height:170px;border-radius:50%;position:relative;overflow:hidden}
+.ball .sky,.ball .gnd{position:absolute;left:0;right:0}.ball .sky{top:0;height:58%}.ball .gnd{bottom:0;height:42%}
+.ball .hz{position:absolute;left:0;right:0;top:58%;height:2px}.ball .pro{position:absolute;left:50%;top:44%;width:22px;height:22px;margin:-11px;border-radius:50%}
+.ball .cross{position:absolute;left:50%;top:50%;width:60px;height:2px;margin:-1px -30px}.ball .hdg{position:absolute;left:0;right:0;bottom:16px;text-align:center;font-size:11px}
+.sas{display:flex;flex-direction:column;gap:4px}.sas span{padding:3px 8px;font-size:11px;text-align:center}
+.hud .card{position:absolute;right:14px;top:62px;width:230px;padding:8px 10px}
+.card h4{margin:0 0 4px}.card table{width:100%}.card td:last-child{text-align:right}
+.hud .news{position:absolute;left:50%;top:14px;transform:translateX(-50%);padding:5px 14px;max-width:520px;text-align:center}
+
+/* ================= (a) PAPERWORK — mission-control forms, typewriter type, stamps ================= */
+body.d-paper .only.p{display:block}
+.d-paper{--paper:#f2ead3;--ink:#1d2742;--red:#b3261e;--rule:rgba(29,39,66,.18)}
+.d-paper .prog .scrim{background:rgba(20,18,12,.35)}
+.d-paper .hq,.d-paper .readout,.d-paper .stages,.d-paper .card{background:var(--paper);color:var(--ink);font-family:'Courier Prime','Courier New',monospace;
+  box-shadow:3px 4px 0 rgba(0,0,0,.25),0 10px 30px rgba(0,0,0,.35);border:1px solid #d9cfb3;
+  background-image:repeating-linear-gradient(transparent 0 21px,var(--rule) 21px 22px)}
+.d-paper .hq{transform:rotate(-.4deg);padding-bottom:60px}
+.d-paper .hqHead h1{font:30px 'Special Elite','Courier New',monospace;letter-spacing:.08em;border:3px double var(--ink);padding:2px 10px}
+.d-paper .hqHead .who .n{font-family:'Special Elite',monospace}
+.d-paper .tabs{border-bottom:2px solid var(--ink)}
+.d-paper .tabs span{border:1px solid var(--ink);border-bottom:0;background:#e6dcc0;font-size:12px;text-transform:uppercase;letter-spacing:.06em;border-radius:6px 6px 0 0}
+.d-paper .tabs span.on{background:var(--paper);font-weight:bold;position:relative;top:2px}
+.d-paper .tabs .n{color:var(--red)}
+.d-paper .sec h3{font:13px 'Special Elite',monospace;letter-spacing:.14em;text-transform:uppercase;border-bottom:1px solid var(--ink);padding-bottom:2px}
+.d-paper .item{border:1px solid rgba(29,39,66,.35);background:rgba(255,255,255,.35)}
+.d-paper .item.done{opacity:.75}.d-paper .item.done .t{text-decoration:line-through;text-decoration-color:var(--red)}
+.d-paper .btns span,.d-paper .tool span,.d-paper .sas span{border:1.5px solid var(--ink);background:var(--paper);color:var(--ink);font-family:'Courier Prime',monospace;text-transform:uppercase;font-size:11px;letter-spacing:.06em}
+.d-paper .tool span{box-shadow:2px 2px 0 rgba(0,0,0,.3)}
+.d-paper .big{background:var(--ink)!important;color:var(--paper)!important;font:15px 'Special Elite',monospace!important;padding:7px 16px!important}
+.d-paper .stamp{position:absolute;font:bold 22px 'Special Elite',monospace;color:var(--red);border:3px solid var(--red);padding:2px 10px;letter-spacing:.12em;opacity:.78;transform:rotate(-9deg);mix-blend-mode:multiply}
+.d-paper .clip{position:absolute;top:-14px;width:16px;height:46px;border:3px solid #8f969e;border-radius:9px}
+.d-paper .readout td:first-child{font-size:11px;text-transform:uppercase;letter-spacing:.05em}
+.d-paper .readout td:last-child{font-family:'Special Elite',monospace;font-size:15px}
+.d-paper .readout .ttl,.d-paper .stages .ttl,.d-paper .card h4{font:12px 'Special Elite',monospace;letter-spacing:.14em;border-bottom:1px solid var(--ink);margin-bottom:4px;text-transform:uppercase}
+.d-paper .stages .st{border-left:3px solid var(--ink)}.d-paper .stages .st.burn{border-left-color:var(--red);color:var(--red)}
+.d-paper .thr{border:1.5px solid var(--paper);background:rgba(242,234,211,.25)}.d-paper .thr i{background:repeating-linear-gradient(var(--paper) 0 2px,transparent 2px 8px);height:80%}
+.d-paper .ball{background:var(--paper);border:3px solid var(--ink);box-shadow:3px 4px 0 rgba(0,0,0,.25)}
+.d-paper .ball .sky{background:repeating-linear-gradient(45deg,transparent 0 6px,rgba(29,39,66,.12) 6px 7px)}
+.d-paper .ball .gnd{background:repeating-linear-gradient(-45deg,transparent 0 3px,rgba(140,80,30,.35) 3px 4px)}
+.d-paper .ball .hz{background:var(--ink)}.d-paper .ball .pro{border:2px solid var(--red)}.d-paper .ball .cross{background:var(--ink)}
+.d-paper .ball .hdg{color:var(--ink);font-family:'Courier Prime',monospace}
+.d-paper .news{background:var(--paper);color:var(--ink);font-family:'Courier Prime',monospace;border:1px solid #cbbf9e;box-shadow:2px 3px 0 rgba(0,0,0,.25)}
+.d-paper .news b{color:var(--red)}
+/* era 3: the same forms, now computer printout (green-bar, pin-feed) */
+.d-paper.era-3 .hq,.d-paper.era-3 .readout,.d-paper.era-3 .stages,.d-paper.era-3 .card{background-color:#f4f6ef;
+  background-image:repeating-linear-gradient(#f4f6ef 0 44px,#d8ead5 44px 88px);border-left:22px solid #f4f6ef;border-right:22px solid #f4f6ef;
+  box-shadow:inset 9px 0 0 -6px #ccc,0 10px 30px rgba(0,0,0,.35);transform:none;font-family:'Share Tech Mono',monospace}
+.d-paper.era-3 .hqHead h1{border:0;font-family:'Share Tech Mono',monospace;letter-spacing:.3em}
+body.d-paper.era-3 .stamp,body.d-paper.era-3 .clip{display:none}
+
+/* ================= (b) INSTRUMENT PANEL — phosphor CRTs, bezels, backlit legends ================= */
+body.d-panel .only.i{display:block}
+.d-panel{--metal:#2b2f33;--metal2:#3a3f44;--ph:#ffb347;--phd:rgba(255,179,71,.45);--leg:#f7e9c4}
+.d-panel .prog .scrim{background:rgba(0,0,0,.45)}
+.d-panel .hq,.d-panel .readout,.d-panel .stages,.d-panel .card{background:linear-gradient(#34393e,#25292d);border:2px solid #15181a;border-radius:6px;
+  box-shadow:inset 0 1px 0 #555,0 12px 30px rgba(0,0,0,.6);color:var(--ph);font-family:'VT323',ui-monospace,monospace;font-size:17px}
+.d-panel .screen{background:#0d0a05;border:3px solid #111;border-radius:10px;box-shadow:inset 0 0 22px rgba(0,0,0,.95),inset 0 0 2px var(--phd);padding:8px 10px;position:relative;
+  text-shadow:0 0 4px var(--phd),0 0 1px var(--ph);background-image:repeating-linear-gradient(rgba(255,255,255,.04) 0 1px,transparent 1px 3px)}
+.d-panel .screw{position:absolute;width:9px;height:9px;border-radius:50%;background:radial-gradient(#777,#333);box-shadow:inset 0 0 1px #000}
+.d-panel .screw::after{content:'';position:absolute;left:1px;right:1px;top:4px;height:1px;background:#222;transform:rotate(35deg)}
+.d-panel .hqHead h1{font:700 26px 'Rajdhani',sans-serif;letter-spacing:.32em;color:var(--leg);text-shadow:none}
+.d-panel .hqHead .who{color:var(--ph)}
+.d-panel .tabs span,.d-panel .btns span,.d-panel .tool span,.d-panel .sas span{font:600 12px 'Rajdhani',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#cfc6b0;
+  background:linear-gradient(#4a5056,#353a3f);border:1px solid #111;border-radius:3px;box-shadow:inset 0 1px 0 #6a7076,0 2px 0 #111}
+.d-panel .tabs span.on,.d-panel .sas span.on{color:#1a1206;background:linear-gradient(#ffe2a8,#f2b45a);box-shadow:0 0 10px rgba(255,180,80,.7),inset 0 1px 0 #fff4d6}
+.d-panel .tabs .n{color:#ff5a3c;text-shadow:0 0 5px #ff5a3c}
+.d-panel .body{gap:12px 16px}
+.d-panel .sec h3{font:700 12px 'Rajdhani',sans-serif;letter-spacing:.24em;color:var(--leg);text-transform:uppercase;text-shadow:none}
+.d-panel .item{padding:3px 2px;border-bottom:1px dashed rgba(255,179,71,.25)}.d-panel .item .s{font-size:15px}
+.d-panel .item.done .t::before{content:'■ '}.d-panel .item:not(.done) .t::before{content:'□ '}
+.d-panel .big{background:linear-gradient(#e85a3a,#a8321c)!important;color:#fff3e6!important;box-shadow:0 0 12px rgba(232,90,58,.6),0 2px 0 #111!important;padding:6px 18px!important;font-size:14px!important}
+.d-panel .readout td:last-child{font-size:21px}.d-panel .readout td:first-child{color:#c98a3a}
+.d-panel .ttl,.d-panel .card h4{font:700 11px 'Rajdhani',sans-serif;letter-spacing:.26em;color:var(--leg);margin:0 0 4px;text-shadow:none}
+.d-panel .stages .st.burn{background:rgba(255,179,71,.18)}
+.d-panel .thr{background:#0d0a05;border:2px solid #111;border-radius:3px}.d-panel .thr i{background:linear-gradient(var(--ph),#b5651d);box-shadow:0 0 8px var(--phd);height:80%}
+.d-panel .ball{background:#0d0a05;border:6px solid #2b2f33;box-shadow:0 0 0 2px #111,0 10px 25px rgba(0,0,0,.6)}
+.d-panel .ball .sky{background:linear-gradient(#0d0a05,#2a1a08)}.d-panel .ball .gnd{background:linear-gradient(#3a2408,#160d03)}
+.d-panel .ball .hz{background:var(--ph);box-shadow:0 0 6px var(--ph)}.d-panel .ball .pro{border:2px solid #9dff7a;box-shadow:0 0 6px #9dff7a}
+.d-panel .ball .cross{background:#fff3e0}.d-panel .ball .hdg{color:var(--ph);font-family:'VT323',monospace;font-size:15px}
+.d-panel .news{background:#0d0a05;border:2px solid #2b2f33;color:var(--ph);font-family:'VT323',monospace;font-size:17px;text-shadow:0 0 4px var(--phd)}
+.d-panel .tool span.warp{background:#0d0a05;color:var(--ph);font-family:'VT323',monospace;font-size:16px;box-shadow:inset 0 0 6px #000}
+/* era 3: glass cockpit — the bezels stay, the tubes become colour LCDs */
+.d-panel.era-3{--ph:#9fe7ff;--phd:rgba(120,220,255,.35)}
+.d-panel.era-3 .screen{background:#061018;background-image:none;border-radius:4px}
+.d-panel.era-3 .hq,.d-panel.era-3 .readout,.d-panel.era-3 .stages,.d-panel.era-3 .card{font-family:'Share Tech Mono',monospace;font-size:14px}
+.d-panel.era-3 .readout td:last-child{font-size:16px;color:#fff}
+.d-panel.era-3 .item.done .t::before{content:'✔ ';color:#7dffa8}
+
+/* ================= (c) MID-CENTURY POSTER — flat colour, bold geometric type ================= */
+body.d-poster .only.o{display:block}
+.d-poster{--cream:#f4ead2;--navy:#16324f;--teal:#2a8c8c;--red:#e04a2f;--mus:#e8b33c}
+.d-poster .prog .scrim{background:linear-gradient(115deg,rgba(22,50,79,.86) 0 46%,rgba(22,50,79,.35) 46%)}
+.d-poster .hq{background:var(--cream);color:var(--navy);font-family:'Jost',sans-serif;border-radius:0;clip-path:polygon(0 0,calc(100% - 38px) 0,100% 38px,100% 100%,38px 100%,0 calc(100% - 38px));padding:22px 28px}
+.d-poster .hqHead h1{font:64px/0.9 'Bebas Neue',sans-serif;letter-spacing:.04em;color:var(--red)}
+.d-poster .hqHead .who .n{font-weight:800;text-transform:uppercase;letter-spacing:.06em}
+.d-poster .tabs{gap:0;margin-top:16px}
+.d-poster .tabs span{font-weight:600;text-transform:uppercase;letter-spacing:.08em;font-size:12px;background:var(--navy);color:var(--cream);padding:6px 14px}
+.d-poster .tabs span:nth-child(2n){background:#1f4466}.d-poster .tabs span.on{background:var(--red)}.d-poster .tabs .n{color:var(--mus)}
+.d-poster .sec h3{font:30px/1 'Bebas Neue',sans-serif;letter-spacing:.05em;color:var(--teal)}
+.d-poster .item{background:#fff8e8;border-left:8px solid var(--teal);border-radius:0}.d-poster .item.done{border-left-color:var(--mus);opacity:.85}
+.d-poster .item .pay{font:22px/1 'Bebas Neue',sans-serif;color:var(--red)}
+.d-poster .btns span,.d-poster .tool span,.d-poster .sas span{font:600 11.5px 'Jost',sans-serif;text-transform:uppercase;letter-spacing:.08em;background:var(--navy);color:var(--cream);border-radius:20px}
+.d-poster .big{background:var(--red)!important;font:26px/1 'Bebas Neue',sans-serif!important;letter-spacing:.1em;padding:8px 22px!important;border-radius:0!important;clip-path:polygon(0 0,100% 0,calc(100% - 14px) 100%,0 100%)}
+.d-poster .star{position:absolute;width:150px;height:150px;background:var(--mus);clip-path:polygon(50% 0,58% 34%,93% 18%,68% 46%,100% 62%,63% 62%,70% 100%,50% 70%,30% 100%,37% 62%,0 62%,32% 46%,7% 18%,42% 34%);opacity:.9}
+.d-poster .readout,.d-poster .stages,.d-poster .card{background:var(--cream);color:var(--navy);font-family:'Jost',sans-serif;clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,0 100%)}
+.d-poster .readout td:first-child{text-transform:uppercase;font-size:11px;font-weight:600;letter-spacing:.08em;color:var(--teal)}
+.d-poster .readout td:last-child{font:26px/1 'Bebas Neue',sans-serif;letter-spacing:.03em}
+.d-poster .ttl,.d-poster .card h4{font:22px/1 'Bebas Neue',sans-serif;color:var(--red);letter-spacing:.06em;margin:0 0 4px}
+.d-poster .stages .st{background:#fff8e8;border-left:6px solid var(--navy)}.d-poster .stages .st.burn{border-left-color:var(--red);color:var(--red)}
+.d-poster .thr{background:var(--navy)}.d-poster .thr i{background:var(--red);height:80%}
+.d-poster .ball{border:7px solid var(--cream);box-shadow:0 0 0 4px var(--navy)}
+.d-poster .ball .sky{background:var(--teal)}.d-poster .ball .gnd{background:#b8632b}.d-poster .ball .hz{background:var(--cream);height:4px}
+.d-poster .ball .pro{border:3px solid var(--mus)}.d-poster .ball .cross{background:var(--cream);height:4px}.d-poster .ball .hdg{color:var(--cream);font:600 11px 'Jost',sans-serif}
+.d-poster .news{background:var(--red);color:var(--cream);font:600 13px 'Jost',sans-serif;text-transform:uppercase;letter-spacing:.05em}
+/* era 3: the same palette, softened into the 70s–80s: rounded type, warmer, stripes */
+.d-poster.era-3{--cream:#f6ecd9;--navy:#3b2a20;--teal:#c8702a;--red:#d9472b;--mus:#e8a23c}
+.d-poster.era-3 .hq{clip-path:none;border-radius:26px}
+.d-poster.era-3 .hqHead h1{font:800 42px/1 'Jost',sans-serif;letter-spacing:-.02em;background:linear-gradient(transparent 70%,var(--mus) 70%);color:var(--navy)}
+.d-poster.era-3 .tabs span{border-radius:14px 14px 0 0}
+body.d-poster.era-3 .star{display:none}
+.d-poster.era-3 .stripes{display:block}
+.stripes{display:none;position:absolute;left:0;right:0;bottom:0;height:16px;background:linear-gradient(var(--mus) 0 33%,var(--teal) 33% 66%,var(--red) 66%)}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="wrap"><div id="stage">
+
+<!-- ======================= the Program screen ======================= -->
+<div class="prog"><div class="scrim"></div>
+  <div class="only o star" style="left:1010px;top:8px"></div>
+  <div class="hq">
+    <div class="only p clip" style="left:60px"></div><div class="only p clip" style="right:60px"></div>
+    <div class="only i screw" style="left:7px;top:7px"></div><div class="only i screw" style="right:7px;top:7px"></div><div class="only i screw" style="left:7px;bottom:7px"></div><div class="only i screw" style="right:7px;bottom:7px"></div>
+    <div class="hqHead">
+      <h1>LAUNCHPAD</h1>
+      <div class="who"><div class="n">Fenfen Space Agency · national agency</div><div class="d">Year 1, day 41 · funds 84.6M · standing: promising</div></div>
+      <div class="btns" style="margin:0"><span>Logbook</span><span>Rover yard</span><span class="big">BUILD ▶</span></div>
+    </div>
+    <div class="tabs"><span class="on">Inbox <b class="n">2</b></span><span>Missions</span><span>Contracts</span><span>Fleet</span><span>World</span><span>Industry</span><span>Company</span></div>
+    <div class="body">
+      <div class="screen">
+        <div class="sec"><h3>Waiting for an answer</h3>
+          <div class="item"><span class="pay">12 days</span><div class="t">The ministry asks for a public launch</div><div class="s">A crowd at the coast on budget day. Accept and the date is fixed; refuse and standing drops a little.</div><div class="btns"><span>Accept</span><span>Refuse</span></div></div>
+        </div>
+        <div class="sec"><h3>Offers</h3>
+          <div class="item"><span class="pay">+18M</span><div class="t">Upper-air sample, 40–60 km</div><div class="s">for the Meteorological Office · 60 days · why: your last flight reached 52 km</div><div class="btns"><span>Take</span><span>Decline</span></div></div>
+          <div class="item"><span class="pay">+32M</span><div class="t">Ballistic test, 600 km downrange</div><div class="s">for the Defence Board · 90 days · over the sea only</div><div class="btns"><span>Take</span><span>Decline</span></div></div>
+        </div>
+      </div>
+      <div class="screen">
+        <div class="sec"><h3>Epoch 1 · Getting up</h3>
+          <div class="item done"><span class="pay">+20M</span><div class="t">Structural test flight</div><div class="s">flown, flight 1</div></div>
+          <div class="item done"><span class="pay">+15M</span><div class="t">Above the weather</div><div class="s">flown, flight 1</div></div>
+          <div class="item"><span class="pay">+40M</span><div class="t">Reach space</div><div class="s">100 km, any vessel · the race: no one yet</div></div>
+          <div class="item"><span class="pay">+90M</span><div class="t">First orbit</div><div class="s">once something reaches space</div></div>
+        </div>
+        <div class="sec"><h3>Last flight</h3><div class="item"><span class="pay">+24M</span><div class="t">Sounding · landed 0.4 km from the pad</div><div class="s">2 missions · Sparrow know-how 35 → 47 % · debrief ▸</div></div></div>
+      </div>
+    </div>
+    <div class="only p stamp" style="right:46px;bottom:26px">APPROVED</div>
+    <div class="only p stamp" style="left:250px;bottom:22px;transform:rotate(4deg);font-size:15px">FILED · DAY 41</div>
+    <div class="stripes"></div>
+  </div>
+</div>
+
+<!-- ======================= the flight HUD ======================= -->
+<div class="hud">
+  <div class="readout"><div class="screen">
+    <div class="ttl">Flight 4 · Orbiter</div>
+    <table>
+      <tr><td>MET</td><td>T+00:48</td></tr><tr><td>Altitude</td><td>8.9 km</td></tr><tr><td>Vertical speed</td><td>+212 m/s</td></tr>
+      <tr><td>Speed</td><td>640 m/s</td></tr><tr><td>Apoapsis</td><td>31 km</td></tr><tr><td>Periapsis</td><td>—</td></tr>
+      <tr><td>Stage Δv</td><td>1,240 m/s</td></tr><tr><td>Total Δv</td><td>3,910 m/s</td></tr>
+    </table></div>
+    <div class="only p clip" style="left:215px"></div>
+  </div>
+  <div class="news">Headline: <b>Fenfen rocket climbs over the coast</b> · crowds on the beach</div>
+  <div class="tool"><span class="warp">×1</span><span>Map [M]</span><span>Keys [H]</span><span>☰</span></div>
+  <div class="card"><div class="screen"><h4>Ascent</h4><table><tr><td>Mach</td><td>1.9</td></tr><tr><td>Angle of attack</td><td>2.1°</td></tr><tr><td>Dynamic pressure</td><td>24 kPa</td></tr><tr><td>Hottest skin</td><td>410 K</td></tr><tr><td>Structure</td><td>61 %</td></tr></table></div></div>
+  <div class="stages"><div class="screen"><div class="ttl">Stages</div>
+    <div class="st">3 · Chute</div><div class="st">2 · Petrel · 1,830 m/s</div><div class="st burn">1 · Kestrel ▶ 1,240 m/s</div></div></div>
+  <div class="navwrap">
+    <div class="thr"><i></i></div>
+    <div class="ball"><div class="sky"></div><div class="gnd"></div><div class="hz"></div><div class="cross"></div><div class="pro"></div><div class="hdg">090° · 58°</div></div>
+    <div class="sas"><span class="on">SAS ON [T]</span><span>Prograde</span><span>Stability</span><span>RCS OFF [V]</span></div>
+  </div>
+  <div class="only o star" style="right:-40px;bottom:-40px;width:120px;height:120px"></div>
+</div>
+
+<div class="tagline" id="tag"></div>
+</div></div>
+<script>
+const Q=new URLSearchParams(location.search),D={paper:'(a) Paperwork',panel:'(b) Instrument panel',poster:'(c) Mid-century poster'},S={program:'Program screen',flight:'Flight HUD'},E={1:'Epochs 1–2 (1950s–60s)',3:'later era'};
+const d=D[Q.get('d')]?Q.get('d'):'paper',s=S[Q.get('s')]?Q.get('s'):'program',e=Q.get('era')==='3'?'3':'1';
+document.body.className=`d-${d} s-${s} era-${e}${Q.has('still')?' still':''}`;
+document.getElementById('tag').textContent=`${D[d]} · ${S[s]} · ${E[e]}`;
+const link=(k,v,l)=>{const u=new URLSearchParams({d,s,era:e});u.set(k,v);return `<a href="?${u}" class="${({d,s,era:e})[k]===v?'on':''}">${l}</a>`};
+document.getElementById('bar').innerHTML=`<b>Direction</b>${Object.entries(D).map(([k,l])=>link('d',k,l)).join('')}<b>Screen</b>${Object.entries(S).map(([k,l])=>link('s',k,l)).join('')}<b>Era</b>${Object.entries(E).map(([k,l])=>link('era',k,l)).join('')}`;
+// the stage is 1280×800 (the game's test size); shrink it to fit a smaller window
+const fit=()=>{if(Q.has('still'))return;const st=document.getElementById('stage'),k=Math.min(1,(innerWidth-20)/1280);st.style.transform=`scale(${k})`;document.getElementById('wrap').style.height=800*k+20+'px'};addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

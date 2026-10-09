@@ -3608,3 +3608,264 @@ Platform lane, ROADMAP steps 1, 3 and 4 (QUEUE Q56, Q58, Q59). Caio stopped ever
 ### Next steps
 - [ ] Every lane: merge `main` before the next edit (ACTIVE_WORK notice)
 - [ ] Platform: Q57 save versions; then the proposals: `test.mjs` into per-area files, `app/gl.js` split further, modules later
+
+
+## 2026-10-08 — Launchpad economy: Q44 epoch 1–2 pacing (economy session)
+
+### Summary
+- `career.mjs` has a pacing report (`PACE=1`): flights and days to first orbit, the longest wait, bailouts before
+  orbit. `FAILFIRST=orbit` fails the first orbital attempt. The runner now counts refurbishment when it values a flight;
+  before, it refused sounding work that breaks even.
+- Finding: with no failures, first orbit takes ~5 flights (day 120–255). One failed orbit attempt costs ~90 % of the
+  start money: 6–10 flights, 1–4.6 bailouts, and frugal/resource companies often never get back to orbit in two years.
+  More start money doesn't help; refunding 75 % of a failed first does (5 flights everywhere but the frugal company).
+- No game code changed. Proposal **W12** in QUEUE (default: a sponsor covers 75 % of the first lost flight at a first).
+
+### Files
+- `explorations/launchpad/career.mjs`, `NOTES.md` § "Epoch 1–2 pacing" (v1.21.8), `HANDOFF-economy.md`, `QUEUE.md` (Q44 ✓, W12, two Proposed lines), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: W12 (or the default stands)
+- [ ] Economy: build W12's answer; then Q6 `siteAccess`
+
+
+## 2026-10-08 — Launchpad vehicle: plans for landing legs (Q31) and power/computer/radiator parts (Q34) (vehicle session)
+
+Planning only, at Caio's request (no heavy GPU): code and docs read, nothing run, no game code.
+- **Q31 legs:** a surface part mounted in symmetric sets; deployed feet replace the rim points in `footPoints`; landing
+  loads already reach the joints, so hard landings snap legs. Five headless checks specified. Back to `ready`.
+- **Q34 split:** **Q34a** (computer, body cells, deployable wing that snaps in air, battery, steady-state power budget
+  in the builder; running flat pauses, never kills) and **Q34b** (radiators + the orbital thermal solve, deferred to
+  the economy's datacenter). Worked out: LEO here is 37 % eclipse (16 of 43 min).
+- **Defaulted, for Caio:** from the onboard-computer era on, guidance-computer SAS modes need the `ocomp` part
+  (presets and the robot get one).
+
+**Files:** `explorations/launchpad/NOTES.md` (new section "Vehicle parts…", v1.21.9), `explorations/launchpad/QUEUE.md`
+(Q31/Q34 states, 6 Proposed lines), `ACTIVE_WORK.md` (claim opened and cleared).
+**Next:** build Q31 (⚙, M1), then Q34a; the look beat draws the parts when GPU time is free.
+
+## 2026-10-08 — Launchpad world lane: the ground plan for every body (world session)
+
+### Summary
+QUEUE Q86 + Q18, written as one plan (a different machine, kept off the GPU, so docs only). New
+`explorations/launchpad/GROUND.md` v0.1.0:
+- a code survey: only Tellus has relief; every other body is a smooth sphere in physics and on screen, with craters as shading only;
+- one ground layer: a `ground` recipe per body, `bodyH(b,u)`, baked big features plus procedural integer-hash bands, so v1.25's CPU/GPU rules carry over; the mare mask moves into Selene's bake (removing the last shared float noise);
+- eight shared generators (crater field first, used by about 12 bodies) and a per-body table for SYSTEM.md;
+- Selene in detail: crater bands and shapes (the simple/complex transition scales as 1/g), maria as flooded plains, slopes against TOPPLE, shadows (a sun-horizon map plus near rays), horizons (1.2 km from a 2 m eye), and polar dark craters: the fixed sun sits 6.8° above Selene's equator, so the south polar floors are permanently dark (R4's ice);
+- slices G1–G7+; G1–G2 are headless.
+Three decisions for Caio, each with a default: maria to the near side (yes), G1–G2 before M3 (yes), relief in real metres (yes).
+
+### Files
+- new `explorations/launchpad/GROUND.md`; `QUEUE.md` (Q18/Q86 ✓ plan, five lines under *Proposed*); `INDEX.md`; `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Caio: GROUND.md § Decisions (defaults hold if silent)
+- [ ] Orchestrator: rank G1–G7+ into the world lane
+- [ ] World: G1 then G2 (headless, fine on a machine kept off the GPU)
+
+## 2026-10-08 — Launchpad v1.54: the ground of every body, slice G1 (world session)
+
+### Summary
+GROUND.md G1, headless (this machine stays off the GPU). Bodies carry a `ground` recipe (`gen`, `top`, `sea`); `bodyH`,
+`bodyTop` and `seaAt` are new. `groundAlt`, `terrainSlope`, `groundNormal`, the sea checks, the contact/debris/`fall`
+early-outs, `MOON_PE`, the camera clamp and the shadow plane now dispatch on the recipe, not on `b===TELLUS`. Neutral in
+play. The new test `ground-1` (3 checks, 3 mutations caught) proves both sides: Tellus is unchanged at 2,000 points, and a
+test recipe on Selene holds a pod on a 500 m plateau and reads its 20° slope. Full suite 436 pass / 0 fail. Caio's three
+GROUND decisions were defaulted (design desk), so G2 may start now.
+
+### Files
+- `explorations/launchpad/`: `sim/world.js`, `sim/flight.js`, `sim/rovers.js`, `sim/space.js`, `app/render.js`, `test.mjs` (`ground-1`), `NOTES.md` § v1.54, `GROUND.md` 0.1.1, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim cleared, hand-off note)
+
+### Next steps
+- [ ] World: G2, Selene's baked map plus crater bands on the CPU, maria moved to the near side (default held), `study_ground.mjs`
+- [ ] Not browser-checked: the camera clamp and shadow-plane edits are render code. They're neutral by construction (same values for every body today); QA's robot run will cover them
+
+## 2026-10-08 — Launchpad v1.55 economy: a failed first attempt is mostly covered (W12; economy session)
+
+### Summary
+- Caio answered W12 (option 1). `coverLoss` in `sim/program.js`: a lost flight on the priciest rocket yet (no first,
+  no contract, under a quarter refurbished) gets 75 % of its loss back from the sponsor, once per epoch (the newest
+  epoch with firsts open). Nothing in the game names a flight's target, so "priciest rocket yet" stands for the attempt.
+- `career.mjs`, one failed orbit attempt: flights to orbit 6–10 → 5–8, bailouts before orbit 1–4.6 → 0.2–2; poor-world
+  companies reach orbit in 4 of 5 runs (were 2–3). The rest is the poor-world grind (Proposed: pay floors by world).
+
+### Verification
+- New test `econ-1` (7 checks, mutation-tested); full suite passes in 4 processes after merging `main` (test.mjs
+  conflict with world's `ground-1`: both kept).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `career.mjs`, `NOTES.md` § v1.55, `TESTING.md` row 128, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 128 (lose your first orbit attempt: fair second chance or too soft?)
+- [ ] Economy: Q6 `siteAccess`; pay floors by world (Proposed)
+
+## 2026-10-08 — Launchpad v1.56 economy: siteAccess, who may launch where (QUEUE Q6; economy session)
+
+### Summary
+- `siteAccess(site)` → `{ok, why, fee, how}` in `sim/program.js`: own sites free; sea platforms 4M; a consortium
+  member's site free; other powers' sites leased at 6M × (1 − ½ relation), refused below −0.25 or under sanctions.
+- Launch charges the fee and records `R.site` and `R.siteFee`; the debrief lists *Site lease*, and v1.55's cover.
+- Builder (`app/editor.js`, flagged in ACTIVE_WORK): the budget check counts the fee; the picker shows it.
+
+### Verification
+- New test `econ-2` (6 checks, mutation-tested); full suite passes in 4 processes.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/debrief.js`, `app/editor.js`, `test.mjs`, `NOTES.md` § v1.56, `TESTING.md` row 129, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 129 (launch from abroad; is the fee a real choice?)
+- [ ] Economy: Q7 (ballistic target from the flight's site, now that `R.site` exists); Proposed: dispatch leases, overflight politics
+
+## 2026-10-08 — Launchpad v1.57 economy: the ballistic test aims from the program's site (QUEUE Q7; economy session)
+
+### Summary
+- `CT.ballistic`: the target is now the stated distance downrange of the program's current site (was `rg/600` rad
+  from +X, so 2.1× long and from no pad); the brief names the site, and the test counts only when flown from there
+  (`R.site`). Old saved contracts count from anywhere. `genOffer` skips a generator that finds nothing.
+
+### Verification
+- New test `econ-3` (3 checks, mutation-tested); full suite passes in 4 processes; career runner unchanged in shape.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `test.mjs`, `NOTES.md` § v1.57, `TESTING.md` row 130, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 130
+- [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+
+
+## 2026-10-08 — Launchpad v1.58: Selene's ground on the CPU, maria on the near side (world session)
+
+### Summary
+GROUND.md G2, headless. New `sim/ground.js` holds Selene's recipe: a baked map (highland swell, 209 craters of 20 km and
+up, the maria flooded about 1.4 km down) plus six procedural crater bands from 20 km to 80 m on an equiangular cube, on
+the integer hash so G3 can port it. **Not live in play** until the shader draws it. The maria moved to the near side
+(`MARE_NEAR`, in `selMare` and the shader): 30 % of the near side, 1 % of the far side (Moon: 31 / 2).
+`study_ground.mjs` measures it:
+- crater counts within ~10 % of N(>D) = 0.055·D⁻²;
+- maria 4.4× less cratered;
+- highland slopes p99 35° (6.9 % past TOPPLE), mare 1.8 %;
+- no cube seams;
+- ground south of 80°S never sunlit.
+Negative results: a paraboloid bowl is too steep (now r^1.6); test §42's 3,000 sample points lay on one spiral curve
+(fixed; LESSONS #36). Test `ground-2` (5 checks, 3 mutations caught). Full suite 457 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: new `sim/ground.js`, `study_ground.mjs`; `index.html` (script tag), `sim/rovers.js` (SIM END moved, `MARE_NEAR`), `app/gl.js` (one shader token), `test.mjs` (`ground-2`, §42), `NOTES.md` § v1.58, `GROUND.md` 0.1.2, `TESTING.md` row 131, `QUEUE.md`
+- `LESSONS_LEARNED.md` #36, `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Someone with the GPU: TESTING 131 (maria on the near side), one look
+- [ ] World: Q91 (G3–G6) waits for the milestone gate (M2 current) and G3 needs the GPU; until then the world lane's ungated work is Q19/Q52 (GPU) or more 📝 plans
+
+## 2026-10-08 — Launchpad v1.59 economy: every offer says why it appeared (QUEUE Q45; economy session)
+
+### Summary
+- `whyOf` in `sim/contracts.js`: when an offer is made, it keeps the strongest true reason (a first in the last 60 days,
+  tension, the cycle, tourism, home government, the client's priorities, our standing, else routine). The Contracts
+  tab shows *Why: …* (one line in `app/program-ui.js`, flagged for flow).
+
+### Verification
+- New test `econ-4` (5 checks, mutation-tested); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.59, `TESTING.md` row 133, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 133 (do the reasons explain the board?)
+- [ ] Economy: Q46, Q10, Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+
+
+## 2026-10-08 — Launchpad: the G3 port plan for Selene's relief (world session)
+
+### Summary
+Docs only. GROUND.md 0.1.3 § "G3: the port plan", for the session with the GPU (QUEUE Q91, held by the milestone gate):
+- the march as a JS template that emits one march per body (`marchT` unchanged, `marchS` new); always march Selene, no
+  handover; colour through a `selCol` hook the look lane owns;
+- a table of what must be bit-identical and how. **Found:** GLSL `tan` would put crater centres up to 3.5 m off the CPU's,
+  so step G3.0 moves the CPU's band geometry onto a shared `ptan`/`patan` first;
+- a cost estimate (~2× Tellus per height at full detail), level of detail, three fallbacks, steps G3.0–G3.4 with what
+  "done" means for each, and seven timing views;
+- what flips when the recipe goes live. **Found:** `TAPE_V` fingerprints physics *code*, so switching on a recipe (data)
+  wouldn't retire old Selene tapes; and landed things on Selene need re-seating, which needs Q57 save versions.
+
+### Files
+- `explorations/launchpad/GROUND.md` 0.1.3; `QUEUE.md` (two lines under *Proposed*); `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Orchestrator: G3.0 is headless and could go before the gate (your call); Q57 now gates G3.4
+- [ ] GPU session, when Q91 opens: start at G3.0
+
+## 2026-10-08 — Launchpad v1.60: station-keeping, a satellite's life is its propellant (QUEUE Q50; space session)
+
+### Summary
+- W2 built. A registered satellite holds its orbit by spending its own propellant against the moons' tides, at a rate
+  measured once for its orbit (`slotRate`: 5 days of `pertAcc`, plane + size + shape drift). It pays from its own tanks
+  (`shape[].res`, `q.mass`). Dry, it leaves its rails and the tide steps it between flights (`orbTick`, which replaces
+  `moonOrbTick`; `moonOrbStep` now covers Tellus orbits too). Nothing is destroyed for running out.
+- Measured (`study_slot.mjs`): ~0.03 m/s a day low (ignored under `SK_MIN` = 0.1), 0.3 at 3,000 km, 0.37 stationary
+  (~150 m/s a year). A dry TV satellite over the capital goes grey on day 87.
+- Moon orbiters with propellant now hold too: the 2,000 km polar Selene orbit that fell in by day 41 holds at 3.5 m/s a day.
+- Program screen: *holds its orbit N more days (k m/s a day)* or *adrift since day N*.
+- Negative result: "chase the Kepler rail" overestimated the cost 10× (it paid for the wobble within each orbit).
+
+### Verification
+- New test `space-1` (4 checks, 5 mutations caught); test 40's tide check uses dry relays. Full suite 466 pass / 0 fail
+  (4 processes) after merging `main`; `career.mjs` output and time unchanged. Not browser-checked (one line of UI text).
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `sim/program.js` (one call), `app/program-ui.js` (`slotLine`), `test.mjs`,
+  new `study_slot.mjs`, `NOTES.md` § v1.60 (+ a note on the Q34a overlap), `TESTING.md` row 134, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Human: TESTING 134 (is the lifetime a real design choice?)
+- [ ] Caio (default holds if silent): W2 read physically, so only slot-bound jobs (TV) stop when a satellite drifts
+- [ ] Proposed in QUEUE: reboost/servicing contracts (economy), refuelling by docking (space), `q.off` for Q34a (vehicle)
+- [ ] Space: next ready item, Q25 orbital decay (low orbits' lifetime, now that they skip station-keeping)
+
+
+## 2026-10-08 — Launchpad v1.61: landing legs (Q31) and a contact model for wide feet (vehicle session)
+
+- **Landing legs:** a surface part in radial sets; **Y** puts them down/up (taped as op `G`); a deployed leg is one contact
+  point at its foot. A 2.3 t lander that topples bare on 13°/15°/20° taiga stands on legs; it takes 8 m/s and snaps legs
+  at ~9.4+. A full Orbiter needs heavy joints on its legs (4.6 m/s). Placeholder mesh in `app/gl.js`.
+- **Contact fixes in `groundContact` (terrain's code, flagged):** each point's spring, damper and friction now use its
+  effective mass (rotation included), with the caps halved, and friction holds by stiction anchors. Fixed a
+  friction-pumped yaw spin (present before legs), chatter on wide feet, and slope creep. §25 checks unchanged.
+- **Tests:** `test.mjs` `vehicle-1`, 5 checks. Full suite 448/448 on the merge with main up to the Selene-ground work (v1.58); the last
+  merge (station-keeping Q50, docs) was checked with `--smoke` + `vehicle-1` + §25 only, to stop racing main.
+- Renumbered twice at merge (v1.57 → v1.59 → **v1.61**, TESTING 130 → 132 → **135**) as other sessions took numbers.
+  FLAG: TESTING rows 131 and 133 are duplicated by other sessions (QUEUE Proposed, QA).
+
+**Files:** `sim/vessel.js`, `sim/flight.js`, `sim/procedures.js`, `sim/program.js`, `app/input.js`, `app/screens.js`,
+`app/gl.js`, `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.61), `TESTING.md` (row 135), `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** Q34a (computer, panels, battery) per NOTES § "Vehicle parts"; Caio can veto the computer-gates-avionics default.
+
+## 2026-10-08 — Launchpad v1.62: Enyo's ground on the CPU (world session)
+
+### Summary
+At Caio's request, the planets' ground (QUEUE Q92's CPU half), starting with Enyo. First the shared code went generic:
+crater bands per body (density, hash salt, erosion, thinning), and surfaces per recipe through `surfaceAt`. Selene is
+bit-identical through it. Enyo's recipe (`sim/ground.js`, on a stub body until space adds Enyo):
+- the dichotomy (lowlands 37 %, 4.5 km below the highlands) and Hellas;
+- Tharsis with the giant shield (11.5 km rim above its foot), three more shields and Elysium;
+- a 1,400 km canyon at 12°S with terraced walls, 3+ km deep for 1,220 km;
+- polar ice domes and dune fields;
+- six surfaces by unit.
+Highland crater density ~20 per 1,000 km² for D ≥ 1 km, which is Mars-like.
+Negative results: "east" is decreasing longitude here (the canyon first ran into Tharsis); a canyon on the dichotomy line
+had a lowland wall for 700 km; one unit's mask hid another's. Test `ground-3` (7 checks, 3 mutations caught). Full suite
+478 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `sim/world.js` (`surfaceAt`), `study_ground.mjs` (any body: `selene` / `enyo`), `test.mjs` (`ground-3`), `NOTES.md` § v1.62, `GROUND.md` 0.1.4, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Hesper next (basalt plains, shields, lava channels; radar-only detail), then Astraea, Hyperion's moons, Erebus
+- [ ] Space (Q87): Enyo into the body tree with `ground: ENYO_GROUND`

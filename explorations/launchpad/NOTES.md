@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1377,6 +1377,292 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.60 — station-keeping: a satellite's life is its propellant (2026-10-08, space session, QUEUE Q50, W2)
+
+W2's default, built: **a satellite holds its orbit by spending its own propellant against the moons' tides; when the tanks
+are dry it drifts off its slot, and nothing is destroyed for running out.** In `sim/space.js`, after the moon-orbit stepper.
+
+**How it works.**
+- `slotRate(q)`: the m/s a day it costs to hold this orbit, measured once (cached `q.skRate`) by stepping the orbit under
+  `pertAcc` for `SK_D` = 5 days and reading how far its plane, size and shape have moved (one orbit's mean, so the wobble
+  within an orbit cancels). Phase is free: fixing it only needs a slightly different size for a while.
+- Orbits the flight treats as unperturbed (`pertNear`), or that cost under `SK_MIN` = 0.1 m/s a day (low Tellus orbits,
+  which drift a few km a month), pay nothing and never drift. Decay (Q25) will be their lifetime instead.
+- What it can burn (`skProp`): tank fuel through its best engine's vacuum Isp, then RCS gas (Isp 70). `skDv(q)` is what's
+  left; `skSpend` takes the propellant out of the entry's own `shape[].res` and lowers `q.mass` (kg; tanks hold tonnes), so
+  a satellite flown again later has the fuel it really has left.
+- `orbTick(T0, T1)` replaces `moonOrbTick` in `advanceDays`. A held orbit stays on its exact Kepler rails and pays
+  `rate × days`. When the tanks run out mid-tick, it leaves its rails at the moment they ran dry (`q.adrift` = that day),
+  with one news line (none for a satellite that never had propellant), and from then on the tide steps it between flights
+  like every orbit about a moon (`moonOrbStep`, which now also covers Tellus: the floor is the top of the air there).
+- **The same rule around the moons:** a Selene orbiter with propellant now holds its orbit too. Before, every moon orbit
+  drifted; test 40's tide check now uses dry relays, and `space-1` shows the 2,000 km polar orbit that falls in by day 41
+  holding at 3.5 m/s a day.
+- A flight that flies or docks with the satellite re-registers it (`s.reg`): a new slot, a fresh rate, its tanks as they are.
+- Program screen: each satellite line says *holds its orbit 240 more days (0.37 m/s a day)* or *adrift since day N*.
+
+**Measurements** (`node study_slot.mjs`, circular orbits, 8 h days; the m/s to put plane + size + shape back, per day):
+
+| orbit | tide (max) | off its rails after 1 / 5 / 20 days | to hold, m/s a day |
+|---|---|---|---|
+| low 300 km, equatorial | 1.0e-5 m/s² | 0.0 / 0.1 / 0.6 km | 0.037 (ignored: under `SK_MIN`) |
+| polar 1,000 km | 1.7e-5 | 0.6 / 2.6 / 10.6 km | 0.031 (ignored) |
+| navigation 3,000 km, 60° | 2.7e-5 | 3 / 17 / 56 km | 0.27–0.31 |
+| stationary (TV) | 6.1e-5 | 5 / 4 / 509 km | 0.34–0.42 |
+
+So a TV satellite pays ~150 m/s a year (real geostationary satellites pay ~50 m/s a year; Nyx is close and heavy). 100 m/s
+of tanks holds it ~270 days. Plane drift dominates everywhere, as for real geostationary satellites.
+
+**Negative result:** the first measure, "chase the Kepler rail" (a correction every τ costing |δv| + 2|δr|/τ), said a low
+orbit costs 0.3 m/s a day and a stationary one 3–26, depending on τ. It was paying to follow the wobble within each orbit,
+which no satellite needs to. Only the secular drift (the elements, averaged over an orbit) is a real cost.
+
+**Decisions (defaults; Caio may override):**
+- *Service pauses* is read physically: drifting doesn't switch anything off; whatever needed the slot stops because the
+  geometry says so. TV goes grey when it leaves the capital's sky (the existing check: a dry stationary satellite placed
+  over the capital does on day 87, measured); navigation coverage and imagery
+  carry on from wherever the satellite is, as real Transit satellites did without station-keeping.
+- So Q34a's power-flat pause has no shared field to join yet: when it lands it adds `q.off` (why) and gates TV pay in
+  `utilTick`, `navCover`'s list and the imaging contact on it. This slice didn't build an empty field ahead of it.
+
+**Not yet:** reboost and servicing contracts (economy), refuelling by docking (propellant transfer doesn't exist yet), a
+held satellite's slot shown on the map, and the stepping for Tellus orbiters skipped during flights (a dry satellite rides
+Kepler from its last tick until the flight ends, as moon orbiters already do).
+
+Test `space-1` (4 checks; mutations caught: no spending, dry Tellus orbits not stepped, no `SK_MIN`, news for a satellite
+that never had propellant, moons never holding). Full suite 466 pass. TESTING row 134.
+
+## v1.59 — every offer says why it appeared (2026-10-08, economy session, QUEUE Q45)
+
+`whyOf(type, src, client)` in `sim/contracts.js` picks **the strongest true reason** when `genOffer` makes the offer, and
+stores it as `o.why` (one line; old offers have none and expire within 50 days). In order:
+1. *New since you did “⟨first⟩”*: the type's `req` was done in the last 60 days (`WHY_NEW`);
+2. military work: *⟨client⟩ is nervous about its neighbours* (`tensionOf` > 0.4);
+3. commercial work: *Boom times* (cycle > 0.45) or *A rare order in a recession* (< −0.45);
+4. tourism: the tourism standing;
+5. government work from home: *Your government wants results*;
+6. *⟨client⟩ cares about ⟨science/commerce/…⟩* (that priority ≥ 0.35 in its flavour);
+7. *Your ⟨source⟩ standing (N) brings work* (≥ 70);
+8. else *Routine ⟨source⟩ work from ⟨client⟩*.
+
+The Contracts tab (`app/program-ui.js`, one line, flagged for flow) shows *Why: …* above the brief, on offers and taken
+contracts. Test `econ-4` (5 checks, mutation-tested). On a sample board most lines are *Routine* or the cycle: if the
+board reads as noise, the thresholds are the knobs (TESTING 133 asks).
+
+## v1.58 — Selene's ground on the CPU, and the maria on the near side (2026-10-08, world session, GROUND.md G2)
+
+Slice G2 of [`GROUND.md`](GROUND.md): Selene's height function, built and measured headless. It is **not live in
+play**: `SELENE.ground` stays unset until the sky shader draws the same relief (G3); until then a ship would land on hills
+nobody can see. Tests and `study_ground.mjs` switch it on in their own SIM copies. What did change in play: **the maria
+moved to the near side.**
+
+**The maria** (decision 1, default held). `selMare` and the shader's mare term both gained `−MARE_NEAR·n.x` (0.24; −X faces
+Tellus). Swept against the Moon's shares (31 % of the near side, 2 % of the far side, 16 % in all): **30 % near, 1 % far,
+15.3 % in all**; it was 5 % near, 11 % far, 8.4 % in all. Geology follows, since it reads the same mask. Test §42 moved
+with it: its spots are now a near-side mare (direct contact) and a far-side highland (needs the relay). Its sample
+points were broken too, see below.
+
+**The recipe** (new `sim/ground.js`, after `rovers.js`, now holding SIM END). Height = a baked map + procedural crater
+bands.
+- **The map**, 1024×512 (2.1 km a texel), baked on first use (0.8–1.1 s, never at load):
+  1. highland swell, ±0.9 km (integer-hash fbm);
+  2. the old big craters stamped in (inside the rim the crater replaces the ground, outside its ejecta adds);
+  3. the maria flooded to a gently domed plain about 1.4 km down;
+  4. the young big craters (15 %) on top of everything.
+  209 craters ≥ 20 km (N(>D) = 0.055·D⁻² per km², the Moon's highlands), up to 150 km.
+- **The bands:** six, from 20 km down to 80 m, each running down to the next. The cells are on an equiangular cube, one
+  crater per cell at most (λ 0.38). A crater reaches D from its centre and D ≤ 0.8 of a cell's arc, so a point sees
+  every crater touching it in the 3×3 cells around it, on each face whose cells come near (up to three at a corner).
+  Integer hash only, so G3 can port it.
+  - On mare, 85 % fewer (weighted like the flooding).
+  - Freshness is `hash³`: most craters are degraded.
+- **Shapes:**
+  - simple below GR_DT/g (18 km on Selene); complex above: a flat floor, a steeper wall, a central peak past 1.4×;
+  - depth 0.2 D (simple), 0.138·Dt·(D/Dt)^0.301 (complex, Pike's lunar fit); rim 0.036 D;
+  - ejecta rim·r⁻³, faded by r = 2.
+- **Cost:** one height 3–6 µs on the CPU.
+
+**Measured** (`node study_ground.mjs`, ~30 s):
+
+| What | Number |
+|---|---|
+| Relief | map −4.0…+1.6 km; sampled p0.1 −3.2 km, median −50 m, max 1.3 km (recipe `top` 4 km) |
+| Crater counts, N(>D) per km² vs the target (before mare thinning) | ≥20 km 1.37e-4 / 1.37e-4 · ≥5 km 1.95e-3 / 2.20e-3 · ≥1 km 4.86e-2 / 5.50e-2 · ≥0.2 km 1.21 / 1.37 (the gap is the mare thinning) |
+| Craters ≥ 1 km per 1,000 km² | highland 55, mare 12.5 (4.4× fewer; ~10× was the plan: partly flooded mare edges count as mare) |
+| Slopes over ±15 m, mare | median 1.0°, p99 27°; past TOPPLE (24°) 1.8 %; under 5° 76 % |
+| Slopes over ±15 m, highland | median 4.2°, p99 35°; past TOPPLE 6.9 %; under 5° 54 % |
+| Cube-face seams | the steepest 0.5 m step on the edges (47°) is no worse than anywhere (53°) |
+| Never sunlit (fixed sun 6.8° above the equator), 2 m above the ground | 8 % at 70°S, 23 % at 75°S, 100 % from 80°S |
+
+**Negative results:**
+- **A paraboloid bowl is too steep.** The rim wall of `−d + (d+rim)·r²` is 43°, and up to 58° where craters overlap. Real
+  fresh walls stand near the angle of repose (~35°). r^1.6 gives 37° at the rim; the highland p99 went from 39° to 35°.
+- **Thinning mare craters by the raw mask** left them only 2.75× sparser: edges have a weak mask but are counted as mare.
+  Weighting by the flooding weight made it 4.4×.
+- **Bands sized from a guessed safety factor** left a gap between the procedural craters (up to 7 km) and the baked ones
+  (from 20 km). The bands are now defined by their largest crater, and each runs down to the next.
+- **Test §42's sample points all lay on one curve.** z came from the golden fraction as well as the angle (both
+  `frac(0.618·i)`), so 3,000 "spread" points traced a single spiral. It read 9.7 % mare for a true 8.4 %, and 32 % for a
+  true 15 % after the move. It's now a Fibonacci lattice (`z = 1 − (2i+1)/N`) (LESSONS #36).
+
+**Tests:** `ground-2`, 5 checks:
+- not live, baked lazily;
+- relief within bounds, and the counts (baked = GR_C·area/400; band cells filled at λ within 3 %);
+- no seams (under 60°);
+- maria low and smooth against rough highlands;
+- in the physics: a pod rests on a 0.9° mare flat at the ground's height (gap 0.00 m), and slides 164 m off a 34° wall.
+
+Mutations caught: the recipe live at load, only the point's own cube face (a 90° cliff at the seams), and no flooding.
+§42 updated as above. Full suite: 457 pass, 0 fail. TESTING row 131: the maria seen from Tellus (the one change you can
+see).
+
+**Not yet** (GROUND.md):
+- G3: the shader draws this relief (then `geoAt` reads the bake, and the recipe goes live);
+- per-recipe surfaces (`surfaceAt` is still `SURF_MOON` everywhere off Tellus);
+- the polar dark floors as an R4 deposit mask (G5).
+
+## v1.57 — the ballistic test aims from the program's site (2026-10-08, economy session, QUEUE Q7)
+
+`CT.ballistic` used to place its target `rg/600` radians from planet-fixed +X: the old 600 km radius (every range 2.1×
+longer than stated) and from no particular pad. Now:
+- the target is `alongAz(site.u, az, rg·1000/R)` from **the program's current site** (`curSite()`) when the offer is
+  made: at sea, 300–900 km away, the stated distance exact (test: within 0.5 km);
+- the contract keeps `p.site` and `p.sname`; the brief says "Launch from ⟨site⟩"; it **counts only when flown from
+  that site** (`R.site`, v1.56): a ballistic test belongs to its range. Saved contracts without `p.site` count from
+  anywhere;
+- if no sea target is found in 200 tries (an inland site deep in a continent), there is no offer: `genOffer` now skips
+  a generator that returns null. The old fallback put a target at a fixed point regardless of the site.
+
+Test `econ-3` (3 checks, mutation-tested). The map marker (`app/render.js`) reads `c.p.u` as before.
+
+## v1.56 — who may launch where: siteAccess (2026-10-08, economy session, QUEUE Q6)
+
+The terrain session's launch gate (`siteAccessOf`, `sim/world.js`) now finds economy's **`siteAccess(site)` → `{ok, why,
+fee, how}`** in `sim/program.js`:
+- **our sites:** free;
+- **a sea platform:** open to anyone, `SEA_FEE` = 4M a launch (a service);
+- **a consortium member's site:** shared, free;
+- **any other power's site:** leased, `LEASE` = 6M × (1 − ½ relation): 3M with the best friends, 6M at neutral,
+  refused below relation −0.25 (`LEASE_REL`), and closed while that power sanctions the program (or home does);
+- **nobody's land** (`power` null, not sea): refused, there is nobody to lease it from.
+
+**Charged at launch** on `missionTick`'s launch line with hardware and operations; the record keeps `R.site` (the id)
+and `R.siteFee`. The debrief lists *Site lease*, and now also *Sponsor covers the failed attempt* (v1.55's `R.cover`).
+Two lines in `app/editor.js` (flagged for vehicle/flow): the over-budget check counts the fee, and the picker shows how
+you'd use the site and the fee ("leased from X: 6M a launch"). Test `econ-2` (6 checks, mutation-tested).
+
+**Not yet:**
+- dispatched flights (`orderDispatch`) don't charge a lease: procedures fly from where they were recorded; when a
+  procedure's site is abroad, charge it there;
+- overflight politics (`site.downrange.over`), westward launches, sites closed by a war (relations already cover the
+  slow version), a lease line on budget day for a standing lease;
+- contracts that name a site (Q7 is next: the ballistic target from the flight's site).
+
+## v1.55 — a failed attempt at the next step is mostly covered (2026-10-08, economy session, W12)
+
+Caio answered W12 with option 1 (below). **Built:** `coverLoss(s,R)` in `sim/program.js`, called in `missionEnd`'s books
+after refurbishment and before the floor check. A flight gets `COVER` = 75 % of its loss (price − refurbishment) back when:
+- it flew **the priciest rocket yet** (`PROG.recs.maxCost`): that's how the game tells an attempt at the next step,
+  since nothing names a flight's target (the proposal's "the flight names its first" turned out to need a target picker
+  that doesn't exist);
+- it came to nothing: no first, no contract, under a quarter back as refurbishment;
+- the sponsor hasn't covered one in this epoch yet. The epoch is **the newest one with firsts open**, not the oldest:
+  epoch-1 firsts (air, range) stay open while you go for orbit, and keying to them let an early lost loads flight use up
+  the orbit's cover (caught by the runner, `WHY=1`).
+
+The sponsor is named in the news: the home government, investors, or the member states. State in `PROG.recs.cover`
+(a new game already resets `recs`; no app change). Test `econ-1`, mutation-tested (the epoch key, the first rule).
+
+**Measured** (`PACE=1 FAILFIRST=orbit node career.mjs 2 5`; before → after): flights to orbit 6–10 → 5–8; bailouts before
+orbit 1.0–4.6 → 0.2–2.0; companies in poor worlds reach orbit in 4 of 5 runs (were 2–3 of 5). The runs that still don't
+are repeated orbital losses (only the first is covered) in a frugal or resource world, where cheap work barely pays:
+the *pay floors by world* follow-up. With no forced failure: 4–6 flights to orbit, as before.
+
+## Epoch 1–2 pacing for a new player, measured (QUEUE Q44, 2026-10-08, economy session)
+
+No game code changed: this is a measurement, a runner fix, and a proposal waiting on Caio (QUEUE **W12**).
+
+**The runner's new pacing report.** `PACE=1 node career.mjs 2 5` prints, per archetype × start: runs that reach
+first orbit (beeper or passenger orbiter), flights and days to it, the longest stretch with nothing worth flying,
+bailouts before orbit, and the lowest funds. `FAILFIRST=orbit` makes the first orbital attempt fail (the worst single
+failure: ~75–85M, nothing comes home); `FAILFIRST=1` fails the first try at every first. `TRACE=1` prints the
+pre-orbit decisions; `SEED0`, `ARCHS` and the starts argument narrow a run. Two experiment knobs, runner-only:
+`BONUS=` adds to the starting funds, `KEEP=` refunds that share of a failed first's cost.
+
+**A runner fix that changes its old numbers a little.** The scripted player valued a flight as pay − price and ignored
+refurbishment (65 % of what lands whole). It turned down sounding contracts that really break even, and a company at
+the floor waited for ever. It now learns the average refund per kind of flight from its own flights.
+
+**The numbers (2 years, 5 seeds, prices: weather 18M, hop 28M, beeper 71M, orbiter 74M; start 80/90/80M):**
+
+| | flights to orbit | day | bailouts before orbit | worst case |
+|---|---|---|---|---|
+| no forced failure | 4–6 | 119–255 | 0.6–2.0 (agency, consortium) | resource company 6 flights, day 639 |
+| **first orbital attempt fails** | 6–10 | 184–428 | 1.0–4.6 | **frugal company: 2 of 5 runs never reach orbit in two years** (wait 160 d); resource company 3 of 5 |
+| …with `BONUS=80` | 5–9 | 163–377 | 0–2.8 | frugal company still 3 of 5 |
+| …with `KEEP=0.5` | 5–8 | 163–340 | 0.4–2.2 | frugal company 3 of 5 |
+| …with `KEEP=0.75` | **5** (frugal company 7) | 163–349 | 0.2–1.0 | frugal company 5 of 5, wait 60 d |
+
+**What it says:**
+- With no failures the first hour is fine: about five flights to orbit.
+- **One failed orbit attempt breaks it.** The orbital flight costs 90 % of the starting money and nothing comes back.
+  Agencies are bailed out again and again; the bailout tops up to the 25M floor, which is not enough for any
+  orbital flight. A company's rescue loan also lifts it only to 25M, and then the sounding work it can afford
+  barely breaks even, so in a poor world (frugal, resource) it grinds for months or never gets back.
+  The QUEUE criterion "nothing unaffordable after one failure" fails.
+- **More starting money doesn't fix it.** The player spends it on the earlier steps, and still arrives at the orbital
+  attempt with about one flight's worth.
+- **Covering most of a failed first fixes it.** With 75 % back, every start reaches orbit in five flights except the
+  frugal company (seven).
+
+**Proposed (W12, default if Caio is silent: the first option):**
+1. *A failed first is mostly covered, once.* The first time a flight aimed at an open first is lost, the sponsor pays
+   back 75 % of its price: the government for an agency ("the program learns, the minister signs"), investors for a
+   company (an insurance-like milestone clause), members for a consortium. Once per first, with news. Needs the
+   flight to name the first it's going for (the builder's target picker, or the open first the stack can satisfy).
+2. *The rescue lifts to the next step,* not to the 25M floor: lend the price of the cheapest open first. Bigger debts.
+3. *Leave it hard,* and say so on the screen before the attempt ("a loss leaves you X").
+
+The frugal company's grind (cheap work that doesn't pay in a poor world) is a second, smaller problem: contract
+pay floors by world. A follow-up under *Proposed*.
+
+## v1.54 — the ground of every body, slice G1: the layer, no new relief (2026-10-08, world session)
+
+The first slice of [`GROUND.md`](GROUND.md) (QUEUE Q86 + Q18's plan). Every "is this Tellus?" test of the ground is now a
+lookup of the body's **`ground` recipe**, so Selene, Nyx and the SYSTEM.md bodies can get relief with no further edits to
+the physics. Nothing changes in play: Tellus is as before, and every other body is still a smooth sphere.
+
+- **The recipe** (`sim/world.js`, before `groundAlt`): `b.ground = {gen, top, sea}`. `gen` names a height function in
+  `GROUND_GEN` (metres above `b.R` at a planet-fixed point), `top` bounds it from above, and `sea` is an optional
+  liquid level: what comes down below it floats. No recipe means a smooth sphere. `TELLUS.ground = {gen:'tellus',
+  top:TERR_TOP, sea:0}`.
+- **New:**
+  - `bodyH(b, pf)`: the solid ground, sea floor included;
+  - `bodyTop(b)`;
+  - `seaAt(b, pf)`;
+  - `groundAlt` is now `max(sea, bodyH)` when the recipe has a sea, `bodyH` otherwise. That allows ground below `b.R`
+    (crater floors).
+- **Now dispatched:**
+  - `terrainSlope` and `groundNormal` (and `b.R` instead of `TELLUS.R`);
+  - the sea checks in contact and splashdown (`seaAt`), and the rover's spot check;
+  - the early-outs in `groundContact`, `groundCheck`, debris and `fall` (`bodyTop(b)` instead of `TERR_TOP`);
+  - `MOON_PE`, now a margin above the moon's `bodyTop`;
+  - the camera clamp and the ship's shadow plane (app/render.js).
+- **Left on purpose:**
+  - `surfaceAt` (the moons' `SURF_MOON`) and the biome code: G2 gives recipes their own surfaces.
+  - The radar readout's 20 km band (`TERR_TOP + 20000`, UI only).
+  - The shader: G3.
+
+**Tests:** `ground-1`, 3 checks:
+- neutral: Tellus's ground matches `terrainH` clamped at the sea at 2,000 points, and every other body is a sphere;
+- live: a test recipe on Selene (a 500 m plateau rising north at 20°) holds a pod at 500.00 m, and reads 20.00° as slope
+  and as the normal's tilt;
+- a recipe's liquid level.
+Three mutations (a Tellus-only `groundNormal` or `terrainSlope`, a contact early-out without `bodyTop`) each fail it.
+Full suite: 436 pass, 0 fail.
+
+**Next:** G2, Selene's baked map and crater bands on the CPU (GROUND.md § Slices).
 
 ## v1.53 — the ladder's balance: Nyx is found by looking; the pay floor (2026-10-08, economy session)
 
@@ -5849,7 +6135,7 @@ stage. Note the port's considerations here, don't act on them yet.
 - **Log depth** is written per fragment (`gl_FragDepth = log2(1+w)·Fc/2`). The vertex shader writes
   a matching log z, so nothing gets near/far clipped.
 
-## UI: screens and navigation — spec (2026-10-07, ui session with Caio; nothing built yet)
+## UI: screens and navigation — spec (2026-10-07, ui session with Caio; slices 1–3 built below)
 
 **The problem.** The app has two screens (`mode` = editor/flight) plus a `view` toggle for the map. Everything else
 was added to whichever panel was nearest when it got built. The whole career (ownership, contracts, race, ground stations,
@@ -5985,6 +6271,120 @@ the arrows, and every key in the handlers present in its Help table.
 - Not yet: Inbox doesn't collect news (the `#news` ticker still runs as before); the Assembly right panel is untouched
   (slice 5); the CoM/CoP markers still draw behind the Program panel.
 
+### Slice 3 built (2026-10-08, flow session, QUEUE Q2): Debrief
+- **The record is SIM data** (`sim/debrief.js`). `missionTick` takes a snapshot just before liftoff (`R.deb0 = debSnap()`:
+  funds, date, know-how, missions done, satellite count, the orbit record). `missionEnd`, once the flight is settled, builds
+  `R.debrief = debriefOf(s, R, ups)`, keeps it in `DEBRIEF_LAST` and returns it as `.debrief` beside `{ups, streak}`.
+  It never throws: a record that fails to build is `null` and the flight still settles.
+  - Outcome: landed (distance from the pad, recovery), lost (the apex), in orbit (pe × ap; "registered in the fleet" when
+    `satRegister` took it), landed on / in orbit of a moon, escaping, or ended in flight (written off). A passenger's fate.
+  - Money: hardware, launch operations, every pay item, refurbishment, damages, then **"N days passing"**: the rest of
+    the funds change (budget days, upkeep, debt) during the stacking and flight days. The lines add up to the net, which is
+    `PROG.funds` after minus before (test `flow-1` checks the sum).
+  - Missions, telemetry certifications (`ups`), logbook records set on this flight (with the old value), incidents
+    (stages on or near towns, on another power's land; a passenger lost), know-how gained per part.
+  - **Pay items need one call each where money is paid** (economy, additive): `debPaid(R, kind, label, pay)` in
+    `missionComplete` (`rec`), `contractEval` and `stagePay` (which now takes `R`). **A new kind of flight pay should add
+    its own `debPaid` line**, or it shows up inside "days passing". Missing lines never break the sum, only its detail.
+- **The screen** (`app/debrief.js`, `#deb`): a panel over the pad like Program; header with flight number, design, date and
+  time flown; sections in two columns (headings use class `dh`, not `ep`, so §32's Program-tab check ignores them).
+  Exits: **Program [P]**, **Assembly [B]** (same design), **Fly again [A]** (Assembly → the usual LAUNCH with its checks;
+  disabled for a flight that started in orbit). The one you were heading to is highlighted.
+- **How you get there.** `go()`: leaving flight or map for Program or Assembly settles the flight (as before) and, if that
+  flight has a record not shown yet, goes to `debrief` instead, remembering where you were going. So the toolbar's
+  Assembly, ☰ → Back to Assembly and `go('program')` all pass through it. New: ☰ → **End flight: debrief** (asks twice in
+  the air), and an **End flight ▸** button in the flight toolbar once the vessel has landed or is lost (`debEndBtn`, from
+  `hudLayout`). Program has **Last flight** to see it again (not kept across reloads). Rover yard skips it.
+- **Revert and `R` skip the Debrief on purpose**: they are the quick retry, and the record is still kept (Last flight).
+  TESTING row 127 asks whether that's right.
+- `atDeb` joins `atHQ`: builder.js ignores keys on Debrief, and render.js no longer draws the builder's CoM/CoP markers
+  and `edOverlay` behind either panel (they showed `NaN%` behind Program after a flight). §32 now counts `atDeb=` too.
+- Robot: rows that `go('program')` after a flight now land on Debrief first; the next `go('program')` goes on to Program.
+  Probed in Chrome (Sounding landed, Orbiter lost, a climb ended from the Esc menu, the Assembly button): screenshots in
+  `C:/Users/caioa/dev/playtest-out/flow/`.
+- Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
+  duplicate the Debrief); Inbox doesn't collect them yet.
+
+### Esc pauses; two more lanes; identity mock-ups (2026-10-08, flow session, QUEUE Q39, Q75, Q76, Q73)
+- **Esc pauses** (W5, Q39). `gamePaused()` (screens.js) is "the Esc menu is open". While it is, `frame()` skips `simulate`
+  (flight, warp, the rover), `sndTick` treats the flight as not live (the mix goes quiet), and the flight key handler
+  returns at once, so Space, throttle and the rest do nothing; the shared keys (Esc, H, F) still work. Closing the menu
+  carries on at the same warp: nothing drops to 1×, because nothing ran. The menu's title says "· paused" in flight, map
+  and rover; its first button is now **Resume [Esc]**. Help and the logbook don't pause (look things up while flying).
+  Robot `m1`: 2.5 s with the menu open, `simT` moved 0 s.
+- **The builder's key strip** (PLAYTEST #25, Q75): `bldLayout()` puts `#bldhelp` between the two assembly panels, centred
+  and wrapping (two lines at 1280×800), instead of across both; hidden below a 160 px gap. Its CSS stays in builder.js;
+  the place is set from app/state.js (`hudLayout` and resize), next to the news lane.
+- **`#msg` gets a lane** (PLAYTEST #26, Q76): `msgLayout()` (from `HOOK.msg`, `hudLayout`, resize) centres it between the
+  readout and the right-hand panels (`#nodep`, `#rvFHud`), drops it below the toolbar or the news where they meet, and
+  under the readout when there's less than 200 px beside it. Off the flight screens it goes back to its CSS place.
+- Robot `m1` (QA's M1 finish line: gate → Sounding → first orbit → Debrief) passes in full on branch `ui`: Debrief after
+  both flights, Esc pause 0 s, no box covering another at 1280×800 on any screen.
+- **Visual identity mock-ups** (Q73 → Q53, PLAYTEST #13): three directions, paperwork, instrument panel and
+  mid-century poster, on the Program screen and the flight HUD with the real layout over real game frames, plus a later
+  era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
+  options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
+  cockpit in another); Q53 builds the pick.
+- **First run explained** (Q41): the gate's two questions each open with one line on what the choice decides (the power:
+  how the money arrives, what the public wants, what a failure costs; the start: who owns the program and who you
+  answer to), and every option is a row with its own sentence on screen (it used to be a hover tooltip for the powers,
+  so only the chosen power's line showed). "Random world" names what it rolled. The consortium's blurb became one
+  sentence. Same buttons and `data-arch` / `data-start` attributes, so the robot rows and handlers are unchanged.
+
+### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
+**Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
+Impact, Heat, Structure, Link) plus up to 16 more from ten helpers owned by six sessions (`spinRows`, `wheelRows`,
+`rcsRows`, `tgtRows`, `dockRows`, `fleetRows`, `bayRows`, `armRows`, `rvRows`, `payloadRows`). At ~25 rows it runs into
+the stages (PLAYTEST #9, TESTING 98). Aerofx's gauge strip (`drawGauges`: altitude tape, air depth, q with max-q, Mach,
+heat) sits right of the navball as a placeholder (`gaugeRect`). The toolbar has seven buttons.
+
+**1. The core** (top left, fixed, never more than 6 lines; the spec's list):
+- `MET` and the situation on one line: `T+04:12 · Tellus · flying · link Fenfen Cape` (the Link row folds in here; blackout
+  in amber).
+- `Altitude` (it becomes *radar* altitude, labelled so, below `TERR_TOP` + 20 km while descending), with the vertical speed
+  beside it as today.
+- `Speed`: one number, surface speed in the air and orbital speed above it (the label says which).
+- `Ap / Pe` on one line, each with its time.
+- `Δv`: stage · total · TWR.
+
+**2. The gauges are the instrument panel**: they stay bottom centre beside the navball (gauges | throttle | navball |
+SAS), shown while the Ascent condition holds (in the air with q > 1 kPa, or skin heating rising), hidden in space, so the
+cluster narrows. `gaugeRect` moves to the HUD layout (flow), the drawing stays aerofx's.
+
+**3. Cards**, a right-hand column under the toolbar. Each card: a title bar, its rows, a pin (📌 keeps it open). A card
+shows while its condition holds; the column is capped at the window height, and the oldest unpinned card folds to its
+title bar first. Today's rows, mapped:
+
+| Card | Shows while | Rows (from) |
+|---|---|---|
+| Ascent | the gauges show | Structure, Heat (the part, ablator) — the numbers the gauges don't draw |
+| Descent | descending with an impact predicted, or landed | Impact (+ spread, range safety), landing (`payloadRows` landing line) |
+| Target | a target is set | `tgtRows`, `dockRows` |
+| Payload | payload events, or opened from the core | `payloadRows` (passenger, instruments, contracts) |
+| Fleet | more than one vessel | `fleetRows` |
+| Vehicle | spinning, wheels saturating, RCS on, or opened | Mass · g, `spinRows`, `wheelRows`, `rcsRows` |
+| Hardware | a bay, arm or claw armed | `bayRows`, `armRows` |
+| Rover | driving | `rvRows` |
+
+**For the other sessions (additive): a card registry.** `HUD_CARDS.push({id, title, when: () => bool, rows: () =>
+[[label, html], …]})`. Today's helpers become `rows` unchanged, so their owners change nothing; new HUD content
+registers a card instead of appending to `updateHUD`'s list. A static check (like §32) fails if `updateHUD` gains a row
+outside the core.
+
+**4. Toolbar**: Map, warp (shown and clickable: ◀ ×N ▶), ☰. Revert, Assembly, Logbook, Keys and Save as autopilot
+leave it (all in the Esc menu; End flight ▸ appears when the flight is over, slice 3). The news and `#msg` lanes
+(`hudLayout`) take the card column's left edge as their right limit.
+
+**5. Map view**: the core stays; the navball shrinks to a heading line; gauges and cards hide except Target; the node
+panel as now.
+
+**Slices**, each merged alone and checked by robot `m1` (no box over another at 1280×800 and 1000×700) plus TESTING 98
+(a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
+new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
+
+**Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
+
 ---
 
 ## Picking this up cold
@@ -6070,8 +6470,13 @@ Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 che
 unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
 is right.
 
-**Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
-"skip to an era" shortcut for the compute eras.
+**Added 2026-10-08 (QA session, QUEUE Q16):** *Go to day* N (forward runs every day's rules through `testAdvance`;
+back moves only the calendar, so what happened stays and deadlines and jobs are further off), *Set funds* to any number,
+negative included (it turns *Infinite money* off, or the top-up would undo it), a button per **computing era** (the date
+runs on a day at a time until `compEra()` reaches it: the era follows the date and the power's lag as in play, it never
+overrides them), and a folded **Missions** list with one checkbox per mission (marked `test:true` like the epoch
+picker's). SIM: `testGoto`, `testFunds`, `testEra`, `testMission` after `testFinishJobs`; checks in test.mjs `qa-1`. All
+of them wait while a flight is on, like epoch and date.
 
 ## The gantry no longer clips the rocket (2026-10-08, tester session; PLAYTEST #2)
 
@@ -6352,6 +6757,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/contracts.js` | 243 | contracts, sanctions, the race, ownership, decisions | economy |
 | `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS | space |
 | `sim/logbook.js` | 49 | the logbook, tools gated by it | economy |
+| `sim/debrief.js` | 40 | the flight's debrief record (`debSnap`, `debriefOf`, `debPaid`) | flow |
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
 | `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
 | `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
@@ -6364,6 +6770,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
 **Working in split files: the rules.**
 - **Find a function** with `grep -n "function name" sim/*.js app/*.js`. Markers (`SIM BEGIN/END`, `SOUND MIX`) are where
@@ -6384,3 +6791,365 @@ by their text, gave each file after the first a two-line prelude and `'use stric
   (`git merge-file`), with the split of the merge base as the base. This was done once, for bodies' Q13, pushed during the
   freeze. The quicker equivalent: three-way merge the *old-style* pages (`git merge-file` on the branch's, the base's and
   the pre-split `index.html`, all LF), then split the result. Its 53 changed lines landed cleanly in `sim/procedures.js`.
+
+## The new-career robot run: M1's finish line (2026-10-08, QA session; QUEUE Q55)
+
+`node playtest.mjs m1` plays a **new career with no tester flags**, the way ROADMAP § M1 words the finish line: it clicks
+through the first-run gate (agency, the default power), flies a **Sounding** for *Above the weather*, leaves the flight
+for the Program, then flies the **beeper** to orbit and leaves that flight too. It's written ahead of M1, so it fails
+until M1 is done. Each expectation names the item that makes it pass:
+
+| Check | Passes when | First run (`5ed4bf2`) |
+|---|---|---|
+| `tester` | the page isn't in tester mode | ✓ |
+| `weather`, `beeper` | both missions are done after two flights | ✓ (day 57, 157M left) |
+| `escPauses` | the sim clock doesn't move for 2.5 s with the Esc menu open | ✗ 2.5 s ran (flow Q39) |
+| `debrief` | a debrief screen shows after each flight is left | ✗ none yet (flow Q2) |
+| `boxes` | no two visible panels overlap by ≥ 40 px² on the program, assembly, flight, orbit and after screens at 1280×800 | ✗ PLAYTEST #25 (builder key strip), #26 (`#msg` over the readout) |
+
+What it found on the way: **no preset can fly the beeper** or the passenger orbit (PLAYTEST #24, P1 for the
+presets-only route), so the robot swaps the Orbiter's pod for an instrument package, which is what `career.mjs` assumes.
+The Program after a flight draws the flown ship with "NaN%" joint labels (PLAYTEST #27).
+
+**How it judges.** The ascent is `fly_ladder.mjs`'s `handAscent` run in the page (`PT.ascent`): it sets the attitude
+directly, so the run proves the career path and the screens, not that a person can fly it on gyro-era SAS (TESTING row
+101 stays a human row). The box check (`PT.boxes`) takes every visible positioned element with text, drops the
+full-screen layers (`#hud`, `#prog`), keeps the outermost ones and lists each overlapping pair. `PT.debrief` accepts a
+screen named `debrief` or any visible element with `debrief` in its id or class: **flow, name Q2's screen that way** or
+change the check with it. Shots in `C:/Users/caioa/dev/playtest-out/` (`rm1_*.png`). A run takes about a minute.
+
+**The M0 re-run (QUEUE Q29, same session).** `node playtest.mjs 104 110 84 97 122 5 96 48 9 35` after fixes, Q14, Q17 and
+Q20: every fix holds (PLAYTEST #15, #16, #17, #18, #21, #22). Two new rows: **97** ends a flight three ways (landed,
+crashed, left in orbit) and checks each is settled when you leave it; **122** flies the Heavy and the Asparagus through
+max heating and records the Link row and `plasmaHeat` (no blackout, shell 0; heat peaks at 1.0–1.4 km/s, the shell
+starts at 1.9). The one thing still in the way is a line, not a box: `#msg` is drawn over the readout (PLAYTEST #26).
+
+## Vehicle parts: landing legs (Q31) and power, computer, radiator (Q34) — plan (2026-10-08, vehicle session; nothing built)
+
+Planned without running the game (Caio: no heavy GPU for now). Both are ⚙ work: physics plus headless checks; the look
+beat draws the new parts afterwards. Numbers marked *tune* are starting points to measure, not results.
+
+### Q31 — landing legs
+
+**Why now.** § v1.37's contact model already makes legs worth having: with no legs a stack's footprint is its bottom
+rim, so the Orbiter (1.25 m base, CoM ~5 m up) topples on a 12° slope (atan(r/h)). Legs are only a wider footprint,
+plus a place for landing loads to go.
+
+**The part.**
+- `leg`: `kind:'leg'`, `surf:true`, `noAero:true`. It mounts on a part's side like `rfin`, so the builder's radial
+  count (`at.n`, 3 or 4) gives a symmetric set for free (`layoutDesign`'s surface-part branch).
+- Geometry: the root is on the host's skin; the foot sits `reach` out along the mount's normal and `drop` below the
+  root. *Tune:* reach 0.9 m, drop 0.8 m, so 4 legs on a 1.25 m body put the feet at r ≈ 1.5 m, 0.8 m below the rim.
+- Mass 0.04 t each. Price 1.5. `complexity` tier 1 (`sim/program.js:317`).
+- Joint ratings sized so a set of 4 survives ~6 m/s vertical at the stack's design mass and snaps a leg around ~9
+  (*tune* by measurement). Then a hard landing breaks a leg and the stack tips over, with no special rule: the
+  contact forces are already part forces (`p.F`/`p.L`) that the structural check reads.
+- **Deployable:** stowed for launch, deployed by a key (flow picks a free one; `G` if it's free). Stowed legs add no
+  feet. **Default:** deployable. Fixed legs would also need the pad and the rig to clear them.
+
+**Contact changes (`sim/flight.js` `footPoints`, one function):**
+- A deployed leg adds **one** contact point, at its foot, instead of the 4 rim points every other part gets.
+- `yb` (the lowest point) is taken over the feet as well as the rims, so with legs down the rims (≥ 0.8 m higher)
+  drop out by the existing 0.5 m rule.
+- The cache key adds each leg's deployed flag next to `p.on`.
+- Keep the spring-damper per point as it is (2 cm static deflection, ζ 0.6). A softer leg stroke is a later
+  refinement, and the verdict (`touchdown`, `TOUCH_MAX` 12 m/s + softness) doesn't change. Legs help by spreading the
+  footprint and by breaking, not by a speed bonus.
+- `rvFootR` (rovers) reads `footPoints`, so a lander's legs also widen the area a rover is placed around. Check that.
+
+**Checks for `test.mjs` (a new section at the end):**
+1. The Orbiter with 4 legs deployed stands on a 12° slope (it topples today) and on a slope up to atan(1.5/5) ≈ 17°.
+2. The same stack with the legs stowed topples as before (no regression).
+3. A 9 m/s vertical touchdown snaps at least one leg (`partLost`); 3 m/s snaps none.
+4. A Selene lander (Wren + legs) lands on regolith at 15°.
+5. `footPoints` with legs down returns only feet (4 points for 4 legs).
+
+**Others:** the look beat draws the leg (folded and deployed). Until then, a placeholder box at the foot. The
+TESTING row goes in when it's built: "land the Orbiter with legs on a slope".
+
+### Q34 — onboard computer, solar panels, battery, radiator
+
+**What exists.**
+- Rovers have a power model (`sim/rovers.js` R3: panels, an RTG, a battery, a night heater). Vessels have none.
+- Avionics come from the world's compute era alone (`avNow()`; v1.46). `s.av` is set at launch, so nothing on board
+  decides it.
+- The flight thermal pass (`thermal()`, `sim/vessel.js`) is the per-part skin model for re-entry. Orbital
+  steady-state thermal is a named M2–M5 system (§ "Rich programs", step 3) with no code yet.
+- The sun is fixed in the absolute frame (`SUN_DIR`), so a polar orbit whose plane is square to the sun is dawn-dusk
+  forever, with no J2 needed. That's convenient for the "no eclipse" case.
+
+**Scale (worked out from the constants; not run):** LEO here is r = 1,384 km (`TELLUS.R` + air + 10 km). That gives
+a 43-minute period and a shadow half-angle of acos(√(r²−R²)/r) = 67°, so **37% of each orbit is in eclipse (16 min)**
+at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap here; the panel area, generation ÷
+(1 − 0.37), is what costs.
+
+**Split into two slices (recommendation):**
+
+*Q34a — computer, panels, battery (M2, ⚙).*
+- **Parts:**
+  - `ocomp` Onboard computer: inline, 0.03 t, 50 W (the Apollo guidance computer: 32 kg, 55 W). Price 8, tier 2.
+  - `bpanel` Body-mounted solar cells: surface part, fixed, 0.01 t. *Tune:* 40 W in full sun, ×0.32 averaged over a
+    tumbling or spinning body (Vanguard, Explorer).
+  - `wpanel` Deployable solar wing: surface part, 0.03 t. *Tune:* 300 W in full sun, tracks the sun about its own
+    axis (×0.9). **Deployed, it snaps above ~1 kPa of dynamic pressure** (when to deploy is a design problem,
+    Pillar 2).
+  - `batt` Battery: inline or surface, 0.02 t, 1 kWh (silver-zinc, ~50 Wh/kg).
+- **Loads**, a `W` field on parts that draw power: computer 50, antenna 20 while it transmits, camera 15, crewed pod
+  150 (a cabin). A pod or core carries its own small battery (0.5 kWh) so short flights never need to think about it.
+- **The budget is a steady state first** (the lean pillar, like thermal step 1). For a design and an orbit: orbit-
+  average generation (with the eclipse fraction from the orbit's β), load, and the battery needed to cross the
+  eclipse. The builder shows one line: `Power +85 W / −70 W · eclipse 16 min needs 19 Wh (battery 1 kWh ✓)`.
+- **In flight:** the instantaneous version, integrated like the rovers' `R.E` (`gen − use`, clamped; sunlit from
+  `SUN_DIR` and the planet's shadow cylinder). One line in the step, no new state beyond `s.E`.
+- **Running flat never kills (Pillar 5):** the computer drops to the analog autopilot, the antenna and camera stop,
+  and on the registry the service **pauses** (the W2/Q50 pattern) until the budget is positive again. This differs
+  from rovers, which freeze to death at night; leave them alone, they're the space lane's call.
+- **The computer and avionics (Caio decided 2026-10-08: built into crew capsules, a part for probes):** from the
+  onboard-computer era on, the **Guidance computer** generation (`AV[2]`) needs a computer on board.
+  - **Crew capsules have one built in** (parts with `crew`, like Apollo's command module and lunar module). No mass
+    change: it's in the capsule's mass.
+  - **Everything else needs an `ocomp`, powered:** probe cores, biocapsules, instrument packages. Without one, a
+    vessel flies the analog autopilot.
+  - It's a pilot aid, not autonomy: the player flies either way; the computer decides which SAS hold modes exist.
+  - Before that era the part isn't offered, and nothing changes.
+  - Sandbox, physics tests and procedures (`s.proc`) keep the best avionics, as now (`avOf`).
+  - **What it breaks:** uncrewed presets and the robot's probe designs flown after year 7 lose the target and docking
+    modes unless they get the part. Update those presets in the same commit, and tell QA (`career.mjs`). Crewed presets
+    are unaffected.
+  - It gives the space lane a hook, `hasComputer(s)` (a crew capsule or a powered `ocomp`), for onboard autonomy out
+    of contact (§ "Compute", era 3). Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+  - Rejected: a part for everyone (crewed ships historically had theirs built in, and every crewed preset would
+    break); built into every command part (the part would only matter later, for autonomy).
+- **Checks:**
+  1. The steady-state budget for a LEO satellite with a wing, against a hand calculation;
+  2. In flight, the battery drains through the shadow and refills in sun, and over one orbit the steady state and the
+     integration agree to within 5%;
+  3. A deployed wing snaps at max-q, and one deployed after fairing separation survives;
+  4. Running flat drops avionics to analog and pauses a satellite's service; recharging restores both;
+  5. Era ≥ onboard computers: a probe with no `ocomp` has no docking mode; a crew capsule without one has it.
+
+*Q34b — radiators and the steady-state thermal solve (M2–M3, with the economy's orbital datacenter).*
+- `rad`: a deployable surface panel. Its mass per m² and emissivity give εσAT⁴. Like the wing, it snaps in air.
+- **The solve** (§ "Waste heat", step 1): heat in is α·A·S + internal power, heat out is εσAT⁴; solve for T per
+  vessel. Parts get operating ranges (electronics 270–330 K). The builder shows "runs at 340 K, over the computer's
+  limit".
+- **Why wait:** until the datacenter exists, nothing on a vessel makes enough heat for a radiator to matter (a 50 W
+  computer on a 1.25 m bus runs a few kelvin warm). Build it when the economy starts datacenter revenue (that
+  section's order, step 3), so the part ships with a reason to fly.
+- In the flight's `thermal()`, a radiator is only a skin part with a low `Tmax`, so re-entry with it deployed burns
+  it off. The orbital solve is a separate function that shares only the radiation term.
+
+**Overlaps (so nobody builds the same thing twice):**
+- space Q27 "relay range and power": reads the power budget and `hasComputer`; it doesn't build its own.
+- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared. *(Space, v1.60: fuel-flat turned out to be physical drift, not a switch, so there is no field yet; Q34a adds `q.off`, see § v1.60 "Decisions".)*
+- economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
+- Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
+  session builds the gating.
+
+## Plan: robot drivers for docking, stations and moons (2026-10-08, QA session; QUEUE Q30)
+
+The rows nobody has driven are mostly ones a person can't reach quickly either: two vessels in orbit, a station, a moon.
+The page has every function `test.mjs` uses (the SIM is the same globals), so **each driver copies its setup from the
+test section that already proves the mechanism**, steps it with `advPhys`/`advRails`, measures the row's "looks right if"
+numbers, and takes one to three shots. It doesn't fly there: setups are placed (`r`/`v`/`q` set directly), as §21–§42 do.
+Feel stays a human row (59 "minutes, not an hour", 69 "learnable", 73 "fun"); the robot adds numbers and shots.
+
+**Shared helpers** (in `PT`, next to `PT.ascent`): `orbitAt(body, km)` (the flown ship in a circular orbit, nose
+prograde; §23 `craft()`, §40 `put()`), `twin(stack, offset, {fleet|registered})` (a second vessel beside it: a `FLEET`
+member per §27/§28, or a registered entry per §21/§25 via `satRegister`), `dockTo()` (Docking SAS plus a proportional RCS
+controller on `tgtOf(S).dr/dv`, the scripted closer §25 uses), `boxes()` (already there, for row 98).
+
+| Slice | Rows | Setup borrowed from | Measures |
+|---|---|---|---|
+| 1 moons | 68, 72, 121, 73, 55, 54, 13, 125, 92 | `fly_ladder.mjs` LADDER + `procStart` phases; `flySite`; §23 nyxfind | each mission's news and pay (staged pay, row 92), Nyx's reveal text, prograde vs retrograde "Impact … (perturbed)" on the map, landing miss distance; shots of the map forecast and each landing |
+| 2 docking | 56, 58, 59, 60, 61, 62, 63, 116 | §21 Rendezvous, §24 RCS, §25 Docking, §26 Claw, §22 Contact, §27/§28 fleet, §29 bay, §41 moon orbiters | time to close from 2 km and to latch, gas used, latch snap distance, push-off speeds, bump spin at 1 and 6 m/s, door swing frames, `[`/`]` labels; HUD shots |
+| 3 stations | 64, 65, 66, 67, 115, 117, 98 | §30 Stations, §31 flyable vessels, §32 Arm, §33 Moonbases, §40 relay, §42 rover science | station line (crew, supplies, lab-days) after `stationTick`, Fleet → Fly round trip, arm berth/stow time, base listing, relay contact fraction over an orbit, science buttons' greyed reasons; row 98 = docked + RCS + target + three vessels, then `PT.boxes()` |
+
+Each slice is a few rows of `playtest.mjs` (1–3 min of browser each, run as one batch when the lock is free) and the usual
+write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (the ladder is already scripted end to end,
+so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
+Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
+
+## v1.62 — Enyo's ground on the CPU, the first planet (2026-10-08, world session, GROUND.md G7)
+
+Enyo (Mars, SYSTEM.md § Enyo), built and measured headless like Selene in v1.58, at Caio's request. **Not live:** no
+Enyo exists in the body tree yet (space lane, Q87), so the recipe hangs on a stub in `sim/ground.js` (`GROUND_STUBS.Enyo`:
+R 678 km, g 3.72, SYSTEM.md's numbers). When the space lane adds the body, it takes `ground: ENYO_GROUND`.
+
+**Shared first.** The crater bands now take a body's radius, crater density `c`, a hash salt (so bodies don't share
+craters), an erosion exponent (freshness = hash^frPow) and `thin(centre)`, the chance a crater is missing there. Selene's
+recipe runs through the same code **bit-identically** (3,000 heights before and after, 0 differ). A recipe can now carry
+its own surfaces: `surfaceAt` asks `b.ground.surf(pf)` off Tellus, and falls back to `SURF_MOON`.
+
+**Enyo's map**, in order (heights above R, the datum):
+1. southern highlands, +1.2 ± 1.2 km, with old, worn craters: c 0.02, Mars's highlands, a third of the Moon's. Simple
+   turns complex at 7.8 km (Mars: ~7 km).
+2. Hellas, 520 km.
+3. The northern lowlands flooded to −3.2 km over a warped dichotomy line.
+4. The Tharsis bulge (+4.5 km), with:
+   - the giant shield: 340 km across, 14 km above its plains on a 3 km basal scarp, a summit caldera;
+   - three shields in a line, and Elysium.
+5. The canyon: a great circle 1,400 km long (a third of the way round) at 12°S, up to 5.5 km deep, its walls terraced in
+   550 m layers (the layered sediment). It cuts the highlands, then opens into the lowlands, as Valles Marineris does
+   into Chryse.
+6. The young craters.
+7. The polar caps: a 2.6 km ice dome in the north, a smaller one in the south.
+8. Dune fields (400 m apart, up to 25 m high, a steep lee) in an erg round the north cap, on Hellas's floor and in the
+   canyon. They're procedural, aligned to one fixed 3D direction so they have no longitude seam.
+
+Surfaces by unit:
+
+| Unit | Surface | μ | Notes |
+|---|---|---|---|
+| polar ice | water ice | 0.25 | |
+| dunes | dune sand | 0.5 | soft |
+| volcanic | basalt | 0.7 | |
+| canyon | layered sediment | 0.6 | |
+| lowland plains | dusty plains | 0.6 | |
+| highlands | dusty regolith | 0.6 | |
+
+**Measured** (`node study_ground.mjs enyo`, ~5 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 1.2 s (4.2 km a texel); one height 3 µs |
+| Relief | −5.3…+12.3 km (recipe `top` 15 km) |
+| Units | highlands 51 %, lowland plains 37 %, volcanic 6.7 %, canyon 1.9 %, polar ice 1.7 %, dunes 1.1 % |
+| Craters ≥ 1 km per 1,000 km² | highlands 19.6 (Mars: ~10–20), lowlands 5.5, volcanic 1.1, ice 0.9 |
+| Slopes, highlands | median 0.9°, p99 29°, past TOPPLE 2.0 % |
+| Slopes, lowlands | median 0.2°, 95 % under 5° (the landing ground) |
+| Slopes, canyon | p90 25°, past TOPPLE 11 % (terraced walls) |
+| Slopes, polar ice | p99 9.6° |
+| Seams | steepest 0.5 m step on cube edges 35° (anywhere: 40°) |
+
+**Negative results:**
+- **East is decreasing longitude** (NOTES § v1.25 warned). The canyon set off "east" along `cross(Y, start)` and ran into
+  Tharsis, which filled half of it in. It now heads away from Tharsis.
+- **A canyon along the dichotomy line is half a canyon.** At 6°S the warped lowland edge reached the equator, and for
+  ~700 km one wall was lowland plain. The canyon is now at 12°S and the warp is gentler. The test measures depth below the
+  higher wall, since at its mouth one wall *is* lowland, as on Mars.
+- **One unit can hide another.** The canyon's floor is a dune field, and dunes were classified first, so the canyon came
+  out as 0 % of the globe. It has its own channel now.
+
+**Tests:** `ground-3`, 7 checks:
+- not live, baked lazily;
+- bounds and counts (c scales λ);
+- the dichotomy;
+- the giant shield;
+- the canyon (3+ km below its higher wall for 1,220 km);
+- the caps and surfaces (Selene still lands on regolith);
+- no seams.
+
+Mutations caught: no surfaces, the canyon pointed back into Tharsis, no shield. Full suite 478 pass, 0 fail.
+
+**Not yet:**
+- Enyo in the body tree (space);
+- its look (Q81, after Caio's picks from Q71); the shader (G3);
+- dust storms (weather, not ground);
+- the caps' spiral troughs, and seasonal CO₂ frost (M5 seasons).
+- **Next planets, in GROUND.md's order:** Hesper, Astraea, Hyperion's moons, Erebus.
+
+## v1.61 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
+
+Built to the plan above (§ "Vehicle parts", Q31). Headless only; nobody has seen it drawn yet (TESTING row 135).
+
+**The part** (`PARTS.leg`, `sim/vessel.js`): a surface part, mounted in sets with the builder's radial count. 0.05 t,
+price 1.5, complexity tier 1, palette *Surface*. Stowed for launch; **Y** in flight puts all legs down or up (`legOp`,
+recorded on autopilot tapes as op `G`). Deployed, the foot stands 1.5 m out from the skin and 1.0 m below the leg's
+bottom. Joint ratings C 900 · T 600 · S 240 · B 80. The legs have no drag and no animation yet. The mesh in `app/gl.js`
+is a placeholder (a strut along the skin, or two struts and a pad), for the parts & pad beat to replace.
+
+**Contact** (`footPoints`): a deployed leg is one point, at its foot; a stowed one is none. The lowest point counts the
+feet, so with legs down the rims (a metre higher) drop out by the existing 0.5 m rule.
+
+**Measured** (pod + 1 t tank + Wren, 2.3 t, four legs on the tank: feet at r 2.1 m, centre of mass 2 m above them):
+
+| Ground | Bare (rim of the Wren) | With legs |
+|---|---|---|
+| flat, 1 m/s | lands | lands |
+| taiga 13°, 15°, 20° | topples on all three | lands, leaning 13° / 16° / 21° |
+| flat, 8 m/s | — | lands, leg load 0.9 of rating |
+| flat, 9.4–11 m/s | — | legs snap, it goes over |
+
+The full Orbiter (13 t, centre of mass 7.6 m above its feet) gains little on slopes from legs on the Kestrel: its
+footprint can't beat atan(1.3/7.6) ≈ 10°. On the flat, standard joints snap at 4 m/s, reinforced ones too, and
+**heavy** joints (×4) take 4.6 m/s. So legs are a lander's part, and a heavy stack pays for heavy joints.
+
+### The contact model needed three fixes for wide feet (terrain session: please read)
+
+All three are in `groundContact` (`sim/flight.js`). Every contact point used **a quarter of the vessel's mass**
+(`mPer`) to size its spring, damper and friction cap. That is right for the stack moving as a whole. It is wrong for
+a point far off the axis, where the mass that point actually moves (rotation included) is much smaller: ~73 kg
+instead of 578 kg for the lander's feet. Each point now uses its **effective mass** along the normal (`mN`) and along
+the slip (`mT`): 1 / (n · (1/M + |r × t|² / I)).
+
+1. **Friction pumped a yaw spin.** The old cap (stop the slip in ~2 steps through `mPer`) overshot every step for an
+   off-axis point and rectified into a steady spin. It was there before legs: the bare Orbiter given 0.3 rad/s slowed
+   to 0.001 and spun back up to 0.27. With legs (feet 7× farther out) it started on its own at touchdown and never
+   stopped (0.31 rad/s).
+2. **The normal damper overshot.** c·dt/m was ~4 for the lander's feet, so it chattered until it toppled on the flat.
+   The spring and damper are now capped at 0.5·mN/dt² and 0.5·mN/dt. The halving matters: under a tall stack the
+   normal and friction forces both push on pitch, and at full gain each was stable alone but together they rang at a
+   two-step period (`s.w` flipping sign every step while the attitude stood still).
+3. **Stiction.** Friction was viscous with a cap, so anything on a slope crept. With the old, too-large cap the creep
+   was a few mm/s and passed as rest. With a correct cap it was 0.5 m/s. Each point now holds a planet-fixed anchor
+   where it first touched: a tangential spring (≤ 0.25·mT/dt²) plus a damper (≤ 0.5·mT/dt), capped at μ·Fn. Past
+   the cap the point slides and the anchor follows, so a slide is Coulomb as before. The anchor clears when the point
+   leaves the ground.
+
+For a stack on its own narrow rim almost nothing changes (mN ≈ mPer there). The §25 checks (ice slides, snow, sand
+and basalt verdicts, the Orbiter toppling on 12–17°) still pass.
+
+**Tests:** `test.mjs` section `vehicle-1`, 5 checks: feet replace rims; the lander topples bare and stands with legs
+on 13° and 20°; 8 m/s holds and 11 m/s snaps; spun at 0.3 rad/s, the Orbiter and the lander both land; a tape replays
+the legs.
+
+**Not yet:**
+- legs going down by themselves in procedures (`landAt`), and in the robot's landings;
+- a softer leg stroke (a crush-core damper) for a speed bonus;
+- a deployed state that survives a vessel leaving the flight (`vesselOf`'s `vst`; landed vessels are pinned, so it
+  only shows if one is re-flown);
+- drag on deployed legs;
+- sizes (a 2.5 m class leg).
+
+**Q30 slice 1, moons: done (QA session).** `node playtest.mjs 68 72 55 73 125` (about 3½ min in all). The page fetches
+`fly_ladder.mjs`, cuts its Node-only tail, imports it from a blob URL and runs `flyLadder`/`flySite` with an `api` made of
+page globals and a dummy `HOOK`, so the real HUD, news and map show what a player would see. Every ladder mission passes.
+Staged pay reads right (TESTING 92 ✓), the Nyx reveal works, the prograde Nyx control is wrecked in 2.5 days, and a
+twice-flown landing comes down 6.7 m from its point. Found: staged pay for a mission nobody flew (PLAYTEST #28), weighing
+and flying past Nyx pay together (#29), Selene's first orbital period is logged mid-capture (#30), map labels pile up at
+the top-left corner (#31), and a sun-behind lander on Selene is a black silhouette (#32). Slices 2 (docking) and 3
+(stations) are still open.
+
+**`shot.mjs` on the RTX (QUEUE Q28).** It now passes `--force_high_performance_gpu` like `playtest.mjs`: WebGL reports the
+"NVIDIA GeForce RTX 5050 Laptop GPU" by default and the Intel iGPU with `SHOT_IGPU=1` (`SHOT_FLAGS` still overrides).
+
+**Q30 slice 2, docking: done (QA session).** `node playtest.mjs 59 60 61 56 62 63`. The scenes are §22/§25/§27/§29's,
+placed in the page, and `PT.dockIn` is a scripted pilot: Docking SAS plus bang-bang RCS on the target's position in the
+ship's frame. It latches from 50 m in 3.5 min on 6.5 kg of gas. Bumps, undocking, vessel switching and the bay all behave
+(TESTING 56, 58–63). Worth knowing: the RCS budget is 4.8 m/s of Δv, so a 300 m approach at 2 m/s uses 85 % of it.
+Row 116 (docking at Selene) and the claw are left for slice 3. Run the slice by itself: when two sessions' Chromes started
+together, row 62 stalled for minutes; alone it takes 49 s.
+
+**Q30 slice 3, stations: done for rows 60 (claw), 64, 66, 67, 98 (QA session).** `node playtest.mjs 60c 64 66 67 98`.
+The setups are §26, §30, §32 and §33, and the Program's Fleet tab is read after the flight is left. Everything works as
+specified (TESTING notes). Still undriven: 65 (crew rotation), 115/117 (relay and rover science on Selene), 116 (docking
+at Selene). Each needs a rover or crew set up on another body, and is the next driver if Q30 is extended.
+
+## The tester's "go to body" view (2026-10-08, QA session; QUEUE Q79)
+
+So the look items for SYSTEM.md's bodies (Q80–Q85) have something to paint before M5 puts the planets in the sky. Tester
+menu → **Go to body** (or `refView(200 + 3·i + k)`, i in `BODY_CAT` order, k 0/1/2 = near at 1.6 R, whole disc at 4.5 R,
+far at 30 R). ◀ ▶ change body, 1 2 3 change distance, drag turns the camera, Esc returns.
+
+**How.** `app/bodyview.js` (new, loaded last). `render()` hands it the frame while it's open (one line at the top), so
+`gl.js` isn't touched. One full-screen fragment shader ray-traces the body in body radii: an ellipsoid (flattening along
+the spin axis), the spin axis tilted about X, a ring annulus in the equatorial plane with the planet's shadow on it and
+its shadow on the clouds, latitude bands and a limb haze. `BODY_CAT` holds SYSTEM.md's radius and tilt for all 11 bodies,
+and test.mjs `qa-2` reads SYSTEM.md and checks them. **Placeholders:** Hyperion's flattening 0.08 (SYSTEM.md gives none;
+from its 3.3 h day), and every colour, band and haze value. Those belong to the look items. When a body gets a real look,
+it should move into the main renderer (or this shader), and its row here should stay the place its numbers come from
+until the space lane gives the catalogue a home in `sim/` at M5.
+
+**Not yet:** no ground detail, no moons beside their planet, no star in the frame, and one fixed sun direction (from the
+camera's right).

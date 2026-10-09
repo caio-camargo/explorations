@@ -268,7 +268,7 @@ void main(){
   float cr=crat(nb*18.)+.5*crat(nb*55.),fade=smoothstep(3000.,150.,tM),det=fade>0.?detail(MB(d*tM)+uMdet):.5;
   float cr2=crat(nb2*18.)+.5*crat(nb2*55.);
   float slope=clamp((cr2-cr)*1.4,-.9,1.2);
-  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.));
+  float base=.16+.09*fbm(nb*3.)-.07*smoothstep(.5,.65,fbm(nb*1.6+3.)-${MARE_NEAR}*nb.x);
   vec3 alb=vec3(base+.03*cr+.07*fade*(det-.5))*vec3(1.,.98,.95);
   float ndl=max(dot(n,uSun),0.);col=alb*(clamp(ndl+slope*sqrt(max(1.-ndl*ndl,0.))*.8,0.,1.6)*2.2+.004);col=col*trans+ins;
  }else{
@@ -1014,6 +1014,12 @@ function partBody(out,p){
     case'petrel':engine(out,p,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o);break;
     case'kestrel':engine(out,p,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o);break;
     case'condor':engine(out,p,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o);break;
+    // landing leg (vehicle session, Q31; a placeholder until the parts & pad beat draws it): folded, a strut along the skin;
+    // deployed, a main strut and a brace out to the foot, and a footpad
+    case'leg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)];
+      if(p.dep){const F=[x+n[0]*d.reach,y-d.drop,z+n[2]*d.reach];tube(out,[x+n[0]*.05,y+h*.85,z+n[2]*.05],F,.05,C.ST,8);tube(out,[x+n[0]*.05,y+h*.2,z+n[2]*.05],F,.03,C.D,6);
+        lathe(out,[[0,0,C.D],[.18,0,C.D],[.18,.05,C.D],[0,.08,C.D]],F,12,[false,false])}
+      else rbox(out,[x+n[0]*.06,y+h/2,z+n[2]*.06],.05,h/2,.07,C.ST,a)}break;
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}

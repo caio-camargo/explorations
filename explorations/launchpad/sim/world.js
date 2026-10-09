@@ -186,8 +186,17 @@ function extendSites(){const D=Math.PI/180,R=TELLUS.R,cands=[],gap=Math.cos(SITE
 function terrainH(pf,oct=HOCT){const c=norm(pf);let near=null,dmin=Infinity;
   for(const t of SITES){if(t.kind!=='pad')continue;const dx=c[0]-t.u[0],dy=c[1]-t.u[1],dz=c[2]-t.u[2],d=Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R;if(d<dmin){dmin=d;near=t}}   // a sea platform floats: nothing to level
   if(dmin<PAD_FLAT)return near.h;const h=hgtGen(toGen(pf),oct);return dmin>PAD_BLEND?h:h+(near.h-h)*(1-sstep(PAD_FLAT,PAD_BLEND,dmin))}
-// the ground under a planet-fixed point, as a radius: land, or the sea surface. Selene stays a smooth sphere for now.
-const groundAlt=(b,pf)=>b===TELLUS?Math.max(0,terrainH(pf)):0;
+// ---- the ground of every body (GROUND.md, slice G1). A body's `ground` is its recipe: `gen` names a height function in
+// GROUND_GEN (metres above b.R at a planet-fixed point, any length: it normalises), `top` bounds it from above, and `sea`
+// (when set) is a liquid level: what comes down on it floats. No recipe: a smooth sphere at b.R. Only Tellus has one so
+// far (its `top` is set below, after TERR_TOP); GROUND.md G2 adds Selene's.
+const GROUND_GEN={tellus:pf=>terrainH(pf)};
+TELLUS.ground={gen:'tellus',top:0,sea:0};
+const bodyH=(b,pf)=>b.ground?GROUND_GEN[b.ground.gen](pf,b.ground):0;   // the solid ground, the sea floor included
+const bodyTop=b=>b.ground?b.ground.top:0;   // the highest the ground gets above b.R
+const seaAt=(b,pf)=>!!b.ground&&b.ground.sea!=null&&bodyH(b,pf)<b.ground.sea;
+// the ground under a planet-fixed point, as a height above b.R: land, or the sea surface
+const groundAlt=(b,pf)=>{const g=b.ground;if(!g)return 0;const h=bodyH(b,pf);return g.sea!=null?Math.max(g.sea,h):h};
 const groundR=(b,pf)=>b.R+groundAlt(b,pf);
 // ground awareness: what must be measured from the ground under the ship, not from the sea. Atmosphere thresholds
 // (physAlt, drag bands, the air's top) stay sea-level based; landing-related ones use these.
@@ -250,7 +259,8 @@ const SURF=[{mu:1,soft:2,rough:0},{mu:.1,soft:0,rough:0},{mu:.45,soft:1,rough:.0
   {mu:.45,soft:3,rough:.02},{mu:.6,soft:0,rough:.3},{mu:.7,soft:-2,rough:.3},{mu:.6,soft:0,rough:0},{mu:.3,soft:4,rough:.05}];
 const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolith',mu:.6,soft:1,rough:.15},TOUCH_MAX=12;   // regolith: boulders in 15% of cells
 // the ground under a planet-fixed point, as a landing surface: a levelled pad, the sea, or the biome's
-function surfaceAt(b,pf){if(b!==TELLUS)return SURF_MOON;const u=norm(pf);
+function surfaceAt(b,pf){if(b!==TELLUS)return b.ground&&b.ground.surf?b.ground.surf(pf):SURF_MOON;   // a recipe may have its own surfaces (GROUND.md)
+ const u=norm(pf);
   if(SITES.some(t=>{if(t.kind!=='pad')return false;const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
   const bi=biomeAt(u),su={name:bi.name,id:bi.id,...SURF[bi.id]};
   // snow lies where the shader paints it: colder than ~−3 °C at that height, on slopes under ~38° (ice is its own biome)
@@ -265,7 +275,8 @@ function biomeAt(pf){const g=toGen(pf),h=terrainH(pf),w4=wSpl(g),e0=w4[0],Tc=wBi
   return{id,name:BIOMES[id],h,T:Tc,wet:Wm}}
 // the steepest the ground gets under a point (radians), from the height field over ±15 m; landings past TOPPLE tip over
 const TERR_TOP=Math.ceil(WORLD.U.reduce((a,b)=>Math.max(a,b),0)/100)*100,TOPPLE=0.42;   // the highest the ground can be anywhere (from the air bound)
-function terrainSlope(b,pf){if(b!==TELLUS)return 0;const u=norm(pf),e=norm(cross([0,1,0],u).map((x,i)=>x+(i===0?1e-9:0))),n=cross(u,e),k=15/TELLUS.R,
+TELLUS.ground.top=TERR_TOP;
+function terrainSlope(b,pf){if(!b.ground)return 0;const u=norm(pf),e=norm(cross([0,1,0],u).map((x,i)=>x+(i===0?1e-9:0))),n=cross(u,e),k=15/b.R,
   h0=groundAlt(b,u),hx=groundAlt(b,add(u,mul(e,k)))-groundAlt(b,sub(u,mul(e,k))),hy=groundAlt(b,add(u,mul(n,k)))-groundAlt(b,sub(u,mul(n,k)));
   return Math.atan(Math.hypot(hx,hy)/30+0*h0)}
 function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}

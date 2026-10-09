@@ -15,6 +15,7 @@ function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames unde
   const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
   if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<1)RS=Math.min(1,RS*1.12)}
 function render(){
+  if(self.bodyViewDraw&&self.bodyViewDraw())return;   // the tester's go-to-body view (app/bodyview.js) owns the frame while open
   gpuTimerBegin();
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);
   if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;ov.width=w;ov.height=h}W=w;H=h;
@@ -30,7 +31,7 @@ function render(){
     const f=localFrame(sub(tgt,bodyPos(CB,simT)));if(mode==='editor'&&cam.edY)tgt=madd(tgt,f.up,cam.edY);
     const cp=Math.cos(cam.pitch),sp=Math.sin(cam.pitch),off=add(add(mul(f.n,-cp*Math.cos(cam.yaw)),mul(f.e,cp*Math.sin(cam.yaw))),mul(f.up,sp));
     camW=madd(tgt,off,cam.dist);
-    const bc=bodyPos(CB,simT),rc=sub(camW,bc),ra=len(rc);{const gR=CB.R+1.5+(CB===TELLUS&&ra<CB.R+TERR_TOP+10?groundAlt(TELLUS,toPF(TELLUS,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
+    const bc=bodyPos(CB,simT),rc=sub(camW,bc),ra=len(rc);{const gR=CB.R+1.5+(CB.ground&&ra<CB.R+bodyTop(CB)+10?groundAlt(CB,toPF(CB,rc,simT)):0);if(ra<gR)camW=add(bc,mul(rc,gR/ra))}
     Fw=norm(sub(tgt,camW));R=norm(cross(Fw,f.up));U=cross(R,Fw);fov=1.0}
   const tanY=Math.tan(fov/2),tanX=tanY*W/H;HOOK.view={camW,R,U,Fw,tanX,tanY,W,H};
   bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
@@ -83,8 +84,8 @@ function render(){
     const up=rotY(c.u,th),ref=Math.abs(c.u[1])<.9?[0,1,0]:[1,0,0],ex=norm(cross(ref,up)),ez=cross(ex,up),M=mat4(ex,up,ez,sub(cp,camW));drawMesh(cityMesh(c),M,cp);
     const night=1-Math.min(1,Math.max(0,(dot(up,SUN)+.12)/.17));if(night>0)nightCities.push([cityMesh(c),M,night])}}
   {const k=bayKey(S);if(k!==S._bayK){S._bayK=k;if(S._bayK0!==undefined)HOOK.rebuild();S._bayK0=k}}   // bay doors moving: rebuild the ship's mesh
-  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=S.body===TELLUS?groundAlt(TELLUS,toPF(TELLUS,sub(p,bc),simT)):0,hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
-    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const gn=S.body===TELLUS?groundNormal(TELLUS,toPF(TELLUS,sub(p,bc),simT)):up;   // the shadow lies on the ground's own plane (slopes)
+  if(near&&S.alive&&shipMesh){const p=shipWorld(),bc=bodyPos(S.body,simT),up=norm(sub(p,bc)),gA=groundAlt(S.body,toPF(S.body,sub(p,bc),simT)),hb=len(sub(p,bc))-S.body.R-gA+S.yBot,Mship=modelQ(S.q,sub(p,camW),mul(S.cm,-1));
+    if(hb<150&&dot(up,SUN)>0.05&&lit(p)){const gn=S.body.ground?groundNormal(S.body,toPF(S.body,sub(p,bc),simT)):up;   // the shadow lies on the ground's own plane (slopes)
       const P0=sub(madd(bc,up,S.body.R+gA+0.04),camW),L=SUN,ln=dot(L,gn),d0=dot(P0,gn)/ln;
       const Pr=[1-L[0]*gn[0]/ln,-L[1]*gn[0]/ln,-L[2]*gn[0]/ln,0, -L[0]*gn[1]/ln,1-L[1]*gn[1]/ln,-L[2]*gn[1]/ln,0, -L[0]*gn[2]/ln,-L[1]*gn[2]/ln,1-L[2]*gn[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
       gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);gl.enable(gl.STENCIL_TEST);gl.stencilFunc(gl.EQUAL,0,255);gl.stencilOp(gl.KEEP,gl.KEEP,gl.INCR);
@@ -210,7 +211,8 @@ function render(){
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
       if(L.t)octx.fillText(L.t,s[0],s[1]-10)}
     if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
-  if(mode==='editor'&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
+  const building=mode==='editor'&&!atHQ&&!atDeb;   // (flow) the builder's markers stay off behind the Program and Debrief panels
+  if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
       octx.fillStyle='#000';octx.beginPath();octx.arc(s[0],s[1],8*k,0,7);octx.fill();octx.strokeStyle=c;octx.lineWidth=3*k;octx.beginPath();octx.arc(s[0],s[1],6*k,0,7);octx.stroke();
@@ -218,7 +220,7 @@ function render(){
       octx.font=`bold ${13*k}px ui-monospace,Consolas,monospace`;octx.textAlign=dx>0?'left':'right';octx.lineWidth=4*k;octx.strokeStyle='rgba(0,0,0,.8)';
       octx.strokeText(t,x+dx*k*.3,s[1]+4*k);octx.fillText(t,x+dx*k*.3,s[1]+4*k)};
     mk(S.ana.ful.ycm,'#ffd84a','CoM',12);if(isFinite(S.ana.ful.ycp))mk(S.ana.ful.ycp,'#5fd0ff','CoP',-12)}
-  if(mode==='editor'&&HOOK.edOverlay)HOOK.edOverlay(octx);
+  if(building&&HOOK.edOverlay)HOOK.edOverlay(octx);
   if(mode==='flight'&&view!=='map'&&S.alive&&impact&&toolOK('impact')){const ip=add(bodyPos(impact.b,simT),fromPF(impact.b,impact.pf,simT)),q=project(ip);
     if(q){const k=Math.min(devicePixelRatio||1,1.5),d=len(sub(ip,shipWorld()));octx.strokeStyle='#ff6b5a';octx.fillStyle='#ff6b5a';octx.lineWidth=2.5*k;
       octx.beginPath();octx.moveTo(q[0]-8*k,q[1]-8*k);octx.lineTo(q[0]+8*k,q[1]+8*k);octx.moveTo(q[0]+8*k,q[1]-8*k);octx.lineTo(q[0]-8*k,q[1]+8*k);octx.stroke();

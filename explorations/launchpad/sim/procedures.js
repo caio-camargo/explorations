@@ -357,6 +357,7 @@ function tapeStage(T,s){tapeCtl(T,s);T.ops.push(['S']);stage(s)}
 function tapeAbort(T,s){tapeCtl(T,s);T.ops.push(['A']);abort(s)}
 function tapeArm(T,s,op){tapeCtl(T,s);T.ops.push(['A',op]);armOp(s,op)}
 function tapeBay(T,s,op){tapeCtl(T,s);T.ops.push(['B',op]);bayOp(s,op)}
+function tapeLegs(T,s,op){tapeCtl(T,s);T.ops.push(['G',op]);legOp(s,op)}
 function tapeRover(T,s,pi){tapeCtl(T,s);T.ops.push(['Y',pi]);const p=s.parts[pi];return p?rvDeploy(s,p):null}
 function tapeLoad(T,s,id){const q=satsUp().find(x=>x.id===id);if(!q)return null;tapeCtl(T,s);T.ops.push(['L',id]);return loadEntry(q,s)}
 function tapeSwitch(T,s,i){tapeCtl(T,s);T.ops.push(['V',i]);switchTo(i)}
@@ -371,6 +372,7 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
     else if(o[0]==='D'){undock(s,o[1]);pl.i++}
     else if(o[0]==='V'){switchTo(o[1]);s=S;pl.i++}
     else if(o[0]==='B'){bayOp(s,o[1]);pl.i++}
+    else if(o[0]==='G'){legOp(s,o[1]);pl.i++}
     else if(o[0]==='Y'){const p=s.parts[o[1]];if(p)rvDeploy(s,p);pl.i++}
     else if(o[0]==='A'){armOp(s,o[1]);pl.i++}
     else if(o[0]==='L'){const q=satsUp().find(x=>x.id===o[1]);if(q)loadEntry(q,s);pl.i++}

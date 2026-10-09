@@ -74,7 +74,7 @@ function sndEvents(st){const on=S.parts.reduce((n,p)=>n+(p.on?1:0),0),fire=(k,o)
 function sndBooms(){const me=shipWorld();for(;AUD.nBoom<booms.length;AUD.nBoom++){const bm=booms[AUD.nBoom],w=add(bodyPos(bm.b,simT),fromPF(bm.b,bm.pf,simT)),d=len(sub(w,me));
     const r=sndBoom(d,bm.air,bm.sz,d<60);AUD.ev.boom++;if(r.gain>0.01&&AUD.on&&AUD.ctx)sndShot(SHOT.boom(r))}}
 function sndTick(dtR){if(booms.length<AUD.nBoom)AUD.nBoom=booms.length;
-  const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S,st=live?sndState():null;
+  const sc=screenNow(),live=(sc==='flight'||sc==='map')&&S&&!gamePaused(),st=live?sndState():null;
   if(live){sndEvents(st);sndBooms()}else AUD.nBoom=booms.length;
   const m=AUD.last=live?sndMix(st):null;
   if(!AUD.ctx||!AUD.L)return;const c=AUD.ctx,t=c.currentTime,L=AUD.L,set=(p,v,tc=0.08)=>p.setTargetAtTime(v,t,tc);

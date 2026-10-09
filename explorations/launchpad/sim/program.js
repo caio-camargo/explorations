@@ -16,7 +16,7 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
@@ -33,7 +33,7 @@ const PROG={done:{},cert:{},atm:{},streak:0,flights:0,funds:FUNDS0,day:0,wseed:1
 // flying takes its flight time; the world moves on in between: relations drift, opinion fades back toward neutral.
 const DAY_S=2*Math.PI/TELLUS.rot,YEAR_D=400,prepDays=cost=>5+cost/2;
 const fmtDate=d=>`Year ${1+Math.floor(d/YEAR_D)}, day ${1+Math.floor(d%YEAR_D)}`;
-function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);moonOrbTick(PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S);rvFieldSci(T0,PROG.day*DAY_S);seisTick(T0,PROG.day*DAY_S)}
+function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;worldTick(d);orbTick(T0,PROG.day*DAY_S);rvFieldTick(T0,PROG.day*DAY_S);rvFieldSci(T0,PROG.day*DAY_S);seisTick(T0,PROG.day*DAY_S)}
 // ---- the tester menu (tester session; PLAYTEST #1). Cheats for playtesting, all off unless the page is opened with ?tester;
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
@@ -51,6 +51,15 @@ function testFinishJobs(){const D=PROG.day;for(const id in PROG.fac||{}){const b
   if(PROG.devJob)PROG.devJob.end=D;const S2=PROG.stand2;if(S2){S2.ready=Math.min(S2.ready,D);if(S2.job)S2.job.end=D}
   for(const k in PROG.lines||{}){const L=PROG.lines[k];if(L.ready>D)L.ready=D}for(const j of PROG.studyQ||[])j.end=D;
   advanceDays(1e-6)}
+// QUEUE Q16. Any date: forward runs the days as above; back moves only the calendar (what happened stays, and dated
+// things such as deadlines and jobs are further off). Funds: an exact number, which turns infinite money off.
+function testGoto(day){day=Math.max(0,+day);if(!isFinite(day))return false;if(day>PROG.day)testAdvance(day-PROG.day);else PROG.day=day;return true}
+function testFunds(m){m=+m;if(!isFinite(m))return false;TEST.money=false;PROG.funds=m;return true}
+// a computing era: the date runs on until the era reaches the program (its lag depends on the power, and moves with the
+// world), so the era stays what the date says; gives up after 60 years
+function testEra(j){const cap=PROG.day+60*YEAR_D;while(compEra()<j&&PROG.day<cap)testAdvance(1);return compEra()>=j}
+// one mission done or not, flagged test:true like the epoch picker's
+function testMission(id,on){if(!MISSIONS.some(M=>M.id===id))return false;if(on){if(!PROG.done[id])PROG.done[id]={flight:PROG.flights,day:PROG.day,test:true}}else delete PROG.done[id];return true}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)
@@ -177,7 +186,8 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
-  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
+  if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
+  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -227,17 +237,17 @@ for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Sel
   ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
 const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
 const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
-function stagePay(M,k){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);
+function stagePay(M,k,R){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);debPaid(R,'stage',M.name,x);
   HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
 function stagedTick(s,R){if(!s.alive||s.landed)return;PROG.staged=PROG.staged||{};
   for(const B of[SELENE,NYX]){const M=stagedMission(B,R);if(!M)continue;const st=PROG.staged[M.id]||(PROG.staged[M.id]={});
-    if(s.body===B){if(!st.bound)stagePay(M,'bound');if(!st.arrive)stagePay(M,'arrive');continue}
+    if(s.body===B){if(!st.bound)stagePay(M,'bound',R);if(!st.arrive)stagePay(M,'arrive',R);continue}
     if(st.bound||s.body!==TELLUS||simT-(R.boundT??-1e9)<30)continue;R.boundT=simT;   // (checked every 30 s of flight)
     const el=elements(s.r,s.v,TELLUS.mu);if(el.e<1&&el.ap<0.3*B.orb.a*(1-B.orb.e))continue;
-    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound')}}
+    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound',R)}}
 const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on course, ${STAGE_PAY.arrive*100}% on arrival${stagePaid(M)?` (${fmtM(stagePaid(M))} paid)`:''}</span>`:'';
 function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
-    income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
@@ -245,6 +255,31 @@ function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)
 // The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
 // next launch (fixes session, PLAYTEST #21). Once only: Revert or the next launch then find it settled (R.ended).
 function flightLeave(s){return missionEnd(s)}
+// ---- who may launch where (QUEUE Q6; the terrain session's gate siteAccessOf calls this): our own sites are free; a
+// sea platform is a service with a fee; a consortium member's site is ours to share; any other power's site is leased,
+// cheaper the better relations are, and refused under sanctions or when relations are hostile. The fee is charged at
+// launch (missionTick) and kept as R.siteFee; R.site is the site's id.
+const LEASE=6,SEA_FEE=4,LEASE_REL=-0.25;
+function siteAccess(t){if(!t)return{ok:true,why:'',fee:0};
+  if(t.kind==='sea')return{ok:true,why:'',fee:SEA_FEE,how:'platform service'};
+  const p=t.power;if(p===HOME)return{ok:true,why:'',fee:0,how:'ours'};
+  if(p==null)return{ok:false,why:`${t.name} belongs to no one: there is nobody to lease it from`,fee:0};
+  const P=POWERS[p];if(sanctioned(p))return{ok:false,why:`${P.name} has sanctions on the program: ${t.name} is closed to us`,fee:0};
+  if(sanctioned(HOME))return{ok:false,why:`Our own government's sanctions bar us from ${P.name}'s ${t.name}`,fee:0};
+  if((own().st||{})[p]>0)return{ok:true,why:'',fee:0,how:`${P.root} is a member`};
+  const r=relOf(HOME,p);if(r<LEASE_REL)return{ok:false,why:`${P.name} won't lease ${t.name} to us: relations are too poor`,fee:0};
+  return{ok:true,why:'',fee:Math.round(LEASE*(1-0.5*r)*10)/10,how:`leased from ${P.root}`}}
+// a failed attempt at the next step, mostly covered (W12, NOTES § "Epoch 1–2 pacing"): a flight on the priciest rocket
+// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment) gets COVER of its loss back
+// from the sponsor, once per epoch (the newest epoch with firsts open: the step a new rocket goes for). Kept in PROG.recs so a new game resets it.
+const COVER=0.75;
+function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCost||0);rc.maxCost=Math.max(rc.maxCost||0,R.cost);
+  const lost=R.cost-(R.refund||0),first=Object.values(PROG.done).some(d=>d.flight===PROG.flights&&!d.test);
+  if(!top||first||R.cdone.length||lost<0.75*R.cost)return 0;
+  const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));if(!open.length)return 0;
+  const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
+  const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;
+  HOOK.news(`${k==='company'?'Investors':k==='consortium'?'The member states':POWERS[HOME].name} cover ${fmtM(x)} of the failed attempt: a new rocket is allowed one (once per epoch)`,'ok');return x}
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
@@ -264,12 +299,13 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
-  const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
+  coverLoss(s,R);   // a failed attempt at the next step is mostly covered (W12)
+  const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);R.dmg=dmg;if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
   if(R.orbit){const net=R.cost-(R.refund||0);PROG.recs=PROG.recs||{};if(!(PROG.recs.orbit<=net)){if(PROG.recs.orbit!=null)HOOK.news(`Record: cheapest trip to orbit yet, ${fmtM(net)} net`,'ok');PROG.recs.orbit=net}}
   floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
-  missionEval(s);HOOK.save();return{ups,streak:PROG.streak}}
+  missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}
 // ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
 // an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies
 // reach further); the sea belongs to no one. Power 0's home is the launch site. Relations between every pair drift
@@ -314,7 +350,7 @@ const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
 // tier 1 for steerable fins (d.ctl), reaction wheels and spin motors: they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin')return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg')return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}

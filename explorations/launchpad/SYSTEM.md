@@ -1,6 +1,7 @@
 # SYSTEM — the star system catalog
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **DRAFT, not approved.** Caio approves it body by body; until then no lane builds from it.
+**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
+revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
 (ROADMAP § "The system catalog"). Shape chosen by Caio on 2026-10-08: **option A, a compact system with about 6 planets**.
 
@@ -62,8 +63,8 @@ interstellar visitors.
 **Names** are one family: Helios, Selene and Eos are siblings in Greek myth, children of the Titans Hyperion and
 Theia; Nyx is night and Erebus is her brother, darkness. Hesper is the evening star (Venus), Enyo a war goddess (Mars's
 role), Pavor and Metus are dread and fear (Phobos and Deimos), Astraea the star-maiden, Tethys a Titaness of the
-sea (fitting for a moon with seas), Phoebe another Titaness (and Saturn's real captured moon). **Provisional:** Caio
-renames freely.
+sea (fitting for a moon with seas), Phoebe another Titaness (and Saturn's real captured moon). **Placeholders**
+(Caio, 2026-10-08: naming is revisited later). Code should keep names in one place so a rename is one edit.
 
 **Where this sits in the game.** Epochs 1–5 end at Selene and Nyx. The planets are M5 (the star-centred system and
 the year, heliocentric rails). Proposed: **epoch 6, the near planets** (Hesper, Enyo); **epoch 7, the outer system**
@@ -101,7 +102,7 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
 
 ### Tellus — home (exists)
 - As built: R 1,274 km, 9.81 m/s², 8 h day, 100 km of air. **New here:** its orbit (1 TU, e ≈ 0.017) and the
-  question of **axial tilt** (open question 3).
+  **axial tilt: 23°** (decision 3; seasons at M5).
 
 ### Selene and Nyx (exist)
 - As built and as NOTES describes them (§ "More bodies", § v1.53). Unchanged; listed so the catalog is complete.
@@ -211,16 +212,14 @@ Names and looks stay cheap to change.
 
 ---
 
-## Open questions for Caio (round 2)
+## Decisions (round 2, Caio, 2026-10-08)
 
-1. **Names**: keep the Titan/Night family above, or another style? (Default: keep.)
-2. **The star's mass**: Kerbol's (default), or the cheaper or dearer dial setting?
-3. **Tellus's axial tilt**: today the sun is fixed and there are no seasons. Default: **23°**, decided now because the
-   sky, the world's snow and the planet shader depend on it, but **seasons are built at M5**, not before.
-4. **Hyperion's rings and 27° tilt** (a big sky object that changes over the years), or plain bands like Jupiter?
-   (Default: rings.)
-5. **Tethys's thick air**: the Titan-like moon is the cheapest delight here, with chutes that do everything. Keep it,
-   or swap for a plain icy moon (Ganymede)? (Default: keep.)
+1. **Names:** the Titan/Night family stays as **placeholders**; Caio revisits naming later.
+2. **The star's mass:** Kerbol's, μ 1.17e18.
+3. **Tellus's axial tilt: 23°, Earth-like.** Fixed now because the sky, the world's snow and the planet shader depend
+   on it; **seasons are built at M5**, not before.
+4. **Hyperion has bright rings and a 27° tilt.**
+5. **Tethys keeps its thick air** (1.5 bar, chutes do everything).
 
 ## After approval: the fan-out
 
@@ -231,5 +230,6 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.0.0 (2026-10-08):** approved by Caio as the base; round-2 decisions recorded; names are placeholders.
 - **0.1.0 (2026-10-08):** first draft. Shape A chosen by Caio; scaling rules, overview, eight body entries, seeded
   classes, room to grow, round-2 questions.

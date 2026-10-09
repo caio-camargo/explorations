@@ -1,4 +1,4 @@
-// sim/rovers.js — rovers (ends with SIM END). Part of index.html's script, split 2026-10-08 (launchpad NOTES § "The file split"):
+// sim/rovers.js — rovers. Part of index.html's script, split 2026-10-08 (launchpad NOTES § "The file split"):
 // a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // ============================================================ rovers (sats session; NOTES § "Rovers: plan", R1)
@@ -178,7 +178,7 @@ function rvDeployCheck(s,p){const d=p.dn&&p.dn.rvd;if(!rvPacked(p)||!d)return{ok
   const b=s.body,u=norm(s.pf),Ul=qrot(s.qLocal,[0,1,0]),tilt=Math.acos(clamp(dot(Ul,u),-1,1))*180/Math.PI;
   if(tilt>RV_TILT)return{ok:false,why:`the lander leans ${tilt.toFixed(0)}° (deploying needs under ${RV_TILT}°)`};
   const P0=rvProbe(b,s.pf),gp=mul(u,rvGroundR(P0,s.pf)),hor=v=>norm(sub(v,mul(u,dot(v,u)))),st=rvStats(d),X=b===TELLUS?st.T:st.S,sLim=Math.min(20,X.tipSide-15);
-  const spotWhy=(spot,what)=>{const P=rvProbe(b,spot);if(b===TELLUS&&terrainH(spot)<0)return`the sea where it would ${what}`;
+  const spotWhy=(spot,what)=>{const P=rvProbe(b,spot);if(seaAt(b,spot))return`the sea where it would ${what}`;
     const sl=rvSlopeAt(P,spot,G.C.L/2);if(sl>sLim)return`the ground where it would ${what} slopes ${sl.toFixed(0)}° (it needs under ${sLim.toFixed(0)}°)`;
     if(rvRock(P,spot))return`a rock where it would ${what}`;return''};
   const fr=rvFootR(s);
@@ -269,9 +269,10 @@ function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];re
   (R.cq=R.cq||[]).push({t:R.t+c.delay,...inp});while(R.cq.length&&R.cq[0].t<=R.t){const x=R.cq.shift();R.in={thr:x.thr,steer:x.steer,brake:x.brake}}}
 // ---- rover science, R4 first slice (sats session, decided with Caio): Selene's geology as drawn, and three instruments
 // whose results hinge on what the sim computes. Results count when they reach home (R3's contact), into the logbook.
-// Geology: the sky shader's dark maria, smoothstep(.5,.65,fbm(n·1.6+3)) in Selene's frame (h3/vn/fbm are its port), so a
-// rover on a dark patch is on mare basalt. The composition under it is hidden truth, varying smoothly within each unit.
-const selMare=pf=>{const u=norm(pf),x=clamp((fbm(u[0]*1.6+3,u[1]*1.6+3,u[2]*1.6+3)-.5)/.15,0,1);return x*x*(3-2*x)};
+// Geology: the sky shader's dark maria, smoothstep(.5,.65,fbm(n·1.6+3)−MARE_NEAR·n.x) in Selene's frame (h3/vn/fbm are its
+// port), so a rover on a dark patch is on mare basalt. The −n.x term gathers them on the near side (−X faces Tellus), as on
+// our Moon (GROUND.md decision 1): 30 % of the near side, 1 % of the far side, 15 % of all. The composition under it is hidden truth, varying smoothly within each unit.
+const MARE_NEAR=.24,selMare=pf=>{const u=norm(pf),x=clamp((fbm(u[0]*1.6+3,u[1]*1.6+3,u[2]*1.6+3)-MARE_NEAR*u[0]-.5)/.15,0,1);return x*x*(3-2*x)};
 function geoAt(b,pf){if(b!==SELENE)return null;const M=selMare(pf),u=norm(pf),f=k=>fbm(u[0]*k+11,u[1]*k+7,u[2]*k+5);
   const mare={FeO:15+6*f(7),TiO2:.5+11*clamp(fbm(u[0]*4+21,u[1]*4+2,u[2]*4+9)-.3,0,1),Al2O3:9+3*f(5)},high={FeO:3.5+3*f(9),TiO2:.2+.5*f(6),Al2O3:25+5*f(8)};
   const mix=k=>high[k]+(mare[k]-high[k])*M;return{unit:M>=MARE_M?'mare':'high',M,FeO:mix('FeO'),TiO2:mix('TiO2'),Al2O3:mix('Al2O3')}}
@@ -348,5 +349,4 @@ function seisLocate(q){const P=PROG.sel,st=Object.keys(q.got).map(id=>({p:P.seis
 function inv4(A){const n=4,M=A.map((r,i)=>[...r,...[0,1,2,3].map(j=>i===j?1:0)]);for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;
   if(Math.abs(M[p][c])<1e-30)return null;[M[c],M[p]]=[M[p],M[c]];const d=M[c][c];for(let j=0;j<2*n;j++)M[c][j]/=d;
   for(let r=0;r<n;r++)if(r!==c){const f=M[r][c];if(f)for(let j=0;j<2*n;j++)M[r][j]-=f*M[c][j]}}return M.map(r=>r.slice(n))}
-// ==== SIM END
 

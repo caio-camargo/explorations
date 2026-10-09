@@ -1,5 +1,5 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: draft, ready to play
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: draft, ready to play
 **Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the eleven presets**, so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
@@ -10,8 +10,8 @@ TESTING rows. The rows hold the full "looks right if" text. This file is only th
   has already measured a row (`(robot)` in TESTING), that row is listed only when it says *needs a human*.
 - **Marking:** put the result in the row's `#` cell in TESTING.md: `✓ n`, `~ n` plus a word, or `✗ n → P#…`. Or just
   tell the playtest intake session what you noticed ("you are the playtest feedback session"), and it files the items.
-- Sitting 1 is the one M1 is about. Do it first, and **again** once flow's M1 items land (Q2 Debrief, Q39 Esc pause,
-  Q40 next contract, Q41 first-run sentences). The other sittings can go in any order. Each one says how long it takes.
+- Sitting 1 is the one M1 is about. Do it first, and **again** once flow's M1 items land (Q39 Esc pause,
+  Q40 next contract, Q41 first-run sentences; the Debrief, Q2, has landed). The other sittings can go in any order. Each one says how long it takes.
 
 **Where to play:** <https://caio-camargo.github.io/explorations/explorations/launchpad/index.html> (what's on `main`), or
 locally `python -m http.server 8799 --directory C:/Users/caioa/dev/explorations/explorations` and
@@ -36,8 +36,12 @@ Plain URL, no `?tester`. If you have a career save, play it in a private window 
 | 4 | **Passenger**, then **Hopper** hops. Fly with ignition failures on (that's the career default) | 15, 9 |
 | 5 | **Orbiter** to orbit on gyro-era SAS (Stability + pitch keys only). Count the tries | **1**, **101** |
 | 6 | Between launches: the stacking days, "Coming up", Wait | 78, 91 |
-| 7 | End flights three ways (land, crash, end in orbit). After each, can you tell what you earned or lost? | **97** |
+| 7 | End flights three ways (land, crash, end in orbit; ☰ → End flight in orbit). Read the Debrief each time: can you tell what you earned or lost? | **97**, **127** |
 | 8 | Overall: where were you stuck, where were you bored, did the money feel tight but fair? | 76 |
+
+**Until PLAYTEST #24 lands, no preset completes the first-orbit missions** (the beeper needs an instrument package in
+orbit, the passenger orbit a biocapsule). Step 5's orbit still counts as your first orbit, but the career stays in epoch 1:
+judge the flying, not the progress. Once a *Beeper* preset exists, fly it in step 5 instead.
 
 Write the answer to step 8 down even if it's one line. It's M1's finish line ("where they got stuck or bored is
 written in PLAYTEST").
@@ -110,7 +114,7 @@ written in PLAYTEST").
 |---|---|---|
 | 1 | Three new sandboxes (Fresh, twice): open superpower, closed superpower, resource state; a year of date jumps each. Do they *play* differently? | **82** |
 | 2 | Ownership decisions after two firsts; a contract with ⚠ sanctions | 81, 80 |
-| 3 | Run a bad career (no *Infinite money*) and see whether a career move turns up | 83 (wants Q16's set-funds cheat) |
+| 3 | Run a bad career (no *Infinite money*) and see whether a career move turns up | 83 (tester → *Set funds*) |
 | 4 | Industry: test stand (turn *Full know-how* off to see the gains), study a trajectory, read the spreads | **86**, 57 |
 | 5 | Fleet → ground stations at home and abroad; a refusal | **93** |
 | 6 | Logbook (F): a record, Copy this design, LOAD DESIGN, fly its tape | 53 |
