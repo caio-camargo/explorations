@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 108–111 legs and power parts. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 108–111 legs and power parts, 112–113 a lander on Selene against the sun. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -316,6 +316,18 @@ window.refView = async (n) => {
     HOOK.rebuild(); const p = S.parts.find(q => q.d.key === key);
     cam.edY = p.y0 + p.h / 2 - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return kind + (dep ? ' deployed' : ' stowed') + ': ' + S.parts.filter(q => q.d.surf).map(q => q.d.key).join(',');
+  }
+  // 112–113 (Q116, PLAYTEST #32): a lander standing on Selene, engine off, the sun 20° up behind it as seen from the
+  // camera (112) and in front (113). The shadow side is lit by the sunlit ground (lightEnv's airless fill).
+  const sel = { 112: [Math.PI, 0.12, 14], 113: [0, 0.12, 14] };
+  if (sel[n]) {
+    const [yaw, pitch, dist] = sel[n];
+    stackDef = ['pod', 't1', 'wren']; editorChanged(); document.getElementById('launch').click(); S.mkLift = true;
+    const w = norm(cross(SUN, [0, 0, 1])), u = norm(add(mul(SUN, Math.sin(0.35)), mul(w, Math.cos(0.35)))), pf = mul(u, groundR(SELENE, mul(u, SELENE.R)) - S.yBot + 0.02);
+    S.body = SELENE; S.r = pf; const X = norm(cross(u, [0, 0, 1])); S.q = qFromBasis(X, u, cross(X, u)); S.w = [0, 0, 0]; S.v = surfVel(SELENE, S.r);
+    S.throttle = 0; S.landed = true; window.simulate = () => {};
+    cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return 'Selene, sun ' + (Math.asin(dot(u, SUN)) * 57.3).toFixed(0) + '° up';
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
   // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]

@@ -992,6 +992,17 @@ the battery and computer fell through to the default 1.25 m drum. `partBody` now
 - Views `refView(108)`–`(111)`: a lander's legs stowed and deployed, a satellite stowed and with its wings out.
 - test.mjs `aerofx-3` (part looks). Not yet: legs swinging down over a second, wings unfolding.
 
+## Fill light on airless bodies (2026-10-09, effects beat, QUEUE Q116, PLAYTEST #32)
+
+`lightEnv(p)` only knew Tellus's air: on Selene its "height" is the distance from Tellus, so sky and ground light were
+zero and a lander with the sun behind it was pure black against bright regolith. `airlessFill(p)` (checked first) finds
+an airless body within 4 radii and returns its own lighting: the sun unfiltered, `up` = that body's local up, and a
+ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation, fading over 0.6 R of height; a token sky.
+- Measured: on Selene's day side with the sun 20° up the ground term is 0.195 (Tellus's daytime ground is ~0.18); 0 at
+  night; 0.108 one radius up. Earthshine (~1e-4 of the sun) is left out.
+- `refView(113)` (back-lit, shadow toward the camera): the tank reads grey, the dark pod stays dark; `FILL_FX = false`
+  gives the old black silhouette. `112` is the same lander from the sunny side.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -7996,3 +8007,48 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## v1.79 — warnings before launch, legs by themselves, the escape tower's own shelf (2026-10-09, vehicle session, QUEUE Q48, Q121, Q32)
+
+**Q48: the Rollout screen warns.** `launchWarnings(stack, aims)` (`sim/vessel.js`, after `stageStats`) adds lines to
+flow's `rollChecks()` with one call (flagged: `app/rollout.js` is flow's file). Every line is ⚠ or ✔, never ⛔: the
+player may know better, and the flight is how they find out.
+- **What the flight is aimed at** (`flightAims()`): accepted *Satellite to N km* and *Image* contracts, and the suggested
+  next mission if it's an orbit one (beeper, orbiter, lift1, lift2).
+- **Δv:** the stages' Δv against the program's best flight to orbit (the logbook's `orbit` fact, which keeps the least
+  Δv any flight has taken). Before anyone has reached orbit, it uses ~4,500 m/s, a good ascent (the Orbiter in §2 spends
+  4,446). A contract's altitude adds a Hohmann climb from low orbit (`dvToAlt`: +307 m/s to 400 km). Three outcomes:
+  - **short:** the vacuum total doesn't reach the need;
+  - **tight:** only the vacuum total does, while the first stage's sea-level Δv plus the rest doesn't;
+  - **ok:** it does even counting the first stage at sea level.
+- **Measured on the presets** (before anyone has reached orbit), for the beeper and for a 400 km satellite:
+
+  | Preset | The beeper | 400 km satellite |
+  |---|---|---|
+  | Beeper | ok (5,745 m/s) | ok |
+  | Orbiter | ok (4,663) | tight (4,894 vacuum vs 4,807) |
+  | Passenger Orbiter | ok (5,058) | ok |
+  | Hopper | short (1,560) | short |
+  | Passenger | short (3,210) | short |
+- **No parachute:** a crew capsule or a biocapsule aboard with no chute gets "No parachute: the crew (the passenger)
+  can't come home". TWR < 1 and the passenger safety review were already in `rollChecks`.
+- **The next-step hint** (`NEXT_PRESET`, `sim/next.js`) now names the Beeper for *The beeper* and the Passenger Orbiter
+  for *Passenger: one orbit*. The "Orbiter with an instrument package in place of the pod" text is gone.
+
+**Q121: legs by themselves.**
+- `autoLegs(s)` (`sim/flight.js`) puts the legs down while a procedure is flying the vessel (`s.proc`) and it's
+  descending within 1.5 km of the ground. It's called right after `procStep` in `advPhys`. A hand-flown landing stays
+  the player's call (Y).
+- **What's remembered:** legs and wings left deployed are in the vessel's saved state (`vstOf` adds `dep`, the indices
+  of deployed parts; `vesselOf` restores them). So a lander registered on Selene still stands on its legs when loaded
+  back, and a satellite keeps its wings out.
+- **Not yet:** none of the ladder's presets (Probe, Sample Return) has legs, so `fly_ladder.mjs` doesn't exercise this
+  end to end.
+
+**Q32: the escape tower** is in a *Crew escape* palette category of its own (it was under *Other*).
+
+**Checked:**
+- `test.mjs` sections `vehicle-4` (warnings: the table above, the logbook's best, the climb against a hand Hohmann, the
+  parachute) and `vehicle-5` (auto legs at 3 km / 1.2 km / climbing / by hand; legs and wings through the register);
+- the full suite, 527/527;
+- the robot's `m1` run passes; a tester probe shows the Hopper's "Short of orbit for The beeper" and a chute-less Passenger Orbiter's "No parachute" in the Rollout panel.

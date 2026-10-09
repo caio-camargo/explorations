@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,surfacePick,procWithSite,procLandsOn,sitePlace,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {autoLegs,launchWarnings,flightAims,dvToAlt,DV_ORBIT_EST,stageStats,nextStep,footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -3971,6 +3971,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     hit ? `${hit.body} ${api.sitePlace(hit.pf)} (${(len(api.fromPF(B, hit.pf, t0)) / 1e3).toFixed(1)} km from the centre)` : 'no hit');
 }
 
+// vehicle-4. Warnings before launch (vehicle session, QUEUE Q48): the Rollout screen says when a design is short of the
+// Δv its aim needs (the logbook's best flight to orbit, or ~4,500 m/s before anyone has been there, plus the climb to a
+// contract's altitude), and when a crew or a passenger rides with no parachute.
+{
+  const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], H = [{ name: 'Satellite to 400 km', alt: 400 }], lv = (st, a) => api.launchWarnings(st, a).map(x => x[0]).join();
+  const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P.Orbiter, H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
+  PR.log = { orbit: { v: 5600 } }; const best = api.launchWarnings(P.Orbiter, B); PR.log = log0;
+  const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
+  const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
+  check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
+    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(api.launchWarnings(P.Hopper, B)[0][1]) && /Tight/.test(api.launchWarnings(P.Orbiter, H)[0][1])
+      && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
+      && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
+    `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
+}
+
+// vehicle-5. Legs by themselves (vehicle session, QUEUE Q121): a procedure puts the legs down once it's descending within
+// 1.5 km of the ground; legs and wings left deployed stay deployed when a vessel is registered and loaded back.
+{
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean);
+  const lander = () => { const d = api.toV2(['pod', 't1', 'wren']); find(d.root, 't1').c.push({ k: 'leg', at: { y: 0.3, a: Math.PI / 4, n: 4, cy: 0.5 }, c: [] }); return d; };
+  const R = TELLUS.R, u = [1, 0, 0], g = api.groundAlt(TELLUS, u), at = (h, vz) => { api.t = 0; const s = api.newShip(lander()); api.S = s; api.HOOK.msg = () => {}; s.landed = false;
+    s.r = mul(u, R + g + h); s.v = add(api.surfVel(TELLUS, s.r), mul(u, vz)); s.proc = { done: false }; api.autoLegs(s); return api.legsDown(s); };
+  const high = at(3000, -20), low = at(1200, -20), rising = at(1200, 20), hand = (() => { api.t = 0; const s = api.newShip(lander()); s.landed = false; s.r = mul(u, R + g + 800); s.v = add(api.surfVel(TELLUS, s.r), mul(u, -20)); api.autoLegs(s); return api.legsDown(s); })();
+  const D = new Function(src + 'return {PROG,satRegister,vesselOf,newShip,legOp,legsDown,wingOp,wingsOut,toV2,TELLUS,HOOK,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; const d = D.toV2(['core', 'batt', 't1', 'wren']), fd = (n, k) => n.k === k ? n : (n.c || []).map(x => fd(x, k)).find(Boolean);
+  fd(d.root, 't1').c.push({ k: 'leg', at: { y: 0.3, a: 0, n: 3, cy: 0.5 }, c: [] }, { k: 'wpanel', at: { y: 0.8, a: 0.5, n: 2, cy: 0.3 }, c: [] });
+  const sat = D.newShip(d), rs = D.TELLUS.R + 3e5; D.legOp(sat, 'down'); D.wingOp(sat, 'out');
+  Object.assign(sat, { landed: false, alive: true, r: [rs, 0, 0], v: [0, 0, -Math.sqrt(D.TELLUS.mu / rs)], w: [0, 0, 0] }); D.PROG.sats = []; D.satRegister(sat, { day0: 0 });
+  const back = D.PROG.sats.length ? D.vesselOf(D.PROG.sats[0], 0) : null;
+  check('legs: a procedure puts them down descending within 1.5 km (not at 3 km, not climbing, not when you fly); legs and wings left out stay out through the register',
+    !high && low && !rising && !hand && back && D.legsDown(back) && D.wingsOut(back), `3 km ${high} · 1.2 km down ${low} · climbing ${rising} · by hand ${hand} · reloaded: legs ${back && D.legsDown(back)}, wings ${back && D.wingsOut(back)}`);
+}
+
 // ground-9. G3.0 (world session, QUEUE Q107; GROUND.md § G3): the crater cells' trigonometry goes through approximations
 // the shader will copy exactly (GLSL's tan/atan are only good to ~1e-5 rad: 3.5 m on Selene). The bands must not call the
 // built-ins again, and the approximations must stay as good as measured.
@@ -4016,6 +4050,20 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
       && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
     `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
+  // QUEUE Q116 (PLAYTEST #32): near an airless body the lighting's fill comes from its sunlit ground, about its own up:
+  // on Selene's day side the ground term is lit; on its night side it is dark; far out in space there is none
+  {
+    const SM = new Function(src + 'return {BODIES,TELLUS,SELENE,bodyPos,norm,sub,add,mul,len,dot,cross,SUN_DIR,get t(){return simT}}')();
+    const F = new Function('BODIES', 'TELLUS', 'bodyPos', 'norm', 'sub', 'len', 'dot', 'SUN', 'simT', 'FILL_FX', body('airlessFill') + ';return airlessFill')(
+      SM.BODIES, SM.TELLUS, SM.bodyPos, SM.norm, SM.sub, SM.len, SM.dot, SM.SUN_DIR, SM.t, true);
+    const C = SM.bodyPos(SM.SELENE, SM.t), at = (u, h) => SM.add(C, SM.mul(SM.norm(u), SM.SELENE.R + h));
+    const w = SM.norm(SM.cross(SM.SUN_DIR, [0, 0, 1])), day = F(at(SM.add(SM.mul(SM.SUN_DIR, Math.sin(0.35)), SM.mul(w, Math.cos(0.35))), 2)),
+      night = F(at(SM.mul(SM.SUN_DIR, -1), 2)), far = F(SM.mul(SM.SUN_DIR, 2e8)), high = F(at(SM.SUN_DIR, SM.SELENE.R));
+    check('airless fill: a lander on Selene\'s day side gets light from the ground (its own up); none at night, less higher up, none in deep space',
+      day && day.gnd[0] > 0.1 && day.gnd[0] < 0.4 && Math.abs(SM.dot(day.up, SM.norm(SM.sub(at(w, 0), C))) - Math.cos(0.35)) < 0.01 && night && night.gnd[0] === 0
+        && far === null && high && high.gnd[0] < day.gnd[0] && /function lightEnv\(p\)\{const af=airlessFill\(p\);if\(af\)return af;/.test(pg),
+      `day ground ${day && day.gnd[0].toFixed(3)}, night ${night && night.gnd[0]}, 1 R up ${high && high.gnd[0].toFixed(3)}`);
+  }
   // QUEUE Q97: the leg and the power parts have their own looks (placeholders gone); the deployed leg puts its footpad
   // where the sim's legFoot puts the foot (reach out, drop below), one case each
   const leg = body('partBody').slice(body('partBody').indexOf("case'leg':"));
