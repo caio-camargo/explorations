@@ -4218,6 +4218,27 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       dodged && warned, `dodged ${dodged}, crewed warned ${warned}`); }
 }
 
+// econ-11. Obsolescence and servicing (economy session, QUEUE Q126, MIDGAME.md § Satellites): a satellite earns less
+// for each computing era it falls behind; servicing a valuable one (a contract completed by docking with it) brings it
+// up to date.
+{
+  const D = new Function(src + 'return {satQual,satEra,obsTick,serviceTarget,genOffer,contractEval,compEra,CT,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, done: { beeper: { day: 1 } }, own: null, decisions: [], offers: [], active: [], flights: 3, cdone: 0 }); D.chooseStart('agency');
+  const tv = { id: 31, name: 'TV 1', ant: 1, r: [7e6, 0, 0], v: [0, 7e3, 0], epoch: 0, tvOn: true, pending: [], imgs: 0 }, cam = { id: 32, name: 'Eye 1', cam: 1, ant: 1, contact: 0.1, r: [7e6, 0, 0], v: [0, 7e3, 0], epoch: 0, pending: [], imgs: 0 };
+  P.sats = [tv, cam]; const e0 = D.compEra(); D.obsTick(); const q0 = D.satQual(tv);
+  while (D.compEra() < e0 + 1 && P.day < 20000) P.day += 50; news.length = 0; D.obsTick(); D.obsTick(); const q1 = D.satQual(tv), n1 = news.filter(t => /generation/.test(t)).length;
+  check('obsolescence: a satellite earns in full in its own era, 74 % one era behind; the news says so once per satellite', q0 === 1 && Math.abs(q1 - 1 / 1.35) < 1e-9 && n1 === 2,
+    `era ${e0} → ${D.compEra()} on day ${P.day}: ${Math.round(q1 * 100)} %, ${n1} news`);
+  const tgt = D.serviceTarget();
+  check('servicing: offered for a valuable satellite that has fallen behind (TV in view), not a poorly placed imager', tgt === tv);
+  const c = { id: 961, type: 'service', src: 'gov', client: 0, p: D.CT.service.gen(D.rng(1)), deadline: P.day + 300 }; P.active = [c];
+  const R = { cdone: [], paid: [] }, f0 = P.funds; D.contractEval({ rec: R, att: [] }); const before = P.active.length;
+  D.contractEval({ rec: R, att: [{ e: tv }] });
+  check('servicing: a flight docked with it completes the contract, and the satellite is up to date again', before === 1 && P.active.length === 0 && P.funds > f0 && D.satEra(tv) === D.compEra() && D.satQual(tv) === 1 && !D.serviceTarget(),
+    `paid ${(P.funds - f0).toFixed(0)}M; ${c.p.name}, ${c.p.n} era behind`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

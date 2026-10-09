@@ -4406,3 +4406,20 @@ restarted without Caio. One orphaned headless Chrome of mine (~380 MB) was stopp
 ### Next steps
 - [ ] Space: Q147 fragment bands (in progress)
 - [ ] Platform/orchestrator: `.gitattributes` for line endings (under *Proposed*)
+
+## 2026-10-09 — Launchpad flow lane: closing the unattended run (after the progress entry above)
+
+Since the progress entry: **Q151** (Rollout checks fold their sources into an ⓘ), **Q153** (an ink HUD over the
+notebook-era map, from flow's evergreen walk), **Q155** (network screen N1: fleet strip and pad calendar, reading
+economy's `netModel()` once Q154 lands, a fallback until then), keyboard paths (L rolls out and launches, 1–8 Program
+tabs, Enter ends a finished flight), PLAYTEST #27 moved to Done. Full suite passes on `main` after the last code merge.
+
+**Lessons:** a start-up call into a later app file breaks the page silently (`platform-1` checks SIM files only);
+robot `m1` on the plain page catches it. TESTING row numbers collide between lanes because the "next free" counter
+lags: number new rows from the real maximum. Whole-file conflicts on NOTES/TESTING come from line-ending changes:
+take main's copy and re-add your lines.
+
+**Files:** launchpad `app/network.js`, `app/rollout.js`, `app/screens.js`, `app/render.js`, `app/editor.js`,
+`index.html`, `builder.js` (guard), `test.mjs` (§32), `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** nothing ready in flow. When Caio answers W14 / W15 / W18: Q53, Q3 (4a–4c) then Q43, network N2+. Q100 after
+Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
