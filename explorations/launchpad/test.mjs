@@ -3216,6 +3216,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('sites: the debrief lists the lease; the builder\'s budget check and picker include the fee', H.includes("add('Site lease',-(R.siteFee||0)") && /const fee=siteAccessOf\(curSite\(\)\)\.fee/.test(pg) && pg.includes('a launch`'));
 }
 
+// econ-3. The ballistic test's target from the program's site (economy session, QUEUE Q7): the target lies 300–900 km
+// downrange of the site the program flies from (true distances, not the old 600 km-radius radians from +X), at sea, and
+// the test counts only when flown from that site. Contracts saved before Q7 (no p.site) count from anywhere.
+{
+  const D = new Function(src + 'return {CT,SITES,PROG,HOOK,TELLUS,curSite,isLand,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, done: {}, own: null, decisions: [], site: null }); D.chooseStart('agency');
+  const B = D.CT.ballistic, km = (a, b) => Math.acos(Math.max(-1, Math.min(1, a[0] * b[0] + a[1] * b[1] + a[2] * b[2]))) * D.TELLUS.R / 1e3;
+  const far = D.SITES.find(t => t.kind !== 'sea' && km(t.u, D.SITES[0].u) > 1000) || D.SITES[1];
+  let okAll = true, worst = 0; const R = D.rng(77);
+  for (const t of [D.SITES[0], far]) { P.site = t.id; for (let i = 0; i < 20; i++) { const p = B.gen(R); if (!p) continue; const d = km(p.u, t.u);
+    worst = Math.max(worst, Math.abs(d - p.rg)); okAll = okAll && p.site === t.id && !D.isLand(p.u) && d >= 299 && d <= 901 && Math.abs(d - p.rg) < 1; } }
+  check('ballistic: the target is at sea, its stated distance downrange of the program\'s current site', okAll, `worst distance error ${worst.toFixed(2)} km; second site ${far.name}`);
+  P.site = D.SITES[0].id; const p = B.gen(D.rng(5)), at = p.u.map(x => x * D.TELLUS.R);
+  check('ballistic: counts on target from its own site, not from another, and the brief names the site',
+    B.ok({ endPf: at, endSci: true, site: p.site }, p) && !B.ok({ endPf: at, endSci: true, site: far.id }, p) && B.brief(p).includes(p.sname));
+  const old = { u: p.u, rg: p.rg, rad: 40 };
+  check('ballistic: a contract saved before Q7 (no site) still counts from anywhere', B.ok({ endPf: at, endSci: true, site: far.id }, old));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

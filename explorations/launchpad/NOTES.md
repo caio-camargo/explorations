@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,20 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.57 — the ballistic test aims from the program's site (2026-10-08, economy session, QUEUE Q7)
+
+`CT.ballistic` used to place its target `rg/600` radians from planet-fixed +X: the old 600 km radius (every range 2.1×
+longer than stated) and from no particular pad. Now:
+- the target is `alongAz(site.u, az, rg·1000/R)` from **the program's current site** (`curSite()`) when the offer is
+  made: at sea, 300–900 km away, the stated distance exact (test: within 0.5 km);
+- the contract keeps `p.site` and `p.sname`; the brief says "Launch from ⟨site⟩"; it **counts only when flown from
+  that site** (`R.site`, v1.56): a ballistic test belongs to its range. Saved contracts without `p.site` count from
+  anywhere;
+- if no sea target is found in 200 tries (an inland site deep in a continent), there is no offer: `genOffer` now skips
+  a generator that returns null. The old fallback put a target at a fixed point regardless of the site.
+
+Test `econ-3` (3 checks, mutation-tested). The map marker (`app/render.js`) reads `c.p.u` as before.
 
 ## v1.56 — who may launch where: siteAccess (2026-10-08, economy session, QUEUE Q6)
 
