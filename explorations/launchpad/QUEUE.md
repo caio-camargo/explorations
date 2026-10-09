@@ -1,4 +1,4 @@
-# Launchpad — work queue
+| → flow 2026-10-08 || → flow 2026-10-08 |# Launchpad — work queue
 **Version**: 0.1.6 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
