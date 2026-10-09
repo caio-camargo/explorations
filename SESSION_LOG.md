@@ -4541,3 +4541,32 @@ smoke + own sections (and the full suite after core changes: 563 pass at the sch
 ### Next steps
 - [ ] Vehicle: powered presets (unblocks Q27)
 - [ ] Space: Q114, Q128, Q142
+
+## 2026-10-09 — Launchpad v1.87–v1.90: Q114, Q142, Q128 assessed, Q49 plan and slice 1 (space session, unattended)
+
+### Summary
+- Q114 (v1.87, PLAYTEST #30): the orbital period is logged once the engines stop (around Tellus and Selene).
+- Q142 (v1.88, study): a real station-keeping controller (pairs of burns half an orbit apart; e held by perigee/apogee
+  burns) costs 46–67 m/s a year for the TV satellite vs the model's 89: the model stands. Two failed controllers noted.
+- Q128 assessed, not built: thin air in flight would bring every preset's 110 km parking orbit down within 1.4 h;
+  parking at 150 km costs +48 m/s. Now D8 with the default "as now".
+- Q49: plan in NOTES (four slices); slice 1 built (v1.90): vessels still coasting above the air at flight end become
+  cruise entries, carried leg by leg with the predictor (into Selene's sphere on the predicted day, out again, settling
+  into satellites, waiting at the top of an atmosphere, lost on airless ground); a Tellus orbit that reaches a moon is
+  no longer a satellite; *In flight* list.
+
+### Verification
+- New tests `space-7` (Q114), `space-8` (Q49; test 40 updated). Full suite 587 pass / 0 fail on `main` as pushed
+  (`fe9834e`); `career.mjs` unchanged. Not browser-checked (the *In flight* list).
+- Slip: a close-out script failed on a QUEUE line the orchestrator had changed, and the unchained commit after it pushed
+  only the TESTING fix under a "done, log" message (`7b3fb42`); this entry and the QUEUE row complete it.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `sim/program.js` (Q114), `app/program-ui.js` (`cruiseHTML`),
+  `app/screens.js` (`progTabOf`: *In flight*), `test.mjs`, `study_slot.mjs` (part D), `NOTES.md`, `TESTING.md` (row 168),
+  `PLAYTEST.md` (#30), `QUEUE.md`
+- `ACTIVE_WORK.md` (claim moved to Q49 slice 2)
+
+### Next steps
+- [ ] Space: Q49 slice 2 (in progress); the dispatched payload as a cruise entry
+- [ ] Design: D8 thin air in flight; vehicle: Q164 unblocks Q27

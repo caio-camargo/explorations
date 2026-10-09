@@ -195,7 +195,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q148 | Debris slice 4 (with flow, economy): the world setting off / light / real (default light; with platform's Q124); the map's band view; cleanup contracts | M2 | M | 🖥 | after Q147 |
 | Q149 | Dispatched routine flights leave no debris yet (`procFly` restores the list) | M2 | S | ⚙ | ✓ `dff3e5d` (v1.86: `procFly` keepJunk, `junkAdd`; the dispatched payload itself is Q49) |
 | Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | blocked: the presets with an antenna make no power of their own (the Probe: core battery 0.5 kWh, 15 W of antenna and camera, flat in ~33 h). Gating service or the link on power now would end Probe TV/imaging service after ~4 days and Probe antenna missions on long flights. Needs the vehicle item under *Proposed* first; relay range folds into Q51's link budget (space, 2026-10-09) |
-| Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ✓ plan (NOTES § "Plan: missions in flight"); four slices under *Proposed* |
+| Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 → space 2026-10-09 (cruise events on the timeline, stops, Let it go); slices 3–4 under *Proposed* |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ready (plan only) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
@@ -362,3 +362,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - economy — Q103's next slice: the program's own news and mission control in its archetype's voice (POWERS.md § archetypes); rising powers copying claimed firsts and frugal ones partnering in the race schedule (with Q138 rivals) — NOTES v1.89
+- space + vehicle — Q49 slice 3: maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" (re-proposed: the first copy was dropped in a merge)
+- flow + economy — Q49 slice 4: the fleet strip; paying along the way — same plan (re-proposed)
+- space — the dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) — NOTES v1.86, v1.90
