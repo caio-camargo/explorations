@@ -159,7 +159,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ✓ v1.89.3 `18d6da4` (resupply, lab time, expansion; state-judged) |
 | Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ✓ v1.89.4 `62ee02c` (four world firsts; crewed days counted) |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ✓ v1.77.1 `5530b7e` (from the procedure's site; lease on the price; stood down if refused) |
-| Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
+| Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ✓ plan `660a522` (NOTES § "Plan: overflight politics"; W item for Caio) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
 Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control` (branch `control`, port 8796).
@@ -367,6 +367,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W19 | **Pick the astronauts' look** (D2 / CREW.md part 1): open `explorations/launchpad/mockups/crew/index.html` (or the stills in `output/launchpad/mockups/crew/` on the effects machine): (a) cartoony, (b) realistic, (c) stylised human. Defaults if silent: (c), the middle the roadmap expects |
 | W22 | **Station contracts (Q9's plan)**, four questions with defaults: (1) the first station as **firsts** (default) or a contract chain; (2) a resupply deadline **when supplies run out** (default) or a fixed window; (3) rendezvous with rivals' satellites **only once rivals have stations** (default) or never; (4) retrieval gives **its parts' value back** (default) or the pay only. Silence keeps the defaults | Q9's slices 1–6 (NOTES § "Plan: station, base, relay and rendezvous contracts") |
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
+| W23 | **Overflight politics (Q96's plan)**, three questions with defaults: (1) judge by the **track actually flown** (default) or the site's planned downrange; (2) **tense neighbours only** (relation < 0; default) or any foreign land; (3) overflight rights as a paid decision **later** (default) or now. Silence keeps the defaults | one ⚙ slice (S): `R.over`, the cost, the debrief line (NOTES § "Plan: overflight politics") |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - space — Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it, today's behaviour as tests — NOTES § "Plan: data as a volume and the link budget"
@@ -375,3 +376,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
 - economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts"
 - economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
+- economy — Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the debrief line, a test — NOTES § "Plan: overflight politics"
