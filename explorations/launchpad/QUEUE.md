@@ -290,7 +290,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 |---|---|---|---|---|---|
 | Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | ✓ `0bf85c2` (NOTES § "Test shards": `--smoke --jobs 4` ~25 s) |
 | Q156 | **`.gitattributes`** (`*.md *.js *.mjs *.html text eol=lf`) and one normalising commit, announced in this file's Flags first (every branch merges `main` right after, like the split) | M1 | S | ⚙ | ✓ effects 2026-10-09: `.gitattributes` (md, js, mjs, html → LF); no file on `main` had CRs, so no normalising commit was needed |
-| Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | ready |
+| Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | → effects (overflow, platform idle) 2026-10-09 |
 | Q124 | **World settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events | M2 | S | ⚙ | after the first pressure lands (Q26) and Q57 |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
 | Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | ✓ `00e3e31` (21 classic scripts in `sim/`, `app/`; NOTES § "The file split". **Everyone: merge `main` before your next edit**) |
