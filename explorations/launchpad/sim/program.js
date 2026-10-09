@@ -218,7 +218,8 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(b===TELLUS&&h>b.atm&&!R.logSpace){R.logSpace=1;logNote(s,'space',R.dv)}
   if(b===SELENE&&!R.logSel){R.logSel=1;logNote(s,'selene',R.dv)}
   if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv);logNote(s,'sg',SELENE.mu/dot(s.r,s.r))}   // a lander measures g
-  if(b===SELENE&&!s.landed&&!R.logSOrb){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
+  const coast=!(s.throttle>0&&activeEngines(s).length);   // the period is read off an orbit the engines have stopped changing (space Q114, PLAYTEST #30)
+  if(b===SELENE&&!s.landed&&!R.logSOrb&&coast){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
   {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
   if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
     if(b===TELLUS&&R.logSpace&&h<b.atm&&dot(s.v,s.r)<0){const sp=len(sub(s.v,surfVel(b,s.r)));if(sp>R.vEntry)R.vEntry=sp}}
@@ -232,7 +233,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
     if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
-    if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv);logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
+    if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv)}if(!R.logPeriod&&coast){R.logPeriod=1;logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
   if(R.bio&&R.bioOK){let why='';
     if(!bio)why=s.alive?'was lost with its stage':'was lost with the vessel';

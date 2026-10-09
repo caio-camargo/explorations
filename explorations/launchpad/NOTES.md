@@ -1832,6 +1832,13 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.NEXT — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
+
+`missionTick` noted the first orbital period (around Tellus, `period`; around Selene, `sorbit`) the moment the orbit was
+bound with its periapsis clear, which is partway through the burn that closes it: the robot's Selene probe logged
+"1,521.9 min at 3,112 km" for a 200 × 20 km capture. Now both wait for a coast (`coast`: no engine burning); the Δv to
+low orbit is still noted when the orbit closes, since that's what it measures. Test `space-7` (mutation: no coast gate).
+
 ## v1.86 — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
 
 A dispatched flight (`dispatchRun`, flown headless by `procFly`) used to leave nothing: `procFly` restores the noted

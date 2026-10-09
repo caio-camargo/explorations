@@ -4367,6 +4367,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${f.junk ? f.junk.length : '—'} piece(s) dropped (${f.junk ? f.junk.map(j => Math.round(j.mass) + ' kg').join(', ') : ''}); registered ${n0} then ${n1}; list kept ${kept} (after the flight ${j1}, after the dry run ${j2}); T0 ${f.T0 / D.DAY_S} (day ${day}); epoch off by ${q ? (q.epoch - f.T0 - piece.t).toExponential(1) : '—'}`);
 }
 
+// space-7. The orbital period goes in the logbook once the engines stop (space session, QUEUE Q114, PLAYTEST #30): it
+// used to be logged the first moment the orbit was bound, mid-burn (a probe captured into 200 × 20 km logged "1,521.9 min
+// at 3,112 km"). The Δv to orbit is still noted at the moment the orbit closes.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,missionTick,elements,TELLUS,SELENE,PROG,HOOK,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG; P.day = 0; P.log = {};
+  const run = (B, alt, apAlt) => { const x = D.newShip(D.PRESETS.Probe); D.S = x; x.landed = false; D.t = 0; D.missionTick(x, 0, false);
+    const rp = B.R + alt, ra = B.R + apAlt, a = (rp + ra) / 2, vp = Math.sqrt(B.mu * (2 / rp - 1 / a));
+    Object.assign(x, { alive: true, landed: false, body: B, r: [rp, 0, 0], v: [0, 0, -vp], throttle: 1 }); x.rec.dv = 900; x.rec.launched = true;
+    x.parts.filter(p => p.on && p.d.kind === 'engine').forEach(p => { x.segs[p.seg].ignited = true; });
+    const id = B === D.SELENE ? 'sorbit' : 'period'; delete P.log[id]; D.missionTick(x, 0.1, true); const burning = !!P.log[id];
+    x.throttle = 0; D.missionTick(x, 0.1, true); const L = P.log[id], el = D.elements(x.r, x.v, B.mu);
+    return { burning, ok: !!L && Math.abs(L.v.p - el.period) < 1e-6, L, el }; };
+  const sel = run(D.SELENE, 20e3, 200e3), tel = run(D.TELLUS, 300e3, 300e3);
+  check('logbook: the orbital period is noted once the engines stop, around Selene and Tellus, not mid-burn',
+    !sel.burning && sel.ok && !tel.burning && tel.ok && D.PROG.log.orbit,
+    `Selene ${sel.L ? (sel.L.v.p / 60).toFixed(1) + ' min' : '—'} (logged while burning: ${sel.burning}); Tellus ${tel.L ? (tel.L.v.p / 60).toFixed(1) + ' min' : '—'} (while burning: ${tel.burning})`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
