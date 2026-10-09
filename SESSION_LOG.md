@@ -4115,3 +4115,32 @@ defaults if silent); every catalog below is approved unless noted. No game code.
 - [ ] Design desk, open: Selene's mass driver; the voice and tone guide (once pillar 7 firms up); shielding review before the habitat budget is built
 - [ ] Space/economy: re-tune satellite lifetimes per MIDGAME § Satellites
 
+## 2026-10-09 — Launchpad v1.71: satellite work reviewed against MIDGAME; station-keeping re-tuned (QUEUE Q125; space session)
+
+### Summary
+- Caio asked to review the satellite work against the design desk's MIDGAME.md (approved 00:19, after Q50 and Q25 were
+  built). Matches: real physics stays, the Program line is the right display, running dry pauses. Conflicts handled:
+  my "reboost contracts" follow-up withdrawn (servicing is special, not routine); dry re-entry vs "never destroys" filed
+  as W17 (defaulted: keep re-entry), which the orchestrator sent back to design as D6; station-keeping re-tuned (Q125).
+- Re-tune: holding pays the orbit's size and shape (net over 20 days), not its tilt (~70 % of the old cost). The tilt
+  really wanders (`tiltStep`, the tide's orbit-averaged torque; 0.165° vs RK4 0.175° in 20 days). TV pays while the
+  capital sees it all day. A held TV satellite: ~0.1–0.2 m/s a day, TV for ~6 years (tilt 23°), then its tilt ends it.
+- Negative results: paying every size swing (0.35 m/s a day, paid Nyx's wobble); a crude deadband controller pumped
+  the eccentricity to 0.2–0.6.
+
+### Verification
+- `space-1` reworked (5 checks, 3 new mutations caught); full suite 520 pass / 0 fail on the merged tree; the last
+  merge before pushing was docs only. `career.mjs` unchanged.
+- Version numbers collided twice while merging (economy took v1.69, world v1.70); this is v1.71.
+- `git pull` in the main clone met another session's uncommitted LATE_GAME/QUEUE edits; nothing was reset, they
+  committed a moment later.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (`slotRate`, `tiltStep`, `orbTick`), `sim/program.js` (`isTV`), `test.mjs`,
+  `study_slot.mjs` (parts B, C), `NOTES.md` § v1.71, `TESTING.md` row 134, `QUEUE.md` (Q125 ✓, two Proposed)
+- `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Design desk: D6 (dry re-entry: keep, or dry satellites never come down?)
+- [ ] Vehicle + space: the satellite's lifetime as a builder readout (MIDGAME)
+- [ ] Space: next ready item Q26 (contact with debris and between satellites)

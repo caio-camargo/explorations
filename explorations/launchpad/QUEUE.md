@@ -173,7 +173,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ready (plan only) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ready |
-| Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | → space 2026-10-09 |
+| Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | ✓ `a9b2a09` (v1.71: the tilt is let go and really wanders; TV keeps ~6 years on ~500 m/s; decay already fits above ~300 km; dry re-entry is D6) |
 | Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | ready |
 | Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | ready (plan only) |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ready (plan only) |
@@ -329,3 +329,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - vehicle + space — the builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line — MIDGAME.md § Satellites
 - vehicle — when the habitat budget lands (Q119), habitat and lab modules get power loads: "a dark station can't keep people" (v1.68's crew capsules draw nothing, which holds only for a capsule's 10 days); solar output by distance from Helios at M5 (LATE_GAME's 300/130/40/11 W/m²) — LATE_GAME.md § Habitats
 - economy — crew rotation by dispatch: a crewed supply run lands crew at a base and brings the old crew home (needs a crew record in headless flights) — NOTES v1.69
+- space — a proper deadband controller on the full physics, to check v1.71's hold cost (a crude one pumped the eccentricity) — NOTES v1.71
+- economy — TV's daily pay now asks only that the capital sees it all day (tilt free); the setup mission still asks under 2°. Check against service quality by era (MIDGAME obsolescence) — NOTES v1.71
