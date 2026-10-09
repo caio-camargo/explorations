@@ -50,7 +50,8 @@ const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevati
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
 function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
 function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
-  const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE+bodyTop(B))&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
+  const B=s.body,el=elements(s.r,s.v,B.mu);let cruise=0;
+  if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
@@ -61,6 +62,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);   // A2: what it takes to fly it again
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,imgs:o.imgs||0,pending:o.pending||[],labDays:o.labDays,contact:o.contact})}   // the same object, back on the register
+  if(cruise){q.cruise=1;return HOOK.news(`${q.name} is on its way, in flight around ${B.name}: it carries on between flights (Program → In flight)`,'ok')}
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}`,'ok');
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
@@ -167,6 +169,35 @@ function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0
     R0=fragsOf(mJ[b]/wJ[b])*rho[b]*K*fragTau(b),gen=1/(F[b]*rho[b]*K)/DAY_S/YEAR_D;CASC_STAT[b]={R0,gen};
     if(R0>=1&&gen<=CASC_YR&&k<2){PROG.casc[b]=2;HOOK.news(`The ${lo}–${lo+50} km band now feeds itself: each breakup there now sets off more before the air can clear them. It will stay unusable for decades`,'bad')}
     else if(R0>=0.5&&gen<=4*CASC_YR&&k<1){PROG.casc[b]=1;HOOK.news(`Warning: the ${lo}–${lo+50} km band is filling with fragments; one more breakup there could start a cascade`,'warn')}}}
+// ---- missions in flight, slice 1 (space session, QUEUE Q49; NOTES § "Plan: missions in flight"). A lasting orbit
+// (settled: closed, clear of the air or ground, inside the body's SOI and short of any moon's) is a satellite; anything
+// else still coasting above the air at flight end is a cruise entry (q.cruise), carried between flights leg by leg as
+// the predictor sees it (predictFrom: Kepler, or integrated where a moon perturbs): into a moon's sphere, out of one,
+// until its orbit settles (then it's an ordinary satellite) or it reaches an atmosphere (it waits there, flyable: fly
+// it down) or ground (it's lost). Each turn is news. Events that stop time are slice 2.
+const settled=(B,el)=>el.e<1&&el.pe>B.R+(B.atm||MOON_PE+bodyTop(B))&&(B===TELLUS||el.ap<B.soiMin)&&B.children.every(c=>el.ap<c.rMin-c.soiMin);
+function cruiseStep(q,T1){const o=ORB_T0;ORB_T0=0;let guard=0;
+  try{while(q.epoch<T1&&guard++<12){const B=orbBody(q),st={b:B,r:q.r,v:q.v,t:q.epoch},legs=predictFrom(st),L=legs[0],el=L.el,fl=B.R+(B.atm||0);
+    const tEnd=L.endKind&&L.endT<T1?L.endT:T1;
+    // the ground or the air first, if it comes before the leg ends (Kepler legs; perturbed ones end at an impact themselves)
+    if(el.pe<fl&&!(el.hl<1e-3)){const nuF=-Math.acos(clamp((el.p/fl-1)/el.e,-1,1)),dt=dot(q.r,q.v)<0||el.e>=1?tPe(el,nuF)-tPe(el,el.nu):timeToNu(el,nuF);
+      if(dt>=0&&q.epoch+dt<=tEnd){const[r,v]=kepler(q.r,q.v,dt,B.mu);Object.assign(q,{r,v,epoch:q.epoch+dt});
+        if(B.atm){q.halt={kind:'air',day:q.epoch/DAY_S};HOOK.news(`${q.name} has reached the top of ${B.name}'s air: fly it down (Program → In flight)`,'warn')}
+        else{PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad')}return}}
+    if(L.endKind==='impact'&&L.endT<=T1){PROG.sats=PROG.sats.filter(x=>x!==q);HOOK.news(`${q.name} struck ${B.name}`,'bad');return}
+    if(tEnd<T1&&legs[1]){const n=legs[1];q.r=n.r.slice();q.v=n.v.slice();q.epoch=n.t;if(n.b===TELLUS)delete q.bodyName;else q.bodyName=n.b.name;
+      HOOK.news(L.endKind==='enc'?`${q.name} has entered ${n.b.name}'s sphere of influence`:`${q.name} has left ${B.name}'s pull: now around ${n.b.name}`,'ok')}
+    else{if(pertNear(B,el)){let r=q.r,v=q.v,t=q.epoch;const h=Math.min(600,el.e<1?el.period/120:600);while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}q.r=r;q.v=v}
+      else[q.r,q.v]=kepler(q.r,q.v,T1-q.epoch,B.mu);q.epoch=T1}
+    const B2=orbBody(q),e2=elements(q.r,q.v,B2.mu);
+    if(settled(B2,e2)){delete q.cruise;q.skRate=null;HOOK.news(`${q.name} has settled into an orbit around ${B2.name} (${kmS(e2.pe-B2.R)}–${kmS(e2.ap-B2.R)} km)`,'ok');return}}}
+  finally{ORB_T0=o}}
+// what a cruise entry is doing next, for lists: {text, days} (program time T)
+function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
+  try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;
+    if(el.pe<B.R+(B.atm||0))return{text:B.atm?`falling into ${B.name}'s air`:`on course to strike ${B.name}`,days:null};
+    return L.endKind==='enc'?{text:`heading into ${B.children.find(c=>len(sub(L.end,bodyRel(c,L.endT)[0]))<c.soi*1.01)?.name||'a moon'}'s pull`,days:d}:L.endKind==='esc'?{text:`leaving ${B.name}'s pull`,days:d}:{text:`coasting around ${B.name}`,days:null}}
+  finally{ORB_T0=o}}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
@@ -304,7 +335,7 @@ function contactStep(s,dt){if(!s.alive||s.landed)return;portLoads(s);if(!s.alive
 // its rating. Aero, heating and thrust stay with the vessel's own parts for now: docked stacks fly in vacuum. A docked
 // entry stays in PROG.sats flagged `docked` until the flight ends, so a reload mid-flight can't lose it.
 const PORT_GAP=0.15,PORT_LAT=0.1,PORT_COS=Math.cos(10*Math.PI/180),PORT_V=0.5,PORT_F=30e3,PORT_M=20e3,PORT_PUSH=0.3,PORT_COOL=5;
-function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed&&!q.bodyName)}   // in Tellus orbit (landed ones: landedUp; a moon's: moonSats)
+function satsUp(){return(PROG.sats||[]).filter(q=>!q.docked&&!q.landed&&!q.bodyName&&!q.cruise)}   // in Tellus orbit (landed ones: landedUp; a moon's: moonSats)
 // free ports in a list of parts (vessel parts or shape entries): a port's top face, nothing stacked on it, not in use
 function portsOf(list,used){const P=list.map(o=>({o,d:o.d||PARTS[o.k]})).filter(x=>x.d);
   return P.filter(x=>x.d.kind==='port'&&!used.has(x.o.i)&&(x.d.radial||!P.some(y=>y!==x&&!y.d.surf&&Math.abs(y.o.y0-(x.o.y0+x.o.h))<1e-3&&Math.hypot(y.o.pos[0]-x.o.pos[0],y.o.pos[2]-x.o.pos[2])<0.3)))
@@ -620,7 +651,7 @@ const landedBody=q=>BODIES.find(b=>b.name===q.bodyName)||null;
 // days (NOTES, "The Selene relay"). One that leaves the SOI joins its parent's registry; one that meets the ground is lost.
 const MOON_PE=5e3;   // how far above its highest ground (bodyTop) a moon's orbit must stay to be registered (airless)
 const orbBody=q=>q.bodyName&&BODIES.find(b=>b.name===q.bodyName)||TELLUS;
-function moonSats(b){return(PROG.sats||[]).filter(q=>q.bodyName&&!q.landed&&!q.docked&&(!b||q.bodyName===b.name))}
+function moonSats(b){return(PROG.sats||[]).filter(q=>q.bodyName&&!q.landed&&!q.docked&&!q.cruise&&(!b||q.bodyName===b.name))}
 const orbitsAt=b=>b===TELLUS?satsUp():moonSats(b);   // registered orbiters about body b (what a flight there can meet)
 // one RK4 step of an orbit about B under its tides (pertAcc), in program time (ORB_T0 = 0)
 function tideRK4(B,r,v,t,h){const acc=(r,t)=>{const rl=len(r),a=mul(r,-B.mu/(rl*rl*rl)),p=pertAcc(B,r,t,false);return p?add(a,p):a};
@@ -730,6 +761,8 @@ function decayLife(q){if(q.bodyName)return Infinity;const el=elements(q.r,q.v,TE
 // between flights (advanceDays, program time T0 → T1): held orbits pay for the time (tides and drag); dry ones drift under
 // the tides, or decay in the upper air; a held orbit (or one too weakly pulled to need holding) only turns its tilt (tiltStep)
 function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
+  if(q.cruise){if(q.halt){if(q.epoch<T1)q.epoch=T1}else if(q.epoch<T1)cruiseStep(q,T1);continue}   // in flight (Q49); one waiting at an atmosphere
+  // keeps its place while time passes (a stopgap until slice 2 stops the clock before it), so Fly starts it there
   if(q.junk){if(q.epoch<T1)(q.bodyName?moonOrbStep:decayStep)(q,T1);continue}   // debris: rails + decay only (Q26)
   if(q.adrift==null){const k=holdRate(q);
     if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(left){

@@ -2680,9 +2680,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const reg = (...a) => { const n = P.sats.length; D.satRegister(put(...a), { day0: 0 }); return P.sats.length > n ? P.sats.at(-1) : null; };
   const q1 = reg(1000e3, 0, 0, true), low = reg(3e3, 0), wide = reg(1000e3, 0, 0.9);
   const v = q1 && D.vesselOf(q1, 5000), dv = v && len(sub(v.r, D.satAt(q1, 5000)[0]));
-  check('a vessel left in Selene orbit is registered in Selene\'s frame (a Relay, if an antenna is all it has); one that skims the ground or leaves the SOI is not',
-    q1 && q1.bodyName === 'Selene' && /^Relay/.test(q1.name) && !D.satsUp().includes(q1) && D.moonSats(B).includes(q1) && !low && !wide && v.body === B && dv < 1e-6,
-    `${q1 ? q1.name : '—'}; Tellus list ${D.satsUp().length}, Selene list ${D.moonSats(B).length}; 3 km periapsis ${low ? 'kept' : 'refused'}, apoapsis past the SOI ${wide ? 'kept' : 'refused'}; flown again around ${v ? v.body.name : '—'}`);
+  check('a vessel left in Selene orbit is registered in Selene\'s frame (a Relay, if an antenna is all it has); one that skims the ground or leaves the SOI is not (it is in flight, Q49)',
+    q1 && q1.bodyName === 'Selene' && /^Relay/.test(q1.name) && !D.satsUp().includes(q1) && D.moonSats(B).includes(q1) && (!low || low.cruise) && (!wide || wide.cruise) && !D.moonSats(B).includes(low) && !D.moonSats(B).includes(wide) && v.body === B && dv < 1e-6,
+    `${q1 ? q1.name : '—'}; Tellus list ${D.satsUp().length}, Selene list ${D.moonSats(B).length}; 3 km periapsis ${low ? (low.cruise ? 'in flight' : 'kept') : 'refused'}, apoapsis past the SOI ${wide ? (wide.cruise ? 'in flight' : 'kept') : 'refused'}; flown again around ${v ? v.body.name : '—'}`);
   // a far-side rover (high-gain antenna, Tellus never up) hears home only through a relay over its horizon that sees Tellus
   const rov = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots: ['cam', 'bat', 'ant', 'sol', null] }, B, [B.R, 0, 0], [0, 1, 0], {});
   const frac = (alt, rel) => { const per = 2 * Math.PI * Math.sqrt((B.R + alt) ** 3 / B.mu); let n = 0, N = 0, via = null, dl = 0, tOk = null;
@@ -4385,6 +4385,33 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('logbook: the orbital period is noted once the engines stop, around Selene and Tellus, not mid-burn',
     !sel.burning && sel.ok && !tel.burning && tel.ok && D.PROG.log.orbit,
     `Selene ${sel.L ? (sel.L.v.p / 60).toFixed(1) + ' min' : '—'} (logged while burning: ${sel.burning}); Tellus ${tel.L ? (tel.L.v.p / 60).toFixed(1) + ' min' : '—'} (while burning: ${tel.burning})`);
+}
+
+// space-8. Missions in flight, slice 1 (space session, QUEUE Q49): a vessel still coasting above the air at flight end
+// that isn't in a lasting orbit becomes a cruise entry, carried between flights leg by leg as the predictor sees it.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,elements,kepler,predictFrom,cruiseNext,flyable,satsUp,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R,len,sub,set ORB_T0(v){ORB_T0=v}};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, Sl = D.SELENE, R = T.R; D.ORB_T0 = 0;
+  const reg = (r, v) => { const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r, v }); const n = P.sats.length; D.satRegister(s, { day0: 0 }); return P.sats.length > n ? P.sats.at(-1) : null; };
+  const reset = () => { P.sats = []; P.day = 0; news.length = 0; };
+  // a transfer to Selene: from 300 km, aimed so the predictor finds the encounter
+  const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
+  for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
+    if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
+  reset(); const qt = reg(tr.r, tr.v), tArr = tr.L[0].endT; D.advanceDays(Math.ceil(tArr / D.DAY_S) + 0.01);
+  const arrived = qt && qt.bodyName === 'Selene' && news.some(m => /entered Selene/.test(m));
+  const back = qt && (qt.cruise || !P.sats.includes(qt) || qt.bodyName === 'Selene');
+  check('in flight: a Selene transfer left at flight end is carried between flights and enters Selene’s sphere when the predictor said',
+    !!tr && qt && qt.cruise !== undefined && arrived && back, `found an aim: ${!!tr}; arrives on day ${(tArr / D.DAY_S).toFixed(2)}; now around ${qt ? (qt.bodyName || 'Tellus') : '—'}; ${news.filter(m => /entered|settled|struck|left/.test(m)).join(' / ')}`);
+  // an escape stays on its rails; a return halts at the top of the air (flyable, waiting); lasting orbits are satellites
+  reset(); const ve = Math.sqrt(2 * T.mu / r0) * 1.05, qe = reg([r0, 0, 0], [0, 0, -ve]); D.advanceDays(3); const eExp = D.kepler([r0, 0, 0], [0, 0, -ve], 3 * D.DAY_S, T.mu)[0], qeUp = D.satsUp().includes(qe);
+  reset(); const ra = R + 5000e3, rp = R + 50e3, aa = (ra + rp) / 2, va = Math.sqrt(T.mu * (2 / ra - 1 / aa)), qr = reg([ra, 0, 0], [0, 0, -va]); D.advanceDays(1); const hr = qr && D.len(qr.r) - R, ep1 = qr && qr.epoch; D.advanceDays(1);
+  const halted = qr && qr.cruise && qr.halt && qr.halt.kind === 'air' && Math.abs(hr - T.atm) < 1 && qr.epoch > ep1 && Math.abs(D.len(D.satAt(qr, qr.epoch)[0]) - R - T.atm) < 1 && D.flyable(qr) && news.some(m => /top of Tellus/.test(m));
+  reset(); const ql = reg([R + 300e3, 0, 0], [0, 0, -Math.sqrt(T.mu / (R + 300e3))]), qs = reg([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)]);
+  check('in flight: an escape carries on outward (the moons perturb it as in flight); a return waits at the top of the air, flyable; low and stationary orbits are still satellites',
+    qe && qe.cruise && Math.abs(qe.epoch - 3 * D.DAY_S) < 1 && D.len(qe.r) > 0.9 * D.len(eExp) && D.elements(qe.r, qe.v, T.mu).e > 1 && halted && ql && !ql.cruise && qs && !qs.cruise && D.satsUp().includes(qs) && !qeUp,
+    `escape at ${qe ? (D.len(qe.r) / 1e6).toFixed(0) : '—'} Mm after 3 days (pure Kepler ${(D.len(eExp) / 1e6).toFixed(0)}, ${qe ? (D.len(D.sub(qe.r, eExp)) / 1e3).toFixed(0) : '—'} km apart); return halted at ${hr ? (hr / 1e3).toFixed(1) : '—'} km`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
