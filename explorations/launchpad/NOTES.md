@@ -975,6 +975,23 @@ ship mesh is built once per design. Now they move in the vertex shader, with no 
 - test.mjs `aerofx-2` (moving parts): the exit swings 0.065 m for 5° on a 0.75 m throat height, opposite the thrust's
   tilt; the plume axis follows; the wiring (`uMv`, `setMoves`, `plumeFrame` in both places, the `rwheel` case).
 
+## Legs and power parts get their looks (2026-10-09, effects beat for parts & pad, QUEUE Q97)
+
+The vehicle session's landing leg (v1.61) and power parts (Q34a) were placeholders: a strut and a box, a dark plate, and
+the battery and computer fell through to the default 1.25 m drum. `partBody` now draws each:
+- **Landing leg.** Stowed: the shock strut along the skin (steel cylinder, chrome piston), the brace beside it, the
+  footpad folded flat at the bottom, hinge and lower-mount fittings. Deployed: hinge → cylinder → piston → ball joint
+  → dished footpad, the foot exactly at the sim's `legFoot` (reach out, drop below the leg's bottom), and a brace from
+  the lower mount to the strut's middle. The pose changes with the mesh rebuild on Y (no swing animation yet).
+- **Solar wing.** Stowed: a folded pack of four panels under a cover. Deployed: boom and yoke, four framed panels of
+  cells, edge spars; the wing's plane still holds the outward direction and y, as `power.js` assumes.
+- **Body cells.** 4×4 cell tiles on a steel backing that follow a 0.625 m hull's curve (on a 2.5 m hull they sit a
+  centimetre proud at the edges).
+- **Battery:** a ribbed ring of cells, an orange band, two terminal boxes. **Computer:** a dark equipment ring with six
+  gold-foil and black avionics boxes and a cable run.
+- Views `refView(108)`–`(111)`: a lander's legs stowed and deployed, a satellite stowed and with its wings out.
+- test.mjs `aerofx-3` (part looks). Not yet: legs swinging down over a second, wings unfolding.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed

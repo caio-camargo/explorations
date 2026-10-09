@@ -1014,19 +1014,37 @@ function partBody(out,p){
     case'petrel':engine(out,p,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o);break;
     case'kestrel':engine(out,p,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o);break;
     case'condor':engine(out,p,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o);break;
-    // solar cells and wing (vehicle session, Q34a; placeholders until the parts & pad beat draws them): cells, a dark plate on
-    // the skin; the wing folded, a box on its arm; deployed, an arm out and a flat panel span long
-    case'bpanel':rbox(out,[x+Math.cos(p.phi||0)*.02,y+h/2,z+Math.sin(p.phi||0)*.02],.015,h/2,.3,[.12,.16,.32,1],p.phi||0);break;
-    case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)];
-      if(p.dep){tube(out,[x,y+h/2,z],[x+n[0]*.6,y+h/2,z+n[2]*.6],.03,C.ST,6);const L=d.span;
-        rbox(out,[x+n[0]*(.6+L/2),y+h/2,z+n[2]*(.6+L/2)],L/2,h/2,.01,[.12,.16,.32,1],a)}
-      else rbox(out,[x+n[0]*.08,y+h/2,z+n[2]*.08],.06,h/2,.2,C.ST,a)}break;
-    // landing leg (vehicle session, Q31; a placeholder until the parts & pad beat draws it): folded, a strut along the skin;
-    // deployed, a main strut and a brace out to the foot, and a footpad
-    case'leg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)];
-      if(p.dep){const F=[x+n[0]*d.reach,y-d.drop,z+n[2]*d.reach];tube(out,[x+n[0]*.05,y+h*.85,z+n[2]*.05],F,.05,C.ST,8);tube(out,[x+n[0]*.05,y+h*.2,z+n[2]*.05],F,.03,C.D,6);
-        lathe(out,[[0,0,C.D],[.18,0,C.D],[.18,.05,C.D],[0,.08,C.D]],F,12,[false,false])}
-      else rbox(out,[x+n[0]*.06,y+h/2,z+n[2]*.06],.05,h/2,.07,C.ST,a)}break;
+    // power parts and the landing leg (QUEUE Q97, effects beat on the parts & pad's behalf). n is the part's outward
+    // direction on its host's skin, t across it.
+    // solar wing: stowed, a folded pack of four panels against the skin; deployed, a boom and yoke out to a wing of four
+    // framed panels (its plane holds n and y, as power.js assumes)
+    case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],CELL=[.08,.11,.28,4];
+      if(p.dep){const L=d.span,b0=.6,w=L/4;tube(out,P(.02,h/2),P(b0-.05,h/2),.03,C.ST,6);rbox(out,P(b0-.03,h/2),.03,h*.5,.025,C.D,a);   // boom, yoke
+        for(let k=0;k<4;k++){const c=b0+(k+.5)*w;rbox(out,P(c,h/2),w/2-.015,h/2-.02,.008,CELL,a);rbox(out,P(c,h/2),w/2,h/2,.004,C.ST,a)}   // cells on a frame
+        rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}   // the wing's edge spars
+      else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
+    // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
+    case'bpanel':{const a=p.phi||0,R=.625,cx=x-Math.cos(a)*R,cz=z-Math.sin(a)*R,CELL=[.08,.11,.28,4];
+      for(let k=0;k<4;k++){const ak=a+(k-1.5)*.17,c=Math.cos(ak),s=Math.sin(ak);rbox(out,[cx+c*(R+.008),y+h/2,cz+s*(R+.008)],.004,h/2,.054,C.ST,ak);
+        for(let j=0;j<4;j++)rbox(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
+    // battery: a ribbed ring of cells, an orange stripe, two terminal boxes
+    case'batt':{const pr=[[.625,0,C.D],[.625,.02,C.D]];for(let k=0;k<5;k++){const y0=.02+k*.022;pr.push([.61,y0,C.K],[.61,y0+.011,C.K],[.625,y0+.011,C.D],[.625,y0+.022,C.D])}
+      pr.push([.625,.13,C.O],[.625,h,C.O]);lathe(out,pr,o);for(const a of[.6,3.7])rbox(out,[x+Math.cos(a)*.64,y+h*.55,z+Math.sin(a)*.64],.025,.04,.06,C.D,a)}break;
+    // onboard computer: a dark equipment ring with six gold-foil avionics boxes and a cable run between them
+    case'ocomp':{lathe(out,[[.625,0,C.D],[.625,h,C.D]],o);for(let k=0;k<6;k++){const a=k*Math.PI/3+.3;
+        rbox(out,[x+Math.cos(a)*.66,y+h/2,z+Math.sin(a)*.66],.035,h*.36,.11,k%3?C.AU:C.BK,a)}
+      lathe(out,[[.645,h*.12,C.K],[.645,h*.2,C.K]],o,28,[false,false])}break;
+    // landing leg. The foot is where the sim puts it (legFoot: reach out, drop below the leg's bottom). Stowed: the shock
+    // strut lies along the skin, its footpad folded flat at the bottom, the brace beside it. Deployed: hinge → outer cylinder
+    // → chrome piston → footpad on a ball joint, and a brace from the lower mount to the strut's middle.
+    case'leg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],P=(r,yy)=>[x+n[0]*r,y+yy,z+n[2]*r],PIS=[.74,.75,.77,1],H=P(.08,h*.9);
+      rbox(out,P(.05,h*.9),.05,.07,.1,C.D,a);rbox(out,P(.04,h*.12),.04,.05,.08,C.D,a);   // hinge and lower mount fittings
+      if(p.dep){const F=[x+n[0]*d.reach,y-d.drop,z+n[2]*d.reach],K=add(H,mul(sub(F,H),.55)),Fp=add(F,[0,.09,0]);
+        tube(out,H,K,.05,C.ST,10);tube(out,K,Fp,.032,PIS,10);tube(out,P(.06,h*.12),add(H,mul(sub(F,H),.6)),.022,C.D,6);
+        lathe(out,[[.02,.06,C.D],[.05,.09,C.D],[.02,.12,C.D]],F,8,[false,false]);   // ball joint
+        lathe(out,[[0,0,C.D],[.2,0,C.D],[.22,.04,C.D],[.12,.07,C.D],[0,.07,C.D]],F,16,[false,false])}   // footpad
+      else{tube(out,H,P(.08,h*.4),.05,C.ST,10);tube(out,P(.08,h*.4),P(.08,.1),.032,PIS,10);tube(out,P(.05,h*.12),P(.07,h*.55),.02,C.D,6);
+        rbox(out,P(.1,.05),.03,.05,.16,C.D,a)}}break;   // folded footpad
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
