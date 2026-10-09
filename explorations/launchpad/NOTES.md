@@ -948,8 +948,32 @@ on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders`
   exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
 - A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
   run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
-- `VAPOR_SIDE = false`: core only (A/B). Cost: COSTQ64.
+- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
+  15 km; not yet measured (the GPU was busy all evening)...
 - New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
+
+## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
+
+The control session's engine gimbal (`p.gv`) and steerable fin plates (`p.fd`) steered the rocket but never showed: the
+ship mesh is built once per design. Now they move in the vertex shader, with no mesh rebuild.
+- **`MESH_VS` has a small table** `uMv[48]`: up to 16 moving parts, three vec4s each: (pivot, part index), (mode, axis,
+  ring radius), (rotation). `setMoves(u, parts)` fills it from `setMarks`, so every mesh draw that sets marks (the ship,
+  fleet, debris, satellites) also sets its moving parts; parts at rest are left out, so most draws send zeros.
+  Mode 1: an engine's bell vertices (kind 2) turn about the throat by the quaternion from `tdir` to `tdir + gv`; the throat
+  height is read once per engine from its own mesh (`bellThroat`). Canted engines: the pivot is tilted with the mount.
+  Mode 2: a fin ring's plates (kind 6 beyond 1.02× the ring radius) turn about their radial axes `FIN4[j]` through
+  mid-chord by `fd[j]`. Mode 3: a radial fin, the whole part about its radial axis. Same sign as the sim's plate normal.
+- **The plume follows**: `plumeFrame(e)` gives the exhaust's tilt and exit for both the plume draw and `plumeLight`.
+  It also fixes canted engines' exit point, which was the untilted one (off by sin(cant)·h, ~0.2 m on a 10° Kestrel).
+  Escape-tower nozzles have no `h`: their exit stays at their mount.
+- **The reaction wheel** (`rwheel`) had the default drum; now a machined steel housing between bolted flanges, a
+  gold-foil band and four motor pods.
+- `MOVES_FX = false` freezes bells and plates (A/B). Views: `refView(105)` the Orbiter's Kestrel at its full 5°,
+  `106` a steerable fin ring at ±20°, `107` the reaction wheel (all builder close-ups; pass the career gate first).
+- **A/B pitfall:** an expression that sets a toggle off, renders, and sets it back on in one go photographs the "on"
+  state: the page's own loop redraws before the screenshot. Leave the toggle off until the picture is taken.
+- test.mjs `aerofx-2` (moving parts): the exit swings 0.065 m for 5° on a 0.75 m throat height, opposite the thrust's
+  tilt; the plume axis follows; the wiring (`uMv`, `setMoves`, `plumeFrame` in both places, the `rwheel` case).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 

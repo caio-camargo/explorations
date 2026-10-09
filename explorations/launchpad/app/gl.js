@@ -308,8 +308,20 @@ void main(){
 }`;
 const MESH_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;layout(location=4) in vec4 aU;layout(location=5) in vec2 aK;
-uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
+uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
+// moving parts (setMoves, QUEUE Q23): up to 16 entries of three vec4s, (pivot, part index), (mode, axis x, axis z, ring
+// radius), (rotation): mode 1 an engine's bell (kind 2) turned by a quaternion about its throat; mode 2 a fin ring's
+// plates (kind 6 beyond the ring radius), plate j by angle .[j] about its radial axis FIN4[j]; mode 3 a radial fin, .x
+vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
+vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
+void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5);
+ if((k==2||k==6)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
+  if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
+  else if(B.x<2.5){if(length(d.xz)>B.w){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
+   vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}}
+  else{vec3 ax=vec3(B.y,0.,B.z);P=A.xyz+rotA(d,ax,Q.x);N=rotA(N,ax,Q.x);}
+  break;}
+ vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
 uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
@@ -918,6 +930,9 @@ function partBody(out,p){
     case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
+    // reaction wheel (Q23): a squat machined housing between bolted flanges, a gold-foil band, four motor pods
+    case'rwheel':lathe(out,[[.625,0,C.D],[.625,.035,C.D],[.6,.035,C.ST],[.6,.1,C.ST],[.6,.1,C.AU],[.6,.2,C.AU],[.6,.2,C.ST],[.6,.265,C.ST],[.625,.265,C.D],[.625,.3,C.D]],o);
+      for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;rbox(out,[x+Math.cos(a)*.63,y+h/2,z+Math.sin(a)*.63],.035,.07,.06,C.D,a)}break;
     case'rfin':case'cfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
@@ -1045,7 +1060,27 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
 function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
     CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
-  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA)}
+  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);setMoves(u,parts)}
+// the moving parts of these parts into the mesh shader's uMv table (QUEUE Q23): engine bells turned by their gimbal
+// (p.gv: the thrust along tdir + gv, the bell turning about its throat) and steerable fin plates by their deflection
+// (p.fd, rad, about each plate's radial axis through mid-chord, the sim's sign). Up to 16; parts at rest are left out.
+const MVA=new Float32Array(48*4),BELL_YT=new Map();
+function bellThroat(d){let y=BELL_YT.get(d.key);if(y!=null)return y;const a=[],b=d.sc?PARTS[d.base]:d;partShape(a,{d:b,pos:[0,0,0],y0:0,h:b.h,i:0});y=0;
+  for(let i=0;i<a.length;i+=VX)if(a[i+14]===KIND.bell){y=a[i+13];break}y*=d.sc||1;BELL_YT.set(d.key,y);return y}
+function engMove(p){const g=p.gv;if(!g||Math.abs(g[0])+Math.abs(g[1])+Math.abs(g[2])<1e-5)return null;const t=p.tdir||[0,1,0],q=qFromTo(t,norm(add(t,g)));
+  let pv=[p.pos[0],p.y0+bellThroat(p.d),p.pos[2]];if(p.tdir){const m=[p.pos[0],p.y0+p.h,p.pos[2]];pv=add(m,qrot(tiltQ(p.tdir),sub(pv,m)))}return{pv,q}}
+// an engine's exhaust frame (vessel coordinates): qt its tilt (null: straight down the axis), ex the nozzle exit. Follows
+// the cant (tdir, about the mount) and the gimbal (about the throat), so the plume leaves the bell where it is drawn.
+function plumeFrame(e){const t=e.tdir||null;let ex=[e.pos[0],e.y0,e.pos[2]],qt=t?tiltQ(t):null;
+  if(t&&e.h){const m=[e.pos[0],e.y0+e.h,e.pos[2]];ex=add(m,qrot(qt,sub(ex,m)))}   // (escape-tower nozzles carry no h: their exit is their mount)
+  const mv=MOVES_FX?engMove(e):null;if(mv){qt=tiltQ(norm(add(t||[0,1,0],e.gv)));ex=add(mv.pv,qrot(mv.q,sub(ex,mv.pv)))}return{qt,ex}}
+let MOVES_FX=true;   // false: bells and fin plates stay put (A/B)
+function setMoves(u,parts){MVA.fill(0);let n=0;if(MOVES_FX)for(const p of parts){if(n>=16)break;const i=p.i;if(i==null||i<0||i>=96||!p.on)continue;const d=p.d;
+    if(d.kind==='engine'){const e=engMove(p);if(!e)continue;MVA.set([...e.pv,i,1,0,0,0,...e.q],n*12);n++}
+    else if(d.ctl&&p.fd&&p.fd.some(x=>Math.abs(x)>1e-4)){const k=d.sc||1;
+      if(d.kind==='fins')MVA.set([p.pos[0],p.y0+d.chord*k/2,p.pos[2],i,2,0,0,.625*k*1.02,p.fd[0]||0,p.fd[1]||0,p.fd[2]||0,p.fd[3]||0],n*12);
+      else MVA.set([p.pos[0],p.y0+d.h/2,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi),0,p.fd[0]||0,0,0,0],n*12);n++}}
+  gl.uniform4fv(u['uMv[0]'],MVA)}
 const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i/16,w]);lathe(a,pr,[0,0,0],24,[true,true]);return makeMesh(a)})();
 // propellant profiles (Waterfall's "templates"): colours of core, diamonds, afterburning mantle, gas glow, soot absorption
 // per channel; K = gains [core, diamonds, mantle, soot]. Engines pick one plus their exit pressure pe (atm) in PFX.
@@ -1195,7 +1230,7 @@ const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[fals
 function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
   const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
   for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
-      Q=e.tdir?qmul(S.q,tiltQ(e.tdir)):S.q,o=add(sub(p,camW),qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
+      pf=plumeFrame(e),Q=pf.qt?qmul(S.q,pf.qt):S.q,o=add(sub(p,camW),qrot(S.q,sub(pf.ex,S.cm))),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
     if(thr<.01&&g[0]+g[1]+g[2]<.01)continue;
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
     const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);

@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (window.simulate0) window.simulate = window.simulate0; else window.simulate0 = window.simulate;   // undo an ignition view's freeze
@@ -281,6 +281,20 @@ window.refView = async (n) => {
       cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)) + yaw; }
     cam.pitch = pitch; cam.dist = dist; const t0 = simT; while (simT - t0 < 0.8) { hold(); advPhys(S); render() }
     window.simulate = () => {}; await settle(); bare(); return 'fin vapor h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km M ' + S.mach.toFixed(2) + ' q ' + (S.qdyn / 1000).toFixed(1) + ' kPa aoa ' + (S.aoa * 57.3).toFixed(1) + ' trails ' + FTR.size;
+  }
+  // 105–107 (Q23): moving parts in the builder's close-up. 105 the Orbiter's Kestrel gimballed to its full range, 106 a
+  // steerable fin ring with its plates at ±20°, 107 the reaction wheel: [design, key, yaw, pitch, dist, set(part)]
+  const mov = { 105: ['Orbiter', 'kestrel', -0.5, -0.05, 6, p => { p.gv = [Math.sin(p.d.gim * Math.PI / 180), 0, 0] }],
+    106: [['pod', 'rwheel', 't2', 'cfins', 'petrel'], 'cfins', 0.4, 0.15, 6, p => { p.fd = [0.35, -0.35, 0.35, -0.35] }],
+    107: [['pod', 'rwheel', 't2', 'cfins', 'petrel'], 'rwheel', 0.4, 0.2, 3.5, () => {}] };
+  if (mov[n]) {
+    const [design, key, yaw, pitch, dist, set] = mov[n];
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    stackDef = JSON.parse(JSON.stringify(typeof design === 'string' ? PRESETS[design] : design)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
+    const p = S.parts.find(q => q.d.key === key);
+    if (!p) throw new Error(`refView(${n}): no ${key}`);
+    set(p); cam.edY = p.y0 + p.h / 2 - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return key + (p.gv ? ' gv ' + p.gv.map(x => x.toFixed(3)) : '') + (p.fd ? ' fd ' + p.fd : '');
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
   // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]
