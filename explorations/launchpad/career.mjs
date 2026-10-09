@@ -34,8 +34,10 @@ const PLANS = {
 };
 function planCost(pl) {
   let st = typeof pl.stack === 'string' ? api.PRESETS[pl.stack] : pl.stack;
-  if (pl.kind === 'orbit') st = [...(pl.m > 1 ? api.PRESETS.Heavy : api.PRESETS.Orbiter), 'sci', ...Array(Math.round(pl.m / 0.5)).fill('ballast')];
-  if (pl.kind === 'passOrbit') st = ['chute', 'bio', 'pod', 'shield', ...api.PRESETS.Orbiter.slice(2)];
+  // the vehicle lane's proven presets (Q144, PLAYTEST #24): the Beeper for an instrument package in orbit, the Passenger
+  // Orbiter for a biocapsule's orbit; heavier lifts still add ballast to the Orbiter or the Heavy
+  if (pl.kind === 'orbit') st = !pl.m && api.PRESETS.Beeper ? api.PRESETS.Beeper : [...(pl.m > 1 ? api.PRESETS.Heavy : api.PRESETS.Orbiter), 'sci', ...Array(Math.round(pl.m / 0.5)).fill('ballast')];
+  if (pl.kind === 'passOrbit') st = api.PRESETS['Passenger Orbiter'] || ['chute', 'bio', 'pod', 'shield', ...api.PRESETS.Orbiter.slice(2)];
   if (pl.kind === 'moon' || pl.kind === 'rover') st = api.PRESETS.Probe;
   let c = cost(st);
   if (pl.kind === 'orbit') c *= 1 + pl.alt / 1500 + pl.inc / 120;   // more fuel for higher and more inclined orbits
