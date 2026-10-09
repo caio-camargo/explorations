@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -57,6 +57,12 @@ the feedback I paste into PLAYTEST items.*
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
 - **Version numbers:** latest on `main` is v1.53 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
+  Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
+  **Effects:** after Q20, Q63 and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
+  Q21, Q24, Q66, Q67, then the look & sound evergreen list. Claim each item and keep to its beat's files.
+  **Flow:** Q3 is **plan only tonight** (default, Caio may override): write the plan in NOTES and don't build it. Take Q4
+  and Q62 next. **QA:** Q29 becomes ready as soon as Q20 is on `main`; it is M0's finish line, so it jumps the QA queue.
 - **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the
   space lane's M2 groundwork. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
 
@@ -78,7 +84,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ready |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ready |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | ready (plan first) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | ready (plan only tonight; build after Caio reads it) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ready |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -162,7 +168,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ready |
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | after Q42 |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ready |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ready |
 
