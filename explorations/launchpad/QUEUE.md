@@ -56,7 +56,7 @@ the feedback I paste into PLAYTEST items.*
 - **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
-- **Version numbers:** latest on `main` is v1.55 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.56 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -103,7 +103,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 |---|---|---|---|---|---|
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
-| Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | → economy 2026-10-08 |
+✓ v1.56 `876a197` (leases by relations, sea 4M, members free; fee on the debrief) |
 | Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ready |
 | Q8 | Ladder balance: Selene/Nyx firsts above their rocket; nyxfind not free on the farside flight (Caio overrode the W1 default) | M1 | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ready |
@@ -273,3 +273,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - economy — any new kind of flight pay calls `debPaid(R, kind, label, pay)` so the Debrief lists it (else it hides in "days passing") — NOTES § UI "Slice 3 built"
 - QA — robot row for TESTING 127: land, crash, End flight from orbit, the Assembly button; shots of each Debrief — TESTING 127
 - Caio — Revert and R skip the Debrief (quick retry; the record stays under Last flight). Default: keep it that way — TESTING 127
+- economy — dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) — NOTES v1.56
+- economy — overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent — NOTES v1.56
