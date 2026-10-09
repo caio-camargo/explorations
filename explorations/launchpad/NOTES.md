@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -7286,7 +7286,8 @@ Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust sha
 level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
-- test.mjs `aerofx-3` (engine voices).
+- test.mjs `aerofx-3` (engine voices).
+
 ### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
 - **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
   kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
@@ -8116,6 +8117,30 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## v1.80 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
+
+MIDGAME.md § Satellites (approved): lifetime is a design choice; **replacement is for upgrades**; servicing is special,
+for valuable assets. Built in `sim/program.js` and `sim/contracts.js`:
+- **A satellite keeps its era.** `satEra(q)` stamps the computing era at its first day up (`q.era`; satellites from
+  older saves get today's). **What it earns drops for each era it falls behind**: `satQual(q)` = 1 / (1 + 0.35 × eras
+  behind): 74 % one behind, 59 % two. Applied to TV's daily pay (`utilTick`) and imagery sales (`satTick`, the space
+  lane's line, one factor). When a new era arrives, each satellite that earns gets one news line: "*N* generations
+  behind, earns *x* %. A new one would earn it all, or service it" (`obsTick`).
+- **Servicing contracts** (`CT.service`, government or commercial): offered for **one of ours that's valuable and
+  behind**: TV in the capital's sky, or an imager with 30 % contact or more, at least an era behind, not already on
+  the board (`serviceTarget`). Pay 96M per era behind (before multipliers). **A flight that docks with it** (it's in
+  `s.att`) completes it, and the satellite is brought up to date (`after`: `q.era` = now). `contractEval` now calls an
+  optional `CT[type].after(c, s)` on completion.
+
+**TV's pay against it** (the queue asked): `TV_RATE` 0.4M a day while in the capital's sky, which v1.71 made all day:
+160M a program year. A stationary TV satellite on a Beeper-class launcher costs ~60–80M, so it pays back in half a
+year. One era behind it loses ~42M a year; a new one pays back the loss in under two years, and eras are years 3,
+7, 14, 25: **replacing once per era is worth it, as MIDGAME wants.** Servicing (96M from its users, plus the earnings
+back) is the better deal for an expensive satellite. TV's rate is left as it is; the career runner doesn't fly TV yet,
+so a measurement waits for that.
+
+Test `econ-11` (3 checks; the era cut mutation-tested).
 
 ## v1.79 — warnings before launch, legs by themselves, the escape tower's own shelf (2026-10-09, vehicle session, QUEUE Q48, Q121, Q32)
 
