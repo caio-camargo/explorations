@@ -109,6 +109,15 @@ const CT={
       return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
     title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
+  // flight-judged (Q180, slice 4): a rendezvous needs a near pass during the flight (rdvTick); a retrieval needs the
+  // satellite home, stowed in a closed bay (Caio 2026-10-09: the bay is the dependency, so offers wait for the first docking)
+  rdv:{src:['gov','com'],req:'beeper',open:()=>!!rdvTarget(),gen:R=>{const q=rdvTarget();if(!q)return null;return{sat:q.id,name:q.name,junk:!!q.junk,pay:80*1.6,dur:200+R()*150}},
+    title:p=>`Rendezvous with ${p.name}`,brief:p=>`Fly within ${RDV_D} m of ${p.name} and hold there, under ${RDV_V} m/s relative, so the client can look it over${p.junk?' (spent hardware, tumbling or not)':''}.`,
+    why:p=>p.junk?`${p.name} is spent hardware nobody has looked at`:`${p.name} has gone quiet`,ok:(R,p)=>!!(R.rdv&&R.rdv[p.sat])},
+  retrieve:{src:['gov'],req:'stationcrew',open:()=>!!retrieveTarget(),gen:R=>{const q=retrieveTarget();if(!q)return null;return{sat:q.id,name:q.name,worth:Math.round(shapeWorth(q)*10)/10,pay:150*1.6,dur:400+R()*200}},
+    title:p=>`Bring ${p.name} home`,brief:p=>`Grapple ${p.name}, stow it in a cargo bay, close the doors and land it at home. Its hardware comes back to you too (about ${fmtM(p.worth)} refurbished).`,
+    why:p=>`${p.name} is dead in orbit and worth bringing back`,ok:(R,p,s)=>!!s&&s.alive&&s.landed&&s.body===TELLUS&&(s.att||[]).some(a=>a.kind==='bay'&&isSat(a.e,p.sat)&&s.parts[a.hpi]&&doorF(s.parts[a.hpi])===0),
+    after:(c,s)=>{const R=s.rec,w=c.p.worth;if(w>0){income(w);debPaid(R,'refurb',`${c.p.name}'s hardware`,w);HOOK.news(`${c.p.name}'s hardware refurbished: +${fmtM(w)}`,'ok')}}},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
@@ -188,6 +197,20 @@ function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].se
 // and not already on the board or taken
 function serviceTarget(){const on=new Set([...(PROG.offers||[]),...(PROG.active||[])].filter(c=>c.type==='service').map(c=>c.p.sat));
   return satsUp().find(q=>!q.junk&&!on.has(q.id)&&compEra()>satEra(q)&&(q.tvOn||q.cam&&(q.contact||0)>=0.3))||null}
+// rendezvous and retrieval (Q180): spent hardware or a satellite of ours that has gone quiet (an era behind and not
+// earning) is worth a look; a quiet one with RETR_MIN M of hardware is worth bringing home. Rivals' satellites wait
+// for rivals' stations (W22 3). The near pass is sampled each tick of a flight, in the target's frame (tgtOf's way);
+// a satellite near enough to fly is loaded into the flight (loadEntry), so FLEET vessels count by their registry entry.
+const RDV_D=100,RDV_V=1,RETR_MIN=8;
+const isSat=(e,id)=>!!e&&(e.id===id||!!e.reg&&e.reg.id===id);
+const onBoard=k=>new Set([...(PROG.offers||[]),...(PROG.active||[])].filter(c=>c.type===k).map(c=>c.p.sat));
+const quiet=q=>!q.junk&&!q.crew&&!(q.attached||[]).length&&compEra()>satEra(q)&&!q.tvOn&&!(q.cam&&(q.contact||0)>=0.3);
+const shapeWorth=q=>REFURB*(q.shape||[]).reduce((a,o)=>a+(PRICE[o.k]??3),0);
+function rdvTarget(){const on=onBoard('rdv');return satsUp().find(q=>!on.has(q.id)&&(q.junk||quiet(q)))||null}
+function retrieveTarget(){const on=onBoard('retrieve');return satsUp().find(q=>!on.has(q.id)&&quiet(q)&&shapeWorth(q)>=RETR_MIN)||null}
+function rdvTick(s,R){const A=(PROG.active||[]).filter(c=>c.type==='rdv'&&!(R.rdv&&R.rdv[c.p.sat]));if(!A.length||s.landed)return;
+  for(const c of A){const v=FLEET.find(x=>x!==s&&x.alive&&x.body===s.body&&isSat(x,c.p.sat)),q=!v&&orbitsAt(s.body).find(x=>x.id===c.p.sat);if(!v&&!q)continue;
+    const[r,u]=v?[v.r,v.v]:satAt(q,progT(s));if(len(sub(r,s.r))<=RDV_D&&len(sub(u,s.v))<RDV_V)(R.rdv||(R.rdv={}))[c.p.sat]=1}}
 // stations for station work (Q162): our registered stations with their state; ST_LOW days of supplies make a resupply job
 const ST_LOW=40;
 // bases too (Q9 slice 3): a landed beacon and everything within BASE_R, read with baseOf (same fields as stationOf)

@@ -1939,6 +1939,24 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
+
+- **Rendezvous** (gov, com; after `beeper`): for spent hardware (`q.junk`) or a satellite of ours that has **gone
+  quiet** (an era behind and not earning: no TV in view, an imager under 30 % contact; no crew, nothing docked).
+  Done by a **near pass during the flight**: `rdvTick` (called from `missionTick`) samples each tick for being within
+  `RDV_D` = 100 m at under `RDV_V` = 1 m/s, in the target's frame as `tgtOf` does; a target loaded into the flight as
+  a vessel (`loadEntry`, within 2.5 km) counts through `s.reg`. Recorded in `R.rdv[id]`. Pays 80 (×1.6).
+- **Retrieval** (gov; after **`stationcrew`**, the first docking): for a quiet satellite with at least `RETR_MIN` = 8M
+  of hardware at refurbishment value. **Done only when the flight lands at home with it stowed in a cargo bay with the
+  doors shut** (`att` kind `bay`, `doorF` 0). Held on a port or by the claw doesn't count: the bay is the dependency
+  (Caio, 2026-10-09). Pays 150 (×1.6), and in `after` **its hardware comes back** (W22 4's default): the shape's
+  prices × `REFURB`, its own Debrief line (`refurb`). `dockEnd` already takes it off the registry ("brought home").
+- **Not yet:** rivals' satellites as targets (W22 3: once rivals have stations, Q138); a vehicle-part era gate. The
+  bay and the arm are buyable from the first flight, since only rover parts have gates (`rvPartOpen`). The *contract*
+  waits for `stationcrew`, but the parts don't. Proposed for vehicle: gate `bay` and `arm` on the first docking
+  (QUEUE *Proposed*).
+Test `econ-19` (3 checks: offers and the gate; near/far/fast passes; bay closed/open/port).
+
 ## v1.97 — the last Debrief survives a reload (2026-10-09, space session as overflow, QUEUE Q100)
 
 - `debriefOf` also keeps the record in `PROG.lastDebrief`, so it's saved with the program; `debRestore()` (sim) brings
@@ -9542,3 +9560,12 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 - markers and drag handles for queued nodes on the map (flow / the map's owner);
 - a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
   the capture case).
+
+**`m1` passes (QA session, 2026-10-09).** With Esc pause (Q39), the Debrief (Q2), PLAYTEST #25/#26 fixed and the Beeper
+preset (#24), the new-career robot run is green: weather ✓, beeper ✓ on the **Beeper** preset (51M of 104M), the clock
+stands still under Esc, a Debrief after each flight, and no overlapping boxes on any screen. M1's robot finish line is
+met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing check, and a person playing the first hour.
+
+**TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
+"Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
+suite you run before merging, instead of waiting for someone to read the file.
