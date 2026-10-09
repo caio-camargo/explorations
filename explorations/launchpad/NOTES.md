@@ -1973,6 +1973,39 @@ Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test
 caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
 view) is flow's, proposed in QUEUE.
 
+## Plan: asteroid capture and mining, the space side (2026-10-09, space session, QUEUE Q140; plan only, M4–M5)
+
+The design is LATE_GAME.md § "Asteroids: capture and mining" (round 6, approved): types by spectra, the ARM-style
+capture of a small rock or a boulder, mining in place in the belt, products into the five goods, the era order (capture
+in epoch 7 with solar-electric tugs, mining in 8–9), parking at Selene's L4/L5 (measured stable), planetary defence as a
+pressure. This is the space lane's build order on top of it, with what each step needs.
+
+1. **Seeded near-Tellus rocks** (needs Q87 slice 2: heliocentric rails): SYSTEM.md's seeded class as small bodies on
+   Helios-centred Kepler orbits close to Tellus's (`WSEED`), each with a size, a type (C ~75 %, S, M), a spin; a few
+   pass through Tellus's sphere (temporary captures, real). A survey telescope (economy: a facility) finds them; until
+   found they aren't on the map (pillar 4).
+2. **The rock as an object:** a registry entry with no parts: a rubble-pile shape (world's seeded small-body ground,
+   G7, gives the surface), mass from size and type, spin. A flyby with the spectrometer (R4) confirms the type; contact,
+   grappling and docking reuse the arm and claw (stations plan, Q30's robot rows), so "take a boulder" is the arm on
+   the surface.
+3. **Low thrust on rails** (shared with Q109's NEP and fusion): a continuous-thrust stepper for vessels on rails (the
+   Edelbaum average for routines, integrated for flights); a solar-electric tug part (vehicle). **The cost is time:** a
+   2 N tug on a 500 t rock accelerates at 4e-6 m/s², so 200 m/s takes ~5e7 s, about 1,700 program days (~4 game years).
+   That's a routine's job, not a player's.
+4. **Despin and the combined centre of mass:** the rock and the tug are one rigid body once docked (the stations
+   model); despinning spends RCS or the tug's own thrust off-axis; the tug's thrust goes through the pair's centre of
+   mass or it turns them (the hard part LATE_GAME names, physics as it is).
+5. **Parking** at Selene's L4/L5 (stable today, `study_lagrange.mjs`) or a distant retrograde orbit; a parked rock is
+   a node (the network screen) that a mining routine draws from.
+6. **Mining in place** (with economy and world): a landed base on a belt body (landRegister on small bodies, G7's
+   ground), producing propellant or materials by type, shipped by routines.
+7. **Deflection** (with economy; a pressure, so a world setting): a seeded rock on a path that meets Tellus (the
+   predictor's impact, at heliocentric scale) becomes a contract; a kinetic impactor changes its velocity by β·m·v/M
+   (DART's β ~3.6); rivals try too (LATE_GAME: failing is embarrassment and money).
+
+**Measure first:** the Δv to "easily retrievable" rocks in our scaled system (ARM: under 500 m/s with the Moon's help;
+here with Selene's), once heliocentric rails exist; a tug's real transfer time on the low-thrust stepper.
+
 ## Plan: the automation ladder (2026-10-09, space session with economy's parts, QUEUE Q127; plan only)
 
 From [`MIDGAME.md`](MIDGAME.md) (approved: decision 2, automation arrives with compute; decision 3, every routine has a
