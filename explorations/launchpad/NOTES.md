@@ -1069,7 +1069,13 @@ visible change), then Steppe.
   a ±6 % panel-to-panel shade, dark seams every 1.3 m and every eighth of the way round, rougher and not metallic; bells
   olive-tinted. `refView(114)` Cape, `(115)` Steppe.
 - test.mjs `aerofx-3` (hardware schools): 69 % of closed superpowers draw Steppe (weight 0.7), open superpowers never.
-- Next: step 4 (the interstage cover: skirt or lattice), 5 (roundel), then 6–7.
+- **Step 4 built:** the interstage cover. A decoupler with an engine sitting right on top of it draws a cover round that
+  engine at the stack radius, with the decoupler's part index and school, so it falls away with the lower stage and the
+  upper engine fires bare (checked in `refView(75)`, staging). Cape: a closed black skirt with 24 ribs. Steppe: two rings
+  and 24 crossing tubes, the bell visible through them. **This changes Cape's look** (today's Orbiter on the pad showed
+  its Petrel; now a ribbed skirt covers it, as POWERS.md's Cape brief has it). `INTERSTAGE_FX = false` brings back the bare
+  engine. Not drawn: canted engines.
+- Next: step 5 (roundel), then 6–7.
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 

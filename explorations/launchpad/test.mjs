@@ -4125,6 +4125,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('hardware schools: a power\'s school follows its affinity (closed superpowers mostly Steppe, open ones Cape) and never changes; a part draws in its maker\'s school',
       steppeShare > 0.6 && steppeShare < 0.8 && stable && openCape && imp === S1.schoolOf(1) && own === S1.schoolOf(env.HOME)
         && /out\.push\([^)]*PK\.k\+32\*\(PK\.sch\|\|0\),PK\.i\)/.test(pg) && /int k=int\(aK\.x\+\.5\)%32;/.test(pg) && /sch=k\/32;k-=32\*sch;/.test(pg)
+        && /if\(INTERSTAGE_FX&&p\.d\.kind==='dec'\)/.test(pg) && /sch=partSchool\(p\);PK=\{o:\[x,y0,z\],k:KIND\.collar/.test(pg)
         && /SCHOOL_FORCE = 0;/.test(readFileSync(new URL('./views.js', import.meta.url), 'utf8')),
       `closed superpowers drawing Steppe: ${(steppeShare * 100).toFixed(0)} % (0.7 expected)`);
   }

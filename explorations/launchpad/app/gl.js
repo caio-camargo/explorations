@@ -1084,6 +1084,17 @@ function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(
 function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;partShape(a,p);
     if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
       const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
+    // the interstage cover (Q102 step 4): a decoupler with an engine sitting right on top of it gets a cover around that
+    // engine at the stack's radius: Cape a closed ribbed skirt, Steppe an open lattice (the engine shows through). It is
+    // the decoupler's (its part index and school), so it falls away with the lower stage. Drawing only: outline, aero and
+    // PARTS untouched. INTERSTAGE_FX = false leaves the engine bare, as before.
+    if(INTERSTAGE_FX&&p.d.kind==='dec'){const up=parts.find(q=>q!==p&&q.d.kind==='engine'&&!q.tdir&&Math.abs(q.y0-(p.y0+p.h))<1e-3&&Math.abs(q.pos[0]-p.pos[0])<1e-3&&Math.abs(q.pos[2]-p.pos[2])<1e-3);
+      if(up){const R=p.d.r+.004,H=up.h,y0=up.y0,x=p.pos[0],z=p.pos[2],sch=partSchool(p);PK={o:[x,y0,z],k:KIND.collar,R,h:H,i:p.i??-1,sch};
+        if(sch!==1){const c=[.08,.08,.09,1];lathe(a,[[R,0,c],[R,H,c]],[x,y0,z],32,[false,false]);
+          for(let k=0;k<24;k++){const g=k/24*6.2832;rbox(a,[x+Math.cos(g)*(R+.008),y0+H/2,z+Math.sin(g)*(R+.008)],.008,H/2-.02,.018,c,g)}}   // ribs
+        else{const c=[.17,.2,.17,1],P=(g,yy)=>[x+Math.cos(g)*R,y0+yy,z+Math.sin(g)*R];lathe(a,[[R,0,c],[R,.07,c]],[x,y0,z],32,[false,false]);lathe(a,[[R,H-.07,c],[R,H,c]],[x,y0,z],32,[false,false]);
+          for(let k=0;k<12;k++){const g=k/12*6.2832,dg=6.2832/12;tube(a,P(g,.07),P(g+dg,H-.07),.022,c,6);tube(a,P(g+dg,.07),P(g,H-.07),.022,c,6)}}   // lattice
+        PK=PK0}}
     // reinforced joints show as a dark collar (two for heavy) around a stack joint, a darker box at a side joint
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
@@ -1138,6 +1149,7 @@ function engMove(p){const g=p.gv;if(!g||Math.abs(g[0])+Math.abs(g[1])+Math.abs(g
 function plumeFrame(e){const t=e.tdir||null;let ex=[e.pos[0],e.y0,e.pos[2]],qt=t?tiltQ(t):null;
   if(t&&e.h){const m=[e.pos[0],e.y0+e.h,e.pos[2]];ex=add(m,qrot(qt,sub(ex,m)))}   // (escape-tower nozzles carry no h: their exit is their mount)
   const mv=MOVES_FX?engMove(e):null;if(mv){qt=tiltQ(norm(add(t||[0,1,0],e.gv)));ex=add(mv.pv,qrot(mv.q,sub(ex,mv.pv)))}return{qt,ex}}
+let INTERSTAGE_FX=true;   // false: no interstage covers (A/B, Q102 step 4)
 let MOVES_FX=true;   // false: bells and fin plates stay put (A/B)
 function setMoves(u,parts){MVA.fill(0);let n=0;if(MOVES_FX)for(const p of parts){if(n>=16)break;const i=p.i;if(i==null||i<0||i>=96||!p.on)continue;const d=p.d;
     if(d.kind==='engine'){const e=engMove(p);if(!e)continue;MVA.set([...e.pv,i,1,0,0,0,...e.q],n*12);n++}
