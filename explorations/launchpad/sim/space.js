@@ -560,16 +560,65 @@ function skSpend(q,dv){for(const p of skProp(q)){if(!(dv>0))break;const m=skMass
   const can=p.isp*G0*Math.log(m/(m-Math.min(have,m*0.999))),use=Math.min(dv,can),dm=use>=can?have:m*(1-Math.exp(-use/(p.isp*G0)));
   for(const o of q.shape)if(o.res&&o.res[p.k]>0)o.res[p.k]=Math.max(0,o.res[p.k]-dm*o.res[p.k]/have);q.mass-=dm*1000;dv-=use}
   SAT_C.delete(q);return dv>1e-9?dv:0}
-const skLife=q=>{const k=slotRate(q);return q.adrift!=null?0:k>0?skDv(q)/k:Infinity};   // days it can still hold its orbit
-// between flights (advanceDays, program time T0 → T1): held orbits pay for the time; dry ones, and every orbit about a moon
-// with nothing to hold it, drift under the tides
+const skLife=q=>{const k=holdRate(q);return q.adrift!=null?0:k>0?skDv(q)/k:Infinity};   // (holdRate: below, with decay)   // days it can still hold its orbit
+// ---- orbital decay (space session, QUEUE Q25). Above the flight's air (cut at TELLUS.atm = 100 km) a thin upper
+// atmosphere still drags on low orbits between flights. The flight itself ignores it: over a few hours it changes nothing.
+// Density: Vallado's exponential model (CIRA-72, moderate sun): rows of [km, kg/m³, scale height km]. The planet is a fifth
+// of Earth but its air is Earth's height, so the table carries over as it is (NOTES § "Orbital decay").
+const THERMO=[[100,5.297e-7,5.877],[110,9.661e-8,7.263],[120,2.438e-8,9.473],[130,8.484e-9,12.636],[140,3.845e-9,16.149],[150,2.070e-9,22.523],
+  [180,5.464e-10,29.74],[200,2.789e-10,37.105],[250,7.248e-11,45.546],[300,2.418e-11,53.628],[350,9.518e-12,53.298],[400,3.725e-12,58.515],
+  [450,1.585e-12,60.828],[500,6.967e-13,63.822],[600,1.454e-13,71.835],[700,3.614e-14,88.667],[800,1.17e-14,124.64],[900,5.245e-15,181.05],[1000,3.019e-15,268]];
+function thinAir(h){const k=h/1e3;if(!(k>=100)||k>2000)return 0;let i=THERMO.length-1;while(THERMO[i][0]>k)i--;const[k0,r0,H]=THERMO[i];return r0*Math.exp((k0-k)/H)}
+// drag per unit dynamic pressure per kg (Cd·A/m, m²/kg): tumbling, so the mean projected area of its outline, taken as one
+// cylinder around every part (a quarter of its surface, Cauchy), Cd 2.2; what's docked to it counts in both
+function dragK(q){let A=0;for(const e of[q,...(q.attached||[]).map(x=>x.e)]){let R=0,y0=Infinity,y1=-Infinity;
+    for(const o of e.shape||[]){const d=PARTS[o.k];if(!d)continue;R=Math.max(R,Math.hypot(o.pos?o.pos[0]:0,o.pos?o.pos[2]:0)+d.r);y0=Math.min(y0,o.y0);y1=Math.max(y1,o.y0+o.h)}
+    if(R>0)A+=(2*Math.PI*R*(y1-y0)+2*Math.PI*R*R)/4}
+  return 2.2*A/(skMass(q)*1000)}
+// orbit-averaged drag on a Tellus orbit (a, e): {da, de} per second (Gauss, the drag along the velocity) and the mean
+// deceleration ad (m/s²), sampled evenly in time
+function dragRates(a,e,K){const mu=TELLUS.mu,N=36;let da=0,de=0,ad=0;
+  for(let i=0;i<N;i++){const M=2*Math.PI*(i+.5)/N;let E=M;for(let k=0;k<6;k++)E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+    const r=a*(1-e*Math.cos(E)),v=Math.sqrt(mu*(2/r-1/a)),cn=(Math.cos(E)-e)/(1-e*Math.cos(E)),f=0.5*thinAir(r-TELLUS.R)*v*v*K;
+    da-=2*a*a*v/mu*f;de-=2*(e+cn)/v*f;ad+=f}
+  return{da:da/N,de:de/N,ad:ad/N}}
+const DECAY_FLOOR=()=>TELLUS.R+TELLUS.atm;
+// the m/s a day it costs to hold this orbit against drag (0 above the table, around a moon, or with no outline)
+function dragRate(q){if(q.bodyName)return 0;const el=elements(q.r,q.v,TELLUS.mu);if(!(el.e<1)||el.pe-TELLUS.R>2000e3)return 0;const K=dragK(q);return K>0?dragRates(el.a,el.e,K).ad*DAY_S:0}
+const holdRate=q=>slotRate(q)+dragRate(q);   // tides + drag: what holding its orbit costs a day
+// let drag work on a Tellus orbit from q.epoch to T1, on its rails: (a, e) by the averaged rates in steps that keep the
+// periapsis change small, the mean anomaly carried along, the apsides fixed. Below the air's top it's gone. Returns the
+// re-entry time, or null.
+function decayAE(a,e,K,t,T1,stepCb){const fl=DECAY_FLOOR();
+  while(t<T1){const g=dragRates(a,e,K),n=Math.sqrt(TELLUS.mu/(a*a*a)),dpe=g.da*(1-e)-a*g.de,pe=a*(1-e);
+    if(pe<=fl)return{t,a,e,gone:true};
+    const dt=Math.min(T1-t,Math.max(2*Math.PI/n,dpe<0?0.05*(pe-fl)/-dpe:Infinity));stepCb&&stepCb(n,dt);
+    a+=g.da*dt;e=Math.max(0,e+g.de*dt);t+=dt}
+  return{t,a,e,gone:a*(1-e)<=fl}}
+function decayStep(q,T1){const mu=TELLUS.mu,el=elements(q.r,q.v,mu),K=dragK(q);if(!(K>0)||!(el.e<1))return;
+  // the warning looks across the whole jump, so a long wait between flights can't skip it: 10 days ahead of re-entry, or
+  // at once if it comes down sooner (the news then reads in order: warned, then gone)
+  if(!q.decayWarn){const L=decayLife(q);if(L<10+(T1-q.epoch)/DAY_S){q.decayWarn=1;HOOK.news(`${q.name} is sinking into the upper air: it will re-enter within ${daysS(Math.max(1,Math.min(10,L)))}`,'warn')}}
+  const E0=2*Math.atan2(Math.sqrt(1-el.e)*Math.sin(el.nu/2),Math.sqrt(1+el.e)*Math.cos(el.nu/2));let M=E0-el.e*Math.sin(E0);
+  const o=decayAE(el.a,el.e,K,q.epoch,T1,(n,dt)=>{M+=n*dt});
+  if(o.gone){const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(`${q.name} has re-entered: the thin upper air finally pulled it down, and it burned up`,'bad');return true}
+  const a=o.a,e=o.e,n=Math.sqrt(mu/(a*a*a)),rp=a*(1-e),vp=Math.sqrt(mu*(1+e)/rp),[r,v]=kepler(mul(el.P,rp),mul(el.Q,vp),(((M%(2*Math.PI))+2*Math.PI)%(2*Math.PI))/n,mu);
+  Object.assign(q,{r,v,epoch:o.t});
+}
+// days until it re-enters if nothing holds it (Infinity past 20 years); daysS writes a span of days
+const daysS=d=>d>=YEAR_D?`${(d/YEAR_D).toFixed(1)} years`:d>=1?`${Math.round(d)} day${Math.round(d)===1?'':'s'}`:'less than a day';
+function decayLife(q){if(q.bodyName)return Infinity;const el=elements(q.r,q.v,TELLUS.mu),K=dragK(q);if(!(K>0)||!(el.e<1)||el.pe-TELLUS.R>2000e3)return Infinity;
+  const H=20*YEAR_D*DAY_S,o=decayAE(el.a,el.e,K,0,H);return o.gone?o.t/DAY_S:Infinity}
+// between flights (advanceDays, program time T0 → T1): held orbits pay for the time (tides and drag); dry ones drift under
+// the tides (and every orbit about a moon with nothing to hold it), or decay in the upper air
 function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
-  if(q.adrift==null){const k=slotRate(q);
+  if(q.adrift==null){const k=holdRate(q);
     if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(!left)continue;
       const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});
-      if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it drifts`,'warn')}   // (one that never had any just drifts)
+      if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}   // (one that never had any just drifts)
     else if(!q.bodyName)continue}   // nothing pulls it off its rails
-  if(q.epoch<T1)moonOrbStep(q,T1)}}
+  if(!(q.epoch<T1))continue;
+  if(q.bodyName||slotRate(q)>0)moonOrbStep(q,T1);else decayStep(q,T1)}}
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}
