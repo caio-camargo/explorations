@@ -1973,6 +1973,41 @@ Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test
 caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
 view) is flow's, proposed in QUEUE.
 
+## Plan: low thrust on rails, for nuclear-electric and plausible fusion (2026-10-09, space session with vehicle, QUEUE Q109; plan only, M5)
+
+LATE_GAME (round 2): fusion propulsion at the plausible end, very high Isp and **modest thrust**, heavy with shielding,
+power plant and radiators, late in the eras and probably a military-funded first (TECH_SCOUTING § Propulsion:
+*Sunbird*, DIU); nuclear-electric (NEP) before it; torch ships out. Both need the same thing from the space lane:
+**thrust on rails**.
+
+**The number that makes it worth having:** at constant acceleration a, a trip of distance d takes t = 2√(d/a) (turn
+over halfway). Tellus–Enyo at its closest is 0.52 TU (8.2 Gm):
+
+| craft acceleration | trip | against a Hohmann (283 days) |
+|---|---|---|
+| 2e-4 m/s² (good NEP) | ~444 game days | slower: NEP is for cargo tugs |
+| 1e-3 m/s² | ~200 days | a little faster |
+| 2e-3 m/s² | ~140 days | half: what "shortens the long trips" means |
+
+A jet of exhaust speed v_e gives a = 2 P / (m v_e), so 1e-3 m/s² at v_e 100 km/s (Isp ~10,000 s) needs **~50 W of jet per
+kg of whole craft**: that's the fusion part's specific power, shielding and radiators included. NEP's ~1 W/kg at Isp
+4,000 s gives ~5e-5 m/s²: years-long spirals, cheap in propellant (tugs, LATE_GAME's "cargo slow, crew fast").
+
+**What the space lane builds:**
+1. **Thrust on rails:** a vessel whose low-thrust engine is running stays on rails, integrated (RK4, steps from the
+   orbit's period and the thrust's time scale) with a steering law: prograde (spiral out), retrograde (spiral in), hold
+   an inertial direction, or follow a planned arc; its mass falls as it burns; warp stays exact enough at ×10⁵. Today
+   a running engine forces physics stepping; low thrust mustn't.
+2. **Arcs between flights:** a cruise entry (v1.90) carries a thrust arc (steering, start, duration) as it carries
+   impulsive nodes (v1.93), executed on the same integrator; mission control flies arcs from the right era (Q127).
+3. **A planner for routines:** Edelbaum's approximation for spirals (Δv ≈ difference of circular speeds, with a plane
+   change) to price routine tug runs without integrating them.
+4. **With vehicle:** the parts (NEP: reactor + ion engines; fusion: the plausible drive), each with power, Isp, thrust,
+   mass, and its waste heat for the radiators (Q34b); era gates; the military-first contract (economy).
+
+**Measure first:** a spiral from a 300 km Tellus orbit to escape at 5e-5 and 1e-3 m/s² (time, Δv against Edelbaum);
+the Enyo trip at 2e-3 m/s² on real heliocentric rails (Q87 slice 2), against the brachistochrone estimate above.
+
 ## Q108: a Tellus–Enyo cycler, measured (2026-10-09, space session; study, `study_cycler.mjs`)
 
 LATE_GAME's network wants cyclers (routes as belts). Enyo sits at 1.52 TU with a synodic period of 2.14 years, like
