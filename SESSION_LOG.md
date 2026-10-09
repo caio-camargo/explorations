@@ -3608,3 +3608,23 @@ Platform lane, ROADMAP steps 1, 3 and 4 (QUEUE Q56, Q58, Q59). Caio stopped ever
 ### Next steps
 - [ ] Every lane: merge `main` before the next edit (ACTIVE_WORK notice)
 - [ ] Platform: Q57 save versions; then the proposals: `test.mjs` into per-area files, `app/gl.js` split further, modules later
+
+
+## 2026-10-08 — Launchpad economy: Q44 epoch 1–2 pacing (economy session)
+
+### Summary
+- `career.mjs` has a pacing report (`PACE=1`): flights and days to first orbit, the longest wait, bailouts before
+  orbit. `FAILFIRST=orbit` fails the first orbital attempt. The runner now counts refurbishment when it values a flight;
+  before, it refused sounding work that breaks even.
+- Finding: with no failures, first orbit takes ~5 flights (day 120–255). One failed orbit attempt costs ~90 % of the
+  start money: 6–10 flights, 1–4.6 bailouts, and frugal/resource companies often never get back to orbit in two years.
+  More start money doesn't help; refunding 75 % of a failed first does (5 flights everywhere but the frugal company).
+- No game code changed. Proposal **W12** in QUEUE (default: a sponsor covers 75 % of the first lost flight at a first).
+
+### Files
+- `explorations/launchpad/career.mjs`, `NOTES.md` § "Epoch 1–2 pacing" (v1.21.8), `HANDOFF-economy.md`, `QUEUE.md` (Q44 ✓, W12, two Proposed lines), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: W12 (or the default stands)
+- [ ] Economy: build W12's answer; then Q6 `siteAccess`
+

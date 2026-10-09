@@ -102,7 +102,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
-| Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | → economy 2026-10-08 |
+| Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ready |
 | Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ready |
 | Q8 | Ladder balance: Selene/Nyx firsts above their rocket; nyxfind not free on the farside flight (Caio overrode the W1 default) | M1 | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
@@ -252,5 +252,8 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W9 | Edit the pillars (ROADMAP § Pillars, a draft) | what sessions may turn down |
 | ~~W10~~ | ~~Pick a freeze window for the file split~~ answered 2026-10-08: Caio stopped all sessions; split done | Q59 ✓ |
 | W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
+| W12 | **A failed first is mostly covered, once?** One failed orbit attempt costs ~90 % of the start money; agencies get bailed out 3–4×, poor-world companies never reach orbit (`career.mjs` `PACE=1 FAILFIRST=orbit`). Options: (1) the sponsor pays back 75 % of the first lost flight aimed at an open first; (2) the rescue lifts to the next first's price, not the 25M floor; (3) leave it hard and warn before the attempt. **Default if silent: (1)** (NOTES § "Epoch 1–2 pacing") | Q44's fix; M1's "intended number of flights" (~5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
+- economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
