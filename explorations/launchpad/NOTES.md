@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.34 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.35 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2026,6 +2026,52 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: goods on routines, outposts' self-sufficiency and exports, capstones and records (2026-10-09, economy session, QUEUE Q110; nothing built)
+
+LATE_GAME § "The network", § "Outposts" and § "The arc after Selene" (approved), on what exists now: supply runs to
+bases (v1.69: a design's ascent procedure + transfer + `landAt`, flown for real by `procFly`, the lander joins the
+base), station state and station work (v1.89.3), the network model (`netModel`, v1.89.1: nodes with stock and need,
+routes empty), the automation ladder (MIDGAME, D7: uncrewed runs to the moons need onboard computers).
+
+**1. Routines are repeating dispatches** (the Factorio belt). A **routine** = a template (design + procedure + site +
+destination node) + a **window rule** (MIDGAME § Windows: plane over the site, target phase, lighting, planetary
+alignment) + a period. `PROG.routines = [{id, stack, site, to, every, window, next, runs, fails, cargo}]`; each run is a
+dispatch (pads, stacking days, price, the lease, physics by `procFly`, the deviation hand-over) queued at the next valid
+window after `next`. **A route is flown by hand the first time**, then any dispatchable flight can be made a routine
+("Repeat this run every 60 days"). They appear in `netModel().routes` with tonnes a year per good.
+
+**2. Goods are what the design carries** (the five: propellant, supplies, crew, hardware, materials), measured, not
+abstract: a run's cargo is the modules and resources that arrive (supplies in a habitat's `sup`, propellant in a
+tank's resources, hardware as named modules, crew from the roster plan). A routine's tonnes a year = cargo per run ×
+runs a year (its window and the pads permitting). Node **stock** per good comes from its registry entries' resources;
+**need** from its crew (supplies, v1.60's `SUP_DAY`) and its routines (propellant a depot hands out).
+
+**3. Outposts and self-sufficiency.** An outpost is a base or station with **production modules** (vehicle and space
+lanes build the parts; economy runs them): a **greenhouse** or **recycler** makes supplies (costing power: the habitat
+budget, Q119), an **ice plant** makes propellant at Selene's poles, Astraea or Enyo's caps (from the ground model). Each
+module's output per day enters the node's stock in `utilTick`. **Self-sufficiency** = for each good it consumes to keep
+running, the share it makes; **one number, the lowest share** (LATE_GAME). At 100 % it needs no routine; cut off it
+goes dormant (pillar 5), never dies.
+
+**4. Exports.** An outpost's surplus is a routine's cargo the other way: Selene's propellant to an orbital **depot**,
+materials (the mass driver, later) to a yard. **Depots** are stations with tanks: they sell propellant to our flights
+(a refuel docking counts as a purchase from stock) and to **rivals** (Q138), at a price by the cycle.
+
+**5. Capstones and records** (epochs 6–10, LATE_GAME's table): capstones as **firsts** with rivals racing for them
+(Q138's programs): a lander on Hesper, a rover on Enyo, propellant made off Tellus, a self-sufficient outpost, the
+mass driver's first payload, people on Enyo and home, a cycler, the highway, the first megawatt sold, the interstellar
+probe launched. **Records** in the logbook (open-ended, `LOGF`): tonnes a year through the network, the largest
+structure, megawatts in orbit, the most self-sufficient outpost, the deepest probe. Headlines, not points (pillar 3).
+
+**Questions for Caio** (numbered, with defaults): (1) routines as **repeating dispatches with a period and a window**
+(default) or a run you order each time; (2) goods **as physical cargo, measured** (default) or abstract tonnage per run;
+(3) self-sufficiency as **the lowest share** (default, LATE_GAME) or an average; (4) depots **sell to rivals** from
+the start (default) or only in the commercial era.
+
+**Slices (⚙, M3–M4):** routines (a repeating supply run to a base, its window, its row on the pad calendar and in
+`netModel().routes`) → goods accounting per route and node → production modules and self-sufficiency (with vehicle
+and space for the parts) → depots and propellant sales → exports → capstones → records.
 
 ## Plan: rivals as programs, scarce places, the world's mood, commercial rivals (2026-10-09, economy session, QUEUE Q138; nothing built)
 
