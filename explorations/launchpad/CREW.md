@@ -1,6 +1,6 @@
 # CREW — astronauts
-**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1 (how they look) waits for the Q72 mock-ups;
+**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
 
@@ -107,12 +107,17 @@ crew tell the era's history).
 
 ---
 
-## Part 1 — how crew look (waits for Q72)
+## Part 1 — how crew look
 
-The open question: cartoony (Kerbal-like), realistic, or stylised human (1960s illustration, Thunderbirds, Tintin).
-Trade-offs in ROADMAP § "Design catalogs". **Q72** renders all three in one scene (the capsule hatch on the pad
-walkway); Caio picks from the pictures. Pillar 7 (provisional: "lighter than serious, never a joke") leans stylised
-human, but the pictures decide.
+**Decided (Caio, 2026-10-09, W19): (c) stylised human** (1960s illustration, Thunderbirds, Tintin; mock-up
+`mockups/crew/`). Not a retread of KSP's cartoon crew, not realistic either: the stylisation is what allows the lighter
+tone (pillar 7). Human proportions with simple forms, flat colour bands and ink outlines; faces readable small.
+
+**Suits by school and by era (Caio's idea, 2026-10-09; design open, D9).** Each hardware school (POWERS.md) dresses its
+crew in its own suit line, and the line changes with the epochs, as real suits did: Cape from Mercury's silver to
+Apollo's white to the Shuttle's orange launch suit to today's sleek one; Steppe from the SK-1 to Sokol, with Orlan
+for spacewalks. Draft: three launch-suit generations per school (early pressure suit, the launch-and-entry suit, the
+modern one), plus a spacewalk or surface suit once EVA exists; look only, like everything a school touches.
 
 ---
 
@@ -128,6 +133,7 @@ human, but the pictures decide.
 ---
 
 ## Version history
+- **0.2.1 (2026-10-09):** part 1: stylised human chosen (W19); suits by school and era opened (D9).
 - **0.2.0 (2026-10-08):** part 2 approved; round 2: requalification and the lost person replace the timed stand-down.
 - **0.1.0 (2026-10-08):** first draft. Part 2 round 1 (level 2, the pilot is the computer); roles, ranks, the office,
   hooks into existing systems, room for careers. Part 1 waits for Q72.
