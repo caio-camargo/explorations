@@ -7641,3 +7641,30 @@ coming back); a tape replays the wings.
 - a builder choice of the orbit for the budget (it always assumes low Tellus orbit, β 0);
 - the look of the parts (placeholders in `app/gl.js`, Q97);
 - battery charge carried across a flight's end (each flight starts full).
+
+## v1.73 — M0: presets for the first orbit missions, the Program screen's stray labels, and the palette v1.68 broke (2026-10-09, vehicle session, QUEUE Q74, Q77)
+
+**Q74, PLAYTEST #24 (P1): two presets.** No preset could fly *The beeper* or *Passenger: one orbit*, so a presets-only
+player stopped at the end of epoch 1. Both now use the Orbiter's launcher with the payload in the pod's place, plus a
+reaction wheel to steer it (the wheel is 0.12 t, the pod 0.84 t):
+- **Beeper:** cone, instrument package, wheel. It reaches orbit (periapsis 102 km) with 1,556 m/s to spare.
+- **Passenger Orbiter:** chute, biocapsule, wheel. It reaches orbit with 715 m/s spare, goes once round, deorbits,
+  and lands at 4.2 g with a ~256 K cabin.
+- **Rejected:** keeping the pod. With the biocapsule, the pod and a shield under a decoupler, the rocket didn't make
+  orbit. With the pod plus the package, only 319 m/s was left.
+- **Without the wheel:** the plain swap (the payload for the pod, no wheel) also flies, at 6.4 g, but it can only turn
+  while an engine burns.
+- `career.mjs`'s own `passOrbit` stack (biocapsule, pod, shield, no decoupler) would bury the shield under the tank in
+  real physics. It isn't touched here (QA's file).
+
+**Q77, PLAYTEST #27: "NaN%" on the Program screen.** `builder.js` `overlay()` now also returns on the Program screen
+(`atHQ`, where `S` is still the flown vessel), and it skips a load fraction that isn't finite.
+
+**The palette v1.68 broke.** Q34a's era-gate line in `palette()` ended with a `//` comment that swallowed the next
+statement (`const b=document.createElement('button')`). So from v1.68 to here **the construction screen listed no
+parts**. The headless suite only checks that the page parses; the robot's `m1` run caught it at once. Fixed.
+Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything that touches a screen, as the QUEUE flag says.
+
+**Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
+no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
+under 8 g and 330 K.
