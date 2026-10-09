@@ -3471,7 +3471,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], hOf = k => med(H.filter((_, i) => un[i] === k));
   const b1 = G.grBands(R, G.EN.c)[1];
   check('ground-3: relief within the recipe\'s top; craters on target (baked ≥ 20 km = c·area/400, c 0.02); band λ scaled by c',
-    Math.max(...H) < G.bodyTop(B) && Math.min(...H) > -8000 && M.craters.length === Math.round(G.EN.c / 400 * area) && Math.abs(b1.lam / G.grBands(R)[1].lam - G.EN.c / 0.055) < 1e-9,
+    Math.max(...H) < G.bodyTop(B) && Math.min(...H) > -8000 && M.craters.length === Math.round(G.EN.c / 400 * area) && Math.abs(b1.lam / G.grBands(R)[1].lam - G.EN.c / 0.055) < 1e-6   /* λ is a float32 (G3.0) */,
     `${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)}) · ${M.craters.length} baked craters`);
   // the dichotomy: northern lowlands low and smooth, a third or so of the globe
   const sl = k => med(pts.filter((_, i) => un[i] === k).slice(0, 400).map(u => G.terrainSlope(B, u)));
@@ -3971,6 +3971,17 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     hit ? `${hit.body} ${api.sitePlace(hit.pf)} (${(len(api.fromPF(B, hit.pf, t0)) / 1e3).toFixed(1)} km from the centre)` : 'no hit');
 }
 
+// ground-9. G3.0 (world session, QUEUE Q107; GROUND.md § G3): the crater cells' trigonometry goes through approximations
+// the shader will copy exactly (GLSL's tan/atan are only good to ~1e-5 rad: 3.5 m on Selene). The bands must not call the
+// built-ins again, and the approximations must stay as good as measured.
+{
+  const G = new Function(src + 'return {ptan,patanJ,craterBands,grBands};')();
+  let et = 0, ea = 0; for (let i = 0; i <= 20000; i++) { const x = (i / 20000 * 2 - 1) * Math.PI / 4, y = Math.tan(x) * 1.3; et = Math.max(et, Math.abs(G.ptan(x) - Math.tan(x))); ea = Math.max(ea, Math.abs(G.patanJ(y, 1) - Math.atan(y))); }
+  const srcB = G.craterBands.toString(), lam = G.grBands(3.48e5)[2].lam;
+  check('ground-9: crater cells use ptan (≤1e-12) and patanJ (≤5e-8 rad), not Math.tan/atan; λ is a float32',
+    et < 1e-12 && ea < 5e-8 && !/Math\.(tan|atan)\(/.test(srcB) && lam === Math.fround(lam), `ptan ${et.toExponential(1)}, patanJ ${ea.toExponential(1)} rad`);
+}
+
 // econ-9. Pay floors and withdrawing (economy session, QUEUE Q93 / Q118): every offer pays at least 1.3× the net cost of
 // the cheapest preset that can fly it, whatever the world; a taken contract can be withdrawn at a missed deadline's cost.
 {
@@ -4005,6 +4016,13 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
       && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
     `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
+  // QUEUE Q97: the leg and the power parts have their own looks (placeholders gone); the deployed leg puts its footpad
+  // where the sim's legFoot puts the foot (reach out, drop below), one case each
+  const leg = body('partBody').slice(body('partBody').indexOf("case'leg':"));
+  check('part looks: leg, solar wing, body cells, battery and computer are drawn; the deployed leg\'s foot is legFoot\'s',
+    ["case'leg':", "case'wpanel':", "case'bpanel':", "case'batt':", "case'ocomp':"].every(c => pg.split(c).length === 2) && !pg.includes('placeholder until the parts & pad beat')
+      && !pg.includes('placeholders until the parts & pad beat') && /F=\[x\+n\[0\]\*d\.reach,y-d\.drop,z\+n\[2\]\*d\.reach\]/.test(leg)
+      && /const legFoot=p=>\{const a=p\.phi\|\|0;return\[p\.pos\[0\]\+p\.d\.reach\*Math\.cos\(a\),p\.y0-p\.d\.drop/.test(H));
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

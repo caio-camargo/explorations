@@ -975,6 +975,23 @@ ship mesh is built once per design. Now they move in the vertex shader, with no 
 - test.mjs `aerofx-2` (moving parts): the exit swings 0.065 m for 5° on a 0.75 m throat height, opposite the thrust's
   tilt; the plume axis follows; the wiring (`uMv`, `setMoves`, `plumeFrame` in both places, the `rwheel` case).
 
+## Legs and power parts get their looks (2026-10-09, effects beat for parts & pad, QUEUE Q97)
+
+The vehicle session's landing leg (v1.61) and power parts (Q34a) were placeholders: a strut and a box, a dark plate, and
+the battery and computer fell through to the default 1.25 m drum. `partBody` now draws each:
+- **Landing leg.** Stowed: the shock strut along the skin (steel cylinder, chrome piston), the brace beside it, the
+  footpad folded flat at the bottom, hinge and lower-mount fittings. Deployed: hinge → cylinder → piston → ball joint
+  → dished footpad, the foot exactly at the sim's `legFoot` (reach out, drop below the leg's bottom), and a brace from
+  the lower mount to the strut's middle. The pose changes with the mesh rebuild on Y (no swing animation yet).
+- **Solar wing.** Stowed: a folded pack of four panels under a cover. Deployed: boom and yoke, four framed panels of
+  cells, edge spars; the wing's plane still holds the outward direction and y, as `power.js` assumes.
+- **Body cells.** 4×4 cell tiles on a steel backing that follow a 0.625 m hull's curve (on a 2.5 m hull they sit a
+  centimetre proud at the edges).
+- **Battery:** a ribbed ring of cells, an orange band, two terminal boxes. **Computer:** a dark equipment ring with six
+  gold-foil and black avionics boxes and a cable run.
+- Views `refView(108)`–`(111)`: a lander's legs stowed and deployed, a satellite stowed and with its wings out.
+- test.mjs `aerofx-3` (part looks). Not yet: legs swinging down over a second, wings unfolding.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -1574,6 +1591,30 @@ is large at 2 seeds (±400M, as the handoff warns).
 
 **Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
 rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
+
+## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
+
+The first step of GROUND.md § "G3: the port plan", allowed before the milestone gate. Headless, and no visible change.
+The crater bands placed their crater centres with `Math.tan`, and found a point's cell with `Math.atan`. GLSL's built-ins
+are good to ~1e-5 rad, which would put the shader's craters up to 3.5 m from the CPU's on Selene. Both sides now use one
+formula:
+- **`ptan`:** a Padé form on ±π/4, good to **1.9e-13**. It places the centres.
+- **`patanJ`:** SKY_FS's own `patan`, ported to JS, good to **2.3e-8 rad** (under 1 cm on Selene). It only picks a point's
+  cell, where a flip is harmless (the half-cell margin).
+- **λ** (a cell's chance of a crater) is now the float32 the shader will compare with (`Math.fround`).
+
+**Measured:** Selene's 3,000 reference heights moved by at most **2.7e-8 m**, against a 1 cm budget, and no crater
+appeared or vanished. Crater counts and seams in `study_ground.mjs` are unchanged.
+
+**Tests:** `ground-9` checks the approximations' accuracy, that `craterBands` calls neither `Math.tan` nor `Math.atan`
+(putting one back is caught), and that λ is a float32. `ground-3`'s λ-scaling check now allows float32 rounding (1e-6).
+Full suite 544 pass, 0 fail.
+
+**Also checked, on this machine's GPU (now allowed):**
+- **TESTING 131:** Selene from 900 km over its near side, nearly full. The maria are on the near side, a large dark patch
+  over about a third of the face. They're subtle (the shader darkens them by 0.07); the look lane may want them darker.
+- **TESTING 146:** can't be judged by eye. At seed 13 Tellus's north pole is open sea, and the south pole never sees the
+  fixed sun. The pole fix stays covered by `ground-6`'s CPU check; the north pole renders cleanly.
 
 ## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
 
