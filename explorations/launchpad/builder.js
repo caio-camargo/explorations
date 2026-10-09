@@ -313,7 +313,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
   cvs.addEventListener('contextmenu',e=>{if(mode==='editor')e.preventDefault()});
   addEventListener('wheel',e=>{if(mode!=='editor'||e.target!==cvs||!e.shiftKey)return;e.preventDefault();e.stopPropagation();
     cam.edY=clamp((cam.edY||0)-Math.sign(e.deltaY||e.deltaX)*cam.dist*.06,-S.len,S.len)},{capture:true,passive:false});
-  addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb||atRoll)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb||atRoll||atNet)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
     if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?restore(st.redo,st.undo):restore(st.undo,st.redo);return}
     if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();restore(st.redo,st.undo);return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;

@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {surfacePick,procWithSite,procLandsOn,sitePlace,autoLegs,launchWarnings,flightAims,dvToAlt,DV_ORBIT_EST,stageStats,nextStep,footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {satLife,surfacePick,procWithSite,procLandsOn,sitePlace,autoLegs,launchWarnings,flightAims,dvToAlt,DV_ORBIT_EST,stageStats,nextStep,footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1878,8 +1878,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const d = ['flight', 'map', 'assembly'].flatMap(dup);
   check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
   const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
-  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb|atRoll)=[^=])/g) || [];
-  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb=/atRoll= assignments outside it but their declarations)', goSrc && outside.length === 5, outside.join(' '));
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb|atRoll|atNet)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb=/atRoll=/atNet= assignments outside it but their declarations)', goSrc && outside.length === 6, outside.join(' '));
   // every Program section heading the page can write lands in a real tab, not "More"
   const progTabOf = new Function('progName', cut(page, 'const progTabOf=', ';\nlet progTab') + ';return progTabOf')(() => 'Fenfen Space Agency');
   const heads = [...html.matchAll(/class="ep">([A-Z][^<$]*)/g)].map(m => m[1].trim()).filter(h => !/^\.\*/.test(h));
@@ -4149,6 +4149,51 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('power: an RTG gives its 60 W in the shadow (no battery needed for a 5 W antenna); at 1,000 km the shadow is shorter than at low orbit; the charge survives the register',
     B.rtg === 60 && B.ok && B.needWh === 0 && night === 60 && hi.ecl < lo.ecl && hi.alt > 999 && hi.avg > lo.avg && back && back.E === 1234567,
     `RTG ${B.avg} W average, ${night} W at night · shadow ${(lo.ecl * 100).toFixed(0)}% low, ${(hi.ecl * 100).toFixed(0)}% at 1,000 km · charge back ${back && back.E}`);
+}
+
+// vehicle-8. A satellite's lifetime in the builder (vehicle session, QUEUE Q141; MIDGAME § Satellites): the design's top
+// stage at the aimed orbit, what holding it costs a day (space's holdRate), how long the Δv left after getting there pays
+// for it, and when the air brings it down after. Lower is dearer; a few hundred km up a good design outlasts its era.
+{
+  const B = api.PRESETS.Beeper, L = a => api.satLife(B, a), l110 = L(110), l200 = L(200), l400 = L(400);
+  const d2 = JSON.parse(JSON.stringify(B)); d2[0] = 'chute'; const t0 = Date.now(); api.satLife(d2, 400); const ms = Date.now() - t0;
+  check('lifetime: holding costs more the lower the orbit (110 km re-enters within a day once it stops); at 400 km the Beeper holds past 20 years; a new design at a seen altitude costs a few ms',
+    l110.rate > l200.rate && l200.rate > l400.rate && l110.fall < 1 && l200.days > 365 && isFinite(l200.fall) && l400.days > 20 * 400 && !isFinite(l400.fall) && ms < 50,
+    `110 km: ${l110.rate.toFixed(1)} m/s a day, ${l110.days.toFixed(0)} days on ${l110.spare.toFixed(0)} m/s, down in ${(l110.fall * 24).toFixed(0)} h · 200 km: ${l200.rate.toFixed(2)} m/s a day, ${(l200.days / 400).toFixed(1)} years, then down in ${l200.fall.toFixed(0)} days · 400 km: ${l400.rate.toFixed(3)} m/s a day · ${ms} ms`);
+}
+
+// space-4. Debris, slice 2 (space session, QUEUE Q146): conjunctions between flights. Big objects against active entries
+// only, at Rs² v / (2π r² W cos(Δi/2)) a pair per band (study_debris.mjs: a Monte Carlo agrees within its noise). A hit:
+// crewed entries are always warned and move; tracked ones (mainframe era on) with fuel dodge; the rest are destroyed with
+// the object and the breakup is recorded. The pressure is a world setting (off / light / real).
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,detach,junkRegister,conjTick,pairRate,resid,bandR,BAND_W,skDv,TELLUS,PROG,HOOK,DAY_S};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R, deg = Math.PI / 180;
+  const orbit = (s, alt, inc) => { const a = R + alt, vc = Math.sqrt(T.mu / a); Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(inc * deg), -vc * Math.cos(inc * deg)] }); return s; };
+  const sat = (alt, inc, { fuel = false, crew = false } = {}) => { const s = orbit(D.newShip(D.PRESETS.Probe), alt, inc); D.satRegister(s, { day0: P.day }); const q = P.sats.at(-1);
+    if (!fuel) for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+    if (crew) q.shape[0].crew = 2; return q; };
+  const junk = (alt, inc) => { const s = orbit(D.newShip(D.PRESETS.Orbiter), alt, inc); s.rec = { launched: true, day0: P.day };
+    const ev = s.events.find(e => e.decouple.length); D.detach(s, s.parts.filter(p => p.on && ev.decouple.includes(p.seg)), [0, -1, 0], 0); D.junkRegister(s.rec); return P.sats.at(-1); };
+  const reset = (day, mode) => { P.sats = []; P.day = day; P.breakups = []; P.pressures = { debris: mode }; news.length = 0; };
+  reset(0, 'real'); const a = sat(425e3, 0), o = junk(425e3, 60), far = junk(1500e3, 60);
+  const ra = D.resid(a), ro = D.resid(o), rb = D.bandR(6), Rs = ra.R + ro.R, want = Rs * Rs * Math.sqrt(T.mu / rb) / (2 * Math.PI * rb * rb * D.BAND_W * Math.cos(30 * deg)) * D.DAY_S;
+  check('debris conjunctions: a pair sharing a band meets at Rs² v / (2π r² W cos(Δi/2)) a day; a pair in different bands never',
+    Math.abs(ra.f[6] - 1) < 1e-9 && Math.abs(ro.f[6] - 1) < 1e-9 && Math.abs(D.pairRate(a, o) / want - 1) < 0.02 && D.pairRate(a, far) === 0,
+    `${D.pairRate(a, o).toExponential(3)} a day (formula ${want.toExponential(3)}), Rs ${Rs.toFixed(1)} m; 1,500 km: ${D.pairRate(a, far)}`);
+  const hit = () => 0, miss = () => 0.999999, T1 = d => (P.day + d) * D.DAY_S;
+  reset(0, 'off'); { const a1 = sat(425e3, 0), o1 = junk(425e3, 60); D.conjTick(T1(0), T1(1), hit); const offKept = P.sats.includes(a1) && P.sats.includes(o1);
+    reset(0, 'real'); const a2 = sat(425e3, 0), o2 = junk(425e3, 60); news.length = 0; D.conjTick(T1(0), T1(1), miss); const missed = P.sats.length === 2 && !news.length;
+    D.conjTick(T1(0), T1(1), hit); const gone = !P.sats.includes(a2) && !P.sats.includes(o2) && P.breakups.length === 1 && Math.abs(P.breakups[0].h - 425e3) < 1e3 && news.some(m => /struck by/.test(m));
+    check('debris conjunctions: off does nothing; a miss leaves both; an untracked hit destroys both and records the breakup',
+      offKept && missed && gone, `breakup at ${P.breakups[0] ? (P.breakups[0].h / 1e3).toFixed(0) + ' km, ' + (P.breakups[0].mass / 1000).toFixed(1) + ' t' : '—'}`); }
+  reset(3000, 'real'); { const a3 = sat(425e3, 0, { fuel: true }), o3 = junk(425e3, 60), dv0 = D.skDv(a3); D.conjTick(T1(0), T1(1), hit);
+    const dodged = P.sats.includes(a3) && P.sats.includes(o3) && Math.abs(dv0 - D.skDv(a3) - 0.5) < 0.01 && news.some(m => /dodged/.test(m));
+    reset(0, 'real'); const a4 = sat(425e3, 0, { crew: true }), o4 = junk(425e3, 60); D.conjTick(T1(0), T1(1), hit);
+    const warned = P.sats.includes(a4) && P.sats.includes(o4) && news.some(m => /was warned/.test(m)) && !P.breakups.length;
+    check('debris conjunctions: tracked (mainframe era) with fuel, it dodges for 0.5 m/s; crewed, it is always warned, even untracked and dry',
+      dodged && warned, `dodged ${dodged}, crewed warned ${warned}`); }
 }
 
 // econ-11. Obsolescence and servicing (economy session, QUEUE Q126, MIDGAME.md § Satellites): a satellite earns less

@@ -4,8 +4,8 @@
 // ============================================================ screens, overlays, keys (ui session; NOTES § "UI: screens and navigation")
 // One name for where you are. `mode`/`view` are still the state everything reads; go() is the one place that changes them.
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
-let atDeb=false,debNext='program',debShown=null,atRoll=false;   // atRoll: the Rollout screen (slice 5), a panel beside the ship on the pad   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
-const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
+let atDeb=false,debNext='program',debShown=null,atRoll=false,atNet=false;   // atNet: the network screen (Q155)   // atRoll: the Rollout screen (slice 5), a panel beside the ship on the pad   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
+const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atNet?'network':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
     const D=S.rec&&S.rec.debrief;   // ...and a flight that flew is debriefed on the way out, once
@@ -15,7 +15,8 @@ function go(s){const from=screenNow();if(s===from)return;
   if(s==='map'&&mode!=='flight')return;
   if(from==='rover')rvLeave();
   if(s==='rollout'&&(mode!=='editor'||BLD.isEmpty(stackDef)))return;   // only from the Assembly, with something on the pad
-  atDeb=s==='debrief';atRoll=s==='rollout';
+  if(s==='network'&&!netOpen())return;
+  atDeb=s==='debrief';atRoll=s==='rollout';atNet=s==='network';
   if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();
     if(S&&S.rec&&S.rec.launched&&!BLD.isEmpty(stackDef))editorChanged();   // a flown craft behind the Program: back to the design on the pad (Q145; the Debrief keeps the flight's end)
@@ -24,9 +25,10 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
   else if(s==='rollout'){mode='editor';view='flight';atHQ=false;BLD.drop();renderSites();renderRollout()}
+  else if(s==='network'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderNetwork()}
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
-  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
+  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atNet);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('net').classList.toggle('hidden',!atNet);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to, or act: what
@@ -44,9 +46,10 @@ const KEYS={
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
   map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
+  network:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'hover',d:'a booking or an event: what it is'}],
   rollout:[{k:['l'],l:'L',d:'launch (the checks above decide)',act:()=>$('launch').click()},{k:['b'],l:'B',d:'back to Assembly',go:'assembly'}],
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Assembly: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
-  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
+  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{k:['n'],l:'N',d:'the network: the fleet and the pads (once something of ours is out there)',go:'network'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['l'],l:'L',d:'roll out: the site, the checks, then launch',go:'rollout'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
@@ -54,7 +57,7 @@ const KEYS={
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],
   rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
     {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
-const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout'};
+const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout',network:'Network'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
@@ -77,7 +80,7 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +(['assembly','rover','debrief','rollout'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
+    +(['assembly','rover','debrief','rollout','network'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
   if(d.go){go(d.go);return}
@@ -161,7 +164,7 @@ function progLayout(){const kids=[...$('program').children];if(!kids.length)retu
   progGate=box.gate.length>0;progInbox=box.inbox.filter(n=>n.classList.contains('ms')).length;
   const nx=progGate?null:nextStep(),pn=$('progNext');pn.classList.toggle('hidden',!nx);   // what to do next (Q40), above the tabs
   if(nx)pn.innerHTML=`<b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span>${nx.how?` <span class="acc">· try ${nx.how}</span>`:''}<button data-ptab="${nx.tab}">${PROG_TABS.find(t=>t[0]===nx.tab)[1]} ▸</button>`;
-  $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);
+  $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);$('bNet').classList.toggle('hidden',!netOpen()||progGate);
   const body=$('progBody');body.classList.toggle('gate',progGate);
   if(progGate){$('progTabs').replaceChildren();body.replaceChildren(...box.gate)}
   else{if(!progTab||!box[progTab])progTab=progInbox?'inbox':'missions';

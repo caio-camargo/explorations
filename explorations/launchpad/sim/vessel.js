@@ -390,6 +390,20 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   const s=newShip(stack),who=s.parts.some(p=>p.d.crew)?'the crew':s.parts.some(p=>p.d.kind==='bio')?'the passenger':null;
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
   return out}
+// a satellite's lifetime for the builder (vehicle session, Q141; MIDGAME § Satellites: lifetime is a design choice, made
+// once): the design's top stage (what's left after every decoupler) as if registered in a circular orbit alt km up, what
+// holding that orbit costs a day (space's holdRate: tides + drag), how long the Δv left after getting there pays for it
+// (the same need as launchWarnings), and when the air brings it down once it can't hold (space's decayLife). Cached per
+// design and altitude: the tide's rate is a 20-day integration.
+const SAT_LIFE=new Map(),SLOT_ALT=new Map();
+function satLife(stack,alt){const key=JSON.stringify(stack)+'@'+alt+'@'+(PROG.log&&PROG.log.orbit?PROG.log.orbit.v:0);if(SAT_LIFE.has(key))return SAT_LIFE.get(key);
+  const s=newShip(stack),root=s.parts.find(p=>!p.parent)||s.parts[0],up=s.parts.filter(p=>p.seg===root.seg),r=TELLUS.R+alt*1000;
+  const q={r:[r,0,0],v:[0,0,-Math.sqrt(TELLUS.mu/r)],epoch:0,mass:up.reduce((a,p)=>a+partMass(p),0)*1000,shape:shapeOf(up,false)};
+  const st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),L=PROG.log&&PROG.log.orbit,need=(L?L.v:DV_ORBIT_EST)+dvToAlt(TELLUS,alt);
+  const sl=SLOT_ALT.get(alt);if(sl)Object.assign(q,sl);   // the tide's rate depends only on the orbit: once per altitude
+  const rate=holdRate(q);if(!sl)SLOT_ALT.set(alt,{skRate:q.skRate,skTilt:q.skTilt});const spare=up.some(p=>p.d.kind==='engine')?Math.max(0,vac-need):0,days=rate>0?spare/rate:Infinity;
+  const o={alt,rate,spare,days,fall:days<20*YEAR_D?decayLife(q):Infinity};   // the fall only matters if holding ends within 20 years (decayLife is the slow part)
+  if(SAT_LIFE.size>64)SAT_LIFE.clear();SAT_LIFE.set(key,o);return o}
 // ---- the vessel: one rigid body. State is (body, r, v) relative to the body it orbits (patched conics).
 let S=null,simT=0;
 const debris=[];
