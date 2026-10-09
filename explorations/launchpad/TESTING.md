@@ -141,6 +141,7 @@ NOTES § "The robot playtester".
 | ~ 55 (robot) | Put a prograde and a retrograde orbit around Nyx | Epoch 5 via tester; fly to Nyx; watch map | Map warns "Impact in … (perturbed)" for prograde; player can learn retrograde is the answer · *Robot (QA, Q30 moons): retrograde (30 × 80 km) passes "An orbit that lasts"; the prograde control hits Nyx at 277 m/s after 2.5 days and the map said "Impact … (perturbed)". Needs a human: is retrograde learnable.* | 6b | bodies |
 | 56 | Rendezvous with a satellite | G to cycle target; map closest approach; Target/Rel ret SAS modes (guidance computer) | Readouts (Target, Closest) enough to close to <1 km in reasonable time; navball marks readable | Rendezvous | sats |
 | 57 | Compare an unstudied and studied design's impact spread | Assembly "Trajectory: unstudied ±30% [Study…]"; order study; fly a sounding near a city | The wider spread is visible and you understand why a study helps | v1.38 | economy |
+| 134 | Watch a TV satellite run its tanks dry | Career, epoch 3: put an antenna with a little fuel and an engine in a stationary orbit (the TV mission); Program → its line; skip ahead with the tester's go-to-day | The line reads *holds its orbit N more days (~0.4 m/s a day)* and counts down; on the day it hits zero a news line says it drifts; about 90 days later TV in the capital goes grey. A low-orbit satellite shows no such line. Is the lifetime a real design choice (more tanks vs. a replacement)? | v1.60 (Q50) | space |
 
 ### Docking & stations
 
