@@ -14,7 +14,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
 | 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan), **W18** (network screen; W15 and W18 have defaults that hold if silent) | you | rovers' R3, MIDGAME's line, Q53, Q3's build, Q155 |
-| 3 | **Mock-ups Q72 (→ effects, in progress), Q71, Q89** | effects | Q80–Q85, D2's look, Q102 |
+| 3 | **Mock-ups**: Q72 ✓ → **W19** pick the astronauts' look; Q71 (→ effects), Q89 next | you; effects | D2's look; Q80–Q85, Q102 |
 | 4 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
 | 5 | **Q146** debris slice 2 (conjunctions) | space (no session) | slices 3–4, the pressure setting Q124, cleanup contracts |
 
@@ -72,7 +72,7 @@ the feedback I paste into PLAYTEST items.*
 - **New flight pay goes through `debPaid(R, kind, label, pay)`** (economy, every lane): otherwise the Debrief hides it in "days passing" (NOTES § UI "Slice 3 built").
 - **POWERS.md approved** (v1.0.0): fanned out as Q102–Q106; Cape and Steppe first (its round-2 decision 1).
 - **M0 is done (2026-10-09); M1 is current, M2 next** (ROADMAP rule 4). **The builder palette was empty on `main` from v1.68 to v1.73** (NOTES § v1.73): anything judged on the construction screen in that window needs a second look.
-- **Effects: after Q72, Q71 and Q89 before anything else** (Caio's picks wait on them).
+- **Effects: Q71, then Q89, before anything else** (Caio's picks wait on them).
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
@@ -327,7 +327,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | — | GROUND.md decisions | All three defaults hold: maria on the near side, G1–G2 before M3, relief in real metres |
 | — | `ocomp` for SAS modes? | **Caio decided 2026-10-08:** built into crew capsules; probes need the part, from the onboard-computer era on (→ Q34a) |
 
-## Waiting on Caio (no default possible)
+## Waiting on Caio (no default possible; **number W rows from the highest in this table, after a pull**)
 
 | # | Question | Unblocks |
 |---|---|---|
@@ -342,6 +342,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W18 | **Network screen** (NOTES § UI "Network screen plan"). Defaults if silent: its own screen (key N from the Program, once there is a second node) · a schematic, not the orbital map · the pad calendar below it, plus a compact copy in the Fleet tab | Q111 N1–N4 |
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
-| W18 | **Pick the astronauts' look** (D2 / CREW.md part 1): open `explorations/launchpad/mockups/crew/index.html` (or the stills in `output/launchpad/mockups/crew/` on the effects machine): (a) cartoony, (b) realistic, (c) stylised human. Defaults if silent: (c), the middle the roadmap expects |
+| W19 | **Pick the astronauts' look** (D2 / CREW.md part 1): open `explorations/launchpad/mockups/crew/index.html` (or the stills in `output/launchpad/mockups/crew/` on the effects machine): (a) cartoony, (b) realistic, (c) stylised human. Defaults if silent: (c), the middle the roadmap expects |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
