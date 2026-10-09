@@ -3761,3 +3761,21 @@ Negative results: a paraboloid bowl is too steep (now r^1.6); test §42's 3,000 
 ### Next steps
 - [ ] Someone with the GPU: TESTING 131 (maria on the near side), one look
 - [ ] World: Q91 (G3–G6) waits for the milestone gate (M2 current) and G3 needs the GPU; until then the world lane's ungated work is Q19/Q52 (GPU) or more 📝 plans
+
+## 2026-10-08 — Launchpad v1.59 economy: every offer says why it appeared (QUEUE Q45; economy session)
+
+### Summary
+- `whyOf` in `sim/contracts.js`: when an offer is made, it keeps the strongest true reason (a first in the last 60 days,
+  tension, the cycle, tourism, home government, the client's priorities, our standing, else routine). The Contracts
+  tab shows *Why: …* (one line in `app/program-ui.js`, flagged for flow).
+
+### Verification
+- New test `econ-4` (5 checks, mutation-tested); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.59, `TESTING.md` row 133, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 133 (do the reasons explain the board?)
+- [ ] Economy: Q46, Q10, Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+
