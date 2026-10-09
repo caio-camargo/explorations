@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — missions in flight, slice 2: on the timeline, no silent misses (2026-10-09, space session, QUEUE Q49)
+## v1.91 — missions in flight, slice 2: on the timeline, no silent misses (2026-10-09, space session, QUEUE Q49)
 
 `cruiseEvents(T)` gives each vessel in flight its next event, and the economy's `upcoming()` lists them (one line in
 `sim/program.js`, flagged), so *Coming up* shows them with a Wait button and `advanceTo` stops at them:
