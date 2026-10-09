@@ -157,7 +157,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ✓ v1.89.1 `00e0e3a` (fleet, pads, nodes with stock/need, supplies bottleneck; the screen switched over) |
 | Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ✓ v1.89.2 `a151fc4` (frugal partners, rising copies then catches up; OWN_TONE) |
 | Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ✓ v1.89.3 `18d6da4` (resupply, lab time, expansion; state-judged) |
-| Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | → economy 2026-10-09 |
+| Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ✓ v1.89.4 `62ee02c` (four world firsts; crewed days counted) |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ✓ v1.77.1 `5530b7e` (from the procedure's site; lease on the price; stood down if refused) |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
@@ -373,3 +373,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
 - space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
 - space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
+- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts"
+- economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
