@@ -39,6 +39,7 @@ the feedback I paste into PLAYTEST items.*
 
 ## Flags (read before merging)
 
+- **Orchestrator, 2026-10-08 (roadmap session, Caio's call): the system catalog is an unblocker; rank it high.** Add a 📝 L item at the top of space: "`SYSTEM.md`, the star system's catalog, drafted with Caio" (ROADMAP § "The system catalog"). When Caio approves it, fan out one item per body: a look item per body under the sky & bodies beat, plus ground, orbit, missions and a tester "go to body" cheat.
 - **Orchestrator, 2026-10-08 (roadmap session, Caio's call): look & sound runs as several sessions by beat** (ROADMAP § Lanes, "Beats"): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`, port 8802), sound. Tag each look item with its beat, keep at least 2 ready per beat, and add the beat to the kickoff line.
 - **Fixes × terrain, same functions:** the fixes session (#19) and terrain (Q17) both edit near `linkOf`/`gsSees`. Whoever
   merges second: merge `main` first and re-run test.mjs's link sections.

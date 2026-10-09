@@ -3513,3 +3513,21 @@ procedures now keep their spot: the crewed re-flight lands 12 m from the hand-fl
 
 ### Next steps
 - [ ] Bodies lane is empty in QUEUE: the orchestrator ranks the proposals
+
+## 2026-10-08 — Launchpad roadmap v1.3: the system catalog as an unblocker (roadmap session)
+
+### Summary
+Caio: working out how many planets there are, and what they're like, would let them be worked on in parallel. Nothing
+in NOTES or the code defined the system beyond Tellus, Selene and Nyx. ROADMAP now has **the system catalog**: a 📝
+item for the space lane, drafted with Caio, producing `SYSTEM.md` (per body: physical, orbit, look brief, ground brief,
+role, known or discovered; the object kinds to decide on; the constraints). Default: planets and major moons hand-made
+and fixed, minor bodies and visitors seeded per world. Once approved, each body fans out into a package across lanes;
+look and ground per body may start before M5 against a tester "go to body" view.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.2.0 → 1.3.0, `QUEUE.md` (one flag)
+
+### Next steps
+- [ ] Space session (or Caio directly): draft `SYSTEM.md` with Caio
+- [ ] Orchestrator: fan out per-body items after approval
+
