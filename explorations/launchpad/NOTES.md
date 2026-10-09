@@ -6861,3 +6861,10 @@ the top-left corner (#31), and a sun-behind lander on Selene is a black silhouet
 
 **`shot.mjs` on the RTX (QUEUE Q28).** It now passes `--force_high_performance_gpu` like `playtest.mjs`: WebGL reports the
 "NVIDIA GeForce RTX 5050 Laptop GPU" by default and the Intel iGPU with `SHOT_IGPU=1` (`SHOT_FLAGS` still overrides).
+
+**Q30 slice 2, docking: done (QA session).** `node playtest.mjs 59 60 61 56 62 63`. The scenes are §22/§25/§27/§29's,
+placed in the page, and `PT.dockIn` is a scripted pilot: Docking SAS plus bang-bang RCS on the target's position in the
+ship's frame. It latches from 50 m in 3.5 min on 6.5 kg of gas. Bumps, undocking, vessel switching and the bay all behave
+(TESTING 56, 58–63). Worth knowing: the RCS budget is 4.8 m/s of Δv, so a 300 m approach at 2 m/s uses 85 % of it.
+Row 116 (docking at Selene) and the claw are left for slice 3. Run the slice by itself: when two sessions' Chromes started
+together, row 62 stalled for minutes; alone it takes 49 s.
