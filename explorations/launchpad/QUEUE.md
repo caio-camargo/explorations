@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.19 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.20 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -14,7 +14,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
 | 2 | **Your picks from the mock-ups**: **W19** astronauts, **W20** bodies, **W21** hardware schools (Q102 is already being built on W21's default) | you | D2's look, Q80–Q85, Q102's direction |
-| 3 | **Your design calls**: **D5** (rover lost at night when flat), **D6** (dry satellites), **W14** (screen identity); with defaults that hold if silent: W15 (slice 4), W18 (network screen), W22 (station contracts) | you | rovers' R3, MIDGAME's line, Q53 |
+| 3 | **Your design calls**: **D5** (rover lost at night when flat), **D6** (dry satellites), **W14** (screen identity). Plus **W23–W28**, six plan questions from economy (overflight, roster, capacity, rivals, routines, missions per body), all with defaults that hold if silent | you | rovers' R3, MIDGAME's line, Q53; the M3–M5 plans' shape |
 | 1b | **Q19: the first load takes 86–88 s** on Windows; 71 s is linking the sky shader. The fix is built on branch `terrain` (`3a9cda2`); only its timing A/B and the merge are left, and they need a **quiet machine** (stopped twice, out of memory) | world, when few sessions run | every player's first visit; M1's steady frame rate |
 | 4 | **Q164** presets with an antenna make their own power | vehicle (Q152 parked: low memory) | Q27, relays and the link's power side |
 | 5 | **Q160** a duplicate-number check before push (Q57 ✓) | platform (**no session**) | no more renumbering after every merge |
@@ -117,6 +117,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
+| Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ready (space's sim half ✓ `55d8115`) |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ready (Q57 ✓) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
@@ -139,7 +140,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ✓ v1.63 `1312d39` (`dryQuote`/`orderDryRun`; margin cached; provisional estimates wider) |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ✓ v1.66 `812476b` (prices, gates at LAUNCH; six Selene science contracts) |
 | Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ✓ v1.69 `1c546dd` (supply runs: ascent procedure + landAt on the beacon; joins the base) |
-| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ✓ plan `ef69f28` (NOTES § "Plan: station, base, relay and rendezvous contracts"; 6 slices; W22 for Caio) |
+| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | plan ✓ `ef69f28`; slices 1–3 ✓ (v1.89.3 stations, v1.89.4 station firsts, v1.89.5 bases); slice 4 is Q180 |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ✓ plan `1d24934` (NOTES § "Plan: missions per body…"; W item) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ✓ v1.89 `bd6bd30` (schools one source of truth; names by school and form; rivals announce/rumour/tone) |
 | Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
@@ -156,6 +157,11 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ✓ `bc691b7` (no recurring income; stakes fix it: frugal 187M → 392M; no game change) |
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ✓ v1.89.1 `00e0e3a` (fleet, pads, nodes with stock/need, supplies bottleneck; the screen switched over) |
 | Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ✓ v1.89.2 `a151fc4` (frugal partners, rising copies then catches up; OWN_TONE) |
+| Q180 | Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, its parts' value back: W22 default 4) | M2 | M | ⚙ | ready |
+| Q181 | Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the Debrief line, a test (W23's defaults) | M2 | S | ⚙ | ready |
+| Q184 | Q110 slice 1: **routines**, a repeating supply run to a base (its window, its pad-calendar row, `netModel().routes`) (W27's defaults; ROADMAP § M2 lists "the routine run") | M2 | M | ⚙ | ready |
+| Q182 | Crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) (W24's defaults) | M3 | M | ⚙ | blocked: milestone gate (M3) |
+| Q183 | Crew slice 2: requalification after a loss (crewed launches refused until an uncrewed flight shows the cause fixed; the closed power's skip) | M3 | S | ⚙ | blocked: milestone gate (M3) |
 | Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ✓ v1.89.3 `18d6da4` (resupply, lab time, expansion; state-judged) |
 | Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ✓ v1.89.4 `62ee02c` (four world firsts; crewed days counted) |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ✓ v1.77.1 `5530b7e` (from the procedure's site; lease on the price; stood down if refused) |
@@ -203,8 +209,15 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 ✓ `1f2eb35` (cruise events on the timeline, no silent misses); slices 3–4 are Q166, Q167 |
 | Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | ✓ `87f8588` (v1.93: nodes carried, a stop 3 h ahead, mission control at the era's error, missed ones dropped) |
 | Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ✓ `c364972` (a dispatched flight's payload stays up) |
-| Q51 | Data as a volume + the link budget | M2 | L | 📝 | ✓ plan (NOTES § "Plan: data as a volume and the link budget"); four slices under *Proposed* |
-| Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ✓ plan (NOTES § "Plan: the system on rails"); five slices under *Proposed* (slice 1, the planets on the map, can come early: PLAYTEST #11) |
+| Q51 | Data as a volume + the link budget | M2 | L | 📝 | plan ✓ (NOTES § "Plan: data as a volume and the link budget"); slices are Q171–Q174 |
+| Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ready |
+| Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | after Q171 |
+| Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | after Q172 and Q164 |
+| Q174 | Q51 slice 4: solar conjunction and light delay at the planets | M5 | S | ⚙ | after Q87's slices; blocked: milestone gate (M5) |
+| Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | plan ✓ (NOTES § "Plan: the system on rails"); slice 1 → space (sim ✓ `55d8115`, `sim/system.js`), its map drawing is flow's Q175; slices 2–4 are Q176–Q178 (M5) |
+| Q176 | Q87 slice 2: Helios as the root, the Tellus-centred absolute frame, `SUN_DIR(t)`, Tellus's finite sphere, heliocentric legs | M5 | L | ⚙ | blocked: milestone gate (M5) |
+| Q177 | Q87 slice 3 (with look, vehicle): the moving sun: seasons (23°), panels and eclipses by `SUN_DIR(t)`, the sun dimmer outward | M5 | M | ⚙ | blocked: milestone gate (M5) |
+| Q178 | Q87 slice 4 (with economy): warp to ~10⁶× on heliocentric legs; launch windows on the timeline | M5 | M | ⚙ | blocked: milestone gate (M5) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
 | Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | ✓ `a9b2a09` (v1.71: the tilt is let go and really wanders; TV keeps ~6 years on ~500 m/s; decay already fits above ~300 km; dry re-entry is D6) |
 | Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | 📝 assessed, not built: needs every preset to park at ~150 km (+48 m/s); → design (NOTES § "Assessed: thin air in the flight itself"); default if silent: as now |
@@ -375,17 +388,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W28 | **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- space — Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it, today's behaviour as tests — NOTES § "Plan: data as a volume and the link budget"
-- space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
-- space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
-- space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
-- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts" **✓ v1.89.5 `847cd92` (economy, taken from Proposed)**
-- economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
-- economy — Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the debrief line, a test — NOTES § "Plan: overflight politics"
-- economy — crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) — NOTES § "Plan: the roster…" (M3)
-- economy — crew slice 2: requalification after a loss (crewed launches refused until an uncrewed flight shows the cause fixed; the closed power's skip) — same plan (M3)
-- space + flow — Q87 slice 1: the planets on the map from epoch 1 (`SYSTEM_BODIES`, `helioPos`; discs with labels where they are that day; PLAYTEST #11) — NOTES § "Plan: the system on rails"
-- space — Q87 slice 2 (M5): Helios as the root, the Tellus-centred absolute frame, `SUN_DIR(t)`, Tellus's finite sphere, heliocentric legs — same plan
-- space + look + vehicle — Q87 slice 3 (M5): the moving sun: seasons (23°), panels and eclipses by `SUN_DIR(t)`, the sun dimmer outward — same plan
-- space + economy — Q87 slice 4 (M5): warp to ~10⁶× on heliocentric legs; launch windows on the timeline — same plan
-- economy — Q110 slice 1: routines, a repeating supply run to a base (its window, its pad-calendar row, `netModel().routes`) — NOTES § "Plan: goods on routines…" (M3)
