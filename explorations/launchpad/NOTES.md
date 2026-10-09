@@ -1939,6 +1939,52 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
+
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
+on the map from the start).
+
+**What the code assumes today** (measured with grep, 2026-10-09):
+- the body tree's root is Tellus, at the origin: `bodyPos` returns [0,0,0] for the root; Tellus's `soi` is Infinity, so
+  leaving it leads nowhere; about 8 places treat "no parent" as "the origin";
+- the sun is fixed in the absolute frame: `SUN_DIR`, used 11 times (power and shadows, the rovers' sun, imagery
+  daylight, the clouds' and satellites' lighting, the renderer's sun);
+- the planet turns in that frame (`absTh`, 6 uses), and flights start on whole days so a flight's frame is it;
+- ~300 literal `TELLUS` uses, but nearly all mean "home" (stations, cities, the air, missions), not "the root".
+
+**The design (lean, pillar 6):** Helios becomes the root of the body tree; Tellus, Hesper, Enyo, Astraea, Hyperion and
+Erebus are its children (Kepler elements from SYSTEM.md, names in one table so a rename is one edit), the moons theirs.
+But **the absolute frame stays centred on Tellus**: `bodyPos(b, t)` is the body's heliocentric position minus Tellus's.
+Everything near home (rendering, stations, the planet's turn, every flight so far) keeps its numbers; the sun becomes a
+body that moves: `SUN_DIR(t)` = the direction to Helios, so its 11 uses take a time. Leaving Tellus's sphere (its
+Laplace radius, 177,000 km at μ 1.17e18) gives a heliocentric leg, as leaving Selene's gives a Tellus one today; the
+predictor's legs (three today) go to five (Tellus → Helios → Enyo, and back).
+
+**Slices** (space unless noted):
+1. **The planets on the map, from epoch 1** (with flow; PLAYTEST #11): `SYSTEM_BODIES` (names, elements, sizes, colours
+   from SYSTEM.md) and `helioPos(name, t)`, analytic Kepler, no physics; the map's zoomed-out view shows them as discs
+   with labels where they really are that day (and *Helios* as the sun's direction). Cheap, and it makes the year and
+   the system visible long before anyone can go.
+2. **Helios as the root** (M5): the tree and the Tellus-centred absolute frame; `SUN_DIR(t)`; Tellus's finite sphere;
+   heliocentric legs in the predictor and on rails (cruise entries carry them, v1.90); the cruise events for planetary
+   arrivals come for free (v1.91). Tests first: every existing check holds with Helios added (near Tellus nothing moves
+   but the sun); a Tellus escape becomes a heliocentric orbit with the right energy; a Hohmann to Enyo arrives when the
+   predictor says (the SYSTEM.md table: 283 days).
+3. **The moving sun** (with look and vehicle): seasons from the 23° tilt (Tellus's orbit inclined to its equator),
+   eclipses and panels by `SUN_DIR(t)`, the sun smaller and dimmer outward (1/27 at Hyperion), the renderer's sun.
+4. **Time at the planets** (with economy): warp on heliocentric legs to ~10⁶×; launch windows on the timeline (a
+   porkchop per target, the window every 1.57 years for Hesper, 2.14 for Enyo); transfers flown on rails as cruise entries.
+5. **Helios's tide** (Q139): Tellus–Helios L1/L2 with 6b's machinery.
+
+**Defaults (Caio may override):** the Tellus-centred absolute frame (keeps every flight's numbers; the alternative, a
+Helios-centred frame, moves every position by 15.8 Gm for no gain near home); planets as children of Helios with no
+mutual perturbation (patched conics; the tide comes with slice 5); the planets drawn from epoch 1 but unreachable (no
+heliocentric legs) until M5.
+
+**Precision:** float64 at 1.6e10 m keeps ~2 µm; the renderer already subtracts the camera in float64 before float32.
+Kepler at heliocentric radii is exact as today.
+
 ## v1.93 — planned burns travel with a vessel in flight (2026-10-09, space session, QUEUE Q166, Q49 slice 3)
 
 - **Carried:** at flight end, the vessel's maneuver nodes still ahead (`s.node`, `s.nodeQ`) go with its registry entry
