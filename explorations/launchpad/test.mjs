@@ -4097,6 +4097,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
       `Wren ${wren[0].f.toFixed(0)} Hz, Albatross ${alb[0].f.toFixed(0)} Hz, Kestrel×2 + Condor: ${mix.map(v => v.f.toFixed(0) + ' Hz ' + v.g.toFixed(2)).join(', ')}`);
+    // QUEUE Q67: the plasma's sound follows the heating like the drawn shell (flux on its log scale, the same airspeed gate);
+    // sounds from elsewhere fall with distance, pan toward their side, need air at both ends
+    const { sndPlasma, sndOthers } = new Function(blk + ';return {sndPlasma,sndOthers}')(), PV = api.PLASMA_V;
+    const climb = sndPlasma(7.7e4, 1041, PV), peak = sndPlasma(1.6e5, 2600, PV), onset = sndPlasma(2e4, 2600, PV), cool = sndPlasma(0, 3000, PV), moon = sndPlasma(1e5, 2600, 0);
+    const near = sndOthers([{ d: 200, T: 2.3e5, air: 1, x: 1 }]), far = sndOthers([{ d: 8000, T: 2.3e5, air: 1, x: 1 }]), left = sndOthers([{ d: 200, T: 2.3e5, air: 1, x: -0.8 }]),
+      vac = sndOthers([{ d: 200, T: 2.3e5, air: 0, x: 1 }]), deb = sndOthers([{ d: 500, T: 0, whoosh: 0.5, air: 0.5, x: 0 }]);
+    check('plasma sound: none on a hot climb or cool air, faint at onset, full at an orbital entry\'s peak; elsewhere: nearer is louder, panned, silent in vacuum',
+      climb === 0 && cool === 0 && moon === 0 && onset > 0 && onset < 0.2 && peak > 0.95 && near.g > 2 * far.g && near.pan > 0.9 && left.pan < -0.7 && vac.g === 0 && deb.g > 0 && near.lp > far.lp
+        && /sndPlasma\(st\.qh,st\.va,st\.pv\)/.test(H) && /sndOthers\(st\.others\)/.test(H),
+      `plasma: climb ${climb}, onset ${onset.toFixed(2)}, peak ${peak.toFixed(2)} · others: 200 m ${near.g.toFixed(2)}, 8 km ${far.g.toFixed(3)}, debris ${deb.g.toFixed(2)}`);
   }
   // QUEUE Q24: char on dark paint heat-tints (it can't blacken black); a bay door's inside is a different colour from its
   // outside, and it has hinge brackets
