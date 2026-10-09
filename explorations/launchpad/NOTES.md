@@ -1014,6 +1014,16 @@ ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation
   this. The first try (tint at ~0.3 albedo) turned the whole pod pale bronze; the tint is now ~0.1.
 - Seen in the builder (bay at 45 % open; pod char 0 / 0.5 / 1). test.mjs `aerofx-3`.
 
+## Reference views swept (2026-10-09, effects beat; ROADMAP look & sound evergreen)
+
+All of `refView(1..113)` rendered in one page per 20–25 views (`refView` from a fresh page past the career gate):
+74 views exist, none throws or hangs. One thing looked wrong: since the Debrief screen, a view that leaves a flight
+for the editor passes through Debrief, and its panel covered the close-ups and complex views (4–9, 15–17) and
+anything after a flight. `bare()` in `views.js` now hides `#deb` too (the robot playtester's shots go through it).
+Re-checked 4, 15, 17. Contact sheets were looked over; the HUD views (94–96) show the HUD on purpose.
+Known, not fixed: the entry views fly nose-first (SAS "retro" loses to the aero torque) and burn the capsule's
+parachute off at ~55 km (a boom and smoke in 40–47); the shield-first views 46–47 turn the capsule afterwards.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -7068,7 +7078,7 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   M, the HUD's glass buttons and white messages vanished on the cream paper: `body.paper` (set while that map shows)
   turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
   launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
-  with the key) as well as `go`.
+  with the key) as well as `go`. **Enter** ends a flight that is over (landed or lost), like the End flight ▸ button.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
@@ -7287,7 +7297,6 @@ level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) ca
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
 - test.mjs `aerofx-3` (engine voices).
-
 ### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
 - **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
   kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
@@ -8118,7 +8127,7 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
 
-## v1.80 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
+## v1.81 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
 
 MIDGAME.md § Satellites (approved): lifetime is a design choice; **replacement is for upgrades**; servicing is special,
 for valuable assets. Built in `sim/program.js` and `sim/contracts.js`:
@@ -8186,3 +8195,31 @@ player may know better, and the flight is how they find out.
   parachute) and `vehicle-5` (auto legs at 3 km / 1.2 km / climbing / by hand; legs and wings through the register);
 - the full suite, 527/527;
 - the robot's `m1` run passes; a tester probe shows the Hopper's "Short of orbit for The beeper" and a chute-less Passenger Orbiter's "No parachute" in the Rollout panel.
+
+## v1.80 — a Docking preset; power's second slice: an RTG, the budget at the flight's aim, charge kept (2026-10-09, vehicle session, QUEUE Q78, Q131)
+
+**Q78: the Docking preset.** A docking head on the Orbiter's launcher, so the docking rows (TESTING 58–67, 98, 116) can
+be flown without the builder: a port on top, a probe core with an onboard computer (Docking SAS needs one on a probe,
+v1.68) and a battery, two rings of four RCS quads and two gas bottles on the upper 2 t tank. It's the first preset built
+as a v2 tree (surface parts), made at the end of `sim/vessel.js` once `toV2` exists.
+- **Measured:** it reaches orbit (periapsis 103 km) with 646 m/s spare and its 30 kg of gas untouched.
+- **To dock:** launch it twice, one as the target, or chase any satellite with a port. Docking SAS comes in the
+  onboard-computer era (or with the tester's tools).
+
+**Q131: power, second slice** (`sim/power.js`):
+- **An RTG** (`rtg`, surface part, 35 kg, 60 W day and night, price 15; *Power* palette): `powRTG` is added in the
+  physics step, in long rails steps and in the steady state. The battery only has to cover the load the RTGs don't.
+  Placeholder mesh: a dark finned drum on a strut.
+- **The budget at the flight's aim:** the builder's power line works out the orbit the flight is aimed at (the highest
+  accepted satellite contract, `flightAims` from v1.79), else low Tellus orbit. It still assumes the sun in the orbit's
+  plane (β 0), the longest shadow, and says so. At 1,000 km the shadow is 19% of the orbit, against 37% low down.
+- **The charge is kept:** the vessel's saved state (`vstOf`) carries `E`, and `vesselOf` restores it, so a satellite
+  loaded back has the battery it was left with (each new flight still starts full).
+
+**Checked:** `test.mjs` sections `vehicle-6` (the Docking preset to orbit: quads, gas, port, Docking SAS with its
+computer) and `vehicle-7` (RTG at night, the higher orbit's shorter shadow, the charge through the register); the full
+suite 541/541 with Q78; the smoke shard and the power, legs and docking sections after Q131; `playtest.mjs m1` passes;
+in the page, a core + antenna + RTG reads "Power +60 W / −5 W (low orbit average, the sun in its plane) · shadow 16 min
+needs 0 Wh".
+
+**Not yet:** a choice of β or orbit in the builder itself; what a flat battery does to a satellite's service (space, Q27).

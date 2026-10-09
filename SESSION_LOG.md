@@ -4325,3 +4325,16 @@ Caio left the flow session to work its lane unattended. Every item came from QUE
 `TESTING.md`, `PLAYTEST.md` (#25, #26, #27, #31 done), `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** the flow lane's ready items are done; left: Q43 (after Q3's build), Q100 (after Q57), Q104 (after Q103),
 and the build of Q3/Q111 once Caio reads W15/W16.
+
+## 2026-10-09 — Launchpad v1.80: Docking preset; RTG, the power budget at the flight's aim, charge kept (Q78, Q131; vehicle session, unattended)
+
+- **Q78:** a Docking preset (port, probe core + computer + battery, 8 RCS quads, 2 gas bottles on the Orbiter's
+  launcher), the first preset built as a v2 tree; 103 km orbit with 646 m/s spare.
+- **Q131:** RTG part (60 W day and night); the builder's power line uses the accepted satellite contract's orbit; the
+  battery's charge travels with a registered vessel.
+- **Checked:** full suite 541/541 (Q78); smoke + sections after Q131; `playtest.mjs m1` passes; a page probe of the
+  power line.
+
+**Files:** `sim/vessel.js`, `sim/power.js`, `sim/space.js`, `sim/program.js`, `app/editor.js`, `app/gl.js`, `builder.js`,
+`test.mjs` (vehicle-6, vehicle-7), launchpad `NOTES.md` § v1.80, `TESTING.md` 160–161, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** Q33 (node chains, M2) or Q141 (satellite lifetime in the builder, with space); Q47 still needs Caio and the GPU.

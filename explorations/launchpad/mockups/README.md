@@ -58,3 +58,22 @@ proposal per body, not alternatives: pick, or say what to change. Real reference
 | **erebus** | pale pinks and tans, a smooth bright basin, dark reddish highlands, a tiny sun | Pluto by New Horizons (Sputnik Planitia); Triton by Voyager 2 | a map with one big bright region; the sun drawn small at that distance |
 
 **Pick / changes:** _(Caio)_
+
+## schools/ — the hardware schools (QUEUE Q89 → POWERS.md → Q102)
+
+Open `schools/index.html` or the stills in `output/launchpad/mockups/schools/` (`<view>.png`, 1280×800). The Orbiter's
+outline is the game's own (its parts' profiles exported from the sim); only surface, finish, paint and roundel change
+between schools, as POWERS.md allows. Roundels use generic colours here; in the game each power tints its own.
+
+| View | Cape | Steppe |
+|---|---|---|
+| **orbiters** — the same preset | white with the black roll pattern; a closed, ribbed black skirt over the upper engine; a stripes-and-stars roundel | grey-green enamel panel by panel, seams; an open lattice interstage (the upper engine shows through); one big star on a disc |
+| **signature** — a design per school, from normal parts | tall and slim: three stacked stages with ribbed skirts, a capsule and a tower on top | a core with four conical strap-ons leaning in, each on four small bells |
+| **capePad / steppePad** — the pad | a tall fixed service tower with swing arms, a flame trench, the crawlerway | rolled out lying down on rails on a transporter-erector, a flame pit, a launch table with four arms that fall back |
+
+What Q102 would need in the game: a `school` style parameter read by `partBody` for paint, finish and the interstage
+cover (skirt or lattice: a cover drawn around an exposed upper engine, outline unchanged); roundel decals from the
+existing roll-pattern machinery; the signature stacks as preset designs for rivals; the Steppe pad's horizontal
+rollout as a new pad animation (the rig code, `buildRig`).
+
+**Pick / changes:** _(Caio)_

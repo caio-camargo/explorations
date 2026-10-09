@@ -14,7 +14,8 @@ window.refView = async (n) => {
   // the galaxy is per program (Q21); reference views keep the one they were tuned on
   if (typeof PROG !== 'undefined') PROG.gseed = WSEED;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
-  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
+  // (#deb: leaving a flight for the editor now passes through the Debrief screen, whose panel covered the close-ups)
+  const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
     if (mode !== 'editor') document.getElementById('bEditor').click();
     stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); cam.edY = 0;

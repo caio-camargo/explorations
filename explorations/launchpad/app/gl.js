@@ -1037,6 +1037,9 @@ function partBody(out,p){
         rbox(out,P(b0+L/2,h-.01),L/2,.012,.012,C.ST,a);rbox(out,P(b0+L/2,.01),L/2,.012,.012,C.ST,a)}   // the wing's edge spars
       else{for(let k=0;k<4;k++)rbox(out,P(.03+k*.025,h/2),.011,h/2-.01,.2,k%2?CELL:C.ST,a);rbox(out,P(.13,h/2),.012,h/2,.21,C.D,a)}}break;   // folded pack, cover
     // solar cells on the body: tiles that follow a 0.625 m hull's curve (4 columns × 4 rows), on a thin steel backing
+    // RTG (vehicle session, Q131; placeholder): a dark finned drum standing off the skin on a short strut
+    case'rtg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)],c=[x+n[0]*.3,y,z+n[2]*.3];tube(out,[x,y+h/2,z],[c[0],y+h/2,c[2]],.03,C.ST,6);
+      lathe(out,[[0,.05,C.D],[.12,.05,C.D],[.12,h-.05,C.D],[0,h-.05,C.D]],c,12,[false,false]);for(let k=0;k<4;k++)fin(out,c,k*Math.PI/2,.12,.08,h-.1,.01,C.D)}break;
     case'bpanel':{const a=p.phi||0,R=.625,cx=x-Math.cos(a)*R,cz=z-Math.sin(a)*R,CELL=[.08,.11,.28,4];
       for(let k=0;k<4;k++){const ak=a+(k-1.5)*.17,c=Math.cos(ak),s=Math.sin(ak);rbox(out,[cx+c*(R+.008),y+h/2,cz+s*(R+.008)],.004,h/2,.054,C.ST,ak);
         for(let j=0;j<4;j++)rbox(out,[cx+c*(R+.014),y+(j+.5)*h/4,cz+s*(R+.014)],.004,h/8-.012,.046,CELL,ak)}}break;
