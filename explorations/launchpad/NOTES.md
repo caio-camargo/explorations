@@ -1888,7 +1888,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — a dispatched flight's payload stays up (2026-10-09, space session, Q49 follow-up)
+## v1.92 — a dispatched flight's payload stays up (2026-10-09, space session, Q49 follow-up)
 
 `dispatchRun` settled the contract and dropped the vessel (pillar 3: what you launch stays). It now registers `f.s`
 like a hand-flown flight's end does: a satellite if its orbit is settled, else a vessel in flight (v1.90). `satRegister`
