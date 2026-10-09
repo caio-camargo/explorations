@@ -1014,6 +1014,16 @@ ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation
   this. The first try (tint at ~0.3 albedo) turned the whole pod pale bronze; the tint is now ~0.1.
 - Seen in the builder (bay at 45 % open; pod char 0 / 0.5 / 1). test.mjs `aerofx-3`.
 
+## Reference views swept (2026-10-09, effects beat; ROADMAP look & sound evergreen)
+
+All of `refView(1..113)` rendered in one page per 20–25 views (`refView` from a fresh page past the career gate):
+74 views exist, none throws or hangs. One thing looked wrong: since the Debrief screen, a view that leaves a flight
+for the editor passes through Debrief, and its panel covered the close-ups and complex views (4–9, 15–17) and
+anything after a flight. `bare()` in `views.js` now hides `#deb` too (the robot playtester's shots go through it).
+Re-checked 4, 15, 17. Contact sheets were looked over; the HUD views (94–96) show the HUD on purpose.
+Known, not fixed: the entry views fly nose-first (SAS "retro" loses to the aero torque) and burn the capsule's
+parachute off at ~55 km (a boom and smoke in 40–47); the shield-first views 46–47 turn the capsule afterwards.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
