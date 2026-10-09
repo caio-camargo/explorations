@@ -1939,7 +1939,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — the automation ladder as one table (2026-10-09, space session, QUEUE Q127 slice 1)
+## v1.95 — the automation ladder as one table (2026-10-09, space session, QUEUE Q127 slice 1)
 
 `autoAllowed(kind) → {ok, why, era}` in `sim/procedures.js`, with `AUTO_LADDER` (the plan's table: § "Plan: the
 automation ladder"): a flown ascent from the start; mission-control burns, deployments and crewed docking from
