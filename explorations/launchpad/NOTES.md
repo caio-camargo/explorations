@@ -7237,7 +7237,19 @@ Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust sha
 level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
-- test.mjs `aerofx-3` (engine voices).
+- test.mjs `aerofx-3` (engine voices).
+### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
+- **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
+  kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
+  under 260 Hz) and a crackle (the pop buffer at 1.4 kHz, ∝ level²), heard through the hull, so it doesn't thin with
+  the air. Measured: a hot climb (77 kW/m² at 1 km/s) 0; onset (20 kW/m² at 2.6 km/s) 0.12; view 40 (160 kW/m²) 1.00.
+  The old skin-temperature hiss stays (hot metal ticking, a different thing).
+- **Elsewhere:** `sndOthers` takes other vessels burning within 30 km (the own roar's loudness law) and debris tearing
+  through the air (a whoosh from its dynamic pressure, from 0.5 kPa), each falling as 250/(250+d) and needing air at
+  both ends; highs fade with distance; one brown-noise layer through a stereo panner, panned by the power-weighted
+  direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
+  explosions have one). `AUD.Q67 = false` turns both off.
+- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
