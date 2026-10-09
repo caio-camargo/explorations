@@ -1939,6 +1939,25 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — the star system on paper (2026-10-09, space session, QUEUE Q87 slice 1, sim half)
+
+New `sim/system.js` (after `sim/space.js`): the planets of [`SYSTEM.md`](SYSTEM.md) where they really are, for the map
+from epoch 1 (PLAYTEST #11). Positions only: no physics, no heliocentric legs (that's slice 2, at M5).
+- `SYSTEM_BODIES`: one table (name, a in TU, e, i, node, perihelion, phase, radius, gravity, a map colour), so a rename
+  is one edit (SYSTEM.md: names are placeholders). Nodes, perihelia and phases aren't in the catalog: fixed defaults;
+  Erebus's 2:1 phasing with Hyperion is a later refinement.
+- `TU()`: what makes Tellus's year exactly 400 program days at Helios's μ 1.17e18: **15.78 Gm** (SYSTEM.md: 15.8).
+- The ecliptic is tilted 23° to Tellus's equator (SYSTEM.md decision 3) and turned so that **on day 0 the real
+  direction to Helios is the renderer's fixed `SUN_DIR`**: the map and the sky agree at the start (they part as the year
+  turns, until slice 3 moves the renderer's sun). Tellus is placed by its true anomaly (by its mean one the sun was
+  1.9° off).
+- `helioPos(name, T)` (heliocentric, Tellus's axes), `fromTellus(name, T)` (and `'Helios'`), `planetPeriod(name)`.
+
+Measured: periods Hesper 0.61 y (244 d), Enyo 1.87, Astraea 4.61, Hyperion 11.86, Erebus 23.70 years, as SYSTEM.md;
+Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test `space-11` (2 checks; mutations
+caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
+view) is flow's, proposed in QUEUE.
+
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
 From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus

@@ -4577,6 +4577,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('planned burns: a burn that leaves the orbit puts the vessel in flight', qx.cruise === 1 && D.elements(qx.r, qx.v, T.mu).e > 1, `e ${D.elements(qx.r, qx.v, T.mu).e.toFixed(2)}, in flight ${!!qx.cruise}`);
 }
 
+// space-11. The star system on paper (space session, QUEUE Q87 slice 1): the planets from SYSTEM.md at their real places
+// (heliocentric Kepler, no physics yet), for the map from epoch 1. The year fixes the scale; the ecliptic is tilted 23° to
+// the equator and turned so the sun on day 0 is where the renderer draws it.
+{
+  const D = new Function(src + 'return {TU,helioPos,fromTellus,planetPeriod,eclFrame,SYSTEM_BODIES,SUN_DIR,DAY_S,YEAR_D,len,dot,norm,sub};')();
+  const yr = n => D.planetPeriod(n) / D.DAY_S / D.YEAR_D, want = { Hesper: 244 / 400, Enyo: 1.87, Astraea: 4.61, Hyperion: 11.9, Erebus: 23.7 };
+  const per = Object.entries(want).map(([n, w]) => [n, yr(n), w]), perOK = per.every(([n, y, w]) => Math.abs(y / w - 1) < 0.01);
+  check('system: Tellus’s year is exactly 400 days and the planets’ periods are SYSTEM.md’s (Hesper 244 d, Enyo 1.87 y, Astraea 4.61, Hyperion 11.9, Erebus 23.7)',
+    Math.abs(yr('Tellus') - 1) < 1e-12 && Math.abs(D.TU() / 15.8e9 - 1) < 0.01 && perOK, per.map(([n, y]) => `${n} ${y.toFixed(2)} y`).join(', ') + `; TU ${(D.TU() / 1e9).toFixed(2)} Gm`);
+  const F = D.eclFrame(), tilt = Math.acos(F.N[1]) * 180 / Math.PI, sun0 = D.dot(D.norm(D.fromTellus('Helios', 0)), D.SUN_DIR);
+  let inside = true; for (const b of D.SYSTEM_BODIES) for (let k = 0; k < 20; k++) { const r = D.len(D.helioPos(b.name, k * 37.3 * D.DAY_S)), a = b.a * D.TU(); if (r < a * (1 - b.e) * 0.999999 || r > a * (1 + b.e) * 1.000001) inside = false; }
+  // Enyo's closest approaches to Tellus over 9 years: their spacing is the synodic period (the launch windows: 2.14 y)
+  const dEn = t => D.len(D.fromTellus('Enyo', t)), mins = []; let prev = dEn(0), down = false;
+  for (let d = 1; d < 9 * D.YEAR_D; d++) { const x = dEn(d * D.DAY_S); if (x > prev && down) mins.push(d - 1); down = x < prev; prev = x; }
+  const gaps = mins.slice(1).map((m, i) => (m - mins[i]) / D.YEAR_D), gapOK = gaps.length >= 2 && gaps.every(g => Math.abs(g - 2.14) < 0.2);
+  check('system: the sun on day 0 is the renderer’s, the ecliptic is 23° from the equator, every planet stays between its perihelion and aphelion, Enyo comes close every ~2.14 years',
+    sun0 > 1 - 1e-9 && Math.abs(tilt - 23) < 1e-6 && inside && gapOK, `sun ${sun0.toFixed(9)}, tilt ${tilt.toFixed(3)}°, Enyo's closest approaches ${gaps.map(g => g.toFixed(2)).join(', ')} years apart`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
