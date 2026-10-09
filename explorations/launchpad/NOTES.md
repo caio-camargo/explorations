@@ -9652,3 +9652,12 @@ dropped, shield first, chute: home at 8.5 m/s with the crew safe. Found: the Deb
 **Driver fix:** a robot that swaps `S` for a ship it built must call `HOOK.rebuild()`, or the scene keeps drawing the ship
 it launched first. `PT.park` does now. The numbers from Q30's docking and station rows stand, but their shots of 56, 59, 60,
 60c, 64, 66 and 116 drew the Orbiter; 59, 64, 66 and 116 were re-shot (`C:/Users/caioa/dev/playtest-out/reshoot`).
+
+**Tester debris (QA session, 2026-10-09; QUEUE Q161).** Tester menu → **Debris**: a height and a mass, *Breakup*
+(`testBreakup`, v1.83's `breakup` plus a news line), *ASAT test* (`asatTest` named for the first foreign power), *+100 dead
+stages there* (`testClutter`: 2 t Kestrel stages within 25 km of the height on seeded random planes, through `junkAdd` like
+a flight's spent stages), and the **debris setting** off / light / real (`PROG.pressures.debris`, which had no UI). Heights
+below the air are refused. Measured in the page: on *light* (the default), 1,500 stages and a 1 t breakup at 825 km give
+R0 11 but the next breakup is ~300 years off, so no news; on *real*, R0 110, due in ~30 years, and "The 800–850 km band now
+feeds itself" arrives in the first days. test.mjs `qa-4`; TESTING 177. Found on the way: a fresh program has no `PROG.satN`,
+so the first seed came out NaN and every stage was dropped; the test now starts without it.
