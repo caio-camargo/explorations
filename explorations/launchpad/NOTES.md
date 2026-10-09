@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1478,6 +1478,15 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
+
+`career.mjs`'s own stacks for the first orbits were stand-ins: the `passOrbit` one (biocapsule, pod, shield, no
+decoupler) would bury its shield under the tank in real physics (NOTES § v1.73). It now prices the vehicle lane's
+proven presets: **Beeper** for an instrument package in orbit (56M) and **Passenger Orbiter** for a biocapsule's orbit
+(58M), down from the stand-ins' 71M and 74M; heavier lifts still add ballast to the Orbiter or the Heavy.
+**Re-measured** (`PACE=1`, 2 years, 5 seeds): **first orbit in 4 flights for every start, in every run** (day 110–166);
+with the first orbit attempt lost, 5–8 flights, and every start reaches orbit but one frugal-company run in five.
 
 ## Rovers in the career runner: v1.66's prices measured (2026-10-09, economy session, QUEUE Q130; runner only)
 
