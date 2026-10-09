@@ -465,6 +465,31 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
     debrief: v => v[0] === true && v[1] === true,  // flow Q2
     boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
 
+// Moons (QUEUE Q30 slice 1, NOTES § "Plan: robot drivers…"): the Selene and Nyx ladders flown in the page by the game's
+// own procedures, with fly_ladder.mjs (fetched, its Node-only tail cut, imported from a blob) driving them. Its HOOK is a
+// dummy, so the page's HUD and news (and PT.log) see everything a player would. Each mission is one step, then shots.
+const MOON_HELPERS = String.raw`
+PT.ladder = async () => { if (PT.L) return PT.L; const src = await (await fetch('fly_ladder.mjs')).text(); const cut = src.slice(0, src.indexOf('// run directly'));
+  PT.L = await import(URL.createObjectURL(new Blob([cut], {type: 'text/javascript'}))); return PT.L };
+PT.api = () => ({PRESETS, TELLUS, SELENE, BODIES, MISSIONS, newShip, stage, advPhys, advRails, railsOK, localFrame, qFromBasis, elements, timeToNu, dvRemaining, dvPlan, engAcc,
+  HOOK: {}, PROG, len, norm, add, sub, mul, dot, cross, procStart, procKey, vesselCost, bodyRel, toPF, siteAt, get S() { return S }, set S(v) { S = v }, get t() { return simT }, set t(v) { simT = v }});
+PT.fly1 = async id => { const L = await PT.ladder(), n0 = PT.log.length, f0 = PROG.funds; const rows = L.flyLadder(PT.api(), [id]); PT.showUI();
+  return {id, rows, at: S.body.name, alt: Math.round(PT.alt() / 1e3), landed: S.landed, funds: +(PROG.funds - f0).toFixed(1), news: PT.logSince(n0).filter(l => /news|Mission/.test(l)).slice(-10)} };
+PT.mapShot = () => { go('map'); render(); return true };
+true`;
+const MOON = (id, shots = true) => [`PT.fly1(${JSON.stringify(id)})`, ...(shots ? [`PT.look(0.9, 0.15, 25)`, {shot: id.replace(':', '_')}, `PT.mapShot()`, {shot: id.replace(':', '_') + '_map'}, `go('flight'); true`] : [])];
+const MOONSTART = [MOON_HELPERS, `PT.preset('Probe'); PT.launch(); testEpoch(4); true`];
+ROWS[68] = {title: 'the Selene ladder by procedure (with 54, 92, 13)', steps: [...MOONSTART, ...MOON('farside'), ...MOON('selimp'), ...MOON('selland'), ...MOON('selsample')]};
+ROWS[72] = {title: 'Nyx: found by tracking, flown past (with 121)', steps: [...MOONSTART, ...MOON('nyxfind'), ...MOON('nyxfly')]};
+// after each capture, up to 400 h on: the prograde orbit should come down or leave, the retrograde one stay
+const NYXWAIT = `(()=>{ const t0 = simT; for (let k = 0; k < 400 && S.alive && S.body.name === 'Nyx' && !S.landed; k++) { if (railsOK(S)) advRails(S, 3600, 1000); else advPhys(S) }
+  return {days: +((simT - t0) / 86400).toFixed(1), body: S.body.name, alive: S.alive, landed: S.landed, alt: Math.round(PT.alt() / 1e3), log: PT.log.slice(-4)} })()`;
+ROWS[55] = {title: 'Nyx orbits: retrograde lasts, prograde is wrecked', steps: [...MOONSTART, ...MOON('nyxorb'), NYXWAIT, ...MOON('nyxorb:pro'), NYXWAIT]};
+ROWS[73] = {title: 'land on Nyx by procedure', steps: [...MOONSTART, ...MOON('nyxland')]};
+// flySite twice at one point: the landing procedure is repeatable to within metres
+ROWS[125] = {title: 'land on the same Selene spot twice', steps: [...MOONSTART,
+  `(async()=>{ const L = await PT.ladder(); const a = L.flySite(PT.api(), 'Probe', 'Selene', 10, 20), b = L.flySite(PT.api(), 'Probe', 'Selene', 10, 20); PT.showUI(); return {first: a, second: b} })()`, `PT.look(0.9, 0.15, 25)`, {shot: 'landed'}]};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {
