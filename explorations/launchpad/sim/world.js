@@ -259,7 +259,8 @@ const SURF=[{mu:1,soft:2,rough:0},{mu:.1,soft:0,rough:0},{mu:.45,soft:1,rough:.0
   {mu:.45,soft:3,rough:.02},{mu:.6,soft:0,rough:.3},{mu:.7,soft:-2,rough:.3},{mu:.6,soft:0,rough:0},{mu:.3,soft:4,rough:.05}];
 const SURF_PAD={name:'launch pad',mu:.8,soft:0,rough:0},SURF_MOON={name:'regolith',mu:.6,soft:1,rough:.15},TOUCH_MAX=12;   // regolith: boulders in 15% of cells
 // the ground under a planet-fixed point, as a landing surface: a levelled pad, the sea, or the biome's
-function surfaceAt(b,pf){if(b!==TELLUS)return SURF_MOON;const u=norm(pf);
+function surfaceAt(b,pf){if(b!==TELLUS)return b.ground&&b.ground.surf?b.ground.surf(pf):SURF_MOON;   // a recipe may have its own surfaces (GROUND.md)
+ const u=norm(pf);
   if(SITES.some(t=>{if(t.kind!=='pad')return false;const dx=u[0]-t.u[0],dy=u[1]-t.u[1],dz=u[2]-t.u[2];return Math.sqrt(dx*dx+dy*dy+dz*dz)*TELLUS.R<PAD_FLAT}))return SURF_PAD;
   const bi=biomeAt(u),su={name:bi.name,id:bi.id,...SURF[bi.id]};
   // snow lies where the shader paints it: colder than ~−3 °C at that height, on slopes under ~38° (ice is its own biome)
