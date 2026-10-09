@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -143,6 +143,7 @@ NOTES § "The robot playtester".
 | ~ 56 (robot) | Rendezvous with a satellite | G to cycle target; map closest approach; Target/Rel ret SAS modes (guidance computer) | Readouts (Target, Closest) enough to close to <1 km in reasonable time; navball marks readable · *Robot (QA, Q30 docking): G picks the satellite ("Target Lookout 1 · 304 m", "Closest"); a scripted RCS pilot closes 300 → 15 m in 3.6 min but spends 25 of 30 kg of gas: the RCS budget is 4.8 m/s, so a 2 m/s approach from 300 m nearly empties it. Needs a human: is that a fair hint to use the engine for the far part.* | Rendezvous | sats |
 | 57 | Compare an unstudied and studied design's impact spread | Assembly "Trajectory: unstudied ±30% [Study…]"; order study; fly a sounding near a city | The wider spread is visible and you understand why a study helps | v1.38 | economy |
 | 134 | Watch a TV satellite run its tanks dry | Career, epoch 3: put an antenna with a little fuel and an engine in a stationary orbit (the TV mission); Program → its line; skip ahead with the tester's go-to-day | The line reads *holds its orbit N more days (~0.4 m/s a day)* and counts down; on the day it hits zero a news line says it drifts; about 90 days later TV in the capital goes grey. A low-orbit satellite shows no such line. Is the lifetime a real design choice (more tanks vs. a replacement)? | v1.60 (Q50) | space |
+| 140 | Watch a low satellite come down | Career: put a camera satellite with no fuel left in a ~150 km orbit and another at ~300 km; Program → their lines; skip ahead a few days | The 150 km one says *re-enters in about 5 days*, a news line warns it's sinking, then it re-enters and leaves the list; the 300 km one says years. One left with fuel says *holds its orbit … more*. Is "go higher or bring fuel" a fair design problem, or a surprise? | v1.64 (Q25) | space |
 
 ### Docking & stations
 
@@ -158,7 +159,7 @@ NOTES § "The robot playtester".
 | 65 | Rotate a crew: Fly the station, undock the capsule, bring it home | Program > Fleet > station > Fly | Flow is findable; crew carries over; nothing gets lost across flights | A2 | sats |
 | ~ 66 (robot) | Grapple, berth and stow with the arm | Arm on a hub; module within 10 m <0.5 m/s; HUD Arm row | Arm motion looks right (no obvious clipping); berth/stow is satisfying, not slow · *Robot (QA, Q30 stations): grapple 4 m off: held at once ("Arm holding Object 1 · berth · stow in bay · release"); berthing takes 58 s with a 17→86 % progress row. Needs a human: satisfying or slow.* | D | sats |
 | ~ 67 (robot) | Found a moonbase: beacon lander then a module landed nearby | Epoch 4+ via tester; G targets landed object; HUD Landing row | Landing near the target is achievable with the row; base shows in Fleet tab · *Robot (QA, Q30 stations): a beacon lander left on Selene is listed "On the surface: Selene Base 1 · base: 1 module". The landing-near-target half not tried.* | E | sats |
-| 116 | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* | Moon rendezvous | sats |
+| ~ 116 (robot) | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* · *Robot (QA): in a 100 km Selene orbit, G targets the Selene orbiter ("Target Lookout 1 · 43 m"); the scripted pilot docks in 140 s (18.8 kg of gas, three times the same approach at Tellus: probably the pilot, not the game); undocked, it is still listed around Selene. Needs a human: does it feel as at home.* | Moon rendezvous | sats |
 
 ### Moons & crew
 

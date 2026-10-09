@@ -612,6 +612,16 @@ ROWS[117] = {title: 'rover science on Selene: rock, spectrometer, panorama', ste
   {click: '[data-rvsci="pano"]'}, {wait: 3000}, `({log: PT.log.slice(-4), panel: document.getElementById('rover').innerText.split(String.fromCharCode(10)).slice(-4).join(' · ')})`, {shot: 'pano'},
   `go('program'); if (screenNow() === 'debrief') go('program'); (PT.text('#progBody') || '').match(/On Selene[^]{0,300}/)?.[0] || 'no On Selene section on this tab'`, `ovOpen('logbook'); (PT.text('#logbook') || '').match(/On Selene[^]{0,400}/)?.[0] || 'no On Selene section in the logbook'`, {shot: 'logbook'}]};
 
+// 116: §41's scene, the docking pilot in a 100 km Selene orbit; then undock, and the probe is still listed around Selene
+ROWS[116] = {title: 'rendezvous and dock with a Selene orbiter', steps: [...DOCKSTART,
+  `(()=>{ const B = SELENE, r = PT.dockScene({gap: 40, lat: 1.5}), r0 = B.R + 100e3, Y = qrot(S.q, [0, 1, 0]), k = PT.q;
+     // move both into Selene orbit, the target re-registered in Selene's frame
+     PROG.sats = []; S.body = B; S.r = [r0, 0, 0]; S.v = [0, 0, -Math.sqrt(B.mu / r0)]; const t = newShip(['port', 'cam', 'petrel']); Object.assign(t, {body: B, landed: false}); t.rec.launched = true; t.rec.day0 = PROG.day;
+     t.q = qmul(qaxis([0, 0, 1], Math.PI), S.q); t.r = add(add(S.r, mul(Y, S.yTop + 40 + t.yTop)), [0, 1.5, 0]); t.v = S.v.slice(); satRegister(t, {day0: PROG.day}); PT.q = PROG.sats.at(-1); S.target = null;
+     return {body: S.body.name, listed: moonSats(B).map(q => q.name)} })()`, {key: 'g'}, `({target: S.target, hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Target|Closest|Body/.test(l))})`,
+  `PT.dockIn()`, `PT.look(2.4, 0.15, 20)`, {shot: 'docked_selene'},
+  `(()=>{ undock(S, PT.q.id); PT.steps(5); return {att: S.att.length, aroundSelene: moonSats(SELENE).map(q => q.name)} })()`]};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {
