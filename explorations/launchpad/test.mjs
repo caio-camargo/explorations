@@ -4616,6 +4616,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     sun0 > 1 - 1e-9 && Math.abs(tilt - 23) < 1e-6 && inside && gapOK, `sun ${sun0.toFixed(9)}, tilt ${tilt.toFixed(3)}°, Enyo's closest approaches ${gaps.map(g => g.toFixed(2)).join(', ')} years apart`);
 }
 
+// flow-4. The planets on the map (flow session, QUEUE Q175, Q87 slice 1's drawing; PLAYTEST #11): Helios and the five
+// other planets, each at fromTellus's place that day, its distance in TU, a disc sized by class (Hyperion biggest,
+// Astraea and Erebus at the 2 px floor), its direction laid into the ecliptic for the map's ring, never Tellus itself;
+// a planet moves across the sky as the days pass.
+{
+  const D = new Function(src + 'return {planetMarks,fromTellus,eclFrame,TU,DAY_S,len,dot,norm,sub,mul};')(), N = D.eclFrame().N;
+  const T = 123 * D.DAY_S, M = D.planetMarks(T), by = n => M.find(m => m.name === n), names = M.map(m => m.name).join();
+  const placeOK = M.every(m => D.len(m.p) > 0 && D.dot(D.norm(m.p), D.norm(D.fromTellus(m.name, T))) > 1 - 1e-12 && Math.abs(m.d - D.len(m.p) / D.TU()) < 1e-12
+    && Math.abs(D.len(m.u) - 1) < 1e-12 && Math.abs(D.dot(m.u, N)) < 1e-12 && D.dot(m.u, D.norm(D.sub(m.p, D.mul(N, D.dot(m.p, N))))) > 1 - 1e-12);   // the ring: in the ecliptic, at its longitude
+  const pxOK = by('Hyperion').px === 6 && by('Astraea').px === 2 && by('Erebus').px === 2 && by('Hesper').px > by('Enyo').px && by('Helios').px === 7;
+  const moved = Math.acos(Math.min(1, D.dot(D.norm(D.planetMarks(T + 60 * D.DAY_S).find(m => m.name === 'Enyo').p), D.norm(by('Enyo').p)))) * 180 / Math.PI;
+  check('flow-4: the map has Helios and the five other planets (not Tellus) where they are that day (ring direction in the ecliptic), their distance in TU and a disc by class; Enyo moves across the sky in 60 days',
+    names === 'Helios,Hesper,Enyo,Astraea,Hyperion,Erebus' && placeOK && pxOK && Math.abs(by('Helios').d - 1) < 0.02 && moved > 5,
+    `${M.map(m => `${m.name} ${m.d.toFixed(2)} TU ${m.px.toFixed(1)} px`).join(', ')}; Enyo moved ${moved.toFixed(1)}° in 60 days`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.
@@ -4692,6 +4708,37 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('data as a volume: the far side\'s pictures trickle home from Selene (not in the first 5 minutes, done within an hour); a blackout\'s readings play back once the link returns',
     f.rec.farSent && at5 === false && farMin < 60 && f.rec.farGot >= D.FAR_BITS && nRec > 0 && back === nRec && left === 0,
     `far side home after ${farMin.toFixed(0)} min (${(D.FAR_BITS / 1e3).toFixed(0)} kbit); recorder: ${nRec} readings held out of contact, ${back} played back over the pad`);
+}
+
+// econ-19. Rendezvous and retrieval (economy session, QUEUE Q180; Q9's plan slice 4): a rendezvous is a near pass during
+// the flight (within 100 m, under 1 m/s, sampled each tick); a retrieval lands a dead satellite at home stowed in a
+// closed bay, and its hardware comes back refurbished. Retrieval waits for the first docking (stationcrew).
+{
+  const D = new Function(src + 'return {CT,genOffer,contractEval,rdvTick,rdvTarget,retrieveTarget,satAt,progT,compEra,TELLUS,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TELLUS; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  const r0 = T.R + 400e3, v0 = Math.sqrt(T.mu / r0);
+  const stage = { id: 81, name: 'Spent stage 1', junk: true, r: [r0, 0, 0], v: [0, v0, 0], epoch: 0, pending: [], imgs: 0 };
+  const dead = { id: 82, name: 'Beeper 2', sci: 1, r: [0, r0, 0], v: [-v0, 0, 0], epoch: 0, era: 0, pending: [], imgs: 0, shape: [{ k: 'core' }, { k: 'bat' }, { k: 'ant' }, { k: 'tank' }] };
+  const tv = { id: 83, name: 'TV 1', ant: 1, tvOn: true, r: [-r0, 0, 0], v: [0, -v0, 0], epoch: 0, era: 0, pending: [], imgs: 0, shape: [{ k: 'core' }, { k: 'ant' }] };
+  P.sats = [stage, dead, tv]; const e0 = D.compEra(); while (D.compEra() < 1 && P.day < 20000) P.day += 50;
+  const kinds = R => { const n = {}; for (let k = 0; k < 300; k++) { const o = D.genOffer('gov', R); if (o) n[o.type] = (n[o.type] || 0) + 1; } return n; };
+  const n0 = kinds(D.rng(3)); P.done.stationcrew = { day: 5, flight: 4 }; const n1 = kinds(D.rng(3));
+  check('rendezvous offered for spent hardware; retrieval only after the first docking, for a dead satellite, never for one still earning',
+    n0.rdv > 0 && !n0.retrieve && n1.retrieve > 0 && D.rdvTarget() === stage && D.retrieveTarget() === dead, `era ${e0}→${D.compEra()}; before ${JSON.stringify(n0)}; after ${JSON.stringify(n1)}`);
+  // rendezvous: a far pass and a fast pass don't count; a slow one within 100 m does
+  const c = { id: 991, type: 'rdv', src: 'gov', client: 0, p: { sat: 81, name: stage.name, pay: 100, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
+  const R = { launched: true, day0: P.day, cdone: [], paid: [] }, s = { rec: R, alive: true, landed: false, body: T };
+  const [r, v] = D.satAt(stage, D.progT(s)), at = (d, dv) => { s.r = [r[0] + d, r[1], r[2]]; s.v = [v[0], v[1] + dv, v[2]]; D.rdvTick(s, R); D.contractEval(s); return P.active.includes(c); };
+  const far = at(150, 0), fast = at(50, 3), near = at(50, 0.4);
+  check('rendezvous: within 100 m under 1 m/s completes it (150 m or 3 m/s don\'t)', far && fast && !near, `${far} ${fast} ${near}`);
+  // retrieval: landed home with it in a closed bay; held on a port, or with the doors open, doesn't count
+  const w = D.CT.retrieve.gen(D.rng(2)), k = { id: 992, type: 'retrieve', src: 'gov', client: 0, p: w, deadline: P.day + 500 }; P.active = [k];
+  const bay = { open: false }, s2 = { rec: { cdone: [], paid: [] }, alive: true, landed: true, body: T, parts: [bay], att: [{ kind: 'port', e: dead, hpi: 0 }] };
+  D.contractEval(s2); const onPort = P.active.includes(k); s2.att[0].kind = 'bay'; bay.open = true; D.contractEval(s2); const open = P.active.includes(k);
+  bay.open = false; const f0 = P.funds; D.contractEval(s2);
+  check('retrieval: landed home in a closed bay completes it and pays its hardware back (on a port or with the doors open: no)',
+    onPort && open && !P.active.includes(k) && w.worth >= 8 && P.funds - f0 > w.pay + w.worth - 1e-6 && s2.rec.paid.some(x => x.k === 'refurb'), `pay ${w.pay}M + hardware ${w.worth}M; got ${(P.funds - f0).toFixed(1)}M`);
 }
 
 // qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and

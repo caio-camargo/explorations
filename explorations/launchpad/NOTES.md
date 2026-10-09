@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1939,7 +1939,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.98 — data as a volume: recorders, downlinks, pay on data received (2026-10-09, space session, QUEUE Q172, Q51 slice 2)
+## v1.100 — data as a volume: recorders, downlinks, pay on data received (2026-10-09, space session, QUEUE Q172, Q51 slice 2)
 
 Instruments make bits, a recorder holds them, a link drains them at its rate (v1.96's budget), and data counts once it's
 home. Constants next to the link budget in `sim/space.js`: `CAM_BPS` 100 kbit/s (a survey camera's take: about one
@@ -1967,7 +1967,45 @@ far side as slow-scan), `TLM_BITS` 1 kbit (a telemetry reading). A registry entr
   draw on separate budgets (a pass downlinks both in full); the transmitter's power draw (Q27, after Q164).
 
 `career.mjs` unchanged, bit for bit (its robot flies no camera satellites). Test `space-15` (2 checks; mutations they catch, reasoned not run: drain without the rate (2,000 km earns its contact share), the far
-side sent on sight, no playback). Tests 23, the stations section and telemetry unchanged. TESTING row 174.
+side sent on sight, no playback). Tests 23, the stations section and telemetry unchanged. TESTING row 176.
+
+## v1.99 — the planets on the map (2026-10-09, flow session, QUEUE Q175 = Q87 slice 1's drawing; closes PLAYTEST #11)
+
+Helios and the five other planets are on the map from epoch 1, on a dashed **ring in the ecliptic** around the map's
+centre. Each one sits at its ecliptic longitude that day, with its real distance in the label (`Enyo · 2.36 TU`), as a
+disc sized by class: Hyperion 6 px, Hesper and Enyo ~2.5, Astraea and Erebus at the 2 px floor, and Helios a 7 px sun
+with rays. The ring's radius is 0.3 × the camera distance, so it stays on screen at every zoom. Marks behind Tellus are
+hidden. It works in all three map styles: notebook (era ink), terminal, and modern (GL ring, depth-tested behind the planet).
+- `planetMarks(T)` (end of `sim/system.js`, additive; space's file): `{name, p, u, d, R, color, px}`. `p` from
+  `fromTellus`, `u` = `p`'s direction laid into the ecliptic (`eclFrame().N` removed), `d` in TU. Drawn in `drawMap`
+  (`app/render.js`), before the GL line pass so the ring is in `MAPSEGS` too; new mark `planet`, text priority 5 (lowest).
+- **Negative result: their real places don't work on this map.** Drawn at infinity in their true directions, all six
+  were 99–137° from the default map camera's axis, behind it. The map looks down on Tellus at 26°, so the ecliptic's
+  horizon is above the top of the screen. That's why there's a ring: it shows the true longitudes (which matter for windows and the sun's side) and drops
+  the ±23° of latitude.
+- Test `flow-4` (1 check; mutation caught: `u` not laid into the ecliptic). Stills (local, gitignored):
+  `output/launchpad/q175-planets/`.
+- **Open:** two planets close on the ring (a conjunction) lose one label to the overlap rule (#31); the dot stays. The
+  sky's sun still sits at the fixed `SUN_DIR` while the map's Helios moves with the year (slice 3, space). In the era
+  maps the ring is drawn over Tellus, as all their lines are (no depth on the overlay).
+
+## v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
+
+- **Rendezvous** (gov, com; after `beeper`): for spent hardware (`q.junk`) or a satellite of ours that has **gone
+  quiet** (an era behind and not earning: no TV in view, an imager under 30 % contact; no crew, nothing docked).
+  Done by a **near pass during the flight**: `rdvTick` (called from `missionTick`) samples each tick for being within
+  `RDV_D` = 100 m at under `RDV_V` = 1 m/s, in the target's frame as `tgtOf` does; a target loaded into the flight as
+  a vessel (`loadEntry`, within 2.5 km) counts through `s.reg`. Recorded in `R.rdv[id]`. Pays 80 (×1.6).
+- **Retrieval** (gov; after **`stationcrew`**, the first docking): for a quiet satellite with at least `RETR_MIN` = 8M
+  of hardware at refurbishment value. **Done only when the flight lands at home with it stowed in a cargo bay with the
+  doors shut** (`att` kind `bay`, `doorF` 0). Held on a port or by the claw doesn't count: the bay is the dependency
+  (Caio, 2026-10-09). Pays 150 (×1.6), and in `after` **its hardware comes back** (W22 4's default): the shape's
+  prices × `REFURB`, its own Debrief line (`refurb`). `dockEnd` already takes it off the registry ("brought home").
+- **Not yet:** rivals' satellites as targets (W22 3: once rivals have stations, Q138); a vehicle-part era gate. The
+  bay and the arm are buyable from the first flight, since only rover parts have gates (`rvPartOpen`). The *contract*
+  waits for `stationcrew`, but the parts don't. Proposed for vehicle: gate `bay` and `arm` on the first docking
+  (QUEUE *Proposed*).
+Test `econ-19` (3 checks: offers and the gate; near/far/fast passes; bay closed/open/port).
 
 ## v1.97 — the last Debrief survives a reload (2026-10-09, space session as overflow, QUEUE Q100)
 
@@ -9581,3 +9619,11 @@ met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing
 **TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
 "Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
 suite you run before merging, instead of waiting for someone to read the file.
+
+**Row 65, crew rotation, and a driver fix (QA session, 2026-10-09; QUEUE Q120).** `node playtest.mjs 65`: a crewed capsule
+(chute, crew, shield, decoupler, a tank with a radial port) takes a habitat's nose port; leaving the flight registers the
+stack as a crewed station; Program → Fleet → **Fly**, the HUD's undock, a retro burn (the robot cuts the speed), the tank
+dropped, shield first, chute: home at 8.5 m/s with the crew safe. Found: the Debrief never mentions the crew (PLAYTEST #34).
+**Driver fix:** a robot that swaps `S` for a ship it built must call `HOOK.rebuild()`, or the scene keeps drawing the ship
+it launched first. `PT.park` does now. The numbers from Q30's docking and station rows stand, but their shots of 56, 59, 60,
+60c, 64, 66 and 116 drew the Orbiter; 59, 64, 66 and 116 were re-shot (`C:/Users/caioa/dev/playtest-out/reshoot`).

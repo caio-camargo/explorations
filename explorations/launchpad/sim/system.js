@@ -35,3 +35,11 @@ function helioPos(name,T){const b=SYSTEM_BODIES.find(x=>x.name===name),F=eclFram
 // where a planet (or 'Helios') is seen from Tellus at program time T, in Tellus's frame: what the map draws
 const fromTellus=(name,T)=>name==='Helios'?mul(helioPos('Tellus',T),-1):sub(helioPos(name,T),helioPos('Tellus',T));
 const planetPeriod=name=>{const b=SYSTEM_BODIES.find(x=>x.name===name);return 2*Math.PI*Math.sqrt((b.a*TU())**3/HELIOS_MU)};   // s
+// what the map draws for the system (flow session, QUEUE Q175 = Q87 slice 1's drawing; PLAYTEST #11): Helios and every
+// planet but Tellus, where they are at program time T as seen from Tellus. p in m (Tellus's frame), u its direction laid
+// into the ecliptic (the map puts the marks on a ring there: drawn at p they'd sit at infinity, mostly behind the map's
+// camera, which looks down on Tellus), d in TU, px the disc's radius in CSS pixels: the real angular size is far below a
+// pixel, so the size says the class (cube root of the radius), 2–6 px; Helios gets 7.
+function planetMarks(T){const tu=TU(),N=eclFrame().N,one=(name,color,R)=>{const p=fromTellus(name,T),u=norm(sub(p,mul(N,dot(p,N))));
+  return{name,p,u,d:len(p)/tu,R,color,px:name==='Helios'?7:Math.min(6,Math.max(2,2.5*Math.cbrt(R/1e6)))}};
+  return[one('Helios','#ffd27a',0),...SYSTEM_BODIES.filter(b=>b.name!=='Tellus').map(b=>one(b.name,b.color,b.R))]}
