@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.88 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
+## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
 
 POWERS.md's economy fan-out, in `sim/program.js` (after the archetypes) and `sim/contracts.js` (the race's news):
 - **A school per power** (`p.school`): drawn from its archetype's affinities (`SCHOOL_W`, POWERS.md's weights) with
@@ -1857,6 +1857,80 @@ POWERS.md's economy fan-out, in `sim/program.js` (after the archetypes) and `sim
 follow a different archetype chosen at a career's start (the look does, as before); flags and roundels (flow, look).
 Test `econ-13` (4 checks; the announcements mutation-tested). Traps hit, again: a mid-line `//` comment in `gl.js`
 swallowed `const aff=` (the suite's page-parse check caught it), and an apostrophe in a heredoc ("People's").
+
+## Plan: missions in flight (2026-10-09, space session, QUEUE Q49; plan only)
+
+From NOTES § "Time, long missions" (*Missions in flight*, passive flybys, one event timeline) and LATE_GAME.md § "Keeping
+flight in play" (the fleet strip, no silent misses). The pieces that exist: the registry and its rails (`satAt`,
+`moonOrbStep` with SOI exits, v1.60–v1.88's holding, decay and debris), the predictor's patched-conic legs
+(`predictFrom`, `numLeg` for perturbed legs), `vesselOf`/`flyEntry` (fly a registered vessel again), and the economy's
+timeline (`upcoming`, `advanceTo`, stops at events marked *stop*).
+
+**What changes for the player:** leaving a flight never loses a vessel. Anything still coasting (a transfer to Selene,
+an escape to Nyx, a capsule on its way home, a probe on a flyby) carries on between flights, shows in a list with its
+next event, and time stops before anything that needs a decision.
+
+**Who is "in flight":** at flight end (`missionEnd`), the flown vessel and each FLEET vessel that isn't landed or
+destroyed and isn't a satellite by `satRegister`'s rule (a closed orbit clear of the air, inside the SOI). Today those
+are dropped silently; they become **cruise entries** (`q.cruise`), registry entries with a trajectory.
+
+**Slices** (space unless noted):
+1. **Cruise entries on rails across bodies.** Registered at flight end with their state, shape, design and kit (as
+   satellites are, A2: flyable again). Between flights `orbTick` moves them leg by leg: Kepler in the current body's
+   frame up to the next SOI change (found as the predictor finds it), re-framed there (`bodyRel`); perturbed legs by the
+   RK4 stepper (`moonOrbStep`'s, generalised). A leg that becomes a closed orbit clear of the air turns the entry into an
+   ordinary satellite (the v1.60+ rules then apply). One that meets the ground or the air is the next slice's event.
+   The dispatched payload (Q149's note) registers here too: `dispatchRun` keeps `f.s`. Lists: *In flight* in the
+   Program screen (name, where it is, next event and when).
+2. **Events and stops** (with economy for `upcoming`): each cruise entry adds its next event: entering a body's gravity,
+   periapsis at a body (the closest approach), entering an atmosphere, meeting the ground. Rules, "no silent misses":
+   time **stops** before an atmosphere entry and before an impact, and once (the first time) before an SOI entry or a
+   periapsis that nothing is planned for. At the stop: **Fly it** (`flyEntry`, a flight that starts there) or **Let it
+   go**: an impact crashes it (logged, no surprise: it was announced); an atmosphere entry is flown headless by the
+   game's own physics (as `procFly` flies a dispatch) with the vessel's chute/shield, and lands or burns as physics says.
+3. **Planned burns carried** (with vehicle's nodes): maneuver nodes left on a vessel at flight end travel with its
+   entry. A node is an event that stops time (fly it), or, handed to mission control, is executed at the era's error
+   (`predErr`; exact with onboard computers), leaving a correction for later. This is "hand it off, or fly it".
+4. **The fleet strip** (flow) and **paying along the way** (economy): every vessel in flight with its next event and the
+   time to it, on the network screen and the pad calendar; prestige and public interest during a cruise (NOTES).
+
+**Defaults (Caio may override):**
+- a "Let it go" atmosphere entry is flown headless, not rolled: the result is what the vessel's design earns;
+- an SOI entry or periapsis with nothing planned stops time **once per entry per body** (then the player can ignore
+  it), as LATE_GAME asks;
+- cruise entries don't hold or decay; only satellites do (they keep the v1.60+ rules once their orbit closes);
+- debris pieces (v1.76) never become cruise entries: a spent stage on an escape trajectory is dropped, as now.
+
+**Costs** (to measure in slice 1): a cruise leg is Kepler (exact, one evaluation per SOI check) unless perturbed; the
+predictor already finds SOI changes in milliseconds. A few dozen vessels in flight cost nothing per day.
+
+**Tests to write first** (slice 1): a Selene transfer left at flight end arrives at Selene's SOI when the predictor said
+and its state matches a flight flown through (to the predictor's error); an escape from Tellus ends up around the root
+frame's body; a capsule on a return becomes "in flight" and re-entry is its next event; a closed orbit still registers
+as a satellite.
+
+## v1.88 — station-keeping checked against a real controller (2026-10-09, space session, QUEUE Q142; study only)
+
+v1.71 charges a held orbit the net change in its size and shape over 20 days; a crude controller (one burn to reverse
+the drift) had pumped the eccentricity, so it measured nothing. `study_slot.mjs` part D now flies a TV satellite over the
+capital on the full physics for 3 years, its tilt free as in v1.71, with a proper controller:
+- **Shape:** e held under 0.01 (TV needs < 0.02) by a retrograde burn at perigee and a prograde one at apogee (no net
+  change of size): 12–15 m/s a year.
+- **Size, so the longitude:** every 13 days, the mean size (daily samples at the same phase, averaged over 13 days)
+  is aimed at the value that brings the longitude back to its slot over τ days, by a pair of along-track burns half an
+  orbit apart (that changes the size without pumping the shape).
+
+| τ | Δv a year | worst off the slot, after the first 120 days |
+|---|---|---|
+| 20 days | 67 | 25° |
+| 40 days | 54 | 40° |
+| 80 days | 46 | 63° |
+
+v1.71's `slotRate` for the same satellite: 0.221 m/s a day = **89 m/s a year**, so the model is in the right range and
+on the conservative side (1.3–1.9× a controller that keeps it within 25–60°). No change to the game. Negative results
+on the way: reversing the measured daily drift chases the moons' periodic swing (the size swings ±40 km with Selene's
+13-day period, the longitude ±6°) and cost ~3,000 m/s a year; reversing a 26-day drift with a cooldown overshot by 100°+.
+The controller's first 13 days are open loop (60° off before it acts).
 
 ## Assessed: thin air in the flight itself (2026-10-09, space session, QUEUE Q128; not built)
 
