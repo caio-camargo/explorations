@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1057,6 +1057,35 @@ Steps 1–3 make every existing rocket look right for its maker; 4–5 are what 
 6–7 are content for rivals and the pad. Defaults if Caio stays silent on W20: build in this order, Cape first (no
 visible change), then Steppe.
 
+### Steps 1–3 built (2026-10-09, effects beat)
+- `schoolOf(i)`: the power's school drawn from `SCHOOL_AFF` (POWERS.md's weights by archetype key), seeded by `WSEED` and
+  the power, so it is fixed for a world; schools without a look yet fall back to Cape. `partSchool(p)`: the seller's
+  school for an imported part (`sourceOf`), else the program's; `SCHOOL_FORCE` overrides (views pin Cape).
+- The school rides in the vertex's kind: `pv` writes `PK.k + 32·PK.sch`; `MESH_VS` decodes with `% 32`, `MESH_FS`
+  as `sch = k/32`. Every helper that rewrites `PK.k` (engine bells, mounts) keeps `PK.sch` by spreading `PK`.
+- **Cape is byte-identical to before:** a hash of `partShape`'s output for Orbiter, Heavy, Big Lunar and Crewed Lunar
+  on the old tree and the new one (Cape forced) matches exactly. The default world's own school is Cape.
+- Steppe in `MESH_FS`: no roll pattern (tanks and the nose cone's checker), white paint becomes grey-green enamel with
+  a ±6 % panel-to-panel shade, dark seams every 1.3 m and every eighth of the way round, rougher and not metallic; bells
+  olive-tinted. `refView(114)` Cape, `(115)` Steppe.
+- test.mjs `aerofx-3` (hardware schools): 69 % of closed superpowers draw Steppe (weight 0.7), open superpowers never.
+- **Step 4 built:** the interstage cover. A decoupler with an engine sitting right on top of it draws a cover round that
+  engine at the stack radius, with the decoupler's part index and school, so it falls away with the lower stage and the
+  upper engine fires bare (checked in `refView(75)`, staging). Cape: a closed black skirt with 24 ribs. Steppe: two rings
+  and 24 crossing tubes, the bell visible through them. **This changes Cape's look** (today's Orbiter on the pad showed
+  its Petrel; now a ribbed skirt covers it, as POWERS.md's Cape brief has it). `INTERSTAGE_FX = false` brings back the bare
+  engine. Not drawn: canted engines.
+- **Step 5 built:** the roundel, a disc decal drawn in `MESH_FS` (no texture) on the side of an upper-stage tank (1.5–3
+  tank-radii tall, between Cape's two side stripes): Cape red and white stripes with a blue canton of small stars,
+  Steppe one gold star on red (`sdStar5`), both with a white rim. It is laid on after the school's paint (the first
+  try put it before, and Steppe's enamel pass repainted the gold star green). Views 114/115 now face it.
+- **Livery built:** the maker's `hue` (POWERS, 10° steps) rides in the vertex kind too (`k + 32·school + 256·hue`; the
+  `% 32` decoders still work). Cape's roll band is the hue at the old near-black brightness (`hsv(h, .55, .16)`, the same
+  luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
+  the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
+  byte-identical** from here on: that's the livery POWERS.md asks for.
+- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -1680,6 +1709,53 @@ is large at 2 seeds (±400M, as the handoff warns).
 
 **Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
 rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
+
+## Q19 in progress: where a grazing frame's time goes (2026-10-09, world session; parked, no code changed)
+
+QUEUE Q19 (the cost of low grazing views). Measured on this machine's RTX 3050 6 GB Laptop GPU, in headless Chrome
+(`shot.mjs`) at 1262×704, with `adaptRes` off and `RS` = 1. **Parked:** the session's background run was stopped because
+the machine ran critically low on memory, which other sessions were using (about 0.5 GB free of 16). Resume from here.
+
+**Baseline, the whole frame (the game's own `gpuMs`):**
+
+| View | ms | v1.25's number |
+|---|---|---|
+| Pad | 14.4 | 4.2 |
+| Coast from 1.5 km | 24.3 | 3.2 |
+| Rugged hills, 40 m up, grazing (the most rugged land: 52°S 121°E, alpine, 3.7 km) | **54.5** | 8.8 |
+| Hills at 300 m | 50.5 | — |
+| Orbit | 6.1 | 2.5 |
+
+v1.25's numbers were 1024×768 on the same GPU model; these are far worse, and the next findings say why only partly.
+
+**What I found:**
+- **The GPU is thermally throttled while it works:** 85 °C, 1,290 of 2,100 MHz. One early run read 22.9 ms for the hills
+  and was never repeated. **Compare only A/B within one session, interleaved.** Across sessions numbers can differ 2×.
+- **Clouds don't matter at the hills view.** Volumetric clouds off/on, five interleaved rounds: 55.2 against 55.2 ms.
+- **The sky shader is the frame.** A per-draw GPU profile (each draw call in its own timer query; the game's frame timer
+  off, since the queries can't nest) gives:
+  - sky shader 43–44 ms;
+  - its depth pre-pass 5.0 ms;
+  - everything else under 1.5 ms (meshes, bloom, composite).
+- **With the march removed**, the sky shader is 18.3 ms. So the march plus terrain shading is ~25 ms of the 43.
+- **Recompiling the sky shader takes ~36 s** (ANGLE/D3D11, sky + depth pass). Each A/B variant therefore costs a browser
+  session of about a minute, and the plan has to be few, well-chosen experiments.
+
+**Tools (in the session scratchpad; rebuild from this description):**
+- a bench (views via `overView`, `gpuMs` median over 1.2 s);
+- `profFrame` (per-draw timer queries grouped by shader);
+- `swapSky(src, depth)`: relink `PSKY`/`PDEPTH` from an edited `SKY_FS` and refresh `P.u`'s locations;
+- `oneAB(name)`: base then variant, in one session.
+
+Worth promoting into `terrain-probe.js` when resumed.
+
+**Next, in order:**
+1. A/B the shading pieces at the hills view, one per session: normals at ≤5 octaves; no cloud shadow; no near-field
+   detail; no `tellus()` fbm.
+2. A/B the march: octaves capped at 6; and using the pre-pass's 3×3 hits as a bracket, a short bisection where all nine
+   hit close together instead of the full step loop.
+3. Then the 18 ms that isn't terrain at all (the atmosphere's `scatter`?), which is the look lane's code: hand it over
+   with numbers.
 
 ## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
 
@@ -7145,6 +7221,9 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
   launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
   with the key) as well as `go`. **Enter** ends a flight that is over (landed or lost), like the End flight ▸ button.
+- **Rollout checks stay short** (Q151): a check's closing parenthesis (where a number comes from, e.g. vehicle's "your best
+  flight to orbit took 4,446 m/s") folds into an ⓘ with the text as its tooltip, and the panel is 340 px wide, so the
+  long Δv warning takes two lines instead of four.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
@@ -7189,6 +7268,19 @@ function but `netModel`.
 **Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
 second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
 screen, below, plus a compact copy in the Fleet tab.
+
+### Network screen, N1 built (2026-10-09, flow session, QUEUE Q155)
+- **Network [N]** in the Program's header (and the N key) once something of ours is out there (`netOpen()`: a registered
+  craft or a dispatch), W18's default. `app/network.js`, `#net`, a panel over the pad like the Program.
+- **The fleet**: every registered craft (not debris, not docked) with its kind, where it is and what it does next
+  ("holds its orbit 212 more days", "adrift: out of propellant", "on the surface"), and every queued dispatch ("launches
+  in 12 days"), soonest first.
+- **The pads**: one row per pad over the next 180 days, a bar per booking (stacking from the order to the launch), 30-day
+  ticks, and a row of the timeline's dated events (`upcoming()`), each with its text on hover and the next four listed.
+- **Reads `netModel()` when it exists** (economy's Q154); until then `netFallback()` builds the same `{fleet, pads}` from
+  the registry, the dispatch queue, `padsN` and `upcoming`. **Economy:** when `netModel` lands, its `fleet` and `pads`
+  replace the fallback with no change here; delete `netFallback` then.
+- Not yet (N2–N4): the schematic of nodes and routes, goods, the bottleneck line, the compact copy in the Fleet tab.
 
 ---
 
@@ -8195,6 +8287,30 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
 
+## v1.81 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
+
+MIDGAME.md § Satellites (approved): lifetime is a design choice; **replacement is for upgrades**; servicing is special,
+for valuable assets. Built in `sim/program.js` and `sim/contracts.js`:
+- **A satellite keeps its era.** `satEra(q)` stamps the computing era at its first day up (`q.era`; satellites from
+  older saves get today's). **What it earns drops for each era it falls behind**: `satQual(q)` = 1 / (1 + 0.35 × eras
+  behind): 74 % one behind, 59 % two. Applied to TV's daily pay (`utilTick`) and imagery sales (`satTick`, the space
+  lane's line, one factor). When a new era arrives, each satellite that earns gets one news line: "*N* generations
+  behind, earns *x* %. A new one would earn it all, or service it" (`obsTick`).
+- **Servicing contracts** (`CT.service`, government or commercial): offered for **one of ours that's valuable and
+  behind**: TV in the capital's sky, or an imager with 30 % contact or more, at least an era behind, not already on
+  the board (`serviceTarget`). Pay 96M per era behind (before multipliers). **A flight that docks with it** (it's in
+  `s.att`) completes it, and the satellite is brought up to date (`after`: `q.era` = now). `contractEval` now calls an
+  optional `CT[type].after(c, s)` on completion.
+
+**TV's pay against it** (the queue asked): `TV_RATE` 0.4M a day while in the capital's sky, which v1.71 made all day:
+160M a program year. A stationary TV satellite on a Beeper-class launcher costs ~60–80M, so it pays back in half a
+year. One era behind it loses ~42M a year; a new one pays back the loss in under two years, and eras are years 3,
+7, 14, 25: **replacing once per era is worth it, as MIDGAME wants.** Servicing (96M from its users, plus the earnings
+back) is the better deal for an expensive satellite. TV's rate is left as it is; the career runner doesn't fly TV yet,
+so a measurement waits for that.
+
+Test `econ-11` (3 checks; the era cut mutation-tested).
+
 ## v1.79 — warnings before launch, legs by themselves, the escape tower's own shelf (2026-10-09, vehicle session, QUEUE Q48, Q121, Q32)
 
 **Q48: the Rollout screen warns.** `launchWarnings(stack, aims)` (`sim/vessel.js`, after `stageStats`) adds lines to
@@ -8344,3 +8460,45 @@ but not docking) sits between two generations, so gating has to become per mode.
 - in the onboard-computer era a crewed capsule flies the computer's loop.
 
 **Sizes:** per-mode gating plus the pilot loop is S (vehicle), after the roster; the landing hold is M (control).
+
+## v1.83 — maneuver node chains, nodes past an SOI change, the finite-burn lead (2026-10-09, vehicle session, QUEUE Q33)
+
+**Chains.** `s.node` is still the node being flown, so everything that read it before still works. `s.nodeQ` holds the
+nodes after it, in time order. When a burn completes (`nodeBurn`), `nodeNext` puts the next one up ("Maneuver complete
+— throttle cut; next node is up").
+- `nodePlan(s)` chains them: coast along the patched-conic legs (`predictFrom`) to each node, add its Δv in that node's
+  own frame, carry on from there.
+- `nodePlanEnd` is where the last node leaves the craft. The map's dashed plan starts there (one call in `render.js`).
+- **Keyboard:** **N** with a node already placed adds the next one at the next apoapsis of the trajectory after the last
+  node. If that trajectory meets a moon (or escapes), it goes at the next leg's periapsis: the capture point
+  (`nodeAddNext`).
+- **The node panel:** "◀ node k of n ▶" picks which node the Δv and time buttons edit. A queued node's time is kept
+  between its neighbours, and the summary says how many nodes follow. The map's drag handles still act on the active
+  node.
+
+**Past an SOI change.** Each node carries the body whose leg it sits on (`b`, set by the plan). `nodeInfo` reads a node
+on another body's leg from the predicted legs (`legState`).
+- **The SOI switch** used to clear the node. Now it drops only the nodes placed on the old body's leg (untagged, or
+  tagged with it and already past). It keeps those for the new body and for later legs, a return to the old body
+  included, and puts the next one up.
+- **Measured:** test 4's transfer turned 12° (a 240 km flyby, not an impact), +1,321 m/s now. N puts node 2 at Selene's
+  periapsis, 14.4 h later; a −312 m/s burn there plans a capture (e 0.21).
+
+**The finite burn.** The craft gets lighter as it burns and accelerates harder at the end, so the first half of the Δv
+takes **more** than half the burn time. `nodeLead(s, dv)` is the time to deliver half the Δv at full throttle. The panel's
+"start burn in" and **Warp to burn** use it (both used half the burn time before).
+- **Measured** (pod + 2 t tank + Wren, a 157 m/s raise): the burn takes 25 s, the lead is 12.9 s against a naive 12.7.
+- **Flown:** a two-node Hohmann raise from low orbit to 400 km, each burn started by the lead, ended at
+  399.8 × 399.9 km against a planned 400.0 × 400.0.
+
+**Tapes:** the controls record the queued nodes with the active one (`q` in the node's JSON), so an autopilot replays
+a chain. Old tapes have none.
+
+**Checked:** `test.mjs` section `vehicle-9` (the Selene capture plan and the SOI switch; the flown two-node raise
+against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes; in the page, two nodes from N read
+"◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
+
+**Not yet:**
+- markers and drag handles for queued nodes on the map (flow / the map's owner);
+- a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
+  the capture case).

@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 108–111 legs and power parts, 112–113 a lander on Selene against the sun. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -13,6 +13,8 @@ window.refView = async (n) => {
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
   // the galaxy is per program (Q21); reference views keep the one they were tuned on
   if (typeof PROG !== 'undefined') PROG.gseed = WSEED;
+  // and the Cape school (today's look) on every part, whatever the world's powers drew (Q102); 114–115 choose
+  if (typeof SCHOOL_FORCE !== 'undefined') SCHOOL_FORCE = 0;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   // (#deb: leaving a flight for the editor now passes through the Debrief screen, whose panel covered the close-ups)
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg,#deb').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
@@ -329,6 +331,14 @@ window.refView = async (n) => {
     S.throttle = 0; S.landed = true; window.simulate = () => {};
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return 'Selene, sun ' + (Math.asin(dot(u, SUN)) * 57.3).toFixed(0) + '° up';
+  }
+  // 114–115 (Q102): the Orbiter on the pad in the builder as Cape (114, today's look) and as Steppe (115): same parts
+  // and outline, a different paint and finish
+  if (n === 114 || n === 115) {
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    SCHOOL_FORCE = n - 114; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true; HOOK.rebuild();
+    cam.edY = 7 - S.cm[1]; cam.yaw = 0.2; cam.pitch = 0.05; cam.dist = 17; render(); await settle(); bare();
+    return n === 114 ? 'Cape' : 'Steppe';
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
   // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]

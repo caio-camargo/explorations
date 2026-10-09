@@ -24,7 +24,9 @@ function renderRollout(){const el=$('rollBody');if(!el||BLD.isEmpty(stackDef))re
     days=(TEST.fast?0:prepDays(c.cost)*(1+0.5*(1-khVessel(S)))*FAC.hall.eff[facLv('hall')])+studyWait(S)+padWait(),   // as missionTick reckons it at liftoff
     ck=rollChecks(),icon={ok:'✔',warn:'⚠',bad:'⛔'},row=(l,v)=>`<tr><td>${l}</td><td>${v}</td></tr>`,nx=nextStep();
   $('rollDesign').textContent=`${designName(stackDef)} · ${fmtDate(PROG.day||0)}`;
-  $('rollChecks').innerHTML=ck.map(([k,x])=>`<div class="rc ${k}"><span>${icon[k]}</span> ${x}</div>`).join('');
+  // a check's closing parenthesis (where a number comes from) folds into an ⓘ tooltip, so each check stays a line or two (Q151)
+  const fold=x=>{const i=x.indexOf(' (');return i>0&&x.endsWith(')')?`${x.slice(0,i)} <i class="ri" title="${x.slice(i+2,-1).replace(/"/g,'&quot;')}">ⓘ</i>`:x};
+  $('rollChecks').innerHTML=ck.map(([k,x])=>`<div class="rc ${k}"><span>${icon[k]}</span> ${fold(x)}</div>`).join('');
   $('rollBooks').innerHTML=`<table>${row('Hardware',fmtM(c.cost))}${row('Launch operations',fmtM(ops))}${fee?row('Site fee',fmtM(fee)):''}`+
     `${row('Funds after launch',`<span class="${PROG.funds-c.cost-ops-fee<0?'bad':''}">${fmtM(PROG.funds-c.cost-ops-fee)}</span>`)}${row('Back if it all lands intact',fmtM(c.dry*REFURB))}${row('Ready to fly in',`${days.toFixed(1)} days`)}</table>`;
   $('rollPlay').innerHTML=(nx?`<div><b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span></div>`:'')+

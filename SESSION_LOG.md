@@ -4350,3 +4350,76 @@ and the build of Q3/Q111 once Caio reads W15/W16.
 
 **Files:** `sim/vessel.js`, `app/editor.js`, `test.mjs`, launchpad `NOTES.md` § v1.81, `TESTING.md` 162, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** vehicle's ready list: Q33 (node chains, M2, M), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
+
+## 2026-10-09 — Launchpad: G3.0 done (v1.78); Q19 measured and parked (world session, unattended, GPU allowed)
+
+### Summary
+Caio allowed the GPU on this machine and left the session unattended.
+- **TESTING 131 checked:** Selene's maria are on the near side, a large dark patch over about a third of its face.
+- **TESTING 146 can't be judged by eye:** at seed 13 Tellus's north pole is sea and the south pole never sees the sun.
+  The row now says so.
+- **Q107 (G3.0) ✓ v1.78:** the crater cells' trigonometry is on shared `ptan`/`patanJ` and λ is a float32. Heights moved
+  2.7e-8 m. `ground-9` added; suite 550/0 on merged `main`.
+- **Q19 measured, no code yet:**
+  - the whole frame at grazing hills is ~55 ms, against 14 at the pad and 6 in orbit;
+  - the sky shader is 43 ms of that (march + terrain shading ~25 ms, the rest ~18);
+  - clouds don't matter there;
+  - the laptop GPU throttles (85 °C, 1.3 of 2.1 GHz), so only same-session A/B is valid;
+  - each sky-shader recompile takes ~36 s.
+  Findings and the next experiments are in NOTES § "Q19 in progress".
+
+PARKED: Q19, parked at "per-pass profile done; shading/march A/B next". The session's background GPU run was stopped by
+the system: memory critically low (~0.5 GB free of 16, used by other sessions' processes). Per its instruction, not
+restarted without Caio. One orphaned headless Chrome of mine (~380 MB) was stopped; the GPU lock was released.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `test.mjs` (`ground-9`, `ground-3` tolerance), `NOTES.md` § v1.78 and § "Q19 in progress", `GROUND.md` 0.1.10, `TESTING.md` 131/146, `QUEUE.md`
+- `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: say when memory allows, and the Q19 experiments resume (one browser session each, ~1 min)
+- [ ] Look & sound: the ~18 ms of the sky pass that isn't terrain, at low views
+
+## 2026-10-09 — Launchpad v1.82: debris slice 2, conjunctions between flights (QUEUE Q146; space session, unattended)
+
+### Summary
+- `conjTick` (end of `orbTick`): big objects against active entries only, each orbit smeared over 50 km bands; rate a
+  pair a day Rs² v / (2π r² W cos(Δi/2)). My first formula was 4/π too high (rectangle instead of ellipse); an
+  event-driven Monte Carlo caught it (`study_debris.mjs`; now within 1–8 %, statistical ±5 %).
+- A hit: crewed always warned; tracked (mainframe era) with fuel dodges for 0.5 m/s; else both destroyed, the breakup
+  recorded for Q147. World setting via `pressureOf('debris')` (off / light / real, default light).
+- Finding: big objects almost never collide (1,000 stages sharing a band: one hit in ~1,100 years at real rates), as in
+  reality; LATE_GAME's pressure has to come from fragments (Q147).
+
+### Verification
+- New test `space-4` (3 checks, 5 mutations caught). Full suite 566 pass / 0 fail on `main` as pushed (`25b6d34`).
+- Shipping: `main` moved inside every 25 s smoke window, so the order became merge → check markers → push → full
+  suite on the pushed state. NOTES.md arrives on `main` with CRLF (`fac1563`, `da175a1`), so every NOTES merge
+  conflicts on all lines; resolved by an LF-normalised 3-way merge each time; flagged under *Proposed*.
+- Slip, local only: a resolver script failed (Windows Python can't see Git Bash's `/tmp`) and the merge commit took
+  NOTES with markers (`d02b3cf`); fixed in `38dca51` before any push.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (slice 2), `test.mjs` (`space-4`), new `study_debris.mjs`, `NOTES.md` § v1.82, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim moved to Q147)
+
+### Next steps
+- [ ] Space: Q147 fragment bands (in progress)
+- [ ] Platform/orchestrator: `.gitattributes` for line endings (under *Proposed*)
+
+## 2026-10-09 — Launchpad flow lane: closing the unattended run (after the progress entry above)
+
+Since the progress entry: **Q151** (Rollout checks fold their sources into an ⓘ), **Q153** (an ink HUD over the
+notebook-era map, from flow's evergreen walk), **Q155** (network screen N1: fleet strip and pad calendar, reading
+economy's `netModel()` once Q154 lands, a fallback until then), keyboard paths (L rolls out and launches, 1–8 Program
+tabs, Enter ends a finished flight), PLAYTEST #27 moved to Done. Full suite passes on `main` after the last code merge.
+
+**Lessons:** a start-up call into a later app file breaks the page silently (`platform-1` checks SIM files only);
+robot `m1` on the plain page catches it. TESTING row numbers collide between lanes because the "next free" counter
+lags: number new rows from the real maximum. Whole-file conflicts on NOTES/TESTING come from line-ending changes:
+take main's copy and re-add your lines.
+
+**Files:** launchpad `app/network.js`, `app/rollout.js`, `app/screens.js`, `app/render.js`, `app/editor.js`,
+`index.html`, `builder.js` (guard), `test.mjs` (§32), `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** nothing ready in flow. When Caio answers W14 / W15 / W18: Q53, Q3 (4a–4c) then Q43, network N2+. Q100 after
+Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
