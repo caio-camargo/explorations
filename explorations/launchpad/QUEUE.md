@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.16 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -14,8 +14,8 @@ lanes, evergreen work); the long tail stays in NOTES.
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
 | 2 | **Your picks from the mock-ups**: **W19** astronauts, **W20** bodies, **W21** hardware schools (Q102 is already being built on W21's default) | you | D2's look, Q80–Q85, Q102's direction |
-| 3 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan), **W18** (network screen; W15/W18 defaults hold if silent) | you | rovers' R3, MIDGAME's line, Q53, Q3's build |
-| 4 | **Q156** line endings (`.gitattributes`), then **Q57** save versions | platform (**no session**) | merges of NOTES without whole-file conflicts; Q100, Selene's ground live, Q124 |
+| 3 | **Your design calls**: **D5** (rover lost at night when flat), **D6** (dry satellites), **W14** (screen identity); with defaults that hold if silent: W15 (slice 4), W18 (network screen), W22 (station contracts) | you | rovers' R3, MIDGAME's line, Q53 |
+| 4 | **Q160** a duplicate-number check before push, then **Q57** save versions (Q156 ✓ `.gitattributes`) | platform (**no session**) | no more renumbering after merges; Q100, Selene's ground live, Q124 |
 | 5 | **Q19** the sky shader at grazing views (43 of 50 ms; parked by world, measured) | look & sound, sky & bodies | M1's steady frame rate at the default site |
 
 ## How a session uses this
@@ -77,7 +77,8 @@ the feedback I paste into PLAYTEST items.*
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
-- **NOTES.md line endings:** it keeps landing on `main` as CRLF while `core.autocrlf=true` clones commit LF, so every NOTES merge conflicts on every line. Until Q156 lands: resolve with an LF-normalised 3-way merge (`git merge-file` on the three versions), and never commit a whole-file CRLF rewrite.
+- **Line endings are pinned** (Q156 ✓, `.gitattributes`). A NOTES merge that still conflicts on every line: `git merge -X ignore-space-at-eol`, or `git add --renormalize .` in a worktree that shows every file modified.
+- **Q3's build opens on W15's defaults** (orchestrator, 2026-10-09: Caio silent; flow's lane had drained). Build 4a first; Caio may still override from the plan.
 - **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
   except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
@@ -102,7 +103,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); build 4a after Caio reads it (W15) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **build 4a ready on W15's defaults** (Caio may override) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -112,6 +113,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q153 | The flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper, pale buttons, white text): give them the era's ink | M1 | S | 🖥 | ✓ `960cd84` (body.paper: ink buttons and messages) |
 | Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ✓ `d35e9bf` |
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
+| Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
@@ -133,7 +135,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ✓ v1.63 `1312d39` (`dryQuote`/`orderDryRun`; margin cached; provisional estimates wider) |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ✓ v1.66 `812476b` (prices, gates at LAUNCH; six Selene science contracts) |
 | Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ✓ v1.69 `1c546dd` (supply runs: ascent procedure + landAt on the beacon; joins the base) |
-| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ✓ plan `ef69f28` (NOTES § "Plan: station, base, relay and rendezvous contracts"; 6 slices; W18 for Caio) |
+| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ✓ plan `ef69f28` (NOTES § "Plan: station, base, relay and rendezvous contracts"; 6 slices; W22 for Caio) |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
 | Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
@@ -149,6 +151,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
 | Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ready |
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ready |
+| Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ready |
+| Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ready |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ✓ v1.77.1 `5530b7e` (from the procedure's site; lease on the price; stood down if refused) |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
@@ -232,6 +236,8 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q89 | **School mock-ups for [`POWERS.md`](POWERS.md)**: one Orbiter preset styled **Cape** and **Steppe** side by side (same parts and outlines, different surface detail, finish, paint and roundel), plus one signature design per school (Steppe's strap-on cluster) and each school's pad in a still. Standalone page in `mockups/`, stills to `output/launchpad/mockups/schools/`; Caio picks from pictures. Any look beat | M1 | M | 🖥 | ✓ `c6bf611` (`mockups/schools/`; waiting on Caio, W20) |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ✓ `7aa705c` (bay door inside + hinges; dark-paint char heat-tint) |
 | Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | ✓ steps 1–5 (`90f0013`: school per part, Steppe paint, interstage cover, roundel, livery hue); steps 6–7 proposed below |
+| Q159 | Q102 step 7: the **Steppe pad**: horizontal rollout on rails over a flame pit, the launch table's arms (`buildRig`/`drawPadRig`; flow's rollout screen: coordinate first) | M1 | M | 🖥 | ready (after W21's pick, or on its default) |
+| Q158 | Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) | — | M | 🖥 | blocked: nothing draws rivals' rockets yet |
 | Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -279,6 +285,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ✓ `b4fc3eb` (`node playtest.mjs 127`: four ways out, exits and money checked; PLAYTEST #33) |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ready |
+| Q161 | A tester button for `asatTest` (and a breakup at a chosen height), so a person can see the fragment line, warnings and the cascade (v1.83) | M2 | S | 🖥 | ready |
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.4: sitting 6 parks at 250–300 km; contracts complete in flight, so low recon orbits still pay) |
 | Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ✓ effects 2026-10-09: rows renumbered (162/163 → 165/166); the `ocomp` half needs nothing today: `avCap` (sim/power.js) waives the computer under `TEST.tools` (the robot's docking rows) or with crew, and `career.mjs` sets no SAS mode. A future robot career flying target/dock SAS on an uncrewed probe must add an `ocomp` |
@@ -290,6 +297,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 |---|---|---|---|---|---|
 | Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | ✓ `0bf85c2` (NOTES § "Test shards": `--smoke --jobs 4` ~25 s) |
 | Q156 | **`.gitattributes`** (`*.md *.js *.mjs *.html text eol=lf`) and one normalising commit, announced in this file's Flags first (every branch merges `main` right after, like the split) | M1 | S | ⚙ | ✓ effects 2026-10-09: `.gitattributes` (md, js, mjs, html → LF); no file on `main` had CRs, so no normalising commit was needed |
+| Q160 | **A duplicate-number check before push** (`node check_numbers.mjs`: fails on a repeated `## v1.N` in NOTES or a repeated TESTING row; in the merge recipe, or a pre-push hook). Every lane renumbers after merges today | M1 | S | ⚙ | ready (**top**) |
 | Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | → effects (overflow, platform idle) 2026-10-09 |
 | Q124 | **World settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events | M2 | S | ⚙ | after the first pressure lands (Q26) and Q57 |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
@@ -347,16 +355,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 | W19 | **Pick the astronauts' look** (D2 / CREW.md part 1): open `explorations/launchpad/mockups/crew/index.html` (or the stills in `output/launchpad/mockups/crew/` on the effects machine): (a) cartoony, (b) realistic, (c) stylised human. Defaults if silent: (c), the middle the roadmap expects |
-| W18 | **Station contracts (Q9's plan)**, four questions with defaults: (1) the first station as **firsts** (default) or a contract chain; (2) a resupply deadline **when supplies run out** (default) or a fixed window; (3) rendezvous with rivals' satellites **only once rivals have stations** (default) or never; (4) retrieval gives **its parts' value back** (default) or the pay only. Silence keeps the defaults | Q9's slices 1–6 (NOTES § "Plan: station, base, relay and rendezvous contracts") |
+| W22 | **Station contracts (Q9's plan)**, four questions with defaults: (1) the first station as **firsts** (default) or a contract chain; (2) a resupply deadline **when supplies run out** (default) or a fixed window; (3) rendezvous with rivals' satellites **only once rivals have stations** (default) or never; (4) retrieval gives **its parts' value back** (default) or the pay only. Silence keeps the defaults | Q9's slices 1–6 (NOTES § "Plan: station, base, relay and rendezvous contracts") |
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- platform — **pin line endings**: add a root `.gitattributes` (`* text=auto eol=lf`, binaries as `binary`) and renormalize once. On 2026-10-09 `NOTES.md`, `test.mjs` and others flipped to CRLF blobs on main and back, so every merge of them became a whole-file conflict (economy hit it three times in an hour); `core.autocrlf=true` doesn't renormalize a file already tracked with CRLF — LESSONS #40
-- look & sound, parts & pad — Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) once something draws rivals' rockets (news pictures, a rival pad) — NOTES § "Hardware schools in the game: the plan"
-- look & sound, parts & pad (+ flow) — Q102 step 7: the Steppe pad, horizontal rollout on rails over a flame pit, the launch table's arms; touches `buildRig`/`drawPadRig` and flow's rollout screen — coordinate first — same NOTES
-- flow (or the map's owner) — draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them, the panel's ◀ ▶ edits the rest — NOTES § v1.85
-- QA / every lane — `ce44e42` (sound) re-normalised NOTES.md's line endings (8,466 lines, 5 real): merges that append to NOTES then conflict on the whole file; `git merge -X ignore-space-at-eol` resolves them cleanly — NOTES § v1.85, SESSION_LOG
-- platform — **a duplicate-number check before push** (`node check_numbers.mjs`: fails on a repeated `## v1.N` heading in NOTES or a repeated TESTING row number; run it in the merge recipe, or as a pre-push hook). Vehicle alone renumbered three times on 2026-10-09 (v1.81, v1.83, TESTING 162/165); LESSONS #37 says a shared "next free" is a race, so check at the last moment instead — SESSION_LOG 2026-10-09
-- space/QA — a tester button for `asatTest` (and a breakup at a chosen height), so a person can see the fragment line, the warnings and the cascade (NOTES v1.83) — Q147
-- economy — Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts"
-- economy — Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan

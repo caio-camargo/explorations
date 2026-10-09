@@ -4349,6 +4349,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `SAVE_V ${SAVE_V}, ${MIGRATE.length} step(s)`);
 }
 
+// space-6. Dispatched flights leave debris too (space session, QUEUE Q149): procFly hands back what its flight dropped
+// (keepJunk) and dispatchRun registers the pieces that stay up, dated from the flight's start; dry runs leave none.
+{
+  const D = new Function(src + 'return {PRESETS,PROG,HOOK,procKey,procFly,junkAdd,JUNK,newShip,detach,TELLUS,DAY_S,satKind,BODIES,MISSIONS,SELENE,advPhys,advRails,bodyRel,dvPlan,dvRemaining,engAcc,localFrame,procStart,qFromBasis,railsOK,siteAt,stage,timeToNu,toPF,vesselCost,len,norm,add,sub,mul,dot,cross,elements,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, st = D.PRESETS.Orbiter; P.sats = []; P.day = 10; P.procs = {}; handAscent(D, st); const proc = P.procs[D.procKey(st)];
+  D.JUNK.length = 0; D.JUNK.push({ marker: true }); const before = D.JUNK.length, day = P.day;
+  const f = D.procFly(st, proc, { pe: 180e3, ap: 180e3 }, { keepJunk: true }), j1 = D.JUNK.map(j => j.marker ? 'M' : Math.round(j.mass)).join(','), dry = D.procFly(st, proc, { pe: 180e3, ap: 180e3 }), j2 = D.JUNK.map(j => j.marker ? 'M' : Math.round(j.mass)).join(',');
+  const kept = D.JUNK.length === 1 && D.JUNK[0].marker, n0 = D.junkAdd(f.junk || [], f.T0);   // the booster falls back: nothing stays up
+  // a piece dropped by the orbiting craft: registered, its epoch from the flight's start
+  const s = f.s; s.rec = { launched: true, day0: 0 }; const part = s.parts.filter(p => p.on && p.d.kind === 'tank').slice(-1);
+  D.JUNK.length = 0; D.detach(s, part, [0, -1, 0], 0); const piece = D.JUNK[0]; piece.mass = Math.max(piece.mass, 200); const n1 = D.junkAdd([piece], f.T0), q = P.sats.at(-1);
+  check('dispatched debris: procFly hands back its flight’s pieces (keepJunk), the global list untouched, dry runs return none; what stays up is registered from the flight’s start',
+    f.ok && Array.isArray(f.junk) && f.junk.length >= 1 && f.junk.every(j => j.rec) && !('junk' in dry) && before === 1 && kept && f.T0 === Math.ceil(day - 1e-9) * D.DAY_S &&
+    n0 === 0 && n1 === 1 && q.junk && D.satKind(q) === 'Debris' && Math.abs(q.epoch - (f.T0 + piece.t)) < 1e-6,
+    `${f.junk ? f.junk.length : '—'} piece(s) dropped (${f.junk ? f.junk.map(j => Math.round(j.mass) + ' kg').join(', ') : ''}); registered ${n0} then ${n1}; list kept ${kept} (after the flight ${j1}, after the dry run ${j2}); T0 ${f.T0 / D.DAY_S} (day ${day}); epoch off by ${q ? (q.epoch - f.T0 - piece.t).toExponential(1) : '—'}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

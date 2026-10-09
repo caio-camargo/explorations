@@ -4468,3 +4468,10 @@ Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
 ### Next steps
 - [ ] Space: Q149 (in progress), then Q27; Q148 needs flow and economy (UI, contracts) and the browser
 - [ ] Proposed: a tester button for `asatTest`
+
+PARKED: 2026-10-09 vehicle session (unattended), QUEUE Q152 (Selene Lander preset; legs end to end through a procedure
+landing). Built and committed on branch `builder`; `test.mjs` section `vehicle-10` passes (lands 5 m off the site at
+1.2 m/s, legs down by themselves, 1,189 m/s left). Not merged: the full-suite run was stopped by the machine running low
+on memory, and per policy not restarted. Parked at: run `node test.mjs` in `launchpad-builder` (the new preset meets the
+every-preset checks, e.g. the gantry clearance), then merge into main with `-X ignore-space-at-eol`, NOTES/TESTING
+numbers at merge time, mark Q152 ✓.

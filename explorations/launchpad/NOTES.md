@@ -1832,6 +1832,19 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.86 — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
+
+A dispatched flight (`dispatchRun`, flown headless by `procFly`) used to leave nothing: `procFly` restores the noted
+pieces so dry runs stay clean. Now `procFly(…, {keepJunk: true})` hands back what its own flight dropped (`out.junk`,
+with `out.T0`, the program time it lifted off), and `dispatchRun` passes it to `junkAdd(list, T0)`, the same
+registration a hand-flown flight's end uses (`junkRegister` is now `junkAdd` over that flight's pieces). Dry runs and
+supply runs don't ask for it, so they still leave none. In practice the presets' boosters fall back, so dispatches
+rarely leave anything; designs that stage in orbit do.
+
+Not done here: the dispatched **payload** itself still isn't registered (only its contract is settled). That's Q49,
+"missions in flight". Test `space-6` (1 check; mutations caught: nothing handed back, pieces leaking into the global
+list); the one-line call in `dispatchRun` isn't driven by a test (a full dispatch needs a contract and a dispatch record).
+
 ## v1.83 — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
 
 Slice 3 of § "Plan: debris and Kessler": fragments as a density per band (ESA MASTER style), `fragTick` after `conjTick`.
