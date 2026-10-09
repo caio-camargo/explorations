@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.18 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.19 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -15,6 +15,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
 | 2 | **Your picks from the mock-ups**: **W19** astronauts, **W20** bodies, **W21** hardware schools (Q102 is already being built on W21's default) | you | D2's look, Q80–Q85, Q102's direction |
 | 3 | **Your design calls**: **D5** (rover lost at night when flat), **D6** (dry satellites), **W14** (screen identity); with defaults that hold if silent: W15 (slice 4), W18 (network screen), W22 (station contracts) | you | rovers' R3, MIDGAME's line, Q53 |
+| 1b | **Q19: the first load takes 86–88 s** on Windows; 71 s is linking the sky shader. The fix is built on branch `terrain` (`3a9cda2`); only its timing A/B and the merge are left, and they need a **quiet machine** (stopped twice, out of memory) | world, when few sessions run | every player's first visit; M1's steady frame rate |
 | 4 | **Q164** presets with an antenna make their own power | vehicle (Q152 parked: low memory) | Q27, relays and the link's power side |
 | 5 | **Q160** a duplicate-number check before push (Q57 ✓) | platform (**no session**) | no more renumbering after every merge |
 
@@ -79,6 +80,7 @@ the feedback I paste into PLAYTEST items.*
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
 - **Line endings are pinned** (Q156 ✓, `.gitattributes`). A NOTES merge that still conflicts on every line: `git merge -X ignore-space-at-eol`, or `git add --renormalize .` in a worktree that shows every file modified.
 - **Q3's build opens on W15's defaults** (orchestrator, 2026-10-09: Caio silent; flow's lane had drained). Build 4a first; Caio may still override from the plan.
+- **Memory:** two runs stopped for low memory on 2026-10-09 (vehicle's full suite, world's Q19 A/B). Use `--jobs 2` for the full suite when 4+ sessions are open, and leave 🖥🖥 items (Q19's A/B) for a quiet machine.
 - **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
   except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
@@ -114,7 +116,8 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ✓ `d35e9bf` |
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
-| Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | after Q49 slice 2 |
+| Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
+| Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ready (Q57 ✓) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ready (Q103 ✓ v1.89; restyle with Q53 later) |
@@ -197,9 +200,9 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q148 | Debris slice 4 (with flow, economy): the world setting off / light / real (default light; with platform's Q124); the map's band view; cleanup contracts | M2 | M | 🖥 | after Q147 |
 | Q149 | Dispatched routine flights leave no debris yet (`procFly` restores the list) | M2 | S | ⚙ | ✓ `dff3e5d` (v1.86: `procFly` keepJunk, `junkAdd`; the dispatched payload itself is Q49) |
 | Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | blocked: the presets with an antenna make no power of their own (the Probe: core battery 0.5 kWh, 15 W of antenna and camera, flat in ~33 h). Gating service or the link on power now would end Probe TV/imaging service after ~4 days and Probe antenna missions on long flights. Needs the vehicle item under *Proposed* first; relay range folds into Q51's link budget (space, 2026-10-09) |
-| Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 → space 2026-10-09 (cruise events on the timeline, stops, Let it go); slices 3–4 under *Proposed* |
-| Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | after Q49 slice 2 |
-| Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ready |
+| Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 ✓ `1f2eb35` (cruise events on the timeline, no silent misses); slices 3–4 are Q166, Q167 |
+| Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | ready (slice 2 ✓) |
+| Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ✓ `c364972` (a dispatched flight's payload stays up) |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ready (plan only) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
@@ -219,7 +222,8 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
-| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): fix built on branch `terrain` (`3a9cda2`: the terrain march in its own G-buffer pass; pixel-identical to main), **timing A/B not yet run** (stopped twice: machine out of memory); NOTES § "Q19, round 2" |
+| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥🖥 | parked (world, 2026-10-09): fix built on branch `terrain` (`3a9cda2`: the terrain march in its own G-buffer pass; pixel-identical to main), **timing A/B not yet run** (stopped twice: machine out of memory); NOTES § "Q19, round 2" |
+| Q169 | After Q19 merges: the rest of the sky shader's link time on ANGLE/D3D11 (first load target well under 20 s); players' first visit and Caio after every update (NOTES § "Q19, round 2") | M1 | M | 🖥 | after Q19 |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | shader part ✓ `5ac7ce0` (wind-scoured ranges, `ICE_VARY`); the coast, the pad terrace (heightfield, shared with `terrainH`) and the salt-flat/wetland masks stay with world |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
@@ -365,5 +369,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- platform / world — **first load takes 86–88 s** on Windows (ANGLE/D3D11, no shader cache): the sky shader's link is 71 s of it. World's Q19 branch (`terrain` `3a9cda2`) takes the march out of the sky shader, which should cut it to ~20–40 s; then the rest of the sky shader. Players' first visit, and Caio after every update — NOTES § "Q19, round 2"
-- flow — `netModel()` is in (v1.89.1): delete `netFallback` in `app/network.js`; N2's nodes (`M.nodes`: kind, body, slot, stock, need, days, paused) and `M.bottleneck` are ready to draw — NOTES § "netModel() built"
