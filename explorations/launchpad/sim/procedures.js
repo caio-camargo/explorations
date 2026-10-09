@@ -345,7 +345,7 @@ function procAdopt(stack,target){const key=procKey(stack),own=(PROG.procs||{})[k
 // where it stopped.
 function dispatchRun(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};if(!e.proc.pitch)return dispatchRoll(D,v,c);   // a procedure with no guidance to fly (an old save's stub): the roll
   if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
-  const f=procFly(D.stack,e.proc,dispatchTarget(c),{noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`});
+  const f=procFly(D.stack,e.proc,dispatchTarget(c),{site:typeof procSiteOf==='function'?procSiteOf(D.stack):undefined,noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`});
   if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
   if(!f.ok)return{ok:false,why:f.why};
   return{ok:true,orb:{...f.orb,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:f.dv}}
