@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -106,10 +106,10 @@ Priority is the epoch that first lands there (SYSTEM § "Where this sits").
 | **Hesper** ✓ CPU (v1.65, not live) | basalt plains, slab rock, a few shields, lava channels | G-basin, G-volcano, G-carve | seen by landers and radar only: modest detail, cheap. A lander lasts minutes, so the near field matters more than the far | epoch 6 |
 | **Astraea** ✓ CPU (v1.67, not live) | cratered regolith, the bright-floored crater, a lonely mountain | G-crater, G-volcano (one cone) | g 0.28: the bright crater is a mask the look lane colours (salts) | epoch 7 |
 | Hyperion | **none** | — | `ground:null`; an entry probe ends in the deep atmosphere (the space/vehicle lanes' job) | — |
-| Theia | lava plains and calderas | G-basin, G-volcano, G-crater (few) | plumes are look and effects, not ground | epoch 7 |
-| Eos | ridged ice, plumes | G-ice, G-crater (few) | plumes as above | epoch 7 |
-| **Tethys** | lakes, dunes, drainage channels under haze | G-basin with a liquid level, G-dune, G-carve, G-crater (few) | the richest ground job here (SYSTEM). The liquid surface reuses the sea path (`s.water`, splashdown), with methane's density. Under 1.5 bar it also needs the atmosphere march, which the space/look lanes own | epoch 7 |
-| Phoebe | a cratered lump | G-lump, G-crater | R ~20 km | epoch 7 |
+| Theia ✓ CPU (v1.70) | lava plains and calderas | G-basin, G-volcano, G-crater (few) | plumes are look and effects, not ground | epoch 7 |
+| Eos ✓ CPU (v1.70) | ridged ice, plumes | G-ice, G-crater (few) | plumes as above | epoch 7 |
+| **Tethys** ✓ CPU (v1.70) | lakes, dunes, drainage channels under haze | G-basin with a liquid level, G-dune, G-carve, G-crater (few) | the richest ground job here (SYSTEM). The liquid surface reuses the sea path (`s.water`, splashdown), with methane's density. Under 1.5 bar it also needs the atmosphere march, which the space/look lanes own | epoch 7 |
+| Phoebe ✓ CPU (v1.70) | a cratered lump | G-lump, G-crater | R ~20 km | epoch 7 |
 | **Erebus** | a smooth nitrogen-ice basin, water-ice mountains, dark highlands | G-basin (the glacier), G-crater (highlands), G-volcano reused as blocky mountains | the basin is a mask the look lane colours | epoch 8 |
 | Seeded small bodies | lumps | G-lump, G-crater | one recipe, parameters from `WSEED`. A true shape model (overhangs, contact binaries) would be new work, not planned | M4/M5 |
 
@@ -323,6 +323,7 @@ orbit.
 ---
 
 ## Version history
+- **0.1.7 (2026-10-09):** Hyperion's moons built on the CPU (v1.70, not live; stub bodies); the maps' polar rows fixed (a step at every body's poles, Tellus's included); crater bands safe on tiny bodies.
 - **0.1.6 (2026-10-09):** Astraea's ground built on the CPU (v1.67, not live; stub body); a crust factor on the crater transition for icy bodies.
 - **0.1.5 (2026-10-09):** Hesper's ground built on the CPU (v1.65, not live; stub body).
 - **0.1.4 (2026-10-08):** Enyo's ground built on the CPU (v1.62, not live; a stub body until the space lane adds Enyo). The crater bands and surfaces are now per recipe.

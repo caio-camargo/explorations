@@ -48,6 +48,7 @@ function seleneMap(){if(SEL_MAP)return SEL_MAP;const W=1024,H=512,R=SELENE.R,g=S
   for(let j=0;j<H;j++)for(let i=0;i<W;i++){const k=j*W+i,m=sstep(.05,.5,M[k]);if(!m)continue;const u=mapU(W,H,i,j),fl=-1400+500*(tfbm(u[0]*9+7,u[1]*9+7,u[2]*9+7,3)-.5);E[k]+=(fl-E[k])*m}
   for(const c of cr)if(c.young)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
   let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
+  polesFix(E,W,H);polesFix(M,W,H);
   return SEL_MAP={W,H,E,M,Dt,craters:cr,lo,hi}}
 // The procedural bands. Cells are on an equiangular cube (6 faces × n×n per band, near-equal in area); each cell holds
 // at most one crater (the expected count per cell, c·area·(Dlo⁻²−Dhi⁻²), is about 0.38 at the Moon's c). A crater reaches D
@@ -60,9 +61,12 @@ const grBandsOf=(R,c)=>{const out=[];for(const D0 of GR_BANDS){const n=Math.ceil
   out.forEach((b,i)=>{b.Dlo=i+1<out.length?out[i+1].Dhi:b.Dhi/2.5;b.lam=c*(4*Math.PI*(R/1000)**2/6/(b.n*b.n))*(1/(b.Dlo/1000)**2-1/(b.Dhi/1000)**2)});return out};
 const GR_BCACHE=new Map(),grBands=(R,c=GR_C)=>{const k=R+'|'+c;return GR_BCACHE.get(k)||(GR_BCACHE.set(k,grBandsOf(R,c)),GR_BCACHE.get(k))};
 const GR_FACE=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];   // axis, then the face's two in-plane axes
-function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3){let h=0;
-  const BS=grBands(R,c),s0=7001+salt*16;for(let b=0;b<bands;b++){const{n,Dhi,Dlo,lam}=BS[b],mg=3/n;
-    for(let ax=0;ax<3;ax++){const ua=u[ax];if(Math.abs(ua)<.5)continue;const sg=ua>0?1:-1,f=ax*2+(sg>0?0:1),[,p1,p2]=GR_FACE[ax*2],
+// A face is skipped when the point is further from its axis than the face's corner (54.7°) plus the band's reach: for big
+// bodies that's under 60° (|u_ax| < .5, as it always was); on a 20 km body a 12 km crater reaches 36° and needs more.
+// b0 skips the coarsest bands (tiny bodies bake those sizes instead: see Phoebe).
+function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3,b0=0){let h=0;
+  const BS=grBands(R,c),s0=7001+salt*16;for(let b=b0;b<bands;b++){const{n,Dhi,Dlo,lam}=BS[b],mg=3/n,ua0=Math.min(.5,Math.cos(.9553+Dhi/R));
+    for(let ax=0;ax<3;ax++){const ua=u[ax];if(Math.abs(ua)<ua0)continue;const sg=ua>0?1:-1,f=ax*2+(sg>0?0:1),[,p1,p2]=GR_FACE[ax*2],
         A=4/Math.PI*Math.atan(u[p1]/Math.abs(ua)),B=4/Math.PI*Math.atan(u[p2]/Math.abs(ua));
       if(Math.abs(A)>1+mg||Math.abs(B)>1+mg)continue;
       const ci=Math.floor((A+1)/2*n),cj=Math.floor((B+1)/2*n);
@@ -85,9 +89,9 @@ const SELENE_GROUND={gen:'selene',top:4000};   // top: an upper bound (sampled m
 const GROUND_STUBS={Enyo:{name:'Enyo',R:6.78e5,g:3.72}};
 const llU=(la,lo)=>{const a=la*Math.PI/180,o=lo*Math.PI/180;return[Math.cos(a)*Math.cos(o),Math.sin(a),Math.cos(a)*Math.sin(o)]};
 const angTo=(u,c)=>Math.acos(clamp(u[0]*c[0]+u[1]*c[1]+u[2]*c[2],-1,1));
-// big craters for a map: n of them with N(>D) ∝ D⁻² from 20 km to Dmax, uniform over the sphere
-function bigCraters(rnd,R,c,Dmax,youngShare){const n=Math.round(c/400*4*Math.PI*(R/1000)**2),cr=[];
-  for(let q=0;q<n;q++){const z=2*rnd()-1,t=2*Math.PI*rnd(),s=Math.sqrt(1-z*z),x=rnd(),D=1000/Math.sqrt(1/400-x*(1/400-1/(Dmax/1000)**2));
+// big craters for a map: n of them with N(>D) ∝ D⁻² from Dmin (20 km) to Dmax, uniform over the sphere
+function bigCraters(rnd,R,c,Dmax,youngShare,Dmin=20e3){const k2=(Dmin/1000)**2,n=Math.round(c/k2*4*Math.PI*(R/1000)**2),cr=[];
+  for(let q=0;q<n;q++){const z=2*rnd()-1,t=2*Math.PI*rnd(),s=Math.sqrt(1-z*z),x=rnd(),D=1000/Math.sqrt(1/k2-x*(1/k2-1/(Dmax/1000)**2));
     cr.push({c:[s*Math.cos(t),z,s*Math.sin(t)],D,fr:rnd()**3,young:rnd()<youngShare})}
   return cr}
 // a shield volcano at r = distance / its radius: concave flanks, a basal scarp, a flat-floored summit caldera
@@ -134,6 +138,7 @@ function enyoMap(){if(ENYO_MAP)return ENYO_MAP;const B=GROUND_STUBS.Enyo,R=B.R,D
     D[k]=Math.max(erg,sstep(.2,.12,angTo(u,hel))*sstep(.45,.6,tfbm(u[0]*14+8,u[1]*14+8,u[2]*14+8,3)),fl)*(1-C[k]);
     Y[k]=Math.max(.75*L[k],V[k],C[k],fl)}
   for(const c of cr)if(c.young&&mapBil(C,W,H,c.c)<.5)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  for(const A of[E,Y,C,D,V,K,L])polesFix(A,W,H);
   let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
   return ENYO_MAP={W,H,E,Y,C,D,V,K,L,Dt,craters:cr,lo,hi,thin:cu=>mapBil(Y,W,H,cu)}}
 // dunes: wind-aligned ridges, 400 m apart and up to 25 m high, a gentle stoss and a steep lee, crests warped. A fixed 3D
@@ -177,6 +182,7 @@ function hesperMap(){if(HESPER_MAP)return HESPER_MAP;const B=GROUND_STUBS.Hesper
     for(const d of dm){const r=angTo(u,d)*R/HE.domes.R;if(r<1){e+=HE.domes.h*sstep(1,.8,r);v=Math.max(v,sstep(1,.6,r))}}
     E[k]=e;V[k]=v;O[k]=o}
   const cr=bigCraters(rnd,R,HE.c,60e3,1);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  for(const A of[E,T,V,O])polesFix(A,W,H);
   let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
   return HESPER_MAP={W,H,E,T,V,O,Dt,craters:cr,lo,hi,thin:()=>0}}
 // wrinkle ridges on the plains: thin, low ridges ~30 km apart (the ridged noise raised to a high power)
@@ -219,6 +225,7 @@ function astraeaMap(){if(ASTRAEA_MAP)return ASTRAEA_MAP;const B=GROUND_STUBS.Ast
     if(r<.12)E[k]-=1500*sstep(.12,.04,r);   // the central pit: at 18 km the crater has a central peak, collapsed here into a pit below the floor
     // salt: the floor's middle, blotchy (Cerealia, Vinalia), plus a little on the rim
     S[k]=r<.6?sstep(.6,.3,r)*sstep(.35,.55,tfbm(u[0]*400,u[1]*400,u[2]*400,3)+.25*sstep(.3,0,r)):0;Y[k]=Math.max(r<1.1?sstep(1.1,.9,r):0,A[k])}
+  for(const Q of[E,S,A,Y])polesFix(Q,W,H);
   let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
   return ASTRAEA_MAP={W,H,E,S,A,Y,Dt,craters:cr,lo,hi,thin:cu=>mapBil(Y,W,H,cu)}}
 function astraeaH(pf,bands){const u=norm(pf),m=astraeaMap();return mapSpl(m.E,m.W,m.H,u)+craterBands(u,GROUND_STUBS.Astraea.R,m.Dt,m.thin,bands,AS.c,AS.salt,AS.frPow)}
@@ -227,4 +234,112 @@ const ASTRAEA_UNITS=['salt deposits','mountain','regolith'];
 function astraeaUnit(u){const m=astraeaMap(),b=X=>mapBil(X,m.W,m.H,u);return b(m.S)>.4?'salt deposits':b(m.A)>.5?'mountain':'regolith'}
 const ASTRAEA_SURF={'salt deposits':{name:'salt deposits',mu:.5,soft:1,rough:.02},mountain:{name:'salty ice rubble',mu:.6,soft:0,rough:.3},regolith:{name:'dark regolith',mu:.6,soft:1,rough:.15}};
 const ASTRAEA_GROUND={gen:'astraea',top:6000,surf:pf=>ASTRAEA_SURF[astraeaUnit(norm(pf))],unit:u=>astraeaUnit(u)};   // top: checked in test ground-5
+// ---- Hyperion's moons (SYSTEM.md § Hyperion). Stubs as above; Phoebe's gravity isn't in SYSTEM.md, so it's real Phoebe's.
+GROUND_STUBS.Theia={name:'Theia',R:3.64e5,g:1.80};GROUND_STUBS.Eos={name:'Eos',R:3.12e5,g:1.31};
+GROUND_STUBS.Tethys={name:'Tethys',R:5.15e5,g:1.35};GROUND_STUBS.Phoebe={name:'Phoebe',R:2.0e4,g:.049};
+// shared: bake a W×H map, calling f(u, k) per texel; and a warped distance, so round features come out irregular
+function bakeEach(W,H,f){for(let j=0;j<H;j++)for(let i=0;i<W;i++)f(mapU(W,H,i,j),j*W+i)}
+const warpR=(u,c,R,Rf,amt,k)=>angTo(u,c)*R/Rf*(1+amt*(tn(u[0]*k+c[0]*9,u[1]*k+c[1]*9,u[2]*k+c[2]*9)-.5)*2);
+const mapRange=E=>{let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}return{lo,hi}};
+
+// Theia (Io): no impact craters at all (volcanism resurfaces it faster than they land). Sulphur-frost plains (±0.4 km);
+// ~30 paterae, irregular volcanic depressions 20–80 km with flat floors of fresh dark lava, 0.5–1.5 km deep, steep walls;
+// six tilted blocks of crust for mountains (40–80 km, 4–9 km high, one side lifted). Plumes are look and effects, not
+// ground. Channels: E, P (patera floor), K (mountain).
+const TH={seed:1301,plains:800,paterae:30,mtns:6};
+let THEIA_MAP=null;
+function theiaMap(){if(THEIA_MAP)return THEIA_MAP;const R=GROUND_STUBS.Theia.R,W=1024,H=512,N=W*H,rnd=rng(TH.seed),E=new Float32Array(N),P=new Float32Array(N),K=new Float32Array(N);
+  const rp=()=>{const z=2*rnd()-1,t=2*Math.PI*rnd(),s=Math.sqrt(1-z*z);return[s*Math.cos(t),z,s*Math.sin(t)]};
+  const pa=[];for(let q=0;q<TH.paterae;q++){const c=rp(),x=rnd();pa.push({c,R:1e3/Math.sqrt(1/400-x*(1/400-1/1600))/2,d:500+1000*rnd()})}   // D 20–80 km, ∝ D⁻²
+  const mt=[];for(let q=0;q<TH.mtns;q++){const c=rp(),tl=norm(cross(c,rp()));mt.push({c,R:40e3+40e3*rnd(),H:4e3+5e3*rnd(),tl})}
+  bakeEach(W,H,(u,k)=>{let e=TH.plains*(tfbm(u[0]*3+51,u[1]*3+51,u[2]*3+51,5)-.5),p=0,m=0;
+    for(const t of mt){const r=warpR(u,t.c,R,t.R,.25,9);if(r<1){const tilt=.5+.5*dot(sub(u,t.c),t.tl)/(t.R/R);e+=t.H*sstep(1,.75,r)*clamp(tilt,.15,1);m=Math.max(m,sstep(1,.8,r))}}
+    for(const q of pa){const r=warpR(u,q.c,R,q.R,.3,14);if(r<1.05){const w=sstep(1,.88,r);e=e*(1-w)+(q.d*-1+e*.1)*w;p=Math.max(p,sstep(.95,.85,r))}}
+    E[k]=e;P[k]=p;K[k]=m});
+  for(const A of[E,P,K])polesFix(A,W,H);
+  return THEIA_MAP={W,H,E,P,K,Dt:GR_DT/GROUND_STUBS.Theia.g,craters:[],paterae:pa,mtns:mt,...mapRange(E),thin:()=>1}}
+function theiaH(pf){const u=norm(pf),m=theiaMap();return mapSpl(m.E,m.W,m.H,u)}
+GROUND_GEN.theia=pf=>theiaH(pf);
+const THEIA_UNITS=['patera floor','mountain','plains'];
+function theiaUnit(u){const m=theiaMap(),b=X=>mapBil(X,m.W,m.H,u);return b(m.P)>.5?'patera floor':b(m.K)>.5?'mountain':'plains'}
+const THEIA_SURF={'patera floor':{name:'fresh lava',mu:.7,soft:-2,rough:.3},mountain:{name:'tilted crust',mu:.7,soft:-2,rough:.35},plains:{name:'sulphur frost',mu:.5,soft:1,rough:.05}};
+const THEIA_GROUND={gen:'theia',top:12000,surf:pf=>THEIA_SURF[theiaUnit(norm(pf))],unit:u=>theiaUnit(u)};
+
+// Eos (Europa + Enceladus): young ice, so almost no craters (c 2e-5: ~25 over 1 km; an icy crust, crust 0.3). The new
+// generator, G-ice: double ridges along the edges of a Worley cell network, at two scales (cells ~40 km, ridges 200 m; ~12
+// km, 90 m), each a pair of crests either side of a central trough. Chaos terrain in patches: the ridges broken into
+// jumbled blocks. The tiger stripes near the south pole (Enceladus's): four parallel rifts 35 km apart, ~130 km long,
+// 500 m deep, flanked by low ridges: where the plumes come from (SYSTEM.md: a sample flown through them).
+// Channels: E (a gentle swell), X chaos.
+const EO={c:2e-5,salt:4,frPow:2,crust:.3,seed:1401,ridge:[[40e3,200],[12e3,90]],dr:{w:600,s:350},stripes:{lat:-.94,gap:35e3,n:4,half:65e3,depth:500}};
+let EOS_MAP=null;
+function eosMap(){if(EOS_MAP)return EOS_MAP;const B=GROUND_STUBS.Eos,W=512,H=256,N=W*H,E=new Float32Array(N),X=new Float32Array(N);
+  bakeEach(W,H,(u,k)=>{E[k]=600*(tfbm(u[0]*2+61,u[1]*2+61,u[2]*2+61,4)-.5);X[k]=sstep(.62,.7,tfbm(u[0]*5+33,u[1]*5+33,u[2]*5+33,3))});
+  polesFix(E,W,H);polesFix(X,W,H);
+  return EOS_MAP={W,H,E,X,Dt:GR_DT/B.g*EO.crust,craters:[],...mapRange(E),thin:cu=>mapBil(X,W,H,cu)}}
+// distance (in cells) from p to the nearest Voronoi edge of a jittered 3D grid: (F2 − F1)/2, good near the edges
+function worleyEdge(x,y,z){const ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let f1=1e9,f2=1e9;
+  for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)for(let c=-1;c<=1;c++){const X=ix+a,Y=iy+b,Z=iz+c,dx=X+ih3(X,Y,Z+911)-x,dy=Y+ih3(X,Y,Z+912)-y,dz=Z+ih3(X,Y,Z+913)-z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    if(d<f1){f2=f1;f1=d}else if(d<f2)f2=d}
+  return(f2-f1)/2}
+function eosRidges(u,R,chaos){let h=0;for(const[L,A]of EO.ridge){const d=worleyEdge(u[0]*R/L,u[1]*R/L,u[2]*R/L)*L;if(d<EO.dr.w*3)h+=A*Math.exp(-(((d-EO.dr.w)/EO.dr.s)**2))}
+  if(chaos>0){const bl=L=>sstep(.46,.54,tn(u[0]*R/L+5,u[1]*R/L+5,u[2]*R/L+5));h=h*(1-chaos)+chaos*(180*bl(4e3)+90*bl(1.5e3))}   // chaos: flat-topped blocks with steep sides, not ridges
+  return h}
+// the tiger stripes: in a frame at the south pole, x across the stripes and z along them
+function eosStripe(u,R){if(u[1]>EO.stripes.lat)return 0;const x=u[0]*R,z=u[2]*R,g=EO.stripes.gap,q=x/g+EO.stripes.n/2-.5,qi=Math.round(q);
+  if(qi<0||qi>=EO.stripes.n||Math.abs(z)>EO.stripes.half)return 0;const d=Math.abs(q-qi)*g,tap=sstep(EO.stripes.half,EO.stripes.half-25e3,Math.abs(z));
+  return tap*(-EO.stripes.depth*sstep(1200,0,d)+120*Math.exp(-(((d-1800)/800)**2)))}
+function eosH(pf,bands){const u=norm(pf),m=eosMap(),R=GROUND_STUBS.Eos.R,ch=mapBil(m.X,m.W,m.H,u);
+  return mapSpl(m.E,m.W,m.H,u)+eosRidges(u,R,ch)+eosStripe(u,R)+craterBands(u,R,m.Dt,m.thin,bands,EO.c,EO.salt,EO.frPow)}
+GROUND_GEN.eos=pf=>eosH(pf);
+const EOS_UNITS=['tiger stripes','chaos','ridged ice'];
+function eosUnit(u){const m=eosMap(),R=GROUND_STUBS.Eos.R;if(eosStripe(u,R)<-100)return'tiger stripes';return mapBil(m.X,m.W,m.H,u)>.5?'chaos':'ridged ice'}
+const EOS_SURF={'tiger stripes':{name:'fresh plume frost',mu:.3,soft:3,rough:.02},chaos:{name:'ice blocks',mu:.4,soft:-1,rough:.4},'ridged ice':{name:'ridged ice',mu:.4,soft:0,rough:.12}};
+const EOS_GROUND={gen:'eos',top:2500,surf:pf=>EOS_SURF[eosUnit(norm(pf))],unit:u=>eosUnit(u)};
+
+// Tethys (Titan): under 1.5 bar of haze (the air is the space and look lanes'). Few craters (c 3e-4, icy crust 0.4). The
+// map: a gentle swell; one bright rugged highland (Xanadu: +1.5 km); the polar basins pushed below the liquid level, most
+// in the north (Kraken, Ligeia), so methane lakes and seas fill them: the recipe has `sea: 0`, so a craft splashes down as
+// on Tellus's sea. Procedural on top: linear dunes in the equatorial belt (east–west crests along the parallels, 2 km
+// apart, 100 m high), drainage channels (isoline troughs ~1 km wide, 100 m deep) away from the dunes, and a little
+// relief everywhere so shorelines aren't map-smooth. Channels: E, X highland, D dune belt.
+const TT={c:3e-4,salt:5,frPow:2,crust:.4,seed:1501,xanadu:{at:[-10,100],r:.35,h:1500},north:800,south:350,dune:{gap:2e3,h:100},chan:{lam:300e3,half:.0004,depth:100}};
+let TETHYS_MAP=null;
+function tethysMap(){if(TETHYS_MAP)return TETHYS_MAP;const B=GROUND_STUBS.Tethys,R=B.R,W=1024,H=512,N=W*H,E=new Float32Array(N),X=new Float32Array(N),Dn=new Float32Array(N),xa=llU(...TT.xanadu.at);
+  bakeEach(W,H,(u,k)=>{const lat=Math.asin(clamp(u[1],-1,1))*180/Math.PI,n=tfbm(u[0]*4+71,u[1]*4+71,u[2]*4+71,5)-.5,x=Math.exp(-((angTo(u,xa)/TT.xanadu.r)**2));
+    X[k]=sstep(.35,.6,x);
+    E[k]=250+700*n+TT.xanadu.h*x*(.6+.8*(tfbm(u[0]*14,u[1]*14,u[2]*14,3)))-TT.north*sstep(55,75,lat)*(.6+n)-TT.south*sstep(-62,-78,lat)*(.6+n);
+    Dn[k]=sstep(32,24,Math.abs(lat))*(1-X[k])*sstep(.5,.6,tfbm(u[0]*6+44,u[1]*6+44,u[2]*6+44,3))});   // the dune belt, in patches (Titan: ~15 % of the surface)
+  const Dt=GR_DT/B.g*TT.crust,cr=bigCraters(rng(TT.seed),R,TT.c,100e3,1);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  for(const A of[E,X,Dn])polesFix(A,W,H);
+  return TETHYS_MAP={W,H,E,X,D:Dn,Dt,craters:cr,...mapRange(E),thin:()=>0}}
+function tethysDune(u,R){const s=Math.asin(clamp(u[1],-1,1))*R/TT.dune.gap+.6*(tfbm(u[0]*40,u[1]*40,u[2]*40,2)-.5),x=s-Math.floor(s);return TT.dune.h*(1-Math.abs(2*x-1))**1.5}
+function tethysChan(u,R){const p=TT.chan.lam,x=u[0]*R/p,y=u[1]*R/p,z=u[2]*R/p,wv=tn(x*2.1+3,y*2.1+3,z*2.1+3)-.5,l=Math.abs(tn(x+wv*.9+21,y+wv*.9,z+wv*.9)-.5);
+  return l>TT.chan.half*2.5?0:sstep(.45,.55,tn(x*.6+60,y*.6,z*.6))*sstep(TT.chan.half*1.6,TT.chan.half*.6,l)}
+function tethysH(pf,bands){const u=norm(pf),m=tethysMap(),R=GROUND_STUBS.Tethys.R,d=mapBil(m.D,m.W,m.H,u),x=mapBil(m.X,m.W,m.H,u);
+  return mapSpl(m.E,m.W,m.H,u)+(x>0?x*300*(1-Math.abs(2*tn(u[0]*R/6e3+9,u[1]*R/6e3+9,u[2]*R/6e3+9)-1))**2:0)+60*(tfbm(u[0]*R/8e3,u[1]*R/8e3,u[2]*R/8e3,3)-.5)+(d>0?d*tethysDune(u,R):0)-TT.chan.depth*(1-d)*tethysChan(u,R)
+    +craterBands(u,R,m.Dt,m.thin,bands,TT.c,TT.salt,TT.frPow)}
+GROUND_GEN.tethys=pf=>tethysH(pf);
+const TETHYS_UNITS=['lake','dunes','highland','channel','plains'];
+function tethysUnit(u){const m=tethysMap(),R=GROUND_STUBS.Tethys.R,b=X=>mapBil(X,m.W,m.H,u);if(tethysH(u)<0)return'lake';if(b(m.D)>.5)return'dunes';if(b(m.X)>.5)return'highland';
+  return tethysChan(u,R)>.3?'channel':'plains'}
+const TETHYS_SURF={lake:{name:'methane',mu:.1,soft:0,rough:0},dunes:{name:'organic sand',mu:.45,soft:4,rough:0},highland:{name:'icy highland rock',mu:.6,soft:-1,rough:.25},
+  channel:{name:'rounded ice cobbles',mu:.55,soft:1,rough:.25},plains:{name:'damp organic sediment',mu:.5,soft:3,rough:.05}};
+const TETHYS_GROUND={gen:'tethys',top:4000,sea:0,surf:pf=>TETHYS_SURF[tethysUnit(norm(pf))],unit:u=>tethysUnit(u)};
+
+// Phoebe: a captured, dark, cratered lump (R ~20 km, g 0.049). The first irregular shape (G-lump): a low-order
+// displacement of ±15 % of R on the sphere, so its outline isn't round; craters to saturation (c 0.055) in bands down to
+// 80 m, all simple bowls at this gravity. Its two coarsest bands would reach 20–36° across so small a body, so craters down
+// to band 2's top (3.1 km) are baked instead and the bands start there. Not a true shape model (no overhangs): SYSTEM.md's
+// cheap default; and its slopes are against the radial up, not its lumpy gravity.
+const PH={c:.055,salt:6,frPow:3,seed:1601,lump:.15,b0:2};
+let PHOEBE_MAP=null;
+function phoebeMap(){if(PHOEBE_MAP)return PHOEBE_MAP;const B=GROUND_STUBS.Phoebe,R=B.R,W=256,H=128,N=W*H,E=new Float32Array(N),Dt=GR_DT/B.g;
+  bakeEach(W,H,(u,k)=>{E[k]=2*PH.lump*R*(tfbm(u[0]*1.2+81,u[1]*1.2+81,u[2]*1.2+81,3)-.5)});
+  const cr=bigCraters(rng(PH.seed),R,PH.c,20e3,0,grBands(R,PH.c)[PH.b0].Dhi);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  polesFix(E,W,H);
+  return PHOEBE_MAP={W,H,E,Dt,craters:cr,...mapRange(E),thin:()=>0}}
+function phoebeH(pf,bands){const u=norm(pf),m=phoebeMap(),R=GROUND_STUBS.Phoebe.R;return mapSpl(m.E,m.W,m.H,u)+craterBands(u,R,m.Dt,null,bands,PH.c,PH.salt,PH.frPow,PH.b0)}
+GROUND_GEN.phoebe=pf=>phoebeH(pf);
+const PHOEBE_GROUND={gen:'phoebe',top:6000,unit:()=>'regolith'};   // no surfaces of its own: regolith
 // ==== SIM END

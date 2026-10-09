@@ -3682,6 +3682,52 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ground-5: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
 }
 
+// ground-6. Hyperion's moons (world session, GROUND.md G7), on the CPU, not live (stub bodies): Theia (Io: no craters,
+// paterae, tilted mountains), Eos (Europa + Enceladus: flat ridged ice, chaos, the tiger stripes), Tethys (Titan: methane
+// lakes you splash into, linear dunes, a rugged highland), Phoebe (a cratered lump). And every body's poles, Tellus's too:
+// the equirectangular maps' polar rows used to make near-vertical steps there (polesFix). `node study_ground.mjs <moon>`.
+{
+  const G = new Function(src + 'return {GROUND_GEN,GROUND_STUBS,THEIA_GROUND,theiaMap,theiaH,EOS_GROUND,eosMap,eosH,worleyEdge,eosStripe,EO,TETHYS_GROUND,tethysMap,tethysH,TT,PHOEBE_GROUND,phoebeMap,phoebeH,BODIES,TELLUS,SELENE,terrainH,surfaceAt,terrainSlope,seaAt,groundAlt,bodyTop,get THEIA_MAP(){return THEIA_MAP},get EOS_MAP(){return EOS_MAP},get TETHYS_MAP(){return TETHYS_MAP},get PHOEBE_MAP(){return PHOEBE_MAP}};')();
+  const D = Math.PI / 180, body = (n, g) => { const S = G.GROUND_STUBS[n]; return { name: n, R: S.R, mu: S.g * S.R * S.R, ground: g }; };
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], fib = n => { const o = []; for (let i = 0; i < n; i++) { const z = 1 - (2 * i + 1) / n, a = i * 2.39996, q = Math.sqrt(1 - z * z); o.push([q * Math.cos(a), z, q * Math.sin(a)]); } return o; };
+  const at = (c, R, m, az) => { const e = norm(cross(Math.abs(c[1]) < .9 ? [0, 1, 0] : [1, 0, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = m / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  check('ground-6: none of Hyperion\'s moons is live (not in the body tree), and no map is baked before first use',
+    ['Theia', 'Eos', 'Tethys', 'Phoebe'].every(n => !G.BODIES.some(b => b.name === n)) && !G.THEIA_MAP && !G.EOS_MAP && !G.TETHYS_MAP && !G.PHOEBE_MAP);
+  // Theia: no craters at all; paterae are flat-floored pits with steep walls and fresh lava; tilted blocks stand 4+ km
+  { const Rt = G.GROUND_STUBS.Theia.R, Bt = body('Theia', G.THEIA_GROUND), M = G.theiaMap(), h = u => G.theiaH(u);
+    const pit = M.paterae.map(p => Math.max(...[0, 1, 2, 3, 4, 5].map(k => h(at(p.c, Rt, p.R * 1.25, k * 1.05)))) - h(p.c)), lava = M.paterae.filter(p => G.surfaceAt(Bt, p.c).name === 'fresh lava').length;
+    const tall = Math.max(...M.mtns.map(t => h(t.c) - Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(t.c, Rt, t.R * 1.4, k * 1.05))))));
+    check('ground-6: Theia: no impact craters; paterae sink 400+ m below their rims (median) with fresh lava floors; its mountains rise 4+ km',
+      M.craters.length === 0 && med(pit) > 400 && lava >= M.paterae.length * .8 && tall > 4000, `${M.paterae.length} paterae, median ${med(pit).toFixed(0)} m deep, ${lava} on fresh lava; tallest mountain ${tall.toFixed(0)} m`); }
+  // Eos: flat (relief under 1 km); the ridges are double (crests 600 m either side of a lower centre line); chaos rougher;
+  // the tiger stripes: rifts 400+ m deep near the south pole, frosted
+  { const Re = G.GROUND_STUBS.Eos.R, Be = body('Eos', G.EOS_GROUND), h = u => G.eosH(u), P = fib(3000), H = P.map(h), L = G.EO.ridge[0][0];
+    const bin = { edge: [], crest: [] }; let rs = 3; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 60000; i++) { const z = 2 * rnd() - 1, t = 2 * Math.PI * rnd(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)], d = G.worleyEdge(u[0] * Re / L, u[1] * Re / L, u[2] * Re / L) * L;
+      if (d < 100) bin.edge.push(h(u)); else if (Math.abs(d - G.EO.dr.w) < 100) bin.crest.push(h(u)); }
+    const un = P.map(G.EOS_GROUND.unit), sl = k => P.filter((_, i) => un[i] === k).slice(0, 300).map(u => G.terrainSlope(Be, u) / D).sort((a, b) => a - b), p90 = a => a[Math.floor(a.length * .9)];
+    const s0 = norm([G.EO.stripes.gap * .5 / Re, -1, 0]), sDepth = Math.min(h(at(s0, Re, 3e3, Math.PI / 2)), h(at(s0, Re, 3e3, -Math.PI / 2))) - h(s0);   // across the stripe (x); az 0 here runs along it
+    check('ground-6: Eos: flat ice (relief under 1 km); double ridges (crests above their centre lines); chaos rougher than ridged ice; tiger stripes 400+ m deep, frosted',
+      Math.max(...H) - Math.min(...H) < 1000 && med(bin.crest) > med(bin.edge) + 100 && p90(sl('chaos')) > p90(sl('ridged ice')) && sDepth > 400 && G.surfaceAt(Be, s0).name === 'fresh plume frost',
+      `relief ${(Math.max(...H) - Math.min(...H)).toFixed(0)} m; crests ${(med(bin.crest) - med(bin.edge)).toFixed(0)} m above the centre line; p90 slope chaos ${p90(sl('chaos')).toFixed(1)}° vs ${p90(sl('ridged ice')).toFixed(1)}°; stripe ${sDepth.toFixed(0)} m deep`); }
+  // Tethys: methane lakes (a liquid level: seaAt, the ground is the surface), mostly north; linear dunes run east–west
+  { const Rh = G.GROUND_STUBS.Tethys.R, Bh = body('Tethys', G.TETHYS_GROUND), h = u => G.tethysH(u), P = fib(4000), un = P.map(G.TETHYS_GROUND.unit);
+    const lakes = P.filter((_, i) => un[i] === 'lake'), north = lakes.filter(u => u[1] > 0).length, lk = lakes.find(u => u[1] > .8);
+    const dn = P.filter((_, i) => un[i] === 'dunes'), rng2 = (u, az) => { const v = [-1000, -500, 0, 500, 1000].map(m => h(at(u, Rh, m, az))); return Math.max(...v) - Math.min(...v); };
+    const ns = med(dn.slice(0, 60).map(u => rng2(u, Math.PI / 2))), ew = med(dn.slice(0, 60).map(u => rng2(u, 0)));   // az 0 is east, π/2 north
+    check('ground-6: Tethys: methane lakes (2–8 %, mostly north) are a liquid you splash into; linear dunes in the equatorial belt run east–west',
+      lakes.length / P.length > .02 && lakes.length / P.length < .08 && north > lakes.length * .6 && !!lk && G.seaAt(Bh, lk) && G.groundAlt(Bh, lk) === 0 && dn.every(u => Math.abs(u[1]) < .55) && ns > 2 * ew && ns > 50,
+      `lakes ${(lakes.length / P.length * 100).toFixed(1)} % (${north} of ${lakes.length} north); dunes: ${ns.toFixed(0)} m relief over 2 km north–south vs ${ew.toFixed(0)} m east–west`); }
+  // Phoebe: a lump (its outline not round), saturated with craters (30+ % of its ground over 10°)
+  { const Rp = G.GROUND_STUBS.Phoebe.R, Bp = body('Phoebe', G.PHOEBE_GROUND), h = u => G.phoebeH(u), P = fib(2000), H = P.map(h), steep = P.slice(0, 600).filter(u => G.terrainSlope(Bp, u) > 10 * D).length / 600;
+    check('ground-6: Phoebe: a lump (relief over 12 % of its radius) saturated with craters (30+ % of it over 10°), landing on regolith',
+      (Math.max(...H) - Math.min(...H)) / Rp > .12 && steep > .3 && G.surfaceAt(Bp, P[0]).name === 'regolith', `relief ${((Math.max(...H) - Math.min(...H)) / Rp * 100).toFixed(0)} % of R; ${(steep * 100).toFixed(0)} % over 10°`); }
+  // every body's poles: no step (the polar rows of the equirectangular maps); Tellus is live, so this one matters in play
+  { const bodies = [['Tellus', G.TELLUS.R, u => G.terrainH(u)], ['Selene', G.SELENE.R, u => G.GROUND_GEN.selene(u)], ...['Enyo', 'Hesper', 'Astraea', 'Theia', 'Eos', 'Tethys', 'Phoebe'].map(n => [n, G.GROUND_STUBS[n].R, u => G.GROUND_GEN[n.toLowerCase()](u)])];
+    const worst = bodies.map(([n, R, f]) => { let w = 0; for (const sg of [1, -1]) for (let i = 0; i < 400; i++) { const a = i * 2.39996, r = (i % 40) / 40 * 2e3 / R, u = norm([Math.sin(r) * Math.cos(a), sg * Math.cos(r), Math.sin(r) * Math.sin(a)]), v = norm(add(u, mul(norm(cross(u, [1, 0, 0])), .5 / R))); w = Math.max(w, Math.abs(f(v) - f(u)) / .5); } return [n, Math.atan(w) / D]; });
+    check('ground-6: no step at any body\'s poles, Tellus\'s included (steepest 0.5 m step within 2 km of a pole under 60°)', worst.every(([, d]) => d < 60), worst.map(([n, d]) => `${n} ${d.toFixed(0)}°`).join(' · ')); }
+}
+
 // econ-7. Dispatch to a base (economy session, QUEUE Q61): a supply run flies the design's ascent procedure, then a
 // transfer, capture and landing at the base's beacon (landAt); the lander is registered there and joins the base.
 // Repeats only: refused before the body's landing first and for a design with no ascent procedure.

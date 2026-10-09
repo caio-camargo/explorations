@@ -25,6 +25,11 @@ const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
 // ridges: RIDGE_A of ridged relief where the ground is fully rugged, VALLEY of it below the base (deep valleys, sharp crests)
 const RIDGE_A=4200,VALLEY=1800;
 const WTW=1024,WTH=512,WSEED=13,HOCT=9,NPLATES=20,WK=6e5/TELLUS.R,HF0=+(24/WK).toFixed(5),FJ1=+(18/WK).toFixed(5),FJ2=+(70/WK).toFixed(5),VOLF=+(60/WK).toFixed(5);
+// An equirectangular map's first and last rows are rings round the poles (on Tellus ~4 km across). At a pole the samplers
+// read only that row, so two points 0.5 m apart there read it at opposite longitudes: a near-vertical step wherever the
+// ground slopes (measured: 85–90° within 2 km of every body's poles). One value per polar row (its mean; a bound's max)
+// makes the field continuous there. The GPU reads the same texture, so it stays in agreement.
+const polesFix=(A,W,H,mx)=>{for(const j of[0,H-1]){let s=0,m=-Infinity;for(let i=0;i<W;i++){const v=A[j*W+i];s+=v;if(v>m)m=v}const v=mx?m:s/W;for(let i=0;i<W;i++)A[j*W+i]=v}return A};
 function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R()*100,R()*100,R()*100],plates=[];
   for(let k=0;k<NP;k++){const z=R()*2-1,ph=R()*6.2832,q=Math.sqrt(1-z*z);plates.push({s:[q*Math.cos(ph),z,q*Math.sin(ph)],cont:false,ax:norm([R()*2-1,R()*2-1,R()*2-1]),w:.6+R()*.8})}
   {const ix=plates.map((_,i)=>i);for(let i=NP-1;i>0;i--){const j=R()*(i+1)|0;[ix[i],ix[j]]=[ix[j],ix[i]]}for(let i=0;i<Math.round(NP*.45);i++)plates[ix[i]].cont=true}
@@ -69,10 +74,12 @@ function makeWorld(seed=WSEED){const R=rng(seed),NP=NPLATES,D=Math.PI/180,off=[R
   // salt flats: dry, flat basins that sit below their surroundings (where rain would pool, if it rained)
   for(let j=2;j<WTH-2;j++)for(let i=0;i<WTW;i++){const k=j*WTW+i;if(E[k]<=0||W[k]>.4||M[k]>.2||T[k]<0)continue;let s=0;
     for(let a=-2;a<=2;a++)for(let b=-2;b<=2;b++)s+=E[(j+a)*WTW+(i+b+WTW)%WTW];S[k]=sstep(60,220,s/25-E[k])*sstep(.4,.25,W[k])}
+  for(const A of [E,M,V,T,W,S])polesFix(A,WTW,WTH);   // the poles: see polesFix
   // an upper bound on the ground near each texel (base + the most the detail can add, dilated ±2 texels): the shader's
   // march skips through air above it without evaluating the terrain at all
   const U=new Float32Array(N),U0=new Float32Array(N);for(let k=0;k<N;k++){const e=E[k]>3500?3500+(E[k]-3500)*.5:E[k],m=M[k];U0[k]=e+(m*RIDGE_A+120)*1.3-m*VALLEY+440+V[k]*3400}
   for(let j=0;j<WTH;j++)for(let i=0;i<WTW;i++){let mx=-1e9;for(let a=-2;a<=2;a++){const jj=clamp(j+a,0,WTH-1);for(let b=-2;b<=2;b++)mx=Math.max(mx,U0[jj*WTW+(i+b+WTW)%WTW])}U[j*WTW+i]=Math.max(mx,0)+30}
+  polesFix(U,WTW,WTH,true);   // a bound: the row's max, not its mean
   return{E,M,V,T,W,S,U,plates,seed,lon0:0,site:null,siteH:0}}
 const WORLD=makeWorld();
 // bilinear on the baked map (the shader does the same arithmetic with texelFetch, not the GPU's 8-bit filter weights)
