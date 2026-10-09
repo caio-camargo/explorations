@@ -6327,3 +6327,29 @@ by their text, gave each file after the first a two-line prelude and `'use stric
   (`git merge-file`), with the split of the merge base as the base. This was done once, for bodies' Q13, pushed during the
   freeze. The quicker equivalent: three-way merge the *old-style* pages (`git merge-file` on the branch's, the base's and
   the pre-split `index.html`, all LF), then split the result. Its 53 changed lines landed cleanly in `sim/procedures.js`.
+
+## The new-career robot run: M1's finish line (2026-10-08, QA session; QUEUE Q55)
+
+`node playtest.mjs m1` plays a **new career with no tester flags**, the way ROADMAP § M1 words the finish line: it clicks
+through the first-run gate (agency, the default power), flies a **Sounding** for *Above the weather*, leaves the flight
+for the Program, then flies the **beeper** to orbit and leaves that flight too. It's written ahead of M1, so it fails
+until M1 is done. Each expectation names the item that makes it pass:
+
+| Check | Passes when | First run (`5ed4bf2`) |
+|---|---|---|
+| `tester` | the page isn't in tester mode | ✓ |
+| `weather`, `beeper` | both missions are done after two flights | ✓ (day 57, 157M left) |
+| `escPauses` | the sim clock doesn't move for 2.5 s with the Esc menu open | ✗ 2.5 s ran (flow Q39) |
+| `debrief` | a debrief screen shows after each flight is left | ✗ none yet (flow Q2) |
+| `boxes` | no two visible panels overlap by ≥ 40 px² on the program, assembly, flight, orbit and after screens at 1280×800 | ✗ PLAYTEST #25 (builder key strip), #26 (`#msg` over the readout) |
+
+What it found on the way: **no preset can fly the beeper** or the passenger orbit (PLAYTEST #24, P1 for the
+presets-only route), so the robot swaps the Orbiter's pod for an instrument package, which is what `career.mjs` assumes.
+The Program after a flight draws the flown ship with "NaN%" joint labels (PLAYTEST #27).
+
+**How it judges.** The ascent is `fly_ladder.mjs`'s `handAscent` run in the page (`PT.ascent`): it sets the attitude
+directly, so the run proves the career path and the screens, not that a person can fly it on gyro-era SAS (TESTING row
+101 stays a human row). The box check (`PT.boxes`) takes every visible positioned element with text, drops the
+full-screen layers (`#hud`, `#prog`), keeps the outermost ones and lists each overlapping pair. `PT.debrief` accepts a
+screen named `debrief` or any visible element with `debrief` in its id or class: **flow, name Q2's screen that way** or
+change the check with it. Shots in `C:/Users/caioa/dev/playtest-out/` (`rm1_*.png`). A run takes about a minute.
