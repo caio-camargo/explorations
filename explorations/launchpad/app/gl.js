@@ -308,8 +308,20 @@ void main(){
 }`;
 const MESH_VS=`#version 300 es
 layout(location=0) in vec3 aP;layout(location=1) in vec3 aN;layout(location=2) in vec3 aC;layout(location=3) in float aM;layout(location=4) in vec4 aU;layout(location=5) in vec2 aK;
-uniform mat4 uVP,uM;uniform float uFc;out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
-void main(){vec4 w=uM*vec4(aP,1.);vP=w.xyz;vO=aP;vNo=aN;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*aN;vC=aC;vM=aM;vU=aU;vK=aK;}`;
+uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,vNo;out float vW,vM;out vec4 vU;out vec2 vK;
+// moving parts (setMoves, QUEUE Q23): up to 16 entries of three vec4s, (pivot, part index), (mode, axis x, axis z, ring
+// radius), (rotation): mode 1 an engine's bell (kind 2) turned by a quaternion about its throat; mode 2 a fin ring's
+// plates (kind 6 beyond the ring radius), plate j by angle .[j] about its radial axis FIN4[j]; mode 3 a radial fin, .x
+vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
+vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
+void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5);
+ if((k==2||k==6)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
+  if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
+  else if(B.x<2.5){if(length(d.xz)>B.w){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
+   vec3 ax=vec3(a.x,0.,a.y);P=A.xyz+rotA(d,ax,Q[i]);N=rotA(N,ax,Q[i]);}}
+  else{vec3 ax=vec3(B.y,0.,B.z);P=A.xyz+rotA(d,ax,Q.x);N=rotA(N,ax,Q.x);}
+  break;}
+ vec4 w=uM*vec4(P,1.);vP=w.xyz;vO=aP;vNo=N;gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;vN=mat3(uM)*N;vC=aC;vM=aM;vU=aU;vK=aK;}`;
 const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
 uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
@@ -593,23 +605,42 @@ function hullShoulders(pr,dir){const out=[],n=pr.length,st=dir<0?n-1:0,en=dir<0?
     const grew=(r-lo)/r,drop=(r-nx)/r;
     if((grew>.15&&nx<=r+1e-3)||drop>.1){out.push([i,r,Math.min(1,Math.max(grew,drop)*1.6)]);lo=nx}}
   return out.sort((a,b)=>b[2]-a[2]).slice(0,3)}
-// draws the vapor collars of the ship S when it is transonic in humid air (camera-relative frame like the meshes)
-const SHA=new Float32Array(12);
+// draws the vapor collars of the ship S when it is transonic in humid air (camera-relative frame like the meshes).
+// One volume per stack line (QUEUE Q64): the core with its surface parts, and each side booster on its own axis with
+// its own profile, so a booster's nose makes its own collar (the envelope alone only knew the outermost radius).
+const SHA=new Float32Array(12),VLPR=new Float32Array(32);
+// the radius profile of some parts about the axis (ax, az), 32 stations over [lo, hi] (vessel coordinates)
+function lineProfile(parts,lo,hi,ax,az){const dy=(hi-lo)/31;VLPR.fill(0);
+  for(const p of parts){const off=Math.hypot(p.pos[0]-ax,p.pos[2]-az),pr=p.d.prof;if(!pr)continue;
+    for(let i=0;i<32;i++){const y=lo+i*dy-p.y0;if(y<-1e-6||y>p.h+1e-6)continue;let r=pr[pr.length-1][0];
+      for(let k=1;k<pr.length;k++)if(y<=pr[k][1]){const a=pr[k-1],b=pr[k],t=b[1]>a[1]?(y-a[1])/(b[1]-a[1]):1;r=a[0]+(b[0]-a[0])*t;break}
+      VLPR[i]=Math.max(VLPR[i],off+r)}}
+  return VLPR}
+// the ship's stack lines for the vapor: [{parts, lo, hi, ax, az}], core first. Side lines are the boosters' own stacks
+// (inst.line > 0); the core keeps everything else that is on (its surface parts too), but not the radial decouplers.
+function vaporLines(s){const L=new Map();
+  for(const p of s.parts){if(!p.on)continue;const ln=p.inst?p.inst.line:0;if(p.inst&&p.inst.rdec)continue;const k=ln>0?ln:0;
+    let e=L.get(k);if(!e){e={parts:[],lo:1e9,hi:-1e9,ax:k?p.pos[0]:0,az:k?p.pos[2]:0};L.set(k,e)}e.parts.push(p);e.lo=Math.min(e.lo,p.y0);e.hi=Math.max(e.hi,p.y0+p.h)}
+  return[...L.entries()].sort((a,b)=>a[0]-b[0]).map(x=>x[1]).filter(e=>e.hi>e.lo)}
+let VAPOR_SIDE=true;   // false: the core's collars only (A/B for Q64)
 function drawVapor(VP,camW){if(!VAPOR_FX||!S.alive||S.body!==TELLUS)return;const h=len(S.r)-TELLUS.R,M=S.mach,
     V=sstep(.84,.94,M)*(1-sstep(1.12,1.28,M))*(1-sstep(5000,15000,h));if(V<.01)return;
   const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<1)return;const fl=qrot(qconj(S.q),mul(va,1/vl)),ds=fl[1]>0?1:-1;   // downstream is −y when flying nose first
-  const pr=hullProfile(S),hl=(S.yTop-S.yBot)/2,dy=2*hl/31,sh=hullShoulders(pr,ds>0?-1:1);if(!sh.length)return;
-  const rmax=Math.max(...pr),m=rmax*.5,R=rmax*2.6+.3,L=2*hl+2*m,top=S.yTop+m,p=shipWorld(),
-    O=sub(p,camW),Mo=modelQ(S.q,O,[0,top,0]),cl=qrot(qconj(S.q),mul(O,-1)),clL=[cl[0],cl[1]-top,cl[2]],
-    inside=clL[1]<.01&&clL[1]>-L-.01&&Math.hypot(clL[0],clL[2])<R*1.01+.05,u=PVAPOR.u,E=lightEnv(camW);
-  SHA.fill(0);sh.forEach(([i,r,k],j)=>SHA.set([-hl+i*dy,r,k,0],j*4));
-  gl.useProgram(PVAPOR.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,Mo);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,simT%1000);
-  gl.uniform3f(u.uB,R,L,0);gl.uniform3fv(u.uCam,clL);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3f(u.uM0,0,-(m+hl),0);gl.uniform1f(u.uHl,hl);gl.uniform1fv(u['uPr[0]'],pr);
-  gl.uniform4fv(u['uSh[0]'],SHA);gl.uniform1f(u.uV,V);gl.uniform1f(u.uMa,M);gl.uniform1f(u.uDs,ds);
-  gl.uniform3fv(u.uSunL,qrot(qconj(S.q),SUN));gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
-  gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
-  gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.CULL_FACE);gl.cullFace(inside?gl.BACK:gl.FRONT);
-  gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n);gl.disable(gl.CULL_FACE);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
+  const p=shipWorld(),O=sub(p,camW),cl=qrot(qconj(S.q),mul(O,-1)),u=PVAPOR.u,E=lightEnv(camW);let first=true;
+  for(const ln of vaporLines(S)){if(!first&&!VAPOR_SIDE)break;first=false;
+    const pr=lineProfile(ln.parts,ln.lo,ln.hi,ln.ax,ln.az),hl=(ln.hi-ln.lo)/2,dy=2*hl/31,sh=hullShoulders(pr,ds>0?-1:1);if(!sh.length)continue;
+    const rmax=Math.max(...pr),m=rmax*.5,R=rmax*2.6+.3,L=2*hl+2*m,top=ln.hi-S.cm[1]+m,ox=ln.ax-S.cm[0],oz=ln.az-S.cm[2],
+      Mo=modelQ(S.q,O,[ox,top,oz]),clL=[cl[0]-ox,cl[1]-top,cl[2]-oz],
+      inside=clL[1]<.01&&clL[1]>-L-.01&&Math.hypot(clL[0],clL[2])<R*1.01+.05;
+    SHA.fill(0);sh.forEach(([i,r,k],j)=>SHA.set([-hl+i*dy,r,k,0],j*4));
+    gl.useProgram(PVAPOR.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniformMatrix4fv(u.uM,false,Mo);gl.uniform1f(u.uFc,FC);gl.uniform1f(u.uT,simT%1000);
+    gl.uniform3f(u.uB,R,L,0);gl.uniform3fv(u.uCam,clL);gl.uniform1f(u.uIn,inside?1:0);gl.uniform3f(u.uM0,0,-(m+hl),0);gl.uniform1f(u.uHl,hl);gl.uniform1fv(u['uPr[0]'],pr);
+    gl.uniform4fv(u['uSh[0]'],SHA);gl.uniform1f(u.uV,V);gl.uniform1f(u.uMa,M);gl.uniform1f(u.uDs,ds);
+    gl.uniform3fv(u.uSunL,qrot(qconj(S.q),SUN));gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
+    gl.activeTexture(gl.TEXTURE7);gl.bindTexture(gl.TEXTURE_3D,PNOISE);gl.uniform1i(u.uN,7);gl.activeTexture(gl.TEXTURE0);
+    gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.enable(gl.CULL_FACE);gl.cullFace(inside?gl.BACK:gl.FRONT);
+    gl.bindVertexArray(PLUME.vao);gl.drawArrays(gl.TRIANGLES,0,PLUME.n);gl.disable(gl.CULL_FACE);gl.depthMask(true);gl.disable(gl.BLEND)}
+  gl.useProgram(PMESH.p)}
 const PLASMA_VS=`#version 300 es
 layout(location=0) in vec3 aP;uniform mat4 uVP,uM;uniform vec3 uB;uniform float uFc;out vec3 vL;out float vW;
 void main(){vL=aP*vec3(uB.x*1.0086,uB.y,uB.x*1.0086);vec4 w=uM*vec4(vL,1.);gl_Position=uVP*w;vW=gl_Position.w;gl_Position.z=(log2(max(1e-6,1.+gl_Position.w))*uFc-1.)*gl_Position.w;}`;
@@ -899,6 +930,9 @@ function partBody(out,p){
     case'fins':case'cfins':lathe(out,[[.625,0,C.D],[.625,.9,C.D]],o);{const sp=d.span,ch=d.chord;
       for(let i=0;i<4;i++)fin(out,o,i*Math.PI/2,R0,sp,ch,.035,i%2?C.BK:C.W)}break;
     case'rdec':rbox(out,[x,y+h/2,z],.14,h/2,.22,C.Y,p.phi);break;
+    // reaction wheel (Q23): a squat machined housing between bolted flanges, a gold-foil band, four motor pods
+    case'rwheel':lathe(out,[[.625,0,C.D],[.625,.035,C.D],[.6,.035,C.ST],[.6,.1,C.ST],[.6,.1,C.AU],[.6,.2,C.AU],[.6,.2,C.ST],[.6,.265,C.ST],[.625,.265,C.D],[.625,.3,C.D]],o);
+      for(let k=0;k<4;k++){const a=k*Math.PI/2+Math.PI/4;rbox(out,[x+Math.cos(a)*.63,y+h/2,z+Math.sin(a)*.63],.035,.07,.06,C.D,a)}break;
     case'rfin':case'cfin':fin(out,o,p.phi,0,d.span,h,.035,(p.i||0)%2?C.BK:C.W);rbox(out,[x+Math.cos(p.phi)*.06,y+h*.35,z+Math.sin(p.phi)*.06],.06,h*.3,.07,C.ST,p.phi);break;
     // docking port: a bolted collar, the capture ring, a probe on the axis, three radial guide vanes and three latches
     case'port':lathe(out,[[.625,0,C.D],[.625,.14,C.D],[.625,.14,C.ST],[.5,.2,C.ST],[.5,.3,C.W],[.46,.3,C.D],[.46,.27,C.D]],o,32,[true,false]);
@@ -1039,7 +1073,27 @@ function marksTick(){const dt=markT==null||simT<markT?0:Math.min(simT-markT,5);m
 function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i=p.i,m=MARKS.get(p);if(!m||i==null||i<0||i>=96)continue;
     MKA.set([m.soot,m.frost,p.cap&&p.cap.fuel?clamp(p.res.fuel/p.cap.fuel,0,1):0,m.glow],i*4);const l=len(m.cd);
     CHA.set(l>1e-9?[m.cd[0]/l,m.cd[1]/l,m.cd[2]/l,m.char]:[0,0,0,m.char],i*4)}
-  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA)}
+  gl.uniform4fv(u['uMk[0]'],MKA);gl.uniform4fv(u['uCh[0]'],CHA);setMoves(u,parts)}
+// the moving parts of these parts into the mesh shader's uMv table (QUEUE Q23): engine bells turned by their gimbal
+// (p.gv: the thrust along tdir + gv, the bell turning about its throat) and steerable fin plates by their deflection
+// (p.fd, rad, about each plate's radial axis through mid-chord, the sim's sign). Up to 16; parts at rest are left out.
+const MVA=new Float32Array(48*4),BELL_YT=new Map();
+function bellThroat(d){let y=BELL_YT.get(d.key);if(y!=null)return y;const a=[],b=d.sc?PARTS[d.base]:d;partShape(a,{d:b,pos:[0,0,0],y0:0,h:b.h,i:0});y=0;
+  for(let i=0;i<a.length;i+=VX)if(a[i+14]===KIND.bell){y=a[i+13];break}y*=d.sc||1;BELL_YT.set(d.key,y);return y}
+function engMove(p){const g=p.gv;if(!g||Math.abs(g[0])+Math.abs(g[1])+Math.abs(g[2])<1e-5)return null;const t=p.tdir||[0,1,0],q=qFromTo(t,norm(add(t,g)));
+  let pv=[p.pos[0],p.y0+bellThroat(p.d),p.pos[2]];if(p.tdir){const m=[p.pos[0],p.y0+p.h,p.pos[2]];pv=add(m,qrot(tiltQ(p.tdir),sub(pv,m)))}return{pv,q}}
+// an engine's exhaust frame (vessel coordinates): qt its tilt (null: straight down the axis), ex the nozzle exit. Follows
+// the cant (tdir, about the mount) and the gimbal (about the throat), so the plume leaves the bell where it is drawn.
+function plumeFrame(e){const t=e.tdir||null;let ex=[e.pos[0],e.y0,e.pos[2]],qt=t?tiltQ(t):null;
+  if(t&&e.h){const m=[e.pos[0],e.y0+e.h,e.pos[2]];ex=add(m,qrot(qt,sub(ex,m)))}   // (escape-tower nozzles carry no h: their exit is their mount)
+  const mv=MOVES_FX?engMove(e):null;if(mv){qt=tiltQ(norm(add(t||[0,1,0],e.gv)));ex=add(mv.pv,qrot(mv.q,sub(ex,mv.pv)))}return{qt,ex}}
+let MOVES_FX=true;   // false: bells and fin plates stay put (A/B)
+function setMoves(u,parts){MVA.fill(0);let n=0;if(MOVES_FX)for(const p of parts){if(n>=16)break;const i=p.i;if(i==null||i<0||i>=96||!p.on)continue;const d=p.d;
+    if(d.kind==='engine'){const e=engMove(p);if(!e)continue;MVA.set([...e.pv,i,1,0,0,0,...e.q],n*12);n++}
+    else if(d.ctl&&p.fd&&p.fd.some(x=>Math.abs(x)>1e-4)){const k=d.sc||1;
+      if(d.kind==='fins')MVA.set([p.pos[0],p.y0+d.chord*k/2,p.pos[2],i,2,0,0,.625*k*1.02,p.fd[0]||0,p.fd[1]||0,p.fd[2]||0,p.fd[3]||0],n*12);
+      else MVA.set([p.pos[0],p.y0+d.h/2,p.pos[2],i,3,Math.cos(p.phi),Math.sin(p.phi),0,p.fd[0]||0,0,0,0],n*12);n++}}
+  gl.uniform4fv(u['uMv[0]'],MVA)}
 const PLUME=(()=>{const a=[],w=[1,1,1],pr=[];for(let i=0;i<=16;i++)pr.push([1,-i/16,w]);lathe(a,pr,[0,0,0],24,[true,true]);return makeMesh(a)})();
 // propellant profiles (Waterfall's "templates"): colours of core, diamonds, afterburning mantle, gas glow, soot absorption
 // per channel; K = gains [core, diamonds, mantle, soot]. Engines pick one plus their exit pressure pe (atm) in PFX.
@@ -1189,7 +1243,7 @@ const DISC=(()=>{const a=[],w=[1,1,1];lathe(a,[[0,0,w],[1,0,w]],[0,0,0],40,[fals
 function plumeLight(camW){PLT.c.fill(0);PLT.g=null;if(!PLUME_LIGHT||mode!=='flight'||!S||!S.alive)return;const E=plumeEngines().map(x=>x[0]);if(!E.length)return;
   const p=add(bodyPos(S.body,simT),S.r),pa=S.body.atm?pressure(S.body,len(S.r)-S.body.R):0,GF=groundFrame(camW);let W=0,P=[0,0,0],C=[0,0,0],R0=0,hg=1e9;
   for(const e of E){const sp=SPOOL.get(e),thr=sp?sp.k:S.throttle;const f=pfxOf(e.d),Pr=PROPS[f.prop]||PROPS.kerolox,g=ignOf(e,Pr),L=plumeShape(e.d,thr,pa)[2],
-      Q=e.tdir?qmul(S.q,tiltQ(e.tdir)):S.q,o=add(sub(p,camW),qrot(S.q,[e.pos[0]-S.cm[0],e.y0-S.cm[1],e.pos[2]-S.cm[2]])),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
+      pf=plumeFrame(e),Q=pf.qt?qmul(S.q,pf.qt):S.q,o=add(sub(p,camW),qrot(S.q,sub(pf.ex,S.cm))),dW=qrot(Q,[0,-1,0]),dn=dot(dW,GF.Y);
     if(thr<.01&&g[0]+g[1]+g[2]<.01)continue;
     let at=L*.25;if(dn<-.2){const sg=dot(sub(GF.O,o),GF.Y)/dn;if(sg>0){at=Math.min(at,sg*.85);hg=Math.min(hg,sg)}}
     const w=thr*(e.d.exit/.55)**2*(.6+.4*Pr.K[0]/5),tt=simT*7+e.i*1.7,fl=.94+.03*Math.sin(tt*9.1)+.03*Math.sin(tt*23.7);
@@ -1209,6 +1263,19 @@ function boomLight(camW){const now=performance.now();let best=null,bk=0;
   PLT.p.set([P[0],P[1],P[2],R0]);PLT.c.set([bk,bk*.62,bk*.3]);
   if(bm.b===TELLUS){const Y=norm(ps),g=groundR(TELLUS,toPF(TELLUS,ps,simT)),h=len(ps)-g;
     if(h>-1&&h<80){const X=norm(cross(Y,Math.abs(Y[1])<.9?[0,1,0]:[1,0,0]));PLT.g={F:{X,Y,Z:cross(X,Y)},h:Math.max(h,R0*.5),foot:sub(P,mul(Y,h))}}}}
+// the re-entry plasma's light on the hull (QUEUE Q63): the shock layer as the scene's point light (PLT) while it
+// outshines the plumes. It sits in the sheath just ahead of the leading face, as wide as the ship's cross-flow extent,
+// so the windward face takes most of it and the sides a soft wash; colour follows the shell's (deep red → orange →
+// pink-white with the heat level k). Lights smoke too (the same PLT); no ground pool (nothing glows near the ground).
+let PLASMA_LIGHT=true;   // false turns it off (A/B)
+function plasmaLight(camW){if(!PLASMA_LIGHT||!PLASMA_FX||mode!=='flight'||!S||!S.alive||!S.body.atm)return;
+  const qE=plasmaHeat(S.body,S.r,S.v,S.qHeat);if(qE<=1.5e4)return;const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl<50)return;
+  const k=clamp(Math.log(qE/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),f=mul(va,1/vl),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
+    rb=S.radius,hl=(S.yTop-S.yBot)/2,mid=(S.yTop+S.yBot)/2,ef=ca*hl+sa*rb+Math.abs(dot(Y,f)*mid),ep=sa*hl+ca*rb,D=.12*Math.min(ep,rb*1.2)+.06,
+    a=clamp(k,0,1),c=a<.5?[1,.28+.54*a,.06+.32*a]:[1,.55+.3*(a-.5),.22+1.46*(a-.5)],K=PLASMA_LK*k*k*Math.min(2.25,ep*ep),
+    P=add(sub(add(bodyPos(S.body,simT),S.r),camW),mul(f,ef+2*D));
+  if(K*(c[0]+c[1]+c[2])<PLT.c[0]+PLT.c[1]+PLT.c[2])return;PLT.p.set([P[0],P[1],P[2],ep*1.2]);PLT.c.set(c.map(x=>x*K));PLT.g=null}
+let PLASMA_LK=5;   // the plasma light's brightness at k = 1, per square metre of cross-flow extent (tuned against views 40, 46, 47)
 const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[[0,1,0],[0,0,1],[1,0,0]],[[0,-1,0],[1,0,0],[0,0,1]],[[0,0,1],[1,0,0],[0,1,0]],[[0,0,-1],[0,1,0],[1,0,0]]],v=[];
   for(const[n,a,b]of F){const c=(i,j)=>[n[0]+a[0]*i+b[0]*j,n[1]+a[1]*i+b[1]*j,n[2]+a[2]*i+b[2]*j];v.push(...c(-1,-1),...c(1,-1),...c(1,1),...c(-1,-1),...c(1,1),...c(-1,1))}
   const vao=gl.createVertexArray(),buf=gl.createBuffer();gl.bindVertexArray(vao);gl.bindBuffer(gl.ARRAY_BUFFER,buf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(v),gl.STATIC_DRAW);
@@ -1291,12 +1358,16 @@ function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S
 function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
 function niceStep(x){const p=Math.pow(10,Math.floor(Math.log10(x))),m=x/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
 function fmtAlt(v,fine){const a=Math.abs(v);return a>=1e5?(v/1e3).toFixed(0)+' km':a>=1e4?(v/1e3).toFixed(fine?1:0)+' km':a>=1e3?(v/1e3).toFixed(fine?2:1)+' km':v.toFixed(0)+' m'}
-// the home galaxy's look, from the world seed (PLAYTEST #10, Caio: each world's sky different): a great-circle band
+// the home galaxy's look, from a seed (PLAYTEST #10, Caio: each world's sky different): a great-circle band
 // with a bulge, dust, arms, a satellite galaxy and a nebula, all as directions in the inertial frame
-const GAL=(()=>{const R=rng(WSEED*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
+function makeGal(seed){const R=rng(seed*7919+101),dir=()=>norm([R()*2-1,R()*2-1,R()*2-1]);
   const gx=norm(add(dir(),[0,.3,0])),c0=dir(),gc=norm(sub(c0,mul(gx,dot(c0,gx)))),off=a=>norm(add(gc,a));
   const s=dir(),nb=norm(add(mul(gc,.6),add(mul(gx,.15),mul(dir(),.5))));
-  return{gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}})();
+  return{seed,gx,gc,gt:[.75+.2*R(),.82+.1*R(),1],p:[.09+.07*R(),.18+.14*R(),.5+.5*R(),.3+.5*R()],s:[...s,.035+.04*R()],n:[...nb,.06+.07*R()]}}
+// a different galaxy each playthrough (QUEUE Q21): the program's own seed PROG.gseed, drawn the first time the sky is
+// drawn and saved with the program (a reset clears it; the tester's sandbox has its own). The planet stays WSEED's.
+let GAL=makeGal(WSEED);
+function galaxy(){if(PROG.gseed==null)PROG.gseed=1+Math.floor(Math.random()*2147483646);if(GAL.seed!==PROG.gseed)GAL=makeGal(PROG.gseed);return GAL}
 let IMPACT_FX=true;   // false hides the plume's ground impingement volume (GPU A/B)
 const CUBE=(()=>{const a=[];box(a,[0,0,0],1,1,1,[1,1,1]);return makeMesh(a)})();
 // one volume for all the engines whose jets reach the ground (up to 4 impact points; the strongest engine's propellant).

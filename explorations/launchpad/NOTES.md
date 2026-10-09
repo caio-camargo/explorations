@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -892,6 +892,26 @@ stages both go through it.
 - test.mjs `aerofx-1`: the fade numbers, and that both draws in `render.js` go through `plasmaHeat`.
 - Not changed: char marks, sparks and the smoke trail on falling stages still key on heat alone (ablation is heating).
 
+### The plasma lights the hull; a shield-first view (2026-10-08, effects beat, QUEUE Q63)
+`plasmaLight(camW)` (after `boomLight` in `app/gl.js`) makes the shock layer the scene's one point light (`PLT`, the one
+the plumes and explosions use, read by `MESH_FS` and the smoke) while it outshines the plumes; an explosion's flash still
+wins. No hull-shader change. The light sits in the sheath, 2 D ahead of the leading face, with a core of 1.2× the
+cross-flow extent so the sides get a soft wash, and its colour follows the shell's (deep red → orange → pink-white with
+k). Brightness `PLASMA_LK`·k²·extent² (capped at 1.5 m), `PLASMA_LK` = 5; `PLASMA_LIGHT = false` for A/B. No ground pool.
+- **First try was 8× too bright**: `PLASMA_LK` 40 per metre blew the capsule's white hull out in view 40. The light is
+  under a metre from the hull, so the inverse-square term is large; the plume light's scale (K = 110) assumes metres of
+  flame between light and hull. Now ~2 per channel at k = 1 for the capsule: a pink wash on a nose-first capsule (40),
+  the stage's windward side at 35° (44), the shield face and its rim when shield-first.
+- **Shield-first, the back shell stays dark**, as it should: the light is ahead of the shield and faces behind it get
+  only the wrap term. There is no shadowing, so a long stage would be lit along its side even where the nose would hide it.
+- **New views 46–47**: the capsule turned shield-first at 50 km (`aoa: 'shield'`: whichever end carries the shield goes
+  upstream), from the side and from a rear quarter. The old views fly the capsule "retro" but it ends up nose-first
+  (Y·v = +0.97): SAS can't hold it against the aero torque.
+- **Seen while testing, not fixed:** the entry views spawn a burning parachute as debris (a `chute` piece, boom at
+  55 km), so for ~2 s after `refView(40–47)` an explosion's flash owns `PLT` and a smoke cloud hangs above the capsule.
+  The ship keeps its own chute. For judging the light, clear `booms` after the view. Not looked into further.
+- test.mjs `aerofx-2`.
+
 ## Transonic vapor cones (2026-10-07, aerofx session)
 
 Around Mach 1 in humid air, the flow speeds up round each convex corner of the hull, expands and cools, and water
@@ -917,6 +937,43 @@ plasma's `hullProfile`.
 
 **Still open:** a real humidity field (clouds, coast vs inland); collars on side boosters (the profile only knows the
 envelope, so radial stacks' noses don't make their own shoulders); condensation off fin tips at high angle of attack.
+
+### Side boosters make their own collars (2026-10-08, effects beat, QUEUE Q64)
+The collars came from one envelope profile of the whole ship, so a booster's nose cone only counted where it stuck out
+past everything else. Now `vaporLines(s)` groups the parts that are on by stack line (`p.inst.line`: 0 the core, > 0 a
+side stack; surface parts stay with the core, radial decouplers are left out), and `drawVapor` draws one volume per line
+on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders` as before. The shader is unchanged.
+- Heavy at M 1.0: core shoulders unchanged; each booster gets its nose (station 24 of 31) plus the fins/engine step near
+  its base. Big Lunar: the core's 2.5 m adapter shoulder stays; each booster its nose. The Orbiter (one line) gives
+  exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
+- A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
+  run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
+- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
+  15 km; not yet measured (the GPU was busy all evening)...
+- New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
+
+## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
+
+The control session's engine gimbal (`p.gv`) and steerable fin plates (`p.fd`) steered the rocket but never showed: the
+ship mesh is built once per design. Now they move in the vertex shader, with no mesh rebuild.
+- **`MESH_VS` has a small table** `uMv[48]`: up to 16 moving parts, three vec4s each: (pivot, part index), (mode, axis,
+  ring radius), (rotation). `setMoves(u, parts)` fills it from `setMarks`, so every mesh draw that sets marks (the ship,
+  fleet, debris, satellites) also sets its moving parts; parts at rest are left out, so most draws send zeros.
+  Mode 1: an engine's bell vertices (kind 2) turn about the throat by the quaternion from `tdir` to `tdir + gv`; the throat
+  height is read once per engine from its own mesh (`bellThroat`). Canted engines: the pivot is tilted with the mount.
+  Mode 2: a fin ring's plates (kind 6 beyond 1.02× the ring radius) turn about their radial axes `FIN4[j]` through
+  mid-chord by `fd[j]`. Mode 3: a radial fin, the whole part about its radial axis. Same sign as the sim's plate normal.
+- **The plume follows**: `plumeFrame(e)` gives the exhaust's tilt and exit for both the plume draw and `plumeLight`.
+  It also fixes canted engines' exit point, which was the untilted one (off by sin(cant)·h, ~0.2 m on a 10° Kestrel).
+  Escape-tower nozzles have no `h`: their exit stays at their mount.
+- **The reaction wheel** (`rwheel`) had the default drum; now a machined steel housing between bolted flanges, a
+  gold-foil band and four motor pods.
+- `MOVES_FX = false` freezes bells and plates (A/B). Views: `refView(105)` the Orbiter's Kestrel at its full 5°,
+  `106` a steerable fin ring at ±20°, `107` the reaction wheel (all builder close-ups; pass the career gate first).
+- **A/B pitfall:** an expression that sets a toggle off, renders, and sets it back on in one go photographs the "on"
+  state: the page's own loop redraws before the screenshot. Leave the toggle off until the picture is taken.
+- test.mjs `aerofx-2` (moving parts): the exit swings 0.065 m for 5° on a 0.75 m throat height, opposite the thrust's
+  tilt; the plume axis follows; the wiring (`uMv`, `setMoves`, `plumeFrame` in both places, the `rwheel` case).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -1193,6 +1250,15 @@ which swallowed a declaration: `render()` threw every frame while the HUD was up
 commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
 console exception (LESSONS #34).
 
+### A galaxy per program (2026-10-09, effects beat, QUEUE Q21)
+`GAL` came from `WSEED`, the planet's seed, a constant: every playthrough had the same sky. The planet should stay fixed
+(sites, coasts, powers all hang on it), so the galaxy gets its own seed instead: `PROG.gseed`, drawn the first time the
+sky is drawn (`galaxy()`, called from `render()`) and saved with the program. `makeGal(seed)` is the old recipe.
+- A program reset clears it (`gseed:null` in the reset in `app/editor.js`), so a new playthrough gets a new sky; the
+  tester's sandbox is a separate saved program, so it has its own. An old save without the field draws one on load.
+- Reference views set `PROG.gseed = WSEED` (13), so views 97–100 stay the pictures they were tuned on.
+- Seen: `refView(97)` (aimed at seed 13's centre) shows the band; seeds 424242 and 99 put their galaxies elsewhere.
+- test.mjs `aerofx-3`.
 ## PLAYTEST #3 and #4: a new rocket that looks new, and the pad at night (2026-10-08, aerofx session; visuals' code)
 
 Taken with a note in the visuals session's claim (it was idle). PLAYTEST #2 (gantry clipping) had already been fixed by
@@ -1478,6 +1544,73 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
+
+`career.mjs`'s own stacks for the first orbits were stand-ins: the `passOrbit` one (biocapsule, pod, shield, no
+decoupler) would bury its shield under the tank in real physics (NOTES § v1.73). It now prices the vehicle lane's
+proven presets: **Beeper** for an instrument package in orbit (56M) and **Passenger Orbiter** for a biocapsule's orbit
+(58M), down from the stand-ins' 71M and 74M; heavier lifts still add ballast to the Orbiter or the Heavy.
+**Re-measured** (`PACE=1`, 2 years, 5 seeds): **first orbit in 4 flights for every start, in every run** (day 110–166);
+with the first orbit attempt lost, 5–8 flights, and every start reaches orbit but one frugal-company run in five.
+
+## Rovers in the career runner: v1.66's prices measured (2026-10-09, economy session, QUEUE Q130; runner only)
+
+`career.mjs` now flies to Selene. The Selene firsts (*The far side*, *Impactor*, *Soft landing*) are abstract Probe
+flights (p = 0.8; `fly_ladder.mjs` shows the Probe can fly them), and with `ROVERS=1` a **science rover** (medium
+chassis, wire-mesh wheels, battery, camera, antenna, spectrometer, seismometers: v1.66 price 34M plus the deck) goes
+on a Probe once the soft landing is done and there's 60M to spare (two tries at most). While it lives (`RV_LIFE` =
+400 days, an assumption: D5 may change how rovers end) it sends a spectrometer reading every 3 days (a tenth from the
+dark plains, 15 % from the far side) and a panorama each Selene day, through the game's own `sciGot`; its four
+seismometers are set out on the near side and **the game's own seismic code** locates quakes and bounds the core. The
+runner accepts Selene science contracts while the rover lives; `selTick` judges them. `SELENE=1` prints the summary.
+
+**Measured** (4 years, 2 seeds, `SELENE=1 ROVERS=0/1`): the rover program costs 100–280M (the Probe and rover; a
+failed landing doubles it) and its contracts pay **200–570M** over its life (5–10 contracts). Final funds against the
+same worlds without rovers: **+90M on average**, from +835M (open-superpower consortium) to −140M (frugal and resource
+agencies, whose soft landing comes in year 3 and can't absorb a lost rover). **Verdict:** v1.66's prices and the
+Selene contracts' pay stand: a rover is a sound investment for a program that can afford it, not a lifeline. Noise
+is large at 2 seeds (±400M, as the handoff warns).
+
+**Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
+rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
+
+## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
+
+**Q118, re-running `PACE=1 node career.mjs 2 5` on today's main** (after v1.55's cover, v1.73's Beeper presets and
+everyone's changes): rich worlds reach first orbit in 4 flights. But **a private company in a poorer world (frugal,
+resource, security) got stuck in 1 run of 5 with no forced failure**, waits up to 590 days. The trace: two orbiter
+attempts lost the ordinary way left it at 29M, just above the 25M floor (no rescue; a company has no budget day),
+both contract slots holding hops it could no longer afford, and the cheap work on the board barely breaking even.
+That is Q93's problem in its sharpest form.
+
+**Q93, built** (`sim/contracts.js`):
+- **A pay floor.** Every offer pays at least `FLOOR_K` = 1.3 × the net cost of the cheapest preset that can fly it
+  (`payFloor(type)`: the preset's price less the refurbishment a recovered flight brings back, `FLOOR_BACK`), applied
+  after every multiplier, in any world, standing or cycle. Floors in a frugal company world: sounding work 13M,
+  qualification tests 28M, hops 24M, satellites 84M. Selene science and lifts have no floor.
+- **Withdrawing a taken contract** (`withdrawContract(id)`): the slot comes free now, for what a missed deadline costs
+  later (−10 standing with that source, −3 the client's opinion). A *Withdraw* button on taken contracts
+  (`app/program-ui.js`, one line and a `data-wd` handler, flagged for flow).
+
+**The runner** (`career.mjs`) got three fixes, so its numbers move a little:
+- it withdraws the dearest taken contract it can't afford when its slots are full and nothing is worth flying;
+- it accepts only work it can pay for now (it used to count on the pay arriving after the flight);
+- its what-if flight record now carries the program's site, so ballistic tests count again (v1.57 made them count
+  only from their site, and the runner's hypothetical had none: it ignored a 62M ballistic offer at 25M).
+
+**Result** (2 years, 5 seeds): with no forced failure, **every start reaches orbit in every run, in 4–6 flights**
+(the frugal company was 4/5); with the first orbit attempt lost, 5–9 flights and every start but one frugal-company
+run makes it (was three starts at 3–4 of 5, waits to 290 days). **Ablation:** without the floor, the frugal company
+misses orbit in 1 of 5 runs with no failure, and after a lost orbit attempt the resource company misses one too and
+the frugal company waits 68 days. Two-year funds are in the same range as before (the poorest worlds up, the frugal
+company 112M → 290M; the richest unchanged, within the ±400M noise).
+
+Test `econ-9` (3 checks; the floor mutation-tested).
+
+**The intended number of flights (M1's finish line):** proposed as *4–6 flights to first orbit for a prudent player,
+and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
+five, which a person would get out of by withdrawing and flying samples).
 
 ## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 

@@ -3107,6 +3107,69 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     (blk.match(/plasmaHeat\(/g) || []).length === 2 && !/qHeat>1\.5e4|g\.q>1\.5e4/.test(blk), blk.slice(0, 120));
 }
 
+// aerofx-2. The plasma lights the hull (look & sound effects beat, QUEUE Q63): plasmaLight makes the shock layer the
+// scene's point light (PLT) while it outshines the plumes, upstream of the leading face; nothing on a hot climb (the
+// same speed gate as the shell); a brighter light already in PLT (an explosion's flash) keeps it. Called between the
+// plumes' and the explosions' lights, before the mesh pass reads PLT.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fsrc = pg.slice(pg.indexOf('function plasmaLight('), pg.indexOf('\nlet PLASMA_LK'));
+  const hsrc = pg.slice(pg.indexOf('function plasmaHeat('), pg.indexOf('\n', pg.indexOf('function plasmaHeat(')));
+  const { TELLUS: T } = api, clamp = (x, a, b) => Math.min(b, Math.max(a, x)), PLT = { p: new Float32Array(4), c: new Float32Array(3), g: 1 };
+  const S = { body: T, alive: true, radius: 0.66, yTop: 0.72, yBot: -0.48, qHeat: 1.6e5 };
+  const env = { PLASMA_LIGHT: true, PLASMA_FX: true, mode: 'flight', S, PLT, simT: 0, PLASMA_LK: 5, len, sub, add, mul, dot, clamp,
+    surfVel: api.surfVel, qrot: api.qrot, bodyPos: () => [0, 0, 0], PLASMA_V: api.PLASMA_V };
+  const plasmaLight = new Function(...Object.keys(env), hsrc + ';' + fsrc + ';return plasmaLight')(...Object.values(env));
+  S.r = api.fromPF(T, mul(api.SITES[0].u, T.R + 50e3), 0); const e = api.localFrame(S.r).e;
+  const fly = (va, qH, shieldFirst) => { S.v = add(api.surfVel(T, S.r), mul(e, va)); S.qHeat = qH; const Y = mul(e, shieldFirst ? -1 : 1), X = norm(cross(Y, norm(S.r)));
+    S.q = api.qFromBasis(X, Y, cross(X, Y)); PLT.c.fill(0); PLT.g = 1; plasmaLight([0, 0, 0]); return { c: [...PLT.c], up: dot(sub([...PLT.p].slice(0, 3), S.r), e), w: PLT.p[3], g: PLT.g }; };
+  const entry = fly(2600, 1.6e5, true), climb = fly(1041, 7.7e4, false);
+  PLT.c.set([500, 300, 150]); S.v = add(api.surfVel(T, S.r), mul(e, 2600)); S.qHeat = 1.6e5; plasmaLight([0, 0, 0]); const boomKept = PLT.c[0] === 500;
+  const rnd = H.slice(H.indexOf('plumeLight(camW);'), H.indexOf('gl.uniform4fv(m.uPl,PLT.p)'));
+  check('plasma light: an entry lights the hull from just upstream (warm, no ground pool); a hot climb and a brighter flash leave PLT alone',
+    entry.c[0] > 0 && entry.c[0] >= entry.c[1] && entry.up > 0.48 && entry.up < 2 && entry.g === null && climb.c.every(x => x === 0) && climb.g === 1 && boomKept
+      && /plumeLight\(camW\);plasmaLight\(camW\);boomLight\(camW\)/.test(rnd),
+    `entry rgb ${entry.c.map(x => x.toFixed(1)).join(',')} at ${entry.up.toFixed(2)} m upstream, core ${entry.w.toFixed(2)} m · climb ${climb.c.join(',')} · flash kept ${boomKept}`);
+  const vsrc = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  // aerofx-3 rides along here (same page slices): QUEUE Q64, vapor collars on side boosters. Each stack line gets its own
+  // profile and shoulders: a Heavy has its core plus one line per booster, each booster's nose cone a shoulder near its
+  // top; an Orbiter (one line) keeps exactly the shoulders the old whole-envelope profile gave.
+  const cutFn = name => pg.slice(pg.indexOf('function ' + name + '('), pg.indexOf('\n', pg.indexOf('function ' + name + '(')));
+  const vsrcFns = ['hullProfile', 'hullShoulders', 'lineProfile', 'vaporLines'].map(n => {
+    const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); }).join('\n');
+  const V = new Function('HULLPR', 'VLPR', vsrcFns + ';return {hullProfile,hullShoulders,lineProfile,vaporLines}')(new Float32Array(32), new Float32Array(32));
+  const sh = s => V.vaporLines(s).map(l => ({ l, sh: V.hullShoulders(V.lineProfile(l.parts, l.lo, l.hi, l.ax, l.az), -1) }));
+  const hv = api.newShip(api.PRESETS.Heavy), hL = sh(hv), ob = api.newShip(api.PRESETS.Orbiter), oL = sh(ob);
+  const oldOb = V.hullShoulders(V.hullProfile(ob), -1).map(x => x.map(v => +v.toFixed(3))), newOb = oL[0].sh.map(x => x.map(v => +v.toFixed(3)));
+  const boosters = hL.slice(1), noseOK = boosters.every(({ l, sh }) => sh.length && sh[0][0] >= 24 && Math.hypot(l.ax, l.az) > 0.5);
+  check('vapor collars: each side booster gets its own line and a nose shoulder near its top; the Orbiter keeps its old collars',
+    hL.length === 3 && noseOK && oL.length === 1 && JSON.stringify(oldOb) === JSON.stringify(newOb),
+    `Heavy lines ${hL.length}: ${hL.map(({ l, sh }) => `(${l.ax.toFixed(2)},${l.az.toFixed(2)}) ${JSON.stringify(sh.map(x => x.map(v => +v.toFixed(2))))}`).join(' ')} · Orbiter old ${JSON.stringify(oldOb)} new ${JSON.stringify(newOb)}`);
+  // aerofx-3 also: QUEUE Q23, moving parts. The bell turns about its throat by the quaternion from tdir to tdir + gv, and
+  // the plume's frame follows: tilted the same way, leaving from the turned exit. Steerable plates and gimbals reach the
+  // mesh shader through setMarks → setMoves; the reaction wheel has its own case.
+  {
+    const SIMF = new Function(src + 'return {qFromTo,qrot,norm,add,sub,cross,qFromBasis}')();
+    const mfn = ['tiltQ', 'engMove', 'plumeFrame'].map(n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0;
+      for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); }).join('\n');
+    const M = new Function('qFromTo', 'qrot', 'norm', 'add', 'sub', 'cross', 'qFromBasis', 'bellThroat', 'MOVES_FX', mfn + ';return {engMove,plumeFrame}')(
+      SIMF.qFromTo, SIMF.qrot, SIMF.norm, SIMF.add, SIMF.sub, SIMF.cross, SIMF.qFromBasis, () => 0.75, true);
+    const a = 5 * Math.PI / 180, e = { d: { key: 'kestrel' }, pos: [0, 0, 0], y0: 10, h: 1.3, gv: [Math.sin(a), 0, 0] };
+    const f0 = M.plumeFrame({ ...e, gv: null }), f1 = M.plumeFrame(e), down = SIMF.qrot(f1.qt, [0, -1, 0]);
+    const lateral = f1.ex[0], expect = -0.75 * Math.sin(a);   // the exit swings opposite the thrust's tilt
+    // a canted engine's exit hangs from its mount along −tdir (it was left at the untilted spot)
+    const c10 = 10 * Math.PI / 180, fc = M.plumeFrame({ ...e, gv: null, tdir: [-Math.sin(c10), Math.cos(c10), 0] }), want = [1.3 * Math.sin(c10), 11.3 - 1.3 * Math.cos(c10)];
+    check('moving parts: a canted engine\'s plume leaves from its tilted nozzle exit', Math.hypot(fc.ex[0] - want[0], fc.ex[1] - want[1]) < 1e-6,
+      `exit (${fc.ex[0].toFixed(3)}, ${fc.ex[1].toFixed(3)}) vs (${want[0].toFixed(3)}, ${want[1].toFixed(3)})`);
+    check('moving parts: a gimballed bell turns about its throat and the plume follows it (tilt and exit); at rest nothing moves',
+      f0.qt === null && f0.ex[0] === 0 && Math.abs(lateral - expect) < 0.01 && Math.abs(down[0] + Math.sin(a)) < 0.02 && M.engMove({ ...e, gv: [0, 0, 0] }) === null
+        && /uniform vec4 uMv\[48\]/.test(pg) && pg.includes("setMoves(u,parts)}") && pg.includes("case'rwheel':") && /pf=plumeFrame\(e\)/.test(pg)
+        && (pg.match(/pf=plumeFrame\(e\)/g) || []).length === 2,
+      `exit swings ${lateral.toFixed(3)} m (expect ${expect.toFixed(3)}), plume axis x ${down[0].toFixed(3)}`);
+  }
+  check('plasma light: views 46–47 are the shield-first capsule', /46: \[\['chute', 'bio', 'shield'\], [\d.]+, \d+, 'shield'/.test(vsrc) && /47: \[\[[^\]]*\], [\d.]+, \d+, 'shield'/.test(vsrc) && vsrc.includes("aoa === 'shield'"));
+}
+
 // qa-1. More tester cheats (QA session, QUEUE Q16): go to any day (forward runs the days, back moves only the calendar),
 // set funds (which turns infinite money off), skip to a computing era, one mission at a time. Own SIM copy, like §37.
 {
@@ -3906,6 +3969,42 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     hit && hit.body === 'Selene' && Math.abs(len(api.fromPF(B, hit.pf, t0)) - B.R) < 1 && dot(sub(back, c), sub(o, c)) > 0 && miss === null
       && L !== land && L.phases[0].site === hit.pf && L.phases[2].site === hit.pf && !L.phases[1].site && !land.phases[2].site && F === fly && api.procLandsOn(land, 'Nyx') === false,
     hit ? `${hit.body} ${api.sitePlace(hit.pf)} (${(len(api.fromPF(B, hit.pf, t0)) / 1e3).toFixed(1)} km from the centre)` : 'no hit');
+}
+
+// econ-9. Pay floors and withdrawing (economy session, QUEUE Q93 / Q118): every offer pays at least 1.3× the net cost of
+// the cheapest preset that can fly it, whatever the world; a taken contract can be withdrawn at a missed deadline's cost.
+{
+  const D = new Function(src + 'return {genOffer,payFloor,withdrawContract,standOf,opOf,CT,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 50, rel: {}, op: {}, sanc: {}, stand: { sci: 10, com: 10 }, cycle: -0.9, done: { weather: { day: 1 }, loads: { day: 1 }, hop: { day: 1 }, beeper: { day: 1 } },
+    own: null, decisions: [], offers: [], active: [], flights: 3 }); D.chooseStart('company');
+  const R = D.rng(11); let n = 0, low = []; for (let k = 0; k < 400; k++) for (const src of ['sci', 'com', 'gov', 'tour', 'mil']) { const o = D.genOffer(src, R); if (!o) continue; n++; const f = D.payFloor(o.type); if (o.p.pay < f - 1e-9) low.push(`${o.type} ${o.p.pay} < ${f}`); }
+  check('pay floor: in a frugal world, low standing and a deep recession, no offer pays under its floor', n > 500 && !low.length && D.payFloor('apex') > 10 && D.payFloor('sat') > D.payFloor('apex'),
+    `${n} offers; floors: sounding ${D.payFloor('apex')}M, test ${D.payFloor('test')}M, hop ${D.payFloor('bioHop')}M, satellite ${D.payFloor('sat')}M${low.length ? '; under: ' + low.slice(0, 3).join(', ') : ''}`);
+  const c = { id: 501, type: 'apex', src: 'sci', client: 1, p: { lo: 20, hi: 30, pay: 15, dur: 100 }, deadline: P.day + 100 }; P.active = [c];
+  const s0 = D.standOf('sci'), o0 = D.opOf(1), ok = D.withdrawContract(501), again = D.withdrawContract(501);
+  check('withdraw: frees the slot at once, at a missed deadline\'s cost in standing and the client\'s opinion', ok && !again && P.active.length === 0 && D.standOf('sci') === Math.max(0, s0 - 10) && D.opOf(1) < o0,
+    `standing ${s0} → ${D.standOf('sci')}, opinion ${o0.toFixed(1)} → ${D.opOf(1).toFixed(1)}`);
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('withdraw: taken contracts show the button', pg.includes('data-wd="${c.id}"') && pg.includes('withdrawContract(+ds.wd)'));
+}
+
+// aerofx-3. A different galaxy each playthrough (look & sound effects beat, QUEUE Q21): the sky's galaxy comes from the
+// program's own seed PROG.gseed, drawn once and kept (saved with PROG); a different seed gives a different sky; a program
+// reset clears it; the reference views pin it to WSEED so they stay the same pictures.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
+  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
+    SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
+  const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
+  P.gseed = null; const c = G.galaxy(), s2 = P.gseed;
+  const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
+  check('galaxy per program: drawn once and kept, different seeds differ, a reset draws a new one; views pin WSEED',
+    s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
+      && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
+    `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
