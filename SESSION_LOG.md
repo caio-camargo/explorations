@@ -3974,3 +3974,27 @@ with along. Test `ground-4` (7 checks, 3 mutations caught). Full suite 497 pass 
 ### Next steps
 - [ ] World: Astraea (bright-floored crater, a lonely mountain, g 0.28), then Hyperion's moons, Erebus
 - [ ] Space (Q87): Hesper into the body tree with `ground: HESPER_GROUND`
+
+## 2026-10-09 — Launchpad v1.66 economy: rover prices and gates; Selene science contracts (QUEUE Q10; economy session)
+
+### Summary
+- Rover parts priced (`RV_PRICE`; the default two-seater 24M) and gated by firsts (`RV_GATE`); the gate is at LAUNCH
+  (`rvLaunchWhy`), the yard stays free. `partPrice` includes a packed rover.
+- Six Selene science contract types from the sats session's R4 proposals (readings by unit, panorama, seismic
+  network, quakes, core, far side), judged between flights on science received since taken (`selTick`, `c.base`).
+- Cross-scope lines: `app/editor.js` (LAUNCH gate), `app/rover-yard.js` (price line), `sim/rovers.js` `sciGot` (`far`).
+- Numbered v1.65, renumbered v1.66 at merge (world took v1.65).
+- Slip, caught before pushing: a merge-resolution script truncated `test.mjs` to empty (opened for writing before
+  reading); `node --check` passes an empty file and the suite printed nothing. Reset my unpushed commit, merged again.
+  **Lesson: after any scripted merge resolution, check the file's line count and that the suite prints "all passed".**
+
+### Verification
+- New test `econ-6` (4 checks; mutation-tested after strengthening); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/contracts.js`, `sim/rovers.js`, `app/editor.js`, `app/rover-yard.js`, `test.mjs`, `NOTES.md` § v1.66, `TESTING.md` rows 142–143, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 142–143
+- [ ] Economy: Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner
+

@@ -41,6 +41,7 @@ function renderRover(){const el=$('rvDes');if(!el)return;
   h+=`<h2>Deck</h2>`+Array.from({length:C.slots},(_,i)=>`<div class="row"><span class="dim" style="width:16px">${i+1}</span><select data-slot="${i}" style="flex:1;font:inherit;background:rgba(0,0,0,.3);color:var(--fg);border:1px solid var(--line)"><option value="">— empty —</option>${Object.keys(RV_IT).map(opt).join('')}</select></div>`).join('')
     +`<div class="sub">Instruments ride as mass and height for now; their science comes later (R4).</div>`;
   const row=(t,a,b,cl='')=>`<tr><td class="dim">${t}</td><td${cl}>${a}</td><td${cl}>${b}</td></tr>`;
+  {const lk=rvLocked(d);h+=`<div class="sub">Price ${fmtM(rvPrice(d))} when packed on a rocket${lk.length?`<br><span class="warn">Can't fly yet: ${lk.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}</span>`:''}</div>`}   // economy (Q10)
   h+=`<h2>On paper</h2><div class="sub">${rvF(st.mass)} kg${st.crew?`, crew of ${st.crew}`:''} · track ${rvF(st.track,2)} m · wheelbase ${rvF(st.base,2)} m · clearance ${rvF(st.clear,2)} m</div>`
     +(st.kWh?'':`<div class="bad">No battery: it can't drive.</div>`)
     +`<table style="margin-top:4px"><tr><td></td><td class="acc">Tellus</td><td class="acc">Selene</td></tr>`

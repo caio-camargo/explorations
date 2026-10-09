@@ -215,7 +215,7 @@ function render(){
       for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
         if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
     if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
-  const building=mode==='editor'&&!atHQ&&!atDeb;   // (flow) the builder's markers stay off behind the Program and Debrief panels
+  const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll;   // (flow) the builder's markers stay off behind the Program and Debrief panels
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
