@@ -7065,6 +7065,50 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
   40 km, Debrief, then Program: the pad.
 
+### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
+LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
+themselves, tonnes a year on each, the bottleneck named, beside the pad calendar, with every vessel in flight on screen
+(§ "The network", § "Keeping flight in play", NOTES § "Routine runs": "the UI wants a Gantt view of the pads").
+
+**What it shows.**
+- **A schematic, not the orbital map.** Bodies as columns, left to right outward (Tellus, Selene, Nyx, then the
+  planets as SYSTEM.md opens them); within a column, surface at the bottom and orbits above it, by altitude band.
+  Nodes sit in their slot: sites and pads, stations, depots, outposts and bases, datacenters, relays (with a coverage
+  bar), the mass driver. Distances aren't to scale; the real map is one key away for that.
+- **Routes as lines between nodes**, thickness by tonnes a year, colour by good (propellant, supplies, crew, hardware,
+  materials), a dashed line for a route waiting on its window (with "next window in 214 d"). A route through a comms gap
+  is flagged (LATE_GAME § Comms).
+- **The bottleneck line**, always at the top: one sentence naming the limiting thing ("Depot L1 is short of
+  propellant: Selene's plant makes 40 t/y, routines draw 55"), with a button to the node.
+- **The fleet strip**: every vessel in flight, its next event and the time to it; nothing coasts out of sight.
+- **The pad calendar** under it: one row per pad (and per stacking bay once the hall becomes bays), bars for each
+  launch's stacking, launch and turnaround, manual flights and routines in different colours, windows as shaded bands.
+
+**Clicks.** A node opens its panel: stock and needs per good, routes in and out, what it's waiting for, and the
+honest next action ("fly a supply run here by hand", "build a second pad"). A route opens its template: design,
+procedure, Δv, tonnes per launch (up from what, LATE_GAME § Templates), its window family, recent runs and failures.
+A bar on the calendar opens that launch. Every node, route and bar names what it is in words, never only a colour.
+
+**How it reads the game: one pure SIM function** owned by the economy (with space for the orbits), so the screen
+draws and never computes: `netModel()` → `{nodes: [{id, kind, body, slot, name, stock, need, paused?}], routes: [{id,
+from, to, goods: {good: t/y}, runsPerYear, window?, gap?}], bottleneck: {text, node, good} | null, fleet: [{name, next,
+t}], pads: [{pad, bars: [{from, to, kind, title}]}]}`. Test: the model's sums (what routes deliver equals what nodes
+receive), the bottleneck picked by the largest shortfall, and a static check that the screen file calls no SIM
+function but `netModel`.
+
+**Slices.**
+1. **N1, now (M2):** the pad calendar and the fleet strip from what exists: `padsFree`, the dispatch queue
+   (`PROG.dispatch`, base runs), the timeline (`upcoming`), registered craft (`satsUp`, `landedUp`, moon satellites).
+   A compact pad calendar also goes in the Program's Fleet tab.
+2. **N2:** the schematic with today's nodes (sites, pads, satellites by orbit band, bases, relays) and no routes yet.
+3. **N3, when the economy builds routines and depots:** routes, goods and the node panels.
+4. **N4:** the bottleneck line, then rivals' networks drawn coarsely (LATE_GAME § Rivals) and the era's look (notebook,
+   terminal, modern, as the map does).
+
+**Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
+second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
+screen, below, plus a compact copy in the Fleet tab.
+
 ---
 
 ## Picking this up cold
