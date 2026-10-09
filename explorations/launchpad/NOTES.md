@@ -7069,6 +7069,9 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
   launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
   with the key) as well as `go`. **Enter** ends a flight that is over (landed or lost), like the End flight ▸ button.
+- **Rollout checks stay short** (Q151): a check's closing parenthesis (where a number comes from, e.g. vehicle's "your best
+  flight to orbit took 4,446 m/s") folds into an ⓘ with the text as its tooltip, and the panel is 340 px wide, so the
+  long Δv warning takes two lines instead of four.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
@@ -7113,6 +7116,19 @@ function but `netModel`.
 **Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
 second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
 screen, below, plus a compact copy in the Fleet tab.
+
+### Network screen, N1 built (2026-10-09, flow session, QUEUE Q155)
+- **Network [N]** in the Program's header (and the N key) once something of ours is out there (`netOpen()`: a registered
+  craft or a dispatch), W18's default. `app/network.js`, `#net`, a panel over the pad like the Program.
+- **The fleet**: every registered craft (not debris, not docked) with its kind, where it is and what it does next
+  ("holds its orbit 212 more days", "adrift: out of propellant", "on the surface"), and every queued dispatch ("launches
+  in 12 days"), soonest first.
+- **The pads**: one row per pad over the next 180 days, a bar per booking (stacking from the order to the launch), 30-day
+  ticks, and a row of the timeline's dated events (`upcoming()`), each with its text on hover and the next four listed.
+- **Reads `netModel()` when it exists** (economy's Q154); until then `netFallback()` builds the same `{fleet, pads}` from
+  the registry, the dispatch queue, `padsN` and `upcoming`. **Economy:** when `netModel` lands, its `fleet` and `pads`
+  replace the fallback with no change here; delete `netFallback` then.
+- Not yet (N2–N4): the schematic of nodes and routes, goods, the bottleneck line, the compact copy in the Fleet tab.
 
 ---
 

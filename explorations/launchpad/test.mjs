@@ -1878,8 +1878,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const d = ['flight', 'map', 'assembly'].flatMap(dup);
   check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
   const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
-  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb|atRoll)=[^=])/g) || [];
-  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb=/atRoll= assignments outside it but their declarations)', goSrc && outside.length === 5, outside.join(' '));
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb|atRoll|atNet)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb=/atRoll=/atNet= assignments outside it but their declarations)', goSrc && outside.length === 6, outside.join(' '));
   // every Program section heading the page can write lands in a real tab, not "More"
   const progTabOf = new Function('progName', cut(page, 'const progTabOf=', ';\nlet progTab') + ';return progTabOf')(() => 'Fenfen Space Agency');
   const heads = [...html.matchAll(/class="ep">([A-Z][^<$]*)/g)].map(m => m[1].trim()).filter(h => !/^\.\*/.test(h));

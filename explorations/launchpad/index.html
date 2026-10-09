@@ -66,13 +66,17 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
-#prog,#deb{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
+#prog,#deb,#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
 #progTabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 0;border-bottom:1px solid var(--line)}#progTabs button{border-radius:4px 4px 0 0;border-bottom:0;padding:4px 12px}#progTabs .n{color:var(--warn);margin-left:4px}
 #progBody{overflow:auto;padding:8px 2px 4px;min-height:200px;columns:2 340px;column-gap:28px}#progBody>*{break-inside:avoid}#progBody .ep{font-size:11.5px;margin-top:10px;break-after:avoid}
-#rollPanel{display:flex;flex-direction:column}#rollBody{overflow:auto;flex:1}#rollChecks .rc{margin:2px 0;padding-left:20px;text-indent:-20px}#rollChecks .rc span{display:inline-block;width:20px;text-indent:0}#rollChecks .ok span{color:var(--ok)}#rollChecks .warn{color:var(--warn)}#rollChecks .bad{color:var(--bad)}#rollBooks table{width:100%}#rollBooks td:last-child{text-align:right}#rollPlay b{color:var(--acc);font-weight:normal}
+#rollPanel{display:flex;flex-direction:column;width:340px}#rollChecks .ri{font-style:normal;color:var(--dim);cursor:help}#rollBody{overflow:auto;flex:1}#rollChecks .rc{margin:2px 0;padding-left:20px;text-indent:-20px}#rollChecks .rc span{display:inline-block;width:20px;text-indent:0}#rollChecks .ok span{color:var(--ok)}#rollChecks .warn{color:var(--warn)}#rollChecks .bad{color:var(--bad)}#rollBooks table{width:100%}#rollBooks td:last-child{text-align:right}#rollPlay b{color:var(--acc);font-weight:normal}
 #rollFoot{display:flex;gap:8px;align-items:center;margin-top:8px}#rollFoot .big{flex:1;margin:0}
+#netHead{flex:1}#netHead .dt{color:var(--acc);font-size:12px}#netBody{overflow:auto;padding:4px 2px}#netBody .none{color:var(--dim);padding:6px 0}.netf{width:100%;border-collapse:collapse}.netf td{padding:2px 8px 2px 0;vertical-align:top}
+.cal{margin-top:4px}.crow{display:flex;align-items:center;margin:3px 0}.cl{width:64px;color:var(--dim);font-size:11px}.ctr{position:relative;flex:1;height:22px;background:rgba(127,209,255,.05);border:1px solid var(--line);border-radius:3px}
+.tk{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line)}.tk b{position:absolute;top:-1px;left:3px;white-space:nowrap;font:normal 9.5px ui-monospace,monospace;color:var(--dim)}.cfree{position:absolute;left:8px;top:3px;color:var(--dim);font-size:11px}
+.cbar{position:absolute;top:2px;bottom:2px;min-width:4px;background:rgba(127,209,255,.35);border:1px solid var(--acc);border-radius:2px;font-size:10.5px;line-height:16px;padding:0 4px;overflow:hidden;white-space:nowrap}.cev{position:absolute;top:4px;width:2px;height:12px;background:var(--warn)}
 #debHead{flex:1}#debHead .dt{color:var(--acc);font-size:12px}#debBody{overflow:auto;padding:4px 2px;min-height:160px;columns:2 340px;column-gap:28px}#debBody .none{color:var(--dim);padding:20px 0}
 .dsec{break-inside:avoid;margin-bottom:4px}.dh{color:var(--acc);font-size:11.5px;margin-top:10px}#debBody td:last-child{text-align:right;white-space:nowrap;padding-left:10px}.dnet td{font-weight:bold;border-top:1px solid var(--line);padding-top:2px}
 .dout{column-span:all;margin:10px 0 4px;padding:4px 10px;border-left:3px solid var(--line);font-size:14px}.dout.k-orbit,.dout.k-landed,.dout.k-away{border-left-color:var(--ok)}.dout.k-lost{border-left-color:var(--bad)}.dout.k-flying{border-left-color:var(--warn)}.dout.k-escape{border-left-color:var(--acc)}
@@ -131,13 +135,17 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 </div>
 
 <div id="prog" class="hidden"><div class="hq">
-  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
+  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
   <div id="progNext" class="hidden"></div><div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
 </div></div>
 <div id="roll" class="ui hidden"><div class="panel right" id="rollPanel">
   <h1>ROLLOUT</h1><div class="sub" id="rollDesign"></div>
   <div id="rollBody"><h2>Launch site</h2><div id="sitePick"></div><h2>Checks</h2><div id="rollChecks"></div><h2>The flight</h2><div id="rollBooks"></div><h2>In play</h2><div id="rollPlay"></div></div>
   <div id="rollFoot"><button data-go="assembly">← Assembly [B]</button><button id="launch" class="big">LAUNCH [L]</button></div>
+</div></div>
+<div id="net" class="hidden"><div class="hq">
+  <div class="hqHead"><h1>NETWORK</h1><div id="netHead"></div><button data-go="program">← Program [P]</button></div>
+  <div id="netBody"></div>
 </div></div>
 <div id="deb" class="hidden"><div class="hq">
   <div class="hqHead"><h1>DEBRIEF</h1><div id="debHead"></div><button id="bDebProg" data-go="program">Program [P]</button><button id="bDebAsm" data-go="assembly">Assembly [B]</button><button id="bDebAgain">Fly again [A]</button></div>
@@ -199,6 +207,7 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 <script src="app/state.js"></script>
 <script src="app/editor.js"></script>
 <script src="app/rollout.js"></script>
+<script src="app/network.js"></script>
 <script src="app/input.js"></script>
 <script src="app/screens.js"></script>
 <script src="app/rover-yard.js"></script>
