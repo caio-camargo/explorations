@@ -4531,6 +4531,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `lab-days 7 → 12 (not yet) → 17 (done); labs ${D.stState(51, 'lab')}`);
 }
 
+// econ-17. The first-station firsts (economy session, QUEUE Q163; Q9's plan slice 2): a habitat with two free ports in
+// orbit, then a crew aboard, then a lab, then thirty crewed days, judged between flights (world missions), in that order.
+{
+  const D = new Function(src + 'return {utilTick,stationOf,TELLUS,PROG,HOOK,MISSIONS,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, staged: {},
+    done: { weather: { day: 1, flight: 1 }, beeper: { day: 2, flight: 2 } } }); D.chooseStart('agency');
+  const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
+  const hab = { k: 'hab', i: 0, pos: [0, 0, 0], y0: 0, h: 3.2 }, top = { k: 'port', i: 1, pos: [0, 0, 0], y0: 3.2, h: 0.3 }, side = { k: 'rport', i: 2, pos: [0, 0, 0], y0: 1, h: 0.6, phi: 0 };
+  const st = { id: 61, name: 'Station 1', r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [hab, top, side], attached: [] };
+  P.sats = [st]; const step = () => { D.utilTick(1); P.day += 1; return Object.keys(P.done).filter(k => /^station/.test(k)).join(','); };
+  const s1 = step(); hab.crew = 2; hab.res = { sup: 0.6 }; const s2 = step(); st.shape.push({ k: 'lab', i: 3, pos: [0, 0, 0], y0: -3.2, h: 3.2 }); const s3 = step();
+  for (let k = 0; k < 29; k++) step(); const s4 = step();
+  check('first station: a habitat with two free ports, then a crew, then a lab, then thirty crewed days, each a first in turn',
+    s1 === 'station1' && s2 === 'station1,stationcrew' && s3 === 'station1,stationcrew,stationlab' && /station30/.test(s4) && news.some(t => /A station/.test(t)),
+    `${s1} → ${s2} → ${s3} → ${s4}; ${Math.floor(st.crewDays)} crewed days`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

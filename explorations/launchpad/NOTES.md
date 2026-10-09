@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1954,6 +1954,19 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89.4 — the first station as firsts (2026-10-09, economy session, QUEUE Q163; Q9 plan slice 2)
+
+Four epoch-3 firsts (W22 default 1: firsts, not contracts; not in the race), **world missions** judged between flights
+on the registry's stations (`stFind` over `stationOf`), so a station built over several flights counts:
+- *A station* (80M, after *The beeper*): a habitat module in a stable orbit with **two free docking ports**;
+- *A crew aboard* (100M): a crew living on it;
+- *A lab in orbit* (90M): a laboratory module on the crewed station;
+- *Thirty days aboard* (120M): thirty **crewed days**, counted in `utilTick` while a station has crew and supplies
+  (`q.crewDays`; the mission shows "*n* of 30 days" as progress).
+They open the station contracts of v1.89.3 in play. Test `econ-17` (crewed-day counting mutation-tested). A note for
+tests: a stub station needs real port geometry (an axial `port` is free only with nothing on its top face; a radial
+`rport` is always free).
 
 ## v1.89.3 — station work: resupply, lab time, expansion (2026-10-09, economy session, QUEUE Q162; Q9 plan slice 1)
 

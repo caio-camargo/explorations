@@ -105,6 +105,16 @@ const MISSIONS=[
    win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
   {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments).`,
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
+  // the first station (QUEUE Q163; Q9's plan slice 2, W22 default 1: firsts, not contracts; not in the race): judged
+  // between flights on the registry's stations (stationOf), so it can be built over several flights
+  {id:'station1',pay:80,ep:3,req:['beeper'],world:true,name:'A station',brief:'A habitat module in a stable orbit with two free docking ports: somewhere to visit.',
+   win:'a house in the sky',ok:()=>false,okW:()=>!!stFind(s=>s.berths>0&&s.ports>=2)},
+  {id:'stationcrew',pay:100,ep:3,req:['station1'],world:true,name:'A crew aboard',brief:'A crew docked and living aboard our station.',
+   win:'the lights are on',ok:()=>false,okW:()=>!!stFind(s=>s.crew>0)},
+  {id:'stationlab',pay:90,ep:3,req:['stationcrew'],world:true,name:'A lab in orbit',brief:'A laboratory module on our crewed station.',
+   win:'science between the stars',ok:()=>false,okW:()=>!!stFind(s=>s.labs>0&&s.crew>0)},
+  {id:'station30',pay:120,ep:3,req:['stationlab'],world:true,name:'Thirty days aboard',brief:'Thirty crewed days on our station, with supplies to live on.',
+   win:'people live in space',ok:()=>false,okW:()=>!!stFind((s,q)=>(q.crewDays||0)>=30),prog:()=>{const x=stFind(s=>s.crew>0);return x?`${Math.floor(x.q.crewDays||0)} of 30 days`:''}},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
   {id:'farside',pay:230,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
@@ -163,7 +173,10 @@ const satQual=q=>1/(1+OBS_K*Math.max(0,compEra()-satEra(q)));
 function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue;satEra(q);if(E>q.era&&(q.eraSeen??q.era)<E){q.eraSeen=E;const n=E-q.era;
   if(q.ant||q.cam)HOOK.news(`${COMP_ERAS[E].name} arrive: ${q.name} is now ${n} generation${n>1?'s':''} behind and earns ${Math.round(satQual(q)*100)} %. A new one would earn it all, or service it`,'warn')}}}
 // between flights: TV pays while it's in the capital's sky; world missions are checked
+// a station with its state, for the station firsts (Q163): the first registered craft whose stationOf passes f(s, q)
+function stFind(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=typeof stationOf==='function'?stationOf(q):null;if(s&&f(s,q))return{q,s}}return null}
 function utilTick(d){const T=PROG.day*DAY_S;obsTick();
+  for(const q of satsUp()){const s=q.shape&&stationOf(q);if(s&&s.crew>0&&s.sup>0)q.crewDays=(q.crewDays||0)+d}   // crewed days aboard (Q163)
   for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q));if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
