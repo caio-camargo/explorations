@@ -1079,8 +1079,12 @@ visible change), then Steppe.
   tank-radii tall, between Cape's two side stripes): Cape red and white stripes with a blue canton of small stars,
   Steppe one gold star on red (`sdStar5`), both with a white rim. It is laid on after the school's paint (the first
   try put it before, and Steppe's enamel pass repainted the gold star green). Views 114/115 now face it.
-- Next: the power's own colours on the accent and the roundel (POWERS.md § Livery; today they're the school's), then
-  6 (signature designs for rivals) and 7 (the Steppe pad).
+- **Livery built:** the maker's `hue` (POWERS, 10° steps) rides in the vertex kind too (`k + 32·school + 256·hue`; the
+  `% 32` decoders still work). Cape's roll band is the hue at the old near-black brightness (`hsv(h, .55, .16)`, the same
+  luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
+  the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
+  byte-identical** from here on: that's the livery POWERS.md asks for.
+- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
