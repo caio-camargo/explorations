@@ -1,6 +1,7 @@
 # CREW — astronauts
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **DRAFT.** Part 2 (who crew are) round 1 answered by Caio; part 1 (how they look) waits for the Q72 mock-ups.
+**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1 (how they look) waits for the Q72 mock-ups;
+the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
 
 **What exists** (cite, don't redo): a crew is two seats in a capsule (`d.crew`), flying once the escape tower is
@@ -82,8 +83,9 @@ Each role makes **who you send** part of the mission's design (pillar 2), throug
 
 | Hook | Existing system | What happens |
 |---|---|---|
-| **Stand-down after a loss** | the calendar; `failHit` | Crewed flights pause for an investigation (Apollo 1: 20 months; here weeks to months, by how the crew was lost). A loss costs time, not the program (pillar 5), and it weighs. |
-| **Openness** | open/closed, leaks | **Open:** astronauts are celebrities; a famous crew lifts opinion, a lost one is national grief. **Closed:** a loss is hushed (a small stand-down, part of the hit now) and can **leak** later with the leak system; heroes are announced only after success. |
+| **Requalification after a loss** | the flight record; the abort-test gates | Crewed flights stay blocked until an **uncrewed qualification flight shows the cause is fixed**: the flight record names it (g, cabin heat, a part, a failed abort), and the test is the same rocket surviving the same moment. A loss costs a flight and a design problem, not a wait (pillars 2, 5). **Not** a timed stand-down: a skippable timer costs nothing, and an unskippable one breaks pillar 5 (Caio, round 2). |
+| **The person is gone** | roles and ranks | Losing a rank-3 pilot means the next landing flies with a rookie who can't fly the manual landing hold. The loss is felt in play. |
+| **Openness** | open/closed, leaks | **Open:** astronauts are celebrities; a famous crew lifts opinion, a lost one is national grief. **Closed:** a loss is hushed (part of the hit now) and can **leak** later with the leak system; it **may skip requalification** and fly again at once, the cause unfixed and the leak risk growing, the closed program's real temptation. Heroes are announced only after success. |
 | **Archetypes** | POWERS.md | Security state: military pilots, few scientists. Frugal: scientist-heavy classes. Resource state: few classes of its own; **buys seats**. |
 | **Guest astronauts** | foreign contracts, relations | Fly another power's astronaut, as Intercosmos did: a contract that improves relations. Or buy a seat on a rival's flight for your own. |
 | **Defections and career moves** | v1.24 career moves | A famous astronaut defecting is a headline. If your program changes hands, your roster comes with it. |
@@ -114,17 +116,18 @@ human, but the pictures decide.
 
 ---
 
-## Open questions for Caio (round 2)
+## Decisions (round 2, Caio, 2026-10-08)
 
-1. **The role numbers** (the pilot's modes by rank, the scientist's ×1.25/×1.5/×2, the engineer's ignition retries):
-   about right in spirit? (Default: yes; the lanes tune the exact numbers.)
-2. **Classes every few years, not hiring at will?** (Default: classes.)
-3. **Stand-down after a loss:** weeks to months by cause. Open powers longer, closed ones shorter but with the leak.
-   (Default: yes.)
-4. **You pick crew for hand-flown flights only if you want to; otherwise automatic.** (Default: yes.)
+1. **The role numbers stand in spirit**; the lanes tune them.
+2. **Classes every few years**, not hiring at will.
+3. **No timed stand-down** (Caio: the player would just fast-forward through it). A loss costs **requalification**,
+   an uncrewed flight that shows the cause fixed, and **the person**, whose rank and record are gone. Closed powers
+   may skip requalification at a leak risk.
+4. **Crew picked automatically** unless you choose for a hand-flown flight.
 
 ---
 
 ## Version history
+- **0.2.0 (2026-10-08):** part 2 approved; round 2: requalification and the lost person replace the timed stand-down.
 - **0.1.0 (2026-10-08):** first draft. Part 2 round 1 (level 2, the pilot is the computer); roles, ranks, the office,
   hooks into existing systems, room for careers. Part 1 waits for Q72.
