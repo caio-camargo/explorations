@@ -62,6 +62,10 @@ const PARTS={
   port:{name:'Docking port',kind:'port',m:0.1,h:0.3,C:900,T:600,B:200,prof:[[.625,0],[.625,.14],[.5,.2],[.5,.3]],jF:30e3,jM:20e3},
   // the claw (sats session): its jaws grab whatever they touch slowly enough, wherever and however it is; a weaker hold
   claw:{name:'Claw',kind:'claw',m:0.15,h:0.55,C:900,T:600,B:200,prof:[[.35,0],[.35,.25],[.3,.32],[.18,.55]],jF:15e3,jM:8e3},
+  // landing leg (vehicle session, Q31): on the side of anything, folded flat for launch; deployed (Y), its foot stands reach
+  // out from the skin and drop below the leg's bottom, and becomes the vessel's contact point there (footPoints). Its root
+  // carries the landing load, so a hard landing snaps a leg rather than needing a rule of its own.
+  leg:{name:'Landing leg',kind:'leg',surf:true,noAero:true,m:0.05,h:1.0,r:0.08,off:0.08,reach:1.5,drop:1.0,C:900,T:600,S:240,B:80},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   // steerable fins (control session): the same plates, all-moving, turned about their span up to ctl degrees at ctlR °/s
   cfin:{name:'Steerable fin',kind:'rfin',surf:true,noAero:true,m:0.09,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9,ctl:20,ctlR:40},

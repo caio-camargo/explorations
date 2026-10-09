@@ -6905,6 +6905,69 @@ write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (th
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
 
+## v1.61 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
+
+Built to the plan above (§ "Vehicle parts", Q31). Headless only; nobody has seen it drawn yet (TESTING row 135).
+
+**The part** (`PARTS.leg`, `sim/vessel.js`): a surface part, mounted in sets with the builder's radial count. 0.05 t,
+price 1.5, complexity tier 1, palette *Surface*. Stowed for launch; **Y** in flight puts all legs down or up (`legOp`,
+recorded on autopilot tapes as op `G`). Deployed, the foot stands 1.5 m out from the skin and 1.0 m below the leg's
+bottom. Joint ratings C 900 · T 600 · S 240 · B 80. The legs have no drag and no animation yet. The mesh in `app/gl.js`
+is a placeholder (a strut along the skin, or two struts and a pad), for the parts & pad beat to replace.
+
+**Contact** (`footPoints`): a deployed leg is one point, at its foot; a stowed one is none. The lowest point counts the
+feet, so with legs down the rims (a metre higher) drop out by the existing 0.5 m rule.
+
+**Measured** (pod + 1 t tank + Wren, 2.3 t, four legs on the tank: feet at r 2.1 m, centre of mass 2 m above them):
+
+| Ground | Bare (rim of the Wren) | With legs |
+|---|---|---|
+| flat, 1 m/s | lands | lands |
+| taiga 13°, 15°, 20° | topples on all three | lands, leaning 13° / 16° / 21° |
+| flat, 8 m/s | — | lands, leg load 0.9 of rating |
+| flat, 9.4–11 m/s | — | legs snap, it goes over |
+
+The full Orbiter (13 t, centre of mass 7.6 m above its feet) gains little on slopes from legs on the Kestrel: its
+footprint can't beat atan(1.3/7.6) ≈ 10°. On the flat, standard joints snap at 4 m/s, reinforced ones too, and
+**heavy** joints (×4) take 4.6 m/s. So legs are a lander's part, and a heavy stack pays for heavy joints.
+
+### The contact model needed three fixes for wide feet (terrain session: please read)
+
+All three are in `groundContact` (`sim/flight.js`). Every contact point used **a quarter of the vessel's mass**
+(`mPer`) to size its spring, damper and friction cap. That is right for the stack moving as a whole. It is wrong for
+a point far off the axis, where the mass that point actually moves (rotation included) is much smaller: ~73 kg
+instead of 578 kg for the lander's feet. Each point now uses its **effective mass** along the normal (`mN`) and along
+the slip (`mT`): 1 / (n · (1/M + |r × t|² / I)).
+
+1. **Friction pumped a yaw spin.** The old cap (stop the slip in ~2 steps through `mPer`) overshot every step for an
+   off-axis point and rectified into a steady spin. It was there before legs: the bare Orbiter given 0.3 rad/s slowed
+   to 0.001 and spun back up to 0.27. With legs (feet 7× farther out) it started on its own at touchdown and never
+   stopped (0.31 rad/s).
+2. **The normal damper overshot.** c·dt/m was ~4 for the lander's feet, so it chattered until it toppled on the flat.
+   The spring and damper are now capped at 0.5·mN/dt² and 0.5·mN/dt. The halving matters: under a tall stack the
+   normal and friction forces both push on pitch, and at full gain each was stable alone but together they rang at a
+   two-step period (`s.w` flipping sign every step while the attitude stood still).
+3. **Stiction.** Friction was viscous with a cap, so anything on a slope crept. With the old, too-large cap the creep
+   was a few mm/s and passed as rest. With a correct cap it was 0.5 m/s. Each point now holds a planet-fixed anchor
+   where it first touched: a tangential spring (≤ 0.25·mT/dt²) plus a damper (≤ 0.5·mT/dt), capped at μ·Fn. Past
+   the cap the point slides and the anchor follows, so a slide is Coulomb as before. The anchor clears when the point
+   leaves the ground.
+
+For a stack on its own narrow rim almost nothing changes (mN ≈ mPer there). The §25 checks (ice slides, snow, sand
+and basalt verdicts, the Orbiter toppling on 12–17°) still pass.
+
+**Tests:** `test.mjs` section `vehicle-1`, 5 checks: feet replace rims; the lander topples bare and stands with legs
+on 13° and 20°; 8 m/s holds and 11 m/s snaps; spun at 0.3 rad/s, the Orbiter and the lander both land; a tape replays
+the legs.
+
+**Not yet:**
+- legs going down by themselves in procedures (`landAt`), and in the robot's landings;
+- a softer leg stroke (a crush-core damper) for a speed bonus;
+- a deployed state that survives a vessel leaving the flight (`vesselOf`'s `vst`; landed vessels are pinned, so it
+  only shows if one is re-flown);
+- drag on deployed legs;
+- sizes (a 2.5 m class leg).
+
 **Q30 slice 1, moons: done (QA session).** `node playtest.mjs 68 72 55 73 125` (about 3½ min in all). The page fetches
 `fly_ladder.mjs`, cuts its Node-only tail, imports it from a blob URL and runs `flyLadder`/`flySite` with an `api` made of
 page globals and a dummy `HOOK`, so the real HUD, news and map show what a player would see. Every ladder mission passes.
