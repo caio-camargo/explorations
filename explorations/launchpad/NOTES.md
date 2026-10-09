@@ -7468,7 +7468,11 @@ drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
   both ends; highs fade with distance; one brown-noise layer through a stereo panner, panned by the power-weighted
   direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
   explosions have one). `AUD.Q67 = false` turns both off.
-- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
+- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
+### The volume slider (2026-10-09, effects session for the sound beat, QUEUE Q35)
+In the Settings overlay's Sound row (flow's `#setSound`): 0–100 % in steps of 5, `AUD.vol` live, kept in
+`localStorage['launchpad-volume']` and read at start. `renderSettings` calls `sndSettings(el)` (one additive line in flow's
+`app/settings.js`). F4 still mutes. Checked in the page (40 % → `AUD.vol` 0.4, saved) and the robot's `m1` route passes.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
