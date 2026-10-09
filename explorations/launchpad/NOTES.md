@@ -1832,6 +1832,26 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.NEXT — missions in flight, slice 2: on the timeline, no silent misses (2026-10-09, space session, QUEUE Q49)
+
+`cruiseEvents(T)` gives each vessel in flight its next event, and the economy's `upcoming()` lists them (one line in
+`sim/program.js`, flagged), so *Coming up* shows them with a Wait button and `advanceTo` stops at them:
+- **reaching an atmosphere**: always stops time (then the vessel waits at the top, flyable, as in slice 1);
+- **an impact course** (an airless body): always stops, 3 h ahead (`CRUISE_LEAD`), so it can be flown;
+- **entering a moon's sphere**, and **the closest approach** there (3 h ahead: the moment for a capture burn): stop
+  time **once per vessel and body** (`q.seen`, set by `advanceTo` through `cruiseSeen`), then only show, as LATE_GAME
+  asks ("stops it too, once").
+Leaving a body's pull is shown but never stops (nothing to decide).
+
+Measured on a Selene transfer: listed on day 0 as *enters Selene's sphere* on day 1.69; Wait stops on day 1.686; the
+next stop is *passes 1,721 km above Selene: the moment for a capture burn*, 2.9 h before periapsis. A capsule falling
+home from 5,000 km stops when it reaches the air (day 0.198) and waits there.
+
+**Not yet:** *Let it go* (an atmosphere entry flown headless with the vessel's chute and shield, an impact left to happen
+with a button rather than by waiting): today waiting past an impact stop crashes it (announced), and a vessel at the top
+of the air waits until flown. Test `space-9` (2 checks; mutations caught: `advanceTo` not marking seen, never stopping,
+seen ignored, no lead).
+
 ## v1.90 — missions in flight, slice 1: nothing coasting is lost at flight end (2026-10-09, space session, QUEUE Q49)
 
 Slice 1 of § "Plan: missions in flight" (below).
