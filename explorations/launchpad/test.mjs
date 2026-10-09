@@ -4577,6 +4577,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('planned burns: a burn that leaves the orbit puts the vessel in flight', qx.cruise === 1 && D.elements(qx.r, qx.v, T.mu).e > 1, `e ${D.elements(qx.r, qx.v, T.mu).e.toFixed(2)}, in flight ${!!qx.cruise}`);
 }
 
+// econ-18. Base work (economy session, Q9's plan slice 3): the station contracts of v1.89.3 for a base too, read with
+// baseOf (everything landed within 500 m of the beacon): a resupply is met by landing supplies there.
+{
+  const D = new Function(src + 'return {CT,genOffer,acceptOffer,selTick,stState,SELENE,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  const at = (dx) => { const u = [-1, dx / D.SELENE.R, 0], l = Math.hypot(...u); return u.map(x => x / l * D.SELENE.R); };
+  const beacon = { id: 71, name: 'Selene Base 1', landed: true, beacon: true, bodyName: 'Selene', pf: at(0), ql: [0, 0, 0, 1], shape: [], pending: [], imgs: 0 };
+  const hab = { id: 72, name: 'Selene lander 1', landed: true, bodyName: 'Selene', pf: at(100), ql: [0, 0, 0, 1], shape: [{ k: 'hab', crew: 2, res: { sup: 0.1 } }], pending: [], imgs: 0 };
+  P.sats = [beacon, hab];
+  const R = D.rng(9); let o = null; for (let k = 0; k < 400 && !o; k++) { const x = D.genOffer(k % 2 ? 'gov' : 'com', R); if (x && x.type === 'stResupply') o = x; }
+  check('base work: a crewed base short of supplies gets a resupply offer that says to land the module', o && o.p.st === 71 && o.p.base && /land a module/.test(D.CT.stResupply.brief(o.p)) && o.p.days === 10,
+    o ? `${D.CT.stResupply.title(o.p)}: ${o.p.kg} kg in ${o.p.days} days` : 'no offer');
+  P.offers = [o]; D.acceptOffer(o.id); const c = P.active[0];
+  P.sats.push({ id: 73, name: 'Selene lander 2', landed: true, bodyName: 'Selene', pf: at(300), ql: [0, 0, 0, 1], shape: [{ k: 'hab', res: { sup: 0.3 } }], pending: [], imgs: 0 }); D.selTick(); const half = P.active.includes(c);
+  P.sats.push({ id: 74, name: 'Selene lander 3', landed: true, bodyName: 'Selene', pf: at(4000), ql: [0, 0, 0, 1], shape: [{ k: 'hab', res: { sup: 0.6 } }], pending: [], imgs: 0 }); D.selTick(); const far = P.active.includes(c);
+  P.sats.push({ id: 75, name: 'Selene lander 4', landed: true, bodyName: 'Selene', pf: at(-200), ql: [0, 0, 0, 1], shape: [{ k: 'hab', res: { sup: 0.3 } }], pending: [], imgs: 0 }); D.selTick();
+  check('base work: supplies landed within 500 m count (4 km away doesn\'t); 600 kg completes it', half && far && !P.active.includes(c), `supplies at the base ${D.stState(71, 'sup').toFixed(2)} t`);
+}
+
 // space-11. The star system on paper (space session, QUEUE Q87 slice 1): the planets from SYSTEM.md at their real places
 // (heliocentric Kepler, no physics yet), for the map from epoch 1. The year fixes the scale; the ecliptic is tilted 23° to
 // the equator and turned so the sun on day 0 is where the renderer draws it.

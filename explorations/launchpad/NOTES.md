@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.35 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2092,6 +2092,36 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
 
+## Plan: missions per body from SYSTEM.md (2026-10-09, economy session, QUEUE Q88; M5, nothing built)
+
+SYSTEM.md (approved) gives each body a **role**: its epoch, the design problems its missions pose (pillar 2) and what
+it gives back. This turns those roles into `MISSIONS` entries, built the way the Selene and Nyx ladders are: flight
+record flags set by the flight (`R.farSent`, `R.selLand`…), `req` chains, staged pay for long missions (v1.44),
+W11 (a mission counts only on a flight launched while it was open), and the pay floor (v1.53): **each first pays at
+least 1.3× the full launch cost of the cheapest preset proven to fly it**, measured by a ladder run when the space
+lane builds the presets (as `fly_ladder.mjs` did for Selene and Nyx).
+
+| Body (epoch) | Ladder | The signature problem (pillar 2) | Gives back |
+|---|---|---|---|
+| **Hesper** (6) | flyby → orbit (aerocapture allowed) → entry probe → lander | **a lander that lasts minutes**: surface data for 20 min before the heat and pressure win (`R.hespSurfT`); radar mapping as a world mission accumulating coverage % (like *Navigation*) | science, the surface map (pillar 4) |
+| **Enyo** (6), Pavor, Metus | flyby → orbit → landing → rover 10 km → relay coverage | **air too thin to stop you**: a landing needs chutes and a retro burn (`R.enyoLand` with touchdown under 4 m/s); a relay orbiter that stays (pillar 3); Pavor as a cheap staging landing | polar water (ISRU, Q110), rover science (R4-style contracts), the crewed goal (epoch 8 capstone) |
+| **Astraea** and the belt (7) | flyby → orbit → landing | **landing where gravity barely holds you** (closer to docking: `R.astrLand` at under 0.5 m/s), a 10° plane change | water and salts for a depot (Q110) |
+| **Hyperion** (7), Theia, Eos, Tethys, Phoebe | flyby (passive, staged, years) → capture → entry probe → moon tour → Tethys landing → Eos plume sample | **the entry probe** (~26 km/s, the hardest heating: data until it dies), **Tethys, where parachutes do everything**, **a sample through Eos's plumes** | the big discoveries (Eos's ocean), the assist to Erebus |
+| **Erebus** (8) | found by a telescope survey (like Nyx: pillar 4) → passive flyby with a Hyperion assist (5 years, staged) | the long mission across a compute era (pillar 5: it flies in the background) | the edge of the system; the capstone probe |
+
+**Science contracts per body** (as R4's for Selene, v1.66): Hesper's radar coverage, Enyo's rover readings and polar
+ice, Eos's plume chemistry, judged on data received (the link budget, Q51). **The race:** the capstones among these
+(LATE_GAME § "The arc after Selene": a lander on Hesper, a rover on Enyo, people on Enyo, a probe past Erebus, Eos's
+sample) are raced by rivals' programs (Q138), not by schedules.
+
+**Questions for Caio** (numbered, with defaults): (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and
+Hyperion, 8 the edge**; default); (2) every body gets the **flyby → orbit → landing** ladder before its signature
+problem (default) or only the signature missions; (3) pay by the **1.3× proven-rocket floor** (default, v1.53's rule);
+(4) Erebus **found by a survey** like Nyx (default).
+
+**Slices (⚙, M5, after the heliocentric rails):** Hesper's and Enyo's ladders with their flags and ladder runs → their
+science contracts → Astraea → Hyperion and its moons → Erebus.
+
 ## Plan: goods on routines, outposts' self-sufficiency and exports, capstones and records (2026-10-09, economy session, QUEUE Q110; nothing built)
 
 LATE_GAME § "The network", § "Outposts" and § "The arc after Selene" (approved), on what exists now: supply runs to
@@ -2308,6 +2338,15 @@ penalty from friends, no repeated nagging, and the site picker says it before yo
 by the site's planned downrange; (2) **tense neighbours only** (default) or any foreign land; (3) overflight rights as
 a paid decision **later** (default) or now. One ⚙ slice when answered (S): `R.over` in `missionTick`, the cost in
 `missionEnd`, the debrief line, a test.
+
+## v1.89.5 — base work: the station contracts for bases (2026-10-09, economy session, Q9's plan slice 3)
+
+The three station contracts of v1.89.3 (resupply, lab time, a module) now also come for **our bases**: the offer picker
+walks landed beacons too, and a base's state is read with `baseOf` (everything landed within 500 m of the beacon:
+the same fields as `stationOf`), through one accessor `stOf(q)`. A base's resupply is met by **landing** a module that
+carries supplies within 500 m (the brief says so; 4 km away doesn't count), its module contract by landing one there;
+lab-days are the beacon's (`crewTick` keeps them there). Supply runs (v1.69) are how a base is fed by dispatch once
+onboard computers arrive. Test `econ-18` (2 checks; bases ignored, mutation, fails).
 
 ## v1.89.4 — the first station as firsts (2026-10-09, economy session, QUEUE Q163; Q9 plan slice 2)
 

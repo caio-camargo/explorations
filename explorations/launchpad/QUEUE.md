@@ -59,7 +59,7 @@ the feedback I paste into PLAYTEST items.*
   second threshold.
 - **Flaky page loads in previews = the server, not your code** (effects, 2026-10-09): since the split the page loads ~30 scripts at once, and `python -m http.server` listens with a backlog of 5, so some scripts get `ERR_CONNECTION_REFUSED` and the rest cascade (`editorChanged is not defined`, `gl.getExtension is not a function`, `refView` returning `{}`). Workaround: serve with `ThreadingHTTPServer` and `request_queue_size = 128` (a 6-line script), and use `127.0.0.1`.
 - **`.gitattributes` landed** (effects, 2026-10-09, Q156): `*.md *.js *.mjs *.html` are stored and checked out as LF everywhere. Merge `main` as usual; a worktree that shows every file modified afterwards needs `git add --renormalize .` once (it shouldn't: no file on `main` had CRs).
-- **Version numbers:** latest on `main` is v1.89 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.89.5 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -140,7 +140,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ✓ v1.66 `812476b` (prices, gates at LAUNCH; six Selene science contracts) |
 | Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ✓ v1.69 `1c546dd` (supply runs: ascent procedure + landAt on the beacon; joins the base) |
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ✓ plan `ef69f28` (NOTES § "Plan: station, base, relay and rendezvous contracts"; 6 slices; W22 for Caio) |
-| Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
+| Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ✓ plan `1d24934` (NOTES § "Plan: missions per body…"; W item) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ✓ v1.89 `bd6bd30` (schools one source of truth; names by school and form; rivals announce/rumour/tone) |
 | Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
 | Q126 | **Replacement for upgrades**: service quality by the satellite's era (obsolescence); servicing contracts only for valuable assets; check TV's daily pay (v1.71: the capital sees it all day, tilt free) against it — MIDGAME.md § Satellites | M2 | M | ⚙ | ✓ v1.81 `417d96e` (earnings 1/(1+0.35·eras behind); service contracts by docking; TV pay checked) |
@@ -372,13 +372,14 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W25 | **Money buys capacity (Q123's plan)**, three questions with defaults: (1) each new unit of capacity costs **×1.6** the last (default) or ×1.3; (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** as capacity (default). Silence keeps the defaults | Q123's slices (M4) |
 | W26 | **Rivals as programs (Q138's plan)**, four questions with defaults: (1) programs replace the seeded schedules **from epoch 6 only** (default) or the whole race; (2) scarce places **held by building first** (default) or a claims lottery; (3) the world's mood eras **from tension and the date** (default) or a fixed sequence; (4) commercial rivals **undercut contract pay** (default) or race for firsts only. Silence keeps the defaults | Q138's slices (M4) |
 | W27 | **Goods on routines (Q110's plan)**, four questions with defaults: (1) routines as **repeating dispatches with a period and a window** (default) or ordered each time; (2) goods **as physical cargo, measured** (default) or abstract tonnage; (3) self-sufficiency as **the lowest share** (default) or an average; (4) depots **sell to rivals from the start** (default) or only in the commercial era. Silence keeps the defaults | Q110's slices (M3–M4) |
+| W28 | **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - space — Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it, today's behaviour as tests — NOTES § "Plan: data as a volume and the link budget"
 - space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
 - space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
 - space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
-- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts"
+- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts" **✓ v1.89.5 `847cd92` (economy, taken from Proposed)**
 - economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
 - economy — Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the debrief line, a test — NOTES § "Plan: overflight politics"
 - economy — crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) — NOTES § "Plan: the roster…" (M3)

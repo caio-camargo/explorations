@@ -98,16 +98,16 @@ const CT={
   // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
   // judged between flights on the station's state since the contract was taken (c.base from baseOf), like Selene science
   stResupply:{src:['gov','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.crew>0&&s.days<ST_LOW),gen:R=>{const x=stPick(s=>s.crew>0&&s.days<ST_LOW);if(!x)return null;
-      const kg=Math.max(100,Math.round(x.s.crew*SUP_DAY*1000*60/50)*50);return{st:x.q.id,name:x.q.name,kg,pay:(30+0.12*kg)*(x.s.days<15?1.5:1)*1.6,dur:Math.max(5,Math.floor(x.s.days)),days:Math.floor(x.s.days)}},
-    title:p=>`Resupply ${p.name}`,brief:p=>`Deliver ${p.kg} kg of supplies to ${p.name} (dock a module that carries them) before its ${p.days} days run out.`,why:p=>`${p.name} has ${p.days} days of supplies left`,
+      const kg=Math.max(100,Math.round(x.s.crew*SUP_DAY*1000*60/50)*50);return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kg,pay:(30+0.12*kg)*(x.s.days<15?1.5:1)*1.6,dur:Math.max(5,Math.floor(x.s.days)),days:Math.floor(x.s.days)}},
+    title:p=>`Resupply ${p.name}`,brief:p=>`Deliver ${p.kg} kg of supplies to ${p.name} (${p.base?'land a module that carries them within 500 m of its beacon':'dock a module that carries them'}) before its ${p.days} days run out.`,why:p=>`${p.name} has ${p.days} days of supplies left`,
     baseOf:p=>({sup:stState(p.st,'sup')}),ok:()=>false,done:c=>stState(c.p.st,'sup')-c.base.sup>=c.p.kg/1000-1e-9},
   stLab:{src:['sci','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.labs>0&&s.crew>0),gen:R=>{const x=stPick(s=>s.labs>0&&s.crew>0);if(!x)return null;const n=10+(R()*4|0)*10;
       return{st:x.q.id,name:x.q.name,n,pay:4*n*1.6,dur:60+3*n}},
     title:p=>`${p.n} lab-days on ${p.name}`,brief:p=>`${p.n} days of crewed lab work on ${p.name} (two people per lab at most), with supplies to keep them working.`,why:p=>`${p.name} has a lab and a crew`,
     baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
   stExpand:{src:['com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
-      return{st:x.q.id,name:x.q.name,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
-    title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
+      return{st:x.q.id,name:x.q.name,base:!!x.q.beacon,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
+    title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>p.base?`Land a ${p.kind==='lab'?'laboratory':'habitat'} module at ${p.name}, within 500 m of its beacon, for a client who'll use it.`:`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
     baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
@@ -190,10 +190,12 @@ function serviceTarget(){const on=new Set([...(PROG.offers||[]),...(PROG.active|
   return satsUp().find(q=>!q.junk&&!on.has(q.id)&&compEra()>satEra(q)&&(q.tvOn||q.cam&&(q.contact||0)>=0.3))||null}
 // stations for station work (Q162): our registered stations with their state; ST_LOW days of supplies make a resupply job
 const ST_LOW=40;
-function stPick(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=stationOf(q);if(s&&f(s))return{q,s}}return null}
+// bases too (Q9 slice 3): a landed beacon and everything within BASE_R, read with baseOf (same fields as stationOf)
+const stOf=q=>q.beacon&&q.landed?baseOf(q):stationOf(q);
+function stPick(f){const L=typeof satsUp==='function'?[...satsUp(),...landedUp().filter(q=>q.beacon)]:[];for(const q of L){if(q.junk||q.docked)continue;const s=stOf(q);if(s&&f(s))return{q,s}}return null}
 // a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
-function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stationOf(q);if(k==='sup')return s?s.sup:0;
-  const E=[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
+function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stOf(q);if(k==='sup')return s?s.sup:0;
+  const E=q.beacon&&q.landed&&s?s.bodies:[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;

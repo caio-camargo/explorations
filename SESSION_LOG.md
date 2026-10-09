@@ -4595,3 +4595,36 @@ PARKED: Q19, parked at "fix built and checked for correctness; interleaved load/
 ### Next steps
 - [ ] Caio: when memory allows, ask and the A/B runs (four page loads, ~8 min); merge if the branch loads faster and isn't slower at the pad
 - [ ] Platform / orchestrator: the 88 s first load (QUEUE *Proposed*)
+
+## 2026-10-09 — Launchpad economy, unattended run: v1.74.1 → v1.89.5, eight plans (economy session)
+
+### Summary
+Caio left the session running ("keep going while you still have work"). Built, each tested, mutation-checked, merged:
+- **v1.74.1** (Q122, PLAYTEST #33): no sponsor cover for a flight that reached orbit; "1 day passing".
+- **v1.77** (Q93, Q118): pay floors (1.3× a preset's net cost) and *Withdraw* a contract; the first hour re-measured:
+  every start reaches orbit in 4–6 flights. Runner fixes (affordable work only; site on its what-if record).
+- **Runner only:** Q130 (rovers: +90M over 4 years on average; prices stand), Q144 (real Beeper/Passenger Orbiter
+  presets: 4 flights to orbit everywhere), Q150 (a poor-world company lacks recurring income; stakes fix it).
+- **v1.77.1** (Q95): dispatches launch from their procedure's site and pay its lease.
+- **v1.81** (Q126): obsolescence by computing era; servicing contracts by docking.
+- **v1.81.1** (W11 built, Q113, PLAYTEST #29): a mission counts only on a flight launched while it was open.
+- **v1.89** (Q103): powers as content: schools (one source of truth with the look lane), names by school and archetype,
+  rivals' news by archetype. **v1.89.2** (Q165): frugal powers partner, rising ones copy then catch up; our own voice.
+- **v1.89.1** (Q154): `netModel()` for the network screen. **v1.89.3–.5** (Q162, Q163, Q9 slice 3): station work,
+  the first-station firsts, base work.
+- **Plans (NOTES, nothing built), questions as W items with defaults:** Q9 station contracts (W22), Q96 overflight
+  (W23), the roster/requalification/roles/rotation (Q133, Q135–Q137, W24), Q123 capacity (W25), Q138 rivals (W26),
+  Q110 goods on routines (W27), Q88 missions per body (W28).
+- **Coordination:** line endings flipped CRLF/LF on main (whole-file conflicts): notice in ACTIVE_WORK, platform
+  proposal (`.gitattributes`), LESSONS #40. My slips: #39's truncation bug recurred (caught, reset, re-merged);
+  mid-line `//` comments twice; claims overwritten by queue refreshes (re-marked).
+
+### Files
+- `explorations/launchpad/sim/{program,contracts,rovers,space,debrief,procedures}.js`, `app/{program-ui,editor,gl}.js`,
+  `career.mjs`, `test.mjs` (econ-1…econ-18), `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `HANDOFF-economy.md`,
+  `QUEUE.md`, `ACTIVE_WORK.md`, `LESSONS_LEARNED.md`
+
+### Next steps
+- [ ] Caio: W22–W28 (defaults stand if silent); TESTING rows 128–171 (economy's)
+- [ ] Economy: Proposed slices (crew slice 1–2, Q9 slice 4, Q96's slice, Q110 slice 1) once ranked
+
