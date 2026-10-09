@@ -1,11 +1,13 @@
 // study_ground.mjs — measures a body's ground recipe headless (world session, GROUND.md G2/G7): bake time and sample
 // cost, continuity across the crater cells' cube-face seams, crater counts against the target, relief, slopes by unit,
 // flat ground for landers, and (Selene) the ground that never sees the sun.
-//   node study_ground.mjs [selene|enyo|hesper|astraea] [quick]      (selene by default; quick skips the polar darkness scan)
+//   node study_ground.mjs [selene|enyo|hesper|astraea|theia|eos|tethys|phoebe] [quick]      (selene by default; quick skips the polar darkness scan)
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
+const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,THEIA_GROUND,theiaMap,theiaH,THEIA_UNITS,EOS_GROUND,eosMap,eosH,EOS_UNITS,EO,TETHYS_GROUND,tethysMap,tethysH,TETHYS_UNITS,TT,PHOEBE_GROUND,phoebeMap,phoebeH,PH,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
 const { norm, dot, cross, add, mul } = G, D2R = Math.PI / 180, args = process.argv.slice(2), quick = args.includes('quick');
+const stub = (name, ground, map, h, c, salt, units, nb) => { const S = G.GROUND_STUBS[name], b = { name, R: S.R, mu: S.g * S.R * S.R, ground }; const m = map();
+  return { b, m, h, c, salt, nb, unit: ground.unit, units, dark: false }; };
 const BODY = {
   selene: () => { const b = G.SELENE; b.ground = G.SELENE_GROUND; const m = G.seleneMap();
     return { b, m, h: G.seleneH, c: G.GR_C, salt: 0, unit: u => G.geoAt(b, u).unit, units: ['mare', 'high'], young: 'mare', dark: true }; },
@@ -15,6 +17,10 @@ const BODY = {
     return { b, m, h: G.hesperH, c: G.HE.c, salt: G.HE.salt, nb: G.HE.bands, unit: G.HESPER_GROUND.unit, units: G.HESPER_UNITS, dark: false }; },
   astraea: () => { const S = G.GROUND_STUBS.Astraea, b = { name: S.name, R: S.R, mu: S.g * S.R * S.R, ground: G.ASTRAEA_GROUND }; const m = G.astraeaMap();
     return { b, m, h: G.astraeaH, c: G.AS.c, salt: G.AS.salt, unit: G.ASTRAEA_GROUND.unit, units: G.ASTRAEA_UNITS, dark: false }; },
+  theia: () => stub('Theia', G.THEIA_GROUND, G.theiaMap, G.theiaH, 0, 0, G.THEIA_UNITS, 0),
+  eos: () => stub('Eos', G.EOS_GROUND, G.eosMap, G.eosH, G.EO.c, G.EO.salt, G.EOS_UNITS),
+  tethys: () => stub('Tethys', G.TETHYS_GROUND, G.tethysMap, G.tethysH, G.TT.c, G.TT.salt, G.TETHYS_UNITS),
+  phoebe: () => stub('Phoebe', G.PHOEBE_GROUND, G.phoebeMap, G.phoebeH, G.PH.c, G.PH.salt, ['regolith']),
 }[args.find(a => a !== 'quick') || 'selene'];
 let t0 = performance.now(); const X = BODY(), tBake = performance.now() - t0, { b: B, m: M } = X, R = B.R;
 const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(p * a.length))], f1 = x => x.toFixed(1), f0 = x => x.toFixed(0);
@@ -54,7 +60,7 @@ G.grBands(R, X.c).slice(0, X.nb || 6).forEach((b, bi) => { const n = b.n, frac =
     const D = 1 / Math.sqrt(1 / b.Dlo ** 2 - G.ih3(key, zz, s0 + 3) * (1 / b.Dlo ** 2 - 1 / b.Dhi ** 2)) / 1000;
     for (const d of bins) if (D >= d) cnt[d] += 1 / frac;
     if (D >= 1) per[X.unit(cu)] += 1 / frac; } });
-console.log('craters N(>D) per km², measured / target c·D⁻² (c ' + X.c + ', after thinning: young plains, ice): ' + bins.map(d => `>${d} km ${(cnt[d] / area).toExponential(2)} / ${(X.c / d / d).toExponential(2)}`).join(' · '));
+if (X.c) console.log('craters N(>D) per km², measured / target c·D⁻² (c ' + X.c + ', after thinning: young plains, ice): ' + bins.map(d => `>${d} km ${(cnt[d] / area).toExponential(2)} / ${(X.c / d / d).toExponential(2)}`).join(' · '));
 console.log('craters ≥ 1 km per 1,000 km²: ' + X.units.map(k => { const sh = un.filter(x => x === k).length / U.length; return `${k} ${sh ? f1(per[k] / (area * sh) * 1e3) : '—'}`; }).join(' · '));
 
 // 5. slopes by unit, as the lander sees them (terrainSlope: ±15 m), and flat ground; the surface each unit lands as
