@@ -219,7 +219,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
-| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | → world 2026-10-09 (resumed; measurements in NOTES § "Q19 in progress") |
+| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): fix built on branch `terrain` (`3a9cda2`: the terrain march in its own G-buffer pass; pixel-identical to main), **timing A/B not yet run** (stopped twice: machine out of memory); NOTES § "Q19, round 2" |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | shader part ✓ `5ac7ce0` (wind-scoured ranges, `ICE_VARY`); the coast, the pad terrace (heightfield, shared with `terrainH`) and the salt-flat/wetland masks stay with world |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
@@ -365,4 +365,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- platform / world — **first load takes 86–88 s** on Windows (ANGLE/D3D11, no shader cache): the sky shader's link is 71 s of it. World's Q19 branch (`terrain` `3a9cda2`) takes the march out of the sky shader, which should cut it to ~20–40 s; then the rest of the sky shader. Players' first visit, and Caio after every update — NOTES § "Q19, round 2"
 - flow — `netModel()` is in (v1.89.1): delete `netFallback` in `app/network.js`; N2's nodes (`M.nodes`: kind, body, slot, stock, need, days, paused) and `M.bottleneck` are ready to draw — NOTES § "netModel() built"

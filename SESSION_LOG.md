@@ -4570,3 +4570,28 @@ smoke + own sections (and the full suite after core changes: 563 pass at the sch
 ### Next steps
 - [ ] Space: Q49 slice 2 (in progress); the dispatched payload as a cruise entry
 - [ ] Design: D8 thin air in flight; vehicle: Q164 unblocks Q27
+
+## 2026-10-09 — Launchpad Q19 round 2: the cost is the march inside the sky shader; a fix built, not timed (world session)
+
+### Summary
+Resumed Q19 after Caio freed memory. Single-variant A/Bs (one browser session each; a sky-shader recompile takes
+36–99 s here) ruled out every part of the march on its own: the best saving was 1.75 ms of 57. The cost is the march
+being **inlined into the sky shader's main**. Compiled in but never run, it still costs ~10 ms; removing it saves 29.
+The same thing makes **first load take 86–88 s**: the sky shader's link is 71 s of that, while the depth pre-pass, with
+the same march, links in 2.6 s.
+
+Built on branch `terrain` (`3a9cda2`): a full-resolution terrain G-buffer pass (`PTERR`: hit, height, normal) that the
+sky shader reads instead of marching. Pixel-identical to `main` at five views. The first version shared texture unit 4
+with bloom's composite and left a glow in the dusk sky; it's on unit 9 now. **Not merged:** the timing A/B against `main`
+was stopped by the system (memory critically low, other sessions), and per its instruction it was not restarted.
+
+PARKED: Q19, parked at "fix built and checked for correctness; interleaved load/frame-time A/B against main still to run"
+(NOTES § "Q19, round 2" has the recipe).
+
+### Files
+- branch `terrain` (not on main): `app/gl.js`, `app/render.js`
+- `explorations/launchpad/NOTES.md` § "Q19, round 2", `QUEUE.md` (Q19 state; a load-time line under *Proposed*), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: when memory allows, ask and the A/B runs (four page loads, ~8 min); merge if the branch loads faster and isn't slower at the pad
+- [ ] Platform / orchestrator: the 88 s first load (QUEUE *Proposed*)
