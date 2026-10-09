@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (flow session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: for Caio to pick
+**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (flow session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -20,5 +20,20 @@ hardware's look, NOTES § "Part visuals"); "later era" shows how the same direct
 **Mixes are possible** and maybe best: e.g. (a) for Program, Debrief and the logbook (the office) with (b) for the flight
 HUD and map (the cockpit), with a shared palette. Fonts: the game uses system fonts only today; the chosen direction
 either bundles its font files (a few hundred KB, no build step needed) or falls back to the system face named after it.
+
+**Pick:** _(Caio)_
+
+## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
+
+Open `crew/index.html` (bar at the top: style, shot) or the stills in `output/launchpad/mockups/crew/`
+(`<style>-<shot>.png`, 1280×800). One scene: the capsule's open hatch on the pad walkway, the same pose (a wave), a wide
+shot and a helmet close-up. Built from simple shapes in a raymarcher, so these show **proportion, materials and
+shading**, not finished faces: "realistic" would get a modelled head in the game.
+
+| Option | What it is | Fits | Costs |
+|---|---|---|---|
+| **(a) Cartoony** | Kerbal-like: a big head in a fishbowl helmet, stubby limbs, bright white-and-orange suit, big eyes | Charm and comedy; no uncanny valley; cheap to animate; a loss stings less | Clashes with the early-era hardware's realism unless the screens' identity bends too; a crew loss reads as slapstick |
+| **(b) Realistic** | Human proportions, a silvered Mercury pressure suit, a shell helmet with a faceplate | Matches the hardware; a crew loss weighs what it did in 1967 | Costly to make convincing; up close it risks the uncanny valley (these stand-in faces show the risk) |
+| **(c) Stylised human** | 1960s illustration / puppet-show: human proportions with simple forms, a square jaw, flat colour bands and ink outlines, a white suit with red trim | Fits the era's look and a lighter tone; faces stay readable small; the likely middle (ROADMAP § Design catalogs) | Flat shading has to match the game's lit 3D (an outline pass, or toon shading only on crew) |
 
 **Pick:** _(Caio)_
