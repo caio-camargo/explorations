@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.20 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.21 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -117,9 +117,9 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
-| Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ready (space's sim half ✓ `55d8115`) |
+| Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ready (sim half ✓ v1.94: discs and labels at `fromTellus(name, T)`, and Helios; colours from `SYSTEM_BODIES`) |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
-| Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ready (Q57 ✓) |
+| Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ready (Q103 ✓ v1.89; restyle with Q53 later) |
 | Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | plan ✓ (NOTES § UI "Network screen plan"); N1 buildable now, N3 waits on routines (W16) |
@@ -211,7 +211,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ✓ `c364972` (a dispatched flight's payload stays up) |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | plan ✓ (NOTES § "Plan: data as a volume and the link budget"); slices are Q171–Q174 |
 | Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ✓ `96d98dc` (v1.96: rate and light delay on every link; whip over the pad 333 kbit/s, at Selene 20.5 bit/s) |
-| Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | after Q171 |
+| Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | ready (Q171 ✓ v1.96) |
 | Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | after Q172 and Q164 |
 | Q174 | Q51 slice 4: solar conjunction and light delay at the planets | M5 | S | ⚙ | after Q87's slices; blocked: milestone gate (M5) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | plan ✓ (NOTES § "Plan: the system on rails"); slice 1 → space (sim ✓ `55d8115`, `sim/system.js`), its map drawing is flow's Q175; slices 2–4 are Q176–Q178 (M5) |
@@ -224,7 +224,9 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q142 | A proper deadband controller on the full physics, to check v1.71's hold cost (a crude one pumped the eccentricity) | M2 | S | ⚙ | ✓ (study, `study_slot.mjs` part D, NOTES § "station-keeping checked against a real controller": 46–67 m/s a year vs the model's 89; no change) |
 | Q139 | 📝 At M5: add **Helios's tide** to the Tellus system (Tellus–Helios L1/L2) with 6b's machinery; Selene's L4/L5 already hold (`study_lagrange.mjs`) | M5 | S | 📝 | ✓ plan (NOTES § "Plan: Helios's tide on the Tellus system": per-orbit like the moons' children, above ~2,500 km; the moons stay on rails; with Q87 slice 2) |
 | Q140 | 📝 **Asteroid capture and mining** (with economy): epoch 7 capture with solar-electric tugs, 8–9 mining in place, type → yield, deflection as a pressure — LATE_GAME.md § Asteroids | M5 | M | 📝 | ✓ plan (NOTES § "Plan: asteroid capture and mining, the space side": seven steps on LATE_GAME's design; needs Q87 slice 2 and a low-thrust stepper shared with Q109) |
-| Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | ✓ plan (NOTES § "Plan: the automation ladder": `autoAllowed(kind)` with the ladder as one table; window rules; contact gating; crewed routines first); slices under *Proposed* |
+| Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | plan ✓; slice 1 ✓ `1522cb0` (v1.95: `autoAllowed`, the ladder as one table); slices 2–3 are Q185, Q186 |
+| Q185 | Q127 slice 2 (with economy): window rules recorded with procedures; `nextWindow(rule, T)`; routines launch at their next window | M2 | M | ⚙ | ready |
+| Q186 | Q127 slice 3: contact gates automation (a routine burns only in contact or within its computer's tier) | M2 | S | ⚙ | ready (Q171 ✓) |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ✓ study (`study_cycler.mjs`, NOTES § "Q108: a Tellus–Enyo cycler": ballistic with Tellus flybys under ~800 km on our scale; taxis 1,702 / 2,022 m/s) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
@@ -388,7 +390,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W28 | **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- flow — Q87 slice 1, the drawing: the planets on the map's zoomed-out view from epoch 1, discs and labels at `fromTellus(name, T)` (and Helios), colours from `SYSTEM_BODIES` (PLAYTEST #11); the sim half is in (v1.94, `sim/system.js`) — space
-- ~~space + economy — Q127 slice 1: `autoAllowed` and the ladder table~~ ✓ `1522cb0` (v1.95; supply runs and mission control ask it; dispatch quotes don't need to: an ascent is always allowed)
-- economy + planning + space — Q127 slice 2: window rules recorded with procedures; `nextWindow(rule, T)`; routines launch at their next window — same plan
-- space — Q127 slice 3: contact gates automation (after Q51 slice 1) — same plan
