@@ -4475,3 +4475,46 @@ landing). Built and committed on branch `builder`; `test.mjs` section `vehicle-1
 on memory, and per policy not restarted. Parked at: run `node test.mjs` in `launchpad-builder` (the new preset meets the
 every-preset checks, e.g. the gantry clearance), then merge into main with `-X ignore-space-at-eol`, NOTES/TESTING
 numbers at merge time, mark Q152 ✓.
+
+## 2026-10-09 — Launchpad look & sound, effects beat: closing (unattended overnight run)
+
+### Summary
+Effects beat, then the overflow the orchestrator listed, then the idle lanes' ready items. All on `main`, each through
+smoke + own sections (and the full suite after core changes: 563 pass at the schools merge).
+- **Effects:** Q20 plasma shell gated on airspeed; Q63 plasma lights the hull (+ shield-first views); Q64 side boosters'
+  own vapor collars; Q65 cloud-volume shadows and a less uniform deck (+0.3–0.75 ms); Q64's cost measured (≤ 0.3 ms).
+- **Parts & pad (overflow):** Q23 gimbal and steerable fins drawn (`setMoves` in `MESH_VS`, plumes follow); Q97 legs,
+  solar wing, body cells, battery, computer; Q24 bay doors with an inside, char heat-tints dark shingles.
+- **Sky & bodies:** Q21 a galaxy per program (`PROG.gseed`); Q116 fill light from the ground on airless bodies (PLAYTEST #32).
+- **Sound:** Q66 per-engine voices (St·U/D); Q67 plasma by the heating model, other vessels and debris heard and panned;
+  Q35 the volume slider.
+- **Mock-ups for Caio (W18–W20):** Q72 crew styles, Q71 the bodies, Q89 Cape and Steppe schools (`mockups/`).
+- **Q102 hardware schools, steps 1–5:** a school per part (maker's), the school and the maker's hue ride in the vertex kind,
+  Steppe paint, interstage covers (Cape skirt / Steppe lattice: a visible change to Cape), roundels; 6–7 proposed.
+- **Reference views swept** (74 views): the Debrief panel covered close-ups; `bare()` hides it.
+- **Overflow from idle lanes:** QA Q143, Q129 (PLAYROUTE 0.1.4), Q132; world Q52 shader part (wind-scoured ranges);
+  platform Q156 (`.gitattributes`, LF) and Q57 (save versions).
+
+### Flags
+- **`main` had a crashing check for ~10 min** (`aa3ff1f` → `90f0013`): my `aerofx-3` threw after a rename, which ends its
+  shard early. A full or sharded run in that window under-reported; rerun it.
+- **Mistake:** at 22:54 I overwrote and then deleted the flow session's fresh `.game-busy` lock (~50 s overlap); restored it.
+- **Missed for a while:** the orchestrator's re-ordering (mock-ups before Q24/Q66/Q67). I re-read the flags after that.
+- **Previews are flaky with `python -m http.server`** (backlog 5 vs ~30 scripts): QUEUE flag + a platform proposal.
+
+### How I worked (for the next unattended session)
+- `gpulock.sh take|release`: takes `.game-busy` only if absent or older than 20 min, releases only its own.
+- `ship.sh "msg"`: commit, merge `origin/main`, run `--smoke` and the session's sections, push only if all pass; retry races.
+- A threaded static server with `request_queue_size = 128` on 127.0.0.1 for previews.
+
+### Files
+- `explorations/launchpad/`: `app/gl.js`, `app/render.js`, `app/sound.js`, `app/state.js`, `app/editor.js` (one field),
+  `app/settings.js` (one call), `views.js` (46–47, 54–56, 105–115), `test.mjs` (aerofx-1..3, platform-2), `NOTES.md`,
+  `TESTING.md`, `PLAYTEST.md`, `PLAYROUTE.md`, `mockups/` (crew, bodies, schools, README)
+- `.gitattributes`, `QUEUE.md`, `ACTIVE_WORK.md`, `INDEX.md`, `LESSONS_LEARNED.md` #43–#46
+
+### Next steps
+- [ ] Caio: W18 crew style, W19 bodies, W20 schools (defaults if silent are in QUEUE)
+- [ ] look & sound: Q102 steps 6–7 (Proposed; step 7 with flow and visuals); the bodies Q80–Q85 after Caio's pick
+- [ ] world: the coast, the pad terrace, the salt-flat/wetland masks (Q52's remaining parts)
+- [ ] QA: Q120 (row 65 crew rotation driver); a robot pass over views 4–9/15–17 now that the Debrief panel is hidden
