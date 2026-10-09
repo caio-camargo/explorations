@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1478,6 +1478,27 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## Rovers in the career runner: v1.66's prices measured (2026-10-09, economy session, QUEUE Q130; runner only)
+
+`career.mjs` now flies to Selene. The Selene firsts (*The far side*, *Impactor*, *Soft landing*) are abstract Probe
+flights (p = 0.8; `fly_ladder.mjs` shows the Probe can fly them), and with `ROVERS=1` a **science rover** (medium
+chassis, wire-mesh wheels, battery, camera, antenna, spectrometer, seismometers: v1.66 price 34M plus the deck) goes
+on a Probe once the soft landing is done and there's 60M to spare (two tries at most). While it lives (`RV_LIFE` =
+400 days, an assumption: D5 may change how rovers end) it sends a spectrometer reading every 3 days (a tenth from the
+dark plains, 15 % from the far side) and a panorama each Selene day, through the game's own `sciGot`; its four
+seismometers are set out on the near side and **the game's own seismic code** locates quakes and bounds the core. The
+runner accepts Selene science contracts while the rover lives; `selTick` judges them. `SELENE=1` prints the summary.
+
+**Measured** (4 years, 2 seeds, `SELENE=1 ROVERS=0/1`): the rover program costs 100–280M (the Probe and rover; a
+failed landing doubles it) and its contracts pay **200–570M** over its life (5–10 contracts). Final funds against the
+same worlds without rovers: **+90M on average**, from +835M (open-superpower consortium) to −140M (frugal and resource
+agencies, whose soft landing comes in year 3 and can't absorb a lost rover). **Verdict:** v1.66's prices and the
+Selene contracts' pay stand: a rover is a sound investment for a program that can afford it, not a lifeline. Noise
+is large at 2 seeds (±400M, as the handoff warns).
+
+**Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
+rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
 
 ## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
 
