@@ -4751,6 +4751,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${nums.length} rows, highest ${Math.max(...nums)}, next free ${next}; doubled: ${dup.join(', ') || 'none'} (renumber the newer row, fix its references)`);
 }
 
+// qa-4. Debris by hand (QA session, QUEUE Q161): the tester's breakup, ASAT test and clutter put fragments and dead stages
+// where they say; below the air nothing happens. Own SIM copy.
+{
+  const D = new Function(src + 'return {TEST,testBreakup,testAsat,testClutter,fragBands,fragsOf,BAND_W,PROG,TELLUS,POWERS,HOOK,elements,satsUp};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG; Object.assign(P, { day: 0, frag: null }); delete P.sats; delete P.satN; D.TEST.on = true;   // a fresh program has neither
+  const tot = () => D.fragBands().reduce((a, b) => a + b, 0), b400 = Math.floor((400e3 - D.TELLUS.atm) / D.BAND_W);
+  const n1 = D.testBreakup(400, 1), t1 = tot(), peak = D.fragBands().indexOf(Math.max(...D.fragBands())), none = D.testBreakup(60, 1) + D.testAsat(50) + D.testClutter(10, 80);
+  const n2 = D.testAsat(800), t2 = tot();
+  check('tester debris: a 1 t breakup at 400 km adds NASA\'s 46,774 fragments, thickest in the 400 km band; an ASAT test names a foreign power; below the air nothing',
+    Math.abs(n1 - D.fragsOf(1000)) < 1 && Math.abs(t1 - n1) < n1 * 0.02 && Math.abs(peak - b400) <= 1 && none === 0 && t2 > t1 && news.some(m => /tests an anti-satellite weapon at 800 km/.test(m)) && !news.some(m => /Tester: a 1 t breakup at 60/.test(m)),
+    `${Math.round(n1)} fragments (in the bands ${Math.round(t1)}), peak band ${peak} (400 km is ${b400}); ASAT ${Math.round(n2)}; news: ${news.find(m => /anti-satellite/.test(m)) || 'none'}`);
+  const k = D.testClutter(50, 800), J = P.sats.filter(q => q.junk), hs = J.map(q => { const el = D.elements(q.r, q.v, D.TELLUS.mu); return (el.a - D.TELLUS.R) / 1e3; });
+  check('tester debris: clutter adds dead 2 t stages near the height, on many planes', k === 50 && J.length === 50 && J.every(q => q.mass === 2000) && Math.min(...hs) > 770 && Math.max(...hs) < 830 && new Set(J.map(q => Math.round(Math.acos(q.r[1] / Math.hypot(...q.r)) * 10))).size > 20,
+    `${k} added, heights ${Math.min(...hs).toFixed(0)}–${Math.max(...hs).toFixed(0)} km`);
+  D.TEST.on = false;
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

@@ -71,6 +71,17 @@ function testFunds(m){m=+m;if(!isFinite(m))return false;TEST.money=false;PROG.fu
 function testEra(j){const cap=PROG.day+60*YEAR_D;while(compEra()<j&&PROG.day<cap)testAdvance(1);return compEra()>=j}
 // one mission done or not, flagged test:true like the epoch picker's
 function testMission(id,on){if(!MISSIONS.some(M=>M.id===id))return false;if(on){if(!PROG.done[id])PROG.done[id]={flight:PROG.flights,day:PROG.day,test:true}}else delete PROG.done[id];return true}
+// QUEUE Q161: debris by hand (v1.83's bands). A breakup or an ASAT test at a chosen height puts fragments in the bands
+// (breakup/asatTest, sim/space.js); clutter adds n dead 2 t stages near that height on random planes, the population a
+// cascade needs. Heights below the air are refused (it would take them at once).
+function testBreakup(km,t){const h=+km*1e3,m=+t*1e3;if(!(h>TELLUS.atm)||!(m>0))return 0;const n=breakup(h,m);
+  HOOK.news(`Tester: a ${+t} t breakup at ${+km} km: about ${Math.round(n).toLocaleString('en')} fragments of 1 cm and more`,'warn');return n}
+function testAsat(km){const h=+km*1e3;if(!(h>TELLUS.atm))return 0;const P=POWERS.find((p,i)=>i!==HOME)||POWERS[0];return asatTest(P.name,h)}
+function testClutter(n,km){const h=+km*1e3;n=Math.round(+n);if(!(h>TELLUS.atm)||!(n>0))return 0;const s=newShip(['t8','kestrel']),sh=shapeOf(s.parts.filter(p=>p.on),false),L=[];
+  let x=((PROG.satN||0)*7919+n)%2147483646+1;const rnd=()=>((x=(x*16807)%2147483647)/2147483647),unit=()=>{const z=2*rnd()-1,a=6.2832*rnd(),c=Math.sqrt(1-z*z);return[c*Math.cos(a),z,c*Math.sin(a)]};
+  for(let k=0;k<n;k++){const R=TELLUS.R+h+(rnd()-.5)*50e3,u=unit(),vd=norm(cross(u,unit()));
+    L.push({rec:null,body:TELLUS,r:mul(u,R),v:mul(vd,Math.sqrt(TELLUS.mu/R)),t:0,q:[0,0,0,1],shape:sh,cm:s.cm.slice(),mass:2000,name:'Kestrel stage'})}
+  return junkAdd(L,PROG.day*DAY_S)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)
