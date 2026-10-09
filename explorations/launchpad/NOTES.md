@@ -8464,3 +8464,45 @@ but not docking) sits between two generations, so gating has to become per mode.
 - in the onboard-computer era a crewed capsule flies the computer's loop.
 
 **Sizes:** per-mode gating plus the pilot loop is S (vehicle), after the roster; the landing hold is M (control).
+
+## v1.83 — maneuver node chains, nodes past an SOI change, the finite-burn lead (2026-10-09, vehicle session, QUEUE Q33)
+
+**Chains.** `s.node` is still the node being flown, so everything that read it before still works. `s.nodeQ` holds the
+nodes after it, in time order. When a burn completes (`nodeBurn`), `nodeNext` puts the next one up ("Maneuver complete
+— throttle cut; next node is up").
+- `nodePlan(s)` chains them: coast along the patched-conic legs (`predictFrom`) to each node, add its Δv in that node's
+  own frame, carry on from there.
+- `nodePlanEnd` is where the last node leaves the craft. The map's dashed plan starts there (one call in `render.js`).
+- **Keyboard:** **N** with a node already placed adds the next one at the next apoapsis of the trajectory after the last
+  node. If that trajectory meets a moon (or escapes), it goes at the next leg's periapsis: the capture point
+  (`nodeAddNext`).
+- **The node panel:** "◀ node k of n ▶" picks which node the Δv and time buttons edit. A queued node's time is kept
+  between its neighbours, and the summary says how many nodes follow. The map's drag handles still act on the active
+  node.
+
+**Past an SOI change.** Each node carries the body whose leg it sits on (`b`, set by the plan). `nodeInfo` reads a node
+on another body's leg from the predicted legs (`legState`).
+- **The SOI switch** used to clear the node. Now it drops only the nodes placed on the old body's leg (untagged, or
+  tagged with it and already past). It keeps those for the new body and for later legs, a return to the old body
+  included, and puts the next one up.
+- **Measured:** test 4's transfer turned 12° (a 240 km flyby, not an impact), +1,321 m/s now. N puts node 2 at Selene's
+  periapsis, 14.4 h later; a −312 m/s burn there plans a capture (e 0.21).
+
+**The finite burn.** The craft gets lighter as it burns and accelerates harder at the end, so the first half of the Δv
+takes **more** than half the burn time. `nodeLead(s, dv)` is the time to deliver half the Δv at full throttle. The panel's
+"start burn in" and **Warp to burn** use it (both used half the burn time before).
+- **Measured** (pod + 2 t tank + Wren, a 157 m/s raise): the burn takes 25 s, the lead is 12.9 s against a naive 12.7.
+- **Flown:** a two-node Hohmann raise from low orbit to 400 km, each burn started by the lead, ended at
+  399.8 × 399.9 km against a planned 400.0 × 400.0.
+
+**Tapes:** the controls record the queued nodes with the active one (`q` in the node's JSON), so an autopilot replays
+a chain. Old tapes have none.
+
+**Checked:** `test.mjs` section `vehicle-9` (the Selene capture plan and the SOI switch; the flown two-node raise
+against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes; in the page, two nodes from N read
+"◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
+
+**Not yet:**
+- markers and drag handles for queued nodes on the map (flow / the map's owner);
+- a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
+  the capture case).

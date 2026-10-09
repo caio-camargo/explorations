@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.33 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.34 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -148,6 +148,7 @@ NOTES § "The robot playtester".
 
 | # | Try this | How to get there | Looks right if | From | Owner |
 |---|---|---|---|---|---|
+| 165 | Plan a chain of nodes | In orbit: N for a node, set its Δv; N again for the next (at the next apoapsis, or at a moon's periapsis after a transfer); ◀ ▶ in the node panel to edit each; fly them (SAS → node, start when it says) | The dashed plan follows the whole chain; after each burn the next node comes up; a capture node planned before the encounter survives entering the moon's SOI; the burns land where the plan said | v1.83 | vehicle |
 | 50 | Plan and fly a Selene transfer with a maneuver node | Orbit; M map; click orbit or N; drag handles / ± panel; Warp to burn; SAS Maneuver (needs the guidance computer: tester *All tools*, or a world date past year 7) | Handles feel controllable (drag rate not twitchy); warp lands before the burn; you arrive at Selene without trial-and-error | v1.4 | core |
 | ✓ 51 (robot) | Hit each tool gate before it unlocks | Fresh career: try N in orbit, look at impact row and Selene path | Refusal messages say what to do; logbook "→ will unlock" makes the path obvious · *Robot: N in orbit: "No maneuver planning yet: it needs δv to low orbit in the logbook"; impact row "no trajectory data yet"; logbook shows the "→ will unlock" lines.* | Logbook | planning |
 | ✓ 52 (robot) | Watch the map and logbook change look by era | Fresh career (notebook), then after first orbit (terminal); "modern look" checkbox | Notebook and terminal styles are charming and still legible; switching is noticed · *Robot: notebook at the start, terminal after epoch 3, "modern look" checkbox works; the modern panel is see-through over the Program, a little busy.* | Logbook | planning |

@@ -22,11 +22,12 @@ function advRails(s,dt,warp){procSample(s);   // in orbit with the engines off a
   if(warp>4){for(const d of debris)d.mesh&&d.mesh.free&&d.mesh.free();debris.length=0}else stepDebris(dt);
   return ok}
 function controls(s){return{th:s.throttle,p:INP.pitch,y:INP.yaw,r:INP.roll,tx:INP.tx,ty:INP.ty,tz:INP.tz,rcs:!!s.rcs,tg:s.tgtV?'v:'+s.tgtV.name:s.target??null,sas:s.sas,mode:s.sasMode,
-  node:s.node?(s.node.burning?'burning':JSON.stringify({t:s.node.t,dv:s.node.dv})):null}}
+  node:s.node?(s.node.burning?'burning':JSON.stringify({t:s.node.t,dv:s.node.dv,b:s.node.b,q:(s.nodeQ||[]).map(n=>({t:n.t,dv:n.dv,b:n.b}))})):null}}
 function setControls(s,c){s.throttle=c.th;INP.pitch=c.p;INP.yaw=c.y;INP.roll=c.r;INP.tx=c.tx||0;INP.ty=c.ty||0;INP.tz=c.tz||0;s.rcs=!!c.rcs;
   if('tg' in c){const v=typeof c.tg==='string'&&FLEET.find(x=>'v:'+x.name===c.tg);s.tgtV=v||null;s.target=v?null:c.tg}
   if(s.sas!==c.sas||s.sasMode!==c.mode){s.sas=c.sas;s.sasMode=c.mode;s.hold=null}
-  if(c.node!=='burning'){const cur=s.node&&!s.node.burning?JSON.stringify({t:s.node.t,dv:s.node.dv}):null;if(cur!==c.node)s.node=c.node?JSON.parse(c.node):null}}
+  if(c.node!=='burning'){const cur=s.node&&!s.node.burning?JSON.stringify({t:s.node.t,dv:s.node.dv,b:s.node.b,q:(s.nodeQ||[]).map(n=>({t:n.t,dv:n.dv,b:n.b}))}):null;
+    if(cur!==c.node){const o=c.node?JSON.parse(c.node):null;s.nodeQ=o&&o.q?o.q:[];if(o)delete o.q;s.node=o}}}   // a chain's later nodes ride along (vehicle, Q33; old tapes: none)
 // ---- procedures (bodies session, 2026-10-08): a flight's intent kept as a guidance plan instead of keypresses, so it still flies
 // when things differ (mass, a failed ignition retried, the day, a contract's target orbit) and survives physics changes.
 // v1 is the ascent to orbit, the flight players repeat most. Every flight off the pad is sampled (procSample, from advPhys):
