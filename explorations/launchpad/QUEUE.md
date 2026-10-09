@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -7,6 +7,16 @@ done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAY
 lanes, evergreen work); the long tail stays in NOTES.
 
 ---
+
+## Next unblockers (ROADMAP rule 6; Caio asks "what are the next unblockers?")
+
+| # | Item | Who | What it frees |
+|---|---|---|---|
+| 1 | **D1 `SYSTEM.md`**, the star system's catalog | design desk + **Caio approves** | one work package per body across every lane (look, ground, orbits, missions, a tester cheat); M5; PLAYTEST #11/#12 |
+| 2 | **Q17** plasma blackout gated on airspeed | world (in progress) | Q20 (plasma shell), then Q29, the re-run that is **M0's finish line** |
+| 3 | **Q58** the split plan, then **W10** your freeze window | platform, then Caio | Q59 the file split: fewer merge conflicts for all eight lanes |
+| 4 | **D2 `CREW.md`** art direction (pick from mock-ups) | design desk + a look session + Caio | crew visuals, EVA, crew-loss tone |
+| 5 | **Q3** UI slice 4 (plan first) | flow | Q43 watch mode, the gauges' final place, PLAYTEST #9 |
 
 ## How a session uses this
 
@@ -29,21 +39,21 @@ lanes, evergreen work); the long tail stays in NOTES.
 write your session name and the time into it, and delete it when your browser run ends. It's a convention, not a guarantee.
 
 **Kickoff line Caio can paste into a fresh session:**
-> You are the launchpad **<lane>** session (one of: flow, economy, vehicle, space, world, look & sound, QA, platform). Follow AGENTS.md's startup, then read `explorations/launchpad/QUEUE.md` and take
+> You are the launchpad **<lane>** session (one of: flow, economy, vehicle, space, world, look & sound, QA, platform; for look & sound add the beat: parts & pad,
+> effects, sky & bodies, or sound). Follow AGENTS.md's startup, then read `explorations/launchpad/QUEUE.md` and take
 > the top ready item in your lane (overflow if none). Worktrees and ports: the heading of your lane below, or the `ACTIVE_WORK.md` lane table.
 
-For the **playtest intake** role: *You are the launchpad QA session, playtest intake. Read QUEUE.md § QA, Q60, then turn
+For the **design desk** role: *You are the launchpad design desk session. Follow `docs/session-roles.md` § Design desk;
+start with D1 in QUEUE.md.* For the **playtest intake** role: *You are the launchpad QA session, playtest intake. Read QUEUE.md § QA, Q60, then turn
 the feedback I paste into PLAYTEST items.*
 
 ---
 
 ## Flags (read before merging)
 
-- **Orchestrator, 2026-10-08 (roadmap session, Caio's call): a design desk, and next unblockers.** (1) The system catalog moves from space to a new **design desk** section (role in `docs/session-roles.md`), alongside `POWERS.md` (national flavours as content), `CREW.md` (astronauts: cartoony, realistic or stylised is open) and Q53 (ROADMAP § "Design catalogs"). (2) Keep a *Next unblockers* list at the top of this file (ROADMAP rule 6); Caio will ask you for it.
-- **Orchestrator, 2026-10-08 (roadmap session, Caio's call): the system catalog is an unblocker; rank it high.** Add a 📝 L item at the top of space: "`SYSTEM.md`, the star system's catalog, drafted with Caio" (ROADMAP § "The system catalog"). When Caio approves it, fan out one item per body: a look item per body under the sky & bodies beat, plus ground, orbit, missions and a tester "go to body" cheat.
-- **Orchestrator, 2026-10-08 (roadmap session, Caio's call): look & sound runs as several sessions by beat** (ROADMAP § Lanes, "Beats"): parts & pad, effects, sky & bodies (new worktree `launchpad-sky`, port 8802), sound. Tag each look item with its beat, keep at least 2 ready per beat, and add the beat to the kickoff line.
-- **Fixes × terrain, same functions:** the fixes session (#19) and terrain (Q17) both edit near `linkOf`/`gsSees`. Whoever
-  merges second: merge `main` first and re-run test.mjs's link sections.
+- **Fixes landed** (`ae3d4aa`): `gsSees` now has `GS_NEAR` = 2 km, `go()` calls `flightLeave(S)`, `hudLayout()` runs on every
+  screen change, LAUNCH is a sticky footer (`#edFoot`). **Terrain (Q17):** merge `main` before you finish; you edit next to
+  `gsSees`. **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
 - **Q20 waits for Q17:** terrain is adding `PLASMA_V` / `plasmaOn(s)` next to `linkOf`. Aerofx: use that for the plasma
   shell instead of a second threshold.
 - **Version numbers:** control took **v1.51** (and v1.51.1). Terrain's atlas is labelled v1.51 on its branch: **renumber to
@@ -63,21 +73,22 @@ A lane with nothing ready: take the top line of its **evergreen** list in ROADMA
 Worktree `launchpad-ui` (branch `ui`, port 8795).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' #21 | M1 | M | 🖥 | ready |
+| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | ready |
 | Q39 | **Esc pauses** in flight and on every screen (W5 default) | M1 | S | 🖥 | ready |
 | Q41 | **First-run:** each career choice explained in one sentence | M1 | S | 🖥 | ready |
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ready |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ready |
-| Q1 | PLAYTEST **#8**: the readout covers the tabs (#16/#20 are in fixes' sweep: check after it merges) | M0 | S | 🖥 | after fixes merge |
+| Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 | Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | ready (plan first) |
-| Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | after Q1 |
+| Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ready |
+| Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | → fixes 2026-10-08 |
+| Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ready |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ready |
 | Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ready |
@@ -85,6 +96,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ready |
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ready |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ready |
+| Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ready |
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
 
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
@@ -125,17 +137,36 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ready (plan only) |
 
-### look & sound — part look, pad, FX, sky, sound (was visuals + aerofx + sound)
-Worktrees `launchpad-visuals` (branch `visuals`, port 8776), `launchpad-aerofx` (branch `aerofx`), `launchpad-sound` (branch `sound`, port 8798).
+### look & sound — always run as beats, one session each (ROADMAP § Lanes, "Beats")
+Collisions between beats: `render()`'s pass order, shared shader helpers, bloom, `views.js` numbering. Changing any of them needs an `ACTIVE_WORK.md` line.
+
+#### beat: parts & pad — `partShape`/`partBody`, textures, marks, the complex and rig · worktree `launchpad-visuals` (branch `visuals`, port 8776)
+| # | Item | M | Size | Load | State |
+|---|---|---|---|---|---|
+| Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M1 | M | 🖥 | ready |
+| Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ready |
+| Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
+
+#### beat: effects — plumes, plasma, vapor, dust, explosions, debris re-entry, bloom · worktree `launchpad-aerofx` (branch `aerofx`)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q20 | PLAYTEST #17, plasma side: the shell uses terrain's `plasmaOn(s)` | M0 | S | 🖥 | after Q17 |
-| Q35 | **Volume slider** (part 1; it sits in flow's settings overlay Q42), then per-engine voices | M1 | S | 🖥 | ready |
-| Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M1 | M | 🖥 | ready |
-| Q21 | Vary `WSEED` per world; plasma lighting the hull | — | S | 🖥 | ready |
-| Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ready |
-| Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | → fixes 2026-10-08 |
-| Q53 | 📝 One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready (plan first) |
+| Q63 | Plasma lighting the hull; a shield-first reference view (NOTES § "Re-entry plasma") | — | S | 🖥 | ready |
+| Q64 | Vapor collars on side boosters (NOTES § "Transonic vapor cones") | — | M | 🖥 | ready |
+
+#### beat: sky & bodies — atmosphere, clouds, stars, how each body looks · worktree `launchpad-sky` (new, branch `sky`, port 8802; create it on first start)
+| # | Item | M | Size | Load | State |
+|---|---|---|---|---|---|
+| Q21 | Vary `WSEED` per world: a different galaxy each playthrough | — | S | 🖥 | ready |
+| Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | ready |
+| — | One look item per body | M5 | — | 🖥 | blocked: D1 approved |
+
+#### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
+| # | Item | M | Size | Load | State |
+|---|---|---|---|---|---|
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ready |
+| Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ready |
+| Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ready |
 
 ### QA — robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs (was playtest + tester)
 Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester` (branch `tester`, port 8797). Playtest intake (Q60) needs no worktree: it edits docs in the main clone.
@@ -146,8 +177,8 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q55 | **The new-career robot run** (M1's finish line): first-run gate → first orbit → debrief, no tester flags. Written first, fails until M1 is done | M1 | M | 🖥🖥 | ready |
 | Q28 | `shot.mjs` on the RTX (`--force_high_performance_gpu`) | M0 | S | 🖥 | ready |
 | Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | ready |
-| Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | → fixes 2026-10-08 |
-| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | after fixes, Q17, Q20 merge (Q14 ✓) |
+| Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
+| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | after Q17, Q20 merge (fixes and Q14 ✓) |
 | Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ready (plan first; run when few others are in the browser) |
 
 ### platform — file split, test speed, saves, perf (new)
@@ -159,6 +190,16 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ready |
 | Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | blocked: Q58 + Caio's window (W10) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
+
+### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
+The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
+
+| # | Item | M | Size | Load | State |
+|---|---|---|---|---|---|
+| D1 | **`SYSTEM.md`, the star system's catalog**, drafted with Caio (ROADMAP § "The system catalog"): one entry per body or object class: physical, orbit, look brief, ground brief, role, known or discovered. **The top unblocker** | M5 | L | 📝 | ready |
+| D2 | **`CREW.md`**: astronaut art direction (cartoony, realistic, stylised): write the trade-offs, ask a look session for 2–3 mock-ups in one scene, Caio picks from pictures | M3 | M | 📝 | ready |
+| D3 | **`POWERS.md`**: national flavours as content (name style, flag, hardware look, tone, rival personality) | M1 | M | 📝 | ready |
+| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready |
 
 ---
 
@@ -184,6 +225,4 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 
-- economy — dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) — NOTES § "Landing on a chosen point"
-- flow — pick a landing site on the map (a click on Selene/Nyx → `site` for the procedure) — same
 
