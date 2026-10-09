@@ -63,10 +63,10 @@ function render(){
   if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
     gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
     gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)
-    // the terrain G-buffer at full resolution, marched from the pre-pass's start; the sky shader reads it on unit 4
+    // the terrain G-buffer at full resolution, marched from the pre-pass's start; the sky shader reads it on unit 9 (bloom's composite binds 0–4)
     if(PTERR){const G=terrTarget(W,H);gl.useProgram(PTERR.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PTERR.u.uDepth,5);gl.uniform1f(PTERR.u.uUseDepth,1);
       gl.bindFramebuffer(gl.FRAMEBUFFER,G.fb);gl.viewport(0,0,W,H);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);
-      gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,G.tex);gl.uniform1i(PSKY.u.uTerr,4);gl.activeTexture(gl.TEXTURE0)}}
+      gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE9);gl.bindTexture(gl.TEXTURE_2D,G.tex);gl.uniform1i(PSKY.u.uTerr,9);gl.activeTexture(gl.TEXTURE0)}}
   gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   drawMoons(camW,R,U,Fw,tanX,tanY);
