@@ -56,7 +56,7 @@ the feedback I paste into PLAYTEST items.*
 - **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
-- **Version numbers:** latest on `main` is v1.56 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.57 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -110,7 +110,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ✓ v1.56 `876a197` (leases by relations, sea 4M, members free; fee on the debrief) |
-| Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | → economy 2026-10-08 |
+| Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ✓ v1.57 `d9badbc` (from the program's site; counts only from there) |
 | Q8 | Ladder balance: Selene/Nyx firsts above their rocket; nyxfind not free on the farside flight (Caio overrode the W1 default) | M1 | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ready |
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ready |

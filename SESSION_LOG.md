@@ -3720,3 +3720,20 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 - [ ] Human: TESTING 129 (launch from abroad; is the fee a real choice?)
 - [ ] Economy: Q7 (ballistic target from the flight's site, now that `R.site` exists); Proposed: dispatch leases, overflight politics
 
+## 2026-10-08 — Launchpad v1.57 economy: the ballistic test aims from the program's site (QUEUE Q7; economy session)
+
+### Summary
+- `CT.ballistic`: the target is now the stated distance downrange of the program's current site (was `rg/600` rad
+  from +X, so 2.1× long and from no pad); the brief names the site, and the test counts only when flown from there
+  (`R.site`). Old saved contracts count from anywhere. `genOffer` skips a generator that finds nothing.
+
+### Verification
+- New test `econ-3` (3 checks, mutation-tested); full suite passes in 4 processes; career runner unchanged in shape.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `test.mjs`, `NOTES.md` § v1.57, `TESTING.md` row 130, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 130
+- [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+
