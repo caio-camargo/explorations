@@ -1479,6 +1479,61 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
+## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
+
+The icy dwarf at the edge (SYSTEM.md § Erebus, Pluto), built and measured headless like the others. **Not live:** it's on a
+stub body (`GROUND_STUBS.Erebus`: R 238 km, g 0.62) until the space lane adds Erebus. With it, **every hand-made body in
+SYSTEM.md has ground on the CPU** (Hyperion has none by design).
+
+**What's there:**
+- **The nitrogen-ice basin (Sputnik Planitia):** 200 km across, the same share of the globe as Pluto's. Its glacier floor
+  is flat at −2.5 km (2.6 km below the land round it), and it has no craters (it renews itself).
+  - It's broken into convection cells ~25 km across, with troughs along their edges 116 m below their middles (G-ice's
+    Worley network, reused).
+  - Surface: nitrogen ice, μ 0.2.
+- **Water-ice mountains:** a dozen angular blocks on the basin's western margin, 10–20 km in radius and 2.5–4.5 km high
+  (the tallest 6.5 km above the basin floor at its foot). Flanks p90 40°; water-ice bedrock.
+- **Bladed terrain (Tartarus Dorsa):** ridges ~400 m high, ~5 km apart, east of the basin; methane-ice blades.
+- **The dark tholin highlands (Cthulhu):** old crust, so every band crater survives there, against half on the uplands and
+  none on the ice. They're the most cratered ground: 18 craters ≥ 1 km per 1,000 km², against 10 on the uplands.
+- **Uplands of methane frost** everywhere else.
+- **An icy crust** (0.4, as Tethys and Eos): simple turns complex near 19 km. That's an assumption: Pluto's own transition
+  isn't pinned down.
+
+**Measured** (`node study_ground.mjs erebus`, ~4 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 0.6 s; one height 2.5 µs |
+| Relief | −3.4…+4.6 km (recipe `top` 6 km) |
+| Units | uplands 88 %, tholin 5.9 %, nitrogen ice 3.5 %, blades 2.0 %, mountains 0.7 % |
+| Slopes, nitrogen ice | median 0.3–0.6°, p99 4°: the flattest landing ground in the system |
+| Slopes, mountains | median 20°, 43 % past TOPPLE |
+| Slopes, blades | p90 17° |
+| Seams | 36° on cube edges |
+| Pole | 19° (ground-6's pole check now includes Erebus) |
+
+**Negative results:**
+- **Overlapping mountain blocks summed their heights:** up to 10 km, past the recipe's bound. Overlaps now take the
+  taller block.
+- **Narrow blocks were cliffs** (p90 58°, max 68°). They're wider now, with longer flanks: p90 40°, max 51°, still
+  bedrock-steep.
+- **A unit mask that includes the shore isn't the floor.** "Nitrogen ice" first took in the basin's 14° shore, then the
+  outer flanks of blocks standing in the basin (p99 10.7°). It's now the glacier floor only (p99 4°).
+
+**Tests:** `ground-7`, 6 checks:
+- not live;
+- the basin (depth, a flat floor, within top, nitrogen ice);
+- the convection cells;
+- the mountains;
+- the tholin highlands most cratered (by the thinning, and rougher);
+- no seams.
+
+Mutations caught: no basin, no convection cells, uniform crater thinning. Full suite 526 pass, 0 fail.
+
+**Next:** the seeded small bodies (one lump recipe, its parameters from `WSEED`); and, for every body here, the space
+lane's real body in the tree (Q87), then the shader (G3).
+
 ## v1.71 — station-keeping re-tuned: a good satellite outlasts its era (2026-10-09, space session, MIDGAME § Satellites)
 
 [`MIDGAME.md`](MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite
