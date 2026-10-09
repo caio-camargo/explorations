@@ -7213,7 +7213,16 @@ the count stays 1). Events are diffed by engine identity (`p.i`) instead.
 
 **Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
 in `sndTick` are the knobs.
-
+
+### Per-engine voices (2026-10-09, effects session for the sound beat, QUEUE Q66)
+Every engine used to sum into one roar. Now each kind of engine burning gets its own band of noise (`sndVoices`, in the
+pure mix block), centred on its jet's peak frequency f ≈ St·U/D (Strouhal 0.2, exhaust ~2.5 km/s, D the exit diameter):
+Wren 1000 Hz, Sparrow 833, Kestrel 455, Petrel 417, Condor 403, Albatross 227. Same-kind engines are one voice (a
+Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust shares first; gain ∝ √share × the airborne
+level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
+drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
+- Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row.
+- test.mjs `aerofx-3` (engine voices).
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
