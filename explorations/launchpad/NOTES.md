@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1596,6 +1596,17 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## v1.77.1 — dispatched flights launch from their procedure's site and pay its lease (2026-10-09, economy session, QUEUE Q95)
+
+A dispatched flight used to launch from home whatever its procedure (`dispatchRun` passed no site to `procFly`). Now
+`procSiteOf(stack)` is the site the design's procedure was flown from (`proc.site`), or home:
+- `dispatchQuote` and `baseRunQuote` refuse when `siteAccessOf` refuses that site, and add its lease (v1.56) to the
+  price (`fee`, `site` on the quote);
+- `dispatchTick` stands a queued dispatch down if the site has closed to us since (relations, sanctions), checks that
+  site's weather for scrubs, and charges the lease with operations;
+- `dispatchRun` (bodies' code, one argument) and `baseRun` fly from that site.
+Test `econ-10` (mutation-tested): home 49M, the same dispatch from a leased site abroad 55M, refused when hostile.
 
 ## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
 
