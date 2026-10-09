@@ -160,13 +160,13 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | ✓ v1.79 (Rollout: Δv for the aim, parachute; TESTING 152) |
 | Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ✓ v1.79 (*Crew escape*) |
 | Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ✓ `0d1da8d` (v1.61) |
-| Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | → vehicle 2026-10-09 |
+| Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ✓ v1.80 (TESTING 160) |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
 | Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | ✓ v1.68 |
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M4 | M | ⚙ | 📝 plan only (M4 under the gate: steady-state temperature and the datacenter are M4) |
 | Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ✓ v1.79 (procedures; through the register; TESTING 153) |
-| Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | → vehicle 2026-10-09 |
+| Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | ✓ v1.80 (RTG; the aim's orbit; charge kept; TESTING 161) |
 | Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | ready |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ready (plan only) |
 | Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ready |
