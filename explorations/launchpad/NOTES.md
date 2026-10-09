@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,23 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.59 — every offer says why it appeared (2026-10-08, economy session, QUEUE Q45)
+
+`whyOf(type, src, client)` in `sim/contracts.js` picks **the strongest true reason** when `genOffer` makes the offer, and
+stores it as `o.why` (one line; old offers have none and expire within 50 days). In order:
+1. *New since you did “⟨first⟩”*: the type's `req` was done in the last 60 days (`WHY_NEW`);
+2. military work: *⟨client⟩ is nervous about its neighbours* (`tensionOf` > 0.4);
+3. commercial work: *Boom times* (cycle > 0.45) or *A rare order in a recession* (< −0.45);
+4. tourism: the tourism standing;
+5. government work from home: *Your government wants results*;
+6. *⟨client⟩ cares about ⟨science/commerce/…⟩* (that priority ≥ 0.35 in its flavour);
+7. *Your ⟨source⟩ standing (N) brings work* (≥ 70);
+8. else *Routine ⟨source⟩ work from ⟨client⟩*.
+
+The Contracts tab (`app/program-ui.js`, one line, flagged for flow) shows *Why: …* above the brief, on offers and taken
+contracts. Test `econ-4` (5 checks, mutation-tested). On a sample board most lines are *Routine* or the cycle: if the
+board reads as noise, the thresholds are the knobs (TESTING 133 asks).
 
 ## v1.58 — Selene's ground on the CPU, and the maria on the near side (2026-10-08, world session, GROUND.md G2)
 
