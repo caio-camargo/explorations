@@ -4694,6 +4694,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     onPort && open && !P.active.includes(k) && w.worth >= 8 && P.funds - f0 > w.pay + w.worth - 1e-6 && s2.rec.paid.some(x => x.k === 'refurb'), `pay ${w.pay}M + hardware ${w.worth}M; got ${(P.funds - f0).toFixed(1)}M`);
 }
 
+// qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and
+// 168 were each used twice). Every row number once, and "Next free number" above them all, so a collision fails here.
+{
+  const T = readFileSync(new URL('./TESTING.md', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const nums = [...T.matchAll(/^\| [✓~✗ ]*(\d+)(?: \(robot\))?(?: → P#\d+)? \|/gm)].map(m => +m[1]), seen = new Set(), dup = [...new Set(nums.filter(n => seen.has(n) || !seen.add(n)))];
+  const next = +((T.match(/Next free number: \*\*(\d+)\*\*/) || [])[1] || 0);
+  check('TESTING.md: every row number is used once, and "Next free number" is above them all', nums.length > 100 && !dup.length && next > Math.max(...nums),
+    `${nums.length} rows, highest ${Math.max(...nums)}, next free ${next}; doubled: ${dup.join(', ') || 'none'} (renumber the newer row, fix its references)`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

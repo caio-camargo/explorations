@@ -9560,3 +9560,12 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 - markers and drag handles for queued nodes on the map (flow / the map's owner);
 - a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
   the capture case).
+
+**`m1` passes (QA session, 2026-10-09).** With Esc pause (Q39), the Debrief (Q2), PLAYTEST #25/#26 fixed and the Beeper
+preset (#24), the new-career robot run is green: weather ✓, beeper ✓ on the **Beeper** preset (51M of 104M), the clock
+stands still under Esc, a Debrief after each flight, and no overlapping boxes on any screen. M1's robot finish line is
+met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing check, and a person playing the first hour.
+
+**TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
+"Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
+suite you run before merging, instead of waiting for someone to read the file.
