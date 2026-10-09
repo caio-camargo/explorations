@@ -114,6 +114,12 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 const PRESETS={
   Hopper:['chute','pod','t2','fins','kestrel'],
   Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
+  // the first orbit missions on presets (vehicle session, Q74 / PLAYTEST #24): the Orbiter's launcher with the payload in the
+  // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
+  // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
+  // home (measured: 715 m/s spare in orbit, 4.2 g and a ~292 K cabin coming down)
+  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  'Passenger Orbiter':['chute','bio','rwheel','t2','petrel','dec','t8','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],

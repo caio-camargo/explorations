@@ -3768,6 +3768,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('staged pay: a flight launched after it opened does collect', (P.staged.nyxland || {}).bound && P.funds > f1);
 }
 
+// vehicle-3. The first orbit missions fly on presets (vehicle session, QUEUE Q74 / PLAYTEST #24): the Beeper puts an
+// instrument package in orbit; the Passenger Orbiter takes a biocapsule once round and home, inside the passenger's limits.
+{
+  const R = TELLUS.R, O = api.PRESETS.Orbiter, el = s => api.elements(s.r, s.v, TELLUS.mu);
+  const b = handAscent(api, api.PRESETS.Beeper), eb = el(b);
+  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  api.advRails(p, ep.period, 10);   // once round
+  const retro = () => { const v = mul(norm(p.v), -1), f = api.localFrame(p.r), X = norm(cross(v, f.n)); p.q = api.qFromBasis(X, v, cross(X, v)); p.w = [0, 0, 0]; };
+  p.throttle = 1; for (let k = 0; k < 20000 && p.alive; k++) { retro(); api.advPhys(p); if (el(p).pe - R < 40e3 || api.dvRemaining(p).cur < 1) break; }
+  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'); let g1 = 0, gMax = 0, cab = 290, armed = false;
+  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); continue; }
+    api.advPhys(p); g1 += (p.gload - g1) * Math.min(1, api.DT); gMax = Math.max(gMax, g1); cab += (bio.T - cab) * api.DT / (bio.d.ins || 600);
+    if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
+  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K',
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && gMax < 8 && cab < 330 && O.length === 8,
+    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${gMax.toFixed(1)} g, cabin ~${cab.toFixed(0)} K, ${p.landed ? 'landed' : 'not landed'}`);
+}
+
 // ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not
 // live (stub body). The nitrogen-ice basin (flat, crater-free, broken into convection cells), the water-ice mountains on
 // its margin, the dark tholin highlands (the most cratered), bladed terrain. `node study_ground.mjs erebus`.
