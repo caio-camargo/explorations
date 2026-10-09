@@ -4108,6 +4108,27 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
         && /sndPlasma\(st\.qh,st\.va,st\.pv\)/.test(H) && /sndOthers\(st\.others\)/.test(H),
       `plasma: climb ${climb}, onset ${onset.toFixed(2)}, peak ${peak.toFixed(2)} · others: 200 m ${near.g.toFixed(2)}, 8 km ${far.g.toFixed(3)}, debris ${deb.g.toFixed(2)}`);
   }
+  // QUEUE Q102 (steps 1–3): hardware schools. A power's school is drawn once from its archetype's affinity (stable per
+  // world and power); unbuilt schools fall back to Cape; a part draws in its maker's school (an import: the seller's);
+  // the school rides in the vertex's kind (+32·school) and both mesh shaders decode it; reference views pin Cape
+  {
+    const SM = new Function(src + 'return {rng,WSEED,POWERS,HOME,archOf:typeof archOf==="function"?archOf:null}')();
+    const env = { rng: SM.rng, WSEED: SM.WSEED, HOME: SM.HOME, SCHOOL_FORCE: null };
+    const mk = (POW, arch, srcFn) => new Function('rng', 'WSEED', 'HOME', 'POWERS', 'archOf', 'sourceOf', 'SCHOOL_FORCE',
+      pg.slice(pg.indexOf('const SCHOOL_IDS='), pg.indexOf('let SCHOOL_FORCE=')) + body('schoolOf') + ';' + body('partSchool') + ';return {schoolOf,partSchool}')(
+      env.rng, env.WSEED, env.HOME, POW, arch, srcFn, null);
+    const pows = Array.from({ length: 400 }, (_, i) => ({ arch: i % 2 ? 'closedSuper' : 'openSuper' })), A = i => pows[i].arch;
+    const S1 = mk(pows, A, () => ({ how: 'home' })), S2 = mk(pows, A, () => ({ how: 'home' }));
+    const closed = pows.map((_, i) => i).filter(i => i % 2), steppeShare = closed.filter(i => S1.schoolOf(i) === 1).length / closed.length;
+    const stable = pows.every((_, i) => S1.schoolOf(i) === S2.schoolOf(i)), openCape = pows.map((_, i) => i).filter(i => !(i % 2)).every(i => S1.schoolOf(i) === 0);
+    const imp = mk(pows, A, () => ({ how: 'import', from: 1 })).partSchool({ d: { key: 't2' } }), own = mk(pows, A, () => ({ how: 'home' })).partSchool({ d: { key: 't2' } });
+    check('hardware schools: a power\'s school follows its affinity (closed superpowers mostly Steppe, open ones Cape) and never changes; a part draws in its maker\'s school',
+      steppeShare > 0.6 && steppeShare < 0.8 && stable && openCape && imp === S1.schoolOf(1) && own === S1.schoolOf(env.HOME)
+        && /out\.push\([^)]*PK\.k\+32\*\(PK\.sch\|\|0\),PK\.i\)/.test(pg) && /int k=int\(aK\.x\+\.5\)%32;/.test(pg) && /sch=k\/32;k-=32\*sch;/.test(pg)
+        && /if\(INTERSTAGE_FX&&p\.d\.kind==='dec'\)/.test(pg) && /sch=partSchool\(p\);PK=\{o:\[x,y0,z\],k:KIND\.collar/.test(pg)
+        && /SCHOOL_FORCE = 0;/.test(readFileSync(new URL('./views.js', import.meta.url), 'utf8')),
+      `closed superpowers drawing Steppe: ${(steppeShare * 100).toFixed(0)} % (0.7 expected)`);
+  }
   // QUEUE Q24: char on dark paint heat-tints (it can't blacken black); a bay door's inside is a different colour from its
   // outside, and it has hinge brackets
   check('char on dark paint tints; bay doors have an inside and hinges',
