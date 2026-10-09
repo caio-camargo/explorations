@@ -4295,3 +4295,33 @@ Unattended overnight run of the effects beat, then overflow per the orchestrator
 line, flow's), `builder.js`, `test.mjs` (vehicle-4, vehicle-5), launchpad `NOTES.md` § v1.79, `TESTING.md` 152–153,
 `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** vehicle's M1 list is down to Q47 (🖥, needs Caio's review); M2: Q78 docking preset, Q33 node chains, Q131.
+
+## 2026-10-09 — Launchpad flow lane: Debrief, Rollout, Esc pause, Settings, NEXT, landing sites, and two plans (progress entry, unattended, session still running)
+
+Caio left the flow session to work its lane unattended. Every item came from QUEUE.md's flow lane, in order.
+
+- **Q2 Debrief** (`4f0adfc`): a settled flight leaves a SIM record (`sim/debrief.js`: outcome, money line by line adding
+  up to the net, missions, certifications, records, incidents, know-how). Leaving a flight shows it; Esc menu "End
+  flight"; HUD "End flight ▸" once over; Program "Last flight". Economy got one-line `debPaid` hooks. Test `flow-1`.
+- **Q39 Esc pauses, Q75/Q76 lanes for the key strip and `#msg`, Q73 identity mock-ups** (`a25c119`). The QA robot's
+  M1 finish line (`playtest.mjs m1`) now passes in full. Mock-ups: `launchpad/mockups/identity/`, stills in
+  `output/launchpad/mockups/identity/` (local, gitignored); waiting on Caio (W14).
+- **Q41** first-run choices explained; **Q42** Settings (sound, quality presets over the FX flags + a resolution cap,
+  gauges, era look, tester off); **Q40** NEXT line (`sim/next.js`, test `flow-2`); **Q99** settlement lines off the
+  ticker, Inbox "News"; **Q115** map labels piling up (PLAYTEST #31: Tellus's names drawn on its far dot; gated by
+  distance to their own body, texts decluttered); **Q4** slice 5 Rollout (site picker, checks, books, LAUNCH; `#launch`
+  kept its id); **Q62** pick a landing site on the map (`sim/sitepick.js`, test `flow-3`; start buttons now stay while on
+  the pad); **Q145** the Program sits over the pad after a flight.
+- **Plans written (docs):** Q3 slice 4, the flight core and cards (W15); Q111 the network screen (W16).
+- **Caught:** a first cut of the Inbox news broke the plain page at load (a start-up call into a later file); robot
+  `m1` caught it. TESTING row numbers collide between lanes (several sessions add rows at once and the "next free"
+  counter lags): flow's rows were renumbered past the real maximum each merge.
+- **Checked:** full suite after every code merge (last: all passed); robot rows m1, 25, 26 and probes in Chrome.
+
+**Files:** launchpad `sim/debrief.js`, `sim/next.js`, `sim/sitepick.js`, `app/debrief.js`, `app/settings.js`,
+`app/rollout.js`, `app/screens.js`, `app/state.js`, `app/render.js`, `app/editor.js`, `app/loop.js`, `app/input.js`,
+`app/sound.js`, `app/program-ui.js`, `sim/program.js` + `sim/contracts.js` (additive hooks), `builder.js` (one guard),
+`index.html`, `test.mjs` (flow-1..3, §32), `playtest.mjs` (m1 and PICK: Rollout), `mockups/`, `NOTES.md` (UI section),
+`TESTING.md`, `PLAYTEST.md` (#25, #26, #27, #31 done), `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** the flow lane's ready items are done; left: Q43 (after Q3's build), Q100 (after Q57), Q104 (after Q103),
+and the build of Q3/Q111 once Caio reads W15/W16.

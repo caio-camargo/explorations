@@ -7060,6 +7060,59 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
 - Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
   Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
+- **The Program sits over the pad again after a flight** (Q145, PLAYTEST #27's second half): opening the Program while the
+  ship is a flown one (`S.rec.launched`) rebuilds the design on the pad (`editorChanged`), so the backdrop is the pad,
+  not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
+  40 km, Debrief, then Program: the pad.
+- **Evergreen (walking the screens as a new player).** (1) Over the notebook-era map, the map every new career sees on
+  M, the HUD's glass buttons and white messages vanished on the cream paper: `body.paper` (set while that map shows)
+  turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
+  launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
+  with the key) as well as `go`.
+
+### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
+LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
+themselves, tonnes a year on each, the bottleneck named, beside the pad calendar, with every vessel in flight on screen
+(§ "The network", § "Keeping flight in play", NOTES § "Routine runs": "the UI wants a Gantt view of the pads").
+
+**What it shows.**
+- **A schematic, not the orbital map.** Bodies as columns, left to right outward (Tellus, Selene, Nyx, then the
+  planets as SYSTEM.md opens them); within a column, surface at the bottom and orbits above it, by altitude band.
+  Nodes sit in their slot: sites and pads, stations, depots, outposts and bases, datacenters, relays (with a coverage
+  bar), the mass driver. Distances aren't to scale; the real map is one key away for that.
+- **Routes as lines between nodes**, thickness by tonnes a year, colour by good (propellant, supplies, crew, hardware,
+  materials), a dashed line for a route waiting on its window (with "next window in 214 d"). A route through a comms gap
+  is flagged (LATE_GAME § Comms).
+- **The bottleneck line**, always at the top: one sentence naming the limiting thing ("Depot L1 is short of
+  propellant: Selene's plant makes 40 t/y, routines draw 55"), with a button to the node.
+- **The fleet strip**: every vessel in flight, its next event and the time to it; nothing coasts out of sight.
+- **The pad calendar** under it: one row per pad (and per stacking bay once the hall becomes bays), bars for each
+  launch's stacking, launch and turnaround, manual flights and routines in different colours, windows as shaded bands.
+
+**Clicks.** A node opens its panel: stock and needs per good, routes in and out, what it's waiting for, and the
+honest next action ("fly a supply run here by hand", "build a second pad"). A route opens its template: design,
+procedure, Δv, tonnes per launch (up from what, LATE_GAME § Templates), its window family, recent runs and failures.
+A bar on the calendar opens that launch. Every node, route and bar names what it is in words, never only a colour.
+
+**How it reads the game: one pure SIM function** owned by the economy (with space for the orbits), so the screen
+draws and never computes: `netModel()` → `{nodes: [{id, kind, body, slot, name, stock, need, paused?}], routes: [{id,
+from, to, goods: {good: t/y}, runsPerYear, window?, gap?}], bottleneck: {text, node, good} | null, fleet: [{name, next,
+t}], pads: [{pad, bars: [{from, to, kind, title}]}]}`. Test: the model's sums (what routes deliver equals what nodes
+receive), the bottleneck picked by the largest shortfall, and a static check that the screen file calls no SIM
+function but `netModel`.
+
+**Slices.**
+1. **N1, now (M2):** the pad calendar and the fleet strip from what exists: `padsFree`, the dispatch queue
+   (`PROG.dispatch`, base runs), the timeline (`upcoming`), registered craft (`satsUp`, `landedUp`, moon satellites).
+   A compact pad calendar also goes in the Program's Fleet tab.
+2. **N2:** the schematic with today's nodes (sites, pads, satellites by orbit band, bases, relays) and no routes yet.
+3. **N3, when the economy builds routines and depots:** routes, goods and the node panels.
+4. **N4:** the bottleneck line, then rivals' networks drawn coarsely (LATE_GAME § Rivals) and the era's look (notebook,
+   terminal, modern, as the map does).
+
+**Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
+second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
+screen, below, plus a compact copy in the Fleet tab.
 
 ---
 
@@ -7225,6 +7278,27 @@ the count stays 1). Events are diffed by engine identity (`p.i`) instead.
 **Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
 in `sndTick` are the knobs.
 
+### Per-engine voices (2026-10-09, effects session for the sound beat, QUEUE Q66)
+Every engine used to sum into one roar. Now each kind of engine burning gets its own band of noise (`sndVoices`, in the
+pure mix block), centred on its jet's peak frequency f ≈ St·U/D (Strouhal 0.2, exhaust ~2.5 km/s, D the exit diameter):
+Wren 1000 Hz, Sparrow 833, Kestrel 455, Petrel 417, Condor 403, Albatross 227. Same-kind engines are one voice (a
+Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust shares first; gain ∝ √share × the airborne
+level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
+drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
+- Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
+- test.mjs `aerofx-3` (engine voices).
+### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
+- **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
+  kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
+  under 260 Hz) and a crackle (the pop buffer at 1.4 kHz, ∝ level²), heard through the hull, so it doesn't thin with
+  the air. Measured: a hot climb (77 kW/m² at 1 km/s) 0; onset (20 kW/m² at 2.6 km/s) 0.12; view 40 (160 kW/m²) 1.00.
+  The old skin-temperature hiss stays (hot metal ticking, a different thing).
+- **Elsewhere:** `sndOthers` takes other vessels burning within 30 km (the own roar's loudness law) and debris tearing
+  through the air (a whoosh from its dynamic pressure, from 0.5 kPa), each falling as 250/(250+d) and needing air at
+  both ends; highs fade with distance; one brown-noise layer through a stereo panner, panned by the power-weighted
+  direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
+  explosions have one). `AUD.Q67 = false` turns both off.
+- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:

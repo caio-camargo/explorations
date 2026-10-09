@@ -192,7 +192,8 @@ function render(){
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
-    const era=mapEra();if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels)L.c=eraInk(era,L.c)}
+    const era=mapEra();if((era===1)!==document.body.classList.contains('paper'))document.body.classList.toggle('paper',era===1);   // the notebook's paper: the HUD switches to ink (flow, evergreen)
+    if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels)L.c=eraInk(era,L.c)}
     const texts=[];   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
@@ -240,6 +241,7 @@ function render(){
   if(mode==='flight'&&view!=='map'&&FLEET.length){const k=Math.min(devicePixelRatio||1,1.5),me=shipWorld();octx.font=`${12*k}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
+  if(view!=='map'&&document.body.classList.contains('paper'))document.body.classList.remove('paper');
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
