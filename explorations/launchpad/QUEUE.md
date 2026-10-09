@@ -297,6 +297,8 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- space — Q51's plan (data + link budget) should include LATE_GAME 1.1.0 § "Comms": **contact gates automation** (a routine burns only in contact or within its computer's tier), solar conjunction, relays as nodes — LATE_GAME.md
+- vehicle — 📝 the **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths); **shielding gets a design review with Caio before it's built** — LATE_GAME.md § Habitats (M4+)
 - QA — robot drivers for the last undriven rows: 65 crew rotation, 115 Selene relay + far-side rover, 116 docking at Selene, 117 rover science (NOTES § Q30 slice 3) — Q30
 - vehicle — legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) — NOTES § v1.61
 - look & sound, parts & pad — draw the landing leg (folded and deployed; `app/gl.js` case `leg` is a placeholder) — NOTES § v1.61, TESTING 135
