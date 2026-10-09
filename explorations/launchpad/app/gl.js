@@ -335,6 +335,17 @@ const MESH_FS=`#version 300 es
 precision highp float;in vec3 vN,vC,vP,vO,vNo;in float vW,vM;in vec4 vU;in vec2 vK;out vec4 o;
 uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSeam;uniform mat4 uM;uniform vec4 uMk[96],uCh[96];uniform vec3 uFl[4];uniform float uFlI;uniform vec4 uPl;uniform vec3 uPlC;uniform vec3 uFlC;uniform float uPadM;
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
+float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
+ p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
+const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
+// the roundel (Q102 step 5): a disc of radius 1 in u, by school: Cape red and white stripes with a blue canton of small
+// stars, Steppe one gold star on red; a white rim. Returns (colour, coverage); px is the pixel size in u
+vec4 roundel(vec2 u,int sch,float px){float r=length(u),cov=1.-smoothstep(1.-px,1.+px,r);if(cov<=0.)return vec4(0.);vec3 c;
+ if(r>.88)c=vec3(.92);
+ else if(sch==1)c=mix(vec3(.62,.06,.05),vec3(.95,.78,.22),1.-smoothstep(-px,px,sdStar5(u*1.05,.62,.42)));
+ else if(u.y>.05&&u.x<-.05){vec2 g=fract(u*6.)-.5;c=mix(vec3(.08,.13,.38),vec3(.95),1.-smoothstep(.13,.13+px*6.,length(g)));}
+ else c=mod(floor(u.y*4.5+.5),2.)<.5?vec3(.7,.08,.08):vec3(.94);
+ return vec4(pow(c,vec3(2.2)),cov);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
@@ -360,7 +371,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  int k=int(vK.x+.5),pi=int(vK.y+.5),sch=k/32;k-=32*sch;   // the part's hardware school rides in the kind (Q102)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
- vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;
+ vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
  if(uSeam>0.&&k>0){
   if(k==1&&side){                                         // propellant tank
    float b=.07*sc,paint=band(v,b,h-b,fv);
@@ -372,7 +383,8 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
    if(sch==1)blk=0.;   // Steppe: no roll pattern (Q102)
    alb=mix(alb,vec3(.018),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
-   float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));}
+   float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
+   if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs);rdl.a*=paint;}}   // the roundel, between the stripes
   else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
    float t=clamp(v/max(h,.01),0.,1.),N=floor(6.2832*R/.035+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
    nO+=T*sin(ph*6.2832)*.35*fd*(inside?-1.:1.);alb*=1.-.35*fd*smoothstep(.75,1.,abs(ph-.5)*2.);
@@ -449,6 +461,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(k!=2&&k!=15&&wl>.25){float pn=hh(vec2(floor(v/(1.3*sc)),floor(vU.x*8.)))-.5;alb=pow(vec3(.47,.54,.44),vec3(2.2))*(1.+.12*pn)*clamp(wl/.7,.6,1.1);
    if(side)alb*=1.-.35*min(1.,lin(v,1.3*sc,.006,fv)+lin(s,6.2832*R/8.,.005,fs));rough=max(rough,.55);metal=0.;}
   else if(k==2)alb*=vec3(.74,.84,.66);}
+ alb=mix(alb,rdl.rgb,rdl.a);
  // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
  // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
  // the side the air came from (all over on the shield); frost sits below the fuel line in patches that thin as it sheds;

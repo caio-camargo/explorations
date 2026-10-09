@@ -337,7 +337,7 @@ window.refView = async (n) => {
   if (n === 114 || n === 115) {
     if (mode !== 'editor') document.getElementById('bEditor').click();
     SCHOOL_FORCE = n - 114; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true; HOOK.rebuild();
-    cam.edY = 7 - S.cm[1]; cam.yaw = 0.55; cam.pitch = 0.05; cam.dist = 17; render(); await settle(); bare();
+    cam.edY = 7 - S.cm[1]; cam.yaw = 0.2; cam.pitch = 0.05; cam.dist = 17; render(); await settle(); bare();
     return n === 114 ? 'Cape' : 'Steppe';
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the

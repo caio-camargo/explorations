@@ -1075,7 +1075,12 @@ visible change), then Steppe.
   and 24 crossing tubes, the bell visible through them. **This changes Cape's look** (today's Orbiter on the pad showed
   its Petrel; now a ribbed skirt covers it, as POWERS.md's Cape brief has it). `INTERSTAGE_FX = false` brings back the bare
   engine. Not drawn: canted engines.
-- Next: step 5 (roundel), then 6–7.
+- **Step 5 built:** the roundel, a disc decal drawn in `MESH_FS` (no texture) on the side of an upper-stage tank (1.5–3
+  tank-radii tall, between Cape's two side stripes): Cape red and white stripes with a blue canton of small stars,
+  Steppe one gold star on red (`sdStar5`), both with a white rim. It is laid on after the school's paint (the first
+  try put it before, and Steppe's enamel pass repainted the gold star green). Views 114/115 now face it.
+- Next: the power's own colours on the accent and the roundel (POWERS.md § Livery; today they're the school's), then
+  6 (signature designs for rivals) and 7 (the Steppe pad).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
