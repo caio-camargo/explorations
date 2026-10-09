@@ -892,6 +892,26 @@ stages both go through it.
 - test.mjs `aerofx-1`: the fade numbers, and that both draws in `render.js` go through `plasmaHeat`.
 - Not changed: char marks, sparks and the smoke trail on falling stages still key on heat alone (ablation is heating).
 
+### The plasma lights the hull; a shield-first view (2026-10-08, effects beat, QUEUE Q63)
+`plasmaLight(camW)` (after `boomLight` in `app/gl.js`) makes the shock layer the scene's one point light (`PLT`, the one
+the plumes and explosions use, read by `MESH_FS` and the smoke) while it outshines the plumes; an explosion's flash still
+wins. No hull-shader change. The light sits in the sheath, 2 D ahead of the leading face, with a core of 1.2× the
+cross-flow extent so the sides get a soft wash, and its colour follows the shell's (deep red → orange → pink-white with
+k). Brightness `PLASMA_LK`·k²·extent² (capped at 1.5 m), `PLASMA_LK` = 5; `PLASMA_LIGHT = false` for A/B. No ground pool.
+- **First try was 8× too bright**: `PLASMA_LK` 40 per metre blew the capsule's white hull out in view 40. The light is
+  under a metre from the hull, so the inverse-square term is large; the plume light's scale (K = 110) assumes metres of
+  flame between light and hull. Now ~2 per channel at k = 1 for the capsule: a pink wash on a nose-first capsule (40),
+  the stage's windward side at 35° (44), the shield face and its rim when shield-first.
+- **Shield-first, the back shell stays dark**, as it should: the light is ahead of the shield and faces behind it get
+  only the wrap term. There is no shadowing, so a long stage would be lit along its side even where the nose would hide it.
+- **New views 46–47**: the capsule turned shield-first at 50 km (`aoa: 'shield'`: whichever end carries the shield goes
+  upstream), from the side and from a rear quarter. The old views fly the capsule "retro" but it ends up nose-first
+  (Y·v = +0.97): SAS can't hold it against the aero torque.
+- **Seen while testing, not fixed:** the entry views spawn a burning parachute as debris (a `chute` piece, boom at
+  55 km), so for ~2 s after `refView(40–47)` an explosion's flash owns `PLT` and a smoke cloud hangs above the capsule.
+  The ship keeps its own chute. For judging the light, clear `booms` after the view. Not looked into further.
+- test.mjs `aerofx-2`.
+
 ## Transonic vapor cones (2026-10-07, aerofx session)
 
 Around Mach 1 in humid air, the flow speeds up round each convex corner of the hull, expands and cools, and water
@@ -917,6 +937,43 @@ plasma's `hullProfile`.
 
 **Still open:** a real humidity field (clouds, coast vs inland); collars on side boosters (the profile only knows the
 envelope, so radial stacks' noses don't make their own shoulders); condensation off fin tips at high angle of attack.
+
+### Side boosters make their own collars (2026-10-08, effects beat, QUEUE Q64)
+The collars came from one envelope profile of the whole ship, so a booster's nose cone only counted where it stuck out
+past everything else. Now `vaporLines(s)` groups the parts that are on by stack line (`p.inst.line`: 0 the core, > 0 a
+side stack; surface parts stay with the core, radial decouplers are left out), and `drawVapor` draws one volume per line
+on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders` as before. The shader is unchanged.
+- Heavy at M 1.0: core shoulders unchanged; each booster gets its nose (station 24 of 31) plus the fins/engine step near
+  its base. Big Lunar: the core's 2.5 m adapter shoulder stays; each booster its nose. The Orbiter (one line) gives
+  exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
+- A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
+  run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
+- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
+  15 km; not yet measured (the GPU was busy all evening)...
+- New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
+
+## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
+
+The control session's engine gimbal (`p.gv`) and steerable fin plates (`p.fd`) steered the rocket but never showed: the
+ship mesh is built once per design. Now they move in the vertex shader, with no mesh rebuild.
+- **`MESH_VS` has a small table** `uMv[48]`: up to 16 moving parts, three vec4s each: (pivot, part index), (mode, axis,
+  ring radius), (rotation). `setMoves(u, parts)` fills it from `setMarks`, so every mesh draw that sets marks (the ship,
+  fleet, debris, satellites) also sets its moving parts; parts at rest are left out, so most draws send zeros.
+  Mode 1: an engine's bell vertices (kind 2) turn about the throat by the quaternion from `tdir` to `tdir + gv`; the throat
+  height is read once per engine from its own mesh (`bellThroat`). Canted engines: the pivot is tilted with the mount.
+  Mode 2: a fin ring's plates (kind 6 beyond 1.02× the ring radius) turn about their radial axes `FIN4[j]` through
+  mid-chord by `fd[j]`. Mode 3: a radial fin, the whole part about its radial axis. Same sign as the sim's plate normal.
+- **The plume follows**: `plumeFrame(e)` gives the exhaust's tilt and exit for both the plume draw and `plumeLight`.
+  It also fixes canted engines' exit point, which was the untilted one (off by sin(cant)·h, ~0.2 m on a 10° Kestrel).
+  Escape-tower nozzles have no `h`: their exit stays at their mount.
+- **The reaction wheel** (`rwheel`) had the default drum; now a machined steel housing between bolted flanges, a
+  gold-foil band and four motor pods.
+- `MOVES_FX = false` freezes bells and plates (A/B). Views: `refView(105)` the Orbiter's Kestrel at its full 5°,
+  `106` a steerable fin ring at ±20°, `107` the reaction wheel (all builder close-ups; pass the career gate first).
+- **A/B pitfall:** an expression that sets a toggle off, renders, and sets it back on in one go photographs the "on"
+  state: the page's own loop redraws before the screenshot. Leave the toggle off until the picture is taken.
+- test.mjs `aerofx-2` (moving parts): the exit swings 0.065 m for 5° on a 0.75 m throat height, opposite the thrust's
+  tilt; the plume axis follows; the wiring (`uMv`, `setMoves`, `plumeFrame` in both places, the `rwheel` case).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
