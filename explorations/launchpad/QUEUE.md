@@ -151,7 +151,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ✓ v1.81.1 `58784ca` (W11 built: missions count only on a flight launched while open) |
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
 | Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ✓ `bc691b7` (no recurring income; stakes fix it: frugal 187M → 392M; no game change) |
-| Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | → economy 2026-10-09 |
+| Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ✓ v1.89.1 `00e0e3a` (fleet, pads, nodes with stock/need, supplies bottleneck; the screen switched over) |
 | Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ready |
 | Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ready |
 | Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ready |
@@ -365,3 +365,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- flow — `netModel()` is in (v1.89.1): delete `netFallback` in `app/network.js`; N2's nodes (`M.nodes`: kind, body, slot, stock, need, days, paused) and `M.bottleneck` are ready to draw — NOTES § "netModel() built"
