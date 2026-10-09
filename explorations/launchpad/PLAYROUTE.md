@@ -114,7 +114,7 @@ written in PLAYTEST").
 |---|---|---|
 | 1 | Three new sandboxes (Fresh, twice): open superpower, closed superpower, resource state; a year of date jumps each. Do they *play* differently? | **82** |
 | 2 | Ownership decisions after two firsts; a contract with ⚠ sanctions | 81, 80 |
-| 3 | Run a bad career (no *Infinite money*) and see whether a career move turns up | 83 (wants Q16's set-funds cheat) |
+| 3 | Run a bad career (no *Infinite money*) and see whether a career move turns up | 83 (tester → *Set funds*) |
 | 4 | Industry: test stand (turn *Full know-how* off to see the gains), study a trajectory, read the spreads | **86**, 57 |
 | 5 | Fleet → ground stations at home and abroad; a refusal | **93** |
 | 6 | Logbook (F): a record, Copy this design, LOAD DESIGN, fly its tape | 53 |

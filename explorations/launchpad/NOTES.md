@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,54 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## Epoch 1–2 pacing for a new player, measured (QUEUE Q44, 2026-10-08, economy session)
+
+No game code changed: this is a measurement, a runner fix, and a proposal waiting on Caio (QUEUE **W12**).
+
+**The runner's new pacing report.** `PACE=1 node career.mjs 2 5` prints, per archetype × start: runs that reach
+first orbit (beeper or passenger orbiter), flights and days to it, the longest stretch with nothing worth flying,
+bailouts before orbit, and the lowest funds. `FAILFIRST=orbit` makes the first orbital attempt fail (the worst single
+failure: ~75–85M, nothing comes home); `FAILFIRST=1` fails the first try at every first. `TRACE=1` prints the
+pre-orbit decisions; `SEED0`, `ARCHS` and the starts argument narrow a run. Two experiment knobs, runner-only:
+`BONUS=` adds to the starting funds, `KEEP=` refunds that share of a failed first's cost.
+
+**A runner fix that changes its old numbers a little.** The scripted player valued a flight as pay − price and ignored
+refurbishment (65 % of what lands whole). It turned down sounding contracts that really break even, and a company at
+the floor waited for ever. It now learns the average refund per kind of flight from its own flights.
+
+**The numbers (2 years, 5 seeds, prices: weather 18M, hop 28M, beeper 71M, orbiter 74M; start 80/90/80M):**
+
+| | flights to orbit | day | bailouts before orbit | worst case |
+|---|---|---|---|---|
+| no forced failure | 4–6 | 119–255 | 0.6–2.0 (agency, consortium) | resource company 6 flights, day 639 |
+| **first orbital attempt fails** | 6–10 | 184–428 | 1.0–4.6 | **frugal company: 2 of 5 runs never reach orbit in two years** (wait 160 d); resource company 3 of 5 |
+| …with `BONUS=80` | 5–9 | 163–377 | 0–2.8 | frugal company still 3 of 5 |
+| …with `KEEP=0.5` | 5–8 | 163–340 | 0.4–2.2 | frugal company 3 of 5 |
+| …with `KEEP=0.75` | **5** (frugal company 7) | 163–349 | 0.2–1.0 | frugal company 5 of 5, wait 60 d |
+
+**What it says:**
+- With no failures the first hour is fine: about five flights to orbit.
+- **One failed orbit attempt breaks it.** The orbital flight costs 90 % of the starting money and nothing comes back.
+  Agencies are bailed out again and again; the bailout tops up to the 25M floor, which is not enough for any
+  orbital flight. A company's rescue loan also lifts it only to 25M, and then the sounding work it can afford
+  barely breaks even, so in a poor world (frugal, resource) it grinds for months or never gets back.
+  The QUEUE criterion "nothing unaffordable after one failure" fails.
+- **More starting money doesn't fix it.** The player spends it on the earlier steps, and still arrives at the orbital
+  attempt with about one flight's worth.
+- **Covering most of a failed first fixes it.** With 75 % back, every start reaches orbit in five flights except the
+  frugal company (seven).
+
+**Proposed (W12, default if Caio is silent: the first option):**
+1. *A failed first is mostly covered, once.* The first time a flight aimed at an open first is lost, the sponsor pays
+   back 75 % of its price: the government for an agency ("the program learns, the minister signs"), investors for a
+   company (an insurance-like milestone clause), members for a consortium. Once per first, with news. Needs the
+   flight to name the first it's going for (the builder's target picker, or the open first the stack can satisfy).
+2. *The rescue lifts to the next step,* not to the 25M floor: lend the price of the cheapest open first. Bigger debts.
+3. *Leave it hard,* and say so on the screen before the attempt ("a loss leaves you X").
+
+The frugal company's grind (cheap work that doesn't pay in a poor world) is a second, smaller problem: contract
+pay floors by world. A follow-up under *Proposed*.
 
 ## v1.53 — the ladder's balance: Nyx is found by looking; the pay floor (2026-10-08, economy session)
 
@@ -5953,7 +6001,7 @@ the arrows, and every key in the handlers present in its Help table.
   the air), and an **End flight ▸** button in the flight toolbar once the vessel has landed or is lost (`debEndBtn`, from
   `hudLayout`). Program has **Last flight** to see it again (not kept across reloads). Rover yard skips it.
 - **Revert and `R` skip the Debrief on purpose**: they are the quick retry, and the record is still kept (Last flight).
-  TESTING row 126 asks whether that's right.
+  TESTING row 127 asks whether that's right.
 - `atDeb` joins `atHQ`: builder.js ignores keys on Debrief, and render.js no longer draws the builder's CoM/CoP markers
   and `edOverlay` behind either panel (they showed `NaN%` behind Program after a flight). §32 now counts `atDeb=` too.
 - Robot: rows that `go('program')` after a flight now land on Debrief first; the next `go('program')` goes on to Program.
@@ -6047,8 +6095,13 @@ Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 che
 unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
 is right.
 
-**Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
-"skip to an era" shortcut for the compute eras.
+**Added 2026-10-08 (QA session, QUEUE Q16):** *Go to day* N (forward runs every day's rules through `testAdvance`;
+back moves only the calendar, so what happened stays and deadlines and jobs are further off), *Set funds* to any number,
+negative included (it turns *Infinite money* off, or the top-up would undo it), a button per **computing era** (the date
+runs on a day at a time until `compEra()` reaches it: the era follows the date and the power's lag as in play, it never
+overrides them), and a folded **Missions** list with one checkbox per mission (marked `test:true` like the epoch
+picker's). SIM: `testGoto`, `testFunds`, `testEra`, `testMission` after `testFinishJobs`; checks in test.mjs `qa-1`. All
+of them wait while a flight is on, like epoch and date.
 
 ## The gantry no longer clips the rocket (2026-10-08, tester session; PLAYTEST #2)
 
@@ -6389,3 +6442,117 @@ directly, so the run proves the career path and the screens, not that a person c
 full-screen layers (`#hud`, `#prog`), keeps the outermost ones and lists each overlapping pair. `PT.debrief` accepts a
 screen named `debrief` or any visible element with `debrief` in its id or class: **flow, name Q2's screen that way** or
 change the check with it. Shots in `C:/Users/caioa/dev/playtest-out/` (`rm1_*.png`). A run takes about a minute.
+
+## Vehicle parts: landing legs (Q31) and power, computer, radiator (Q34) — plan (2026-10-08, vehicle session; nothing built)
+
+Planned without running the game (Caio: no heavy GPU for now). Both are ⚙ work: physics plus headless checks; the look
+beat draws the new parts afterwards. Numbers marked *tune* are starting points to measure, not results.
+
+### Q31 — landing legs
+
+**Why now.** § v1.37's contact model already makes legs worth having: with no legs a stack's footprint is its bottom
+rim, so the Orbiter (1.25 m base, CoM ~5 m up) topples on a 12° slope (atan(r/h)). Legs are only a wider footprint,
+plus a place for landing loads to go.
+
+**The part.**
+- `leg`: `kind:'leg'`, `surf:true`, `noAero:true`. It mounts on a part's side like `rfin`, so the builder's radial
+  count (`at.n`, 3 or 4) gives a symmetric set for free (`layoutDesign`'s surface-part branch).
+- Geometry: the root is on the host's skin; the foot sits `reach` out along the mount's normal and `drop` below the
+  root. *Tune:* reach 0.9 m, drop 0.8 m, so 4 legs on a 1.25 m body put the feet at r ≈ 1.5 m, 0.8 m below the rim.
+- Mass 0.04 t each. Price 1.5. `complexity` tier 1 (`sim/program.js:317`).
+- Joint ratings sized so a set of 4 survives ~6 m/s vertical at the stack's design mass and snaps a leg around ~9
+  (*tune* by measurement). Then a hard landing breaks a leg and the stack tips over, with no special rule: the
+  contact forces are already part forces (`p.F`/`p.L`) that the structural check reads.
+- **Deployable:** stowed for launch, deployed by a key (flow picks a free one; `G` if it's free). Stowed legs add no
+  feet. **Default:** deployable. Fixed legs would also need the pad and the rig to clear them.
+
+**Contact changes (`sim/flight.js` `footPoints`, one function):**
+- A deployed leg adds **one** contact point, at its foot, instead of the 4 rim points every other part gets.
+- `yb` (the lowest point) is taken over the feet as well as the rims, so with legs down the rims (≥ 0.8 m higher)
+  drop out by the existing 0.5 m rule.
+- The cache key adds each leg's deployed flag next to `p.on`.
+- Keep the spring-damper per point as it is (2 cm static deflection, ζ 0.6). A softer leg stroke is a later
+  refinement, and the verdict (`touchdown`, `TOUCH_MAX` 12 m/s + softness) doesn't change. Legs help by spreading the
+  footprint and by breaking, not by a speed bonus.
+- `rvFootR` (rovers) reads `footPoints`, so a lander's legs also widen the area a rover is placed around. Check that.
+
+**Checks for `test.mjs` (a new section at the end):**
+1. The Orbiter with 4 legs deployed stands on a 12° slope (it topples today) and on a slope up to atan(1.5/5) ≈ 17°.
+2. The same stack with the legs stowed topples as before (no regression).
+3. A 9 m/s vertical touchdown snaps at least one leg (`partLost`); 3 m/s snaps none.
+4. A Selene lander (Wren + legs) lands on regolith at 15°.
+5. `footPoints` with legs down returns only feet (4 points for 4 legs).
+
+**Others:** the look beat draws the leg (folded and deployed). Until then, a placeholder box at the foot. The
+TESTING row goes in when it's built: "land the Orbiter with legs on a slope".
+
+### Q34 — onboard computer, solar panels, battery, radiator
+
+**What exists.**
+- Rovers have a power model (`sim/rovers.js` R3: panels, an RTG, a battery, a night heater). Vessels have none.
+- Avionics come from the world's compute era alone (`avNow()`; v1.46). `s.av` is set at launch, so nothing on board
+  decides it.
+- The flight thermal pass (`thermal()`, `sim/vessel.js`) is the per-part skin model for re-entry. Orbital
+  steady-state thermal is a named M2–M5 system (§ "Rich programs", step 3) with no code yet.
+- The sun is fixed in the absolute frame (`SUN_DIR`), so a polar orbit whose plane is square to the sun is dawn-dusk
+  forever, with no J2 needed. That's convenient for the "no eclipse" case.
+
+**Scale (worked out from the constants; not run):** LEO here is r = 1,384 km (`TELLUS.R` + air + 10 km). That gives
+a 43-minute period and a shadow half-angle of acos(√(r²−R²)/r) = 67°, so **37% of each orbit is in eclipse (16 min)**
+at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap here; the panel area, generation ÷
+(1 − 0.37), is what costs.
+
+**Split into two slices (recommendation):**
+
+*Q34a — computer, panels, battery (M2, ⚙).*
+- **Parts:**
+  - `ocomp` Onboard computer: inline, 0.03 t, 50 W (the Apollo guidance computer: 32 kg, 55 W). Price 8, tier 2.
+  - `bpanel` Body-mounted solar cells: surface part, fixed, 0.01 t. *Tune:* 40 W in full sun, ×0.32 averaged over a
+    tumbling or spinning body (Vanguard, Explorer).
+  - `wpanel` Deployable solar wing: surface part, 0.03 t. *Tune:* 300 W in full sun, tracks the sun about its own
+    axis (×0.9). **Deployed, it snaps above ~1 kPa of dynamic pressure** (when to deploy is a design problem,
+    Pillar 2).
+  - `batt` Battery: inline or surface, 0.02 t, 1 kWh (silver-zinc, ~50 Wh/kg).
+- **Loads**, a `W` field on parts that draw power: computer 50, antenna 20 while it transmits, camera 15, crewed pod
+  150 (a cabin). A pod or core carries its own small battery (0.5 kWh) so short flights never need to think about it.
+- **The budget is a steady state first** (the lean pillar, like thermal step 1). For a design and an orbit: orbit-
+  average generation (with the eclipse fraction from the orbit's β), load, and the battery needed to cross the
+  eclipse. The builder shows one line: `Power +85 W / −70 W · eclipse 16 min needs 19 Wh (battery 1 kWh ✓)`.
+- **In flight:** the instantaneous version, integrated like the rovers' `R.E` (`gen − use`, clamped; sunlit from
+  `SUN_DIR` and the planet's shadow cylinder). One line in the step, no new state beyond `s.E`.
+- **Running flat never kills (Pillar 5):** the computer drops to the analog autopilot, the antenna and camera stop,
+  and on the registry the service **pauses** (the W2/Q50 pattern) until the budget is positive again. This differs
+  from rovers, which freeze to death at night; leave them alone, they're the space lane's call.
+- **The computer and avionics (decision, default yes):** from the onboard-computer era on, the **Guidance computer**
+  generation (`AV[2]`) needs an `ocomp` on board and powered. Without one, a vessel flies the analog autopilot.
+  - Before that era the part isn't offered, and nothing changes.
+  - Sandbox, physics tests and procedures (`s.proc`) keep the best avionics, as now (`avOf`).
+  - **What it breaks:** presets and robot designs flown after year 7 lose the target and docking modes unless they get
+    the part. Update the presets in the same commit, and tell QA (`career.mjs`).
+  - It gives the space lane a hook, `hasComputer(s)`, for onboard autonomy out of contact (§ "Compute", era 3).
+    Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+- **Checks:**
+  1. The steady-state budget for a LEO satellite with a wing, against a hand calculation;
+  2. In flight, the battery drains through the shadow and refills in sun, and over one orbit the steady state and the
+     integration agree to within 5%;
+  3. A deployed wing snaps at max-q, and one deployed after fairing separation survives;
+  4. Running flat drops avionics to analog and pauses a satellite's service; recharging restores both;
+  5. Era ≥ onboard computers, with no `ocomp` → no docking mode.
+
+*Q34b — radiators and the steady-state thermal solve (M2–M3, with the economy's orbital datacenter).*
+- `rad`: a deployable surface panel. Its mass per m² and emissivity give εσAT⁴. Like the wing, it snaps in air.
+- **The solve** (§ "Waste heat", step 1): heat in is α·A·S + internal power, heat out is εσAT⁴; solve for T per
+  vessel. Parts get operating ranges (electronics 270–330 K). The builder shows "runs at 340 K, over the computer's
+  limit".
+- **Why wait:** until the datacenter exists, nothing on a vessel makes enough heat for a radiator to matter (a 50 W
+  computer on a 1.25 m bus runs a few kelvin warm). Build it when the economy starts datacenter revenue (that
+  section's order, step 3), so the part ships with a reason to fly.
+- In the flight's `thermal()`, a radiator is only a skin part with a low `Tmax`, so re-entry with it deployed burns
+  it off. The orbital solve is a separate function that shares only the radiation term.
+
+**Overlaps (so nobody builds the same thing twice):**
+- space Q27 "relay range and power": reads the power budget and `hasComputer`; it doesn't build its own.
+- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared.
+- economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
+- Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
+  session builds the gating.

@@ -1,6 +1,6 @@
 # POWERS — national flavours as content
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **DRAFT, not approved.** Round 1 answered by Caio (below); the kit list, weights and tones await his read.
+**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it.
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
 already exist (ROADMAP § "Design catalogs"); no new system.
@@ -28,6 +28,21 @@ livery" (NOTES § "Backlog — visual flavours").
 A **school** is a design lineage: the shapes parts take when this school builds them, the pad and buildings it
 builds, its flag motifs and the sound of its names. Look only: **a school never changes a part's physics** (mass,
 thrust, Isp stay as `PARTS` says; pillar 6).
+
+**What a school may change on a part, and what it may not** (Caio asked, 2026-10-08). The aero model reads each part's
+outline (its radii top and bottom, `r0`/`r1` in `aeroPass`), and collisions and the builder's attach points use its
+size. So a school **keeps every part's size and outline exactly** and changes what sits on and inside it:
+- **may change:** surface detail (ribs, stringers, lattice interstages, weld seams, rivets, hatches), materials and
+  finish (white paint, grey-green enamel, bare metal, carbon), the base paint pattern, nozzle bell detail (colour,
+  cooling tubes, gimbal hardware), fin edge styling within the same area, decals and the roundel, and the plume's
+  look (Arsenal's orange cloud: the effects beat);
+- **may not change:** a part's length, diameter, taper or fin area, its attach points, or anything in `PARTS`.
+
+**The big silhouettes come from designs, not parts.** A Steppe rocket's cluster of conical strap-ons is a *design*
+built from parts, not a part that looks different. Rival programs' rockets (their news pictures, a rival on a
+neighbouring pad) are drawn from **school designs**: each school gets one or two signature stacks built from the
+normal parts. **The player's presets stay the same in every school**, only styled by it, because the economy's pay
+floor is measured against those presets (NOTES v1.53). A school-specific preset would need its prices re-measured.
 
 | School | Echoes | Rocket shapes | Pad and buildings | Flag motifs | Names sound like |
 |---|---|---|---|---|---|
@@ -132,8 +147,8 @@ part *performance*; diplomacy actions.
 
 ## After approval: the fan-out
 
-- **look & sound, parts & pad:** a school as a style parameter in `partShape`/`partBody` (Cape first, since it's
-  today's look; then Steppe); livery and the roundel from the roll-pattern machinery (NOTES § "Paint schemes per
+- **look & sound, parts & pad:** a school as a style parameter in `partShape`/`partBody`, outline unchanged (Cape
+  first, since it's today's look; then Steppe); one or two signature designs per school for rivals; livery and the roundel from the roll-pattern machinery (NOTES § "Paint schemes per
   design or era"); the pad per school.
 - **economy:** school and name forms in `makePowers`; syllable sets per school; rival news rules per archetype;
   headline tone per archetype.
@@ -143,18 +158,17 @@ part *performance*; diplomacy actions.
 
 ---
 
-## Open questions for Caio (round 2)
+## Decisions (round 2, Caio, 2026-10-08)
 
-1. **Six schools**: right set? Too many to build well? (Default: build **Cape and Steppe first**, the two
-   superpowers' looks, then the rest one by one.)
-2. **The affinity weights** above: about right? (Default: as written.)
-3. **New government forms** (People's Republic, Emirate, Sultanate, State): fine, or keep the current eight?
-   (Default: add them.)
-4. **Rival personalities** (announces everything / only after / copies / partners / buys in / provokes): the right
-   six? (Default: as written.)
+1. **The six schools stand; build Cape and Steppe first** (the two superpowers' looks), then the rest one at a time.
+2. **The affinity weights stand as written.**
+3. **Add the new government forms:** People's Republic, Emirate, Sultanate, State.
+4. **The six rival personalities stand as written.**
 
 ---
 
 ## Version history
+- **1.0.0 (2026-10-08):** approved by Caio; round-2 decisions; what a school may change on a part (outline fixed),
+  and the big silhouettes as school designs.
 - **0.1.0 (2026-10-08):** first draft. Round-1 decisions; six schools; tone, rival personality and affinities per
   archetype; generation rules; fan-out.

@@ -3102,6 +3102,33 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     (blk.match(/plasmaHeat\(/g) || []).length === 2 && !/qHeat>1\.5e4|g\.q>1\.5e4/.test(blk), blk.slice(0, 120));
 }
 
+// qa-1. More tester cheats (QA session, QUEUE Q16): go to any day (forward runs the days, back moves only the calendar),
+// set funds (which turns infinite money off), skip to a computing era, one mission at a time. Own SIM copy, like §37.
+{
+  const D = new Function(src + 'return {TEST,testGoto,testFunds,testEra,testMission,testTopUp,compEra,COMP_ERAS,YEAR_D,PROG,MISSIONS,missionOpen,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, T = D.TEST; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 0, rel: {}, op: {}, sanc: {}, cert: {}, done: {}, kh: {}, lines: {}, flights: 1, own: null, decisions: [], active: [], offers: [], fac: {} });
+  D.chooseStart('agency'); T.on = true;
+  D.testGoto(250); const fwd = P.day; D.testGoto(40); const back = P.day; const bad = D.testGoto('x');
+  check('tester: go to any day, forward and back; nonsense is refused', fwd === 250 && back === 40 && bad === false && P.day === 40, `→ ${fwd}, back → ${back}`);
+  T.money = true; D.testTopUp(); D.testFunds(3); D.testTopUp();
+  check('tester: set funds to an exact number, which turns infinite money off (so the program can go broke)', P.funds === 3 && T.money === false, `funds ${P.funds}, money ${T.money}`);
+  D.testFunds(-20);
+  check('tester: funds can be set below zero', P.funds === -20);
+  const e0 = D.compEra(), ok1 = D.testEra(1), d1 = P.day, e1 = D.compEra(), ok2 = D.testEra(2), e2 = D.compEra();
+  check('tester: skip to a computing era: the date runs on until it reaches the program, then stops', e0 === 0 && ok1 && e1 === 1 && ok2 && e2 === 2 && d1 > 0,
+    `${D.COMP_ERAS[e1].name} on day ${d1.toFixed(0)}, ${D.COMP_ERAS[e2].name} on day ${P.day.toFixed(0)}`);
+  const dEra = P.day; D.testGoto(dEra - 1); const e2b = D.compEra(); D.testGoto(dEra);
+  check('tester: the era skip stops on the first day of the era (a day earlier is still the one before)', e2b === 1, `day ${dEra - 1}: era ${e2b}`);
+  const bp = D.MISSIONS.find(m => m.id === 'beeper'), open0 = D.missionOpen(bp); D.testMission('weather', true); const open1 = D.missionOpen(bp), mark = P.done.weather;
+  D.testMission('weather', false); const open2 = D.missionOpen(bp), none = D.testMission('nope', true);
+  check('tester: one mission at a time: ticking "Above the weather" opens the beeper, unticking closes it; unknown ids refused',
+    !open0 && open1 && mark && mark.test === true && !open2 && !P.done.weather && none === false);
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('tester menu: day, era, funds and mission controls are drawn, and disabled in flight', ['id="testDayIn"', 'data-test-era=', 'id="testFundsIn"', 'data-test-mis='].every(s => pg.includes(s)) && /data-test-mis="\$\{M\.id\}"[^`]*\$\{dis\}/.test(pg));
+  Object.assign(T, { on: false, money: false, kh: false, tools: false, nofail: false, fast: false });
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

@@ -3608,3 +3608,58 @@ Platform lane, ROADMAP steps 1, 3 and 4 (QUEUE Q56, Q58, Q59). Caio stopped ever
 ### Next steps
 - [ ] Every lane: merge `main` before the next edit (ACTIVE_WORK notice)
 - [ ] Platform: Q57 save versions; then the proposals: `test.mjs` into per-area files, `app/gl.js` split further, modules later
+
+
+## 2026-10-08 — Launchpad economy: Q44 epoch 1–2 pacing (economy session)
+
+### Summary
+- `career.mjs` has a pacing report (`PACE=1`): flights and days to first orbit, the longest wait, bailouts before
+  orbit. `FAILFIRST=orbit` fails the first orbital attempt. The runner now counts refurbishment when it values a flight;
+  before, it refused sounding work that breaks even.
+- Finding: with no failures, first orbit takes ~5 flights (day 120–255). One failed orbit attempt costs ~90 % of the
+  start money: 6–10 flights, 1–4.6 bailouts, and frugal/resource companies often never get back to orbit in two years.
+  More start money doesn't help; refunding 75 % of a failed first does (5 flights everywhere but the frugal company).
+- No game code changed. Proposal **W12** in QUEUE (default: a sponsor covers 75 % of the first lost flight at a first).
+
+### Files
+- `explorations/launchpad/career.mjs`, `NOTES.md` § "Epoch 1–2 pacing" (v1.21.8), `HANDOFF-economy.md`, `QUEUE.md` (Q44 ✓, W12, two Proposed lines), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: W12 (or the default stands)
+- [ ] Economy: build W12's answer; then Q6 `siteAccess`
+
+
+## 2026-10-08 — Launchpad vehicle: plans for landing legs (Q31) and power/computer/radiator parts (Q34) (vehicle session)
+
+Planning only, at Caio's request (no heavy GPU): code and docs read, nothing run, no game code.
+- **Q31 legs:** a surface part mounted in symmetric sets; deployed feet replace the rim points in `footPoints`; landing
+  loads already reach the joints, so hard landings snap legs. Five headless checks specified. Back to `ready`.
+- **Q34 split:** **Q34a** (computer, body cells, deployable wing that snaps in air, battery, steady-state power budget
+  in the builder; running flat pauses, never kills) and **Q34b** (radiators + the orbital thermal solve, deferred to
+  the economy's datacenter). Worked out: LEO here is 37 % eclipse (16 of 43 min).
+- **Defaulted, for Caio:** from the onboard-computer era on, guidance-computer SAS modes need the `ocomp` part
+  (presets and the robot get one).
+
+**Files:** `explorations/launchpad/NOTES.md` (new section "Vehicle parts…", v1.21.9), `explorations/launchpad/QUEUE.md`
+(Q31/Q34 states, 6 Proposed lines), `ACTIVE_WORK.md` (claim opened and cleared).
+**Next:** build Q31 (⚙, M1), then Q34a; the look beat draws the parts when GPU time is free.
+
+## 2026-10-08 — Launchpad world lane: the ground plan for every body (world session)
+
+### Summary
+QUEUE Q86 + Q18, written as one plan (a different machine, kept off the GPU, so docs only). New
+`explorations/launchpad/GROUND.md` v0.1.0:
+- a code survey: only Tellus has relief; every other body is a smooth sphere in physics and on screen, with craters as shading only;
+- one ground layer: a `ground` recipe per body, `bodyH(b,u)`, baked big features plus procedural integer-hash bands, so v1.25's CPU/GPU rules carry over; the mare mask moves into Selene's bake (removing the last shared float noise);
+- eight shared generators (crater field first, used by about 12 bodies) and a per-body table for SYSTEM.md;
+- Selene in detail: crater bands and shapes (the simple/complex transition scales as 1/g), maria as flooded plains, slopes against TOPPLE, shadows (a sun-horizon map plus near rays), horizons (1.2 km from a 2 m eye), and polar dark craters: the fixed sun sits 6.8° above Selene's equator, so the south polar floors are permanently dark (R4's ice);
+- slices G1–G7+; G1–G2 are headless.
+Three decisions for Caio, each with a default: maria to the near side (yes), G1–G2 before M3 (yes), relief in real metres (yes).
+
+### Files
+- new `explorations/launchpad/GROUND.md`; `QUEUE.md` (Q18/Q86 ✓ plan, five lines under *Proposed*); `INDEX.md`; `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Caio: GROUND.md § Decisions (defaults hold if silent)
+- [ ] Orchestrator: rank G1–G7+ into the world lane
+- [ ] World: G1 then G2 (headless, fine on a machine kept off the GPU)
