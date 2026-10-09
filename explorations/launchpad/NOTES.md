@@ -7329,7 +7329,8 @@ Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust sha
 level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
-- test.mjs `aerofx-3` (engine voices).
+- test.mjs `aerofx-3` (engine voices).
+
 ### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
 - **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
   kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
@@ -8266,3 +8267,46 @@ launch.
 **Checked:** `test.mjs` section `vehicle-8`; `playtest.mjs m1` passes; in the page the Beeper reads "Lifetime at 110 km
 holding it costs 73.25 m/s a day; ~1494 m/s left there holds it 20 days, then the air brings it down in less than a
 day"; the smoke shard after merging main.
+
+## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
+
+**The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
+modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
+generations: `avOf(s) = AV[min(s.av, avCap(s))]`, and `sasModeOK(s, m)` asks that generation's list. Rank 2 (target
+but not docking) sits between two generations, so gating has to become per mode.
+
+**Proposal:**
+- **`modesOf(s)`**, the union of two sources:
+  - the **computer's** modes: `AV[min(s.av, avCap(s))].modes`, as today;
+  - the **pilot's** modes: `PILOT[r].modes` for the best pilot aboard (`r` = the highest rank of role *pilot* among
+    the crew on parts that are still on), only on a crewed vessel.
+  - `sasModeOK(s, m)` asks the union. The buttons, the tooltip and `sasTarget` stay as they are.
+- **The loop follows the source.** If the computer has the mode, the computer's loop flies it (`k`, `w`, `db` from
+  `AV`). If only the pilot has it, a pilot loop: *tune* k 2.5/s, fastest turn 0.35 rad/s, deadband 0.5°. That's
+  CREW's "slower and less precise than a computer of the same tier", so computers win when they arrive (pillar 8).
+- **The tiers:**
+
+  | Rank | Modes |
+  |---|---|
+  | 1 | stability, prograde, retrograde, normal, anti-normal, radial out/in (the analog autopilot's list) |
+  | 2 | + manoeuvre, target, anti-target, relative prograde/retrograde (`node` + `TGT_M` without `dock`) |
+  | 3 | + docking, + the manual landing hold |
+
+- **The landing hold is a new mode, not just a gate.** It holds attitude on the surface-relative retrograde and flies a
+  descent-rate law on the throttle (hover, then sink at a set m/s). It's the control session's kind of work (size M),
+  planned on its own when crew reach M3. Until then rank 3 means docking.
+- **With v1.68:** from the onboard-computer era, crew capsules carry their own computer (`hasComputer`), so the pilot
+  matters in eras 0–1 and as the precision floor; uncrewed vessels are untouched. Procedures keep the best avionics.
+- **What it needs from the roster** (CREW's astronaut office, economy and flow): who is aboard. Today `p.crewAboard`
+  is a count. The roster has to give each crewed part its astronauts' ids, with role and rank (`p.crew = [{id, role,
+  rank}]`), and keep that through the register (`shapeOf`'s `o.crew`, `vesselOf`). Until the roster lands, no pilot
+  modes, which is today's behaviour.
+- **UI (flow):** a SAS button the pilot provides names them in its tooltip ("flown by Vela Marisk, pilot, rank 2").
+
+**Checks to write with it:**
+- in era 0, rank 1 gives prograde, rank 2 target (not docking), rank 3 docking;
+- the pilot's 90° turn is slower than the guidance computer's;
+- an uncrewed probe is unchanged;
+- in the onboard-computer era a crewed capsule flies the computer's loop.
+
+**Sizes:** per-mode gating plus the pilot loop is S (vehicle), after the roster; the landing hold is M (control).
