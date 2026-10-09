@@ -948,8 +948,8 @@ on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders`
   exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
 - A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
   run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
-- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
-  15 km; not yet measured (the GPU was busy all evening)...
+- `VAPOR_SIDE = false`: core only (A/B). Cost (RTX 5050, 1280×800, RS 1, same page on/off, median of 7×15 frames):
+  Heavy at M 1.0 (view 54) 6.05 vs 6.06 ms, Big Lunar (55) 6.77 vs 6.51 ms: one more volume per booster, ≤ 0.3 ms.
 - New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
 
 ## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
@@ -1002,6 +1002,17 @@ ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation
   night; 0.108 one radius up. Earthshine (~1e-4 of the sun) is left out.
 - `refView(113)` (back-lit, shadow toward the camera): the tank reads grey, the dark pod stays dark; `FILL_FX = false`
   gives the old black silhouette. `112` is the same lander from the sunny side.
+
+## Bay doors and char on dark shingles (2026-10-09, effects beat for parts & pad, QUEUE Q24)
+
+- **Bay doors mid-swing** read as paper-thin white eggshells: both faces were the paint colour and nothing held them.
+  `bayDoor` now gives the inside grey insulation and puts three hinge brackets on each rim, so a half-open door
+  reads as a door.
+- **Char on the capsule's black shingles** was invisible: char darkens toward black, and black can't get darker. On
+  dark paint (luma under ~0.1, `dk`) char now heat-tints instead, from bronze to blue-grey by noise, streaked like
+  the rest of the char (up to 80 %, less where it is fully burnt). Mercury's René 41 shingles came back looking like
+  this. The first try (tint at ~0.3 albedo) turned the whole pod pale bronze; the tint is now ~0.1.
+- Seen in the builder (bay at 45 % open; pod char 0 / 0.5 / 1). test.mjs `aerofx-3`.
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -1165,6 +1176,19 @@ Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `8
 **Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
 anvils; the deck from 8 km is still fairly uniform in brightness.
 
+### The volume's own shadows; a less uniform deck (2026-10-09, effects beat, QUEUE Q65)
+- **Shadows:** `cloudShadowV(p)` marches 5 steps from the ground point toward the sun through the 2–5.5 km slab with
+  `cloudDens` (the volume's extinction, 1/180 m⁻¹; floor 0.25 for skylight) and blends that into the shell's
+  `cloudShadow` by `uVk` and a fade at the bake's edge (36–47 % of its half-width). The cumulus over the sea in view 82
+  now cast their own dark patches, offset away from the sun; the shell's smeared shadow stays beyond 40 km and from
+  orbit. `CLOUD_SHADOW_V = false` for A/B. Cost: +0.3 ms at 3 km (view 81: 11.05 vs 10.73 ms), +0.75 ms on the pad
+  (view 80: 8.68 vs 7.93 ms), RTX 5050.
+- **Variety from 8 km:** the deck saturated to one white. Now a 9 km swell in each column's top height, a lower
+  multiple-scattering floor (0.4 → 0.28, so billows shade) and a ±15 % brightness swell over ~7 km. Better, still
+  modest: with a high sun a deck from above is mostly white. `CLOUD_VARY = false` for A/B; no measurable cost.
+- `cloudAt` (the CPU port for imaging) reads coverage, not `cloudDens`, so pictures and the sky still agree.
+- **Measuring pitfall:** the first timing loop of a page reported ~1 ms (warm-up); time each setting twice and use
+  the repeat.
 ## Effects for the new features: escape tower, landing dust, explosions (2026-10-08, aerofx session)
 
 Other sessions had added things with no visuals of their own: the crew escape tower (bodies), crewed Selene landings
@@ -7045,6 +7069,18 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   keys off, builder markers off; §32 counts it). Robot rows m1, 25 and 26 pass.
 - Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
   builder's panel (vehicle's), so they repeat here.
+
+### Landing where you click (2026-10-09, flow session, QUEUE Q62)
+- In the map, a click that misses orbits and satellites is cast onto the bodies (`surfacePick` in `sim/sitepick.js`, pure,
+  test `flow-3`): the first moon it meets gives a site in that body's own frame (`pf`, what bodies' `landAt` flies to). If
+  the design has a recorded procedure that lands on that moon (`procLandsOn`), it becomes `landPick`: a "landing site" ✕
+  on the map, the ▶ Procedure button says "→ 14.0°N 160.9°E", and starting it flies `procWithSite(pr, body, pf)`: the same
+  procedure with the transfer aiming its plane at the site and the descent landing on it (NOTES § "Landing on a chosen
+  point"). A design with no landing procedure there gets "land there once by hand". Picking again replaces it.
+- **The start buttons stay while the craft is on the pad** (`prelaunch()`): ▶ Procedure and ▶ Autopilot showed only at
+  `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
+- Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
+  Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
 
 ---
 
