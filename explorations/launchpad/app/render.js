@@ -39,7 +39,7 @@ function render(){
   const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
   if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast
-  for(const prog of PDEPTH?[PDEPTH,PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
+  for(const prog of [PDEPTH,PTERR,PSKY].filter(Boolean)){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
   {const Cp=mul(camW,-1),d=len(Cp),th=bodyTheta(TELLUS,simT),c=Math.cos(th),s=Math.sin(th);
    gl.uniform3fv(u.uPc,Cp);gl.uniform1f(u.uPcc,(d-TELLUS.R)*(d+TELLUS.R));gl.uniform1f(u.uPR,TELLUS.R);gl.uniform1f(u.uAR,TELLUS.R+TELLUS.atm);
@@ -62,7 +62,11 @@ function render(){
   gl.bindVertexArray(quadVAO);
   if(PDEPTH){const D=depthTarget(Math.ceil(W/2),Math.ceil(H/2));gl.useProgram(PDEPTH.p);gl.bindFramebuffer(gl.FRAMEBUFFER,D.fb);gl.viewport(0,0,D.w,D.h);
     gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);
-    gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)}
+    gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PSKY.u.uDepth,5);gl.activeTexture(gl.TEXTURE0)
+    // the terrain G-buffer at full resolution, marched from the pre-pass's start; the sky shader reads it on unit 4
+    if(PTERR){const G=terrTarget(W,H);gl.useProgram(PTERR.p);gl.activeTexture(gl.TEXTURE5);gl.bindTexture(gl.TEXTURE_2D,D.tex);gl.uniform1i(PTERR.u.uDepth,5);gl.uniform1f(PTERR.u.uUseDepth,1);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,G.fb);gl.viewport(0,0,W,H);gl.disable(gl.DEPTH_TEST);gl.drawArrays(gl.TRIANGLES,0,3);gl.enable(gl.DEPTH_TEST);
+      gl.bindFramebuffer(gl.FRAMEBUFFER,sceneFB());gl.viewport(0,0,W,H);gl.useProgram(PSKY.p);gl.activeTexture(gl.TEXTURE4);gl.bindTexture(gl.TEXTURE_2D,G.tex);gl.uniform1i(PSKY.u.uTerr,4);gl.activeTexture(gl.TEXTURE0)}}
   gl.useProgram(PSKY.p);gl.uniform1f(PSKY.u.uUseDepth,PDEPTH?1:0);
   gl.depthFunc(gl.ALWAYS);gl.drawArrays(gl.TRIANGLES,0,3);gl.depthFunc(gl.LESS);
   drawMoons(camW,R,U,Fw,tanX,tanY);
