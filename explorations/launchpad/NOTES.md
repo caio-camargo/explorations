@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1478,6 +1478,43 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
+
+**Q118, re-running `PACE=1 node career.mjs 2 5` on today's main** (after v1.55's cover, v1.73's Beeper presets and
+everyone's changes): rich worlds reach first orbit in 4 flights. But **a private company in a poorer world (frugal,
+resource, security) got stuck in 1 run of 5 with no forced failure**, waits up to 590 days. The trace: two orbiter
+attempts lost the ordinary way left it at 29M, just above the 25M floor (no rescue; a company has no budget day),
+both contract slots holding hops it could no longer afford, and the cheap work on the board barely breaking even.
+That is Q93's problem in its sharpest form.
+
+**Q93, built** (`sim/contracts.js`):
+- **A pay floor.** Every offer pays at least `FLOOR_K` = 1.3 × the net cost of the cheapest preset that can fly it
+  (`payFloor(type)`: the preset's price less the refurbishment a recovered flight brings back, `FLOOR_BACK`), applied
+  after every multiplier, in any world, standing or cycle. Floors in a frugal company world: sounding work 13M,
+  qualification tests 28M, hops 24M, satellites 84M. Selene science and lifts have no floor.
+- **Withdrawing a taken contract** (`withdrawContract(id)`): the slot comes free now, for what a missed deadline costs
+  later (−10 standing with that source, −3 the client's opinion). A *Withdraw* button on taken contracts
+  (`app/program-ui.js`, one line and a `data-wd` handler, flagged for flow).
+
+**The runner** (`career.mjs`) got three fixes, so its numbers move a little:
+- it withdraws the dearest taken contract it can't afford when its slots are full and nothing is worth flying;
+- it accepts only work it can pay for now (it used to count on the pay arriving after the flight);
+- its what-if flight record now carries the program's site, so ballistic tests count again (v1.57 made them count
+  only from their site, and the runner's hypothetical had none: it ignored a 62M ballistic offer at 25M).
+
+**Result** (2 years, 5 seeds): with no forced failure, **every start reaches orbit in every run, in 4–6 flights**
+(the frugal company was 4/5); with the first orbit attempt lost, 5–9 flights and every start but one frugal-company
+run makes it (was three starts at 3–4 of 5, waits to 290 days). **Ablation:** without the floor, the frugal company
+misses orbit in 1 of 5 runs with no failure, and after a lost orbit attempt the resource company misses one too and
+the frugal company waits 68 days. Two-year funds are in the same range as before (the poorest worlds up, the frugal
+company 112M → 290M; the richest unchanged, within the ±400M noise).
+
+Test `econ-9` (3 checks; the floor mutation-tested).
+
+**The intended number of flights (M1's finish line):** proposed as *4–6 flights to first orbit for a prudent player,
+and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
+five, which a person would get out of by withdrawing and flying samples).
 
 ## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
