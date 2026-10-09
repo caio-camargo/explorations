@@ -2745,38 +2745,41 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // 42. Rover science, R4 first slice (sats session): Selene's geology as drawn; the spectrometer, the panorama camera and
 // the seismic network, each counting only when its data reaches home. Own sim instance.
 {
-  const D = new Function(src + 'return {geoAt,selMare,rvNew,rvSci,rvSciSend,rvContact,rvRelays,rvEntry,rvFromEntry,rvSunPF,thAbs,selSci,advanceDays,satRegister,newShip,PRESETS,SEL_CORE,SELENE,TELLUS,PROG,HOOK,DAY_S,fbm};')();
+  const D = new Function(src + 'return {geoAt,selMare,rvNew,rvSci,rvSciSend,rvContact,rvRelays,rvEntry,rvFromEntry,rvSunPF,thAbs,selSci,advanceDays,satRegister,newShip,PRESETS,SEL_CORE,SELENE,TELLUS,PROG,HOOK,DAY_S,fbm,MARE_NEAR};')();
   const msgs = []; D.HOOK.news = m => msgs.push(m); D.HOOK.msg = m => msgs.push(m);
   const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
   // geology: the unit follows the drawn dark patches (the shader's mask, recomputed here); maria are iron-rich
-  const pts = []; for (let i = 0; i < 3000; i++) { const z = 2 * ((i * 0.618034) % 1) - 1, a = i * 2.39996, s = Math.sqrt(1 - z * z); pts.push([s * Math.cos(a), z, s * Math.sin(a)]); }
+  // a Fibonacci lattice (z evenly spaced, the golden angle around). It used to take z from the golden fraction too, which
+  // tied z to the angle and put all 3,000 points on one spiral curve: shares came out biased (9.7 % for a true 8.4 %)
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 1 - (2 * i + 1) / 3000, a = i * 2.39996, s = Math.sqrt(1 - z * z); pts.push([s * Math.cos(a), z, s * Math.sin(a)]); }
   let agree = 0, nm = 0; const fe = { mare: 0, high: 0 }, fn = { mare: 0, high: 0 };
-  for (const u of pts) { const g = D.geoAt(B, mul(u, B.R)), x = Math.min(1, Math.max(0, (D.fbm(u[0] * 1.6 + 3, u[1] * 1.6 + 3, u[2] * 1.6 + 3) - .5) / .15)), M = x * x * (3 - 2 * x);
+  for (const u of pts) { const g = D.geoAt(B, mul(u, B.R)), x = Math.min(1, Math.max(0, (D.fbm(u[0] * 1.6 + 3, u[1] * 1.6 + 3, u[2] * 1.6 + 3) - D.MARE_NEAR * u[0] - .5) / .15)), M = x * x * (3 - 2 * x);
     if ((M >= .2) === (g.unit === 'mare')) agree++; if (g.unit === 'mare') nm++; fe[g.unit] += g.FeO; fn[g.unit]++; }
   const feM = fe.mare / fn.mare, feH = fe.high / fn.high, share = nm / pts.length;
   check('Selene\'s geology follows the dark patches the sky shader draws: mare basalt (iron-rich) on them, highland rock elsewhere',
-    agree === pts.length && share > .05 && share < .15 && feM > 2 * feH && !D.geoAt(D.TELLUS, [1, 0, 0]),
+    agree === pts.length && share > .10 && share < .20 && feM > 2 * feH && !D.geoAt(D.TELLUS, [1, 0, 0]),
     `${(share * 100).toFixed(1)} % mare; FeO ${feM.toFixed(1)} % on mare, ${feH.toFixed(1)} % on highland; unit agrees with the shader's mask at ${agree}/${pts.length} points`);
-  // spots: a near-side highland (talks home directly) and a far-side mare (needs a relay)
-  const far = pts.filter(u => u[0] > .2 && D.geoAt(B, mul(u, B.R)).unit === 'mare').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0], hi = pts.find(u => u[0] < -.8 && D.geoAt(B, mul(u, B.R)).unit === 'high');
+  // spots: a near-side mare (talks home directly) and a far-side highland (needs a relay). Since GROUND.md G2 the maria
+  // are on the near side, as on our Moon (they were on the far side, and the spots the other way round)
+  const far = pts.filter(u => u[0] > .2 && D.geoAt(B, mul(u, B.R)).unit === 'high').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0], hi = pts.filter(u => u[0] < -.8 && D.geoAt(B, mul(u, B.R)).unit === 'mare').sort((p, q) => Math.abs(p[1]) - Math.abs(q[1]))[0];   // near the equator: the panoramas need a high noon sun
   const mk = (u, slots) => { const R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots }, B, mul(u, B.R), [0, 1, 0], {}); R.name = 'Sci'; R.id = 7; return R; };
   const kit = ['spec', 'cam', 'seis', 'ant', 'bat', 'sol', null, null];
   const Rn = mk(hi, kit), Rf = mk(far, kit), Rx = mk(hi, ['bat', 'sol', null, null, null, null, null, null]);
   Rn.v = [0.5, 0, 0]; const moving = D.rvSci(Rn, 'spec', 0); Rn.v = [0, 0, 0];
   const g0 = D.geoAt(B, Rn.p), okN = D.rvSci(Rn, 'spec', 0), dup = D.rvSci(Rn, 'spec', 0), none = D.rvSci(Rx, 'spec', 0);
-  const before = !!P.log.sehigh, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.sehigh;
-  check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side highland reading in the logbook',
+  const before = !!P.log.semare, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.semare;
+  check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side mare reading in the logbook',
     okN && !dup && !none && !moving && !before && sent === 1 && e && Math.abs(e.v.FeO - g0.FeO) < 4 && e.v.n === 1,
     `read ${okN}, again here ${dup}, without one ${none}, moving ${moving}; logbook before sending ${before}, after: FeO ${e ? e.v.FeO.toFixed(1) : '—'} % (truth ${g0.FeO.toFixed(1)})`);
   // far side: the reading waits in the field (no contact) until a relay is up, then arrives between flights
   D.rvSci(Rf, 'spec', 0); const held = D.rvSciSend(Rf, D.rvContact(Rf, 0, [])) === 0 && Rf.data.length === 1;   // no contact: nothing goes
-  P.rvOut = [D.rvEntry(Rf)]; D.advanceDays(2); const waited = held && !P.log.semare && P.rvOut[0].data.length === 1;
+  P.rvOut = [D.rvEntry(Rf)]; D.advanceDays(2); const waited = held && !P.log.sehigh && P.rvOut[0].data.length === 1;
   const sat = D.newShip(D.PRESETS.Probe), a = B.R + 1000e3; Object.assign(sat, { alive: true, landed: false, body: B, r: [a, 0, 0], v: [0, 0, -Math.sqrt(B.mu / a)] }); D.satRegister(sat, { day0: P.day });
-  D.advanceDays(3); const arrived = !!P.log.semare && !P.rvOut[0].data.length;
+  D.advanceDays(3); const arrived = !!P.log.sehigh && !P.rvOut[0].data.length;
   const back = D.rvFromEntry(P.rvOut[0]);
   check('a far-side reading waits in the field without contact, then reaches home through a relay between flights; field entries keep data, seismometers and read spots',
-    waited && arrived && P.log.semare.v.FeO > 7 && back.reads.length === 1 && back.seisLeft === undefined,
-    `waited ${waited}; arrived via the relay ${arrived} (mare FeO ${P.log.semare ? P.log.semare.v.FeO.toFixed(1) : '—'} %)`);
+    waited && arrived && P.log.sehigh.v.FeO < 7 && back.reads.length === 1 && back.seisLeft === undefined,
+    `waited ${waited}; arrived via the relay ${arrived} (highland FeO ${P.log.sehigh ? P.log.sehigh.v.FeO.toFixed(1) : '—'} %)`);
   // panoramas: the quality is the sun's height (long shadows best, noon flat, night refused)
   const elAt = T => Math.asin(dot(norm(Rn.p), D.rvSunPF(B, D.thAbs(B, T)))) * 180 / Math.PI, orbit = 2 * Math.PI / B.n;
   let tLow = null, tHigh = null, tDark = null; for (let T = 0; T < orbit; T += 600) { const el = elAt(T); if (tLow == null && el > 8 && el < 15) tLow = T; if (tHigh == null && el > 75) tHigh = T; if (tDark == null && el < -5) tDark = T; }
@@ -3186,6 +3189,50 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Se.ground = { gen: 'g1test', top: 4e4, sea: 600 };
   check('ground-1: a recipe\'s liquid level: below it is sea, and the ground there is the liquid\'s surface', G.seaAt(Se, [Se.R, 0, 0]) && G.groundAlt(Se, [Se.R, 0, 0]) === 600 && !G.seaAt(Se, u5));
   delete Se.ground;
+}
+
+// ground-2. Selene's ground (world session, GROUND.md slice G2): a baked map (highland swell, big craters, maria flooded
+// into the near-side mare mask) plus procedural crater bands on an equiangular cube. Not live in play until the shader
+// draws it (G3), so this copy switches it on. Numbers behind each parameter: study_ground.mjs.
+{
+  const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,grBands,GR_C,geoAt,terrainSlope,groundAlt,bodyTop,ih3,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get SEL_MAP(){return SEL_MAP},get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const B = G.SELENE, R = B.R, D = Math.PI / 180, lazy = G.SEL_MAP === null; G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
+  check('ground-2: Selene\'s recipe is not live in play (no ground until the shader draws it), and its map is baked on first use, not at load',
+    !B.ground && lazy && G.groundAlt(B, [R, 0, 0]) === 0);
+  B.ground = G.SELENE_GROUND; const M = G.seleneMap(), area = 4 * Math.PI * (R / 1000) ** 2;
+  const pts = []; for (let i = 0; i < 4000; i++) { const z = 1 - (2 * i + 1) / 4000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = pts.map(u => G.seleneH(u)), hmax = Math.max(...H), hmin = Math.min(...H);
+  // the band cells: each holds a crater with probability λ (one band enumerated in full); the baked count is GR_C's
+  const b2 = G.grBands(R)[2]; let full = 0; for (let f = 0; f < 6; f++) for (let i = 0; i < b2.n; i++) for (let j = 0; j < b2.n; j++) if (G.ih3(f * 65536 + i, j * 8 + 2 * 131072, 7001) < b2.lam) full++;
+  const occ = full / (6 * b2.n * b2.n);
+  check('ground-2: relief within the recipe\'s bounds; crater counts on target (baked ≥ 20 km = GR_C·area/400; band cells filled at λ)',
+    hmax < G.bodyTop(B) && hmin > -5000 && M.craters.length === Math.round(G.GR_C / 400 * area) && Math.abs(occ / b2.lam - 1) < 0.03,
+    `${hmin.toFixed(0)}…${hmax.toFixed(0)} m (top ${G.bodyTop(B)}) · ${M.craters.length} baked craters · band ${(b2.Dlo / 1e3).toFixed(1)}–${(b2.Dhi / 1e3).toFixed(1)} km: ${(occ * 100).toFixed(1)} % of cells (λ ${(b2.lam * 100).toFixed(1)} %)`);
+  // no seams: the steepest 0.5 m step on the cube's face edges is a crater wall, not a cliff
+  let rs = 3, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 3000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(G.seleneH(v) - G.seleneH(n)) / 0.5); }
+  check('ground-2: continuous across the crater cells\' cube-face seams (steepest 0.5 m step there under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+  // the units: maria low and smooth, highlands rough; landing spots from the same samples
+  const by = { mare: [], high: [] }, ht = { mare: [], high: [] };
+  pts.forEach((u, i) => { const k = G.geoAt(B, u).unit; by[k].push({ u, sl: G.terrainSlope(B, u) / D }); ht[k].push(H[i]); });
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], over = (a, t) => a.filter(x => x.sl > t).length / a.length;
+  const mS = med(by.mare.map(x => x.sl)), hS = med(by.high.map(x => x.sl)), mH = med(ht.mare), hH = med(ht.high);
+  check('ground-2: maria are low, smooth plains; highlands are rough (median slope, share past TOPPLE, median height)',
+    mS < hS / 2 && over(by.mare, 24) < over(by.high, 24) && mH < hH - 800 && over(by.high, 24) > .02,
+    `slope ${mS.toFixed(1)}° vs ${hS.toFixed(1)}° · past 24°: ${(over(by.mare, 24) * 100).toFixed(1)} % vs ${(over(by.high, 24) * 100).toFixed(1)} % · height ${mH.toFixed(0)} vs ${hH.toFixed(0)} m`);
+  // live in the physics: a pod comes to rest on a flat mare spot at the ground's height; on a crater wall it doesn't stay put
+  const drop = (u, stack = ['chute', 'pod']) => { G.t = 0; const s = G.newShip(stack); G.S = s; s.body = B; s.landed = false; let last = ''; G.HOOK.msg = m => { last = m; };
+    s.r = G.fromPF(B, mul(u, R + G.groundAlt(B, u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(G.surfVel(B, s.r), mul(up, -1)); s.q = G.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+    const p0 = G.toPF(B, s.r, 0); for (let i = 0; i < 3000 && s.alive && !s.landed; i++) G.physStep(s, G.DT);
+    const pf = G.toPF(B, s.r, G.t); return { s, last, gap: len(pf) - R - G.groundAlt(B, pf) + s.yBot, moved: len(sub(pf, p0)) }; };
+  const flat = by.mare.find(x => x.sl < 2 && Math.abs(x.u[1]) < .7), wall = by.high.find(x => x.sl > 32 && x.sl < 40);
+  const a = drop(flat.u), w = drop(wall.u);
+  check('ground-2: in the physics: a pod rests on a flat mare spot, at the ground\'s height; on a crater wall it slides or tips instead',
+    a.s.alive && a.s.landed && Math.abs(a.gap) < 0.3 && !(w.s.landed && w.moved < 1),
+    `mare ${flat.sl.toFixed(1)}°: ${a.last} (gap ${a.gap.toFixed(2)} m) · wall ${wall.sl.toFixed(0)}°: ${w.last || (w.s.landed ? 'landed' : 'still sliding')}, moved ${w.moved.toFixed(1)} m`);
+  delete B.ground;
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
