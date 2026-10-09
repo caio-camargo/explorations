@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -8282,6 +8282,15 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## v1.81.1 — a mission counts only on a flight launched while it was open (2026-10-09, economy session, W11, Q113)
+
+W11 (defaulted by the design desk, Caio silent) built: `missionEval` skips a mission that wasn't open when the flight
+launched (`R.open0`, recorded since v1.74; older saves' flights as before). Chained firsts no longer pay together on
+one flight: a 2 t lift earned Heavy Lift I and II at once, and the tracking flight that weighs Nyx also earned *Nyx
+flyby* (PLAYTEST #29, +460M on one Probe). The flyby, Heavy Lift II and the like now need a flight of their own.
+Career runner: first orbit still 4 flights everywhere (5–8 with a lost attempt, every start reaching it); two-year
+funds a little lower (mean 423M). Test `econ-12` (mutation-tested).
 
 ## v1.81 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
 

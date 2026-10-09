@@ -4239,6 +4239,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `paid ${(P.funds - f0).toFixed(0)}M; ${c.p.name}, ${c.p.n} era behind`);
 }
 
+// econ-12. A mission counts only on a flight launched while it was open (economy session, W11 defaulted; QUEUE Q113 /
+// PLAYTEST #29): chained firsts no longer complete together (a 2 t flight earned Heavy Lift I and II; the tracking flight
+// that weighs Nyx earned the flyby too). The flight's launch record lists what was open (R.open0, v1.74).
+{
+  const D = new Function(src + 'return {missionEval,recNew,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 4, cdone: 0, staged: {},
+    done: { weather: { flight: 1, day: 1 }, beeper: { flight: 2, day: 2 } } }); D.chooseStart('agency');
+  const open = () => D.MISSIONS.filter(M => !P.done[M.id] && (M.req || []).every(r => P.done[r])).map(M => M.id);
+  const R = D.recNew(); R.open0 = open(); Object.assign(R, { orbit: true, lift: 2, orb: { pe: 150e3, ap: 160e3, inc: 0 }, paid: [] });
+  D.missionEval({ rec: R, parts: [] }); D.missionEval({ rec: R, parts: [] });
+  const one = !!P.done.lift1 && !P.done.lift2;
+  const R2 = D.recNew(); R2.open0 = open(); Object.assign(R2, { orbit: true, lift: 2, orb: R.orb, paid: [] }); D.missionEval({ rec: R2, parts: [] });
+  check('W11: a 2 t flight launched with only Heavy Lift I open earns that one; the next flight earns Heavy Lift II', one && !!P.done.lift2, `after the first flight: lift1 ${!!P.done.lift1}, lift2 ${one ? 'not yet' : 'too'}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
