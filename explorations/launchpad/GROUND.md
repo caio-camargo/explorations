@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -184,7 +184,7 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 
 | # | Slice | Size | Load | What it proves / measures |
 |---|---|---|---|---|
-| G1 | **The layer, no new relief.** `b.ground`, `bodyH`, the dispatch in `groundAlt`/`groundR`/`terrainSlope`/`groundNormal`/`surfaceAt`, per-body `TERR_TOP` and `MOON_PE`, camera clamp, shadow plane. Selene and Nyx return 0. | M | ⚙ | the whole suite passes unchanged (proof the dispatch is neutral) |
+| G1 | ✓ **built** (v1.54, NOTES § v1.54) — **The layer, no new relief.** `b.ground`, `bodyH`, the dispatch in `groundAlt`/`groundR`/`terrainSlope`/`groundNormal`, per-body `TERR_TOP` and `MOON_PE`, camera clamp, shadow plane (`surfaceAt` moved to G2: recipes get their own surfaces). Selene and Nyx return 0. | M | ⚙ | the whole suite passes unchanged (proof the dispatch is neutral) |
 | G2 | **Selene's map and craters on the CPU.** The baked map (basins, maria flooded from the baked mare mask), the crater bands, `geoAt` on the bake (test §42 retargeted). A Node study, `study_ground.mjs`: crater counts against N(>D), slope histograms per unit, relief range, flat-site share, the polar dark area. | M | ⚙ | the numbers behind every parameter, before any pixel |
 | G3 | **The march on Selene.** The march generalised (body uniforms, the recipe as a compile-time define), Selene's program, its colour through the `groundCol` hook (today's albedo and maria). `terrainProbe` per body; `gpuMs` at fixed views: lander at 2 m, rover, 1 km, 20 km, low orbit. | L | 🖥 | CPU/GPU agreement in mm near the camera; a frame budget (target: Tellus's pad view or better) |
 | G4 | **Shadows.** The sun-horizon map plus near shadow rays. | M | 🖥 | shadow cost; a low-sun view and an orbit terminator view |
@@ -219,5 +219,6 @@ All are world lane unless stated. Load per QUEUE's legend. The first two are hea
 ---
 
 ## Version history
+- **0.1.1 (2026-10-08):** G1 built (v1.54).
 - **0.1.0 (2026-10-08):** first plan (world session): code survey, the layer, eight generators, the per-body table,
   Selene in detail, slices G1–G7+, three decisions with defaults.

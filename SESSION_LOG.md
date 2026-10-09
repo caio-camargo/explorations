@@ -3663,3 +3663,60 @@ Three decisions for Caio, each with a default: maria to the near side (yes), G1�
 - [ ] Caio: GROUND.md § Decisions (defaults hold if silent)
 - [ ] Orchestrator: rank G1–G7+ into the world lane
 - [ ] World: G1 then G2 (headless, fine on a machine kept off the GPU)
+
+## 2026-10-08 — Launchpad v1.54: the ground of every body, slice G1 (world session)
+
+### Summary
+GROUND.md G1, headless (this machine stays off the GPU). Bodies carry a `ground` recipe (`gen`, `top`, `sea`); `bodyH`,
+`bodyTop` and `seaAt` are new. `groundAlt`, `terrainSlope`, `groundNormal`, the sea checks, the contact/debris/`fall`
+early-outs, `MOON_PE`, the camera clamp and the shadow plane now dispatch on the recipe, not on `b===TELLUS`. Neutral in
+play. The new test `ground-1` (3 checks, 3 mutations caught) proves both sides: Tellus is unchanged at 2,000 points, and a
+test recipe on Selene holds a pod on a 500 m plateau and reads its 20° slope. Full suite 436 pass / 0 fail. Caio's three
+GROUND decisions were defaulted (design desk), so G2 may start now.
+
+### Files
+- `explorations/launchpad/`: `sim/world.js`, `sim/flight.js`, `sim/rovers.js`, `sim/space.js`, `app/render.js`, `test.mjs` (`ground-1`), `NOTES.md` § v1.54, `GROUND.md` 0.1.1, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim cleared, hand-off note)
+
+### Next steps
+- [ ] World: G2, Selene's baked map plus crater bands on the CPU, maria moved to the near side (default held), `study_ground.mjs`
+- [ ] Not browser-checked: the camera clamp and shadow-plane edits are render code. They're neutral by construction (same values for every body today); QA's robot run will cover them
+
+## 2026-10-08 — Launchpad v1.55 economy: a failed first attempt is mostly covered (W12; economy session)
+
+### Summary
+- Caio answered W12 (option 1). `coverLoss` in `sim/program.js`: a lost flight on the priciest rocket yet (no first,
+  no contract, under a quarter refurbished) gets 75 % of its loss back from the sponsor, once per epoch (the newest
+  epoch with firsts open). Nothing in the game names a flight's target, so "priciest rocket yet" stands for the attempt.
+- `career.mjs`, one failed orbit attempt: flights to orbit 6–10 → 5–8, bailouts before orbit 1–4.6 → 0.2–2; poor-world
+  companies reach orbit in 4 of 5 runs (were 2–3). The rest is the poor-world grind (Proposed: pay floors by world).
+
+### Verification
+- New test `econ-1` (7 checks, mutation-tested); full suite passes in 4 processes after merging `main` (test.mjs
+  conflict with world's `ground-1`: both kept).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `career.mjs`, `NOTES.md` § v1.55, `TESTING.md` row 128, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 128 (lose your first orbit attempt: fair second chance or too soft?)
+- [ ] Economy: Q6 `siteAccess`; pay floors by world (Proposed)
+
+## 2026-10-08 — Launchpad v1.56 economy: siteAccess, who may launch where (QUEUE Q6; economy session)
+
+### Summary
+- `siteAccess(site)` → `{ok, why, fee, how}` in `sim/program.js`: own sites free; sea platforms 4M; a consortium
+  member's site free; other powers' sites leased at 6M × (1 − ½ relation), refused below −0.25 or under sanctions.
+- Launch charges the fee and records `R.site` and `R.siteFee`; the debrief lists *Site lease*, and v1.55's cover.
+- Builder (`app/editor.js`, flagged in ACTIVE_WORK): the budget check counts the fee; the picker shows it.
+
+### Verification
+- New test `econ-2` (6 checks, mutation-tested); full suite passes in 4 processes.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/debrief.js`, `app/editor.js`, `test.mjs`, `NOTES.md` § v1.56, `TESTING.md` row 129, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 129 (launch from abroad; is the fee a real choice?)
+- [ ] Economy: Q7 (ballistic target from the flight's site, now that `R.site` exists); Proposed: dispatch leases, overflight politics
+

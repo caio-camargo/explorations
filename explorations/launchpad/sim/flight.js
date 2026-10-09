@@ -28,9 +28,9 @@ function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
 // the ground's upward normal at a planet-fixed point, in the inertial frame (finite differences over ±1 m)
-function groundNormal(b,pf){if(b!==TELLUS)return norm(fromPF(b,pf,simT));const u=norm(pf),f=siteFrame(u),d=1/TELLUS.R,h0=groundAlt(b,u);
+function groundNormal(b,pf){if(!b.ground)return norm(fromPF(b,pf,simT));const u=norm(pf),f=siteFrame(u),d=1/b.R,h0=groundAlt(b,u);
   const he=groundAlt(b,norm(add(u,mul(f.e,d)))),hn=groundAlt(b,norm(add(u,mul(f.n,d))));
-  return norm(fromPF(b,norm(sub(u,add(mul(f.e,(he-h0)/TELLUS.R/d),mul(f.n,(hn-h0)/TELLUS.R/d)))),simT))}
+  return norm(fromPF(b,norm(sub(u,add(mul(f.e,(he-h0)/b.R/d),mul(f.n,(hn-h0)/b.R/d)))),simT))}
 // the touchdown verdict at first contact, judged under the vessel's centre (the base spans more than one boulder cell):
 // the ground forgives TOUCH_MAX + its softness; boulders or trees add to the speed
 function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel(b,s.r))),su=surfaceAt(b,pfC),hit=surfaceHit(su,pfC,b),vE=sp+hit,lim=TOUCH_MAX+su.soft;
@@ -39,10 +39,10 @@ function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel
   if(vE>=lim){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}`);return false}
   return true}
 function groundContact(s,dt){const b=s.body;
-  if(s.landed||!s.alive||len(s.r)-b.R>TERR_TOP+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
+  if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len+50||aglAt(b,s.r,simT)>s.len+20){s.inContact=false;return}
   const pts=footPoints(s),n=pts.length,mPer=s.mass/n,k=mPer*C_GREF/C_DEFL,c=2*C_ZETA*Math.sqrt(k*mPer),qi=qconj(s.q);let any=false;
   for(const fp of pts){const rb=sub(fp.pt,s.cm),rw=qrot(s.q,rb),P=add(s.r,rw),pf=toPF(b,P,simT),gA=groundAlt(b,pf),pen=b.R+gA-len(P);
-    if(pen<=0){fp.a=null;continue}if(b===TELLUS&&terrainH(norm(pf))<0)continue;   // over the sea: splashdown (groundCheck)
+    if(pen<=0){fp.a=null;continue}if(seaAt(b,pf))continue;   // over the sea: splashdown (groundCheck)
     if(!s.inContact){if(!touchdown(s))return;s.inContact=true}
     any=true;const su=surfaceAt(b,pf),nW=groundNormal(b,pf),vP=add(sub(s.v,surfVel(b,P)),cross(s.w,rw)),vn=dot(vP,nW);
     const nb=qrot(qi,nW),cn=cross(rb,nb),mN=1/(n*(1/s.mass+cn[0]*cn[0]/s.I[0]+cn[1]*cn[1]/s.I[1]+cn[2]*cn[2]/s.I[2]));   // its effective mass along the normal
@@ -64,11 +64,11 @@ function groundContact(s,dt){const b=s.body;
   if(any)s.touchT=simT}
 // after each step: the nose in the ground, toppling, coming to rest; and splashdowns, which keep the old rule
 function groundCheck(s){
-  const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>TERR_TOP+s.len)return;   // well above the highest ground: nothing to hit
+  const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len)return;   // well above the highest ground: nothing to hit
   const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
   if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — the nose hit ${b.name} at ${sp.toFixed(0)} m/s`);return}
   // the sea: a splashdown floats upright, as before
-  if(b===TELLUS&&terrainH(norm(pf0))<0){const pB=madd(s.r,Y,s.yBot);if(len(pB)>b.R)return;
+  if(seaAt(b,pf0)){const pB=madd(s.r,Y,s.yBot);if(len(pB)>b.R)return;
     if(!touchdown(s))return;
     if(tilt<0.6){const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up)))),q=qFromBasis(X,up,cross(X,up));
       s.landed=true;s.water=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);s.landedAt=simT;
@@ -134,7 +134,7 @@ function stepDebris(dt){
     const rho=density(b,h);if(rho>0){const va=sub(d.v,surfVel(b,d.r)),sp=len(va);if(sp>0.1){let ad=0.5*rho*sp*2.5/d.mass;if(ad*dt>0.9)ad=0.9/dt;a=madd(a,va,-ad)}}
     d.v=madd(d.v,a,dt);d.r=madd(d.r,d.v,dt);
     const q=d.q,dq=qmul([d.w[0],d.w[1],d.w[2],0],q);d.q=qnorm([q[0]+.5*dt*dq[0],q[1]+.5*dt*dq[1],q[2]+.5*dt*dq[2],q[3]+.5*dt*dq[3]]);
-    if(h<TERR_TOP&&h<groundAlt(b,toPF(b,d.r,simT))){HOOK.boom(b,d.r,simT,1);d.dead=true}
+    if(h<bodyTop(b)&&h<groundAlt(b,toPF(b,d.r,simT))){HOOK.boom(b,d.r,simT,1);d.dead=true}
     if(d.dead||d.t>240||(S&&S.body===b&&len(sub(d.r,S.r))>40000)){d.mesh&&d.mesh.free&&d.mesh.free();debris.splice(i,1)}}}
 // Where does the current trajectory go? Up to three patched-conic legs, e.g. orbit → Selene encounter → escape back to Tellus.
 // Each leg ends at the earliest of: entering one of the body's moons' SOIs (found by scanning, then bisection) or leaving
@@ -248,7 +248,7 @@ function fall(b,r,v,t,kdrag){
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
     if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho,r,t);a=madd(a,va,-kd)}return a};
-  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<TERR_TOP&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
+  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<bodyTop(b)&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
     if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)

@@ -187,7 +187,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -255,6 +255,31 @@ function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)
 // The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
 // next launch (fixes session, PLAYTEST #21). Once only: Revert or the next launch then find it settled (R.ended).
 function flightLeave(s){return missionEnd(s)}
+// ---- who may launch where (QUEUE Q6; the terrain session's gate siteAccessOf calls this): our own sites are free; a
+// sea platform is a service with a fee; a consortium member's site is ours to share; any other power's site is leased,
+// cheaper the better relations are, and refused under sanctions or when relations are hostile. The fee is charged at
+// launch (missionTick) and kept as R.siteFee; R.site is the site's id.
+const LEASE=6,SEA_FEE=4,LEASE_REL=-0.25;
+function siteAccess(t){if(!t)return{ok:true,why:'',fee:0};
+  if(t.kind==='sea')return{ok:true,why:'',fee:SEA_FEE,how:'platform service'};
+  const p=t.power;if(p===HOME)return{ok:true,why:'',fee:0,how:'ours'};
+  if(p==null)return{ok:false,why:`${t.name} belongs to no one: there is nobody to lease it from`,fee:0};
+  const P=POWERS[p];if(sanctioned(p))return{ok:false,why:`${P.name} has sanctions on the program: ${t.name} is closed to us`,fee:0};
+  if(sanctioned(HOME))return{ok:false,why:`Our own government's sanctions bar us from ${P.name}'s ${t.name}`,fee:0};
+  if((own().st||{})[p]>0)return{ok:true,why:'',fee:0,how:`${P.root} is a member`};
+  const r=relOf(HOME,p);if(r<LEASE_REL)return{ok:false,why:`${P.name} won't lease ${t.name} to us: relations are too poor`,fee:0};
+  return{ok:true,why:'',fee:Math.round(LEASE*(1-0.5*r)*10)/10,how:`leased from ${P.root}`}}
+// a failed attempt at the next step, mostly covered (W12, NOTES § "Epoch 1–2 pacing"): a flight on the priciest rocket
+// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment) gets COVER of its loss back
+// from the sponsor, once per epoch (the newest epoch with firsts open: the step a new rocket goes for). Kept in PROG.recs so a new game resets it.
+const COVER=0.75;
+function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCost||0);rc.maxCost=Math.max(rc.maxCost||0,R.cost);
+  const lost=R.cost-(R.refund||0),first=Object.values(PROG.done).some(d=>d.flight===PROG.flights&&!d.test);
+  if(!top||first||R.cdone.length||lost<0.75*R.cost)return 0;
+  const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));if(!open.length)return 0;
+  const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
+  const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;
+  HOOK.news(`${k==='company'?'Investors':k==='consortium'?'The member states':POWERS[HOME].name} cover ${fmtM(x)} of the failed attempt: a new rocket is allowed one (once per epoch)`,'ok');return x}
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
@@ -274,6 +299,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
+  coverLoss(s,R);   // a failed attempt at the next step is mostly covered (W12)
   const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);R.dmg=dmg;if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
   if(R.orbit){const net=R.cost-(R.refund||0);PROG.recs=PROG.recs||{};if(!(PROG.recs.orbit<=net)){if(PROG.recs.orbit!=null)HOOK.news(`Record: cheapest trip to orbit yet, ${fmtM(net)} net`,'ok');PROG.recs.orbit=net}}
   floorCheck();

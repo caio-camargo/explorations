@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -88,6 +88,7 @@ NOTES § "The robot playtester".
 
 | # | Try this | How to get there | Looks right if | From | Owner |
 |---|---|---|---|---|---|
+| 130 | Land on legs | Assembly: put a Landing leg (Surface) on the side of a lander's tank with the radial count at 4; fly it, press **Y** before touchdown, land on a slope | The legs read as legs (placeholder struts until the look beat draws them), Y is findable in the key list, the lander stands on a slope its bare engine would tip on; a hard landing breaks legs and it falls | v1.57 | vehicle |
 | ✓ 25 (robot) | Read the site picker and launch from a polar/high-latitude site | Picker above LAUNCH; pick Fenfen Polar Range, fly Orbiter | Site info is readable (lat, free speed, downrange, rail/barge); orbit comes out ~27–29° inclined · *Robot: picker lists lat, free speed, lowest inclination, downrange, barge/rail, weather; from Fenfen Polar Range (26.9°N) the Orbiter climbs into a 27.2° orbit.* · *Fixes session (2026-10-08): P#20 fixed: LAUNCH + one-line site summary pinned at the panel's foot; the full picker scrolls above.* | v1.27 | terrain |
 | ✓ 26 (robot) | Try to pick a foreign site | Picker, sites abroad (⛔) | Refusal reason is clear; ship moves to the chosen pad without glitches · *Robot: foreign site: "Kingdom of Selhav won't let us launch from Selhav Field" in the picker and on LAUNCH; switching to Fenfen Polar Range moves the ship onto that pad.* | v1.27 | terrain |
 | ~ 27 (robot) | Launch from the Sea Platform and look at it from outside | Picker > Sea Platform; orbit the camera on the pad | Platform reads as a floating platform, not an island; judge whether a full land complex on a deck looks silly · *Robot: reads as a big square artificial island with the whole land complex on it; the water around it is visible from high up. Needs a human: silly or fine.* | v1.45 | terrain |
@@ -197,6 +198,8 @@ NOTES § "The robot playtester".
 | ~ 93 (robot) | Build ground stations at home and abroad | Program > Fleet > ground stations | Reason for refusal and lease costs clear; contact-time value understandable · *Robot: Fleet tab is empty until epoch 3; then stations list home 10M and abroad 20M + 2.0M/100 d, and Build opens one with news. Refusal reasons not seen.* | Ground stations | planning |
 | 94 | Use a camera satellite for imaging contracts and disasters | Camera + antenna sat in polar orbit; take image contracts | Waiting for daylight/clouds/downlink feels sensible; disaster offers arrive and are doable | Orbital registry | planning |
 | 121 | Look for Nyx, on purpose and by accident | Tester epoch 4: fly the far side on a slow transfer, then launch a probe with instruments and an antenna to a high orbit (~25,000 km) or toward Nyx | The farside flight doesn't find Nyx; the second flight weighs it after 12 h; the brief makes the "launched to look" rule findable and fair. Selene/Nyx firsts clear their rocket (230M on a ~175M Probe flight) | v1.53 | economy |
+| 128 | Lose your first orbit attempt in a new career | New career (any start); fly the hop, then lose the first orbital rocket (cut its engine on the way up) | A news line: the government (agency), investors (company) or member states (consortium) cover 75 % of the loss; you can afford the retry. Losing the retry, or a cheaper rocket, is not covered. Does it feel like a fair second chance, or too soft? | v1.55 | economy |
+| 129 | Launch from a site abroad | Assembly → site picker: pick a site under *abroad*; then a sea platform if the world has one | The picker says how you'd use it ("leased from X: 6M a launch", a member's site, or why it's refused); LAUNCH charges the fee (over-budget message counts it); the Debrief lists *Site lease*. Is the fee a real choice, or noise? | v1.56 | economy |
 
 ### UI & screens
 

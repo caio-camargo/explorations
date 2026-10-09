@@ -3172,6 +3172,93 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('legs: an autopilot tape records the legs going down and replays it', api.legsDown(s) && api.legsDown(s2) && T.ops.some(o => o[0] === 'G' && o[1] === 'down')); }
 }
 
+// econ-1. A failed attempt at the next step is mostly covered (economy session, QUEUE W12 / Q44): a flight on the priciest
+// rocket yet that comes to nothing gets 75 % of its loss back from the sponsor, once per epoch (the newest one with firsts
+// open). Retries, cheaper losses and flights that earned something are not covered. Own SIM copy, like §37.
+{
+  const D = new Function(src + 'return {coverLoss,COVER,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {},
+    done: { weather: { flight: 1 }, loads: { flight: 2 } }, flights: 5, recs: { maxCost: 30 } });
+  D.chooseStart('agency');
+  const lose = (cost, refund = 0) => D.coverLoss({}, { cost, refund, cdone: [] });
+  P.funds = 0; const x1 = lose(80), f1 = P.funds, ep = Object.keys(P.recs.cover || {});
+  check('cover: the first lost flight on the priciest rocket yet gets 75 % back, keyed to the newest open epoch (2: beeper, hop)',
+    Math.abs(x1 - 0.75 * 80) < 1e-9 && Math.abs(f1 - 60) < 1e-9 && ep.join() === '2' && /cover/.test(news.at(-1) || ''), `${x1} back, epochs ${ep}`);
+  P.flights = 6; const x2 = lose(95);
+  check('cover: once per epoch (a second, pricier loss in epoch 2 gets nothing)', x2 === 0);
+  P.recs = { maxCost: 100 }; P.flights = 7; const x3 = lose(80);
+  check('cover: a loss on a rocket cheaper than one flown before is not covered', x3 === 0);
+  P.recs = { maxCost: 30 }; const x4 = lose(80, 30);
+  check('cover: a flight that came home for refurbishment (a quarter or more back) is not a loss', x4 === 0);
+  P.recs = { maxCost: 30 }; P.flights = 8; P.done.hop = { flight: 8 }; const x5 = lose(80); delete P.done.hop;
+  check('cover: a flight that completed a first is not covered', x5 === 0);
+  P.recs = { maxCost: 30 }; const x6 = D.coverLoss({}, { cost: 80, refund: 0, cdone: ['a contract'] });
+  check('cover: a flight that completed a contract is not covered', x6 === 0);
+  const H = html.replace(/\r\n/g, '\n');
+  check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
+}
+
+// ground-1. The ground of every body (world session, GROUND.md slice G1): a body's `ground` recipe replaces every
+// `b === TELLUS` ground test. Neutral today (Tellus as before, the moons smooth spheres), and live: a recipe given to
+// Selene reaches contact, landing, slope and the ground normal with no other change. Own SIM copy, so Selene's recipe
+// doesn't leak.
+{
+  const G = new Function(src + 'return {TELLUS,SELENE,NYX,BODIES,GROUND_GEN,bodyH,bodyTop,seaAt,groundAlt,groundR,terrainH,terrainSlope,groundNormal,TERR_TOP,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = G.TELLUS, Se = G.SELENE, D = Math.PI / 180; G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
+  let rs = 7, bad = 0, sea = 0, wet = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = norm([rnd() - .5, rnd() - .5, rnd() - .5]), h = G.terrainH(u);
+    if (G.groundAlt(T, u) !== Math.max(0, h) || G.seaAt(T, u) !== (h < 0) || G.bodyH(T, u) !== h) bad++; if (h < 0) sea++; }
+  for (const b of G.BODIES) if (b !== T && (G.groundAlt(b, [b.R, 0, 0]) !== 0 || G.terrainSlope(b, [0, 1, 0]) !== 0 || G.seaAt(b, [b.R, 0, 0]) || G.bodyTop(b) !== 0)) wet++;
+  check('ground-1: neutral: Tellus ground is terrainH clamped at the sea, as before (2,000 points); every other body a smooth sphere',
+    bad === 0 && sea > 1000 && wet === 0 && G.bodyTop(T) === G.TERR_TOP && T.ground.sea === 0 && !Se.ground && !G.NYX.ground, `${bad} differ, ${sea} at sea, top ${G.bodyTop(T)} m`);
+  // a test recipe on Selene: a 500 m plateau rising to the north at 20° (h = 500 m + tan 20° × the arc north of 1°N)
+  const S20 = Math.tan(20 * D), lat = u => Math.asin(Math.max(-1, Math.min(1, norm(u)[1])));
+  G.GROUND_GEN.g1test = pf => 500 + Se.R * S20 * Math.max(0, lat(pf) - 1 * D);
+  Se.ground = { gen: 'g1test', top: 4e4 };
+  const drop = la => { G.t = 0; const s = G.newShip(['chute', 'pod']); G.S = s; s.body = Se; s.landed = false; let last = ''; G.HOOK.msg = m => { last = m; };
+    const u = [Math.cos(la * D), Math.sin(la * D), 0]; s.r = G.fromPF(Se, mul(u, Se.R + G.groundAlt(Se, u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(G.surfVel(Se, s.r), mul(up, -1)); s.q = G.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+    for (let i = 0; i < 4000 && s.alive && !s.landed; i++) G.physStep(s, G.DT);
+    return { s, last, h: len(G.toPF(Se, s.r, G.t)) - Se.R + s.yBot }; };
+  const flat = drop(0), u5 = [Math.cos(5 * D), Math.sin(5 * D), 0], slope = G.terrainSlope(Se, u5), nrm = G.groundNormal(Se, G.toPF(Se, G.fromPF(Se, u5, G.t), G.t)),
+    tilt = Math.acos(Math.min(1, dot(nrm, norm(G.fromPF(Se, u5, G.t))))) / D;
+  check('ground-1: live: a recipe on Selene holds a pod up on its 500 m plateau, and its 20° rise reads as slope and as a tilted normal',
+    flat.s.alive && flat.s.landed && Math.abs(flat.h - 500) < 0.5 && Math.abs(slope / D - 20) < 0.5 && Math.abs(tilt - 20) < 0.5,
+    `${flat.last || 'not landed'} · rests ${flat.h.toFixed(2)} m above R · slope ${(slope / D).toFixed(2)}° · normal tilted ${tilt.toFixed(2)}°`);
+  Se.ground = { gen: 'g1test', top: 4e4, sea: 600 };
+  check('ground-1: a recipe\'s liquid level: below it is sea, and the ground there is the liquid\'s surface', G.seaAt(Se, [Se.R, 0, 0]) && G.groundAlt(Se, [Se.R, 0, 0]) === 600 && !G.seaAt(Se, u5));
+  delete Se.ground;
+}
+
+// econ-2. Who may launch where (economy session, QUEUE Q6): siteAccess(site) → {ok, why, fee}. Our sites free; a sea
+// platform a service fee; a consortium member's site shared; others leased (cheaper with better relations), refused under
+// sanctions or hostile relations. Launch charges the fee and records R.site / R.siteFee; the debrief lists it.
+{
+  const D = new Function(src + 'return {siteAccess,siteAccessOf,LEASE,SEA_FEE,SITES,PROG,HOOK,POWERS,pairKey,newShip,missionTick,debriefOf,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart,set t(v){simT=v}};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 10, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {},
+    done: {}, flights: 0, recs: {}, atm: {}, stand: {}, studies: {}, studyQ: [] });
+  D.chooseStart('agency');
+  const home = D.SITES.find(t => t.power === 0), abroad = D.SITES.find(t => t.power != null && t.power !== 0 && t.kind !== 'sea'), sea = D.SITES.find(t => t.kind === 'sea');
+  const k = abroad && D.pairKey(0, abroad.power), at = r => { P.rel[k] = r; return D.siteAccess(abroad); };
+  const h = D.siteAccess(home), good = at(0.8), cool = at(0), bad = at(-0.5);
+  check('sites: ours are free; abroad is leased, cheaper with better relations; hostile relations refuse', h.ok && h.fee === 0 && abroad && good.ok && cool.ok && good.fee < cool.fee && cool.fee === D.LEASE && !bad.ok && /relations/.test(bad.why),
+    `${abroad && abroad.name}: rel 0.8 → ${good.fee}M, 0 → ${cool.fee}M, −0.5 → ${bad.why}`);
+  P.rel[k] = 0.5; P.sanc = { [abroad.power]: P.day + 30 }; const sx = D.siteAccess(abroad); P.sanc = {};
+  check('sites: a power that sanctions the program closes its sites', !sx.ok && /sanctions/.test(sx.why), sx.why);
+  P.own = { kind: 'consortium', st: { 0: 0.4, [abroad.power]: 0.3 }, pv: 0, chosen: true, debt: 0 }; const mem = D.siteAccess(abroad); D.chooseStart('agency');
+  check('sites: a consortium member\'s site is shared, free', mem.ok && mem.fee === 0);
+  const sv = sea ? D.siteAccess(sea) : { ok: true, fee: D.SEA_FEE };
+  check('sites: a sea platform is open to all, for a service fee', sv.ok && sv.fee === D.SEA_FEE && D.siteAccessOf(abroad).fee === D.siteAccess(abroad).fee);
+  P.rel[k] = 0; P.funds = 500; const s = D.newShip(['chute', 'sci', 't1', 'fins', 'sparrow'], abroad); D.t = 0; s.landed = false; D.missionTick(s, 0, false);
+  const R = s.rec, spent = 500 - P.funds;
+  check('sites: launch charges the lease with hardware and operations, and records the site', R.site === abroad.id && R.siteFee === D.LEASE && Math.abs(spent - (R.cost + R.ops + R.siteFee)) < 1e-6,
+    `site ${R.site}, fee ${R.siteFee}, spent ${spent.toFixed(1)}`);
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('sites: the debrief lists the lease; the builder\'s budget check and picker include the fee', H.includes("add('Site lease',-(R.siteFee||0)") && /const fee=siteAccessOf\(curSite\(\)\)\.fee/.test(pg) && pg.includes('a launch`'));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
