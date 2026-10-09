@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Body mock-ups</title>
+<!-- Launchpad mock-up for SYSTEM.md (QUEUE Q71): a still per body from its look brief, for Caio to pick from pictures and
+     for the sky & bodies beat to build from (Q80–Q85). A standalone page: never loaded by index.html. One fragment
+     shader: a lit sphere with procedural colour, a haze limb, plumes, and Hyperion's rings with shadows both ways.
+     ?view=<key> picks a still (the bar does the same). -->
+<style>
+  :root { --bg: #05070b; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #bar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    background: rgba(5, 7, 11, .78); padding: 6px 8px; border-radius: 6px; }
+  #bar button { background: #1b2029; color: var(--fg); border: 1px solid #333b48; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  #bar button.on { border-color: var(--acc); color: var(--acc); }
+  #cap { position: fixed; left: 12px; bottom: 10px; right: 12px; color: var(--dim); text-shadow: 0 1px 2px #000; }
+  body.still #bar { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar"></div>
+<div id="cap"></div>
+<script>
+'use strict';
+// each view: body id (the shader's switch), camera distance and direction, sun direction, a caption from the brief
+const VIEWS = {
+  hesper:   { b: 0, d: 3.1, cam: [0, .1, 1], sun: [-1, .15, 0.36], cap: 'Hesper: a featureless cream-yellow ball (visible light)' },
+  hesperUV: { b: 1, d: 3.1, cam: [0, .1, 1], sun: [-1, .15, 0.36], cap: 'Hesper in UV: chevron-shaped cloud bands (an instrument view, not what the eye sees)' },
+  enyo:     { b: 2, d: 3.0, cam: [.2, .25, 1], sun: [-1, .25, 0.27], cap: 'Enyo with Pavor: butterscotch and rust, dark basalt, white caps, the canyon scar and the shield volcano; a thin pink-tan limb' },
+  astraea:  { b: 3, d: 2.9, cam: [0, .2, 1], sun: [-1, .3, 0.29], cap: 'Astraea: charcoal grey, cratered, one bright salt spot' },
+  hyperion: { b: 4, d: 5.2, cam: [.15, .32, 1], sun: [-1, .18, 0.38], cap: 'Hyperion: cream and ochre bands, a storm spot; rings tilted 27°, their shadow on the clouds and the planet\'s on the rings' },
+  hypSky:   { b: 5, d: 1, cam: [0, 0, 1], sun: [0, 0, 1], cap: 'Hyperion from Tellus\'s sky: a bright steady point after dusk; the inset is what a small telescope shows' },
+  theia:    { b: 6, d: 3.0, cam: [0, .1, 1], sun: [-1, .2, 0.25], cap: 'Theia: sulphur yellows, reds and black lava, a plume over the limb' },
+  eos:      { b: 7, d: 3.0, cam: [0, .15, 1], sun: [-1, .2, 0.32], cap: 'Eos: white ice, red-brown cracks, water plumes over the south' },
+  tethys:   { b: 8, d: 3.1, cam: [0, .1, 1], sun: [-1, .15, 0.23], cap: 'Tethys: a thick orange haze, a detached blue layer at the limb' },
+  erebus:   { b: 9, d: 3.0, cam: [0, .15, 1], sun: [-1, .25, 0.32], cap: 'Erebus: pale pinks and tans, a smooth bright nitrogen-ice basin beside dark reddish highlands; a tiny sun' },
+};
+const Q = new URLSearchParams(location.search);
+let view = Q.get('view') || 'hesper'; if (Q.has('still')) document.body.classList.add('still');
+const bar = document.getElementById('bar');
+for (const k in VIEWS) { const b = document.createElement('button'); b.textContent = k; b.dataset.v = k; bar.appendChild(b); }
+bar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { view = b.dataset.v; draw(); } });
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uSun;uniform int uB;
+float h3(vec3 p){p=fract(p*.3183099+.1);p*=17.;return fract(p.x*p.y*p.z*(p.x+p.y+p.z));}
+float vn(vec3 x){vec3 i=floor(x),f=fract(x);f=f*f*(3.-2.*f);
+ return mix(mix(mix(h3(i),h3(i+vec3(1,0,0)),f.x),mix(h3(i+vec3(0,1,0)),h3(i+vec3(1,1,0)),f.x),f.y),
+  mix(mix(h3(i+vec3(0,0,1)),h3(i+vec3(1,0,1)),f.x),mix(h3(i+vec3(0,1,1)),h3(i+vec3(1,1,1)),f.x),f.y),f.z);}
+float fbm(vec3 p){float a=.5,s=0.;for(int i=0;i<6;i++){s+=a*vn(p);p=p*2.03+vec3(1.7,9.2,3.1);a*=.5;}return s;}
+// craters: cells on the sphere, each with a random bowl and rim; returns (shade, rim)
+vec2 craters(vec3 n,float sc,float dens){vec3 p=n*sc,i=floor(p);float sh=0.,rim=0.;
+ for(int x=-1;x<=1;x++)for(int y=-1;y<=1;y++)for(int z=-1;z<=1;z++){vec3 c=i+vec3(x,y,z),j=c+vec3(h3(c),h3(c+7.1),h3(c+3.3));
+  if(h3(c+11.)>dens)continue;float r=.25+.35*h3(c+5.),d=length(p-j)/r;sh+=(1.-smoothstep(.0,1.,d))*.35;rim+=exp(-pow((d-1.)*6.,2.));}
+ return vec2(sh,rim);}
+vec3 rotY(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);}
+vec3 rotX(vec3 p,float a){float c=cos(a),s=sin(a);return vec3(p.x,c*p.y-s*p.z,s*p.y+c*p.z);}
+// the body's colour at the unit normal n (body frame)
+vec3 surf(int b,vec3 n){
+ if(b==0){float f=fbm(n*3.);return mix(vec3(.93,.85,.62),vec3(.98,.93,.76),f*.6+.2*n.y);}   // Hesper: almost featureless
+ if(b==1){float lat=n.y,lon=atan(n.z,n.x),chev=sin(lat*9.+abs(lon-.3)*3.2+fbm(n*4.)*2.);   // Hesper in UV: chevrons opening west
+  return mix(vec3(.55,.62,.82),vec3(.95,.97,1.),.5+.4*chev*(1.-abs(lat)));}
+ if(b==2){float f=fbm(n*2.6),g=fbm(n*7.+3.);vec3 c=mix(vec3(.72,.45,.26),vec3(.86,.62,.38),f);
+  c=mix(c,vec3(.32,.22,.18),smoothstep(.55,.7,fbm(n*2.+9.)));   // dark basalt
+  float lon=atan(n.z,n.x),can=exp(-pow((n.y+.12+.05*sin(lon*3.))/.025,2.))*smoothstep(.2,-.9,lon)*smoothstep(-2.6,-1.6,lon);c*=1.-.55*can;   // the canyon
+  float vol=length(n-normalize(vec3(.3,.35,.88)));c=mix(c,vec3(.55,.36,.25),smoothstep(.2,.1,vol));c*=1.-.35*smoothstep(.03,.0,abs(vol-.15));   // the shield volcano
+  c=mix(c,vec3(.95,.95,.97),smoothstep(.86,.9,abs(n.y)+.03*g));return c*(.85+.3*g);}   // polar caps
+ if(b==3){vec2 k=craters(n,6.,.6)+craters(n,15.,.5)*.6;vec3 c=vec3(.27,.27,.27)*(.75+.5*fbm(n*5.))*(1.-.6*k.x)+.08*k.y;
+  float sp=length(n-normalize(vec3(.25,.3,.92)));c=mix(c,vec3(.95,.95,.92),smoothstep(.06,.02,sp)*(.6+.4*vn(n*80.)));return c;}   // the salt spot
+ if(b==4){float lat=n.y+.04*fbm(n*6.),bnd=sin(lat*21.+fbm(n*3.)*1.2);vec3 c=mix(vec3(.84,.68,.46),vec3(.96,.9,.78),.5+.5*bnd);
+  c=mix(c,vec3(.68,.46,.3),smoothstep(.5,.9,sin(lat*7.+1.))*.5);   // ochre belts
+  vec3 sp=n-normalize(vec3(.35,-.36,.86));float e=length(sp*vec3(1.,2.2,1.));c=mix(c,vec3(.78,.36,.24),smoothstep(.13,.08,e));c*=1.-.15*smoothstep(.15,.13,e);return c;}   // the storm spot
+ if(b==6){float f=fbm(n*5.),g=fbm(n*11.+2.);vec3 c=mix(vec3(.85,.78,.35),vec3(.92,.88,.6),f);c=mix(c,vec3(.7,.35,.15),smoothstep(.62,.72,g));
+  c=mix(c,vec3(.08,.06,.05),smoothstep(.74,.8,fbm(n*8.+5.)));return c;}   // Theia: sulphur, red, black calderas
+ if(b==7){float f=fbm(n*4.);vec3 c=vec3(.9,.9,.92)*(.9+.15*f);float cr=0.;for(int i=0;i<4;i++){vec3 a=normalize(vec3(h3(vec3(i))-.5,h3(vec3(i)+2.)-.5,h3(vec3(i)+5.)-.5));
+   cr=max(cr,exp(-pow(dot(n,a)/.012,2.))*(.5+.5*fbm(n*20.+float(i))));}c=mix(c,vec3(.55,.32,.22),cr);   // Eos: lineae
+  c=mix(c,vec3(.75,.85,.95),smoothstep(-.75,-.9,n.y)*.4);return c;}
+ if(b==8){float f=fbm(n*2.);return mix(vec3(.8,.52,.22),vec3(.88,.62,.3),f*.5+.2*n.y);}   // Tethys: haze top
+ if(b==9){float f=fbm(n*3.);vec3 c=mix(vec3(.82,.68,.6),vec3(.9,.8,.72),f);
+  vec3 q=n-normalize(vec3(.32,.05,.95));float hrt=length(q*vec3(1.,1.3,1.))-.42+.08*cos(atan(q.y,q.x)*2.);   // the heart-shaped basin
+  c=mix(c,vec3(.98,.95,.93),smoothstep(.02,-.02,hrt));c=mix(c,vec3(.35,.18,.12),smoothstep(.5,.65,fbm(n*2.5+4.))*smoothstep(.0,.08,hrt)*smoothstep(.3,-.3,n.y));return c;}
+ return vec3(.5);}
+vec2 sph(vec3 ro,vec3 rd,float r){float b=dot(ro,rd),c=dot(ro,ro)-r*r,h=b*b-c;if(h<0.)return vec2(-1.);h=sqrt(h);return vec2(-b-h,-b+h);}
+vec3 stars(vec3 d){vec3 p=d*300.,i=floor(p);float s=h3(i);return vec3(.8,.85,1.)*step(.9975,s)*(.4+.6*h3(i+1.))*.8;}
+// Hyperion's rings, in the planet's tilted frame: (y = 0 plane) radii 1.3–2.2 with gaps; returns opacity
+float ringA(float r){if(r<1.3||r>2.2)return 0.;float a=.55+.35*sin(r*55.)*sin(r*13.);a*=1.-smoothstep(.015,0.,abs(r-1.95)-.0)*.85;   // the big gap
+ a*=smoothstep(1.3,1.36,r)*smoothstep(2.2,2.12,r);return clamp(a,0.,.95);}
+vec3 shade(int b,vec3 ro,vec3 rd,out float hitT){
+ vec3 col=stars(rd);hitT=-1.;float tilt=b==4?radians(27.):0.;
+ vec3 S=uSun;
+ // a plume (Theia, Eos): a fan over a point near the limb
+ vec2 hs=sph(ro,rd,1.);
+ if(hs.x>0.){vec3 p=ro+rd*hs.x,n=normalize(p),nb=rotY(n,.6);hitT=hs.x;
+  vec3 al=surf(b,nb);float dl=max(dot(n,S),0.);
+  if(b==4){vec3 pl=rotX(p,tilt);vec3 sl=rotX(S,tilt);float t=-pl.y/sl.y;if(t>0.){vec3 q=pl+sl*t;dl*=1.-.8*ringA(length(q.xz));}}   // ring shadow on the clouds
+  float term=b==4||b==0||b==8?smoothstep(-.05,.25,dot(n,S)):1.;   // thick air softens the terminator
+  col=al*(dl*mix(1.,term,.5))*1.15+al*.015;
+  if(b==8)col*=vec3(1.,.9,.75);}
+ // haze limbs
+ float hz=b==0?.05:b==2?.025:b==8?.12:b==4?.03:0.;
+ if(hz>0.){float cd=length(cross(ro,rd)),tt=-dot(ro,rd);if(tt>0.&&cd>.98&&(hs.x<0.||true)){float x=(cd-1.)/hz,dens=exp(-max(x,0.)*2.5)*step(-.02,x);
+   vec3 hc=b==0?vec3(.95,.88,.65):b==2?vec3(.85,.6,.45):b==8?vec3(.95,.62,.28):vec3(.9,.85,.75);
+   vec3 cp=ro+rd*tt;float lit=smoothstep(-.3,.4,dot(normalize(cp),S));col+=hc*dens*lit*(hs.x<0.?.9:.25);}
+  if(b==8){float x=(cd-1.055)/.008,ly=exp(-x*x);vec3 cp=ro+rd*max(tt,0.);col+=vec3(.45,.6,.95)*ly*.5*smoothstep(-.4,.5,dot(normalize(cp),S));}}   // the detached blue layer
+ // plumes
+ if(b==6||b==7){vec3 base=normalize(b==6?vec3(-.86,.28,.42):vec3(-.3,-.88,.36)),tip=base*(b==6?1.22:1.18);
+  vec3 ba=tip-base,pa=ro-base;float tt=max(0.,-dot(ro,rd));vec3 cp=ro+rd*tt;
+  for(int i=0;i<24;i++){float s=float(i)/23.;vec3 q=base+ba*s;vec3 w=ro+rd*dot(q-ro,rd);float d=length(w-q),wd=.02+.12*s;
+   float occl=(hs.x>0.&&dot(q-ro,rd)>hs.x)?0.:1.;col+=(b==6?vec3(.55,.62,.9):vec3(.85,.92,1.))*exp(-d*d/(wd*wd))*(1.-s)*.07*occl;}}
+ // rings: drawn where the ray crosses the plane, in front of the planet or beside it; lit, with the planet's shadow
+ if(b==4){vec3 rl=rotX(ro,tilt),dl=rotX(rd,tilt),sl=rotX(S,tilt);float t=-rl.y/dl.y;
+  if(t>0.&&(hs.x<0.||t<hs.x)){vec3 q=rl+dl*t;float r=length(q.xz),a=ringA(r);
+   if(a>0.){float lit=sph(q,sl,1.).x>0.?.06:1.;vec3 rc=mix(vec3(.82,.74,.6),vec3(.95,.9,.8),.5+.5*sin(r*90.))*lit*(.35+.65*abs(sl.y));col=mix(col,rc,a);}}}
+ // Enyo's Pavor: a small dark potato in front
+ if(b==2){vec3 pc=vec3(.55,.42,1.25);vec3 rr=(ro-pc)/vec3(.07,.05,.055),dd=rd/vec3(.07,.05,.055);float bb=dot(rr,dd),cc=dot(rr,rr)-1.,aa=dot(dd,dd),h=bb*bb-aa*cc;
+  if(h>0.){float t=(-bb-sqrt(h))/aa;if(t>0.&&(hs.x<0.||t<hs.x)){vec3 p=ro+rd*t,n=normalize((p-pc)/vec3(.0049,.0025,.003));vec2 k=craters(n,5.,.7);
+   col=vec3(.23,.21,.2)*(max(dot(n,S),0.)*1.1+.03)*(1.-.5*k.x)+.03*k.y;}}}
+ return col;}
+void main(){
+ vec2 uv=v*vec2(uRes.x/uRes.y,1.);
+ if(uB==5){   // Hyperion in Tellus's sky after dusk: a gradient, a horizon, a bright point; a telescope inset
+  vec3 c=mix(vec3(.02,.03,.08),vec3(.25,.32,.5),pow(clamp(.5-uv.y*.6,0.,1.),2.2));c+=stars(normalize(vec3(uv,1.4)))*.6;
+  c=mix(c,vec3(.02,.025,.02),smoothstep(-.62,-.64,uv.y+.02*sin(uv.x*7.)+.015*sin(uv.x*23.)));   // the hills
+  vec2 pp=vec2(-.35,.05);float d=length(uv-pp);c+=vec3(1.,.95,.82)*(exp(-d*d/.00004)*2.+exp(-d/.012)*.12);   // the planet as a point
+  vec2 ic=vec2(.62,.28);float ir=.3,id=length(uv-ic);
+  if(id<ir){vec3 ro=vec3(0.,.55,6.8),fw=normalize(-ro),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);vec2 q=(uv-ic)/ir;
+   vec3 rd=normalize(fw+(q.x*rt+q.y*up)*.38);float tt;vec3 tc=shade(4,ro,rd,tt);tc=pow(tc,vec3(1.1))*.95;
+   float blur=fbm(vec3(q*18.,1.));c=tc*(.92+.08*blur)*smoothstep(1.,.96,id/ir)+vec3(.01);}   // atmosphere-softened, edge vignetted
+  c=mix(c,vec3(.55),smoothstep(.006,0.,abs(id-ir))*.8);
+  o=vec4(pow(clamp(c,0.,1.),vec3(1./2.2)),1.);return;}
+ vec3 ro=uCam,fw=normalize(-ro),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);vec3 rd=normalize(fw+(uv.x*rt+uv.y*up)*.5);
+ float t;vec3 c=shade(uB,ro,rd,t);
+ if(uB==9){vec3 sd=normalize(uSun);c+=vec3(1.)*exp(-pow(acos(clamp(dot(rd,sd),-1.,1.))/.003,2.))*3.;}   // Erebus: a tiny sun in a black sky
+ c=c/(1.+c*.15);o=vec4(pow(clamp(c,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n), nrm = a => { const l = Math.hypot(...a); return a.map(x => x / l); };
+function draw() {
+  const V = VIEWS[view], dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); gl.viewport(0, 0, cv.width, cv.height);
+  gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1i(U('uB'), V.b);
+  const cd = nrm(V.cam); gl.uniform3f(U('uCam'), cd[0] * V.d, cd[1] * V.d, cd[2] * V.d); gl.uniform3fv(U('uSun'), nrm(V.sun));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
+  document.getElementById('cap').textContent = V.cap; window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
+}
+addEventListener('resize', draw); draw();
+</script>
+</body>
+</html>
