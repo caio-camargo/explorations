@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,40 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.66 — rover prices and gates; Selene science contracts (2026-10-09, economy session, QUEUE Q10)
+
+**Rover parts** (`sim/program.js`, `RV_PRICE`, `RV_GATE`):
+- Prices (M): chassis small 4, medium 9, large 20; wheels 0.5 / 1.5 / 3 each (hub motor included); deck items: battery
+  1, crew seat 3, camera mast 2, antenna 3, sample arm 5, spectrometer 6, seismometer pack 4, drill 8. The default
+  two-seater (medium chassis, four wire-mesh wheels, two seats, battery, camera) is 24M; a small yard cart 9M.
+  `partPrice` adds `rvPrice(p.dn.rvd)` to the folded rover part, so vessel cost, refurbishment and the debrief see it.
+- **Gates by firsts:** small chassis and wheels, battery and camera from the start; antenna with *The beeper*;
+  medium chassis, wire-mesh wheels, sample arm, spectrometer and seismometers with *The far side* (the Selene
+  program); crew seats with *Passenger: one orbit*; the large chassis, heavy wheels and the drill with *Soft landing
+  on Selene*.
+- **The yard stays free:** design and test-drive anything at home. The gate is at LAUNCH (`rvLaunchWhy(parts)`, one
+  line in `app/editor.js`): a rocket can't carry a rover with a part not yet open. The yard shows *Price* and *Can't
+  fly yet: …* (one line in `app/rover-yard.js`). Both flagged for vehicle and space.
+
+**Selene science contracts** (the sats session's R4 proposals, `sim/contracts.js`, science clients, after *Soft
+landing on Selene*). Judged **between flights** by `selTick` (in `econTick`) on what has reached home **since the
+contract was taken** (`c.base = selN()` at accept), and paid with news like a flight's (science yield applies):
+- *Read Selene's dark plains / bright uplands*: 3–6 spectrometer readings of that unit;
+- *A panorama of Selene, Q %*: one received at that quality or better (60–95 %);
+- *A seismic network on Selene*: 4 seismometers set out (offered while there are fewer than 4);
+- *Locate N moonquakes* (offered once 3 stations stand), *Bound Selene's core to 300 km* (after the first located quake);
+- *Science from Selene's far side*: 1–2 far-side readings (it needs a relay). `sciGot` (sats' code, one field) now
+  marks each spectrometer reading `far` (planet-fixed +X, Selene's far side).
+Pay before the client multipliers: readings (20 + 10n)·1.6, panorama (40 + 120(Q − 0.6))·1.6, network 192, quakes
+(30 + 15n)·1.6, core 240, far side (60 + 25n)·1.6. CT entries may now carry `open()` (offered only when true) and
+`sel`/`done(c, N)` (judged by state, not a flight). Test `econ-6` (4 checks; "since taken" mutation-tested).
+
+**Traps hit:** a mid-line `//` comment in `sciGot` swallowed the rest of the line (the handoff's warning, again); the
+medium chassis and wire-mesh wheels share the key `m`, so a de-duplication by key alone lost one.
+
+**Not yet:** the career runner doesn't fly rovers, so these prices are unmeasured against income; sample-arm and drill
+contracts wait for their science (R4's next slice).
 
 ## v1.65 — Hesper's ground on the CPU (2026-10-09, world session, GROUND.md G7)
 
