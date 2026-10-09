@@ -11,7 +11,7 @@ const SAT_FOV=30*Math.PI/180,SAT_IFOV=1e-5,SUN_MIN=Math.sin(10*Math.PI/180),STA_
 // ground stations: the pad, plus any the program builds at cities. At home a station is just a purchase; on another
 // power's land it needs their permission (friendly relations with home, a fair opinion of us), costs more, pays a lease
 // every 100 days, and is shut down if relations turn tense. More, better-spread stations mean pictures come down sooner.
-const GS_HOME=10,GS_FOREIGN=20,GS_LEASE=2,IMG_RATE=0.12;   // imagery sales: M per day at 100 % contact
+const GS_HOME=10,GS_FOREIGN=20,GS_LEASE=2,IMG_RATE=0.12;   // imagery sales: M per day's take received (CAM_BPS for a day)
 function padGS(){const t=curSite();return{name:t.name,u:t.u,power:t.power}}   // the pad's own station: the chosen launch site
 // ---- the link budget (space session, QUEUE Q171, Q51 slice 1; NOTES § "Plan: data as a volume and the link budget"):
 // rate = LINK_K · P · Gt · Gr / d² (bit/s), the free-space law with the era's receivers in one constant. Gains: a whip
@@ -20,8 +20,16 @@ function padGS(){const t=curSite();return{name:t.name,u:t.u,power:t.power}}   //
 // their link. Slice 1 adds the rate and the light delay to every link without changing which links exist.
 const LINK_K=2e11,LINK_FLOOR=10,G_WHIP=1,G_RVHG=30,G_STATION=3e4,P_RADIO=5,P_ROVER=20,C_LIGHT=299792458;
 const linkRate=(P,Gt,Gr,d)=>LINK_K*P*Gt*Gr/(d*d);
+// data as a volume (space session, QUEUE Q172, Q51 slice 2): instruments make bits, a recorder holds them, a link drains
+// them at its rate, and data counts once it's home. A survey camera takes CAM_BPS while it works (about a 1960s TV frame,
+// IMG_FRAME, every 15 s) into a tape recorder of REC_CAP (an hour of it); imagery sells per bit received, IMG_RATE for a
+// whole day's take, so a whip at 300 km earns what it did on contact time alone (it drains ~95 kbit/s in a pass) and a
+// higher orbit, seen longer but slower by 1/d², earns less. A contract's picture is one frame; the far side, FAR_BITS of
+// slow-scan; a telemetry reading, TLM_BITS.
+const CAM_BPS=1e5,REC_CAP=3.6e8,IMG_FRAME=1.5e6,FAR_BITS=2e4,TLM_BITS=1e3;
 // a vessel's (or a registry entry's) radio: its antennas' power at whip gain; none aboard: a 1 W beacon
 const antOf=parts=>{const n=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant').length;return n?{P:P_RADIO*n,G:G_WHIP}:{P:1,G:G_WHIP}};
+const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a registry entry's radio, from its antenna count
 function stationsAll(){return[padGS(),...(PROG.stations||[]).map(g=>{const c=CITIES[g.ci];return{name:c.name,u:c.u,power:c.power?c.power.i:HOME,ci:g.ci}})]}
 // candidate sites: each power's two biggest cities that don't have a station yet
 function gsSites(){const have=new Set((PROG.stations||[]).map(g=>g.ci)),out=[];
@@ -924,10 +932,12 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
-  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0;const A=antOf(q.shape);
-    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;const st=GS0.find(st=>gsSees(st,pf));if(st){n++;rs+=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))}}
-    if(N){q.contact=n/N;q.rate=n?rs/n:0;   // the mean rate while in contact (Q171), for data volumes (Q51 slice 2)
-     income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
+  // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
+  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q);q.rec=q.rec||0;
+    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120);
+      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const x=Math.min(q.rec,k*120);q.rec-=x;got+=x}}
+    if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
+     income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
@@ -940,5 +950,8 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
       for(const c of want){if(q.pending.includes(c.id))continue;const u=CITIES[c.p.ci].u,dd=Math.acos(clamp(dot(un,u),-1,1))*TELLUS.R;
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
-      if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;
-        for(const id of q.pending){const c=want.find(x=>x.id===id);if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}q.pending=[];break}}}}
+      // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first
+      if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;const A=satRadio(q);
+        let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP;
+        while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
+        q.pendB=q.pending.length?b:0;break}}}}

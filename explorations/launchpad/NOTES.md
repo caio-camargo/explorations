@@ -1964,6 +1964,56 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.100 — data as a volume: recorders, downlinks, pay on data received (2026-10-09, space session, QUEUE Q172, Q51 slice 2)
+
+Instruments make bits, a recorder holds them, a link drains them at its rate (v1.96's budget), and data counts once it's
+home. Constants next to the link budget in `sim/space.js`: `CAM_BPS` 100 kbit/s (a survey camera's take: about one
+1960s TV frame, `IMG_FRAME` 1.5 Mbit, every 15 s), `REC_CAP` 360 Mbit (an hour of it on tape), `FAR_BITS` 20 kbit (the
+far side as slow-scan), `TLM_BITS` 1 kbit (a telemetry reading). A registry entry's radio is now its antenna count
+(`satRadio`: 5 W a whip), no longer read off its render shape.
+- **Imagery sales** (`satTick`): every 2-minute sample the camera fills `q.rec`; in contact the pass drains it at the
+  link's rate; the sale is `IMG_RATE` per day's take received (`q.got`, all time). `q.contact` is still measured (the
+  logbook, `contracts.js`'s upgrade offer and the Fleet line read it).
+- **Measured** (pad only, 20 days, polar): 300 km, contact 5.8 % at 79 kbit/s → **4.9 %** of the take home (sales as
+  before, within ~15 %); 2,000 km, contact 21 % at 5.4 kbit/s → **1.0 %** (before v1.98 it earned 21 %). Earlier
+  measurement with five stations: 300 km 31 % contact at ~100 kbit/s, 800 km 75 % at 22 kbit/s, 2,000 km 98 % at 5 kbit/s.
+  **The balance change:** with a whip, higher is slower by 1/d², so imaging pays low; a high orbit needs a dish (vehicle,
+  a gain class) to earn. Retune with `CAM_BPS` (where the take saturates) or `IMG_RATE`.
+- **Contract pictures:** a picture is a frame; a pass downlinks as many as its rate allows in each 30 s step, oldest
+  first (`q.pendB` carries a part-sent frame); undelivered ones wait for the next pass (before: all at once on any pass).
+  At 300 km that's ~1.5 frames a step, so nothing changes in play; slow links now queue.
+- **The far side** (`outThere`): in sight of Tellus the pictures trickle down at the link's rate (`R.farGot`): **16 min**
+  from Selene on one whip at 20 bit/s; carried home they still count. Before: on the first moment in sight.
+- **The flight's recorder:** readings logged out of contact (v1.x, terrain session) now **play back once the link
+  returns** at `TLM_BITS` each (`R.recB`), in flight or on rails; landing with the package still brings them all.
+  So a blackout's strain readings certify after the blackout, not only on a recovered package.
+- **Flow:** the Fleet line (`app/program-ui.js`, one template) adds the rate and the recorder fill after "in contact".
+- **Not in this slice:** rovers' science volumes (they already wait for contact: `rvSciSent`); imagery and contract frames
+  draw on separate budgets (a pass downlinks both in full); the transmitter's power draw (Q27, after Q164).
+
+`career.mjs` unchanged, bit for bit (its robot flies no camera satellites). Test `space-15` (2 checks; mutations they catch, reasoned not run: drain without the rate (2,000 km earns its contact share), the far
+side sent on sight, no playback). Tests 23, the stations section and telemetry unchanged. TESTING row 176.
+
+## v1.99 — the planets on the map (2026-10-09, flow session, QUEUE Q175 = Q87 slice 1's drawing; closes PLAYTEST #11)
+
+Helios and the five other planets are on the map from epoch 1, on a dashed **ring in the ecliptic** around the map's
+centre. Each one sits at its ecliptic longitude that day, with its real distance in the label (`Enyo · 2.36 TU`), as a
+disc sized by class: Hyperion 6 px, Hesper and Enyo ~2.5, Astraea and Erebus at the 2 px floor, and Helios a 7 px sun
+with rays. The ring's radius is 0.3 × the camera distance, so it stays on screen at every zoom. Marks behind Tellus are
+hidden. It works in all three map styles: notebook (era ink), terminal, and modern (GL ring, depth-tested behind the planet).
+- `planetMarks(T)` (end of `sim/system.js`, additive; space's file): `{name, p, u, d, R, color, px}`. `p` from
+  `fromTellus`, `u` = `p`'s direction laid into the ecliptic (`eclFrame().N` removed), `d` in TU. Drawn in `drawMap`
+  (`app/render.js`), before the GL line pass so the ring is in `MAPSEGS` too; new mark `planet`, text priority 5 (lowest).
+- **Negative result: their real places don't work on this map.** Drawn at infinity in their true directions, all six
+  were 99–137° from the default map camera's axis, behind it. The map looks down on Tellus at 26°, so the ecliptic's
+  horizon is above the top of the screen. That's why there's a ring: it shows the true longitudes (which matter for windows and the sun's side) and drops
+  the ±23° of latitude.
+- Test `flow-4` (1 check; mutation caught: `u` not laid into the ecliptic). Stills (local, gitignored):
+  `output/launchpad/q175-planets/`.
+- **Open:** two planets close on the ring (a conjunction) lose one label to the overlap rule (#31); the dot stays. The
+  sky's sun still sits at the fixed `SUN_DIR` while the map's Helios moves with the year (slice 3, space). In the era
+  maps the ring is drawn over Tellus, as all their lines are (no depth on the overlay).
+
 ## v1.98 — rendezvous and retrieval contracts (2026-10-09, economy session, QUEUE Q180, Q9's plan slice 4)
 
 - **Rendezvous** (gov, com; after `beeper`): for spent hardware (`q.junk`) or a satellite of ours that has **gone
@@ -9594,3 +9644,11 @@ met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing
 **TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
 "Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
 suite you run before merging, instead of waiting for someone to read the file.
+
+**Row 65, crew rotation, and a driver fix (QA session, 2026-10-09; QUEUE Q120).** `node playtest.mjs 65`: a crewed capsule
+(chute, crew, shield, decoupler, a tank with a radial port) takes a habitat's nose port; leaving the flight registers the
+stack as a crewed station; Program → Fleet → **Fly**, the HUD's undock, a retro burn (the robot cuts the speed), the tank
+dropped, shield first, chute: home at 8.5 m/s with the crew safe. Found: the Debrief never mentions the crew (PLAYTEST #34).
+**Driver fix:** a robot that swaps `S` for a ship it built must call `HOOK.rebuild()`, or the scene keeps drawing the ship
+it launched first. `PT.park` does now. The numbers from Q30's docking and station rows stand, but their shots of 56, 59, 60,
+60c, 64, 66 and 116 drew the Orbiter; 59, 64, 66 and 116 were re-shot (`C:/Users/caioa/dev/playtest-out/reshoot`).

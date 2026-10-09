@@ -209,9 +209,11 @@ function render(){
       else if(L.mark==='sat'){octx.beginPath();octx.moveTo(s[0],s[1]-4);octx.lineTo(s[0]+4,s[1]);octx.lineTo(s[0],s[1]+4);octx.lineTo(s[0]-4,s[1]);octx.closePath();octx.fill()}
       else if(L.mark==='ca'){octx.strokeStyle=L.c;octx.lineWidth=2;octx.beginPath();octx.arc(s[0],s[1],5,0,7);octx.stroke()}
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
+      else if(L.mark==='planet'){const k=Math.min(devicePixelRatio||1,1.5),r=L.px*k;octx.beginPath();octx.arc(s[0],s[1],r,0,7);octx.fill();
+        if(L.sun){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4;octx.moveTo(s[0]+Math.cos(a)*r*1.5,s[1]+Math.sin(a)*r*1.5);octx.lineTo(s[0]+Math.cos(a)*r*2.2,s[1]+Math.sin(a)*r*2.2)}octx.stroke()}}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-10,c:L.c,o:{city:4,gs:3,sat:3,ship:2}[L.mark]||1})}
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]||1})}
     {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k;texts.sort((a,b)=>a.o-b.o);
       for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
         if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
@@ -306,6 +308,13 @@ function drawMap(VP,camW,labels){
   // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
   {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}
+  // (flow, Q175) Helios and the planets, from epoch 1: on a ring in the ecliptic around the map's centre, at their ecliptic
+  // longitude today (at their real places they'd be at infinity, mostly behind this camera); hidden behind Tellus
+  {const E=eclFrame(),o=[Math.cos(cam.mPitch)*Math.sin(cam.mYaw),Math.sin(cam.mPitch),Math.cos(cam.mPitch)*Math.cos(cam.mYaw)],c0=madd(camW,o,-cam.mDist),rr=cam.mDist*.3;let pv=null;
+    for(let i=0;i<=144;i++){const a=i/144*6.2832,p=add(c0,add(mul(E.X,rr*Math.cos(a)),mul(E.Y,rr*Math.sin(a))));if(pv&&i%2)seg(pv,p,[.62,.6,.5,.3]);pv=p}
+    for(const m of planetMarks(tNow())){const p=madd(c0,m.u,rr),q=sub(p,camW),dq=len(q),tc=-dot(camW,q)/dq;
+      if(tc>0&&tc<dq&&dot(camW,camW)-tc*tc<TELLUS.R*TELLUS.R)continue;
+      labels.push({p,mark:'planet',px:m.px,sun:m.name==='Helios',t:m.name==='Helios'?'Helios':`${m.name} · ${m.d.toFixed(2)} TU`,c:m.color})}}
   MAPSEGS=mapEra()?out:null;   // an era map draws these on the overlay, in its own hand
   if(out.length&&!MAPSEGS){gl.useProgram(PLINE.p);gl.uniformMatrix4fv(PLINE.u.uVP,false,VP);gl.uniform1f(PLINE.u.uFc,FC);
     gl.bindVertexArray(lineVAO);gl.bindBuffer(gl.ARRAY_BUFFER,lineBuf);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(out),gl.DYNAMIC_DRAW);

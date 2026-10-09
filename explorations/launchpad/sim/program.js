@@ -198,7 +198,10 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
       if(Math.abs(el.period/DAY_S-1)<0.002&&el.e<0.01&&inc<2&&capSees(s.r,progT(s)))R.tv=true}}
   // Selene: far-side photos (sunlit ground below, the side away from Tellus), downlinked in line of sight or carried home
   if(b===SELENE&&s.alive&&!s.landed&&cam&&!R.farPhoto){const u=norm(s.r);if(len(s.r)<3*b.R&&dot(u,SUN_DIR)>0.1&&dot(u,toT)<-0.3){R.farPhoto=true;HOOK.msg('Far side photographed'+(ant?': downlink when Tellus is back in sight':''))}}
-  if(R.farPhoto&&!R.farSent&&s.alive&&(ant&&seesTellus(s)||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
+  // the pictures are FAR_BITS of slow-scan (Q172): in sight of Tellus they trickle down at the link's rate (~16 min from
+  // Selene on one whip); carried home, they're developed on the ground
+  if(R.farPhoto&&!R.farSent&&s.alive&&ant&&seesTellus(s)){if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}if(R.lk.ok)R.farGot=(R.farGot||0)+R.lk.rate*dt}
+  if(R.farPhoto&&!R.farSent&&s.alive&&((R.farGot||0)>=FAR_BITS||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
   if(!s.alive&&!R.hitDone&&b===SELENE){R.hitDone=true;if(sci&&ant){if(nearSide(b,s.r))R.selImpact=true;else HOOK.news('Our impactor hit the far side of Selene: nobody heard a thing','warn')}}
   if(s.landed&&s.alive&&b===SELENE&&sci){R.selSampled=true;if(!R.selLand&&ant&&(s.touchV||0)<4){if(nearSide(b,s.r))R.selLand=true;else if(!R.farLandNews){R.farLandNews=1;HOOK.news('Down on the far side of Selene, with no way to phone home','warn')}}}
   // Nyx: found by tracking; weighed on discovery (that logbook fact unlocks its orbit on the map and its encounter forecasts)
@@ -246,6 +249,10 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
     if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
+  // the recorder plays back once the link is back (Q172): TLM_BITS a reading at the link's rate, so a blackout's readings
+  // come down after it; a package that comes home still brings all of them (missionEnd)
+  if(s.alive&&R.sfRec&&!s.landed&&(R.lkT>=simT-1||(R.lkT=simT,R.lk=linkOf(s)))&&R.lk.ok){R.recB=(R.recB||0)+R.lk.rate*dt;
+    for(const k in R.sfRec){if(R.recB<TLM_BITS)break;R.recB-=TLM_BITS;R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);delete R.sfRec[k]}if(!Object.keys(R.sfRec).length)R.recB=0}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv)}if(!R.logPeriod&&coast){R.logPeriod=1;logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
