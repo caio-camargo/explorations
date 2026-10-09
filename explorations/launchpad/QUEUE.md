@@ -253,7 +253,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W9 | Edit the pillars (ROADMAP § Pillars, a draft) | what sessions may turn down |
 | ~~W10~~ | ~~Pick a freeze window for the file split~~ answered 2026-10-08: Caio stopped all sessions; split done | Q59 ✓ |
 | W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
-| W12 | **A failed first is mostly covered, once?** One failed orbit attempt costs ~90 % of the start money; agencies get bailed out 3–4×, poor-world companies never reach orbit (`career.mjs` `PACE=1 FAILFIRST=orbit`). Options: (1) the sponsor pays back 75 % of the first lost flight aimed at an open first; (2) the rescue lifts to the next first's price, not the 25M floor; (3) leave it hard and warn before the attempt. **Default if silent: (1)** (NOTES § "Epoch 1–2 pacing") | Q44's fix; M1's "intended number of flights" (~5) |
+| ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; economy building it (→ economy 2026-10-08) | Q44's fix |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - **→ world 2026-10-08** world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
