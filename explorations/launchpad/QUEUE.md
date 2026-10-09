@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.13 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,10 +12,10 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **M1's finish lines** (M1 is now current): robot `m1` ✓; **Q118** first-orbit pacing (economy, after Q122); **W16** a person who isn't you plays the first hour; no box covers another (robot ✓) | economy, then you | **M1 done**; M2 becomes current |
-| 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan; defaults hold) | you | rovers' R3, MIDGAME's line, Q53, **Q3's build (M1's biggest flow item)** |
-| 3 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
-| 4 | **Mock-ups Q72, Q71, Q89** | any look & sound session (**none running**) | Q80–Q85, D2's look, Q102 |
+| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
+| 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan; defaults hold) | you | rovers' R3, MIDGAME's line, Q53, Q3's build |
+| 3 | **Mock-ups Q72, Q71, Q89**: effects is back and running; they're next in its beat | effects | Q80–Q85, D2's look, Q102 |
+| 4 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
 | 5 | **Q146** debris slice 2 (conjunctions) | space (no session) | slices 3–4, the pressure setting Q124, cleanup contracts |
 
 ## How a session uses this
@@ -72,7 +72,7 @@ the feedback I paste into PLAYTEST items.*
 - **New flight pay goes through `debPaid(R, kind, label, pay)`** (economy, every lane): otherwise the Debrief hides it in "days passing" (NOTES § UI "Slice 3 built").
 - **POWERS.md approved** (v1.0.0): fanned out as Q102–Q106; Cape and Steppe first (its round-2 decision 1).
 - **M0 is done (2026-10-09); M1 is current, M2 next** (ROADMAP rule 4). **The builder palette was empty on `main` from v1.68 to v1.73** (NOTES § v1.73): anything judged on the construction screen in that window needs a second look.
-- **Effects session silent since Q20; its items Q63, Q64, Q23 are back to `ready`** (2026-10-09). Before starting one, check for an unmerged `aerofx` branch or worktree on either machine and pick up its work.
+- **Effects: after Q65, take the mock-ups Q72, Q71, Q89 before anything else.** Caio's picks (crew, bodies, hardware schools) wait on them; nothing else in look & sound does.
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
@@ -142,6 +142,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q138 | 📝 **Rivals as programs**: budget → capacity → progress per capstone (replacing seeded schedules late); scarce places held by building first — [`LATE_GAME.md`](LATE_GAME.md) 1.4.0 | M4 | M | 📝 | ready (plan only) |
 | Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ready |
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
+| Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ready |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | → economy 2026-10-09 |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
@@ -337,5 +338,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- orchestrator / Caio — M1's "intended number of flights" to first orbit: economy proposes **4–6 for a prudent player, and no start stuck after one failed orbit attempt** (what `career.mjs` shows since v1.77); write it into ROADMAP § M1 — NOTES v1.77
-- economy — a private company in a frugal world stagnates: it reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) — NOTES § "Rovers in the career runner"
