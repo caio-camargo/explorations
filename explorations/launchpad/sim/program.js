@@ -139,8 +139,11 @@ const nearSide=(b,r)=>dot(norm(r),norm(mul(bodyRel(b,simT)[0],-1)))>0;   // a po
 // the capital: the home power's biggest city; does a satellite at r (absolute frame, program time T) sit 15° up in its sky?
 const capital=()=>CITIES.filter(c=>c.power&&c.power.i===HOME).sort((a,b)=>b.pop-a.pop)[0]||CITIES[0];
 function capSees(r,T,minEl=15){const c=capital(),pf=rotY(r,-absTh(T)),d=sub(pf,mul(c.u,TELLUS.R));return dot(norm(d),c.u)>=Math.sin(minEl*Math.PI/180)}
-const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
-  return el.e<0.02&&inc<3&&Math.abs(el.period/DAY_S-1)<0.01&&capSees(satAt(q,T)[0],T)};
+// TV pays while the capital sees it 15° up all day round (six times through the day); its tilt may wander as long as that
+// holds (space, MIDGAME § Satellites: station-keeping holds the orbit's size and phase, not its tilt). The mission that
+// sets it up still asks for under 2° (outThere).
+const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu);
+  return el.e<0.02&&Math.abs(el.period/DAY_S-1)<0.01&&[0,1,2,3,4,5].every(k=>{const t=T+k*DAY_S/6;return capSees(satAt(q,t)[0],t)})};
 // navigation, Transit-style (a fix from one satellite's pass, as in the 1960s): the share of (place, moment) over the past
 // day from which a satellite with an antenna will be at least 10° up within NAV_WAIT. 64 places spread evenly over the
 // globe (a Fibonacci lattice), moments every 10 min. (Three in view at once almost everywhere would take ~12 satellites.)

@@ -3440,7 +3440,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // spending its own propellant against the moons' tides, at a rate measured once for its orbit (study_slot.mjs); dry, the
 // tide steps it between flights and it drifts off its slot. Low orbits feel no tide in the game (pertNear) and cost nothing.
 {
-  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,slotRate,skDv,skLife,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R};')();
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,slotRate,slotTilt,skDv,skLife,isTV,capital,rotY,absTh,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R,YEAR_D};')();
   const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   const P = D.PROG, T = D.TELLUS, G0 = 9.80665; P.sats = []; P.day = 0;
   // a Probe left in a circular orbit of radius a, inclination inc; then its tanks set to hold dv m/s (null: as launched)
@@ -3451,28 +3451,36 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       if (dv > 0) for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; tk.res.fuel = mid; q.mass = m0 + mid * 1000; if (D.skDv(q) < dv) lo = mid; else hi = mid; } }
     return q; };
   const R = T.R, low = reg(R + 300e3, 0), nav = reg(R + 3000e3, 60), stat = reg(D.STAT_R, 0), k = q => D.slotRate(q);
-  check('station-keeping: holding an orbit costs what the tides pull, nothing in low orbit, ~0.2–0.4 m/s a day at 3,000 km, ~0.3–0.5 stationary (study_slot.mjs)',
-    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5,
-    `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day`);
+  check('station-keeping: holding an orbit’s size and shape costs what the tides pull, nothing in low orbit, ~0.02–0.06 m/s a day at 3,000 km, ~0.05–0.3 stationary; the tilt is let go (re-tuned for MIDGAME § Satellites; study_slot.mjs)',
+    k(low) === 0 && k(nav) > 0.02 && k(nav) < 0.06 && k(stat) > 0.05 && k(stat) < 0.3 && D.slotTilt(stat) > 3e-5 && D.slotTilt(low) < 3e-5,
+    `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day; stationary tilt ${(D.slotTilt(stat) * 400 * 180 / Math.PI).toFixed(2)}° a year`);
   // a stationary satellite with tanks for 100 m/s holds its rails for ~250 days; one with 4 days' worth goes adrift on day 4
   P.sats = []; news.length = 0; const held = reg(D.STAT_R, 0, 100), short = reg(D.STAT_R, 0, 4 * k(held)), none = reg(D.STAT_R, 0, 0);
   const r0 = D.satAt(held, 30 * D.DAY_S)[0], ep0 = held.epoch, m0 = held.mass, life0 = D.skLife(held);
   D.advanceDays(30);
   const spent = 100 - D.skDv(held), off = q => len(sub(D.satAt(q, 30 * D.DAY_S)[0], D.kepler([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)], 30 * D.DAY_S, T.mu)[0]));
-  check('station-keeping: with propellant it stays on its rails, and pays the rate from its own tanks (mass and Δv drop)',
-    held.epoch === ep0 && len(sub(D.satAt(held, 30 * D.DAY_S)[0], r0)) < 1e-6 && Math.abs(spent - 30 * k(held)) < 0.01 * spent && held.mass < m0 && held.adrift == null && Math.abs(D.skLife(held) - (life0 - 30)) < 0.5,
-    `spent ${spent.toFixed(2)} m/s in 30 days (rate ${(30 * k(held)).toFixed(2)}); life ${life0.toFixed(0)} → ${D.skLife(held).toFixed(0)} days; ${(m0 - held.mass).toFixed(1)} kg lighter`);
+  const el0 = D.elements([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)], T.mu), el1 = D.elements(held.r, held.v, T.mu), tilt = Math.acos(Math.min(1, el1.h[1] / el1.hl));
+  check('station-keeping: with propellant it holds its orbit’s size and shape, its tilt wanders a little, and it pays the rate from its own tanks (mass and Δv drop)',
+    Math.abs(el1.a - el0.a) < 1 && Math.abs(el1.e - el0.e) < 1e-6 && tilt > 0 && tilt < 0.01 && Math.abs(spent - 30 * k(held)) < 0.01 * spent && held.mass < m0 && held.adrift == null && Math.abs(D.skLife(held) - (life0 - 30)) < 0.5,
+    `spent ${spent.toFixed(2)} m/s in 30 days (rate ${(30 * k(held)).toFixed(2)}); tilt ${(tilt * 180 / Math.PI).toFixed(3)}°; life ${life0.toFixed(0)} → ${D.skLife(held).toFixed(0)} days; ${(m0 - held.mass).toFixed(1)} kg lighter`);
   check('station-keeping: dry, it drifts off its slot under the tide (news once, only for one that had propellant), and nothing is lost',
-    Math.abs(short.adrift - 4) < 0.05 && none.adrift === 0 && off(short) > 100e3 && off(none) > 100e3 && off(held) < 1 && P.sats.length === 3 &&
+    Math.abs(short.adrift - 4) < 0.05 && none.adrift === 0 && off(short) > 100e3 && off(none) > 100e3 && off(held) < 50e3 && P.sats.length === 3 &&
     news.filter(m => /last of its propellant/.test(m)).length === 1 && news.some(m => m.startsWith(short.name)),
-    `adrift on day ${short.adrift?.toFixed(2)} and ${none.adrift}; off the slot after 30 days: ${(off(short) / 1e3).toFixed(0)} km and ${(off(none) / 1e3).toFixed(0)} km (held: ${off(held).toFixed(1)} m)`);
+    `adrift on day ${short.adrift?.toFixed(2)} and ${none.adrift}; off the slot after 30 days: ${(off(short) / 1e3).toFixed(0)} km and ${(off(none) / 1e3).toFixed(0)} km (held, its tilt only: ${(off(held) / 1e3).toFixed(1)} km)`);
   // around a moon too: the 2,000 km polar Selene orbit that Tellus's tide pulls into the ground in ~41 days (test 40) holds with propellant
   P.sats = []; news.length = 0; const B = D.SELENE, s = D.newShip(D.PRESETS.Probe), vs = Math.sqrt(B.mu / (B.R + 2000e3));
-  Object.assign(s, { alive: true, landed: false, body: B, r: [B.R + 2000e3, 0, 0], v: [0, vs, 0] }); D.satRegister(s, { day0: P.day }); const sq = P.sats.at(-1), sep = sq.epoch, dv0 = D.skDv(sq);
+  Object.assign(s, { alive: true, landed: false, body: B, r: [B.R + 2000e3, 0, 0], v: [0, vs, 0] }); D.satRegister(s, { day0: P.day }); const sq = P.sats.at(-1), sel0 = D.elements(sq.r, sq.v, B.mu), dv0 = D.skDv(sq);
   D.advanceDays(45);
   check('station-keeping: around Selene, a polar orbit the tide would pull into the ground holds while its tanks last',
-    P.sats.includes(sq) && sq.epoch === sep && sq.adrift == null && D.skDv(sq) < dv0 && !news.some(m => /came down/.test(m)),
+    P.sats.includes(sq) && Math.abs(D.elements(sq.r, sq.v, B.mu).a - sel0.a) < 1 && Math.abs(D.elements(sq.r, sq.v, B.mu).e - sel0.e) < 1e-6 && sq.adrift == null && D.skDv(sq) < dv0 && !news.some(m => /came down/.test(m)),
     `${D.slotRate(sq).toFixed(2)} m/s a day; ${(dv0 - D.skDv(sq)).toFixed(0)} of ${dv0.toFixed(0)} m/s spent in 45 days`);
+  // a TV satellite over the capital, held: two years on its tilt is past the old 3° limit and the capital still sees it all day
+  P.sats = []; P.day = 0; const c = D.capital(), u = D.rotY(c.u, D.absTh(0)), lon = Math.atan2(u[2], u[0]), aS = D.STAT_R, vS = Math.sqrt(T.mu / aS), tvs = D.newShip(D.PRESETS.Probe);
+  Object.assign(tvs, { alive: true, landed: false, body: T, r: [aS * Math.cos(lon), 0, aS * Math.sin(lon)], v: [vS * Math.sin(lon), 0, -vS * Math.cos(lon)] }); D.satRegister(tvs, { day0: 0 }); const tq = P.sats.at(-1);
+  let tvDays = 0; const tv0 = D.isTV(tq, 0); for (let d = 0; d < 2 * D.YEAR_D; d++) { D.advanceDays(1); if (D.isTV(tq, P.day * D.DAY_S)) tvDays++; }
+  const tel = D.elements(tq.r, tq.v, T.mu), tilt2 = Math.acos(Math.min(1, tel.h[1] / tel.hl)) * 180 / Math.PI;
+  check('station-keeping: a held TV satellite’s tilt wanders past 3° in two years and the capital still sees it all day, so TV pays on',
+    tv0 && tilt2 > 3 && tvDays === 2 * D.YEAR_D, `tilt ${tilt2.toFixed(1)}° after two years; TV on ${tvDays} of ${2 * D.YEAR_D} days`);
 }
 
 // qa-2. The tester's "go to body" view (QA session, QUEUE Q79): its catalogue holds every SYSTEM.md body with the
