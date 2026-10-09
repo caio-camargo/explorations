@@ -210,7 +210,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | — | GROUND.md **G1**, the body-ground layer (no new relief) | M3 | M | ⚙ | ✓ v1.54 `5cdf43d` |
 | Q90 | GROUND.md **G2**: Selene's baked map + crater bands on the CPU, `study_ground.mjs` (`geoAt` on the bake moved to G3) | M3 | M | ⚙ | ✓ v1.58 `dd8f459` |
 | Q91 | GROUND.md **G3–G6**: the march on Selene, shadows, consumers (with space for `landAt`), Nyx | M3 | L | 🖥 | after G2 ✓; Q107 first; going live needs Q57; **milestone gate**: the rest waits until M2 is current |
-| Q107 | GROUND.md **G3.0**: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm). Allowed before the gate (orchestrator): headless, no visible change | M3 | S | ⚙ | → world 2026-10-09 |
+| Q107 | GROUND.md **G3.0**: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm). Allowed before the gate (orchestrator): headless, no visible change | M3 | S | ⚙ | ✓ v1.78 (heights moved 2.7e-8 m) |
 | Q92 | GROUND.md **G7+**: per-planet ground (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps) | M5 | L | 🖥 | CPU half under way (world): **Enyo ✓ v1.62** (`9cf7323`), **Hesper ✓ v1.65** (`8d8ce03`), **Astraea ✓ v1.67** (`6dcda41`), **Hyperion's moons ✓ v1.70** (`3e775b8`), **Erebus ✓ v1.72** (`976b759`), **seeded small bodies ✓ v1.75** (`aa2a263`, `smallBodyGround`): **the CPU half is complete**, nothing live, Hyperion's moons, Erebus. Drawing still after Q91 and Q79 |
 | Q105 | The pad site per school (cove, ridge, coast, steppe), if it touches terrain ([`POWERS.md`](POWERS.md)) | M1 | S | 🖥 | after Q102 |
 
