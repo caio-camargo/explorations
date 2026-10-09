@@ -1057,6 +1057,26 @@ Steps 1–3 make every existing rocket look right for its maker; 4–5 are what 
 6–7 are content for rivals and the pad. Defaults if Caio stays silent on W20: build in this order, Cape first (no
 visible change), then Steppe.
 
+### Steps 1–3 built (2026-10-09, effects beat)
+- `schoolOf(i)`: the power's school drawn from `SCHOOL_AFF` (POWERS.md's weights by archetype key), seeded by `WSEED` and
+  the power, so it is fixed for a world; schools without a look yet fall back to Cape. `partSchool(p)`: the seller's
+  school for an imported part (`sourceOf`), else the program's; `SCHOOL_FORCE` overrides (views pin Cape).
+- The school rides in the vertex's kind: `pv` writes `PK.k + 32·PK.sch`; `MESH_VS` decodes with `% 32`, `MESH_FS`
+  as `sch = k/32`. Every helper that rewrites `PK.k` (engine bells, mounts) keeps `PK.sch` by spreading `PK`.
+- **Cape is byte-identical to before:** a hash of `partShape`'s output for Orbiter, Heavy, Big Lunar and Crewed Lunar
+  on the old tree and the new one (Cape forced) matches exactly. The default world's own school is Cape.
+- Steppe in `MESH_FS`: no roll pattern (tanks and the nose cone's checker), white paint becomes grey-green enamel with
+  a ±6 % panel-to-panel shade, dark seams every 1.3 m and every eighth of the way round, rougher and not metallic; bells
+  olive-tinted. `refView(114)` Cape, `(115)` Steppe.
+- test.mjs `aerofx-3` (hardware schools): 69 % of closed superpowers draw Steppe (weight 0.7), open superpowers never.
+- **Step 4 built:** the interstage cover. A decoupler with an engine sitting right on top of it draws a cover round that
+  engine at the stack radius, with the decoupler's part index and school, so it falls away with the lower stage and the
+  upper engine fires bare (checked in `refView(75)`, staging). Cape: a closed black skirt with 24 ribs. Steppe: two rings
+  and 24 crossing tubes, the bell visible through them. **This changes Cape's look** (today's Orbiter on the pad showed
+  its Petrel; now a ribbed skirt covers it, as POWERS.md's Cape brief has it). `INTERSTAGE_FX = false` brings back the bare
+  engine. Not drawn: canted engines.
+- Next: step 5 (roundel), then 6–7.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed

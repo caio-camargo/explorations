@@ -4379,3 +4379,30 @@ restarted without Caio. One orphaned headless Chrome of mine (~380 MB) was stopp
 ### Next steps
 - [ ] Caio: say when memory allows, and the Q19 experiments resume (one browser session each, ~1 min)
 - [ ] Look & sound: the ~18 ms of the sky pass that isn't terrain, at low views
+
+## 2026-10-09 — Launchpad v1.82: debris slice 2, conjunctions between flights (QUEUE Q146; space session, unattended)
+
+### Summary
+- `conjTick` (end of `orbTick`): big objects against active entries only, each orbit smeared over 50 km bands; rate a
+  pair a day Rs² v / (2π r² W cos(Δi/2)). My first formula was 4/π too high (rectangle instead of ellipse); an
+  event-driven Monte Carlo caught it (`study_debris.mjs`; now within 1–8 %, statistical ±5 %).
+- A hit: crewed always warned; tracked (mainframe era) with fuel dodges for 0.5 m/s; else both destroyed, the breakup
+  recorded for Q147. World setting via `pressureOf('debris')` (off / light / real, default light).
+- Finding: big objects almost never collide (1,000 stages sharing a band: one hit in ~1,100 years at real rates), as in
+  reality; LATE_GAME's pressure has to come from fragments (Q147).
+
+### Verification
+- New test `space-4` (3 checks, 5 mutations caught). Full suite 566 pass / 0 fail on `main` as pushed (`25b6d34`).
+- Shipping: `main` moved inside every 25 s smoke window, so the order became merge → check markers → push → full
+  suite on the pushed state. NOTES.md arrives on `main` with CRLF (`fac1563`, `da175a1`), so every NOTES merge
+  conflicts on all lines; resolved by an LF-normalised 3-way merge each time; flagged under *Proposed*.
+- Slip, local only: a resolver script failed (Windows Python can't see Git Bash's `/tmp`) and the merge commit took
+  NOTES with markers (`d02b3cf`); fixed in `38dca51` before any push.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (slice 2), `test.mjs` (`space-4`), new `study_debris.mjs`, `NOTES.md` § v1.82, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim moved to Q147)
+
+### Next steps
+- [ ] Space: Q147 fragment bands (in progress)
+- [ ] Platform/orchestrator: `.gitattributes` for line endings (under *Proposed*)
