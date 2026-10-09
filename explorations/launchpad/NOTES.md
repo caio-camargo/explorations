@@ -1973,6 +1973,27 @@ Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test
 caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
 view) is flow's, proposed in QUEUE.
 
+## Q108: a Tellus–Enyo cycler, measured (2026-10-09, space session; study, `study_cycler.mjs`)
+
+LATE_GAME's network wants cyclers (routes as belts). Enyo sits at 1.52 TU with a synodic period of 2.14 years, like
+Mars, so an Aldrin cycler keeps Aldrin's shape in TU: a 1.60, e 0.393 (perihelion 0.971 TU, aphelion 2.229 TU, period
+2.02 years). What our scaling changes is speed (Tellus moves at 8.61 km/s, not 29.8) against each planet's pull.
+
+| | ours | the real Earth |
+|---|---|---|
+| v∞ at Tellus | 1.90 km/s | 6.54 km/s |
+| turn needed each cycle (inbound to outbound branch) | 84.7° | 84.7° (same geometry) |
+| a flyby at 300 km turns up to | **94.9°** | 71.3° |
+
+**On our scale the cycler is ballistic**: a Tellus flyby under ~800 km (99° at 100 km, 95° at 300 km; at 1,000 km it
+falls 2.2° short) turns it as far as each cycle needs, where Aldrin's real one pays Δv every cycle. So a cycler, once
+placed, costs only corrections, which makes it a natural LATE_GAME route ("routes as belts").
+- **Taxis:** from a 300 km orbit at Tellus onto the cycler's hyperbola, **1,702 m/s** (a Hohmann departure to Enyo:
+  1,396); at Enyo, v∞ 2.82 km/s, 2,022 m/s from a 30 km orbit (Enyo's thin air can take part of it by aerobraking).
+- **Simplifications** (to check on real rails, Q87 slice 2): circular, coplanar planet orbits (Enyo's e is 0.09, which
+  shifts the encounters); the turn needed is estimated from the cycler's crossing at 1 TU (inbound to outbound), not from
+  a full multi-revolution solution; no Enyo flyby used. Expect corrections of tens of m/s a cycle rather than zero.
+
 ## Plan: asteroid capture and mining, the space side (2026-10-09, space session, QUEUE Q140; plan only, M4–M5)
 
 The design is LATE_GAME.md § "Asteroids: capture and mining" (round 6, approved): types by spectra, the ARM-style
