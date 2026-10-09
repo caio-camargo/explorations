@@ -587,6 +587,31 @@ ROWS[127] = {title: 'the Debrief after each way a flight ends', flags: NOMONEY, 
   {key: 'b'}, `screenNow()`, `go('program'); go('debrief'); screenNow()`, DEB('again from the Program'), {shot: 'again'}],
   checks: {screens: `true`}};
 
+// Selene's far side (Q30 follow-up): §40's relay and §42's rovers placed in the program, then the Program and the rover
+// screen as a player reaches them. Contact over a relay orbit is sampled by moving the program day (rvFieldContact is pure).
+const SEL_HELPERS = String.raw`
+PT.selPt = want => { for (let i = 0; i < 3000; i++) { const z = 1 - (2 * i + 1) / 3000, a = i * 2.39996, s = Math.sqrt(1 - z * z), u = [s * Math.cos(a), z, s * Math.sin(a)];
+  if (Math.abs(u[1]) < .15 && want(u, geoAt(SELENE, mul(u, SELENE.R)))) return u } return null };
+PT.rover = (u, slots, name) => { const R = rvNew({name, ch: 'l', wh: 'm', n: 6, spr: 'S', slots}, SELENE, mul(u, groundR(SELENE, mul(u, SELENE.R))), [0, 1, 0], {}); R.name = name; R.id = 70 + (PROG.rvOut || []).length; R.km0 = 0;
+  PROG.rvOut = PROG.rvOut || []; PROG.rvOut.push(rvEntry(R)); return PROG.rvOut.at(-1) };
+PT.relay = alt => { const B = SELENE, s = newShip(PRESETS.Probe), rp = B.R + alt, v0 = Math.sqrt(B.mu / rp); for (const p of s.parts) if (p.d.kind === 'cam' || p.d.kind === 'sci') p.on = false;
+  Object.assign(s, {alive: true, landed: false, body: B, r: [rp, 0, 0], v: [0, 0, -v0]}); satRegister(s, {day0: PROG.day}); return PROG.sats.at(-1) };
+true`;
+ROWS[115] = {title: 'a far-side rover driven through a Selene relay', steps: [SEL_HELPERS, `go('program'); PROG.sats = []; PROG.rvOut = []; testEpoch(4); true`,
+  `(()=>{ const e = PT.rover(PT.selPt((u, g) => u[0] > .2 && g.unit === 'high'), ['cam', 'bat', 'ant', 'sol', null], 'Far rover'), before = rvFieldContact(e), q = PT.relay(1000e3), B = SELENE;
+     const per = 2 * Math.PI * Math.sqrt((B.R + 1000e3) ** 3 / B.mu) / DAY_S, d0 = PROG.day; let n = 0, N = 0, via = null, dl = 0, tOk = null;
+     for (let k = 0; k < 300; k++) { PROG.day = d0 + k * per / 300; const c = rvFieldContact(e); N++; if (c.ok) { n++; via = c.via; dl = Math.max(dl, c.delay); tOk = tOk ?? PROG.day } }
+     PROG.day = tOk ?? d0; return {relay: q && q.name, before: before.ok, contactShare: +(n / N).toFixed(2), via, maxDelayMs: Math.round(dl * 1000), periodH: +(per * DAY_S / 3600).toFixed(1)} })()`,
+  `PT.click('[data-ptab="fleet"]'); (document.getElementById('progBody').innerText.match(/Rovers in the field[^]{0,300}/) || [''])[0]`, {shot: 'fleet'},
+  {click: '[data-rvdrive]'}, `({screen: screenNow(), rover: document.getElementById('rover') ? document.getElementById('rover').innerText.slice(0, 500) : null})`, {shot: 'drive'}]};
+ROWS[117] = {title: 'rover science on Selene: rock, spectrometer, panorama', steps: [SEL_HELPERS, `go('program'); PROG.sats = []; PROG.rvOut = []; testEpoch(4); true`,
+  `(()=>{ const e = PT.rover(PT.selPt((u, g) => u[0] < -.8 && g.unit === 'mare'), ['spec', 'cam', 'seis', 'ant', 'bat', 'sol', null, null], 'Sci rover'); return {contact: rvFieldContact(e).ok} })()`,
+  `PT.click('[data-ptab="fleet"]'); true`, {click: '[data-rvdrive]'}, {wait: 4000},
+  `(()=>{ const t = document.getElementById('rover') ? document.getElementById('rover').innerText : ''; return {screen: screenNow(), rock: t.split(String.fromCharCode(10)).find(l => /^rock/.test(l)) || '', ground: t.split(String.fromCharCode(10)).find(l => /^ground/.test(l)) || '', buttons: [...document.querySelectorAll('[data-rvsci]')].map(b => b.textContent + (b.disabled ? ' (' + b.title + ')' : ''))} })()`, {shot: 'rover'},
+  {click: '[data-rvsci="spec"]'}, {wait: 3000}, `({log: PT.log.slice(-4), reads: RV ? RV.reads : RVA ? RVA.reads : null, panel: document.getElementById('rover').innerText.split(String.fromCharCode(10)).slice(-4).join(' · ')})`, {shot: 'spec'},
+  {click: '[data-rvsci="pano"]'}, {wait: 3000}, `({log: PT.log.slice(-4), panel: document.getElementById('rover').innerText.split(String.fromCharCode(10)).slice(-4).join(' · ')})`, {shot: 'pano'},
+  `go('program'); if (screenNow() === 'debrief') go('program'); (PT.text('#progBody') || '').match(/On Selene[^]{0,300}/)?.[0] || 'no On Selene section on this tab'`, `ovOpen('logbook'); (PT.text('#logbook') || '').match(/On Selene[^]{0,400}/)?.[0] || 'no On Selene section in the logbook'`, {shot: 'logbook'}]};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {

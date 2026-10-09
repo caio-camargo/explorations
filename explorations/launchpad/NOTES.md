@@ -7140,3 +7140,10 @@ until the space lane gives the catalogue a home in `sim/` at M5.
 
 **Not yet:** no ground detail, no moons beside their planet, no star in the frame, and one fixed sun direction (from the
 camera's right).
+
+**Selene rows 115 and 117 (QA session, the Q30 follow-up).** `node playtest.mjs 115 117` puts a rover in `PROG.rvOut` at
+ground height (`groundR`, or it spawns in mid-air and the science buttons say "stop first"), and for 115 an antenna-only
+Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive from home" then work as for a player.
+Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
+`pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
+(docking at Selene) are still undriven.
