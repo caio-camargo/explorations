@@ -1321,6 +1321,55 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.64 — orbital decay: low orbits come down (2026-10-09, space session, QUEUE Q25)
+
+The air the flight flies through stops at 100 km. Above it, **a thin upper atmosphere now drags on registered orbits
+between flights**: a satellite with propellant pays to hold its orbit, and a dry one sinks and re-enters. In `sim/space.js`,
+after v1.60's station-keeping, which it extends.
+
+**How it works.**
+- `thinAir(h)`: Vallado's exponential model (CIRA-72, moderate sun), 100–1,000 km, its last scale height carried to 2,000 km.
+  Tellus is a fifth of Earth but its air is Earth's height (7.5 km scale height, top at 100 km), so the table carries over.
+  The flight doesn't use it: over a few hours it changes nothing (a 110 km orbit loses ~1 m/s an hour).
+- `dragK(q)`: Cd·A/m. Tumbling, so A is the mean projected area of one cylinder around every part (a quarter of its
+  surface, Cauchy's theorem), Cd 2.2; docked modules count in area and mass. Preset payloads come out at 0.005–0.014 m²/kg,
+  like real satellites.
+- `dragRates(a, e, K)`: Gauss's equations for drag along the velocity, averaged over one orbit (36 points evenly in time).
+  `decayAE` steps (a, e) on the rails, the apsides fixed and the mean anomaly carried along, in steps that keep the
+  periapsis change under 5 % of its height above the air (at least one orbit). Below 100 km it's gone.
+- **Holding** (`holdRate` = v1.60's tide rate + `dragRate`, the orbit-mean drag × a day): a satellite with propellant stays
+  on its rails and pays both. Dry (`q.adrift`), a Tellus orbit with a real tide drifts as in v1.60; any other decays
+  (`decayStep`). Air rotation is ignored (the air turns at 278 m/s against 3.2 km/s of orbit: about 15 % less drag).
+- **Warned, then gone.** One news line *X is sinking into the upper air: it will re-enter within N days*, looked up across
+  the whole jump, so a long wait between flights can't skip it; then *X has re-entered … and burned up*. The Program line
+  reads *nothing to hold it up: re-enters in about N days*, or *holds its orbit N more years, then re-enters in about …*.
+
+**Measurements** (`node study_decay.mjs`; game days of 8 h, years of 400 days; circular orbits):
+
+| altitude | Cd·A/m 0.005 | 0.01 (a typical payload) | 0.02 |
+|---|---|---|---|
+| 110 km | 1.4 h | 0.7 h | 0.7 h |
+| 150 km | 10 days | 5 days | 2.7 days |
+| 200 km | 139 days | 69 days | 35 days |
+| 250 km | 1.8 years | 363 days | 182 days |
+| 300 km | 6.6 years | 3.3 years | 1.7 years |
+| 400 km | 53 years | 27 years | 13 years |
+
+Per game day, an orbit loses height ~33× more slowly than the same height on Earth per Earth day (slower orbits, a smaller
+planet, shorter days), so 200 km lasts weeks here, not days. The averaged rails agree with a direct RK4 with the same drag
+to 1 % (150 → 120 km: 4.52 days against 4.47; the test checks 150 → 130 km to 5 %).
+
+**What it changes in play** (Pillar 2: a design problem): the usual parking orbit, ~110 km, now lasts under an hour once a
+flight ends. Anything meant to stay (a docking target for the next flight, an imaging satellite, a station) goes above
+~200 km, or keeps some propellant: a dry Probe at 200 km lasts ~80 days; with fuel it holds itself up at ~0.09 m/s a day.
+Robot docking scenes are within one flight and unaffected; the full suite and `career.mjs` are unchanged.
+
+**Not yet:** reboost contracts (economy; v1.60 proposed servicing), the solar cycle (density swings ×10 at 400 km), air
+rotation, and drag on a moon (none has air). Spy satellites (NOTES § Military): lower is sharper but now really decays faster.
+
+Test `space-2` (4 checks; mutations caught: holding ignores drag, the warning not looking ahead, never removed, half the
+decay rate, Cd·A/m in the wrong units). Full suite 475 pass. TESTING row 140.
+
 ## v1.60 — station-keeping: a satellite's life is its propellant (2026-10-08, space session, QUEUE Q50, W2)
 
 W2's default, built: **a satellite holds its orbit by spending its own propellant against the moons' tides; when the tanks
