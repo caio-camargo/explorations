@@ -128,6 +128,8 @@
   - `SPEND=1` prints a compact spending line;
   - `INV=hall|fleet|test|dev` runs one money sink at a time;
   - `RESERVE=` sets the investor's cash floor (default 250M).
+  - `PACE=1` prints the epoch 1–2 pacing report; `FAILFIRST=orbit` fails the first orbital attempt (NOTES § "Epoch 1–2
+    pacing", Q44).
 
   Noise between policies is roughly ±400M at 5 seeds.
 - Claude memory for this project (key `G--Meu-Drive-CLAUDE-fun`): `shared-docs-commit-procedure`,
