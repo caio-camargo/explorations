@@ -3284,6 +3284,29 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ballistic: a contract saved before Q7 (no site) still counts from anywhere', B.ok({ endPf: at, endSci: true, site: far.id }, old));
 }
 
+// econ-4. Every offer says why it appeared (economy session, QUEUE Q45): whyOf picks the strongest true reason (a first
+// that opened the type, tension, the business cycle, tourism standing, home government, the client's priorities, our
+// standing, else routine) when the offer is made; the Contracts tab shows it.
+{
+  const D = new Function(src + 'return {whyOf,genOffer,econTick,ensureBoard,PROG,HOOK,POWERS,pairKey,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 200, rel: {}, op: {}, sanc: {}, stand: {}, done: { weather: { day: 10 } }, own: null, decisions: [], cycle: 0, offers: null, active: [], cdone: 0, flights: 3, wseed: 99 });
+  D.chooseStart('agency');
+  const other = D.POWERS.find(p => p.i !== 0).i;
+  P.done.beeper = { day: 180 }; const fresh = D.whyOf('sat', 'com', other); P.done.beeper.day = 50; const stale = D.whyOf('sat', 'com', other);
+  check('why: a type opened by a recent first says so; after 60 days it no longer does', /New since you did “The beeper”/.test(fresh) && !/New since/.test(stale), `${fresh} / ${stale}`);
+  for (const p of D.POWERS) if (p.i !== other) P.rel[D.pairKey(other, p.i)] = -0.8; const tense = D.whyOf('ballistic', 'mil', other); P.rel = {};
+  P.cycle = 0.6; const boom = D.whyOf('test', 'com', other); P.cycle = -0.6; const rec = D.whyOf('test', 'com', other); P.cycle = 0;
+  check('why: tension for military work, the cycle for commercial work', /nervous/.test(tense) && /Boom/.test(boom) && /recession/.test(rec), `${tense} · ${boom} · ${rec}`);
+  const gov = D.whyOf('landing', 'gov', 0), plain = D.whyOf('apex', 'sci', other);
+  P.stand = { sci: 85 }; const st = D.whyOf('apex', 'sci', other); P.stand = {};
+  check('why: home government, then the client\'s priorities or our standing, else routine work', /government/.test(gov) && /(cares about|standing|Routine)/.test(plain) && /(cares about|standing \(85\))/.test(st), `${gov} · ${plain} · ${st}`);
+  P.offers = null; D.ensureBoard(); for (let k = 0; k < 20; k++) { P.day += 10; D.econTick(10, D.rng(k + 1)); }
+  const ws = P.offers.map(o => o.why);
+  check('why: every offer on a real board carries a one-line reason', ws.length > 0 && ws.every(w => typeof w === 'string' && w.length > 5 && w.length < 80 && !w.includes('\n')), ws.join(' | '));
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('why: the Contracts tab shows it', pg.includes('Why: ${c.why}'));
+
 // space-1. Station-keeping as a fuel lifetime (space session, QUEUE Q50, ROADMAP W2): a satellite holds its orbit by
 // spending its own propellant against the moons' tides, at a rate measured once for its orbit (study_slot.mjs); dry, the
 // tide steps it between flights and it drifts off its slot. Low orbits feel no tide in the game (pertNear) and cost nothing.

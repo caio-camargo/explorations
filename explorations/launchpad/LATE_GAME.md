@@ -1,6 +1,6 @@
 # LATE_GAME — what a mature program is
-**Version**: 0.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **DRAFT.** Rounds 1 and 2 answered by Caio (below); v0.2.0 adds what round 2 asked for.
+**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–3). Details stay revisable at the margins.
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
 the technology reaches, and what "settlement" means. It ties together pieces already designed elsewhere; it doesn't
 redo them.
@@ -207,13 +207,14 @@ depots, then outposts. Nothing here is M1–M2 work; it's the target M4–M5 and
 
 ---
 
-## Open questions for Caio (round 3)
+## Decision (round 3, Caio, 2026-10-08)
 
-1. **Approve as the base?** (Default: yes once you've read it; details stay revisable at the margins, like SYSTEM.md.)
+Approved as the base.
 
 ---
 
 ## Version history
+- **1.0.0 (2026-10-08):** approved by Caio as the base.
 - **0.2.0 (2026-10-08):** round 2: fusion propulsion at the plausible end; the interplanetary network (depots at
   every stop, ISRU, cyclers, tugs, relays, convoy seasons, trade, the highway); keeping flight in play; epoch 9 the
   network, 10+ open.

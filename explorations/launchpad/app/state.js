@@ -64,7 +64,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 // other screen uses (Program, Assembly, Rover yard).
 // The news keeps its own lane: centred if it fits, but never over the flight readout (however wide its rows make it),
 // the toolbar, or a panel on the right (maneuver node, rover); with no room beside the readout, it goes under it.
-function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';if(typeof debEndBtn==='function')debEndBtn();   // (flow: End flight once it's over)
+function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';if(typeof debEndBtn==='function')debEndBtn();msgLayout();bldLayout();   // (flow: End flight once it's over; #msg and the key strip get lanes)
   if(b&&tr){const home=fl?tr:document.body;if(b.parentNode!==home)home.appendChild(b)}
   const n=$('news');if(!n||n.classList.contains('hidden'))return;const st=n.style;
   if(!fl){st.left=st.top=st.maxWidth=st.transform='';return}
@@ -75,8 +75,24 @@ function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .t
   st.transform='none';st.left='0px';st.maxWidth=Math.max(120,Math.min(560,R-L))+'px';const w=n.offsetWidth,x=Math.min(Math.max(W/2-w/2,L),Math.max(L,R-w));
   if(bar&&bar.left<x+w&&bar.right>x)top=Math.max(top,bar.bottom+6);
   st.left=Math.round(x)+'px';st.top=Math.round(top)+'px'}
+// Lanes for two more boxes (flow session; PLAYTEST #25, #26), each kept clear of the panels beside it:
+// #msg ("Mission complete: …") in flight: centred between the readout and the right-hand panels, under the toolbar and the
+// news where they overlap, or under the readout when there's no room beside it. Elsewhere its CSS place.
+const shown=sel=>{const e=document.querySelector(sel);if(!e||e.closest('.hidden'))return null;const r=e.getBoundingClientRect();return r.width&&r.height?r:null};
+function msgLayout(){const m=$('msg');if(!m)return;const st=m.style;
+  if(mode!=='flight'){st.left=st.top=st.maxWidth=st.transform='';return}
+  const info=shown('#hud .tl'),W=innerWidth;let L=info?info.right+10:12,R=W-12,top=Math.round(innerHeight*.18);
+  for(const sel of['#nodep','#rvFHud']){const r=shown(sel);if(r&&r.left>L)R=Math.min(R,r.left-10)}
+  if(R-L<200&&info){L=12;R=W-12;top=Math.max(top,info.bottom+8)}
+  st.transform='none';st.left='0px';st.maxWidth=Math.round(R-L)+'px';const w=m.offsetWidth,h=m.offsetHeight,x=Math.min(Math.max(W/2-w/2,L),Math.max(L,R-w));
+  for(const r of[shown('#hud .tr'),shown('#news')])if(r&&r.left<x+w&&r.right>x&&r.bottom+6>top&&r.top<top+h)top=Math.round(r.bottom+6);
+  st.left=Math.round(x)+'px';st.top=top+'px'}
+// the builder's key strip (builder.js #bldhelp) between the two assembly panels, wrapping, instead of under both
+function bldLayout(){const h=$('bldhelp'),a=shown('#editor .left'),b=shown('#editor .right');if(!h||!a||!b)return;const st=h.style,L=a.right+10,R=b.left-10;
+  st.transform='none';st.whiteSpace='normal';st.textAlign='center';st.left=Math.round(L)+'px';st.width=Math.max(0,Math.round(R-L))+'px';st.boxSizing='border-box';st.visibility=R-L<160?'hidden':''}
+addEventListener('resize',()=>{msgLayout();bldLayout()});
 let evt=false;   // set by any in-flight event message; used to drop out of warp
-HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true};
+HOOK.msg=t=>{const m=document.getElementById('msg');m.textContent=t;m.style.opacity=1;msgTimer=3;evt=true;msgLayout()};
 HOOK.boom=(b,r,t,sz)=>{const h=len(r)-b.R,air=b.atm&&h<b.atm?clamp(density(b,h)/b.rho0*3,0,1):0;
   booms.push({b,pf:toPF(b,r,t),t0:performance.now(),sz,air,seed:Math.random()*40});
   if(b!==TELLUS)return;const v0=S&&S.body===b&&len(sub(S.r,r))<200?S.v:surfVel(b,r),R=Math.random,k=Math.sqrt(sz);   // sparks and burning fragments

@@ -3737,3 +3737,65 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 - [ ] Human: TESTING 130
 - [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
 
+
+## 2026-10-08 — Launchpad v1.58: Selene's ground on the CPU, maria on the near side (world session)
+
+### Summary
+GROUND.md G2, headless. New `sim/ground.js` holds Selene's recipe: a baked map (highland swell, 209 craters of 20 km and
+up, the maria flooded about 1.4 km down) plus six procedural crater bands from 20 km to 80 m on an equiangular cube, on
+the integer hash so G3 can port it. **Not live in play** until the shader draws it. The maria moved to the near side
+(`MARE_NEAR`, in `selMare` and the shader): 30 % of the near side, 1 % of the far side (Moon: 31 / 2).
+`study_ground.mjs` measures it:
+- crater counts within ~10 % of N(>D) = 0.055·D⁻²;
+- maria 4.4× less cratered;
+- highland slopes p99 35° (6.9 % past TOPPLE), mare 1.8 %;
+- no cube seams;
+- ground south of 80°S never sunlit.
+Negative results: a paraboloid bowl is too steep (now r^1.6); test §42's 3,000 sample points lay on one spiral curve
+(fixed; LESSONS #36). Test `ground-2` (5 checks, 3 mutations caught). Full suite 457 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: new `sim/ground.js`, `study_ground.mjs`; `index.html` (script tag), `sim/rovers.js` (SIM END moved, `MARE_NEAR`), `app/gl.js` (one shader token), `test.mjs` (`ground-2`, §42), `NOTES.md` § v1.58, `GROUND.md` 0.1.2, `TESTING.md` row 131, `QUEUE.md`
+- `LESSONS_LEARNED.md` #36, `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Someone with the GPU: TESTING 131 (maria on the near side), one look
+- [ ] World: Q91 (G3–G6) waits for the milestone gate (M2 current) and G3 needs the GPU; until then the world lane's ungated work is Q19/Q52 (GPU) or more 📝 plans
+
+## 2026-10-08 — Launchpad v1.59 economy: every offer says why it appeared (QUEUE Q45; economy session)
+
+### Summary
+- `whyOf` in `sim/contracts.js`: when an offer is made, it keeps the strongest true reason (a first in the last 60 days,
+  tension, the cycle, tourism, home government, the client's priorities, our standing, else routine). The Contracts
+  tab shows *Why: …* (one line in `app/program-ui.js`, flagged for flow).
+
+### Verification
+- New test `econ-4` (5 checks, mutation-tested); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.59, `TESTING.md` row 133, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 133 (do the reasons explain the board?)
+- [ ] Economy: Q46, Q10, Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+
+
+## 2026-10-08 — Launchpad: the G3 port plan for Selene's relief (world session)
+
+### Summary
+Docs only. GROUND.md 0.1.3 § "G3: the port plan", for the session with the GPU (QUEUE Q91, held by the milestone gate):
+- the march as a JS template that emits one march per body (`marchT` unchanged, `marchS` new); always march Selene, no
+  handover; colour through a `selCol` hook the look lane owns;
+- a table of what must be bit-identical and how. **Found:** GLSL `tan` would put crater centres up to 3.5 m off the CPU's,
+  so step G3.0 moves the CPU's band geometry onto a shared `ptan`/`patan` first;
+- a cost estimate (~2× Tellus per height at full detail), level of detail, three fallbacks, steps G3.0–G3.4 with what
+  "done" means for each, and seven timing views;
+- what flips when the recipe goes live. **Found:** `TAPE_V` fingerprints physics *code*, so switching on a recipe (data)
+  wouldn't retire old Selene tapes; and landed things on Selene need re-seating, which needs Q57 save versions.
+
+### Files
+- `explorations/launchpad/GROUND.md` 0.1.3; `QUEUE.md` (two lines under *Proposed*); `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Orchestrator: G3.0 is headless and could go before the gate (your call); Q57 now gates G3.4
+- [ ] GPU session, when Q91 opens: start at G3.0
