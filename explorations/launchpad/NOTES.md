@@ -1024,6 +1024,39 @@ Re-checked 4, 15, 17. Contact sheets were looked over; the HUD views (94–96) s
 Known, not fixed: the entry views fly nose-first (SAS "retro" loses to the aero torque) and burn the capsule's
 parachute off at ~55 km (a boom and smoke in 40–47); the shield-first views 46–47 turn the capsule afterwards.
 
+## Hardware schools in the game: the plan (2026-10-09, effects beat, QUEUE Q102; mock-ups Q89, `mockups/schools/`)
+
+POWERS.md: a school may change a part's surface detail, finish, paint, bell detail, fin edges, decals and roundel, never
+its outline or anything in `PARTS`. Each part draws in its **maker's** school (decision 2), the paint ties a mixed
+rocket together, and the player's presets stay the same designs in every school. Cape is today's look. Built in steps,
+each one merged and tested on its own:
+
+1. **Which school.** `schoolOf(power)` from POWERS.md's affinity weights (the highest, seeded per world so two Cape
+   powers stay Cape), and `partSchool(p)`: the maker's school (a part bought abroad, `sourceOf`, is the seller's), else
+   the program's. A tester toggle forces one school for screenshots.
+2. **Carry it in the mesh, not in uniforms.** `MESH_FS` already spends 192 of ANGLE's ~221 fragment vectors on
+   per-part marks, so a per-part school array won't fit. Encode it in the vertex's kind instead: `PK.k + 32·school`
+   (kinds stay below 32), decoded in `MESH_FS` as `k = mod(kind, 32)`, `sch = kind / 32`. Free, and a rebuild already
+   happens whenever the parts change. Check: Cape (0) leaves every vertex byte-identical to today (`partsMesh` hash).
+3. **Paint and finish (`MESH_FS`, by `sch`).** Cape: as now (white, the black roll pattern, bare-metal bells). Steppe:
+   grey-green enamel panel by panel with dark seams instead of the roll bands; olive bells with cooling-tube ribs. A
+   power's own hue tints the school's accent (the roll band, the seams), as POWERS.md § Livery says.
+4. **The interstage cover (`partsMesh`).** Where an engine sits exposed between a decoupler below and a tank above, draw
+   a cover around it at the stack radius, outline unchanged: Cape a closed ribbed skirt, Steppe an open lattice of
+   tubes (the engine shows through). It's drawing only: `noAero`, no mass, nothing in `PARTS`.
+5. **The roundel.** A disc decal on the uppermost tank, from the power's flag motif (stripes and a star field; one big
+   star on a plain field), drawn in `MESH_FS` like the roll pattern (no texture), coloured by the power.
+6. **Signature designs for rivals.** One or two stacks per school from normal parts (Cape: tall three-stage with
+   skirts; Steppe: a core with four conical strap-ons on cones), as designs the rivals' news pictures and pads use,
+   never offered as the player's presets (the pay floor is measured against those, NOTES v1.53).
+7. **The pad per school (the largest step, last).** Cape: today's fixed tower and swing arms. Steppe: horizontal
+   rollout on rails, raised over a flame pit, the launch table's four arms falling back at lift-off: a new rig in
+   `buildRig`/`drawPadRig` with its own animation, and the rollout screen's camera.
+
+Steps 1–3 make every existing rocket look right for its maker; 4–5 are what makes a school recognisable at a glance;
+6–7 are content for rivals and the pad. Defaults if Caio stays silent on W20: build in this order, Cape first (no
+visible change), then Steppe.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
