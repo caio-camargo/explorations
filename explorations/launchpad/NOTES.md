@@ -1321,6 +1321,78 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.58 — Selene's ground on the CPU, and the maria on the near side (2026-10-08, world session, GROUND.md G2)
+
+Slice G2 of [`GROUND.md`](GROUND.md): Selene's height function, built and measured headless. It is **not live in
+play**: `SELENE.ground` stays unset until the sky shader draws the same relief (G3); until then a ship would land on hills
+nobody can see. Tests and `study_ground.mjs` switch it on in their own SIM copies. What did change in play: **the maria
+moved to the near side.**
+
+**The maria** (decision 1, default held). `selMare` and the shader's mare term both gained `−MARE_NEAR·n.x` (0.24; −X faces
+Tellus). Swept against the Moon's shares (31 % of the near side, 2 % of the far side, 16 % in all): **30 % near, 1 % far,
+15.3 % in all**; it was 5 % near, 11 % far, 8.4 % in all. Geology follows, since it reads the same mask. Test §42 moved
+with it: its spots are now a near-side mare (direct contact) and a far-side highland (needs the relay). Its sample
+points were broken too, see below.
+
+**The recipe** (new `sim/ground.js`, after `rovers.js`, now holding SIM END). Height = a baked map + procedural crater
+bands.
+- **The map**, 1024×512 (2.1 km a texel), baked on first use (0.8–1.1 s, never at load):
+  1. highland swell, ±0.9 km (integer-hash fbm);
+  2. the old big craters stamped in (inside the rim the crater replaces the ground, outside its ejecta adds);
+  3. the maria flooded to a gently domed plain about 1.4 km down;
+  4. the young big craters (15 %) on top of everything.
+  209 craters ≥ 20 km (N(>D) = 0.055·D⁻² per km², the Moon's highlands), up to 150 km.
+- **The bands:** six, from 20 km down to 80 m, each running down to the next. The cells are on an equiangular cube, one
+  crater per cell at most (λ 0.38). A crater reaches D from its centre and D ≤ 0.8 of a cell's arc, so a point sees
+  every crater touching it in the 3×3 cells around it, on each face whose cells come near (up to three at a corner).
+  Integer hash only, so G3 can port it.
+  - On mare, 85 % fewer (weighted like the flooding).
+  - Freshness is `hash³`: most craters are degraded.
+- **Shapes:**
+  - simple below GR_DT/g (18 km on Selene); complex above: a flat floor, a steeper wall, a central peak past 1.4×;
+  - depth 0.2 D (simple), 0.138·Dt·(D/Dt)^0.301 (complex, Pike's lunar fit); rim 0.036 D;
+  - ejecta rim·r⁻³, faded by r = 2.
+- **Cost:** one height 3–6 µs on the CPU.
+
+**Measured** (`node study_ground.mjs`, ~30 s):
+
+| What | Number |
+|---|---|
+| Relief | map −4.0…+1.6 km; sampled p0.1 −3.2 km, median −50 m, max 1.3 km (recipe `top` 4 km) |
+| Crater counts, N(>D) per km² vs the target (before mare thinning) | ≥20 km 1.37e-4 / 1.37e-4 · ≥5 km 1.95e-3 / 2.20e-3 · ≥1 km 4.86e-2 / 5.50e-2 · ≥0.2 km 1.21 / 1.37 (the gap is the mare thinning) |
+| Craters ≥ 1 km per 1,000 km² | highland 55, mare 12.5 (4.4× fewer; ~10× was the plan: partly flooded mare edges count as mare) |
+| Slopes over ±15 m, mare | median 1.0°, p99 27°; past TOPPLE (24°) 1.8 %; under 5° 76 % |
+| Slopes over ±15 m, highland | median 4.2°, p99 35°; past TOPPLE 6.9 %; under 5° 54 % |
+| Cube-face seams | the steepest 0.5 m step on the edges (47°) is no worse than anywhere (53°) |
+| Never sunlit (fixed sun 6.8° above the equator), 2 m above the ground | 8 % at 70°S, 23 % at 75°S, 100 % from 80°S |
+
+**Negative results:**
+- **A paraboloid bowl is too steep.** The rim wall of `−d + (d+rim)·r²` is 43°, and up to 58° where craters overlap. Real
+  fresh walls stand near the angle of repose (~35°). r^1.6 gives 37° at the rim; the highland p99 went from 39° to 35°.
+- **Thinning mare craters by the raw mask** left them only 2.75× sparser: edges have a weak mask but are counted as mare.
+  Weighting by the flooding weight made it 4.4×.
+- **Bands sized from a guessed safety factor** left a gap between the procedural craters (up to 7 km) and the baked ones
+  (from 20 km). The bands are now defined by their largest crater, and each runs down to the next.
+- **Test §42's sample points all lay on one curve.** z came from the golden fraction as well as the angle (both
+  `frac(0.618·i)`), so 3,000 "spread" points traced a single spiral. It read 9.7 % mare for a true 8.4 %, and 32 % for a
+  true 15 % after the move. It's now a Fibonacci lattice (`z = 1 − (2i+1)/N`) (LESSONS #36).
+
+**Tests:** `ground-2`, 5 checks:
+- not live, baked lazily;
+- relief within bounds, and the counts (baked = GR_C·area/400; band cells filled at λ within 3 %);
+- no seams (under 60°);
+- maria low and smooth against rough highlands;
+- in the physics: a pod rests on a 0.9° mare flat at the ground's height (gap 0.00 m), and slides 164 m off a 34° wall.
+
+Mutations caught: the recipe live at load, only the point's own cube face (a 90° cliff at the seams), and no flooding.
+§42 updated as above. Full suite: 457 pass, 0 fail. TESTING row 131: the maria seen from Tellus (the one change you can
+see).
+
+**Not yet** (GROUND.md):
+- G3: the shader draws this relief (then `geoAt` reads the bake, and the recipe goes live);
+- per-recipe surfaces (`surfaceAt` is still `SURF_MOON` everywhere off Tellus);
+- the polar dark floors as an R4 deposit mask (G5).
+
 ## v1.57 — the ballistic test aims from the program's site (2026-10-08, economy session, QUEUE Q7)
 
 `CT.ballistic` used to place its target `rg/600` radians from planet-fixed +X: the old 600 km radius (every range 2.1×
@@ -6103,6 +6175,27 @@ the arrows, and every key in the handlers present in its Help table.
   `C:/Users/caioa/dev/playtest-out/flow/`.
 - Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
   duplicate the Debrief); Inbox doesn't collect them yet.
+
+### Esc pauses; two more lanes; identity mock-ups (2026-10-08, flow session, QUEUE Q39, Q75, Q76, Q73)
+- **Esc pauses** (W5, Q39). `gamePaused()` (screens.js) is "the Esc menu is open". While it is, `frame()` skips `simulate`
+  (flight, warp, the rover), `sndTick` treats the flight as not live (the mix goes quiet), and the flight key handler
+  returns at once, so Space, throttle and the rest do nothing; the shared keys (Esc, H, F) still work. Closing the menu
+  carries on at the same warp: nothing drops to 1×, because nothing ran. The menu's title says "· paused" in flight, map
+  and rover; its first button is now **Resume [Esc]**. Help and the logbook don't pause (look things up while flying).
+  Robot `m1`: 2.5 s with the menu open, `simT` moved 0 s.
+- **The builder's key strip** (PLAYTEST #25, Q75): `bldLayout()` puts `#bldhelp` between the two assembly panels, centred
+  and wrapping (two lines at 1280×800), instead of across both; hidden below a 160 px gap. Its CSS stays in builder.js;
+  the place is set from app/state.js (`hudLayout` and resize), next to the news lane.
+- **`#msg` gets a lane** (PLAYTEST #26, Q76): `msgLayout()` (from `HOOK.msg`, `hudLayout`, resize) centres it between the
+  readout and the right-hand panels (`#nodep`, `#rvFHud`), drops it below the toolbar or the news where they meet, and
+  under the readout when there's less than 200 px beside it. Off the flight screens it goes back to its CSS place.
+- Robot `m1` (QA's M1 finish line: gate → Sounding → first orbit → Debrief) passes in full on branch `ui`: Debrief after
+  both flights, Esc pause 0 s, no box covering another at 1280×800 on any screen.
+- **Visual identity mock-ups** (Q73 → Q53, PLAYTEST #13): three directions, paperwork, instrument panel and
+  mid-century poster, on the Program screen and the flight HUD with the real layout over real game frames, plus a later
+  era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
+  options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
+  cockpit in another); Q53 builds the pick.
 
 ---
 

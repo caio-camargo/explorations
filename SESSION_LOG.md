@@ -3737,3 +3737,27 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 - [ ] Human: TESTING 130
 - [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
 
+
+## 2026-10-08 — Launchpad v1.58: Selene's ground on the CPU, maria on the near side (world session)
+
+### Summary
+GROUND.md G2, headless. New `sim/ground.js` holds Selene's recipe: a baked map (highland swell, 209 craters of 20 km and
+up, the maria flooded about 1.4 km down) plus six procedural crater bands from 20 km to 80 m on an equiangular cube, on
+the integer hash so G3 can port it. **Not live in play** until the shader draws it. The maria moved to the near side
+(`MARE_NEAR`, in `selMare` and the shader): 30 % of the near side, 1 % of the far side (Moon: 31 / 2).
+`study_ground.mjs` measures it:
+- crater counts within ~10 % of N(>D) = 0.055·D⁻²;
+- maria 4.4× less cratered;
+- highland slopes p99 35° (6.9 % past TOPPLE), mare 1.8 %;
+- no cube seams;
+- ground south of 80°S never sunlit.
+Negative results: a paraboloid bowl is too steep (now r^1.6); test §42's 3,000 sample points lay on one spiral curve
+(fixed; LESSONS #36). Test `ground-2` (5 checks, 3 mutations caught). Full suite 457 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: new `sim/ground.js`, `study_ground.mjs`; `index.html` (script tag), `sim/rovers.js` (SIM END moved, `MARE_NEAR`), `app/gl.js` (one shader token), `test.mjs` (`ground-2`, §42), `NOTES.md` § v1.58, `GROUND.md` 0.1.2, `TESTING.md` row 131, `QUEUE.md`
+- `LESSONS_LEARNED.md` #36, `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Someone with the GPU: TESTING 131 (maria on the near side), one look
+- [ ] World: Q91 (G3–G6) waits for the milestone gate (M2 current) and G3 needs the GPU; until then the world lane's ungated work is Q19/Q52 (GPU) or more 📝 plans
