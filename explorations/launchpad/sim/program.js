@@ -51,6 +51,15 @@ function testFinishJobs(){const D=PROG.day;for(const id in PROG.fac||{}){const b
   if(PROG.devJob)PROG.devJob.end=D;const S2=PROG.stand2;if(S2){S2.ready=Math.min(S2.ready,D);if(S2.job)S2.job.end=D}
   for(const k in PROG.lines||{}){const L=PROG.lines[k];if(L.ready>D)L.ready=D}for(const j of PROG.studyQ||[])j.end=D;
   advanceDays(1e-6)}
+// QUEUE Q16. Any date: forward runs the days as above; back moves only the calendar (what happened stays, and dated
+// things such as deadlines and jobs are further off). Funds: an exact number, which turns infinite money off.
+function testGoto(day){day=Math.max(0,+day);if(!isFinite(day))return false;if(day>PROG.day)testAdvance(day-PROG.day);else PROG.day=day;return true}
+function testFunds(m){m=+m;if(!isFinite(m))return false;TEST.money=false;PROG.funds=m;return true}
+// a computing era: the date runs on until the era reaches the program (its lag depends on the power, and moves with the
+// world), so the era stays what the date says; gives up after 60 years
+function testEra(j){const cap=PROG.day+60*YEAR_D;while(compEra()<j&&PROG.day<cap)testAdvance(1);return compEra()>=j}
+// one mission done or not, flagged test:true like the epoch picker's
+function testMission(id,on){if(!MISSIONS.some(M=>M.id===id))return false;if(on){if(!PROG.done[id])PROG.done[id]={flight:PROG.flights,day:PROG.day,test:true}}else delete PROG.done[id];return true}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)

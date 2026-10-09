@@ -6061,8 +6061,13 @@ Disaster watch early. Now `wxsat` (Disaster watch's `req` and the §-epoch-3 che
 unique. Careers saved before this keep `done.weather` (the epoch 1 flight) and see the satellite as not done yet, which
 is right.
 
-**Not yet:** pick any date (not just forward), set funds to a number (to test going broke), per-mission toggles, a
-"skip to an era" shortcut for the compute eras.
+**Added 2026-10-08 (QA session, QUEUE Q16):** *Go to day* N (forward runs every day's rules through `testAdvance`;
+back moves only the calendar, so what happened stays and deadlines and jobs are further off), *Set funds* to any number,
+negative included (it turns *Infinite money* off, or the top-up would undo it), a button per **computing era** (the date
+runs on a day at a time until `compEra()` reaches it: the era follows the date and the power's lag as in play, it never
+overrides them), and a folded **Missions** list with one checkbox per mission (marked `test:true` like the epoch
+picker's). SIM: `testGoto`, `testFunds`, `testEra`, `testMission` after `testFinishJobs`; checks in test.mjs `qa-1`. All
+of them wait while a flight is on, like epoch and date.
 
 ## The gantry no longer clips the rocket (2026-10-08, tester session; PLAYTEST #2)
 
