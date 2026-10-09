@@ -200,7 +200,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 → space 2026-10-09 (cruise events on the timeline, stops, Let it go); slices 3–4 under *Proposed* |
 | Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | after Q49 slice 2 |
 | Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ready |
-| Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
+| Q51 | Data as a volume + the link budget | M2 | L | 📝 | ✓ plan (NOTES § "Plan: data as a volume and the link budget"); four slices under *Proposed* |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ready (plan only) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
 | Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | ✓ `a9b2a09` (v1.71: the tilt is let go and really wanders; TV keeps ~6 years on ~500 m/s; decay already fits above ~300 km; dry re-entry is D6) |
@@ -367,3 +367,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - platform / world — **first load takes 86–88 s** on Windows (ANGLE/D3D11, no shader cache): the sky shader's link is 71 s of it. World's Q19 branch (`terrain` `3a9cda2`) takes the march out of the sky shader, which should cut it to ~20–40 s; then the rest of the sky shader. Players' first visit, and Caio after every update — NOTES § "Q19, round 2"
 - flow — `netModel()` is in (v1.89.1): delete `netFallback` in `app/network.js`; N2's nodes (`M.nodes`: kind, body, slot, stock, need, days, paused) and `M.bottleneck` are ready to draw — NOTES § "netModel() built"
+- space — Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it, today's behaviour as tests — NOTES § "Plan: data as a volume and the link budget"
+- space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
+- space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
+- space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
