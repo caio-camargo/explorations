@@ -1003,6 +1003,17 @@ ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation
 - `refView(113)` (back-lit, shadow toward the camera): the tank reads grey, the dark pod stays dark; `FILL_FX = false`
   gives the old black silhouette. `112` is the same lander from the sunny side.
 
+## Bay doors and char on dark shingles (2026-10-09, effects beat for parts & pad, QUEUE Q24)
+
+- **Bay doors mid-swing** read as paper-thin white eggshells: both faces were the paint colour and nothing held them.
+  `bayDoor` now gives the inside grey insulation and puts three hinge brackets on each rim, so a half-open door
+  reads as a door.
+- **Char on the capsule's black shingles** was invisible: char darkens toward black, and black can't get darker. On
+  dark paint (luma under ~0.1, `dk`) char now heat-tints instead, from bronze to blue-grey by noise, streaked like
+  the rest of the char (up to 80 %, less where it is fully burnt). Mercury's René 41 shingles came back looking like
+  this. The first try (tint at ~0.3 albedo) turned the whole pod pale bronze; the tint is now ~0.1.
+- Seen in the builder (bay at 45 % open; pod char 0 / 0.5 / 1). test.mjs `aerofx-3`.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed

@@ -451,7 +451,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(mk.x>0.){float st=mk.x*(k==2||k==15?1.:exp(-v/(.9*sc)))*(.7+.3*vn2(vec2(s*6.,v*.7)));st=clamp(st*1.2,0.,.985);   // soot is blacker than black paint
    alb=mix(alb,vec3(.004,.0036,.003),st);rough=mix(rough,max(rough,.85),st);metal*=1.-.6*st;}
   if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
+   float dk=1.-smoothstep(.04,.18,dot(alb,vec3(.3,.59,.11)));   // dark paint (the capsule's shingles): char can't blacken black
    alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
+   alb=mix(alb,mix(vec3(.10,.068,.04),vec3(.05,.058,.078),nz2),dk*.8*smoothstep(.1,.5,c1)*(1.-.45*cb));   // Q24: it heat-tints instead, bronze to blue-grey, like Mercury's shingles
    rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
   // frost: a fine, translucent rime below the fuel line (the paint shows through it, so a new tank still looks new), a
   // little thicker toward the bottom, with a soft ragged edge at the fuel line and faint run-off streaks; not opaque
@@ -927,11 +929,13 @@ function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][
     lathe(out,[[.05,yt+.02,G],[.05,yt+.16,G]],[o[0]-rt-.08,o[1],o[2]],10,[true,true])}
   PK=K}
 // one roof half of a cargo bay: a quarter-dome on side sd (±x), swung by th about its hinge on the rim; two-sided
-function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),nu=6,na=12;
+// (Q24) the inside is grey insulation, so a half mid-swing reads as a door, not a white eggshell; hinge brackets on the rim
+function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),nu=6,na=12,cin=[.36,.37,.39,1];
   const P=(u,a)=>{const r=R*Math.cos(u*Math.PI/2),yy=H*Math.sin(u*Math.PI/2),dx=r*Math.cos(a)-R,dy=yy;   // in the half's own frame (x toward its hinge)
     return[o[0]+sd*(R+dx*c+dy*sn),o[1]+top-dx*sn+dy*c,o[2]+r*Math.sin(a)]};
   for(let i=0;i<nu;i++)for(let j=0;j<na;j++){const u0=i/nu,u1=(i+1)/nu,a0=-Math.PI/2+j/na*Math.PI,a1=-Math.PI/2+(j+1)/na*Math.PI,A=P(u0,a0),B=P(u1,a0),Cc=P(u1,a1),D=P(u0,a1);
-    let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),col);pv(out,y,mul(n,-1),col);pv(out,x,mul(n,-1),col)}}}
+    let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),cin);pv(out,y,mul(n,-1),cin);pv(out,x,mul(n,-1),cin)}}
+  for(const zz of[-.55,0,.55])rbox(out,[o[0]+sd*(R+.02),o[1]+top+.02,o[2]+zz*R],.04,.05,.07,C.D,0)}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
