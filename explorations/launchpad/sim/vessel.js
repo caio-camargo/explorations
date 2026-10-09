@@ -73,6 +73,8 @@ const PARTS={
   batt:{name:'Battery 1 kWh',kind:'batt',m:0.02,h:0.15,kWh:1,C:900,T:600,B:200},
   bpanel:{name:'Solar cells (body)',kind:'solar',body:true,surf:true,noAero:true,m:0.01,h:0.8,r:0.02,off:0.02,Wp:40,C:300,T:200,S:150,B:60},
   wpanel:{name:'Solar wing',kind:'solar',wing:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.06,off:0.06,Wp:300,span:2.4,qMax:1000,C:300,T:200,S:150,B:60},
+  // an RTG (vehicle session, Q131): steady power, sun or shadow, as on the rovers (SNAP-era: 60 W, 35 kg); dear
+  rtg:{name:'RTG',kind:'rtg',surf:true,noAero:true,m:0.035,h:0.6,r:0.18,off:0.18,Wg:60,C:900,T:600,S:300,B:150},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   // steerable fins (control session): the same plates, all-moving, turned about their span up to ctl degrees at ctlR °/s
   cfin:{name:'Steerable fin',kind:'rfin',surf:true,noAero:true,m:0.09,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9,ctl:20,ctlR:40},

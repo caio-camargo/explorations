@@ -4068,6 +4068,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `periapsis ${((el.pe - TELLUS.R) / 1e3).toFixed(0)} km, ${api.dvRemaining(s).cur.toFixed(0)} m/s spare, ${rcs} quads, ${(gas * 1000).toFixed(0)} kg gas, SAS ${av}`);
 }
 
+// vehicle-7. Power, second slice (vehicle session, QUEUE Q131): an RTG gives the same day and night; the budget can be
+// worked out for the orbit the flight is aimed at (higher means a shorter shadow); the battery's charge is kept when a
+// vessel is registered and loaded back.
+{
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean);
+  const des = (extra) => { const d = api.toV2(['core', 'ant', 't1', 'petrel']); find(d.root, 't1').c.push(...extra); return d; };
+  const rt = api.newShip(des([{ k: 'rtg', at: { y: 0.5, a: 0, n: 1, cy: 0.3 }, c: [] }])), B = api.powerBudget(rt);
+  api.S = rt; rt.r = mul(api.SUN_DIR, -(TELLUS.R + 3e5)); rt.E = 0; api.powerStep(rt, 10); const night = rt.pGen;
+  const wing = api.newShip(des([{ k: 'wpanel', at: { y: 0.5, a: 0, n: 2, cy: 0.3 }, c: [] }])), lo = api.powerBudget(wing), hi = api.powerBudget(wing, { r: TELLUS.R + 1000e3 });
+  const D = new Function(src + 'return {PROG,satRegister,vesselOf,newShip,toV2,TELLUS,HOOK,powerStep,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; const sat = D.newShip(['core', 'batt', 'ant', 't1', 'petrel']), rs = D.TELLUS.R + 3e5; D.powerStep(sat, 0); sat.E = 1234567;
+  Object.assign(sat, { landed: false, alive: true, r: [rs, 0, 0], v: [0, 0, -Math.sqrt(D.TELLUS.mu / rs)], w: [0, 0, 0] }); D.PROG.sats = []; D.satRegister(sat, { day0: 0 });
+  const back = D.PROG.sats.length ? D.vesselOf(D.PROG.sats[0], 0) : null;
+  check('power: an RTG gives its 60 W in the shadow (no battery needed for a 5 W antenna); at 1,000 km the shadow is shorter than at low orbit; the charge survives the register',
+    B.rtg === 60 && B.ok && B.needWh === 0 && night === 60 && hi.ecl < lo.ecl && hi.alt > 999 && hi.avg > lo.avg && back && back.E === 1234567,
+    `RTG ${B.avg} W average, ${night} W at night · shadow ${(lo.ecl * 100).toFixed(0)}% low, ${(hi.ecl * 100).toFixed(0)}% at 1,000 km · charge back ${back && back.E}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

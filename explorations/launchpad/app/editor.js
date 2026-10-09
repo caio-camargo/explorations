@@ -58,10 +58,12 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
     ${c.spin&&c.spin.length?`<div>Spin motors <b>${c.spin.map(r=>r.toFixed(0)).join(', ')} rpm</b> <span class="dim">when their stage lights${c.spin.some(r=>r<60)?' · under 60 rpm the axis wanders':''}</span></div>`:''}`}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
 // the power budget (vehicle session, Q34a): only for a design with something that draws or makes power. The steady state in
-// a low Tellus orbit: the panels' average against the load, and the battery against one pass through the shadow
-function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s),f=x=>x.toFixed(0);
+// the orbit the flight is aimed at (an accepted satellite contract's altitude, else low Tellus orbit; Q131), the sun in its
+// plane (the longest shadow): the panels' and RTGs' average against the load, and the battery against one pass through the shadow
+const powerAim=()=>{const a=flightAims().filter(x=>x.alt).sort((x,y)=>y.alt-x.alt)[0];return a?{r:TELLUS.R+a.alt*1000}:{}};
+function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
   const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
-  return`<div style="margin-top:6px">Power <b class="${c(okA)}">+${f(B.avg)} W</b> / −${f(B.use)} W <span class="dim">(low orbit average)</span> · shadow ${f(B.tE/60)} min needs <b class="${c(okB)}">${f(B.needWh)} Wh</b> <span class="dim">(battery ${f(B.battWh)} Wh)</span>${okA?'':' <span class="warn">the panels can’t keep up: it runs flat</span>'}</div>`}
+  return`<div style="margin-top:6px">Power <b class="${c(okA)}">+${f(B.avg)} W</b> / −${f(B.use)} W <span class="dim">(${B.alt>(TELLUS.atm+10000)/1000+1?`${f(B.alt)} km orbit`:'low orbit'} average, the sun in its plane)</span> · shadow ${f(B.tE/60)} min needs <b class="${c(okB)}">${f(B.needWh)} Wh</b> <span class="dim">(battery ${f(B.battWh)} Wh)</span>${okA?'':' <span class="warn">the panels can’t keep up: it runs flat</span>'}</div>`}
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
   if(!empty){resetShip();S.ana=analyze(S)}
