@@ -107,6 +107,7 @@ NOTES § "The robot playtester".
 | 123 | Read the world on the map with the atlas | Map (M), then C: biomes, powers, off; in the modern look and in an early era's notebook/terminal map | Biomes, borders and coasts line up with the ground; names sit on their land; clouds don't hide it; the survey finishes in a few seconds without a stutter | v1.52 | terrain |
 | 124 | Point at places with the atlas on | Map, atlas on; hover land, sea, borders, the night side | The readout names the right biome, power, height or depth; it stays under the pointer as the frame rate changes | v1.52 | terrain |
 | ✓ 122 (robot) | Climb hard through max heating, then come home from orbit | Heavy or Asparagus to orbit, watching HUD "Link"; then a capsule entry | No "plasma blackout" on the climb (it was shown at Mach 3.5, PLAYTEST #17), and no glowing plasma shell around the boosters; the entry still blacks out and glows in its fast, hot part · *QA Q29 rerun (2026-10-08): Heavy and Asparagus climbs: Link stays on the station through max heating (68 and 106 kW/m² at M 3.5 / 4.9, 1.0–1.4 km/s); plasma shell 0 (it starts at .85 PLASMA_V = 1.9 km/s). The entry still blacks out (row 110).* | Q17 / Q20 | terrain / aerofx |
+| 146 | Look at Tellus's poles, and land or drive near one | Tester: any flight, fly over the north or south pole low (or the map's ground view there) | No star-shaped seam or cliff at the pole itself: the ground runs through it like anywhere else (it used to step near-vertically within ~2 km of each pole) | v1.70 | world |
 
 ### Visuals & effects
 

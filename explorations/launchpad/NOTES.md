@@ -7384,6 +7384,80 @@ Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is 
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
 
+## v1.70 — Hyperion's moons on the CPU; no more steps at the poles (Tellus too) (2026-10-09, world session, GROUND.md G7)
+
+Hyperion's four moons (SYSTEM.md § Hyperion), built and measured headless like the planets. **Not live:** each is on a
+stub body (`GROUND_STUBS`, SYSTEM.md's radius and gravity; Phoebe's gravity isn't there, so it's real Phoebe's 0.049).
+And a bug found on the way, which **is live, on Tellus.**
+
+**Every map had a step at the poles.** The equirectangular maps' first and last rows are rings round the poles (on Tellus
+~4 km across). At a pole the samplers read only that row, so two points 0.5 m apart there read it at opposite
+longitudes. Measured within 2 km of the poles: **a 0.5 m step of 77–90° on every body**, against 14–56° at
+mid-latitudes. On Tellus that's in play: a star-shaped seam at both poles, in the physics and on screen (the GPU reads the
+same texture).
+- **Fix** (`polesFix`, sim/world.js): one value per polar row, its mean (a bound's max, for `U`). At a pole the samplers
+  then read a constant, so the field is continuous there. It's applied in `makeWorld` and at the end of every body's
+  bake. It's data only, and the GPU reads the same texture, so CPU and GPU still agree with no shader change.
+- **After:** the steepest step near any pole is 0–48°, no worse than that body's own slopes: Tellus 31°, Selene 35°,
+  Phoebe 48°.
+- **Not seen in a browser** (this machine stays off the GPU): TESTING row 146.
+- Heights change only within about a texel of each pole; Selene's 3,000-point reference is unchanged.
+
+**Small bodies** (found on Phoebe, R 20 km):
+- **Faces.** The crater bands skipped any cube face more than 60° from the point. That's safe when a crater reaches a few
+  degrees, but on Phoebe a 12 km crater reaches 36°. A face is now skipped only beyond its corner (54.7°) plus the band's
+  reach, which is unchanged (|u| < 0.5) on every larger body.
+- **Coarsest bands.** A tiny body can also start its bands lower (`b0`) and bake the bigger craters instead
+  (`bigCraters`' smallest size).
+
+**The moons:**
+
+| Moon | Character | What's there |
+|---|---|---|
+| **Theia** (Io) | no impact craters at all | sulphur-frost plains; 30 paterae (irregular, 20–80 km, flat floors of fresh lava, median 1.26 km deep); six tilted blocks of crust (to 4.3 km above their foot) |
+| **Eos** (Europa + Enceladus) | flat young ice (relief 0.6 km), ~25 craters over 1 km | double ridges on a Worley-edge network at two scales (the new G-ice: crests 160 m above their centre lines); chaos patches of flat-topped blocks; the tiger stripes near the south pole (four rifts, 35 km apart, ~500 m deep, frosted: where a sample can be flown through the plumes) |
+| **Tethys** (Titan) | few craters (c 3e-4) | methane lakes and seas, 4.7 %, nearly all in the north. The recipe has `sea: 0`, so a craft splashes down as on Tellus's sea. Linear dunes in equatorial patches (15 %, crests east–west, 2 km apart, 100 m high); a rugged bright highland (Xanadu); drainage channels |
+| **Phoebe** | a lump, saturated with craters | the first G-lump (relief 21 % of R); 53 % of it over 10° |
+
+Surfaces per moon:
+- **Theia:** fresh lava, tilted crust, sulphur frost.
+- **Eos:** fresh plume frost, ice blocks, ridged ice.
+- **Tethys:** methane (the liquid), organic sand, icy highland rock, rounded ice cobbles (as Huygens saw), damp organic
+  sediment.
+- **Phoebe:** regolith.
+
+**Measured** (`node study_ground.mjs theia|eos|tethys|phoebe`):
+
+| Moon | Relief | Slopes | One height |
+|---|---|---|---|
+| Theia | −1.5…+7.4 km | plains p99 0.7°; mountains p99 36° | ~2 µs |
+| Eos | −0.2…+0.4 km | ridged ice p90 11°; chaos p90 16–19°, 5 % past TOPPLE | — |
+| Tethys | −0.7…+2.0 km | dunes median 5°; highland p90 6° | — |
+| Phoebe | −1.9…+1.6 km | median 9.5°, 9 % past TOPPLE | — |
+
+Tethys's craters are on target at every size. Eos's are few, as meant.
+
+**Negative results:**
+- **The polar rows**, above. No test sampled within a texel of a pole, which is how a near-vertical seam on Tellus went
+  unnoticed since v1.25 (LESSONS #40).
+- **Big craters on a tiny body cross the face cutoff**, above.
+- **Eos's first chaos was smooth** (cubed value noise: median 1.1°). Blocks need steep sides: thresholded noise at two
+  sizes.
+- **Tethys's first dunes covered the whole equatorial belt** (44 %), and its lakes 7 %. Titan's dunes are patchy (~15 %);
+  lakes now 4.7 %.
+
+**Tests:** `ground-6`, 6 checks:
+- not live;
+- Theia (no craters, paterae, mountains);
+- Eos (flat, double ridges, chaos rougher, the stripes);
+- Tethys (lakes as a liquid, mostly north; dunes east–west);
+- Phoebe (lump, saturated);
+- **no step at any body's poles, Tellus included.**
+
+Mutations caught: no pole fix, no liquid level on Tethys, no tiger stripes. Full suite 519 pass, 0 fail.
+
+**Next:** Erebus, the last hand-made body; then the seeded small bodies (one lump recipe, parameters from `WSEED`).
+
 ## v1.69 — dispatch to a base: supply runs (2026-10-09, economy session, QUEUE Q61)
 
 A **supply run** sends a design to a base, unflown by hand, and what lands joins the base (`sim/program.js`):
