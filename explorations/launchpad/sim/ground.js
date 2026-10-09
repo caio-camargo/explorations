@@ -58,21 +58,28 @@ function seleneMap(){if(SEL_MAP)return SEL_MAP;const W=1024,H=512,R=SELENE.R,g=S
 // salt (so two bodies don't share craters), how eroded its craters are (freshness = hash^frPow), and thin(centre), the
 // chance a crater is missing there (young plains, ice).
 const grBandsOf=(R,c)=>{const out=[];for(const D0 of GR_BANDS){const n=Math.ceil(Math.PI/2*R*.8/D0);out.push({n,Dhi:.8*Math.PI/2*R/n})}
-  out.forEach((b,i)=>{b.Dlo=i+1<out.length?out[i+1].Dhi:b.Dhi/2.5;b.lam=c*(4*Math.PI*(R/1000)**2/6/(b.n*b.n))*(1/(b.Dlo/1000)**2-1/(b.Dhi/1000)**2)});return out};
+  out.forEach((b,i)=>{b.Dlo=i+1<out.length?out[i+1].Dhi:b.Dhi/2.5;b.lam=Math.fround(c*(4*Math.PI*(R/1000)**2/6/(b.n*b.n))*(1/(b.Dlo/1000)**2-1/(b.Dhi/1000)**2))});return out};   // λ as the float32 the shader compares with
 const GR_BCACHE=new Map(),grBands=(R,c=GR_C)=>{const k=R+'|'+c;return GR_BCACHE.get(k)||(GR_BCACHE.set(k,grBandsOf(R,c)),GR_BCACHE.get(k))};
 const GR_FACE=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];   // axis, then the face's two in-plane axes
+// G3.0 (GROUND.md § G3): the cells' trigonometry goes through approximations the shader can copy exactly, so the GPU's
+// craters land where the CPU's do. GLSL's built-in tan/atan are good to ~1e-5 rad (3.5 m on Selene); these are good to
+// 2e-13 (ptan, a Padé form on ±π/4) and 2e-8 rad (patanJ, SKY_FS's own patan, ported: only used to pick the cell).
+const ptan=x=>{const q=x*x;return x*(135135-17325*q+(378-q)*q*q)/(135135-62370*q+(3150-28*q)*q*q)};
+function patanJ(y,x){const ax=Math.abs(x),ay=Math.abs(y);let a=Math.min(ax,ay)/Math.max(Math.max(ax,ay),1e-30),off=0;if(a>.41421356){a=(a-1)/(a+1);off=.78539816}
+  const q=a*a;let r=a*(1+q*(-.33333333+q*(.2+q*(-.14285714+q*(.11111111+q*(-.09090909+q*(.07692308-q*.06666667)))))))+off;
+  if(ay>ax)r=1.5707963-r;if(x<0)r=3.1415927-r;return y<0?-r:r}
 // A face is skipped when the point is further from its axis than the face's corner (54.7°) plus the band's reach: for big
 // bodies that's under 60° (|u_ax| < .5, as it always was); on a 20 km body a 12 km crater reaches 36° and needs more.
 // b0 skips the coarsest bands (tiny bodies bake those sizes instead: see Phoebe).
 function craterBands(u,R,Dt,thin,bands=GR_BANDS.length,c=GR_C,salt=0,frPow=3,b0=0){let h=0;
   const BS=grBands(R,c),s0=7001+salt*16;for(let b=b0;b<bands;b++){const{n,Dhi,Dlo,lam}=BS[b],mg=3/n,ua0=Math.min(.5,Math.cos(.9553+Dhi/R));
     for(let ax=0;ax<3;ax++){const ua=u[ax];if(Math.abs(ua)<ua0)continue;const sg=ua>0?1:-1,f=ax*2+(sg>0?0:1),[,p1,p2]=GR_FACE[ax*2],
-        A=4/Math.PI*Math.atan(u[p1]/Math.abs(ua)),B=4/Math.PI*Math.atan(u[p2]/Math.abs(ua));
+        A=4/Math.PI*patanJ(u[p1],Math.abs(ua)),B=4/Math.PI*patanJ(u[p2],Math.abs(ua));
       if(Math.abs(A)>1+mg||Math.abs(B)>1+mg)continue;
       const ci=Math.floor((A+1)/2*n),cj=Math.floor((B+1)/2*n);
       for(let di=-1;di<=1;di++)for(let dj=-1;dj<=1;dj++){const i=ci+di,j=cj+dj;if(i<0||j<0||i>=n||j>=n)continue;
         const key=f*65536+i,zz=j*8+b*131072;if(ih3(key,zz,s0)>=lam)continue;
-        const a=Math.tan(((i+ih3(key,zz,s0+1))/n*2-1)*Math.PI/4),c2=Math.tan(((j+ih3(key,zz,s0+2))/n*2-1)*Math.PI/4),cv=[0,0,0];cv[ax]=sg;cv[p1]=a;cv[p2]=c2;const cu=norm(cv);
+        const a=ptan(((i+ih3(key,zz,s0+1))/n*2-1)*Math.PI/4),c2=ptan(((j+ih3(key,zz,s0+2))/n*2-1)*Math.PI/4),cv=[0,0,0];cv[ax]=sg;cv[p1]=a;cv[p2]=c2;const cu=norm(cv);
         const dx=u[0]-cu[0],dy=u[1]-cu[1],dz=u[2]-cu[2],D=1/Math.sqrt(1/(Dlo*Dlo)-ih3(key,zz,s0+3)*(1/(Dlo*Dlo)-1/(Dhi*Dhi))),r=Math.sqrt(dx*dx+dy*dy+dz*dz)*R/(D/2);
         if(r>=2)continue;if(thin&&ih3(key,zz,s0+4)<thin(cu))continue;
         h+=craterH(r,D,Dt,ih3(key,zz,s0+5)**frPow)}}}

@@ -285,12 +285,12 @@ function siteAccess(t){if(!t)return{ok:true,why:'',fee:0};
   const r=relOf(HOME,p);if(r<LEASE_REL)return{ok:false,why:`${P.name} won't lease ${t.name} to us: relations are too poor`,fee:0};
   return{ok:true,why:'',fee:Math.round(LEASE*(1-0.5*r)*10)/10,how:`leased from ${P.root}`}}
 // a failed attempt at the next step, mostly covered (W12, NOTES § "Epoch 1–2 pacing"): a flight on the priciest rocket
-// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment) gets COVER of its loss back
+// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment, not in orbit) gets COVER of its loss back
 // from the sponsor, once per epoch (the newest epoch with firsts open: the step a new rocket goes for). Kept in PROG.recs so a new game resets it.
 const COVER=0.75;
 function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCost||0);rc.maxCost=Math.max(rc.maxCost||0,R.cost);
   const lost=R.cost-(R.refund||0),first=Object.values(PROG.done).some(d=>d.flight===PROG.flights&&!d.test);
-  if(!top||first||R.cdone.length||lost<0.75*R.cost)return 0;
+  if(!top||first||R.cdone.length||lost<0.75*R.cost||R.orbit)return 0;   // a rocket that reached orbit worked: no cover (PLAYTEST #33)
   const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));if(!open.length)return 0;
   const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
   const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;

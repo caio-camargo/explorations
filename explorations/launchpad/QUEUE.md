@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,11 +12,11 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **M0's last bugs**: Q74 (#24, P1), Q77 (#27) → vehicle; Q112 (#28) → economy. All in progress | vehicle, economy | **M0 done** (W13 default: #9, #11 don't count), M1 becomes current |
-| 2 | **M1's other finish lines**: robot `m1` ✓; Q118 first-orbit pacing (economy, next); **W16** a person who isn't you plays the first hour | economy, then you | **M1 done** |
-| 3 | **Your design calls**: **D5** (a rover dies when its battery runs flat at night: against pillar 5), **D6** (= W17, dry satellites), W14 (screen identity), W15 (slice 4 plan; defaults hold). D7 ✓ (a) | you | rovers' R3, MIDGAME's satellite line, Q53, Q3's build |
-| 4 | **Q57** save versions | platform (**no session**) | Q100, and Selene's ground going live (G3) |
-| 5 | **Mock-ups Q72, Q71, Q89** | any look & sound session (**none running**) | Q80–Q85, D2's look, Q102 |
+| 1 | **M1's finish lines** (M1 is now current): robot `m1` ✓; **Q118** first-orbit pacing (economy, after Q122); **W16** a person who isn't you plays the first hour; no box covers another (robot ✓) | economy, then you | **M1 done**; M2 becomes current |
+| 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan; defaults hold) | you | rovers' R3, MIDGAME's line, Q53, **Q3's build (M1's biggest flow item)** |
+| 3 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
+| 4 | **Mock-ups Q72, Q71, Q89** | any look & sound session (**none running**) | Q80–Q85, D2's look, Q102 |
+| 5 | **Q146** debris slice 2 (conjunctions) | space (no session) | slices 3–4, the pressure setting Q124, cleanup contracts |
 
 ## How a session uses this
 
@@ -57,7 +57,7 @@ the feedback I paste into PLAYTEST items.*
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
 - **Flaky page loads in previews = the server, not your code** (effects, 2026-10-09): since the split the page loads ~30 scripts at once, and `python -m http.server` listens with a backlog of 5, so some scripts get `ERR_CONNECTION_REFUSED` and the rest cascade (`editorChanged is not defined`, `gl.getExtension is not a function`, `refView` returning `{}`). Workaround: serve with `ThreadingHTTPServer` and `request_queue_size = 128` (a 6-line script), and use `127.0.0.1`.
-- **Version numbers:** latest on `main` is v1.74 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.77 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -71,13 +71,13 @@ the feedback I paste into PLAYTEST items.*
   (its § "After approval"); the per-body look and ground items need a tester "go to body" view first.
 - **New flight pay goes through `debPaid(R, kind, label, pay)`** (economy, every lane): otherwise the Debrief hides it in "days passing" (NOTES § UI "Slice 3 built").
 - **POWERS.md approved** (v1.0.0): fanned out as Q102–Q106; Cape and Steppe first (its round-2 decision 1).
-- **M0 bugs before anything else in your lane** (orchestrator, 2026-10-09, repeated): **vehicle Q74, Q77; economy Q112, Q118** are now the top rows of their lanes. Take them next; they're all that stands between us and M0 (and M1's pacing check).
+- **M0 is done (2026-10-09); M1 is current, M2 next** (ROADMAP rule 4). **The builder palette was empty on `main` from v1.68 to v1.73** (NOTES § v1.73): anything judged on the construction screen in that window needs a second look.
 - **Effects session silent since Q20; its items Q63, Q64, Q23 are back to `ready`** (2026-10-09). Before starting one, check for an unmerged `aerofx` branch or worktree on either machine and pick up its work.
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
-- **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the **M2 groundwork listed in ROADMAP § M2** (any lane, once
-  its own M0/M1 rows are taken; orchestrator 2026-10-09, matching what Q34a, Q46, Q10, Q61 did). M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
+- **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
+  except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
 ---
 
@@ -102,10 +102,11 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 | Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); build 4a after Caio reads it (W15) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
-| Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
+| Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | → flow 2026-10-08 |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
 | Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | ✓ `46ac525` |
+| Q145 | After a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) | M1 | S | 🖥 | ready |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
@@ -116,7 +117,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q112 | PLAYTEST #28 (P2): staged pay goes to a mission nobody flew (a craft already at the body collects shares as missions unlock). **Holds M0: take first** | M1 | S | ⚙ | ✓ v1.74 `029df7a` (`R.open0`: shares only for missions open at launch) |
-| Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | ready |
+| Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (4–6 flights to orbit everywhere; a poor-world company stuck 1 in 5 → fixed by Q93) |
+| Q144 | `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics: fix the stack (NOTES § v1.73) | M1 | S | ⚙ | ✓ `da830d3` (Beeper, Passenger Orbiter; 4 flights to orbit everywhere) |
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ✓ v1.56 `876a197` (leases by relations, sea 4M, members free; fee on the debrief) |
@@ -129,9 +131,9 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
-| Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | → economy 2026-10-09 |
+| Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
 | Q126 | **Replacement for upgrades**: service quality by the satellite's era (obsolescence); servicing contracts only for valuable assets; check TV's daily pay (v1.71: the capital sees it all day, tilt free) against it — MIDGAME.md § Satellites | M2 | M | ⚙ | ready |
-| Q130 | The career runner flies rovers (a Selene science program): measure v1.66's rover prices and R4 pay against income | M2 | S | ⚙ | ready |
+| Q130 | The career runner flies rovers (a Selene science program): measure v1.66's rover prices and R4 pay against income | M2 | S | ⚙ | ✓ `af3a6c6` (rover program +90M over 4 y on average; prices stand) |
 | Q123 | 📝 **Money buys capacity**: pads, sites and yards dearer as you grow; hardware as the late money sink; late revenue ([`LATE_GAME.md`](LATE_GAME.md) § Money) | M4 | M | 📝 | ready (plan only) |
 | Q133 | 📝 CREW part 2: **the roster and the astronaut office's classes** (with flow for the screen) — [`CREW.md`](CREW.md) § Part 2 | M3 | M | 📝 | ready (plan only) |
 | Q135 | 📝 CREW part 2: **requalification after a loss** (replaces the timed stand-down) | M3 | S | 📝 | ready (plan only) |
@@ -139,8 +141,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q137 | 📝 **Crew rotation by dispatch**: a crewed supply run lands crew at a base and brings the old crew home (needs a crew record in headless flights; D7's ladder: the first resupply is crewed) — NOTES v1.69 | M3 | M | 📝 | ready (plan only) |
 | Q138 | 📝 **Rivals as programs**: budget → capacity → progress per capstone (replacing seeded schedules late); scarce places held by building first — [`LATE_GAME.md`](LATE_GAME.md) 1.4.0 | M4 | M | 📝 | ready (plan only) |
 | Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ready |
-| Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ready |
-| Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ready |
+| Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
+| Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | → economy 2026-10-09 |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
@@ -151,7 +153,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q77 | PLAYTEST #27: `builder.js` `overlay()` draws "NaN%" joint labels on the Program screen after a flight (missing `atHQ` check) | M1 | S | 🖥 | ✓ v1.73 (robot m1 passes) |
 | Q47 | **The construction screen usable by a newcomer**: walk building an Orbiter from scratch, fix what's unclear; Caio reviews. **Top priority: it blocks Caio's own playtesting** | M1 | M | 🖥 | ready |
 | Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | → vehicle 2026-10-09 |
-| Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ready |
+| Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | → vehicle 2026-10-09 |
 | Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ✓ `0d1da8d` (v1.61) |
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
@@ -174,7 +176,11 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q12 | Deviation rules + the climb's corridor | M2 | S | ⚙ | ✓ bodies (`c1d7afb`) |
 | Q50 | **Station-keeping as a fuel lifetime** (W2 default): propellant at zero → the satellite drifts and its service pauses, never dies | M2 | M | ⚙ | ✓ v1.60 `60a7660` (TESTING 134) |
 | Q25 | **Orbital decay** for low satellites (unblocks reboost) | M2 | M | ⚙ | ✓ `21bbfa1` (v1.64: `thinAir`, `dragK`, `decayStep`; NOTES § v1.64; TESTING 140) |
-| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 under *Proposed* |
+| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 are Q146–Q148 |
+| Q146 | Debris slice 2: conjunctions between flights, big objects vs active entries only (Öpik flux, seeded roll; tracked → warned and dodged from the tanks; crewed always warned) | M2 | M | ⚙ | ready |
+| Q147 | Debris slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) | M2 | M | ⚙ | after Q146 |
+| Q148 | Debris slice 4 (with flow, economy): the world setting off / light / real (default light; with platform's Q124); the map's band view; cleanup contracts | M2 | M | 🖥 | after Q147 |
+| Q149 | Dispatched routine flights leave no debris yet (`procFly` restores the list) | M2 | S | ⚙ | ready |
 | Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | ready (Q34a ✓) |
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ready (plan first; include LATE_GAME.md § "Keeping flight in play": the fleet strip, "no silent misses") |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
@@ -196,14 +202,14 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
-| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | ready |
+| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | → world 2026-10-09 |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
 | — | GROUND.md **G1**, the body-ground layer (no new relief) | M3 | M | ⚙ | ✓ v1.54 `5cdf43d` |
 | Q90 | GROUND.md **G2**: Selene's baked map + crater bands on the CPU, `study_ground.mjs` (`geoAt` on the bake moved to G3) | M3 | M | ⚙ | ✓ v1.58 `dd8f459` |
 | Q91 | GROUND.md **G3–G6**: the march on Selene, shadows, consumers (with space for `landAt`), Nyx | M3 | L | 🖥 | after G2 ✓; Q107 first; going live needs Q57; **milestone gate**: the rest waits until M2 is current |
-| Q107 | GROUND.md **G3.0**: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm). Allowed before the gate (orchestrator): headless, no visible change | M3 | S | ⚙ | ready |
+| Q107 | GROUND.md **G3.0**: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm). Allowed before the gate (orchestrator): headless, no visible change | M3 | S | ⚙ | → world 2026-10-09 |
 | Q92 | GROUND.md **G7+**: per-planet ground (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps) | M5 | L | 🖥 | CPU half under way (world): **Enyo ✓ v1.62** (`9cf7323`), **Hesper ✓ v1.65** (`8d8ce03`), **Astraea ✓ v1.67** (`6dcda41`), **Hyperion's moons ✓ v1.70** (`3e775b8`), **Erebus ✓ v1.72** (`976b759`), **seeded small bodies ✓ v1.75** (`aa2a263`, `smallBodyGround`): **the CPU half is complete**, nothing live, Hyperion's moons, Erebus. Drawing still after Q91 and Q79 |
 | Q105 | The pad site per school (cove, ridge, coast, steppe), if it touches terrain ([`POWERS.md`](POWERS.md)) | M1 | S | 🖥 | after Q102 |
 
@@ -213,27 +219,27 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: parts & pad — `partShape`/`partBody`, textures, marks, the complex and rig · worktree `launchpad-visuals` (branch `visuals`, port 8776)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M1 | M | 🖥 | ready (was → aerofx, silent; look for unmerged `aerofx` work first) |
+| Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M1 | M | 🖥 | ✓ `2a6d719` (`setMoves` in `MESH_VS`, `plumeFrame`; views 105–107) |
 | Q72 | **Crew mock-ups for D2**: one scene (the capsule hatch on the pad walkway), three astronaut styles in the same pose: **cartoony** (Kerbal-like), **realistic**, **stylised human** (1960s illustration, Thunderbirds, Tintin); a wide still and a helmet close-up each. Trade-offs: ROADMAP § "Design catalogs". As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures. Any look beat may take it | M3 | M | 🖥 | ready (any look & sound session) |
 | Q89 | **School mock-ups for [`POWERS.md`](POWERS.md)**: one Orbiter preset styled **Cape** and **Steppe** side by side (same parts and outlines, different surface detail, finish, paint and roundel), plus one signature design per school (Steppe's strap-on cluster) and each school's pad in a still. Standalone page in `mockups/`, stills to `output/launchpad/mockups/schools/`; Caio picks from pictures. Any look beat | M1 | M | 🖥 | ready (any look & sound session) |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ready |
 | Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | after Q89 (mock-ups); plan first |
-| Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ready (legs and Q34a ✓; `app/gl.js` case `leg` is a placeholder) |
+| Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
 #### beat: effects — plumes, plasma, vapor, dust, explosions, debris re-entry, bloom · worktree `launchpad-aerofx` (branch `aerofx`)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q20 | PLAYTEST #17, plasma side: the shell uses terrain's `plasmaOn(s)` | M0 | S | 🖥 | ✓ `be4ff2c` (`plasmaHeat`; Q29 can run) |
-| Q63 | Plasma lighting the hull; a shield-first reference view (NOTES § "Re-entry plasma") | — | S | 🖥 | ready (was → aerofx, silent; look for unmerged `aerofx` work first) |
-| Q64 | Vapor collars on side boosters (NOTES § "Transonic vapor cones") | — | M | 🖥 | ready (was → aerofx, silent; look for unmerged `aerofx` work first) |
+| Q63 | Plasma lighting the hull; a shield-first reference view (NOTES § "Re-entry plasma") | — | S | 🖥 | ✓ `66995cd` (`plasmaLight`; views 46–47) |
+| Q64 | Vapor collars on side boosters (NOTES § "Transonic vapor cones") | — | M | 🖥 | ✓ `66995cd` (`vaporLines`; views 54–56) |
 
 #### beat: sky & bodies — atmosphere, clouds, stars, how each body looks · worktree `launchpad-sky` (new, branch `sky`, port 8802; create it on first start)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q21 | Vary `WSEED` per world: a different galaxy each playthrough | — | S | 🖥 | ready |
+| Q21 | Vary `WSEED` per world: a different galaxy each playthrough | — | S | 🖥 | ✓ `9efd54e` (`PROG.gseed`, `galaxy()`) |
 | Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | ready |
-| Q116 | PLAYTEST #32 (P3): a lander on Selene with the sun behind it is a black silhouette: a fill light (earthshine / sky) | — | S | 🖥 | ready |
+| Q116 | PLAYTEST #32 (P3): a lander on Selene with the sun behind it is a black silhouette: a fill light (earthshine / sky) | — | S | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
 | Q71 | **Body mock-ups from [`SYSTEM.md`](SYSTEM.md)**: a still per body from its look brief, beside its two real references: Hesper, Enyo (+ Pavor), Astraea, Hyperion with rings (close, and from Tellus's sky), Theia, Eos, Tethys (haze at the limb), Erebus. As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures; flags what each would need from the planet shader | M5 | M | 🖥 | ready (any look & sound session) |
 | Q80 | Hesper's look: the cloud world (SYSTEM.md § Hesper) | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
 | Q81 | Enyo's look, with Pavor and Metus | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
@@ -266,6 +272,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ready |
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ready |
+| Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ready |
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ready |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | after Q102 |
 
@@ -330,10 +337,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- **orchestrator — M0 check:** Q74 and Q77 (vehicle) are done in v1.73; PLAYTEST #24, #27 struck. **Main's builder palette was empty from v1.68 to v1.73** (a swallowed statement, NOTES § v1.73): anyone who tried the construction screen in that window saw no parts
-- QA — PLAYROUTE sitting 1 past step 4 can use the **Beeper** and **Passenger Orbiter** presets now; and `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics — NOTES § v1.73
-- flow — after a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) — NOTES § v1.73
-- space — Q26 slice 2: conjunctions between flights, big objects vs active entries only (Öpik flux, seeded roll; tracked → warned and dodged from the tanks; crewed always warned) — NOTES § "Plan: debris and Kessler"
-- space — Q26 slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) — same plan
-- space + flow — Q26 slice 4: the world setting off / light / real (default light) on slices 2–3; the map's band view; economy: cleanup contracts — same plan
-- space — dispatched routine flights leave no debris yet (`procFly` restores the list) — NOTES v1.76
+- orchestrator / Caio — M1's "intended number of flights" to first orbit: economy proposes **4–6 for a prudent player, and no start stuck after one failed orbit attempt** (what `career.mjs` shows since v1.77); write it into ROADMAP § M1 — NOTES v1.77
+- economy — a private company in a frugal world stagnates: it reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) — NOTES § "Rovers in the career runner"
