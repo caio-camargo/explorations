@@ -3998,3 +3998,23 @@ with along. Test `ground-4` (7 checks, 3 mutations caught). Full suite 497 pass 
 - [ ] Human: TESTING 142–143
 - [ ] Economy: Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner
 
+
+## 2026-10-09 — Launchpad v1.67: Astraea's ground on the CPU (world session)
+
+### Summary
+The belt's dwarf planet (QUEUE Q92's CPU half), Ceres-like, not live (stub body). A crust factor lets an icy body's craters
+turn complex early: 12.5 km here, against ~100 km by 1/g alone, as Dawn saw on Ceres. That also keeps the big craters
+shallow (the biggest, 43 km, is 0.87 km deep), not 20 km bowls on a 94 km body. What's there:
+- dark regolith at c 0.03, on target at every size;
+- Ahuna Mons: 4.6 km, 39° flanks, a flat top;
+- the young bright crater: rim 2.5 km over its floor, its central peak collapsed into a pit, salt on its floor (its own surface).
+Negative result: at 18 km the crater grows a central peak, which the first "pit" only dented. Test `ground-5` (5 checks,
+3 mutations caught). Full suite 506 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`astraea`), `test.mjs` (`ground-5`), `NOTES.md` § v1.67, `GROUND.md` 0.1.6, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Hyperion's moons (Theia, Eos, Tethys, Phoebe), then Erebus
+- [ ] Space (Q87): Astraea into the body tree with `ground: ASTRAEA_GROUND`
