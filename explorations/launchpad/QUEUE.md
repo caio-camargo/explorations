@@ -305,6 +305,9 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- space — **Q26's plan** (contact with debris) should follow LATE_GAME 1.2.0 § "Debris and Kessler": big pieces as objects checked against active vessels only (never all-pairs), fragments as density per altitude band, behind a world setting (off / light / real) — LATE_GAME.md
+- economy — 📝 **money buys capacity**: pads, sites and yards dearer as you grow; hardware as the late money sink; late revenue streams — LATE_GAME.md § Money (M4+)
+- platform — **world settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events (M2+, when the first pressure lands)
 - space — **re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out; "holds 240 more days" should be a careless design, not the norm); vehicle: the satellite's **lifetime as a builder readout** — MIDGAME.md § Satellites (⚙, M2)
 - economy — **replacement for upgrades**: service quality by the satellite's era (obsolescence), servicing contracts only for valuable assets — MIDGAME.md § Satellites (M2)
 - economy + space — **the automation ladder**: which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a **window rule** — MIDGAME.md (M2–M4)
