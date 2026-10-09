@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -232,6 +232,7 @@ NOTES § "The robot playtester".
 | 168 | Meet the world's powers and their rivals' news | A new career: Program → the world section and the race; play until a rival's first | Names sound like their hardware school (Cape short and hard, Steppe long vowels, Coastal lilting, Mountain open syllables) and their archetype's government (a Federation or a People's Republic for the closed superpower, an Emirate or Sultanate for a resource state); the open superpower announces its attempts a month ahead; the closed one's are preceded by rumours; each rival's win reads in its own tone. Legible, or noise? | v1.89 | economy |
 | 169 | Keep a station supplied and busy | A crewed station (habitat with crew, a lab, a free port) in orbit; let its supplies fall under 40 days; Program → Contracts | Offers: *Resupply Station 1* (due when supplies run out, 60 days' worth), *N lab-days*, *a module for Station 1*, each saying why; dock a habitat with supplies, let lab-days accrue, dock a module: each completes between flights with news and pay. | v1.89.3 | economy |
 | 170 | Build the first station, first by first | After *The beeper*: put a habitat with two free ports in orbit; dock a crew; dock a lab; advance 30 days with supplies | Each completes in turn between flights (*A station*, *A crew aboard*, *A lab in orbit*, *Thirty days aboard*), with news and pay; the last shows its progress in days. | v1.89.4 | economy |
+| 171 | Keep a Selene base supplied | A crewed base on Selene (a beacon and a habitat with crew) short of supplies; Program → Contracts | *Resupply Selene Base 1* asks you to **land** a module with supplies within 500 m of the beacon; landing one 4 km away doesn't count; enough landed nearby completes it. | v1.89.5 | economy |
 
 ### UI & screens
 

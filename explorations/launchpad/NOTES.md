@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.36 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2319,6 +2319,15 @@ penalty from friends, no repeated nagging, and the site picker says it before yo
 by the site's planned downrange; (2) **tense neighbours only** (default) or any foreign land; (3) overflight rights as
 a paid decision **later** (default) or now. One ⚙ slice when answered (S): `R.over` in `missionTick`, the cost in
 `missionEnd`, the debrief line, a test.
+
+## v1.89.5 — base work: the station contracts for bases (2026-10-09, economy session, Q9's plan slice 3)
+
+The three station contracts of v1.89.3 (resupply, lab time, a module) now also come for **our bases**: the offer picker
+walks landed beacons too, and a base's state is read with `baseOf` (everything landed within 500 m of the beacon:
+the same fields as `stationOf`), through one accessor `stOf(q)`. A base's resupply is met by **landing** a module that
+carries supplies within 500 m (the brief says so; 4 km away doesn't count), its module contract by landing one there;
+lab-days are the beacon's (`crewTick` keeps them there). Supply runs (v1.69) are how a base is fed by dispatch once
+onboard computers arrive. Test `econ-18` (2 checks; bases ignored, mutation, fails).
 
 ## v1.89.4 — the first station as firsts (2026-10-09, economy session, QUEUE Q163; Q9 plan slice 2)
 
