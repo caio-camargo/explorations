@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–45 re-entry plasma, 50–53 vapor cones, 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -11,6 +11,8 @@ window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
+  // the galaxy is per program (Q21); reference views keep the one they were tuned on
+  if (typeof PROG !== 'undefined') PROG.gseed = WSEED;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
@@ -108,7 +110,9 @@ window.refView = async (n) => {
   // ship is turned aoa degrees off the airflow and seen from yaw/pitch/dist: [design, vf, alt, aoa, yaw, pitch, dist]
   const entry = { 40: [['chute', 'bio', 'shield'], 1.01, 50, 0, 1.6, 0.1, 9], 41: [['chute', 'bio', 'shield'], 1.01, 50, 0, 2.6, 0.35, 14],
     42: [['chute', 'bio', 'shield'], 1.01, 75, 0, 1.6, 0.1, 9], 43: [['chute', 'bio', 'shield'], 1.01, 35, 0, 1.6, 0.1, 9],
-    44: [['pod', 't2', 'petrel'], 1.01, 55, 35, 1.6, 0.1, 14], 45: [['chute', 'bio', 'shield'], 1.3, 55, 0, 1.6, 0.1, 9] };
+    44: [['pod', 't2', 'petrel'], 1.01, 55, 35, 1.6, 0.1, 14], 45: [['chute', 'bio', 'shield'], 1.3, 55, 0, 1.6, 0.1, 9],
+    // 46–47 (Q63): the classic shot, the capsule turned shield-first (aoa 'shield'), from the side and from a rear quarter
+    46: [['chute', 'bio', 'shield'], 1.01, 50, 'shield', 3.1, 0.1, 9], 47: [['chute', 'bio', 'shield'], 1.01, 50, 'shield', 2.4, 0.35, 7] };
   if (entry[n]) {
     const [design, vf, alt, aoa, yaw, pitch, dist] = entry[n];
     stackDef = design; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true;
@@ -116,21 +120,25 @@ window.refView = async (n) => {
     S.r = mul(dir, r); S.v = add(mul(v0, vc * vf), mul(dir, -vc * (vf > 1.1 ? 0.25 : 0.035))); S.throttle = 0; S.sasMode = 'retro';
     const Y0 = mul(norm(S.v), -1), X0 = norm(cross(Y0, dir)); S.q = qFromBasis(X0, Y0, cross(X0, Y0)); S.w = [0, 0, 0];
     const t0 = simT; while (S.alive && len(S.r) - TELLUS.R > alt * 1000 && simT - t0 < 900) advPhys(S);
-    if (aoa) { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), s = norm(cross(va, up)), a = aoa / 57.2958,
+    if (aoa === 'shield') { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), sh = S.parts.find(p => p.d.key === 'shield'), sy = sh.y0 + sh.d.h / 2 - S.cm[1],
+      Y = mul(va, Math.sign(sy) || 1), X = norm(cross(Y, norm(S.r))); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }   // the shield's end upstream
+    else if (aoa) { const va = norm(sub(S.v, surfVel(TELLUS, S.r))), up = norm(S.r), s = norm(cross(va, up)), a = aoa / 57.2958,
       Y = add(mul(va, -Math.cos(a)), mul(up, Math.sin(a))), X = norm(cross(Y, s)); S.q = qFromBasis(X, Y, cross(X, Y)); S.w = [0, 0, 0]; S.sasMode = null }
     cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
     return 'entry h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km v ' + len(S.v).toFixed(0) + ' q ' + (S.qHeat / 1000).toFixed(0) + ' kW/m2 alive ' + S.alive;
   }
   // 50–53: transonic vapor cones. An ascent (pitch kick at 8 s, then prograde) flown until Mach M: [design, M, yaw, pitch, dist]
   const vapor = { 50: ['Orbiter', 0.97, 1.75, 0.05, 30], 51: ['Orbiter', 1.08, 1.75, 0.05, 30], 52: ['Lunar', 1.0, 1.75, 0.05, 50],
-    53: ['Orbiter', 1.0, 2.3, -0.25, 16] };
+    53: ['Orbiter', 1.0, 2.3, -0.25, 16],
+    // 54–56 (Q64): side boosters make their own collars: Heavy at M 1.0, Big Lunar at M 1.0, Heavy close-up from below
+    54: ['Heavy', 1.0, 0.2, 0.05, 30], 55: ['Big Lunar', 1.0, 0.2, 0.05, 60], 56: ['Heavy', 1.0, 2.3, -0.25, 18] };
   if (vapor[n]) {
     const [design, M, yaw, pitch, dist] = vapor[n];
     stackDef = JSON.parse(JSON.stringify(PRESETS[design])); editorChanged(); document.getElementById('launch').click();
     S.throttle = 1; stage(S);
     while (S.alive && S.mach < M && simT < 200) { INP.pitch = (simT >= 8 && simT < 8.8) ? 1 : 0; if (simT > 9.8) S.sasMode = 'pro'; advPhys(S); if (typeof emitSmoke === 'function') emitSmoke(DT); }
     INP.pitch = 0; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
-    return design + ' M ' + S.mach.toFixed(2) + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km shoulders ' + JSON.stringify(hullShoulders(hullProfile(S), -1).map(x => x.map(v => +v.toFixed(2))));
+    return design + ' M ' + S.mach.toFixed(2) + ' h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km shoulders ' + JSON.stringify(vaporLines(S).map(l => hullShoulders(lineProfile(l.parts, l.lo, l.hi, l.ax, l.az), -1).map(x => x.map(v => +v.toFixed(2)))));
   }
   // 60–64: the plume meeting the ground. Ignite on the pad and burn until the engine's nozzle is alt m up (0: still held
   // down, 0.6 s after ignition), seen from yaw/pitch/dist: [design, alt, yaw, pitch, dist]
@@ -255,7 +263,7 @@ window.refView = async (n) => {
   // the band, 99 the sun, 100 the band over the planet's limb (D horizontal, the camera tipped down a little)
   if (n >= 97 && n <= 100) {
     stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
-    const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
+    galaxy(); const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
     let up = D; if (n === 100) { up = norm(cross(D, GAL.gx)); if (dot(up, SUN) < 0) up = mul(up, -1) }   // a sunlit limb
     const r = TELLUS.R + 300e3; S.r = mul(up, r); S.v = mul(norm(cross(GAL.gx, up)), Math.sqrt(TELLUS.mu / r)); S.throttle = 0; S.w = [0, 0, 0];
     const f = localFrame(S.r), Dv = n === 100 ? norm(add(D, mul(up, -0.25))) : D;
@@ -278,6 +286,20 @@ window.refView = async (n) => {
       cam.yaw = Math.atan2(dot(D, f.e), -dot(D, f.n)) + yaw; }
     cam.pitch = pitch; cam.dist = dist; const t0 = simT; while (simT - t0 < 0.8) { hold(); advPhys(S); render() }
     window.simulate = () => {}; await settle(); bare(); return 'fin vapor h ' + ((len(S.r) - TELLUS.R) / 1000).toFixed(1) + ' km M ' + S.mach.toFixed(2) + ' q ' + (S.qdyn / 1000).toFixed(1) + ' kPa aoa ' + (S.aoa * 57.3).toFixed(1) + ' trails ' + FTR.size;
+  }
+  // 105–107 (Q23): moving parts in the builder's close-up. 105 the Orbiter's Kestrel gimballed to its full range, 106 a
+  // steerable fin ring with its plates at ±20°, 107 the reaction wheel: [design, key, yaw, pitch, dist, set(part)]
+  const mov = { 105: ['Orbiter', 'kestrel', -0.5, -0.05, 6, p => { p.gv = [Math.sin(p.d.gim * Math.PI / 180), 0, 0] }],
+    106: [['pod', 'rwheel', 't2', 'cfins', 'petrel'], 'cfins', 0.4, 0.15, 6, p => { p.fd = [0.35, -0.35, 0.35, -0.35] }],
+    107: [['pod', 'rwheel', 't2', 'cfins', 'petrel'], 'rwheel', 0.4, 0.2, 3.5, () => {}] };
+  if (mov[n]) {
+    const [design, key, yaw, pitch, dist, set] = mov[n];
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    stackDef = JSON.parse(JSON.stringify(typeof design === 'string' ? PRESETS[design] : design)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true;
+    const p = S.parts.find(q => q.d.key === key);
+    if (!p) throw new Error(`refView(${n}): no ${key}`);
+    set(p); cam.edY = p.y0 + p.h / 2 - S.cm[1]; cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; render(); await settle(); bare();
+    return key + (p.gv ? ' gv ' + p.gv.map(x => x.toFixed(3)) : '') + (p.fd ? ' fd ' + p.fd : '');
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
   // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]
