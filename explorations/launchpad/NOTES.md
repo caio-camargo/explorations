@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1831,6 +1831,22 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
+
+## Why a company in a poor world stagnates (2026-10-09, economy session, QUEUE Q150; runner only, no game change)
+
+Re-measured on today's code (`SELENE=1 node career.mjs 4 3 base company`): after v1.77's floors and W11, a private
+company in a frugal world ends four years at **187M** (was 25M), a resource-world company at **64M**, while companies
+elsewhere end at 700–1,400M; funds sit flat (~72–75M) through years 1–2. **What it lacks is recurring income**: a
+company has no budget day, so it lives on contracts and firsts, and a poor world's work only just pays.
+
+**The game already offers the remedy:** a friendly power's **stake** (`decisionTick`: 15 % of the valuation in cash,
+plus a share of that power's budget days and its contracts), offered after the first first. The runner's scripted
+player declined everything but a rescue loan, so it never took one. With `ACCEPT=stake` (new runner switch) it accepts
+2–3 stakes in four years and the frugal company ends at **392M**, the resource company at **415M** (others 1.0–1.9 G).
+
+**Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
+partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
+conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
 
 ## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
 
