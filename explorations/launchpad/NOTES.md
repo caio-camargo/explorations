@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1086,6 +1086,19 @@ visible change), then Steppe.
   byte-identical** from here on: that's the livery POWERS.md asks for.
 - Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
 
+## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
+
+The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,
+in `tellus()`'s colour only, an outcrop mask (value noise at ~4 km and ~1.2 km, more on steeper ground, none on flat ice
+sheets) lets rock show through both terms; snow takes patches of old blue glacier ice in flat hollows and a ±10 % tone.
+The ground's height and `biomeAt` are untouched, so the physics and biome science see the same planet. `ICE_VARY = false`
+for A/B. Seen over an 8.5 km range at 41°N from 12 km up.
+- **Two wrong first tries**, both measured, not guessed: the noise was at ~0.6 km (invisible from altitude: `pf` is a unit
+  vector, so `vn(pf·k)` has features of R/k), and only the ice term was masked while `sn` was already 1, so `max(sn, ice)`
+  didn't move. The A/B picture was pixel-identical until both were fixed.
+- Not done here (world lane): the coast's smoothness and the pad's terrace are in the heightfield shared with `terrainH`;
+  the salt flats and wetlands are biome masks the CPU also uses.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -1818,6 +1831,52 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
+
+## v1.88 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
+
+POWERS.md's economy fan-out, in `sim/program.js` (after the archetypes) and `sim/contracts.js` (the race's news):
+- **A school per power** (`p.school`): drawn from its archetype's affinities (`SCHOOL_W`, POWERS.md's weights) with
+  **exactly the draw the look lane's `schoolOf` used** (`rng(WSEED·7907 + i·131 + 17)`), so every rocket keeps the look
+  it had; `schoolOf` (`app/gl.js`, one line) now reads `POWERS[i].school` first: one source of truth. A **resource
+  state** has none of its own: it takes its **contractor's**, the power whose alignment is nearest (`p.contractor`).
+  The superpowers' affinities don't overlap, so their schools differ; two powers sharing a school get hues 120° apart.
+- **Names from the school** (`SCHOOLS[k].syl`, syllable counts per school: Cape and Arsenal 1–2, Steppe and Coastal
+  2–3, Mountain 3, Isle 2) and **the form of government from the archetype** (`ARCH_FORMS`, with the new People's
+  Republic, Emirate, Sultanate and State), unique within the world, on their own seeded draws after the archetypes: the
+  world's places, economies and relations are unchanged, and the launch sites take the new roots (`extendSites` runs
+  after). This build's world: *Dunnzar Republic* (home, rising, Arsenal), *Asaro Commonwealth* (open superpower,
+  Coastal), *Mirtov Federation* (closed superpower, Steppe), *Republic of Dunndag* (rising, Arsenal), *Sultanate of
+  Natovtov* (resource state, Mirtov's Steppe). Names aren't saved, so old saves show the new names.
+- **Rivals' news by archetype** (`raceNews`, `RIVAL_WIN`): the open superpower **announces each attempt 30 days
+  ahead**; the closed superpower's attempts are preceded by **rumours from the open press** 10 days before, and its
+  wins come as a state bulletin; the others launch unannounced; each archetype wins in its own tone (live coverage; a
+  bulletin; "joins the front rank"; "on a shoestring"; "claims a world record"; a "satellite test"). The race's
+  schedule is unchanged (rising powers copying, frugal ones partnering: a later slice, with LATE_GAME round 7's rivals).
+
+**Not yet:** headline tone for the program's *own* news by archetype (mission control's voice); the home name doesn't
+follow a different archetype chosen at a career's start (the look does, as before); flags and roundels (flow, look).
+Test `econ-13` (4 checks; the announcements mutation-tested). Traps hit, again: a mid-line `//` comment in `gl.js`
+swallowed `const aff=` (the suite's page-parse check caught it), and an apostrophe in a heredoc ("People's").
+
+## v1.87 — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
+
+`missionTick` noted the first orbital period (around Tellus, `period`; around Selene, `sorbit`) the moment the orbit was
+bound with its periapsis clear, which is partway through the burn that closes it: the robot's Selene probe logged
+"1,521.9 min at 3,112 km" for a 200 × 20 km capture. Now both wait for a coast (`coast`: no engine burning); the Δv to
+low orbit is still noted when the orbit closes, since that's what it measures. Test `space-7` (mutation: no coast gate).
+
+## v1.86 — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
+
+A dispatched flight (`dispatchRun`, flown headless by `procFly`) used to leave nothing: `procFly` restores the noted
+pieces so dry runs stay clean. Now `procFly(…, {keepJunk: true})` hands back what its own flight dropped (`out.junk`,
+with `out.T0`, the program time it lifted off), and `dispatchRun` passes it to `junkAdd(list, T0)`, the same
+registration a hand-flown flight's end uses (`junkRegister` is now `junkAdd` over that flight's pieces). Dry runs and
+supply runs don't ask for it, so they still leave none. In practice the presets' boosters fall back, so dispatches
+rarely leave anything; designs that stage in orbit do.
+
+Not done here: the dispatched **payload** itself still isn't registered (only its contract is settled). That's Q49,
+"missions in flight". Test `space-6` (1 check; mutations caught: nothing handed back, pieces leaking into the global
+list); the one-line call in `dispatchRun` isn't driven by a test (a full dispatch needs a contract and a dispatch record).
 
 ## v1.83 — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
 
@@ -3952,7 +4011,8 @@ Shading:
 3. **Look.**
    - The coast is smoother than wanted.
    - The pad's levelled disc shows as a faint terrace from altitude.
-   - High ranges are almost all ice (right at 7–8 km, but monotonous).
+   - ~~High ranges are almost all ice (right at 7–8 km, but monotonous).~~ Varied 2026-10-09 (effects beat, Q52): see
+     § "Wind-scoured ranges". The terrace and the coast are geometry (`terrainH` is the physics' ground too): world's call.
    - Salt flats and wetlands vanished with the wetter climate (re-tune their masks).
    - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
@@ -7687,6 +7747,17 @@ whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats 
 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
+
+## Save versions (2026-10-09, effects session for the platform lane, QUEUE Q57)
+
+The career lives in `localStorage['launchpad-program-v1']` (the tester's sandbox in `…-tester`) as `JSON.stringify(PROG)`.
+It had no version, so a change to `PROG`'s shape could only be absorbed by fix-ups scattered through the loader. Now
+(`app/state.js`): `SAVE_V` (1), `MIGRATE[n]` (version n → n+1, pure) and `migrateSave(j)`, run on load. A save without
+`ver` is version 0; step 0 → 1 holds the loader's old fix-ups (drop `docked` flags, fill `rel`/`op`, a broken day → 0, a
+broken balance → the default). Saving stamps `ver`, never lowering it, so an older game can't make a newer save
+re-migrate. A save from a newer game loads as it is, with a message, not a guess.
+- **To change PROG's shape:** bump `SAVE_V`, add the step to `MIGRATE`, and a fixture to test.mjs `platform-2`.
+- Checked in the page: a planted version-0 save loads as version 1 (`docked` gone, `rel` filled); the robot's `m1` passes.
 
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 

@@ -4084,7 +4084,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // edge), with its A/B uniforms uploaded; the deck's variety is behind its own toggle
   check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
     pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
-      && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
+      && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);') && pg.includes('gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
   // QUEUE Q66: per-engine voices. Smaller nozzles sing higher; voices go by kind of engine (two Kestrels are one voice), the
   // biggest thrust shares first, at most four; nothing when nothing burns; equal shares sum to the airborne level in power
   {
@@ -4095,6 +4095,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
     check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off (and the volume slider, Q35, is wired)',
       wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+        && /ice\*=1\.-\.85\*bare\*uIv;sn\*=1\.-\.85\*bare\*uIv;/.test(H) && /gl\.uniform1f\(u\.uIv,ICE_VARY\?1:0\)/.test(H)
         && /function sndSettings\(el\)/.test(H) && /if\(typeof sndSettings==='function'\)sndSettings\(\$\('setSound'\)\)/.test(H) && /localStorage\.getItem\('launchpad-volume'\)/.test(H)
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
       `Wren ${wren[0].f.toFixed(0)} Hz, Albatross ${alb[0].f.toFixed(0)} Hz, Kestrel×2 + Condor: ${mix.map(v => v.f.toFixed(0) + ' Hz ' + v.g.toFixed(2)).join(', ')}`);
@@ -4353,6 +4354,62 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('rivals: the open superpower announces 30 days ahead, the closed one is preceded by rumours; each wins in its own tone',
     ann.length === 1 && /announces an attempt at The beeper/.test(ann[0]) && rum.length === 1 && /Rumours from/.test(rum[0]) && news.some(t => /Live on every channel/.test(t)) && news.some(t => /state bulletin/.test(t)),
     [...ann, ...rum, ...news].join(' | '));
+}
+
+// platform-2. Save versions (QUEUE Q57): a save carries `ver`; the loader runs MIGRATE from the save's version up to
+// SAVE_V. Fixtures: a version-0 save (no `ver`, no rel/op, a docked satellite, a broken day) comes up current and clean;
+// a current save passes through unchanged; a save from a newer game is left alone and flagged; garbage loads as nothing;
+// saving never lowers a newer save's version. When SAVE_V goes up, add the new step's fixture here.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const blk = pg.slice(pg.indexOf('const SAVE_V='), pg.indexOf('try{const j=migrateSave('));
+  const { SAVE_V, MIGRATE, migrateSave } = new Function(blk + ';return {SAVE_V,MIGRATE,migrateSave}')();
+  const v0 = migrateSave({ funds: 50, day: NaN, sats: [{ id: 1, docked: true }], done: { beeper: 1 } });
+  const cur = { ver: SAVE_V, funds: 70, day: 12, rel: { 1: 0.2 }, op: {}, sats: [] }, curOut = migrateSave(JSON.parse(JSON.stringify(cur)));
+  const fut = migrateSave({ ver: SAVE_V + 5, funds: 1, odd: 'x' });
+  check('save versions: an old save comes up current and clean; a current one is unchanged; a newer one is left alone and flagged',
+    MIGRATE.length === SAVE_V && v0.ver === SAVE_V && v0.day === 0 && !('docked' in v0.sats[0]) && v0.rel && v0.op && v0.done.beeper === 1 && v0.funds === 50
+      && JSON.stringify(curOut) === JSON.stringify(cur) && fut.ver === SAVE_V + 5 && fut.newerSave === true && fut.odd === 'x'
+      && migrateSave(null) === null && migrateSave('junk') === null && /PROG\.ver=Math\.max\(PROG\.ver\|0,SAVE_V\)/.test(pg),
+    `SAVE_V ${SAVE_V}, ${MIGRATE.length} step(s)`);
+}
+
+// space-6. Dispatched flights leave debris too (space session, QUEUE Q149): procFly hands back what its flight dropped
+// (keepJunk) and dispatchRun registers the pieces that stay up, dated from the flight's start; dry runs leave none.
+{
+  const D = new Function(src + 'return {PRESETS,PROG,HOOK,procKey,procFly,junkAdd,JUNK,newShip,detach,TELLUS,DAY_S,satKind,BODIES,MISSIONS,SELENE,advPhys,advRails,bodyRel,dvPlan,dvRemaining,engAcc,localFrame,procStart,qFromBasis,railsOK,siteAt,stage,timeToNu,toPF,vesselCost,len,norm,add,sub,mul,dot,cross,elements,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, st = D.PRESETS.Orbiter; P.sats = []; P.day = 10; P.procs = {}; handAscent(D, st); const proc = P.procs[D.procKey(st)];
+  D.JUNK.length = 0; D.JUNK.push({ marker: true }); const before = D.JUNK.length, day = P.day;
+  const f = D.procFly(st, proc, { pe: 180e3, ap: 180e3 }, { keepJunk: true }), j1 = D.JUNK.map(j => j.marker ? 'M' : Math.round(j.mass)).join(','), dry = D.procFly(st, proc, { pe: 180e3, ap: 180e3 }), j2 = D.JUNK.map(j => j.marker ? 'M' : Math.round(j.mass)).join(',');
+  const kept = D.JUNK.length === 1 && D.JUNK[0].marker, n0 = D.junkAdd(f.junk || [], f.T0);   // the booster falls back: nothing stays up
+  // a piece dropped by the orbiting craft: registered, its epoch from the flight's start
+  const s = f.s; s.rec = { launched: true, day0: 0 }; const part = s.parts.filter(p => p.on && p.d.kind === 'tank').slice(-1);
+  D.JUNK.length = 0; D.detach(s, part, [0, -1, 0], 0); const piece = D.JUNK[0]; piece.mass = Math.max(piece.mass, 200); const n1 = D.junkAdd([piece], f.T0), q = P.sats.at(-1);
+  check('dispatched debris: procFly hands back its flight’s pieces (keepJunk), the global list untouched, dry runs return none; what stays up is registered from the flight’s start',
+    f.ok && Array.isArray(f.junk) && f.junk.length >= 1 && f.junk.every(j => j.rec) && !('junk' in dry) && before === 1 && kept && f.T0 === Math.ceil(day - 1e-9) * D.DAY_S &&
+    n0 === 0 && n1 === 1 && q.junk && D.satKind(q) === 'Debris' && Math.abs(q.epoch - (f.T0 + piece.t)) < 1e-6,
+    `${f.junk ? f.junk.length : '—'} piece(s) dropped (${f.junk ? f.junk.map(j => Math.round(j.mass) + ' kg').join(', ') : ''}); registered ${n0} then ${n1}; list kept ${kept} (after the flight ${j1}, after the dry run ${j2}); T0 ${f.T0 / D.DAY_S} (day ${day}); epoch off by ${q ? (q.epoch - f.T0 - piece.t).toExponential(1) : '—'}`);
+}
+
+// space-7. The orbital period goes in the logbook once the engines stop (space session, QUEUE Q114, PLAYTEST #30): it
+// used to be logged the first moment the orbit was bound, mid-burn (a probe captured into 200 × 20 km logged "1,521.9 min
+// at 3,112 km"). The Δv to orbit is still noted at the moment the orbit closes.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,missionTick,elements,TELLUS,SELENE,PROG,HOOK,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG; P.day = 0; P.log = {};
+  const run = (B, alt, apAlt) => { const x = D.newShip(D.PRESETS.Probe); D.S = x; x.landed = false; D.t = 0; D.missionTick(x, 0, false);
+    const rp = B.R + alt, ra = B.R + apAlt, a = (rp + ra) / 2, vp = Math.sqrt(B.mu * (2 / rp - 1 / a));
+    Object.assign(x, { alive: true, landed: false, body: B, r: [rp, 0, 0], v: [0, 0, -vp], throttle: 1 }); x.rec.dv = 900; x.rec.launched = true;
+    x.parts.filter(p => p.on && p.d.kind === 'engine').forEach(p => { x.segs[p.seg].ignited = true; });
+    const id = B === D.SELENE ? 'sorbit' : 'period'; delete P.log[id]; D.missionTick(x, 0.1, true); const burning = !!P.log[id];
+    x.throttle = 0; D.missionTick(x, 0.1, true); const L = P.log[id], el = D.elements(x.r, x.v, B.mu);
+    return { burning, ok: !!L && Math.abs(L.v.p - el.period) < 1e-6, L, el }; };
+  const sel = run(D.SELENE, 20e3, 200e3), tel = run(D.TELLUS, 300e3, 300e3);
+  check('logbook: the orbital period is noted once the engines stop, around Selene and Tellus, not mid-burn',
+    !sel.burning && sel.ok && !tel.burning && tel.ok && D.PROG.log.orbit,
+    `Selene ${sel.L ? (sel.L.v.p / 60).toFixed(1) + ' min' : '—'} (logged while burning: ${sel.burning}); Tellus ${tel.L ? (tel.L.v.p / 60).toFixed(1) + ' min' : '—'} (while burning: ${tel.burning})`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

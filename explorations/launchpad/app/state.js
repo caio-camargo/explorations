@@ -125,9 +125,18 @@ function sepFx(d){if(!S||d.body!==TELLUS)return;const dec=d.parts.find(p=>p.d.ki
 TEST.on=(()=>{try{return new URLSearchParams(location.search).has('tester')}catch(e){return false}})();
 if(TEST.on)try{Object.assign(TEST,JSON.parse(localStorage.getItem('launchpad-tester-flags')||'{}'),{on:true})}catch(e){}
 const PROG_KEY=TEST.on?'launchpad-program-tester':'launchpad-program-v1';
-try{const j=JSON.parse(localStorage.getItem(PROG_KEY)||'null');if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked}}catch(e){}   // a flight in progress doesn't survive a reload
+// Save versions (QUEUE Q57). A save carries `ver`; a save without one is version 0. MIGRATE[n] takes a save from version n
+// to n+1, pure (the parsed JSON in, the same object out), and migrateSave runs the chain from the save's version up to
+// SAVE_V. When a change to PROG would break an old save, bump SAVE_V and add the step here, with a fixture in test.mjs
+// (section platform-2). A save from a newer game than this one is loaded as it is, with a warning, not guessed at.
+const SAVE_V=1,MIGRATE=[
+  j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j}];   // 0 → 1: the loader's old fix-ups
+function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isInteger(j.ver)?j.ver:0;
+  if(v>SAVE_V){j.newerSave=true;return j}for(;v<SAVE_V;v++)j=MIGRATE[v](j);j.ver=SAVE_V;return j}
+try{const j=migrateSave(JSON.parse(localStorage.getItem(PROG_KEY)||'null'));if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked;
+  if(j.newerSave){delete PROG.newerSave;setTimeout(()=>HOOK.msg&&HOOK.msg('This program was saved by a newer version of the game: some of it may not load right'),1500)}}}catch(e){}   // a flight in progress doesn't survive a reload
 if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
-HOOK.save=()=>{try{localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
+HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};
 // dropped stages leave the simulation long before they land; their predicted landing is settled when its time comes
 const pendingDrops=[];
 function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pendingDrops[i];if(simT<d.impact.t)continue;pendingDrops.splice(i,1);
