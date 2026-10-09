@@ -1,6 +1,6 @@
 # LATE_GAME — what a mature program is
-**Version**: 1.3.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–6). Details stay revisable at the margins; **the
+**Version**: 1.4.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–7). Details stay revisable at the margins; **the
 numbers in round 4's sections are placeholders, open to playability and to simplification** (Caio).
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
 the technology reaches, and what "settlement" means. It ties together pieces already designed elsewhere; it doesn't
@@ -68,6 +68,11 @@ energy ("people can't survive on a dark station").
    someone else succeeds; your loss is embarrassment and money.
 4. **Lagrange points:** Caio expected multi-body to be in, and it largely is (6b). Measured: Selene's L4/L5 hold on
    the game's own rails. No abstraction needed; Helios's tide at M5 is the space lane's call.
+
+## Decisions (round 7, Caio, 2026-10-09: rivals)
+
+All five as proposed (§ "Rivals in the late game"): rivals as coarse economic programs; scarce places held by building
+first; the world's mood moves through eras; no combat, ever; commercial rivals in the late eras.
 ---
 
 ## The principle: you design the network by flying it
@@ -364,6 +369,34 @@ so it can be tuned down or switched off without refactoring. Default: light.
   rivals try too, and someone else's success makes your loss embarrassment and money** (Caio, round 6; pillar 5 by way
   of POWERS.md).
 
+## Rivals in the late game (round 7)
+
+**Built:** the race (seeded schedules for firsts; 1.5× first, half second; v1.19), relations, tension, sanctions,
+defections (v1.14, v1.24); archetype personalities ([`POWERS.md`](POWERS.md)). **Decided:** coarse rival networks
+(round 2), selling them propellant, rescuing their crews, security states' anti-satellite tests, consortia.
+
+1. **Rivals are programs, not schedules.** Each has a coarse economic model: a **budget** (its power's economy and
+   archetype), **capacity** (pads, depots, outposts) and **progress** toward each capstone, sped by tech, the compute
+   era and its priorities. Not flown, so it stays cheap; but it can **overtake you, stall in a bust, lose a crew**, and
+   what you do moves it (propellant sold, a supplier sanctioned, a race won). Its nodes show on your network screen in
+   its colour; its stations are real objects on rails, so you can meet one or rescue its crew.
+2. **Scarce places: the race gets a map.** Some places are limited: **stationary orbit slots** (the ITU's job on
+   Earth), **Selene's polar craters with ice** (a handful), **Selene's L4 and L5** (two, stable: § Asteroids),
+   **Enyo's caps** and prime landing sites. Nobody owns them (the Outer Space Treaty), but **whoever builds there first
+   holds them** (the Artemis Accords' safety zones). The late race is for positions as well as firsts: contested
+   resource patches with orbital mechanics. A rival on the best ice crater reshapes your network: route round it,
+   trade with it, or join it.
+3. **The world's mood has eras** (pillar 8): race (1957–69), détente (Apollo–Soyuz), consortium (the ISS),
+   commercial, a new race. Driven by the powers' tensions and the date, **not scripted**, so every world's history
+   differs. A race era pays firsts double and raises secrecy; détente and consortium eras open joint megaprojects and
+   shared stations; the commercial era brings private competitors.
+4. **No combat, ever.** No weapons on vessels (pillar 7; the game stays about flying). Conflict stays below war:
+   sanctions, anti-satellite tests that foul a band, poaching people, claim disputes, cutting a supplier, propaganda.
+   Espionage (stealing a template): later, if ever.
+5. **Commercial rivals** in the late eras: private companies (the ownership mix of v1.16, run for others) **undercut
+   launch prices** and contracts, and are customers for your depots, relays and, later, templates. The late game gets
+   a market as well as geopolitics.
+
 ## The arc after Selene (epochs 6+; proposed, the economy session balances)
 
 | Epoch | The edge moves to | Capstones (grand firsts; rivals race for them) |
@@ -408,6 +441,8 @@ Approved as the base.
 ---
 
 ## Version history
+- **1.4.0 (2026-10-09):** round 7, rivals: programs not schedules, scarce places, the world's mood in eras, no
+  combat, commercial rivals.
 - **1.3.0 (2026-10-09):** round 6, asteroids: the real methods; the loop, products, era order; Lagrange points
   emergent (measured with `study_lagrange.mjs`); planetary defence softened by rivals.
 - **1.2.0 (2026-10-09):** round 5: money buys capacity (hardware the sink, capacity dearer as you grow); debris as
