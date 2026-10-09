@@ -3129,6 +3129,33 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   Object.assign(T, { on: false, money: false, kh: false, tools: false, nofail: false, fast: false });
 }
 
+// econ-1. A failed attempt at the next step is mostly covered (economy session, QUEUE W12 / Q44): a flight on the priciest
+// rocket yet that comes to nothing gets 75 % of its loss back from the sponsor, once per epoch (the newest one with firsts
+// open). Retries, cheaper losses and flights that earned something are not covered. Own SIM copy, like §37.
+{
+  const D = new Function(src + 'return {coverLoss,COVER,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, cert: {}, kh: {}, lines: {}, own: null, decisions: [], active: [], offers: [], fac: {},
+    done: { weather: { flight: 1 }, loads: { flight: 2 } }, flights: 5, recs: { maxCost: 30 } });
+  D.chooseStart('agency');
+  const lose = (cost, refund = 0) => D.coverLoss({}, { cost, refund, cdone: [] });
+  P.funds = 0; const x1 = lose(80), f1 = P.funds, ep = Object.keys(P.recs.cover || {});
+  check('cover: the first lost flight on the priciest rocket yet gets 75 % back, keyed to the newest open epoch (2: beeper, hop)',
+    Math.abs(x1 - 0.75 * 80) < 1e-9 && Math.abs(f1 - 60) < 1e-9 && ep.join() === '2' && /cover/.test(news.at(-1) || ''), `${x1} back, epochs ${ep}`);
+  P.flights = 6; const x2 = lose(95);
+  check('cover: once per epoch (a second, pricier loss in epoch 2 gets nothing)', x2 === 0);
+  P.recs = { maxCost: 100 }; P.flights = 7; const x3 = lose(80);
+  check('cover: a loss on a rocket cheaper than one flown before is not covered', x3 === 0);
+  P.recs = { maxCost: 30 }; const x4 = lose(80, 30);
+  check('cover: a flight that came home for refurbishment (a quarter or more back) is not a loss', x4 === 0);
+  P.recs = { maxCost: 30 }; P.flights = 8; P.done.hop = { flight: 8 }; const x5 = lose(80); delete P.done.hop;
+  check('cover: a flight that completed a first is not covered', x5 === 0);
+  P.recs = { maxCost: 30 }; const x6 = D.coverLoss({}, { cost: 80, refund: 0, cdone: ['a contract'] });
+  check('cover: a flight that completed a contract is not covered', x6 === 0);
+  const H = html.replace(/\r\n/g, '\n');
+  check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -197,6 +197,7 @@ NOTES § "The robot playtester".
 | ~ 93 (robot) | Build ground stations at home and abroad | Program > Fleet > ground stations | Reason for refusal and lease costs clear; contact-time value understandable · *Robot: Fleet tab is empty until epoch 3; then stations list home 10M and abroad 20M + 2.0M/100 d, and Build opens one with news. Refusal reasons not seen.* | Ground stations | planning |
 | 94 | Use a camera satellite for imaging contracts and disasters | Camera + antenna sat in polar orbit; take image contracts | Waiting for daylight/clouds/downlink feels sensible; disaster offers arrive and are doable | Orbital registry | planning |
 | 121 | Look for Nyx, on purpose and by accident | Tester epoch 4: fly the far side on a slow transfer, then launch a probe with instruments and an antenna to a high orbit (~25,000 km) or toward Nyx | The farside flight doesn't find Nyx; the second flight weighs it after 12 h; the brief makes the "launched to look" rule findable and fair. Selene/Nyx firsts clear their rocket (230M on a ~175M Probe flight) | v1.53 | economy |
+| 128 | Lose your first orbit attempt in a new career | New career (any start); fly the hop, then lose the first orbital rocket (cut its engine on the way up) | A news line: the government (agency), investors (company) or member states (consortium) cover 75 % of the loss; you can afford the retry. Losing the retry, or a cheaper rocket, is not covered. Does it feel like a fair second chance, or too soft? | v1.55 | economy |
 
 ### UI & screens
 

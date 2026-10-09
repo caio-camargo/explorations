@@ -1321,6 +1321,26 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.55 — a failed attempt at the next step is mostly covered (2026-10-08, economy session, W12)
+
+Caio answered W12 with option 1 (below). **Built:** `coverLoss(s,R)` in `sim/program.js`, called in `missionEnd`'s books
+after refurbishment and before the floor check. A flight gets `COVER` = 75 % of its loss (price − refurbishment) back when:
+- it flew **the priciest rocket yet** (`PROG.recs.maxCost`): that's how the game tells an attempt at the next step,
+  since nothing names a flight's target (the proposal's "the flight names its first" turned out to need a target picker
+  that doesn't exist);
+- it came to nothing: no first, no contract, under a quarter back as refurbishment;
+- the sponsor hasn't covered one in this epoch yet. The epoch is **the newest one with firsts open**, not the oldest:
+  epoch-1 firsts (air, range) stay open while you go for orbit, and keying to them let an early lost loads flight use up
+  the orbit's cover (caught by the runner, `WHY=1`).
+
+The sponsor is named in the news: the home government, investors, or the member states. State in `PROG.recs.cover`
+(a new game already resets `recs`; no app change). Test `econ-1`, mutation-tested (the epoch key, the first rule).
+
+**Measured** (`PACE=1 FAILFIRST=orbit node career.mjs 2 5`; before → after): flights to orbit 6–10 → 5–8; bailouts before
+orbit 1.0–4.6 → 0.2–2.0; companies in poor worlds reach orbit in 4 of 5 runs (were 2–3 of 5). The runs that still don't
+are repeated orbital losses (only the first is covered) in a frugal or resource world, where cheap work barely pays:
+the *pay floors by world* follow-up. With no forced failure: 4–6 flights to orbit, as before.
+
 ## Epoch 1–2 pacing for a new player, measured (QUEUE Q44, 2026-10-08, economy session)
 
 No game code changed: this is a measurement, a runner fix, and a proposal waiting on Caio (QUEUE **W12**).

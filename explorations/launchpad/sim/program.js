@@ -255,6 +255,17 @@ function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)
 // The player leaving a flight for another screen (Program, Assembly, Rover yard) ends it there: settled now, not at the
 // next launch (fixes session, PLAYTEST #21). Once only: Revert or the next launch then find it settled (R.ended).
 function flightLeave(s){return missionEnd(s)}
+// a failed attempt at the next step, mostly covered (W12, NOTES § "Epoch 1–2 pacing"): a flight on the priciest rocket
+// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment) gets COVER of its loss back
+// from the sponsor, once per epoch (the newest epoch with firsts open: the step a new rocket goes for). Kept in PROG.recs so a new game resets it.
+const COVER=0.75;
+function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCost||0);rc.maxCost=Math.max(rc.maxCost||0,R.cost);
+  const lost=R.cost-(R.refund||0),first=Object.values(PROG.done).some(d=>d.flight===PROG.flights&&!d.test);
+  if(!top||first||R.cdone.length||lost<0.75*R.cost)return 0;
+  const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));if(!open.length)return 0;
+  const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
+  const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;
+  HOOK.news(`${k==='company'?'Investors':k==='consortium'?'The member states':POWERS[HOME].name} cover ${fmtM(x)} of the failed attempt: a new rocket is allowed one (once per epoch)`,'ok');return x}
 function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
@@ -274,6 +285,7 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
+  coverLoss(s,R);   // a failed attempt at the next step is mostly covered (W12)
   const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);R.dmg=dmg;if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
   if(R.orbit){const net=R.cost-(R.refund||0);PROG.recs=PROG.recs||{};if(!(PROG.recs.orbit<=net)){if(PROG.recs.orbit!=null)HOOK.news(`Record: cheapest trip to orbit yet, ${fmtM(net)} net`,'ok');PROG.recs.orbit=net}}
   floorCheck();
