@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.14 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,40 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.66 — rover prices and gates; Selene science contracts (2026-10-09, economy session, QUEUE Q10)
+
+**Rover parts** (`sim/program.js`, `RV_PRICE`, `RV_GATE`):
+- Prices (M): chassis small 4, medium 9, large 20; wheels 0.5 / 1.5 / 3 each (hub motor included); deck items: battery
+  1, crew seat 3, camera mast 2, antenna 3, sample arm 5, spectrometer 6, seismometer pack 4, drill 8. The default
+  two-seater (medium chassis, four wire-mesh wheels, two seats, battery, camera) is 24M; a small yard cart 9M.
+  `partPrice` adds `rvPrice(p.dn.rvd)` to the folded rover part, so vessel cost, refurbishment and the debrief see it.
+- **Gates by firsts:** small chassis and wheels, battery and camera from the start; antenna with *The beeper*;
+  medium chassis, wire-mesh wheels, sample arm, spectrometer and seismometers with *The far side* (the Selene
+  program); crew seats with *Passenger: one orbit*; the large chassis, heavy wheels and the drill with *Soft landing
+  on Selene*.
+- **The yard stays free:** design and test-drive anything at home. The gate is at LAUNCH (`rvLaunchWhy(parts)`, one
+  line in `app/editor.js`): a rocket can't carry a rover with a part not yet open. The yard shows *Price* and *Can't
+  fly yet: …* (one line in `app/rover-yard.js`). Both flagged for vehicle and space.
+
+**Selene science contracts** (the sats session's R4 proposals, `sim/contracts.js`, science clients, after *Soft
+landing on Selene*). Judged **between flights** by `selTick` (in `econTick`) on what has reached home **since the
+contract was taken** (`c.base = selN()` at accept), and paid with news like a flight's (science yield applies):
+- *Read Selene's dark plains / bright uplands*: 3–6 spectrometer readings of that unit;
+- *A panorama of Selene, Q %*: one received at that quality or better (60–95 %);
+- *A seismic network on Selene*: 4 seismometers set out (offered while there are fewer than 4);
+- *Locate N moonquakes* (offered once 3 stations stand), *Bound Selene's core to 300 km* (after the first located quake);
+- *Science from Selene's far side*: 1–2 far-side readings (it needs a relay). `sciGot` (sats' code, one field) now
+  marks each spectrometer reading `far` (planet-fixed +X, Selene's far side).
+Pay before the client multipliers: readings (20 + 10n)·1.6, panorama (40 + 120(Q − 0.6))·1.6, network 192, quakes
+(30 + 15n)·1.6, core 240, far side (60 + 25n)·1.6. CT entries may now carry `open()` (offered only when true) and
+`sel`/`done(c, N)` (judged by state, not a flight). Test `econ-6` (4 checks; "since taken" mutation-tested).
+
+**Traps hit:** a mid-line `//` comment in `sciGot` swallowed the rest of the line (the handoff's warning, again); the
+medium chassis and wire-mesh wheels share the key `m`, so a de-duplication by key alone lost one.
+
+**Not yet:** the career runner doesn't fly rovers, so these prices are unmeasured against income; sample-arm and drill
+contracts wait for their science (R4's next slice).
 
 ## v1.65 — Hesper's ground on the CPU (2026-10-09, world session, GROUND.md G7)
 
@@ -6485,6 +6519,25 @@ new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYT
 **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
+### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
+- **A checkpoint between the Assembly and the launch** (`app/rollout.js`, `#roll`): a panel beside the ship on the pad,
+  like the spec's "a panel over the ship". The Assembly's foot keeps the one-line site summary and gets **ROLL OUT ▶**
+  (`#bRoll`); the Rollout has the launch site (the picker, `renderSites`, moved here from the Assembly as § v1.27 asked),
+  **Checks**, **The flight** (hardware, ops fee, site fee, funds after, what comes back if it all lands, days until it
+  can fly: stacking as `missionTick` reckons it, plus a study and a free pad), **In play** (the NEXT line, accepted
+  contracts), then ← Assembly [B] and **LAUNCH**.
+- **Checks** (`rollChecks()`): ⛔ over budget, site refused, stages don't fit, stage-1 TWR < 1, unstable with nothing to
+  steer; ⚠ the ops fee goes below zero, downrange over another power, weather that may scrub, sluggish TWR < 1.15,
+  unstable but steerable, a joint past its certified rating, flight safety refusing a passenger, decisions waiting.
+  LAUNCH dims while a ⛔ holds; its own checks (editor.js) still decide. **Vehicle, Q48:** the builder's pre-launch
+  warnings (contract orbit out of reach, no chute on a crewed return) belong in `rollChecks`, one line each.
+- **`#launch` kept its id** and moved into the Rollout, so every scripted `$('launch').click()` (views.js, the robot's
+  `PT.launch`, Fly again) still launches straight away. Only real clicks changed: robot `m1` now clicks ROLL OUT then
+  LAUNCH (and shoots the Rollout), and its `PICK` helper opens the Rollout first. `atRoll` joins `atHQ`/`atDeb` (builder
+  keys off, builder markers off; §32 counts it). Robot rows m1, 25 and 26 pass.
+- Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
+  builder's panel (vehicle's), so they repeat here.
+
 ---
 
 ## Picking this up cold
@@ -7280,3 +7333,65 @@ Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive f
 Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
+
+## v1.67 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
+
+Built to the plan in § "Vehicle parts" (Q34a), with Caio's call on the computer: **built into crew capsules, a part for
+probes**. Headless only: nobody has seen the parts drawn or the builder's power line yet (TESTING row 144).
+
+**Parts** (`sim/vessel.js`; palette *Power*):
+
+| Part | Kind | Mass | Power | Notes |
+|---|---|---|---|---|
+| Onboard computer `ocomp` | inline | 0.03 t | −50 W | offered from the onboard-computer era (`era: 2`); price 8, tier 2 |
+| Battery 1 kWh `batt` | inline | 0.02 t | stores 1 kWh | price 2 |
+| Solar cells (body) `bpanel` | surface, fixed | 0.01 t | 40 W in full sun × 0.32 | price 2, tier 1 |
+| Solar wing `wpanel` | surface, folds out (**P**) | 0.03 t | 300 W in full sun × 0.9 | tears off deployed above 1 kPa; price 5, tier 1 |
+
+A probe core has 0.5 kWh of its own; the antenna draws 5 W and the camera 10 W. Crew capsules run on their own fuel
+cells (their 10 days of life support) and draw nothing.
+
+**The model** (new `sim/power.js`, loaded before `ground.js` so it's inside the SIM block):
+- One store per vessel, `s.E`, up to its batteries (`powCap`). The loads (`powLoad`) draw on it, and the panels fill it
+  while the vessel is out of its body's shadow.
+- **The shadow** is a cylinder behind the body, since the sun is fixed and far (`SUN_DIR`).
+- **Panels in flight:**
+  - body cells give their average share whatever the attitude;
+  - a wing turns about its own arm, so it gives √(1 − (arm·sun)²) of its best.
+- **Stepping:**
+  - each physics step (`advPhys`), and rails steps up to 60 s, use the sun right now;
+  - longer rails steps use the orbit's average, with the shadow share taken from its elements (`eclFrac` with the
+    orbit's β).
+- **The builder's line** (`powerLine` in `app/editor.js`) appears only for designs with something electric. It shows a
+  low Tellus orbit's average against the load, and the battery against one shadow, for example
+  `Power +339 W / −55 W · shadow 16 min needs 15 Wh (battery 1500 Wh)`. It turns red and says "it runs flat" when
+  the panels can't keep up.
+- **Running flat never kills (Pillar 5):** the onboard computer goes off ("Power flat: the onboard computer is off,
+  analog autopilot only…") and comes back once the panels catch up ("Power back").
+- **Avionics** (`avOf` takes the lower of `s.av` and `avCap(s)`): from the onboard-computer era, the guidance
+  computer's modes need `hasComputer(s)`, meaning a crew capsule, or an `ocomp` with power. Sandbox, physics tests,
+  the tester's tools and procedures keep everything, as before.
+  - **Presets:** no preset flies a probe that needs the guidance modes. The robot's docking pilot (`PT.dockIn`) flies
+    in a test scene. So nothing needed the part added. **QA:** a robot career past year 7 that wants target or docking
+    modes on a probe now needs an `ocomp` on it.
+- **Era gate:** the builder hides a part with `era` until the program's `compEra()` reaches it (not with the tester's
+  tools, and not in the sandbox). It's the first era-gated part, and the gate is the general one Q10 can reuse.
+
+**Measured** (a probe: core, computer, battery, antenna, 1 t tank, Petrel, two wings):
+- **Low orbit** (r 1,384 km, β 0): 37.2% of the 42.7-minute orbit is in shadow (15.9 min). The panels give 540 W
+  peak and 339 W on average against 55 W of load, so one shadow needs 14.6 Wh of the 1.5 kWh on board.
+- **Integrated along one orbit** on rails in 20 s steps: +204 Wh, with 14.4 Wh drained in the shadow. One long rails
+  step gives +202 Wh, and the steady state says +202 Wh.
+- A wing deployed at 10 km and 300 m/s (14.2 kPa) tears off.
+
+**Tests:** `test.mjs` section `vehicle-2`, 5 checks: the budget by hand; one orbit, stepped and in one step, against
+the steady state; a wing in thick air; the computer (a probe with and without it, a crew capsule, running flat and
+coming back); a tape replays the wings.
+
+**Not yet:**
+- what a flat battery does to the antenna and camera, and to a satellite's service on the registry (space lane, Q27
+  and the power side of Q50; they read `powerBudget`, `hasComputer`, `s.E`/`s.pwrOut`);
+- an RTG;
+- a builder choice of the orbit for the budget (it always assumes low Tellus orbit, β 0);
+- the look of the parts (placeholders in `app/gl.js`, Q97);
+- battery charge carried across a flight's end (each flight starts full).

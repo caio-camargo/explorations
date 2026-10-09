@@ -70,6 +70,26 @@ const CT={
       if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60,site:t.id,sname:t.name}}return null},
     title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Launch from ${p.sname||'the pad'} and bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km away (marked on the map). Classified.`,
     ok:(R,p)=>!!R.endPf&&R.endSci&&(!p.site||R.site===p.site)&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
+  // Selene science from rovers and seismometers (QUEUE Q10; the sats session's R4): judged between flights on what has
+  // reached home since the contract was taken (c.base, from selN), by selTick. ok() is false: no flight completes these.
+  selRead:{src:['sci'],req:'selland',sel:true,gen:R=>{const unit=R()<.5?'mare':'high',n=3+(R()*4|0);return{unit,n,pay:(20+10*n)*1.6,dur:150+R()*150}},
+    title:p=>`Read Selene's ${p.unit==='mare'?'dark plains':'bright uplands'}`,brief:p=>`${p.n} spectrometer readings of ${p.unit==='mare'?'mare basalt (the dark plains)':'highland rock (the bright uplands)'}, received at home. Needs a rover with a spectrometer.`,
+    ok:()=>false,done:(c,N)=>N[c.p.unit]-c.base[c.p.unit]>=c.p.n},
+  selPano:{src:['sci','com'],req:'selland',sel:true,gen:R=>{const q=Math.round((.6+R()*.35)*20)/20;return{q,pay:(40+120*(q-.6))*1.6,dur:120+R()*120}},
+    title:p=>`A panorama of Selene, ${(p.q*100).toFixed(0)} %`,brief:p=>`A panorama of the surface of quality ${(p.q*100).toFixed(0)} % or better (a low sun shows the relief), received at home. Needs a rover with a camera mast.`,
+    ok:()=>false,done:(c,N)=>selSci().panos.slice(c.base.pano).some(x=>x.q>=c.p.q-1e-9)},
+  selSeis:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis<4,gen:R=>({n:4,pay:120*1.6,dur:250+R()*150}),
+    title:p=>'A seismic network on Selene',brief:p=>`${p.n} seismometers set out on Selene, far enough apart to locate moonquakes. Needs a rover with seismometer packs.`,
+    ok:()=>false,done:(c,N)=>N.seis-c.base.seis>=c.p.n},
+  selQuake:{src:['sci'],req:'selland',sel:true,open:()=>selN().seis>=3,gen:R=>{const n=2+(R()*3|0);return{n,pay:(30+15*n)*1.6,dur:200+R()*200}},
+    title:p=>`Locate ${p.n} moonquakes`,brief:p=>`Locate ${p.n} moonquakes with our seismic network on Selene (three stations or more hear each).`,
+    ok:()=>false,done:(c,N)=>N.quakes-c.base.quakes>=c.p.n},
+  selCore:{src:['sci'],req:'selland',sel:true,open:()=>selN().quakes>=1&&!(selN().coreW<=300),gen:R=>({w:300,pay:150*1.6,dur:300+R()*200}),
+    title:p=>`Bound Selene's core to ${p.w} km`,brief:p=>`Bracket the radius of Selene's core to within ${p.w} km, from located moonquakes and which stations hear their S-waves.`,
+    ok:()=>false,done:(c,N)=>N.coreW<=c.p.w},
+  selFar:{src:['sci'],req:'selland',sel:true,gen:R=>{const n=1+(R()*2|0);return{n,pay:(60+25*n)*1.6,dur:200+R()*200}},
+    title:p=>`Science from Selene's far side`,brief:p=>`${p.n} spectrometer reading${p.n>1?'s':''} from the far side, received at home. The far side never sees Tellus: it needs a relay.`,
+    ok:()=>false,done:(c,N)=>N.far-c.base.far>=c.p.n},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
@@ -115,7 +135,14 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
   if(flav(client).pri[pri]>=WHY_PRI)return`${who} cares about ${pri}`;
   if(standOf(src)>=WHY_STAND)return`Your ${SRC[src].name.toLowerCase()} standing (${standOf(src).toFixed(0)}) brings work`;
   return`Routine ${SRC[src].name.toLowerCase()} work${client===HOME?'':` from ${who}`}`}
-function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
+// Selene science counts (R4), for the sel contracts: readings by unit and from the far side, panoramas, stations, located
+// quakes, the core bracket's width (km)
+function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
+  return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
+function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*khYield();income(pay);PROG.cdone=(PROG.cdone||0)+1;
+  standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}
+function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||selN();if(CT[c.type].done(c,N))selDone(c)}}
+function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
@@ -123,7 +150,7 @@ function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.include
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
-  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;PROG.active.push(c);
+  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;if(CT[c.type].sel)c.base=selN();PROG.active.push(c);
   if(offerRisk(c).now.includes(HOME))sanction(HOME,c.src==='mil'?250:120,c.src==='mil'?`for military work for ${POWERS[c.client].name}`:`under export controls on ${POWERS[c.client].name}`);
   if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*natK()*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
   HOOK.save();return true}
@@ -136,7 +163,7 @@ function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.r
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
     HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)}${bonus>0.005?`, ${(bonus*100).toFixed(0)}% precision bonus`:''})`,'ok');HOOK.msg(`Contract complete: ${cTitle(c)}`);HOOK.save()}}
 // between flights: the business cycle turns, offers arrive and expire, deadlines pass, the budget comes in
-function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();dispatchTick();
+function econTick(d,R){ensureBoard();selTick();standTick();devTick();facTick();compTick();dispatchTick();
   if(PROG.flights>0){PROG.funds-=(OVERHEAD+OVERHEAD_CAP*capOf())*d;   // running the program, from its first launch on (more as it grows)
     floorCheck()}   // between flights too: with running costs, a program that can't fly would otherwise bleed with no rescue
   PROG.bailRecent=(PROG.bailRecent||0)*Math.exp(-d/300);   // top-ups fade from memory

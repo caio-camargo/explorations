@@ -219,7 +219,7 @@ ROWS[107] = {title: 'gimbal: no wobble under SAS', steps: [
      return ${JSON.stringify(d)} + ': AoA mean ' + m.toFixed(2) + ' sd ' + sd.toFixed(2) + ' max ' + Math.max(0, ...aoa).toFixed(1) + ' deg, rate max ' + wmax.toFixed(3) + ' rad/s, AoA reversals ' + rev + ' over ' + (aoa.length * DT).toFixed(0) + ' s, alive ' + S.alive })()`)]};
 
 // Launch sites & terrain
-const PICK = `document.getElementById('sitePick').innerText`;
+const PICK = `(go('rollout'), document.getElementById('sitePick').innerText)`;   // the picker lives in the Rollout since slice 5 (flow, Q4)
 const setSite = expr => `(()=>{ const t = ${expr}; if (!t) return 'no such site'; const sel = document.getElementById('siteSel'); sel.value = t.id; sel.dispatchEvent(new Event('change')); render(); return t.name + ' :: ' + ${PICK} })()`;
 // an ascent to space from the current site: kick, prograde, staging, cut at a 120 km apoapsis, coast to 100 km; the
 // orbit's inclination to the equator (Tellus spins about +Y)
@@ -447,7 +447,7 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
   `PT.m1 = {boxes: {program: PT.boxes()}}; PT.m1.boxes.program`,
   // flight 1: Sounding, "Above the weather"
   {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
-  {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
+  {click: '#bRoll'}, `PT.m1.boxes.rollout = PT.boxes(); ({screen: screenNow(), checks: document.getElementById('rollChecks').innerText})`, {shot: 'rollout'}, {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
   `PT.m1.live = +(simT - PT.m1.t0).toFixed(2); PT.m1.boxes.flight = PT.boxes(); ({live: PT.m1.live, alt: Math.round(PT.alt())})`, {shot: 'climb'},
   // Esc pauses (Q39): the sim clock stands still while the Esc menu is open
   {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
@@ -455,7 +455,7 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
   `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
   // flight 2: the beeper
   `go('assembly'); stackDef = PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
-  {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
+  {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
   `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
   `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
   checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,

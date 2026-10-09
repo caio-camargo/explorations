@@ -1,6 +1,6 @@
 # LATE_GAME — what a mature program is
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–4). Details stay revisable at the margins; **the
+**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–5). Details stay revisable at the margins; **the
 numbers in round 4's sections are placeholders, open to playability and to simplification** (Caio).
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
 the technology reaches, and what "settlement" means. It ties together pieces already designed elsewhere; it doesn't
@@ -48,6 +48,17 @@ energy ("people can't survive on a dark station").
 5. **Every number in these sections is a placeholder** for playability, and any mechanic may be simplified. **The
    shielding mechanic especially gets a look before it's deployed** (Caio).
 
+
+## Decisions (round 5, Caio, 2026-10-09: money and pressure)
+
+1. **Money buys scaling power:** capacity late, flights early; hardware is the money sink; capacity gets dearer.
+2. **Debris: objects for big pieces, density bands for fragments**; tracking as a mechanic. Caio's concern (the
+   compute to track it all) measured: § "Debris and Kessler".
+3. **Debris may destroy an uncrewed satellite**; crewed nodes are always warned.
+4. **A cascade can make a high band unusable for decades,** with warnings ahead.
+5. **Solar storms, light.**
+6. **Every pressure is a game option** (off / light / real per world), so a punishing one is tuned down or switched
+   off without refactoring.
 ---
 
 ## The principle: you design the network by flying it
@@ -250,6 +261,58 @@ needs you, passive flybys, paying along the way). This adds:
 - **Hand it off, or fly it.** Any coast can go to mission control (already designed); any event can be flown by hand.
   The player chooses where attention goes.
 
+## Money in a mature program: it buys scaling power (round 5)
+
+**Early, money buys flights; late, money buys capacity** (Caio): pads, sites, yards, factories, production lines,
+astronaut classes, dish arrays, compute. Flights build what capacity makes possible; pillar 3's "money alone is never
+enough" holds.
+- **Hardware is the late money sink.** Materials cost flights (mining); hardware costs money (Tellus). The five goods
+  already split the two currencies.
+- **Capacity gets dearer as you grow:** each new pad, site or yard costs more (land, permits, remoteness), so money
+  stays the throttle on the growth rate, Factorio-style, instead of piling up.
+- **Late revenue:** propellant sold at depots (rivals included), power beamed down, compute, leasing relays,
+  orbital tourism, powers' contracts for big projects.
+- **No daily overhead** (decided, v1.41): money never drains while you're away.
+
+## Debris and Kessler (round 5)
+
+**Measured cost** of propagating N objects on exact Kepler rails (Node, this machine, 2026-10-09; the same maths as the
+rails): 1,000 → 0.3 ms · 10,000 → 3 ms · 30,000 (about the real tracked catalogue) → 10 ms · 100,000 → 33 ms ·
+1,000,000 (real debris over 1 cm) → 317 ms per full update. Tens of thousands of objects are affordable once per
+program-day tick, not per frame; a million aren't affordable as objects at all; all-pairs collision checks never are
+(30,000² ≈ 9 × 10⁸). Caio's concern (the compute to track it all) is real at the top end, so:
+- **Big pieces are objects:** spent stages, dead satellites, a broken-up tank. Hundreds to a few thousand, on rails,
+  grabbable (Q26). Checked against **active vessels only** (about a hundred), never against each other.
+- **Fragments are a density per altitude band** (the ESA MASTER approach): collision risk = density × cross-section ×
+  relative speed. Cost is per band, whatever the cloud's size.
+- **Drag cleans low bands** (decay, v1.64) within years; high bands keep junk for decades. That's the real Kessler
+  asymmetry, and a real choice of where to put things.
+- **The cascade:** collisions in a dense band make fragments; past a threshold the band feeds itself. **A high band
+  can become unusable for decades**, with warnings well ahead of the threshold.
+- **Tracking is a mechanic** (pillar 4): untracked debris is a statistical risk; radar + compute (by era) turn it into
+  conjunction warnings you dodge with a small burn.
+- **Debris may destroy an uncrewed satellite:** physics, not neglect, so a deliberate exception to "pauses, never
+  dies". **Crewed nodes are always warned in time**; no surprise deaths.
+- **What the player does:** leave a deorbit reserve on stages (design), fly cleanup missions (paid by worried powers),
+  dodge tracked conjunctions, avoid crowded bands. A security state's anti-satellite test can foul a band overnight
+  (POWERS.md).
+
+## Events: pressure that makes decisions, not chores (round 5)
+
+| Pressure | What it asks | Ties into |
+|---|---|---|
+| **Debris and Kessler** | above | decay, Q26, POWERS, compute |
+| **Solar storms** (light) | a warning (earlier with a solar observatory) stops time: crew beyond Tellus's field shelter, satellites safe-mode, links black out | the habitat budget (shielding review first), pillar 4 |
+| **Routine failures** | a lost cargo run: refly, reroute or accept the gap | know-how rolls, routines |
+| **Opportunities** | a comet's window, a visitor, **a rival's crew in distress** (a rescue for diplomacy), a gravity-assist family opening | seeded objects, POWERS, CREW |
+| **Politics** | sanctions cut a supplier, an election moves the budget, a consortium partner leaves mid-build, a rival claims a capstone | existing systems |
+
+**Pacing:** events cluster at the edge; only those needing a decision stop time; a quiet network is fine.
+
+**Every pressure is a game option** (Caio, round 5): debris and Kessler, solar storms, and later ones each have a
+world setting (**off / light / real**, chosen at world creation). Each lives in its own code path behind its setting,
+so it can be tuned down or switched off without refactoring. Default: light.
+
 ## The arc after Selene (epochs 6+; proposed, the economy session balances)
 
 | Epoch | The edge moves to | Capstones (grand firsts; rivals race for them) |
@@ -294,6 +357,9 @@ Approved as the base.
 ---
 
 ## Version history
+- **1.2.0 (2026-10-09):** round 5: money buys capacity (hardware the sink, capacity dearer as you grow); debris as
+  objects + density bands (measured propagation cost), tracking as a mechanic, cascades; events that make decisions;
+  every pressure a game option (off / light / real).
 - **1.1.0 (2026-10-08):** round 4, logistics in detail: five goods (materials split from hardware; the ratio),
   comms gating automation, templates that compound, yards, the habitat budget and the dark-station rule. Numbers
   are placeholders; shielding reviewed before it's deployed.

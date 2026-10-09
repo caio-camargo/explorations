@@ -20,7 +20,18 @@ PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
-const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+// rover parts (QUEUE Q10): prices (M; wheels each, hub motor included) and the first that opens each. The yard is free:
+// design and test-drive anything at home; a rocket can't carry a rover with a part that isn't open yet (rvLaunchWhy).
+const RV_PRICE={ch:{s:4,m:9,l:20},wh:{s:.5,m:1.5,l:3},it:{bat:1,seat:3,cam:2,ant:3,arm:5,spec:6,seis:4,drill:8}};
+const RV_GATE={ch:{m:'farside',l:'selland'},wh:{m:'farside',l:'selland'},it:{ant:'beeper',seat:'orbiter',arm:'farside',spec:'farside',seis:'farside',drill:'selland'}};
+function rvPartOpen(kind,k){const id=(RV_GATE[kind]||{})[k];if(!id||PROG.done[id])return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,id}}
+const rvParts=d=>[['ch',d.ch||'m',RV_CH[d.ch||'m'].name],['wh',d.wh||'m',RV_WH[d.wh||'m'].name],...(d.slots||[]).filter(k=>k&&RV_IT[k]).map(k=>['it',k,RV_IT[k].name])];
+function rvPrice(d){if(!d)return 0;const n=d.n===6?6:4;return RV_PRICE.ch[d.ch||'m']+n*RV_PRICE.wh[d.wh||'m']+(d.slots||[]).reduce((a,k)=>a+(k&&RV_PRICE.it[k]||0),0)}
+// what a rover design still lacks to fly ('' if nothing): the parts not open yet
+function rvLocked(d){const L=[];for(const[kind,k,name]of rvParts(d)){const o=rvPartOpen(kind,k);if(!o.ok&&!L.some(x=>x.k===k&&x.kind===kind))L.push({kind,k,name,why:o.why})}return L}
+function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
+  if(L.length)return`The rover ${p.dn.rvd.name||''} can't fly yet: ${L.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}`.replace('  ',' ')}return''}
+const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.

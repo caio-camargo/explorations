@@ -302,7 +302,7 @@ const panoQ=el=>el<3?.4*el/3:el<=20?1:Math.max(.3,1-.7*(el-20)/70);
 const rvSciSent=R=>R.contact&&R.contact.ok&&R.contact.via!=='crew'?'':' · waits for contact';
 // results reaching home: into the program's science and the logbook
 function sciGot(x,by){const P=selSci();
-  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3});const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
+  if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3,far:!!(x.pf&&x.pf[0]>0)});/* far: Selene's far side, planet-fixed +X (economy's contracts) */const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
     logNote(null,x.unit==='mare'?'semare':'sehigh',{FeO:m('FeO'),TiO2:m('TiO2'),Al2O3:m('Al2O3'),se:sd/Math.sqrt(n),n},by)}
   if(x.k==='pano'){P.panos.push({q:x.q,el:x.el,unit:x.unit});logNote(null,'sepano',{q:x.q,el:x.el,unit:x.unit},by)}}
 function rvSciSend(R,c){if(!R.data||!R.data.length||!c||!c.ok||c.via==='crew')return 0;const n=R.data.length;for(const x of R.data)sciGot(x,R.name);R.data=[];
