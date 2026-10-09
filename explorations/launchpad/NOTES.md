@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2026,6 +2026,34 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: overflight politics (2026-10-09, economy session, QUEUE Q96; nothing built)
+
+**What exists:** a spent stage that falls on a foreign power's land costs that power's opinion (−5, a town ×3), the
+relation (−0.06) and damages (v1.13, `missionEnd`'s drops); the site picker warns when a site's planned downrange
+crosses a neighbour (`downrangeWarning`). **What's missing is the overflight itself**: a rocket climbing over a
+neighbour's land without dropping anything. Real programs bend their trajectories for it (Israel launches west, over
+the sea, retrograde, to avoid its neighbours).
+
+**Against the pillars:** it is a **design problem posed by real physics** (pillar 2: the ascent's ground track is
+flown, not chosen from a menu) and it feeds the world's reaction (pillar 3). It must not become a chore (pillar 5): no
+penalty from friends, no repeated nagging, and the site picker says it before you launch.
+
+**Proposed rule (defaults):**
+1. **Judged on the track actually flown**: while the vessel is below 150 km and within 1,000 km of its site, record
+   the powers whose land is under it (`powerAt`, sampled each second of the ascent): `R.over`.
+2. **Only tense neighbours mind**: for each power in `R.over` other than home and the site's host, with relation < 0:
+   its opinion −2 and the relation −0.02, a **security state** ×2 (POWERS.md: touchy); one news line per power per
+   program year ("*X* protests a rocket over its territory"); friends (relation ≥ 0.25) and the neutral say nothing.
+3. **The picker and the debrief say it**: the site line warns of a tense neighbour under the planned downrange (today's
+   warning, coloured by relation), and the debrief lists "flew over *X*" with the cost.
+4. **Later, overflight rights**: a decision to buy a year's consent from a tense neighbour (a fee by relation), once
+   leases (v1.56) and stakes show how players use such deals.
+
+**Questions for Caio** (numbered, with defaults; silence keeps them): (1) judge by the **track flown** (default) or
+by the site's planned downrange; (2) **tense neighbours only** (default) or any foreign land; (3) overflight rights as
+a paid decision **later** (default) or now. One ⚙ slice when answered (S): `R.over` in `missionTick`, the cost in
+`missionEnd`, the debrief line, a test.
 
 ## v1.89.4 — the first station as firsts (2026-10-09, economy session, QUEUE Q163; Q9 plan slice 2)
 
