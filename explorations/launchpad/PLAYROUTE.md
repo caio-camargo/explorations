@@ -1,5 +1,5 @@
 # Launchpad — the presets-only playtest route
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: draft, ready to play
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (QA session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: draft, ready to play
 **Purpose**: An order to play [`TESTING.md`](TESTING.md) in using **only the eleven presets**, so Caio can play before
 the construction screen is easy for a newcomer (QUEUE Q54; it covers W8, the human playtest for M1). Each step names its
 TESTING rows. The rows hold the full "looks right if" text. This file is only the order and the setup.
@@ -98,13 +98,19 @@ written in PLAYTEST").
 
 ## Sitting 6 — satellites, contracts, Nyx (tester, ~60 min)
 
+**Park high: orbits decay since v1.64.** Between flights the thin upper air drags on everything left in orbit. A dry
+Probe-sized satellite lasts under an hour at 110 km (the usual parking orbit), ~5 days at 150, ~70 at 200, ~a year at
+250 and ~3 years at 300 km. Anything that must still be up later in this sitting goes to **250–300 km**, or keeps some
+propellant to hold itself up (~0.09 m/s a day at 200 km). The Program line says how long each one has. Missions and
+contracts complete during the flight, so a low reconnaissance orbit still pays; it just doesn't last.
+
 | Step | Do | Rows |
 |---|---|---|
 | 1 | Epoch 3: the utility sats (polar weather, TV stationary, disaster watch, navigation), all with the **Probe** | **74** |
-| 2 | A camera **Probe** in polar orbit: imaging contracts; then date jumps and read the disaster news | 94, 113 |
+| 2 | A camera **Probe** in polar orbit at ~300 km (it has to survive the date jumps): imaging contracts; then date jumps and read the disaster news | 94, 113, 140 |
 | 3 | Fly a **Probe** to the orbit of a sat contract, then dispatch that contract and watch it fly. For a deviation turn off *Full know-how* (an unknown upper engine may not relight) and press Take control | **120** (the "one tank short" half needs the builder) |
 | 4 | Field-station and aurora contracts (Hopper, Sounding) | 112 |
-| 5 | Orbit near a saved satellite (diamond marker) and fly past it; G to target, close the distance | 49, 56 |
+| 5 | Orbit near a saved satellite (diamond marker; one parked above ~250 km in an earlier flight, so it's still up) and fly past it; G to target, close the distance | 49, 56 |
 | 6 | Epoch 4: the far-side flight shouldn't find Nyx; a **Probe** to ~25,000 km should weigh it in 12 h. Is the reveal a payoff? | **72**, **121** |
 | 7 | Epoch 5: look at Nyx from the ground and from space; a prograde and a retrograde orbit round it; land under 3 m/s | 49, **55**, **73** |
 
