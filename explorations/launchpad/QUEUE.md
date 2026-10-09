@@ -56,7 +56,7 @@ the feedback I paste into PLAYTEST items.*
 - **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
-- **Version numbers:** latest on `main` is v1.59 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.63 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -116,7 +116,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ✓ v1.57 `d9badbc` (from the program's site; counts only from there) |
 | Q8 | Ladder balance: Selene/Nyx firsts above their rocket; nyxfind not free on the farside flight (Caio overrode the W1 default) | M1 | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ✓ v1.59 `b18db73` (`whyOf`: the strongest true reason, kept on the offer) |
-| Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ready |
+| Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ✓ v1.63 `1312d39` (`dryQuote`/`orderDryRun`; margin cached; provisional estimates wider) |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ready |
 | Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ready |
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
@@ -237,7 +237,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | ✓ `e75d8d5` (clean: #15–#18, #21, #22 hold; new robot rows 97, 122; only #26 left on screen) |
 | Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ✓ `d35f99a`: moons (68, 72, 55, 73, 125), docking (56, 58–63), stations (60 claw, 64, 66, 67, 98); left: 65, 115, 116, 117 (Proposed) |
 | Q79 | Tester **"go to body" view**: a `views.js` entry per [`SYSTEM.md`](SYSTEM.md) body, drawn alone from its physical row (radius, flattening, tilt, rings) at three distances, with no orbit or SOI yet. Unblocks Q80–Q85 | M5 | M | 🖥 | ✓ (tester → Go to body, `refView(200+)`; `app/bodyview.js`; TESTING 138). Q80–Q85 can start on it |
-| Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | → QA 2026-10-08 |
+| Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ✓ `b4fc3eb` (`node playtest.mjs 127`: four ways out, exits and money checked; PLAYTEST #33) |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | after Q102 |
 
@@ -297,8 +297,11 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- space — Q51's plan (data + link budget) should include LATE_GAME 1.1.0 § "Comms": **contact gates automation** (a routine burns only in contact or within its computer's tier), solar conjunction, relays as nodes — LATE_GAME.md
+- vehicle — 📝 the **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths); **shielding gets a design review with Caio before it's built** — LATE_GAME.md § Habitats (M4+)
 - QA — robot drivers for the last undriven rows: 65 crew rotation, 115 Selene relay + far-side rover, 116 docking at Selene, 117 rover science (NOTES § Q30 slice 3) — Q30
 - vehicle — legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) — NOTES § v1.61
 - look & sound, parts & pad — draw the landing leg (folded and deployed; `app/gl.js` case `leg` is a placeholder) — NOTES § v1.61, TESTING 135
 - world — read NOTES § v1.61 "The contact model needed three fixes": `groundContact` now sizes each point by its effective mass and holds with stiction (anchors) — v1.61
 - QA — TESTING rows 131 and 133 are each used twice (different sessions numbered at once) — TESTING.md (done: Q117)
+- economy — PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" — PLAYTEST #33

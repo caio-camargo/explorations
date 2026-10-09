@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -6936,6 +6936,26 @@ Each slice is a few rows of `playtest.mjs` (1–3 min of browser each, run as on
 write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (the ladder is already scripted end to end,
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
+
+## v1.63 — dry runs as the trajectory office's study (2026-10-08, economy session, QUEUE Q46)
+
+The bodies session's `procAdopt(stack)` (dry runs: a design with no procedure borrows a stored one if a headless run
+reaches orbit) now has the economy around it, in `sim/program.js`:
+- **`dryQuote(stack)`** → `{ok, why, n, cost, days}`. Priced like a trajectory study: the computing era's study cost
+  × `DRY_K` = 1.5 × (1 + ¼ per extra procedure tried); days = the era's study days × the centre's speed × (½ + ¼ per
+  procedure). Hand computers, one procedure: 18 days, 4.5M. Refused for a design with a procedure (its own or
+  borrowed), with none stored to try, or no design.
+- **`orderDryRun(stack)`** pays, lets the days pass (as launching does: you chose to wait), runs `procAdopt`, and
+  **keeps the measured margin** on the provisional procedure (`proc.margin`, `proc.mT`). A failed dry run is news:
+  the money is spent, the design needs a run-through by hand.
+- **`dispatchEstimate`** uses the cached margin when there is one (minus the target change, as before), and a
+  provisional procedure's spread is `PROV_UNC` = 0.15 wider (e.g. 43–100 % against 56–100 % for the design's own).
+- **The button:** the contract's dispatch line offers *Try our procedures on ⟨design⟩* for the design in Assembly,
+  whenever that design has no procedure and something is stored to try. `dispatchLine(c, stack)` takes the stack;
+  `app/program-ui.js` passes `stackDef` and handles `data-dry` (two lines, flagged for flow).
+
+Test `econ-5` (5 checks; the spread mutation-tested). A trap: in the full suite a budget day lands inside the 18 days,
+so "funds went down by the price" is not a check; the test checks the price and a refusal when short instead.
 
 ## v1.62 — Enyo's ground on the CPU, the first planet (2026-10-08, world session, GROUND.md G7)
 

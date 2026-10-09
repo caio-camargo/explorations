@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running list
+**Version**: 0.1.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -27,6 +27,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 30 | P3 | **Selene's first "orbital period" is logged mid-capture** (robot, row 68). The logbook says "orbital period around Selene, 1,521.9 min at 3,112 km" for a probe captured into 200 × 20 km. | `logNote(s,'period',…)` (`sim/program.js`, flight record) fires the first moment the orbit is bound with the periapsis above the atmosphere; moons have none, so that's during the capture burn. Log it when the engines are off, or after a full revolution. | space |
 | 31 | P2 | **Map labels pile up in the top-left corner** (robot, rows 68/72). With a probe at Selene, several green labels (stages, "Fenfen Cape", "Albatross") are drawn on top of each other at about (0, 0), under the readout. | Labels for points off screen (or behind the camera) seem to be placed at the origin instead of being skipped. `r68_farside_map.png`. | space (map) + flow |
 | 32 | P3 | **A lander on Selene with the sun behind it is a black silhouette** (robot, row 68). The ground is lit and the probe is pure black: no fill light, no earthshine. | Look & sound: a small ambient or Tellus-shine term in the mesh shader for airless bodies. `r68_selland.png`. | look & sound |
+| 33 | P3 | **"Sponsor covers the failed attempt" on a flight that reached orbit** (robot, Debrief row 127). An Orbiter left in a 200 km orbit gets "+42M Sponsor covers the failed attempt" in its Debrief and news. Also "1 days passing (budget, upkeep, debt)". | `coverLoss` (`sim/program.js`, W12) covers the priciest rocket yet when it completes nothing, which is the rule; only the word "failed" is wrong for a flight that did what it set out to do. It will be common while no preset can fly the beeper (#24). Say "covers this flight (nothing completed)", or skip the cover when the flight reached orbit. The plural: `sim/debrief.js` days line. `r127_orbit.png`. | economy |
 
 ## Done
 

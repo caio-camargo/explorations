@@ -3869,3 +3869,24 @@ had a lowland wall for 700 km; one unit's mask hid another's. Test `ground-3` (7
 ### Next steps
 - [ ] World: Hesper next (basalt plains, shields, lava channels; radar-only detail), then Astraea, Hyperion's moons, Erebus
 - [ ] Space (Q87): Enyo into the body tree with `ground: ENYO_GROUND`
+
+## 2026-10-08 — Launchpad v1.63 economy: dry runs as the trajectory office's study (QUEUE Q46; economy session)
+
+### Summary
+- `dryQuote`/`orderDryRun` in `sim/program.js` around the bodies session's `procAdopt`: priced like a study (era,
+  centre, procedures tried; 18 d and 4.5M with hand computers), the days pass, the measured margin is kept on the
+  provisional procedure. `dispatchEstimate` uses it and widens a provisional spread by 0.15. The contract's dispatch
+  line offers *Try our procedures on ⟨design⟩* for the design in Assembly (`app/program-ui.js`, two lines).
+- Numbered v1.62, renumbered v1.63 at merge (world took v1.62); TESTING row 139 (QA's renumbering took 136).
+- Slip: I worked Q46 without claiming it in QUEUE/ACTIVE_WORK (nobody else took it). Closed directly as done.
+
+### Verification
+- New test `econ-5` (5 checks; spread mutation-tested); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.63, `TESTING.md` row 139, `QUEUE.md`
+
+### Next steps
+- [ ] Human: TESTING 139
+- [ ] Economy: Q10 (rover prices), Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics
+

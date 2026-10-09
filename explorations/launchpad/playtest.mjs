@@ -570,6 +570,23 @@ ROWS[98] = {title: 'the HUD in a busy flight', steps: [M1_HELPERS, ...STSTART,
   `(()=>{ PT.dockScene({gap: 40, lat: 1.5, me: PT.rcsDesign(['port', 'pod', 't1', 'dec', 'core', 't1', 'sparrow'], 't1')}); for (let k = 0; k < 5 && !FLEET.length; k++) stage(S); S.throttle = 0; return {fleet: FLEET.map(v => v.name)} })()`,
   `PT.dockIn({stopAt: 10})`, `PT.showUI(); ({rows: PT.hud().split(String.fromCharCode(10)).map(l => l.split(String.fromCharCode(9))[0]), boxes: PT.boxes()})`, {shot: 'busy'}], checks: {boxes: `PT.boxes()`}, expect: {boxes: v => v.length === 0}};
 
+// QUEUE Q101: TESTING 127, the Debrief after each way a flight ends, reached with the real buttons (End flight ▸, the Esc
+// menu's End flight, the toolbar's Assembly), plus going back to it from the Program. Each: the screen, which exit is
+// highlighted, the outcome line and the money block.
+const DEB = tag => `(()=>{ const big = [...document.querySelectorAll('#deb .hqHead button')].filter(b => b.classList.contains('big')).map(b => b.id), body = document.getElementById('debBody').innerText;
+  return {tag: '${tag}', screen: screenNow(), big, againShown: PT.vis('#bDebAgain'), head: (document.getElementById('debHead') || {}).innerText, outcome: body.split(String.fromCharCode(10)).slice(0, 2).join(' / '),
+    money: (body.match(/Money[^]*?Net for the program.*/) || [''])[0].split(String.fromCharCode(10)).join(' · ').slice(0, 300)} })()`;
+ROWS[127] = {title: 'the Debrief after each way a flight ends', flags: NOMONEY, steps: [
+  `PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); PT.showUI(); ({landed: S.landed, endShown: PT.vis('#bEnd')})`,
+  {click: '#bEnd'}, DEB('landed, End flight ▸'), {shot: 'landed'}, {key: 'p'}, `screenNow()`,
+  `go('assembly'); PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); PT.fly(() => S.landed || !S.alive, 3000); PT.showUI(); ({alive: S.alive, endShown: PT.vis('#bEnd')})`,
+  {click: '#bEnd'}, DEB('crashed, End flight ▸'), {shot: 'crashed'}, {key: 'b'}, `screenNow()`,
+  `PT.preset('Orbiter'); PT.launch(); ${ORBIT.replace(/;$/, '')}; PT.fly(() => false, 30); PT.showUI(); true`, {key: 'Escape'}, {click: '[data-esc="end"]'}, {click: '[data-esc="end"]'},
+  DEB('in orbit, Esc → End flight'), {shot: 'orbit'}, `go('program'); screenNow()`,
+  `go('assembly'); PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => simT > 20, 60); PT.showUI(); true`, {click: '#bEditor'}, {click: '#bEditor'}, DEB('mid-flight, toolbar Assembly'), {shot: 'to_assembly'},
+  {key: 'b'}, `screenNow()`, `go('program'); go('debrief'); screenNow()`, DEB('again from the Program'), {shot: 'again'}],
+  checks: {screens: `true`}};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {
