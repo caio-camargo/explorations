@@ -94,7 +94,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ready |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ready |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | → flow 2026-10-08 (plan) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); build 4a after Caio reads it (W15) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ready |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ready |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -280,6 +280,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W13 | M0's finish line says no open P1/P2, but #9 (the gauges) and #11 (other planets on the map) are P2 features, scoped as Q3 (M1) and Q87 (M5). **Default: they don't hold M0**; M0 closes when Q74–Q77 land | marking M0 done |
 | ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; ✓ v1.55 (`coverLoss`: the priciest rocket yet stands for the attempt; once per epoch) | Q44's fix |
 | W14 | **Pick a visual identity** from the mock-ups: (a) paperwork, (b) instrument panel, (c) mid-century poster, or a mix (office screens in one, cockpit in another). Open `mockups/identity/index.html` or the stills in `output/launchpad/mockups/identity/`; trade-offs in [`mockups/README.md`](mockups/README.md) | Q53, PLAYTEST #13 |
+| W15 | **Read the slice 4 plan** (NOTES § UI "Slice 4 plan": the flight core, gauges, cards, toolbar). Defaults if silent: gauges beside the navball · one speed that switches at the top of the air · Keys leaves the toolbar · pins remembered per browser | Q3 build (4a–4c), PLAYTEST #9 |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - world — GROUND.md G3.0: `ptan`/`patan` in the crater bands' cube-cell geometry and `fround(λ)`, CPU only (heights move < 1 cm); the first step of Q91, headless, so it could go before the gate (orchestrator's call) — GROUND.md § G3: the port plan
