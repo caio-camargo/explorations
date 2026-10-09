@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -158,7 +158,7 @@ NOTES § "The robot playtester".
 | 65 | Rotate a crew: Fly the station, undock the capsule, bring it home | Program > Fleet > station > Fly | Flow is findable; crew carries over; nothing gets lost across flights | A2 | sats |
 | ~ 66 (robot) | Grapple, berth and stow with the arm | Arm on a hub; module within 10 m <0.5 m/s; HUD Arm row | Arm motion looks right (no obvious clipping); berth/stow is satisfying, not slow · *Robot (QA, Q30 stations): grapple 4 m off: held at once ("Arm holding Object 1 · berth · stow in bay · release"); berthing takes 58 s with a 17→86 % progress row. Needs a human: satisfying or slow.* | D | sats |
 | ~ 67 (robot) | Found a moonbase: beacon lander then a module landed nearby | Epoch 4+ via tester; G targets landed object; HUD Landing row | Landing near the target is achievable with the row; base shows in Fleet tab · *Robot (QA, Q30 stations): a beacon lander left on Selene is listed "On the surface: Selene Base 1 · base: 1 module". The landing-near-target half not tried.* | E | sats |
-| 116 | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* | Moon rendezvous | sats |
+| ~ 116 (robot) | Rendezvous and dock with a Selene orbiter | Leave a probe with a port in Selene orbit (or use row 115's), then fly a ported vessel to Selene and target it ([ ] cycles targets) | It is offered as a target only once you are in Selene's SOI; the closest-approach readout makes sense; docking and undocking feel as they do at home; after undocking it is still listed *In orbit around Selene* · *Robot (QA): in a 100 km Selene orbit, G targets the Selene orbiter ("Target Lookout 1 · 43 m"); the scripted pilot docks in 140 s (18.8 kg of gas, three times the same approach at Tellus: probably the pilot, not the game); undocked, it is still listed around Selene. Needs a human: does it feel as at home.* | Moon rendezvous | sats |
 
 ### Moons & crew
 
