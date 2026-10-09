@@ -4443,3 +4443,28 @@ Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
 `test.mjs`, launchpad `NOTES.md` § v1.83 and the Q134 plan, `TESTING.md` 165, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** vehicle's ready list: Q152 (a legged lander preset), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
 - **Renumbered** (numbering race, LESSONS #37): my v1.81 (Q141) → **v1.84**, v1.83 (Q33) → **v1.85**; economy and space took 1.81 and 1.83 at the same time. TESTING 162 and 165 follow.
+
+## 2026-10-09 — Launchpad v1.83: debris slice 3, fragment bands and the cascade (QUEUE Q147; space session, unattended)
+
+### Summary
+- Fragments of 1 cm and more per 50 km band (`PROG.frag`): breakups by NASA's breakup model (a 1 t breakup: 46,774),
+  spread around their height; drag drains each band into the one below; `asatTest` for POWERS.
+- Hits at 4 n R² v: an uncrewed entry dies into a dead hulk (a big object); only a fragment bringing 40 J/g shatters
+  it; crewed entries get a warning, never a surprise hit. The cascade: R0 ≥ 1 and the next breakup due within 50 years.
+- Three first tries failed and are in NOTES: every 1 cm fragment shattering a stage (20 stages fouled a band in 20 years),
+  "growth beats drag" (fires at 800 km for any population), "e-folding within 50 years" (dominated by rare huge events).
+- Measured: from 400 km a fragment is down in ~3 years, from 800 km ~930; at 800–850 km, 100 stages are quiet
+  (next breakup ~350 years), 400 warn (~90), 1,500 feed themselves (~23).
+
+### Verification
+- New test `space-5` (6 checks, 5 mutations caught); full suite 575 pass / 0 fail on `main` as pushed (`94192f4`);
+  `career.mjs` unchanged. Not browser-checked (one Program line).
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `app/program-ui.js` (`fragHTML`), `test.mjs` (`space-5`),
+  `study_debris.mjs` (part C), `NOTES.md` § v1.83, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim moved to Q149)
+
+### Next steps
+- [ ] Space: Q149 (in progress), then Q27; Q148 needs flow and economy (UI, contracts) and the browser
+- [ ] Proposed: a tester button for `asatTest`
