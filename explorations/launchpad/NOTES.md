@@ -1321,6 +1321,80 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.65 — Hesper's ground on the CPU (2026-10-09, world session, GROUND.md G7)
+
+The second planet (SYSTEM.md § Hesper, Venus), built and measured headless like Enyo (v1.62). **Not live:** it's on a
+stub body (`GROUND_STUBS.Hesper`: R 1,210 km, g 8.87) until the space lane adds Hesper; then it takes
+`ground: HESPER_GROUND`. Landers and radar are all that ever see this ground, so the detail is modest: a 7.4 km map plus a
+little procedural texture.
+
+**What makes it Venus:**
+- **Craters are few, fresh and never small.** The 90 bar air burns up small impactors, and the surface is young.
+  - c 3e-5, against the Moon's 0.055 and Mars's 0.02. Venus has under a thousand craters in all; at Hesper's size that's
+    **~140 over 2 km**.
+  - Only the three coarsest bands run, so the smallest crater is 1.3 km. There's no thinning (Venus's craters are
+    scattered at random), and freshness is uniform.
+  - Simple turns complex at 3.3 km.
+- **Basalt plains**, 85 % of the planet: −0.5 ± 0.4 km, with low wrinkle ridges (~110 m, ~30 km apart).
+- **Slab rock** (Venus's tesserae), 11 %: blocks raised 2 km, with crossing ridged texture at 12, 5.5 and 2.5 km. It's
+  the roughest ground on the planet.
+- **One massif** (Maxwell Montes) to 8.9 km.
+- **Four broad, gentle shields** (Maat Mons and kin): 150–200 km across, 3.3–5.7 km above their foot, flanks ~2°.
+- **Three coronae:** rings, with the rim ~1.2 km above both the sagged centre and the moat outside.
+- **A cluster of pancake domes:** 25 km across, 0.7 km high, flat tops. At this map's scale they're blobs.
+- **Lava channels**, procedural: troughs ~1.5–3 km wide at half depth and ~80–110 m deep, along the isolines of a warped
+  noise, in some of the plains. They're narrow enough that a lander can miss them.
+
+**Surfaces by unit** (the lander that lasts minutes lands on one of these):
+
+| Unit | Surface | μ |
+|---|---|---|
+| plains | basalt plains | 0.7 |
+| slab rock, mountains | slab rock | 0.75, rough |
+| shields, domes | lava flows | 0.7 |
+| corona | fractured basalt | 0.7 |
+| lava channel | channel floor | 0.65, smooth |
+
+**Measured** (`node study_ground.mjs hesper`, ~2 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 0.6 s; one height 2 µs |
+| Relief | −1.1…+8.9 km (recipe `top` 12 km) |
+| Craters, N(>D) per km² | ≥2 km 7.5e-6 (target 7.5e-6) · ≥5 km 1.1e-6 (1.2e-6) · none under 1.3 km |
+| Slopes, plains | median 0.2°, 99.9 % under 5° |
+| Slopes, slab rock | median 3.8°, p99 11° |
+| Slopes, shields | median 1.7° |
+| Seams | steepest 0.5 m step on cube edges 15° |
+
+Nowhere on Hesper is past TOPPLE at this scale. The hazard is the surface's own roughness (`rough` 0.4 on slab rock), and
+the heat and pressure, which aren't ground.
+
+**Negative results:**
+- **Slab rock first covered 25 % and was smooth** (max 4.7°): its threshold was too low, and its ridges too broad and too
+  gentle. Raised to ~11 %, with ridges from 12 km down.
+- **Plains with no texture are glass** (median 0.0°). Wrinkle ridges fixed that, and they're also what Venus's radar
+  shows.
+- **A noise-isoline channel's width is not the threshold over the noise's wavelength.** The first channels came out
+  ~5 km wide for an intended 2 km (the gradient estimate was off ~2.5×). Measured cross-sections, then narrowed.
+- **A test for a trough can't ask for "higher on most sides":** along the channel the ground is level, and the channels
+  meander, so 3 km along the tangent leaves them. The check is now across (3 km, both sides) against along (1 km), the
+  median of five channel points.
+
+**Tests:** `ground-4`, 7 checks:
+- not live;
+- the craters (few, none small, within top);
+- plains against slab rock;
+- the massif and the shields;
+- coronae as rings;
+- channels as troughs;
+- surfaces and seams.
+
+Mutations caught: letting small craters through, no channels, smooth slab rock. Full suite 497 pass, 0 fail.
+
+**Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
+moons, Erebus.
+
 ## v1.64 — orbital decay: low orbits come down (2026-10-09, space session, QUEUE Q25)
 
 The air the flight flies through stops at 100 km. Above it, **a thin upper atmosphere now drags on registered orbits
