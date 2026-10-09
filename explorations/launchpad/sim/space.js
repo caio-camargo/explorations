@@ -71,11 +71,13 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
 const JUNK=[],JUNK_MIN=100;   // kg
 function junkNote(s,parts,r,v,dm,cm){if(!s.rec||!s.rec.launched)return;const e=parts.find(p=>p.d.kind==='engine')||parts.find(p=>p.d.kind==='tank')||parts[0];
   JUNK.push({rec:s.rec,body:s.body,r:r.slice(),v:v.slice(),t:simT,q:s.q.slice(),shape:shapeOf(parts,false),cm:cm.slice(),mass:dm*1000,name:e.d.name.replace(/ \(.*\)$/,'')})}
-function junkRegister(R){const L=JUNK.splice(0).filter(j=>j.rec===R&&j.mass>=JUNK_MIN);let n=0;
+function junkRegister(R){return junkAdd(JUNK.splice(0).filter(j=>j.rec===R),R.day0*DAY_S)}
+// pieces noted by junkNote, their times from T0 (program time of the flight's start): the ones that stay up join the registry
+function junkAdd(list,T0){const L=list.filter(j=>j.mass>=JUNK_MIN);let n=0;
   for(const j of L){const B=j.body,el=elements(j.r,j.v,B.mu),fl=B.R+(B.atm||MOON_PE+bodyTop(B)),far=B===TELLUS?Math.min(...B.children.map(c=>c.rMin))/2:B.soiMin;
     if(!(el.e<1&&el.pe>fl&&el.ap<far))continue;
     PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;n++;
-    const q={id:PROG.satN,junk:1,name:`${j.name} (debris)`,epoch:R.day0*DAY_S+j.t,r:j.r,v:j.v,mass:j.mass,born:PROG.day,imgs:0,pending:[],shape:j.shape,cm:j.cm,
+    const q={id:PROG.satN,junk:1,name:`${j.name} (debris)`,epoch:T0+j.t,r:j.r,v:j.v,mass:j.mass,born:PROG.day,imgs:0,pending:[],shape:j.shape,cm:j.cm,
       qo:qmul(qconj(orbQ(j.r,j.v)),j.q),attached:[],adrift:PROG.day,cam:0,ant:0,sci:0,ballast:0,bio:0};
     if(B!==TELLUS)q.bodyName=B.name;PROG.sats.push(q)}
   if(n)HOOK.news(`${n} spent stage${n>1?'s':''} from this flight stay${n>1?'':'s'} in orbit as debris`,'warn');return n}

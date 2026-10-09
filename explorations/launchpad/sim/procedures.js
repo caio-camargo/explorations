@@ -310,8 +310,8 @@ function procFly(stack,proc,target,opt={}){
   const keep={S,simT,T0:ORB_T0,fleet:FLEET.splice(0),debris:debris.splice(0),junk:JUNK.splice(0),vn:vesselN,hook:{...HOOK}};
   for(const k of Object.keys(HOOK))if(typeof HOOK[k]==='function'&&k!=='dispatchRun')HOOK[k]=()=>{};const log=[];HOOK.msg=m=>log.push(m);
   const T0=opt.T0??Math.ceil((PROG.day||0)-1e-9)*DAY_S;if(ORB_ABS)ORB_T0=T0;   // a whole day: the ground under the flight is where it is at T0
-  let out;
-  try{simT=0;const s=newShip(stack,opt.site||homeSites()[0]||curSite());S=s;s.noRec=true;const R=s.rec=recNew();Object.assign(R,{launched:true,ended:true,day0:T0/DAY_S});
+  let out,R;
+  try{simT=0;const s=newShip(stack,opt.site||homeSites()[0]||curSite());S=s;s.noRec=true;R=s.rec=recNew();Object.assign(R,{launched:true,ended:true,day0:T0/DAY_S});
     procStart(s,proc,target);let dv=0,k=0;const lim=opt.maxT??(proc.phases&&proc.phases.length?30*86400:3*3600);
     while(s.alive&&s.proc&&!s.proc.done&&simT<lim&&k++<3e6){const X=s.proc;
       if(opt.noRelight&&X.phase==='circ'){procDev(s,'relight','the upper stage failed to relight for the circularisation');break}
@@ -321,7 +321,8 @@ function procFly(stack,proc,target,opt={}){
     else if(s.procDev)out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s};
     else if(!s.proc||!s.proc.done){s.procDev={kind:'lost',why:'the procedure lost its way',t:simT};out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s}}
     else out={ok:true,orb:{pe:el.pe-s.body.R,ap:el.ap-s.body.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI},body:s.body.name,dv,t:simT,s,log};
-  }finally{S=keep.S;simT=keep.simT;ORB_T0=keep.T0;FLEET.length=0;FLEET.push(...keep.fleet);debris.length=0;debris.push(...keep.debris);JUNK.length=0;JUNK.push(...keep.junk);vesselN=keep.vn;Object.assign(HOOK,keep.hook)}
+  }finally{const mine=JUNK.filter(j=>j.rec===R);if(out&&opt.keepJunk){out.junk=mine;out.T0=T0}   // keepJunk: what this flight dropped (a dispatch registers it)
+    S=keep.S;simT=keep.simT;ORB_T0=keep.T0;FLEET.length=0;FLEET.push(...keep.fleet);debris.length=0;debris.push(...keep.debris);JUNK.length=0;JUNK.push(...keep.junk);vesselN=keep.vn;Object.assign(HOOK,keep.hook)}
   return out}
 // A dry run (the trajectory office's study, NOTES "Procedures: automation that adapts", part 3): another design's procedure
 // flown headless on this design. Margin is what's left aboard in orbit. procAdopt tries every stored orbit procedure whose
@@ -346,7 +347,8 @@ function procAdopt(stack,target){const key=procKey(stack),own=(PROG.procs||{})[k
 // where it stopped.
 function dispatchRun(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};if(!e.proc.pitch)return dispatchRoll(D,v,c);   // a procedure with no guidance to fly (an old save's stub): the roll
   if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
-  const f=procFly(D.stack,e.proc,dispatchTarget(c),{site:typeof procSiteOf==='function'?procSiteOf(D.stack):undefined,noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`});
+  const f=procFly(D.stack,e.proc,dispatchTarget(c),{site:typeof procSiteOf==='function'?procSiteOf(D.stack):undefined,noRelight:R()>=e.pRelight,name:`${designName(D.stack)||'Dispatch'} ${D.id}`,keepJunk:true});
+  if(f.junk&&f.junk.length)junkAdd(f.junk,f.T0);   // space Q149: what a dispatched flight drops in orbit stays there, as from a flight flown by hand
   if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
   if(!f.ok)return{ok:false,why:f.why};
   return{ok:true,orb:{...f.orb,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},dv:f.dv}}
