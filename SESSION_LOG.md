@@ -4166,3 +4166,23 @@ Erebus added to the pole check. Full suite 526 pass / 0 fail.
 ### Next steps
 - [ ] World: the seeded small bodies (one lump recipe from `WSEED`)
 - [ ] Space (Q87): the planets and moons into the body tree, each with its `<NAME>_GROUND`
+
+## 2026-10-09 — Launchpad: queue review against the design catalogs; rule 8; M0 fixes Q74, Q77 and a palette regression (v1.73, vehicle session)
+
+- **Queue review** (Caio asked): the approved catalogs (SYSTEM, POWERS, LATE_GAME, MIDGAME, CREW part 2) against QUEUE and
+  the built game. **ROADMAP 1.6.0 rule 8** (Caio): contradictions of intent go back to the design desk as D-items, not
+  defaults; the desk takes kick-backs first (session-roles 1.2.0). Sent back: **D5** rovers die when their battery runs
+  flat at night (against pillar 5 / LATE_GAME's dormancy rule), **D6** = W17 (MIDGAME's "never destroys" vs v1.64's
+  re-entry). Six Proposed lines: Q98 already done, Q34b is M4, the milestone gate reads two ways, CREW part 2 not
+  fanned out, the satellite lifetime readout, habitat loads and solar by distance.
+- **Q74 (P1):** presets **Beeper** and **Passenger Orbiter** (payload in the pod's place + a reaction wheel). **Q77:** no
+  loads overlay on the Program screen.
+- **Regression found and fixed:** v1.68's era-gate line swallowed a statement in `builder.js` `palette()`, so the
+  construction screen listed no parts from v1.68 until v1.73. Caught by the robot's `m1` run, which I hadn't run for
+  Q34a. LESSONS_LEARNED entry added.
+- **Checked:** `playtest.mjs m1` passes in full; `test.mjs` `vehicle-3`; smoke shard after each merge. No full suite this
+  time (the last full run was 488/488 for v1.68).
+
+**Files:** `sim/vessel.js` (PRESETS), `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.73), `TESTING.md` (147),
+`PLAYTEST.md` (#24, #27), `QUEUE.md`, `ROADMAP.md`, `docs/session-roles.md`, `LESSONS_LEARNED.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's M1 rows: Q47 (construction screen for a newcomer, 🖥), Q48 (warnings before launch, ⚙), Q32, Q121.

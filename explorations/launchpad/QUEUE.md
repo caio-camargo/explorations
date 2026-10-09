@@ -147,8 +147,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control` (branch `control`, port 8796).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q74 | **PLAYTEST #24 (P1): Beeper and Passenger Orbiter presets** (the Orbiter with `sci` / `bio` for `pod`): the presets-only first hour can't fly the first orbit missions without them. **Top** | M1 | S | ⚙ | → vehicle 2026-10-09 |
-| Q77 | PLAYTEST #27: `builder.js` `overlay()` draws "NaN%" joint labels on the Program screen after a flight (missing `atHQ` check) | M1 | S | 🖥 | → vehicle 2026-10-09 |
+| Q74 | **PLAYTEST #24 (P1): Beeper and Passenger Orbiter presets** (the Orbiter with `sci` / `bio` for `pod`): the presets-only first hour can't fly the first orbit missions without them. **Top** | M1 | S | ⚙ | ✓ v1.73 (Beeper, Passenger Orbiter; TESTING 147) |
+| Q77 | PLAYTEST #27: `builder.js` `overlay()` draws "NaN%" joint labels on the Program screen after a flight (missing `atHQ` check) | M1 | S | 🖥 | ✓ v1.73 (robot m1 passes) |
 | Q47 | **The construction screen usable by a newcomer**: walk building an Orbiter from scratch, fix what's unclear; Caio reviews. **Top priority: it blocks Caio's own playtesting** | M1 | M | 🖥 | ready |
 | Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | ready |
 | Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ready |
@@ -330,3 +330,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- **orchestrator — M0 check:** Q74 and Q77 (vehicle) are done in v1.73; PLAYTEST #24, #27 struck. **Main's builder palette was empty from v1.68 to v1.73** (a swallowed statement, NOTES § v1.73): anyone who tried the construction screen in that window saw no parts
+- QA — PLAYROUTE sitting 1 past step 4 can use the **Beeper** and **Passenger Orbiter** presets now; and `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics — NOTES § v1.73
+- flow — after a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) — NOTES § v1.73
