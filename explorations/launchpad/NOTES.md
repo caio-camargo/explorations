@@ -6047,6 +6047,27 @@ the arrows, and every key in the handlers present in its Help table.
 - Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
   duplicate the Debrief); Inbox doesn't collect them yet.
 
+### Esc pauses; two more lanes; identity mock-ups (2026-10-08, flow session, QUEUE Q39, Q75, Q76, Q73)
+- **Esc pauses** (W5, Q39). `gamePaused()` (screens.js) is "the Esc menu is open". While it is, `frame()` skips `simulate`
+  (flight, warp, the rover), `sndTick` treats the flight as not live (the mix goes quiet), and the flight key handler
+  returns at once, so Space, throttle and the rest do nothing; the shared keys (Esc, H, F) still work. Closing the menu
+  carries on at the same warp: nothing drops to 1×, because nothing ran. The menu's title says "· paused" in flight, map
+  and rover; its first button is now **Resume [Esc]**. Help and the logbook don't pause (look things up while flying).
+  Robot `m1`: 2.5 s with the menu open, `simT` moved 0 s.
+- **The builder's key strip** (PLAYTEST #25, Q75): `bldLayout()` puts `#bldhelp` between the two assembly panels, centred
+  and wrapping (two lines at 1280×800), instead of across both; hidden below a 160 px gap. Its CSS stays in builder.js;
+  the place is set from app/state.js (`hudLayout` and resize), next to the news lane.
+- **`#msg` gets a lane** (PLAYTEST #26, Q76): `msgLayout()` (from `HOOK.msg`, `hudLayout`, resize) centres it between the
+  readout and the right-hand panels (`#nodep`, `#rvFHud`), drops it below the toolbar or the news where they meet, and
+  under the readout when there's less than 200 px beside it. Off the flight screens it goes back to its CSS place.
+- Robot `m1` (QA's M1 finish line: gate → Sounding → first orbit → Debrief) passes in full on branch `ui`: Debrief after
+  both flights, Esc pause 0 s, no box covering another at 1280×800 on any screen.
+- **Visual identity mock-ups** (Q73 → Q53, PLAYTEST #13): three directions, paperwork, instrument panel and
+  mid-century poster, on the Program screen and the flight HUD with the real layout over real game frames, plus a later
+  era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
+  options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
+  cockpit in another); Q53 builds the pick.
+
 ---
 
 ## Picking this up cold

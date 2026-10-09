@@ -3,7 +3,7 @@
 'use strict';
 // ============================================================ input
 addEventListener('keydown',e=>{
-  if(mode!=='flight')return;const k=e.key.toLowerCase();
+  if(mode!=='flight')return;const k=e.key.toLowerCase();if(gamePaused())return;   // (paused: only the shared keys, Esc first)
   if([' ','tab'].includes(k)||e.ctrlKey)e.preventDefault();
   if(e.repeat&&!['shift','control'].includes(k)){keys.add(k);return}
   keys.add(k);
