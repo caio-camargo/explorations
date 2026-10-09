@@ -393,6 +393,59 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
   `PT.click('[data-start="company"]'); ({gate: progGate, build: document.getElementById('bBuild').disabled, funds: PROG.funds, name: progName()})`, {shot: 'started'}],
   checks: {gate: `progGate`}, expect: {gate: v => v === false}};
 
+// M1's finish line (QUEUE Q55, ROADMAP § M1): a new career, no tester flags, from the first-run gate to the first orbit
+// and its debrief. Written before M1 is done, so it FAILS until the flow lane's M1 items land; each check names its item.
+// Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). No preset carries
+// one to orbit (PLAYTEST #24), so the robot swaps the Orbiter's pod for the package, as career.mjs assumes. The ascent
+// is fly_ladder.mjs's handAscent: attitude set directly, so it proves the career path, not that the rocket is flyable.
+// Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
+const M1_HELPERS = String.raw`
+PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e => { if (e.tagName === 'CANVAS' || e.closest('.hidden')) return false; const cs = getComputedStyle(e);
+    if (!/absolute|fixed|sticky/.test(cs.position) || cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) return false; const r = e.getBoundingClientRect(); return r.width > 4 && r.height > 4 && r.width * r.height < 0.5 * innerWidth * innerHeight && e.innerText.trim() });   // full-screen layers are containers, not boxes
+  const top = els.filter(e => !els.some(o => o !== e && o.contains(e))), name = e => e.id ? '#' + e.id : e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '');
+  const out = []; for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) { const A = top[i].getBoundingClientRect(), B = top[j].getBoundingClientRect();
+    const w = Math.min(A.right, B.right) - Math.max(A.left, B.left), h = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top); if (w > 0 && h > 0 && w * h >= 40) out.push(name(top[i]) + ' × ' + name(top[j]) + ' ' + Math.round(w * h) + ' px²') }
+  return out };
+PT.debrief = () => /debrief/.test(screenNow()) || [...document.querySelectorAll('[id*=debrief],[class*=debrief]')].some(e => !e.closest('.hidden') && e.getBoundingClientRect().height > 0);
+PT.ascent = () => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up';
+  const point = Y => { const f = localFrame(s.r), X = norm(cross(Y, f.n)); s.q = qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0] };
+  const pitch = d => { const f = localFrame(s.r), r = d * Math.PI / 180; point(norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r))))) };
+  while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast' } }
+    else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
+      const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) phase = 'circ' }
+    else { const f = localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); point(norm(need)); s.throttle = 1;
+      if (el.pe - TELLUS.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; break } }
+    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) stage(s);
+    advPhys(s) }
+  const o = PT.orbit(); return {alive: s.alive, pe: Math.round(o.pe / 1e3), ap: Math.round(o.ap / 1e3), atm: TELLUS.atm / 1e3, t: Math.round(simT)} };
+PT.state = () => ({screen: screenNow(), day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), flights: PROG.flights, done: Object.keys(PROG.done)});
+true`;
+ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
+  // the first-run gate, with real clicks
+  {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,
+  {click: '[data-start="agency"]'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
+  `PT.m1 = {boxes: {program: PT.boxes()}}; PT.m1.boxes.program`,
+  // flight 1: Sounding, "Above the weather"
+  {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
+  {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
+  `PT.m1.live = +(simT - PT.m1.t0).toFixed(2); PT.m1.boxes.flight = PT.boxes(); ({live: PT.m1.live, alt: Math.round(PT.alt())})`, {shot: 'climb'},
+  // Esc pauses (Q39): the sim clock stands still while the Esc menu is open
+  {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
+  `({fly: PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}})`,
+  `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
+  // flight 2: the beeper
+  `go('assembly'); stackDef = PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
+  {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
+  `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
+  `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
+  checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,
+    escPauses: `PT.m1.escRun`, debrief: `[PT.m1.deb1, PT.m1.deb2]`, boxes: `Object.entries(PT.m1.boxes).filter(([k, v]) => v.length).map(([k, v]) => k + ': ' + v.join(', '))`},
+  expect: {tester: v => !v, weather: v => v === true, beeper: v => v === true,
+    escPauses: v => v === 0,                       // flow Q39
+    debrief: v => v[0] === true && v[1] === true,  // flow Q2
+    boxes: v => v.length === 0}};                  // M1: no box covers another at 1280×800
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {
