@@ -1819,7 +1819,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
+## v1.83 — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
 
 Slice 3 of § "Plan: debris and Kessler": fragments as a density per band (ESA MASTER style), `fragTick` after `conjTick`.
 - **Sources** (`breakup(h, kg)`): slice 2's collisions, fragments shattering big objects, and `asatTest(name, h)` (the
