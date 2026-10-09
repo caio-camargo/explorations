@@ -717,6 +717,31 @@ function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
 (()=>{const R=rng(777),big=POWERS.slice().sort((a,b)=>b.econ*b.tech-a.econ*a.tech);
   big.forEach((p,k)=>{p.arch=k<2?(p.align[1]>0?'closedSuper':'openSuper'):p.econ>1.3&&p.tech<0.85?'resource':p.align[1]>0.4?'security':p.tech>0.95?'rising':R()<0.6?'frugal':'rising'});
   if(big[0].arch===big[1].arch)big[1].arch=big[0].arch==='openSuper'?'closedSuper':'openSuper'})();   // a rivalry needs both kinds
+// ---- powers as content (QUEUE Q103, POWERS.md 1.0.0): each power's hardware **school** (look only: a school never
+// changes a part's physics) drawn from its archetype's affinities; its name from the school's syllables, its form of
+// government from the archetype's list. A resource state has no school of its own: it flies its contractor's (its best
+// friend's). The superpowers' schools differ (their affinities don't overlap); two powers sharing a school get hues
+// apart. Its own seeded draws, after the archetypes, so places, economies and relations are as before; the launch sites
+// are named after this (extendSites).
+const SCHOOLS={cape:{name:'Cape',syl:['tor','hav','bru','den','kas','mar','tel','ston','wick','burn','ash'],n:[1,2]},
+  steppe:{name:'Steppe',syl:['ve','lo','rya','ma','risk','vo','ra','sko','na','tov','mir'],n:[2,3]},
+  arsenal:{name:'Arsenal',syl:['kat','tar','dunn','gor','bak','zar','rik','tuk','dag','mok'],n:[1,2]},
+  coastal:{name:'Coastal',syl:['a','les','sa','ou','relle','li','na','ve','ro','ette','mo'],n:[2,3]},
+  mountain:{name:'Mountain',syl:['ka','no','ra','i','su','ma','ta','ko','hi','ya','se'],n:[3,3]},
+  isle:{name:'Isle',syl:['ly','ra','pa','va','ki','mo','tai','no','re','wa'],n:[2,2]}};
+const SCHOOL_W={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},rising:{arsenal:.4,mountain:.4,steppe:.2},
+  frugal:{coastal:.5,mountain:.3,isle:.2},resource:null,security:{arsenal:.6,steppe:.3,mountain:.1}};
+const ARCH_FORMS={openSuper:['# Union','United Provinces of #','# Commonwealth'],closedSuper:['# Federation','# Union',"People's Republic of #"],
+  rising:['Republic of #','# Republic'],frugal:['Kingdom of #','# Confederacy','Free State of #'],resource:['Kingdom of #','Emirate of #','Sultanate of #'],security:['Republic of #','# State']};
+(()=>{const R=rng(31337),pick=w=>{let x=R()*Object.values(w).reduce((a,b)=>a+b,0);for(const k in w){x-=w[k];if(x<=0)return k}return Object.keys(w)[0]},used=new Set(),forms=new Set();
+  for(const p of POWERS)if(SCHOOL_W[p.arch]){const r=rng(WSEED*7907+p.i*131+17),w=SCHOOL_W[p.arch],x=r()*Object.values(w).reduce((a,b)=>a+b,0);let acc=0;   // the look lane's draw (app/gl.js schoolOf), so both agree
+    for(const k in w){acc+=w[k];if(x<acc){p.school=k;break}}p.school=p.school||Object.keys(w)[0]}
+  for(const p of POWERS)if(!p.school){const c=POWERS.filter(q=>q!==p&&q.school).sort((a,b)=>Math.hypot(a.align[0]-p.align[0],a.align[1]-p.align[1])-Math.hypot(b.align[0]-p.align[0],b.align[1]-p.align[1]))[0];p.school=c?c.school:'cape';p.contractor=c?c.i:null}
+  for(const p of POWERS){const S=SCHOOLS[p.school];let nm='';
+    for(let t=0;t<50&&(!nm||used.has(nm));t++){const n=S.n[0]+(R()*(S.n[1]-S.n[0]+1)|0);nm='';for(let k=0;k<n;k++)nm+=S.syl[R()*S.syl.length|0];nm=nm[0].toUpperCase()+nm.slice(1)}
+    used.add(nm);const F=ARCH_FORMS[p.arch]||FORMS,fs=F.filter(f=>!forms.has(f)),f=(fs.length?fs:F)[R()*(fs.length||F.length)|0];forms.add(f);
+    p.root=nm;p.name=f.replace('#',nm)}
+  for(const p of POWERS)for(const q of POWERS)if(q.i<p.i&&q.school===p.school&&Math.abs(((p.hue-q.hue+540)%360)-180)<40)p.hue=(p.hue+120)%360})();
 const archOf=i=>i===0&&PROG.homeArch?PROG.homeArch:POWERS[i].arch,flav=i=>ARCH[archOf(i)];
 const natOf=i=>(PROG.nat||{})[i]??flav(i).nat,natK=()=>0.3+1.4*natOf(HOME);   // natK: 1 at nationalism 0.5
 const tensionOf=i=>Math.max(0,...POWERS.filter(p=>p.i!==i).map(p=>-relOf(i,p.i)));

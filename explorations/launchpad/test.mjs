@@ -4330,6 +4330,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     offOK && cs.R0 >= 1 && cs.gen <= 50 && casc === 1 && asatOK, `R0 ${cs.R0?.toFixed(1)}, next in ${cs.gen?.toFixed(1)} years, news ${casc}; ASAT ${Math.round(asat)} fragments`);
 }
 
+// econ-13. Powers as content (economy session, QUEUE Q103, POWERS.md): a hardware school per power from its archetype's
+// affinities (the same draw the look lane's schoolOf used, now read from POWERS), names from the school's syllables and
+// the archetype's forms of government, sites named after them; rivals' news by archetype.
+{
+  const D = new Function(src + 'return {POWERS,SITES,SCHOOLS,ARCH_FORMS,RIVAL_WIN,raceTick,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const W = D.POWERS, sup = W.filter(p => /Super$/.test(p.arch)), roots = W.map(p => p.root);
+  const formOk = p => D.ARCH_FORMS[p.arch].some(f => f.replace('#', p.root) === p.name);
+  check('powers: every power has a school (a resource state its contractor\'s), the superpowers\' differ, names unique and in their archetype\'s forms',
+    W.every(p => D.SCHOOLS[p.school]) && sup.length === 2 && sup[0].school !== sup[1].school && new Set(roots).size === roots.length && W.every(formOk)
+    && W.filter(p => p.arch === 'resource').every(p => p.contractor != null && W[p.contractor].school === p.school),
+    W.map(p => `${p.name} (${p.arch}, ${p.school})`).join('; '));
+  check('powers: launch sites carry the new names', D.SITES.filter(t => t.power != null).every(t => t.name.startsWith(W[t.power].root)), D.SITES.slice(0, 4).map(t => t.name).join(', '));
+  const H = html.replace(/\r\n/g, '\n');
+  check('powers: the look lane reads the SIM\'s school (one source of truth)', H.includes('if(POWERS[i].school&&') && H.includes('return SCHOOL_IDS[POWERS[i].school]'));
+  D.resetHome(); Object.assign(P, { homeArch: null, day: 0, rel: {}, op: {}, done: {}, raceLost: {}, raceAnn: {} }); D.chooseStart('agency');
+  const open = W.find(p => p.arch === 'openSuper'), closed = W.find(p => p.arch === 'closedSuper');
+  D.RIVALS = { beeper: { i: open.i, day: 100 }, hop: { i: closed.i, day: 100 } };
+  P.day = 69; D.raceTick(); const n0 = news.length; P.day = 70; D.raceTick(); const ann = news.slice(n0); P.day = 90; D.raceTick(); const rum = news.slice(n0 + ann.length);
+  P.day = 100; news.length = 0; D.raceTick();
+  check('rivals: the open superpower announces 30 days ahead, the closed one is preceded by rumours; each wins in its own tone',
+    ann.length === 1 && /announces an attempt at The beeper/.test(ann[0]) && rum.length === 1 && /Rumours from/.test(rum[0]) && news.some(t => /Live on every channel/.test(t)) && news.some(t => /state bulletin/.test(t)),
+    [...ann, ...rum, ...news].join(' | '));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
