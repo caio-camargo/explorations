@@ -605,8 +605,8 @@ function detach(s,list,kick,spin,asVessel){
   geom(s);rebuildShape(s);
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
   if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
-  else HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
-    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0});
+  else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
+    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
   if(s.landed)s.landed=false;
   HOOK.rebuild()}

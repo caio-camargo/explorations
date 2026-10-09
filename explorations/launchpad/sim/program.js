@@ -294,7 +294,7 @@ function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCos
   const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
   const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;
   HOOK.news(`${k==='company'?'Investors':k==='consortium'?'The member states':POWERS[HOME].name} cover ${fmtM(x)} of the failed attempt: a new rocket is allowed one (once per epoch)`,'ok');return x}
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)

@@ -75,15 +75,15 @@ function satsHTML(){return satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
   if(q.adrift!=null){if(fall)return` · <span class="dim">nothing to hold it up: ${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`:''}
   if(!(k>0))return'';return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
-function moonSatsHTML(){const L=moonSats(),T=tNow();if(!L.length)return'';
+function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.ant&&'antenna: a relay for rovers',q.cam&&'camera',q.sci&&'instruments'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}${slotLine(q)}</div>`}).join('')).join('')}
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`+(base?baseRunLine(q,stackDef):'')}).join('')}
-function satsHTML0(){const L=satsUp();const T=tNow();
-  return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+function satsHTML0(){const all=satsUp(),L=all.filter(q=>!q.junk),J=all.filter(q=>q.junk);const T=tNow();
+  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
 function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;

@@ -48,7 +48,7 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4;
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
+function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
 function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE+bodyTop(B))&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
@@ -64,6 +64,21 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}`,'ok');
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
+// ---- debris, slice 1 (space session, QUEUE Q26; NOTES § "Plan: debris and Kessler"): big pieces are objects. Every
+// piece a flight drops (detach) is noted with its state; at flight end the ones of JUNK_MIN or more in a closed orbit clear
+// of the air, and well inside the SOI, join the registry as Debris (q.junk): drawn, targetable, grabbable, hit in flight
+// like any satellite; never flyable or held; on their rails plus decay only (no tides), so hundreds stay cheap.
+const JUNK=[],JUNK_MIN=100;   // kg
+function junkNote(s,parts,r,v,dm,cm){if(!s.rec||!s.rec.launched)return;const e=parts.find(p=>p.d.kind==='engine')||parts.find(p=>p.d.kind==='tank')||parts[0];
+  JUNK.push({rec:s.rec,body:s.body,r:r.slice(),v:v.slice(),t:simT,q:s.q.slice(),shape:shapeOf(parts,false),cm:cm.slice(),mass:dm*1000,name:e.d.name.replace(/ \(.*\)$/,'')})}
+function junkRegister(R){const L=JUNK.splice(0).filter(j=>j.rec===R&&j.mass>=JUNK_MIN);let n=0;
+  for(const j of L){const B=j.body,el=elements(j.r,j.v,B.mu),fl=B.R+(B.atm||MOON_PE+bodyTop(B)),far=B===TELLUS?Math.min(...B.children.map(c=>c.rMin))/2:B.soiMin;
+    if(!(el.e<1&&el.pe>fl&&el.ap<far))continue;
+    PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;n++;
+    const q={id:PROG.satN,junk:1,name:`${j.name} (debris)`,epoch:R.day0*DAY_S+j.t,r:j.r,v:j.v,mass:j.mass,born:PROG.day,imgs:0,pending:[],shape:j.shape,cm:j.cm,
+      qo:qmul(qconj(orbQ(j.r,j.v)),j.q),attached:[],adrift:PROG.day,cam:0,ant:0,sci:0,ballast:0,bio:0};
+    if(B!==TELLUS)q.bodyName=B.name;PROG.sats.push(q)}
+  if(n)HOOK.news(`${n} spent stage${n>1?'s':''} from this flight stay${n>1?'':'s'} in orbit as debris`,'warn');return n}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
@@ -611,10 +626,10 @@ function decayAE(a,e,K,t,T1,stepCb){const fl=DECAY_FLOOR();
 function decayStep(q,T1){const mu=TELLUS.mu,el=elements(q.r,q.v,mu),K=dragK(q);if(!(K>0)||!(el.e<1))return;
   // the warning looks across the whole jump, so a long wait between flights can't skip it: 10 days ahead of re-entry, or
   // at once if it comes down sooner (the news then reads in order: warned, then gone)
-  if(!q.decayWarn){const L=decayLife(q);if(L<10+(T1-q.epoch)/DAY_S){q.decayWarn=1;HOOK.news(`${q.name} is sinking into the upper air: it will re-enter within ${daysS(Math.max(1,Math.min(10,L)))}`,'warn')}}
+  if(!q.decayWarn&&!q.junk){const L=decayLife(q);if(L<10+(T1-q.epoch)/DAY_S){q.decayWarn=1;HOOK.news(`${q.name} is sinking into the upper air: it will re-enter within ${daysS(Math.max(1,Math.min(10,L)))}`,'warn')}}
   const E0=2*Math.atan2(Math.sqrt(1-el.e)*Math.sin(el.nu/2),Math.sqrt(1+el.e)*Math.cos(el.nu/2));let M=E0-el.e*Math.sin(E0);
   const o=decayAE(el.a,el.e,K,q.epoch,T1,(n,dt)=>{M+=n*dt});
-  if(o.gone){const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(`${q.name} has re-entered: the thin upper air finally pulled it down, and it burned up`,'bad');return true}
+  if(o.gone){const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);if(!q.junk)HOOK.news(`${q.name} has re-entered: the thin upper air finally pulled it down, and it burned up`,'bad');return true}
   const a=o.a,e=o.e,n=Math.sqrt(mu/(a*a*a)),rp=a*(1-e),vp=Math.sqrt(mu*(1+e)/rp),[r,v]=kepler(mul(el.P,rp),mul(el.Q,vp),(((M%(2*Math.PI))+2*Math.PI)%(2*Math.PI))/n,mu);
   Object.assign(q,{r,v,epoch:o.t});
 }
@@ -625,6 +640,7 @@ function decayLife(q){if(q.bodyName)return Infinity;const el=elements(q.r,q.v,TE
 // between flights (advanceDays, program time T0 → T1): held orbits pay for the time (tides and drag); dry ones drift under
 // the tides, or decay in the upper air; a held orbit (or one too weakly pulled to need holding) only turns its tilt (tiltStep)
 function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
+  if(q.junk){if(q.epoch<T1)(q.bodyName?moonOrbStep:decayStep)(q,T1);continue}   // debris: rails + decay only (Q26)
   if(q.adrift==null){const k=holdRate(q);
     if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(left){
       const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});

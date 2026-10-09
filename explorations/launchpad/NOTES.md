@@ -1479,6 +1479,37 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
+## Plan: debris and Kessler (2026-10-09, space session, QUEUE Q26)
+
+Builds LATE_GAME.md § "Debris and Kessler" (round 5, Caio): big pieces are objects, fragments are a density per band,
+drag cleans low bands, a cascade can foul a high band for decades with warning, tracking is a mechanic, debris may destroy
+an uncrewed satellite but crewed nodes are always warned, and the whole pressure is a world setting (off / light / real,
+default light).
+
+**What exists:** contact in flight between the vessel and registered satellites (sats session: signed-distance parts,
+`HIT_NEAR` stepping). **What doesn't:** a spent stage lives only in the app's `debris` list for 240 s and is gone at
+flight end (headless flights never see one); nothing collides between flights; no bands; no setting.
+
+**Slices:**
+1. **Big pieces are objects** (this session). `detach` notes every dropped piece of `JUNK_MIN` = 100 kg or more; at flight
+   end the ones in a closed orbit clear of the air (and well inside the SOI) join the registry as *Debris* entries
+   (`q.junk`): drawn, targetable, grabbable by the arm, hit in flight like any satellite; never flyable, never held.
+   They ride their rails plus decay (v1.64), with no tidal stepping, so hundreds stay cheap; low ones re-enter quietly.
+2. **Conjunctions between flights,** big objects against **active** entries only (with a job, a station, anything
+   crewed), never object against object (LATE_GAME's measured costs). Each object is smeared over its orbit's shell
+   (Öpik/Kessler flux): risk a day = Σ density × cross-section × relative speed. A seeded roll. **Tracked** (radar +
+   compute by era) → a warning and an automatic dodge for a small Δv from its tanks; untracked → a statistical risk.
+   Crewed nodes are always warned and dodge. A hit destroys an uncrewed satellite and the object, and feeds slice 3.
+3. **Fragments as bands** (ESA MASTER style): 50 km bands to 2,000 km; each holds a fragment density that drag clears
+   (lifetime from `thinAir`), collisions add to it, and past a threshold the band feeds itself (the cascade), with news
+   well ahead. A security state's anti-satellite test fouls a band (POWERS.md hook).
+4. **The world setting** (off / light / real) on slices 2–3, each in its own code path; the map's band view; cleanup
+   contracts (economy, paid by worried powers).
+
+**Defaults (Caio may override):** `JUNK_MIN` 100 kg (smaller pieces go to the bands in slice 3); debris on rails + decay
+only (no tides: cheap, and nobody's slot depends on a spent stage); *light* = a tenth of the real collision rates;
+dispatched routine flights leave no debris yet (`procFly` restores the list); fairings and small pieces are slice 3.
+
 ## v1.71 — station-keeping re-tuned: a good satellite outlasts its era (2026-10-09, space session, MIDGAME § Satellites)
 
 [`MIDGAME.md`](MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite

@@ -3748,6 +3748,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 
+// space-3. Debris, slice 1 (space session, QUEUE Q26; NOTES § "Plan: debris and Kessler"): big pieces are objects. A
+// spent stage of 100 kg or more left in a closed orbit clear of the air joins the registry at flight end as Debris:
+// on its rails, targetable, never flyable; low ones decay and re-enter quietly; suborbital or small pieces don't count.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,detach,junkRegister,JUNK,satKind,satAt,elements,orbitsAt,flyable,advanceDays,partMass,TELLUS,PROG,HOOK,DAY_S,len,sub};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R; P.sats = []; P.day = 0;
+  // an Orbiter in a circular orbit at alt (speed × f of circular), flying a program flight; it drops its first stage
+  const fly = (alt, f = 1) => { const s = D.newShip(D.PRESETS.Orbiter), a = R + alt, vc = Math.sqrt(T.mu / a) * f;
+    Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -vc], rec: { launched: true, day0: P.day } }); return s; };
+  const drop = s => { const ev = s.events.find(e => e.decouple.length), list = s.parts.filter(p => p.on && ev.decouple.includes(p.seg)); D.detach(s, list, [0, -1, 0], 0); return list; };
+  const hi = fly(400e3), dl = drop(hi), dm = dl.reduce((a, p) => a + D.partMass(p), 0) * 1000, n1 = D.junkRegister(hi.rec), q = P.sats.at(-1);
+  const at = q && D.satAt(q, q.epoch)[0], j0 = q && D.elements(q.r, q.v, T.mu);
+  check('debris: a spent stage left in orbit joins the registry as Debris, on its rails, targetable, not flyable',
+    n1 === 1 && q.junk && D.satKind(q) === 'Debris' && /\(debris\)$/.test(q.name) && Math.abs(q.mass - dm) < 1 && D.len(D.sub(at, q.r)) < 1e-6 && j0.pe - R > 390e3 &&
+    D.orbitsAt(T).includes(q) && !D.flyable(q) && news.some(m => /stays in orbit as debris/.test(m)) && D.JUNK.length === 0,
+    `${q ? q.name : '—'}: ${(dm / 1000).toFixed(2)} t at ${q ? ((j0.pe - R) / 1e3).toFixed(0) : '—'}–${q ? ((j0.ap - R) / 1e3).toFixed(0) : '—'} km`);
+  // low: registered, then gone within a day, quietly; suborbital and small pieces, or another flight's, never count
+  news.length = 0; const lo = fly(105e3); drop(lo); const n2 = D.junkRegister(lo.rec), ql = P.sats.at(-1);
+  const sub = fly(300e3, 0.8); drop(sub); const n3 = D.junkRegister(sub.rec);
+  const sm = fly(400e3), tiny = sm.parts.filter(p => p.on && D.partMass(p) < 0.1 && p.seg === sm.events.find(e => e.decouple.length).decouple[0]).slice(0, 1);
+  if (tiny.length) D.detach(sm, tiny, [0, -1, 0], 0); const n4 = D.junkRegister(sm.rec);
+  const other = fly(400e3); drop(other); const n5 = D.junkRegister({ launched: true, day0: 0 });
+  const nBefore = P.sats.length; D.advanceDays(1);
+  check('debris: a low piece re-enters within a day without news; suborbital, small (<100 kg) and other flights’ pieces never join',
+    n2 === 1 && ql.junk && !P.sats.includes(ql) && P.sats.length === nBefore - 1 && !news.some(m => /re-entered|sinking/.test(m)) && n3 === 0 && n4 === 0 && tiny.length === 1 && n5 === 0,
+    `low ${n2}, suborbital ${n3}, small ${n4} (${tiny.length ? (D.partMass(tiny[0]) * 1000).toFixed(0) + ' kg' : 'none found'}), another flight's ${n5}`);
+  // the high one, a month on: still there, decaying by metres
+  D.advanceDays(30); const j1 = D.elements(q.r, q.v, T.mu);
+  check('debris: a piece at 400 km stays, on its rails plus a trace of decay', P.sats.includes(q) && j0.pe - j1.pe >= 0 && j0.pe - j1.pe < 500, `periapsis down ${(j0.pe - j1.pe).toFixed(1)} m in 31 days`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

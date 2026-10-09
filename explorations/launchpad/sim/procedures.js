@@ -306,7 +306,7 @@ const MP={
 function regEntry(s,stack,T,name){const on=s.parts.filter(p=>p.on);
   return{stack:JSON.parse(JSON.stringify(stack)),shape:shapeOf(on,false),vst:vstOf(s),r:s.r.slice(),v:s.v.slice(),epoch:T,qo:qmul(qconj(orbQ(s.r,s.v)),s.q),cm:(s.cm||[0,0,0]).slice(),name,attached:[]}}
 function procFly(stack,proc,target,opt={}){
-  const keep={S,simT,T0:ORB_T0,fleet:FLEET.splice(0),debris:debris.splice(0),vn:vesselN,hook:{...HOOK}};
+  const keep={S,simT,T0:ORB_T0,fleet:FLEET.splice(0),debris:debris.splice(0),junk:JUNK.splice(0),vn:vesselN,hook:{...HOOK}};
   for(const k of Object.keys(HOOK))if(typeof HOOK[k]==='function'&&k!=='dispatchRun')HOOK[k]=()=>{};const log=[];HOOK.msg=m=>log.push(m);
   const T0=opt.T0??Math.ceil((PROG.day||0)-1e-9)*DAY_S;if(ORB_ABS)ORB_T0=T0;   // a whole day: the ground under the flight is where it is at T0
   let out;
@@ -320,7 +320,7 @@ function procFly(stack,proc,target,opt={}){
     else if(s.procDev)out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s};
     else if(!s.proc||!s.proc.done){s.procDev={kind:'lost',why:'the procedure lost its way',t:simT};out={ok:false,dev:s.procDev,entry:regEntry(s,stack,T0+simT,name),dv,t:simT,s}}
     else out={ok:true,orb:{pe:el.pe-s.body.R,ap:el.ap-s.body.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI},body:s.body.name,dv,t:simT,s,log};
-  }finally{S=keep.S;simT=keep.simT;ORB_T0=keep.T0;FLEET.length=0;FLEET.push(...keep.fleet);debris.length=0;debris.push(...keep.debris);vesselN=keep.vn;Object.assign(HOOK,keep.hook)}
+  }finally{S=keep.S;simT=keep.simT;ORB_T0=keep.T0;FLEET.length=0;FLEET.push(...keep.fleet);debris.length=0;debris.push(...keep.debris);JUNK.length=0;JUNK.push(...keep.junk);vesselN=keep.vn;Object.assign(HOOK,keep.hook)}
   return out}
 // A dry run (the trajectory office's study, NOTES "Procedures: automation that adapts", part 3): another design's procedure
 // flown headless on this design. Margin is what's left aboard in orbit. procAdopt tries every stored orbit procedure whose
