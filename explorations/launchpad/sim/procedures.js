@@ -388,3 +388,11 @@ function tapePlay(pl,s,budget){const ops=pl.tape.ops;
 // the tape so far, when the pilot takes over mid-replay (recording continues from there)
 function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.orbT0=pl.tape.orbT0;T.ops=JSON.parse(JSON.stringify(pl.tape.ops.slice(0,pl.i)));if(pl.n)T.ops.push(['P',pl.n]);
   for(let i=T.ops.length-1;i>=0;i--)if(T.ops[i][0]==='C'){T.lastK=JSON.stringify(T.ops[i][1]);break}return T}
+// ---- the automation ladder (space session, QUEUE Q127 slice 1; NOTES § "Plan: the automation ladder", MIDGAME decision
+// 2): what each computing era lets run as a routine, in one table, so balancing it is one edit. Every routine asks
+// autoAllowed(kind) → {ok, why, era}; a refusal says which era unlocks it.
+const AUTO_LADDER={ascent:'hand',burn:'main',deploy:'main','dock-crewed':'main',dock:'board',moon:'board',planet:'cheap',assist:'ai'};
+const AUTO_WHY={burn:'until then burns are worked out by hand, so fly it yourself',deploy:'to command the deployment from the ground',
+  dock:'uncrewed rendezvous and docking arrive with them',moon:'uncrewed runs to the moons arrive with them',planet:'and the planets are M5'};
+function autoAllowed(kind){const id=AUTO_LADDER[kind],i=COMP_ERAS.findIndex(x=>x.id===id);if(i<0)return{ok:true,why:'',era:0};
+  if(compEra()>=i)return{ok:true,why:'',era:i};return{ok:false,era:i,why:`needs ${COMP_ERAS[i].name.toLowerCase()}${AUTO_WHY[kind]?`: ${AUTO_WHY[kind]}`:''}`}}

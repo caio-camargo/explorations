@@ -230,7 +230,8 @@ function nodesTick(q,T1){while(q.nodes&&q.nodes.length&&q.nodes[0].T<=T1&&PROG.s
     if(!PROG.sats.includes(q)||q.halt)break;
     if(n.mc)nodeFire(q,n);else HOOK.news(`${q.name}'s planned burn passed with nobody at the controls; it carries on as it was`,'warn')}
   if(q.nodes&&!q.nodes.length)delete q.nodes}
-function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(q&&q.nodes&&q.nodes[0])q.nodes[0].mc=!!on;return q}
+function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nodes||!q.nodes[0])return null;   // mission control: from mainframes (Q127)
+  if(on){const a=autoAllowed('burn');if(!a.ok){HOOK.msg(`Mission control ${a.why}`);return{refused:a.why}}}q.nodes[0].mc=!!on;return q}
 // what a cruise entry is doing next, for lists: {text, days} (program time T)
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;

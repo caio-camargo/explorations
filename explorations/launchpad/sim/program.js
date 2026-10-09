@@ -661,7 +661,7 @@ function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!
   const B=BODIES.find(b=>b.name===base.bodyName);if(!B||B===TELLUS)return null;const low=B.name==='Nyx'?{pass:15e3,ap:25e3,pe:10e3}:{pass:10e3,ap:20e3,pe:8e3};
   return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
 function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
-  if(compEra()<BASE_ERA)return{ok:false,why:`needs ${COMP_ERAS[BASE_ERA].name.toLowerCase()}: uncrewed runs to the moons arrive with them`};   // MIDGAME's automation ladder (D7)
+  {const a=autoAllowed('moon');if(!a.ok)return{ok:false,why:a.why}}   // MIDGAME's automation ladder (D7; the table: space's autoAllowed, Q127)
   if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};

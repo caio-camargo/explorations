@@ -4553,21 +4553,21 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // when it's flown; each stops time 3 h ahead; handed to mission control it's flown at its time with the era's error from
 // the vessel's own tanks; passed with nobody at the controls it's dropped; a burn out of orbit puts the vessel in flight.
 {
-  const D = new Function(src + 'return {newShip,PRESETS,satRegister,vesselOf,advanceDays,advanceTo,upcoming,nodeHandOff,elements,skDv,TELLUS,PROG,HOOK,DAY_S,BURN_ERR,len};')();
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,vesselOf,advanceDays,advanceTo,upcoming,nodeHandOff,elements,skDv,compEra,autoAllowed,TELLUS,PROG,HOOK,DAY_S,BURN_ERR,len};')();
   const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   const P = D.PROG, T = D.TELLUS, R = T.R, a0 = R + 300e3, vc = Math.sqrt(T.mu / a0);
-  const reset = () => { P.sats = []; P.day = 2; news.length = 0; P.decisions = []; P.active = []; P.dispatch = []; };
+  const reset = () => { P.sats = []; P.day = 2000; news.length = 0; P.decisions = []; P.active = []; P.dispatch = []; };   // the mainframe era: mission control flies burns (Q127)
   const reg = (dv, t = 30000) => { const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: [a0, 0, 0], v: [0, 0, -vc], node: { t, dv: [dv, 0, 0], b: 'Tellus' }, nodeQ: [{ t: t + 9000, dv: [5, 0, 0], b: 'Tellus' }] });
-    D.satRegister(s, { day0: 2 }); return P.sats.at(-1); };
-  reset(); const q = reg(50), T0 = 2 * D.DAY_S, v = D.vesselOf(q, T0 + 500);
+    D.satRegister(s, { day0: 2000 }); return P.sats.at(-1); };
+  reset(); const q = reg(50), T0 = 2000 * D.DAY_S, v = D.vesselOf(q, T0 + 500);
   const carried = q.nodes && q.nodes.length === 2 && q.nodes[0].T === T0 + 30000 && v.node && v.node.t === 29500 && v.nodeQ.length === 1 && v.nodeQ[0].t === 38500;
-  const ev = D.upcoming().find(x => x.kind === 'burn'), st = D.advanceTo(10), stDay = P.day;
+  const ev = D.upcoming().find(x => x.kind === 'burn'), st = D.advanceTo(2010), stDay = P.day;
   check('planned burns: a vessel’s nodes go with its entry and come back in the next flight’s time; the burn is on the timeline and stops time 3 h ahead',
     carried && ev && ev.stop && Math.abs(ev.day - (T0 + 30000 - 3 / 24 * D.DAY_S) / D.DAY_S) < 1e-6 && st && st.kind === 'burn' && Math.abs(stDay - ev.day) < 1e-3,
     `carried ${carried}; ${ev ? ev.text : '—'} on day ${ev ? ev.day.toFixed(3) : '—'}; stopped on day ${stDay.toFixed(3)}`);
   // handed to mission control: flown at its time, with the era's error, from its own tanks; the next one missed
   const e0 = D.elements(q.r, q.v, T.mu), dv0 = D.skDv(q); D.nodeHandOff(q.id); D.advanceDays(2);
-  const e1 = D.elements(q.r, q.v, T.mu), want = vc * 2 * (50 / vc), dA = e1.a - e0.a, aExp = e0.a * (1 + 2 * 50 / vc), spent = dv0 - D.skDv(q), er = D.BURN_ERR[0];
+  const e1 = D.elements(q.r, q.v, T.mu), want = vc * 2 * (50 / vc), dA = e1.a - e0.a, aExp = e0.a * (1 + 2 * 50 / vc), spent = dv0 - D.skDv(q), er = D.BURN_ERR[D.compEra()];
   const flown = news.some(m => /Mission control flew/.test(m)) && Math.abs(e1.a / aExp - 1) < 3 * er * 2 * 50 / vc + 1e-4 && Math.abs(spent - 50) < 3 * er * 50 + 0.5;
   const missed = news.some(m => /passed with nobody at the controls/.test(m)) && !q.nodes;
   check('planned burns: mission control flies one at its time within the era’s error, paying from the tanks; an unhanded one is missed and dropped',
@@ -4614,6 +4614,23 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const gaps = mins.slice(1).map((m, i) => (m - mins[i]) / D.YEAR_D), gapOK = gaps.length >= 2 && gaps.every(g => Math.abs(g - 2.14) < 0.2);
   check('system: the sun on day 0 is the renderer’s, the ecliptic is 23° from the equator, every planet stays between its perihelion and aphelion, Enyo comes close every ~2.14 years',
     sun0 > 1 - 1e-9 && Math.abs(tilt - 23) < 1e-6 && inside && gapOK, `sun ${sun0.toFixed(9)}, tilt ${tilt.toFixed(3)}°, Enyo's closest approaches ${gaps.map(g => g.toFixed(2)).join(', ')} years apart`);
+}
+
+// space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
+// as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
+// refusal says which era unlocks it.
+{
+  const D = new Function(src + 'return {autoAllowed,AUTO_LADDER,compEra,newShip,PRESETS,satRegister,nodeHandOff,PROG,HOOK,TELLUS};')();
+  D.HOOK.news = () => {}; const msgs = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.save = () => {};
+  const P = D.PROG, at = (day, k) => { P.day = day; return D.autoAllowed(k); };
+  const e0 = at(0, 'burn'), e1 = at(2000, 'burn'), m1 = at(2000, 'moon'), m2 = at(3000, 'moon'), a0 = at(0, 'ascent');
+  // a hand-off before mainframes is refused with the reason; in their era it goes through
+  P.sats = []; P.day = 0; const T = D.TELLUS, a = T.R + 300e3, s = D.newShip(D.PRESETS.Probe);
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)], node: { t: 30000, dv: [10, 0, 0], b: 'Tellus' } }); D.satRegister(s, { day0: 0 });
+  const q = P.sats.at(-1), r0 = D.nodeHandOff(q.id), mc0 = !!q.nodes[0].mc; P.day = 2000; const r1 = D.nodeHandOff(q.id);
+  check('automation ladder: burns by mission control from mainframes, uncrewed moon runs from onboard computers, a flown ascent always; a refusal says which era',
+    !e0.ok && /mainframes/.test(e0.why) && e1.ok && !m1.ok && /onboard computers/.test(m1.why) && m2.ok && a0.ok && r0 && r0.refused && !mc0 && r1 === q && q.nodes[0].mc && msgs.some(m => /Mission control needs mainframes/.test(m)),
+    `day 0: burn "${e0.why}"; day 2000 (era ${(P.day = 2000, D.compEra())}): burn ${e1.ok}, moon "${m1.why}"; day 3000: moon ${m2.ok}`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

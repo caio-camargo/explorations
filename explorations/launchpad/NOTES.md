@@ -1939,6 +1939,21 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — the automation ladder as one table (2026-10-09, space session, QUEUE Q127 slice 1)
+
+`autoAllowed(kind) → {ok, why, era}` in `sim/procedures.js`, with `AUTO_LADDER` (the plan's table: § "Plan: the
+automation ladder"): a flown ascent from the start; mission-control burns, deployments and crewed docking from
+mainframes; uncrewed docking and moon runs from onboard computers; planets from cheap compute; assists from the AI boom.
+- The economy's supply runs ask it (`baseRunQuote`, one line, flagged; same refusal text as before: "needs onboard
+  computers: uncrewed runs to the moons arrive with them"); `BASE_ERA` stays for its other readers.
+- Mission control's hand-off (`nodeHandOff`, v1.93) asks it: before mainframes it's refused, "Mission control needs
+  mainframes: until then burns are worked out by hand, so fly it yourself", and the *In flight* line shows that instead of
+  the button.
+- In a bare sim the eras fall on day ~1,500 (mainframes) and ~3,000 (onboard computers).
+
+Test `space-12` (1 check; mutations caught: burns from the start, the hand-off ungated); `space-10` moves to day 2000 so
+its hand-offs are allowed. `career.mjs` unchanged.
+
 ## v1.94 — the star system on paper (2026-10-09, space session, QUEUE Q87 slice 1, sim half)
 
 New `sim/system.js` (after `sim/space.js`): the planets of [`SYSTEM.md`](SYSTEM.md) where they really are, for the map
