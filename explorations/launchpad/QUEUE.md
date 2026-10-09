@@ -379,7 +379,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
 - space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
 - space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
-- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts"
+- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts" **→ economy 2026-10-09 (taken from Proposed: the lane was empty)**
 - economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
 - economy — Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the debrief line, a test — NOTES § "Plan: overflight politics"
 - economy — crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) — NOTES § "Plan: the roster…" (M3)
