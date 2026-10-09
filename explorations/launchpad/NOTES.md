@@ -1321,6 +1321,56 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
 
+## v1.67 — Astraea's ground on the CPU (2026-10-09, world session, GROUND.md G7)
+
+The belt's dwarf planet (SYSTEM.md § Astraea, Ceres), built and measured headless like Enyo and Hesper. **Not live:** it's
+on a stub body (`GROUND_STUBS.Astraea`: R 94 km, g 0.28) until the space lane adds Astraea; then it takes
+`ground: ASTRAEA_GROUND`.
+
+**A crust factor.** By the 1/g rule alone, Astraea's craters would stay simple bowls up to ~100 km, and a 100 km bowl is
+20 km deep on a 94 km body. Ceres doesn't look like that. Its ice-rich crust is weak: Dawn saw craters turn complex at
+~7.5–12 km, and its big ones have relaxed shallow. So a recipe can scale the transition by its crust (`crust` 0.12:
+**12.5 km**), and above that the complex depth law keeps the big ones a few km deep. No change to the crater code: the
+recipe passes its own transition size.
+
+**What's there:**
+- **Dark cratered regolith:** c 0.03 (between Mars's 0.02 and the Moon's 0.055: Ceres is heavily cratered but short of
+  big craters), crisp (freshness hash²). Eight craters of 20 km and more; the biggest is 43 km.
+- **A gentle swell** (±1.5 km). There's no lump: Ceres is near-spherical.
+- **Ahuna Mons, the lonely mountain:** 4.6 km above its foot, 20 km across, a flat top (2°), flanks up to 39°.
+- **The young bright crater (Occator):** 18 km, its rim 2.5 km above its floor, its central peak collapsed into a pit, and
+  salt on its floor in blotches. It's the one bright spot on a charcoal-grey world, and its own surface
+  (`salt deposits`) for anything that lands there.
+- Surfaces: dark regolith (μ 0.6), salt deposits (0.5, smooth), salty ice rubble on the mountain.
+
+**Measured** (`node study_ground.mjs astraea`, ~2 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 80 ms (512×256, 1.15 km a texel); one height 3 µs |
+| Relief | −3.0…+4.5 km (recipe `top` 6 km) |
+| Craters N(>D) per km², measured / target | ≥20 km 7.2e-5 / 7.5e-5 · ≥2 km 7.6e-3 / 7.5e-3 · ≥0.2 km 0.75 / 0.75 |
+| Slopes, regolith | median 2.6°, p90 17°, p99 32°, past TOPPLE 4.3 %, under 5° 71 % |
+| Seams | steepest 0.5 m step on cube edges 48° (anywhere: 49°) |
+
+Landing here is "closer to docking" (SYSTEM.md): escape is 229 m/s. The ground's part is that 29 % of it is over 5°.
+
+**Negative results:**
+- **At 18 km, Occator sits just past the size where a crater grows a central peak,** so the 600 m "central pit" only
+  dented the peak and stood 200 m above the floor. The pit is now 1.5 km into the peak, 300 m below the floor.
+
+**Tests:** `ground-5`, 5 checks:
+- not live;
+- counts, the 12.5 km transition and the biggest crater shallow (0.87 km, not a 20 km bowl), within top;
+- the mountain (height, flanks 25–45°, a flat top);
+- the bright crater (rim over floor, a pit, salt on the floor, regolith outside);
+- no seams.
+
+Mutations caught: no weak crust, no salt, no mountain. Full suite 506 pass, 0 fail.
+
+**Next, in GROUND.md's order:** Hyperion's moons (Theia's lava plains and calderas; Eos's ridged ice; Tethys's lakes, dunes
+and channels under haze; Phoebe, a cratered lump), then Erebus.
+
 ## v1.66 — rover prices and gates; Selene science contracts (2026-10-09, economy session, QUEUE Q10)
 
 **Rover parts** (`sim/program.js`, `RV_PRICE`, `RV_GATE`):
