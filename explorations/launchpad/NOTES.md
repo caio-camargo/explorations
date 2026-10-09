@@ -6752,3 +6752,15 @@ Each slice is a few rows of `playtest.mjs` (1–3 min of browser each, run as on
 write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (the ladder is already scripted end to end,
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
+
+**Q30 slice 1, moons: done (QA session).** `node playtest.mjs 68 72 55 73 125` (about 3½ min in all). The page fetches
+`fly_ladder.mjs`, cuts its Node-only tail, imports it from a blob URL and runs `flyLadder`/`flySite` with an `api` made of
+page globals and a dummy `HOOK`, so the real HUD, news and map show what a player would see. Every ladder mission passes.
+Staged pay reads right (TESTING 92 ✓), the Nyx reveal works, the prograde Nyx control is wrecked in 2.5 days, and a
+twice-flown landing comes down 6.7 m from its point. Found: staged pay for a mission nobody flew (PLAYTEST #28), weighing
+and flying past Nyx pay together (#29), Selene's first orbital period is logged mid-capture (#30), map labels pile up at
+the top-left corner (#31), and a sun-behind lander on Selene is a black silhouette (#32). Slices 2 (docking) and 3
+(stations) are still open.
+
+**`shot.mjs` on the RTX (QUEUE Q28).** It now passes `--force_high_performance_gpu` like `playtest.mjs`: WebGL reports the
+"NVIDIA GeForce RTX 5050 Laptop GPU" by default and the Intel iGPU with `SHOT_IGPU=1` (`SHOT_FLAGS` still overrides).
