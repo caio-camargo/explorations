@@ -3572,3 +3572,39 @@ orchestrator now keeps a *Next unblockers* list and answers "what are the next u
 ### Next steps
 - [ ] Start a design desk session; first catalog: SYSTEM.md (or CREW.md's art direction, which needs mock-ups)
 
+
+## 2026-10-08 — Launchpad platform: test shards, then the file split (platform session)
+
+### Summary
+Platform lane, ROADMAP steps 1, 3 and 4 (QUEUE Q56, Q58, Q59). Caio stopped every other session for the split.
+- **Test shards** (`shards.mjs`; `test.mjs` hands over to it when given arguments): `--list`, `--only` (label, `#n`, or a word
+  in the header: labels repeat, §25 is four sections), `--skip`, `--smoke` (all but the 5 slow flights), `--times`,
+  `--isolation`, `--jobs N`. Measured: the full suite takes 286 s, not 8 min, and 74 % of that is two sections (§27 crewed
+  Selene, bodies-1 ladders). Smoke: 22 s in 4 processes. Full suite in 4 processes: 136 s.
+- **Two order-dependent checks found and fixed.** `--isolation` found §14 *budget day*: dice seeded from `PROG.wseed`, and
+  the cycle's phase, both left by earlier sections. A parallel run found §18 *career offers*: its `fresh()` kept the PROG
+  fields it didn't name. Every section now passes alone, and the full suite passes in parallel (LESSONS #35).
+- **Merged for the split**, on Caio's OK: economy v1.53, terrain v1.52 + Q17, and bodies Q13 (it arrived during the freeze;
+  re-split, it landed in `sim/procedures.js`). TESTING rows renumbered: atlas 120–121 → 123–124, bodies' landing 121 → 125.
+- **The split**: `index.html`'s script is now 21 classic scripts in `sim/` and `app/`. Not ES modules: imported bindings
+  are read-only and the code reassigns shared `let`s across areas. The cut was mechanical
+  (`archive/launchpad-split-2026-10-08.mjs`), and `page.mjs` puts the files back to the old page plus the preludes, byte
+  for byte. Node tools read the page through `pageSource()`. New test `platform-1`: each SIM file loads as its own script
+  in page order; every file is on the page and strict. Mutation-tested.
+
+### Verification
+- Full suite on the split tree: 400 pass (397 + platform-1), 0 fail.
+- The robot playtester on the split page: 59 rows, 0 console errors, 0 failed expectations.
+- After merging bodies Q13: the full suite again, plus isolation for the new sections (see below).
+
+### Files
+- `explorations/launchpad/`:
+  - new: `shards.mjs`, `page.mjs`, `sim/*.js` (11), `app/*.js` (10);
+  - changed: `index.html` (now 185 lines: HTML, CSS, script tags), `test.mjs` (the runner hook, END marker, §14/§18 fixes,
+    `platform-1`), the seven page readers (`career`, `study_*`, `fly_*`), `NOTES.md` § "Test shards" and § "The file
+    split", `ROADMAP.md`, `QUEUE.md`, `TESTING.md`
+- `archive/launchpad-split-2026-10-08.mjs`; `INDEX.md`, `explorations/README.md`, `LESSONS_LEARNED.md` #35, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Every lane: merge `main` before the next edit (ACTIVE_WORK notice)
+- [ ] Platform: Q57 save versions; then the proposals: `test.mjs` into per-area files, `app/gl.js` split further, modules later

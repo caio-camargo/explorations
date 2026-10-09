@@ -184,10 +184,10 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 Worktree `launchpad-platform` (branch `platform`, port 8801).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | → platform 2026-10-08 |
+| Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | ✓ `0bf85c2` (NOTES § "Test shards": `--smoke --jobs 4` ~25 s) |
 | Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | ready |
-| Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ready |
-| Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | blocked: Q58 + Caio's window (W10) |
+| Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
+| Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | ✓ `00e3e31` (21 classic scripts in `sim/`, `app/`; NOTES § "The file split". **Everyone: merge `main` before your next edit**) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
 
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
@@ -220,9 +220,10 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 |---|---|---|
 | W8 | Hands-on: TESTING rows 100, 108–120 and the robot's `~` rows; Q54 gives you a route | M1's human playtest |
 | W9 | Edit the pillars (ROADMAP § Pillars, a draft) | what sessions may turn down |
-| W10 | Pick a freeze window for the file split, once Q58's plan is written | Q59 |
+| ~~W10~~ | ~~Pick a freeze window for the file split~~ answered 2026-10-08: Caio stopped all sessions; split done | Q59 ✓ |
 | W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-
-
+- platform — `test.mjs` into per-area files (`tests/*.mjs`, run by the same runner): 3,000 lines that every lane appends to, the next conflict hotspot after `index.html` — NOTES § "The file split"
+- platform — split `app/gl.js` (1,532 lines: setup, shaders, meshes, planet/sky/plume/pad drawing) by what it draws — NOTES § "The file split"
+- platform — ES modules, one area at a time, once an area's cross-file names are few (classic scripts for now: imported bindings are read-only) — ROADMAP § Platform step 4

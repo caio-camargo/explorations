@@ -6311,4 +6311,6 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 - **Work from before the split:** every lane branch was merged into `main` before the split, so there should be none.
   If a stray pre-split change turns up anyway, don't hand-port it. Run the split script on that branch's `index.html`
   (it cuts at the same headers). The result is that branch's own `sim/`/`app/` files. Then three-way merge each file
-  (`git merge-file`), with the split of the merge base as the base.
+  (`git merge-file`), with the split of the merge base as the base. This was done once, for bodies' Q13, pushed during the
+  freeze. The quicker equivalent: three-way merge the *old-style* pages (`git merge-file` on the branch's, the base's and
+  the pre-split `index.html`, all LF), then split the result. Its 53 changed lines landed cleanly in `sim/procedures.js`.
