@@ -1939,7 +1939,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — the star system on paper (2026-10-09, space session, QUEUE Q87 slice 1, sim half)
+## v1.94 — the star system on paper (2026-10-09, space session, QUEUE Q87 slice 1, sim half)
 
 New `sim/system.js` (after `sim/space.js`): the planets of [`SYSTEM.md`](SYSTEM.md) where they really are, for the map
 from epoch 1 (PLAYTEST #11). Positions only: no physics, no heliocentric legs (that's slice 2, at M5).
