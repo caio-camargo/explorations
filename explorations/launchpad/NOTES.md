@@ -5779,7 +5779,7 @@ stage. Note the port's considerations here, don't act on them yet.
 - **Log depth** is written per fragment (`gl_FragDepth = log2(1+w)·Fc/2`). The vertex shader writes
   a matching log z, so nothing gets near/far clipped.
 
-## UI: screens and navigation — spec (2026-10-07, ui session with Caio; nothing built yet)
+## UI: screens and navigation — spec (2026-10-07, ui session with Caio; slices 1–3 built below)
 
 **The problem.** The app has two screens (`mode` = editor/flight) plus a `view` toggle for the map. Everything else
 was added to whichever panel was nearest when it got built. The whole career (ownership, contracts, race, ground stations,
@@ -5914,6 +5914,40 @@ the arrows, and every key in the handlers present in its Help table.
   is disabled (and `go('assembly')` refuses). This closes "nothing makes you choose before launching".
 - Not yet: Inbox doesn't collect news (the `#news` ticker still runs as before); the Assembly right panel is untouched
   (slice 5); the CoM/CoP markers still draw behind the Program panel.
+
+### Slice 3 built (2026-10-08, flow session, QUEUE Q2): Debrief
+- **The record is SIM data** (`sim/debrief.js`). `missionTick` takes a snapshot just before liftoff (`R.deb0 = debSnap()`:
+  funds, date, know-how, missions done, satellite count, the orbit record). `missionEnd`, once the flight is settled, builds
+  `R.debrief = debriefOf(s, R, ups)`, keeps it in `DEBRIEF_LAST` and returns it as `.debrief` beside `{ups, streak}`.
+  It never throws: a record that fails to build is `null` and the flight still settles.
+  - Outcome: landed (distance from the pad, recovery), lost (the apex), in orbit (pe × ap; "registered in the fleet" when
+    `satRegister` took it), landed on / in orbit of a moon, escaping, or ended in flight (written off). A passenger's fate.
+  - Money: hardware, launch operations, every pay item, refurbishment, damages, then **"N days passing"**: the rest of
+    the funds change (budget days, upkeep, debt) during the stacking and flight days. The lines add up to the net, which is
+    `PROG.funds` after minus before (test `flow-1` checks the sum).
+  - Missions, telemetry certifications (`ups`), logbook records set on this flight (with the old value), incidents
+    (stages on or near towns, on another power's land; a passenger lost), know-how gained per part.
+  - **Pay items need one call each where money is paid** (economy, additive): `debPaid(R, kind, label, pay)` in
+    `missionComplete` (`rec`), `contractEval` and `stagePay` (which now takes `R`). **A new kind of flight pay should add
+    its own `debPaid` line**, or it shows up inside "days passing". Missing lines never break the sum, only its detail.
+- **The screen** (`app/debrief.js`, `#deb`): a panel over the pad like Program; header with flight number, design, date and
+  time flown; sections in two columns (headings use class `dh`, not `ep`, so §32's Program-tab check ignores them).
+  Exits: **Program [P]**, **Assembly [B]** (same design), **Fly again [A]** (Assembly → the usual LAUNCH with its checks;
+  disabled for a flight that started in orbit). The one you were heading to is highlighted.
+- **How you get there.** `go()`: leaving flight or map for Program or Assembly settles the flight (as before) and, if that
+  flight has a record not shown yet, goes to `debrief` instead, remembering where you were going. So the toolbar's
+  Assembly, ☰ → Back to Assembly and `go('program')` all pass through it. New: ☰ → **End flight: debrief** (asks twice in
+  the air), and an **End flight ▸** button in the flight toolbar once the vessel has landed or is lost (`debEndBtn`, from
+  `hudLayout`). Program has **Last flight** to see it again (not kept across reloads). Rover yard skips it.
+- **Revert and `R` skip the Debrief on purpose**: they are the quick retry, and the record is still kept (Last flight).
+  TESTING row 126 asks whether that's right.
+- `atDeb` joins `atHQ`: builder.js ignores keys on Debrief, and render.js no longer draws the builder's CoM/CoP markers
+  and `edOverlay` behind either panel (they showed `NaN%` behind Program after a flight). §32 now counts `atDeb=` too.
+- Robot: rows that `go('program')` after a flight now land on Debrief first; the next `go('program')` goes on to Program.
+  Probed in Chrome (Sounding landed, Orbiter lost, a climb ended from the Esc menu, the Assembly button): screenshots in
+  `C:/Users/caioa/dev/playtest-out/flow/`.
+- Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
+  duplicate the Debrief); Inbox doesn't collect them yet.
 
 ---
 
@@ -6282,6 +6316,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/contracts.js` | 243 | contracts, sanctions, the race, ownership, decisions | economy |
 | `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS | space |
 | `sim/logbook.js` | 49 | the logbook, tools gated by it | economy |
+| `sim/debrief.js` | 40 | the flight's debrief record (`debSnap`, `debriefOf`, `debPaid`) | flow |
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
 | `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
 | `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
@@ -6294,6 +6329,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
 **Working in split files: the rules.**
 - **Find a function** with `grep -n "function name" sim/*.js app/*.js`. Markers (`SIM BEGIN/END`, `SOUND MIX`) are where

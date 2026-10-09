@@ -114,7 +114,7 @@ function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===i
 function declineOffer(id){ensureBoard();PROG.offers=PROG.offers.filter(o=>o.id!==id);HOOK.save()}
 function contractEval(s){if(!PROG.active||!PROG.active.length)return;const R=s.rec;
   for(let i=PROG.active.length-1;i>=0;i--){const c=PROG.active[i];if(!c)continue;const T=CT[c.type];if(!T.ok(R,c.p,s))continue;   // a leak's sanctions can shrink the list mid-loop
-    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);PROG.cdone=(PROG.cdone||0)+1;
+    const bonus=T.bonus?T.bonus(R,c.p):0,pay=c.p.pay*(1+bonus)*(c.src==='sci'?khYield():1);PROG.active.splice(i,1);income(pay);debPaid(R,'contract',cTitle(c),pay);PROG.cdone=(PROG.cdone||0)+1;
     standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1.2-2*natOf(HOME));R.cdone.push(cTitle(c));if(pay>=40)R.bigContract=true;
     if(c.src==='mil'&&rng((PROG.wseed^(c.id*2654435761))>>>0)()<LEAK_P(c)){opAdd(HOME,c.client===HOME?-3:-8);
       HOOK.news(`Leak: the space program flew a secret payload for ${POWERS[c.client].name}`,'bad');for(const j of offerRisk(c).leak){opAdd(j,-15);sanction(j,200,`after the leak`)}}
