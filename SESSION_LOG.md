@@ -4442,3 +4442,4 @@ Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
 **Files:** `sim/flight.js`, `sim/procedures.js`, `app/program-ui.js`, `app/input.js`, `app/render.js` (one call),
 `test.mjs`, launchpad `NOTES.md` § v1.83 and the Q134 plan, `TESTING.md` 165, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** vehicle's ready list: Q152 (a legged lander preset), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
+- **Renumbered** (numbering race, LESSONS #37): my v1.81 (Q141) → **v1.84**, v1.83 (Q33) → **v1.85**; economy and space took 1.81 and 1.83 at the same time. TESTING 162 and 165 follow.
