@@ -144,7 +144,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q136 | 📝 CREW part 2: **the scientist's and engineer's hooks** (with space) | M3 | S | 📝 | ready (plan only) |
 | Q137 | 📝 **Crew rotation by dispatch**: a crewed supply run lands crew at a base and brings the old crew home (needs a crew record in headless flights; D7's ladder: the first resupply is crewed) — NOTES v1.69 | M3 | M | 📝 | ready (plan only) |
 | Q138 | 📝 **Rivals as programs**: budget → capacity → progress per capstone (replacing seeded schedules late); scarce places held by building first — [`LATE_GAME.md`](LATE_GAME.md) 1.4.0 | M4 | M | 📝 | ready (plan only) |
-| Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ready |
+| Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | → economy 2026-10-09 (building W11's defaulted rule settles it) |
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
 | Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ready |
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ready |
