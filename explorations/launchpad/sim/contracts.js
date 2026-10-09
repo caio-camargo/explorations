@@ -162,7 +162,7 @@ function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();
 const START={
   agency:{name:'National agency',blurb:'Funded by your government: budget days, a safety net, more government work. Opinion at home is everything.',funds:80},
   company:{name:'Private company',blurb:'Investor capital: more cash up front and more commercial work, no budget day and no safety net, little political flak.',funds:90},
-  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program and its budget. Their opinions all count.',funds:80}};
+  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program, its budget and a say in it: all three opinions count.',funds:80}};
 const own=()=>PROG.own||(PROG.own={kind:'agency',st:{[HOME]:1},pv:0,chosen:false});
 const stateShare=()=>Object.values(own().st).reduce((a,x)=>a+x,0);
 function chooseStart(kind){const o={kind,st:{},pv:0,chosen:true,debt:0};
