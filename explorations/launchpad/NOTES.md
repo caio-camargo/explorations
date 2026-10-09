@@ -1939,6 +1939,23 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — the link budget: every link has a rate and a light delay (2026-10-09, space session, QUEUE Q171, Q51 slice 1)
+
+`sim/space.js` (next to the ground stations): rate = `LINK_K` · P · Gt · Gr / d² bit/s, the free-space law with the
+era's receivers in one constant; gains `G_WHIP` 1 (the `ant` part), `G_RVHG` 30 (a rover's high-gain dish), `G_STATION`
+3e4 (a station's 26 m-class dish); radios `P_RADIO` 5 W (the antenna's load, v1.68), `P_ROVER` 20 W; a vessel with no
+antenna is a 1 W beacon. `LINK_FLOOR` 10 bit/s is telemetry's floor.
+- **Measured:** a whip 300 km straight over the pad, **333 kbit/s**; around Selene, **20.5 bit/s** at 38.3 Mm with a
+  255 ms round trip, still above the floor, so the moon missions keep their link as before.
+- **Where it shows** (additions only; which links exist is unchanged): `linkOf` (the flight's link, world's file,
+  flagged) returns `rate`, `d`, `delay`; imagery's contact share also records `q.rate`, the mean rate while in contact;
+  `rvContact` returns `rate`, the weaker hop when a relay carries the path.
+- Slice 2 turns data into volumes drained at these rates; slice 3 draws coverage; the automation ladder's contact gate
+  (Q127 slice 3) reads `pathHome` once relays are nodes.
+
+Test `space-13` (1 check; mutation caught: 1/d instead of 1/d²). The rover and imagery rates aren't driven by a test
+yet (both need their heavier setups); slice 2's tests will drain volumes through them.
+
 ## v1.95 — the automation ladder as one table (2026-10-09, space session, QUEUE Q127 slice 1)
 
 `autoAllowed(kind) → {ok, why, era}` in `sim/procedures.js`, with `AUTO_LADDER` (the plan's table: § "Plan: the

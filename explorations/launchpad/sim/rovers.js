@@ -247,16 +247,17 @@ function rvFieldTick(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead)continue;co
 // who can hear the rover: {ok, via ('crew' | 'home' | a relay's name), d (m, to the relay), delay (s, the round trip)}
 function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',delay:0};if(R.d&&rvGeom(R.d).crew&&R.crewed!==false&&!R.remote)return{ok:true,via:'crew',delay:0};
   const b=R.body,P=R.pw||(R.pw=rvPow(R.d)),w=add(bodyPos(b,t),fromPF(b,R.p,t)),up=norm(fromPF(b,R.p,t)),toT=sub(bodyPos(TELLUS,t),w),lt=2*len(toT)/RV_CLIGHT;
-  if(P.hg&&dot(up,norm(toT))>Math.sin(1*Math.PI/180))return{ok:true,via:'home',delay:lt};
+  const Gr=P.hg?G_RVHG:G_WHIP;   // space Q171: rates, the weaker hop through a relay
+  if(P.hg&&dot(up,norm(toT))>Math.sin(1*Math.PI/180))return{ok:true,via:'home',delay:lt,rate:linkRate(P_ROVER,Gr,G_STATION,len(toT))};
   const hR=P.hg?RV_HG:RV_LG;let best=null;
   const Tb=sub(bodyPos(TELLUS,t),bodyPos(b,t)),wr=fromPF(b,R.p,t),sin1=Math.sin(Math.PI/180);   // Tellus and the rover, in b's frame
   for(const q of relays||[]){if(q.body!==b)continue;
     if(q.at){const Q=q.at(t),dq=sub(Q,wr),d=len(dq),qT=sub(Tb,Q),u=norm(qT),c=-dot(Q,u);   // in orbit: over the rover's horizon, and Tellus not behind b
       if(dot(up,dq)<d*sin1||c>0&&len(add(Q,mul(u,c)))<b.R)continue;
-      const dl=2*(d+len(qT))/RV_CLIGHT;if(!best||d<best.d)best={ok:true,via:q.name,d,delay:dl};continue}
+      const dl=2*(d+len(qT))/RV_CLIGHT;if(!best||d<best.d)best={ok:true,via:q.name,d,delay:dl,rate:Math.min(linkRate(P_ROVER,Gr,G_WHIP,d),linkRate(P_RADIO,G_WHIP,G_STATION,len(qT)))};continue}
     const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
     const qu=norm(fromPF(b,q.pf,t)),qT=norm(sub(bodyPos(TELLUS,t),add(bodyPos(b,t),fromPF(b,q.pf,t))));if(dot(qu,qT)<Math.sin(Math.PI/180))continue;
-    if(!best||d<best.d)best={ok:true,via:q.name,d,delay:lt}}
+    if(!best||d<best.d)best={ok:true,via:q.name,d,delay:lt,rate:Math.min(linkRate(P_ROVER,Gr,G_WHIP,Math.max(d,1)),linkRate(P_RADIO,G_WHIP,G_STATION,len(sub(bodyPos(TELLUS,t),add(bodyPos(b,t),fromPF(b,q.pf,t))))))}}
   return best||{ok:false,via:null,delay:lt}}
 // relays on a body: vessels in this flight and objects left landed, with an antenna (their base, height, name), and
 // relays in its orbit (at: flight time → position in its frame): vessels of this flight and registered ones

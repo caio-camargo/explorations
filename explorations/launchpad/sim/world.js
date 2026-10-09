@@ -250,9 +250,12 @@ function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),
   return Math.asin(clamp(sinE,-1,1))>m.el[i]}
 // the flight's radio link: the first station that sees the vessel, or a plasma blackout during re-entry heating. Away
 // from Tellus (Selene, Nyx) the deep-space antennas are assumed to hold the link.
-function linkOf(s){if(s.body!==TELLUS)return{ok:true,st:null,why:'deep space'};if(s.landed)return{ok:true,st:null,why:'on the ground'};
+function linkOf(s){const A=antOf(s.parts);   // space Q171: each link also says its rate (bit/s), distance and light delay
+  if(s.body!==TELLUS){const d=len(add(s.r,bodyPos(s.body,simT)));return{ok:true,st:null,why:'deep space',d,rate:linkRate(A.P,A.G,G_STATION,d),delay:2*d/C_LIGHT}}
+  if(s.landed)return{ok:true,st:null,why:'on the ground',d:0,rate:Infinity,delay:0};
   if(plasmaOn(s))return{ok:false,st:null,why:'plasma blackout'};
-  const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf))return{ok:true,st,why:''};return{ok:false,st:null,why:'no station in view'}}
+  const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf)){const d=len(sub(pf,mul(st.u,TELLUS.R)));return{ok:true,st,why:'',d,rate:linkRate(A.P,A.G,G_STATION,d),delay:2*d/C_LIGHT}}
+  return{ok:false,st:null,why:'no station in view'}}
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
 const isLand=pf=>terrainH(pf)>=0;

@@ -4633,6 +4633,21 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `day 0: burn "${e0.why}"; day 2000 (era ${(P.day = 2000, D.compEra())}): burn ${e1.ok}, moon "${m1.why}"; day 3000: moon ${m2.ok}`);
 }
 
+// space-13. The link budget, slice 1 (space session, QUEUE Q171, Q51): every link also says its rate (bit/s, the free-space
+// law: LINK_K · P · Gt · Gr / d²) and its light delay, without changing which links exist; the rover's path through a
+// relay runs at its weaker hop.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,linkOf,linkRate,LINK_FLOOR,G_STATION,G_WHIP,P_RADIO,curSite,toPF,fromPF,TELLUS,SELENE,bodyPos,rotY,absTh,len,sub,mul,set t(v){simT=v},set ORB_T0(v){ORB_T0=v}};')();
+  const T = D.TELLUS, R = T.R; D.t = 0; D.ORB_T0 = 0;
+  const r1 = D.linkRate(5, 1, D.G_STATION, 1e6), r2 = D.linkRate(5, 1, D.G_STATION, 2e6);
+  // a Probe 300 km straight over the pad (the pad's station sees it), and one around Selene (deep space)
+  const u = D.curSite().u, over = D.rotY(D.mul(u, R + 300e3), D.absTh(0)), s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: over, v: [0, 0, 0] });
+  const L = D.linkOf(s), m = D.newShip(D.PRESETS.Probe); Object.assign(m, { alive: true, landed: false, body: D.SELENE, r: [D.SELENE.R + 100e3, 0, 0], v: [0, 0, 0] }); const Ls = D.linkOf(m);
+  check('link budget: the rate falls with distance squared; a whip 300 km over the pad gets ~0.3 Mbit/s, one at Selene tens of bit/s, still above the telemetry floor; the delay is the light time',
+    Math.abs(r1 / r2 - 4) < 1e-9 && L.ok && L.st && L.rate > 1e5 && L.rate < 1e6 && Math.abs(L.d - 300e3) < 5e3 && Ls.ok && Ls.rate > D.LINK_FLOOR && Ls.rate < 100 && Math.abs(Ls.delay - 2 * Ls.d / 299792458) < 1e-12,
+    `over the pad: ${(L.rate / 1e3).toFixed(0)} kbit/s at ${(L.d / 1e3).toFixed(0)} km; at Selene: ${Ls.rate.toFixed(1)} bit/s at ${(Ls.d / 1e6).toFixed(1)} Mm, ${(Ls.delay * 1000).toFixed(0)} ms round trip`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

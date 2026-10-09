@@ -13,6 +13,15 @@ const SAT_FOV=30*Math.PI/180,SAT_IFOV=1e-5,SUN_MIN=Math.sin(10*Math.PI/180),STA_
 // every 100 days, and is shut down if relations turn tense. More, better-spread stations mean pictures come down sooner.
 const GS_HOME=10,GS_FOREIGN=20,GS_LEASE=2,IMG_RATE=0.12;   // imagery sales: M per day at 100 % contact
 function padGS(){const t=curSite();return{name:t.name,u:t.u,power:t.power}}   // the pad's own station: the chosen launch site
+// ---- the link budget (space session, QUEUE Q171, Q51 slice 1; NOTES § "Plan: data as a volume and the link budget"):
+// rate = LINK_K · P · Gt · Gr / d² (bit/s), the free-space law with the era's receivers in one constant. Gains: a whip
+// antenna 1, a rover's high-gain dish 30, a ground station's dish 3e4 (26 m class). LINK_K puts a whip at 1,000 km at
+// ~30 kbit/s to a station, and at Selene ~20 bit/s: above the telemetry floor (LINK_FLOOR), so today's moon missions keep
+// their link. Slice 1 adds the rate and the light delay to every link without changing which links exist.
+const LINK_K=2e11,LINK_FLOOR=10,G_WHIP=1,G_RVHG=30,G_STATION=3e4,P_RADIO=5,P_ROVER=20,C_LIGHT=299792458;
+const linkRate=(P,Gt,Gr,d)=>LINK_K*P*Gt*Gr/(d*d);
+// a vessel's (or a registry entry's) radio: its antennas' power at whip gain; none aboard: a 1 W beacon
+const antOf=parts=>{const n=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant').length;return n?{P:P_RADIO*n,G:G_WHIP}:{P:1,G:G_WHIP}};
 function stationsAll(){return[padGS(),...(PROG.stations||[]).map(g=>{const c=CITIES[g.ci];return{name:c.name,u:c.u,power:c.power?c.power.i:HOME,ci:g.ci}})]}
 // candidate sites: each power's two biggest cities that don't have a station yet
 function gsSites(){const have=new Set((PROG.stations||[]).map(g=>g.ci)),out=[];
@@ -915,9 +924,10 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
-  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0;
-    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;if(GS0.some(st=>gsSees(st,pf)))n++}
-    if(N){q.contact=n/N;income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
+  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0;const A=antOf(q.shape);
+    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;const st=GS0.find(st=>gsSees(st,pf));if(st){n++;rs+=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))}}
+    if(N){q.contact=n/N;q.rate=n?rs/n:0;   // the mean rate while in contact (Q171), for data volumes (Q51 slice 2)
+     income(d*IMG_RATE*q.contact*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
   if(R()<1-Math.exp(-d/45)){const x=R(),DK=DIS.filter(q=>disCities(q[0]).length),[dis,head]=DK[R()*DK.length|0],cs=disCities(dis),ci=cs[x*cs.length|0],c=CITIES[ci],can=sats.some(q=>q.ant);
     HOOK.news(head.replace('#',c.name)+(can?'':' (if only someone had a camera up there)'),'warn');
