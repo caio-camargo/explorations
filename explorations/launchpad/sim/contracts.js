@@ -95,6 +95,20 @@ const CT={
   service:{src:['gov','com'],req:'beeper',open:()=>!!serviceTarget(),gen:R=>{const q=serviceTarget();if(!q)return null;const n=compEra()-satEra(q);return{sat:q.id,name:q.name,n,pay:60*n*1.6,dur:300+R()*200}},
     title:p=>`Service ${p.name}`,brief:p=>`Rendezvous and dock with ${p.name}, ${p.n} computing era${p.n>1?'s':''} behind, and bring its electronics up to date. Its users pay for the visit, and it earns in full again.`,
     ok:(R,p,s)=>!!s&&(s.att||[]).some(a=>a.e&&a.e.id===p.sat),after:c=>{const q=(PROG.sats||[]).find(x=>x.id===c.p.sat);if(q){q.era=compEra();q.eraSeen=q.era;HOOK.news(`${q.name} serviced: up to date, earning in full again`,'ok')}}},
+  // station work (QUEUE Q162; NOTES § "Plan: station, base, relay and rendezvous contracts", slice 1, W22's defaults):
+  // judged between flights on the station's state since the contract was taken (c.base from baseOf), like Selene science
+  stResupply:{src:['gov','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.crew>0&&s.days<ST_LOW),gen:R=>{const x=stPick(s=>s.crew>0&&s.days<ST_LOW);if(!x)return null;
+      const kg=Math.max(100,Math.round(x.s.crew*SUP_DAY*1000*60/50)*50);return{st:x.q.id,name:x.q.name,kg,pay:(30+0.12*kg)*(x.s.days<15?1.5:1)*1.6,dur:Math.max(5,Math.floor(x.s.days)),days:Math.floor(x.s.days)}},
+    title:p=>`Resupply ${p.name}`,brief:p=>`Deliver ${p.kg} kg of supplies to ${p.name} (dock a module that carries them) before its ${p.days} days run out.`,why:p=>`${p.name} has ${p.days} days of supplies left`,
+    baseOf:p=>({sup:stState(p.st,'sup')}),ok:()=>false,done:c=>stState(c.p.st,'sup')-c.base.sup>=c.p.kg/1000-1e-9},
+  stLab:{src:['sci','com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.labs>0&&s.crew>0),gen:R=>{const x=stPick(s=>s.labs>0&&s.crew>0);if(!x)return null;const n=10+(R()*4|0)*10;
+      return{st:x.q.id,name:x.q.name,n,pay:4*n*1.6,dur:60+3*n}},
+    title:p=>`${p.n} lab-days on ${p.name}`,brief:p=>`${p.n} days of crewed lab work on ${p.name} (two people per lab at most), with supplies to keep them working.`,why:p=>`${p.name} has a lab and a crew`,
+    baseOf:p=>({lab:stState(p.st,'labDays')}),ok:()=>false,done:c=>stState(c.p.st,'labDays')-c.base.lab>=c.p.n-1e-9},
+  stExpand:{src:['com'],req:'beeper',sel:true,open:()=>!!stPick(s=>s.ports>0),gen:R=>{const x=stPick(s=>s.ports>0);if(!x)return null;const kind=R()<0.5?'lab':'hab';
+      return{st:x.q.id,name:x.q.name,kind,pay:((PRICE[kind]??10)*1.3+40)*1.6,dur:250+R()*150}},
+    title:p=>`A ${p.kind==='lab'?'laboratory':'habitat'} module for ${p.name}`,brief:p=>`Dock a ${p.kind==='lab'?'laboratory':'habitat'} module to ${p.name} for a client who'll use it. A free port is waiting.`,why:p=>`${p.name} has a free port`,
+    baseOf:p=>({n:stState(p.st,p.kind)}),ok:()=>false,done:c=>stState(c.p.st,c.p.kind)>c.base.n},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
@@ -166,22 +180,29 @@ function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':
 // quakes, the core bracket's width (km)
 function selN(){const P=selSci(),all=[...P.spec.mare,...P.spec.high],c=P.core;
   return{mare:P.spec.mare.length,high:P.spec.high.length,far:all.filter(x=>x.far).length,pano:P.panos.length,seis:P.seis.length,quakes:(c&&c.n)||0,coreW:c&&c.hi<Infinity?(c.hi-c.lo)/1e3:Infinity}}
-function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*khYield();income(pay);PROG.cdone=(PROG.cdone||0)+1;
+function selDone(c){const i=PROG.active.indexOf(c);if(i<0)return;PROG.active.splice(i,1);const pay=c.p.pay*(c.src==='sci'?khYield():1);   // science yield for science clients, as contractEval
+  income(pay);PROG.cdone=(PROG.cdone||0)+1;
   standAdd(c.src,5);opAdd(c.client,3);if(c.client!==HOME)opAdd(HOME,1);HOOK.news(`Contract done for ${POWERS[c.client].name}: ${cTitle(c)} (+${fmtM(pay)})`,'ok');HOOK.save()}
-function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||selN();if(CT[c.type].done(c,N))selDone(c)}}
+function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].sel);if(!A.length)return;const N=selN();for(const c of A){c.base=c.base||(CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN());if(CT[c.type].done(c,N))selDone(c)}}
 // a satellite worth servicing: ours, earning (TV in view, or imagery with 30 % contact or more), an era behind or more,
 // and not already on the board or taken
 function serviceTarget(){const on=new Set([...(PROG.offers||[]),...(PROG.active||[])].filter(c=>c.type==='service').map(c=>c.p.sat));
   return satsUp().find(q=>!q.junk&&!on.has(q.id)&&compEra()>satEra(q)&&(q.tvOn||q.cam&&(q.contact||0)>=0.3))||null}
+// stations for station work (Q162): our registered stations with their state; ST_LOW days of supplies make a resupply job
+const ST_LOW=40;
+function stPick(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=stationOf(q);if(s&&f(s))return{q,s}}return null}
+// a station's measure for a contract: supplies (t), lab-days, or the number of modules of a kind (lab, hab), docked ones included
+function stState(id,k){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q)return 0;if(k==='labDays')return q.labDays||0;const s=stationOf(q);if(k==='sup')return s?s.sup:0;
+  const E=[q,...(q.attached||[]).map(a=>a.e)];return E.reduce((n,e)=>n+(e.shape||[]).filter(o=>PARTS[o.k]&&PARTS[o.k].kind===k).length,0)}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.max(payFloor(type),Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10);   // clients pay for what they care about; never under the floor
-  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:whyOf(type,src,client)}}
+  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:CT[type].why?CT[type].why(p):whyOf(type,src,client)}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
-  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;if(CT[c.type].sel)c.base=selN();PROG.active.push(c);
+  const c=PROG.offers.splice(i,1)[0];c.deadline=PROG.day+c.p.dur;if(CT[c.type].sel)c.base=CT[c.type].baseOf?CT[c.type].baseOf(c.p):selN();PROG.active.push(c);
   if(offerRisk(c).now.includes(HOME))sanction(HOME,c.src==='mil'?250:120,c.src==='mil'?`for military work for ${POWERS[c.client].name}`:`under export controls on ${POWERS[c.client].name}`);
   if(c.client!==HOME&&relOf(HOME,c.client)<-0.55&&(own().st[HOME]||0)>0.1){opAdd(HOME,-4*natK()*(own().st[HOME]||0));HOOK.news(`Opposition asks why the space program is working for ${POWERS[c.client].name}`,'warn')}
   HOOK.save();return true}
