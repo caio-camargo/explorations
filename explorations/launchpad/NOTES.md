@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -948,8 +948,8 @@ on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders`
   exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
 - A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
   run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
-- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
-  15 km; not yet measured (the GPU was busy all evening)...
+- `VAPOR_SIDE = false`: core only (A/B). Cost (RTX 5050, 1280×800, RS 1, same page on/off, median of 7×15 frames):
+  Heavy at M 1.0 (view 54) 6.05 vs 6.06 ms, Big Lunar (55) 6.77 vs 6.51 ms: one more volume per booster, ≤ 0.3 ms.
 - New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
 
 ## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
@@ -1002,6 +1002,17 @@ ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation
   night; 0.108 one radius up. Earthshine (~1e-4 of the sun) is left out.
 - `refView(113)` (back-lit, shadow toward the camera): the tank reads grey, the dark pod stays dark; `FILL_FX = false`
   gives the old black silhouette. `112` is the same lander from the sunny side.
+
+## Bay doors and char on dark shingles (2026-10-09, effects beat for parts & pad, QUEUE Q24)
+
+- **Bay doors mid-swing** read as paper-thin white eggshells: both faces were the paint colour and nothing held them.
+  `bayDoor` now gives the inside grey insulation and puts three hinge brackets on each rim, so a half-open door
+  reads as a door.
+- **Char on the capsule's black shingles** was invisible: char darkens toward black, and black can't get darker. On
+  dark paint (luma under ~0.1, `dk`) char now heat-tints instead, from bronze to blue-grey by noise, streaked like
+  the rest of the char (up to 80 %, less where it is fully burnt). Mercury's René 41 shingles came back looking like
+  this. The first try (tint at ~0.3 albedo) turned the whole pod pale bronze; the tint is now ~0.1.
+- Seen in the builder (bay at 45 % open; pod char 0 / 0.5 / 1). test.mjs `aerofx-3`.
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -1165,6 +1176,19 @@ Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `8
 **Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
 anvils; the deck from 8 km is still fairly uniform in brightness.
 
+### The volume's own shadows; a less uniform deck (2026-10-09, effects beat, QUEUE Q65)
+- **Shadows:** `cloudShadowV(p)` marches 5 steps from the ground point toward the sun through the 2–5.5 km slab with
+  `cloudDens` (the volume's extinction, 1/180 m⁻¹; floor 0.25 for skylight) and blends that into the shell's
+  `cloudShadow` by `uVk` and a fade at the bake's edge (36–47 % of its half-width). The cumulus over the sea in view 82
+  now cast their own dark patches, offset away from the sun; the shell's smeared shadow stays beyond 40 km and from
+  orbit. `CLOUD_SHADOW_V = false` for A/B. Cost: +0.3 ms at 3 km (view 81: 11.05 vs 10.73 ms), +0.75 ms on the pad
+  (view 80: 8.68 vs 7.93 ms), RTX 5050.
+- **Variety from 8 km:** the deck saturated to one white. Now a 9 km swell in each column's top height, a lower
+  multiple-scattering floor (0.4 → 0.28, so billows shade) and a ±15 % brightness swell over ~7 km. Better, still
+  modest: with a high sun a deck from above is mostly white. `CLOUD_VARY = false` for A/B; no measurable cost.
+- `cloudAt` (the CPU port for imaging) reads coverage, not `cloudDens`, so pictures and the sky still agree.
+- **Measuring pitfall:** the first timing loop of a page reported ~1 ms (warm-up); time each setting twice and use
+  the repeat.
 ## Effects for the new features: escape tower, landing dust, explosions (2026-10-08, aerofx session)
 
 Other sessions had added things with no visuals of their own: the crew escape tower (bodies), crewed Selene landings
@@ -1572,6 +1596,17 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## v1.77.1 — dispatched flights launch from their procedure's site and pay its lease (2026-10-09, economy session, QUEUE Q95)
+
+A dispatched flight used to launch from home whatever its procedure (`dispatchRun` passed no site to `procFly`). Now
+`procSiteOf(stack)` is the site the design's procedure was flown from (`proc.site`), or home:
+- `dispatchQuote` and `baseRunQuote` refuse when `siteAccessOf` refuses that site, and add its lease (v1.56) to the
+  price (`fee`, `site` on the quote);
+- `dispatchTick` stands a queued dispatch down if the site has closed to us since (relations, sanctions), checks that
+  site's weather for scrubs, and charges the lease with operations;
+- `dispatchRun` (bodies' code, one argument) and `baseRun` fly from that site.
+Test `econ-10` (mutation-tested): home 49M, the same dispatch from a leased site abroad 55M, refused when hostile.
 
 ## The career runner flies the real orbit presets (2026-10-09, economy session, QUEUE Q144; runner only)
 
@@ -7014,6 +7049,71 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
 - Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
   builder's panel (vehicle's), so they repeat here.
 
+### Landing where you click (2026-10-09, flow session, QUEUE Q62)
+- In the map, a click that misses orbits and satellites is cast onto the bodies (`surfacePick` in `sim/sitepick.js`, pure,
+  test `flow-3`): the first moon it meets gives a site in that body's own frame (`pf`, what bodies' `landAt` flies to). If
+  the design has a recorded procedure that lands on that moon (`procLandsOn`), it becomes `landPick`: a "landing site" ✕
+  on the map, the ▶ Procedure button says "→ 14.0°N 160.9°E", and starting it flies `procWithSite(pr, body, pf)`: the same
+  procedure with the transfer aiming its plane at the site and the descent landing on it (NOTES § "Landing on a chosen
+  point"). A design with no landing procedure there gets "land there once by hand". Picking again replaces it.
+- **The start buttons stay while the craft is on the pad** (`prelaunch()`): ▶ Procedure and ▶ Autopilot showed only at
+  `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
+- Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
+  Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
+- **The Program sits over the pad again after a flight** (Q145, PLAYTEST #27's second half): opening the Program while the
+  ship is a flown one (`S.rec.launched`) rebuilds the design on the pad (`editorChanged`), so the backdrop is the pad,
+  not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
+  40 km, Debrief, then Program: the pad.
+- **Evergreen (walking the screens as a new player).** (1) Over the notebook-era map, the map every new career sees on
+  M, the HUD's glass buttons and white messages vanished on the cream paper: `body.paper` (set while that map shows)
+  turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
+  launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
+  with the key) as well as `go`.
+
+### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
+LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
+themselves, tonnes a year on each, the bottleneck named, beside the pad calendar, with every vessel in flight on screen
+(§ "The network", § "Keeping flight in play", NOTES § "Routine runs": "the UI wants a Gantt view of the pads").
+
+**What it shows.**
+- **A schematic, not the orbital map.** Bodies as columns, left to right outward (Tellus, Selene, Nyx, then the
+  planets as SYSTEM.md opens them); within a column, surface at the bottom and orbits above it, by altitude band.
+  Nodes sit in their slot: sites and pads, stations, depots, outposts and bases, datacenters, relays (with a coverage
+  bar), the mass driver. Distances aren't to scale; the real map is one key away for that.
+- **Routes as lines between nodes**, thickness by tonnes a year, colour by good (propellant, supplies, crew, hardware,
+  materials), a dashed line for a route waiting on its window (with "next window in 214 d"). A route through a comms gap
+  is flagged (LATE_GAME § Comms).
+- **The bottleneck line**, always at the top: one sentence naming the limiting thing ("Depot L1 is short of
+  propellant: Selene's plant makes 40 t/y, routines draw 55"), with a button to the node.
+- **The fleet strip**: every vessel in flight, its next event and the time to it; nothing coasts out of sight.
+- **The pad calendar** under it: one row per pad (and per stacking bay once the hall becomes bays), bars for each
+  launch's stacking, launch and turnaround, manual flights and routines in different colours, windows as shaded bands.
+
+**Clicks.** A node opens its panel: stock and needs per good, routes in and out, what it's waiting for, and the
+honest next action ("fly a supply run here by hand", "build a second pad"). A route opens its template: design,
+procedure, Δv, tonnes per launch (up from what, LATE_GAME § Templates), its window family, recent runs and failures.
+A bar on the calendar opens that launch. Every node, route and bar names what it is in words, never only a colour.
+
+**How it reads the game: one pure SIM function** owned by the economy (with space for the orbits), so the screen
+draws and never computes: `netModel()` → `{nodes: [{id, kind, body, slot, name, stock, need, paused?}], routes: [{id,
+from, to, goods: {good: t/y}, runsPerYear, window?, gap?}], bottleneck: {text, node, good} | null, fleet: [{name, next,
+t}], pads: [{pad, bars: [{from, to, kind, title}]}]}`. Test: the model's sums (what routes deliver equals what nodes
+receive), the bottleneck picked by the largest shortfall, and a static check that the screen file calls no SIM
+function but `netModel`.
+
+**Slices.**
+1. **N1, now (M2):** the pad calendar and the fleet strip from what exists: `padsFree`, the dispatch queue
+   (`PROG.dispatch`, base runs), the timeline (`upcoming`), registered craft (`satsUp`, `landedUp`, moon satellites).
+   A compact pad calendar also goes in the Program's Fleet tab.
+2. **N2:** the schematic with today's nodes (sites, pads, satellites by orbit band, bases, relays) and no routes yet.
+3. **N3, when the economy builds routines and depots:** routes, goods and the node panels.
+4. **N4:** the bottleneck line, then rivals' networks drawn coarsely (LATE_GAME § Rivals) and the era's look (notebook,
+   terminal, modern, as the map does).
+
+**Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
+second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
+screen, below, plus a compact copy in the Fleet tab.
+
 ---
 
 ## Picking this up cold
@@ -7178,6 +7278,27 @@ the count stays 1). Events are diffed by engine identity (`p.i`) instead.
 **Not judged:** whether it sounds *good*. That needs ears (TESTING row 114). Levels are first guesses: the layer gains
 in `sndTick` are the knobs.
 
+### Per-engine voices (2026-10-09, effects session for the sound beat, QUEUE Q66)
+Every engine used to sum into one roar. Now each kind of engine burning gets its own band of noise (`sndVoices`, in the
+pure mix block), centred on its jet's peak frequency f ≈ St·U/D (Strouhal 0.2, exhaust ~2.5 km/s, D the exit diameter):
+Wren 1000 Hz, Sparrow 833, Kestrel 455, Petrel 417, Condor 403, Albatross 227. Same-kind engines are one voice (a
+Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust shares first; gain ∝ √share × the airborne
+level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
+drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
+- Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
+- test.mjs `aerofx-3` (engine voices).
+### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
+- **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
+  kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
+  under 260 Hz) and a crackle (the pop buffer at 1.4 kHz, ∝ level²), heard through the hull, so it doesn't thin with
+  the air. Measured: a hot climb (77 kW/m² at 1 km/s) 0; onset (20 kW/m² at 2.6 km/s) 0.12; view 40 (160 kW/m²) 1.00.
+  The old skin-temperature hiss stays (hot metal ticking, a different thing).
+- **Elsewhere:** `sndOthers` takes other vessels burning within 30 km (the own roar's loudness law) and debris tearing
+  through the air (a whoosh from its dynamic pressure, from 0.5 kPa), each falling as 250/(250+d) and needing air at
+  both ends; highs fade with distance; one brown-noise layer through a stereo panner, panned by the power-weighted
+  direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
+  explosions have one). `AUD.Q67 = false` turns both off.
+- test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:

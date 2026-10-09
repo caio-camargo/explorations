@@ -17,7 +17,9 @@ function go(s){const from=screenNow();if(s===from)return;
   if(s==='rollout'&&(mode!=='editor'||BLD.isEmpty(stackDef)))return;   // only from the Assembly, with something on the pad
   atDeb=s==='debrief';atRoll=s==='rollout';
   if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
-  if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
+  if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();
+    if(S&&S.rec&&S.rec.launched&&!BLD.isEmpty(stackDef))editorChanged();   // a flown craft behind the Program: back to the design on the pad (Q145; the Debrief keeps the flight's end)
+    renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
@@ -40,12 +42,12 @@ const KEYS={
     {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
-  map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite'},
+  map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite · pick a landing site on a moon'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
-  rollout:[{k:['b'],l:'B',d:'back to Assembly',go:'assembly'},{l:'LAUNCH',d:'the button: checks, then the pad'}],
+  rollout:[{k:['l'],l:'L',d:'launch (the checks above decide)',act:()=>$('launch').click()},{k:['b'],l:'B',d:'back to Assembly',go:'assembly'}],
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Assembly: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
-  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
-  assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
+  program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{k:['1','2','3','4','5','6','7','8'],l:'1–8',d:'the tabs, left to right',act:k=>{const b=document.querySelectorAll('#progTabs button')[+k-1];if(b)b.click()}},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
+  assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['l'],l:'L',d:'roll out: the site, the checks, then launch',go:'rollout'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
     {k:['r'],l:'R',d:'radial decoupler'},{k:['escape'],l:'Esc',d:'drop the held part · deselect (then: menu)'},
     {k:['delete','backspace'],l:'Del',d:'delete'},{k:['z','y'],l:'Ctrl+Z · Ctrl+Y',d:'undo · redo (Ctrl+Shift+Z too)'},
@@ -90,7 +92,7 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
   else if(k==='h')toggleHelp();
   else if(k==='f2'&&TEST.on){e.preventDefault();ovToggle('tester')}
   else if(k==='f'){toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook');else ovClose('logbook')}
-  else{const r=(KEYS[screenNow()]||[]).find(r=>(r.go||r.act)&&r.k.includes(k));if(r)r.go?go(r.go):r.act()}});
+  else{const r=(KEYS[screenNow()]||[]).find(r=>(r.go||r.act)&&r.k.includes(k));if(r)r.go?go(r.go):r.act(k)}});
 // ---- the tester menu (tester session; PLAYTEST #1). Only reachable with ?tester. Flags persist per browser in
 // 'launchpad-tester-flags'; the sandbox program lives in 'launchpad-program-tester'. The rules it bends are in the SIM tester block.
 const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_FUNDS)],['kh','Full know-how and certification','every part flies as if well known; flight safety signs off'],
@@ -172,6 +174,10 @@ document.addEventListener('click',e=>{const t=e.target.dataset&&e.target.dataset
 $('bLog3').onclick=()=>{toggleLog();if(!$('logbook').classList.contains('hidden'))ovOpen('logbook')};
 
 
+// a click on a moon in the map: the landing site for this design's procedures that land there (they fly to it)
+function pickLandSite(m){const V=HOOK.view;if(!V)return;const d=norm(add(V.Fw,add(mul(V.R,(2*m[0]/V.W-1)*V.tanX),mul(V.U,(1-2*m[1]/V.H)*V.tanY)))),hit=surfacePick(V.camW,d,simT);if(!hit)return;
+  if(!procsOf(stackDef).some(pr=>procLandsOn(pr,hit.body))){HOOK.msg(`No procedure of this design lands on ${hit.body} yet: land there once by hand`);return}
+  landPick=hit;updateAutoBtn();HOOK.msg(`Landing site on ${hit.body}: ${sitePlace(hit.pf)} · ▶ Procedure lands there`)}
 let drag=null,downAt=null,hDrag=null,nDrag=false;
 // map: handles (Δv), the node itself (time), or a click on the orbit (place/move the node); otherwise orbit the camera
 const toCv=e=>[e.clientX*cv.width/cv.clientWidth,e.clientY*cv.height/cv.clientHeight],near=(a,b,r)=>Math.hypot(a[0]-b[0],a[1]-b[1])<r*Math.min(devicePixelRatio||1,1.5);
@@ -183,7 +189,8 @@ cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX
 addEventListener('mouseup',e=>{
   if(!hDrag&&!nDrag&&downAt&&view==='map'&&mode==='flight'&&e.target===cv&&Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5){
     const st=(mapUI.sats||[]).find(x=>near(toCv(e),[x.x,x.y],9)),q=st?null:pickOrbit(toCv(e));if(st)setTarget(S.target===st.id?null:st.id);
-    if(q&&S.alive&&!S.landed&&!S.node&&!toolOK('nodes'))HOOK.msg(gateMsg('nodes'));
+    if(!st&&!q)pickLandSite(toCv(e));   // nothing else under the click: a point on a moon is a landing site (Q62)
+    else if(q&&S.alive&&!S.landed&&!S.node&&!toolOK('nodes'))HOOK.msg(gateMsg('nodes'));
     else if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
   drag=null;downAt=null;hDrag=null;nDrag=false});
 addEventListener('mousemove',e=>{

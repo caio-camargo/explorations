@@ -15,7 +15,7 @@ uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
-uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
+uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
@@ -195,7 +195,7 @@ float covNear(vec3 cu){float g=dot(cu,uCv0);vec2 uv=uPR*vec2(dot(cu,uCvE),dot(cu
 float cloudDens(vec3 q){float r=length(q);vec3 u=q/r,cu=uProt*u;float hf=(r-uPR-2000.)/3500.;if(hf<0.||hf>1.)return 0.;
  float c=covNear(cu);if(c<.01)return 0.;
  vec3 w=cu*uPR+vec3(uCT*400.,0.,uCT*250.);float n=vn(w/650.)*.65+vn(w/230.)*.35,tw=vn(w/2600.);
- float top=mix(.15,1.,c*c*(3.-2.*c))*(.45+1.1*tw),shape=smoothstep(0.,.06,hf)*smoothstep(top,top*.5,hf);
+ float top=mix(.15,1.,c*c*(3.-2.*c))*(.45+1.1*tw)*mix(1.,.55+.9*vn(w/9000.+3.7),uVv),shape=smoothstep(0.,.06,hf)*smoothstep(top,top*.5,hf);
  return clamp(c*shape*1.9-(1.-n)*.85,0.,1.);}
 // ---- the sky behind everything (aerofx; PLAYTEST #10). Inertial directions, so the sky turns as the planet does not.
 // The home galaxy is generated from the world seed (galaxyParams): a band on a great circle (normal uGx) with a bulge at
@@ -228,6 +228,14 @@ vec3 sunAt(vec3 d){float sdn=dot(d,uSun);if(sdn<0.)return vec3(0.);float th=acos
  float sp=(pow(abs(cos(a*2.)),600.)+.4*pow(abs(cos(a*2.+.785)),500.))*exp(-th/.025)*smoothstep(.003,.006,th);   // camera-fixed spikes (a lens artefact)
  return vec3(1.,.96,.88)*(disc*60.+exp(-th/.0035)*3.+exp(-th/.02)*.35+exp(-th/.12)*.04+sp*1.6);}
 float cloudShadow(vec3 p){float b=dot(p,uSun),c=dot(p,p)-uCR*uCR;if(c>0.||uCR<=0.)return 1.;vec3 q=p+uSun*(-b+sqrt(max(b*b-c,0.)));return 1.-.7*cloudCov(uProt*normalize(q));}
+// the cloud volume's own shadow on the ground (QUEUE Q65): 5 steps toward the sun through the 2–5.5 km slab, the volume's
+// extinction (1/180 m⁻¹), floor 0.25 for skylight; blended into the shell's shadow by uVk and a fade at the bake's edge,
+// so the shadows under the deck match the clouds drawn above them. uVs = 0 turns it off (A/B).
+float cloudShadowV(vec3 p){float sh=cloudShadow(p);if(uVk*uVs<=0.)return sh;vec3 cu=uProt*normalize(p);float g=dot(cu,uCv0);
+ vec2 uv=uPR*vec2(dot(cu,uCvE),dot(cu,uCvN))/(g*uCvX)*.5+.5;float e=max(abs(uv.x-.5),abs(uv.y-.5)),w=uVk*uVs*(1.-smoothstep(.36,.47,e))*step(0.,g);
+ float s=dot(normalize(p),uSun);if(w<=0.||s<=.02)return sh;float hg=length(p)-uPR,t0=max(2000.-hg,0.)/s,t1=min((5500.-hg)/s,t0+30000.),dt=(t1-t0)/5.,od=0.;
+ for(int i=0;i<5;i++)od+=cloudDens(p+uSun*(t0+(float(i)+.5)*dt));
+ return mix(sh,max(exp(-od*dt/180.),.25),w);}
 void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
@@ -254,7 +262,7 @@ void main(){
   vec2 eq=vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5);vec4 ct=texture(uCity,eq);float urb=ct.r*(1.-oc);
   if(uAtl>0.){atl=texture(uAtlas,eq);atlL=.5+.5*smoothstep(-.12,.2,ndl);}   // the atlas stays readable on the night side
   float street=0.;if(urb>.01){vec2 g=abs(fract(gx/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
-  col=alb*(ndb*st*5.*cloudShadow(p)+vec3(.01,.016,.03));
+  col=alb*(ndb*st*5.*cloudShadowV(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
   col+=vec3(1.,.72,.38)*ct.g*(1.-oc)*.55*(1.-smoothstep(-.12,.05,ndl))*mix(1.,.08+1.6*street,fade);
   if(oc>.5)col+=st*pow(max(dot(reflect(d,n),uSun),0.),90.)*1.5*step(0.,ndl);
@@ -286,8 +294,9 @@ void main(){
    vec3 sT=sunTrans(d*(.5*(tA+tB))-uPc)*5.,amb=vec3(.42,.5,.62)*(.12+.88*clamp(dot(normalize(-uPc),uSun)*3.+.3,0.,1.));
    for(int i=0;i<N;i++){float x=(float(i)+j)/float(N),t=tA+L*x*x,ds=L*2.*x/float(N)+L/float(N*N);   // steps grow with distance
     vec3 q=d*t-uPc;float dn=cloudDens(q)*(1.-smoothstep(.5*uVD,uVD,t));if(dn<.003)continue;
-    float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),.4*exp(-dl*.35));   // two steps toward the sun; the second term stands in for multiple scattering (deep cloud is grey-white, not black)
+    float a=1.-exp(-dn*ds/180.),hf=(length(q)-uPR-2000.)/3500.,dl=cloudDens(q+uSun*250.)+cloudDens(q+uSun*800.),lt=max(exp(-dl*2.2),mix(.4,.28,uVv)*exp(-dl*.35));   // two steps toward the sun; the second term stands in for multiple scattering (deep cloud is grey-white, not black)
     vec3 cs=vec3(.9)*(sT*(.08+.92*lt)*(.5+.5*smoothstep(0.,.8,hf))*.8+amb*(.35+.4*hf)*.6);
+    if(uVv>0.)cs*=mix(1.,.82+.32*vn(uProt*normalize(q)*uPR/7000.+1.3),uVv);   // Q65: ±15 % over ~7 km, thicker and thinner stretches of deck
     vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(t/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
     C+=T*a*(cs*tr+ic);T*=1.-a;if(T<.5&&tD>=tH)tD=t;if(T<.02)break;}
    col=col*(1.-uVk*(1.-T))+uVk*C;}}
@@ -442,7 +451,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(mk.x>0.){float st=mk.x*(k==2||k==15?1.:exp(-v/(.9*sc)))*(.7+.3*vn2(vec2(s*6.,v*.7)));st=clamp(st*1.2,0.,.985);   // soot is blacker than black paint
    alb=mix(alb,vec3(.004,.0036,.003),st);rough=mix(rough,max(rough,.85),st);metal*=1.-.6*st;}
   if(ch.w>0.){float c1=ch.w*(k==11?1.:smoothstep(-.3,.7,dot(vNo,ch.xyz)))*(.65+.7*vn2(side?vec2(s*9.,v*.9):q2*7.)),cb=k==11?smoothstep(.1,.6,c1):smoothstep(.25,1.,c1);   // streaked along the flow (planar on caps)
+   float dk=1.-smoothstep(.04,.18,dot(alb,vec3(.3,.59,.11)));   // dark paint (the capsule's shingles): char can't blacken black
    alb=mix(alb,alb*vec3(.85,.7,.45),smoothstep(0.,.35,c1));alb=mix(alb,vec3(.006,.0045,.0035),min(1.,cb*(.75+.35*nz)));
+   alb=mix(alb,mix(vec3(.10,.068,.04),vec3(.05,.058,.078),nz2),dk*.8*smoothstep(.1,.5,c1)*(1.-.45*cb));   // Q24: it heat-tints instead, bronze to blue-grey, like Mercury's shingles
    rough=mix(rough,max(rough,.85),cb);metal*=1.-cb;}
   // frost: a fine, translucent rime below the fuel line (the paint shows through it, so a new tank still looks new), a
   // little thicker toward the bottom, with a soft ragged edge at the fuel line and faint run-off streaks; not opaque
@@ -918,11 +929,13 @@ function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][
     lathe(out,[[.05,yt+.02,G],[.05,yt+.16,G]],[o[0]-rt-.08,o[1],o[2]],10,[true,true])}
   PK=K}
 // one roof half of a cargo bay: a quarter-dome on side sd (±x), swung by th about its hinge on the rim; two-sided
-function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),nu=6,na=12;
+// (Q24) the inside is grey insulation, so a half mid-swing reads as a door, not a white eggshell; hinge brackets on the rim
+function bayDoor(out,o,R,top,H,sd,th,col){const c=Math.cos(th),sn=Math.sin(th),nu=6,na=12,cin=[.36,.37,.39,1];
   const P=(u,a)=>{const r=R*Math.cos(u*Math.PI/2),yy=H*Math.sin(u*Math.PI/2),dx=r*Math.cos(a)-R,dy=yy;   // in the half's own frame (x toward its hinge)
     return[o[0]+sd*(R+dx*c+dy*sn),o[1]+top-dx*sn+dy*c,o[2]+r*Math.sin(a)]};
   for(let i=0;i<nu;i++)for(let j=0;j<na;j++){const u0=i/nu,u1=(i+1)/nu,a0=-Math.PI/2+j/na*Math.PI,a1=-Math.PI/2+(j+1)/na*Math.PI,A=P(u0,a0),B=P(u1,a0),Cc=P(u1,a1),D=P(u0,a1);
-    let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),col);pv(out,y,mul(n,-1),col);pv(out,x,mul(n,-1),col)}}}
+    let n=norm(cross(sub(B,A),sub(D,A)));if(sd<0)n=mul(n,-1);for(const[x,y,z]of[[A,B,Cc],[A,Cc,D]]){pv(out,x,n,col);pv(out,y,n,col);pv(out,z,n,col);pv(out,z,mul(n,-1),cin);pv(out,y,mul(n,-1),cin);pv(out,x,mul(n,-1),cin)}}
+  for(const zz of[-.55,0,.55])rbox(out,[o[0]+sd*(R+.02),o[1]+top+.02,o[2]+zz*R],.04,.05,.07,C.D,0)}
 function partBody(out,p){
   const d=p.d,y=p.y0,x=p.pos[0],z=p.pos[2],o=[x,y,z],h=d.h;
   switch(d.key){
@@ -1141,6 +1154,8 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
 // lower when the jet reaches the ground), coloured from the propellant's core and mantle, strength ∝ exit area × spool,
 // with the plume's flicker. PLT = {p: [camera-relative position, core radius], c: colour × strength, g: ground info}.
 let CLOUD_VOL=true;   // false: the flat shell everywhere (A/B)
+let CLOUD_VARY=true;   // false: no 9 km swell in the deck's top heights (A/B, Q65: a more varied deck seen from 8 km)
+let CLOUD_SHADOW_V=true;   // false: the ground keeps the shell's cloud shadow under the volume too (A/B, Q65)
 let CLOUD_DT=0;   // debug/reference views only: shifts the drawn weather in time (s). cloudAt (satellites) ignores it
 // the coverage texture for the near cloud volume: 512² over ±50 km round the point under the camera (planet-fixed,
 // gnomonic). Re-baked when the camera has moved 5 km or the weather has drifted (uCT) noticeably.
