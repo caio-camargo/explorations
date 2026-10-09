@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.4.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.5.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -19,13 +19,16 @@ lane splits the file (still no build step); blocked decisions proceed on a defau
 
 ---
 
-## Pillars (draft from NOTES, 2026-10-08; Caio edits)
+## Pillars (reviewed with Caio 2026-10-08, design desk; 7 is provisional)
 
 What the game is about. A feature has to serve at least one; a session can turn down or reshape work that serves none
 without asking. Each line points at where NOTES already said it.
 
-1. **Flying is the centre.** The program exists to create flights worth flying: offers between flights in a light tone,
-   never menus to manage, numbers few enough that a player can say why an offer appeared. (§ "Overlap, powers…", guardrails)
+1. **Pushing the boundary of what's possible.** The game lives at the edge of what your program can do: a first orbit,
+   a first landing, or a logistics network nobody has built before. Flying and the economy both serve that edge; the
+   economy is part of the game, not a menu between flights. However big the program gets, a player can say why something
+   happened (an offer, a failure, a payout). (Caio, 2026-10-08; replaces "Flying is the centre"; § "Overlap, powers…",
+   guardrails)
 2. **Every mission is a design problem, posed by physics we really simulate:** loads, heating, g, drop zones, windows.
    That's the edge over KSP. "Go to X" alone isn't a mission. (§ "Mission design", the lens)
 3. **What you launch stays and matters.** Payloads serve a need and keep doing so; the world reacts. Progression comes from
@@ -35,8 +38,14 @@ without asking. Each line points at where NOTES already said it.
    what's out there. (§ "Mission design", convergence 1; § "Compute")
 5. **Forgiving with time and failure.** Missing something costs a wait, never a failure; nothing decays into chores; losing
    contact never kills a vessel. (§ "Time, long missions", principles; § "Routine runs")
-6. **Lean and exact** (the engineering pillar). Float64 state, exact rails, one rigid body, a pure SIM block: no Kraken,
+6. **Lean and exact** (the engineering pillar; a **constraint**: it can refuse a feature, never justify one). Float64 state, exact rails, one rigid body, a pure SIM block: no Kraken,
    cheap warp, a port that stays cheap. (§ "The idea", § "Platform direction")
+7. **Lighter than serious, never a joke** (*provisional*, Caio 2026-10-08: "still somewhat tbd"). The physics is real and
+   the stakes are felt; the people are warm and a little funny. A lost crew weighs; a tourist's excitement is charming.
+   (§ "Program design — direction": "lighter than serious"; CREW.md's art direction hangs on it)
+8. **You live through an era, into the near future.** Tools, looks and the world move on with the date: the program
+   starts on paper and slide rules and grows into interplanetary travel, and possibly settlement. (Caio, 2026-10-08;
+   § "Compute — a resource across eras", the logbook's ageing interface, § "Early-era realism"; SYSTEM.md)
 
 ## Systems are complete (2026-10-08)
 
