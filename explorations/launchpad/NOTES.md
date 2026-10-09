@@ -1479,7 +1479,6 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
-<<<<<<< HEAD
 ## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
 Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
@@ -1500,7 +1499,7 @@ orbit is reached, upper stages left in orbit, and anything dropped on the way to
 
 Test `space-3` (3 checks; mutations caught: never noted, no orbit check, loud re-entry, no size floor, any flight's
 pieces). Full suite passes. TESTING row 148. Next: slice 2, conjunctions between flights (active entries only).
-=======
+
 ## v1.75 — the seeded small bodies' ground, a recipe factory (2026-10-09, world session, GROUND.md G7)
 
 The last piece of the per-body ground: SYSTEM.md's seeded classes (near-Tellus asteroids, belt bodies, trojans, comets,
@@ -1570,7 +1569,6 @@ Mutations caught: no ridge, gravity off by 10 %, projection without the half-cel
 
 **That completes GROUND.md G7 on the CPU:** every hand-made body and the seeded classes have ground. What's left is the
 space lane's real bodies (Q87, M4/M5) and the shader (G3, which needs the GPU and the milestone gate).
->>>>>>> origin/main
 
 ## v1.74 — staged pay only for missions flown for; supply runs wait for onboard computers (2026-10-09, economy session, Q112, D7)
 
