@@ -9636,3 +9636,8 @@ below the air are refused. Measured in the page: on *light* (the default), 1,500
 R0 11 but the next breakup is ~300 years off, so no news; on *real*, R0 110, due in ~30 years, and "The 800–850 km band now
 feeds itself" arrives in the first days. test.mjs `qa-4`; TESTING 177. Found on the way: a fresh program has no `PROG.satN`,
 so the first seed came out NaN and every stage was dropped; the test now starts without it.
+
+**Tester school picker (QA session, 2026-10-09; QUEUE Q106).** Tester menu → **Hardware school**: Auto and every school
+in `SCHOOLS`; a pick sets `SCHOOL_FORCE` (app/gl.js) and redraws the ship. Only Cape and Steppe have a look so far, so the
+other four are greyed with "draws as Cape" until Q102's steps 6–7; then they need no change here. `refView(114)`/`(115)`
+already show Cape and Steppe on the Orbiter for shot.mjs. test.mjs `qa-5`; TESTING 178.

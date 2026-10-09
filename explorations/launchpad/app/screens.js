@@ -121,6 +121,7 @@ function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mo
     +`</details>`
     +(fl?'<div class="sub">Epoch, date, era, funds and missions wait until the flight is over.</div>':'')
     +`<h3>Debris · ${Math.round(fragBands().reduce((a,b)=>a+b,0)).toLocaleString('en')} fragments</h3><div>at <input type="number" id="testDebKm" min="110" step="10" value="400" style="width:5em"${dis}> km, <input type="number" id="testDebT" min="0.1" step="0.5" value="1" style="width:4em"${dis}> t <button data-test-act="breakup"${dis}>Breakup</button><button data-test-act="asat"${dis}>ASAT test</button><button data-test-act="clutter"${dis}>+100 dead stages there</button></div><div>debris setting ${['off','light','real'].map(k=>`<button data-test-press="${k}"${pressureOf('debris')===k?' class="on"':''}${dis}>${k}</button>`).join('')}</div><div class="sub">Q161 · then advance the date: the bands drain, warnings and the cascade come as news; Program → Fleet has the fragment line. On <i>light</i> (the default, a tenth of real rates) a cascade needs ten times the clutter: about 1,500 stages and a breakup at 825 km feed the band on <i>real</i>.</div>`
+    +`<h3>Hardware school</h3><div>${['auto',...Object.keys(SCHOOLS)].map(k=>{const id=k==='auto'?null:SCHOOL_IDS[k],built=k==='auto'||id!=null;return`<button data-test-school="${k}"${built&&SCHOOL_FORCE===id?' class="on"':''}${built?'':' disabled title="no look yet: it draws as Cape (QUEUE Q102 steps 6–7)"'}>${k==='auto'?'Auto':SCHOOLS[k].name}</button>`}).join('')}</div><div class="sub">Every part drawn in one school, for screenshots (Q106). Auto: each part in its maker's.</div>`
     +`<h3>Go to body</h3><div>${BODY_CAT.map(b=>`<button data-test-body="${b.name}"${dis}>${b.name}</button>`).join('')}</div><div class="sub">SYSTEM.md's bodies drawn alone, placeholder looks (Q79). Esc comes back.</div>`
     +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
     +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
@@ -134,6 +135,7 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)r
   if(e.target.id==='testerBadge'){ovToggle('tester');return}
   if(d.testEp){testEpoch(+d.testEp);HOOK.msg(`Tester: epoch ${d.testEp}`);testDone();return}
   if(d.testDay){testAdvance(+d.testDay);testDone();return}
+  if(d.testSchool){SCHOOL_FORCE=d.testSchool==='auto'?null:SCHOOL_IDS[d.testSchool]??null;HOOK.rebuild();if(screenNow()==='assembly')editorChanged();renderTester();return}
   if(d.testPress){PROG.pressures=PROG.pressures||{};PROG.pressures.debris=d.testPress;HOOK.msg(`Tester: debris ${d.testPress}`);testDone();return}
   if(d.testBody){ovClose('tester');bodyViewOpen(d.testBody,1);return}
   if(d.testEra){const ok=testEra(+d.testEra);HOOK.msg(ok?`Tester: ${COMP_ERAS[compEra()].name.toLowerCase()}, ${fmtDate(PROG.day)}`:"Tester: that era doesn't reach this program within 60 years");testDone();return}

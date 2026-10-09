@@ -4769,6 +4769,14 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.TEST.on = false;
 }
 
+// qa-5. The tester's school picker (QA session, QUEUE Q106): Auto plus every school in SCHOOLS; the ones without a look
+// yet are disabled, and a pick sets SCHOOL_FORCE and redraws the ship.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('tester: the school picker lists Auto and every school, and a pick sets SCHOOL_FORCE and rebuilds the ship',
+    /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
