@@ -110,7 +110,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
-| Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | → flow 2026-10-09 (plan) |
+| Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | plan ✓ (NOTES § UI "Network screen plan"); N1 buildable now, N3 waits on routines (W16) |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
@@ -334,6 +334,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; ✓ v1.55 (`coverLoss`: the priciest rocket yet stands for the attempt; once per epoch) | Q44's fix |
 | W14 | **Pick a visual identity** from the mock-ups: (a) paperwork, (b) instrument panel, (c) mid-century poster, or a mix (office screens in one, cockpit in another). Open `mockups/identity/index.html` or the stills in `output/launchpad/mockups/identity/`; trade-offs in [`mockups/README.md`](mockups/README.md) | Q53, PLAYTEST #13 |
 | W15 | **Read the slice 4 plan** (NOTES § UI "Slice 4 plan": the flight core, gauges, cards, toolbar). Defaults if silent: gauges beside the navball · one speed that switches at the top of the air · Keys leaves the toolbar · pins remembered per browser | Q3 build (4a–4c), PLAYTEST #9 |
+| W16 | **Network screen** (NOTES § UI "Network screen plan"). Defaults if silent: its own screen (key N from the Program, once there is a second node) · a schematic, not the orbital map · the pad calendar below it, plus a compact copy in the Fleet tab | Q111 N1–N4 |
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
@@ -341,3 +342,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - flow — `app/rollout.js` `rollChecks()` now calls vehicle's `launchWarnings(stackDef)` (one line, Q48); the long Δv line wraps to four lines in the panel at 1280×800: shorten or fold it as you see fit — NOTES § v1.79
 - vehicle — a legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) — NOTES § v1.79
 - flow — the flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper behind pale buttons and white text): give them the era's ink — NOTES § "Landing where you click" (seen in its probe)
+- economy (+ space) — `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads); shape in NOTES § UI "Network screen plan"
+- flow — N1 of the network screen: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry) — NOTES § UI "Network screen plan"
