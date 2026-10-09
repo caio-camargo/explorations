@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.33 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2026,6 +2026,37 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: money buys capacity (2026-10-09, economy session, QUEUE Q123; nothing built)
+
+LATE_GAME § Money (round 5, approved): early, money buys flights; late, it buys **capacity**, and capacity gets dearer
+as you grow, so money stays the throttle on growth instead of piling up. Hardware stays the money sink.
+
+**Measured (why):** `SPEND=1 node career.mjs 6 2 all agency` (the runner's investor buys facilities, tests,
+development and lines): every facility's two levels are bought out by year 2–3 (220–520M in all), then there's
+nothing left to buy; six-year funds end at 270–370M in poor worlds but **1.4–2.1 G in rich ones**. Today's capacity
+is capped, not priced.
+
+**Proposed rule (defaults):**
+1. **Capacity is counted, not levelled**, for what scales: **pads** (today 1 + 2 levels), **integration bays** (the
+   hall's stacking in parallel), **ground stations** (dish arrays, v1.48), **sites of our own** (a new home site, not a
+   lease), **computing-centre** steps, **astronaut classes** (the crew plan's class size), and later **yards** and
+   **depots**. The *n*-th of each costs **base × 1.6ⁿ⁻¹** (and takes 1.2ⁿ⁻¹ × the days): the 4th pad ~330M, the
+   6th ~840M. Facilities that are upgrades in kind (the hall's speed, the recovery fleet's range) keep their levels.
+2. **Hardware stays the sink:** rockets are bought per flight as now; production lines (v1.31) make them cheaper with
+   every unit, so a program flying more spends more in total but less per tonne. No upkeep (v1.41).
+3. **Late revenue arrives with the systems that make it** (each in its own item): propellant sold at depots (rivals
+   included), power beamed down, compute (datacenters, v1.38's price index), relay leases, orbital tourism, powers'
+   contracts for big projects.
+4. **The test:** with the investor policy, a rich world's six-year funds stay within ~2× a poor world's, and capacity
+   bought keeps rising year on year (the runner prints capacity per year).
+
+**Questions for Caio** (numbered, with defaults; silence keeps them): (1) growth **×1.6 per unit** (default) or gentler
+(×1.3); (2) **new home sites** buildable (default) or leases only; (3) the hall's parallel **bays** as a capacity
+(default) or the hall stays one line.
+
+**Slices (⚙):** pads and ground stations counted with the growth price (`FAC` gains a `count` kind) → bays → home
+sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
 
