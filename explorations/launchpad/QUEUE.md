@@ -210,7 +210,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | ✓ `87f8588` (v1.93: nodes carried, a stop 3 h ahead, mission control at the era's error, missed ones dropped) |
 | Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ✓ `c364972` (a dispatched flight's payload stays up) |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | plan ✓ (NOTES § "Plan: data as a volume and the link budget"); slices are Q171–Q174 |
-| Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ready |
+| Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ✓ `96d98dc` (v1.96: rate and light delay on every link; whip over the pad 333 kbit/s, at Selene 20.5 bit/s) |
 | Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | after Q171 |
 | Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | after Q172 and Q164 |
 | Q174 | Q51 slice 4: solar conjunction and light delay at the planets | M5 | S | ⚙ | after Q87's slices; blocked: milestone gate (M5) |

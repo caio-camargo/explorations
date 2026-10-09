@@ -4657,3 +4657,30 @@ Caio left the session running ("keep going while you still have work"). Built, e
 ### Next steps
 - [ ] Flow: draw the planets on the map (Q87 slice 1's drawing)
 - [ ] Space: Q51 slice 1 (`pathHome`), once ranked; "Let it go" for an atmosphere entry (flown headless)
+
+## 2026-10-09 — Launchpad v1.95–v1.96 and four plans: the automation ladder, the link budget, Helios's tide, asteroids, a cycler, low thrust (space session, unattended)
+
+### Summary
+- Q127 plan and slice 1 (v1.95): `autoAllowed(kind)` with the ladder as one table (MIDGAME); the economy's supply runs
+  and mission control's burns ask it (burns from mainframes, moon runs from onboard computers).
+- Q171, Q51 slice 1 (v1.96): the link budget; every link carries a rate and a light delay (a whip over the pad
+  333 kbit/s, at Selene 20.5 bit/s, above the telemetry floor); which links exist is unchanged.
+- Plans in NOTES: Q139 (Helios's tide: per orbit above ~2,500 km, not on every Tellus orbit; L1/L2 at 261,000 km),
+  Q140 (asteroids, the space lane's seven steps on LATE_GAME's design), Q109 (low thrust on rails: ~2e-3 m/s² halves the
+  Enyo trip, ~50 W of jet per kg of craft; NEP is for tugs).
+- Q108 study (`study_cycler.mjs`): on our scale an Aldrin Tellus–Enyo cycler is ballistic with Tellus flybys under
+  ~800 km (needs 84.7°, a 300 km flyby gives 94.9°; the real Earth only 71.3°); taxis 1,702 m/s at Tellus.
+
+### Verification
+- New tests `space-12`, `space-13`; `space-10` moved into the mainframe era. Full suite 607 pass / 0 fail on `main`
+  as pushed (`96d98dc`); `career.mjs` unchanged.
+
+### Files
+- `explorations/launchpad/`: `sim/procedures.js` (`autoAllowed`), `sim/program.js` (`baseRunQuote`, one line),
+  `sim/space.js` (link budget, imagery rate, hand-off gate), `sim/world.js` (`linkOf`, additions), `sim/rovers.js`
+  (`rvContact` rates), `app/program-ui.js`, `test.mjs`, new `study_cycler.mjs`, `NOTES.md`, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Space: Q51 slice 2 (data as a volume) once ranked; Q148 needs the browser and two lanes
+- [ ] Vehicle: Q164 (powered presets) unblocks Q27
