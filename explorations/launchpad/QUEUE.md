@@ -121,11 +121,11 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q47 | **The construction screen usable by a newcomer**: walk building an Orbiter from scratch, fix what's unclear; Caio reviews. **Top priority: it blocks Caio's own playtesting** | M1 | M | 🖥 | ready |
 | Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | ready |
 | Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ready |
-| Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | → vehicle 2026-10-08 (plan) |
+| Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ready (planned: NOTES § "Vehicle parts") |
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
-| Q34 | Onboard-computer, radiator and solar-panel parts | M2 | M | ⚙ | → vehicle 2026-10-08 (plan) |
+| Q34 | Onboard-computer, radiator and solar-panel parts | M2 | M | ⚙ | planned (NOTES § "Vehicle parts"): split into Q34a, Q34b (Proposed) |
 | Q36 | Heat conduction between parts; heating from an engine's own plume (evergreen) | — | M | ⚙ | ready |
 | Q37 | Hypersonic capsule lift in the impact predictor (evergreen) | — | M | ⚙ | ready |
 
@@ -258,3 +258,9 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
 - economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
+- vehicle — **Q34a** onboard computer, solar panels (body cells + deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills — NOTES § "Vehicle parts" (⚙, M2)
+- vehicle — **Q34b** radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter — NOTES § "Vehicle parts" (⚙, M2–M3)
+- Caio (defaulted, override if you like) — from the onboard-computer era on, the guidance computer's SAS modes need an `ocomp` part on board; presets and the robot get one — NOTES § "Vehicle parts", Q34a
+- look & sound, parts & pad — draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer — NOTES § "Vehicle parts" (🖥)
+- flow — a key to deploy legs and wings (`G` if free) — NOTES § "Vehicle parts"
+- space — Q27 and Q50 read Q34a's power budget and `hasComputer(s)` instead of building their own; one shared "paused because…" field — NOTES § "Vehicle parts"

@@ -3628,3 +3628,18 @@ Platform lane, ROADMAP steps 1, 3 and 4 (QUEUE Q56, Q58, Q59). Caio stopped ever
 - [ ] Caio: W12 (or the default stands)
 - [ ] Economy: build W12's answer; then Q6 `siteAccess`
 
+
+## 2026-10-08 — Launchpad vehicle: plans for landing legs (Q31) and power/computer/radiator parts (Q34) (vehicle session)
+
+Planning only, at Caio's request (no heavy GPU): code and docs read, nothing run, no game code.
+- **Q31 legs:** a surface part mounted in symmetric sets; deployed feet replace the rim points in `footPoints`; landing
+  loads already reach the joints, so hard landings snap legs. Five headless checks specified. Back to `ready`.
+- **Q34 split:** **Q34a** (computer, body cells, deployable wing that snaps in air, battery, steady-state power budget
+  in the builder; running flat pauses, never kills) and **Q34b** (radiators + the orbital thermal solve, deferred to
+  the economy's datacenter). Worked out: LEO here is 37 % eclipse (16 of 43 min).
+- **Defaulted, for Caio:** from the onboard-computer era on, guidance-computer SAS modes need the `ocomp` part
+  (presets and the robot get one).
+
+**Files:** `explorations/launchpad/NOTES.md` (new section "Vehicle parts…", v1.21.9), `explorations/launchpad/QUEUE.md`
+(Q31/Q34 states, 6 Proposed lines), `ACTIVE_WORK.md` (claim opened and cleared).
+**Next:** build Q31 (⚙, M1), then Q34a; the look beat draws the parts when GPU time is free.
