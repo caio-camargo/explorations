@@ -34,7 +34,7 @@ const KEYS={
     {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw · driving a rover: drive and steer'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},
     {k:['v'],l:'V',d:'RCS on/off'},{k:['i','k','j','l','u','o'],l:'I K · J L · U O',d:'RCS translate: along the nose · sideways · sideways'},
     {k:[',','.','/'],l:', . /',d:'warp down / up / 1×'},{k:['m'],l:'M',d:'map'},{k:['g'],l:'G',d:'cycle the target'},
-    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
+    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
     {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
