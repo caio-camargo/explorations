@@ -3156,6 +3156,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
 }
 
+// ground-1. The ground of every body (world session, GROUND.md slice G1): a body's `ground` recipe replaces every
+// `b === TELLUS` ground test. Neutral today (Tellus as before, the moons smooth spheres), and live: a recipe given to
+// Selene reaches contact, landing, slope and the ground normal with no other change. Own SIM copy, so Selene's recipe
+// doesn't leak.
+{
+  const G = new Function(src + 'return {TELLUS,SELENE,NYX,BODIES,GROUND_GEN,bodyH,bodyTop,seaAt,groundAlt,groundR,terrainH,terrainSlope,groundNormal,TERR_TOP,newShip,physStep,fromPF,toPF,surfVel,qFromBasis,qrot,HOOK,DT,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  const T = G.TELLUS, Se = G.SELENE, D = Math.PI / 180; G.HOOK.msg = () => {}; G.HOOK.boom = () => {};
+  let rs = 7, bad = 0, sea = 0, wet = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = norm([rnd() - .5, rnd() - .5, rnd() - .5]), h = G.terrainH(u);
+    if (G.groundAlt(T, u) !== Math.max(0, h) || G.seaAt(T, u) !== (h < 0) || G.bodyH(T, u) !== h) bad++; if (h < 0) sea++; }
+  for (const b of G.BODIES) if (b !== T && (G.groundAlt(b, [b.R, 0, 0]) !== 0 || G.terrainSlope(b, [0, 1, 0]) !== 0 || G.seaAt(b, [b.R, 0, 0]) || G.bodyTop(b) !== 0)) wet++;
+  check('ground-1: neutral: Tellus ground is terrainH clamped at the sea, as before (2,000 points); every other body a smooth sphere',
+    bad === 0 && sea > 1000 && wet === 0 && G.bodyTop(T) === G.TERR_TOP && T.ground.sea === 0 && !Se.ground && !G.NYX.ground, `${bad} differ, ${sea} at sea, top ${G.bodyTop(T)} m`);
+  // a test recipe on Selene: a 500 m plateau rising to the north at 20° (h = 500 m + tan 20° × the arc north of 1°N)
+  const S20 = Math.tan(20 * D), lat = u => Math.asin(Math.max(-1, Math.min(1, norm(u)[1])));
+  G.GROUND_GEN.g1test = pf => 500 + Se.R * S20 * Math.max(0, lat(pf) - 1 * D);
+  Se.ground = { gen: 'g1test', top: 4e4 };
+  const drop = la => { G.t = 0; const s = G.newShip(['chute', 'pod']); G.S = s; s.body = Se; s.landed = false; let last = ''; G.HOOK.msg = m => { last = m; };
+    const u = [Math.cos(la * D), Math.sin(la * D), 0]; s.r = G.fromPF(Se, mul(u, Se.R + G.groundAlt(Se, u) - s.yBot + 0.2), 0); const up = norm(s.r), e = norm(cross([0, 1, 0], up));
+    s.v = add(G.surfVel(Se, s.r), mul(up, -1)); s.q = G.qFromBasis(e, up, cross(e, up)); s.w = [0, 0, 0]; s.sas = true; s.sasMode = 'stab';
+    for (let i = 0; i < 4000 && s.alive && !s.landed; i++) G.physStep(s, G.DT);
+    return { s, last, h: len(G.toPF(Se, s.r, G.t)) - Se.R + s.yBot }; };
+  const flat = drop(0), u5 = [Math.cos(5 * D), Math.sin(5 * D), 0], slope = G.terrainSlope(Se, u5), nrm = G.groundNormal(Se, G.toPF(Se, G.fromPF(Se, u5, G.t), G.t)),
+    tilt = Math.acos(Math.min(1, dot(nrm, norm(G.fromPF(Se, u5, G.t))))) / D;
+  check('ground-1: live: a recipe on Selene holds a pod up on its 500 m plateau, and its 20° rise reads as slope and as a tilted normal',
+    flat.s.alive && flat.s.landed && Math.abs(flat.h - 500) < 0.5 && Math.abs(slope / D - 20) < 0.5 && Math.abs(tilt - 20) < 0.5,
+    `${flat.last || 'not landed'} · rests ${flat.h.toFixed(2)} m above R · slope ${(slope / D).toFixed(2)}° · normal tilted ${tilt.toFixed(2)}°`);
+  Se.ground = { gen: 'g1test', top: 4e4, sea: 600 };
+  check('ground-1: a recipe\'s liquid level: below it is sea, and the ground there is the liquid\'s surface', G.seaAt(Se, [Se.R, 0, 0]) && G.groundAlt(Se, [Se.R, 0, 0]) === 600 && !G.seaAt(Se, u5));
+  delete Se.ground;
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

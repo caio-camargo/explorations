@@ -3663,3 +3663,21 @@ Three decisions for Caio, each with a default: maria to the near side (yes), G1�
 - [ ] Caio: GROUND.md § Decisions (defaults hold if silent)
 - [ ] Orchestrator: rank G1–G7+ into the world lane
 - [ ] World: G1 then G2 (headless, fine on a machine kept off the GPU)
+
+## 2026-10-08 — Launchpad v1.54: the ground of every body, slice G1 (world session)
+
+### Summary
+GROUND.md G1, headless (this machine stays off the GPU). Bodies carry a `ground` recipe (`gen`, `top`, `sea`); `bodyH`,
+`bodyTop` and `seaAt` are new. `groundAlt`, `terrainSlope`, `groundNormal`, the sea checks, the contact/debris/`fall`
+early-outs, `MOON_PE`, the camera clamp and the shadow plane now dispatch on the recipe, not on `b===TELLUS`. Neutral in
+play. The new test `ground-1` (3 checks, 3 mutations caught) proves both sides: Tellus is unchanged at 2,000 points, and a
+test recipe on Selene holds a pod on a 500 m plateau and reads its 20° slope. Full suite 436 pass / 0 fail. Caio's three
+GROUND decisions were defaulted (design desk), so G2 may start now.
+
+### Files
+- `explorations/launchpad/`: `sim/world.js`, `sim/flight.js`, `sim/rovers.js`, `sim/space.js`, `app/render.js`, `test.mjs` (`ground-1`), `NOTES.md` § v1.54, `GROUND.md` 0.1.1, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim cleared, hand-off note)
+
+### Next steps
+- [ ] World: G2, Selene's baked map plus crater bands on the CPU, maria moved to the near side (default held), `study_ground.mjs`
+- [ ] Not browser-checked: the camera clamp and shadow-plane edits are render code. They're neutral by construction (same values for every body today); QA's robot run will cover them

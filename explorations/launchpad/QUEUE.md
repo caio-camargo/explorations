@@ -1,4 +1,4 @@
-# Launchpad — work queue
+| → flow 2026-10-08 || → flow 2026-10-08 |# Launchpad — work queue
 **Version**: 0.1.6 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
@@ -205,7 +205,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | ✓ `6434d62` (go to day, set funds, era skip, mission toggles; TESTING row 126) |
 | Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 | Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | ✓ `e75d8d5` (clean: #15–#18, #21, #22 hold; new robot rows 97, 122; only #26 left on screen) |
-| Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ready (plan first; run when few others are in the browser) |
+| Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | plan ✓ (NOTES § "Plan: robot drivers…"); slice 1 moons → QA 2026-10-08, slices 2 docking, 3 stations ready |
 | Q79 | Tester **"go to body" view**: a `views.js` entry per [`SYSTEM.md`](SYSTEM.md) body, drawn alone from its physical row (radius, flattening, tilt, rings) at three distances, with no orbit or SOI yet. Unblocks Q80–Q85 | M5 | M | 🖥 | ready (the milestone gate allows it: SYSTEM.md § fan-out) |
 
 ### platform — file split, test speed, saves, perf (new)
@@ -252,20 +252,20 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W8 | Hands-on: TESTING rows 100, 108–120 and the robot's `~` rows; [`PLAYROUTE.md`](PLAYROUTE.md) is your route (Q54 ✓); sitting 1 once flow's Q2, Q39–Q41 land (QA will ping) | M1's human playtest |
 | W9 | Edit the pillars (ROADMAP § Pillars, a draft) | what sessions may turn down |
 | ~~W10~~ | ~~Pick a freeze window for the file split~~ answered 2026-10-08: Caio stopped all sessions; split done | Q59 ✓ |
-| W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
+| W11 | **Defaulted 2026-10-08 (design desk; Caio silent, may override): yes, a mission counts only on a flight launched while it was open**, as W1's rule for nyxfind. Was: should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
 | ~~W12~~ | ~~A failed first is mostly covered, once?~~ **answered 2026-10-08: yes, option (1)**, the sponsor pays back 75 % of the first lost flight aimed at an open first; economy building it (→ economy 2026-10-08) | Q44's fix |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- **→ world 2026-10-08** world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
+- **✓ v1.54 (`5cdf43d`)** world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
 - world — GROUND.md G2: Selene's baked map + crater bands on the CPU, `geoAt` on the bake (§42 retargeted), `study_ground.mjs` — M, ⚙ — GROUND.md § Slices
 - world — GROUND.md G3–G6: the march on Selene, shadows, consumers (with space for `landAt`), Nyx — 🖥, M3 — GROUND.md § Slices
 - world — GROUND.md G7+: per-planet ground items (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps), after G3 and Q79 — GROUND.md § The bodies
-- design desk / Caio — GROUND.md decisions: maria to the near side? (default yes); G1–G2 before M3? (default yes); relief in real metres? (default yes) — GROUND.md § Decisions
+- design desk / Caio — GROUND.md decisions: **all three defaults hold (2026-10-08, Caio silent when asked; may override)**: maria to the near side, G1–G2 before M3, relief in real metres — GROUND.md § Decisions
 - economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
 - economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
 - vehicle — **Q34a** onboard computer, solar panels (body cells + deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills — NOTES § "Vehicle parts" (⚙, M2)
 - vehicle — **Q34b** radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter — NOTES § "Vehicle parts" (⚙, M2–M3)
-- Caio (defaulted, override if you like) — from the onboard-computer era on, the guidance computer's SAS modes need an `ocomp` part on board; presets and the robot get one — NOTES § "Vehicle parts", Q34a
+- Caio (defaulted; **held 2026-10-08**, Caio silent when asked) — from the onboard-computer era on, the guidance computer's SAS modes need an `ocomp` part on board; presets and the robot get one — NOTES § "Vehicle parts", Q34a
 - look & sound, parts & pad — draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer — NOTES § "Vehicle parts" (🖥)
 - flow — a key to deploy legs and wings (`G` if free) — NOTES § "Vehicle parts"
 - space — Q27 and Q50 read Q34a's power budget and `hasComputer(s)` instead of building their own; one shared "paused because…" field — NOTES § "Vehicle parts"

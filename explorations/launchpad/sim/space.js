@@ -50,7 +50,7 @@ const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevati
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
 function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
 function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
-  const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE)&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
+  const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE+bodyTop(B))&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
@@ -513,7 +513,7 @@ const landedBody=q=>BODIES.find(b=>b.name===q.bodyName)||null;
 // In a flight they ride Kepler (satAt). Between flights Tellus's tide steps them (RK4, ~120 steps an orbit), because it
 // matters: it pumps a high, steeply inclined orbit's eccentricity (Lidov-Kozai) into the ground or out of the SOI within
 // days (NOTES, "The Selene relay"). One that leaves the SOI joins its parent's registry; one that meets the ground is lost.
-const MOON_PE=5e3;   // the lowest periapsis height a moon's orbit is registered with (airless, and no relief yet)
+const MOON_PE=5e3;   // how far above its highest ground (bodyTop) a moon's orbit must stay to be registered (airless)
 const orbBody=q=>q.bodyName&&BODIES.find(b=>b.name===q.bodyName)||TELLUS;
 function moonSats(b){return(PROG.sats||[]).filter(q=>q.bodyName&&!q.landed&&!q.docked&&(!b||q.bodyName===b.name))}
 const orbitsAt=b=>b===TELLUS?satsUp():moonSats(b);   // registered orbiters about body b (what a flight there can meet)
