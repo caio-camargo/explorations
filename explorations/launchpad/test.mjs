@@ -4085,6 +4085,11 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
     pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
       && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
+  // QUEUE Q24: char on dark paint heat-tints (it can't blacken black); a bay door's inside is a different colour from its
+  // outside, and it has hinge brackets
+  check('char on dark paint tints; bay doors have an inside and hinges',
+    /float dk=1\.-smoothstep\(\.04,\.18,dot\(alb,vec3\(\.3,\.59,\.11\)\)\);/.test(pg) && /alb=mix\(alb,mix\(vec3\([^)]*\),vec3\([^)]*\),nz2\),dk\*/.test(pg)
+      && /pv\(out,z,mul\(n,-1\),cin\)/.test(body('bayDoor')) && /for\(const zz of\[-\.55,0,\.55\]\)rbox/.test(body('bayDoor')));
   // QUEUE Q97: the leg and the power parts have their own looks (placeholders gone); the deployed leg puts its footpad
   // where the sim's legFoot puts the foot (reach out, drop below), one case each
   const leg = body('partBody').slice(body('partBody').indexOf("case'leg':"));
