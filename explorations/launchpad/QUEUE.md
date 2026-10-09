@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.11 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.12 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,11 +12,11 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **M0's last bugs**: Q74 (#24, P1), Q77 (#27) → vehicle; Q112 (#28) → economy. All in progress | vehicle, economy | **M0 done** (W13 default: #9, #11 don't count), M1 becomes current |
-| 2 | **M1's other finish lines**: robot `m1` ✓; Q118 first-orbit pacing (economy, next); **W16** a person who isn't you plays the first hour | economy, then you | **M1 done** |
-| 3 | **Your design calls**: **D5** (a rover dies when its battery runs flat at night: against pillar 5), **D6** (= W17, dry satellites), W14 (screen identity), W15 (slice 4 plan; defaults hold). D7 ✓ (a) | you | rovers' R3, MIDGAME's satellite line, Q53, Q3's build |
-| 4 | **Q57** save versions | platform (**no session**) | Q100, and Selene's ground going live (G3) |
-| 5 | **Mock-ups Q72, Q71, Q89** | any look & sound session (**none running**) | Q80–Q85, D2's look, Q102 |
+| 1 | **M1's finish lines** (M1 is now current): robot `m1` ✓; **Q118** first-orbit pacing (economy, after Q122); **W16** a person who isn't you plays the first hour; no box covers another (robot ✓) | economy, then you | **M1 done**; M2 becomes current |
+| 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan; defaults hold) | you | rovers' R3, MIDGAME's line, Q53, **Q3's build (M1's biggest flow item)** |
+| 3 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
+| 4 | **Mock-ups Q72, Q71, Q89** | any look & sound session (**none running**) | Q80–Q85, D2's look, Q102 |
+| 5 | **Q146** debris slice 2 (conjunctions) | space (no session) | slices 3–4, the pressure setting Q124, cleanup contracts |
 
 ## How a session uses this
 
@@ -71,13 +71,13 @@ the feedback I paste into PLAYTEST items.*
   (its § "After approval"); the per-body look and ground items need a tester "go to body" view first.
 - **New flight pay goes through `debPaid(R, kind, label, pay)`** (economy, every lane): otherwise the Debrief hides it in "days passing" (NOTES § UI "Slice 3 built").
 - **POWERS.md approved** (v1.0.0): fanned out as Q102–Q106; Cape and Steppe first (its round-2 decision 1).
-- **M0 bugs before anything else in your lane** (orchestrator, 2026-10-09, repeated): **vehicle Q74, Q77; economy Q112, Q118** are now the top rows of their lanes. Take them next; they're all that stands between us and M0 (and M1's pacing check).
+- **M0 is done (2026-10-09); M1 is current, M2 next** (ROADMAP rule 4). **The builder palette was empty on `main` from v1.68 to v1.73** (NOTES § v1.73): anything judged on the construction screen in that window needs a second look.
 - **Effects session silent since Q20; its items Q63, Q64, Q23 are back to `ready`** (2026-10-09). Before starting one, check for an unmerged `aerofx` branch or worktree on either machine and pick up its work.
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
-- **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the **M2 groundwork listed in ROADMAP § M2** (any lane, once
-  its own M0/M1 rows are taken; orchestrator 2026-10-09, matching what Q34a, Q46, Q10, Q61 did). M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
+- **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
+  except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
 ---
 
@@ -106,6 +106,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
 | Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | ✓ `46ac525` |
+| Q145 | After a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) | M1 | S | 🖥 | ready |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
@@ -117,6 +118,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 |---|---|---|---|---|---|
 | Q112 | PLAYTEST #28 (P2): staged pay goes to a mission nobody flew (a craft already at the body collects shares as missions unlock). **Holds M0: take first** | M1 | S | ⚙ | ✓ v1.74 `029df7a` (`R.open0`: shares only for missions open at launch) |
 | Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | ready |
+| Q144 | `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics: fix the stack (NOTES § v1.73) | M1 | S | ⚙ | ready |
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ✓ v1.56 `876a197` (leases by relations, sea 4M, members free; fee on the debrief) |
@@ -174,7 +176,11 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q12 | Deviation rules + the climb's corridor | M2 | S | ⚙ | ✓ bodies (`c1d7afb`) |
 | Q50 | **Station-keeping as a fuel lifetime** (W2 default): propellant at zero → the satellite drifts and its service pauses, never dies | M2 | M | ⚙ | ✓ v1.60 `60a7660` (TESTING 134) |
 | Q25 | **Orbital decay** for low satellites (unblocks reboost) | M2 | M | ⚙ | ✓ `21bbfa1` (v1.64: `thinAir`, `dragK`, `decayStep`; NOTES § v1.64; TESTING 140) |
-| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 under *Proposed* |
+| Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | slice 1 ✓ `7918837` (v1.76: spent stages in orbit become registry Debris; plan in NOTES § "Plan: debris and Kessler"); slices 2–4 are Q146–Q148 |
+| Q146 | Debris slice 2: conjunctions between flights, big objects vs active entries only (Öpik flux, seeded roll; tracked → warned and dodged from the tanks; crewed always warned) | M2 | M | ⚙ | ready |
+| Q147 | Debris slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) | M2 | M | ⚙ | after Q146 |
+| Q148 | Debris slice 4 (with flow, economy): the world setting off / light / real (default light; with platform's Q124); the map's band view; cleanup contracts | M2 | M | 🖥 | after Q147 |
+| Q149 | Dispatched routine flights leave no debris yet (`procFly` restores the list) | M2 | S | ⚙ | ready |
 | Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | ready (Q34a ✓) |
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ready (plan first; include LATE_GAME.md § "Keeping flight in play": the fleet strip, "no silent misses") |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
@@ -266,6 +272,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ready |
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ready |
+| Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ready |
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ready |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | after Q102 |
 
@@ -330,10 +337,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- **orchestrator — M0 check:** Q74 and Q77 (vehicle) are done in v1.73; PLAYTEST #24, #27 struck. **Main's builder palette was empty from v1.68 to v1.73** (a swallowed statement, NOTES § v1.73): anyone who tried the construction screen in that window saw no parts
-- QA — PLAYROUTE sitting 1 past step 4 can use the **Beeper** and **Passenger Orbiter** presets now; and `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics — NOTES § v1.73
-- flow — after a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) — NOTES § v1.73
-- space — Q26 slice 2: conjunctions between flights, big objects vs active entries only (Öpik flux, seeded roll; tracked → warned and dodged from the tanks; crewed always warned) — NOTES § "Plan: debris and Kessler"
-- space — Q26 slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) — same plan
-- space + flow — Q26 slice 4: the world setting off / light / real (default light) on slices 2–3; the map's band view; economy: cleanup contracts — same plan
-- space — dispatched routine flights leave no debris yet (`procFly` restores the list) — NOTES v1.76
