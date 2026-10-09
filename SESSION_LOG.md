@@ -4038,3 +4038,21 @@ Negative result: at 18 km the crater grows a central peak, which the first "pit"
 `app/editor.js`, `app/gl.js`, `app/input.js`, `app/screens.js`, `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.68),
 `TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** the space lane can build Q27/Q50's power side on this; vehicle's next ready items per QUEUE (Q48 warnings, Q33 nodes).
+
+## 2026-10-09 — Launchpad v1.69 economy: dispatch to a base, supply runs (QUEUE Q61; economy session)
+
+### Summary
+- Supply runs: the design's ascent procedure + transfer, capture and `landAt` on a base's beacon, flown for real by
+  `procFly`; the lander registers there and joins the base. Repeats only. A button on each base's Fleet-tab line.
+
+### Verification
+- New test `econ-7` (2 checks; the Probe lands 1 m from the beacon; untargeted mutation fails at 819 km); full suite
+  passes in 4 processes; merges clean, line counts checked.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.69, `TESTING.md` row 145, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 145
+- [ ] Economy: Q9 (station/base contracts; plan first); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner, crew rotation
+

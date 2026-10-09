@@ -1,6 +1,6 @@
 # LATE_GAME — what a mature program is
-**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–5). Details stay revisable at the margins; **the
+**Version**: 1.3.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–6). Details stay revisable at the margins; **the
 numbers in round 4's sections are placeholders, open to playability and to simplification** (Caio).
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
 the technology reaches, and what "settlement" means. It ties together pieces already designed elsewhere; it doesn't
@@ -59,6 +59,15 @@ energy ("people can't survive on a dark station").
 5. **Solar storms, light.**
 6. **Every pressure is a game option** (off / light / real per world), so a punishing one is tuned down or switched
    off without refactoring.
+
+## Decisions (round 6, Caio, 2026-10-09: asteroids)
+
+1. **Both capture and mine-in-place,** in that order through the eras.
+2. **The asteroid's type sets its yield** of propellant and materials; still five goods.
+3. **Planetary defence and objections to moving rocks,** as a pressure (a game option). Failure is softened by rivals:
+   someone else succeeds; your loss is embarrassment and money.
+4. **Lagrange points:** Caio expected multi-body to be in, and it largely is (6b). Measured: Selene's L4/L5 hold on
+   the game's own rails. No abstraction needed; Helios's tide at M5 is the space lane's call.
 ---
 
 ## The principle: you design the network by flying it
@@ -313,6 +322,48 @@ program-day tick, not per frame; a million aren't affordable as objects at all; 
 world setting (**off / light / real**, chosen at world creation). Each lives in its own code path behind its setting,
 so it can be tuned down or switched off without refactoring. Default: light.
 
+## Asteroids: capture and mining (round 6)
+
+**The real methods** (primer for the lanes):
+- **Types,** told apart by spectra from a distance: C-type (~75 %, water in clays + carbon: propellant), S-type
+  (stony: bulk), M-type (nickel-iron: structure). Many are **rubble piles** (Bennu, Itokawa), and most spin.
+- **Bring a small one home whole:** NASA's ARM study (Keck, 2012): bag a ~7 m, ~500 t rock, tow it with a 40 kW
+  solar-electric tug to a stable lunar orbit. Choose rocks already near Earth's orbit: "easily retrievable objects"
+  need **under 500 m/s**, with the Moon's gravity helping.
+- **Pick a boulder off a big one** (ARM's chosen option): more controllable than bagging a spinning rock.
+- **Mine in place and ship the product:** the belt's option.
+- **Ion tugs fit:** at ~30 km/s exhaust, 200 m/s on 500 t costs ~3 t of propellant, but at ~2 N it takes years. A
+  patient, cheap tug is what routines are for. Also: a mass driver on the rock throwing its own material (O'Neill), a
+  gravity tractor, a kinetic impactor (DART, 2022: deflection, not capture).
+- **Mining:** heat for volatiles ("optical mining": concentrated sunlight in a bag, TransAstra); bag rubble as
+  shielding, no processing; magnetic separation and the carbonyl process for metals.
+- **The hard parts:** despinning, anchoring at near-zero gravity (Philae bounced), and a tug whose acceleration
+  falls ~100× once the rock is aboard, thrusting through the combined centre of mass.
+
+**In the game:**
+- **The loop:** a survey telescope finds rocks (seeded near-Tellus asteroids, SYSTEM.md) → a flyby with the
+  spectrometer (R4) confirms type and size (pillar 4) → capture it, take a boulder, or mine it in place → fly it the
+  first time, then routine.
+- **Products, no new goods:** C-type → mostly propellant + some materials; S-type → materials (shielding grade);
+  M-type → materials worth more per tonne for structure.
+- **Era order:** boulder and small-rock capture near Tellus late in M4 (epoch 7, solar-electric tugs); mining in place
+  at Astraea and the belt in epochs 8–9.
+- **Parking: the Lagrange points are emergent, measured** (2026-10-09, `study_lagrange.mjs`, the game's own force model: Tellus gravity +
+  `pertAcc`, Nyx perturbing too, 20 Selene orbits = 259 program days): a particle at **Selene's L4 stays at 59.2°**
+  (worst drift 2°), **L5 at −60.2°** (1.5°); controls at 90° and 30° ahead are thrown off (267° of drift; one ends
+  10 million km out). Part 6b's tides in the rails already give the restricted three-body problem, and Tellus–Selene has
+  the Earth–Moon mass ratio. **So L4/L5 are stable parking spots today**, with no abstraction (pillar 6 intact). L1/L2
+  and a distant retrograde orbit weren't tested; by the same physics they should behave as the real ones do (L1/L2
+  unstable: halo orbits need station-keeping, as JWST does; the retrograde orbit stable). Caio: "a pity to lose
+  Lagrange points as emergent properties": they aren't lost.
+- **Helios's tide** on the Tellus system isn't in yet; adding it at M5 with the same machinery gives the Tellus–Helios
+  L1/L2 (JWST's home). A space-lane choice at M5.
+- **Politics and planetary defence** (a pressure, so a game option): towing a rock toward Tellus worries powers (a
+  security state may sanction); it must be parked on a path that can't hit Tellus, and a mistake is a headline. A
+  seeded rock on a threatening path is a **deflection contract**, DART-style. **Failing isn't the end of the world:
+  rivals try too, and someone else's success makes your loss embarrassment and money** (Caio, round 6; pillar 5 by way
+  of POWERS.md).
+
 ## The arc after Selene (epochs 6+; proposed, the economy session balances)
 
 | Epoch | The edge moves to | Capstones (grand firsts; rivals race for them) |
@@ -357,6 +408,8 @@ Approved as the base.
 ---
 
 ## Version history
+- **1.3.0 (2026-10-09):** round 6, asteroids: the real methods; the loop, products, era order; Lagrange points
+  emergent (measured with `study_lagrange.mjs`); planetary defence softened by rivals.
 - **1.2.0 (2026-10-09):** round 5: money buys capacity (hardware the sink, capacity dearer as you grow); debris as
   objects + density bands (measured propagation cost), tracking as a mechanic, cascades; events that make decisions;
   every pressure a game option (off / light / real).
