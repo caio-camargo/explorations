@@ -7702,6 +7702,17 @@ whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
 
+## Save versions (2026-10-09, effects session for the platform lane, QUEUE Q57)
+
+The career lives in `localStorage['launchpad-program-v1']` (the tester's sandbox in `…-tester`) as `JSON.stringify(PROG)`.
+It had no version, so a change to `PROG`'s shape could only be absorbed by fix-ups scattered through the loader. Now
+(`app/state.js`): `SAVE_V` (1), `MIGRATE[n]` (version n → n+1, pure) and `migrateSave(j)`, run on load. A save without
+`ver` is version 0; step 0 → 1 holds the loader's old fix-ups (drop `docked` flags, fill `rel`/`op`, a broken day → 0, a
+broken balance → the default). Saving stamps `ver`, never lowering it, so an older game can't make a newer save
+re-migrate. A save from a newer game loads as it is, with a message, not a guess.
+- **To change PROG's shape:** bump `SAVE_V`, add the step to `MIGRATE`, and a fixture to test.mjs `platform-2`.
+- Checked in the page: a planted version-0 save loads as version 1 (`docked` gone, `rel` filled); the robot's `m1` passes.
+
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
 `index.html` was one 6,700-line, 780 KB script that every lane edited, so every merge conflicted inside it. Its script is
