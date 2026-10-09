@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.33 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.35 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2072,6 +2072,97 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: goods on routines, outposts' self-sufficiency and exports, capstones and records (2026-10-09, economy session, QUEUE Q110; nothing built)
+
+LATE_GAME § "The network", § "Outposts" and § "The arc after Selene" (approved), on what exists now: supply runs to
+bases (v1.69: a design's ascent procedure + transfer + `landAt`, flown for real by `procFly`, the lander joins the
+base), station state and station work (v1.89.3), the network model (`netModel`, v1.89.1: nodes with stock and need,
+routes empty), the automation ladder (MIDGAME, D7: uncrewed runs to the moons need onboard computers).
+
+**1. Routines are repeating dispatches** (the Factorio belt). A **routine** = a template (design + procedure + site +
+destination node) + a **window rule** (MIDGAME § Windows: plane over the site, target phase, lighting, planetary
+alignment) + a period. `PROG.routines = [{id, stack, site, to, every, window, next, runs, fails, cargo}]`; each run is a
+dispatch (pads, stacking days, price, the lease, physics by `procFly`, the deviation hand-over) queued at the next valid
+window after `next`. **A route is flown by hand the first time**, then any dispatchable flight can be made a routine
+("Repeat this run every 60 days"). They appear in `netModel().routes` with tonnes a year per good.
+
+**2. Goods are what the design carries** (the five: propellant, supplies, crew, hardware, materials), measured, not
+abstract: a run's cargo is the modules and resources that arrive (supplies in a habitat's `sup`, propellant in a
+tank's resources, hardware as named modules, crew from the roster plan). A routine's tonnes a year = cargo per run ×
+runs a year (its window and the pads permitting). Node **stock** per good comes from its registry entries' resources;
+**need** from its crew (supplies, v1.60's `SUP_DAY`) and its routines (propellant a depot hands out).
+
+**3. Outposts and self-sufficiency.** An outpost is a base or station with **production modules** (vehicle and space
+lanes build the parts; economy runs them): a **greenhouse** or **recycler** makes supplies (costing power: the habitat
+budget, Q119), an **ice plant** makes propellant at Selene's poles, Astraea or Enyo's caps (from the ground model). Each
+module's output per day enters the node's stock in `utilTick`. **Self-sufficiency** = for each good it consumes to keep
+running, the share it makes; **one number, the lowest share** (LATE_GAME). At 100 % it needs no routine; cut off it
+goes dormant (pillar 5), never dies.
+
+**4. Exports.** An outpost's surplus is a routine's cargo the other way: Selene's propellant to an orbital **depot**,
+materials (the mass driver, later) to a yard. **Depots** are stations with tanks: they sell propellant to our flights
+(a refuel docking counts as a purchase from stock) and to **rivals** (Q138), at a price by the cycle.
+
+**5. Capstones and records** (epochs 6–10, LATE_GAME's table): capstones as **firsts** with rivals racing for them
+(Q138's programs): a lander on Hesper, a rover on Enyo, propellant made off Tellus, a self-sufficient outpost, the
+mass driver's first payload, people on Enyo and home, a cycler, the highway, the first megawatt sold, the interstellar
+probe launched. **Records** in the logbook (open-ended, `LOGF`): tonnes a year through the network, the largest
+structure, megawatts in orbit, the most self-sufficient outpost, the deepest probe. Headlines, not points (pillar 3).
+
+**Questions for Caio** (numbered, with defaults): (1) routines as **repeating dispatches with a period and a window**
+(default) or a run you order each time; (2) goods **as physical cargo, measured** (default) or abstract tonnage per run;
+(3) self-sufficiency as **the lowest share** (default, LATE_GAME) or an average; (4) depots **sell to rivals** from
+the start (default) or only in the commercial era.
+
+**Slices (⚙, M3–M4):** routines (a repeating supply run to a base, its window, its row on the pad calendar and in
+`netModel().routes`) → goods accounting per route and node → production modules and self-sufficiency (with vehicle
+and space for the parts) → depots and propellant sales → exports → capstones → records.
+
+## Plan: rivals as programs, scarce places, the world's mood, commercial rivals (2026-10-09, economy session, QUEUE Q138; nothing built)
+
+LATE_GAME § "Rivals in the late game" (round 7, approved as proposed). **Today:** rivals are seeded schedules
+(`raceSchedule`: a day per race first per power, the earliest wins), with personalities since v1.89.2 (frugal powers
+don't race; rising ones copy then catch up; the open superpower announces, the closed one surprises).
+
+**1. Rivals as programs** (coarse, never flown):
+- Each other power keeps `{budget, capacity: {pads, depots, outposts, stations}, progress: {capstone: 0–1}}`, stepped
+  in `worldTick`: budget = its economy × its archetype's money (tax, patronage, commodity, military, as `moneyK`) ×
+  the world's mood; it spends on capacity first, then on progress toward the capstones its priorities favour
+  (prestige → crewed firsts; science → probes; commerce → stations, depots; security → its own constellations), sped by
+  its tech and its computing era (v1.38's lag per power).
+- **The early race keeps its schedules** (they work and are tested); programs take over for **epoch-6 capstones and
+  after** (LATE_GAME § "The arc after Selene"): a rival can overtake you, stall in a bust (commodity prices), or lose a
+  crew (a news line and a set-back).
+- **What you do moves it:** propellant sold to it speeds its progress; a sanction stalls it; a race won costs it opinion
+  and budget at home.
+- Its stations and outposts become registry objects on rails (the space lane), so you can meet one, rescue its crew,
+  or sell it propellant; on the network screen they're drawn in its colour (`netModel` gains `rivals`).
+
+**2. Scarce places: the race gets a map.** A registry of contested places (`PROG.claims`): stationary-orbit slots
+(a fixed number around the ring), Selene's polar ice craters (a handful, from the ground model), Selene's L4 and L5,
+Enyo's caps, prime landing sites. **Whoever builds there first holds it** (a station, base or satellite registered
+within its radius); a holder's neighbours pay a lease or route round it (v1.56's leases). Rivals claim by progress.
+
+**3. The world's mood has eras**, driven by tensions and the date (`worldMood()`, not scripted): **race** (high
+tension, early: firsts pay ×2, secrecy up), **détente** (tension falling: joint missions offered, guest astronauts),
+**consortium** (many friendly pairs: shared stations, big joint projects), **commercial** (late, private companies:
+undercut prices), **a new race** (tension back up). Each era shifts pay multipliers, offer mixes and the news tone.
+
+**4. No combat, ever.** Conflict stays below war: sanctions, anti-satellite tests that foul a band (the debris lane),
+poaching people (the roster, level 3), claim disputes, cutting a supplier, propaganda.
+
+**5. Commercial rivals** in the commercial era: private companies with the coarse model above, **undercutting launch
+prices** (commercial contracts' pay falls by their share of the market, floored by v1.77's pay floor) and buying
+from you (propellant, relays, later templates).
+
+**Questions for Caio** (numbered, with defaults): (1) programs **replace schedules only from epoch 6** (default) or
+the whole race; (2) scarce places **held by building first** (default, the Artemis-Accords way) or a lottery of
+claims; (3) mood eras **from tension and the date** (default) or a fixed historical sequence; (4) commercial rivals
+**undercut contract pay** (default) or only compete for firsts.
+
+**Slices (⚙, M4):** the coarse rival program state and its tick (no effect yet; a debug view) → capstone progress
+and news → claims registry for stationary slots → mood eras → commercial rivals.
 
 ## Plan: money buys capacity (2026-10-09, economy session, QUEUE Q123; nothing built)
 
