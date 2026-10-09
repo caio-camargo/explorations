@@ -1681,6 +1681,53 @@ is large at 2 seeds (±400M, as the handoff warns).
 **Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
 rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
 
+## Q19 in progress: where a grazing frame's time goes (2026-10-09, world session; parked, no code changed)
+
+QUEUE Q19 (the cost of low grazing views). Measured on this machine's RTX 3050 6 GB Laptop GPU, in headless Chrome
+(`shot.mjs`) at 1262×704, with `adaptRes` off and `RS` = 1. **Parked:** the session's background run was stopped because
+the machine ran critically low on memory, which other sessions were using (about 0.5 GB free of 16). Resume from here.
+
+**Baseline, the whole frame (the game's own `gpuMs`):**
+
+| View | ms | v1.25's number |
+|---|---|---|
+| Pad | 14.4 | 4.2 |
+| Coast from 1.5 km | 24.3 | 3.2 |
+| Rugged hills, 40 m up, grazing (the most rugged land: 52°S 121°E, alpine, 3.7 km) | **54.5** | 8.8 |
+| Hills at 300 m | 50.5 | — |
+| Orbit | 6.1 | 2.5 |
+
+v1.25's numbers were 1024×768 on the same GPU model; these are far worse, and the next findings say why only partly.
+
+**What I found:**
+- **The GPU is thermally throttled while it works:** 85 °C, 1,290 of 2,100 MHz. One early run read 22.9 ms for the hills
+  and was never repeated. **Compare only A/B within one session, interleaved.** Across sessions numbers can differ 2×.
+- **Clouds don't matter at the hills view.** Volumetric clouds off/on, five interleaved rounds: 55.2 against 55.2 ms.
+- **The sky shader is the frame.** A per-draw GPU profile (each draw call in its own timer query; the game's frame timer
+  off, since the queries can't nest) gives:
+  - sky shader 43–44 ms;
+  - its depth pre-pass 5.0 ms;
+  - everything else under 1.5 ms (meshes, bloom, composite).
+- **With the march removed**, the sky shader is 18.3 ms. So the march plus terrain shading is ~25 ms of the 43.
+- **Recompiling the sky shader takes ~36 s** (ANGLE/D3D11, sky + depth pass). Each A/B variant therefore costs a browser
+  session of about a minute, and the plan has to be few, well-chosen experiments.
+
+**Tools (in the session scratchpad; rebuild from this description):**
+- a bench (views via `overView`, `gpuMs` median over 1.2 s);
+- `profFrame` (per-draw timer queries grouped by shader);
+- `swapSky(src, depth)`: relink `PSKY`/`PDEPTH` from an edited `SKY_FS` and refresh `P.u`'s locations;
+- `oneAB(name)`: base then variant, in one session.
+
+Worth promoting into `terrain-probe.js` when resumed.
+
+**Next, in order:**
+1. A/B the shading pieces at the hills view, one per session: normals at ≤5 octaves; no cloud shadow; no near-field
+   detail; no `tellus()` fbm.
+2. A/B the march: octaves capped at 6; and using the pre-pass's 3×3 hits as a bracket, a short bisection where all nine
+   hit close together instead of the full step loop.
+3. Then the 18 ms that isn't terrain at all (the atmosphere's `scatter`?), which is the look lane's code: hand it over
+   with numbers.
+
 ## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
 
 The first step of GROUND.md § "G3: the port plan", allowed before the milestone gate. Headless, and no visible change.
