@@ -6297,6 +6297,13 @@ the arrows, and every key in the handlers present in its Help table.
   `program-ui.js`, so anything it calls must live in that file or an earlier one. A first cut kept `newsHTML` in
   `debrief.js` (later): the page stopped at load, on the Assembly with a black view. `platform-1` only checks the SIM
   files; robot `m1` on the plain page (no `?tester`) caught it.
+- **Map labels no longer pile up** (PLAYTEST #31, Q115). Not labels at the origin: from a camera at Selene, Tellus is a
+  dot near the screen's corner, and every city, satellite and fleet name on it was drawn there, because names were gated
+  on the camera's distance to its *focus* (`cam.mDist`), not to the body they sit on. City names now need the camera
+  within 4.3 R of Tellus, satellite names within 10 R of the body they orbit. And the map places label texts after the
+  marks, most useful first (orbit and encounter labels, impacts, then ships, then stations and satellites, then cities),
+  skipping any text that would overlap one already placed. Probed on the robot's far-side flight: the pile is gone, the
+  orbit labels unchanged.
 
 ### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
 **Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
