@@ -118,7 +118,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 |---|---|---|---|---|---|
 | Q112 | PLAYTEST #28 (P2): staged pay goes to a mission nobody flew (a craft already at the body collects shares as missions unlock). **Holds M0: take first** | M1 | S | ⚙ | ✓ v1.74 `029df7a` (`R.open0`: shares only for missions open at launch) |
 | Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (4–6 flights to orbit everywhere; a poor-world company stuck 1 in 5 → fixed by Q93) |
-| Q144 | `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics: fix the stack (NOTES § v1.73) | M1 | S | ⚙ | → economy 2026-10-09 |
+| Q144 | `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics: fix the stack (NOTES § v1.73) | M1 | S | ⚙ | ✓ `da830d3` (Beeper, Passenger Orbiter; 4 flights to orbit everywhere) |
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ✓ v1.56 `876a197` (leases by relations, sea 4M, members free; fee on the debrief) |
@@ -142,7 +142,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q138 | 📝 **Rivals as programs**: budget → capacity → progress per capstone (replacing seeded schedules late); scarce places held by building first — [`LATE_GAME.md`](LATE_GAME.md) 1.4.0 | M4 | M | 📝 | ready (plan only) |
 | Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ready |
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
-| Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ready |
+| Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | → economy 2026-10-09 |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
