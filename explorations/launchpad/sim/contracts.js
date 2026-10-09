@@ -101,11 +101,25 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
+// why an offer appeared, in one line (QUEUE Q45): the strongest true reason among the things that make offers: a first
+// that opened the type, tension (military), the business cycle (commercial), what the client cares about, the program's
+// standing with that kind of client, home's own government. Worked out once, when the offer is made, and kept on it.
+const WHY_NEW=60,WHY_PRI=0.35,WHY_STAND=70;
+function whyOf(type,src,client){const C=POWERS[client],who=client===HOME?'Home':C.root,req=CT[type].req,d=req&&PROG.done[req],pri=PRI_OF[src];
+  if(d&&d.day!=null&&PROG.day-d.day<=WHY_NEW){const M=MISSIONS.find(m=>m.id===req);return`New since you did “${M?M.name.replace(/^Passenger: /,''):req}”`}
+  if(src==='mil'&&tensionOf(client)>0.4)return`${who} is nervous about its neighbours`;
+  if(src==='com'&&(PROG.cycle||0)>0.45)return'Boom times: operators are hiring launches';
+  if(src==='com'&&(PROG.cycle||0)<-0.45)return`A rare order in a recession: ${who} still needs it`;
+  if(src==='tour')return`Tourism standing ${standOf('tour').toFixed(0)}: people want to fly`;
+  if(src==='gov'&&client===HOME)return'Your government wants results';
+  if(flav(client).pri[pri]>=WHY_PRI)return`${who} cares about ${pri}`;
+  if(standOf(src)>=WHY_STAND)return`Your ${SRC[src].name.toLowerCase()} standing (${standOf(src).toFixed(0)}) brings work`;
+  return`Routine ${SRC[src].name.toLowerCase()} work${client===HOME?'':` from ${who}`}`}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
-  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
+  return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:whyOf(type,src,client)}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
 function acceptOffer(id){ensureBoard();const i=PROG.offers.findIndex(o=>o.id===id);if(i<0||PROG.active.length>=capOf())return false;
@@ -148,7 +162,7 @@ function econTick(d,R){ensureBoard();standTick();devTick();facTick();compTick();
 const START={
   agency:{name:'National agency',blurb:'Funded by your government: budget days, a safety net, more government work. Opinion at home is everything.',funds:80},
   company:{name:'Private company',blurb:'Investor capital: more cash up front and more commercial work, no budget day and no safety net, little political flak.',funds:90},
-  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program and its budget. Their opinions all count.',funds:80}};
+  consortium:{name:'Transnational consortium',blurb:'Home and its two friendliest neighbours share the program, its budget and a say in it: all three opinions count.',funds:80}};
 const own=()=>PROG.own||(PROG.own={kind:'agency',st:{[HOME]:1},pv:0,chosen:false});
 const stateShare=()=>Object.values(own().st).reduce((a,x)=>a+x,0);
 function chooseStart(kind){const o={kind,st:{},pv:0,chosen:true,debt:0};

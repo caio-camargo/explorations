@@ -61,12 +61,15 @@ const ovOpen=id=>{$(id).classList.remove('hidden');OV.splice(0,OV.length,...OV.f
   ovToggle=id=>$(id).classList.contains('hidden')?ovOpen(id):ovClose(id),
   ovTop=()=>[...OV].reverse().find(id=>!$(id).classList.contains('hidden'))||OVS.find(id=>!$(id).classList.contains('hidden'));
 // The Esc menu. Leaving a flight that is still going asks twice: the second click is the confirmation.
+// It pauses the game (W5, QUEUE Q39): while it's open the frame loop skips the simulation (flight, warp, rover), the mix
+// goes quiet and the flight keys do nothing; closing it carries on where it was, at the same warp.
+const gamePaused=()=>!$('escm').classList.contains('hidden');
 let escArm=null;
 const flying=()=>mode==='flight'&&S&&S.alive&&!S.landed;
 let perfOn=false;try{perfOn=localStorage.getItem('launchpad-perf')==='1'}catch(e){}
 document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
-  $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}</h2>`+b('close','Close  [Esc]')
+  $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
     +(['assembly','rover','debrief'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+(TEST.on?b('tester','Tester menu  [F2]'):'')
     +`<label><input type="checkbox" id="escPerf"${perfOn?' checked':''}> performance readout</label>`;

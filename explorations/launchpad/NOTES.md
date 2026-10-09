@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.11 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,78 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.60 — station-keeping: a satellite's life is its propellant (2026-10-08, space session, QUEUE Q50, W2)
+
+W2's default, built: **a satellite holds its orbit by spending its own propellant against the moons' tides; when the tanks
+are dry it drifts off its slot, and nothing is destroyed for running out.** In `sim/space.js`, after the moon-orbit stepper.
+
+**How it works.**
+- `slotRate(q)`: the m/s a day it costs to hold this orbit, measured once (cached `q.skRate`) by stepping the orbit under
+  `pertAcc` for `SK_D` = 5 days and reading how far its plane, size and shape have moved (one orbit's mean, so the wobble
+  within an orbit cancels). Phase is free: fixing it only needs a slightly different size for a while.
+- Orbits the flight treats as unperturbed (`pertNear`), or that cost under `SK_MIN` = 0.1 m/s a day (low Tellus orbits,
+  which drift a few km a month), pay nothing and never drift. Decay (Q25) will be their lifetime instead.
+- What it can burn (`skProp`): tank fuel through its best engine's vacuum Isp, then RCS gas (Isp 70). `skDv(q)` is what's
+  left; `skSpend` takes the propellant out of the entry's own `shape[].res` and lowers `q.mass` (kg; tanks hold tonnes), so
+  a satellite flown again later has the fuel it really has left.
+- `orbTick(T0, T1)` replaces `moonOrbTick` in `advanceDays`. A held orbit stays on its exact Kepler rails and pays
+  `rate × days`. When the tanks run out mid-tick, it leaves its rails at the moment they ran dry (`q.adrift` = that day),
+  with one news line (none for a satellite that never had propellant), and from then on the tide steps it between flights
+  like every orbit about a moon (`moonOrbStep`, which now also covers Tellus: the floor is the top of the air there).
+- **The same rule around the moons:** a Selene orbiter with propellant now holds its orbit too. Before, every moon orbit
+  drifted; test 40's tide check now uses dry relays, and `space-1` shows the 2,000 km polar orbit that falls in by day 41
+  holding at 3.5 m/s a day.
+- A flight that flies or docks with the satellite re-registers it (`s.reg`): a new slot, a fresh rate, its tanks as they are.
+- Program screen: each satellite line says *holds its orbit 240 more days (0.37 m/s a day)* or *adrift since day N*.
+
+**Measurements** (`node study_slot.mjs`, circular orbits, 8 h days; the m/s to put plane + size + shape back, per day):
+
+| orbit | tide (max) | off its rails after 1 / 5 / 20 days | to hold, m/s a day |
+|---|---|---|---|
+| low 300 km, equatorial | 1.0e-5 m/s² | 0.0 / 0.1 / 0.6 km | 0.037 (ignored: under `SK_MIN`) |
+| polar 1,000 km | 1.7e-5 | 0.6 / 2.6 / 10.6 km | 0.031 (ignored) |
+| navigation 3,000 km, 60° | 2.7e-5 | 3 / 17 / 56 km | 0.27–0.31 |
+| stationary (TV) | 6.1e-5 | 5 / 4 / 509 km | 0.34–0.42 |
+
+So a TV satellite pays ~150 m/s a year (real geostationary satellites pay ~50 m/s a year; Nyx is close and heavy). 100 m/s
+of tanks holds it ~270 days. Plane drift dominates everywhere, as for real geostationary satellites.
+
+**Negative result:** the first measure, "chase the Kepler rail" (a correction every τ costing |δv| + 2|δr|/τ), said a low
+orbit costs 0.3 m/s a day and a stationary one 3–26, depending on τ. It was paying to follow the wobble within each orbit,
+which no satellite needs to. Only the secular drift (the elements, averaged over an orbit) is a real cost.
+
+**Decisions (defaults; Caio may override):**
+- *Service pauses* is read physically: drifting doesn't switch anything off; whatever needed the slot stops because the
+  geometry says so. TV goes grey when it leaves the capital's sky (the existing check: a dry stationary satellite placed
+  over the capital does on day 87, measured); navigation coverage and imagery
+  carry on from wherever the satellite is, as real Transit satellites did without station-keeping.
+- So Q34a's power-flat pause has no shared field to join yet: when it lands it adds `q.off` (why) and gates TV pay in
+  `utilTick`, `navCover`'s list and the imaging contact on it. This slice didn't build an empty field ahead of it.
+
+**Not yet:** reboost and servicing contracts (economy), refuelling by docking (propellant transfer doesn't exist yet), a
+held satellite's slot shown on the map, and the stepping for Tellus orbiters skipped during flights (a dry satellite rides
+Kepler from its last tick until the flight ends, as moon orbiters already do).
+
+Test `space-1` (4 checks; mutations caught: no spending, dry Tellus orbits not stepped, no `SK_MIN`, news for a satellite
+that never had propellant, moons never holding). Full suite 466 pass. TESTING row 134.
+
+## v1.59 — every offer says why it appeared (2026-10-08, economy session, QUEUE Q45)
+
+`whyOf(type, src, client)` in `sim/contracts.js` picks **the strongest true reason** when `genOffer` makes the offer, and
+stores it as `o.why` (one line; old offers have none and expire within 50 days). In order:
+1. *New since you did “⟨first⟩”*: the type's `req` was done in the last 60 days (`WHY_NEW`);
+2. military work: *⟨client⟩ is nervous about its neighbours* (`tensionOf` > 0.4);
+3. commercial work: *Boom times* (cycle > 0.45) or *A rare order in a recession* (< −0.45);
+4. tourism: the tourism standing;
+5. government work from home: *Your government wants results*;
+6. *⟨client⟩ cares about ⟨science/commerce/…⟩* (that priority ≥ 0.35 in its flavour);
+7. *Your ⟨source⟩ standing (N) brings work* (≥ 70);
+8. else *Routine ⟨source⟩ work from ⟨client⟩*.
+
+The Contracts tab (`app/program-ui.js`, one line, flagged for flow) shows *Why: …* above the brief, on offers and taken
+contracts. Test `econ-4` (5 checks, mutation-tested). On a sample board most lines are *Routine* or the cycle: if the
+board reads as noise, the thresholds are the knobs (TESTING 133 asks).
 
 ## v1.58 — Selene's ground on the CPU, and the maria on the near side (2026-10-08, world session, GROUND.md G2)
 
@@ -6176,6 +6248,86 @@ the arrows, and every key in the handlers present in its Help table.
 - Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
   duplicate the Debrief); Inbox doesn't collect them yet.
 
+### Esc pauses; two more lanes; identity mock-ups (2026-10-08, flow session, QUEUE Q39, Q75, Q76, Q73)
+- **Esc pauses** (W5, Q39). `gamePaused()` (screens.js) is "the Esc menu is open". While it is, `frame()` skips `simulate`
+  (flight, warp, the rover), `sndTick` treats the flight as not live (the mix goes quiet), and the flight key handler
+  returns at once, so Space, throttle and the rest do nothing; the shared keys (Esc, H, F) still work. Closing the menu
+  carries on at the same warp: nothing drops to 1×, because nothing ran. The menu's title says "· paused" in flight, map
+  and rover; its first button is now **Resume [Esc]**. Help and the logbook don't pause (look things up while flying).
+  Robot `m1`: 2.5 s with the menu open, `simT` moved 0 s.
+- **The builder's key strip** (PLAYTEST #25, Q75): `bldLayout()` puts `#bldhelp` between the two assembly panels, centred
+  and wrapping (two lines at 1280×800), instead of across both; hidden below a 160 px gap. Its CSS stays in builder.js;
+  the place is set from app/state.js (`hudLayout` and resize), next to the news lane.
+- **`#msg` gets a lane** (PLAYTEST #26, Q76): `msgLayout()` (from `HOOK.msg`, `hudLayout`, resize) centres it between the
+  readout and the right-hand panels (`#nodep`, `#rvFHud`), drops it below the toolbar or the news where they meet, and
+  under the readout when there's less than 200 px beside it. Off the flight screens it goes back to its CSS place.
+- Robot `m1` (QA's M1 finish line: gate → Sounding → first orbit → Debrief) passes in full on branch `ui`: Debrief after
+  both flights, Esc pause 0 s, no box covering another at 1280×800 on any screen.
+- **Visual identity mock-ups** (Q73 → Q53, PLAYTEST #13): three directions, paperwork, instrument panel and
+  mid-century poster, on the Program screen and the flight HUD with the real layout over real game frames, plus a later
+  era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
+  options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
+  cockpit in another); Q53 builds the pick.
+- **First run explained** (Q41): the gate's two questions each open with one line on what the choice decides (the power:
+  how the money arrives, what the public wants, what a failure costs; the start: who owns the program and who you
+  answer to), and every option is a row with its own sentence on screen (it used to be a hover tooltip for the powers,
+  so only the chosen power's line showed). "Random world" names what it rolled. The consortium's blurb became one
+  sentence. Same buttons and `data-arch` / `data-start` attributes, so the robot rows and handlers are unchanged.
+
+### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
+**Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
+Impact, Heat, Structure, Link) plus up to 16 more from ten helpers owned by six sessions (`spinRows`, `wheelRows`,
+`rcsRows`, `tgtRows`, `dockRows`, `fleetRows`, `bayRows`, `armRows`, `rvRows`, `payloadRows`). At ~25 rows it runs into
+the stages (PLAYTEST #9, TESTING 98). Aerofx's gauge strip (`drawGauges`: altitude tape, air depth, q with max-q, Mach,
+heat) sits right of the navball as a placeholder (`gaugeRect`). The toolbar has seven buttons.
+
+**1. The core** (top left, fixed, never more than 6 lines; the spec's list):
+- `MET` and the situation on one line: `T+04:12 · Tellus · flying · link Fenfen Cape` (the Link row folds in here; blackout
+  in amber).
+- `Altitude` (it becomes *radar* altitude, labelled so, below `TERR_TOP` + 20 km while descending), with the vertical speed
+  beside it as today.
+- `Speed`: one number, surface speed in the air and orbital speed above it (the label says which).
+- `Ap / Pe` on one line, each with its time.
+- `Δv`: stage · total · TWR.
+
+**2. The gauges are the instrument panel**: they stay bottom centre beside the navball (gauges | throttle | navball |
+SAS), shown while the Ascent condition holds (in the air with q > 1 kPa, or skin heating rising), hidden in space, so the
+cluster narrows. `gaugeRect` moves to the HUD layout (flow), the drawing stays aerofx's.
+
+**3. Cards**, a right-hand column under the toolbar. Each card: a title bar, its rows, a pin (📌 keeps it open). A card
+shows while its condition holds; the column is capped at the window height, and the oldest unpinned card folds to its
+title bar first. Today's rows, mapped:
+
+| Card | Shows while | Rows (from) |
+|---|---|---|
+| Ascent | the gauges show | Structure, Heat (the part, ablator) — the numbers the gauges don't draw |
+| Descent | descending with an impact predicted, or landed | Impact (+ spread, range safety), landing (`payloadRows` landing line) |
+| Target | a target is set | `tgtRows`, `dockRows` |
+| Payload | payload events, or opened from the core | `payloadRows` (passenger, instruments, contracts) |
+| Fleet | more than one vessel | `fleetRows` |
+| Vehicle | spinning, wheels saturating, RCS on, or opened | Mass · g, `spinRows`, `wheelRows`, `rcsRows` |
+| Hardware | a bay, arm or claw armed | `bayRows`, `armRows` |
+| Rover | driving | `rvRows` |
+
+**For the other sessions (additive): a card registry.** `HUD_CARDS.push({id, title, when: () => bool, rows: () =>
+[[label, html], …]})`. Today's helpers become `rows` unchanged, so their owners change nothing; new HUD content
+registers a card instead of appending to `updateHUD`'s list. A static check (like §32) fails if `updateHUD` gains a row
+outside the core.
+
+**4. Toolbar**: Map, warp (shown and clickable: ◀ ×N ▶), ☰. Revert, Assembly, Logbook, Keys and Save as autopilot
+leave it (all in the Esc menu; End flight ▸ appears when the flight is over, slice 3). The news and `#msg` lanes
+(`hudLayout`) take the card column's left edge as their right limit.
+
+**5. Map view**: the core stays; the navball shrinks to a heading line; gauges and cards hide except Target; the node
+panel as now.
+
+**Slices**, each merged alone and checked by robot `m1` (no box over another at 1280×800 and 1000×700) plus TESTING 98
+(a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
+new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
+
+**Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
+
 ---
 
 ## Picking this up cold
@@ -6724,7 +6876,7 @@ at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap her
 
 **Overlaps (so nobody builds the same thing twice):**
 - space Q27 "relay range and power": reads the power budget and `hasComputer`; it doesn't build its own.
-- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared.
+- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared. *(Space, v1.60: fuel-flat turned out to be physical drift, not a switch, so there is no field yet; Q34a adds `q.off`, see § v1.60 "Decisions".)*
 - economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
 - Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
   session builds the gating.
@@ -6753,9 +6905,9 @@ write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (th
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
 
-## v1.59 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
+## v1.61 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
 
-Built to the plan above (§ "Vehicle parts", Q31). Headless only; nobody has seen it drawn yet (TESTING row 132).
+Built to the plan above (§ "Vehicle parts", Q31). Headless only; nobody has seen it drawn yet (TESTING row 135).
 
 **The part** (`PARTS.leg`, `sim/vessel.js`): a surface part, mounted in sets with the builder's radial count. 0.05 t,
 price 1.5, complexity tier 1, palette *Surface*. Stowed for launch; **Y** in flight puts all legs down or up (`legOp`,
@@ -6827,3 +6979,10 @@ the top-left corner (#31), and a sun-behind lander on Selene is a black silhouet
 
 **`shot.mjs` on the RTX (QUEUE Q28).** It now passes `--force_high_performance_gpu` like `playtest.mjs`: WebGL reports the
 "NVIDIA GeForce RTX 5050 Laptop GPU" by default and the Intel iGPU with `SHOT_IGPU=1` (`SHOT_FLAGS` still overrides).
+
+**Q30 slice 2, docking: done (QA session).** `node playtest.mjs 59 60 61 56 62 63`. The scenes are §22/§25/§27/§29's,
+placed in the page, and `PT.dockIn` is a scripted pilot: Docking SAS plus bang-bang RCS on the target's position in the
+ship's frame. It latches from 50 m in 3.5 min on 6.5 kg of gas. Bumps, undocking, vessel switching and the bay all behave
+(TESTING 56, 58–63). Worth knowing: the RCS budget is 4.8 m/s of Δv, so a 300 m approach at 2 m/s uses 85 % of it.
+Row 116 (docking at Selene) and the claw are left for slice 3. Run the slice by itself: when two sessions' Chromes started
+together, row 62 stalled for minutes; alone it takes 49 s.

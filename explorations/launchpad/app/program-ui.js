@@ -3,10 +3,11 @@
 'use strict';
 // ============================================================ program UI: the contract board (economy session)
 function ownershipHTML(){const o=own(),pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
-  if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub">`+
-    [['', `Random world (${ARCH[POWERS[0].arch].name.toLowerCase()})`],...Object.entries(ARCH).map(([k,v])=>[k,v.name])].map(([k,n])=>`<button data-arch="${k}" class="${(PROG.homeArch||'')===k?'on':''}" title="${k?ARCH[k].blurb:'Play whatever the launch site\'s power was generated as'}">${n}</button>`).join(' ')+
-    `<div style="margin-top:3px">${flav(0).blurb}</div></div><div class="ep">How does the program start?</div>`+Object.entries(START).map(([k,v])=>
-    `<div class="ms"><button data-start="${k}">${v.name}</button> <span class="ok">${fmtM(v.funds)}</span><div class="sub">${v.blurb}</div></div>`).join('');
+  if(!o.chosen&&!PROG.flights)return `<div class="ep">Whose program? <span class="dim">(your power)</span></div><div class="sub gq">The country behind the launch site: how the money arrives, what the public wants from you, and what a failure costs.</div>`+   // (flow, Q41) each choice explained in one sentence, on screen
+    [['', `Random world`, `Whatever the launch site's power was generated as: a ${ARCH[POWERS[0].arch].name.toLowerCase()} this time.`],...Object.entries(ARCH).map(([k,v])=>[k,v.name,v.blurb])].map(([k,n,b])=>{const on=(PROG.homeArch||'')===k;
+      return `<div class="ms gc${on?' on':''}"><button data-arch="${k}" class="${on?'on':''}">${n}</button><div class="sub">${b}</div></div>`}).join('')+
+    `<div class="ep">How does the program start?</div><div class="sub gq">Who owns it: where the money comes from, and who you answer to.</div>`+Object.entries(START).map(([k,v])=>
+    `<div class="ms gc"><button data-start="${k}">${v.name} · ${fmtM(v.funds)}</button><div class="sub">${v.blurb}</div></div>`).join('');
   const shares=[...Object.entries(o.st).sort((a,b)=>b[1]-a[1]).map(([k,x])=>`<span style="color:${pc(+k)}">${POWERS[+k].root}</span> ${(x*100).toFixed(0)}%`),...(o.pv>0?[`private ${(o.pv*100).toFixed(0)}%`]:[])].join(' · ');
   return `<div class="ep">${progName()} <span class="dim">· ${ownKind()}</span></div><div class="sub">${shares}${o.debt>0?` · <span class="bad">debt ${fmtM(o.debt)}</span>`:''}</div>`+
     ((PROG.history||[]).length?`<div class="sub dim">${PROG.history.map(h=>`day ${h.day.toFixed(0)}: ${h.from} ${h.move}`).join('<br>')}</div>`:'')+
@@ -27,7 +28,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.test){const[k,m]=ds.test.split(':');if(!startTest(k,m))HOOK.msg('The stand is busy, or there is not enough money');renderProgram();editorChanged()}});
 function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`,cyc=PROG.cycle||0;
   const row=(c,act)=>`<div class="ms"><b>${cTitle(c)}</b> <span class="ok">${fmtM(c.p.pay)}</span> <span class="dim">· ${SRC[c.src].name} · </span><span style="color:${pc(c.client)}">${POWERS[c.client].root}</span>`+
-    `<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
+    (c.why?`<div class="sub dim">Why: ${c.why}</div>`:'')+`<div class="sub">${cBrief(c)} ${act?`<b>${Math.max(0,c.deadline-PROG.day).toFixed(0)} days left</b>`:`offer ends in ${Math.max(0,c.expires-PROG.day).toFixed(0)} d`}</div>`+
     (()=>{const r=offerRisk(c),w=[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)];return w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:''})()+
     (act?'':`<button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button>`)+`</div>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
@@ -67,17 +68,20 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
 function satsHTML(){return satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}
+// station-keeping (space, Q50): how long its propellant holds its orbit, or since when it drifts; nothing if no tide pulls it
+function slotLine(q){const k=slotRate(q);if(!(k>0))return'';if(q.adrift!=null)return` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`;
+  const d=skLife(q);return` · holds its orbit ${d>=YEAR_D?`${(d/YEAR_D).toFixed(1)} more years`:`${Math.floor(d)} more days`} (${k.toFixed(2)} m/s a day)`}
 function moonSatsHTML(){const L=moonSats(),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.ant&&'antenna: a relay for rovers',q.cam&&'camera',q.sci&&'instruments'].filter(Boolean).join(' + ');
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}</div>`}).join('')).join('')}
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-B.R)}–${fmtD(el.ap-B.R)}, ${inc.toFixed(0)}°${kit?` · ${kit}`:''}${stationLine(q)}${slotLine(q)}</div>`}).join('')).join('')}
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`}).join('')}
 function satsHTML0(){const L=satsUp();const T=tNow();
   return gsHTML()+(L.length?`<div class="ep">In orbit</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
 function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
   const have=stationsAll().map(g=>`<span style="color:${pc(g.power)}">${g.name}</span>`).join(' · ');
   const sites=gsSites().map(ci=>{const c=CITIES[ci],v=gsCheck(ci),pw=c.power?c.power.i:HOME;
