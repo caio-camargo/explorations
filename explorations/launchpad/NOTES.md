@@ -1330,7 +1330,10 @@ after v1.60's station-keeping, which it extends.
 **How it works.**
 - `thinAir(h)`: Vallado's exponential model (CIRA-72, moderate sun), 100–1,000 km, its last scale height carried to 2,000 km.
   Tellus is a fifth of Earth but its air is Earth's height (7.5 km scale height, top at 100 km), so the table carries over.
-  The flight doesn't use it: over a few hours it changes nothing (a 110 km orbit loses ~1 m/s an hour).
+  **The flight doesn't use it yet**, and that's a real gap at the bottom: coasting with Cd·A/m 0.01, the thin air takes
+  20 m/s an hour at 110 km, 1.7 at 130 km, 0.4 at 150 km, 0.05 at 200 km (measured with `dragRates`). So a flight that
+  parks at 110 km for hours is too kind; between flights the same orbit is gone in under an hour. Proposed as a follow-up
+  (it changes how long parking orbits last mid-flight, so it wants a look at the presets' ascents first).
 - `dragK(q)`: Cd·A/m. Tumbling, so A is the mean projected area of one cylinder around every part (a quarter of its
   surface, Cauchy's theorem), Cd 2.2; docked modules count in area and mass. Preset payloads come out at 0.005–0.014 m²/kg,
   like real satellites.
