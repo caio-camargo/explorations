@@ -66,6 +66,13 @@ const PARTS={
   // out from the skin and drop below the leg's bottom, and becomes the vessel's contact point there (footPoints). Its root
   // carries the landing load, so a hard landing snaps a leg rather than needing a rule of its own.
   leg:{name:'Landing leg',kind:'leg',surf:true,noAero:true,m:0.05,h:1.0,r:0.08,off:0.08,reach:1.5,drop:1.0,C:900,T:600,S:240,B:80},
+  // power (vehicle session, Q34a; sim/power.js): an onboard computer (needed for the guidance computer's SAS modes on a craft
+  // without crew, from the onboard-computer era: era), a battery, solar cells on the skin (fixed; Wp in full sun, a share of it
+  // on average) and a solar wing that unfolds (P), tracks the sun about its own arm, and tears off deployed above qMax Pa
+  ocomp:{name:'Onboard computer',kind:'comp',m:0.03,h:0.2,W:50,era:2,C:900,T:600,B:200},
+  batt:{name:'Battery 1 kWh',kind:'batt',m:0.02,h:0.15,kWh:1,C:900,T:600,B:200},
+  bpanel:{name:'Solar cells (body)',kind:'solar',body:true,surf:true,noAero:true,m:0.01,h:0.8,r:0.02,off:0.02,Wp:40,C:300,T:200,S:150,B:60},
+  wpanel:{name:'Solar wing',kind:'solar',wing:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.06,off:0.06,Wp:300,span:2.4,qMax:1000,C:300,T:200,S:150,B:60},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   // steerable fins (control session): the same plates, all-moving, turned about their span up to ctl degrees at ctlR °/s
   cfin:{name:'Steerable fin',kind:'rfin',surf:true,noAero:true,m:0.09,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9,ctl:20,ctlR:40},
@@ -107,6 +114,12 @@ const JR=[{name:'standard',k:1,m:0},{name:'reinforced',k:2,m:0.06},{name:'heavy'
 const PRESETS={
   Hopper:['chute','pod','t2','fins','kestrel'],
   Orbiter:['chute','pod','t2','petrel','dec','t8','fins','kestrel'],
+  // the first orbit missions on presets (vehicle session, Q74 / PLAYTEST #24): the Orbiter's launcher with the payload in the
+  // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
+  // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
+  // home (measured: 715 m/s spare in orbit, 4.2 g and a ~292 K cabin coming down)
+  Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  'Passenger Orbiter':['chute','bio','rwheel','t2','petrel','dec','t8','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
@@ -418,7 +431,7 @@ const AV=[{name:'Gyro autopilot',modes:['stab'],k:2,w:0.3,db:0.0087,era:0},
   {name:'Analog autopilot',modes:['stab','pro','retro','normal','anti','radout','radin'],k:3,w:0.45,db:0.0035,era:1},
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
 const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics
-const avOf=s=>AV[s.proc?AV.length-1:s.av??AV.length-1];
+const avOf=s=>AV[s.proc?AV.length-1:Math.min(s.av??AV.length-1,avCap(s))];   // avCap (sim/power.js): no computer on board, no guidance computer
 const sasModeOK=(s,m)=>{const M=avOf(s).modes;return!M||M.includes(m)};
 const avNext=m=>AV.find(a=>!a.modes||a.modes.includes(m));   // the first generation that has mode m
 function sasTarget(s){
@@ -598,8 +611,8 @@ function detach(s,list,kick,spin,asVessel){
   geom(s);rebuildShape(s);
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
   if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
-  else HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
-    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0});
+  else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
+    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
   if(s.landed)s.landed=false;
   HOOK.rebuild()}

@@ -1,0 +1,52 @@
+// sim/power.js — electric power: batteries, solar cells and wings, the loads, the onboard computer. Part of index.html's script
+// (launchpad NOTES § "Vehicle parts", Q34a; vehicle session, 2026-10-09): a classic script sharing one global scope with the others.
+'use strict';
+// ---- the model. A vessel has one store, s.E (J), up to the batteries on board (a probe core has 0.5 kWh of its own); the loads
+// (W on parts) draw on it, the panels fill it while the vessel is out of its body's shadow. Crew capsules run on their own fuel
+// cells, so they draw nothing here. Running flat never kills (ROADMAP pillar 5): the onboard computer goes off, so the SAS falls
+// back to the analog autopilot, until the panels catch up. The antenna and camera loads count in the budget; what a flat
+// battery does to their service is the space lane's (Q27, Q50), not done here.
+Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PARTS.core,{kWh:0.5});
+const KWH=3.6e6,SOL_BODY=0.32,SOL_WING=0.9;   // cells on a skin average ~a third of full sun; a wing on its own arm loses ~10 %
+const powCap=s=>{let E=0;for(const p of s.parts)if(p.on&&p.d.kWh)E+=p.d.kWh*KWH;return E};
+const powLoad=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.W)W+=p.d.W;return W};
+// what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
+// turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
+function powSun(s,u){let W=0;for(const p of s.parts){if(!p.on||p.d.kind!=='solar')continue;
+    if(p.d.body)W+=p.d.Wp*SOL_BODY;else if(p.dep){const a=p.phi||0,c=Math.cos(a)*u[0]+Math.sin(a)*u[2];W+=p.d.Wp*SOL_WING*Math.sqrt(Math.max(0,1-c*c))}}
+  return W}
+// the best the panels can give (wings square to the sun): what the steady state assumes
+const powPeak=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.kind==='solar')W+=p.d.Wp*(p.d.body?SOL_BODY:SOL_WING);return W};
+// in the body's shadow: a cylinder behind it (the sun is fixed in the absolute frame, SUN_DIR, and far)
+function inShadow(b,r){const d=dot(r,SUN_DIR);return d<0&&len(sub(r,mul(SUN_DIR,d)))<b.R}
+// the share of a circular orbit of radius r spent in that shadow, its plane at beta to the sun: none once the sun is high
+// enough over the plane, else the arc whose distance from the shadow's axis is under R
+function eclFrac(R,r,beta=0){if(r<=R)return 0.5;const sb=Math.abs(Math.sin(beta));if(R/r<=sb)return 0;
+  return Math.acos(Math.min(1,Math.sqrt(r*r-R*R)/(r*Math.cos(beta))))/Math.PI}
+const hasComputer=s=>s.parts.some(p=>p.on&&p.d.crew)||!s.pwrOut&&s.parts.some(p=>p.on&&p.d.kind==='comp');
+// the avionics a vessel can use (avOf takes the lower of this and what it launched with): with no program running, with the
+// tester's tools, or with a computer on board, everything; otherwise one generation short of the guidance computer
+const avCap=s=>!khOn()||TEST.tools||!s.parts||hasComputer(s)?AV.length-1:AV.length-2;
+function powFlat(s,out){if(out===!!s.pwrOut)return;s.pwrOut=out;const comp=s.parts.some(p=>p.on&&p.d.kind==='comp');
+  HOOK.msg(out?`Power flat${comp?': the onboard computer is off, analog autopilot only, until the panels catch up':''}`:'Power back')}
+// one physics step: the store, from the sun right now; a deployed wing in thick air tears off
+function powerStep(s,dt){if(!s.alive)return;
+  for(const p of s.parts.filter(p=>p.on&&p.dep&&p.d.qMax&&s.qdyn>p.d.qMax)){if(!p.on)continue;HOOK.msg(`${p.d.name} torn off at ${(s.qdyn/1000).toFixed(1)} kPa`);partLost(s,p)}
+  s.Emax=powCap(s);if(s.E==null)s.E=s.Emax;const use=powLoad(s);
+  const gen=inShadow(s.body,s.r)?0:powSun(s,qrot(qconj(s.q),SUN_DIR));s.pGen=gen;s.pUse=use;
+  s.E=clamp(s.E+(gen-use)*dt,0,s.Emax);powFlat(s,s.E<=0&&gen<use)}
+// a rails step: short ones like a physics step; long ones on the orbit's average (its share in shadow from the elements)
+function powerRails(s,dt){if(!s.alive||dt<=0)return;if(dt<=60){const q=s.qdyn;s.qdyn=0;powerStep(s,dt);s.qdyn=q;return}
+  s.Emax=powCap(s);if(s.E==null)s.E=s.Emax;const use=powLoad(s),b=s.body,r=len(s.r),h=cross(s.r,s.v),hl=len(h);
+  const v2=dot(s.v,s.v),a=1/(2/r-v2/b.mu),beta=hl>0?Math.asin(clamp(dot(h,SUN_DIR)/hl,-1,1)):0;
+  const ecl=s.landed||!(a>0)?(inShadow(b,s.r)?1:0):eclFrac(b.R,a,beta),gen=powSun(s,qrot(qconj(s.q),SUN_DIR))*(1-ecl);
+  s.pGen=gen;s.pUse=use;s.E=clamp(s.E+(gen-use)*dt,0,s.Emax);powFlat(s,s.E<=0&&gen<use)}
+// the steady state for a design in a circular orbit (default: Tellus, 10 km above the air), its plane at beta to the sun:
+// average generation against the load, and the battery needed to cross one shadow
+function powerBudget(s,o={}){const b=o.body||TELLUS,r=o.r||b.R+(b.atm||0)+10000,beta=o.beta||0,ecl=eclFrac(b.R,r,beta),T=2*Math.PI*Math.sqrt(r*r*r/b.mu);
+  const peak=powPeak(s),use=powLoad(s),avg=peak*(1-ecl),tE=ecl*T,needWh=use*tE/3600,battWh=powCap(s)/3600;
+  return{peak,use,avg,ecl,T,tE,needWh,battWh,ok:avg>=use&&battWh>=needWh}}
+// solar wings out ('out') or folded ('in'): instant for now (the look beat can animate them)
+function wingOp(s,op){const o=op==='out';let n=0;for(const p of s.parts)if(p.on&&p.d.wing&&!!p.dep!==o){p.dep=o;n++}
+  if(n){HOOK.rebuild();HOOK.msg(o?'Solar wings out':'Solar wings folded')}return n}
+const wingsOut=s=>s.parts.some(p=>p.on&&p.d.wing&&p.dep);

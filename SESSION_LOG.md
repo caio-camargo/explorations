@@ -3952,3 +3952,309 @@ Took every ready QA item in turn, plus overflow from the lane's own follow-ups:
 - [ ] Human: TESTING 140 (is "go higher or bring fuel" fair, or a surprise?)
 - [ ] Proposed in QUEUE: thin air in the flight's coast; reboost contracts (economy); parking orbits ≥ 200 km in PLAYROUTE and presets (QA/vehicle)
 - [ ] Space: next ready item Q26 (contact with debris and between satellites)
+
+## 2026-10-09 — Launchpad v1.65: Hesper's ground on the CPU (world session)
+
+### Summary
+The second planet's ground (QUEUE Q92's CPU half), Venus-like, not live (stub body):
+- ~140 craters over 2 km and none under 1.3 km (the thick air: only the three coarsest bands run);
+- basalt plains on 85 % of the planet, with wrinkle ridges;
+- raised, ridged slab rock (11 %, the roughest ground);
+- a 9 km massif, four gentle shields, three coronae, a pancake-dome cluster;
+- lava channels 1.5–3 km wide and ~80–110 m deep;
+- five surfaces by unit.
+Negative results: the first slab rock was too wide and too smooth; untextured plains were glass; a noise-isoline
+channel came out 2.5× wider than its threshold suggested (measured, then narrowed); a trough test must compare across
+with along. Test `ground-4` (7 checks, 3 mutations caught). Full suite 497 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`hesper`), `test.mjs` (`ground-4`), `NOTES.md` § v1.65, `GROUND.md` 0.1.5, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Astraea (bright-floored crater, a lonely mountain, g 0.28), then Hyperion's moons, Erebus
+- [ ] Space (Q87): Hesper into the body tree with `ground: HESPER_GROUND`
+
+## 2026-10-09 — Launchpad v1.66 economy: rover prices and gates; Selene science contracts (QUEUE Q10; economy session)
+
+### Summary
+- Rover parts priced (`RV_PRICE`; the default two-seater 24M) and gated by firsts (`RV_GATE`); the gate is at LAUNCH
+  (`rvLaunchWhy`), the yard stays free. `partPrice` includes a packed rover.
+- Six Selene science contract types from the sats session's R4 proposals (readings by unit, panorama, seismic
+  network, quakes, core, far side), judged between flights on science received since taken (`selTick`, `c.base`).
+- Cross-scope lines: `app/editor.js` (LAUNCH gate), `app/rover-yard.js` (price line), `sim/rovers.js` `sciGot` (`far`).
+- Numbered v1.65, renumbered v1.66 at merge (world took v1.65).
+- Slip, caught before pushing: a merge-resolution script truncated `test.mjs` to empty (opened for writing before
+  reading); `node --check` passes an empty file and the suite printed nothing. Reset my unpushed commit, merged again.
+  **Lesson: after any scripted merge resolution, check the file's line count and that the suite prints "all passed".**
+
+### Verification
+- New test `econ-6` (4 checks; mutation-tested after strengthening); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/contracts.js`, `sim/rovers.js`, `app/editor.js`, `app/rover-yard.js`, `test.mjs`, `NOTES.md` § v1.66, `TESTING.md` rows 142–143, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 142–143
+- [ ] Economy: Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner
+
+
+## 2026-10-09 — Launchpad v1.67: Astraea's ground on the CPU (world session)
+
+### Summary
+The belt's dwarf planet (QUEUE Q92's CPU half), Ceres-like, not live (stub body). A crust factor lets an icy body's craters
+turn complex early: 12.5 km here, against ~100 km by 1/g alone, as Dawn saw on Ceres. That also keeps the big craters
+shallow (the biggest, 43 km, is 0.87 km deep), not 20 km bowls on a 94 km body. What's there:
+- dark regolith at c 0.03, on target at every size;
+- Ahuna Mons: 4.6 km, 39° flanks, a flat top;
+- the young bright crater: rim 2.5 km over its floor, its central peak collapsed into a pit, salt on its floor (its own surface).
+Negative result: at 18 km the crater grows a central peak, which the first "pit" only dented. Test `ground-5` (5 checks,
+3 mutations caught). Full suite 506 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`astraea`), `test.mjs` (`ground-5`), `NOTES.md` § v1.67, `GROUND.md` 0.1.6, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Hyperion's moons (Theia, Eos, Tethys, Phoebe), then Erebus
+- [ ] Space (Q87): Astraea into the body tree with `ground: ASTRAEA_GROUND`
+
+## 2026-10-09 — Launchpad v1.68: power: onboard computer, solar cells and wings, battery (Q34a, vehicle session)
+
+- **Parts** (palette *Power*): onboard computer (50 W, offered from the onboard-computer era: the first era-gated part),
+  battery 1 kWh, body solar cells, a solar wing (**P** unfolds it; tears off deployed above 1 kPa). Probe cores hold 0.5 kWh;
+  antenna 5 W, camera 10 W; crew capsules draw nothing (own fuel cells).
+- **New `sim/power.js`:** one store per vessel, shadow as a cylinder, physics and rails steps (long rails steps on the orbit's
+  average shadow), a steady-state `powerBudget` shown in the builder. Running flat turns the computer off (analog SAS) and
+  it comes back in the sun; never kills.
+- **Caio's call applied:** guidance-computer SAS modes need a computer: built into crew capsules, the `ocomp` part on probes.
+  The control session's avionics check now gives its guidance-computer pod an `ocomp`.
+- **Measured:** low orbit 37.2 % in shadow (15.9 of 42.7 min); one orbit integrated +204 Wh vs steady state +202 Wh.
+- **Tests:** `vehicle-2`, 5 checks. Full suite 488/488 on the merge with main before economy's Q10; the last two merges
+  (Q10, world's Astraea ground) checked with `--smoke` plus the affected sections.
+- Renumbered at merge (v1.67 taken → **v1.68**); TESTING row **144**. FLAG: rows 139, 140, 142 are duplicated by others.
+
+**Files:** new `sim/power.js` (+ `index.html` script line), `sim/vessel.js`, `sim/procedures.js`, `sim/program.js`,
+`app/editor.js`, `app/gl.js`, `app/input.js`, `app/screens.js`, `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.68),
+`TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** the space lane can build Q27/Q50's power side on this; vehicle's next ready items per QUEUE (Q48 warnings, Q33 nodes).
+
+## 2026-10-09 — Launchpad v1.69 economy: dispatch to a base, supply runs (QUEUE Q61; economy session)
+
+### Summary
+- Supply runs: the design's ascent procedure + transfer, capture and `landAt` on a base's beacon, flown for real by
+  `procFly`; the lander registers there and joins the base. Repeats only. A button on each base's Fleet-tab line.
+
+### Verification
+- New test `econ-7` (2 checks; the Probe lands 1 m from the beacon; untargeted mutation fails at 819 km); full suite
+  passes in 4 processes; merges clean, line counts checked.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.69, `TESTING.md` row 145, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 145
+- [ ] Economy: Q9 (station/base contracts; plan first); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner, crew rotation
+
+
+## 2026-10-09 — Launchpad v1.70: Hyperion's moons on the CPU; the poles fixed everywhere (world session)
+
+### Summary
+Hyperion's four moons (QUEUE Q92's CPU half), not live (stub bodies):
+- Theia: no craters; 30 lava-floored paterae; tilted mountains.
+- Eos: flat ice with double ridges on a Worley network (the new G-ice); blocky chaos; the tiger stripes.
+- Tethys: methane lakes as a liquid level (splashdown), mostly north; east–west linear dunes in patches; Xanadu; channels.
+- Phoebe: a cratered lump (G-lump).
+
+**Found on the way, live:** every equirectangular map's polar rows made a 77–90° step within 2 km of the poles, on every
+body, Tellus included since v1.25. `polesFix` gives each polar row one value. Data only, so the GPU agrees; the poles now
+show 0–48°. Not seen in a browser: TESTING 146. Also: crater bands made safe on tiny bodies (face cutoff by reach; bake
+the coarse sizes). Lesson #40. Test `ground-6` (6 checks, 3 mutations caught). Full suite 519 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `sim/world.js` (`polesFix`, in `makeWorld`), `study_ground.mjs` (the moons), `test.mjs` (`ground-6`), `NOTES.md` § v1.70, `GROUND.md` 0.1.7, `TESTING.md` 146, `QUEUE.md`
+- `LESSONS_LEARNED.md` #40, `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Someone with the GPU: TESTING 146 (Tellus's poles)
+- [ ] World: Erebus, then the seeded small bodies
+
+## 2026-10-08/09 — Launchpad design desk: six catalogs with Caio (design desk session)
+
+### Summary
+First design desk session (`docs/session-roles.md`). Interviewed Caio in short rounds (options, a recommendation,
+defaults if silent); every catalog below is approved unless noted. No game code.
+- **`SYSTEM.md` 1.0.0:** the star system, shape A: Helios (Kerbol's mass), Hesper, Tellus (23° tilt, seasons at M5),
+  Enyo + Pavor/Metus, Astraea + the belt, ringed Hyperion + Theia/Eos/Tethys/Phoebe, Erebus (2:1 with Hyperion); seeded
+  classes; scaling rules from Tellus/Selene; names are placeholders. The orchestrator fanned it out (Q79–Q88).
+- **`POWERS.md` 1.0.0:** six hardware schools (look only; part outlines fixed because aero reads them), archetype
+  affinities, tone and rival personalities; a part takes its maker's school, the paint is the flying power's.
+- **Pillars (ROADMAP 1.5.0, W9):** 1 is now "pushing the boundary of what's possible" (the economy counts); 7 tone
+  (provisional); 8 "an era, into the near future".
+- **`LATE_GAME.md` 1.4.0:** open-ended with capstones; the network built by flying it (routes are Factorio's belts);
+  five goods (materials split from hardware); outposts' self-sufficiency; the ceiling (near future; plausible fusion
+  propulsion; an interstellar probe as a project); the interplanetary network (depots, ISRU, cyclers, tugs, convoy
+  seasons); keeping flight in play; comms gate automation; templates compound; yards; the habitat budget (numbers are
+  placeholders; shielding reviewed before it's built); money buys capacity; debris as objects + density bands; every
+  pressure a game option; asteroids; rivals as programs, scarce places, the world's mood in eras, no combat.
+- **`MIDGAME.md` 1.0.0:** automation opt-in per route; the ladder by compute era (pilots first); window rules;
+  satellites replaced for upgrades, not wear (flagged to space/economy: v1.60/v1.64 lifetimes to re-tune).
+- **`CREW.md` 0.2.0:** who crew are approved (named, three roles, ranks, classes; the pilot is the computer; a loss
+  costs requalification and the person, no timed stand-down); the look waits for Q72.
+- **Queue:** Q71/Q72/Q73/Q89 mock-ups for the unattended look & sound and flow sessions; defaults held for W11, the
+  GROUND decisions and the `ocomp` rule; follow-ups under *Proposed*.
+- **Measured:** Kepler propagation cost by object count (debris model); **Selene's L4/L5 hold on the game's own rails**
+  (`study_lagrange.mjs`): Lagrange points are emergent, no abstraction needed.
+
+### Files
+- new: `explorations/launchpad/SYSTEM.md`, `POWERS.md`, `LATE_GAME.md`, `MIDGAME.md`, `CREW.md`, `study_lagrange.mjs`
+- changed: `explorations/launchpad/ROADMAP.md` (1.5.0, pillars), `QUEUE.md`; `INDEX.md`; `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: pick from the mock-ups when they land: Q72 (crew → CREW.md part 1), Q73 (identity → Q53), Q89 (schools), Q71 (bodies → Q80–Q85)
+- [ ] Design desk, open: Selene's mass driver; the voice and tone guide (once pillar 7 firms up); shielding review before the habitat budget is built
+- [ ] Space/economy: re-tune satellite lifetimes per MIDGAME § Satellites
+
+## 2026-10-09 — Launchpad v1.71: satellite work reviewed against MIDGAME; station-keeping re-tuned (QUEUE Q125; space session)
+
+### Summary
+- Caio asked to review the satellite work against the design desk's MIDGAME.md (approved 00:19, after Q50 and Q25 were
+  built). Matches: real physics stays, the Program line is the right display, running dry pauses. Conflicts handled:
+  my "reboost contracts" follow-up withdrawn (servicing is special, not routine); dry re-entry vs "never destroys" filed
+  as W17 (defaulted: keep re-entry), which the orchestrator sent back to design as D6; station-keeping re-tuned (Q125).
+- Re-tune: holding pays the orbit's size and shape (net over 20 days), not its tilt (~70 % of the old cost). The tilt
+  really wanders (`tiltStep`, the tide's orbit-averaged torque; 0.165° vs RK4 0.175° in 20 days). TV pays while the
+  capital sees it all day. A held TV satellite: ~0.1–0.2 m/s a day, TV for ~6 years (tilt 23°), then its tilt ends it.
+- Negative results: paying every size swing (0.35 m/s a day, paid Nyx's wobble); a crude deadband controller pumped
+  the eccentricity to 0.2–0.6.
+
+### Verification
+- `space-1` reworked (5 checks, 3 new mutations caught); full suite 520 pass / 0 fail on the merged tree; the last
+  merge before pushing was docs only. `career.mjs` unchanged.
+- Version numbers collided twice while merging (economy took v1.69, world v1.70); this is v1.71.
+- `git pull` in the main clone met another session's uncommitted LATE_GAME/QUEUE edits; nothing was reset, they
+  committed a moment later.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (`slotRate`, `tiltStep`, `orbTick`), `sim/program.js` (`isTV`), `test.mjs`,
+  `study_slot.mjs` (parts B, C), `NOTES.md` § v1.71, `TESTING.md` row 134, `QUEUE.md` (Q125 ✓, two Proposed)
+- `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Design desk: D6 (dry re-entry: keep, or dry satellites never come down?)
+- [ ] Vehicle + space: the satellite's lifetime as a builder readout (MIDGAME)
+- [ ] Space: next ready item Q26 (contact with debris and between satellites)
+
+## 2026-10-09 — Launchpad v1.72: Erebus's ground on the CPU (world session)
+
+### Summary
+The last hand-made body (QUEUE Q92's CPU half), Pluto-like, not live (stub body):
+- the nitrogen-ice basin: 2.6 km deep, flat (p99 4°), crater-free, broken into convection cells (troughs 116 m below the
+  cells' middles);
+- water-ice mountain blocks on its margin (to 6.5 km above the floor, flanks p90 40°);
+- bladed terrain;
+- dark tholin highlands, the most cratered;
+- methane-frost uplands.
+Every hand-made SYSTEM.md body now has ground on the CPU. Negative results: overlapping blocks summed (10 km); narrow
+blocks were cliffs; a unit mask that takes in the shore isn't the floor. Test `ground-7` (6 checks, 3 mutations caught);
+Erebus added to the pole check. Full suite 526 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`erebus`), `test.mjs` (`ground-7`, ground-6), `NOTES.md` § v1.72, `GROUND.md` 0.1.8, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: the seeded small bodies (one lump recipe from `WSEED`)
+- [ ] Space (Q87): the planets and moons into the body tree, each with its `<NAME>_GROUND`
+
+## 2026-10-09 — Launchpad: queue review against the design catalogs; rule 8; M0 fixes Q74, Q77 and a palette regression (v1.73, vehicle session)
+
+- **Queue review** (Caio asked): the approved catalogs (SYSTEM, POWERS, LATE_GAME, MIDGAME, CREW part 2) against QUEUE and
+  the built game. **ROADMAP 1.6.0 rule 8** (Caio): contradictions of intent go back to the design desk as D-items, not
+  defaults; the desk takes kick-backs first (session-roles 1.2.0). Sent back: **D5** rovers die when their battery runs
+  flat at night (against pillar 5 / LATE_GAME's dormancy rule), **D6** = W17 (MIDGAME's "never destroys" vs v1.64's
+  re-entry). Six Proposed lines: Q98 already done, Q34b is M4, the milestone gate reads two ways, CREW part 2 not
+  fanned out, the satellite lifetime readout, habitat loads and solar by distance.
+- **Q74 (P1):** presets **Beeper** and **Passenger Orbiter** (payload in the pod's place + a reaction wheel). **Q77:** no
+  loads overlay on the Program screen.
+- **Regression found and fixed:** v1.68's era-gate line swallowed a statement in `builder.js` `palette()`, so the
+  construction screen listed no parts from v1.68 until v1.73. Caught by the robot's `m1` run, which I hadn't run for
+  Q34a. LESSONS_LEARNED entry added.
+- **Checked:** `playtest.mjs m1` passes in full; `test.mjs` `vehicle-3`; smoke shard after each merge. No full suite this
+  time (the last full run was 488/488 for v1.68).
+
+**Files:** `sim/vessel.js` (PRESETS), `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.73), `TESTING.md` (147),
+`PLAYTEST.md` (#24, #27), `QUEUE.md`, `ROADMAP.md`, `docs/session-roles.md`, `LESSONS_LEARNED.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's M1 rows: Q47 (construction screen for a newcomer, 🖥), Q48 (warnings before launch, ⚙), Q32, Q121.
+
+## 2026-10-09 — Launchpad v1.74 economy: staged pay only for missions flown for; supply runs wait for onboard computers (Q112, D7; economy session)
+
+### Summary
+- Q112 / PLAYTEST #28 fixed: the launch records which missions were open (`R.open0`); staged shares go only to those.
+- Read the design desk's new catalogs (MIDGAME 1.0.0, LATE_GAME 1.4.0) against the queue: already covered (Q123,
+  Q124, Q126, Q127, Q110, the round-7 rivals line). Found my v1.69 supply runs contradicted MIDGAME's automation ladder:
+  filed **D7** (rule 8); Caio answered (a), built: `baseRunQuote` refuses before onboard computers (`BASE_ERA`).
+- Numbered v1.73, renumbered v1.74 at merge (vehicle took v1.73).
+
+### Verification
+- New test `econ-8` (2 checks, mutation-tested); `econ-7` checks the era gate; full suite passes in 4 processes after
+  two merges (conflicts resolved with marker and row checks, fresh output file).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `NOTES.md` § v1.74, `PLAYTEST.md` #28, `TESTING.md` row 145, `QUEUE.md` (Q112, D7), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Economy: Q122 (PLAYTEST #33, the sponsor cover on a flight that reached orbit), Q118 (re-run pacing), Q130, Q93
+
+
+## 2026-10-09 — Launchpad v1.75: the seeded small bodies' ground (world session)
+
+### Summary
+`smallBodyGround({kind, R, seed})`, a recipe factory for SYSTEM.md's seeded classes (CPU, not live: no small bodies exist
+yet). Six kinds:
+- stony, carbonaceous, metal: ellipsoids with craters;
+- rubble pile: spinning-top ridge, boulders;
+- comet: 60 % contact binaries, pits;
+- visitor: an ~8:1 needle.
+Shapes are exact per point (star-shaped, so radial heights work); gravity from density; craters where they fit the body,
+baked below. Boulders and pits sit on the surface and are provably continuous: a 27-against-125-cell check, 0 missed, and
+3,697 missed without the half-cell limit. Negative results: a 32:1 visitor (axis draw); features floating off the surface;
+a ridge check fooled by the shape; the study ignoring a tiny body's starting band. Test `ground-8` (6 checks, 3 mutations
+caught). Full suite 536 pass / 0 fail on the merged tree. Renumbered v1.74 → v1.75 after economy took v1.74 in the same
+window. **GROUND.md G7 is complete on the CPU.**
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`small:<kind>:<R>:<seed>`, honours a starting band), `test.mjs` (`ground-8`), `NOTES.md` § v1.75, `GROUND.md` 0.1.9, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Space (Q87, M4/M5): real bodies in the tree, each with its recipe (`<NAME>_GROUND`, or `smallBodyGround` for seeded ones)
+- [ ] GPU session, when Q91 opens: GROUND.md § "G3: the port plan", starting at G3.0
+- [ ] Someone with the GPU: TESTING 131 (Selene's maria) and 146 (Tellus's poles)
+
+## 2026-10-09 — Launchpad v1.76: debris plan, and slice 1: spent stages stay in orbit (QUEUE Q26; space session)
+
+### Summary
+- Found the design: LATE_GAME.md round 5 § "Debris and Kessler" (big pieces as objects, fragments as bands, tracking,
+  uncrewed may be destroyed, crewed always warned, off/light/real setting). Wrote the plan in NOTES (four slices).
+- Slice 1: `detach` notes every dropped piece (sim-side, `junkNote`); at flight end pieces of 100 kg or more in a closed
+  orbit clear of the air join the registry as Debris: targetable (G), grabbable, hit in flight, never flyable or held;
+  rails + decay only; low ones re-enter quietly. Program screen sums them in one line. Dry runs leave none.
+
+### Verification
+- New test `space-3` (3 checks, 5 mutations caught). Full suite 539 pass / 0 fail on `main` as pushed (`7918837`).
+  `career.mjs` unchanged. Not browser-checked (one summary line in the Program screen).
+- Version numbers collided four times while merging (vehicle v1.73, economy v1.74, world v1.75): this is v1.76, TESTING 148.
+- **Slip:** a one-shot merge-and-push script committed NOTES.md with conflict markers via `commit -a` and pushed them
+  (`2deed0f`); fixed a minute later (`7918837`), no code affected. LESSONS #42.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (junk list, `junkRegister`, `orbTick`, quiet decay), `sim/vessel.js` (one
+  call in `detach`), `sim/program.js` (one call at flight end), `sim/procedures.js` (dry runs save the list),
+  `app/program-ui.js` (summary line), `test.mjs` (`space-3`), `NOTES.md` (plan + § v1.76), `TESTING.md` row 148, `QUEUE.md`
+- `ACTIVE_WORK.md` (claim made and cleared), `LESSONS_LEARNED.md` #42
+
+### Next steps
+- [ ] Human: TESTING 148
+- [ ] Space: Q26 slices 2–4 (under *Proposed*): conjunctions, fragment bands, the world setting
+- [ ] Orchestrator: version numbers race every few minutes now (LESSONS #37); consider dropping them from NOTES headings

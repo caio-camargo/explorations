@@ -30,7 +30,7 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
   add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');
   for(const p of R.paid||[]){add(p.k==='contract'?`Contract: ${p.l}`:p.k==='stage'?`${p.l} (share)`:p.l,p.pay,p.k);if(p.k==='mission')D.missions.push({l:p.l,pay:p.pay,first:!!p.first})}
   add(`Refurbishment${R.recovery?` (${R.recovery})`:''}`,R.refund||0,'refund');add('Damages to towns',-(R.dmg||0),'dmg');
-  if(b){D.net=PROG.funds-b.funds;const rest=D.net-M.reduce((a,m)=>a+m.v,0);add(`${Math.max(0,PROG.day-b.day).toFixed(0)} days passing (budget, upkeep, debt)`,rest,'days')}
+  if(b){D.net=PROG.funds-b.funds;const rest=D.net-M.reduce((a,m)=>a+m.v,0);{const nd=Math.max(0,PROG.day-b.day).toFixed(0);add(`${nd} day${nd==='1'?'':'s'} passing (budget, upkeep, debt)`,rest,'days')}}
   D.certs=(ups||[]).map(u=>({l:PARTS[u.k]?PARTS[u.k].name:u.k,a:u.a,b:u.b}));
   for(const id of R.newLog||[]){const F=LOGF.find(f=>f.id===id),e=(PROG.log||{})[id];if(F&&e)D.records.push({l:F.label,v:F.fmt(e.v),was:e.hist&&e.hist.length?F.fmt(e.hist[e.hist.length-1]):null})}
   if(b&&PROG.recs&&PROG.recs.orbit!==b.recOrbit&&b.recOrbit!=null)D.records.push({l:'Cheapest trip to orbit',v:`${fmtM(PROG.recs.orbit)} net`,was:fmtM(b.recOrbit)});

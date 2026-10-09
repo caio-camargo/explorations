@@ -48,7 +48,7 @@ function cloudAt(u,T){const t=(T*2e-4)%500,a=4;
 const SUN_DIR=norm([1,0.12,0.05]);   // the renderer's SUN (fixed in the absolute frame); kept here so the sim core stands alone
 const sunUp=(u,T)=>dot(rotY(u,absTh(T)),SUN_DIR);   // sine of the sun's elevation at a planet-fixed point
 const orbQ=(r,v)=>{const f=nodeFrame(r,v);return qFromBasis(f.pro,f.nrm,f.rad)};   // orbital frame → absolute
-function satKind(q){return q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
+function satKind(q){return q.junk?'Debris':q.cam?'Lookout':q.sci?'Beeper':q.ballast?'Boilerplate':q.bio?'Ark':q.bodyName&&q.ant?'Relay':'Object'}
 function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return landRegister(s,R);if(!s.alive||s.landed)return;
   const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.e<1&&el.pe>B.R+(B.atm||MOON_PE+bodyTop(B))&&(B===TELLUS||el.ap<B.soiMin)))return;   // a moon's orbit: clear of the ground, inside its SOI
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
@@ -64,6 +64,21 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
   if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}`,'ok');
   HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
+// ---- debris, slice 1 (space session, QUEUE Q26; NOTES § "Plan: debris and Kessler"): big pieces are objects. Every
+// piece a flight drops (detach) is noted with its state; at flight end the ones of JUNK_MIN or more in a closed orbit clear
+// of the air, and well inside the SOI, join the registry as Debris (q.junk): drawn, targetable, grabbable, hit in flight
+// like any satellite; never flyable or held; on their rails plus decay only (no tides), so hundreds stay cheap.
+const JUNK=[],JUNK_MIN=100;   // kg
+function junkNote(s,parts,r,v,dm,cm){if(!s.rec||!s.rec.launched)return;const e=parts.find(p=>p.d.kind==='engine')||parts.find(p=>p.d.kind==='tank')||parts[0];
+  JUNK.push({rec:s.rec,body:s.body,r:r.slice(),v:v.slice(),t:simT,q:s.q.slice(),shape:shapeOf(parts,false),cm:cm.slice(),mass:dm*1000,name:e.d.name.replace(/ \(.*\)$/,'')})}
+function junkRegister(R){const L=JUNK.splice(0).filter(j=>j.rec===R&&j.mass>=JUNK_MIN);let n=0;
+  for(const j of L){const B=j.body,el=elements(j.r,j.v,B.mu),fl=B.R+(B.atm||MOON_PE+bodyTop(B)),far=B===TELLUS?Math.min(...B.children.map(c=>c.rMin))/2:B.soiMin;
+    if(!(el.e<1&&el.pe>fl&&el.ap<far))continue;
+    PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;n++;
+    const q={id:PROG.satN,junk:1,name:`${j.name} (debris)`,epoch:R.day0*DAY_S+j.t,r:j.r,v:j.v,mass:j.mass,born:PROG.day,imgs:0,pending:[],shape:j.shape,cm:j.cm,
+      qo:qmul(qconj(orbQ(j.r,j.v)),j.q),attached:[],adrift:PROG.day,cam:0,ant:0,sci:0,ballast:0,bio:0};
+    if(B!==TELLUS)q.bodyName=B.name;PROG.sats.push(q)}
+  if(n)HOOK.news(`${n} spent stage${n>1?'s':''} from this flight stay${n>1?'':'s'} in orbit as debris`,'warn');return n}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
@@ -539,15 +554,28 @@ function moonOrbStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,
 // capital's sky) stops by itself, and nothing is destroyed for running out. Orbits the flight treats as unperturbed
 // (pertNear), or so weakly that the drift is a few km a month (SK_MIN: low Tellus orbits), cost nothing and never drift. A flight that docks with it or flies it re-registers it:
 // a new slot, and its tanks as they are then.
-const SK_D=5,SK_MIN=0.1;   // days of tide a rate is measured over (secular drift; the wobble within an orbit averages out);
-// m/s a day below which the tide is ignored both ways (no cost, no drift): low orbits drift a few km a month (study_slot.mjs)
-function slotRate(q){if(q.skRate!=null)return q.skRate;const B=orbBody(q),el0=elements(q.r,q.v,B.mu);
+const SK_D=20,SK_MIN=0.02,TILT_MIN=3e-5,TILT_DT=DAY_S/2;   // days of tide a rate is measured over (secular drift; the wobble within
+// an orbit averages out); m/s a day of size and shape drift below which it's ignored both ways (no cost, no drift); radians a
+// day of tilt below which the plane is left alone (low orbits: ~0.03° a month); the tilt step (study_slot.mjs)
+function slotRate(q){if(q.skRate!=null)return q.skRate;const B=orbBody(q),el0=elements(q.r,q.v,B.mu);q.skTilt=0;
   if(!(el0.e<1)||!pertNear(B,el0))return q.skRate=0;
-  const o=ORB_T0;ORB_T0=0;const P=el0.period,h=Math.min(600,P/120),N=16;let r=q.r,v=q.v,t=q.epoch;const T1=t+SK_D*DAY_S;
-  while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}
-  let hv=[0,0,0],a=0,e=0;for(let k=0;k<N;k++){const x=elements(r,v,B.mu);hv=add(hv,mul(x.h,1/(x.hl*N)));a+=x.a/N;e+=x.e/N;for(let j=0;j<8;j++){[r,v]=tideRK4(B,r,v,t,P/N/8);t+=P/N/8}}   // one orbit's mean
-  ORB_T0=o;const vc=Math.sqrt(B.mu/el0.a),ang=Math.acos(clamp(dot(hv,el0.h)/(len(hv)*el0.hl),-1,1)),k=(vc*ang+vc/2*Math.abs(a-el0.a)/el0.a+vc/2*Math.abs(e-el0.e))/SK_D;   // plane + size + shape; phase is free
-  return q.skRate=k<SK_MIN?0:k}
+  const o=ORB_T0;ORB_T0=0;const P=el0.period,h=Math.min(600,P/120),N=16;let r=q.r,v=q.v,t=q.epoch;
+  const mean=()=>{let hv=[0,0,0],a=0,e=0;for(let k=0;k<N;k++){const x=elements(r,v,B.mu);hv=add(hv,mul(x.h,1/(x.hl*N)));a+=x.a/N;e+=x.e/N;for(let j=0;j<8;j++){[r,v]=tideRK4(B,r,v,t,P/N/8);t+=P/N/8}}return{hv,a,e}};   // one orbit's mean
+  // net change between one-orbit means 20 days apart: the moons' periodic pull (Nyx 4.2 days, Selene 13) mostly cancels,
+  // the secular drift stays (a deadband controller on the full physics is the better measure, but a crude one pumped the
+  // eccentricity: NOTES § "Station-keeping, re-tuned")
+  const m0=mean(),T1=q.epoch+SK_D*DAY_S;while(t<T1){const dt=Math.min(h,T1-t);[r,v]=tideRK4(B,r,v,t,dt);t+=dt}const m1=mean();
+  ORB_T0=o;const vc=Math.sqrt(B.mu/el0.a),ang=Math.acos(clamp(dot(m0.hv,m1.hv)/(len(m0.hv)*len(m1.hv)),-1,1)),k=(vc/2*Math.abs(m1.a-m0.a)/el0.a+vc/2*Math.abs(m1.e-m0.e))/SK_D;
+  q.skTilt=ang/SK_D;return q.skRate=k<SK_MIN?0:k}   // size + shape are held (paid); the tilt is let go (tiltStep); phase is free
+const slotTilt=q=>(slotRate(q),q.skTilt||0),tideMatters=q=>slotRate(q)>0||slotTilt(q)>TILT_MIN;
+// a held orbit's plane under the tide (MIDGAME § Satellites: a good design outlasts its era, so holding the tilt, ~70 % of
+// the cost, is left out, as real geostationary satellites do late in life): the torque of the tide averaged over one orbit
+// turns its angular momentum; size, shape and phase stay as held. Program time, steps of TILT_DT
+function tiltStep(q,T1){const B=orbBody(q),o=ORB_T0;ORB_T0=0;let r=q.r,v=q.v,t=q.epoch;const P=elements(r,v,B.mu).period,N=24;
+  while(t<T1){const dt=Math.min(T1-t,TILT_DT);let tq=[0,0,0];
+    for(let i=0;i<N;i++){const ti=t+P*i/N,ri=kepler(r,v,ti-t,B.mu)[0],a=pertAcc(B,ri,ti,false);if(a)tq=add(tq,cross(ri,a))}
+    const h=cross(r,v),Q=qFromTo(norm(h),norm(add(h,mul(tq,dt/N))));[r,v]=kepler(r,v,dt,B.mu);r=qrot(Q,r);v=qrot(Q,v);t+=dt}
+  ORB_T0=o;Object.assign(q,{r,v,epoch:t})}
 // what it can burn: tank fuel through its best engine (vacuum Isp), then RCS gas through its thrusters
 const SK_GAS_ISP=PARTS.rcs.isp;
 function skProp(q){let isp=0,rcs=false;for(const o of q.shape||[]){const d=PARTS[o.k];if(!d)continue;if(d.kind==='engine')isp=Math.max(isp,d.ispV);if(d.kind==='rcs')rcs=true}
@@ -598,10 +626,10 @@ function decayAE(a,e,K,t,T1,stepCb){const fl=DECAY_FLOOR();
 function decayStep(q,T1){const mu=TELLUS.mu,el=elements(q.r,q.v,mu),K=dragK(q);if(!(K>0)||!(el.e<1))return;
   // the warning looks across the whole jump, so a long wait between flights can't skip it: 10 days ahead of re-entry, or
   // at once if it comes down sooner (the news then reads in order: warned, then gone)
-  if(!q.decayWarn){const L=decayLife(q);if(L<10+(T1-q.epoch)/DAY_S){q.decayWarn=1;HOOK.news(`${q.name} is sinking into the upper air: it will re-enter within ${daysS(Math.max(1,Math.min(10,L)))}`,'warn')}}
+  if(!q.decayWarn&&!q.junk){const L=decayLife(q);if(L<10+(T1-q.epoch)/DAY_S){q.decayWarn=1;HOOK.news(`${q.name} is sinking into the upper air: it will re-enter within ${daysS(Math.max(1,Math.min(10,L)))}`,'warn')}}
   const E0=2*Math.atan2(Math.sqrt(1-el.e)*Math.sin(el.nu/2),Math.sqrt(1+el.e)*Math.cos(el.nu/2));let M=E0-el.e*Math.sin(E0);
   const o=decayAE(el.a,el.e,K,q.epoch,T1,(n,dt)=>{M+=n*dt});
-  if(o.gone){const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);HOOK.news(`${q.name} has re-entered: the thin upper air finally pulled it down, and it burned up`,'bad');return true}
+  if(o.gone){const i=PROG.sats.indexOf(q);if(i>=0)PROG.sats.splice(i,1);if(!q.junk)HOOK.news(`${q.name} has re-entered: the thin upper air finally pulled it down, and it burned up`,'bad');return true}
   const a=o.a,e=o.e,n=Math.sqrt(mu/(a*a*a)),rp=a*(1-e),vp=Math.sqrt(mu*(1+e)/rp),[r,v]=kepler(mul(el.P,rp),mul(el.Q,vp),(((M%(2*Math.PI))+2*Math.PI)%(2*Math.PI))/n,mu);
   Object.assign(q,{r,v,epoch:o.t});
 }
@@ -610,15 +638,16 @@ const daysS=d=>d>=YEAR_D?`${(d/YEAR_D).toFixed(1)} years`:d>=1?`${Math.round(d)}
 function decayLife(q){if(q.bodyName)return Infinity;const el=elements(q.r,q.v,TELLUS.mu),K=dragK(q);if(!(K>0)||!(el.e<1)||el.pe-TELLUS.R>2000e3)return Infinity;
   const H=20*YEAR_D*DAY_S,o=decayAE(el.a,el.e,K,0,H);return o.gone?o.t/DAY_S:Infinity}
 // between flights (advanceDays, program time T0 → T1): held orbits pay for the time (tides and drag); dry ones drift under
-// the tides (and every orbit about a moon with nothing to hold it), or decay in the upper air
+// the tides, or decay in the upper air; a held orbit (or one too weakly pulled to need holding) only turns its tilt (tiltStep)
 function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
+  if(q.junk){if(q.epoch<T1)(q.bodyName?moonOrbStep:decayStep)(q,T1);continue}   // debris: rails + decay only (Q26)
   if(q.adrift==null){const k=holdRate(q);
-    if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(!left)continue;
+    if(k>0){const t0=Math.max(q.skT??T0,q.epoch),had=skDv(q)>0,left=skSpend(q,k*(T1-t0)/DAY_S);q.skT=T1;if(left){
       const tDry=had?T1-left/k*DAY_S:t0,[r,v]=satAt(q,tDry);Object.assign(q,{r,v,epoch:tDry,adrift:tDry/DAY_S});
-      if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}   // (one that never had any just drifts)
-    else if(!q.bodyName)continue}   // nothing pulls it off its rails
+      if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}}   // (one that never had any just drifts)
+    if(q.adrift==null){if(q.epoch<T1&&slotTilt(q)>TILT_MIN)tiltStep(q,T1);continue}}   // held (or nothing to hold): only the tilt moves
   if(!(q.epoch<T1))continue;
-  if(q.bodyName||slotRate(q)>0)moonOrbStep(q,T1);else decayStep(q,T1)}}
+  if(q.bodyName||tideMatters(q))moonOrbStep(q,T1);else decayStep(q,T1)}}
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}

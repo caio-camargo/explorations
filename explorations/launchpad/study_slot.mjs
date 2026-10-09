@@ -46,3 +46,25 @@ for (const [name, a, inc] of ORBITS) {
   console.log(`${name.padEnd(20)} tide ≤ ${tide.toExponential(2)} m/s²  off the rail ${off.map(x => (x / 1e3).toFixed(1)).join(' / ')} km after 1 / 5 / ${DAYS} d`);
   console.log(`${''.padEnd(20)} to hold, m/s a day after D = ${held.map(x => x.D).join(', ')} d: ${held.map(x => x.all.toFixed(4)).join(', ')}   (at ${DAYS} d: plane ${held[3].plane.toFixed(2)}, size ${held[3].size.toFixed(2)}, shape ${held[3].shape.toFixed(2)} m/s; per tide·day ${(held[3].all / (tide * DAY_S)).toFixed(4)})`);
 }
+// B (2026-10-09, the re-tune for MIDGAME § Satellites): station-keeping now holds size, shape and phase and lets the tilt go,
+// stepped by the orbit-averaged torque of the tide (tiltStep). Its tilt against the full RK4's, after 20 days.
+{
+  const G = new Function(src + `return {tiltStep,elements,kepler,STAT_R,TELLUS,DAY_S,YEAR_D,newShip,PRESETS,satRegister,advanceDays,isTV,capital,rotY,absTh,skDv,holdRate,slotRate,slotTilt,PROG,HOOK};`)();
+  const incOf = (r, v) => { const e = G.elements(r, v, mu); return Math.acos(Math.max(-1, Math.min(1, e.h[1] / e.hl))) / deg; };
+  console.log('\nB. tilt after 20 days, tiltStep vs RK4 (degrees):');
+  for (const [name, a, inc] of [ORBITS[3], ORBITS[4]]) {
+    const [r0, v0] = circ(a, inc), P = 2 * Math.PI * Math.sqrt(a ** 3 / mu), q = { r: r0, v: v0, epoch: 0 };
+    const [r1, v1] = rk4(r0, v0, 0, DAYS * DAY_S, P); G.tiltStep(q, DAYS * DAY_S);
+    console.log(`  ${name.padEnd(20)} start ${inc / deg}°: RK4 ${incOf(r1, v1).toFixed(3)}°, tiltStep ${incOf(q.r, q.v).toFixed(3)}°; normals ${(Math.acos(Math.min(1, api.dot(G.elements(r1, v1, mu).h, G.elements(q.r, q.v, mu).h) / (G.elements(r1, v1, mu).hl * G.elements(q.r, q.v, mu).hl))) / deg).toFixed(3)}° apart`);
+  }
+  // C. a TV satellite held over the capital for 12 years with plenty of propellant: its tilt, what holding costs, TV days
+  const P = G.PROG; G.HOOK.news = () => {}; G.HOOK.msg = () => {}; G.HOOK.save = () => {}; P.sats = []; P.day = 0;
+  const c = G.capital(), u = G.rotY(c.u, G.absTh(0)), lon = Math.atan2(u[2], u[0]), a = G.STAT_R, vc = Math.sqrt(mu / a);
+  const s = G.newShip(G.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: G.TELLUS, r: [a * Math.cos(lon), 0, a * Math.sin(lon)], v: [vc * Math.sin(lon), 0, -vc * Math.cos(lon)] });
+  G.satRegister(s, { day0: 0 }); const q = P.sats.at(-1), dv0 = G.skDv(q);
+  console.log(`\nC. a TV satellite held over the capital (lat ${(Math.asin(c.u[1]) / deg).toFixed(0)}°): hold ${G.slotRate(q).toFixed(3)} m/s a day (size + shape), tilt ${(G.slotTilt(q) / deg * 400).toFixed(2)}° a year at first; TV at the start ${G.isTV(q, 0)}`);
+  let first = null;
+  for (let y = 1; y <= 12; y++) { let tv = 0; for (let d = 0; d < G.YEAR_D; d++) { G.advanceDays(1); if (G.isTV(q, P.day * DAY_S)) tv++; else if (first == null) first = P.day; }
+    console.log(`  year ${String(y).padStart(2)}: tilt ${incOf(q.r, q.v).toFixed(1)}°, TV ${(tv / G.YEAR_D * 100).toFixed(0)}% of days, ${(dv0 - G.skDv(q)).toFixed(0)} m/s spent so far`); }
+  console.log(`  first day without TV: ${first ?? 'none'}`);
+}

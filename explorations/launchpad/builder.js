@@ -159,9 +159,9 @@ function draw(drawMesh,m,Mship,pw){
   gl.uniform1f(m.uGlow,0);gl.depthFunc(gl.LESS);gl.depthMask(true);gl.disable(gl.BLEND)}
 // called from render() on the 2D overlay
 function overlay(o){
-  if(mode!=='editor'||isEmpty(stackDef))return;const k=DPR();o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
+  if(mode!=='editor'||typeof atHQ!=='undefined'&&atHQ||isEmpty(stackDef))return;const k=DPR();   // not on the Program screen: S there is the flown vessel (PLAYTEST #27)o.save();o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
   if(st.loads&&!st.held){const seen=[];
-    for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null)continue;const q=proj(p.jP);if(!q)continue;
+    for(const p of S.parts){if(!p.on||!p.parent)continue;const f=certFrac(p);if(f==null||!isFinite(f))continue;const q=proj(p.jP);if(!q)continue;
       const c=f>1?'#ff6b6b':f>.7?'#ffb454':'#7dffa8';o.fillStyle=c;o.beginPath();o.arc(q[0],q[1],(f>.7?3.5:2.5)*k,0,7);o.fill();
       if(f<.3||seen.some(s=>Math.hypot(s[0]-q[0],s[1]-q[1])<26*k))continue;seen.push(q);
       o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';const t=(f*100).toFixed(0)+'%';o.strokeText(t,q[0]+6*k,q[1]+4*k);o.fillText(t,q[0]+6*k,q[1]+4*k)}}
@@ -256,12 +256,14 @@ function staging(box){
       btn(c,'◀',false,()=>mv(i,j,-1),'fire one stage earlier');btn(c,'▶',false,()=>mv(i,j,1),'fire one stage later');
       if(s.length>1)btn(c,'⤵',false,()=>mv(i,j,0),'a stage of its own, right after this one');r.appendChild(c)})})}
 function palette(){const pal=el('palette');pal.innerHTML='';
-  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
+  const CAT=[['Command & payload',['pod','core','bio','sci','cam','ant','ballast']],['Tanks',['tank']],['Engines',['engine']],['Structure',['dec','adapt','port','claw','bay']],['Station',['hab','lab','arm','beacon']],['Surface',['rover','leg']],['Power',['comp','batt','solar']],['Control',['rcs','gas','rwheel','spin']],['Aero & recovery',['cone','fins','rfin','chute','shield']]];
   // a part kind no category names still shows up, under "Other" — new parts from other sessions must not vanish
   const named=new Set(CAT.flatMap(c=>c[1])),rest=[...new Set(Object.values(PARTS).filter(d=>!d.radialOnly&&!named.has(d.kind)).map(d=>d.kind))];
   if(rest.length)CAT.push(['Other',rest]);
   for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
-    for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;const b=document.createElement('button');
+    for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;
+      if(d.era!=null&&khOn()&&!TEST.tools&&compEra()<d.era)continue;   // not offered before its computing era (the onboard computer)
+      const b=document.createElement('button');
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
       b.innerHTML=`${d.name}<span>${spec}</span>`;if(st.held&&st.held.k===k&&!kids(st.held).length)b.className='on';
       b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);pal.appendChild(b)}}
@@ -311,7 +313,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
   cvs.addEventListener('contextmenu',e=>{if(mode==='editor')e.preventDefault()});
   addEventListener('wheel',e=>{if(mode!=='editor'||e.target!==cvs||!e.shiftKey)return;e.preventDefault();e.stopPropagation();
     cam.edY=clamp((cam.edY||0)-Math.sign(e.deltaY||e.deltaX)*cam.dist*.06,-S.len,S.len)},{capture:true,passive:false});
-  addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
+  addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb||atRoll)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
     if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?restore(st.redo,st.undo):restore(st.undo,st.redo);return}
     if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();restore(st.redo,st.undo);return}
     if(e.ctrlKey||e.metaKey||e.altKey)return;

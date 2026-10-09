@@ -193,6 +193,7 @@ function render(){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
     octx.font=`${12*Math.min(devicePixelRatio||1,1.5)}px ui-monospace,Consolas,monospace`;octx.textAlign='center';
     const era=mapEra();if(era){drawEraMap(era,camW,project,tanY);octx.font=ERA_FONT[era](Math.min(devicePixelRatio||1,1.5));for(const L of labels)L.c=eraInk(era,L.c)}
+    const texts=[];   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
       else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=s;mapUI.handles=[];
@@ -209,9 +210,12 @@ function render(){
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)octx.fillText(L.t,s[0],s[1]-10)}
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-10,c:L.c,o:{city:4,gs:3,sat:3,ship:2}[L.mark]||1})}
+    {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k;texts.sort((a,b)=>a.o-b.o);
+      for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
+        if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
     if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
-  const building=mode==='editor'&&!atHQ&&!atDeb;   // (flow) the builder's markers stay off behind the Program and Debrief panels
+  const building=mode==='editor'&&!atHQ&&!atDeb&&!atRoll;   // (flow) the builder's markers stay off behind the Program and Debrief panels
   if(building&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
@@ -307,10 +311,10 @@ function drawMap(VP,camW,labels){
   if(impact&&toolOK('impact')){const b=impact.b,bp=bodyPos(b,simT);let pv=null;for(const pf of impact.path){const q=add(bp,fromPF(b,pf,simT));if(pv)seg(pv,q,[1,.35,.25,.9]);pv=q}
     const ip=add(bp,fromPF(b,impact.pf,simT));if(pv)seg(pv,ip,[1,.35,.25,.9]);labels.push({p:ip,mark:'impact',t:`impact ${fmtT(impact.t-simT)}`,c:'#ff6b5a'})}
   for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(dot(sub(camW,cp),rotY(c.u,bodyTheta(TELLUS,simT)))<0)continue;   // far side of the planet
-    labels.push({p:cp,mark:'city',t:cam.mDist<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
+    labels.push({p:cp,mark:'city',t:len(camW)<TELLUS.R*4.3?c.name:'',c:c.power?`hsl(${c.power.hue},75%,66%)`:'#ffd27a'})}   // cities in their power's colour
   for(const c of PROG.active||[])if(c.type==='ballistic'){const tp=fromPF(TELLUS,mul(c.p.u,TELLUS.R),simT);if(dot(sub(camW,tp),rotY(c.p.u,bodyTheta(TELLUS,simT)))>0)labels.push({p:tp,mark:'impact',t:'target',c:'#ff4fd8'})}
   for(const g of stationsAll()){const gp=fromPF(TELLUS,mul(g.u,TELLUS.R),simT);if(dot(sub(camW,gp),rotY(g.u,bodyTheta(TELLUS,simT)))>=0)labels.push({p:gp,mark:'gs',t:'',c:'#9fe8ff'})}
-  for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||cam.mDist<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
+  for(const q of[...satsUp(),...moonSats()]){const tg=q.id===S.target;labels.push({p:add(bodyPos(orbBody(q),simT),satAt(q,tNow())[0]),mark:'sat',id:q.id,t:tg||len(sub(camW,bodyPos(orbBody(q),simT)))<TELLUS.R*10?q.name:'',c:tg?'#ffb347':q.cam?'#9fe8ff':'#aab4c0'})}
   if(impSpread&&impact&&toolOK('impact'))for(const x of[impSpread.lo,impSpread.hi])labels.push({p:add(bodyPos(x.b,simT),fromPF(x.b,x.pf,simT)),mark:'impact',t:'',c:'rgba(255,107,90,.45)'});
   for(const d of pendingDrops){const ip=fromPF(d.impact.b,d.impact.pf,simT);labels.push({p:add(bodyPos(d.impact.b,simT),ip),mark:'impact',t:d.verdict.kind==='city'?`${d.name} → ${d.verdict.city.name}!`:'',c:d.verdict.kind==='city'||d.verdict.kind==='near'?'#ff5a5a':'#ff9f5a'})}
   for(const q of landedUp()){const b=landedBody(q);if(!b)continue;labels.push({p:add(bodyPos(b,simT),fromPF(b,q.pf,simT)),mark:'gs',t:q.beacon||q.id===S.target?q.name:'',c:q.id===S.target?'#ffb347':'#e0c070'})}

@@ -130,6 +130,7 @@
   - `RESERVE=` sets the investor's cash floor (default 250M).
   - `PACE=1` prints the epoch 1–2 pacing report; `FAILFIRST=orbit` fails the first orbital attempt (NOTES § "Epoch 1–2
     pacing", Q44).
+  - The scripted player withdraws a contract it can't afford when its slots are full (v1.77); `TRACE=1`, `SEED0=`, `ARCHS=` narrow a run.
 
   Noise between policies is roughly ±400M at 5 seeds.
 - Claude memory for this project (key `G--Meu-Drive-CLAUDE-fun`): `shared-docs-commit-procedure`,

@@ -1,5 +1,5 @@
 # Session roles
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.2.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
@@ -42,6 +42,9 @@ For each one:
    out the build items, one per body, power or crew piece.
 
 A proposal that needs a new system goes to *Waiting on Caio* with the pillar it serves (ROADMAP § "Systems are complete").
+**Kick-backs first:** a D-item marked *back to design* (ROADMAP § "Keeping the queue full", rule 8) is a contradiction
+some lane found between built work and a catalog or pillar. Settle it with Caio before starting a new catalog, update the
+catalog it touches, and flag the orchestrator to unblock the items waiting on it.
 Pull before editing, push as you go.
 
 ## Studio

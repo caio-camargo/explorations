@@ -4,8 +4,8 @@
 // ============================================================ screens, overlays, keys (ui session; NOTES § "UI: screens and navigation")
 // One name for where you are. `mode`/`view` are still the state everything reads; go() is the one place that changes them.
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
-let atDeb=false,debNext='program',debShown=null;   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
-const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atHQ?'program':'assembly'):view==='map'?'map':'flight';
+let atDeb=false,debNext='program',debShown=null,atRoll=false;   // atRoll: the Rollout screen (slice 5), a panel beside the ship on the pad   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
+const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
     const D=S.rec&&S.rec.debrief;   // ...and a flight that flew is debriefed on the way out, once
@@ -14,15 +14,17 @@ function go(s){const from=screenNow();if(s===from)return;
   if(s==='rover'&&from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}
   if(s==='map'&&mode!=='flight')return;
   if(from==='rover')rvLeave();
-  atDeb=s==='debrief';
+  if(s==='rollout'&&(mode!=='editor'||BLD.isEmpty(stackDef)))return;   // only from the Assembly, with something on the pad
+  atDeb=s==='debrief';atRoll=s==='rollout';
   if(from==='program')newsSeen=0;   // (the Inbox's news are "new" until you leave the Program)
   if(s==='program'){mode='editor';view='flight';atHQ=true;if(BLD.st&&BLD.st.held)BLD.drop();renderProgram()}
   else if(s==='assembly'){if(from==='program'&&progGate){HOOK.msg('Choose whose program it is, and how it starts');return}mode='editor';view='flight';atHQ=false;editorChanged()}
   else if(s==='flight'){mode='flight';view='flight';atHQ=false}
   else if(s==='rover'){mode='drive';view='flight';atHQ=false;rvEnter()}
+  else if(s==='rollout'){mode='editor';view='flight';atHQ=false;BLD.drop();renderSites();renderRollout()}
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
-  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
+  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to, or act: what
@@ -34,12 +36,13 @@ const KEYS={
     {k:['w','s','a','d'],l:'W S A D',d:'pitch / yaw · driving a rover: drive and steer'},{k:['q','e'],l:'Q E',d:'roll'},{k:['t'],l:'T',d:'SAS on/off (modes: buttons)'},
     {k:['v'],l:'V',d:'RCS on/off'},{k:['i','k','j','l','u','o'],l:'I K · J L · U O',d:'RCS translate: along the nose · sideways · sideways'},
     {k:[',','.','/'],l:', . /',d:'warp down / up / 1×'},{k:['m'],l:'M',d:'map'},{k:['g'],l:'G',d:'cycle the target'},
-    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
+    {k:['b'],l:'B',d:'cargo bay doors open/close'},{k:['y'],l:'Y',d:'landing legs down/up'},{k:['p'],l:'P',d:'solar wings out/folded'},{k:['[',']'],l:'[ ]',d:'switch to another vessel in this flight, or one of yours within 2.5 km · ] drives a deployed rover (then the next), [ back to the lander'},
     {k:['n','delete'],l:'N · Del',d:'node at next apoapsis · delete node'},{k:['r'],l:'R',d:'revert (after a crash or landing)'},
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
   map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite'},
     {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
+  rollout:[{k:['b'],l:'B',d:'back to Assembly',go:'assembly'},{l:'LAUNCH',d:'the button: checks, then the pad'}],
   debrief:[{k:['p'],l:'P',d:'Program',go:'program'},{k:['b'],l:'B',d:'Assembly: change the design',go:'assembly'},{k:['a'],l:'A',d:'fly the same design again',act:()=>debAgain()}],
   program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
@@ -49,7 +52,7 @@ const KEYS={
     {l:'drag · wheel',d:'orbit camera · zoom'},{l:'middle-drag · Shift+wheel',d:'move up / down the rocket'}],
   rover:[{k:['w','s'],l:'W / S',d:'drive forward / back'},{k:['a','d'],l:'A / D',d:'steer (front and rear wheels, opposite ways)'},{k:[' '],l:'Space',d:'brake (stopped, it holds itself)'},
     {k:['r'],l:'R',d:'back to the start, upright'},{k:['p'],l:'P',d:'Program',go:'program'},{l:'drag · wheel',d:'orbit camera · zoom (it swings back behind the rover as it drives)'}]};
-const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief'};
+const SCREEN_NAME={program:'Program',assembly:'Assembly',flight:'Flight',map:'Map',rover:'Rover yard',debrief:'Debrief',rollout:'Rollout'};
 function renderHelp(){const sc=screenNow(),row=r=>`<tr><td>${r.l}</td><td>${r.d}</td></tr>`,
     sec=(t,L)=>`<h3>${t}</h3><table>${L.filter(r=>!r.tester||TEST.on).map(row).join('')}</table>`;
   $('help').innerHTML=`<span class="x" data-ov="help">✕</span><h2>Keys · ${SCREEN_NAME[sc]}</h2>`+(sc==='map'?sec('Map',KEYS.map)+sec('Flight',KEYS.flight):sec(SCREEN_NAME[sc],KEYS[sc]))
@@ -72,7 +75,7 @@ document.body.classList.toggle('noperf',!perfOn);
 function renderEsc(){const fl=mode==='flight',b=(a,t,arm)=>`<button data-esc="${a}"${escArm===a?' class="arm"':''}>${escArm===a?arm:t}</button>`;
   $('escm').innerHTML=`<span class="x" data-ov="escm">✕</span><h2>${SCREEN_NAME[screenNow()]}${['flight','map','rover'].includes(screenNow())?' · paused':''}</h2>`+b('close','Resume  [Esc]')
     +(fl?b('revert','Revert to launch','Click again: this flight is lost')+b('end','End flight: debrief','Click again: this flight ends here')+b('assembly','Back to Assembly','Click again: this flight ends here')+b('tape','Save as autopilot'):'')
-    +(['assembly','rover','debrief'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
+    +(['assembly','rover','debrief','rollout'].includes(screenNow())?b('program','Program  [P]'):'')+b('log','Logbook  [F]')+b('keys','Keys  [H]')+b('settings','Settings')+(TEST.on?b('tester','Tester menu  [F2]'):'')}   // (the performance readout moved to Settings, Q42)
 document.addEventListener('click',e=>{const d=e.target.dataset||{};
   if(d.ov){ovClose(d.ov);return}
   if(d.go){go(d.go);return}

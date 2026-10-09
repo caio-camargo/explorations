@@ -3,13 +3,13 @@
 import { readFileSync } from 'node:fs';
 import { pageSource, pageScripts } from './page.mjs';
 import { crewLunar } from './fly_crewlunar.mjs';
-import { flyLadder, handAscent, flySite } from './fly_ladder.mjs';
+import { flyLadder, handAscent, flySite, siteOf } from './fly_ladder.mjs';
 // shards (platform session): `node test.mjs --list | --only 12,docking | --smoke | --times`, see shards.mjs
 if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).main(process.argv.slice(2), import.meta.url));
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {footPoints,legOp,legsDown,tapeLegs,toV2,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1878,8 +1878,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const d = ['flight', 'map', 'assembly'].flatMap(dup);
   check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
   const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
-  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb)=[^=])/g) || [];
-  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb= assignments outside it but their declarations)', goSrc && outside.length === 4, outside.join(' '));
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb|atRoll)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb=/atRoll= assignments outside it but their declarations)', goSrc && outside.length === 5, outside.join(' '));
   // every Program section heading the page can write lands in a real tab, not "More"
   const progTabOf = new Function('progName', cut(page, 'const progTabOf=', ';\nlet progTab') + ';return progTabOf')(() => 'Fenfen Space Agency');
   const heads = [...html.matchAll(/class="ep">([A-Z][^<$]*)/g)].map(m => m[1].trim()).filter(h => !/^\.\*/.test(h));
@@ -2491,7 +2491,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const sand = D.avNow(); D.PROG.flights = 1; const gens = [0, 3.5, 8].map(y => { D.PROG.day = y * 400; return [D.avNow(), D.compEra()]; });
   check('avionics: no program, the best SAS; in a program it follows the computing era (gyro, then analog at mainframes, then guidance computer)',
     sand === 2 && gens.every(([a, e]) => a === Math.min(2, e)) && gens.map(g => g[0]).join() === '0,1,2', `sandbox ${sand}; years 0 / 3.5 / 8 → ${gens.map(g => D.AV[g[0]].name).join(' / ')}`);
-  const pod = av => { D.t = 0; const s = D.newShip(['chute', 'pod']), r0 = T.R + 300e3; D.S = s; s.av = av;
+  // the guidance computer's pod carries an onboard computer: since Q34a (vehicle) a craft without crew needs one for those modes
+  const pod = av => { D.t = 0; const s = D.newShip(av === 2 ? ['chute', 'pod', 'ocomp'] : ['chute', 'pod']), r0 = T.R + 300e3; D.S = s; s.av = av;
     Object.assign(s, { landed: false, throttle: 0, r: [r0, 0, 0], v: [0, 0, -Math.sqrt(T.mu / r0)], w: [0, 0, 0], sas: true, sasMode: 'stab' });
     const modes = ['pro', 'node', 'tgt'].map(m => D.sasModeOK(s, m) ? 'yes' : 'no'); s.sasMode = 'pro'; const proHolds = D.sasTarget(s) === s.hold; s.sasMode = 'stab';
     const X0 = D.qrot(s.q, [1, 0, 0]); s.hold = X0; let t = 0, reach = null, err = 0;
@@ -3262,6 +3263,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('cover: a flight that completed a first is not covered', x5 === 0);
   P.recs = { maxCost: 30 }; const x6 = D.coverLoss({}, { cost: 80, refund: 0, cdone: ['a contract'] });
   check('cover: a flight that completed a contract is not covered', x6 === 0);
+  P.recs = { maxCost: 30 }; P.flights = 9; const x7 = D.coverLoss({}, { cost: 80, refund: 0, cdone: [], orbit: true });
+  check('cover: a rocket that reached orbit worked, even with nothing completed: no cover (PLAYTEST #33)', x7 === 0);
   const H = html.replace(/\r\n/g, '\n');
   check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
 }
@@ -3502,7 +3505,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // spending its own propellant against the moons' tides, at a rate measured once for its orbit (study_slot.mjs); dry, the
 // tide steps it between flights and it drifts off its slot. Low orbits feel no tide in the game (pertNear) and cost nothing.
 {
-  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,slotRate,skDv,skLife,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R};')();
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,slotRate,slotTilt,skDv,skLife,isTV,capital,rotY,absTh,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R,YEAR_D};')();
   const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
   const P = D.PROG, T = D.TELLUS, G0 = 9.80665; P.sats = []; P.day = 0;
   // a Probe left in a circular orbit of radius a, inclination inc; then its tanks set to hold dv m/s (null: as launched)
@@ -3513,28 +3516,36 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       if (dv > 0) for (let i = 0; i < 60; i++) { const mid = (lo + hi) / 2; tk.res.fuel = mid; q.mass = m0 + mid * 1000; if (D.skDv(q) < dv) lo = mid; else hi = mid; } }
     return q; };
   const R = T.R, low = reg(R + 300e3, 0), nav = reg(R + 3000e3, 60), stat = reg(D.STAT_R, 0), k = q => D.slotRate(q);
-  check('station-keeping: holding an orbit costs what the tides pull, nothing in low orbit, ~0.2–0.4 m/s a day at 3,000 km, ~0.3–0.5 stationary (study_slot.mjs)',
-    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5,
-    `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day`);
+  check('station-keeping: holding an orbit’s size and shape costs what the tides pull, nothing in low orbit, ~0.02–0.06 m/s a day at 3,000 km, ~0.05–0.3 stationary; the tilt is let go (re-tuned for MIDGAME § Satellites; study_slot.mjs)',
+    k(low) === 0 && k(nav) > 0.02 && k(nav) < 0.06 && k(stat) > 0.05 && k(stat) < 0.3 && D.slotTilt(stat) > 3e-5 && D.slotTilt(low) < 3e-5,
+    `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day; stationary tilt ${(D.slotTilt(stat) * 400 * 180 / Math.PI).toFixed(2)}° a year`);
   // a stationary satellite with tanks for 100 m/s holds its rails for ~250 days; one with 4 days' worth goes adrift on day 4
   P.sats = []; news.length = 0; const held = reg(D.STAT_R, 0, 100), short = reg(D.STAT_R, 0, 4 * k(held)), none = reg(D.STAT_R, 0, 0);
   const r0 = D.satAt(held, 30 * D.DAY_S)[0], ep0 = held.epoch, m0 = held.mass, life0 = D.skLife(held);
   D.advanceDays(30);
   const spent = 100 - D.skDv(held), off = q => len(sub(D.satAt(q, 30 * D.DAY_S)[0], D.kepler([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)], 30 * D.DAY_S, T.mu)[0]));
-  check('station-keeping: with propellant it stays on its rails, and pays the rate from its own tanks (mass and Δv drop)',
-    held.epoch === ep0 && len(sub(D.satAt(held, 30 * D.DAY_S)[0], r0)) < 1e-6 && Math.abs(spent - 30 * k(held)) < 0.01 * spent && held.mass < m0 && held.adrift == null && Math.abs(D.skLife(held) - (life0 - 30)) < 0.5,
-    `spent ${spent.toFixed(2)} m/s in 30 days (rate ${(30 * k(held)).toFixed(2)}); life ${life0.toFixed(0)} → ${D.skLife(held).toFixed(0)} days; ${(m0 - held.mass).toFixed(1)} kg lighter`);
+  const el0 = D.elements([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)], T.mu), el1 = D.elements(held.r, held.v, T.mu), tilt = Math.acos(Math.min(1, el1.h[1] / el1.hl));
+  check('station-keeping: with propellant it holds its orbit’s size and shape, its tilt wanders a little, and it pays the rate from its own tanks (mass and Δv drop)',
+    Math.abs(el1.a - el0.a) < 1 && Math.abs(el1.e - el0.e) < 1e-6 && tilt > 0 && tilt < 0.01 && Math.abs(spent - 30 * k(held)) < 0.01 * spent && held.mass < m0 && held.adrift == null && Math.abs(D.skLife(held) - (life0 - 30)) < 0.5,
+    `spent ${spent.toFixed(2)} m/s in 30 days (rate ${(30 * k(held)).toFixed(2)}); tilt ${(tilt * 180 / Math.PI).toFixed(3)}°; life ${life0.toFixed(0)} → ${D.skLife(held).toFixed(0)} days; ${(m0 - held.mass).toFixed(1)} kg lighter`);
   check('station-keeping: dry, it drifts off its slot under the tide (news once, only for one that had propellant), and nothing is lost',
-    Math.abs(short.adrift - 4) < 0.05 && none.adrift === 0 && off(short) > 100e3 && off(none) > 100e3 && off(held) < 1 && P.sats.length === 3 &&
+    Math.abs(short.adrift - 4) < 0.05 && none.adrift === 0 && off(short) > 100e3 && off(none) > 100e3 && off(held) < 50e3 && P.sats.length === 3 &&
     news.filter(m => /last of its propellant/.test(m)).length === 1 && news.some(m => m.startsWith(short.name)),
-    `adrift on day ${short.adrift?.toFixed(2)} and ${none.adrift}; off the slot after 30 days: ${(off(short) / 1e3).toFixed(0)} km and ${(off(none) / 1e3).toFixed(0)} km (held: ${off(held).toFixed(1)} m)`);
+    `adrift on day ${short.adrift?.toFixed(2)} and ${none.adrift}; off the slot after 30 days: ${(off(short) / 1e3).toFixed(0)} km and ${(off(none) / 1e3).toFixed(0)} km (held, its tilt only: ${(off(held) / 1e3).toFixed(1)} km)`);
   // around a moon too: the 2,000 km polar Selene orbit that Tellus's tide pulls into the ground in ~41 days (test 40) holds with propellant
   P.sats = []; news.length = 0; const B = D.SELENE, s = D.newShip(D.PRESETS.Probe), vs = Math.sqrt(B.mu / (B.R + 2000e3));
-  Object.assign(s, { alive: true, landed: false, body: B, r: [B.R + 2000e3, 0, 0], v: [0, vs, 0] }); D.satRegister(s, { day0: P.day }); const sq = P.sats.at(-1), sep = sq.epoch, dv0 = D.skDv(sq);
+  Object.assign(s, { alive: true, landed: false, body: B, r: [B.R + 2000e3, 0, 0], v: [0, vs, 0] }); D.satRegister(s, { day0: P.day }); const sq = P.sats.at(-1), sel0 = D.elements(sq.r, sq.v, B.mu), dv0 = D.skDv(sq);
   D.advanceDays(45);
   check('station-keeping: around Selene, a polar orbit the tide would pull into the ground holds while its tanks last',
-    P.sats.includes(sq) && sq.epoch === sep && sq.adrift == null && D.skDv(sq) < dv0 && !news.some(m => /came down/.test(m)),
+    P.sats.includes(sq) && Math.abs(D.elements(sq.r, sq.v, B.mu).a - sel0.a) < 1 && Math.abs(D.elements(sq.r, sq.v, B.mu).e - sel0.e) < 1e-6 && sq.adrift == null && D.skDv(sq) < dv0 && !news.some(m => /came down/.test(m)),
     `${D.slotRate(sq).toFixed(2)} m/s a day; ${(dv0 - D.skDv(sq)).toFixed(0)} of ${dv0.toFixed(0)} m/s spent in 45 days`);
+  // a TV satellite over the capital, held: two years on its tilt is past the old 3° limit and the capital still sees it all day
+  P.sats = []; P.day = 0; const c = D.capital(), u = D.rotY(c.u, D.absTh(0)), lon = Math.atan2(u[2], u[0]), aS = D.STAT_R, vS = Math.sqrt(T.mu / aS), tvs = D.newShip(D.PRESETS.Probe);
+  Object.assign(tvs, { alive: true, landed: false, body: T, r: [aS * Math.cos(lon), 0, aS * Math.sin(lon)], v: [vS * Math.sin(lon), 0, -vS * Math.cos(lon)] }); D.satRegister(tvs, { day0: 0 }); const tq = P.sats.at(-1);
+  let tvDays = 0; const tv0 = D.isTV(tq, 0); for (let d = 0; d < 2 * D.YEAR_D; d++) { D.advanceDays(1); if (D.isTV(tq, P.day * D.DAY_S)) tvDays++; }
+  const tel = D.elements(tq.r, tq.v, T.mu), tilt2 = Math.acos(Math.min(1, tel.h[1] / tel.hl)) * 180 / Math.PI;
+  check('station-keeping: a held TV satellite’s tilt wanders past 3° in two years and the capital still sees it all day, so TV pays on',
+    tv0 && tilt2 > 3 && tvDays === 2 * D.YEAR_D, `tilt ${tilt2.toFixed(1)}° after two years; TV on ${tvDays} of ${2 * D.YEAR_D} days`);
 }
 
 // qa-2. The tester's "go to body" view (QA session, QUEUE Q79): its catalogue holds every SYSTEM.md body with the
@@ -3552,6 +3563,119 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('go to body: render() hands over the frame first; the tester menu and refView(200 + 3·i + k) open it',
     /function render\(\)\{\n\s*if\(self\.bodyViewDraw&&self\.bodyViewDraw\(\)\)return;/.test(pg) && /data-test-body=/.test(pg) && /bodyViewOpen\(d\.testBody/.test(pg) && /n >= 200 && typeof BODY_CAT/.test(vj) && /bodyViewClose\(\)/.test(vj));
+}
+
+// vehicle-2. Power (vehicle session, QUEUE Q34a; NOTES § "Vehicle parts"): batteries, solar cells and wings, the loads, and the
+// onboard computer. The builder's steady state (an orbit's average generation against the load, a battery for one shadow) agrees
+// with the store integrated along an orbit; a deployed wing tears off in thick air; running flat drops a probe's guidance
+// computer to the analog autopilot, never kills it; crew capsules carry their own computer.
+{
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean);
+  const sat = (wings = 2, extra = []) => { const d = api.toV2(['core', 'ocomp', 'batt', 'ant', 't1', 'petrel', ...extra]); if (wings) find(d.root, 't1').c.push({ k: 'wpanel', at: { y: 0.55, a: 0, n: wings, cy: 0.3 }, c: [] }); return d; };
+  const mu = TELLUS.mu, R = TELLUS.R, ecl = Math.acos(Math.sqrt(LEO * LEO - R * R) / LEO) / Math.PI, T = 2 * Math.PI * Math.sqrt(LEO ** 3 / mu);
+  const s0 = api.newShip(sat()), B = api.powerBudget(s0);
+  check('power: the low-orbit budget by hand: two wings 2 × 300 W × 0.9, 55 W of load, 37 % of the orbit in shadow, 1.5 kWh against one shadow',
+    Math.abs(B.peak - 540) < 1e-6 && Math.abs(B.use - 55) < 1e-6 && Math.abs(B.ecl - ecl) < 1e-9 && Math.abs(ecl - 0.372) < 0.005 && Math.abs(B.avg - 540 * (1 - ecl)) < 1e-6
+      && Math.abs(B.tE - ecl * T) < 1e-6 && Math.abs(B.battWh - 1500) < 1e-6 && B.ok && api.eclFrac(R, LEO, Math.PI / 2) === 0,
+    `${B.avg.toFixed(0)} W average of ${B.peak} W, shadow ${(B.tE / 60).toFixed(1)} min of ${(T / 60).toFixed(1)}, needs ${B.needWh.toFixed(1)} Wh`);
+  // one orbit with the sun in its plane (β 0), the wings' arms square to the sun, on rails in 20 s steps: the store dips in the
+  // shadow and refills in the sun, and gains what the steady state says; one long rails step gains the same
+  const S = api.SUN_DIR, h = norm(cross(S, [0, 1, 0])), k = cross(h, S), up = (s) => { s.r = mul(S, LEO); s.v = mul(k, Math.sqrt(mu / LEO)); s.w = [0, 0, 0];
+    s.q = api.qFromBasis(h, S, cross(h, S)); s.sas = true; s.sasMode = 'stab'; s.throttle = 0; s.landed = false; };
+  api.t = 0; const s1 = api.newShip(sat()); api.S = s1; api.HOOK.msg = () => {}; up(s1); api.wingOp(s1, 'out'); api.powerStep(s1, 0); s1.E = s1.Emax / 2;
+  const E0 = s1.E; let drain = 0; for (let t = 0; t < T - 1; t += 20) { const e = s1.E; api.advRails(s1, Math.min(20, T - t), 10); if (s1.E < e) drain += e - s1.E; }
+  const gain = s1.E - E0, want = (B.avg - B.use) * T;
+  api.t = 0; const s2 = api.newShip(sat()); api.S = s2; up(s2); api.wingOp(s2, 'out'); api.powerStep(s2, 0); s2.E = s2.Emax / 2; api.advRails(s2, T, 1000); const gain2 = s2.E - s2.Emax / 2;
+  check('power: along one orbit the battery drains in the shadow and refills in the sun; the gain matches the steady state within 5 % (in 20 s steps and in one step)',
+    Math.abs(drain - B.use * B.tE) < 0.1 * B.use * B.tE && Math.abs(gain - want) < 0.05 * Math.abs(want) && Math.abs(gain2 - want) < 0.05 * Math.abs(want),
+    `stepped ${(gain / 3600).toFixed(0)} Wh, one step ${(gain2 / 3600).toFixed(0)} Wh, steady state ${(want / 3600).toFixed(0)} Wh; drained ${(drain / 3600).toFixed(1)} Wh in the shadow (load × shadow: ${(B.use * B.tE / 3600).toFixed(1)})`);
+  // a wing deployed at 10 km and 300 m/s (~14 kPa) tears off; deployed in vacuum it stays
+  { api.t = 0; const s = api.newShip(sat()); api.S = s; const ms = []; api.HOOK.msg = m => ms.push(m); s.landed = false; s.r = [R + api.groundAlt(TELLUS, [1, 0, 0]) + 10000, 0, 0]; s.v = add(api.surfVel(TELLUS, s.r), [0, 300, 0]);
+    s.q = api.qFromBasis([0, 0, 1], [1, 0, 0], [0, -1, 0]); s.w = [0, 0, 0]; api.wingOp(s, 'out'); api.advPhys(s); const air = s.parts.filter(p => p.on && p.d.wing).length;
+    const v = api.newShip(sat()); api.S = v; up(v); api.wingOp(v, 'out'); for (let i = 0; i < 50; i++) api.advPhys(v); const vac = v.parts.filter(p => p.on && p.d.wing).length;
+    check('power: a solar wing deployed in thick air (10 km, 300 m/s: ~14 kPa) tears off; deployed in orbit it stays', air === 0 && vac === 2 && ms.filter(m => /torn off/.test(m)).length === 2, `${ms.find(m => /torn off/.test(m))} · q ${(s.qdyn / 1000).toFixed(1)} kPa, ${air} left · in orbit ${vac} wings`); }
+  // the computer: a program running in the onboard-computer era, a vessel that launched with the guidance computer
+  { const P = api.PROG, f0 = P.flights, tl = api.TEST.tools; P.flights = Math.max(1, f0); api.TEST.tools = false; const top = api.AV.length - 1, msgs = []; api.HOOK.msg = m => msgs.push(m);
+    const probe = api.newShip(sat()); probe.av = top; const bare = api.newShip(['core', 'batt', 't1', 'petrel']); bare.av = top; const crew = api.newShip(['crew', 't1', 'petrel']); crew.av = top;
+    const g0 = api.avOf(probe) === api.AV[top] && api.avOf(bare) === api.AV[top - 1] && api.avOf(crew) === api.AV[top] && api.hasComputer(crew);
+    api.S = probe; up(probe); probe.E = 1; const S2 = api.SUN_DIR; probe.r = mul(S2, -LEO); api.powerStep(probe, 10); const flat = probe.pwrOut && api.avOf(probe) === api.AV[top - 1] && probe.alive;
+    probe.r = mul(S2, LEO); api.wingOp(probe, 'out'); api.powerStep(probe, 10); const back = !probe.pwrOut && api.avOf(probe) === api.AV[top];
+    P.flights = f0; const sandbox = f0 > 0 ? true : api.avOf(bare) === api.AV[top]; api.TEST.tools = tl;
+    check('power: from the onboard-computer era a probe needs its computer for the guidance modes (a crew capsule has its own); flat, it falls back to analog and recovers in the sun',
+      g0 && flat && back && sandbox && msgs.some(m => /Power flat: the onboard computer is off/.test(m)) && msgs.includes('Power back'),
+      `probe ${api.avOf(probe).name} · bare probe ${api.AV[top - 1].name} · crew capsule ${api.AV[top].name} · ${msgs.filter(m => /Power/.test(m)).join(' / ')}`); }
+  { const s = api.newShip(sat()); api.S = s; const T2 = api.tapeNew(sat()); api.tapeWings(T2, s, 'out'); const s2 = api.newShip(sat()); api.S = s2; api.tapePlay({ tape: T2, i: 0 }, s2, 10);
+    check('power: an autopilot tape records the wings going out and replays it', api.wingsOut(s) && api.wingsOut(s2) && T2.ops.some(o => o[0] === 'W' && o[1] === 'out')); }
+}
+
+// econ-6. Rover part prices and gates; Selene science contracts (economy session, QUEUE Q10). A packed rover's price is
+// its parts'; a rocket can't carry a rover with a part not yet open (the yard is free). The R4 contracts are judged
+// between flights on science received since they were taken.
+{
+  const D = new Function(src + 'return {rvPrice,rvLocked,rvLaunchWhy,rvPartOpen,rvDefault,partPrice,PARTS,CT,selN,selSci,selTick,sciGot,genOffer,acceptOffer,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, done: {}, own: null, decisions: [], offers: [], active: [], cdone: 0, flights: 3, kh: {}, sel: null }); D.chooseStart('agency');
+  const apollo = D.rvDefault(), basic = { name: 'Yard cart', ch: 's', wh: 's', n: 4, slots: ['bat', 'cam', null] };
+  const part = d => ({ d: D.PARTS.rvdeck, dn: { rvd: d } }), bare = D.partPrice({ d: D.PARTS.rvdeck, dn: {} });
+  check('rovers: a packed rover costs its parts (the default two-seater 24M), on top of the deck', D.rvPrice(apollo) === 24 && Math.abs(D.partPrice(part(apollo)) - bare - 24) < 1e-9 && D.rvPrice(basic) === 9,
+    `two-seater ${D.rvPrice(apollo)}M, yard cart ${D.rvPrice(basic)}M, deck ${bare}M`);
+  const lk0 = D.rvLocked(apollo).map(x => x.k).join(), why0 = D.rvLaunchWhy([part(apollo)]), cart = D.rvLaunchWhy([part(basic)]);
+  P.done = { farside: { day: 1 }, orbiter: { day: 1 } }; const lk1 = D.rvLocked(apollo).length, why1 = D.rvLaunchWhy([part(apollo)]);
+  check('rovers: parts open with firsts; a rocket can\'t carry a rover with a locked part; the basic cart flies from the start',
+    lk0 === 'm,m,seat' && /can't fly yet/.test(why0) && /The far side/.test(why0) && cart === '' && lk1 === 0 && why1 === '', `locked at start: ${lk0} · ${why0}`);
+  P.done.selland = { day: 1 }; P.sel = null; const S = D.selSci();
+  const mk = (type, p) => { const c = { id: 900 + P.active.length, type, src: 'sci', client: 0, p: { ...p }, deadline: P.day + 300 }; c.base = D.selN(); P.active.push(c); return c; };
+  D.sciGot({ k: 'spec', unit: 'mare', FeO: 10, TiO2: 2, Al2O3: 10, pf: [-1, 0, 0] }, 'R');   // one from before: doesn't count
+  const read = mk('selRead', { unit: 'mare', n: 2, pay: 50 }), pano = mk('selPano', { q: 0.8, pay: 60 }), far = mk('selFar', { n: 1, pay: 90 });
+  D.sciGot({ k: 'spec', unit: 'mare', FeO: 11, TiO2: 3, Al2O3: 10, pf: [-1, 0, 0] }, 'R'); D.sciGot({ k: 'pano', q: 0.7, el: 30, unit: 'mare' }, 'R'); const f0 = P.funds; D.selTick(); const after1 = P.active.length, f1 = P.funds;
+  D.sciGot({ k: 'spec', unit: 'mare', FeO: 12, TiO2: 3, Al2O3: 10, pf: [1, 0, 0] }, 'R'); D.sciGot({ k: 'pano', q: 0.85, el: 10, unit: 'high' }, 'R'); D.selTick();
+  check('Selene contracts: readings, a good enough panorama and far-side science complete between flights, not before they arrive',
+    after1 === 3 && f1 === f0 && !P.active.includes(read) && !P.active.includes(pano) && !P.active.includes(far) && P.funds > f0 && D.selN().far === 1, `paid ${(P.funds - f0).toFixed(0)}M; after the first results ${after1} open; left ${P.active.map(c => c.type).join(',') || 'none'}`);
+  const types = () => { const seen = new Set(); const R = D.rng(3); for (let k = 0; k < 300; k++) { const o = D.genOffer('sci', R); if (o) seen.add(o.type); } return seen; };
+  const t0 = types(); S.seis = [{ id: 1 }, { id: 2 }, { id: 3 }]; const t1 = types();
+  check('Selene contracts: located quakes are offered only once three stations stand; the network only while it has fewer than four',
+    !t0.has('selQuake') && t0.has('selSeis') && t0.has('selRead') && t1.has('selQuake') && !t1.has('selCore'), `${[...t1].filter(x => x.startsWith('sel')).join(', ')}`);
+}
+
+// ground-4. Hesper's ground (world session, GROUND.md G7): on the CPU, not live (stub body). Venus's character: craters
+// few, fresh and none small (the thick air), mostly smooth basalt plains, raised and rough slab rock, one high massif,
+// gentle shields, coronae, narrow lava channels. Numbers behind each parameter: `node study_ground.mjs hesper`.
+{
+  const G = new Function(src + 'return {HESPER_GROUND,hesperMap,hesperH,hesperChan,GROUND_STUBS,HE,llU,grBands,BODIES,surfaceAt,terrainSlope,bodyTop,get HESPER_MAP(){return HESPER_MAP}};')();
+  const S = G.GROUND_STUBS.Hesper, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.HESPER_GROUND }, D = Math.PI / 180;
+  check('ground-4: Hesper\'s recipe is not live (no Hesper in the body tree), and its map is baked on first use', G.HESPER_MAP === null && !G.BODIES.some(b => b.name === 'Hesper'));
+  const M = G.hesperMap(), h = u => G.hesperH(u), area = 4 * Math.PI * (R / 1000) ** 2, bs = G.grBands(R, G.HE.c).slice(0, G.HE.bands);
+  const pts = []; for (let i = 0; i < 6000; i++) { const z = 1 - (2 * i + 1) / 6000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = pts.map(h), un = pts.map(G.HESPER_GROUND.unit), share = k => un.filter(x => x === k).length / un.length;
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], at = k => pts.filter((_, i) => un[i] === k), hOf = k => med(H.filter((_, i) => un[i] === k));
+  const nBig = Math.round(G.HE.c / 4 * area);   // craters over 2 km expected on the whole planet
+  check('ground-4: craters are few and none small: ~' + nBig + ' over 2 km on all of Hesper, the finest band stops at 1.3 km; relief within top',
+    nBig > 80 && nBig < 250 && bs[bs.length - 1].Dlo > 1200 && Math.max(...H) < G.bodyTop(B) && M.craters.length <= 3,
+    `${nBig} over 2 km · smallest ${(bs[bs.length - 1].Dlo / 1e3).toFixed(1)} km · ${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)})`);
+  const sl = k => med(at(k).slice(0, 300).map(u => G.terrainSlope(B, u) / D));
+  check('ground-4: smooth basalt plains cover most of Hesper; slab rock (~10 %) stands 1.5+ km above them and is rougher',
+    share('plains') > .7 && share('slab rock') > .05 && share('slab rock') < .2 && hOf('slab rock') > hOf('plains') + 1500 && sl('slab rock') > 3 * sl('plains'),
+    `plains ${(share('plains') * 100).toFixed(1)} % (${sl('plains').toFixed(1)}°), slab rock ${(share('slab rock') * 100).toFixed(1)} % (${sl('slab rock').toFixed(1)}°, ${(hOf('slab rock') - hOf('plains')).toFixed(0)} m higher)`);
+  const ma = G.llU(...G.HE.massif.at), shields = G.HE.shields.map(s => { const c = G.llU(s[0], s[1]), e = norm(cross([0, 1, 0], c)), n = cross(c, e), foot = Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(norm(add(c, mul(add(mul(e, Math.cos(k * 1.05)), mul(n, Math.sin(k * 1.05))), 1.3 * s[2] / R)))))); return h(norm(add(c, mul(e, .1 * s[2] / R)))) - foot; });   // the foot: the lowest ground round it
+  check('ground-4: the massif rises past 8 km; every shield stands 3+ km above its foot', h(ma) > 8000 && shields.every(x => x > 3000), `massif ${h(ma).toFixed(0)} m; shields ${shields.map(x => x.toFixed(0)).join(', ')} m`);
+  const co = G.HE.coronae.map(s => { const c = G.llU(s[0], s[1]), e = norm(cross([0, 1, 0], c)), p = r => h(norm(add(c, mul(e, r * s[2] / R)))); return [p(0), p(.85), p(1.08)]; });
+  check('ground-4: coronae are rings: the rim stands above both the centre and the moat outside', co.every(([c, r, o]) => r > c + 300 && r > o + 300), co.map(x => x.map(v => v.toFixed(0)).join('/')).join(' · '));
+  // a lava channel: a narrow trough. 3 km out, the ground is higher across it and level along it
+  let rs = 9; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647, chs = [];
+  for (let i = 0; i < 400000 && chs.length < 5; i++) { const z = 2 * rnd() - 1, t = 2 * Math.PI * rnd(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)]; if (G.hesperChan(u, R, M) > .95) chs.push(u); }
+  // across a channel (the direction where both sides 3 km out are highest) the floor is 40+ m lower on both sides; along it
+  // (at right angles, 1 km out: channels meander, so 3 km along the tangent leaves them) it isn't: a channel, not a pit.
+  // The median of five channel points (the plains' wrinkle ridges make any one profile wander)
+  const prof = ch => { const e1 = norm(cross([0, 1, 0], ch)), n1 = cross(ch, e1), side = (a, r) => [-1, 1].map(k => h(norm(add(ch, mul(add(mul(e1, Math.cos(a)), mul(n1, Math.sin(a))), k * r / R)))));
+    let best = null; for (let k = 0; k < 18; k++) { const a = k * Math.PI / 18, d = Math.min(...side(a, 3e3)) - h(ch); if (!best || d > best.d) best = { a, d }; }
+    return { across: best.d, along: Math.min(...side(best.a + Math.PI / 2, 1e3)) - h(ch) }; };
+  const P = chs.map(prof), acr = med(P.map(p => p.across)), alg = med(P.map(p => p.along));
+  check('ground-4: lava channels are narrow troughs in the plains (3 km across: 40+ m higher on both sides; 1 km along: not; median of 5)',
+    chs.length === 5 && acr > 40 && alg < acr / 2 && chs.every(u => G.surfaceAt(B, u).name === 'channel floor'), `across +${acr.toFixed(0)} m, along ${alg.toFixed(0)} m (${chs.length} channel points)`);
+  let worst = 0; for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-4: surfaces by unit (basalt plains, slab rock); no seams on the cube faces',
+    G.surfaceAt(B, at('plains')[0]).name === 'basalt plains' && G.surfaceAt(B, at('slab rock')[0]).name === 'slab rock' && Math.atan(worst) / D < 60, `steepest seam step ${(Math.atan(worst) / D).toFixed(1)}°`);
 }
 
 // space-2. Orbital decay (space session, QUEUE Q25): above the flight's air a thin upper atmosphere (Vallado's exponential
@@ -3590,6 +3714,263 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       r = add(r, mul(add(add(v, mul(v2, 2)), add(mul(v3, 2), v4)), h / 6)); v = add(v, mul(add(add(a1, mul(a2, 2)), add(mul(a3, 2), a4)), h / 6)); t += h; }
     q.epoch = 0; q.r = [a0, 0, 0]; q.v = [0, 0, -Math.sqrt(T.mu / a0)]; let tr = 0; while (D.elements(q.r, q.v, T.mu).pe > R + 130e3) { tr += 600; D.decayStep(q, tr); }
     check('decay: the averaged rails agree with a direct integration of the drag (150 → 130 km) to a few percent', Math.abs(tr / t - 1) < 0.05, `direct ${(t / 3600).toFixed(1)} h, rails ${(tr / 3600).toFixed(1)} h`); }
+}
+
+// ground-5. Astraea's ground (world session, GROUND.md G7): Ceres's character on a 94 km body with g 0.28, on the CPU,
+// not live (stub body). Its weak icy crust turns craters complex at 12.5 km and keeps the big ones shallow; one young
+// bright crater with salt on its floor; one lonely mountain. Numbers behind each parameter: `node study_ground.mjs astraea`.
+{
+  const G = new Function(src + 'return {ASTRAEA_GROUND,astraeaMap,astraeaH,GROUND_STUBS,AS,llU,BODIES,surfaceAt,terrainSlope,bodyTop,get ASTRAEA_MAP(){return ASTRAEA_MAP}};')();
+  const S = G.GROUND_STUBS.Astraea, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.ASTRAEA_GROUND }, D = Math.PI / 180;
+  check('ground-5: Astraea\'s recipe is not live (no Astraea in the body tree), and its map is baked on first use', G.ASTRAEA_MAP === null && !G.BODIES.some(b => b.name === 'Astraea'));
+  const M = G.astraeaMap(), h = u => G.astraeaH(u), area = 4 * Math.PI * (R / 1000) ** 2;
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 1 - (2 * i + 1) / 3000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = pts.map(h), at = (c, km, az) => { const e = norm(cross([0, 1, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = km * 1e3 / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  // the biggest crater: relaxed shallow (the complex depth law above the crust's 12.5 km), not a 20 km-deep bowl
+  const big = M.craters.slice().sort((a, b) => b.D - a.D)[0], bigDepth = Math.min(...[0, 1, 2, 3].map(k => h(at(big.c, big.D / 2e3, k * Math.PI / 2)))) - h(big.c);
+  check('ground-5: craters on target (baked ≥ 20 km = c·area/400); the crust turns them complex at ~12.5 km and keeps the biggest shallow; relief within top',
+    M.craters.length === Math.round(G.AS.c / 400 * area) && M.Dt > 12e3 && M.Dt < 13e3 && bigDepth > 300 && bigDepth < 5000 && Math.max(...H) < G.bodyTop(B),
+    `${M.craters.length} baked craters; transition ${(M.Dt / 1e3).toFixed(1)} km; the biggest (${(big.D / 1e3).toFixed(0)} km) ${bigDepth.toFixed(0)} m deep; ${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m`);
+  // Ahuna Mons: 3.5+ km above the ground around it, flanks steep but standing (25–45°), a flat-ish top
+  const ah = G.llU(...G.AS.ahuna.at), foot = Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(ah, 15, k * 1.05)))), fl = Math.max(...[0, 1, 2, 3].map(k => G.terrainSlope(B, at(ah, 6, k * Math.PI / 2)) / D)), top = G.terrainSlope(B, ah) / D;
+  check('ground-5: the lonely mountain stands 3.5+ km above its surroundings, its flanks 25–45°, its top flat-ish', h(ah) - foot > 3500 && fl > 25 && fl < 45 && top < 10,
+    `summit ${(h(ah) - foot).toFixed(0)} m above its foot; steepest flank ${fl.toFixed(0)}°; top ${top.toFixed(1)}°`);
+  // the bright crater: its rim 1.5+ km above its floor, a central pit, salt on the floor (and dark regolith outside)
+  const oc = G.llU(...G.AS.occ.at), oR = G.AS.occ.D / 2e3, rim = Math.max(...[0, 1, 2, 3].map(k => h(at(oc, oR, k * Math.PI / 2)))), floor = h(at(oc, oR * .45, 1)), pit = h(oc);
+  const salt = [0, 1, 2, 3, 4, 5, 6, 7].map(k => G.surfaceAt(B, at(oc, oR * .2, k * Math.PI / 4)).name).filter(n => n === 'salt deposits').length;
+  check('ground-5: the young bright crater: rim 1.5+ km above its floor, a central pit, salt deposits on the floor, dark regolith outside',
+    rim - floor > 1500 && pit < floor - 200 && salt >= 3 && G.surfaceAt(B, at(oc, oR * 2.5, 0)).name === 'dark regolith',
+    `rim ${(rim - floor).toFixed(0)} m above the floor; pit ${(floor - pit).toFixed(0)} m deeper; salt at ${salt}/8 points on the inner floor`);
+  let rs = 11, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-5: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
+// ground-6. Hyperion's moons (world session, GROUND.md G7), on the CPU, not live (stub bodies): Theia (Io: no craters,
+// paterae, tilted mountains), Eos (Europa + Enceladus: flat ridged ice, chaos, the tiger stripes), Tethys (Titan: methane
+// lakes you splash into, linear dunes, a rugged highland), Phoebe (a cratered lump). And every body's poles, Tellus's too:
+// the equirectangular maps' polar rows used to make near-vertical steps there (polesFix). `node study_ground.mjs <moon>`.
+{
+  const G = new Function(src + 'return {GROUND_GEN,GROUND_STUBS,THEIA_GROUND,theiaMap,theiaH,EOS_GROUND,eosMap,eosH,worleyEdge,eosStripe,EO,TETHYS_GROUND,tethysMap,tethysH,TT,PHOEBE_GROUND,phoebeMap,phoebeH,BODIES,TELLUS,SELENE,terrainH,surfaceAt,terrainSlope,seaAt,groundAlt,bodyTop,get THEIA_MAP(){return THEIA_MAP},get EOS_MAP(){return EOS_MAP},get TETHYS_MAP(){return TETHYS_MAP},get PHOEBE_MAP(){return PHOEBE_MAP}};')();
+  const D = Math.PI / 180, body = (n, g) => { const S = G.GROUND_STUBS[n]; return { name: n, R: S.R, mu: S.g * S.R * S.R, ground: g }; };
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], fib = n => { const o = []; for (let i = 0; i < n; i++) { const z = 1 - (2 * i + 1) / n, a = i * 2.39996, q = Math.sqrt(1 - z * z); o.push([q * Math.cos(a), z, q * Math.sin(a)]); } return o; };
+  const at = (c, R, m, az) => { const e = norm(cross(Math.abs(c[1]) < .9 ? [0, 1, 0] : [1, 0, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = m / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  check('ground-6: none of Hyperion\'s moons is live (not in the body tree), and no map is baked before first use',
+    ['Theia', 'Eos', 'Tethys', 'Phoebe'].every(n => !G.BODIES.some(b => b.name === n)) && !G.THEIA_MAP && !G.EOS_MAP && !G.TETHYS_MAP && !G.PHOEBE_MAP);
+  // Theia: no craters at all; paterae are flat-floored pits with steep walls and fresh lava; tilted blocks stand 4+ km
+  { const Rt = G.GROUND_STUBS.Theia.R, Bt = body('Theia', G.THEIA_GROUND), M = G.theiaMap(), h = u => G.theiaH(u);
+    const pit = M.paterae.map(p => Math.max(...[0, 1, 2, 3, 4, 5].map(k => h(at(p.c, Rt, p.R * 1.25, k * 1.05)))) - h(p.c)), lava = M.paterae.filter(p => G.surfaceAt(Bt, p.c).name === 'fresh lava').length;
+    const tall = Math.max(...M.mtns.map(t => h(t.c) - Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(t.c, Rt, t.R * 1.4, k * 1.05))))));
+    check('ground-6: Theia: no impact craters; paterae sink 400+ m below their rims (median) with fresh lava floors; its mountains rise 4+ km',
+      M.craters.length === 0 && med(pit) > 400 && lava >= M.paterae.length * .8 && tall > 4000, `${M.paterae.length} paterae, median ${med(pit).toFixed(0)} m deep, ${lava} on fresh lava; tallest mountain ${tall.toFixed(0)} m`); }
+  // Eos: flat (relief under 1 km); the ridges are double (crests 600 m either side of a lower centre line); chaos rougher;
+  // the tiger stripes: rifts 400+ m deep near the south pole, frosted
+  { const Re = G.GROUND_STUBS.Eos.R, Be = body('Eos', G.EOS_GROUND), h = u => G.eosH(u), P = fib(3000), H = P.map(h), L = G.EO.ridge[0][0];
+    const bin = { edge: [], crest: [] }; let rs = 3; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+    for (let i = 0; i < 60000; i++) { const z = 2 * rnd() - 1, t = 2 * Math.PI * rnd(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)], d = G.worleyEdge(u[0] * Re / L, u[1] * Re / L, u[2] * Re / L) * L;
+      if (d < 100) bin.edge.push(h(u)); else if (Math.abs(d - G.EO.dr.w) < 100) bin.crest.push(h(u)); }
+    const un = P.map(G.EOS_GROUND.unit), sl = k => P.filter((_, i) => un[i] === k).slice(0, 300).map(u => G.terrainSlope(Be, u) / D).sort((a, b) => a - b), p90 = a => a[Math.floor(a.length * .9)];
+    const s0 = norm([G.EO.stripes.gap * .5 / Re, -1, 0]), sDepth = Math.min(h(at(s0, Re, 3e3, Math.PI / 2)), h(at(s0, Re, 3e3, -Math.PI / 2))) - h(s0);   // across the stripe (x); az 0 here runs along it
+    check('ground-6: Eos: flat ice (relief under 1 km); double ridges (crests above their centre lines); chaos rougher than ridged ice; tiger stripes 400+ m deep, frosted',
+      Math.max(...H) - Math.min(...H) < 1000 && med(bin.crest) > med(bin.edge) + 100 && p90(sl('chaos')) > p90(sl('ridged ice')) && sDepth > 400 && G.surfaceAt(Be, s0).name === 'fresh plume frost',
+      `relief ${(Math.max(...H) - Math.min(...H)).toFixed(0)} m; crests ${(med(bin.crest) - med(bin.edge)).toFixed(0)} m above the centre line; p90 slope chaos ${p90(sl('chaos')).toFixed(1)}° vs ${p90(sl('ridged ice')).toFixed(1)}°; stripe ${sDepth.toFixed(0)} m deep`); }
+  // Tethys: methane lakes (a liquid level: seaAt, the ground is the surface), mostly north; linear dunes run east–west
+  { const Rh = G.GROUND_STUBS.Tethys.R, Bh = body('Tethys', G.TETHYS_GROUND), h = u => G.tethysH(u), P = fib(4000), un = P.map(G.TETHYS_GROUND.unit);
+    const lakes = P.filter((_, i) => un[i] === 'lake'), north = lakes.filter(u => u[1] > 0).length, lk = lakes.find(u => u[1] > .8);
+    const dn = P.filter((_, i) => un[i] === 'dunes'), rng2 = (u, az) => { const v = [-1000, -500, 0, 500, 1000].map(m => h(at(u, Rh, m, az))); return Math.max(...v) - Math.min(...v); };
+    const ns = med(dn.slice(0, 60).map(u => rng2(u, Math.PI / 2))), ew = med(dn.slice(0, 60).map(u => rng2(u, 0)));   // az 0 is east, π/2 north
+    check('ground-6: Tethys: methane lakes (2–8 %, mostly north) are a liquid you splash into; linear dunes in the equatorial belt run east–west',
+      lakes.length / P.length > .02 && lakes.length / P.length < .08 && north > lakes.length * .6 && !!lk && G.seaAt(Bh, lk) && G.groundAlt(Bh, lk) === 0 && dn.every(u => Math.abs(u[1]) < .55) && ns > 2 * ew && ns > 50,
+      `lakes ${(lakes.length / P.length * 100).toFixed(1)} % (${north} of ${lakes.length} north); dunes: ${ns.toFixed(0)} m relief over 2 km north–south vs ${ew.toFixed(0)} m east–west`); }
+  // Phoebe: a lump (its outline not round), saturated with craters (30+ % of its ground over 10°)
+  { const Rp = G.GROUND_STUBS.Phoebe.R, Bp = body('Phoebe', G.PHOEBE_GROUND), h = u => G.phoebeH(u), P = fib(2000), H = P.map(h), steep = P.slice(0, 600).filter(u => G.terrainSlope(Bp, u) > 10 * D).length / 600;
+    check('ground-6: Phoebe: a lump (relief over 12 % of its radius) saturated with craters (30+ % of it over 10°), landing on regolith',
+      (Math.max(...H) - Math.min(...H)) / Rp > .12 && steep > .3 && G.surfaceAt(Bp, P[0]).name === 'regolith', `relief ${((Math.max(...H) - Math.min(...H)) / Rp * 100).toFixed(0)} % of R; ${(steep * 100).toFixed(0)} % over 10°`); }
+  // every body's poles: no step (the polar rows of the equirectangular maps); Tellus is live, so this one matters in play
+  { const bodies = [['Tellus', G.TELLUS.R, u => G.terrainH(u)], ['Selene', G.SELENE.R, u => G.GROUND_GEN.selene(u)], ...['Enyo', 'Hesper', 'Astraea', 'Theia', 'Eos', 'Tethys', 'Phoebe', 'Erebus'].map(n => [n, G.GROUND_STUBS[n].R, u => G.GROUND_GEN[n.toLowerCase()](u)])];
+    const worst = bodies.map(([n, R, f]) => { let w = 0; for (const sg of [1, -1]) for (let i = 0; i < 400; i++) { const a = i * 2.39996, r = (i % 40) / 40 * 2e3 / R, u = norm([Math.sin(r) * Math.cos(a), sg * Math.cos(r), Math.sin(r) * Math.sin(a)]), v = norm(add(u, mul(norm(cross(u, [1, 0, 0])), .5 / R))); w = Math.max(w, Math.abs(f(v) - f(u)) / .5); } return [n, Math.atan(w) / D]; });
+    check('ground-6: no step at any body\'s poles, Tellus\'s included (steepest 0.5 m step within 2 km of a pole under 60°)', worst.every(([, d]) => d < 60), worst.map(([n, d]) => `${n} ${d.toFixed(0)}°`).join(' · ')); }
+}
+
+// econ-7. Dispatch to a base (economy session, QUEUE Q61): a supply run flies the design's ascent procedure, then a
+// transfer, capture and landing at the base's beacon (landAt); the lander is registered there and joins the base.
+// Repeats only: refused before the body's landing first and for a design with no ascent procedure.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = api.PRESETS.Probe, B = api.BODIES.find(b => b.name === 'Selene');
+  api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; handAscent(api, st);
+  const site = siteOf(api, B, 20, 15), base = { id: 777, landed: true, beacon: true, bodyName: 'Selene', pf: site.map(x => x * B.R), ql: [0, 0, 0, 1], name: 'Selene Base 1', shape: [], born: 0, imgs: 0, pending: [] };
+  P.sats = [base]; P.satN = 777; P.dispatch = []; P.day = 10;
+  P.done.selland = { flight: 0, day: 0 }; const handEra = api.baseRunQuote(base, st); while (api.compEra() < 2 && P.day < 40000) P.day += 100;   // D7: onboard computers
+  delete P.done.selland; const early = api.baseRunQuote(base, st); P.done.selland = { flight: 0, day: 0 }; const none = api.baseRunQuote(base, ['sci', 't8', 'kestrel']), q = api.baseRunQuote(base, st);
+  check('supply run: refused before onboard computers (the automation ladder, D7)', !handEra.ok && /onboard computers/.test(handEra.why), `${handEra.why}; onboard computers from day ${P.day}`);
+  check('supply run: refused before the landing first and for a design with no ascent procedure; quoted otherwise', !early.ok && /by hand first/.test(early.why) && !none.ok && q.ok && q.cost > 0,
+    `${early.why} · ${none.why} · ${q.ok ? `${q.cost.toFixed(0)}M, launch day ${q.launch.toFixed(0)}` : q.why}`);
+  const line = api.baseRunLine(base, st), r = api.orderBaseRun(base, st), D = P.dispatch[0];
+  for (let k = 0; k < 8 && D.status === 'queued'; k++) { P.day = D.launch; api.dispatchTick(); }
+  const lander = api.landedUp().find(x => x.id !== 777), b = api.baseOf(base);
+  check('supply run: the Probe lands at the beacon and joins the base', /data-baserun="777"/.test(line) && r.ok && D.status === 'done' && lander && b && b.members.length === 2,
+    `${D.status}${D.why ? ': ' + D.why : ''}; ${lander ? `${lander.name}, ${(Math.acos(Math.min(1, api.dot(api.norm(lander.pf), site))) * B.R).toFixed(0)} m from the beacon` : 'nothing landed'}; base of ${b ? b.members.length : 0}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
+
+// econ-8. Staged pay only for a mission open when the flight launched (economy session, QUEUE Q112 / PLAYTEST #28): a
+// probe parked at Nyx used to collect the first two shares of every Nyx mission as each one unlocked.
+{
+  const D = new Function(src + 'return {stagedTick,MISSIONS,NYX,PROG,HOOK,recNew,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, staged: {},
+    done: Object.fromEntries(['weather', 'beeper', 'farside', 'nyxfind'].map(k => [k, { flight: 1, day: 1 }])) }); D.chooseStart('agency');
+  const R = D.recNew(); R.paid = []; R.open0 = D.MISSIONS.filter(M => !P.done[M.id] && (M.req || []).every(r => P.done[r])).map(M => M.id);
+  const s = { alive: true, landed: false, body: D.NYX }, f0 = P.funds;
+  D.stagedTick(s, R); const fly = P.staged.nyxfly || {}, f1 = P.funds;
+  P.done.nyxfly = { flight: 6, day: 120 }; P.done.nyxorb = { flight: 6, day: 121 }; D.stagedTick(s, R);
+  const land = P.staged.nyxland || {};
+  check('staged pay: the flyby launched for pays its shares; Landing on Nyx, opened mid-flight, pays nothing to the same probe',
+    fly.bound && fly.arrive && f1 > f0 && !land.bound && !land.arrive && P.funds === f1, `flyby +${(f1 - f0).toFixed(0)}M; after the orbit opened the landing: +${(P.funds - f1).toFixed(0)}M`);
+  const R2 = D.recNew(); R2.paid = []; R2.open0 = ['nyxland']; D.stagedTick(s, R2);
+  check('staged pay: a flight launched after it opened does collect', (P.staged.nyxland || {}).bound && P.funds > f1);
+}
+
+// vehicle-3. The first orbit missions fly on presets (vehicle session, QUEUE Q74 / PLAYTEST #24): the Beeper puts an
+// instrument package in orbit; the Passenger Orbiter takes a biocapsule once round and home, inside the passenger's limits.
+{
+  const R = TELLUS.R, O = api.PRESETS.Orbiter, el = s => api.elements(s.r, s.v, TELLUS.mu);
+  const b = handAscent(api, api.PRESETS.Beeper), eb = el(b);
+  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  api.advRails(p, ep.period, 10);   // once round
+  const retro = () => { const v = mul(norm(p.v), -1), f = api.localFrame(p.r), X = norm(cross(v, f.n)); p.q = api.qFromBasis(X, v, cross(X, v)); p.w = [0, 0, 0]; };
+  p.throttle = 1; for (let k = 0; k < 20000 && p.alive; k++) { retro(); api.advPhys(p); if (el(p).pe - R < 40e3 || api.dvRemaining(p).cur < 1) break; }
+  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'); let g1 = 0, gMax = 0, cab = 290, armed = false;
+  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); continue; }
+    api.advPhys(p); g1 += (p.gload - g1) * Math.min(1, api.DT); gMax = Math.max(gMax, g1); cab += (bio.T - cab) * api.DT / (bio.d.ins || 600);
+    if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
+  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K',
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && gMax < 8 && cab < 330 && O.length === 8,
+    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${gMax.toFixed(1)} g, cabin ~${cab.toFixed(0)} K, ${p.landed ? 'landed' : 'not landed'}`);
+}
+
+// ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not
+// live (stub body). The nitrogen-ice basin (flat, crater-free, broken into convection cells), the water-ice mountains on
+// its margin, the dark tholin highlands (the most cratered), bladed terrain. `node study_ground.mjs erebus`.
+{
+  const G = new Function(src + 'return {EREBUS_GROUND,erebusMap,erebusH,worleyEdge,ER,GROUND_STUBS,llU,BODIES,surfaceAt,terrainSlope,bodyTop,get EREBUS_MAP(){return EREBUS_MAP}};')();
+  const S = G.GROUND_STUBS.Erebus, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.EREBUS_GROUND }, D = Math.PI / 180, h = u => G.erebusH(u);
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], at = (c, m, az) => { const e = norm(cross([0, 1, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = m / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  check('ground-7: Erebus\'s recipe is not live (no Erebus in the body tree), and its map is baked on first use', G.EREBUS_MAP === null && !G.BODIES.some(b => b.name === 'Erebus'));
+  const M = G.erebusMap(), P = []; for (let i = 0; i < 4000; i++) { const z = 1 - (2 * i + 1) / 4000, a = i * 2.39996, q = Math.sqrt(1 - z * z); P.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = P.map(h), un = P.map(G.EREBUS_GROUND.unit), of = k => P.filter((_, i) => un[i] === k), sl = k => of(k).slice(0, 300).map(u => G.terrainSlope(B, u) / D).sort((a, b) => a - b);
+  const bc = G.llU(...G.ER.basin.at), rim = med([0, 1, 2, 3, 4, 5].map(k => h(at(bc, G.ER.basin.r * R * 1.3, k * 1.05)))), ni = sl('nitrogen ice');
+  check('ground-7: the nitrogen-ice basin: 2+ km below the land round it, its floor flat (median under 1°, p99 under 10°), relief within top',
+    rim - h(bc) > 2000 && med(ni) < 1 && ni[Math.floor(ni.length * .99)] < 10 && Math.max(...H) < G.bodyTop(B) && G.surfaceAt(B, bc).name === 'nitrogen ice',
+    `basin ${(rim - h(bc)).toFixed(0)} m below the land round it; floor slope median ${med(ni).toFixed(1)}°, p99 ${ni[Math.floor(ni.length * .99)].toFixed(1)}°; max ${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)})`);
+  // convection cells: on the floor, the troughs along the cell edges lie lower than the cells' middles
+  const L = G.ER.cells.L, edge = [], mid = []; for (let i = 0; i < 4000; i++) { const u = at(bc, (i % 63) / 63 * .8 * G.ER.basin.r * R, i * 2.39996), d = G.worleyEdge(u[0] * R / L + 3, u[1] * R / L + 3, u[2] * R / L + 3) * L; if (d < 300) edge.push(h(u)); else if (d > 5e3) mid.push(h(u)); }
+  check('ground-7: the basin floor is broken into convection cells: troughs along their edges 50+ m below their middles', med(mid) - med(edge) > 50, `${(med(mid) - med(edge)).toFixed(0)} m (${edge.length} trough points, ${mid.length} mid-cell)`);
+  const tall = Math.max(...M.mtns.map(t => h(t.c) - Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(t.c, t.R * 1.4, k * 1.05)))))), mtS = sl('mountains');
+  check('ground-7: water-ice mountains on the basin\'s margin: 2.5+ km above their foot, steep (p90 over 30°), on bedrock',
+    tall > 2500 && mtS[Math.floor(mtS.length * .9)] > 30 && G.surfaceAt(B, M.mtns[0].c).name === 'water-ice bedrock', `tallest ${tall.toFixed(0)} m; p90 flank ${mtS[Math.floor(mtS.length * .9)].toFixed(0)}°`);
+  // the tholin highlands keep all their craters (old crust); the uplands lose half, the basin all
+  const th = of('tholin highlands'), up = of('uplands'), p90 = a => a[Math.floor(a.length * .9)];
+  check('ground-7: the dark tholin highlands are the most cratered (no thinning there, half on the uplands, all on the ice) and rougher than the uplands',
+    th.length > 50 && med(th.map(M.thin)) < .05 && Math.abs(med(up.map(M.thin)) - .5) < .05 && M.thin(bc) > .95 && p90(sl('tholin highlands')) > p90(sl('uplands')) && G.surfaceAt(B, th[0]).name === 'dark tholin dust',
+    `thinning: tholin ${med(th.map(M.thin)).toFixed(2)}, uplands ${med(up.map(M.thin)).toFixed(2)}, ice ${M.thin(bc).toFixed(2)}; p90 slope ${p90(sl('tholin highlands')).toFixed(1)}° vs ${p90(sl('uplands')).toFixed(1)}°`);
+  let rs = 13, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-7: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
+// ground-8. The seeded small bodies (world session, GROUND.md G7): a recipe factory, smallBodyGround({kind, R, seed}), for
+// the classes SYSTEM.md seeds per world. None exists in the game yet, so the checks drive recipes directly, and through a
+// stand-in body to show they work as any body's `ground`. `node study_ground.mjs small:<kind>:<R>:<seed>`.
+{
+  const G = new Function(src + 'return {smallBodyGround,smallH,smallShape,smallMap,smallBoulders,smallPit,SB_KINDS,SB_CLASSES,SB_G,groundAlt,surfaceAt,bodyTop};')();
+  const D = Math.PI / 180, P = []; for (let i = 0; i < 1500; i++) { const z = 1 - (2 * i + 1) / 1500, a = i * 2.39996, q = Math.sqrt(1 - z * z); P.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const mk = (kind, R, seed) => G.smallBodyGround({ kind, R, seed }), body = rc => ({ name: 'rock', R: rc.R, mu: rc.g * rc.R * rc.R, ground: rc });
+  // the same seed makes the same rock; another seed another; gravity from density
+  const a1 = mk('stony', 5000, 11), a2 = mk('stony', 5000, 11), a3 = mk('stony', 5000, 12);
+  check('ground-8: a seed makes the same rock every time and another seed another; gravity is G·(4/3)πρR; every class draws from known kinds',
+    P.slice(0, 200).every(u => G.smallH(u, a1) === G.smallH(u, a2)) && a1.ax.join() !== a3.ax.join() && Math.abs(a1.g - G.SB_G * 4 / 3 * Math.PI * 2000 * 5000) < 1e-12 && Object.values(G.SB_CLASSES).flat().every(k => G.SB_KINDS[k]),
+    `axes ${a1.ax.map(x => (x / 1e3).toFixed(2)).join('×')} km vs ${a3.ax.map(x => (x / 1e3).toFixed(2)).join('×')} km; g ${a1.g.toExponential(2)} m/s²`);
+  // every kind, a few sizes and seeds: finite, within its own bound, and usable as a body's ground (groundAlt, surfaceAt)
+  let bad = [], n = 0; for (const kind of Object.keys(G.SB_KINDS)) for (const [R, seed] of [[200, 1], [2000, 2], [20000, 3]]) { const rc = mk(kind, R, seed), B = body(rc);
+    for (const u of P.slice(0, 400)) { const h = G.smallH(u, rc); n++; if (!Number.isFinite(h)) bad.push(`${kind} ${R} m: not finite`); else if (h > G.bodyTop(B)) bad.push(`${kind} ${R} m: over top`); else if (Math.abs(G.groundAlt(B, mul(u, R)) - h) > 1e-6 * R) bad.push(`${kind} ${R} m: groundAlt differs`); }
+    if (G.surfaceAt(B, [R, 0, 0]).name !== G.SB_KINDS[kind].surf.name) bad.push(`${kind} surface`); }
+  check('ground-8: every kind at 0.2, 2 and 20 km: heights finite and under the recipe\'s top, the same through groundAlt, its own surface', !bad.length, bad.length ? [...new Set(bad)].join(', ') : `${n} heights`);
+  // shapes: a visitor is a needle (4:1 or more); some comets are contact binaries with a waist; rubble piles have a ridge
+  const vis = mk('visitor', 200, 7), vr = P.map(u => G.smallShape(u, vis)), bi = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => mk('comet', 2000, s)).find(c => c.lobes);
+  const waist = bi && G.smallShape([0, 1, 0], bi) < .85 * Math.max(G.smallShape([1, 0, 0], bi), G.smallShape([-1, 0, 0], bi));
+  const rb = mk('rubble', 500, 4), noShape = u => G.smallH(u, rb) - (G.smallShape(u, rb) - 500), eq = P.filter(u => Math.abs(u[1]) < .05).map(noShape), mid = P.filter(u => Math.abs(Math.abs(u[1]) - .5) < .1).map(noShape), avg = a => a.reduce((s, x) => s + x, 0) / a.length;   // noShape: the ridge itself, not the flattened shape
+  check('ground-8: shapes: a visitor is a needle (4:1+), some comets are contact binaries with a waist, rubble piles a spinning-top ridge',
+    Math.max(...vr) / Math.min(...vr) > 4 && !!bi && waist && avg(eq) - avg(mid) > .02 * 500,
+    `visitor ${(Math.max(...vr) / Math.min(...vr)).toFixed(1)}:1; comet seed ${bi ? bi.seed : '—'} bilobe, waist ${waist}; ridge +${(avg(eq) - avg(mid)).toFixed(0)} m on a 500 m rubble pile`);
+  // surface features: rubble piles are covered in boulders; comets have pits; a visitor has neither, nor craters
+  const bShare = P.filter(u => G.smallBoulders(u, 500, rb) > .5).length / P.length, cm = mk('comet', 2000, 6), pits = P.filter(u => G.smallPit(u, 2000, cm) < -.1 * cm.pL).length;
+  check('ground-8: rubble piles are strewn with boulders (5+ % of the ground under one); comets have steep pits; a visitor has no craters, boulders or pits',
+    bShare > .05 && pits > 3 && G.smallMap(vis).craters.length === 0 && !G.SB_KINDS.visitor.boulders && !G.SB_KINDS.visitor.pits, `boulders on ${(bShare * 100).toFixed(1)} % of the rubble pile; ${pits} comet points in pits`);
+  // boulders and pits are steep by design but continuous: every feature that touches a point is among its 27 neighbouring
+  // cells, so searching 125 finds nothing more (a feature the 27 missed would appear from one point and not the next)
+  let missB = 0, missP = 0, r3 = 7; const rn3 = () => (r3 = (r3 * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 20000; i++) { const z = 2 * rn3() - 1, t = 2 * Math.PI * rn3(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)];
+    if (G.smallBoulders(u, 500, rb) !== G.smallBoulders(u, 500, rb, 2)) missB++; if (G.smallPit(u, 2000, cm) !== G.smallPit(u, 2000, cm, 2)) missP++; }
+  check('ground-8: boulders and pits are continuous: at 20,000 points the 27 neighbouring cells find every feature 125 do', !missB && !missP, `missed: boulders ${missB}, pits ${missP}`);
+  // the crater bands across the cube-face seams (boulders and pits are steep by design, so they're left out here)
+  const st = mk('stony', 20000, 5), cr = u => G.smallH(u, st) - G.smallBoulders(u, 20000, st); let rs = 17, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 1500; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const nn = norm(u);
+    const e = norm(cross(nn, Math.abs(nn[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(nn, mul(e, 0.5 / 20000))); worst = Math.max(worst, Math.abs(cr(v) - cr(nn)) / 0.5); }
+  check('ground-8: a 20 km stony body\'s craters are continuous across the cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
+// space-3. Debris, slice 1 (space session, QUEUE Q26; NOTES § "Plan: debris and Kessler"): big pieces are objects. A
+// spent stage of 100 kg or more left in a closed orbit clear of the air joins the registry at flight end as Debris:
+// on its rails, targetable, never flyable; low ones decay and re-enter quietly; suborbital or small pieces don't count.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,detach,junkRegister,JUNK,satKind,satAt,elements,orbitsAt,flyable,advanceDays,partMass,TELLUS,PROG,HOOK,DAY_S,len,sub};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R; P.sats = []; P.day = 0;
+  // an Orbiter in a circular orbit at alt (speed × f of circular), flying a program flight; it drops its first stage
+  const fly = (alt, f = 1) => { const s = D.newShip(D.PRESETS.Orbiter), a = R + alt, vc = Math.sqrt(T.mu / a) * f;
+    Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -vc], rec: { launched: true, day0: P.day } }); return s; };
+  const drop = s => { const ev = s.events.find(e => e.decouple.length), list = s.parts.filter(p => p.on && ev.decouple.includes(p.seg)); D.detach(s, list, [0, -1, 0], 0); return list; };
+  const hi = fly(400e3), dl = drop(hi), dm = dl.reduce((a, p) => a + D.partMass(p), 0) * 1000, n1 = D.junkRegister(hi.rec), q = P.sats.at(-1);
+  const at = q && D.satAt(q, q.epoch)[0], j0 = q && D.elements(q.r, q.v, T.mu);
+  check('debris: a spent stage left in orbit joins the registry as Debris, on its rails, targetable, not flyable',
+    n1 === 1 && q.junk && D.satKind(q) === 'Debris' && /\(debris\)$/.test(q.name) && Math.abs(q.mass - dm) < 1 && D.len(D.sub(at, q.r)) < 1e-6 && j0.pe - R > 390e3 &&
+    D.orbitsAt(T).includes(q) && !D.flyable(q) && news.some(m => /stays in orbit as debris/.test(m)) && D.JUNK.length === 0,
+    `${q ? q.name : '—'}: ${(dm / 1000).toFixed(2)} t at ${q ? ((j0.pe - R) / 1e3).toFixed(0) : '—'}–${q ? ((j0.ap - R) / 1e3).toFixed(0) : '—'} km`);
+  // low: registered, then gone within a day, quietly; suborbital and small pieces, or another flight's, never count
+  news.length = 0; const lo = fly(105e3); drop(lo); const n2 = D.junkRegister(lo.rec), ql = P.sats.at(-1);
+  const sub = fly(300e3, 0.8); drop(sub); const n3 = D.junkRegister(sub.rec);
+  const sm = fly(400e3), tiny = sm.parts.filter(p => p.on && D.partMass(p) < 0.1 && p.seg === sm.events.find(e => e.decouple.length).decouple[0]).slice(0, 1);
+  if (tiny.length) D.detach(sm, tiny, [0, -1, 0], 0); const n4 = D.junkRegister(sm.rec);
+  const other = fly(400e3); drop(other); const n5 = D.junkRegister({ launched: true, day0: 0 });
+  const nBefore = P.sats.length; D.advanceDays(1);
+  check('debris: a low piece re-enters within a day without news; suborbital, small (<100 kg) and other flights’ pieces never join',
+    n2 === 1 && ql.junk && !P.sats.includes(ql) && P.sats.length === nBefore - 1 && !news.some(m => /re-entered|sinking/.test(m)) && n3 === 0 && n4 === 0 && tiny.length === 1 && n5 === 0,
+    `low ${n2}, suborbital ${n3}, small ${n4} (${tiny.length ? (D.partMass(tiny[0]) * 1000).toFixed(0) + ' kg' : 'none found'}), another flight's ${n5}`);
+  // the high one, a month on: still there, decaying by metres
+  D.advanceDays(30); const j1 = D.elements(q.r, q.v, T.mu);
+  check('debris: a piece at 400 km stays, on its rails plus a trace of decay', P.sats.includes(q) && j0.pe - j1.pe >= 0 && j0.pe - j1.pe < 500, `periapsis down ${(j0.pe - j1.pe).toFixed(1)} m in 31 days`);
+}
+
+// econ-9. Pay floors and withdrawing (economy session, QUEUE Q93 / Q118): every offer pays at least 1.3× the net cost of
+// the cheapest preset that can fly it, whatever the world; a taken contract can be withdrawn at a missed deadline's cost.
+{
+  const D = new Function(src + 'return {genOffer,payFloor,withdrawContract,standOf,opOf,CT,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 50, rel: {}, op: {}, sanc: {}, stand: { sci: 10, com: 10 }, cycle: -0.9, done: { weather: { day: 1 }, loads: { day: 1 }, hop: { day: 1 }, beeper: { day: 1 } },
+    own: null, decisions: [], offers: [], active: [], flights: 3 }); D.chooseStart('company');
+  const R = D.rng(11); let n = 0, low = []; for (let k = 0; k < 400; k++) for (const src of ['sci', 'com', 'gov', 'tour', 'mil']) { const o = D.genOffer(src, R); if (!o) continue; n++; const f = D.payFloor(o.type); if (o.p.pay < f - 1e-9) low.push(`${o.type} ${o.p.pay} < ${f}`); }
+  check('pay floor: in a frugal world, low standing and a deep recession, no offer pays under its floor', n > 500 && !low.length && D.payFloor('apex') > 10 && D.payFloor('sat') > D.payFloor('apex'),
+    `${n} offers; floors: sounding ${D.payFloor('apex')}M, test ${D.payFloor('test')}M, hop ${D.payFloor('bioHop')}M, satellite ${D.payFloor('sat')}M${low.length ? '; under: ' + low.slice(0, 3).join(', ') : ''}`);
+  const c = { id: 501, type: 'apex', src: 'sci', client: 1, p: { lo: 20, hi: 30, pay: 15, dur: 100 }, deadline: P.day + 100 }; P.active = [c];
+  const s0 = D.standOf('sci'), o0 = D.opOf(1), ok = D.withdrawContract(501), again = D.withdrawContract(501);
+  check('withdraw: frees the slot at once, at a missed deadline\'s cost in standing and the client\'s opinion', ok && !again && P.active.length === 0 && D.standOf('sci') === Math.max(0, s0 - 10) && D.opOf(1) < o0,
+    `standing ${s0} → ${D.standOf('sci')}, opinion ${o0.toFixed(1)} → ${D.opOf(1).toFixed(1)}`);
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('withdraw: taken contracts show the button', pg.includes('data-wd="${c.id}"') && pg.includes('withdrawContract(+ds.wd)'));
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

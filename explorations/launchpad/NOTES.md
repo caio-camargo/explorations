@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1377,6 +1377,442 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.67 — Astraea's ground on the CPU (2026-10-09, world session, GROUND.md G7)
+
+The belt's dwarf planet (SYSTEM.md § Astraea, Ceres), built and measured headless like Enyo and Hesper. **Not live:** it's
+on a stub body (`GROUND_STUBS.Astraea`: R 94 km, g 0.28) until the space lane adds Astraea; then it takes
+`ground: ASTRAEA_GROUND`.
+
+**A crust factor.** By the 1/g rule alone, Astraea's craters would stay simple bowls up to ~100 km, and a 100 km bowl is
+20 km deep on a 94 km body. Ceres doesn't look like that. Its ice-rich crust is weak: Dawn saw craters turn complex at
+~7.5–12 km, and its big ones have relaxed shallow. So a recipe can scale the transition by its crust (`crust` 0.12:
+**12.5 km**), and above that the complex depth law keeps the big ones a few km deep. No change to the crater code: the
+recipe passes its own transition size.
+
+**What's there:**
+- **Dark cratered regolith:** c 0.03 (between Mars's 0.02 and the Moon's 0.055: Ceres is heavily cratered but short of
+  big craters), crisp (freshness hash²). Eight craters of 20 km and more; the biggest is 43 km.
+- **A gentle swell** (±1.5 km). There's no lump: Ceres is near-spherical.
+- **Ahuna Mons, the lonely mountain:** 4.6 km above its foot, 20 km across, a flat top (2°), flanks up to 39°.
+- **The young bright crater (Occator):** 18 km, its rim 2.5 km above its floor, its central peak collapsed into a pit, and
+  salt on its floor in blotches. It's the one bright spot on a charcoal-grey world, and its own surface
+  (`salt deposits`) for anything that lands there.
+- Surfaces: dark regolith (μ 0.6), salt deposits (0.5, smooth), salty ice rubble on the mountain.
+
+**Measured** (`node study_ground.mjs astraea`, ~2 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 80 ms (512×256, 1.15 km a texel); one height 3 µs |
+| Relief | −3.0…+4.5 km (recipe `top` 6 km) |
+| Craters N(>D) per km², measured / target | ≥20 km 7.2e-5 / 7.5e-5 · ≥2 km 7.6e-3 / 7.5e-3 · ≥0.2 km 0.75 / 0.75 |
+| Slopes, regolith | median 2.6°, p90 17°, p99 32°, past TOPPLE 4.3 %, under 5° 71 % |
+| Seams | steepest 0.5 m step on cube edges 48° (anywhere: 49°) |
+
+Landing here is "closer to docking" (SYSTEM.md): escape is 229 m/s. The ground's part is that 29 % of it is over 5°.
+
+**Negative results:**
+- **At 18 km, Occator sits just past the size where a crater grows a central peak,** so the 600 m "central pit" only
+  dented the peak and stood 200 m above the floor. The pit is now 1.5 km into the peak, 300 m below the floor.
+
+**Tests:** `ground-5`, 5 checks:
+- not live;
+- counts, the 12.5 km transition and the biggest crater shallow (0.87 km, not a 20 km bowl), within top;
+- the mountain (height, flanks 25–45°, a flat top);
+- the bright crater (rim over floor, a pit, salt on the floor, regolith outside);
+- no seams.
+
+Mutations caught: no weak crust, no salt, no mountain. Full suite 506 pass, 0 fail.
+
+**Next, in GROUND.md's order:** Hyperion's moons (Theia's lava plains and calderas; Eos's ridged ice; Tethys's lakes, dunes
+and channels under haze; Phoebe, a cratered lump), then Erebus.
+
+## v1.66 — rover prices and gates; Selene science contracts (2026-10-09, economy session, QUEUE Q10)
+
+**Rover parts** (`sim/program.js`, `RV_PRICE`, `RV_GATE`):
+- Prices (M): chassis small 4, medium 9, large 20; wheels 0.5 / 1.5 / 3 each (hub motor included); deck items: battery
+  1, crew seat 3, camera mast 2, antenna 3, sample arm 5, spectrometer 6, seismometer pack 4, drill 8. The default
+  two-seater (medium chassis, four wire-mesh wheels, two seats, battery, camera) is 24M; a small yard cart 9M.
+  `partPrice` adds `rvPrice(p.dn.rvd)` to the folded rover part, so vessel cost, refurbishment and the debrief see it.
+- **Gates by firsts:** small chassis and wheels, battery and camera from the start; antenna with *The beeper*;
+  medium chassis, wire-mesh wheels, sample arm, spectrometer and seismometers with *The far side* (the Selene
+  program); crew seats with *Passenger: one orbit*; the large chassis, heavy wheels and the drill with *Soft landing
+  on Selene*.
+- **The yard stays free:** design and test-drive anything at home. The gate is at LAUNCH (`rvLaunchWhy(parts)`, one
+  line in `app/editor.js`): a rocket can't carry a rover with a part not yet open. The yard shows *Price* and *Can't
+  fly yet: …* (one line in `app/rover-yard.js`). Both flagged for vehicle and space.
+
+**Selene science contracts** (the sats session's R4 proposals, `sim/contracts.js`, science clients, after *Soft
+landing on Selene*). Judged **between flights** by `selTick` (in `econTick`) on what has reached home **since the
+contract was taken** (`c.base = selN()` at accept), and paid with news like a flight's (science yield applies):
+- *Read Selene's dark plains / bright uplands*: 3–6 spectrometer readings of that unit;
+- *A panorama of Selene, Q %*: one received at that quality or better (60–95 %);
+- *A seismic network on Selene*: 4 seismometers set out (offered while there are fewer than 4);
+- *Locate N moonquakes* (offered once 3 stations stand), *Bound Selene's core to 300 km* (after the first located quake);
+- *Science from Selene's far side*: 1–2 far-side readings (it needs a relay). `sciGot` (sats' code, one field) now
+  marks each spectrometer reading `far` (planet-fixed +X, Selene's far side).
+Pay before the client multipliers: readings (20 + 10n)·1.6, panorama (40 + 120(Q − 0.6))·1.6, network 192, quakes
+(30 + 15n)·1.6, core 240, far side (60 + 25n)·1.6. CT entries may now carry `open()` (offered only when true) and
+`sel`/`done(c, N)` (judged by state, not a flight). Test `econ-6` (4 checks; "since taken" mutation-tested).
+
+**Traps hit:** a mid-line `//` comment in `sciGot` swallowed the rest of the line (the handoff's warning, again); the
+medium chassis and wire-mesh wheels share the key `m`, so a de-duplication by key alone lost one.
+
+**Not yet:** the career runner doesn't fly rovers, so these prices are unmeasured against income; sample-arm and drill
+contracts wait for their science (R4's next slice).
+
+## v1.65 — Hesper's ground on the CPU (2026-10-09, world session, GROUND.md G7)
+
+The second planet (SYSTEM.md § Hesper, Venus), built and measured headless like Enyo (v1.62). **Not live:** it's on a
+stub body (`GROUND_STUBS.Hesper`: R 1,210 km, g 8.87) until the space lane adds Hesper; then it takes
+`ground: HESPER_GROUND`. Landers and radar are all that ever see this ground, so the detail is modest: a 7.4 km map plus a
+little procedural texture.
+
+**What makes it Venus:**
+- **Craters are few, fresh and never small.** The 90 bar air burns up small impactors, and the surface is young.
+  - c 3e-5, against the Moon's 0.055 and Mars's 0.02. Venus has under a thousand craters in all; at Hesper's size that's
+    **~140 over 2 km**.
+  - Only the three coarsest bands run, so the smallest crater is 1.3 km. There's no thinning (Venus's craters are
+    scattered at random), and freshness is uniform.
+  - Simple turns complex at 3.3 km.
+- **Basalt plains**, 85 % of the planet: −0.5 ± 0.4 km, with low wrinkle ridges (~110 m, ~30 km apart).
+- **Slab rock** (Venus's tesserae), 11 %: blocks raised 2 km, with crossing ridged texture at 12, 5.5 and 2.5 km. It's
+  the roughest ground on the planet.
+- **One massif** (Maxwell Montes) to 8.9 km.
+- **Four broad, gentle shields** (Maat Mons and kin): 150–200 km across, 3.3–5.7 km above their foot, flanks ~2°.
+- **Three coronae:** rings, with the rim ~1.2 km above both the sagged centre and the moat outside.
+- **A cluster of pancake domes:** 25 km across, 0.7 km high, flat tops. At this map's scale they're blobs.
+- **Lava channels**, procedural: troughs ~1.5–3 km wide at half depth and ~80–110 m deep, along the isolines of a warped
+  noise, in some of the plains. They're narrow enough that a lander can miss them.
+
+**Surfaces by unit** (the lander that lasts minutes lands on one of these):
+
+| Unit | Surface | μ |
+|---|---|---|
+| plains | basalt plains | 0.7 |
+| slab rock, mountains | slab rock | 0.75, rough |
+| shields, domes | lava flows | 0.7 |
+| corona | fractured basalt | 0.7 |
+| lava channel | channel floor | 0.65, smooth |
+
+**Measured** (`node study_ground.mjs hesper`, ~2 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 0.6 s; one height 2 µs |
+| Relief | −1.1…+8.9 km (recipe `top` 12 km) |
+| Craters, N(>D) per km² | ≥2 km 7.5e-6 (target 7.5e-6) · ≥5 km 1.1e-6 (1.2e-6) · none under 1.3 km |
+| Slopes, plains | median 0.2°, 99.9 % under 5° |
+| Slopes, slab rock | median 3.8°, p99 11° |
+| Slopes, shields | median 1.7° |
+| Seams | steepest 0.5 m step on cube edges 15° |
+
+Nowhere on Hesper is past TOPPLE at this scale. The hazard is the surface's own roughness (`rough` 0.4 on slab rock), and
+the heat and pressure, which aren't ground.
+
+**Negative results:**
+- **Slab rock first covered 25 % and was smooth** (max 4.7°): its threshold was too low, and its ridges too broad and too
+  gentle. Raised to ~11 %, with ridges from 12 km down.
+- **Plains with no texture are glass** (median 0.0°). Wrinkle ridges fixed that, and they're also what Venus's radar
+  shows.
+- **A noise-isoline channel's width is not the threshold over the noise's wavelength.** The first channels came out
+  ~5 km wide for an intended 2 km (the gradient estimate was off ~2.5×). Measured cross-sections, then narrowed.
+- **A test for a trough can't ask for "higher on most sides":** along the channel the ground is level, and the channels
+  meander, so 3 km along the tangent leaves them. The check is now across (3 km, both sides) against along (1 km), the
+  median of five channel points.
+
+**Tests:** `ground-4`, 7 checks:
+- not live;
+- the craters (few, none small, within top);
+- plains against slab rock;
+- the massif and the shields;
+- coronae as rings;
+- channels as troughs;
+- surfaces and seams.
+
+Mutations caught: letting small craters through, no channels, smooth slab rock. Full suite 497 pass, 0 fail.
+
+**Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
+moons, Erebus.
+
+## v1.77 — pay floors and withdrawing a contract; the first hour re-measured (2026-10-09, economy session, Q93, Q118)
+
+**Q118, re-running `PACE=1 node career.mjs 2 5` on today's main** (after v1.55's cover, v1.73's Beeper presets and
+everyone's changes): rich worlds reach first orbit in 4 flights. But **a private company in a poorer world (frugal,
+resource, security) got stuck in 1 run of 5 with no forced failure**, waits up to 590 days. The trace: two orbiter
+attempts lost the ordinary way left it at 29M, just above the 25M floor (no rescue; a company has no budget day),
+both contract slots holding hops it could no longer afford, and the cheap work on the board barely breaking even.
+That is Q93's problem in its sharpest form.
+
+**Q93, built** (`sim/contracts.js`):
+- **A pay floor.** Every offer pays at least `FLOOR_K` = 1.3 × the net cost of the cheapest preset that can fly it
+  (`payFloor(type)`: the preset's price less the refurbishment a recovered flight brings back, `FLOOR_BACK`), applied
+  after every multiplier, in any world, standing or cycle. Floors in a frugal company world: sounding work 13M,
+  qualification tests 28M, hops 24M, satellites 84M. Selene science and lifts have no floor.
+- **Withdrawing a taken contract** (`withdrawContract(id)`): the slot comes free now, for what a missed deadline costs
+  later (−10 standing with that source, −3 the client's opinion). A *Withdraw* button on taken contracts
+  (`app/program-ui.js`, one line and a `data-wd` handler, flagged for flow).
+
+**The runner** (`career.mjs`) got three fixes, so its numbers move a little:
+- it withdraws the dearest taken contract it can't afford when its slots are full and nothing is worth flying;
+- it accepts only work it can pay for now (it used to count on the pay arriving after the flight);
+- its what-if flight record now carries the program's site, so ballistic tests count again (v1.57 made them count
+  only from their site, and the runner's hypothetical had none: it ignored a 62M ballistic offer at 25M).
+
+**Result** (2 years, 5 seeds): with no forced failure, **every start reaches orbit in every run, in 4–6 flights**
+(the frugal company was 4/5); with the first orbit attempt lost, 5–9 flights and every start but one frugal-company
+run makes it (was three starts at 3–4 of 5, waits to 290 days). **Ablation:** without the floor, the frugal company
+misses orbit in 1 of 5 runs with no failure, and after a lost orbit attempt the resource company misses one too and
+the frugal company waits 68 days. Two-year funds are in the same range as before (the poorest worlds up, the frugal
+company 112M → 290M; the richest unchanged, within the ±400M noise).
+
+Test `econ-9` (3 checks; the floor mutation-tested).
+
+**The intended number of flights (M1's finish line):** proposed as *4–6 flights to first orbit for a prudent player,
+and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
+five, which a person would get out of by withdrawing and flying samples).
+
+## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
+
+Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
+- `junkNote` (one call in `detach`, vehicle's `sim/vessel.js`): every piece a program flight drops is noted with its state,
+  shape and mass, sim-side, so headless flights see it too (the app's `debris` list only keeps a piece for 240 s).
+- `junkRegister(R)` at flight end, after `satRegister`: pieces of 100 kg or more (`JUNK_MIN`) in a closed orbit clear of the
+  air (a moon's: clear of its highest ground) and well inside the SOI (Tellus: under half the nearest moon's distance)
+  join the registry as **Debris** (`q.junk`, named after the stage's engine, e.g. *Kestrel booster (debris)*). One news line.
+- They're registry entries, so what exists already works on them: drawn when near, **G targets them**, contact in flight,
+  the arm grapples them. Never flyable (no command part), never held (`adrift` from birth, no propellant spent).
+- Between flights they ride their rails plus decay (v1.64), no tidal stepping (cheap for hundreds); a moon's still uses its
+  stepper. Low ones re-enter quietly (no warning, no news).
+- The Program screen sums them in one line under *In orbit* (count, tonnes) instead of listing each.
+- `procFly` saves and restores the list, so dry runs and dispatched flights leave none (dispatched debris: later).
+
+**In practice** a normal ascent drops its booster suborbital (nothing registered); debris comes from staging after
+orbit is reached, upper stages left in orbit, and anything dropped on the way to Selene that stays in a closed orbit.
+
+Test `space-3` (3 checks; mutations caught: never noted, no orbit check, loud re-entry, no size floor, any flight's
+pieces). Full suite passes. TESTING row 148. Next: slice 2, conjunctions between flights (active entries only).
+
+## v1.75 — the seeded small bodies' ground, a recipe factory (2026-10-09, world session, GROUND.md G7)
+
+The last piece of the per-body ground: SYSTEM.md's seeded classes (near-Tellus asteroids, belt bodies, trojans, comets,
+interstellar visitors). None of them exists in the game yet (the space lane makes them, M4/M5), so this is a factory for
+the space lane to call: **`smallBodyGround({kind, R, seed})`** returns a recipe (`gen: 'small'`) for a body's `ground`.
+R is the mean radius; the seed should come from `WSEED` and the body's index, so a world keeps its rocks.
+`SB_CLASSES` says which kinds each class draws from; the space lane may change the mix.
+
+**Kinds** (`SB_KINDS`):
+
+| Kind | Density (kg/m³) | Shape | Surface |
+|---|---|---|---|
+| stony | 2,000 | ellipsoid, b/a 0.6–0.95 | cratered (c 0.03), some boulders; stony regolith |
+| carbonaceous | 1,400 | ellipsoid | the same, dark |
+| metal | 5,300 | ellipsoid | iron-nickel, hard (soft −3) |
+| rubble pile | 1,200 | near-round, a spinning-top ridge on the equator (Bennu, Ryugu) | covered in boulders, few craters |
+| comet | 500 | 60 % are contact binaries (two overlapping spheres, a waist, like 67P) | dusty ice, steep-walled pits, few craters |
+| visitor | 2,000 | a needle, ~4–8:1 (ʻOumuamua) | no craters |
+
+**How it works:**
+- **Shape** is computed exactly per point, not baked: a triaxial ellipsoid (the shortest axis is the spin axis, Y), or the
+  union of two overlapping spheres. Both are star-shaped from the centre, so a radial height works (no overhangs).
+- **Gravity** is G·(4/3)πρR: 1.7e-4 m/s² on a 500 m rubble pile, 7.8e-3 on a 20 km carbonaceous body.
+- **Craters** use the bands that fit the body (the first whose largest crater is under R/4) and are baked below that
+  (`bigCraters`' smallest size). There are none on very small bodies, where boulders take over.
+- **Boulders and pits** are generated per 3D cell. Only cells whose point lies within half a cell of the surface hold one,
+  and that point is projected onto the surface.
+- One height costs 1–6 µs.
+
+**Known simplification (the space lane's call):** slopes, and the physics' gravity, point at the centre, not along the
+body's own lumpy gravity. So an elongated asteroid reads 15–22° of median tilt that its real gravity would mostly
+straighten, and a two-lobed comet reads 24 % of its ground past TOPPLE.
+
+**Measured** (`node study_ground.mjs small:<kind>:<R>:<seed>`, or the probe in the test):
+
+| Body | Shape | Relief | Notes |
+|---|---|---|---|
+| stony, 5 km | 0.77–1.26 R | ±1.3 km | median tilt 15° |
+| rubble pile, 500 m | near-round | −67…+80 m | ridge +29 m; boulders under 9 % of the ground; median 11°, but under 1 % past TOPPLE |
+| comet, 2 km (two lobes) | — | — | pits 2 % |
+| visitor, 200 m | 8.5:1 | — | — |
+
+Crater counts match the target where the numbers are big enough (Phoebe, re-run: ≥2 km 1.33e-2 against 1.38e-2).
+
+**Negative results:**
+- **A visitor first came out 32:1.** Its third axis was drawn as a fraction of the second, which multiplied two small ratios.
+  Now c/b is 0.75–1 for every kind.
+- **Boulders and pits placed in 3D cells mostly float off the surface** (3 % and 2 points where ~8 % and dozens were
+  meant). Projecting each onto the surface fixes the count, but a point projected from further than half a cell can be seen
+  from one point and not the next: **3,697 missed features** at 20,000 points without the half-cell limit, **0** with it.
+  A random-step test missed those steps, because they sit only at rare cell boundaries. The check that catches them
+  compares a 27-cell search with a 125-cell one.
+- **A ridge check that ignores the shape** passed with no ridge, because a flattened body is already wider at its equator.
+  It now measures the ridge alone.
+- **`study_ground.mjs` ignored a tiny body's starting band,** so it listed and counted bands the body never runs. That
+  includes Phoebe's in v1.70, but v1.70 quoted no Phoebe crater counts.
+
+**Tests:** `ground-8`, 6 checks:
+- a seed reproduces a rock and another seed another; gravity from density;
+- every kind at 0.2, 2 and 20 km is finite, under its top, the same through `groundAlt`, with its own surface;
+- the shapes (a needle, a contact binary with a waist, a ridge);
+- boulders and pits present, and none on a visitor;
+- boulders and pits continuous (the 27-against-125 cells check);
+- the crater bands across the seams.
+
+Mutations caught: no ridge, gravity off by 10 %, projection without the half-cell limit. Full suite 533 pass, 0 fail.
+
+**That completes GROUND.md G7 on the CPU:** every hand-made body and the seeded classes have ground. What's left is the
+space lane's real bodies (Q87, M4/M5) and the shader (G3, which needs the GPU and the milestone gate).
+
+## v1.74.1 — the sponsor's cover skips a flight that reached orbit (2026-10-09, economy session, Q122)
+
+PLAYTEST #33: an Orbiter left in a 200 km orbit, the priciest rocket yet and completing nothing (no instrument
+package for *The beeper*), drew "+42M Sponsor covers the failed attempt". The rocket worked; what it lacked was the
+payload. `coverLoss` now also requires the flight **not to have reached orbit** (`R.orbit`), so the word "failed" stays
+true. The Debrief's days line says "1 day passing" in the singular (`sim/debrief.js`, one line, flow's file). Test
+`econ-1` gains a check (mutation-tested).
+
+## v1.74 — staged pay only for missions flown for; supply runs wait for onboard computers (2026-10-09, economy session, Q112, D7)
+
+- **Staged pay (QUEUE Q112, PLAYTEST #28).** A probe parked at Nyx collected the first two shares (20 % + 20 %) of
+  every later Nyx mission as each one unlocked: `stagedMission` gave the shares to the first *open* mission bound for
+  the body, so a mission that opened mid-flight was "on course" and "arrived" at once. The launch now records which
+  missions were open (`R.open0`, in `missionTick`'s launch line), and a share goes only to one of those. Flights from
+  older saves (no `R.open0`) behave as before. Test `econ-8` (2 checks, mutation-tested). `R.open0` is also what
+  W11's broader rule (a mission counts only on a flight launched while it was open) would read, if it's built.
+- **Supply runs follow the automation ladder (D7, Caio: option a).** MIDGAME.md: uncrewed runs to the moons arrive
+  with onboard computers. `baseRunQuote` refuses before that era (`BASE_ERA`): "needs onboard computers". `econ-7`
+  now checks the refusal and moves the date to the era (day ~3,010 in its world) before flying the run.
+
+## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
+
+The icy dwarf at the edge (SYSTEM.md § Erebus, Pluto), built and measured headless like the others. **Not live:** it's on a
+stub body (`GROUND_STUBS.Erebus`: R 238 km, g 0.62) until the space lane adds Erebus. With it, **every hand-made body in
+SYSTEM.md has ground on the CPU** (Hyperion has none by design).
+
+**What's there:**
+- **The nitrogen-ice basin (Sputnik Planitia):** 200 km across, the same share of the globe as Pluto's. Its glacier floor
+  is flat at −2.5 km (2.6 km below the land round it), and it has no craters (it renews itself).
+  - It's broken into convection cells ~25 km across, with troughs along their edges 116 m below their middles (G-ice's
+    Worley network, reused).
+  - Surface: nitrogen ice, μ 0.2.
+- **Water-ice mountains:** a dozen angular blocks on the basin's western margin, 10–20 km in radius and 2.5–4.5 km high
+  (the tallest 6.5 km above the basin floor at its foot). Flanks p90 40°; water-ice bedrock.
+- **Bladed terrain (Tartarus Dorsa):** ridges ~400 m high, ~5 km apart, east of the basin; methane-ice blades.
+- **The dark tholin highlands (Cthulhu):** old crust, so every band crater survives there, against half on the uplands and
+  none on the ice. They're the most cratered ground: 18 craters ≥ 1 km per 1,000 km², against 10 on the uplands.
+- **Uplands of methane frost** everywhere else.
+- **An icy crust** (0.4, as Tethys and Eos): simple turns complex near 19 km. That's an assumption: Pluto's own transition
+  isn't pinned down.
+
+**Measured** (`node study_ground.mjs erebus`, ~4 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 0.6 s; one height 2.5 µs |
+| Relief | −3.4…+4.6 km (recipe `top` 6 km) |
+| Units | uplands 88 %, tholin 5.9 %, nitrogen ice 3.5 %, blades 2.0 %, mountains 0.7 % |
+| Slopes, nitrogen ice | median 0.3–0.6°, p99 4°: the flattest landing ground in the system |
+| Slopes, mountains | median 20°, 43 % past TOPPLE |
+| Slopes, blades | p90 17° |
+| Seams | 36° on cube edges |
+| Pole | 19° (ground-6's pole check now includes Erebus) |
+
+**Negative results:**
+- **Overlapping mountain blocks summed their heights:** up to 10 km, past the recipe's bound. Overlaps now take the
+  taller block.
+- **Narrow blocks were cliffs** (p90 58°, max 68°). They're wider now, with longer flanks: p90 40°, max 51°, still
+  bedrock-steep.
+- **A unit mask that includes the shore isn't the floor.** "Nitrogen ice" first took in the basin's 14° shore, then the
+  outer flanks of blocks standing in the basin (p99 10.7°). It's now the glacier floor only (p99 4°).
+
+**Tests:** `ground-7`, 6 checks:
+- not live;
+- the basin (depth, a flat floor, within top, nitrogen ice);
+- the convection cells;
+- the mountains;
+- the tholin highlands most cratered (by the thinning, and rougher);
+- no seams.
+
+Mutations caught: no basin, no convection cells, uniform crater thinning. Full suite 526 pass, 0 fail.
+
+**Next:** the seeded small bodies (one lump recipe, its parameters from `WSEED`); and, for every body here, the space
+lane's real body in the tree (Q87), then the shader (G3).
+
+## Plan: debris and Kessler (2026-10-09, space session, QUEUE Q26)
+
+Builds LATE_GAME.md § "Debris and Kessler" (round 5, Caio): big pieces are objects, fragments are a density per band,
+drag cleans low bands, a cascade can foul a high band for decades with warning, tracking is a mechanic, debris may destroy
+an uncrewed satellite but crewed nodes are always warned, and the whole pressure is a world setting (off / light / real,
+default light).
+
+**What exists:** contact in flight between the vessel and registered satellites (sats session: signed-distance parts,
+`HIT_NEAR` stepping). **What doesn't:** a spent stage lives only in the app's `debris` list for 240 s and is gone at
+flight end (headless flights never see one); nothing collides between flights; no bands; no setting.
+
+**Slices:**
+1. **Big pieces are objects** (this session). `detach` notes every dropped piece of `JUNK_MIN` = 100 kg or more; at flight
+   end the ones in a closed orbit clear of the air (and well inside the SOI) join the registry as *Debris* entries
+   (`q.junk`): drawn, targetable, grabbable by the arm, hit in flight like any satellite; never flyable, never held.
+   They ride their rails plus decay (v1.64), with no tidal stepping, so hundreds stay cheap; low ones re-enter quietly.
+2. **Conjunctions between flights,** big objects against **active** entries only (with a job, a station, anything
+   crewed), never object against object (LATE_GAME's measured costs). Each object is smeared over its orbit's shell
+   (Öpik/Kessler flux): risk a day = Σ density × cross-section × relative speed. A seeded roll. **Tracked** (radar +
+   compute by era) → a warning and an automatic dodge for a small Δv from its tanks; untracked → a statistical risk.
+   Crewed nodes are always warned and dodge. A hit destroys an uncrewed satellite and the object, and feeds slice 3.
+3. **Fragments as bands** (ESA MASTER style): 50 km bands to 2,000 km; each holds a fragment density that drag clears
+   (lifetime from `thinAir`), collisions add to it, and past a threshold the band feeds itself (the cascade), with news
+   well ahead. A security state's anti-satellite test fouls a band (POWERS.md hook).
+4. **The world setting** (off / light / real) on slices 2–3, each in its own code path; the map's band view; cleanup
+   contracts (economy, paid by worried powers).
+
+**Defaults (Caio may override):** `JUNK_MIN` 100 kg (smaller pieces go to the bands in slice 3); debris on rails + decay
+only (no tides: cheap, and nobody's slot depends on a spent stage); *light* = a tenth of the real collision rates;
+dispatched routine flights leave no debris yet (`procFly` restores the list); fairings and small pieces are slice 3.
+
+## v1.71 — station-keeping re-tuned: a good satellite outlasts its era (2026-10-09, space session, MIDGAME § Satellites)
+
+[`MIDGAME.md`](MIDGAME.md) § Satellites (Caio, 2026-10-09): lifetime is a design choice made once, a well-built satellite
+outlasts its era, replacement is for upgrades, and maintenance as a chore is out. v1.60's numbers made a TV satellite with
+100 m/s of tanks last ~270 days, i.e. careless by default. Re-tuned, still on the real physics:
+
+- **Holding pays the orbit's size and shape, not its tilt.** About 70 % of v1.60's cost was the plane. Real geostationary
+  satellites late in life stop holding it too and fly on inclined. `slotRate` now pays the net change in size and shape
+  between one-orbit means 20 days apart (`SK_D` 5 → 20, so Nyx's 4.2-day and Selene's 13-day pulls mostly cancel); the
+  tilt rate is kept as `q.skTilt`.
+- **The tilt really wanders.** `tiltStep` turns a held orbit's angular momentum by the tide's torque averaged over one orbit
+  (24 points, steps of half a day), keeping size, shape and phase. Against the full RK4 after 20 days: a stationary orbit
+  tilts 0.165° (RK4 0.175°), the normals 0.017° apart. Orbits tilting under `TILT_MIN` (~0.7° a year: low ones) are left alone.
+- **TV pays while the capital sees it 15° up all day** (six times through the day), not only under 3°. The mission that
+  sets it up still asks for under 2°.
+- `SK_MIN` 0.1 → 0.02 m/s a day (size and shape cost less than the old total).
+
+**Measurements** (`node study_slot.mjs`, part C: a TV satellite held over the capital, 42°S, plenty of propellant):
+
+| year | 1 | 2 | 4 | 6 | 7 | 8 |
+|---|---|---|---|---|---|---|
+| tilt | 3.6° | 7.4° | 14.9° | 23.1° | 27.1° | 31.2° |
+| TV days | 100 % | 100 % | 100 % | 100 % | 8 % | 0 % |
+| m/s spent | 89 | 177 | 354 | 531 | 620 | 708 |
+
+The tilt peaks near 37° in year 10 and turns back: the plane precesses about Nyx's (30° inclined; Tellus has no
+oblateness to hold it near the equator). Hold costs: ~0.1–0.2 m/s a day stationary (the start phase matters about 2×), ~0.04
+at 3,000 km, nothing in low orbit. So **a TV satellite with ~500 m/s in its tanks (a fifth of its mass at Isp 300) keeps
+TV about six years**, and then its tilt ends the job anyway: the natural moment for MIDGAME's upgrade. One with 50 m/s
+lasts about eight months.
+
+**Negative results.** (1) Paying every swing in size (read every 2 days) gave 0.35 m/s a day: it paid for Nyx's 4-day
+wobble, which hardly moves the satellite along its orbit. (2) A deadband controller on the full physics (burn to reverse
+the drift when it strays 5°/20°/40° in longitude) gave 120–460 m/s a year, but its burns pumped the eccentricity to
+0.2–0.6, so it measured a bad controller, not the need. The orbit's size does swing ±40 km over months with no trend (no
+secular change, as averaging theory says), and its eccentricity grows steadily (~0.03 a year stationary). A proper
+controller would be the better measure, later.
+
+**Not changed:** a dry satellite still drifts (full RK4) and, if low, decays (v1.64). Whether a dry one should re-enter at
+all is **W17** (default: yes). The builder lifetime readout is a vehicle + space follow-up.
+
+`space-1` reworked (5 checks: the held orbit keeps size and shape exactly while its tilt moves; a held TV satellite past 3°
+still pays for 800 days; mutations caught: no tilt step, TV under 3° again, the plane paid again). Full suite 512 pass.
 
 ## v1.64 — orbital decay: low orbits come down (2026-10-09, space session, QUEUE Q25)
 
@@ -6406,6 +6842,13 @@ the arrows, and every key in the handlers present in its Help table.
   `program-ui.js`, so anything it calls must live in that file or an earlier one. A first cut kept `newsHTML` in
   `debrief.js` (later): the page stopped at load, on the Assembly with a black view. `platform-1` only checks the SIM
   files; robot `m1` on the plain page (no `?tester`) caught it.
+- **Map labels no longer pile up** (PLAYTEST #31, Q115). Not labels at the origin: from a camera at Selene, Tellus is a
+  dot near the screen's corner, and every city, satellite and fleet name on it was drawn there, because names were gated
+  on the camera's distance to its *focus* (`cam.mDist`), not to the body they sit on. City names now need the camera
+  within 4.3 R of Tellus, satellite names within 10 R of the body they orbit. And the map places label texts after the
+  marks, most useful first (orbit and encounter labels, impacts, then ships, then stations and satellites, then cities),
+  skipping any text that would overlap one already placed. Probed on the robot's far-side flight: the pile is gone, the
+  orbit labels unchanged.
 
 ### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
 **Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
@@ -6460,6 +6903,25 @@ new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYT
 
 **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
+
+### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
+- **A checkpoint between the Assembly and the launch** (`app/rollout.js`, `#roll`): a panel beside the ship on the pad,
+  like the spec's "a panel over the ship". The Assembly's foot keeps the one-line site summary and gets **ROLL OUT ▶**
+  (`#bRoll`); the Rollout has the launch site (the picker, `renderSites`, moved here from the Assembly as § v1.27 asked),
+  **Checks**, **The flight** (hardware, ops fee, site fee, funds after, what comes back if it all lands, days until it
+  can fly: stacking as `missionTick` reckons it, plus a study and a free pad), **In play** (the NEXT line, accepted
+  contracts), then ← Assembly [B] and **LAUNCH**.
+- **Checks** (`rollChecks()`): ⛔ over budget, site refused, stages don't fit, stage-1 TWR < 1, unstable with nothing to
+  steer; ⚠ the ops fee goes below zero, downrange over another power, weather that may scrub, sluggish TWR < 1.15,
+  unstable but steerable, a joint past its certified rating, flight safety refusing a passenger, decisions waiting.
+  LAUNCH dims while a ⛔ holds; its own checks (editor.js) still decide. **Vehicle, Q48:** the builder's pre-launch
+  warnings (contract orbit out of reach, no chute on a crewed return) belong in `rollChecks`, one line each.
+- **`#launch` kept its id** and moved into the Rollout, so every scripted `$('launch').click()` (views.js, the robot's
+  `PT.launch`, Fly again) still launches straight away. Only real clicks changed: robot `m1` now clicks ROLL OUT then
+  LAUNCH (and shoots the Rollout), and its `PICK` helper opens the Rollout first. `atRoll` joins `atHQ`/`atDeb` (builder
+  keys off, builder markers off; §32 counts it). Robot rows m1, 25 and 26 pass.
+- Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
+  builder's panel (vehicle's), so they repeat here.
 
 ---
 
@@ -7256,3 +7718,189 @@ Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive f
 Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
+
+## v1.70 — Hyperion's moons on the CPU; no more steps at the poles (Tellus too) (2026-10-09, world session, GROUND.md G7)
+
+Hyperion's four moons (SYSTEM.md § Hyperion), built and measured headless like the planets. **Not live:** each is on a
+stub body (`GROUND_STUBS`, SYSTEM.md's radius and gravity; Phoebe's gravity isn't there, so it's real Phoebe's 0.049).
+And a bug found on the way, which **is live, on Tellus.**
+
+**Every map had a step at the poles.** The equirectangular maps' first and last rows are rings round the poles (on Tellus
+~4 km across). At a pole the samplers read only that row, so two points 0.5 m apart there read it at opposite
+longitudes. Measured within 2 km of the poles: **a 0.5 m step of 77–90° on every body**, against 14–56° at
+mid-latitudes. On Tellus that's in play: a star-shaped seam at both poles, in the physics and on screen (the GPU reads the
+same texture).
+- **Fix** (`polesFix`, sim/world.js): one value per polar row, its mean (a bound's max, for `U`). At a pole the samplers
+  then read a constant, so the field is continuous there. It's applied in `makeWorld` and at the end of every body's
+  bake. It's data only, and the GPU reads the same texture, so CPU and GPU still agree with no shader change.
+- **After:** the steepest step near any pole is 0–48°, no worse than that body's own slopes: Tellus 31°, Selene 35°,
+  Phoebe 48°.
+- **Not seen in a browser** (this machine stays off the GPU): TESTING row 146.
+- Heights change only within about a texel of each pole; Selene's 3,000-point reference is unchanged.
+
+**Small bodies** (found on Phoebe, R 20 km):
+- **Faces.** The crater bands skipped any cube face more than 60° from the point. That's safe when a crater reaches a few
+  degrees, but on Phoebe a 12 km crater reaches 36°. A face is now skipped only beyond its corner (54.7°) plus the band's
+  reach, which is unchanged (|u| < 0.5) on every larger body.
+- **Coarsest bands.** A tiny body can also start its bands lower (`b0`) and bake the bigger craters instead
+  (`bigCraters`' smallest size).
+
+**The moons:**
+
+| Moon | Character | What's there |
+|---|---|---|
+| **Theia** (Io) | no impact craters at all | sulphur-frost plains; 30 paterae (irregular, 20–80 km, flat floors of fresh lava, median 1.26 km deep); six tilted blocks of crust (to 4.3 km above their foot) |
+| **Eos** (Europa + Enceladus) | flat young ice (relief 0.6 km), ~25 craters over 1 km | double ridges on a Worley-edge network at two scales (the new G-ice: crests 160 m above their centre lines); chaos patches of flat-topped blocks; the tiger stripes near the south pole (four rifts, 35 km apart, ~500 m deep, frosted: where a sample can be flown through the plumes) |
+| **Tethys** (Titan) | few craters (c 3e-4) | methane lakes and seas, 4.7 %, nearly all in the north. The recipe has `sea: 0`, so a craft splashes down as on Tellus's sea. Linear dunes in equatorial patches (15 %, crests east–west, 2 km apart, 100 m high); a rugged bright highland (Xanadu); drainage channels |
+| **Phoebe** | a lump, saturated with craters | the first G-lump (relief 21 % of R); 53 % of it over 10° |
+
+Surfaces per moon:
+- **Theia:** fresh lava, tilted crust, sulphur frost.
+- **Eos:** fresh plume frost, ice blocks, ridged ice.
+- **Tethys:** methane (the liquid), organic sand, icy highland rock, rounded ice cobbles (as Huygens saw), damp organic
+  sediment.
+- **Phoebe:** regolith.
+
+**Measured** (`node study_ground.mjs theia|eos|tethys|phoebe`):
+
+| Moon | Relief | Slopes | One height |
+|---|---|---|---|
+| Theia | −1.5…+7.4 km | plains p99 0.7°; mountains p99 36° | ~2 µs |
+| Eos | −0.2…+0.4 km | ridged ice p90 11°; chaos p90 16–19°, 5 % past TOPPLE | — |
+| Tethys | −0.7…+2.0 km | dunes median 5°; highland p90 6° | — |
+| Phoebe | −1.9…+1.6 km | median 9.5°, 9 % past TOPPLE | — |
+
+Tethys's craters are on target at every size. Eos's are few, as meant.
+
+**Negative results:**
+- **The polar rows**, above. No test sampled within a texel of a pole, which is how a near-vertical seam on Tellus went
+  unnoticed since v1.25 (LESSONS #40).
+- **Big craters on a tiny body cross the face cutoff**, above.
+- **Eos's first chaos was smooth** (cubed value noise: median 1.1°). Blocks need steep sides: thresholded noise at two
+  sizes.
+- **Tethys's first dunes covered the whole equatorial belt** (44 %), and its lakes 7 %. Titan's dunes are patchy (~15 %);
+  lakes now 4.7 %.
+
+**Tests:** `ground-6`, 6 checks:
+- not live;
+- Theia (no craters, paterae, mountains);
+- Eos (flat, double ridges, chaos rougher, the stripes);
+- Tethys (lakes as a liquid, mostly north; dunes east–west);
+- Phoebe (lump, saturated);
+- **no step at any body's poles, Tellus included.**
+
+Mutations caught: no pole fix, no liquid level on Tethys, no tiger stripes. Full suite 519 pass, 0 fail.
+
+**Next:** Erebus, the last hand-made body; then the seeded small bodies (one lump recipe, parameters from `WSEED`).
+
+## v1.69 — dispatch to a base: supply runs (2026-10-09, economy session, QUEUE Q61)
+
+A **supply run** sends a design to a base, unflown by hand, and what lands joins the base (`sim/program.js`):
+- **The flight** is built, not recorded: the design's own ascent procedure, then the bodies session's mission phases
+  as `fly_ladder.mjs`'s `flySite` uses them: a transfer aimed through the base, a low capture, and `landAt` on the
+  beacon's `pf` (`baseRunProc`). It ends on the surface: no ascent or return. `procFly` flies it for real, so a
+  design without the Δv is lost or doesn't land. Measured: the Probe lands **1 m** from the beacon.
+- **What it brings:** the lander is registered where it stands (`landRegister`) and joins the base if within
+  `BASE_R` (500 m): its supplies, berths and labs count. Crew aboard aren't counted as arrived yet (the headless flight
+  has no crew record).
+- **Rules:** repeats only, as dispatch: refused before the body's landing first (`selland`, `nyxland`), for a design
+  with no ascent procedure, and while a run to that base is queued. Pads, stacking days and price as any dispatch
+  (`baseRunQuote`; the Probe: 175M, launch in ~113 days of stacking). No contract pays it: it keeps a base alive.
+  A deviation hands over like any dispatch's.
+- **The button:** each base's line in the Fleet tab (*On the surface*) offers *Supply run with ⟨design in Assembly⟩*
+  or says why not (`baseRunLine`; one line and a `data-baserun` handler in `app/program-ui.js`, flagged for space/flow).
+  Queued runs are dispatch entries with `base` instead of `cid`; `dispatchTick` settles them with news.
+
+Test `econ-7` (2 checks, 9 s; an untargeted landing, mutation, ends 819 km away and fails).
+
+**Not yet:** crew rotation (crew arriving, the old crew flying home); a supply contract (Q9) that pays for this;
+supplies as cargo you choose (today: whatever supply parts the design carries).
+
+## v1.68 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
+
+Built to the plan in § "Vehicle parts" (Q34a), with Caio's call on the computer: **built into crew capsules, a part for
+probes**. Headless only: nobody has seen the parts drawn or the builder's power line yet (TESTING row 144).
+
+**Parts** (`sim/vessel.js`; palette *Power*):
+
+| Part | Kind | Mass | Power | Notes |
+|---|---|---|---|---|
+| Onboard computer `ocomp` | inline | 0.03 t | −50 W | offered from the onboard-computer era (`era: 2`); price 8, tier 2 |
+| Battery 1 kWh `batt` | inline | 0.02 t | stores 1 kWh | price 2 |
+| Solar cells (body) `bpanel` | surface, fixed | 0.01 t | 40 W in full sun × 0.32 | price 2, tier 1 |
+| Solar wing `wpanel` | surface, folds out (**P**) | 0.03 t | 300 W in full sun × 0.9 | tears off deployed above 1 kPa; price 5, tier 1 |
+
+A probe core has 0.5 kWh of its own; the antenna draws 5 W and the camera 10 W. Crew capsules run on their own fuel
+cells (their 10 days of life support) and draw nothing.
+
+**The model** (new `sim/power.js`, loaded before `ground.js` so it's inside the SIM block):
+- One store per vessel, `s.E`, up to its batteries (`powCap`). The loads (`powLoad`) draw on it, and the panels fill it
+  while the vessel is out of its body's shadow.
+- **The shadow** is a cylinder behind the body, since the sun is fixed and far (`SUN_DIR`).
+- **Panels in flight:**
+  - body cells give their average share whatever the attitude;
+  - a wing turns about its own arm, so it gives √(1 − (arm·sun)²) of its best.
+- **Stepping:**
+  - each physics step (`advPhys`), and rails steps up to 60 s, use the sun right now;
+  - longer rails steps use the orbit's average, with the shadow share taken from its elements (`eclFrac` with the
+    orbit's β).
+- **The builder's line** (`powerLine` in `app/editor.js`) appears only for designs with something electric. It shows a
+  low Tellus orbit's average against the load, and the battery against one shadow, for example
+  `Power +339 W / −55 W · shadow 16 min needs 15 Wh (battery 1500 Wh)`. It turns red and says "it runs flat" when
+  the panels can't keep up.
+- **Running flat never kills (Pillar 5):** the onboard computer goes off ("Power flat: the onboard computer is off,
+  analog autopilot only…") and comes back once the panels catch up ("Power back").
+- **Avionics** (`avOf` takes the lower of `s.av` and `avCap(s)`): from the onboard-computer era, the guidance
+  computer's modes need `hasComputer(s)`, meaning a crew capsule, or an `ocomp` with power. Sandbox, physics tests,
+  the tester's tools and procedures keep everything, as before.
+  - **Presets:** no preset flies a probe that needs the guidance modes. The robot's docking pilot (`PT.dockIn`) flies
+    in a test scene. So nothing needed the part added. **QA:** a robot career past year 7 that wants target or docking
+    modes on a probe now needs an `ocomp` on it.
+- **Era gate:** the builder hides a part with `era` until the program's `compEra()` reaches it (not with the tester's
+  tools, and not in the sandbox). It's the first era-gated part, and the gate is the general one Q10 can reuse.
+
+**Measured** (a probe: core, computer, battery, antenna, 1 t tank, Petrel, two wings):
+- **Low orbit** (r 1,384 km, β 0): 37.2% of the 42.7-minute orbit is in shadow (15.9 min). The panels give 540 W
+  peak and 339 W on average against 55 W of load, so one shadow needs 14.6 Wh of the 1.5 kWh on board.
+- **Integrated along one orbit** on rails in 20 s steps: +204 Wh, with 14.4 Wh drained in the shadow. One long rails
+  step gives +202 Wh, and the steady state says +202 Wh.
+- A wing deployed at 10 km and 300 m/s (14.2 kPa) tears off.
+
+**Tests:** `test.mjs` section `vehicle-2`, 5 checks: the budget by hand; one orbit, stepped and in one step, against
+the steady state; a wing in thick air; the computer (a probe with and without it, a crew capsule, running flat and
+coming back); a tape replays the wings.
+
+**Not yet:**
+- what a flat battery does to the antenna and camera, and to a satellite's service on the registry (space lane, Q27
+  and the power side of Q50; they read `powerBudget`, `hasComputer`, `s.E`/`s.pwrOut`);
+- an RTG;
+- a builder choice of the orbit for the budget (it always assumes low Tellus orbit, β 0);
+- the look of the parts (placeholders in `app/gl.js`, Q97);
+- battery charge carried across a flight's end (each flight starts full).
+
+## v1.73 — M0: presets for the first orbit missions, the Program screen's stray labels, and the palette v1.68 broke (2026-10-09, vehicle session, QUEUE Q74, Q77)
+
+**Q74, PLAYTEST #24 (P1): two presets.** No preset could fly *The beeper* or *Passenger: one orbit*, so a presets-only
+player stopped at the end of epoch 1. Both now use the Orbiter's launcher with the payload in the pod's place, plus a
+reaction wheel to steer it (the wheel is 0.12 t, the pod 0.84 t):
+- **Beeper:** cone, instrument package, wheel. It reaches orbit (periapsis 102 km) with 1,556 m/s to spare.
+- **Passenger Orbiter:** chute, biocapsule, wheel. It reaches orbit with 715 m/s spare, goes once round, deorbits,
+  and lands at 4.2 g with a ~256 K cabin.
+- **Rejected:** keeping the pod. With the biocapsule, the pod and a shield under a decoupler, the rocket didn't make
+  orbit. With the pod plus the package, only 319 m/s was left.
+- **Without the wheel:** the plain swap (the payload for the pod, no wheel) also flies, at 6.4 g, but it can only turn
+  while an engine burns.
+- `career.mjs`'s own `passOrbit` stack (biocapsule, pod, shield, no decoupler) would bury the shield under the tank in
+  real physics. It isn't touched here (QA's file).
+
+**Q77, PLAYTEST #27: "NaN%" on the Program screen.** `builder.js` `overlay()` now also returns on the Program screen
+(`atHQ`, where `S` is still the flown vessel), and it skips a load fraction that isn't finite.
+
+**The palette v1.68 broke.** Q34a's era-gate line in `palette()` ended with a `//` comment that swallowed the next
+statement (`const b=document.createElement('button')`). So from v1.68 to here **the construction screen listed no
+parts**. The headless suite only checks that the page parses; the robot's `m1` run caught it at once. Fixed.
+Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything that touches a screen, as the QUEUE flag says.
+
+**Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
+no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
+under 8 g and 330 K.

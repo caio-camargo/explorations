@@ -16,11 +16,22 @@
 const PRICE={cone:1,chute:2,pod:12,t1:1.5,t2:2.5,t4:4,t8:7,shield:3,dec:1,istage:1.5,adapt:3,rdec:1,fins:1.5,wren:5,sparrow:4,petrel:10,
   kestrel:12,condor:25,sci:6,bio:10,ballast:0.5,cam:8,ant:3,T16:10,T32:18,dec25:3,fins25:4,cone25:3,albatross:40};
 PRICE.crew=30;PRICE.les=6;   // bodies session: crew capsule, escape tower
-PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
+PRICE.rfin=0.4;PRICE.rwheel=5;PRICE.spin=1;PRICE.cfin=1.2;PRICE.cfins=4.5;PRICE.cfins25=11;PRICE.rcs=1.5;PRICE.gas=0.8;PRICE.port=3;PRICE.claw=4;PRICE.core=6;PRICE.bay=6;PRICE.rport=4;PRICE.hab=25;PRICE.lab=30;PRICE.arm=12;PRICE.beacon=2;PRICE.leg=1.5;PRICE.ocomp=8;PRICE.batt=2;PRICE.bpanel=2;PRICE.wpanel=5;   // sats session: an RCS quad, a gas bottle   // builder session: one radial fin (a ring of four costs 1.5)
 const OPS_FIX=3,OPS_FRAC=0.1,OVERHEAD=0,OVERHEAD_CAP=0;   // per launch: range, tracking, crews (M + share of the vehicle); per day: running the program (M,
 // + per unit of capacity). Zero since v1.41 (Caio: idle time roughly neutral, no upkeep); was 0.06 + 0.015·capacity
 const FUEL_PRICE=0.2,REFURB=0.65,TOUCH_OK=6,FUNDS0=60,FUNDS_FLOOR=25,DAMAGE={city:40,near:8};
-const partPrice=p=>(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
+// rover parts (QUEUE Q10): prices (M; wheels each, hub motor included) and the first that opens each. The yard is free:
+// design and test-drive anything at home; a rocket can't carry a rover with a part that isn't open yet (rvLaunchWhy).
+const RV_PRICE={ch:{s:4,m:9,l:20},wh:{s:.5,m:1.5,l:3},it:{bat:1,seat:3,cam:2,ant:3,arm:5,spec:6,seis:4,drill:8}};
+const RV_GATE={ch:{m:'farside',l:'selland'},wh:{m:'farside',l:'selland'},it:{ant:'beeper',seat:'orbiter',arm:'farside',spec:'farside',seis:'farside',drill:'selland'}};
+function rvPartOpen(kind,k){const id=(RV_GATE[kind]||{})[k];if(!id||PROG.done[id])return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,id}}
+const rvParts=d=>[['ch',d.ch||'m',RV_CH[d.ch||'m'].name],['wh',d.wh||'m',RV_WH[d.wh||'m'].name],...(d.slots||[]).filter(k=>k&&RV_IT[k]).map(k=>['it',k,RV_IT[k].name])];
+function rvPrice(d){if(!d)return 0;const n=d.n===6?6:4;return RV_PRICE.ch[d.ch||'m']+n*RV_PRICE.wh[d.wh||'m']+(d.slots||[]).reduce((a,k)=>a+(k&&RV_PRICE.it[k]||0),0)}
+// what a rover design still lacks to fly ('' if nothing): the parts not open yet
+function rvLocked(d){const L=[];for(const[kind,k,name]of rvParts(d)){const o=rvPartOpen(kind,k);if(!o.ok&&!L.some(x=>x.k===k&&x.kind===kind))L.push({kind,k,name,why:o.why})}return L}
+function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
+  if(L.length)return`The rover ${p.dn.rvd.name||''} can't fly yet: ${L.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}`.replace('  ',' ')}return''}
+const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
 // what a vessel costs to fly (parts + fuel), and what of it comes back if every part listed lands intact
 // Refurbishment is pegged to what each part went through: its peak load against its true rating (fatigue above 50 %),
 // its peak skin temperature against its limit (above 50 %), and the touchdown speed (above 6 m/s). 1 = good as new.
@@ -128,8 +139,11 @@ const nearSide=(b,r)=>dot(norm(r),norm(mul(bodyRel(b,simT)[0],-1)))>0;   // a po
 // the capital: the home power's biggest city; does a satellite at r (absolute frame, program time T) sit 15° up in its sky?
 const capital=()=>CITIES.filter(c=>c.power&&c.power.i===HOME).sort((a,b)=>b.pop-a.pop)[0]||CITIES[0];
 function capSees(r,T,minEl=15){const c=capital(),pf=rotY(r,-absTh(T)),d=sub(pf,mul(c.u,TELLUS.R));return dot(norm(d),c.u)>=Math.sin(minEl*Math.PI/180)}
-const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
-  return el.e<0.02&&inc<3&&Math.abs(el.period/DAY_S-1)<0.01&&capSees(satAt(q,T)[0],T)};
+// TV pays while the capital sees it 15° up all day round (six times through the day); its tilt may wander as long as that
+// holds (space, MIDGAME § Satellites: station-keeping holds the orbit's size and phase, not its tilt). The mission that
+// sets it up still asks for under 2° (outThere).
+const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu);
+  return el.e<0.02&&Math.abs(el.period/DAY_S-1)<0.01&&[0,1,2,3,4,5].every(k=>{const t=T+k*DAY_S/6;return capSees(satAt(q,t)[0],t)})};
 // navigation, Transit-style (a fix from one satellite's pass, as in the 1960s): the share of (place, moment) over the past
 // day from which a satellite with an antenna will be at least 10° up within NAV_WAIT. 64 places spread evenly over the
 // globe (a Fibonacci lattice), moments every 10 min. (Three in view at once almost everywhere would take ~12 satellites.)
@@ -187,7 +201,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -235,7 +249,8 @@ function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.b
 const STAGE_PAY={bound:0.2,arrive:0.2};
 for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Selene'],['selsample','Selene'],['crewaround','Selene',1],['crewland','Selene',1],
   ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
-const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
+// only a mission open when this flight launched (R.open0; PLAYTEST #28): one that opens mid-flight wasn't flown for
+const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!R.open0||R.open0.includes(M.id))&&(!M.crew||R.crewed))||null;
 const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
 function stagePay(M,k,R){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);debPaid(R,'stage',M.name,x);
   HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
@@ -270,17 +285,17 @@ function siteAccess(t){if(!t)return{ok:true,why:'',fee:0};
   const r=relOf(HOME,p);if(r<LEASE_REL)return{ok:false,why:`${P.name} won't lease ${t.name} to us: relations are too poor`,fee:0};
   return{ok:true,why:'',fee:Math.round(LEASE*(1-0.5*r)*10)/10,how:`leased from ${P.root}`}}
 // a failed attempt at the next step, mostly covered (W12, NOTES § "Epoch 1–2 pacing"): a flight on the priciest rocket
-// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment) gets COVER of its loss back
+// yet that comes to nothing (no first, no contract, under a quarter back as refurbishment, not in orbit) gets COVER of its loss back
 // from the sponsor, once per epoch (the newest epoch with firsts open: the step a new rocket goes for). Kept in PROG.recs so a new game resets it.
 const COVER=0.75;
 function coverLoss(s,R){const rc=PROG.recs||(PROG.recs={}),top=R.cost>(rc.maxCost||0);rc.maxCost=Math.max(rc.maxCost||0,R.cost);
   const lost=R.cost-(R.refund||0),first=Object.values(PROG.done).some(d=>d.flight===PROG.flights&&!d.test);
-  if(!top||first||R.cdone.length||lost<0.75*R.cost)return 0;
+  if(!top||first||R.cdone.length||lost<0.75*R.cost||R.orbit)return 0;   // a rocket that reached orbit worked: no cover (PLAYTEST #33)
   const open=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M));if(!open.length)return 0;
   const ep=Math.max(...open.map(M=>M.ep||1)),cv=rc.cover||(rc.cover={});if(cv[ep])return 0;
   const x=COVER*lost,k=own().kind;cv[ep]={flight:PROG.flights,day:PROG.day,amt:x};PROG.funds+=x;R.cover=x;
   HOOK.news(`${k==='company'?'Investors':k==='consortium'?'The member states':POWERS[HOME].name} cover ${fmtM(x)} of the failed attempt: a new rocket is allowed one (once per epoch)`,'ok');return x}
-function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
+function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;if(R.far>0)logNote(s,'apex',R.far);if(s.alive&&R.qMax>1000)logNote(s,'maxq',R.qMax);if(R.newLog.length)HOOK.logged(R.newLog);R.ended=true;PROG.flights++;satRegister(s,R);junkRegister(R);dockEnd(s);fleetEnd(R);rvEnd();advanceDays(simT/DAY_S);
   if(R.sfRec&&R.recSci)for(const k in R.sfRec)R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);   // the recorder counts once the package is back (terrain session)
   const yS=khYield();for(const k in R.sf){const c=certOf(k);PROG.cert[k]=1-(1-c)*(1-0.5*yS*Math.min(1,R.sf[k]/0.4))}
   khLearn(R)
@@ -350,7 +365,7 @@ const IND_TH=[0,0.45,0.8],IMPORT_K=1.5,GREY_K=3;
 const indOf=i=>{const F=flav(i);return F.grow?Math.min(0.9,F.ind+PROG.day/1500):F.ind};
 // tier 1 for steerable fins (d.ctl), reaction wheels and spin motors: they carry actuators (control session)
 function tierOf(k){const d=PARTS[k];if(!d)return 0;
-  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg')return 1;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
+  if(d.kind==='engine')return d.thrust>=300?2:1;if(d.ctl||d.kind==='rwheel'||d.kind==='spin'||d.kind==='leg'||d.kind==='solar')return 1;if(d.kind==='comp')return 2;if(['pod','bio','sci','cam','ant'].includes(d.kind))return 2;return d.sc?1:0}
 function sourceOf(k){const t=tierOf(k),L=prodLine(k);if(L)return{how:'line',k:prodLineK(L),t,line:L};if(indOf(HOME)>=IND_TH[t])return{how:'home',k:1,t};
   const sup=POWERS.filter(p=>p.i!==HOME&&indOf(p.i)>=IND_TH[t]&&!sanctioned(p.i)&&relOf(HOME,p.i)>-0.2).sort((a,b)=>indOf(b.i)*b.econ-indOf(a.i)*a.econ)[0];
   return sup?{how:'import',k:IMPORT_K,from:sup.i,t}:{how:'grey',k:GREY_K,t}}
@@ -579,13 +594,44 @@ function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,
   return{stack:JSON.parse(JSON.stringify(D.stack)),shape:shapeOf(on,false),vst:vstOf(v),r:rr,v:vv,epoch:T,qo:qmul(qconj(orbQ(rr,vv)),q),cm:(v.cm||[0,0,0]).slice(),name:`${designName(D.stack)||'Dispatch'} ${D.id}`,attached:[]}}
 function loseDeviation(id,why){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status==='deviated');if(!D)return false;D.status='failed';D.why=why||D.dev.why;
   HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');HOOK.save();return true}
+// ---- dispatch to a base (QUEUE Q61): a supply run. The design's own ascent procedure, then a transfer, a low capture and
+// a landing at the base's beacon (the bodies session's landAt: within ~5 m); what lands is registered there and joins the
+// base (within BASE_R) with its supplies, berths and crew. Repeats only: the body was landed on by hand first (its
+// landing first) and the base exists. Flown for real by procFly, so the design must have the Δv; no contract pays it.
+const BASE_FIRST={Selene:'selland',Nyx:'nyxland'},BASE_ERA=COMP_ERAS.findIndex(e=>e.id==='board');
+function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!asc||asc.kind!=='orbit'||!asc.pitch)return null;
+  const B=BODIES.find(b=>b.name===base.bodyName);if(!B||B===TELLUS)return null;const low=B.name==='Nyx'?{pass:15e3,ap:25e3,pe:10e3}:{pass:10e3,ap:20e3,pe:8e3};
+  return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
+function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
+  if(compEra()<BASE_ERA)return{ok:false,why:`needs ${COMP_ERAS[BASE_ERA].name.toLowerCase()}: uncrewed runs to the moons arrive with them`};   // MIDGAME's automation ladder (D7)
+  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
+  if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
+  if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
+  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost,prep,pad,start,launch:start+prep}}
+function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
+  PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
+  HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days`,'');HOOK.save();return{...q,ok:true}}
+// the base's line in the Fleet tab: a supply run with the design in Assembly, or why not, or the one on its way
+function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.base===base.id);
+  if(D)return`<div class="sub dim">Supply run: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d</div>`;
+  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design in Assembly'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
+// the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
+function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
+  const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
+  const f=procFly(D.stack,proc,null,{name:`${designName(D.stack)||'Supply run'} ${D.id}`});const s=f.s;
+  if(!s||!s.alive)return{ok:false,why:f.why||'it was lost'};if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
+  if(!s.landed||s.body!==B||!s.pf)return{ok:false,why:'it did not land'};const miss=pfDist(B,s.pf,base.pf);
+  s.rec.day0=PROG.day;const q=landRegister(s,s.rec);return{ok:true,landed:q,miss,joined:miss<=BASE_R,dv:f.dv}}
 function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)loseDeviation(D.id,`${D.dev.why}, and nobody was at the console`);
   for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
-  const c=(PROG.active||[]).find(x=>x.id===D.cid);if(!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
+  const c=D.base!=null?null:(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const site=homeSites()[0]||null;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
   const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
-  const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=run?run(D,v,c):dispatchRoll(D,v,c);
+  const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
+  if(D.base!=null&&!res.deviation){D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';const sb=(PROG.sats||[]).find(q=>q.id===D.base);   // a supply run: no contract to settle
+    HOOK.news(res.ok?`${D.title}: landed ${res.miss<1e3?`${res.miss.toFixed(0)} m`:`${(res.miss/1e3).toFixed(1)} km`} from the beacon${res.joined?`, now part of ${sb?sb.name:'the base'}`:', too far to join the base'}`:`${D.title} failed: ${res.why}`,res.ok&&res.joined?'ok':'bad');HOOK.save();continue}
   if(res.deviation){D.status='deviated';D.dev={...res.deviation,at:PROG.day};HOOK.news(`⚠ A dispatched flight needs you: ${D.title}. ${res.deviation.why}`,'bad');HOOK.save();continue}
   D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
   const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});

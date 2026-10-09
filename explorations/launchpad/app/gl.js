@@ -1014,6 +1014,13 @@ function partBody(out,p){
     case'petrel':engine(out,p,[[.6,0,C.K],[.15,.7,C.D],[.3,.8,C.G],[.625,.9,C.G],[.625,1,C.G]],o);break;
     case'kestrel':engine(out,p,[[.55,0,C.K],[.22,.75,C.D],[.4,.9,C.G],[.625,1.15,C.G],[.625,1.3,C.G]],o);break;
     case'condor':engine(out,p,[[.62,0,C.K],[.28,1.1,C.D],[.45,1.3,C.G],[.625,1.65,C.G],[.625,1.9,C.G]],o);break;
+    // solar cells and wing (vehicle session, Q34a; placeholders until the parts & pad beat draws them): cells, a dark plate on
+    // the skin; the wing folded, a box on its arm; deployed, an arm out and a flat panel span long
+    case'bpanel':rbox(out,[x+Math.cos(p.phi||0)*.02,y+h/2,z+Math.sin(p.phi||0)*.02],.015,h/2,.3,[.12,.16,.32,1],p.phi||0);break;
+    case'wpanel':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)];
+      if(p.dep){tube(out,[x,y+h/2,z],[x+n[0]*.6,y+h/2,z+n[2]*.6],.03,C.ST,6);const L=d.span;
+        rbox(out,[x+n[0]*(.6+L/2),y+h/2,z+n[2]*(.6+L/2)],L/2,h/2,.01,[.12,.16,.32,1],a)}
+      else rbox(out,[x+n[0]*.08,y+h/2,z+n[2]*.08],.06,h/2,.2,C.ST,a)}break;
     // landing leg (vehicle session, Q31; a placeholder until the parts & pad beat draws it): folded, a strut along the skin;
     // deployed, a main strut and a brace out to the foot, and a footpad
     case'leg':{const a=p.phi||0,n=[Math.cos(a),0,Math.sin(a)];
