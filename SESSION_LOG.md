@@ -3799,3 +3799,32 @@ Docs only. GROUND.md 0.1.3 § "G3: the port plan", for the session with the GPU 
 ### Next steps
 - [ ] Orchestrator: G3.0 is headless and could go before the gate (your call); Q57 now gates G3.4
 - [ ] GPU session, when Q91 opens: start at G3.0
+
+## 2026-10-08 — Launchpad v1.60: station-keeping, a satellite's life is its propellant (QUEUE Q50; space session)
+
+### Summary
+- W2 built. A registered satellite holds its orbit by spending its own propellant against the moons' tides, at a rate
+  measured once for its orbit (`slotRate`: 5 days of `pertAcc`, plane + size + shape drift). It pays from its own tanks
+  (`shape[].res`, `q.mass`). Dry, it leaves its rails and the tide steps it between flights (`orbTick`, which replaces
+  `moonOrbTick`; `moonOrbStep` now covers Tellus orbits too). Nothing is destroyed for running out.
+- Measured (`study_slot.mjs`): ~0.03 m/s a day low (ignored under `SK_MIN` = 0.1), 0.3 at 3,000 km, 0.37 stationary
+  (~150 m/s a year). A dry TV satellite over the capital goes grey on day 87.
+- Moon orbiters with propellant now hold too: the 2,000 km polar Selene orbit that fell in by day 41 holds at 3.5 m/s a day.
+- Program screen: *holds its orbit N more days (k m/s a day)* or *adrift since day N*.
+- Negative result: "chase the Kepler rail" overestimated the cost 10× (it paid for the wobble within each orbit).
+
+### Verification
+- New test `space-1` (4 checks, 5 mutations caught); test 40's tide check uses dry relays. Full suite 466 pass / 0 fail
+  (4 processes) after merging `main`; `career.mjs` output and time unchanged. Not browser-checked (one line of UI text).
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `sim/program.js` (one call), `app/program-ui.js` (`slotLine`), `test.mjs`,
+  new `study_slot.mjs`, `NOTES.md` § v1.60 (+ a note on the Q34a overlap), `TESTING.md` row 134, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Human: TESTING 134 (is the lifetime a real design choice?)
+- [ ] Caio (default holds if silent): W2 read physically, so only slot-bound jobs (TV) stop when a satellite drifts
+- [ ] Proposed in QUEUE: reboost/servicing contracts (economy), refuelling by docking (space), `q.off` for Q34a (vehicle)
+- [ ] Space: next ready item, Q25 orbital decay (low orbits' lifetime, now that they skip station-keeping)
+
