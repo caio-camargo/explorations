@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
+## v1.86 — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
 
 A dispatched flight (`dispatchRun`, flown headless by `procFly`) used to leave nothing: `procFly` restores the noted
 pieces so dry runs stay clean. Now `procFly(…, {keepJunk: true})` hands back what its own flight dropped (`out.junk`,
