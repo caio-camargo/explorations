@@ -141,7 +141,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q137 | 📝 **Crew rotation by dispatch**: a crewed supply run lands crew at a base and brings the old crew home (needs a crew record in headless flights; D7's ladder: the first resupply is crewed) — NOTES v1.69 | M3 | M | 📝 | ready (plan only) |
 | Q138 | 📝 **Rivals as programs**: budget → capacity → progress per capstone (replacing seeded schedules late); scarce places held by building first — [`LATE_GAME.md`](LATE_GAME.md) 1.4.0 | M4 | M | 📝 | ready (plan only) |
 | Q113 | PLAYTEST #29 (P3): weighing Nyx and the flyby pay on one flight: propose a rule (a design call; W11's rule may already cover it) | M2 | S | 📝 | ready |
-| Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ready |
+| Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | → economy 2026-10-09 (with Q118's finding) |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ready |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ready (plan only) |
