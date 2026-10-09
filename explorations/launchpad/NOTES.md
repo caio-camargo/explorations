@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.33 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.34 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2026,6 +2026,51 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: rivals as programs, scarce places, the world's mood, commercial rivals (2026-10-09, economy session, QUEUE Q138; nothing built)
+
+LATE_GAME § "Rivals in the late game" (round 7, approved as proposed). **Today:** rivals are seeded schedules
+(`raceSchedule`: a day per race first per power, the earliest wins), with personalities since v1.89.2 (frugal powers
+don't race; rising ones copy then catch up; the open superpower announces, the closed one surprises).
+
+**1. Rivals as programs** (coarse, never flown):
+- Each other power keeps `{budget, capacity: {pads, depots, outposts, stations}, progress: {capstone: 0–1}}`, stepped
+  in `worldTick`: budget = its economy × its archetype's money (tax, patronage, commodity, military, as `moneyK`) ×
+  the world's mood; it spends on capacity first, then on progress toward the capstones its priorities favour
+  (prestige → crewed firsts; science → probes; commerce → stations, depots; security → its own constellations), sped by
+  its tech and its computing era (v1.38's lag per power).
+- **The early race keeps its schedules** (they work and are tested); programs take over for **epoch-6 capstones and
+  after** (LATE_GAME § "The arc after Selene"): a rival can overtake you, stall in a bust (commodity prices), or lose a
+  crew (a news line and a set-back).
+- **What you do moves it:** propellant sold to it speeds its progress; a sanction stalls it; a race won costs it opinion
+  and budget at home.
+- Its stations and outposts become registry objects on rails (the space lane), so you can meet one, rescue its crew,
+  or sell it propellant; on the network screen they're drawn in its colour (`netModel` gains `rivals`).
+
+**2. Scarce places: the race gets a map.** A registry of contested places (`PROG.claims`): stationary-orbit slots
+(a fixed number around the ring), Selene's polar ice craters (a handful, from the ground model), Selene's L4 and L5,
+Enyo's caps, prime landing sites. **Whoever builds there first holds it** (a station, base or satellite registered
+within its radius); a holder's neighbours pay a lease or route round it (v1.56's leases). Rivals claim by progress.
+
+**3. The world's mood has eras**, driven by tensions and the date (`worldMood()`, not scripted): **race** (high
+tension, early: firsts pay ×2, secrecy up), **détente** (tension falling: joint missions offered, guest astronauts),
+**consortium** (many friendly pairs: shared stations, big joint projects), **commercial** (late, private companies:
+undercut prices), **a new race** (tension back up). Each era shifts pay multipliers, offer mixes and the news tone.
+
+**4. No combat, ever.** Conflict stays below war: sanctions, anti-satellite tests that foul a band (the debris lane),
+poaching people (the roster, level 3), claim disputes, cutting a supplier, propaganda.
+
+**5. Commercial rivals** in the commercial era: private companies with the coarse model above, **undercutting launch
+prices** (commercial contracts' pay falls by their share of the market, floored by v1.77's pay floor) and buying
+from you (propellant, relays, later templates).
+
+**Questions for Caio** (numbered, with defaults): (1) programs **replace schedules only from epoch 6** (default) or
+the whole race; (2) scarce places **held by building first** (default, the Artemis-Accords way) or a lottery of
+claims; (3) mood eras **from tension and the date** (default) or a fixed historical sequence; (4) commercial rivals
+**undercut contract pay** (default) or only compete for firsts.
+
+**Slices (⚙, M4):** the coarse rival program state and its tick (no effect yet; a debug view) → capstone progress
+and news → claims registry for stationary slots → mood eras → commercial rivals.
 
 ## Plan: money buys capacity (2026-10-09, economy session, QUEUE Q123; nothing built)
 
