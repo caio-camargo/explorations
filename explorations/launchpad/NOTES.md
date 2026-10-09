@@ -6847,21 +6847,29 @@ at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap her
 - **Running flat never kills (Pillar 5):** the computer drops to the analog autopilot, the antenna and camera stop,
   and on the registry the service **pauses** (the W2/Q50 pattern) until the budget is positive again. This differs
   from rovers, which freeze to death at night; leave them alone, they're the space lane's call.
-- **The computer and avionics (decision, default yes):** from the onboard-computer era on, the **Guidance computer**
-  generation (`AV[2]`) needs an `ocomp` on board and powered. Without one, a vessel flies the analog autopilot.
+- **The computer and avionics (Caio decided 2026-10-08: built into crew capsules, a part for probes):** from the
+  onboard-computer era on, the **Guidance computer** generation (`AV[2]`) needs a computer on board.
+  - **Crew capsules have one built in** (parts with `crew`, like Apollo's command module and lunar module). No mass
+    change: it's in the capsule's mass.
+  - **Everything else needs an `ocomp`, powered:** probe cores, biocapsules, instrument packages. Without one, a
+    vessel flies the analog autopilot.
+  - It's a pilot aid, not autonomy: the player flies either way; the computer decides which SAS hold modes exist.
   - Before that era the part isn't offered, and nothing changes.
   - Sandbox, physics tests and procedures (`s.proc`) keep the best avionics, as now (`avOf`).
-  - **What it breaks:** presets and robot designs flown after year 7 lose the target and docking modes unless they get
-    the part. Update the presets in the same commit, and tell QA (`career.mjs`).
-  - It gives the space lane a hook, `hasComputer(s)`, for onboard autonomy out of contact (§ "Compute", era 3).
-    Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+  - **What it breaks:** uncrewed presets and the robot's probe designs flown after year 7 lose the target and docking
+    modes unless they get the part. Update those presets in the same commit, and tell QA (`career.mjs`). Crewed presets
+    are unaffected.
+  - It gives the space lane a hook, `hasComputer(s)` (a crew capsule or a powered `ocomp`), for onboard autonomy out
+    of contact (§ "Compute", era 3). Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+  - Rejected: a part for everyone (crewed ships historically had theirs built in, and every crewed preset would
+    break); built into every command part (the part would only matter later, for autonomy).
 - **Checks:**
   1. The steady-state budget for a LEO satellite with a wing, against a hand calculation;
   2. In flight, the battery drains through the shadow and refills in sun, and over one orbit the steady state and the
      integration agree to within 5%;
   3. A deployed wing snaps at max-q, and one deployed after fairing separation survives;
   4. Running flat drops avionics to analog and pauses a satellite's service; recharging restores both;
-  5. Era ≥ onboard computers, with no `ocomp` → no docking mode.
+  5. Era ≥ onboard computers: a probe with no `ocomp` has no docking mode; a crew capsule without one has it.
 
 *Q34b — radiators and the steady-state thermal solve (M2–M3, with the economy's orbital datacenter).*
 - `rad`: a deployable surface panel. Its mass per m² and emissivity give εσAT⁴. Like the wing, it snaps in air.
