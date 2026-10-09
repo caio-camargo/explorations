@@ -6905,6 +6905,85 @@ write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (th
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
 
+## v1.62 — Enyo's ground on the CPU, the first planet (2026-10-08, world session, GROUND.md G7)
+
+Enyo (Mars, SYSTEM.md § Enyo), built and measured headless like Selene in v1.58, at Caio's request. **Not live:** no
+Enyo exists in the body tree yet (space lane, Q87), so the recipe hangs on a stub in `sim/ground.js` (`GROUND_STUBS.Enyo`:
+R 678 km, g 3.72, SYSTEM.md's numbers). When the space lane adds the body, it takes `ground: ENYO_GROUND`.
+
+**Shared first.** The crater bands now take a body's radius, crater density `c`, a hash salt (so bodies don't share
+craters), an erosion exponent (freshness = hash^frPow) and `thin(centre)`, the chance a crater is missing there. Selene's
+recipe runs through the same code **bit-identically** (3,000 heights before and after, 0 differ). A recipe can now carry
+its own surfaces: `surfaceAt` asks `b.ground.surf(pf)` off Tellus, and falls back to `SURF_MOON`.
+
+**Enyo's map**, in order (heights above R, the datum):
+1. southern highlands, +1.2 ± 1.2 km, with old, worn craters: c 0.02, Mars's highlands, a third of the Moon's. Simple
+   turns complex at 7.8 km (Mars: ~7 km).
+2. Hellas, 520 km.
+3. The northern lowlands flooded to −3.2 km over a warped dichotomy line.
+4. The Tharsis bulge (+4.5 km), with:
+   - the giant shield: 340 km across, 14 km above its plains on a 3 km basal scarp, a summit caldera;
+   - three shields in a line, and Elysium.
+5. The canyon: a great circle 1,400 km long (a third of the way round) at 12°S, up to 5.5 km deep, its walls terraced in
+   550 m layers (the layered sediment). It cuts the highlands, then opens into the lowlands, as Valles Marineris does
+   into Chryse.
+6. The young craters.
+7. The polar caps: a 2.6 km ice dome in the north, a smaller one in the south.
+8. Dune fields (400 m apart, up to 25 m high, a steep lee) in an erg round the north cap, on Hellas's floor and in the
+   canyon. They're procedural, aligned to one fixed 3D direction so they have no longitude seam.
+
+Surfaces by unit:
+
+| Unit | Surface | μ | Notes |
+|---|---|---|---|
+| polar ice | water ice | 0.25 | |
+| dunes | dune sand | 0.5 | soft |
+| volcanic | basalt | 0.7 | |
+| canyon | layered sediment | 0.6 | |
+| lowland plains | dusty plains | 0.6 | |
+| highlands | dusty regolith | 0.6 | |
+
+**Measured** (`node study_ground.mjs enyo`, ~5 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 1.2 s (4.2 km a texel); one height 3 µs |
+| Relief | −5.3…+12.3 km (recipe `top` 15 km) |
+| Units | highlands 51 %, lowland plains 37 %, volcanic 6.7 %, canyon 1.9 %, polar ice 1.7 %, dunes 1.1 % |
+| Craters ≥ 1 km per 1,000 km² | highlands 19.6 (Mars: ~10–20), lowlands 5.5, volcanic 1.1, ice 0.9 |
+| Slopes, highlands | median 0.9°, p99 29°, past TOPPLE 2.0 % |
+| Slopes, lowlands | median 0.2°, 95 % under 5° (the landing ground) |
+| Slopes, canyon | p90 25°, past TOPPLE 11 % (terraced walls) |
+| Slopes, polar ice | p99 9.6° |
+| Seams | steepest 0.5 m step on cube edges 35° (anywhere: 40°) |
+
+**Negative results:**
+- **East is decreasing longitude** (NOTES § v1.25 warned). The canyon set off "east" along `cross(Y, start)` and ran into
+  Tharsis, which filled half of it in. It now heads away from Tharsis.
+- **A canyon along the dichotomy line is half a canyon.** At 6°S the warped lowland edge reached the equator, and for
+  ~700 km one wall was lowland plain. The canyon is now at 12°S and the warp is gentler. The test measures depth below the
+  higher wall, since at its mouth one wall *is* lowland, as on Mars.
+- **One unit can hide another.** The canyon's floor is a dune field, and dunes were classified first, so the canyon came
+  out as 0 % of the globe. It has its own channel now.
+
+**Tests:** `ground-3`, 7 checks:
+- not live, baked lazily;
+- bounds and counts (c scales λ);
+- the dichotomy;
+- the giant shield;
+- the canyon (3+ km below its higher wall for 1,220 km);
+- the caps and surfaces (Selene still lands on regolith);
+- no seams.
+
+Mutations caught: no surfaces, the canyon pointed back into Tharsis, no shield. Full suite 478 pass, 0 fail.
+
+**Not yet:**
+- Enyo in the body tree (space);
+- its look (Q81, after Caio's picks from Q71); the shader (G3);
+- dust storms (weather, not ground);
+- the caps' spiral troughs, and seasonal CO₂ frost (M5 seasons).
+- **Next planets, in GROUND.md's order:** Hesper, Astraea, Hyperion's moons, Erebus.
+
 ## v1.61 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
 
 Built to the plan above (§ "Vehicle parts", Q31). Headless only; nobody has seen it drawn yet (TESTING row 135).
