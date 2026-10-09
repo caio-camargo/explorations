@@ -46,7 +46,11 @@ function sndOthers(src){let P=0,px=0,pl=0;
   return P>0?{g:Math.min(1,Math.sqrt(P)),pan:px/P,lp:pl/P}:{g:0,pan:0,lp:500}}
 // ==== SOUND MIX END
 const AUD={VOICES:true,Q67:true,ctx:null,on:true,vol:0.7,L:null,ev:{sep:0,ign:0,boom:0,chute:0,touch:0},last:null,ship:null,nOn:0,eng:new Set(),landed:false,chA:0,nBoom:0};
-try{AUD.on=localStorage.getItem('launchpad-sound')!=='0'}catch(e){}
+try{AUD.on=localStorage.getItem('launchpad-sound')!=='0';const v=parseFloat(localStorage.getItem('launchpad-volume'));if(v>=0&&v<=1)AUD.vol=v}catch(e){}
+// the volume slider (QUEUE Q35) in the settings overlay's Sound row (flow's #setSound): 0–100 %, kept between visits
+function sndSettings(el){if(!el)return;el.innerHTML=`<label>volume <input type="range" id="setVol" min="0" max="100" step="5" value="${Math.round(AUD.vol*100)}"> <span id="setVolN">${Math.round(AUD.vol*100)} %</span></label>`;
+  el.querySelector('#setVol').addEventListener('input',e=>{AUD.vol=e.target.value/100;el.querySelector('#setVolN').textContent=e.target.value+' %';
+    try{localStorage.setItem('launchpad-volume',String(AUD.vol))}catch(_){}sndWake()})}
 function sndNoise(c,kind){const n=c.sampleRate*3,b=c.createBuffer(1,n,c.sampleRate),d=b.getChannelData(0);let y=0,env=0;
   for(let i=0;i<n;i++){const w=Math.random()*2-1;
     if(kind==='brown'){y=(y+0.02*w)/1.02;d[i]=y*3.5}

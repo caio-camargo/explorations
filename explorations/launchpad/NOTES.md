@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1069,7 +1069,22 @@ visible change), then Steppe.
   a ±6 % panel-to-panel shade, dark seams every 1.3 m and every eighth of the way round, rougher and not metallic; bells
   olive-tinted. `refView(114)` Cape, `(115)` Steppe.
 - test.mjs `aerofx-3` (hardware schools): 69 % of closed superpowers draw Steppe (weight 0.7), open superpowers never.
-- Next: step 4 (the interstage cover: skirt or lattice), 5 (roundel), then 6–7.
+- **Step 4 built:** the interstage cover. A decoupler with an engine sitting right on top of it draws a cover round that
+  engine at the stack radius, with the decoupler's part index and school, so it falls away with the lower stage and the
+  upper engine fires bare (checked in `refView(75)`, staging). Cape: a closed black skirt with 24 ribs. Steppe: two rings
+  and 24 crossing tubes, the bell visible through them. **This changes Cape's look** (today's Orbiter on the pad showed
+  its Petrel; now a ribbed skirt covers it, as POWERS.md's Cape brief has it). `INTERSTAGE_FX = false` brings back the bare
+  engine. Not drawn: canted engines.
+- **Step 5 built:** the roundel, a disc decal drawn in `MESH_FS` (no texture) on the side of an upper-stage tank (1.5–3
+  tank-radii tall, between Cape's two side stripes): Cape red and white stripes with a blue canton of small stars,
+  Steppe one gold star on red (`sdStar5`), both with a white rim. It is laid on after the school's paint (the first
+  try put it before, and Steppe's enamel pass repainted the gold star green). Views 114/115 now face it.
+- **Livery built:** the maker's `hue` (POWERS, 10° steps) rides in the vertex kind too (`k + 32·school + 256·hue`; the
+  `% 32` decoders still work). Cape's roll band is the hue at the old near-black brightness (`hsv(h, .55, .16)`, the same
+  luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
+  the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
+  byte-identical** from here on: that's the livery POWERS.md asks for.
+- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -7491,6 +7506,10 @@ drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
   direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
   explosions have one). `AUD.Q67 = false` turns both off.
 - test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
+### The volume slider (2026-10-09, effects session for the sound beat, QUEUE Q35)
+In the Settings overlay's Sound row (flow's `#setSound`): 0–100 % in steps of 5, `AUD.vol` live, kept in
+`localStorage['launchpad-volume']` and read at start. `renderSettings` calls `sndSettings(el)` (one additive line in flow's
+`app/settings.js`). F4 still mutes. Checked in the page (40 % → `AUD.vol` 0.4, saved) and the robot's `m1` route passes.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
@@ -8308,6 +8327,30 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## v1.81 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
+
+MIDGAME.md § Satellites (approved): lifetime is a design choice; **replacement is for upgrades**; servicing is special,
+for valuable assets. Built in `sim/program.js` and `sim/contracts.js`:
+- **A satellite keeps its era.** `satEra(q)` stamps the computing era at its first day up (`q.era`; satellites from
+  older saves get today's). **What it earns drops for each era it falls behind**: `satQual(q)` = 1 / (1 + 0.35 × eras
+  behind): 74 % one behind, 59 % two. Applied to TV's daily pay (`utilTick`) and imagery sales (`satTick`, the space
+  lane's line, one factor). When a new era arrives, each satellite that earns gets one news line: "*N* generations
+  behind, earns *x* %. A new one would earn it all, or service it" (`obsTick`).
+- **Servicing contracts** (`CT.service`, government or commercial): offered for **one of ours that's valuable and
+  behind**: TV in the capital's sky, or an imager with 30 % contact or more, at least an era behind, not already on
+  the board (`serviceTarget`). Pay 96M per era behind (before multipliers). **A flight that docks with it** (it's in
+  `s.att`) completes it, and the satellite is brought up to date (`after`: `q.era` = now). `contractEval` now calls an
+  optional `CT[type].after(c, s)` on completion.
+
+**TV's pay against it** (the queue asked): `TV_RATE` 0.4M a day while in the capital's sky, which v1.71 made all day:
+160M a program year. A stationary TV satellite on a Beeper-class launcher costs ~60–80M, so it pays back in half a
+year. One era behind it loses ~42M a year; a new one pays back the loss in under two years, and eras are years 3,
+7, 14, 25: **replacing once per era is worth it, as MIDGAME wants.** Servicing (96M from its users, plus the earnings
+back) is the better deal for an expensive satellite. TV's rate is left as it is; the career runner doesn't fly TV yet,
+so a measurement waits for that.
+
+Test `econ-11` (3 checks; the era cut mutation-tested).
 
 ## v1.79 — warnings before launch, legs by themselves, the escape tower's own shelf (2026-10-09, vehicle session, QUEUE Q48, Q121, Q32)
 

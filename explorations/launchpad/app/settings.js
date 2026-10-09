@@ -23,7 +23,8 @@ function renderSettings(){const el=$('settings');if(!el)return;const ck=(id,on,l
     +ck('setPerf',perfOn,'performance readout')
     +`<h3>Screens</h3>${ck('setGauges',GAUGES,'flight gauges (altitude, air, q, Mach, heat)')}${ck('setModern',modernUI(),'modern look for the logbook and the map','instead of the era\'s notebook or terminal')}`
     +`<h3>Tester</h3>`+(TEST.on?`<button data-test-act="leave">Leave tester mode</button><div class="sub">Back to your own career (the sandbox is kept).</div>`
-      :`<div class="sub">Off. Add <code>?tester</code> to the address for the tester menu and its sandbox career.</div>`)}
+      :`<div class="sub">Off. Add <code>?tester</code> to the address for the tester menu and its sandbox career.</div>`);
+  if(typeof sndSettings==='function')sndSettings($('setSound'))}   // the volume slider (sound, Q35)
 document.addEventListener('click',e=>{const q=e.target.dataset&&e.target.dataset.qual;if(!q)return;applyQuality(q);setPut('launchpad-quality',quality);renderSettings()});
 document.addEventListener('change',e=>{const id=e.target.id,on=e.target.checked;
   if(id==='setSnd'){AUD.on=on;setPut('launchpad-sound',on?'1':'0');if(on)sndWake()}
