@@ -1939,7 +1939,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — the link budget: every link has a rate and a light delay (2026-10-09, space session, QUEUE Q171, Q51 slice 1)
+## v1.96 — the link budget: every link has a rate and a light delay (2026-10-09, space session, QUEUE Q171, Q51 slice 1)
 
 `sim/space.js` (next to the ground stations): rate = `LINK_K` · P · Gt · Gr / d² bit/s, the free-space law with the
 era's receivers in one constant; gains `G_WHIP` 1 (the `ant` part), `G_RVHG` 30 (a rover's high-gain dish), `G_STATION`
