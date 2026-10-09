@@ -8189,3 +8189,37 @@ in the page, a core + antenna + RTG reads "Power +60 W / −5 W (low orbit avera
 needs 0 Wh".
 
 **Not yet:** a choice of β or orbit in the builder itself; what a flat battery does to a satellite's service (space, Q27).
+
+## v1.81 — a satellite's lifetime in the builder (2026-10-09, vehicle session, QUEUE Q141)
+
+MIDGAME § Satellites: lifetime is a design choice made once, so the builder shows it. For a design carrying an antenna,
+a camera or instruments, the stats panel has a **Lifetime** line at the orbit the flight is aimed at (the highest
+accepted satellite contract, else low Tellus orbit). It says what holding that orbit costs a day, how long the Δv left
+after getting there pays for it, and then what happens: "the air brings it down in …", or "it drifts off its slot
+(its service pauses)".
+
+**How** (`satLife(stack, alt)`, `sim/vessel.js`; reads space's functions, changes none):
+- The stand-in is the design's top stage (the root's segment, what's left after every decoupler), as a register entry
+  in a circular orbit at that altitude.
+- `holdRate` (tides + drag) gives the daily cost, and `decayLife` the fall.
+- The Δv left is the design's vacuum Δv minus `launchWarnings`' need (the best flight to orbit or ~4,500 m/s, plus the
+  Hohmann climb), so the two lines agree.
+- **Speed:** the tide's rate is a 20-day integration that depends only on the orbit, so it's cached per altitude
+  (`SLOT_ALT`, ~150 ms the first time); a design edit costs 1–2 ms. The fall is only worked out if holding ends within
+  20 years.
+
+**Measured (the Beeper):**
+
+| Orbit | Holding costs | Lasts | Then |
+|---|---|---|---|
+| 110 km (low orbit) | 73 m/s a day | 20 days on its 1,494 m/s | down in ~4 h |
+| 200 km | 0.20 m/s a day | 17.5 years | down in 151 days |
+| 400 km | 0.002 m/s a day | past 20 years | — |
+
+**Worth knowing:** a satellite parked at the default low orbit lives days (v1.64's decay working as built). QA's Q129
+(parking orbits above ~200 km) and the presets' briefs follow from it; the builder line now makes it visible before
+launch.
+
+**Checked:** `test.mjs` section `vehicle-8`; `playtest.mjs m1` passes; in the page the Beeper reads "Lifetime at 110 km
+holding it costs 73.25 m/s a day; ~1494 m/s left there holds it 20 days, then the air brings it down in less than a
+day"; the smoke shard after merging main.

@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -80,6 +80,7 @@ NOTES § "The robot playtester".
 
 | # | Try this | How to get there | Looks right if | From | Owner |
 |---|---|---|---|---|---|
+| 162 | Read a satellite's lifetime | Assembly: the Beeper preset; then accept a *Satellite to N km* contract and read it again | The Lifetime line changes with the orbit: days and a quick fall low down, years higher up; the numbers sound believable | v1.81 | vehicle |
 | 160 | Dock two Docking presets | Assembly → Presets → **Docking**: launch one to orbit and leave it; launch a second, target the first, close in on RCS (V, I/K/J/L/U/O) with Docking SAS | Both reach orbit; the chaser's RCS and Docking SAS bring the ports together and they latch | v1.80 | vehicle |
 | 161 | Power a probe with an RTG | Assembly: a probe core, an antenna and an RTG (Power); accept a high satellite contract first, then read the power line | The line names that contract's orbit, the RTG covers the night, no battery is asked for | v1.80 | vehicle |
 | 152 | Read the launch warnings | Rollout with a design short of the next orbit mission (the Hopper when the beeper is next), one tight for an accepted high satellite contract, and a biocapsule with no chute | One line each, in plain words, with the numbers; none blocks LAUNCH; after your first orbit the Δv line quotes your best flight | v1.79 | vehicle |
