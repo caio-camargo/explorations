@@ -1079,8 +1079,12 @@ visible change), then Steppe.
   tank-radii tall, between Cape's two side stripes): Cape red and white stripes with a blue canton of small stars,
   Steppe one gold star on red (`sdStar5`), both with a white rim. It is laid on after the school's paint (the first
   try put it before, and Steppe's enamel pass repainted the gold star green). Views 114/115 now face it.
-- Next: the power's own colours on the accent and the roundel (POWERS.md § Livery; today they're the school's), then
-  6 (signature designs for rivals) and 7 (the Steppe pad).
+- **Livery built:** the maker's `hue` (POWERS, 10° steps) rides in the vertex kind too (`k + 32·school + 256·hue`; the
+  `% 32` decoders still work). Cape's roll band is the hue at the old near-black brightness (`hsv(h, .55, .16)`, the same
+  luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
+  the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
+  byte-identical** from here on: that's the livery POWERS.md asks for.
+- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -1814,6 +1818,43 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
+
+## v1.83 — debris, slice 3: fragment bands and the cascade (2026-10-09, space session, QUEUE Q147)
+
+Slice 3 of § "Plan: debris and Kessler": fragments as a density per band (ESA MASTER style), `fragTick` after `conjTick`.
+- **Sources** (`breakup(h, kg)`): slice 2's collisions, fragments shattering big objects, and `asatTest(name, h)` (the
+  POWERS hook for a security state's test). Fragments of 1 cm and more by NASA's standard breakup model,
+  N = 0.1 M^0.75 Lc^-1.71 (a 1 t breakup: 46,774), spread as a normal of 100 km around the height; below the air is lost.
+- **Drain:** each band loses 1 − e^(−dt/τ) to the one below a day, τ the time a centimetre fragment (Cd·A/m 0.2) takes
+  to sink through it. Drag is physics, so it runs with the setting off too.
+- **Hits** (4 n R² v a day: slice 2's pair rate averaged over random crossings, the fragment's size negligible):
+  an uncrewed entry is killed, not tracked (nobody tracks 1 cm): it goes silent and **stays up as a dead hulk**, a big
+  object (`junk`, *(dead)*). Only a fragment that brings 40 J per gram of the target (NASA's catastrophic threshold, a
+  fragment's mass from a 1,000 kg/m³ sphere) shatters it into more fragments: a 2 t stage at 2.7 km/s needs ~35 cm and
+  up, ~0.2 % of fragments. Crewed entries are never hit by surprise: one warning when their band passes one hit in
+  1,000 years. My first version let every 1 cm fragment shatter a 2 t stage, and 20 stages fouled their band within 20
+  years; the threshold is what real breakups need.
+- **The cascade** (Kessler's chain reaction): a band is critical when one breakup's fragments are expected to shatter
+  at least one more of its big objects before drag clears them, R0 = N · (their shattering rate) · τ ≥ 1. High bands
+  clear so slowly that R0 > 1 comes easily; what makes it news is the next breakup being due soon: R0 ≥ 1 and due within
+  50 years → *the band now feeds itself* (once); R0 ≥ ½ and within 200 → a warning. (Two cheaper tests failed first:
+  "growth beats drag" fires at 800 km for any population, since drag there takes centuries; "e-folding within 50 years"
+  was dominated by the expectation of rare huge breakups and fired with nothing due for centuries.) `CASC_STAT[b]`
+  keeps R0 and the wait per band for views (Q148), unsaved.
+- The Program screen adds one line: fragments of 1 cm and more, the thickest band, a 2 m satellite's odds there, and any
+  band feeding itself.
+
+**Measurements** (`node study_debris.mjs`, part C; real rates; game years of 400 days):
+- A centimetre fragment sinks through the 300–350 km band in 0.28 years and is down from there in 0.43; from 400 km in
+  2.9 years; 500 km 15; 600 km 72; 800 km ~930; 1,000 km ~4,700. The Kessler asymmetry, on this planet.
+- One 1 t breakup at 400 km: 46,774 fragments, 9,043 in the thickest band (a 2 m satellite there: 3 × 10⁻³ hits a year);
+  27,000 left after a year, 12,000 after 5, 1,100 after 50. The same at 800 km: 44,900 still there after 50 years.
+- Spent stages (2 t) at 800–850 km plus one 1 t breakup: 100 stages R0 ≈ 10, the next breakup due in ~350 years (quiet);
+  400 → R0 ≈ 39, ~90 years (the warning); 1,500 → R0 ≈ 150, ~23 years (*feeds itself*). On the light setting (a tenth),
+  ten times the clutter for the same.
+
+Test `space-5` (6 checks; mutations caught: no catastrophic threshold, crew hit, no flow down, no R0, double count).
+Full suite 572 pass. No TESTING row yet: nothing in the UI makes fragments by hand (Q148's band view and a tester ASAT).
 
 ## v1.82 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
 
@@ -7465,6 +7506,11 @@ drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
   direction against the ship's right. A Heavy's dropped boosters at 18 km: 0.068. No delay for distance yet (the
   explosions have one). `AUD.Q67 = false` turns both off.
 - test.mjs `aerofx-3` (plasma sound / elsewhere). Not judged by ear: TESTING row.
+
+### The volume slider (2026-10-09, effects session for the sound beat, QUEUE Q35)
+In the Settings overlay's Sound row (flow's `#setSound`): 0–100 % in steps of 5, `AUD.vol` live, kept in
+`localStorage['launchpad-volume']` and read at start. `renderSettings` calls `sndSettings(el)` (one additive line in flow's
+`app/settings.js`). F4 still mutes. Checked in the page (40 % → `AUD.vol` 0.4, saved) and the robot's `m1` route passes.
 ## The robot playtester (2026-10-08, playtest session)
 
 Caio can't playtest for now, so this session built a machine that walks as many TESTING.md rows as a machine can judge:
@@ -8389,7 +8435,7 @@ needs 0 Wh".
 
 **Not yet:** a choice of β or orbit in the builder itself; what a flat battery does to a satellite's service (space, Q27).
 
-## v1.81 — a satellite's lifetime in the builder (2026-10-09, vehicle session, QUEUE Q141)
+## v1.84 — a satellite's lifetime in the builder (first numbered v1.81) (2026-10-09, vehicle session, QUEUE Q141)
 
 MIDGAME § Satellites: lifetime is a design choice made once, so the builder shows it. For a design carrying an antenna,
 a camera or instruments, the stats panel has a **Lifetime** line at the orbit the flight is aimed at (the highest
@@ -8465,3 +8511,45 @@ but not docking) sits between two generations, so gating has to become per mode.
 - in the onboard-computer era a crewed capsule flies the computer's loop.
 
 **Sizes:** per-mode gating plus the pilot loop is S (vehicle), after the roster; the landing hold is M (control).
+
+## v1.85 — maneuver node chains, nodes past an SOI change, the finite-burn lead (2026-10-09, vehicle session, QUEUE Q33)
+
+**Chains.** `s.node` is still the node being flown, so everything that read it before still works. `s.nodeQ` holds the
+nodes after it, in time order. When a burn completes (`nodeBurn`), `nodeNext` puts the next one up ("Maneuver complete
+— throttle cut; next node is up").
+- `nodePlan(s)` chains them: coast along the patched-conic legs (`predictFrom`) to each node, add its Δv in that node's
+  own frame, carry on from there.
+- `nodePlanEnd` is where the last node leaves the craft. The map's dashed plan starts there (one call in `render.js`).
+- **Keyboard:** **N** with a node already placed adds the next one at the next apoapsis of the trajectory after the last
+  node. If that trajectory meets a moon (or escapes), it goes at the next leg's periapsis: the capture point
+  (`nodeAddNext`).
+- **The node panel:** "◀ node k of n ▶" picks which node the Δv and time buttons edit. A queued node's time is kept
+  between its neighbours, and the summary says how many nodes follow. The map's drag handles still act on the active
+  node.
+
+**Past an SOI change.** Each node carries the body whose leg it sits on (`b`, set by the plan). `nodeInfo` reads a node
+on another body's leg from the predicted legs (`legState`).
+- **The SOI switch** used to clear the node. Now it drops only the nodes placed on the old body's leg (untagged, or
+  tagged with it and already past). It keeps those for the new body and for later legs, a return to the old body
+  included, and puts the next one up.
+- **Measured:** test 4's transfer turned 12° (a 240 km flyby, not an impact), +1,321 m/s now. N puts node 2 at Selene's
+  periapsis, 14.4 h later; a −312 m/s burn there plans a capture (e 0.21).
+
+**The finite burn.** The craft gets lighter as it burns and accelerates harder at the end, so the first half of the Δv
+takes **more** than half the burn time. `nodeLead(s, dv)` is the time to deliver half the Δv at full throttle. The panel's
+"start burn in" and **Warp to burn** use it (both used half the burn time before).
+- **Measured** (pod + 2 t tank + Wren, a 157 m/s raise): the burn takes 25 s, the lead is 12.9 s against a naive 12.7.
+- **Flown:** a two-node Hohmann raise from low orbit to 400 km, each burn started by the lead, ended at
+  399.8 × 399.9 km against a planned 400.0 × 400.0.
+
+**Tapes:** the controls record the queued nodes with the active one (`q` in the node's JSON), so an autopilot replays
+a chain. Old tapes have none.
+
+**Checked:** `test.mjs` section `vehicle-9` (the Selene capture plan and the SOI switch; the flown two-node raise
+against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes; in the page, two nodes from N read
+"◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
+
+**Not yet:**
+- markers and drag handles for queued nodes on the map (flow / the map's owner);
+- a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
+  the capture case).

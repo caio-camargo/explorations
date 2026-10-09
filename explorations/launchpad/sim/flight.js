@@ -2,7 +2,12 @@
 // a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // Patched conics: leave the current body's SOI for its parent, or enter one of its moons'.
-function soiSwitch(s,to,how){s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);if(s.node){s.node=null;HOOK.msg(`${how} SOI — maneuver node cleared`)}}
+function soiSwitch(s,to,how){const from=s.body;s.body=to;s.hold=null;HOOK.msg(`${how} SOI`);
+  // the nodes placed on the old body's leg are gone with it (untagged, or tagged with it and already past); those tagged
+  // for this body or a later leg stay, a later return to the old body included (Q33)
+  const keep=n=>n&&n.b&&(n.b!==from.name||n.t>simT);let drop=0;if(s.node&&!keep(s.node)){s.node=null;drop++}
+  if(s.nodeQ){const k=s.nodeQ.filter(keep);drop+=s.nodeQ.length-k.length;s.nodeQ=k}if(!s.node&&s.nodeQ&&s.nodeQ.length)nodeNext(s);
+  if(drop)HOOK.msg(`${how} SOI — ${drop>1?drop+' maneuver nodes':'maneuver node'} cleared${s.node?'; the next is up':''}`)}
 function checkSOI(s){const b=s.body;
   if(b.parent&&len(s.r)>soiAt(b,simT)){const[p,v]=bodyRel(b,simT);s.r=add(s.r,p);s.v=add(s.v,v);soiSwitch(s,b.parent,`Escaping ${b.name}`);return}
   for(const c of b.children){const[p,v]=bodyRel(c,simT),d=sub(s.r,p);if(len(d)<soiAt(c,simT)){s.r=d;s.v=sub(s.v,v);soiSwitch(s,c,`Entering ${c.name}`);return}}}
@@ -200,6 +205,8 @@ function predictFrom(st0){
 // once thrust starts inside the burn window it freezes, and every m/s the engines deliver is subtracted from it.
 function nodeFrame(r,v){const pro=norm(v),h=cross(r,v),nrm=len(h)>1e-9?norm(h):[0,1,0];return{pro,nrm,rad:norm(cross(v,nrm))}}
 function nodeInfo(s){const n=s.node;if(!n)return null;
+  if(!n.burning&&n.b&&n.b!==s.body.name){const legs=predictFrom({b:s.body,r:s.r,v:s.v,t:simT}),x=legState(legs,n.t);if(!x)return null;   // past an SOI change (Q33)
+    const[b,r,v]=x,f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));return{rem:dvW,dvW,rN:r,vN:v,t:n.t,b,f}}
   if(n.burning){const rem=sub(n.dvW,n.applied);return{rem,dvW:n.dvW,rN:s.r,vN:s.v,t:simT,b:s.body}}
   let r,v;
   // on a perturbed orbit the node's state is integrated (same stepper as rails), and kept until something other than
@@ -216,7 +223,37 @@ function nodeBurnTime(s,dv){ // full throttle, vacuum, on the engines burning no
 function nodeBurn(s,Y,T,dt){const n=s.node;
   if(!n.burning){if(simT<n.t-(n.est||0)-60)return;n.dvW=nodeInfo(s).dvW;n.applied=[0,0,0];n.burning=true}
   n.applied=madd(n.applied,Y,T/s.mass*dt);const rem=sub(n.dvW,n.applied);
-  if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;HOOK.msg('Maneuver complete — throttle cut')}}
+  if(dot(rem,n.dvW)<=0||len(rem)<0.1){s.node=null;s.throttle=0;nodeNext(s);HOOK.msg(s.node?'Maneuver complete — throttle cut; next node is up':'Maneuver complete — throttle cut')}}
+// ---- node chains (vehicle session, Q33). s.node is the node being flown (as before); s.nodeQ holds the ones after it, in
+// time order. Each node carries the body whose leg it sits on (b, a name; none means the vessel's body when it was placed),
+// so a capture burn can be planned before the encounter: the SOI switch keeps the nodes for the new body and drops the old
+// body's. nodePlan chains them: coast along the patched-conic legs (predictFrom) to each node, add its Δv in that node's
+// frame, carry on from there. The map's dashed plan starts where the last node leaves the craft (nodePlanEnd).
+const nodeBody=(s,n)=>n.b?BODIES.find(x=>x.name===n.b)||s.body:s.body;
+function nodeNext(s){const q=s.nodeQ||[];s.node=q.length?q.shift():null;if(s.node){s.node.burning=false;s.node._c=null}}
+// where the craft is at time t on legs from predictFrom: [body, r, v] in that body's frame (null past the last leg)
+function legState(legs,t){for(let i=legs.length-1;i>=0;i--){const L=legs[i];if(t<L.t-1e-6)continue;if(L.endT&&t>L.endT+1e-6)return null;
+    const[r,v]=kepler(L.r,L.v,t-L.t,L.b.mu);return[L.b,r,v]}return null}
+function nodePlan(s){const all=[s.node,...(s.nodeQ||[])].filter(Boolean);if(!all.length)return[];
+  const key=JSON.stringify(all.map(n=>[n.t,n.dv,n.b||null]))+'|'+s.body.name+'|'+(s.kickN||0)+'|'+Math.floor(simT);
+  if(s._np&&s._np.key===key)return s._np.out;
+  const out=[];let st=null;
+  for(let i=0;i<all.length;i++){const n=all[i];let b,r,v;
+    if(i===0){const I=nodeInfo(s);if(!I)break;out.push({n,b:I.b,rN:I.rN,vN:I.vN,dvW:I.dvW,t:I.t});st={b:I.b,r:I.rN,v:add(I.vN,I.rem),t:I.t};continue}
+    const legs=predictFrom(st),x=legState(legs,n.t);if(!x)break;[b,r,v]=x;if(!n.b)n.b=b.name;
+    const f=nodeFrame(r,v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2]));
+    out.push({n,b,rN:r,vN:v,dvW,t:n.t});st={b,r,v:add(v,dvW),t:n.t}}
+  s._np={key,out};return out}
+function nodePlanEnd(s){const P=nodePlan(s);if(!P.length)return null;const L=P[P.length-1];return{b:L.b,r:L.rN,v:add(L.vN,L.dvW),t:L.t}}
+// add a node at the next apoapsis of the trajectory after the last node, or, on a leg that ends in an encounter or an
+// escape, at the next leg's periapsis (the capture point); the first node goes where nodeAtApoapsis puts it
+function nodeAddNext(s){if(!s.node)return null;const e=nodePlanEnd(s);if(!e)return null;const legs=predictFrom(e),L0=legs[0];
+  let L=L0;if(L0.endKind&&legs[1])L=legs[1];const el=L.el,b=L.b;
+  const t=L===L0?(el.e<1?e.t+timeToNu(el,Math.PI):e.t+300):L.t+Math.max(0,timeToNu(el,0));
+  const n={t,dv:[0,0,0],b:b.name};(s.nodeQ=s.nodeQ||[]).push(n);s.nodeQ.sort((a,c)=>a.t-c.t);return n}
+// the finite burn: the craft gets lighter as it burns, so it accelerates harder at the end, and the first half of the Δv
+// takes more than half the burn time. Starting this long before the node puts the burn's centroid (in Δv) on the node
+const nodeLead=(s,dv)=>nodeBurnTime(s,dv/2);
 function dvRemaining(s){ // current stage (until the next staging event) and total, vacuum Isp
   const plan=dvPlan(s,0);return{cur:plan.length?plan[0].dv:0,tot:plan.reduce((a,x)=>a+x.dv,0)}}
 function analyze(s){ // the what-if cases; each joint keeps its worst load across liftoff and max-q

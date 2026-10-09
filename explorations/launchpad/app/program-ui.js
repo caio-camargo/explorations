@@ -83,8 +83,12 @@ function moonSatsHTML(){const L=moonSats().filter(q=>!q.junk),T=tNow();if(!L.len
 function landedHTML(){const L=landedUp();if(!L.length)return'';
   return'<div class="ep">On the surface</div>'+L.map(q=>{const base=q.beacon?baseOf(q):null,mem=!q.beacon&&baseOfMember(q);
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${q.bodyName}${base?` · <b>base</b>: ${base.members.length} module${base.members.length===1?'':'s'}, ${base.berths} berths, crew ${base.crew}${base.labs?`, ${base.labs} lab${base.labs>1?'s':''}`:''}, supplies ${base.crew?`${Math.floor(base.days)} days`:`${(base.sup*1000).toFixed(0)} kg`}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`:mem?` · part of ${mem.name}`:''}</div>`+(base?baseRunLine(q,stackDef):'')}).join('')}
+// the fragment bands (space, Q147): how many, the thickest band and what it means for a 2 m satellite there
+function fragHTML(){const F=PROG.frag;if(!F)return'';const n=F.reduce((a,x)=>a+x,0);if(n<100)return'';const b=F.indexOf(Math.max(...F)),lo=Math.round((TELLUS.atm+b*BAND_W)/1e3),
+  K=PRESSURE_K[pressureOf('debris')]||0,r=4*2*2*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b))*DAY_S*YEAR_D*K,c=Object.entries(PROG.casc||{}).filter(x=>x[1]>=2).map(x=>Math.round((TELLUS.atm+x[0]*BAND_W)/1e3));
+  return`<div class="sub dim">fragments of 1 cm and more: about ${Math.round(n).toLocaleString()}, thickest at ${lo}–${lo+50} km${r>0?` (a 2 m satellite there: one hit in about ${Math.round(1/r).toLocaleString()} years)`:''}${c.length?`; feeding itself: ${c.map(x=>`${x}–${x+50} km`).join(', ')}`:''}</div>`}
 function satsHTML0(){const all=satsUp(),L=all.filter(q=>!q.junk),J=all.filter(q=>q.junk);const T=tNow();
-  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
+  return gsHTML()+(all.length?`<div class="ep">In orbit</div>`:'')+(J.length?`<div class="sub dim">and ${J.length} piece${J.length>1?'s':''} of debris (spent stages and dead satellites, ${(J.reduce((a,q)=>a+q.mass,0)/1000).toFixed(1)} t; G targets them in flight)</div>`:'')+fragHTML()+L.map(q=>{const[r,v]=satAt(q,T),el=elements(r,v,TELLUS.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.cam&&'camera',q.ant&&'antenna',q.sci&&'instruments',q.ballast&&`${(q.ballast*.5).toFixed(1)} t ballast`,q.bio&&'a very patient passenger'].filter(Boolean).join(' + ');
     return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(el.pe-TELLUS.R)}–${fmtD(el.ap-TELLUS.R)}, ${inc.toFixed(0)}° · ${kit}${stationLine(q)}${slotLine(q)}${q.cam&&q.ant&&q.contact!=null?` · in contact ${(q.contact*100).toFixed(0)}% of the time`:''}${q.cam?` · ${q.imgs} delivered${q.pending.length?`, ${q.pending.length} waiting for a downlink`:''}`:''}</div>`}).join('')}
 function gsHTML(){if(!PROG.done||!PROG.done.beeper)return'';const pc=i=>`hsl(${POWERS[i].hue},70%,68%)`;
@@ -338,23 +342,29 @@ function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpId
 $('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};
 $('bSaveTape').onclick=()=>{if(recTape&&recTape.byProc&&!player){HOOK.msg('This flight was flown by a procedure: it is already automated (the ▶ Procedure button)');return}if(recTape&&recTape.fromOrbit&&!player){HOOK.msg('Autopilot tapes start from the pad: this flight began in orbit');return}try{const T=player?tapeCut(player):recTape;localStorage.setItem(tapeKey(),JSON.stringify({v:T.v,stack:T.stack,ops:T.ops,site:T.site}));
   HOOK.msg(`Saved ${fmtT(tapeDuration(T))} of flight as this design's autopilot`)}catch(e){HOOK.msg('Could not save (browser storage unavailable)')}};
-function nodeAtApoapsis(){if(!S.alive||S.landed)return;if(!toolOK('nodes')){HOOK.msg(gateMsg('nodes'));return}const el=elements(S.r,S.v,S.body.mu);
+function nodeAtApoapsis(){if(!S.alive||S.landed)return;if(!toolOK('nodes')){HOOK.msg(gateMsg('nodes'));return}
+  if(S.node){const n=nodeAddNext(S);if(n)HOOK.msg(`Node ${1+S.nodeQ.length} at the ${n.b!==S.body.name?n.b+' ':''}${n.b!==S.body.name?'periapsis':'next apoapsis'} after the last one`);return}   // a chain (vehicle, Q33)
+  const el=elements(S.r,S.v,S.body.mu);
   const t=el.e<1&&el.hl>1e-3?simT+timeToNu(el,Math.PI):simT+300;S.node={t,dv:[0,0,0]};HOOK.msg(el.e<1?'Node at next apoapsis':'Node in 5 minutes')}
-$('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;if(player)takeOver();const n=S.node;
+// which node of a chain the panel edits (vehicle, Q33): 0 the active one, k the k-th queued after it; ◀ ▶ in the summary
+let ndSel=0;const ndNodes=()=>[S.node,...(S.nodeQ||[])].filter(Boolean);
+$('nodep').addEventListener('click',e=>{const a=e.target.dataset&&e.target.dataset.a;if(!a||!S.node)return;if(player)takeOver();
+  const L=ndNodes();if(a==='n-'||a==='n+'){ndSel=(ndSel+(a==='n+'?1:L.length-1))%L.length;return}ndSel=Math.min(ndSel,L.length-1);const n=L[ndSel];
   if(a[0]==='d'){if(n.burning)return;n.dv[+a[1]]+=(a[2]==='+'?1:-1)*ndStep}
   else if(a[0]==='s'&&a!=='sas'){ndStep=+a.slice(1)}
   else if(a[0]==='t'&&!n.burning){const el=elements(S.r,S.v,S.body.mu),P=el.e<1?el.period:0,d=a==='t-o'?-P:a==='t+o'?P:+a.slice(1);
-    const end=(predCache&&predCache.p[0]&&predCache.p[0].endT)||Infinity;n.t=clamp(n.t+d,simT+1,end)}
-  else if(a==='warp'){const est=nodeBurnTime(S,len(nodeInfo(S).rem));warpTo=n.t-(isFinite(est)?est/2:0)-15;if(warpTo<=simT+1)warpTo=null}
+    const lo=ndSel?L[ndSel-1].t+1:simT+1,hi=L[ndSel+1]?L[ndSel+1].t-1:ndSel?Infinity:(predCache&&predCache.p[0]&&predCache.p[0].endT)||Infinity;n.t=clamp(n.t+d,lo,hi)}   // a chain stays in time order
+  else if(a==='warp'){const dv=len(nodeInfo(S).rem),est=nodeBurnTime(S,dv);warpTo=S.node.t-(isFinite(est)?nodeLead(S,dv):0)-15;if(warpTo<=simT+1)warpTo=null}
   else if(a==='sas'){if(!sasModeOK(S,'node')){HOOK.msg(`${avOf(S).name}: it can't point at a maneuver; hold the burn attitude by hand (Stability)`);return}S.sas=true;S.sasMode='node';S.hold=null;renderSAS()}
-  else if(a==='del'){S.node=null;HOOK.msg('Node deleted')}
+  else if(a==='del'){S.node=null;nodeNext(S);HOOK.msg(S.node?'Node deleted; the next is up':'Node deleted')}
   updateNodePanel()});
 function updateNodePanel(){const el=$('nodep');if(!S.node||mode!=='flight'){el.classList.add('hidden');return}el.classList.remove('hidden');
-  const n=S.node,I=nodeInfo(S),dv=len(I.rem),est=nodeBurnTime(S,dv);n.est=est;
+  const L=ndNodes();ndSel=Math.min(ndSel,L.length-1);const I=nodeInfo(S);if(!I)return;S.node.est=nodeBurnTime(S,len(I.rem));
+  const n=L[ndSel],dv=ndSel?len(n.dv):len(I.rem),est=ndSel?nodeBurnTime(S,dv):S.node.est,pick=L.length>1?`<button data-a="n-">◀</button> node ${ndSel+1} of ${L.length}${n.b&&n.b!==S.body.name?` (at ${n.b})`:''} <button data-a="n+">▶</button><br>`:'';
   for(let k=0;k<3;k++)$('nd'+k).textContent=n.dv[k].toFixed(1)+' m/s';
-  const tt=n.t-simT,start=tt-(isFinite(est)?est/2:0);
-  $('nd-sum').innerHTML=n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
-    `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${warpTo!==null?' <span class="warn">(warping)</span>':''}`;
+  const tt=n.t-simT,start=tt-(isFinite(est)?nodeLead(S,dv):0),more=(S.nodeQ||[]).length;   // the lead puts half the Δv before the node (vehicle, Q33)
+  $('nd-sum').innerHTML=pick+(n.burning?`<b class="warn">BURNING</b> · ${dv.toFixed(1)} m/s to go`:
+    `Δv <b>${dv.toFixed(1)} m/s</b> · burn ${isFinite(est)?fmtT(est):'<span class="bad">no engine</span>'}<br>node in ${fmtT(tt)} · <span class="${start<10?'warn':''}">start burn in ${fmtT(start)}</span>${more&&!ndSel?` · ${more} more node${more>1?'s':''} after it`:''}${warpTo!==null?' <span class="warn">(warping)</span>':''}`);
   for(const b of el.querySelectorAll('[data-a^="s"]'))b.classList.toggle('on',b.dataset.a==='s'+ndStep)}
 renderEditor();go('program');
 requestAnimationFrame(frame);

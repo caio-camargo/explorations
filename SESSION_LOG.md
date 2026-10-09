@@ -4423,3 +4423,23 @@ take main's copy and re-add your lines.
 `index.html`, `builder.js` (guard), `test.mjs` (§32), `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** nothing ready in flow. When Caio answers W14 / W15 / W18: Q53, Q3 (4a–4c) then Q43, network N2+. Q100 after
 Q57, Q104 after Q103. The `launchpad-ui` worktree stays (branch `ui` = `main`).
+
+## 2026-10-09 — Launchpad v1.83: maneuver node chains, nodes past an SOI change, the finite-burn lead (Q33; also Q134's plan; vehicle session, unattended)
+
+- **Q33:** `s.nodeQ` behind `s.node`; `nodePlan`/`nodePlanEnd` chain them over patched-conic legs; N adds the next node
+  (apoapsis, or a moon's periapsis after an encounter); the SOI switch keeps nodes for the new body and later legs;
+  `nodeLead` (half the Δv) sets the burn start; the panel's ◀ ▶ edits any node; tapes carry the chain.
+  Measured: a Selene capture planned before the encounter (e 0.21); a two-node raise flown to 399.8×399.9 km vs 400×400.
+- **Q134 (plan only):** the pilot's SAS modes by rank: per-mode gating, a pilot loop, what the roster must provide
+  (NOTES § "The pilot's SAS modes by rank").
+- **Caught on the way:** I first had the finite-burn physics backwards in comments and a check (the first half of the
+  Δv takes *more* than half the burn); a mid-line `//` in `render.js` swallowed a statement again, caught by a parse
+  check before commit (LESSONS #41's habit).
+- **Merge note:** `ce44e42` re-normalised NOTES.md's line endings; merging an append then conflicts on the whole file.
+  `git merge -X ignore-space-at-eol` resolved it (my 42 lines on top of main's). Flagged in QUEUE.
+- **Checked:** `vehicle-9`; full suite 554/554; `playtest.mjs m1`; a page probe of the panel and the map.
+
+**Files:** `sim/flight.js`, `sim/procedures.js`, `app/program-ui.js`, `app/input.js`, `app/render.js` (one call),
+`test.mjs`, launchpad `NOTES.md` § v1.83 and the Q134 plan, `TESTING.md` 165, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's ready list: Q152 (a legged lander preset), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
+- **Renumbered** (numbering race, LESSONS #37): my v1.81 (Q141) → **v1.84**, v1.83 (Q33) → **v1.85**; economy and space took 1.81 and 1.83 at the same time. TESTING 162 and 165 follow.

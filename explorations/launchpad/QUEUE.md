@@ -163,14 +163,14 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ✓ `0d1da8d` (v1.61) |
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ✓ v1.80 (TESTING 160) |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
-| Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | → vehicle 2026-10-09 |
+| Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ✓ v1.85 (chains, past an SOI change, the lead; TESTING 167) |
 | Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | ✓ v1.68 |
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M4 | M | ⚙ | 📝 plan only (M4 under the gate: steady-state temperature and the datacenter are M4) |
 | Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ✓ v1.79 (procedures; through the register; TESTING 153) |
 | Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | ✓ v1.80 (RTG; the aim's orbit; charge kept; TESTING 161) |
 | Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | ready |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ✓ plan (NOTES § \"The pilot's SAS modes by rank\"); build after the roster |
-| Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ✓ v1.81 (Lifetime line; TESTING 162) |
+| Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ✓ v1.81 (Lifetime line; TESTING 165) |
 | Q119 | 📝 The **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths; habitat and lab modules get power loads, "a dark station can't keep people"; solar output by distance from Helios at M5); **shielding gets a design review with Caio before it's built** ([`LATE_GAME.md`](LATE_GAME.md) 1.1.0) | M4 | M | 📝 | after Q34b (plan only) |
 | Q36 | Heat conduction between parts; heating from an engine's own plume (evergreen) | — | M | ⚙ | ready |
 | Q37 | Hypersonic capsule lift in the impact predictor (evergreen) | — | M | ⚙ | ready |
@@ -210,7 +210,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): measured, no code yet. At grazing hills the sky shader is 43 of 50 ms, its march + shading ~25; resume from NOTES § "Q19 in progress". The cost is the **sky shader**: a sky & bodies session may take it |
-| Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
+| Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | → effects (overflow, world idle) 2026-10-09: the shader-only parts (ice variety, the pad terrace, coast detail); not the biome masks (sim) |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
 | — | GROUND.md **G1**, the body-ground layer (no new relief) | M3 | M | ⚙ | ✓ v1.54 `5cdf43d` |
@@ -230,7 +230,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q72 | **Crew mock-ups for D2**: one scene (the capsule hatch on the pad walkway), three astronaut styles in the same pose: **cartoony** (Kerbal-like), **realistic**, **stylised human** (1960s illustration, Thunderbirds, Tintin); a wide still and a helmet close-up each. Trade-offs: ROADMAP § "Design catalogs". As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures. Any look beat may take it | M3 | M | 🖥 | ✓ `57b6541` (`mockups/crew/`; waiting on Caio's pick, W19) |
 | Q89 | **School mock-ups for [`POWERS.md`](POWERS.md)**: one Orbiter preset styled **Cape** and **Steppe** side by side (same parts and outlines, different surface detail, finish, paint and roundel), plus one signature design per school (Steppe's strap-on cluster) and each school's pad in a still. Standalone page in `mockups/`, stills to `output/launchpad/mockups/schools/`; Caio picks from pictures. Any look beat | M1 | M | 🖥 | ✓ `c6bf611` (`mockups/schools/`; waiting on Caio, W20) |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ✓ `7aa705c` (bay door inside + hinges; dark-paint char heat-tint) |
-| Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | → aerofx: plan ✓ (`c765629`), steps 1–3 ✓ (`d72d9d3`: schools picked per part, Steppe paint); now step 4 (interstage cover) |
+| Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | ✓ steps 1–5 (`90f0013`: school per part, Steppe paint, interstage cover, roundel, livery hue); steps 6–7 proposed below |
 | Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -258,7 +258,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | after Q42 |
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ✓ `ce44e42` (`sndSettings` in Settings, saved) |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ✓ `0458c99` (`sndPlasma`, `sndOthers`) |
 
@@ -278,9 +278,9 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ✓ `b4fc3eb` (`node playtest.mjs 127`: four ways out, exits and money checked; PLAYTEST #33) |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ready |
-| Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ready |
-| Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ready |
-| Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ready |
+| Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.4: sitting 6 parks at 250–300 km; contracts complete in flight, so low recon orbits still pay) |
+| Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
+| Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ✓ effects 2026-10-09: rows renumbered (162/163 → 165/166); the `ocomp` half needs nothing today: `avCap` (sim/power.js) waives the computer under `TEST.tools` (the robot's docking rows) or with crew, and `career.mjs` sets no SAS mode. A future robot career flying target/dock SAS on an uncrewed probe must add an `ocomp` |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | after Q102 |
 
 ### platform — file split, test speed, saves, perf (new)
@@ -350,3 +350,8 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - platform — **pin line endings**: add a root `.gitattributes` (`* text=auto eol=lf`, binaries as `binary`) and renormalize once. On 2026-10-09 `NOTES.md`, `test.mjs` and others flipped to CRLF blobs on main and back, so every merge of them became a whole-file conflict (economy hit it three times in an hour); `core.autocrlf=true` doesn't renormalize a file already tracked with CRLF — LESSONS #40
+- look & sound, parts & pad — Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) once something draws rivals' rockets (news pictures, a rival pad) — NOTES § "Hardware schools in the game: the plan"
+- look & sound, parts & pad (+ flow) — Q102 step 7: the Steppe pad, horizontal rollout on rails over a flame pit, the launch table's arms; touches `buildRig`/`drawPadRig` and flow's rollout screen — coordinate first — same NOTES
+- flow (or the map's owner) — draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them, the panel's ◀ ▶ edits the rest — NOTES § v1.85
+- QA / every lane — `ce44e42` (sound) re-normalised NOTES.md's line endings (8,466 lines, 5 real): merges that append to NOTES then conflict on the whole file; `git merge -X ignore-space-at-eol` resolves them cleanly — NOTES § v1.85, SESSION_LOG
+- platform — **a duplicate-number check before push** (`node check_numbers.mjs`: fails on a repeated `## v1.N` heading in NOTES or a repeated TESTING row number; run it in the merge recipe, or as a pre-push hook). Vehicle alone renumbered three times on 2026-10-09 (v1.81, v1.83, TESTING 162/165); LESSONS #37 says a shared "next free" is a race, so check at the last moment instead — SESSION_LOG 2026-10-09

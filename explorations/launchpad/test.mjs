@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {satLife,surfacePick,procWithSite,procLandsOn,sitePlace,autoLegs,launchWarnings,flightAims,dvToAlt,DV_ORBIT_EST,stageStats,nextStep,footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {nodePlan,nodePlanEnd,nodeAddNext,nodeNext,nodeLead,nodeBurnTime,soiSwitch,satLife,surfacePick,procWithSite,procLandsOn,sitePlace,autoLegs,launchWarnings,flightAims,dvToAlt,DV_ORBIT_EST,stageStats,nextStep,footPoints,legOp,legsDown,tapeLegs,toV2,powerStep,powerRails,powerBudget,eclFrac,inShadow,powCap,powLoad,avOf,avCap,hasComputer,AV,wingOp,wingsOut,tapeWings,get TEST(){return TEST},get PROG(){return PROG},compEra,khOn,advPhys,advRails,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderBaseRun,baseRunQuote,baseRunLine,dispatchTick,baseOf,landedUp,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -4093,8 +4093,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const wren = sndVoices([{ key: 'wren', T: 18e3, exit: 0.25 }], 1), alb = sndVoices([{ key: 'albatross', T: 1.1e6, exit: 1.1 }], 1);
     const mix = sndVoices([{ key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'kestrel', T: 230e3, exit: 0.55 }, { key: 'condor', T: 460e3, exit: 0.62 }], 0.8);
     const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
-    check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off',
+    check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off (and the volume slider, Q35, is wired)',
       wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+        && /function sndSettings\(el\)/.test(H) && /if\(typeof sndSettings==='function'\)sndSettings\(\$\('setSound'\)\)/.test(H) && /localStorage\.getItem\('launchpad-volume'\)/.test(H)
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
       `Wren ${wren[0].f.toFixed(0)} Hz, Albatross ${alb[0].f.toFixed(0)} Hz, Kestrel×2 + Condor: ${mix.map(v => v.f.toFixed(0) + ' Hz ' + v.g.toFixed(2)).join(', ')}`);
     // QUEUE Q67: the plasma's sound follows the heating like the drawn shell (flux on its log scale, the same airspeed gate);
@@ -4115,7 +4116,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const SM = new Function(src + 'return {rng,WSEED,POWERS,HOME,archOf:typeof archOf==="function"?archOf:null}')();
     const env = { rng: SM.rng, WSEED: SM.WSEED, HOME: SM.HOME, SCHOOL_FORCE: null };
     const mk = (POW, arch, srcFn) => new Function('rng', 'WSEED', 'HOME', 'POWERS', 'archOf', 'sourceOf', 'SCHOOL_FORCE',
-      pg.slice(pg.indexOf('const SCHOOL_IDS='), pg.indexOf('let SCHOOL_FORCE=')) + body('schoolOf') + ';' + body('partSchool') + ';return {schoolOf,partSchool}')(
+      pg.slice(pg.indexOf('const SCHOOL_IDS='), pg.indexOf('let SCHOOL_FORCE=')) + body('schoolOf') + ';' + body('partMaker') + ';' + body('partSchool') + ';return {schoolOf,partSchool}')(
       env.rng, env.WSEED, env.HOME, POW, arch, srcFn, null);
     const pows = Array.from({ length: 400 }, (_, i) => ({ arch: i % 2 ? 'closedSuper' : 'openSuper' })), A = i => pows[i].arch;
     const S1 = mk(pows, A, () => ({ how: 'home' })), S2 = mk(pows, A, () => ({ how: 'home' }));
@@ -4124,8 +4125,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const imp = mk(pows, A, () => ({ how: 'import', from: 1 })).partSchool({ d: { key: 't2' } }), own = mk(pows, A, () => ({ how: 'home' })).partSchool({ d: { key: 't2' } });
     check('hardware schools: a power\'s school follows its affinity (closed superpowers mostly Steppe, open ones Cape) and never changes; a part draws in its maker\'s school',
       steppeShare > 0.6 && steppeShare < 0.8 && stable && openCape && imp === S1.schoolOf(1) && own === S1.schoolOf(env.HOME)
-        && /out\.push\([^)]*PK\.k\+32\*\(PK\.sch\|\|0\),PK\.i\)/.test(pg) && /int k=int\(aK\.x\+\.5\)%32;/.test(pg) && /sch=k\/32;k-=32\*sch;/.test(pg)
-        && /rdl=roundel\(vec2\(s-1\.5708\*R,v-h\*\.5\)\/rs,sch,fp\/rs\)/.test(pg) && pg.indexOf(' alb=mix(alb,rdl.rgb,rdl.a);') > pg.indexOf('Steppe (Q102): grey-green enamel')
+        && /int k=int\(aK\.x\+\.5\)%32;/.test(pg) && /hq=k\/256,sch=\(k\/32\)%8;k=k%32;/.test(pg) && /PK\.k\+32\*\(PK\.sch\|\|0\)\+256\*\(PK\.hq\|\|0\)/.test(pg)
+        && /rdl=roundel\(vec2\(s-1\.5708\*R,v-h\*\.5\)\/rs,sch,fp\/rs,hue\)/.test(pg) && pg.indexOf(' alb=mix(alb,rdl.rgb,rdl.a);') > pg.indexOf('Steppe (Q102): grey-green enamel')
         && /if\(INTERSTAGE_FX&&p\.d\.kind==='dec'\)/.test(pg) && /sch=partSchool\(p\);PK=\{o:\[x,y0,z\],k:KIND\.collar/.test(pg)
         && /SCHOOL_FORCE = 0;/.test(readFileSync(new URL('./views.js', import.meta.url), 'utf8')),
       `closed superpowers drawing Steppe: ${(steppeShare * 100).toFixed(0)} % (0.7 expected)`);
@@ -4218,6 +4219,38 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       dodged && warned, `dodged ${dodged}, crewed warned ${warned}`); }
 }
 
+// vehicle-9. Maneuver node chains (vehicle session, QUEUE Q33): nodes after the first, planned on the trajectory the earlier
+// ones leave; a capture node at a moon's periapsis planned before the encounter, kept through the SOI switch; the burn
+// started early enough that half its Δv is in by the node (the craft gets lighter, so that's more than half the burn).
+{
+  const mu = TELLUS.mu, R = TELLUS.R, el = s => api.elements(s.r, s.v, s.body.mu), msgs = []; api.HOOK.msg = m => msgs.push(m);
+  // 1. across an SOI change: test 4's transfer geometry turned 12° (a flyby at ~240 km, not an impact), a kick now, then
+  // N's next node lands on Selene's periapsis
+  api.t = 0; const r = LEO, vc = Math.sqrt(mu / r), vp = Math.sqrt(mu * (2 / r - 2 / (r + SELENE.a))), at = (r + SELENE.a) / 2, tof = Math.PI * Math.sqrt(at ** 3 / mu);
+  const d0 = norm(mul(moonPos(tof), -1)), L12 = 12 * Math.PI / 180, dir = [d0[0] * Math.cos(L12) - d0[2] * Math.sin(L12), d0[1], d0[0] * Math.sin(L12) + d0[2] * Math.cos(L12)], tang = cross([0, 1, 0], dir), s = api.newShip(api.PRESETS.Lunar); api.S = s; s.landed = false; s.r = mul(dir, r); s.v = mul(tang, vc);
+  s.node = { t: 1, dv: [vp - vc, 0, 0] }; const n2 = api.nodeAddNext(s), P1 = api.nodePlan(s);
+  const vrel = P1[1] ? len(P1[1].vN) : 0, rp = P1[1] ? len(P1[1].rN) : 1, want = Math.sqrt(SELENE.mu / rp) * 1.1; if (n2) n2.dv = [want - vrel, 0, 0];
+  const E = api.nodePlanEnd(s), eS = E && api.elements(E.r, E.v, SELENE.mu);
+  // the SOI switch drops the Tellus node and puts the Selene one up
+  const q = { node: { t: 1, dv: [1, 0, 0] }, nodeQ: [{ t: 9e4, dv: [-5, 0, 0], b: 'Selene' }, { t: 9e5, dv: [1, 0, 0], b: 'Tellus' }], body: TELLUS }; msgs.length = 0; api.soiSwitch(q, SELENE, 'Entering');
+  check('node chain: the next node after a Selene transfer sits at Selene\'s periapsis, tagged Selene; a retro burn there plans a capture; the SOI switch drops the node placed on the Tellus leg, puts the Selene one up, and keeps a later return node',
+    n2 && n2.b === 'Selene' && P1.length === 2 && P1[1].b === SELENE && eS && eS.e < 1 && q.node && q.node.b === 'Selene' && q.nodeQ.length === 1 && q.nodeQ[0].b === 'Tellus' && /maneuver node cleared; the next is up/.test(msgs.join('|')),
+    `node 2 at Selene, ${n2 ? ((n2.t - 1) / 3600).toFixed(1) : '?'} h after node 1, periapsis ${((rp - SELENE.R) / 1e3).toFixed(0)} km; capture ${n2 ? n2.dv[0].toFixed(0) : '?'} m/s → e ${eS ? eS.e.toFixed(2) : '?'} · ${msgs.join(' | ')}`);
+  // 2. flown: a Hohmann raise from low orbit to 400 km in two nodes, burns started by nodeLead; the end orbit matches the plan
+  const r1 = R + 400e3, dv1 = vc * (Math.sqrt(2 * r1 / (r + r1)) - 1), dv2 = Math.sqrt(mu / r1) * (1 - Math.sqrt(2 * r / (r + r1)));
+  api.t = 0; const c = api.newShip(['pod', 't2', 'wren']); api.S = c; c.landed = false; c.r = [r, 0, 0]; c.v = [0, 0, -vc]; c.w = [0, 0, 0]; c.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; c.throttle = 0;
+  c.node = { t: 600, dv: [dv1, 0, 0] }; api.nodeAddNext(c).dv = [dv2, 0, 0]; const plan = api.elements(api.nodePlanEnd(c).r, api.nodePlanEnd(c).v, mu);
+  api.stage(c); c.throttle = 0; c.sas = true; c.sasMode = 'node'; const est = api.nodeBurnTime(c, dv1), lead = api.nodeLead(c, dv1);
+  for (let k = 0; k < 4e5 && c.alive && (c.node || c.throttle > 0); k++) { const n = c.node; if (!n) break;
+    const go = n.t - api.nodeLead(c, len(api.nodeInfo(c).rem));
+    if (!n.burning && api.t < go - 120) { api.advRails(c, Math.min(60, go - 120 - api.t), 10); continue; }
+    c.throttle = api.t >= go || n.burning ? 1 : 0; api.advPhys(c); }
+  const got = el(c);
+  check('node chain flown: a two-node raise to 400 km, each burn led so half its Δv is in by the node, ends within 3 km of the planned orbit; the lead is a little more than half the burn',
+    !c.node && Math.abs(got.pe - plan.pe) < 3e3 && Math.abs(got.ap - plan.ap) < 3e3 && Math.abs(plan.pe - r1) < 2e3 && lead > est / 2 && lead < 0.6 * est,
+    `planned ${((plan.pe - R) / 1e3).toFixed(1)}×${((plan.ap - R) / 1e3).toFixed(1)} km, flown ${((got.pe - R) / 1e3).toFixed(1)}×${((got.ap - R) / 1e3).toFixed(1)} km; burn 1 ${est.toFixed(0)} s, lead ${lead.toFixed(1)} s (half ${(est / 2).toFixed(1)})`);
+}
+
 // econ-11. Obsolescence and servicing (economy session, QUEUE Q126, MIDGAME.md § Satellites): a satellite earns less
 // for each computing era it falls behind; servicing a valuable one (a contract completed by docking with it) brings it
 // up to date.
@@ -4253,6 +4286,48 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const one = !!P.done.lift1 && !P.done.lift2;
   const R2 = D.recNew(); R2.open0 = open(); Object.assign(R2, { orbit: true, lift: 2, orb: R.orb, paid: [] }); D.missionEval({ rec: R2, parts: [] });
   check('W11: a 2 t flight launched with only Heavy Lift I open earns that one; the next flight earns Heavy Lift II', one && !!P.done.lift2, `after the first flight: lift1 ${!!P.done.lift1}, lift2 ${one ? 'not yet' : 'too'}`);
+}
+
+// space-5. Debris, slice 3 (space session, QUEUE Q147): fragments as a density per band. Breakups add 1 cm+ fragments
+// by NASA's model, spread around their height; drag drains each band into the one below; a hit kills an uncrewed entry
+// (a dead hulk stays up) and only a large fragment shatters it; crewed entries are warned, never hit by surprise; the
+// cascade (R0 ≥ 1 and the next breakup due within 50 years) is news; an anti-satellite test fouls a band.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,detach,junkRegister,fragTick,breakup,fragsOf,fragBands,fragRate,catFrac,asatTest,CASC_STAT,BAND_N,TELLUS,PROG,HOOK,DAY_S,YEAR_D};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R, deg = Math.PI / 180, sum = () => D.fragBands().reduce((a, x) => a + x, 0);
+  const reset = mode => { P.sats = []; P.day = 0; P.frag = null; P.breakups = []; P.casc = {}; P.pressures = { debris: mode }; news.length = 0; };
+  const orbit = (s, alt, inc) => { const a = R + alt, vc = Math.sqrt(T.mu / a); Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(inc * deg), -vc * Math.cos(inc * deg)] }); return s; };
+  const sat = (alt, inc, crew = false) => { D.satRegister(orbit(D.newShip(D.PRESETS.Probe), alt, inc), { day0: 0 }); const q = P.sats.at(-1); if (crew) q.shape[0].crew = 2; return q; };
+  const junk = (alt, inc) => { const s = orbit(D.newShip(D.PRESETS.Orbiter), alt, inc); s.rec = { launched: true, day0: 0 }; const ev = s.events.find(e => e.decouple.length);
+    D.detach(s, s.parts.filter(p => p.on && ev.decouple.includes(p.seg)), [0, -1, 0], 0); D.junkRegister(s.rec); const q = P.sats.at(-1); q.mass = 2000; return q; };
+  reset('real'); const n1 = D.breakup(800e3, 1000), F = D.fragBands(), pk = F.indexOf(Math.max(...F)), s1 = sum();
+  reset('real'); D.breakup(150e3, 1000); const lowKept = sum() / D.fragsOf(1000);
+  check('fragments: a 1 t breakup makes ~47,000 pieces of 1 cm and more (NASA), spread around its height; a low one loses what falls below the air',
+    Math.abs(n1 - 0.1 * 1000 ** 0.75 * 0.01 ** -1.71) < 1 && (pk === 13 || pk === 14) && Math.abs(s1 / n1 - 1) < 1e-6 && lowKept < 0.9,
+    `${Math.round(n1)} fragments, peak band ${pk}; a breakup at 150 km keeps ${(lowKept * 100).toFixed(0)} % in the bands`);
+  reset('off'); D.breakup(400e3, 1000); D.breakup(800e3, 1000); const lo0 = D.fragBands().slice(0, 9).reduce((a, x) => a + x, 0), hi0 = D.fragBands().slice(12).reduce((a, x) => a + x, 0);
+  D.fragTick(0, D.YEAR_D * D.DAY_S); const lo1 = D.fragBands().slice(0, 9).reduce((a, x) => a + x, 0), hi1 = D.fragBands().slice(12).reduce((a, x) => a + x, 0);
+  check('fragments: drag drains low bands within a year and barely touches 800 km (even with the setting off, drag is physics)',
+    lo1 / lo0 < 0.7 && hi1 / hi0 > 0.99, `below 550 km ${(lo1 / lo0 * 100).toFixed(0)} % left, above 700 km ${(hi1 / hi0 * 100).toFixed(1)} %`);
+  // a thick cloud at 425 km: an uncrewed satellite dies (a hulk stays), a crewed one is warned and lives, a big object shatters
+  reset('real'); D.breakup(425e3, 1e9); const a = sat(425e3, 0), c = sat(425e3, 0, true), o = junk(425e3, 60), nB = sum();
+  const La = D.fragRate(a), cf = D.catFrac(a.mass, 3000); D.fragTick(0, D.DAY_S, () => 0.001);
+  const dead = P.sats.includes(a) && a.junk && /\(dead\)$/.test(a.name) && a.ant === 0, crewOK = P.sats.includes(c) && !c.junk && news.some(m => /crew are warned/.test(m));
+  const shattered = !P.sats.includes(o) && sum() > nB * 0.99 && news.some(m => /shattered by a large fragment/.test(m)) && news.some(m => /gone silent/.test(m));
+  check('fragments: in a thick cloud an uncrewed satellite goes silent (its hulk stays up as debris), a crewed one is warned and lives, a spent stage is shattered into more',
+    La > 1 && cf < 0.01 && dead && crewOK && shattered, `hits a day ${La.toFixed(1)}, shattering share ${cf.toExponential(1)}; dead ${dead}, crew ${crewOK}, shattered ${shattered}`);
+  // a thinner cloud, the same roll: the satellite dies, the stage (only large fragments can shatter it) survives
+  reset('real'); D.breakup(425e3, 1e7); const a3 = sat(425e3, 0), o3 = junk(425e3, 60); D.fragTick(0, D.DAY_S, () => 0.01);
+  check('fragments: a hit that kills a satellite leaves a spent stage whole (shattering takes 40 J per gram of it)',
+    a3.junk && P.sats.includes(o3), `satellite ${a3.junk ? 'dead' : 'alive'}, stage ${P.sats.includes(o3) ? 'whole' : 'shattered'}`);
+  reset('off'); D.breakup(425e3, 1e7); const a2 = sat(425e3, 0); D.fragTick(0, D.DAY_S, () => 0); const offOK = P.sats.includes(a2) && !a2.junk;
+  // the cascade: thirty spent stages at 800–850 km and a big breakup there: R0 ≥ 1, the next breakup due within 50 years, news once
+  reset('real'); for (let i = 0; i < 30; i++) junk(825e3, (i * 37) % 180); D.breakup(825e3, 2e5); D.fragTick(0, D.DAY_S, () => 0.999999); D.fragTick(D.DAY_S, 2 * D.DAY_S, () => 0.999999);
+  const cs = D.CASC_STAT[14] || {}, casc = news.filter(m => /feeds itself/.test(m)).length;
+  const asat = (P.frag = null, D.asatTest('A rival', 600e3)), asatOK = asat > 4e4 && D.fragBands()[9] > 1000 && news.some(m => /anti-satellite/.test(m));
+  check('fragments: off spares satellites; a crowded band past R0 = 1 with the next breakup due within 50 years is news, once; an anti-satellite test fouls its band',
+    offOK && cs.R0 >= 1 && cs.gen <= 50 && casc === 1 && asatOK, `R0 ${cs.R0?.toFixed(1)}, next in ${cs.gen?.toFixed(1)} years, news ${casc}; ASAT ${Math.round(asat)} fragments`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

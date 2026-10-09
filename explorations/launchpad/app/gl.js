@@ -337,14 +337,15 @@ uniform vec3 uSun,uSunCol,uSky,uGnd,uUp;uniform float uLit,uGlow,uShadow,uFc,uSe
 float hh(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.55);}
 float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252),k2=vec2(-k1.x,k1.y);p.x=abs(p.x);p-=2.*max(dot(k1,p),0.)*k1;p-=2.*max(dot(k2,p),0.)*k2;
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
+vec3 hsv(float h,float s,float v){vec3 c=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return v*mix(vec3(1.),c,s);}
 const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
 // the roundel (Q102 step 5): a disc of radius 1 in u, by school: Cape red and white stripes with a blue canton of small
 // stars, Steppe one gold star on red; a white rim. Returns (colour, coverage); px is the pixel size in u
-vec4 roundel(vec2 u,int sch,float px){float r=length(u),cov=1.-smoothstep(1.-px,1.+px,r);if(cov<=0.)return vec4(0.);vec3 c;
+vec4 roundel(vec2 u,int sch,float px,float hue){float r=length(u),cov=1.-smoothstep(1.-px,1.+px,r);if(cov<=0.)return vec4(0.);vec3 c;
  if(r>.88)c=vec3(.92);
- else if(sch==1)c=mix(vec3(.62,.06,.05),vec3(.95,.78,.22),1.-smoothstep(-px,px,sdStar5(u*1.05,.62,.42)));
- else if(u.y>.05&&u.x<-.05){vec2 g=fract(u*6.)-.5;c=mix(vec3(.08,.13,.38),vec3(.95),1.-smoothstep(.13,.13+px*6.,length(g)));}
- else c=mod(floor(u.y*4.5+.5),2.)<.5?vec3(.7,.08,.08):vec3(.94);
+ else if(sch==1)c=mix(hsv(hue,.88,.62),vec3(.95,.78,.22),1.-smoothstep(-px,px,sdStar5(u*1.05,.62,.42)));
+ else if(u.y>.05&&u.x<-.05){vec2 g=fract(u*6.)-.5;c=mix(hsv(fract(hue+.55),.75,.36),vec3(.95),1.-smoothstep(.13,.13+px*6.,length(g)));}
+ else c=mod(floor(u.y*4.5+.5),2.)<.5?hsv(hue,.85,.68):vec3(.94);
  return vec4(pow(c,vec3(2.2)),cov);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
@@ -368,7 +369,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
- int k=int(vK.x+.5),pi=int(vK.y+.5),sch=k/32;k-=32*sch;   // the part's hardware school rides in the kind (Q102)
+ int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;float hue=float(hq)/36.;   // school and livery hue ride in the kind (Q102)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
  vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
@@ -382,9 +383,9 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    float ring=lin(v-b,1.25*sc,.006,fv)*paint,seam=lin(s-1.5708*R,6.2832*R,.004,fs)*paint,pan=hh(vec2(floor((v-b)/(1.25*sc)),3.))-.5;
    float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
    if(sch==1)blk=0.;   // Steppe: no roll pattern (Q102)
-   alb=mix(alb,vec3(.018),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
+   alb=mix(alb,pow(hsv(hue,.55,.16),vec3(2.2)),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
-   if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs);rdl.a*=paint;}}   // the roundel, between the stripes
+   if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs,hue);rdl.a*=paint;}}   // the roundel, between the stripes
   else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
    float t=clamp(v/max(h,.01),0.,1.),N=floor(6.2832*R/.035+.5),ph=fract(vU.x*N),fd=smoothstep(.5,.15,fu*N);
    nO+=T*sin(ph*6.2832)*.35*fd*(inside?-1.:1.);alb*=1.-.35*fd*smoothstep(.75,1.,abs(ph-.5)*2.);
@@ -904,7 +905,7 @@ const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
 const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
-  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0),PK.i)}   // the school rides in the kind (Q102)
+  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0),PK.i)}   // the school (×32) and the maker's hue (×256, 10° steps) ride in the kind (Q102)
 // surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
 function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
   const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
@@ -936,7 +937,7 @@ function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
-  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch:partSchool(p)};partBody(out,p);PK=PK0}
+  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch:partSchool(p),hq:partHue(p)};partBody(out,p);PK=PK0}
 // ---- hardware schools (QUEUE Q102; NOTES § "Hardware schools in the game: the plan"). A part draws in its maker's school:
 // the seller's when it was bought abroad (sourceOf), else the program's. Built so far: Cape (0, today's look) and Steppe
 // (1); the other schools fall back to Cape until they get a look. A power's school is drawn once from POWERS.md's
@@ -946,8 +947,10 @@ const SCHOOL_IDS={cape:0,steppe:1},SCHOOL_AFF={openSuper:{cape:.6,coastal:.2,mou
 let SCHOOL_FORCE=null;
 function schoolOf(i){if(typeof POWERS==='undefined'||!POWERS[i])return 0;const aff=SCHOOL_AFF[typeof archOf==='function'?archOf(i):POWERS[i].arch];if(!aff)return 0;   // a resource state has none: its parts are its sellers'
   const R=rng(WSEED*7907+i*131+17),x=R()*Object.values(aff).reduce((a,b)=>a+b,0);let acc=0;for(const k in aff){acc+=aff[k];if(x<acc)return SCHOOL_IDS[k]??0}return 0}
-function partSchool(p){if(SCHOOL_FORCE!=null)return SCHOOL_FORCE;try{const src=typeof sourceOf==='function'&&p.d?sourceOf(p.d.base||p.d.key):null;
-  return schoolOf(src&&src.how==='import'?src.from:HOME)}catch(e){return 0}}
+function partMaker(p){try{const src=typeof sourceOf==='function'&&p.d?sourceOf(p.d.base||p.d.key):null;return src&&src.how==='import'?src.from:HOME}catch(e){return 0}}
+function partSchool(p){if(SCHOOL_FORCE!=null)return SCHOOL_FORCE;return schoolOf(partMaker(p))}
+// the livery's hue (POWERS.md § Livery): the maker's own colour, in 10° steps, for the school's accent and the roundel
+function partHue(p){const i=partMaker(p);return typeof POWERS!=='undefined'&&POWERS[i]?Math.round((POWERS[i].hue||0)/10)%36:2}
 // an engine: the bell (exit → throat) gets kind 'bell' with R = its exit radius and h = the throat height; the rest is the
 // mount. Big engines carry a turbopump beside the throat, its exhaust duct running down into the bell wall.
 function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
