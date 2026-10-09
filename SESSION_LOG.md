@@ -4206,3 +4206,28 @@ Erebus added to the pole check. Full suite 526 pass / 0 fail.
 ### Next steps
 - [ ] Economy: Q122 (PLAYTEST #33, the sponsor cover on a flight that reached orbit), Q118 (re-run pacing), Q130, Q93
 
+
+## 2026-10-09 — Launchpad v1.75: the seeded small bodies' ground (world session)
+
+### Summary
+`smallBodyGround({kind, R, seed})`, a recipe factory for SYSTEM.md's seeded classes (CPU, not live: no small bodies exist
+yet). Six kinds:
+- stony, carbonaceous, metal: ellipsoids with craters;
+- rubble pile: spinning-top ridge, boulders;
+- comet: 60 % contact binaries, pits;
+- visitor: an ~8:1 needle.
+Shapes are exact per point (star-shaped, so radial heights work); gravity from density; craters where they fit the body,
+baked below. Boulders and pits sit on the surface and are provably continuous: a 27-against-125-cell check, 0 missed, and
+3,697 missed without the half-cell limit. Negative results: a 32:1 visitor (axis draw); features floating off the surface;
+a ridge check fooled by the shape; the study ignoring a tiny body's starting band. Test `ground-8` (6 checks, 3 mutations
+caught). Full suite 536 pass / 0 fail on the merged tree. Renumbered v1.74 → v1.75 after economy took v1.74 in the same
+window. **GROUND.md G7 is complete on the CPU.**
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`small:<kind>:<R>:<seed>`, honours a starting band), `test.mjs` (`ground-8`), `NOTES.md` § v1.75, `GROUND.md` 0.1.9, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Space (Q87, M4/M5): real bodies in the tree, each with its recipe (`<NAME>_GROUND`, or `smallBodyGround` for seeded ones)
+- [ ] GPU session, when Q91 opens: GROUND.md § "G3: the port plan", starting at G3.0
+- [ ] Someone with the GPU: TESTING 131 (Selene's maria) and 146 (Tellus's poles)
