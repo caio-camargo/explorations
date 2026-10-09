@@ -195,4 +195,36 @@ function hesperUnit(u){const m=hesperMap(),b=A=>mapBil(A,m.W,m.H,u),R=GROUND_STU
 const HESPER_SURF={mountains:{name:'slab rock',mu:.75,soft:-2,rough:.4},'slab rock':{name:'slab rock',mu:.75,soft:-2,rough:.4},volcanic:{name:'lava flows',mu:.7,soft:-2,rough:.3},
   corona:{name:'fractured basalt',mu:.7,soft:-1,rough:.25},'lava channel':{name:'channel floor',mu:.65,soft:-1,rough:.05},plains:{name:'basalt plains',mu:.7,soft:-1,rough:.15}};
 const HESPER_GROUND={gen:'hesper',top:12000,surf:pf=>HESPER_SURF[hesperUnit(norm(pf))],unit:u=>hesperUnit(u)};   // top: checked in test ground-4
+// Astraea (Ceres): SYSTEM.md § Astraea. R 94 km, g 0.28, no air, near-spherical (no lump). By 1/g alone its craters would
+// stay simple bowls to ~100 km, and a 100 km bowl would be 20 km deep on a 94 km body. Ceres's ice-rich crust is weak, so
+// its craters turn complex at ~7.5–12 km (Dawn) and its big ones have relaxed shallow: a crust factor `crust` scales the
+// transition (0.12: 12.5 km here), and above it the complex depth law keeps the biggest (~100 km) at ~3 km deep.
+// c 0.03 (between Mars's and the Moon's; Ceres is heavily cratered, but short of big craters), crisp (freshness hash²).
+// The map (512×256, 1.15 km a texel): a gentle swell (±1.5 km); the big craters (≥ 20 km, ~8 of them, up to 100 km);
+// Ahuna Mons, the lonely mountain (4 km high, 20 km across, a flat top, flanks to ~38°); last, the young bright crater
+// (Occator: 18 km, complex, a central pit, salt on its floor: the one bright spot on a charcoal-grey world).
+// Channels: E height, S salt, A the mountain, Y young surface (where band craters are missing).
+GROUND_STUBS.Astraea={name:'Astraea',R:9.4e4,g:.28};
+const AS={c:.03,salt:3,frPow:2,crust:.12,seed:1201,swell:1500,Dmax:100e3,ahuna:{at:[-10,-45],R:10e3,H:4000,top:.25},occ:{at:[20,120],D:18e3}};
+let ASTRAEA_MAP=null;
+function astraeaMap(){if(ASTRAEA_MAP)return ASTRAEA_MAP;const B=GROUND_STUBS.Astraea,R=B.R,Dt=GR_DT/B.g*AS.crust,W=512,H=256,N=W*H,rnd=rng(AS.seed),
+    E=new Float32Array(N),S=new Float32Array(N),A=new Float32Array(N),Y=new Float32Array(N);
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j);E[j*W+i]=2*AS.swell*(tfbm(u[0]*2+90,u[1]*2+90,u[2]*2+90,4)-.5)}
+  const cr=bigCraters(rnd,R,AS.c,AS.Dmax,0);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  const ah=llU(...AS.ahuna.at),oc=llU(...AS.occ.at),occR=AS.occ.D/2;
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j),k=j*W+i,r=angTo(u,ah)*R/AS.ahuna.R;
+    if(r<1){E[k]+=AS.ahuna.H*sstep(1,AS.ahuna.top,r)*(1+.03*(1-r));A[k]=sstep(1,.8,r)}}
+  mapCrater(E,W,H,R,oc,AS.occ.D,Dt,1);
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j),k=j*W+i,r=angTo(u,oc)*R/occR;
+    if(r<.12)E[k]-=1500*sstep(.12,.04,r);   // the central pit: at 18 km the crater has a central peak, collapsed here into a pit below the floor
+    // salt: the floor's middle, blotchy (Cerealia, Vinalia), plus a little on the rim
+    S[k]=r<.6?sstep(.6,.3,r)*sstep(.35,.55,tfbm(u[0]*400,u[1]*400,u[2]*400,3)+.25*sstep(.3,0,r)):0;Y[k]=Math.max(r<1.1?sstep(1.1,.9,r):0,A[k])}
+  let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
+  return ASTRAEA_MAP={W,H,E,S,A,Y,Dt,craters:cr,lo,hi,thin:cu=>mapBil(Y,W,H,cu)}}
+function astraeaH(pf,bands){const u=norm(pf),m=astraeaMap();return mapSpl(m.E,m.W,m.H,u)+craterBands(u,GROUND_STUBS.Astraea.R,m.Dt,m.thin,bands,AS.c,AS.salt,AS.frPow)}
+GROUND_GEN.astraea=pf=>astraeaH(pf);
+const ASTRAEA_UNITS=['salt deposits','mountain','regolith'];
+function astraeaUnit(u){const m=astraeaMap(),b=X=>mapBil(X,m.W,m.H,u);return b(m.S)>.4?'salt deposits':b(m.A)>.5?'mountain':'regolith'}
+const ASTRAEA_SURF={'salt deposits':{name:'salt deposits',mu:.5,soft:1,rough:.02},mountain:{name:'salty ice rubble',mu:.6,soft:0,rough:.3},regolith:{name:'dark regolith',mu:.6,soft:1,rough:.15}};
+const ASTRAEA_GROUND={gen:'astraea',top:6000,surf:pf=>ASTRAEA_SURF[astraeaUnit(norm(pf))],unit:u=>astraeaUnit(u)};   // top: checked in test ground-5
 // ==== SIM END

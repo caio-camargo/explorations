@@ -3570,6 +3570,37 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('decay: the averaged rails agree with a direct integration of the drag (150 → 130 km) to a few percent', Math.abs(tr / t - 1) < 0.05, `direct ${(t / 3600).toFixed(1)} h, rails ${(tr / 3600).toFixed(1)} h`); }
 }
 
+// ground-5. Astraea's ground (world session, GROUND.md G7): Ceres's character on a 94 km body with g 0.28, on the CPU,
+// not live (stub body). Its weak icy crust turns craters complex at 12.5 km and keeps the big ones shallow; one young
+// bright crater with salt on its floor; one lonely mountain. Numbers behind each parameter: `node study_ground.mjs astraea`.
+{
+  const G = new Function(src + 'return {ASTRAEA_GROUND,astraeaMap,astraeaH,GROUND_STUBS,AS,llU,BODIES,surfaceAt,terrainSlope,bodyTop,get ASTRAEA_MAP(){return ASTRAEA_MAP}};')();
+  const S = G.GROUND_STUBS.Astraea, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.ASTRAEA_GROUND }, D = Math.PI / 180;
+  check('ground-5: Astraea\'s recipe is not live (no Astraea in the body tree), and its map is baked on first use', G.ASTRAEA_MAP === null && !G.BODIES.some(b => b.name === 'Astraea'));
+  const M = G.astraeaMap(), h = u => G.astraeaH(u), area = 4 * Math.PI * (R / 1000) ** 2;
+  const pts = []; for (let i = 0; i < 3000; i++) { const z = 1 - (2 * i + 1) / 3000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = pts.map(h), at = (c, km, az) => { const e = norm(cross([0, 1, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = km * 1e3 / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  // the biggest crater: relaxed shallow (the complex depth law above the crust's 12.5 km), not a 20 km-deep bowl
+  const big = M.craters.slice().sort((a, b) => b.D - a.D)[0], bigDepth = Math.min(...[0, 1, 2, 3].map(k => h(at(big.c, big.D / 2e3, k * Math.PI / 2)))) - h(big.c);
+  check('ground-5: craters on target (baked ≥ 20 km = c·area/400); the crust turns them complex at ~12.5 km and keeps the biggest shallow; relief within top',
+    M.craters.length === Math.round(G.AS.c / 400 * area) && M.Dt > 12e3 && M.Dt < 13e3 && bigDepth > 300 && bigDepth < 5000 && Math.max(...H) < G.bodyTop(B),
+    `${M.craters.length} baked craters; transition ${(M.Dt / 1e3).toFixed(1)} km; the biggest (${(big.D / 1e3).toFixed(0)} km) ${bigDepth.toFixed(0)} m deep; ${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m`);
+  // Ahuna Mons: 3.5+ km above the ground around it, flanks steep but standing (25–45°), a flat-ish top
+  const ah = G.llU(...G.AS.ahuna.at), foot = Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(ah, 15, k * 1.05)))), fl = Math.max(...[0, 1, 2, 3].map(k => G.terrainSlope(B, at(ah, 6, k * Math.PI / 2)) / D)), top = G.terrainSlope(B, ah) / D;
+  check('ground-5: the lonely mountain stands 3.5+ km above its surroundings, its flanks 25–45°, its top flat-ish', h(ah) - foot > 3500 && fl > 25 && fl < 45 && top < 10,
+    `summit ${(h(ah) - foot).toFixed(0)} m above its foot; steepest flank ${fl.toFixed(0)}°; top ${top.toFixed(1)}°`);
+  // the bright crater: its rim 1.5+ km above its floor, a central pit, salt on the floor (and dark regolith outside)
+  const oc = G.llU(...G.AS.occ.at), oR = G.AS.occ.D / 2e3, rim = Math.max(...[0, 1, 2, 3].map(k => h(at(oc, oR, k * Math.PI / 2)))), floor = h(at(oc, oR * .45, 1)), pit = h(oc);
+  const salt = [0, 1, 2, 3, 4, 5, 6, 7].map(k => G.surfaceAt(B, at(oc, oR * .2, k * Math.PI / 4)).name).filter(n => n === 'salt deposits').length;
+  check('ground-5: the young bright crater: rim 1.5+ km above its floor, a central pit, salt deposits on the floor, dark regolith outside',
+    rim - floor > 1500 && pit < floor - 200 && salt >= 3 && G.surfaceAt(B, at(oc, oR * 2.5, 0)).name === 'dark regolith',
+    `rim ${(rim - floor).toFixed(0)} m above the floor; pit ${(floor - pit).toFixed(0)} m deeper; salt at ${salt}/8 points on the inner floor`);
+  let rs = 11, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-5: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

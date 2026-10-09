@@ -1,10 +1,10 @@
 // study_ground.mjs — measures a body's ground recipe headless (world session, GROUND.md G2/G7): bake time and sample
 // cost, continuity across the crater cells' cube-face seams, crater counts against the target, relief, slopes by unit,
 // flat ground for landers, and (Selene) the ground that never sees the sun.
-//   node study_ground.mjs [selene|enyo|hesper] [quick]      (selene by default; quick skips the polar darkness scan)
+//   node study_ground.mjs [selene|enyo|hesper|astraea] [quick]      (selene by default; quick skips the polar darkness scan)
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
+const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
 const { norm, dot, cross, add, mul } = G, D2R = Math.PI / 180, args = process.argv.slice(2), quick = args.includes('quick');
 const BODY = {
   selene: () => { const b = G.SELENE; b.ground = G.SELENE_GROUND; const m = G.seleneMap();
@@ -13,6 +13,8 @@ const BODY = {
     return { b, m, h: G.enyoH, c: G.EN.c, salt: G.EN.salt, unit: G.ENYO_GROUND.unit, units: G.ENYO_UNITS, young: 'lowland plains', dark: false }; },
   hesper: () => { const S = G.GROUND_STUBS.Hesper, b = { name: S.name, R: S.R, mu: S.g * S.R * S.R, ground: G.HESPER_GROUND }; const m = G.hesperMap();
     return { b, m, h: G.hesperH, c: G.HE.c, salt: G.HE.salt, nb: G.HE.bands, unit: G.HESPER_GROUND.unit, units: G.HESPER_UNITS, dark: false }; },
+  astraea: () => { const S = G.GROUND_STUBS.Astraea, b = { name: S.name, R: S.R, mu: S.g * S.R * S.R, ground: G.ASTRAEA_GROUND }; const m = G.astraeaMap();
+    return { b, m, h: G.astraeaH, c: G.AS.c, salt: G.AS.salt, unit: G.ASTRAEA_GROUND.unit, units: G.ASTRAEA_UNITS, dark: false }; },
 }[args.find(a => a !== 'quick') || 'selene'];
 let t0 = performance.now(); const X = BODY(), tBake = performance.now() - t0, { b: B, m: M } = X, R = B.R;
 const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(p * a.length))], f1 = x => x.toFixed(1), f0 = x => x.toFixed(0);
