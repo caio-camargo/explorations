@@ -12,10 +12,10 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **D1 `SYSTEM.md`**, the star system's catalog | design desk + **Caio approves** | one work package per body across every lane (look, ground, orbits, missions, a tester cheat); M5; PLAYTEST #11/#12 |
+| 1 | **Fan out [`SYSTEM.md`](SYSTEM.md)** (D1 ✓, approved 2026-10-08): one package per body (look, ground, orbits, missions, a tester "go to body" view) | orchestrator | per-body work in every lane; M5; PLAYTEST #11/#12 |
 | 2 | **Q20** plasma shell on `plasmaOn(s)` (Q17 ✓ `c227ed6`) | look & sound, effects (in progress) | Q29, the re-run that is **M0's finish line** |
 | 3 | **Q54** a presets-only playtest route for you | QA | W8, your hands-on pass: M1's human playtest |
-| 4 | **D2 `CREW.md`** art direction (pick from mock-ups) | design desk + a look session + Caio | crew visuals, EVA, crew-loss tone |
+| 4 | **Q72** crew mock-ups → **D2 `CREW.md`** art direction | look & sound, then Caio picks | crew visuals, EVA, crew-loss tone |
 | 5 | **Q3** UI slice 4 (plan first) | flow | Q43 watch mode, the gauges' final place, PLAYTEST #9 |
 
 ## How a session uses this
@@ -59,10 +59,15 @@ the feedback I paste into PLAYTEST items.*
 - **Version numbers:** latest on `main` is v1.53 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
-  **Effects:** after Q20, Q63 and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
+  **Effects:** after Q20, Q63, **Q72, Q71** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
   Q21, Q24, Q66, Q67, then the look & sound evergreen list. Claim each item and keep to its beat's files.
-  **Flow:** Q3 is **plan only tonight** (default, Caio may override): write the plan in NOTES and don't build it. Take Q4
+  **Flow:** after Q2, **Q73** (design desk, Caio's request). Q3 is **plan only tonight** (default, Caio may override): write the plan in NOTES and don't build it. Take Q4
   and Q62 next. **QA:** Q29 becomes ready as soon as Q20 is on `main`; it is M0's finish line, so it jumps the QA queue.
+- **Design desk, 2026-10-08 (Caio asked for work for the unattended sessions):** `SYSTEM.md` is **approved** (v1.0.0). New items:
+  **Q72** crew mock-ups and **Q71** body mock-ups (look & sound: **effects takes them right after Q63**, before Q64),
+  **Q73** identity mock-ups (**flow takes it right after Q2**, before Q3's plan). All three are mock-ups for Caio to pick
+  from, not game code, so the milestone gate doesn't hold them. **Orchestrator:** fan SYSTEM.md out into per-body items
+  (its § "After approval"); the per-body look and ground items need a tester "go to body" view first.
 - **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the
   space lane's M2 groundwork. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
 
@@ -79,6 +84,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | → flow 2026-10-08 |
+| Q73 | **Visual identity mock-ups (Q53)**: three directions on the same two screens (the Program screen and the flight HUD, real layout, static): (a) **paperwork**: mission-control forms, typewriter type, stamps, like the notebook map; (b) **instrument panel**: phosphor CRT and backlit legends, like the terminal map; (c) **mid-century poster**: flat colour, bold geometric type. Note how each would shift by era (NOTES: "later eras can shift the palette"). As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures | M1 | M | 🖥 | ready (after Q2) |
 | Q39 | **Esc pauses** in flight and on every screen (W5 default) | M1 | S | 🖥 | ready |
 | Q41 | **First-run:** each career choice explained in one sentence | M1 | S | 🖥 | ready |
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ready |
@@ -148,6 +154,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q23 | Draw the nozzle gimbal (`p.gv`) and steerable fins (`p.fd`); give `rwheel` its own look | M1 | M | 🖥 | ready |
+| Q72 | **Crew mock-ups for D2**: one scene (the capsule hatch on the pad walkway), three astronaut styles in the same pose: **cartoony** (Kerbal-like), **realistic**, **stylised human** (1960s illustration, Thunderbirds, Tintin); a wide still and a helmet close-up each. Trade-offs: ROADMAP § "Design catalogs". As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures. Any look beat may take it | M3 | M | 🖥 | ready (effects overflow, after Q63) |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ready |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -163,7 +170,8 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 |---|---|---|---|---|---|
 | Q21 | Vary `WSEED` per world: a different galaxy each playthrough | — | S | 🖥 | ready |
 | Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | ready |
-| — | One look item per body | M5 | — | 🖥 | blocked: D1 approved |
+| Q71 | **Body mock-ups from [`SYSTEM.md`](SYSTEM.md)**: a still per body from its look brief, beside its two real references: Hesper, Enyo (+ Pavor), Astraea, Hyperion with rings (close, and from Tellus's sky), Theia, Eos, Tethys (haze at the limb), Erebus. As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures; flags what each would need from the planet shader | M5 | M | 🖥 | ready (effects overflow, after Q72) |
+| — | One look item per body | M5 | — | 🖥 | to fan out (orchestrator); needs a tester "go to body" view |
 
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
@@ -203,10 +211,10 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| D1 | **`SYSTEM.md`, the star system's catalog**, drafted with Caio (ROADMAP § "The system catalog"): one entry per body or object class: physical, orbit, look brief, ground brief, role, known or discovered. **The top unblocker** | M5 | L | 📝 | ready |
-| D2 | **`CREW.md`**: astronaut art direction (cartoony, realistic, stylised): write the trade-offs, ask a look session for 2–3 mock-ups in one scene, Caio picks from pictures | M3 | M | 📝 | ready |
+| D1 | **`SYSTEM.md`, the star system's catalog**, drafted with Caio (ROADMAP § "The system catalog"): one entry per body or object class: physical, orbit, look brief, ground brief, role, known or discovered. **The top unblocker** | M5 | L | 📝 | ✓ v1.0.0, approved by Caio 2026-10-08 (names are placeholders) |
+| D2 | **`CREW.md`**: astronaut art direction (cartoony, realistic, stylised): write the trade-offs, ask a look session for 2–3 mock-ups in one scene, Caio picks from pictures | M3 | M | 📝 | after Q72 (mock-ups) |
 | D3 | **`POWERS.md`**: national flavours as content (name style, flag, hardware look, tone, rival personality) | M1 | M | 📝 | ready |
-| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | ready |
+| Q53 | One visual identity for the screens (PLAYTEST #13; the early-era look), with flow | M1 | L | 📝 | after Q73 (mock-ups) |
 
 ---
 
