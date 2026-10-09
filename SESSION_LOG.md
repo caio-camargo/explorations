@@ -4338,3 +4338,15 @@ and the build of Q3/Q111 once Caio reads W15/W16.
 **Files:** `sim/vessel.js`, `sim/power.js`, `sim/space.js`, `sim/program.js`, `app/editor.js`, `app/gl.js`, `builder.js`,
 `test.mjs` (vehicle-6, vehicle-7), launchpad `NOTES.md` § v1.80, `TESTING.md` 160–161, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** Q33 (node chains, M2) or Q141 (satellite lifetime in the builder, with space); Q47 still needs Caio and the GPU.
+
+## 2026-10-09 — Launchpad v1.81: a satellite's lifetime in the builder (Q141; vehicle session, unattended)
+
+- `satLife(stack, alt)`: the design's top stage at the aimed orbit through space's `holdRate`/`decayLife`; the Δv left
+  from `launchWarnings`' need. The tide's rate cached per altitude (a design edit costs 1–2 ms).
+- The Beeper: 110 km costs 73 m/s a day and falls within hours once dry; 200 km lasts 17.5 years; 400 km past 20.
+- **Checked:** `vehicle-8`; `playtest.mjs m1`; a page probe; smoke after merging main.
+- FLAG (harmless): the main clone's `.git/objects/d2/` holds `8aa2d0f… (1)`, a duplicate-named loose object from the
+  Drive era (7 Oct); git warns "bad sha1 file" on some commands. `git fsck --connectivity-only` is clean. Not touched.
+
+**Files:** `sim/vessel.js`, `app/editor.js`, `test.mjs`, launchpad `NOTES.md` § v1.81, `TESTING.md` 162, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's ready list: Q33 (node chains, M2, M), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
