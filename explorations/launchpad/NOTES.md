@@ -1742,6 +1742,39 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
+
+## v1.82 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
+
+Slice 2 of § "Plan: debris and Kessler". `conjTick` runs at the end of `orbTick` (each `advanceDays`), Tellus orbits only.
+- **Who meets whom:** big objects (Debris) against active entries (everything else in Tellus orbit), never object against
+  object. Each orbit is smeared over 38 bands of 50 km from the top of the air to 2,000 km (`resid`: the share of its
+  period in each, sampled evenly in time; cached per orbit).
+- **The rate** (`pairRate`, hits a day): Σ over shared bands of share_a · share_o · Rs² v / (2π r² W cos(Δi/2)), Rs the
+  two bounding radii added, Δi their mutual inclination. Derivation: at a node they hit if their offsets across the band
+  and along the track fall in an ellipse of area π Rs²/cos(Δi/2). My first version used the bounding rectangle (4/π too
+  high); an event-driven Monte Carlo caught it (`study_debris.mjs`, part A, 200,000 pairs × 20 days, Rs 1 km):
+
+  | Δi | 90° | 60° | 30° | 10° |
+  |---|---|---|---|---|
+  | Monte Carlo / formula | 0.99 | 0.94 | 0.93 | 0.92 |
+
+  (±5 % statistical.) The usual "smear over a spherical shell" estimate is close at steep crossings but goes to zero at
+  small Δi, where the real rate is highest.
+- **A hit** (a seeded roll per entry and day, Poisson): a crewed entry is always warned and moves (LATE_GAME: no
+  surprise deaths); a tracked one (from the mainframe era, `debrisTracked`) with `DODGE_DV` = 0.5 m/s in its tanks dodges
+  and pays it; anything else is destroyed with the object, and the breakup goes into `PROG.breakups` for Q147.
+- **The setting:** `pressureOf('debris')` reads `PROG.pressures.debris` (off / light / real, default light = a tenth of
+  real); platform's Q124 can adopt the accessor for world creation.
+
+**What it means** (part B): a satellite sharing a band at 400 km with N spent stages, crossing at 60°, real rates:
+N = 10 → one hit in ~110,000 years; 100 → ~11,000; 1,000 → ~1,100. **Big objects almost never hit each other**, as in
+reality (the first accidental satellite–satellite collision, Iridium–Cosmos, came 52 years into the space age). The
+pressure LATE_GAME wants comes from fragments: slice 3 (Q147) turns breakups and anti-satellite tests into band densities
+of thousands of pieces, where the same formula (with the fragment's tiny radius) gives real odds.
+
+Test `space-4` (3 checks; mutations caught: the old formula, "off" ignored, crew not warned, never tracked, no breakup
+record). Full suite 557 pass. No TESTING row: a hit is too rare to try by hand, and there's no UI for the setting yet (Q148).
+
 ## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
 Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
@@ -7330,6 +7363,7 @@ level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) ca
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
 - test.mjs `aerofx-3` (engine voices).
+
 
 ### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
 - **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160

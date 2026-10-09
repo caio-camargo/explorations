@@ -4162,6 +4162,40 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `110 km: ${l110.rate.toFixed(1)} m/s a day, ${l110.days.toFixed(0)} days on ${l110.spare.toFixed(0)} m/s, down in ${(l110.fall * 24).toFixed(0)} h · 200 km: ${l200.rate.toFixed(2)} m/s a day, ${(l200.days / 400).toFixed(1)} years, then down in ${l200.fall.toFixed(0)} days · 400 km: ${l400.rate.toFixed(3)} m/s a day · ${ms} ms`);
 }
 
+// space-4. Debris, slice 2 (space session, QUEUE Q146): conjunctions between flights. Big objects against active entries
+// only, at Rs² v / (2π r² W cos(Δi/2)) a pair per band (study_debris.mjs: a Monte Carlo agrees within its noise). A hit:
+// crewed entries are always warned and move; tracked ones (mainframe era on) with fuel dodge; the rest are destroyed with
+// the object and the breakup is recorded. The pressure is a world setting (off / light / real).
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,detach,junkRegister,conjTick,pairRate,resid,bandR,BAND_W,skDv,TELLUS,PROG,HOOK,DAY_S};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R, deg = Math.PI / 180;
+  const orbit = (s, alt, inc) => { const a = R + alt, vc = Math.sqrt(T.mu / a); Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(inc * deg), -vc * Math.cos(inc * deg)] }); return s; };
+  const sat = (alt, inc, { fuel = false, crew = false } = {}) => { const s = orbit(D.newShip(D.PRESETS.Probe), alt, inc); D.satRegister(s, { day0: P.day }); const q = P.sats.at(-1);
+    if (!fuel) for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+    if (crew) q.shape[0].crew = 2; return q; };
+  const junk = (alt, inc) => { const s = orbit(D.newShip(D.PRESETS.Orbiter), alt, inc); s.rec = { launched: true, day0: P.day };
+    const ev = s.events.find(e => e.decouple.length); D.detach(s, s.parts.filter(p => p.on && ev.decouple.includes(p.seg)), [0, -1, 0], 0); D.junkRegister(s.rec); return P.sats.at(-1); };
+  const reset = (day, mode) => { P.sats = []; P.day = day; P.breakups = []; P.pressures = { debris: mode }; news.length = 0; };
+  reset(0, 'real'); const a = sat(425e3, 0), o = junk(425e3, 60), far = junk(1500e3, 60);
+  const ra = D.resid(a), ro = D.resid(o), rb = D.bandR(6), Rs = ra.R + ro.R, want = Rs * Rs * Math.sqrt(T.mu / rb) / (2 * Math.PI * rb * rb * D.BAND_W * Math.cos(30 * deg)) * D.DAY_S;
+  check('debris conjunctions: a pair sharing a band meets at Rs² v / (2π r² W cos(Δi/2)) a day; a pair in different bands never',
+    Math.abs(ra.f[6] - 1) < 1e-9 && Math.abs(ro.f[6] - 1) < 1e-9 && Math.abs(D.pairRate(a, o) / want - 1) < 0.02 && D.pairRate(a, far) === 0,
+    `${D.pairRate(a, o).toExponential(3)} a day (formula ${want.toExponential(3)}), Rs ${Rs.toFixed(1)} m; 1,500 km: ${D.pairRate(a, far)}`);
+  const hit = () => 0, miss = () => 0.999999, T1 = d => (P.day + d) * D.DAY_S;
+  reset(0, 'off'); { const a1 = sat(425e3, 0), o1 = junk(425e3, 60); D.conjTick(T1(0), T1(1), hit); const offKept = P.sats.includes(a1) && P.sats.includes(o1);
+    reset(0, 'real'); const a2 = sat(425e3, 0), o2 = junk(425e3, 60); news.length = 0; D.conjTick(T1(0), T1(1), miss); const missed = P.sats.length === 2 && !news.length;
+    D.conjTick(T1(0), T1(1), hit); const gone = !P.sats.includes(a2) && !P.sats.includes(o2) && P.breakups.length === 1 && Math.abs(P.breakups[0].h - 425e3) < 1e3 && news.some(m => /struck by/.test(m));
+    check('debris conjunctions: off does nothing; a miss leaves both; an untracked hit destroys both and records the breakup',
+      offKept && missed && gone, `breakup at ${P.breakups[0] ? (P.breakups[0].h / 1e3).toFixed(0) + ' km, ' + (P.breakups[0].mass / 1000).toFixed(1) + ' t' : '—'}`); }
+  reset(3000, 'real'); { const a3 = sat(425e3, 0, { fuel: true }), o3 = junk(425e3, 60), dv0 = D.skDv(a3); D.conjTick(T1(0), T1(1), hit);
+    const dodged = P.sats.includes(a3) && P.sats.includes(o3) && Math.abs(dv0 - D.skDv(a3) - 0.5) < 0.01 && news.some(m => /dodged/.test(m));
+    reset(0, 'real'); const a4 = sat(425e3, 0, { crew: true }), o4 = junk(425e3, 60); D.conjTick(T1(0), T1(1), hit);
+    const warned = P.sats.includes(a4) && P.sats.includes(o4) && news.some(m => /was warned/.test(m)) && !P.breakups.length;
+    check('debris conjunctions: tracked (mainframe era) with fuel, it dodges for 0.5 m/s; crewed, it is always warned, even untracked and dry',
+      dodged && warned, `dodged ${dodged}, crewed warned ${warned}`); }
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
