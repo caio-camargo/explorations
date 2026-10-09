@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.6.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 1.6.1 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -61,9 +61,9 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 
 | | Milestone | Finish line | State |
 |---|---|---|---|
-| M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | **current** |
-| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in the intended number of flights; no box covers another at 1280×800; **a person who isn't Caio plays the first hour**, and where they got stuck or bored is written in PLAYTEST | **next** (starts now in lanes M0 doesn't need) |
-| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, with one routine resupply, using "advance to next event" only | design + groundwork |
+| M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | ✓ **done 2026-10-09** (Q29 clean; last bugs Q74, Q77, Q112 in v1.73–v1.74; #9, #11 left to M1/M5 by W13's default) |
+| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in the intended number of flights; no box covers another at 1280×800; **a person who isn't Caio plays the first hour**, and where they got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09) |
+| M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, with one routine resupply, using "advance to next event" only | **next** (code open since 2026-10-09) |
 | M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | design only |
 | M4 | **Big projects** (epoch 5) | A depot and a datacenter built over several flights, sized by waste heat, earning | design only |
 | M5 | **Sun and planets** (epoch 6) | A probe to another planet planned on a porkchop, coasting in the background while the program carries on | design only |
