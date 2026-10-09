@@ -133,7 +133,7 @@ const SAVE_V=1,MIGRATE=[
   j=>{for(const q of j.sats||[])delete q.docked;j.rel=j.rel||{};j.op=j.op||{};if(!isFinite(j.funds))delete j.funds;if(!isFinite(j.day))j.day=0;return j}];   // 0 → 1: the loader's old fix-ups
 function migrateSave(j){if(!j||typeof j!=='object')return null;let v=Number.isInteger(j.ver)?j.ver:0;
   if(v>SAVE_V){j.newerSave=true;return j}for(;v<SAVE_V;v++)j=MIGRATE[v](j);j.ver=SAVE_V;return j}
-try{const j=migrateSave(JSON.parse(localStorage.getItem(PROG_KEY)||'null'));if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked;
+try{const j=migrateSave(JSON.parse(localStorage.getItem(PROG_KEY)||'null'));if(j){Object.assign(PROG,j);for(const q of PROG.sats||[])delete q.docked;debRestore();   // the last Debrief comes back (Q100)
   if(j.newerSave){delete PROG.newerSave;setTimeout(()=>HOOK.msg&&HOOK.msg('This program was saved by a newer version of the game: some of it may not load right'),1500)}}}catch(e){}   // a flight in progress doesn't survive a reload
 if(PROG.home!=null&&PROG.home!==HOME)HOME=PROG.home;if(PROG.home!=null||PROG.homeArch)RIVALS=raceSchedule();ensureBoard();if(!isFinite(PROG.funds))PROG.funds=FUNDS0;if(!isFinite(PROG.day))PROG.day=0;PROG.rel=PROG.rel||{};PROG.op=PROG.op||{};
 HOOK.save=()=>{try{PROG.ver=Math.max(PROG.ver|0,SAVE_V);localStorage.setItem(PROG_KEY,JSON.stringify(PROG))}catch(e){}};

@@ -1939,6 +1939,15 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — the last Debrief survives a reload (2026-10-09, space session as overflow, QUEUE Q100)
+
+- `debriefOf` also keeps the record in `PROG.lastDebrief`, so it's saved with the program; `debRestore()` (sim) brings
+  it back into `DEBRIEF_LAST` after a save loads (`app/state.js`, one call, flagged for flow). The *Last flight* button
+  works after a reload.
+- `debOutcome`: a vessel registered **in flight** (v1.90: above the air, in no lasting orbit) reads **In flight:
+  carries on between flights**, not "Ended in flight: written off" (which still applies to one left in the air).
+Test `space-14` (1 check; mutations caught: not saved, written off again). TESTING row 172.
+
 ## v1.96 — the link budget: every link has a rate and a light delay (2026-10-09, space session, QUEUE Q171, Q51 slice 1)
 
 `sim/space.js` (next to the ground stations): rate = `LINK_K` · P · Gt · Gr / d² bit/s, the free-space law with the

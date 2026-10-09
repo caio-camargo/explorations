@@ -4648,6 +4648,21 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `over the pad: ${(L.rate / 1e3).toFixed(0)} kbit/s at ${(L.d / 1e3).toFixed(0)} km; at Selene: ${Ls.rate.toFixed(1)} bit/s at ${(Ls.d / 1e6).toFixed(1)} Mm, ${(Ls.delay * 1000).toFixed(0)} ms round trip`);
 }
 
+// space-14. The last Debrief survives a reload (QUEUE Q100; space overflow), and a flight left coasting above the air is
+// "In flight" in it, not "written off" (it carries on as a cruise entry since v1.90).
+{
+  const mk = () => new Function(src + 'return {newShip,PRESETS,recNew,missionEnd,debRestore,get DEBRIEF_LAST(){return DEBRIEF_LAST},TELLUS,PROG,HOOK};')();
+  const D = mk(); D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.HOOK.logged = () => {};
+  const P = D.PROG, T = D.TELLUS, r0 = T.R + 300e3; P.sats = []; P.day = 0; P.done = P.done || {};
+  const ra = T.R + 5000e3, rp = T.R + 50e3, va = Math.sqrt(T.mu * (2 / ra - 2 / (ra + rp))), s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r: [ra, 0, 0], v: [0, 0, -va] });   // high, on a path that comes down
+  s.rec = D.recNew(); Object.assign(s.rec, { launched: true, day0: 0 }); D.missionEnd(s);
+  const out = s.rec.debrief && s.rec.debrief.outcome, saved = JSON.stringify(P);
+  const E = mk(); Object.assign(E.PROG, JSON.parse(saved)); const back = E.debRestore();
+  check('debrief: a flight left coasting above the air reads "In flight"; the last Debrief is kept with the save and comes back after a reload',
+    out && out.k === 'cruise' && /In flight/.test(out.t) && P.lastDebrief && back && JSON.stringify(back) === JSON.stringify(D.DEBRIEF_LAST) && E.DEBRIEF_LAST === back,
+    `outcome ${out ? out.k + ' "' + out.t + ': ' + out.d + '"' : '—'}; restored ${!!back}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

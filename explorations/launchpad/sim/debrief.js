@@ -18,9 +18,12 @@ function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
   const el=elements(s.r,s.v,B.mu);
   if(el.e>=1)return{k:'escape',t:`Escaping ${B.name}`,d:'on its way out'};
   if(el.pe>B.R+(B.atm||0))return{k:'orbit',t:B===TELLUS?'In orbit':`In orbit of ${B.name}`,d:`${km(el.pe-B.R)} × ${km(el.ap-B.R)}`};
+  const q=R.satId!=null&&(PROG.sats||[]).find(x=>x.id===R.satId);if(q&&q.cruise)return{k:'cruise',t:'In flight',d:'carries on between flights (Program → In flight)'};   // space Q49
   return{k:'flying',t:'Ended in flight',d:'left on a path that comes down: written off'}}
 // (never throws: a debrief that fails to build must not stop the flight from settling)
-function debriefOf(s,R,ups){try{return DEBRIEF_LAST=debBuild(s,R,ups)}catch(e){console.error('debrief',e);return null}}
+function debriefOf(s,R,ups){try{DEBRIEF_LAST=debBuild(s,R,ups);PROG.lastDebrief=DEBRIEF_LAST;return DEBRIEF_LAST}catch(e){console.error('debrief',e);return null}}   // kept with the save (Q100)
+// after a save loads: the last flight's Debrief is there again (QUEUE Q100; space overflow)
+function debRestore(){DEBRIEF_LAST=PROG.lastDebrief||null;return DEBRIEF_LAST}
 function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.flights,design:s.stack?designName(s.stack):s.name||'',
     day0:R.day0,day:PROG.day,met:simT,fromOrbit:!!R.fromOrbit,outcome:out,money:[],net:null,missions:[],certs:[],records:[],incidents:[],kh:[],streak:PROG.streak||0};
   if(b&&PROG.satN>b.satN)out.d+=' · registered in the fleet';
