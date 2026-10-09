@@ -7064,6 +7064,11 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   ship is a flown one (`S.rec.launched`) rebuilds the design on the pad (`editorChanged`), so the backdrop is the pad,
   not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
   40 km, Debrief, then Program: the pad.
+- **Evergreen (walking the screens as a new player).** (1) Over the notebook-era map, the map every new career sees on
+  M, the HUD's glass buttons and white messages vanished on the cream paper: `body.paper` (set while that map shows)
+  turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
+  launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
+  with the key) as well as `go`.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
