@@ -1958,6 +1958,44 @@ Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test
 caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
 view) is flow's, proposed in QUEUE.
 
+## Plan: the automation ladder (2026-10-09, space session with economy's parts, QUEUE Q127; plan only)
+
+From [`MIDGAME.md`](MIDGAME.md) (approved: decision 2, automation arrives with compute; decision 3, every routine has a
+window) and CREW.md (pilots come first). **What exists:** dispatch (an ascent flown by its recorded procedure, any era);
+the economy's supply runs, refused before onboard computers (`baseRunQuote`, `BASE_ERA`, D7); mission control flying a
+vessel's planned burns (v1.93, any era today). Three places, three rules, none of them named.
+
+**One question every routine asks:** `autoAllowed(kind, ctx) → {ok, why, era}`, with the ladder as data:
+
+| kind | from | why (the refusal the UI shows) |
+|---|---|---|
+| `ascent`: repeat a flown ascent (dispatch) | human computers (0) | — |
+| `burn`: mission control flies a planned burn | mainframes (1) | "burns are computed by hand: fly it yourself" |
+| `deploy`: put a satellite in an orbit you've flown | mainframes (1) | "needs a mainframe to command the deployment" |
+| `dock-crewed`: rendezvous and dock with a crew aboard | mainframes (1) | the pilot flies the last metres (CREW.md) |
+| `dock`: uncrewed rendezvous and docking (resupply) | onboard computers (2) | "needs onboard computers" |
+| `moon`: runs to Selene or Nyx | onboard computers (2) | as now for supply runs |
+| `planet`: interplanetary routes | cheap compute (3) | "needs cheap compute" (and M5) |
+| `assist`: gravity-assist families | the AI boom (4) | — |
+
+The economy's `BASE_ERA` and my mission control become calls to it; the thresholds stay in one table, so balancing
+the ladder is one edit.
+
+**Slices:**
+1. **`autoAllowed` and the table** (space, economy's call sites flagged): dispatch quotes, supply runs, and mission
+   control's burns (`nodeHandOff` refuses before mainframes, with the reason) ask it.
+2. **Window rules** (with economy and planning): a procedure records its rule when it's flown (plane over the site ·
+   target phase · lighting at the site · planetary alignment); `nextWindow(rule, T)` finds the next valid one; a
+   dispatched routine launches at its next window, and the pad calendar shows them (MIDGAME's table: near space waits
+   hours, Selene a few days, the planets years).
+3. **Contact gates automation** (after Q51 slice 1): a ground-commanded step (a mission-control burn, a deployment)
+   needs a path home at its time; with an onboard computer of the step's tier it may run out of contact.
+4. **Crewed routines first** (with economy and crew): crew rotation carrying cargo as the first resupply routine.
+
+**Defaults (Caio may override):** the table above (MIDGAME's, with mission-control burns from mainframes, since
+before them burns were worked out by hand); refusals say why and which era unlocks it; nothing already ordered is
+cancelled when a rule changes.
+
 ## Plan: Helios's tide on the Tellus system (2026-10-09, space session, QUEUE Q139; plan only, M5)
 
 Comes with Q87 slice 2 (Helios as the root). Measured with `sim/system.js` (TU 15.78 Gm, μ 1.17e18): Helios's tide

@@ -224,7 +224,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q142 | A proper deadband controller on the full physics, to check v1.71's hold cost (a crude one pumped the eccentricity) | M2 | S | ⚙ | ✓ (study, `study_slot.mjs` part D, NOTES § "station-keeping checked against a real controller": 46–67 m/s a year vs the model's 89; no change) |
 | Q139 | 📝 At M5: add **Helios's tide** to the Tellus system (Tellus–Helios L1/L2) with 6b's machinery; Selene's L4/L5 already hold (`study_lagrange.mjs`) | M5 | S | 📝 | ✓ plan (NOTES § "Plan: Helios's tide on the Tellus system": per-orbit like the moons' children, above ~2,500 km; the moons stay on rails; with Q87 slice 2) |
 | Q140 | 📝 **Asteroid capture and mining** (with economy): epoch 7 capture with solar-electric tugs, 8–9 mining in place, type → yield, deflection as a pressure — LATE_GAME.md § Asteroids | M5 | M | 📝 | ready (plan only) |
-| Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | ready (plan only) |
+| Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | ✓ plan (NOTES § "Plan: the automation ladder": `autoAllowed(kind)` with the ladder as one table; window rules; contact gating; crewed routines first); slices under *Proposed* |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ready (plan only) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ready (plan only) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
@@ -389,3 +389,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - flow — Q87 slice 1, the drawing: the planets on the map's zoomed-out view from epoch 1, discs and labels at `fromTellus(name, T)` (and Helios), colours from `SYSTEM_BODIES` (PLAYTEST #11); the sim half is in (v1.94, `sim/system.js`) — space
+- space + economy — Q127 slice 1: `autoAllowed(kind, ctx)` and the ladder table; dispatch quotes, supply runs (`BASE_ERA`) and mission-control burns ask it — NOTES § "Plan: the automation ladder"
+- economy + planning + space — Q127 slice 2: window rules recorded with procedures; `nextWindow(rule, T)`; routines launch at their next window — same plan
+- space — Q127 slice 3: contact gates automation (after Q51 slice 1) — same plan
