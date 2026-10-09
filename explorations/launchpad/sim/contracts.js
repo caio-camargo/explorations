@@ -115,9 +115,13 @@ const LEAK_P=c=>0.25+(c.client!==HOME?0.15:0);
 // ---- the race for firsts: rival programs reach the headline firsts on their own schedules (seeded, faster with tech and
 // economy). First in the world pays 1.5× and a big boost at home; second pays half.
 const RACE=['beeper','hop','orbiter'];
+// rival personalities in the schedule (QUEUE Q165, POWERS.md): a frugal power doesn't race (it partners); a rising power
+// copies, then catches up: it doesn't go for the first of the race's firsts, and runs the later ones half again as fast.
+// The draws are made for every power as before, so the others' schedules don't move.
 function raceSchedule(){const R=rng(4242),out={};for(const id of RACE)out[id]=null;
-  for(const p of POWERS){if(p.i===HOME)continue;const speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*flav(p.i).pri.prestige);let t=0;
-    for(const id of RACE){t+=(100+120*R())/speed;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}}}
+  for(const p of POWERS){if(p.i===HOME)continue;const a=flav(p.i),arch=archOf(p.i),speed=p.tech*Math.sqrt(p.econ)*(0.6+1.6*a.pri.prestige);let t=0;
+    RACE.forEach((id,k)=>{const dt=(100+120*R())/speed;t+=arch==='rising'&&k>0?dt/1.5:dt;
+      if(arch==='frugal'||arch==='rising'&&k<1)return;if(!out[id]||t<out[id].day)out[id]={i:p.i,day:Math.round(t)}})}
   return out}
 let RIVALS=raceSchedule();
 const raceLost=id=>(PROG.raceLost||{})[id]??null;

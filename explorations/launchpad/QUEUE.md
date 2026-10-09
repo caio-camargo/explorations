@@ -152,8 +152,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q93 | Contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work (NOTES § Epoch 1–2 pacing) | M1 | S | ⚙ | ✓ v1.77 `cac945f` (floors 1.3× a preset's net cost; Withdraw) |
 | Q150 | A private company in a frugal world stagnates: reaches orbit (v1.77) but ends 4 years at 25M, never reaching Selene (`SELENE=1 node career.mjs 4 2`); find what it lacks (budget day, contract mix, investors) | M2 | S | ⚙ | ✓ `bc691b7` (no recurring income; stakes fix it: frugal 187M → 392M; no game change) |
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ✓ v1.89.1 `00e0e3a` (fleet, pads, nodes with stock/need, supplies bottleneck; the screen switched over) |
-| Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | → economy 2026-10-09 |
-| Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | ready |
+| Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ✓ v1.89.2 `a151fc4` (frugal partners, rising copies then catches up; OWN_TONE) |
+| Q162 | Q9 slice 1: state-judged station contracts (resupply, lab time, expansion) — NOTES § "Plan: station, base, relay and rendezvous contracts" (W22's defaults) | M2 | M | ⚙ | → economy 2026-10-09 |
 | Q163 | Q9 slice 2: the first-station firsts (`station1` → `stationcrew` → `stationlab` → `station30`) — same plan | M2 | S | ⚙ | ready |
 | Q95 | Dispatched flights from a site abroad pay its lease (`orderDispatch`; procedures fly from their recorded site) (NOTES v1.56) | M2 | S | ⚙ | ✓ v1.77.1 `5530b7e` (from the procedure's site; lease on the price; stood down if refused) |
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ready (plan only) |
@@ -219,7 +219,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
-| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | → world 2026-10-09 (resumed; measurements in NOTES § "Q19 in progress") |
+| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): fix built on branch `terrain` (`3a9cda2`: the terrain march in its own G-buffer pass; pixel-identical to main), **timing A/B not yet run** (stopped twice: machine out of memory); NOTES § "Q19, round 2" |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | shader part ✓ `5ac7ce0` (wind-scoured ranges, `ICE_VARY`); the coast, the pad terrace (heightfield, shared with `terrainH`) and the salt-flat/wetland masks stay with world |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
@@ -365,4 +365,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- platform / world — **first load takes 86–88 s** on Windows (ANGLE/D3D11, no shader cache): the sky shader's link is 71 s of it. World's Q19 branch (`terrain` `3a9cda2`) takes the march out of the sky shader, which should cut it to ~20–40 s; then the rest of the sky shader. Players' first visit, and Caio after every update — NOTES § "Q19, round 2"
 - flow — `netModel()` is in (v1.89.1): delete `netFallback` in `app/network.js`; N2's nodes (`M.nodes`: kind, body, slot, stock, need, days, paused) and `M.bottleneck` are ready to draw — NOTES § "netModel() built"

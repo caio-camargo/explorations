@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1770,6 +1770,62 @@ Worth promoting into `terrain-probe.js` when resumed.
 3. Then the 18 ms that isn't terrain at all (the atmosphere's `scatter`?), which is the look lane's code: hand it over
    with numbers.
 
+### Q19, round 2 (2026-10-09): the cost is the march inlined into the sky shader; a fix is built, not yet timed
+
+All A/B pairs below were measured in one browser session each, base first. The sky pass in ms at the grazing-hills view
+is the median of three per-draw profiles. The GPU was throttled throughout (~57 ms base).
+
+**What each experiment saved:**
+- cheaper normals (≤5 octaves): 0.6
+- no near-field detail: 0.6
+- terrain shading skipped: 0.8
+- octaves capped at 6: 1.75
+- the step loop halved: 0.7
+- one map fetch instead of nine: 1.2
+- a bracket from the pre-pass: 0.0
+- loops with non-constant bounds: 0.2
+- the cloud loop the same way: 0.4
+- **no march at all: 28.7**
+- **march kept but never run: 20.3**
+- **sky shader reads the pre-pass hit instead of marching (three `terr` calls left): 10.3**
+
+Counted per pixel with a heat-map variant: 13.5 march steps (p90 34; the warp maximum 16) and 17 terrain evaluations,
+rising from 11 at the bottom of the screen to 25 at the top.
+- **The bracket fails at grazing views:** neighbouring coarse hits differ by more than the 3 % it needs (a pixel's angle
+  over the grazing angle).
+
+**What that means:** no part of the march is the cost on its own. Its *presence* in the sky shader's long `main` is.
+- With the march compiled in, the shader is slow even where it never runs (register pressure: about 10 ms of 57).
+- Running it costs far more than its evaluations add up to.
+
+**First-load time is the bigger finding.** A fresh profile (no shader cache) loads in **86–88 s** on this machine. The
+sky shader's link takes **71.3 s** of that; its depth pre-pass, the same functions with a small `main`, links in 2.6 s.
+Every sky-shader variant with the march inlined took 60–99 s to compile; without it, 20–43 s. Every first visit, and every
+visit after the shader code changes, pays this (Caio, after each update).
+
+**The fix, built on branch `terrain`** (`app/gl.js`, `app/render.js`; not merged: timing unmeasured):
+- **A terrain G-buffer pass, `PTERR`:** the pre-pass's prefix with a `main` that marches from the coarse start (as the sky
+  shader did) and writes (hit distance, height, ground normal octahedral-encoded) to an RGBA32F target at full
+  resolution.
+- **The sky shader reads it** (`uTerr`, `texelFetch`) and contains no `march` or `terr` calls, so the compiler drops
+  them.
+- **Without `EXT_color_buffer_float`,** the sky shader is built as before (`TERR_GB`).
+
+**Checked:** screenshots of five views against `main`, pixel by pixel.
+- Dusk hills and the coast match (max 6 and 1 levels).
+- Hills, pad and orbit differ only as much as `main` differs from itself (clouds and animation).
+- **Negative result:** the first version put the G-buffer on texture unit 4, which bloom's composite also binds (units
+  0–4). That left a soft bright patch in the sky at dusk (+19 levels). It's on unit 9 now.
+
+**Not yet measured:** the frame time and the load time, `main` against the branch, interleaved. That run was stopped
+twice by the machine running out of memory (other sessions). To finish:
+- serve `main` on one port and the branch on another;
+- alternate four runs of the bench (load time from `performance.getEntriesByType('navigation')[0].loadEventEnd`, then
+  the views);
+- merge if the branch is no slower at the pad and faster to load.
+The expected gain is load time (the 71 s link should drop to ~20–40 s, plus PTERR's own ~3 s), and maybe ~10 ms at
+grazing views from register pressure, minus PTERR's full-resolution march.
+
 ## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
 
 The first step of GROUND.md § "G3: the port plan", allowed before the milestone gate. Headless, and no visible change.
@@ -1898,6 +1954,21 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89.2 — rivals' personalities in the race; our own voice (2026-10-09, economy session, QUEUE Q165)
+
+Q103's next slice (POWERS.md § archetypes):
+- **The race schedule** (`raceSchedule`): a **frugal** power doesn't race (it partners: its offers and stakes, v1.24,
+  are how it shows up); a **rising** power **copies, then catches up**: it never goes for the first of the race's firsts
+  (the beeper) and runs the later ones half again as fast. Every power's draws are still made in the same order, so the
+  others' dates don't move. In this build's world (no frugal power), a fast rising power took the hop and the orbiter
+  in the test, leaving the beeper to the closed superpower.
+- **Our own voice:** the "FIRST IN THE WORLD" headline ends with a line in the home archetype's voice (`OWN_TONE`):
+  live coverage (open superpower), the after-the-fact bulletin (closed), the nation among the leaders (rising), the
+  science desk's motorway bridge (frugal), the palace's world record (resource), the site's successful test
+  (security).
+Test `econ-15` (2 checks; the schedule rule mutation-tested). **Not yet:** mission control's in-flight voice (app
+messages, flow's); "the second power to…" news when a rising power repeats a claimed first.
 
 ## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
 
