@@ -257,7 +257,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - **✓ v1.54 (`5cdf43d`)** world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
-- world — GROUND.md G2: Selene's baked map + crater bands on the CPU, `geoAt` on the bake (§42 retargeted), `study_ground.mjs` — M, ⚙ — GROUND.md § Slices
+- **→ world 2026-10-08** world — GROUND.md G2: Selene's baked map + crater bands on the CPU, `geoAt` on the bake (§42 retargeted), `study_ground.mjs` — M, ⚙ — GROUND.md § Slices
 - world — GROUND.md G3–G6: the march on Selene, shadows, consumers (with space for `landAt`), Nyx — 🖥, M3 — GROUND.md § Slices
 - world — GROUND.md G7+: per-planet ground items (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps), after G3 and Q79 — GROUND.md § The bodies
 - design desk / Caio — GROUND.md decisions: **all three defaults hold (2026-10-08, Caio silent when asked; may override)**: maria to the near side, G1–G2 before M3, relief in real metres — GROUND.md § Decisions
