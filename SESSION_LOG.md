@@ -3643,3 +3643,23 @@ Planning only, at Caio's request (no heavy GPU): code and docs read, nothing run
 **Files:** `explorations/launchpad/NOTES.md` (new section "Vehicle parts…", v1.21.9), `explorations/launchpad/QUEUE.md`
 (Q31/Q34 states, 6 Proposed lines), `ACTIVE_WORK.md` (claim opened and cleared).
 **Next:** build Q31 (⚙, M1), then Q34a; the look beat draws the parts when GPU time is free.
+
+## 2026-10-08 — Launchpad world lane: the ground plan for every body (world session)
+
+### Summary
+QUEUE Q86 + Q18, written as one plan (a different machine, kept off the GPU, so docs only). New
+`explorations/launchpad/GROUND.md` v0.1.0:
+- a code survey: only Tellus has relief; every other body is a smooth sphere in physics and on screen, with craters as shading only;
+- one ground layer: a `ground` recipe per body, `bodyH(b,u)`, baked big features plus procedural integer-hash bands, so v1.25's CPU/GPU rules carry over; the mare mask moves into Selene's bake (removing the last shared float noise);
+- eight shared generators (crater field first, used by about 12 bodies) and a per-body table for SYSTEM.md;
+- Selene in detail: crater bands and shapes (the simple/complex transition scales as 1/g), maria as flooded plains, slopes against TOPPLE, shadows (a sun-horizon map plus near rays), horizons (1.2 km from a 2 m eye), and polar dark craters: the fixed sun sits 6.8° above Selene's equator, so the south polar floors are permanently dark (R4's ice);
+- slices G1–G7+; G1–G2 are headless.
+Three decisions for Caio, each with a default: maria to the near side (yes), G1–G2 before M3 (yes), relief in real metres (yes).
+
+### Files
+- new `explorations/launchpad/GROUND.md`; `QUEUE.md` (Q18/Q86 ✓ plan, five lines under *Proposed*); `INDEX.md`; `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Caio: GROUND.md § Decisions (defaults hold if silent)
+- [ ] Orchestrator: rank G1–G7+ into the world lane
+- [ ] World: G1 then G2 (headless, fine on a machine kept off the GPU)

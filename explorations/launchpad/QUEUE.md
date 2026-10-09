@@ -152,8 +152,8 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | ready |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
-| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | → world 2026-10-08 (plan, with Q86) |
-| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | → world 2026-10-08 (plan, with Q18) |
+| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
+| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
 
 ### look & sound — always run as beats, one session each (ROADMAP § Lanes, "Beats")
 Collisions between beats: `render()`'s pass order, shared shader helpers, bloom, `views.js` numbering. Changing any of them needs an `ACTIVE_WORK.md` line.
@@ -256,6 +256,11 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W12 | **A failed first is mostly covered, once?** One failed orbit attempt costs ~90 % of the start money; agencies get bailed out 3–4×, poor-world companies never reach orbit (`career.mjs` `PACE=1 FAILFIRST=orbit`). Options: (1) the sponsor pays back 75 % of the first lost flight aimed at an open first; (2) the rescue lifts to the next first's price, not the 25M floor; (3) leave it hard and warn before the attempt. **Default if silent: (1)** (NOTES § "Epoch 1–2 pacing") | Q44's fix; M1's "intended number of flights" (~5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
+- world — GROUND.md G2: Selene's baked map + crater bands on the CPU, `geoAt` on the bake (§42 retargeted), `study_ground.mjs` — M, ⚙ — GROUND.md § Slices
+- world — GROUND.md G3–G6: the march on Selene, shadows, consumers (with space for `landAt`), Nyx — 🖥, M3 — GROUND.md § Slices
+- world — GROUND.md G7+: per-planet ground items (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps), after G3 and Q79 — GROUND.md § The bodies
+- design desk / Caio — GROUND.md decisions: maria to the near side? (default yes); G1–G2 before M3? (default yes); relief in real metres? (default yes) — GROUND.md § Decisions
 - economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
 - economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
 - vehicle — **Q34a** onboard computer, solar panels (body cells + deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills — NOTES § "Vehicle parts" (⚙, M2)
