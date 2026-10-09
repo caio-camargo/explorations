@@ -1,7 +1,8 @@
 // Eccentric-moon study (bodies session, 2026-10-07): n-body truth vs patched conics, used to size Nyx and pick its SOI rule.
 // usage: node study_nyx.mjs [small|mid|big|selene]   (NOTES: "More bodies"). A study, not a test: it defines its own moon.
 import { readFileSync } from 'node:fs';
-const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+import { pageSource } from './page.mjs';
+const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `return {TELLUS,addBody,bodyRel,kepler,elements,len,sub,add,mul,dot,cross,norm};`)();
 const { TELLUS, kepler, elements, len, sub, add, mul, dot, cross, norm } = api;

@@ -4,7 +4,8 @@
 // probability. Everything after the flight is the game's own code. Run: node career.mjs [years] [seeds]
 // Output: one line per archetype × ownership start, averaged over seeds.
 import { readFileSync } from 'node:fs';
-const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+import { pageSource } from './page.mjs';
+const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,

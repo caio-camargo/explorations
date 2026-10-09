@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.6 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -5882,8 +5882,9 @@ the arrows, and every key in the handlers present in its Help table.
 - **Direction:** native desktop eventually, the browser for now (§ "Platform direction"). Keep the SIM pure: it is what ports.
 - **Tests:** `node test.mjs --smoke --jobs 4` (~25 s) while working; `node test.mjs --only <your area>` for one area; the full
   `node test.mjs` (~5 min) before merging. § "Test shards".
-- Everything in the `// ==== SIM BEGIN … SIM END` block is pure, with no DOM or GL. `test.mjs`
-  extracts it with `new Function` and drives it headless. Keep that boundary.
+- **The code is split** into `sim/*.js` (the pure SIM) and `app/*.js` (render, UI), classic scripts loaded in order by
+  `index.html`; § "The file split" has the map and the rules. The SIM (`SIM BEGIN … SIM END`, across `sim/`) is pure,
+  with no DOM or GL. `test.mjs` reads it through `page.mjs` and drives it headless with `new Function`. Keep that boundary.
 - The construction screen is `builder.js` (object `BLD`), loaded before the main script and driven by it through
   `renderEditor`/`editorChanged` and `HOOK.edDraw`/`HOOK.edOverlay`/`HOOK.view`. Designs are v2 trees (§ v1.17);
   `assemble(toV2(old))` is how the old format still flies.
@@ -6209,3 +6210,65 @@ whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats 
 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
+
+## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
+
+`index.html` was one 6,700-line, 780 KB script that every lane edited, so every merge conflicted inside it. Its script is
+now **21 classic scripts** in `sim/` and `app/`, loaded in order by `index.html`. Nothing else changed: the same code,
+in the same order, cut at existing section headers. There's still no build step, and the page still opens from `file://`.
+
+**Why classic scripts and not ES modules (the ROADMAP said modules).** Modules would need an import and an export for
+every name used across files, and imported bindings are read-only: the many `let`s reassigned from other parts of the
+code (`simT`, `S`, `HOME`, `mode`, …) would break. That's a rewrite, not a split. Classic scripts share one global
+scope exactly as the single script did, so the split is mechanical and its oracle is exact. Modules can still come
+later, one area at a time, once an area's cross-file names are few.
+
+**How it was done.** `archive/launchpad-split-2026-10-08.mjs` (one-time; kept for the record) cut at header lines found
+by their text, gave each file after the first a two-line prelude and `'use strict'`, and pointed the Node tools at
+`page.mjs`. Checks, all passed:
+- `page.mjs` puts the files back into one text, and that text was the old `index.html` plus the preludes, byte for byte.
+- The full suite on the split tree passed (the oracle).
+- Every SIM file loads as its own script, in page order. That is test `platform-1`, which stays.
+- The robot playtester walked every row on the split page, comparing console errors against the pre-split page.
+
+| File | Lines | Holds | Usual lane |
+|---|---|---|---|
+| `sim/core.js` | 155 | vectors/quaternions, the body tree, perturbations, Kepler (opens with `SIM BEGIN`) | space |
+| `sim/vessel.js` | 748 | parts, design v2, resources, the vessel, avionics, wheels, aero, structure, gimbal, heat | vehicle |
+| `sim/flight.js` | 241 | SOI changes, ground contact, abort, legs, maneuver nodes, impact prediction | vehicle / space |
+| `sim/world.js` | 282 | the world, launch sites, recovery, ground stations, plasma blackout | world |
+| `sim/program.js` | 643 | missions, budget, calendar, tester menu, out there, staged pay, powers, industry, know-how, stand, development, facilities, compute, timeline, dispatch, deviation, production | economy |
+| `sim/atlas.js` | 40 | the atlas grid | world |
+| `sim/contracts.js` | 243 | contracts, sanctions, the race, ownership, decisions | economy |
+| `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS | space |
+| `sim/logbook.js` | 49 | the logbook, tools gated by it | economy |
+| `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
+| `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
+| `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
+| `app/state.js` | 111 | app state | flow |
+| `app/editor.js` | 127 | the editor UI | vehicle |
+| `app/input.js` | 30 | input | flow |
+| `app/screens.js` | 160 | `go`, `KEYS`, Help, overlays | flow |
+| `app/rover-yard.js` | 195 | the Rover yard | space |
+| `app/sound.js` | 81 | sound (the pure `SOUND MIX` block is inside) | look & sound |
+| `app/loop.js` | 43 | `frame()` | flow |
+| `app/render.js` | 347 | `render()`, bloom | look & sound |
+| `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+
+**Working in split files: the rules.**
+- **Find a function** with `grep -n "function name" sim/*.js app/*.js`. Markers (`SIM BEGIN/END`, `SOUND MIX`) are where
+  they were.
+- **The SIM stays pure:** `sim/` files touch no DOM or GL. The tests run them headless, as before.
+- **Order matters across files.** Function declarations are hoisted only within their own file, so code that *runs at
+  load time* (a top-level `const x = f()`) may only call functions from its own file or earlier files. Calls inside
+  functions that run later are fine, whichever file they're in. `platform-1` catches a breach in `sim/`. In `app/`, the
+  page throws on load, and the robot's console errors will show it.
+- **A new file** gets the two-line prelude, `'use strict';`, and a `<script src>` line in `index.html` in the right
+  place. `platform-1` fails if a file isn't loaded or isn't strict. Prefer a new file over growing `app/gl.js`.
+- **Node tools read the page through `page.mjs`**: `pageSource()` is the old one-file text (the scripts inlined in page
+  order), so `html.indexOf('// ==== SIM BEGIN')` and the regexes over page code work as before. `pageScripts()` lists
+  the files.
+- **Work from before the split:** every lane branch was merged into `main` before the split, so there should be none.
+  If a stray pre-split change turns up anyway, don't hand-port it. Run the split script on that branch's `index.html`
+  (it cuts at the same headers). The result is that branch's own `sim/`/`app/` files. Then three-way merge each file
+  (`git merge-file`), with the split of the merge base as the base.

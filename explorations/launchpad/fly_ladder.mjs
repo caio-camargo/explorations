@@ -59,8 +59,8 @@ export function flyLadder(api, ids = null, say = () => {}) {
 }
 // run directly: build the SIM from index.html, fly, print the table
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('fly_ladder.mjs')) {
-  const { readFileSync } = await import('node:fs');
-  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const { pageSource } = await import('./page.mjs');
+  const html = pageSource();
   const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
   const api = new Function(src + `return {PRESETS,TELLUS,SELENE,MISSIONS,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,elements,timeToNu,dvRemaining,dvPlan,engAcc,HOOK,PROG,len,norm,add,sub,mul,dot,cross,procStart,procKey,vesselCost,
     get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};`)();

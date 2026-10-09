@@ -129,8 +129,8 @@ export function crewLunar(api, say = () => {}) {
 }
 // run directly: build the SIM from index.html and print the log
 if (process.argv[1] && process.argv[1].replace(/\\/g, '/').endsWith('fly_crewlunar.mjs')) {
-  const { readFileSync } = await import('node:fs');
-  const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+  const { pageSource } = await import('./page.mjs');
+  const html = pageSource();
   const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
   const api = new Function(src + `return {PRESETS,TELLUS,SELENE,newShip,stage,advPhys,advRails,railsOK,localFrame,qFromBasis,qrot,elements,timeToNu,kepler,predict,predictFrom,dvRemaining,dvPlan,activeEngines,bodyRel,surfVel,HOOK,PROG,DT,len,norm,add,sub,mul,dot,cross,
     get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};`)();

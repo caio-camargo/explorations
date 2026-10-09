@@ -1,11 +1,12 @@
 // Headless checks for Launchpad's simulation core. Run: node test.mjs
 // Extracts the "SIM BEGIN … SIM END" block from index.html and drives it with no DOM or GL.
 import { readFileSync } from 'node:fs';
+import { pageSource, pageScripts } from './page.mjs';
 import { crewLunar } from './fly_crewlunar.mjs';
 import { flyLadder, handAscent } from './fly_ladder.mjs';
 // shards (platform session): `node test.mjs --list | --only 12,docking | --smoke | --times`, see shards.mjs
 if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).main(process.argv.slice(2), import.meta.url));
-const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 return {PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
@@ -3015,6 +3016,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   x.sas = true; x.sasMode = 'retro'; x.rec.launched = true; let k = 0, nb = 0; while (x.alive && !x.landed && k++ < 400000) { api.physStep(x, api.DT); if (api.plasmaOn(x)) nb++; }
   check('blackout, flown: the Heavy climb never loses its link to plasma; a capsule returning from orbit is blacked out for a while',
     heavy.n === 0 && nb * api.DT > 30, `Heavy: hot up to ${heavy.vmax.toFixed(0)} m/s, ${heavy.n.toFixed(0)} s of plasma · entry: ${(nb * api.DT).toFixed(0)} s of blackout`);
+}
+
+// platform-1. The file split (platform session): index.html's script is now classic scripts in sim/ and app/, loaded in
+// order and sharing one global scope (NOTES § "The file split"). The tests read them as one text (page.mjs), so they
+// can't see what a browser would: a function is hoisted only within its own file, so a top-level call into a later
+// file breaks the page. Here each SIM file runs as its own script, in page order, the way the browser runs them. Also:
+// every file in sim/ and app/ is on the page (a new file nobody loads is a silent no-op), and each one runs strict.
+{
+  const vm = await import('node:vm'), fs = await import('node:fs'), files = pageScripts();
+  const read = f => fs.readFileSync(new URL('./' + f, import.meta.url), 'utf8'), sim = files.filter(f => f.startsWith('sim/'));
+  const ctx = vm.createContext({ console, performance }), bad = [];
+  for (const f of sim) try { new vm.Script(read(f), { filename: f }).runInContext(ctx); } catch (e) { bad.push(`${f}: ${e.message}`); }
+  check('split: each SIM file loads as its own script, in page order (no top-level call into a later file)',
+    !bad.length && vm.runInContext('typeof physStep === "function" && typeof dispatchRun === "function" && PROG.funds > 0', ctx), bad.join('; ') || `${sim.length} files`);
+  const disk = ['sim', 'app'].flatMap(d => fs.readdirSync(new URL('./' + d + '/', import.meta.url)).filter(x => x.endsWith('.js')).map(x => d + '/' + x));
+  check('split: index.html loads every file in sim/ and app/, and each file it loads exists',
+    disk.every(f => files.includes(f)) && files.every(f => disk.includes(f)), `${files.length} on the page; not loaded: ${disk.filter(f => !files.includes(f)).join(', ') || 'none'}`);
+  const lax = files.filter(f => !/^(\/\/[^\n]*\n)*'use strict';/.test(read(f).replace(/\r\n/g, '\n')));
+  check("split: every file starts 'use strict' (a classic script doesn't inherit it from the one before)", !lax.length, lax.join(', ') || 'all strict');
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

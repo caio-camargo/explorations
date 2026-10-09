@@ -2,7 +2,8 @@
 // limits, before the gimbal and control surfaces are made real. usage: node study_control.mjs   (NOTES: "Attitude control")
 // A study, not a test: it wraps ctrlAccel and aeroPass to read the commanded control torque and the aero moment each step.
 import { readFileSync } from 'node:fs';
-const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+import { pageSource } from './page.mjs';
+const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 {const _ca=ctrlAccel;ctrlAccel=function(s,r){const a=_ca(s,r);if(!r)s._alC=a;return a}}

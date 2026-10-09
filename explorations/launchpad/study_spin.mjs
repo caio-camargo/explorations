@@ -2,7 +2,8 @@
 // (angular momentum and energy kept, nutation rate against Euler's equations) and a kick stage burning with its thrust
 // 0.5° off the axis, SAS off, at several spin rates. usage: node study_spin.mjs   (NOTES: "Spin stabilisation")
 import { readFileSync } from 'node:fs';
-const html = readFileSync(new URL('./index.html', import.meta.url), 'utf8');
+import { pageSource } from './page.mjs';
+const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
 return {newShip,stage,physStep,qrot,qconj,TELLUS,HOOK,INP,DT,len,sub,add,mul,dot,cross,norm,

@@ -155,19 +155,21 @@ These never run out. A session with nothing ready takes the top one of its lane 
 ## Platform lane
 
 The bottleneck for twelve parallel sessions is one 6,500-line file and an 8-minute test suite. The project's
-single-file bias is relaxed for Launchpad only: **plain ES modules loaded by the page, still no bundler, no packages,
+single-file bias is relaxed for Launchpad only: **plain scripts loaded by the page (classic scripts since the split, step 4; ES modules later), still no bundler, no packages,
 no build step.** GitHub Pages serves them as they are.
 
 In order:
-1. **Test shards** (⚙, S): `node test.mjs --only 12,17,26` and a `--smoke` set under a minute; NOTES says which
+1. ✓ 2026-10-08 (NOTES § "Test shards": `--smoke --jobs 4` ~25 s; full suite ~5 min, ~2.5 with `--jobs 4`). **Test shards** (⚙, S): `node test.mjs --only 12,17,26` and a `--smoke` set under a minute; NOTES says which
    sections cover what. Merges still run the full suite.
 2. **Save versions** (⚙, S): the program save (`launchpad-program-v1`) gets a schema version and a migration chain,
    with a test that loads an old save. Eight lanes change `PROG`'s shape; a new player's save must survive it.
-3. **The split plan** (📝, M): which modules (`sim/*.js` for the pure SIM block, then render, ui, builder), how
+3. ✓ 2026-10-08, done with the split during a freeze Caio called (all lanes merged first). **The split plan** (📝, M): which modules (`sim/*.js` for the pure SIM block, then render, ui, builder), how
    `test.mjs` loads the same files, and a **freeze window**: everyone merges to `main`, platform splits in one commit
    with a mechanical script and the full suite as the oracle, everyone merges `main` before their next edit. Caio
    picks the window.
-4. **The split** (⚙, M), on the plan.
+4. ✓ 2026-10-08: **the split**. `index.html`'s script is now 21 classic scripts in `sim/` and `app/` (not ES modules: imported
+   bindings are read-only, and the code reassigns shared `let`s across areas). The map and the rules are in NOTES § "The file split".
+   Later, per area: ES modules once an area's cross-file names are few.
 5. **Cheap wins** (Q38): world generation in a worker and cached, typed arrays and no small-array allocation in hot
    loops. Cold load is ~1.5–1.8 s today.
 
