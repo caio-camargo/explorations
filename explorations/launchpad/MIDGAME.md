@@ -1,5 +1,5 @@
 # MIDGAME — from single flights to a network
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-09
+**Version**: 1.0.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-09
 **Status**: **Approved by Caio 2026-10-09.** Numbers are placeholders for the lanes to measure and tune.
 **Purpose**: How the program turns from one-off flights into routines (epochs 3–6, M2–M4): what's automated first, how
 automation grows with the eras, what a routine's window is, and what satellites ask of the player. The bridge to
@@ -69,7 +69,8 @@ Station-keeping (v1.60) and decay (v1.64) are real physics and stay. What change
   goes HD"). It's an opportunity with a payoff (more audience, finer imagery, a new service), not a repair.
 - **Servicing is special, not routine:** a Hubble-style rescue of something valuable, with a real reward. Once flown,
   a reboost or refuel can become a routine you never think about.
-- **Running dry still pauses, never destroys** (W2, pillar 5).
+- **Running dry pauses; only a satellite parked too low to hold its orbit comes down, warned ahead** (W2, pillar 5;
+  amended 2026-10-09, D6: the builder's lifetime readout makes a too-low orbit a visible design choice).
 
 ---
 
