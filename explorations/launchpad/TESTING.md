@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -210,7 +210,7 @@ NOTES § "The robot playtester".
 | 139 | Let the trajectory office try our procedures on a new design | Fly a satellite design to orbit by hand (it gets a procedure); take a satellite contract; in Assembly add a tank to the design; Program → Contracts | The contract's dispatch line offers *Try our procedures on ⟨design⟩* with days and price; it passes the days, then either adopts the procedure (provisional, a wider success range when dispatched) or says the design needs a run-through by hand. | v1.63 | economy |
 | 142 | Price a rover and try to launch it early | Rover yard in a new career: read the *Price* line and *Can't fly yet* for the default two-seater; pack it on a rocket and press LAUNCH; then the small yard cart | The two-seater costs 24M and is refused at LAUNCH (medium chassis and wire-mesh wheels open with *The far side*, seats with *Passenger: one orbit*); the cart (small chassis and wheels, battery, camera) flies. Fair gates, or in the way? | v1.66 | economy |
 | 143 | Take and finish a Selene science contract | Tester: Selene soft landing done; a rover with a spectrometer and camera on Selene; take *Read Selene's dark plains* or *A panorama* from the board | Readings taken before the contract don't count; once enough reach home, the contract completes between flights with news and pay. Seismic network → locate quakes → bound the core open in that order. | v1.66 | economy |
-| 145 | Send a supply run to a base | Tester: Selene soft landing done; a base beacon landed on Selene; the Probe (or any design) flown to orbit by hand once; Program → Fleet → *On the surface* | The base line offers *Supply run with ⟨design in Assembly⟩* (days, price), or says why not; on launch day the lander lands at the beacon (metres away) and the base counts it (modules, supplies). A design without the Δv is lost or doesn't land: news says so. | v1.69 | economy |
+| 145 | Send a supply run to a base | Tester: onboard computers (era skip), Selene soft landing done; a base beacon landed on Selene; the Probe (or any design) flown to orbit by hand once; Program → Fleet → *On the surface* | The base line offers *Supply run with ⟨design in Assembly⟩* (days, price), or says why not (before onboard computers: "needs onboard computers", v1.73); on launch day the lander lands at the beacon (metres away) and the base counts it (modules, supplies). A design without the Δv is lost or doesn't land: news says so. | v1.69 | economy |
 
 ### UI & screens
 

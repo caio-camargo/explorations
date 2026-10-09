@@ -3723,7 +3723,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     check('ground-6: Phoebe: a lump (relief over 12 % of its radius) saturated with craters (30+ % of it over 10°), landing on regolith',
       (Math.max(...H) - Math.min(...H)) / Rp > .12 && steep > .3 && G.surfaceAt(Bp, P[0]).name === 'regolith', `relief ${((Math.max(...H) - Math.min(...H)) / Rp * 100).toFixed(0)} % of R; ${(steep * 100).toFixed(0)} % over 10°`); }
   // every body's poles: no step (the polar rows of the equirectangular maps); Tellus is live, so this one matters in play
-  { const bodies = [['Tellus', G.TELLUS.R, u => G.terrainH(u)], ['Selene', G.SELENE.R, u => G.GROUND_GEN.selene(u)], ...['Enyo', 'Hesper', 'Astraea', 'Theia', 'Eos', 'Tethys', 'Phoebe'].map(n => [n, G.GROUND_STUBS[n].R, u => G.GROUND_GEN[n.toLowerCase()](u)])];
+  { const bodies = [['Tellus', G.TELLUS.R, u => G.terrainH(u)], ['Selene', G.SELENE.R, u => G.GROUND_GEN.selene(u)], ...['Enyo', 'Hesper', 'Astraea', 'Theia', 'Eos', 'Tethys', 'Phoebe', 'Erebus'].map(n => [n, G.GROUND_STUBS[n].R, u => G.GROUND_GEN[n.toLowerCase()](u)])];
     const worst = bodies.map(([n, R, f]) => { let w = 0; for (const sg of [1, -1]) for (let i = 0; i < 400; i++) { const a = i * 2.39996, r = (i % 40) / 40 * 2e3 / R, u = norm([Math.sin(r) * Math.cos(a), sg * Math.cos(r), Math.sin(r) * Math.sin(a)]), v = norm(add(u, mul(norm(cross(u, [1, 0, 0])), .5 / R))); w = Math.max(w, Math.abs(f(v) - f(u)) / .5); } return [n, Math.atan(w) / D]; });
     check('ground-6: no step at any body\'s poles, Tellus\'s included (steepest 0.5 m step within 2 km of a pole under 60°)', worst.every(([, d]) => d < 60), worst.map(([n, d]) => `${n} ${d.toFixed(0)}°`).join(' · ')); }
 }
@@ -3766,6 +3766,37 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     fly.bound && fly.arrive && f1 > f0 && !land.bound && !land.arrive && P.funds === f1, `flyby +${(f1 - f0).toFixed(0)}M; after the orbit opened the landing: +${(P.funds - f1).toFixed(0)}M`);
   const R2 = D.recNew(); R2.paid = []; R2.open0 = ['nyxland']; D.stagedTick(s, R2);
   check('staged pay: a flight launched after it opened does collect', (P.staged.nyxland || {}).bound && P.funds > f1);
+}
+
+// ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not
+// live (stub body). The nitrogen-ice basin (flat, crater-free, broken into convection cells), the water-ice mountains on
+// its margin, the dark tholin highlands (the most cratered), bladed terrain. `node study_ground.mjs erebus`.
+{
+  const G = new Function(src + 'return {EREBUS_GROUND,erebusMap,erebusH,worleyEdge,ER,GROUND_STUBS,llU,BODIES,surfaceAt,terrainSlope,bodyTop,get EREBUS_MAP(){return EREBUS_MAP}};')();
+  const S = G.GROUND_STUBS.Erebus, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.EREBUS_GROUND }, D = Math.PI / 180, h = u => G.erebusH(u);
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], at = (c, m, az) => { const e = norm(cross([0, 1, 0], c)), n = cross(c, e), d = norm(add(mul(e, Math.cos(az)), mul(n, Math.sin(az)))), a = m / R; return norm(add(mul(c, Math.cos(a)), mul(d, Math.sin(a)))); };
+  check('ground-7: Erebus\'s recipe is not live (no Erebus in the body tree), and its map is baked on first use', G.EREBUS_MAP === null && !G.BODIES.some(b => b.name === 'Erebus'));
+  const M = G.erebusMap(), P = []; for (let i = 0; i < 4000; i++) { const z = 1 - (2 * i + 1) / 4000, a = i * 2.39996, q = Math.sqrt(1 - z * z); P.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = P.map(h), un = P.map(G.EREBUS_GROUND.unit), of = k => P.filter((_, i) => un[i] === k), sl = k => of(k).slice(0, 300).map(u => G.terrainSlope(B, u) / D).sort((a, b) => a - b);
+  const bc = G.llU(...G.ER.basin.at), rim = med([0, 1, 2, 3, 4, 5].map(k => h(at(bc, G.ER.basin.r * R * 1.3, k * 1.05)))), ni = sl('nitrogen ice');
+  check('ground-7: the nitrogen-ice basin: 2+ km below the land round it, its floor flat (median under 1°, p99 under 10°), relief within top',
+    rim - h(bc) > 2000 && med(ni) < 1 && ni[Math.floor(ni.length * .99)] < 10 && Math.max(...H) < G.bodyTop(B) && G.surfaceAt(B, bc).name === 'nitrogen ice',
+    `basin ${(rim - h(bc)).toFixed(0)} m below the land round it; floor slope median ${med(ni).toFixed(1)}°, p99 ${ni[Math.floor(ni.length * .99)].toFixed(1)}°; max ${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)})`);
+  // convection cells: on the floor, the troughs along the cell edges lie lower than the cells' middles
+  const L = G.ER.cells.L, edge = [], mid = []; for (let i = 0; i < 4000; i++) { const u = at(bc, (i % 63) / 63 * .8 * G.ER.basin.r * R, i * 2.39996), d = G.worleyEdge(u[0] * R / L + 3, u[1] * R / L + 3, u[2] * R / L + 3) * L; if (d < 300) edge.push(h(u)); else if (d > 5e3) mid.push(h(u)); }
+  check('ground-7: the basin floor is broken into convection cells: troughs along their edges 50+ m below their middles', med(mid) - med(edge) > 50, `${(med(mid) - med(edge)).toFixed(0)} m (${edge.length} trough points, ${mid.length} mid-cell)`);
+  const tall = Math.max(...M.mtns.map(t => h(t.c) - Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(at(t.c, t.R * 1.4, k * 1.05)))))), mtS = sl('mountains');
+  check('ground-7: water-ice mountains on the basin\'s margin: 2.5+ km above their foot, steep (p90 over 30°), on bedrock',
+    tall > 2500 && mtS[Math.floor(mtS.length * .9)] > 30 && G.surfaceAt(B, M.mtns[0].c).name === 'water-ice bedrock', `tallest ${tall.toFixed(0)} m; p90 flank ${mtS[Math.floor(mtS.length * .9)].toFixed(0)}°`);
+  // the tholin highlands keep all their craters (old crust); the uplands lose half, the basin all
+  const th = of('tholin highlands'), up = of('uplands'), p90 = a => a[Math.floor(a.length * .9)];
+  check('ground-7: the dark tholin highlands are the most cratered (no thinning there, half on the uplands, all on the ice) and rougher than the uplands',
+    th.length > 50 && med(th.map(M.thin)) < .05 && Math.abs(med(up.map(M.thin)) - .5) < .05 && M.thin(bc) > .95 && p90(sl('tholin highlands')) > p90(sl('uplands')) && G.surfaceAt(B, th[0]).name === 'dark tholin dust',
+    `thinning: tholin ${med(th.map(M.thin)).toFixed(2)}, uplands ${med(up.map(M.thin)).toFixed(2)}, ice ${M.thin(bc).toFixed(2)}; p90 slope ${p90(sl('tholin highlands')).toFixed(1)}° vs ${p90(sl('uplands')).toFixed(1)}°`);
+  let rs = 13, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-7: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

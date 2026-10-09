@@ -1,10 +1,10 @@
 // study_ground.mjs — measures a body's ground recipe headless (world session, GROUND.md G2/G7): bake time and sample
 // cost, continuity across the crater cells' cube-face seams, crater counts against the target, relief, slopes by unit,
 // flat ground for landers, and (Selene) the ground that never sees the sun.
-//   node study_ground.mjs [selene|enyo|hesper|astraea|theia|eos|tethys|phoebe] [quick]      (selene by default; quick skips the polar darkness scan)
+//   node study_ground.mjs [selene|enyo|hesper|astraea|theia|eos|tethys|phoebe|erebus] [quick]      (selene by default; quick skips the polar darkness scan)
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,THEIA_GROUND,theiaMap,theiaH,THEIA_UNITS,EOS_GROUND,eosMap,eosH,EOS_UNITS,EO,TETHYS_GROUND,tethysMap,tethysH,TETHYS_UNITS,TT,PHOEBE_GROUND,phoebeMap,phoebeH,PH,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
+const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,THEIA_GROUND,theiaMap,theiaH,THEIA_UNITS,EOS_GROUND,eosMap,eosH,EOS_UNITS,EO,TETHYS_GROUND,tethysMap,tethysH,TETHYS_UNITS,TT,PHOEBE_GROUND,phoebeMap,phoebeH,PH,EREBUS_GROUND,erebusMap,erebusH,EREBUS_UNITS,ER,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
 const { norm, dot, cross, add, mul } = G, D2R = Math.PI / 180, args = process.argv.slice(2), quick = args.includes('quick');
 const stub = (name, ground, map, h, c, salt, units, nb) => { const S = G.GROUND_STUBS[name], b = { name, R: S.R, mu: S.g * S.R * S.R, ground }; const m = map();
   return { b, m, h, c, salt, nb, unit: ground.unit, units, dark: false }; };
@@ -21,6 +21,7 @@ const BODY = {
   eos: () => stub('Eos', G.EOS_GROUND, G.eosMap, G.eosH, G.EO.c, G.EO.salt, G.EOS_UNITS),
   tethys: () => stub('Tethys', G.TETHYS_GROUND, G.tethysMap, G.tethysH, G.TT.c, G.TT.salt, G.TETHYS_UNITS),
   phoebe: () => stub('Phoebe', G.PHOEBE_GROUND, G.phoebeMap, G.phoebeH, G.PH.c, G.PH.salt, ['regolith']),
+  erebus: () => stub('Erebus', G.EREBUS_GROUND, G.erebusMap, G.erebusH, G.ER.c, G.ER.salt, G.EREBUS_UNITS),
 }[args.find(a => a !== 'quick') || 'selene'];
 let t0 = performance.now(); const X = BODY(), tBake = performance.now() - t0, { b: B, m: M } = X, R = B.R;
 const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(p * a.length))], f1 = x => x.toFixed(1), f0 = x => x.toFixed(0);
