@@ -22,6 +22,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.devtake){takeDeviation(+ds.devtake)}
   else if(ds.devlose){loseDeviation(+ds.devlose,'let go');renderProgram()}
+  else if(ds.dry){const r=orderDryRun(stackDef);HOOK.msg(r.ok?`Dry run: ${r.proc.from}'s procedure flies it, ${fmtDv(r.margin)} to spare (provisional)`:`Trajectory office: ${r.why}`);renderProgram();editorChanged()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
@@ -32,7 +33,7 @@ function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%
     (()=>{const r=offerRisk(c),w=[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)];return w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:''})()+
     (act?'':`<button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button>`)+`</div>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
-    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
+    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+
