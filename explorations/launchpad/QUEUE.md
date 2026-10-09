@@ -107,9 +107,9 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q99 | Flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (NOTES § UI "What each screen shows") | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q115 | PLAYTEST #31 (P2): map labels pile up in the top-left corner (holds M0) | M1 | S | 🖥 | ✓ `46ac525` |
 | Q145 | After a flight the Program screen's backdrop is the flown stage (in orbit, or the landing site), not the pad (PLAYTEST #27's second half) | M1 | S | 🖥 | ✓ `827eed7` |
-| Q153 | The flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper, pale buttons, white text): give them the era's ink | M1 | S | 🖥 | → flow 2026-10-09 (evergreen) |
-| Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ready |
-| Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ready |
+| Q153 | The flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper, pale buttons, white text): give them the era's ink | M1 | S | 🖥 | ✓ `960cd84` (body.paper: ink buttons and messages) |
+| Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | → flow 2026-10-09 |
+| Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | → flow 2026-10-08 |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | after Q57 (save versions) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
 | Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | after Q103; with Q53 |
