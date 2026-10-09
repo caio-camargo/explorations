@@ -1939,7 +1939,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — planned burns travel with a vessel in flight (2026-10-09, space session, QUEUE Q166, Q49 slice 3)
+## v1.93 — planned burns travel with a vessel in flight (2026-10-09, space session, QUEUE Q166, Q49 slice 3)
 
 - **Carried:** at flight end, the vessel's maneuver nodes still ahead (`s.node`, `s.nodeQ`) go with its registry entry
   as `q.nodes` (program time `T`, Δv in the node's frame, the body whose leg it's on); `vesselOf` gives them back in the
