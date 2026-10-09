@@ -132,7 +132,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ✓ v1.63 `1312d39` (`dryQuote`/`orderDryRun`; margin cached; provisional estimates wider) |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ✓ v1.66 `812476b` (prices, gates at LAUNCH; six Selene science contracts) |
 | Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ✓ v1.69 `1c546dd` (supply runs: ascent procedure + landAt on the beacon; joins the base) |
-| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
+| Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | → economy 2026-10-09 (plan) |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
 | Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
