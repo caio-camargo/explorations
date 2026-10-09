@@ -534,6 +534,42 @@ ROWS[63] = {title: 'open the cargo bay and release the payload', steps: [...DOCK
   `(()=>{ FLEET.length = 0; PROG.sats = []; simT = 0; PT.park(newShip(['core', 't1', 'bay', 'pod', 't2', 'kestrel'])); bayOp(S, 'open'); PT.steps(1); return doorF(S.parts.find(p => p.d.kind === 'bay')) })()`, `PT.look(2.4, 0.15, 18)`, {shot: 'doors_half'},
   `PT.steps(1.2); bayOp(S, 'rel'); PT.steps(15); ({fleet: FLEET.map(v => v.name), sep: FLEET[0] ? +len(sub(FLEET[0].v, S.v)).toFixed(3) : null})`, `PT.look(2.4, 0.15, 25)`, {shot: 'released'}]};
 
+// Stations (QUEUE Q30 slice 3): §26 claw, §30 radial ports and a habitat, §32 the arm, §33 a beacon on Selene; and the
+// busiest HUD (row 98). The Program side is read after the flight is left (Debrief first, then the Program's Fleet tab).
+const ST_HELPERS = String.raw`
+PT.hubDes = (arm) => { const d = toV2(['core', 't2']), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean), h = f(d.root); h.c.push({k: 'rport', at: {y: 1.0, a: 0, n: 1, cy: 0.5}, c: []});
+  if (arm) h.c.push({k: 'arm', at: {y: 1.0, a: Math.PI, n: 1, cy: 0.3}, c: []}); return d };
+PT.hub = arm => { FLEET.length = 0; PROG.sats = []; PROG.satN = 0; simT = 0; PT.zero(); const s = PT.park(newShip(PT.hubDes(arm))); s.q = [0, 0, 0, 1]; return s };
+PT.W = x => add(S.r, qrot(S.q, sub(x, S.cm)));
+PT.fleetTab = () => { go('program'); if (screenNow() === 'debrief') go('program'); PT.click('[data-ptab="fleet"]'); return document.getElementById('progBody').innerText.slice(0, 900) };
+true`;
+const STSTART = [DOCK_HELPERS, ST_HELPERS, `PT.preset('Orbiter'); PT.launch(); true`];
+ROWS['60c'] = {title: 'grab and release with the claw', steps: [...STSTART,
+  `(()=>{ const r = PT.dockScene({gap: 0.3, lat: 0, close: 0.4, tgt: ['ant', 'cam', 'petrel'], me: ['claw', 'pod', 't1', 'kestrel']}); const k = PROG.sats[0]; let n = 0; while (!S.att.length && n++ < 2000) advPhys(S);
+     return {grabbed: S.att.length ? S.att[0].kind : null, secs: +(n * DT).toFixed(1), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Dock|Claw/.test(l))} })()`, `PT.look(2.4, 0.15, 14)`, {shot: 'grabbed'},
+  `(()=>{ undock(S, PT.q.id); PT.steps(5); const {u, p} = PT.rel(PT.q); return {sep: +(-u[1]).toFixed(3), dist: +len(p).toFixed(2), att: S.att.length} })()`, `PT.look(2.4, 0.15, 14)`, {shot: 'released'}]};
+// §30's module: a habitat with a nose port, 0.3 m off the hub's side port, closing at 0.15 m/s; then the flight is left
+ROWS[64] = {title: 'a habitat on a radial port, and the station line', steps: [...STSTART,
+  `(()=>{ const s = PT.hub(false), rp = portsOf(s.parts.filter(p => p.on), new Set()).find(x => Math.abs(x.ax[1]) < 1e-9), n = qrot(s.q, [1, 0, 0]), face = PT.W(rp.face);
+     const k = newShip(['port', 'hab']); k.landed = false; k.rec.launched = true; k.rec.day0 = PROG.day; k.q = qFromTo([0, 1, 0], mul(n, -1)); k.r = sub(add(face, mul(n, 0.3)), mul(mul(n, -1), k.yTop)); k.v = add(s.v.slice(), mul(n, -0.15));
+     satRegister(k, {day0: PROG.day}); PT.q = PROG.sats.at(-1); let i = 0; while (!S.att.length && i++ < 3000) advPhys(S); return {docked: S.att.length ? S.att[0].kind : null, secs: +(i * DT).toFixed(1), station: stationOf(PROG.sats.at(-1)), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Dock|Station/.test(l))} })()`,
+  `PT.look(1.2, 0.2, 16)`, {shot: 'berthed'}, `PT.fleetTab()`, {shot: 'fleet'}, `testAdvance(30); PT.fleetTab()`]};
+ROWS[66] = {title: 'grapple and berth with the arm', steps: [...STSTART,
+  `(()=>{ const s = PT.hub(true), armP = s.parts.find(p => p.d.kind === 'arm'), base = PT.W(armBase(armP).P); const k = newShip(['port', 'lab']); Object.assign(k, {landed: false, v: s.v.slice()}); k.r = add(base, [-4, 0, 0]); k.q = qFromTo([0, 1, 0], [0, 0, 1]); k.rec.launched = true;
+     satRegister(k, {day0: PROG.day}); PT.q = PROG.sats.at(-1); const g = armOp(S, 'grab'); let n = 0; while (armBusy(S) && n++ < 20000) advPhys(S); return {grab: g, secs: +(n * DT).toFixed(1), att: S.att.map(a => a.kind), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /Arm|Dock/.test(l))} })()`,
+  `PT.look(1.2, 0.25, 22)`, {shot: 'grappled'},
+  `(()=>{ const b = armOp(S, 'berth'); let n = 0; const tr = []; while (armBusy(S) && n++ < 40000) { advPhys(S); if (n % 500 === 0) tr.push(PT.hud().split(String.fromCharCode(10)).filter(l => /Arm/.test(l)).join('')) } return {berth: b, secs: +(n * DT).toFixed(1), att: S.att.map(a => a.kind), arm: tr.slice(0, 6)} })()`,
+  `PT.look(1.2, 0.25, 22)`, {shot: 'berthed'}]};
+// §33: a beacon lander standing on Selene, the flight left there
+ROWS[67] = {title: 'a beacon on Selene: a moonbase in the Fleet tab', steps: [...STSTART,
+  `(()=>{ FLEET.length = 0; PROG.sats = []; simT = 0; const B = SELENE, s = newShip(['beacon', 'core', 't1', 'sparrow']), u = [1, 0, 0]; Object.assign(s, {body: B, landed: true, alive: true, sas: false, throttle: 0});
+     s.pf = mul(u, groundR(B, mul(u, B.R)) - s.yBot); s.qLocal = qFromTo([0, 1, 0], u); syncLanded(s); Object.assign(s.rec, {launched: true, day0: PROG.day, crewed: false, crewOK: true}); S = s; return {body: S.body.name, landed: S.landed} })()`,
+  `PT.look(0.9, 0.15, 14)`, {shot: 'beacon'}, `PT.fleetTab()`, {shot: 'fleet'}]};
+// everything at once: RCS, a target 8 m off, a second vessel in the flight, docking rows; every box must stay apart
+ROWS[98] = {title: 'the HUD in a busy flight', steps: [M1_HELPERS, ...STSTART,
+  `(()=>{ PT.dockScene({gap: 40, lat: 1.5, me: PT.rcsDesign(['port', 'pod', 't1', 'dec', 'core', 't1', 'sparrow'], 't1')}); for (let k = 0; k < 5 && !FLEET.length; k++) stage(S); S.throttle = 0; return {fleet: FLEET.map(v => v.name)} })()`,
+  `PT.dockIn({stopAt: 10})`, `PT.showUI(); ({rows: PT.hud().split(String.fromCharCode(10)).map(l => l.split(String.fromCharCode(9))[0]), boxes: PT.boxes()})`, {shot: 'busy'}], checks: {boxes: `PT.boxes()`}, expect: {boxes: v => v.length === 0}};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {

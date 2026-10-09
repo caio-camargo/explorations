@@ -6923,3 +6923,8 @@ ship's frame. It latches from 50 m in 3.5 min on 6.5 kg of gas. Bumps, undocking
 (TESTING 56, 58–63). Worth knowing: the RCS budget is 4.8 m/s of Δv, so a 300 m approach at 2 m/s uses 85 % of it.
 Row 116 (docking at Selene) and the claw are left for slice 3. Run the slice by itself: when two sessions' Chromes started
 together, row 62 stalled for minutes; alone it takes 49 s.
+
+**Q30 slice 3, stations: done for rows 60 (claw), 64, 66, 67, 98 (QA session).** `node playtest.mjs 60c 64 66 67 98`.
+The setups are §26, §30, §32 and §33, and the Program's Fleet tab is read after the flight is left. Everything works as
+specified (TESTING notes). Still undriven: 65 (crew rotation), 115/117 (relay and rover science on Selene), 116 (docking
+at Selene). Each needs a rover or crew set up on another body, and is the next driver if Q30 is extended.
