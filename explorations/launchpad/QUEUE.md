@@ -238,8 +238,8 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q21 | Vary `WSEED` per world: a different galaxy each playthrough | — | S | 🖥 | ✓ `9efd54e` (`PROG.gseed`, `galaxy()`) |
-| Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | ready |
-| Q116 | PLAYTEST #32 (P3): a lander on Selene with the sun behind it is a black silhouette: a fill light (earthshine / sky) | — | S | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
+| Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
+| Q116 | PLAYTEST #32 (P3): a lander on Selene with the sun behind it is a black silhouette: a fill light (earthshine / sky) | — | S | 🖥 | ✓ `ab72a13` (`airlessFill`; views 112–113; re-run robot row 68) |
 | Q71 | **Body mock-ups from [`SYSTEM.md`](SYSTEM.md)**: a still per body from its look brief, beside its two real references: Hesper, Enyo (+ Pavor), Astraea, Hyperion with rings (close, and from Tellus's sky), Theia, Eos, Tethys (haze at the limb), Erebus. As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures; flags what each would need from the planet shader | M5 | M | 🖥 | ready (any look & sound session) |
 | Q80 | Hesper's look: the cloud world (SYSTEM.md § Hesper) | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
 | Q81 | Enyo's look, with Pavor and Metus | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
