@@ -105,7 +105,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **build 4a ready on W15's defaults** (Caio may override) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a → flow 2026-10-09** on W15's defaults (Caio may override) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -117,7 +117,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
-| Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | → flow 2026-10-09 (sim half ✓ v1.94: discs and labels at `fromTellus(name, T)`, and Helios; colours from `SYSTEM_BODIES`) |
+| Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
@@ -395,3 +395,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - vehicle — a rover frozen in the night goes **dormant**, never dies: `R.dead` on a flat cold battery becomes `R.dormant`, it wakes when its panels see the sun (in flight `rvTick`, between flights `rvFieldTick`), news line "went dormant for the night" (no damage, no cost); a test that a flat rover survives the night and drives at dawn — D5 (Caio 2026-10-09)
 - vehicle (from economy, Q180 v1.98) — **era gates for vehicle parts**: today only rover parts are gated (`rvPartOpen`), so the cargo bay and the arm are buyable from the first flight. Gate `bay` and `arm` on the first docking (`stationcrew`), as the retrieval contract already is; one refusal line in the LAUNCH handler like `rvLaunchWhy` (NOTES § v1.98, Not yet)
 - flow — PLAYTEST #34 (P2): the Debrief says nothing about the crew (home safe, or lost) — PLAYTEST #34
+flow — the map's planet labels: two planets close on the ring (a conjunction) lose one label to the overlap rule; merge them into one label (`Hesper, Astraea`) — NOTES § v1.99
