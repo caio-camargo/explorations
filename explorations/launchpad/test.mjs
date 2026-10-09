@@ -4663,6 +4663,37 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `outcome ${out ? out.k + ' "' + out.t + ': ' + out.d + '"' : '—'}; restored ${!!back}`);
 }
 
+// space-15. Data as a volume (space session, QUEUE Q172, Q51 slice 2): a camera fills its recorder, contact drains it at
+// the link's rate and imagery sells per bit received; the far side's slow-scan pictures trickle home; a recorder plays a
+// blackout's readings back once the link returns.
+{
+  const D = new Function(src + 'return {PROG,HOOK,TELLUS,SELENE,DAY_S,advanceDays,CAM_BPS,REC_CAP,FAR_BITS,TLM_BITS,newShip,PRESETS,missionTick,physStep,advRails,linkOf,fromPF,curSite,bodyRel,SUN_DIR,DT,get t(){return simT},set t(v){simT=v},set ORB_T0(v){ORB_T0=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.HOOK.logged = () => {};
+  const P = D.PROG, T = D.TELLUS; D.ORB_T0 = 0;
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const sat = altKm => { fresh(); const r0 = T.R + altKm * 1e3, v = Math.sqrt(T.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    for (let k = 0; k < 10; k++) D.advanceDays(2); const q = P.sats[0]; return { q, share: q.got / (D.CAM_BPS * D.DAY_S * 20), contact: q.contact, rate: q.rate }; };
+  const lo = sat(300), hi = sat(2000);
+  // the far side: a Probe-like craft past Selene's sunlit far side with its picture taken, then in sight of Tellus
+  const toT = t => norm(mul(D.bodyRel(D.SELENE, t)[0], -1)); let tF = 0; while (dot(toT(tF), D.SUN_DIR) > -0.6) tF += 3600;
+  fresh(); D.t = tF; const rF = 3 * D.SELENE.R, uN = toT(tF), wN = norm(cross(uN, [0, 1, 0])), f = D.newShip(['ant', 'cam', 't2', 'petrel']);
+  Object.assign(f, { alive: true, landed: false, body: D.SELENE, r: mul(uN, rF), v: mul(wN, Math.sqrt(D.SELENE.mu / rF)), throttle: 0 }); Object.assign(f.rec, { launched: true, dv: 5000, farPhoto: true });
+  let at5 = null; while (D.t < tF + 4 * 3600 && !f.rec.farSent) { D.advRails(f, 60, 1); if (at5 === null && D.t >= tF + 300) at5 = !!f.rec.farSent; }
+  const farMin = (D.t - tF) / 60;
+  // the recorder: strain logged out of contact (the far side of the planet), then the craft passes over the pad
+  D.t = 0; const home = D.curSite(), x = D.newShip(['sci', 'pod']); x.landed = false; x.rec.launched = true;
+  x.r = D.fromPF(T, mul(mul(home.u, -1), T.R + 50e3), 0); x.v = [0, 0, 0]; D.physStep(x, D.DT); for (const p of x.order) if (p.on && p.sk1) { p.sf1 = 0.3; p.sf2 = 0.3; } x.rec.lkT = undefined; D.missionTick(x, D.DT, true);
+  const nRec = Object.keys(x.rec.sfRec || {}).length; for (const p of x.order) if (p.on && p.sk1) { p.sf1 = 0; p.sf2 = 0; }
+  x.r = D.fromPF(T, mul(home.u, T.R + 300e3), 0); x.rec.lkT = undefined; for (let i = 0; i * D.DT < 1; i++) D.missionTick(x, D.DT, true);   // a second of playback
+  const back = Object.keys(x.rec.sf).length, left = Object.keys(x.rec.sfRec).length;
+  check('data as a volume: a 300 km camera downlinks about its contact share of a day\'s take (sales as before); at 2,000 km it\'s seen longer but drains far less; the recorder never overfills',
+    lo.share > 0.7 * lo.contact && lo.share < 1.05 * lo.contact && hi.contact > 2 * lo.contact && hi.share < 0.5 * lo.share && lo.q.rec <= D.REC_CAP && hi.q.rec <= D.REC_CAP,
+    `300 km: contact ${(lo.contact * 100).toFixed(1)}% at ${(lo.rate / 1e3).toFixed(0)} kbit/s → ${(lo.share * 100).toFixed(1)}% of the take home; 2,000 km: ${(hi.contact * 100).toFixed(1)}% at ${(hi.rate / 1e3).toFixed(1)} kbit/s → ${(hi.share * 100).toFixed(1)}%`);
+  check('data as a volume: the far side\'s pictures trickle home from Selene (not in the first 5 minutes, done within an hour); a blackout\'s readings play back once the link returns',
+    f.rec.farSent && at5 === false && farMin < 60 && f.rec.farGot >= D.FAR_BITS && nRec > 0 && back === nRec && left === 0,
+    `far side home after ${farMin.toFixed(0)} min (${(D.FAR_BITS / 1e3).toFixed(0)} kbit); recorder: ${nRec} readings held out of contact, ${back} played back over the pad`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
