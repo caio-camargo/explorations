@@ -5,8 +5,8 @@
 // an answer (the soonest deadline); an accepted contract (the soonest deadline); an open mission, preferring the ones a
 // preset is known to fly (NEXT_PRESET, measured by the robot runs) within one epoch of the earliest open one, then the
 // earliest epoch, then the smallest pay (the easiest step); otherwise the best offer on the board.
-const NEXT_PRESET={weather:'Sounding',loads:'Sounding',beeper:'Orbiter',hop:'Passenger'};
-const NEXT_HOW={beeper:'the Orbiter preset with an instrument package in place of the pod'};
+const NEXT_PRESET={weather:'Sounding',loads:'Sounding',beeper:'Beeper',hop:'Passenger',orbiter:'Passenger Orbiter'};   // Beeper, Passenger Orbiter: vehicle, Q74
+const NEXT_HOW={};
 function nextStep(){const day=PROG.day||0,left=t=>`${Math.max(0,t-day).toFixed(0)} days`;
   const d=(PROG.decisions||[]).slice().sort((a,b)=>a.expires-b.expires)[0];
   if(d)return{kind:'decision',title:d.title,why:`waiting for your answer: ${left(d.expires)} left`,tab:'inbox'};

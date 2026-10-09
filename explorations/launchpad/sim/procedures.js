@@ -13,7 +13,7 @@ const hashStr=str=>{let h=2166136261;for(let i=0;i<str.length;i++){h^=str.charCo
 const TAPE_V='lp-'+hashStr([physStep,rails,coastPlan,coastStep,pertAcc,pertNear,checkSOI,groundCheck,stage,detach,abort,lesJettison,aeroPass,thermal,structLoads,
   integrateRot,attStep,ctrlAccel,spinFire,rcsStep,contactStep,fleetPhysAll,armStep,bayTick,kepler,bodyRel,advPhys,advRails,igniteOK,procStep].map(f=>f.toString()).join('')
   +JSON.stringify(PARTS)+JSON.stringify(BODIES.map(b=>[b.R,b.mu,b.orb||null,!!b.pert])));
-function advPhys(s){if(s.proc)procStep(s);fleetPhysAll(DT);physStep(s,DT);powerStep(s,DT);armStep(s);FLEET.forEach(armStep);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true);procSample(s)}   // sampled after the step: it sees a landing in the step that made it
+function advPhys(s){if(s.proc){procStep(s);autoLegs(s)}fleetPhysAll(DT);physStep(s,DT);powerStep(s,DT);armStep(s);FLEET.forEach(armStep);contactStep(s,DT);fleetContacts(DT);bayTick(s);FLEET.forEach(bayTick);stepDebris(DT);missionTick(s,DT,true);procSample(s)}   // sampled after the step: it sees a landing in the step that made it
 function advRails(s,dt,warp){procSample(s);   // in orbit with the engines off a craft goes straight onto rails: that's where an ascent is recognised as done
   if(!s.landed){if(warp<=4){const n=Math.min(400,Math.max(1,Math.round(dt/DT)));for(let i=0;i<n;i++)attStep(s,dt/n)}
     else{const Y=qrot(s.q,[0,1,0]),sp=dot(s.w,Y);const keep=s.spun||!s.sas&&Math.abs(sp)>=SPIN_MIN;s.w=keep?mul(Y,sp):[0,0,0];   // a spinning stage keeps its spin (the wobble is lost), the axis stays put

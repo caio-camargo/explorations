@@ -16,6 +16,7 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=t=>out.push(['w
     if(m<0)(A.ctl&&A.ctl.steer?warn:bad)(`Aerodynamically unstable (${m.toFixed(2)} calibers)${A.ctl&&A.ctl.steer?': only steering keeps it straight':' and nothing to steer it'}`);
     const j=Math.max(A.lift.cert.frac,A.mq.cert.frac);if(j>1)warn(`A joint is past its certified rating (${(j*100).toFixed(0)}% at ${A.mq.cert.frac>=A.lift.cert.frac?'max-q':'liftoff'})`)}
   if(S.parts.some(p=>p.on&&p.d.kind==='bio')&&!safetyReview(newShip(stackDef)).ok)warn('Flight safety won\'t approve a passenger on this design');
+  for(const[k,x]of launchWarnings(stackDef))(k==='ok'?ok:warn)(x);   // Δv for the flight's aim, a parachute for whoever rides (vehicle, Q48)
   const nd=(PROG.decisions||[]).length;if(nd)warn(`${nd} decision${nd>1?'s':''} waiting in the Program's Inbox`);
   return out}
 function renderRollout(){const el=$('rollBody');if(!el||BLD.isEmpty(stackDef))return;

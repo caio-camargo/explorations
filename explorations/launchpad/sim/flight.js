@@ -27,6 +27,9 @@ function footPoints(s){const key=s.parts.map(p=>p.on?(p.dep?2:1):0).join('');if(
 function legOp(s,op){const dn=op==='down';let n=0;for(const p of s.parts)if(p.on&&p.d.kind==='leg'&&!!p.dep!==dn){p.dep=dn;n++}
   if(n){s.foot=null;HOOK.rebuild();HOOK.msg(dn?'Legs down':'Legs up')}return n}
 const legsDown=s=>s.parts.some(p=>p.on&&p.d.kind==='leg'&&p.dep);
+// a procedure puts the legs down by itself (vehicle, Q121): descending within 1.5 km of the ground
+function autoLegs(s){if(!s.proc||s.landed||!s.alive||!s.parts.some(p=>p.on&&p.d.kind==='leg'&&!p.dep))return;
+  if(dot(sub(s.v,surfVel(s.body,s.r)),norm(s.r))<0&&aglAt(s.body,s.r,simT)<1500)legOp(s,'down')}
 // the ground's upward normal at a planet-fixed point, in the inertial frame (finite differences over ±1 m)
 function groundNormal(b,pf){if(!b.ground)return norm(fromPF(b,pf,simT));const u=norm(pf),f=siteFrame(u),d=1/b.R,h0=groundAlt(b,u);
   const he=groundAlt(b,norm(add(u,mul(f.e,d)))),hn=groundAlt(b,norm(add(u,mul(f.n,d))));
