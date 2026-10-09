@@ -84,7 +84,7 @@ function editorChanged(){
     while they burn, steerable fins while there's air (the Control block says which hold). `:''}Joint loads are against <b>certified</b> ratings, which start at 70% of what a part can really take. Over 100%: beyond what's
     been proven. It may hold, or not. An instrument package's telemetry certifies the parts it flies with.</div>`;
   renderProgram();
-  $('stats').innerHTML=html}
+  $('stats').innerHTML=html;if(atRoll)renderRollout()}   // (a site picked in the Rollout rebuilds the ship: refresh the checks)
 $('stats').addEventListener('click',e=>{if(e.target.dataset&&e.target.dataset.study){if(!orderStudy(S))HOOK.msg('Not possible right now');editorChanged()}});   // economy: trajectory studies
 $('launch').onclick=()=>{if(BLD.isEmpty(stackDef))return;BLD.drop();{const fee=siteAccessOf(curSite()).fee||0;if(vesselCost(S.parts).cost+fee>PROG.funds+1e-9){HOOK.msg(`Over budget: this design costs ${fmtM(vesselCost(S.parts).cost)}${fee?` plus ${fmtM(fee)} for the site`:''}, the program has ${fmtM(PROG.funds)}`);return}}
   {const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts);if(!a.ok){HOOK.msg(a.why);renderSites();return}if(!fz.ok){HOOK.msg(fz.why);renderSites();return}const w=downrangeWarning(t);if(w)HOOK.news(w,'warn')}resetShip();go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg('Space to ignite · Z for full throttle')};

@@ -6411,6 +6411,25 @@ new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYT
 **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
+### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
+- **A checkpoint between the Assembly and the launch** (`app/rollout.js`, `#roll`): a panel beside the ship on the pad,
+  like the spec's "a panel over the ship". The Assembly's foot keeps the one-line site summary and gets **ROLL OUT ▶**
+  (`#bRoll`); the Rollout has the launch site (the picker, `renderSites`, moved here from the Assembly as § v1.27 asked),
+  **Checks**, **The flight** (hardware, ops fee, site fee, funds after, what comes back if it all lands, days until it
+  can fly: stacking as `missionTick` reckons it, plus a study and a free pad), **In play** (the NEXT line, accepted
+  contracts), then ← Assembly [B] and **LAUNCH**.
+- **Checks** (`rollChecks()`): ⛔ over budget, site refused, stages don't fit, stage-1 TWR < 1, unstable with nothing to
+  steer; ⚠ the ops fee goes below zero, downrange over another power, weather that may scrub, sluggish TWR < 1.15,
+  unstable but steerable, a joint past its certified rating, flight safety refusing a passenger, decisions waiting.
+  LAUNCH dims while a ⛔ holds; its own checks (editor.js) still decide. **Vehicle, Q48:** the builder's pre-launch
+  warnings (contract orbit out of reach, no chute on a crewed return) belong in `rollChecks`, one line each.
+- **`#launch` kept its id** and moved into the Rollout, so every scripted `$('launch').click()` (views.js, the robot's
+  `PT.launch`, Fly again) still launches straight away. Only real clicks changed: robot `m1` now clicks ROLL OUT then
+  LAUNCH (and shoots the Rollout), and its `PICK` helper opens the Rollout first. `atRoll` joins `atHQ`/`atDeb` (builder
+  keys off, builder markers off; §32 counts it). Robot rows m1, 25 and 26 pass.
+- Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
+  builder's panel (vehicle's), so they repeat here.
+
 ---
 
 ## Picking this up cold
