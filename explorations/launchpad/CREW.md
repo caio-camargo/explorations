@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Version**: 0.2.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -119,6 +119,20 @@ Apollo's white to the Shuttle's orange launch suit to today's sleek one; Steppe 
 for spacewalks. Draft: three launch-suit generations per school (early pressure suit, the launch-and-entry suit, the
 modern one), plus a spacewalk or surface suit once EVA exists; look only, like everything a school touches.
 
+| School | Early | Middle | Late | Spacewalk / surface |
+|---|---|---|---|---|
+| **Cape** | Mercury's aluminised silver | Apollo's white layers, blue fittings | sleek white-and-black tailored | bulky white with a backpack (EMU) |
+| **Steppe** | orange coverall over a pressure suit, lettered white helmet (SK-1) | Sokol: white, blue connectors, soft hood | a refined Sokol | Orlan: rigid torso, rear entry |
+| **Arsenal** | olive military flight gear, bare metal fittings | white with red panels | white and red, armoured joints | Feitian-like |
+| **Coastal** | Hermes's unflown suits: tidy white, a pastel band | the same with mission patches | slim blue-grey | rounded and modular |
+| **Mountain** | slim saffron-and-white | Gaganyaan-like | lightweight, a light visor | compact |
+| **Isle** | none (no crewed early era) | black carbon tones | black and white, dark visor | utilitarian, rental-grade |
+
+Generations: early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene. Open questions with defaults:
+(1) three generations, not each school's compute eras; (2) a spacewalk suit per school, not one shared; (3) a role
+stripe on the shoulder (§ The roles) so crew read apart small. Then a look session mocks up Cape and Steppe across the
+three eras in the Q72 scene, and Caio picks.
+
 ---
 
 ## Decisions (round 2, Caio, 2026-10-08)
@@ -133,6 +147,7 @@ modern one), plus a spacewalk or surface suit once EVA exists; look only, like e
 ---
 
 ## Version history
+- **0.2.2 (2026-10-09):** D9 draft: suits by school and era (table, three questions with defaults).
 - **0.2.1 (2026-10-09):** part 1: stylised human chosen (W19); suits by school and era opened (D9).
 - **0.2.0 (2026-10-08):** part 2 approved; round 2: requalification and the lost person replace the timed stand-down.
 - **0.1.0 (2026-10-08):** first draft. Part 2 round 1 (level 2, the pilot is the computer); roles, ranks, the office,
