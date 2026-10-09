@@ -59,7 +59,7 @@ the feedback I paste into PLAYTEST items.*
   second threshold.
 - **Flaky page loads in previews = the server, not your code** (effects, 2026-10-09): since the split the page loads ~30 scripts at once, and `python -m http.server` listens with a backlog of 5, so some scripts get `ERR_CONNECTION_REFUSED` and the rest cascade (`editorChanged is not defined`, `gl.getExtension is not a function`, `refView` returning `{}`). Workaround: serve with `ThreadingHTTPServer` and `request_queue_size = 128` (a 6-line script), and use `127.0.0.1`.
 - **`.gitattributes` landed** (effects, 2026-10-09, Q156): `*.md *.js *.mjs *.html` are stored and checked out as LF everywhere. Merge `main` as usual; a worktree that shows every file modified afterwards needs `git add --renormalize .` once (it shouldn't: no file on `main` had CRs).
-- **Version numbers:** latest on `main` is v1.89 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.89.5 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -379,7 +379,7 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - space + economy — Q51 slice 2: data as a volume (instruments → recorders → downlink at the path's rate); pay on data received — same plan
 - space + flow — Q51 slice 3: relays as nodes, coverage drawn, routes through gaps flagged; relay power (after Q164) — same plan
 - space — Q51 slice 4: solar conjunction and light delay at the planets (after Q87) — same plan
-- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts" **→ economy 2026-10-09 (taken from Proposed: the lane was empty)**
+- economy — Q9 slice 3: base resupply and base lab time on `baseOf` (as v1.89.3 for stations) — NOTES § "Plan: station, base, relay and rendezvous contracts" **✓ v1.89.5 `847cd92` (economy, taken from Proposed)**
 - economy — Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, W22 default 4: its parts' value back) — same plan
 - economy — Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the debrief line, a test — NOTES § "Plan: overflight politics"
 - economy — crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) — NOTES § "Plan: the roster…" (M3)
