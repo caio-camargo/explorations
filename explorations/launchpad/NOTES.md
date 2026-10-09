@@ -1695,6 +1695,53 @@ is large at 2 seeds (±400M, as the handoff warns).
 **Found on the way:** a **company in a frugal world ends four years at 25M**, never reaching Selene (with or without
 rovers); it reaches orbit (v1.77) but stagnates. A follow-up under *Proposed*.
 
+## Q19 in progress: where a grazing frame's time goes (2026-10-09, world session; parked, no code changed)
+
+QUEUE Q19 (the cost of low grazing views). Measured on this machine's RTX 3050 6 GB Laptop GPU, in headless Chrome
+(`shot.mjs`) at 1262×704, with `adaptRes` off and `RS` = 1. **Parked:** the session's background run was stopped because
+the machine ran critically low on memory, which other sessions were using (about 0.5 GB free of 16). Resume from here.
+
+**Baseline, the whole frame (the game's own `gpuMs`):**
+
+| View | ms | v1.25's number |
+|---|---|---|
+| Pad | 14.4 | 4.2 |
+| Coast from 1.5 km | 24.3 | 3.2 |
+| Rugged hills, 40 m up, grazing (the most rugged land: 52°S 121°E, alpine, 3.7 km) | **54.5** | 8.8 |
+| Hills at 300 m | 50.5 | — |
+| Orbit | 6.1 | 2.5 |
+
+v1.25's numbers were 1024×768 on the same GPU model; these are far worse, and the next findings say why only partly.
+
+**What I found:**
+- **The GPU is thermally throttled while it works:** 85 °C, 1,290 of 2,100 MHz. One early run read 22.9 ms for the hills
+  and was never repeated. **Compare only A/B within one session, interleaved.** Across sessions numbers can differ 2×.
+- **Clouds don't matter at the hills view.** Volumetric clouds off/on, five interleaved rounds: 55.2 against 55.2 ms.
+- **The sky shader is the frame.** A per-draw GPU profile (each draw call in its own timer query; the game's frame timer
+  off, since the queries can't nest) gives:
+  - sky shader 43–44 ms;
+  - its depth pre-pass 5.0 ms;
+  - everything else under 1.5 ms (meshes, bloom, composite).
+- **With the march removed**, the sky shader is 18.3 ms. So the march plus terrain shading is ~25 ms of the 43.
+- **Recompiling the sky shader takes ~36 s** (ANGLE/D3D11, sky + depth pass). Each A/B variant therefore costs a browser
+  session of about a minute, and the plan has to be few, well-chosen experiments.
+
+**Tools (in the session scratchpad; rebuild from this description):**
+- a bench (views via `overView`, `gpuMs` median over 1.2 s);
+- `profFrame` (per-draw timer queries grouped by shader);
+- `swapSky(src, depth)`: relink `PSKY`/`PDEPTH` from an edited `SKY_FS` and refresh `P.u`'s locations;
+- `oneAB(name)`: base then variant, in one session.
+
+Worth promoting into `terrain-probe.js` when resumed.
+
+**Next, in order:**
+1. A/B the shading pieces at the hills view, one per session: normals at ≤5 octaves; no cloud shadow; no near-field
+   detail; no `tellus()` fbm.
+2. A/B the march: octaves capped at 6; and using the pre-pass's 3×3 hits as a bracket, a short bisection where all nine
+   hit close together instead of the full step loop.
+3. Then the 18 ms that isn't terrain at all (the atmosphere's `scatter`?), which is the look lane's code: hand it over
+   with numbers.
+
 ## v1.78 — G3.0: the crater cells on shared trigonometry (2026-10-09, world session, QUEUE Q107)
 
 The first step of GROUND.md § "G3: the port plan", allowed before the milestone gate. Headless, and no visible change.
@@ -1755,6 +1802,39 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 **The intended number of flights (M1's finish line):** proposed as *4–6 flights to first orbit for a prudent player,
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
+
+
+## v1.82 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
+
+Slice 2 of § "Plan: debris and Kessler". `conjTick` runs at the end of `orbTick` (each `advanceDays`), Tellus orbits only.
+- **Who meets whom:** big objects (Debris) against active entries (everything else in Tellus orbit), never object against
+  object. Each orbit is smeared over 38 bands of 50 km from the top of the air to 2,000 km (`resid`: the share of its
+  period in each, sampled evenly in time; cached per orbit).
+- **The rate** (`pairRate`, hits a day): Σ over shared bands of share_a · share_o · Rs² v / (2π r² W cos(Δi/2)), Rs the
+  two bounding radii added, Δi their mutual inclination. Derivation: at a node they hit if their offsets across the band
+  and along the track fall in an ellipse of area π Rs²/cos(Δi/2). My first version used the bounding rectangle (4/π too
+  high); an event-driven Monte Carlo caught it (`study_debris.mjs`, part A, 200,000 pairs × 20 days, Rs 1 km):
+
+  | Δi | 90° | 60° | 30° | 10° |
+  |---|---|---|---|---|
+  | Monte Carlo / formula | 0.99 | 0.94 | 0.93 | 0.92 |
+
+  (±5 % statistical.) The usual "smear over a spherical shell" estimate is close at steep crossings but goes to zero at
+  small Δi, where the real rate is highest.
+- **A hit** (a seeded roll per entry and day, Poisson): a crewed entry is always warned and moves (LATE_GAME: no
+  surprise deaths); a tracked one (from the mainframe era, `debrisTracked`) with `DODGE_DV` = 0.5 m/s in its tanks dodges
+  and pays it; anything else is destroyed with the object, and the breakup goes into `PROG.breakups` for Q147.
+- **The setting:** `pressureOf('debris')` reads `PROG.pressures.debris` (off / light / real, default light = a tenth of
+  real); platform's Q124 can adopt the accessor for world creation.
+
+**What it means** (part B): a satellite sharing a band at 400 km with N spent stages, crossing at 60°, real rates:
+N = 10 → one hit in ~110,000 years; 100 → ~11,000; 1,000 → ~1,100. **Big objects almost never hit each other**, as in
+reality (the first accidental satellite–satellite collision, Iridium–Cosmos, came 52 years into the space age). The
+pressure LATE_GAME wants comes from fragments: slice 3 (Q147) turns breakups and anti-satellite tests into band densities
+of thousands of pieces, where the same formula (with the fragment's tiny radius) gives real odds.
+
+Test `space-4` (3 checks; mutations caught: the old formula, "off" ignored, crew not warned, never tracked, no breakup
+record). Full suite 557 pass. No TESTING row: a hit is too rare to try by hand, and there's no UI for the setting yet (Q148).
 
 ## v1.76 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
@@ -7126,6 +7206,9 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
   launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
   with the key) as well as `go`. **Enter** ends a flight that is over (landed or lost), like the End flight ▸ button.
+- **Rollout checks stay short** (Q151): a check's closing parenthesis (where a number comes from, e.g. vehicle's "your best
+  flight to orbit took 4,446 m/s") folds into an ⓘ with the text as its tooltip, and the panel is 340 px wide, so the
+  long Δv warning takes two lines instead of four.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
@@ -7170,6 +7253,19 @@ function but `netModel`.
 **Defaults, for Caio to override** (W16): its own screen (key N from the Program, shown once the program has a
 second node beyond the pad), not a Program tab · a schematic, not drawn on the orbital map · the pad calendar on the same
 screen, below, plus a compact copy in the Fleet tab.
+
+### Network screen, N1 built (2026-10-09, flow session, QUEUE Q155)
+- **Network [N]** in the Program's header (and the N key) once something of ours is out there (`netOpen()`: a registered
+  craft or a dispatch), W18's default. `app/network.js`, `#net`, a panel over the pad like the Program.
+- **The fleet**: every registered craft (not debris, not docked) with its kind, where it is and what it does next
+  ("holds its orbit 212 more days", "adrift: out of propellant", "on the surface"), and every queued dispatch ("launches
+  in 12 days"), soonest first.
+- **The pads**: one row per pad over the next 180 days, a bar per booking (stacking from the order to the launch), 30-day
+  ticks, and a row of the timeline's dated events (`upcoming()`), each with its text on hover and the next four listed.
+- **Reads `netModel()` when it exists** (economy's Q154); until then `netFallback()` builds the same `{fleet, pads}` from
+  the registry, the dispatch queue, `padsN` and `upcoming`. **Economy:** when `netModel` lands, its `fleet` and `pads`
+  replace the fallback with no change here; delete `netFallback` then.
+- Not yet (N2–N4): the schematic of nodes and routes, goods, the bottleneck line, the compact copy in the Fleet tab.
 
 ---
 
@@ -7343,7 +7439,9 @@ Heavy's three Kestrels: one voice at 455 Hz); up to four, the biggest thrust sha
 level, so the total power stays put. Four white-noise bandpass layers (Q 1.4) carry them (`AUD.V`); the broad roar
 drops to 0.8 while voices play. `AUD.VOICES = false` for A/B.
 - Checked live in the page (`AUD.lastV`); not judged by ear (no speakers on an unattended run): TESTING row 158.
-- test.mjs `aerofx-3` (engine voices).
+- test.mjs `aerofx-3` (engine voices).
+
+
 ### Re-entry plasma by the heating model; sounds from elsewhere (2026-10-09, effects session for the sound beat, QUEUE Q67)
 - **Plasma:** `sndPlasma(qh, va, pv)` uses the drawn shell's own rule: the stagnation flux on its log scale (15 → 160
   kW/m², capped 1.2) times the same airspeed gate around `PLASMA_V` (0.85–1.05). It plays a low rumble (brown noise
@@ -8246,3 +8344,80 @@ in the page, a core + antenna + RTG reads "Power +60 W / −5 W (low orbit avera
 needs 0 Wh".
 
 **Not yet:** a choice of β or orbit in the builder itself; what a flat battery does to a satellite's service (space, Q27).
+
+## v1.81 — a satellite's lifetime in the builder (2026-10-09, vehicle session, QUEUE Q141)
+
+MIDGAME § Satellites: lifetime is a design choice made once, so the builder shows it. For a design carrying an antenna,
+a camera or instruments, the stats panel has a **Lifetime** line at the orbit the flight is aimed at (the highest
+accepted satellite contract, else low Tellus orbit). It says what holding that orbit costs a day, how long the Δv left
+after getting there pays for it, and then what happens: "the air brings it down in …", or "it drifts off its slot
+(its service pauses)".
+
+**How** (`satLife(stack, alt)`, `sim/vessel.js`; reads space's functions, changes none):
+- The stand-in is the design's top stage (the root's segment, what's left after every decoupler), as a register entry
+  in a circular orbit at that altitude.
+- `holdRate` (tides + drag) gives the daily cost, and `decayLife` the fall.
+- The Δv left is the design's vacuum Δv minus `launchWarnings`' need (the best flight to orbit or ~4,500 m/s, plus the
+  Hohmann climb), so the two lines agree.
+- **Speed:** the tide's rate is a 20-day integration that depends only on the orbit, so it's cached per altitude
+  (`SLOT_ALT`, ~150 ms the first time); a design edit costs 1–2 ms. The fall is only worked out if holding ends within
+  20 years.
+
+**Measured (the Beeper):**
+
+| Orbit | Holding costs | Lasts | Then |
+|---|---|---|---|
+| 110 km (low orbit) | 73 m/s a day | 20 days on its 1,494 m/s | down in ~4 h |
+| 200 km | 0.20 m/s a day | 17.5 years | down in 151 days |
+| 400 km | 0.002 m/s a day | past 20 years | — |
+
+**Worth knowing:** a satellite parked at the default low orbit lives days (v1.64's decay working as built). QA's Q129
+(parking orbits above ~200 km) and the presets' briefs follow from it; the builder line now makes it visible before
+launch.
+
+**Checked:** `test.mjs` section `vehicle-8`; `playtest.mjs m1` passes; in the page the Beeper reads "Lifetime at 110 km
+holding it costs 73.25 m/s a day; ~1494 m/s left there holds it 20 days, then the air brings it down in less than a
+day"; the smoke shard after merging main.
+
+## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
+
+**The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
+modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
+generations: `avOf(s) = AV[min(s.av, avCap(s))]`, and `sasModeOK(s, m)` asks that generation's list. Rank 2 (target
+but not docking) sits between two generations, so gating has to become per mode.
+
+**Proposal:**
+- **`modesOf(s)`**, the union of two sources:
+  - the **computer's** modes: `AV[min(s.av, avCap(s))].modes`, as today;
+  - the **pilot's** modes: `PILOT[r].modes` for the best pilot aboard (`r` = the highest rank of role *pilot* among
+    the crew on parts that are still on), only on a crewed vessel.
+  - `sasModeOK(s, m)` asks the union. The buttons, the tooltip and `sasTarget` stay as they are.
+- **The loop follows the source.** If the computer has the mode, the computer's loop flies it (`k`, `w`, `db` from
+  `AV`). If only the pilot has it, a pilot loop: *tune* k 2.5/s, fastest turn 0.35 rad/s, deadband 0.5°. That's
+  CREW's "slower and less precise than a computer of the same tier", so computers win when they arrive (pillar 8).
+- **The tiers:**
+
+  | Rank | Modes |
+  |---|---|
+  | 1 | stability, prograde, retrograde, normal, anti-normal, radial out/in (the analog autopilot's list) |
+  | 2 | + manoeuvre, target, anti-target, relative prograde/retrograde (`node` + `TGT_M` without `dock`) |
+  | 3 | + docking, + the manual landing hold |
+
+- **The landing hold is a new mode, not just a gate.** It holds attitude on the surface-relative retrograde and flies a
+  descent-rate law on the throttle (hover, then sink at a set m/s). It's the control session's kind of work (size M),
+  planned on its own when crew reach M3. Until then rank 3 means docking.
+- **With v1.68:** from the onboard-computer era, crew capsules carry their own computer (`hasComputer`), so the pilot
+  matters in eras 0–1 and as the precision floor; uncrewed vessels are untouched. Procedures keep the best avionics.
+- **What it needs from the roster** (CREW's astronaut office, economy and flow): who is aboard. Today `p.crewAboard`
+  is a count. The roster has to give each crewed part its astronauts' ids, with role and rank (`p.crew = [{id, role,
+  rank}]`), and keep that through the register (`shapeOf`'s `o.crew`, `vesselOf`). Until the roster lands, no pilot
+  modes, which is today's behaviour.
+- **UI (flow):** a SAS button the pilot provides names them in its tooltip ("flown by Vela Marisk, pilot, rank 2").
+
+**Checks to write with it:**
+- in era 0, rank 1 gives prograde, rank 2 target (not docking), rank 3 docking;
+- the pilot's 90° turn is slower than the guidance computer's;
+- an uncrewed probe is unchanged;
+- in the onboard-computer era a crewed capsule flies the computer's loop.
+
+**Sizes:** per-mode gating plus the pilot loop is S (vehicle), after the roster; the landing hold is M (control).

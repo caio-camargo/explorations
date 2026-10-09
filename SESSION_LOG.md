@@ -4338,3 +4338,44 @@ and the build of Q3/Q111 once Caio reads W15/W16.
 **Files:** `sim/vessel.js`, `sim/power.js`, `sim/space.js`, `sim/program.js`, `app/editor.js`, `app/gl.js`, `builder.js`,
 `test.mjs` (vehicle-6, vehicle-7), launchpad `NOTES.md` § v1.80, `TESTING.md` 160–161, `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** Q33 (node chains, M2) or Q141 (satellite lifetime in the builder, with space); Q47 still needs Caio and the GPU.
+
+## 2026-10-09 — Launchpad v1.81: a satellite's lifetime in the builder (Q141; vehicle session, unattended)
+
+- `satLife(stack, alt)`: the design's top stage at the aimed orbit through space's `holdRate`/`decayLife`; the Δv left
+  from `launchWarnings`' need. The tide's rate cached per altitude (a design edit costs 1–2 ms).
+- The Beeper: 110 km costs 73 m/s a day and falls within hours once dry; 200 km lasts 17.5 years; 400 km past 20.
+- **Checked:** `vehicle-8`; `playtest.mjs m1`; a page probe; smoke after merging main.
+- FLAG (harmless): the main clone's `.git/objects/d2/` holds `8aa2d0f… (1)`, a duplicate-named loose object from the
+  Drive era (7 Oct); git warns "bad sha1 file" on some commands. `git fsck --connectivity-only` is clean. Not touched.
+
+**Files:** `sim/vessel.js`, `app/editor.js`, `test.mjs`, launchpad `NOTES.md` § v1.81, `TESTING.md` 162, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's ready list: Q33 (node chains, M2, M), Q36/Q37 (evergreen); Q47 needs Caio and the GPU.
+
+## 2026-10-09 — Launchpad: G3.0 done (v1.78); Q19 measured and parked (world session, unattended, GPU allowed)
+
+### Summary
+Caio allowed the GPU on this machine and left the session unattended.
+- **TESTING 131 checked:** Selene's maria are on the near side, a large dark patch over about a third of its face.
+- **TESTING 146 can't be judged by eye:** at seed 13 Tellus's north pole is sea and the south pole never sees the sun.
+  The row now says so.
+- **Q107 (G3.0) ✓ v1.78:** the crater cells' trigonometry is on shared `ptan`/`patanJ` and λ is a float32. Heights moved
+  2.7e-8 m. `ground-9` added; suite 550/0 on merged `main`.
+- **Q19 measured, no code yet:**
+  - the whole frame at grazing hills is ~55 ms, against 14 at the pad and 6 in orbit;
+  - the sky shader is 43 ms of that (march + terrain shading ~25 ms, the rest ~18);
+  - clouds don't matter there;
+  - the laptop GPU throttles (85 °C, 1.3 of 2.1 GHz), so only same-session A/B is valid;
+  - each sky-shader recompile takes ~36 s.
+  Findings and the next experiments are in NOTES § "Q19 in progress".
+
+PARKED: Q19, parked at "per-pass profile done; shading/march A/B next". The session's background GPU run was stopped by
+the system: memory critically low (~0.5 GB free of 16, used by other sessions' processes). Per its instruction, not
+restarted without Caio. One orphaned headless Chrome of mine (~380 MB) was stopped; the GPU lock was released.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `test.mjs` (`ground-9`, `ground-3` tolerance), `NOTES.md` § v1.78 and § "Q19 in progress", `GROUND.md` 0.1.10, `TESTING.md` 131/146, `QUEUE.md`
+- `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: say when memory allows, and the Q19 experiments resume (one browser session each, ~1 min)
+- [ ] Look & sound: the ~18 ms of the sky pass that isn't terrain, at low views
