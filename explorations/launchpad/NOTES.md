@@ -7383,3 +7383,65 @@ Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive f
 Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
+
+## v1.67 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
+
+Built to the plan in § "Vehicle parts" (Q34a), with Caio's call on the computer: **built into crew capsules, a part for
+probes**. Headless only: nobody has seen the parts drawn or the builder's power line yet (TESTING row 144).
+
+**Parts** (`sim/vessel.js`; palette *Power*):
+
+| Part | Kind | Mass | Power | Notes |
+|---|---|---|---|---|
+| Onboard computer `ocomp` | inline | 0.03 t | −50 W | offered from the onboard-computer era (`era: 2`); price 8, tier 2 |
+| Battery 1 kWh `batt` | inline | 0.02 t | stores 1 kWh | price 2 |
+| Solar cells (body) `bpanel` | surface, fixed | 0.01 t | 40 W in full sun × 0.32 | price 2, tier 1 |
+| Solar wing `wpanel` | surface, folds out (**P**) | 0.03 t | 300 W in full sun × 0.9 | tears off deployed above 1 kPa; price 5, tier 1 |
+
+A probe core has 0.5 kWh of its own; the antenna draws 5 W and the camera 10 W. Crew capsules run on their own fuel
+cells (their 10 days of life support) and draw nothing.
+
+**The model** (new `sim/power.js`, loaded before `ground.js` so it's inside the SIM block):
+- One store per vessel, `s.E`, up to its batteries (`powCap`). The loads (`powLoad`) draw on it, and the panels fill it
+  while the vessel is out of its body's shadow.
+- **The shadow** is a cylinder behind the body, since the sun is fixed and far (`SUN_DIR`).
+- **Panels in flight:**
+  - body cells give their average share whatever the attitude;
+  - a wing turns about its own arm, so it gives √(1 − (arm·sun)²) of its best.
+- **Stepping:**
+  - each physics step (`advPhys`), and rails steps up to 60 s, use the sun right now;
+  - longer rails steps use the orbit's average, with the shadow share taken from its elements (`eclFrac` with the
+    orbit's β).
+- **The builder's line** (`powerLine` in `app/editor.js`) appears only for designs with something electric. It shows a
+  low Tellus orbit's average against the load, and the battery against one shadow, for example
+  `Power +339 W / −55 W · shadow 16 min needs 15 Wh (battery 1500 Wh)`. It turns red and says "it runs flat" when
+  the panels can't keep up.
+- **Running flat never kills (Pillar 5):** the onboard computer goes off ("Power flat: the onboard computer is off,
+  analog autopilot only…") and comes back once the panels catch up ("Power back").
+- **Avionics** (`avOf` takes the lower of `s.av` and `avCap(s)`): from the onboard-computer era, the guidance
+  computer's modes need `hasComputer(s)`, meaning a crew capsule, or an `ocomp` with power. Sandbox, physics tests,
+  the tester's tools and procedures keep everything, as before.
+  - **Presets:** no preset flies a probe that needs the guidance modes. The robot's docking pilot (`PT.dockIn`) flies
+    in a test scene. So nothing needed the part added. **QA:** a robot career past year 7 that wants target or docking
+    modes on a probe now needs an `ocomp` on it.
+- **Era gate:** the builder hides a part with `era` until the program's `compEra()` reaches it (not with the tester's
+  tools, and not in the sandbox). It's the first era-gated part, and the gate is the general one Q10 can reuse.
+
+**Measured** (a probe: core, computer, battery, antenna, 1 t tank, Petrel, two wings):
+- **Low orbit** (r 1,384 km, β 0): 37.2% of the 42.7-minute orbit is in shadow (15.9 min). The panels give 540 W
+  peak and 339 W on average against 55 W of load, so one shadow needs 14.6 Wh of the 1.5 kWh on board.
+- **Integrated along one orbit** on rails in 20 s steps: +204 Wh, with 14.4 Wh drained in the shadow. One long rails
+  step gives +202 Wh, and the steady state says +202 Wh.
+- A wing deployed at 10 km and 300 m/s (14.2 kPa) tears off.
+
+**Tests:** `test.mjs` section `vehicle-2`, 5 checks: the budget by hand; one orbit, stepped and in one step, against
+the steady state; a wing in thick air; the computer (a probe with and without it, a crew capsule, running flat and
+coming back); a tape replays the wings.
+
+**Not yet:**
+- what a flat battery does to the antenna and camera, and to a satellite's service on the registry (space lane, Q27
+  and the power side of Q50; they read `powerBudget`, `hasComputer`, `s.E`/`s.pwrOut`);
+- an RTG;
+- a builder choice of the orbit for the budget (it always assumes low Tellus orbit, β 0);
+- the look of the parts (placeholders in `app/gl.js`, Q97);
+- battery charge carried across a flight's end (each flight starts full).

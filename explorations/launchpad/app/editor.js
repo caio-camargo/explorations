@@ -57,6 +57,11 @@ function controlHTML(c,stable){if(!c)return'';const k=x=>(x/1000).toFixed(x<9500
     <div>90° turn in vacuum <b>${sec(c.turn.wheels)}</b> <span class="dim">wheels${c.rcs?' + RCS':''}</span> · <b>${sec(c.turn.burn)}</b> <span class="dim">first stage lit</span></div>
     ${c.spin&&c.spin.length?`<div>Spin motors <b>${c.spin.map(r=>r.toFixed(0)).join(', ')} rpm</b> <span class="dim">when their stage lights${c.spin.some(r=>r<60)?' · under 60 rpm the axis wanders':''}</span></div>`:''}`}
 const certFrac=p=>p&&p.sk1?p.anaFrac/Math.min(certOf(p.sk1),certOf(p.sk2)):null;   // the builder only ever shows loads vs certified ratings
+// the power budget (vehicle session, Q34a): only for a design with something that draws or makes power. The steady state in
+// a low Tellus orbit: the panels' average against the load, and the battery against one pass through the shadow
+function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s),f=x=>x.toFixed(0);
+  const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
+  return`<div style="margin-top:6px">Power <b class="${c(okA)}">+${f(B.avg)} W</b> / −${f(B.use)} W <span class="dim">(low orbit average)</span> · shadow ${f(B.tE/60)} min needs <b class="${c(okB)}">${f(B.needWh)} Wh</b> <span class="dim">(battery ${f(B.battWh)} Wh)</span>${okA?'':' <span class="warn">the panels can’t keep up: it runs flat</span>'}</div>`}
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
   if(!empty){resetShip();S.ana=analyze(S)}
@@ -68,6 +73,7 @@ function editorChanged(){
   {const c=vesselCost(S.parts),ok=c.cost<=PROG.funds+1e-9;html+=`<div class="dim" style="margin-top:6px">${prepDays(c.cost).toFixed(1)} days to stack</div>`+studyLine(S);$('launch').textContent=ok?'LAUNCH':'OVER BUDGET';$('launch').style.opacity=ok?1:.55;
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
+    ${powerLine(S)}
     <div class="sub">${logHintHTML()}</div>`;
   if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?'<div class="warn">No reaction wheels: it steers only with engines burning, steerable fins in the air, or RCS.</div>':'<div class="warn">No reaction wheels, gimbals, steerable fins or RCS: no control at all.</div>';
   BLD.frameCam();
