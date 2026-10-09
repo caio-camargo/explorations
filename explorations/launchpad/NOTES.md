@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1870,6 +1870,21 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89.2 — rivals' personalities in the race; our own voice (2026-10-09, economy session, QUEUE Q165)
+
+Q103's next slice (POWERS.md § archetypes):
+- **The race schedule** (`raceSchedule`): a **frugal** power doesn't race (it partners: its offers and stakes, v1.24,
+  are how it shows up); a **rising** power **copies, then catches up**: it never goes for the first of the race's firsts
+  (the beeper) and runs the later ones half again as fast. Every power's draws are still made in the same order, so the
+  others' dates don't move. In this build's world (no frugal power), a fast rising power took the hop and the orbiter
+  in the test, leaving the beeper to the closed superpower.
+- **Our own voice:** the "FIRST IN THE WORLD" headline ends with a line in the home archetype's voice (`OWN_TONE`):
+  live coverage (open superpower), the after-the-fact bulletin (closed), the nation among the leaders (rising), the
+  science desk's motorway bridge (frugal), the palace's world record (resource), the site's successful test
+  (security).
+Test `econ-15` (2 checks; the schedule rule mutation-tested). **Not yet:** mission control's in-flight voice (app
+messages, flow's); "the second power to…" news when a rising power repeats a claimed first.
 
 ## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
 

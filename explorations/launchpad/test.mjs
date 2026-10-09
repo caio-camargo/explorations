@@ -4463,6 +4463,23 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `escape at ${qe ? (D.len(qe.r) / 1e6).toFixed(0) : '—'} Mm after 3 days (pure Kepler ${(D.len(eExp) / 1e6).toFixed(0)}, ${qe ? (D.len(D.sub(qe.r, eExp)) / 1e3).toFixed(0) : '—'} km apart); return halted at ${hr ? (hr / 1e3).toFixed(1) : '—'} km`);
 }
 
+// econ-15. Rival personalities in the race and the program's own voice (economy session, QUEUE Q165, POWERS.md): a
+// frugal power doesn't race; a rising power copies the first of the race's firsts, then catches up; our firsts are
+// announced in the home archetype's voice.
+{
+  const D = new Function(src + 'return {raceSchedule,RACE,POWERS,missionComplete,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'frugal', day: 10, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 1, done: {}, raceLost: {}, staged: {} }); D.chooseStart('agency');
+  const W = D.POWERS, x = W.find(p => p.i !== 0 && !/Super$/.test(p.arch)), keep = { arch: x.arch, tech: x.tech, econ: x.econ };
+  Object.assign(x, { arch: 'frugal', tech: 5, econ: 5 }); const Sf = D.raceSchedule();
+  Object.assign(x, { arch: 'rising' }); const Sr = D.raceSchedule(); Object.assign(x, keep);
+  check('race: a frugal power never holds a first, however fast; a rising one leaves the first of them to others and wins later ones',
+    D.RACE.every(id => !Sf[id] || Sf[id].i !== x.i) && Sr[D.RACE[0]] && Sr[D.RACE[0]].i !== x.i && D.RACE.slice(1).some(id => Sr[id] && Sr[id].i === x.i),
+    `rising ${x.root}: ${D.RACE.map(id => `${id} → ${Sr[id] ? W[Sr[id].i].root : '—'}`).join(', ')}`);
+  D.missionComplete(D.MISSIONS.find(m => m.id === 'beeper'), null);
+  check('our own first is announced in the home archetype\'s voice (frugal: the science desk)', news.some(t => /FIRST IN THE WORLD/.test(t) && /motorway bridge/.test(t)), news.find(t => /FIRST/.test(t)));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
