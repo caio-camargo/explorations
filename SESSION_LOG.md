@@ -4056,3 +4056,25 @@ Negative result: at 18 km the crater grows a central peak, which the first "pit"
 - [ ] Human: TESTING 145
 - [ ] Economy: Q9 (station/base contracts; plan first); Proposed: pay floors by world, dispatch leases, overflight politics, rovers in the career runner, crew rotation
 
+
+## 2026-10-09 — Launchpad v1.70: Hyperion's moons on the CPU; the poles fixed everywhere (world session)
+
+### Summary
+Hyperion's four moons (QUEUE Q92's CPU half), not live (stub bodies):
+- Theia: no craters; 30 lava-floored paterae; tilted mountains.
+- Eos: flat ice with double ridges on a Worley network (the new G-ice); blocky chaos; the tiger stripes.
+- Tethys: methane lakes as a liquid level (splashdown), mostly north; east–west linear dunes in patches; Xanadu; channels.
+- Phoebe: a cratered lump (G-lump).
+
+**Found on the way, live:** every equirectangular map's polar rows made a 77–90° step within 2 km of the poles, on every
+body, Tellus included since v1.25. `polesFix` gives each polar row one value. Data only, so the GPU agrees; the poles now
+show 0–48°. Not seen in a browser: TESTING 146. Also: crater bands made safe on tiny bodies (face cutoff by reach; bake
+the coarse sizes). Lesson #40. Test `ground-6` (6 checks, 3 mutations caught). Full suite 519 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `sim/world.js` (`polesFix`, in `makeWorld`), `study_ground.mjs` (the moons), `test.mjs` (`ground-6`), `NOTES.md` § v1.70, `GROUND.md` 0.1.7, `TESTING.md` 146, `QUEUE.md`
+- `LESSONS_LEARNED.md` #40, `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Someone with the GPU: TESTING 146 (Tellus's poles)
+- [ ] World: Erebus, then the seeded small bodies
