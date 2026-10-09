@@ -84,27 +84,42 @@ const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_
   ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days']];
 let testArm=null;
 const testEpochNow=()=>Math.min(6,...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep));
-function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mode==='flight',ep=testEpochNow(),
+function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mode==='flight',ep=testEpochNow(),dis=fl?' disabled':'',era=compEra(),
+    misOpen=!!(el.querySelector('details.tmis')||{}).open,
     act=(a,t,arm)=>`<button data-test-act="${a}"${testArm===a?' class="arm"':''}>${testArm===a?arm:t}</button>`;
   el.innerHTML=`<span class="x" data-ov="tester">✕</span><h2>Tester</h2><div class="sub">A sandbox program, saved apart from your career. Cheats:</div>`
     +TEST_FLAGS.map(([k,l,d])=>`<label title="${d}"><input type="checkbox" data-test-flag="${k}"${TEST[k]?' checked':''}> ${l}</label>`).join('')
     +`<h3>Epoch</h3><div>${[1,2,3,4,5].map(n=>`<button data-test-ep="${n}"${n===ep?' class="on"':''}${fl?' disabled':''}>${n}</button>`).join('')}</div>`
     +`<div class="sub">Marks every mission of the earlier epochs done, and clears the later ones.</div>`
     +`<h3>World date · ${fmtDate(PROG.day)}</h3><div>${[[1,'+1 day'],[10,'+10 days'],[100,'+100 days'],[YEAR_D,'+1 year']].map(([d,l])=>`<button data-test-day="${d}"${fl?' disabled':''}>${l}</button>`).join('')}</div>`
-    +(fl?'<div class="sub">Epoch and date wait until the flight is over.</div>':'')
+    +`<div><input type="number" id="testDayIn" min="0" step="1" value="${Math.round(PROG.day)}" style="width:7em"${dis}> <button data-test-act="goto"${dis}>Go to day</button></div>`
+    +`<div class="sub">Forward runs every day's rules; back moves only the calendar.</div>`
+    +`<h3>Computing era · ${COMP_ERAS[era].name}</h3><div>${COMP_ERAS.map((E,j)=>`<button data-test-era="${j}"${j===era?' class="on"':''}${fl||j<=era?' disabled':''}>${E.name}</button>`).join('')}</div>`
+    +`<div class="sub">The date runs on until that era reaches the program.</div>`
+    +`<h3>Funds · ${fmtM(PROG.funds)}</h3><div><input type="number" id="testFundsIn" step="1" value="${Math.round(PROG.funds)}" style="width:7em"${dis}> M <button data-test-act="funds"${dis}>Set funds</button></div>`
+    +`<div class="sub">Turns infinite money off, so the program can go broke.</div>`
+    +`<details class="tmis"${misOpen?' open':''}><summary>Missions · ${MISSIONS.filter(M=>PROG.done[M.id]).length} of ${MISSIONS.length} done</summary>`
+    +[...new Set(MISSIONS.map(M=>M.ep))].map(n=>`<div class="sub">Epoch ${n}</div>`+MISSIONS.filter(M=>M.ep===n).map(M=>`<label><input type="checkbox" data-test-mis="${M.id}"${PROG.done[M.id]?' checked':''}${dis}> ${M.name}</label>`).join('')).join('')
+    +`</details>`
+    +(fl?'<div class="sub">Epoch, date, era, funds and missions wait until the flight is over.</div>':'')
     +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
     +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
     +`${act('leave','Leave tester mode')}`}
 function testDone(){testTopUp();HOOK.save();renderProgram();renderTester();if(screenNow()==='assembly')editorChanged()}
-document.addEventListener('change',e=>{const k=e.target.dataset&&e.target.dataset.testFlag;if(!k||!TEST.on)return;TEST[k]=e.target.checked;
-  try{const f={};for(const[x]of TEST_FLAGS)f[x]=TEST[x];localStorage.setItem('launchpad-tester-flags',JSON.stringify(f))}catch(x){}testDone()});
+function testSaveFlags(){try{const f={};for(const[x]of TEST_FLAGS)f[x]=TEST[x];localStorage.setItem('launchpad-tester-flags',JSON.stringify(f))}catch(x){}}
+document.addEventListener('change',e=>{const d=e.target.dataset||{};if(!TEST.on)return;
+  if(d.testMis){testMission(d.testMis,e.target.checked);testDone();return}
+  const k=d.testFlag;if(!k)return;TEST[k]=e.target.checked;testSaveFlags();testDone()});
 document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)return;
   if(e.target.id==='testerBadge'){ovToggle('tester');return}
   if(d.testEp){testEpoch(+d.testEp);HOOK.msg(`Tester: epoch ${d.testEp}`);testDone();return}
   if(d.testDay){testAdvance(+d.testDay);testDone();return}
+  if(d.testEra){const ok=testEra(+d.testEra);HOOK.msg(ok?`Tester: ${COMP_ERAS[compEra()].name.toLowerCase()}, ${fmtDate(PROG.day)}`:"Tester: that era doesn't reach this program within 60 years");testDone();return}
   const a=d.testAct;if(!a)return;
   if((a==='copy'||a==='fresh')&&testArm!==a){testArm=a;renderTester();return}testArm=null;
   if(a==='jobs'){testFinishJobs();HOOK.msg('Tester: every job finished');testDone()}
+  else if(a==='goto'){if(testGoto($('testDayIn').value))testDone()}
+  else if(a==='funds'){if(testFunds($('testFundsIn').value)){testSaveFlags();HOOK.msg(`Tester: funds ${fmtM(PROG.funds)}, infinite money off`);testDone()}}
   else if(a==='copy'||a==='fresh'){try{if(a==='copy')localStorage.setItem(PROG_KEY,localStorage.getItem('launchpad-program-v1')||'null');else localStorage.removeItem(PROG_KEY)}catch(x){}
     HOOK.save=()=>{};location.reload()}   // (no save on the way out: it would write the old sandbox back)
   else if(a==='leave'){const u=new URL(location.href);u.searchParams.delete('tester');location.href=u.href}});

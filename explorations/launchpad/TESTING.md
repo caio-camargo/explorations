@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -184,7 +184,7 @@ NOTES § "The robot playtester".
 | 80 | Take a military or foreign contract with sanction risk | Contracts with "⚠ … sanctions us" | Risk shown before taking is clear; consequences (leak, sanctions) arrive with explanation | v1.19 | economy |
 | 81 | Respond to ownership decisions (privatization, foreign stake, rescue) | Advance time after two firsts; tester date jumps | Decision text explains trade-offs; expiry deadlines noticed | v1.16 | economy |
 | ~ 82 (robot) | Experience power flavours: election, closed-regime demands, commodity cycle | Start as open superpower vs closed superpower / resource state; advance a year | Each start plays noticeably differently; election warnings not missed · *Robot: a year as open superpower, closed superpower and resource state: budgets 18M / 6.7M / 11M, "leadership wants a spectacular" only for closed and resource, "Commodity bust" for resource. Needs a human: noticeably different play.* | v1.24 | economy |
-| 83 | Try to get a career move (defection / private hire) | Run a bad career (top-ups, low opinion); tester can't set funds yet | Reachable at all in normal play? Offer and its consequences understandable | v1.21 | economy |
+| 83 | Try to get a career move (defection / private hire) | Run a bad career (top-ups, low opinion); tester: *Set funds* low (it turns infinite money off) | Reachable at all in normal play? Offer and its consequences understandable | v1.21 | economy |
 | ✓ 84 (robot) | Read know-how bars and gain know-how by flying | Program > Industry > Know-how | Bars move noticeably on new regimes; "New to us" warnings make sense · *Robot: bars move after a Sounding flight (Sparrow 35→47 %, instruments 10→23 %), but only once the next flight starts (P#21); "New to us" line reads well.* · *Fixes session (2026-10-08): P#21 fixed: rerun, the bars move as soon as the flight is left (Sparrow 35→47 %, settled at the Program). Was ✗ → P#21.* | v1.30 / v1.32 | economy |
 | ✓ 85 (robot) | Set up an own line vs a license | Industry > Production on an imported part | Cost/days/reason text clear; price drop with maturity felt over flights · *Robot: own line 144M/100 d vs license "Ordun won't license it" with a reason; after tooling up: "maturity 5 % · 0 built · ×1.23 per unit".* | v1.31 | economy |
 | ~ 86 (robot) | Build the test stand, run qualification and to-destruction | Industry > Test stand; tester Finish every job | Worth doing? Know-how/cert gains visible; 1.5M/day burn noticed · *Robot: stand builds (40M, news), qualify/to-destruction buttons with costs and days, a run completes with news; gains not visible with the tester's full know-how on.* | v1.33 | economy |
@@ -209,4 +209,6 @@ NOTES § "The robot playtester".
 | 99 | Read the headline ticker over a session | Any career | Tone is light, lines readable, important news not lost among flavour | v1.9 | core |
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
-Next free number: **126** (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+| 126 | Use the new tester controls: go to a day (forward and back), set funds, skip to a computing era, tick missions one by one | `index.html?tester`, F2 | Each does what its line says; going back a few days leaves a playable program; an era skip lands on the era's first day with its news; ticking a mission opens the next one in the Missions tab | Q16 | QA |
+
+Next free number: **127** (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
