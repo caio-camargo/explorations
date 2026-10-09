@@ -4684,3 +4684,10 @@ Caio left the session running ("keep going while you still have work"). Built, e
 ### Next steps
 - [ ] Space: Q51 slice 2 (data as a volume) once ranked; Q148 needs the browser and two lanes
 - [ ] Vehicle: Q164 (powered presets) unblocks Q27
+
+## 2026-10-09 — Launchpad v1.98: rendezvous and retrieval contracts (economy session, QUEUE Q180)
+
+**Summary:** Q9's plan slice 4. Rendezvous contracts (gov/com, after `beeper`) target spent hardware or a satellite of ours that has gone quiet. They complete on a near pass during the flight (`rdvTick` in `missionTick`: within 100 m, under 1 m/s). Retrieval contracts (gov) open after `stationcrew`, the first docking, and target a quiet satellite with ≥ 8M of hardware. Caio's call: the bay is the dependency, so a retrieval counts only when the flight lands home with the satellite stowed in a cargo bay with the doors shut. It pays 150 plus the hardware refurbished (W22 4's default, its own Debrief line). One gap found: vehicle parts have no era gates, so the bay and arm can be bought from the first flight. Proposed for the vehicle lane.
+**Files:** launchpad `sim/contracts.js`, `sim/program.js` (one line in `missionTick`), `test.mjs` econ-19 (3 checks; kept QA's qa-3 in the merge), NOTES § v1.98, TESTING row 174 (renumbered from 173, which QA had taken); QUEUE (Q180 ✓, a vehicle *Proposed* line).
+**Tests:** econ-19 + smoke suite all pass, after both merges with main.
+**Next:** the economy lane has nothing else ready; overflow candidates Q186 (S), Q185, Q172, Q167. W23–W28 still waiting on Caio, with defaults.
