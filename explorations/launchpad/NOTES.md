@@ -6406,3 +6406,9 @@ directly, so the run proves the career path and the screens, not that a person c
 full-screen layers (`#hud`, `#prog`), keeps the outermost ones and lists each overlapping pair. `PT.debrief` accepts a
 screen named `debrief` or any visible element with `debrief` in its id or class: **flow, name Q2's screen that way** or
 change the check with it. Shots in `C:/Users/caioa/dev/playtest-out/` (`rm1_*.png`). A run takes about a minute.
+
+**The M0 re-run (QUEUE Q29, same session).** `node playtest.mjs 104 110 84 97 122 5 96 48 9 35` after fixes, Q14, Q17 and
+Q20: every fix holds (PLAYTEST #15, #16, #17, #18, #21, #22). Two new rows: **97** ends a flight three ways (landed,
+crashed, left in orbit) and checks each is settled when you leave it; **122** flies the Heavy and the Asparagus through
+max heating and records the Link row and `plasmaHeat` (no blackout, shell 0; heat peaks at 1.0–1.4 km/s, the shell
+starts at 1.9). The one thing still in the way is a line, not a box: `#msg` is drawn over the readout (PLAYTEST #26).
