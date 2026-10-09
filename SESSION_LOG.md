@@ -4078,3 +4078,40 @@ the coarse sizes). Lesson #40. Test `ground-6` (6 checks, 3 mutations caught). F
 ### Next steps
 - [ ] Someone with the GPU: TESTING 146 (Tellus's poles)
 - [ ] World: Erebus, then the seeded small bodies
+
+## 2026-10-08/09 — Launchpad design desk: six catalogs with Caio (design desk session)
+
+### Summary
+First design desk session (`docs/session-roles.md`). Interviewed Caio in short rounds (options, a recommendation,
+defaults if silent); every catalog below is approved unless noted. No game code.
+- **`SYSTEM.md` 1.0.0:** the star system, shape A: Helios (Kerbol's mass), Hesper, Tellus (23° tilt, seasons at M5),
+  Enyo + Pavor/Metus, Astraea + the belt, ringed Hyperion + Theia/Eos/Tethys/Phoebe, Erebus (2:1 with Hyperion); seeded
+  classes; scaling rules from Tellus/Selene; names are placeholders. The orchestrator fanned it out (Q79–Q88).
+- **`POWERS.md` 1.0.0:** six hardware schools (look only; part outlines fixed because aero reads them), archetype
+  affinities, tone and rival personalities; a part takes its maker's school, the paint is the flying power's.
+- **Pillars (ROADMAP 1.5.0, W9):** 1 is now "pushing the boundary of what's possible" (the economy counts); 7 tone
+  (provisional); 8 "an era, into the near future".
+- **`LATE_GAME.md` 1.4.0:** open-ended with capstones; the network built by flying it (routes are Factorio's belts);
+  five goods (materials split from hardware); outposts' self-sufficiency; the ceiling (near future; plausible fusion
+  propulsion; an interstellar probe as a project); the interplanetary network (depots, ISRU, cyclers, tugs, convoy
+  seasons); keeping flight in play; comms gate automation; templates compound; yards; the habitat budget (numbers are
+  placeholders; shielding reviewed before it's built); money buys capacity; debris as objects + density bands; every
+  pressure a game option; asteroids; rivals as programs, scarce places, the world's mood in eras, no combat.
+- **`MIDGAME.md` 1.0.0:** automation opt-in per route; the ladder by compute era (pilots first); window rules;
+  satellites replaced for upgrades, not wear (flagged to space/economy: v1.60/v1.64 lifetimes to re-tune).
+- **`CREW.md` 0.2.0:** who crew are approved (named, three roles, ranks, classes; the pilot is the computer; a loss
+  costs requalification and the person, no timed stand-down); the look waits for Q72.
+- **Queue:** Q71/Q72/Q73/Q89 mock-ups for the unattended look & sound and flow sessions; defaults held for W11, the
+  GROUND decisions and the `ocomp` rule; follow-ups under *Proposed*.
+- **Measured:** Kepler propagation cost by object count (debris model); **Selene's L4/L5 hold on the game's own rails**
+  (`study_lagrange.mjs`): Lagrange points are emergent, no abstraction needed.
+
+### Files
+- new: `explorations/launchpad/SYSTEM.md`, `POWERS.md`, `LATE_GAME.md`, `MIDGAME.md`, `CREW.md`, `study_lagrange.mjs`
+- changed: `explorations/launchpad/ROADMAP.md` (1.5.0, pillars), `QUEUE.md`; `INDEX.md`; `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: pick from the mock-ups when they land: Q72 (crew → CREW.md part 1), Q73 (identity → Q53), Q89 (schools), Q71 (bodies → Q80–Q85)
+- [ ] Design desk, open: Selene's mass driver; the voice and tone guide (once pillar 7 firms up); shielding review before the habitat budget is built
+- [ ] Space/economy: re-tune satellite lifetimes per MIDGAME § Satellites
+
