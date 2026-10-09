@@ -1086,6 +1086,19 @@ visible change), then Steppe.
   byte-identical** from here on: that's the livery POWERS.md asks for.
 - Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
 
+## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
+
+The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,
+in `tellus()`'s colour only, an outcrop mask (value noise at ~4 km and ~1.2 km, more on steeper ground, none on flat ice
+sheets) lets rock show through both terms; snow takes patches of old blue glacier ice in flat hollows and a ±10 % tone.
+The ground's height and `biomeAt` are untouched, so the physics and biome science see the same planet. `ICE_VARY = false`
+for A/B. Seen over an 8.5 km range at 41°N from 12 km up.
+- **Two wrong first tries**, both measured, not guessed: the noise was at ~0.6 km (invisible from altitude: `pf` is a unit
+  vector, so `vn(pf·k)` has features of R/k), and only the ice term was masked while `sn` was already 1, so `max(sn, ice)`
+  didn't move. The A/B picture was pixel-identical until both were fixed.
+- Not done here (world lane): the coast's smoothness and the pad's terrace are in the heightfield shared with `terrainH`;
+  the salt flats and wetlands are biome masks the CPU also uses.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed
@@ -3952,7 +3965,8 @@ Shading:
 3. **Look.**
    - The coast is smoother than wanted.
    - The pad's levelled disc shows as a faint terrace from altitude.
-   - High ranges are almost all ice (right at 7–8 km, but monotonous).
+   - ~~High ranges are almost all ice (right at 7–8 km, but monotonous).~~ Varied 2026-10-09 (effects beat, Q52): see
+     § "Wind-scoured ranges". The terrace and the coast are geometry (`terrainH` is the physics' ground too): world's call.
    - Salt flats and wetlands vanished with the wetter climate (re-tune their masks).
    - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
