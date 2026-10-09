@@ -253,8 +253,8 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | after Q42 |
-| Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
-| Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ready |
+| Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
+| Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
 
 ### QA — robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs (was playtest + tester)
 Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester` (branch `tester`, port 8797). Playtest intake (Q60) needs no worktree: it edits docs in the main clone.
