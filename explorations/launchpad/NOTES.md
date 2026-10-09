@@ -6054,13 +6054,13 @@ probably harness-only, but `frame()` could clamp `dtR` at 0.
 
 ## Test shards (2026-10-08, platform session; ROADMAP § Platform lane, step 1)
 
-`test.mjs` had grown to 82 sections, and every session paid for all of them on each edit. `node test.mjs` with no
+`test.mjs` had grown to 82 sections (84 after merging `main`), and every session paid for all of them on each edit. `node test.mjs` with no
 arguments still runs everything in one process, exactly as before: **merges run that**. With arguments, `test.mjs`
 hands over to `shards.mjs`, which cuts the file into sections and runs a chosen subset in a child process:
 
 | Command | What it runs |
 |---|---|
-| `node test.mjs --list` | the 82 sections: position, label, line, title |
+| `node test.mjs --list` | every section: position, label, line, title |
 | `node test.mjs --only 12,#53,docking` | by label (every section carrying it), by `#position` from `--list`, or by a word in the header comment |
 | `node test.mjs --skip 27,bodies-1` | everything but these (combines with `--only`) |
 | `node test.mjs --smoke --jobs 4` | everything but the five long flights (`SLOW` in `shards.mjs`): **22 s** in 4 processes, ~55–75 s in one |
@@ -6094,13 +6094,25 @@ sections: the crewed Selene landing (§27, 111 s) and the ladders (bodies-1, 102
 bodies-2 (6 s), §28 procedures (5 s); the other 77 sections take 53 s together, most under a second. In one process
 there is ~30 % run-to-run noise from machine load.
 
-**Every section stands alone, after one fix.** `--isolation` ran each of the 82 sections by itself: 81 matched the full
+**Every section stands alone, after two fixes.** `--isolation` ran each of the 82 sections by itself: 81 matched the full
 run. §14's *budget day* check failed alone (+16.5M where it needs > 16.5M): `worldTick` seeds its dice from
 `PROG.wseed` and the cycle's phase `PROG.cyc` carries over, and §14's `fresh()` resets neither, so the grant depended on
 what earlier sections had drawn. The check now pins both (`P.wseed = 4242; P.cyc = π/2`). That was a latent flake in the
 full run as well: any section added above §14 that drew from the world's dice could have tipped it. **Economy:** the
 check is yours; the pin is test-only. **Everyone:** a new section should pass alone; `node test.mjs --isolation --only
-<it>` checks that in a few seconds. That's also what makes `--jobs` sound.
+<it>` checks that in a few seconds.
+
+The second fix came from `--jobs` itself: a full run in 4 processes failed §18 *career offers* ("ordinary: hire"), a
+check that had passed both alone and in the full run. Its `fresh()` pins `wseed` but kept the PROG fields it doesn't
+name (`cyc`, `bailRecent`, …), so its outcome depended on which sections ran before it in the same process. `fresh()` now
+deletes every PROG key first (as §24–§28 do when they restore a save). Alone-vs-full can't catch this kind; a parallel
+run (different neighbours) can. After both fixes, a full run passes sequentially and in 4 processes (286 s → 136 s;
+§27 alone bounds it at ~110 s).
+
+**Shared state is the thing to watch.** The SIM keeps one `PROG`, one `HOME`, one `api.S`/`api.t` per process, and
+sections hand them on. A check that sets only the fields it cares about is betting on its neighbours. Start from a
+whole reset, or use an own SIM instance (`new Function(src + …)`, as the sats and tester sections do). The file split
+(ROADMAP step 3) should give tests a `freshSim()` that makes the second the easy way.
 
 **Negative result.** "One quick section per area" was the plan for `--smoke`; measuring showed the cheap sections are so
 cheap that "all but the five slow flights" covers 77 sections for the same minute, so smoke is defined by exclusion.
