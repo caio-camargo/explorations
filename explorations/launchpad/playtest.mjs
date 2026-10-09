@@ -415,7 +415,7 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
 // M1's finish line (QUEUE Q55, ROADMAP § M1): a new career, no tester flags, from the first-run gate to the first orbit
 // and its debrief. Written before M1 is done, so it FAILS until the flow lane's M1 items land; each check names its item.
 // Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). No preset carries
-// one to orbit (PLAYTEST #24), so the robot swaps the Orbiter's pod for the package, as career.mjs assumes. The ascent
+// one to orbit until PLAYTEST #24 added the Beeper preset; the robot flies it (or, on an old page, the Orbiter with the package for the pod). The ascent
 // is fly_ladder.mjs's handAscent: attitude set directly, so it proves the career path, not that the rocket is flyable.
 // Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
 const M1_HELPERS = String.raw`
@@ -454,7 +454,7 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
   `({fly: PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}})`,
   `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
   // flight 2: the beeper
-  `go('assembly'); stackDef = PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
+  `go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper || PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k))); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
   {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
   `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
   `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
