@@ -4186,3 +4186,23 @@ Erebus added to the pole check. Full suite 526 pass / 0 fail.
 **Files:** `sim/vessel.js` (PRESETS), `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.73), `TESTING.md` (147),
 `PLAYTEST.md` (#24, #27), `QUEUE.md`, `ROADMAP.md`, `docs/session-roles.md`, `LESSONS_LEARNED.md`, `ACTIVE_WORK.md`.
 **Next:** vehicle's M1 rows: Q47 (construction screen for a newcomer, 🖥), Q48 (warnings before launch, ⚙), Q32, Q121.
+
+## 2026-10-09 — Launchpad v1.74 economy: staged pay only for missions flown for; supply runs wait for onboard computers (Q112, D7; economy session)
+
+### Summary
+- Q112 / PLAYTEST #28 fixed: the launch records which missions were open (`R.open0`); staged shares go only to those.
+- Read the design desk's new catalogs (MIDGAME 1.0.0, LATE_GAME 1.4.0) against the queue: already covered (Q123,
+  Q124, Q126, Q127, Q110, the round-7 rivals line). Found my v1.69 supply runs contradicted MIDGAME's automation ladder:
+  filed **D7** (rule 8); Caio answered (a), built: `baseRunQuote` refuses before onboard computers (`BASE_ERA`).
+- Numbered v1.73, renumbered v1.74 at merge (vehicle took v1.73).
+
+### Verification
+- New test `econ-8` (2 checks, mutation-tested); `econ-7` checks the era gate; full suite passes in 4 processes after
+  two merges (conflicts resolved with marker and row checks, fresh output file).
+
+### Files
+- `explorations/launchpad/sim/program.js`, `test.mjs`, `NOTES.md` § v1.74, `PLAYTEST.md` #28, `TESTING.md` row 145, `QUEUE.md` (Q112, D7), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Economy: Q122 (PLAYTEST #33, the sponsor cover on a flight that reached orbit), Q118 (re-run pacing), Q130, Q93
+

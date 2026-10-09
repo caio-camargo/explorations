@@ -381,4 +381,64 @@ function erebusUnit(u){const m=erebusMap(),b=X=>mapBil(X,m.W,m.H,u);return b(m.N
 const EREBUS_SURF={'nitrogen ice':{name:'nitrogen ice',mu:.2,soft:1,rough:.01},mountains:{name:'water-ice bedrock',mu:.7,soft:-2,rough:.4},blades:{name:'methane-ice blades',mu:.5,soft:-1,rough:.5},
   'tholin highlands':{name:'dark tholin dust',mu:.6,soft:1,rough:.15},uplands:{name:'methane frost',mu:.45,soft:1,rough:.1}};
 const EREBUS_GROUND={gen:'erebus',top:6000,surf:pf=>EREBUS_SURF[erebusUnit(norm(pf))],unit:u=>erebusUnit(u)};
+// ---- the seeded small bodies (SYSTEM.md § "Seeded per world"): near-Tellus asteroids, belt bodies, trojans, comets,
+// interstellar visitors. None exists in the game yet (the space lane makes them, M4/M5), so this is a factory:
+// smallBodyGround({kind, R, seed}) returns a recipe (`gen: 'small'`, its parameters drawn from the seed) that a body takes
+// as its `ground`. R is the mean radius (m); seed should come from WSEED and the body's index, so a world keeps its rocks.
+// The shape is computed exactly per point, not baked: a triaxial ellipsoid (shortest axis = the spin axis, Y), or for a
+// contact binary the union of two overlapping spheres. Both are star-shaped from the centre, so a radial height works (no
+// overhangs, as SYSTEM.md's cheap default). On it: lumps, craters (the bands where they fit the body, baked below that),
+// and, by kind, boulders (rubble piles), a spinning-top ridge (rubble piles), pits (comets). Gravity follows from density:
+// g = G·(4/3)πρR. Known simplification: slopes (and the physics' gravity) are against the radial up, not the body's own
+// lumpy gravity, so an elongated asteroid reads ~20° of tilt that its real gravity would mostly straighten (space lane's call).
+const SB_G=6.674e-11,SB_KINDS={
+  stony:  {rho:2000,c:.03, axes:[.6,.95],lump:.08,bilobe:0, ridge:0,  boulders:.25,pits:0,surf:{name:'stony regolith',mu:.6,soft:0,rough:.25}},
+  carbon: {rho:1400,c:.03, axes:[.65,.95],lump:.08,bilobe:0,ridge:0,  boulders:.35,pits:0,surf:{name:'dark carbonaceous regolith',mu:.6,soft:1,rough:.3}},
+  metal:  {rho:5300,c:.04, axes:[.55,.9],lump:.05,bilobe:0, ridge:0,  boulders:.1, pits:0,surf:{name:'iron-nickel',mu:.5,soft:-3,rough:.15}},
+  rubble: {rho:1200,c:.01, axes:[.85,.98],lump:.03,bilobe:0,ridge:.06,boulders:1,  pits:0,surf:{name:'boulder field',mu:.7,soft:-1,rough:.6}},
+  comet:  {rho:500, c:.005,axes:[.6,.9],lump:.1,bilobe:.6, ridge:0,  boulders:.2, pits:1,surf:{name:'dusty ice',mu:.5,soft:3,rough:.1}},
+  visitor:{rho:2000,c:0,   axes:[.15,.35],lump:.03,bilobe:0,ridge:0,  boulders:0,  pits:0,surf:{name:'irradiated crust',mu:.6,soft:-1,rough:.05}}};
+// which kinds each seeded class draws from (the space lane may change the mix)
+const SB_CLASSES={nea:['stony','stony','carbon','rubble','rubble','metal'],belt:['carbon','carbon','stony','stony','metal'],trojan:['carbon'],comet:['comet'],visitor:['visitor']};
+function smallBodyGround({kind,R,seed}){const K=SB_KINDS[kind],rnd=rng(seed),g=SB_G*4/3*Math.PI*K.rho*R;
+  const p=K.axes[0]+(K.axes[1]-K.axes[0])*rnd(),q=p*(.75+.25*rnd()),a=R/Math.cbrt(p*q),ax=[a,a*q,a*p];   // b/a = p by kind, c/b 0.75–1; x long, y (spin) shortest
+  let lobes=null;if(rnd()<K.bilobe){const r1=R*(.78+.1*rnd()),r2=r1*(.6+.3*rnd()),d=.7*r2;lobes=[{c:[r1-d*1.2,0,0],r:r1},{c:[-(r2-d*.6),0,0],r:r2}]}
+  const BS=K.c?grBands(R,K.c):[],b0=BS.findIndex(b=>b.Dhi<=.25*R),bL=Math.max(R/25,4),pL=R/6;
+  const rc={gen:'small',kind,R,seed,g,ax,lobes,K,salt:8+(seed%997),b0:b0<0?GR_BANDS.length:b0,bL,pL,map:null};
+  const rMax=lobes?Math.max(...lobes.map(o=>Math.hypot(...o.c)+o.r)):a;
+  rc.top=rMax-R+K.lump*R+.036*.5*R+.45*bL+K.ridge*R+50;   // an upper bound: shape, lumps, the biggest rim, a boulder, the ridge
+  rc.surf=pf=>K.surf;rc.unit=u=>smallUnit(u,rc);return rc}
+// the shape's radius along u: the ellipsoid, or the farther exit from either lobe (the origin is inside both)
+function smallShape(u,rc){if(rc.lobes){let r=0;for(const o of rc.lobes){const b=dot(u,o.c),c=dot(o.c,o.c)-o.r*o.r,dd=b*b-c;if(dd>=0)r=Math.max(r,b+Math.sqrt(dd))}return r}
+  const[a,b,c]=rc.ax;return 1/Math.sqrt((u[0]/a)**2+(u[1]/b)**2+(u[2]/c)**2)}
+function smallMap(rc){if(rc.map)return rc.map;const W=128,H=64,N=W*H,E=new Float32Array(N),R=rc.R,K=rc.K,rnd=rng(rc.seed*7+1),Dt=GR_DT/rc.g;
+  bakeEach(W,H,(u,k)=>{E[k]=2*K.lump*R*(tfbm(u[0]*1.3+rc.seed%101,u[1]*1.3+11,u[2]*1.3+23,3)-.5)});
+  const tex=2*Math.PI*R/W,Dmin=rc.b0<GR_BANDS.length?grBands(R,K.c)[rc.b0].Dhi:Math.max(8*tex,.1*R),cr=K.c&&Dmin<.5*R?bigCraters(rnd,R,K.c,.5*R,0,Dmin):[];
+  for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);polesFix(E,W,H);
+  return rc.map={W,H,E,Dt,craters:cr,...mapRange(E)}}
+// boulders: one per cell (size bL, chance by kind), a half-buried dome up to 0.45 bL across; pits: comet cells (size pL),
+// 35 % hold a steep-walled pit 0.2–0.35 pL across, as deep as half to all its radius. Only cells whose point lies within
+// half a cell of the surface hold one, and that point is projected onto it: so every feature lies on the ground (unprojected,
+// most would float above or below it, unseen). The half-cell limit keeps every projected feature near a point among its 27
+// neighbouring cells; projected from further off, one would be seen from one point and not the next: a step
+function smallBoulders(u,R,rc,sp=1){const L=rc.bL,x=u[0]*R/L,y=u[1]*R/L,z=u[2]*R/L,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let h=0;
+  for(let a=-sp;a<=sp;a++)for(let b=-sp;b<=sp;b++)for(let c=-sp;c<=sp;c++){const X=ix+a,Y=iy+b,Z=iz+c;if(ih3(X,Y,Z+rc.salt*8)>=rc.K.boulders*.6)continue;
+    const px=X+ih3(X,Y,Z+rc.salt*8+2),py=Y+ih3(X,Y,Z+rc.salt*8+3),pz=Z+ih3(X,Y,Z+rc.salt*8+4),pr=Math.sqrt(px*px+py*py+pz*pz),k=R/L/pr;if(Math.abs(pr-R/L)>=.5)continue;
+    const rb=.45*ih3(X,Y,Z+rc.salt*8+1)**1.5,dx=px*k-x,dy=py*k-y,dz=pz*k-z,d2=dx*dx+dy*dy+dz*dz;
+    if(d2<rb*rb)h=Math.max(h,Math.sqrt(rb*rb-d2)*.7)}
+  return h*L}
+function smallPit(u,R,rc,sp=1){const L=rc.pL,x=u[0]*R/L,y=u[1]*R/L,z=u[2]*R/L,ix=Math.floor(x),iy=Math.floor(y),iz=Math.floor(z);let h=0;
+  for(let a=-sp;a<=sp;a++)for(let b=-sp;b<=sp;b++)for(let c=-sp;c<=sp;c++){const X=ix+a,Y=iy+b,Z=iz+c;if(ih3(X,Y,Z+rc.salt*8+5)>=.35)continue;
+    const px=X+.5,py=Y+.5,pz=Z+.5,pr=Math.sqrt(px*px+py*py+pz*pz),k=R/L/pr;if(Math.abs(pr-R/L)>=.5)continue;
+    const rp=.1+.075*ih3(X,Y,Z+rc.salt*8+6),dp=rp*(.5+.5*ih3(X,Y,Z+rc.salt*8+7)),dx=px*k-x,dy=py*k-y,dz=pz*k-z,d=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    if(d<rp*1.1)h=Math.min(h,-dp*sstep(rp,rp*.8,d))}
+  return h*L}
+function smallH(pf,rc,bands){const u=norm(pf),m=smallMap(rc),R=rc.R,K=rc.K;let h=smallShape(u,rc)-R+mapSpl(m.E,m.W,m.H,u);
+  if(K.ridge)h+=K.ridge*R*Math.exp(-((u[1]/.22)**2));
+  if(K.c&&rc.b0<GR_BANDS.length)h+=craterBands(u,R,m.Dt,null,bands,K.c,rc.salt,3,rc.b0);
+  if(K.boulders)h+=smallBoulders(u,R,rc);if(K.pits)h+=smallPit(u,R,rc);
+  return h}
+GROUND_GEN.small=(pf,rc)=>smallH(pf,rc);
+function smallUnit(u,rc){const R=rc.R;if(rc.K.pits&&smallPit(u,R,rc)<-1)return'pit';if(rc.K.boulders&&smallBoulders(u,R,rc)>.5)return'boulder';
+  return rc.K.ridge&&Math.abs(u[1])<.15?'ridge':'regolith'}
 // ==== SIM END

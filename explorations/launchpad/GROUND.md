@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.9 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -111,7 +111,7 @@ Priority is the epoch that first lands there (SYSTEM § "Where this sits").
 | **Tethys** ✓ CPU (v1.70) | lakes, dunes, drainage channels under haze | G-basin with a liquid level, G-dune, G-carve, G-crater (few) | the richest ground job here (SYSTEM). The liquid surface reuses the sea path (`s.water`, splashdown), with methane's density. Under 1.5 bar it also needs the atmosphere march, which the space/look lanes own | epoch 7 |
 | Phoebe ✓ CPU (v1.70) | a cratered lump | G-lump, G-crater | R ~20 km | epoch 7 |
 | **Erebus** ✓ CPU (v1.72) | a smooth nitrogen-ice basin, water-ice mountains, dark highlands | G-basin (the glacier), G-crater (highlands), G-volcano reused as blocky mountains | the basin is a mask the look lane colours | epoch 8 |
-| Seeded small bodies | lumps | G-lump, G-crater | one recipe, parameters from `WSEED`. A true shape model (overhangs, contact binaries) would be new work, not planned | M4/M5 |
+| Seeded small bodies ✓ CPU (v1.74: `smallBodyGround`) | lumps | G-lump, G-crater | one recipe, parameters from `WSEED`. A true shape model (overhangs, contact binaries) would be new work, not planned | M4/M5 |
 
 ---
 
@@ -323,6 +323,7 @@ orbit.
 ---
 
 ## Version history
+- **0.1.9 (2026-10-09):** the seeded small bodies' ground, a recipe factory (v1.74). G7 is complete on the CPU; nothing is live until the space lane's bodies (Q87) and the shader (G3).
 - **0.1.8 (2026-10-09):** Erebus's ground built on the CPU (v1.72, not live; stub body): every hand-made body now has ground on the CPU.
 - **0.1.7 (2026-10-09):** Hyperion's moons built on the CPU (v1.70, not live; stub bodies); the maps' polar rows fixed (a step at every body's poles, Tellus's included); crater bands safe on tiny bodies.
 - **0.1.6 (2026-10-09):** Astraea's ground built on the CPU (v1.67, not live; stub body); a crust factor on the crater transition for icy bodies.

@@ -7706,6 +7706,76 @@ coming back); a tape replays the wings.
 - the look of the parts (placeholders in `app/gl.js`, Q97);
 - battery charge carried across a flight's end (each flight starts full).
 
+## v1.74 — the seeded small bodies' ground, a recipe factory (2026-10-09, world session, GROUND.md G7)
+
+The last piece of the per-body ground: SYSTEM.md's seeded classes (near-Tellus asteroids, belt bodies, trojans, comets,
+interstellar visitors). None of them exists in the game yet (the space lane makes them, M4/M5), so this is a factory for
+the space lane to call: **`smallBodyGround({kind, R, seed})`** returns a recipe (`gen: 'small'`) for a body's `ground`.
+R is the mean radius; the seed should come from `WSEED` and the body's index, so a world keeps its rocks.
+`SB_CLASSES` says which kinds each class draws from; the space lane may change the mix.
+
+**Kinds** (`SB_KINDS`):
+
+| Kind | Density (kg/m³) | Shape | Surface |
+|---|---|---|---|
+| stony | 2,000 | ellipsoid, b/a 0.6–0.95 | cratered (c 0.03), some boulders; stony regolith |
+| carbonaceous | 1,400 | ellipsoid | the same, dark |
+| metal | 5,300 | ellipsoid | iron-nickel, hard (soft −3) |
+| rubble pile | 1,200 | near-round, a spinning-top ridge on the equator (Bennu, Ryugu) | covered in boulders, few craters |
+| comet | 500 | 60 % are contact binaries (two overlapping spheres, a waist, like 67P) | dusty ice, steep-walled pits, few craters |
+| visitor | 2,000 | a needle, ~4–8:1 (ʻOumuamua) | no craters |
+
+**How it works:**
+- **Shape** is computed exactly per point, not baked: a triaxial ellipsoid (the shortest axis is the spin axis, Y), or the
+  union of two overlapping spheres. Both are star-shaped from the centre, so a radial height works (no overhangs).
+- **Gravity** is G·(4/3)πρR: 1.7e-4 m/s² on a 500 m rubble pile, 7.8e-3 on a 20 km carbonaceous body.
+- **Craters** use the bands that fit the body (the first whose largest crater is under R/4) and are baked below that
+  (`bigCraters`' smallest size). There are none on very small bodies, where boulders take over.
+- **Boulders and pits** are generated per 3D cell. Only cells whose point lies within half a cell of the surface hold one,
+  and that point is projected onto the surface.
+- One height costs 1–6 µs.
+
+**Known simplification (the space lane's call):** slopes, and the physics' gravity, point at the centre, not along the
+body's own lumpy gravity. So an elongated asteroid reads 15–22° of median tilt that its real gravity would mostly
+straighten, and a two-lobed comet reads 24 % of its ground past TOPPLE.
+
+**Measured** (`node study_ground.mjs small:<kind>:<R>:<seed>`, or the probe in the test):
+
+| Body | Shape | Relief | Notes |
+|---|---|---|---|
+| stony, 5 km | 0.77–1.26 R | ±1.3 km | median tilt 15° |
+| rubble pile, 500 m | near-round | −67…+80 m | ridge +29 m; boulders under 9 % of the ground; median 11°, but under 1 % past TOPPLE |
+| comet, 2 km (two lobes) | — | — | pits 2 % |
+| visitor, 200 m | 8.5:1 | — | — |
+
+Crater counts match the target where the numbers are big enough (Phoebe, re-run: ≥2 km 1.33e-2 against 1.38e-2).
+
+**Negative results:**
+- **A visitor first came out 32:1.** Its third axis was drawn as a fraction of the second, which multiplied two small ratios.
+  Now c/b is 0.75–1 for every kind.
+- **Boulders and pits placed in 3D cells mostly float off the surface** (3 % and 2 points where ~8 % and dozens were
+  meant). Projecting each onto the surface fixes the count, but a point projected from further than half a cell can be seen
+  from one point and not the next: **3,697 missed features** at 20,000 points without the half-cell limit, **0** with it.
+  A random-step test missed those steps, because they sit only at rare cell boundaries. The check that catches them
+  compares a 27-cell search with a 125-cell one.
+- **A ridge check that ignores the shape** passed with no ridge, because a flattened body is already wider at its equator.
+  It now measures the ridge alone.
+- **`study_ground.mjs` ignored a tiny body's starting band,** so it listed and counted bands the body never runs. That
+  includes Phoebe's in v1.70, but v1.70 quoted no Phoebe crater counts.
+
+**Tests:** `ground-8`, 6 checks:
+- a seed reproduces a rock and another seed another; gravity from density;
+- every kind at 0.2, 2 and 20 km is finite, under its top, the same through `groundAlt`, with its own surface;
+- the shapes (a needle, a contact binary with a waist, a ridge);
+- boulders and pits present, and none on a visitor;
+- boulders and pits continuous (the 27-against-125 cells check);
+- the crater bands across the seams.
+
+Mutations caught: no ridge, gravity off by 10 %, projection without the half-cell limit. Full suite 533 pass, 0 fail.
+
+**That completes GROUND.md G7 on the CPU:** every hand-made body and the seeded classes have ground. What's left is the
+space lane's real bodies (Q87, M4/M5) and the shader (G3, which needs the GPU and the milestone gate).
+
 ## v1.73 — M0: presets for the first orbit missions, the Program screen's stray labels, and the palette v1.68 broke (2026-10-09, vehicle session, QUEUE Q74, Q77)
 
 **Q74, PLAYTEST #24 (P1): two presets.** No preset could fly *The beeper* or *Passenger: one orbit*, so a presets-only
