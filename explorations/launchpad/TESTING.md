@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -80,6 +80,8 @@ NOTES § "The robot playtester".
 
 | # | Try this | How to get there | Looks right if | From | Owner |
 |---|---|---|---|---|---|
+| 160 | Dock two Docking presets | Assembly → Presets → **Docking**: launch one to orbit and leave it; launch a second, target the first, close in on RCS (V, I/K/J/L/U/O) with Docking SAS | Both reach orbit; the chaser's RCS and Docking SAS bring the ports together and they latch | v1.80 | vehicle |
+| 161 | Power a probe with an RTG | Assembly: a probe core, an antenna and an RTG (Power); accept a high satellite contract first, then read the power line | The line names that contract's orbit, the RTG covers the night, no battery is asked for | v1.80 | vehicle |
 | 152 | Read the launch warnings | Rollout with a design short of the next orbit mission (the Hopper when the beeper is next), one tight for an accepted high satellite contract, and a biocapsule with no chute | One line each, in plain words, with the numbers; none blocks LAUNCH; after your first orbit the Δv line quotes your best flight | v1.79 | vehicle |
 | 153 | Land with a procedure on legs | A lander with legs, dispatched or flown by its procedure to a Selene site (`landAt`); then leave it and load it back | The legs go down by themselves near the ground; it stands on them afterwards and when reloaded | v1.79 | vehicle |
 | 147 | Fly the first orbit missions on presets | New career: after the Sounding flights, Assembly → Presets → **Beeper** for *The beeper*; **Passenger Orbiter** for *Passenger: one orbit* (wait one orbit, retro burn, chute) | Both reach orbit flown by hand; the reaction wheel turns them for the circularisation and the retro burn; the passenger comes home with the mission paid | v1.73 | vehicle |
