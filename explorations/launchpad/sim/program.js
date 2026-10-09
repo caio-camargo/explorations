@@ -154,9 +154,17 @@ function navCover(T){const sats=satsUp().filter(q=>q.ant);if(!sats.length)return
     NAV_PTS.forEach((u,j)=>{for(const p of P){const d=sub(p,mul(u,TELLUS.R));if(dot(d,u)>=s10*len(d)){vis[j][k]=1;break}}})}
   let ok=0;for(const v of vis){let next=Infinity;for(let k=M+W-1;k>=0;k--){if(v[k])next=k;if(k<M&&next-k<=W)ok++}}
   return PROG.navCov=ok/(M*NAV_PTS.length)}
+// ---- obsolescence (QUEUE Q126, MIDGAME.md § Satellites: replacement is for upgrades, not repairs): a satellite keeps the
+// computing era it was launched in (stamped at its first day up). Each era it falls behind, what it earns (TV, imagery)
+// drops: one era behind 74 %, two 59 %. A new era makes a new satellite worth launching; servicing brings one up to date.
+const OBS_K=0.35;
+const satEra=q=>q.era??(q.era=compEra());
+const satQual=q=>1/(1+OBS_K*Math.max(0,compEra()-satEra(q)));
+function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue;satEra(q);if(E>q.era&&(q.eraSeen??q.era)<E){q.eraSeen=E;const n=E-q.era;
+  if(q.ant||q.cam)HOOK.news(`${COMP_ERAS[E].name} arrive: ${q.name} is now ${n} generation${n>1?'s':''} behind and earns ${Math.round(satQual(q)*100)} %. A new one would earn it all, or service it`,'warn')}}}
 // between flights: TV pays while it's in the capital's sky; world missions are checked
-function utilTick(d){const T=PROG.day*DAY_S;
-  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE);if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
+function utilTick(d){const T=PROG.day*DAY_S;obsTick();
+  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q));if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};

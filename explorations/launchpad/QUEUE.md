@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.14 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 0.1.15 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,10 +13,10 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
-| 2 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan), **W18** (network screen; W15 and W18 have defaults that hold if silent) | you | rovers' R3, MIDGAME's line, Q53, Q3's build, Q155 |
-| 3 | **Mock-ups**: Q72 ✓ → **W19** pick the astronauts' look; Q71 (→ effects), Q89 next | you; effects | D2's look; Q80–Q85, Q102 |
-| 4 | **Q57** save versions | platform (**no session**) | Q100, Selene's ground going live (G3), Q124 |
-| 5 | **Q146** debris slice 2 (conjunctions) | space (no session) | slices 3–4, the pressure setting Q124, cleanup contracts |
+| 2 | **Your picks from the mock-ups**: **W19** astronauts, **W20** bodies, **W21** hardware schools (Q102 is already being built on W21's default) | you | D2's look, Q80–Q85, Q102's direction |
+| 3 | **Your design calls**: **D5** (rover lost when its battery runs flat at night), **D6** (dry satellites), **W14** (screen identity), **W15** (slice 4 plan), **W18** (network screen; W15/W18 defaults hold if silent) | you | rovers' R3, MIDGAME's line, Q53, Q3's build |
+| 4 | **Q156** line endings (`.gitattributes`), then **Q57** save versions | platform (**no session**) | merges of NOTES without whole-file conflicts; Q100, Selene's ground live, Q124 |
+| 5 | **Q19** the sky shader at grazing views (43 of 50 ms; parked by world, measured) | look & sound, sky & bodies | M1's steady frame rate at the default site |
 
 ## How a session uses this
 
@@ -76,6 +76,7 @@ the feedback I paste into PLAYTEST items.*
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
 - **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
+- **NOTES.md line endings:** it keeps landing on `main` as CRLF while `core.autocrlf=true` clones commit LF, so every NOTES merge conflicts on every line. Until Q156 lands: resolve with an LF-normalised 3-way merge (`git merge-file` on the three versions), and never commit a whole-file CRLF rewrite.
 - **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
   except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
@@ -208,7 +209,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 |---|---|---|---|---|---|
 | — | Atlas view (biomes, coasts, borders) | M1 | M | 🖥 | ✓ merged as v1.52 (`c227ed6`) |
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
-| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): measured, no code yet. At grazing hills the sky shader is 43 of 50 ms, its march + shading ~25; resume from NOTES § "Q19 in progress" |
+| Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | parked (world, 2026-10-09): measured, no code yet. At grazing hills the sky shader is 43 of 50 ms, its march + shading ~25; resume from NOTES § "Q19 in progress". The cost is the **sky shader**: a sky & bodies session may take it |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
 | Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
 | Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
@@ -287,6 +288,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | ✓ `0bf85c2` (NOTES § "Test shards": `--smoke --jobs 4` ~25 s) |
+| Q156 | **`.gitattributes`** (`*.md *.js *.mjs *.html text eol=lf`) and one normalising commit, announced in this file's Flags first (every branch merges `main` right after, like the split) | M1 | S | ⚙ | ready (**top**) |
 | Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | ready |
 | Q124 | **World settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events | M2 | S | ⚙ | after the first pressure lands (Q26) and Q57 |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
@@ -347,4 +349,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- platform/orchestrator — **NOTES.md keeps arriving on `main` with CRLF line endings** (`fac1563` sound, `da175a1` flow), while clones with `core.autocrlf=true` commit LF: every merge of NOTES then conflicts on every line. Suggest a `.gitattributes` (`*.md *.js *.mjs text eol=lf`) and one normalising commit; meanwhile an LF-normalised 3-way merge (`git merge-file` on the three versions) resolves it cleanly — space, 2026-10-09
