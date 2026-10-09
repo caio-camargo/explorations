@@ -1939,6 +1939,27 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — planned burns travel with a vessel in flight (2026-10-09, space session, QUEUE Q166, Q49 slice 3)
+
+- **Carried:** at flight end, the vessel's maneuver nodes still ahead (`s.node`, `s.nodeQ`) go with its registry entry
+  as `q.nodes` (program time `T`, Δv in the node's frame, the body whose leg it's on); `vesselOf` gives them back in the
+  next flight's time, so flying it again shows the plan where it was left.
+- **On the timeline** (`nodesEvents`, one line in the economy's `upcoming()`, flagged): each planned burn always stops
+  time, 3 h ahead: *a planned burn (50 m/s): fly it, or hand it to mission control*.
+- **Mission control** (`nodeHandOff`; the *In flight* line's button): at its time the burn is flown as an impulse from
+  the vessel's own tanks (`skSpend`), with the computing era's execution error (`BURN_ERR`: 5 % with human computers,
+  2 % with mainframes, 0.2 % with onboard computers, on size and direction), so an early arrival needs a correction. A
+  burn the tanks can't cover is flown as far as they go (news). Measured: a 50 m/s raise from 300 km in the first era
+  came out at 52.3 m/s (353.9 km instead of 349.5).
+- **Missed:** passed with nobody at the controls, a burn is dropped (news); the vessel carries on (pillar 5).
+- A burn that leaves a satellite's orbit puts it in flight (v1.90 rules from there); one that settles a vessel in flight
+  makes it a satellite at its next step.
+
+**Not yet:** mission control needing contact (Q51: a burn out of contact needs an onboard computer of the right tier),
+finite burns (they're impulses), and burns on a leg after an SOI change (they're flown on whatever leg the entry is on at
+their time). Test `space-10` (3 checks; mutations caught: never fired, missed ones fired, a burn way off, no events,
+not carried). Full suite 600 pass.
+
 ## v1.92 — a dispatched flight's payload stays up (2026-10-09, space session, Q49 follow-up)
 
 `dispatchRun` settled the contract and dropped the vessel (pillar 3: what you launch stays). It now registers `f.s`

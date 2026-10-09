@@ -61,6 +61,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=(s.cmOwn||s.cm).slice();R.satId=q.id;
   q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);   // A2: what it takes to fly it again
+  {const N=[s.node,...(s.nodeQ||[])].filter(n=>n&&n.t>simT&&!n.burning);if(N.length)q.nodes=N.map(n=>({T:R.day0*DAY_S+n.t,dv:n.dv.slice(),b:n.b||B.name}))}   // planned burns go with it (Q49 slice 3)
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,imgs:o.imgs||0,pending:o.pending||[],labDays:o.labDays,contact:o.contact})}   // the same object, back on the register
   if(cruise){q.cruise=1;return HOOK.news(`${q.name} is on its way, in flight around ${B.name}: it carries on between flights (Program → In flight)`,'ok')}
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
@@ -208,6 +209,28 @@ function cruiseEvents(T){const out=[],o=ORB_T0;ORB_T0=0;
   finally{ORB_T0=o}return out}
 // a stop at a cruise event is seen: it won't stop time again for that vessel and body (advanceTo calls this)
 function cruiseSeen(ev){const q=(PROG.sats||[]).find(x=>x.id===ev.id);if(q&&ev.key)(q.seen=q.seen||{})[ev.key]=1}
+// ---- missions in flight, slice 3 (Q49, QUEUE Q166): planned burns carried. A vessel's maneuver nodes go with its entry
+// (q.nodes: program time T, dv in the node's frame, the body whose leg it's on) and come back when it's flown again. Each
+// is a timeline event that always stops time, CRUISE_LEAD ahead (a planned burn needs you). Handed to mission control
+// (n.mc), it's flown at its time as an impulse from the vessel's own tanks (skSpend), with the era's execution error
+// (BURN_ERR by computing era: a human computer's 5 %, a mainframe's 2 %, an onboard computer's 0.2 %), so an early
+// arrival needs a correction. Passed by without either, it's dropped (missed: a wait, never a failure).
+const BURN_ERR=[0.05,0.02,0.002,0.002,0.002];
+function nodesEvents(T){const out=[];for(const q of PROG.sats||[]){if(!q.nodes||!q.nodes.length||q.docked||q.halt)continue;const n=q.nodes[0];
+  if(n.T>T)out.push({t:Math.max(T,n.T-CRUISE_LEAD*DAY_S),day:Math.max(T,n.T-CRUISE_LEAD*DAY_S)/DAY_S,id:q.id,stop:!n.mc,
+    text:n.mc?`Mission control flies ${q.name}'s planned burn (${len(n.dv).toFixed(0)} m/s)`:`${q.name}: a planned burn (${len(n.dv).toFixed(0)} m/s): fly it, or hand it to mission control`})}return out}
+// the entry's state at program time T, moving it there (cruise entries leg by leg; others on their rails)
+function entryTo(q,T){if(q.cruise){if(!q.halt)cruiseStep(q,T)}else if(q.bodyName&&!(slotRate(q)>0&&skDv(q)>0))moonOrbStep(q,T);else{const[r,v]=satAt(q,T);Object.assign(q,{r,v,epoch:T})}}
+function nodeFire(q,n,roll){const B=orbBody(q),f=nodeFrame(q.r,q.v),dvW=add(add(mul(f.pro,n.dv[0]),mul(f.nrm,n.dv[1])),mul(f.rad,n.dv[2])),want=len(dvW);
+  const er=BURN_ERR[Math.min(compEra(),BURN_ERR.length-1)],R=roll||rng((Math.round(n.T)*7+q.id*104729)|0),g=()=>(R()+R()+R()-1.5)*2,   // ~unit spread
+    dir=norm(add(mul(norm(dvW),1),[er*g(),er*g(),er*g()])),mag=want*(1+er*g()),left=skSpend(q,mag),got=Math.max(0,mag-left);
+  q.v=add(q.v,mul(dir,got));q.skRate=null;delete q.seen;if(!q.cruise&&!settled(B,elements(q.r,q.v,B.mu))){q.cruise=1;delete q.adrift}   // a burn out of its orbit: in flight now
+  HOOK.news(got<mag-0.5?`Mission control burned ${q.name} for ${got.toFixed(0)} of ${want.toFixed(0)} m/s: its tanks ran dry`:`Mission control flew ${q.name}'s planned burn: ${got.toFixed(1)} m/s (planned ${want.toFixed(1)})`,got<mag-0.5?'warn':'ok')}
+function nodesTick(q,T1){while(q.nodes&&q.nodes.length&&q.nodes[0].T<=T1&&PROG.sats.includes(q)&&!q.halt){const n=q.nodes.shift();entryTo(q,n.T);
+    if(!PROG.sats.includes(q)||q.halt)break;
+    if(n.mc)nodeFire(q,n);else HOOK.news(`${q.name}'s planned burn passed with nobody at the controls; it carries on as it was`,'warn')}
+  if(q.nodes&&!q.nodes.length)delete q.nodes}
+function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(q&&q.nodes&&q.nodes[0])q.nodes[0].mc=!!on;return q}
 // what a cruise entry is doing next, for lists: {text, days} (program time T)
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;
@@ -577,6 +600,7 @@ function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,
   for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew)p.crewAboard=o.crew;if(o.rvOut){p.rvOut=true;p.xm=0}}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}   // legs and wings as they were left (vehicle, Q121)
   if(st.E!=null)s.E=st.E;   // the battery as it was left (Q131; powerStep caps it at what's still aboard)
+  if(q.nodes&&q.nodes.length){const N=q.nodes.filter(n=>n.T>T).map(n=>({t:n.T-T,dv:n.dv.slice(),b:n.b}));s.node=N.shift()||null;s.nodeQ=N}   // its planned burns, in this flight's time (Q49 slice 3)
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});
   // the next staging event: the first that hasn't happened (something still there to drop, a segment not yet lit, a chute)
   const has=k=>s.parts.some(p=>p.on&&p.seg===k);
@@ -777,6 +801,7 @@ function decayLife(q){if(q.bodyName)return Infinity;const el=elements(q.r,q.v,TE
 // between flights (advanceDays, program time T0 → T1): held orbits pay for the time (tides and drag); dry ones drift under
 // the tides, or decay in the upper air; a held orbit (or one too weakly pulled to need holding) only turns its tilt (tiltStep)
 function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.landed||!PROG.sats.includes(q))continue;
+  if(q.nodes)nodesTick(q,T1);if(!PROG.sats.includes(q))continue;   // planned burns first, at their times (Q49 slice 3)
   if(q.cruise){if(q.halt){if(q.epoch<T1)q.epoch=T1}else if(q.epoch<T1)cruiseStep(q,T1);continue}   // in flight (Q49); one waiting at an atmosphere
   // keeps its place while time passes (a stopgap until slice 2 stops the clock before it), so Fly starts it there
   if(q.junk){if(q.epoch<T1)(q.bodyName?moonOrbStep:decayStep)(q,T1);continue}   // debris: rails + decay only (Q26)

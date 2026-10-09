@@ -530,6 +530,7 @@ function upcoming(){const D=PROG.day,E=[],add=(day,kind,text,stop=false)=>{if(da
   for(const c of PROG.active||[])if(c.deadline!=null)add(c.deadline-1,'deadline',`One day left: ${cTitle(c)}`,true);
   for(const d of PROG.decisions||[])if(d.expires!=null)add(d.expires-1,'decision',`One day left to decide: ${d.title||d.kind}`,true);
   for(const c of cruiseEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'cruise',text:c.text,stop:!!c.stop,cruise:c});   // space Q49: missions in flight
+  for(const c of nodesEvents(D*DAY_S))if(c.day>D+1e-6)E.push({day:c.day,kind:'burn',text:c.text,stop:!!c.stop});   // space Q49 slice 3: planned burns
   return E.sort((a,b)=>a.day-b.day)}
 const nextEvent=()=>upcoming()[0]||null;
 // advance the calendar to a day (or the next event), stopping early at an event that needs you or a new decision

@@ -74,7 +74,9 @@ function satsHTML(){return cruiseHTML()+satsHTML0()+moonSatsHTML()+landedHTML()+
 // missions in flight (space, Q49 slice 1): what each is doing next; one waiting at an atmosphere can be flown down
 function cruiseHTML(){const L=(PROG.sats||[]).filter(q=>q.cruise&&!q.docked);if(!L.length)return'';const T=tNow();
   return`<div class="ep">In flight</div>`+L.map(q=>{const B=orbBody(q),[r]=satAt(q,T),n=cruiseNext(q,T);
-    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(len(r)-B.R)} above ${B.name} · ${n.text}${n.days!=null?`, in ${n.days<1?'less than a day':`${Math.round(n.days)} days`}`:''}</div>`}).join('')}
+    const nb=q.nodes&&q.nodes[0],burn=nb?` · burn of ${len(nb.dv).toFixed(0)} m/s in ${Math.max(0,(nb.T-T)/DAY_S).toFixed(1)} days: ${nb.mc?'mission control will fly it':'yours to fly'} <button data-mc="${q.id}">${nb.mc?'Take it back':'Hand to mission control'}</button>`:'';
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(len(r)-B.R)} above ${B.name} · ${n.text}${n.days!=null?`, in ${n.days<1?'less than a day':`${Math.round(n.days)} days`}`:''}${burn}</div>`}).join('')}
+document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.mc;if(id==null)return;const q=(PROG.sats||[]).find(x=>x.id===+id);if(q&&q.nodes&&q.nodes[0])nodeHandOff(+id,!q.nodes[0].mc);HOOK.save();renderProgram()});
 // station-keeping (space, Q50) and decay (Q25): how long its propellant holds its orbit, since when it drifts, or when it
 // re-enters; nothing if no tide or air pulls on it
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
