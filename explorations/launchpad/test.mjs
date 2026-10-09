@@ -3200,6 +3200,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('cover: a flight that completed a first is not covered', x5 === 0);
   P.recs = { maxCost: 30 }; const x6 = D.coverLoss({}, { cost: 80, refund: 0, cdone: ['a contract'] });
   check('cover: a flight that completed a contract is not covered', x6 === 0);
+  P.recs = { maxCost: 30 }; P.flights = 9; const x7 = D.coverLoss({}, { cost: 80, refund: 0, cdone: [], orbit: true });
+  check('cover: a rocket that reached orbit worked, even with nothing completed: no cover (PLAYTEST #33)', x7 === 0);
   const H = html.replace(/\r\n/g, '\n');
   check('cover: kept in PROG.recs, which a new game resets', /recs:\{\}/.test(H.slice(H.indexOf('// ==== SIM END'))));
 }

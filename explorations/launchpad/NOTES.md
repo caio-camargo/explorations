@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.17 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1569,6 +1569,14 @@ Mutations caught: no ridge, gravity off by 10 %, projection without the half-cel
 
 **That completes GROUND.md G7 on the CPU:** every hand-made body and the seeded classes have ground. What's left is the
 space lane's real bodies (Q87, M4/M5) and the shader (G3, which needs the GPU and the milestone gate).
+
+## v1.74.1 — the sponsor's cover skips a flight that reached orbit (2026-10-09, economy session, Q122)
+
+PLAYTEST #33: an Orbiter left in a 200 km orbit, the priciest rocket yet and completing nothing (no instrument
+package for *The beeper*), drew "+42M Sponsor covers the failed attempt". The rocket worked; what it lacked was the
+payload. `coverLoss` now also requires the flight **not to have reached orbit** (`R.orbit`), so the word "failed" stays
+true. The Debrief's days line says "1 day passing" in the singular (`sim/debrief.js`, one line, flow's file). Test
+`econ-1` gains a check (mutation-tested).
 
 ## v1.74 — staged pay only for missions flown for; supply runs wait for onboard computers (2026-10-09, economy session, Q112, D7)
 
