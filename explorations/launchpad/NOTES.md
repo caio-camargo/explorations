@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -6847,21 +6847,29 @@ at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap her
 - **Running flat never kills (Pillar 5):** the computer drops to the analog autopilot, the antenna and camera stop,
   and on the registry the service **pauses** (the W2/Q50 pattern) until the budget is positive again. This differs
   from rovers, which freeze to death at night; leave them alone, they're the space lane's call.
-- **The computer and avionics (decision, default yes):** from the onboard-computer era on, the **Guidance computer**
-  generation (`AV[2]`) needs an `ocomp` on board and powered. Without one, a vessel flies the analog autopilot.
+- **The computer and avionics (Caio decided 2026-10-08: built into crew capsules, a part for probes):** from the
+  onboard-computer era on, the **Guidance computer** generation (`AV[2]`) needs a computer on board.
+  - **Crew capsules have one built in** (parts with `crew`, like Apollo's command module and lunar module). No mass
+    change: it's in the capsule's mass.
+  - **Everything else needs an `ocomp`, powered:** probe cores, biocapsules, instrument packages. Without one, a
+    vessel flies the analog autopilot.
+  - It's a pilot aid, not autonomy: the player flies either way; the computer decides which SAS hold modes exist.
   - Before that era the part isn't offered, and nothing changes.
   - Sandbox, physics tests and procedures (`s.proc`) keep the best avionics, as now (`avOf`).
-  - **What it breaks:** presets and robot designs flown after year 7 lose the target and docking modes unless they get
-    the part. Update the presets in the same commit, and tell QA (`career.mjs`).
-  - It gives the space lane a hook, `hasComputer(s)`, for onboard autonomy out of contact (§ "Compute", era 3).
-    Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+  - **What it breaks:** uncrewed presets and the robot's probe designs flown after year 7 lose the target and docking
+    modes unless they get the part. Update those presets in the same commit, and tell QA (`career.mjs`). Crewed presets
+    are unaffected.
+  - It gives the space lane a hook, `hasComputer(s)` (a crew capsule or a powered `ocomp`), for onboard autonomy out
+    of contact (§ "Compute", era 3). Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+  - Rejected: a part for everyone (crewed ships historically had theirs built in, and every crewed preset would
+    break); built into every command part (the part would only matter later, for autonomy).
 - **Checks:**
   1. The steady-state budget for a LEO satellite with a wing, against a hand calculation;
   2. In flight, the battery drains through the shadow and refills in sun, and over one orbit the steady state and the
      integration agree to within 5%;
   3. A deployed wing snaps at max-q, and one deployed after fairing separation survives;
   4. Running flat drops avionics to analog and pauses a satellite's service; recharging restores both;
-  5. Era ≥ onboard computers, with no `ocomp` → no docking mode.
+  5. Era ≥ onboard computers: a probe with no `ocomp` has no docking mode; a crew capsule without one has it.
 
 *Q34b — radiators and the steady-state thermal solve (M2–M3, with the economy's orbital datacenter).*
 - `rad`: a deployable surface panel. Its mass per m² and emissivity give εσAT⁴. Like the wing, it snaps in air.
@@ -6904,6 +6912,105 @@ Each slice is a few rows of `playtest.mjs` (1–3 min of browser each, run as on
 write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (the ladder is already scripted end to end,
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
+
+## v1.63 — dry runs as the trajectory office's study (2026-10-08, economy session, QUEUE Q46)
+
+The bodies session's `procAdopt(stack)` (dry runs: a design with no procedure borrows a stored one if a headless run
+reaches orbit) now has the economy around it, in `sim/program.js`:
+- **`dryQuote(stack)`** → `{ok, why, n, cost, days}`. Priced like a trajectory study: the computing era's study cost
+  × `DRY_K` = 1.5 × (1 + ¼ per extra procedure tried); days = the era's study days × the centre's speed × (½ + ¼ per
+  procedure). Hand computers, one procedure: 18 days, 4.5M. Refused for a design with a procedure (its own or
+  borrowed), with none stored to try, or no design.
+- **`orderDryRun(stack)`** pays, lets the days pass (as launching does: you chose to wait), runs `procAdopt`, and
+  **keeps the measured margin** on the provisional procedure (`proc.margin`, `proc.mT`). A failed dry run is news:
+  the money is spent, the design needs a run-through by hand.
+- **`dispatchEstimate`** uses the cached margin when there is one (minus the target change, as before), and a
+  provisional procedure's spread is `PROV_UNC` = 0.15 wider (e.g. 43–100 % against 56–100 % for the design's own).
+- **The button:** the contract's dispatch line offers *Try our procedures on ⟨design⟩* for the design in Assembly,
+  whenever that design has no procedure and something is stored to try. `dispatchLine(c, stack)` takes the stack;
+  `app/program-ui.js` passes `stackDef` and handles `data-dry` (two lines, flagged for flow).
+
+Test `econ-5` (5 checks; the spread mutation-tested). A trap: in the full suite a budget day lands inside the 18 days,
+so "funds went down by the price" is not a check; the test checks the price and a refusal when short instead.
+
+## v1.62 — Enyo's ground on the CPU, the first planet (2026-10-08, world session, GROUND.md G7)
+
+Enyo (Mars, SYSTEM.md § Enyo), built and measured headless like Selene in v1.58, at Caio's request. **Not live:** no
+Enyo exists in the body tree yet (space lane, Q87), so the recipe hangs on a stub in `sim/ground.js` (`GROUND_STUBS.Enyo`:
+R 678 km, g 3.72, SYSTEM.md's numbers). When the space lane adds the body, it takes `ground: ENYO_GROUND`.
+
+**Shared first.** The crater bands now take a body's radius, crater density `c`, a hash salt (so bodies don't share
+craters), an erosion exponent (freshness = hash^frPow) and `thin(centre)`, the chance a crater is missing there. Selene's
+recipe runs through the same code **bit-identically** (3,000 heights before and after, 0 differ). A recipe can now carry
+its own surfaces: `surfaceAt` asks `b.ground.surf(pf)` off Tellus, and falls back to `SURF_MOON`.
+
+**Enyo's map**, in order (heights above R, the datum):
+1. southern highlands, +1.2 ± 1.2 km, with old, worn craters: c 0.02, Mars's highlands, a third of the Moon's. Simple
+   turns complex at 7.8 km (Mars: ~7 km).
+2. Hellas, 520 km.
+3. The northern lowlands flooded to −3.2 km over a warped dichotomy line.
+4. The Tharsis bulge (+4.5 km), with:
+   - the giant shield: 340 km across, 14 km above its plains on a 3 km basal scarp, a summit caldera;
+   - three shields in a line, and Elysium.
+5. The canyon: a great circle 1,400 km long (a third of the way round) at 12°S, up to 5.5 km deep, its walls terraced in
+   550 m layers (the layered sediment). It cuts the highlands, then opens into the lowlands, as Valles Marineris does
+   into Chryse.
+6. The young craters.
+7. The polar caps: a 2.6 km ice dome in the north, a smaller one in the south.
+8. Dune fields (400 m apart, up to 25 m high, a steep lee) in an erg round the north cap, on Hellas's floor and in the
+   canyon. They're procedural, aligned to one fixed 3D direction so they have no longitude seam.
+
+Surfaces by unit:
+
+| Unit | Surface | μ | Notes |
+|---|---|---|---|
+| polar ice | water ice | 0.25 | |
+| dunes | dune sand | 0.5 | soft |
+| volcanic | basalt | 0.7 | |
+| canyon | layered sediment | 0.6 | |
+| lowland plains | dusty plains | 0.6 | |
+| highlands | dusty regolith | 0.6 | |
+
+**Measured** (`node study_ground.mjs enyo`, ~5 s):
+
+| What | Number |
+|---|---|
+| Bake, sample | 1.2 s (4.2 km a texel); one height 3 µs |
+| Relief | −5.3…+12.3 km (recipe `top` 15 km) |
+| Units | highlands 51 %, lowland plains 37 %, volcanic 6.7 %, canyon 1.9 %, polar ice 1.7 %, dunes 1.1 % |
+| Craters ≥ 1 km per 1,000 km² | highlands 19.6 (Mars: ~10–20), lowlands 5.5, volcanic 1.1, ice 0.9 |
+| Slopes, highlands | median 0.9°, p99 29°, past TOPPLE 2.0 % |
+| Slopes, lowlands | median 0.2°, 95 % under 5° (the landing ground) |
+| Slopes, canyon | p90 25°, past TOPPLE 11 % (terraced walls) |
+| Slopes, polar ice | p99 9.6° |
+| Seams | steepest 0.5 m step on cube edges 35° (anywhere: 40°) |
+
+**Negative results:**
+- **East is decreasing longitude** (NOTES § v1.25 warned). The canyon set off "east" along `cross(Y, start)` and ran into
+  Tharsis, which filled half of it in. It now heads away from Tharsis.
+- **A canyon along the dichotomy line is half a canyon.** At 6°S the warped lowland edge reached the equator, and for
+  ~700 km one wall was lowland plain. The canyon is now at 12°S and the warp is gentler. The test measures depth below the
+  higher wall, since at its mouth one wall *is* lowland, as on Mars.
+- **One unit can hide another.** The canyon's floor is a dune field, and dunes were classified first, so the canyon came
+  out as 0 % of the globe. It has its own channel now.
+
+**Tests:** `ground-3`, 7 checks:
+- not live, baked lazily;
+- bounds and counts (c scales λ);
+- the dichotomy;
+- the giant shield;
+- the canyon (3+ km below its higher wall for 1,220 km);
+- the caps and surfaces (Selene still lands on regolith);
+- no seams.
+
+Mutations caught: no surfaces, the canyon pointed back into Tharsis, no shield. Full suite 478 pass, 0 fail.
+
+**Not yet:**
+- Enyo in the body tree (space);
+- its look (Q81, after Caio's picks from Q71); the shader (G3);
+- dust storms (weather, not ground);
+- the caps' spiral troughs, and seasonal CO₂ frost (M5 seasons).
+- **Next planets, in GROUND.md's order:** Hesper, Astraea, Hyperion's moons, Erebus.
 
 ## v1.61 — landing legs, and a contact model that holds wide feet (2026-10-08, vehicle session, QUEUE Q31)
 
@@ -6991,3 +7098,28 @@ together, row 62 stalled for minutes; alone it takes 49 s.
 The setups are §26, §30, §32 and §33, and the Program's Fleet tab is read after the flight is left. Everything works as
 specified (TESTING notes). Still undriven: 65 (crew rotation), 115/117 (relay and rover science on Selene), 116 (docking
 at Selene). Each needs a rover or crew set up on another body, and is the next driver if Q30 is extended.
+
+## The tester's "go to body" view (2026-10-08, QA session; QUEUE Q79)
+
+So the look items for SYSTEM.md's bodies (Q80–Q85) have something to paint before M5 puts the planets in the sky. Tester
+menu → **Go to body** (or `refView(200 + 3·i + k)`, i in `BODY_CAT` order, k 0/1/2 = near at 1.6 R, whole disc at 4.5 R,
+far at 30 R). ◀ ▶ change body, 1 2 3 change distance, drag turns the camera, Esc returns.
+
+**How.** `app/bodyview.js` (new, loaded last). `render()` hands it the frame while it's open (one line at the top), so
+`gl.js` isn't touched. One full-screen fragment shader ray-traces the body in body radii: an ellipsoid (flattening along
+the spin axis), the spin axis tilted about X, a ring annulus in the equatorial plane with the planet's shadow on it and
+its shadow on the clouds, latitude bands and a limb haze. `BODY_CAT` holds SYSTEM.md's radius and tilt for all 11 bodies,
+and test.mjs `qa-2` reads SYSTEM.md and checks them. **Placeholders:** Hyperion's flattening 0.08 (SYSTEM.md gives none;
+from its 3.3 h day), and every colour, band and haze value. Those belong to the look items. When a body gets a real look,
+it should move into the main renderer (or this shader), and its row here should stay the place its numbers come from
+until the space lane gives the catalogue a home in `sim/` at M5.
+
+**Not yet:** no ground detail, no moons beside their planet, no star in the frame, and one fixed sun direction (from the
+camera's right).
+
+**Selene rows 115 and 117 (QA session, the Q30 follow-up).** `node playtest.mjs 115 117` puts a rover in `PROG.rvOut` at
+ground height (`groundR`, or it spawns in mid-air and the science buttons say "stop first"), and for 115 an antenna-only
+Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive from home" then work as for a player.
+Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
+`pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
+(docking at Selene) are still undriven.

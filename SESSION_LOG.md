@@ -3845,3 +3845,48 @@ Docs only. GROUND.md 0.1.3 § "G3: the port plan", for the session with the GPU 
 **Files:** `sim/vessel.js`, `sim/flight.js`, `sim/procedures.js`, `sim/program.js`, `app/input.js`, `app/screens.js`,
 `app/gl.js`, `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.61), `TESTING.md` (row 135), `QUEUE.md`, `ACTIVE_WORK.md`.
 **Next:** Q34a (computer, panels, battery) per NOTES § "Vehicle parts"; Caio can veto the computer-gates-avionics default.
+
+## 2026-10-08 — Launchpad v1.62: Enyo's ground on the CPU (world session)
+
+### Summary
+At Caio's request, the planets' ground (QUEUE Q92's CPU half), starting with Enyo. First the shared code went generic:
+crater bands per body (density, hash salt, erosion, thinning), and surfaces per recipe through `surfaceAt`. Selene is
+bit-identical through it. Enyo's recipe (`sim/ground.js`, on a stub body until space adds Enyo):
+- the dichotomy (lowlands 37 %, 4.5 km below the highlands) and Hellas;
+- Tharsis with the giant shield (11.5 km rim above its foot), three more shields and Elysium;
+- a 1,400 km canyon at 12°S with terraced walls, 3+ km deep for 1,220 km;
+- polar ice domes and dune fields;
+- six surfaces by unit.
+Highland crater density ~20 per 1,000 km² for D ≥ 1 km, which is Mars-like.
+Negative results: "east" is decreasing longitude here (the canyon first ran into Tharsis); a canyon on the dichotomy line
+had a lowland wall for 700 km; one unit's mask hid another's. Test `ground-3` (7 checks, 3 mutations caught). Full suite
+478 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `sim/world.js` (`surfaceAt`), `study_ground.mjs` (any body: `selene` / `enyo`), `test.mjs` (`ground-3`), `NOTES.md` § v1.62, `GROUND.md` 0.1.4, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Hesper next (basalt plains, shields, lava channels; radar-only detail), then Astraea, Hyperion's moons, Erebus
+- [ ] Space (Q87): Enyo into the body tree with `ground: ENYO_GROUND`
+
+## 2026-10-08 — Launchpad v1.63 economy: dry runs as the trajectory office's study (QUEUE Q46; economy session)
+
+### Summary
+- `dryQuote`/`orderDryRun` in `sim/program.js` around the bodies session's `procAdopt`: priced like a study (era,
+  centre, procedures tried; 18 d and 4.5M with hand computers), the days pass, the measured margin is kept on the
+  provisional procedure. `dispatchEstimate` uses it and widens a provisional spread by 0.15. The contract's dispatch
+  line offers *Try our procedures on ⟨design⟩* for the design in Assembly (`app/program-ui.js`, two lines).
+- Numbered v1.62, renumbered v1.63 at merge (world took v1.62); TESTING row 139 (QA's renumbering took 136).
+- Slip: I worked Q46 without claiming it in QUEUE/ACTIVE_WORK (nobody else took it). Closed directly as done.
+
+### Verification
+- New test `econ-5` (5 checks; spread mutation-tested); full suite passes in 4 processes on the merged tree.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `app/program-ui.js`, `test.mjs`, `NOTES.md` § v1.63, `TESTING.md` row 139, `QUEUE.md`
+
+### Next steps
+- [ ] Human: TESTING 139
+- [ ] Economy: Q10 (rover prices), Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics
+
