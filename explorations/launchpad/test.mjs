@@ -4122,6 +4122,35 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       && /const legFoot=p=>\{const a=p\.phi\|\|0;return\[p\.pos\[0\]\+p\.d\.reach\*Math\.cos\(a\),p\.y0-p\.d\.drop/.test(H));
 }
 
+// vehicle-6. The Docking preset (vehicle session, QUEUE Q78): a docking head on the Orbiter's launcher reaches orbit with its
+// gas full, can translate on RCS, and has a computer for Docking SAS on a probe.
+{
+  const d = api.PRESETS.Docking, s = handAscent(api, d), el = api.elements(s.r, s.v, TELLUS.mu), P = api.PROG, f0 = P.flights, tl = api.TEST.tools;
+  const gas = s.parts.filter(p => p.on && p.d.kind === 'gas').reduce((a, p) => a + (p.res.gas || 0), 0), rcs = s.parts.filter(p => p.on && p.d.kind === 'rcs').length;
+  P.flights = Math.max(1, f0); api.TEST.tools = false; s.av = api.AV.length - 1; const av = api.avOf(s).name; P.flights = f0; api.TEST.tools = tl;
+  check('presets: Docking reaches orbit with both gas bottles full, eight RCS quads and the port on top; its computer gives Docking SAS in the onboard-computer era',
+    s.alive && el.pe - TELLUS.R > TELLUS.atm && rcs === 8 && Math.abs(gas - 0.03) < 1e-9 && s.parts.some(p => p.on && p.d.kind === 'port') && av === api.AV[api.AV.length - 1].name && api.designName(d) === 'Docking',
+    `periapsis ${((el.pe - TELLUS.R) / 1e3).toFixed(0)} km, ${api.dvRemaining(s).cur.toFixed(0)} m/s spare, ${rcs} quads, ${(gas * 1000).toFixed(0)} kg gas, SAS ${av}`);
+}
+
+// vehicle-7. Power, second slice (vehicle session, QUEUE Q131): an RTG gives the same day and night; the budget can be
+// worked out for the orbit the flight is aimed at (higher means a shorter shadow); the battery's charge is kept when a
+// vessel is registered and loaded back.
+{
+  const find = (n, k) => n.k === k ? n : (n.c || []).map(x => find(x, k)).find(Boolean);
+  const des = (extra) => { const d = api.toV2(['core', 'ant', 't1', 'petrel']); find(d.root, 't1').c.push(...extra); return d; };
+  const rt = api.newShip(des([{ k: 'rtg', at: { y: 0.5, a: 0, n: 1, cy: 0.3 }, c: [] }])), B = api.powerBudget(rt);
+  api.S = rt; rt.r = mul(api.SUN_DIR, -(TELLUS.R + 3e5)); rt.E = 0; api.powerStep(rt, 10); const night = rt.pGen;
+  const wing = api.newShip(des([{ k: 'wpanel', at: { y: 0.5, a: 0, n: 2, cy: 0.3 }, c: [] }])), lo = api.powerBudget(wing), hi = api.powerBudget(wing, { r: TELLUS.R + 1000e3 });
+  const D = new Function(src + 'return {PROG,satRegister,vesselOf,newShip,toV2,TELLUS,HOOK,powerStep,get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; const sat = D.newShip(['core', 'batt', 'ant', 't1', 'petrel']), rs = D.TELLUS.R + 3e5; D.powerStep(sat, 0); sat.E = 1234567;
+  Object.assign(sat, { landed: false, alive: true, r: [rs, 0, 0], v: [0, 0, -Math.sqrt(D.TELLUS.mu / rs)], w: [0, 0, 0] }); D.PROG.sats = []; D.satRegister(sat, { day0: 0 });
+  const back = D.PROG.sats.length ? D.vesselOf(D.PROG.sats[0], 0) : null;
+  check('power: an RTG gives its 60 W in the shadow (no battery needed for a 5 W antenna); at 1,000 km the shadow is shorter than at low orbit; the charge survives the register',
+    B.rtg === 60 && B.ok && B.needWh === 0 && night === 60 && hi.ecl < lo.ecl && hi.alt > 999 && hi.avg > lo.avg && back && back.E === 1234567,
+    `RTG ${B.avg} W average, ${night} W at night · shadow ${(lo.ecl * 100).toFixed(0)}% low, ${(hi.ecl * 100).toFixed(0)}% at 1,000 km · charge back ${back && back.E}`);
+}
+
 // space-4. Debris, slice 2 (space session, QUEUE Q146): conjunctions between flights. Big objects against active entries
 // only, at Rs² v / (2π r² W cos(Δi/2)) a pair per band (study_debris.mjs: a Monte Carlo agrees within its noise). A hit:
 // crewed entries are always warned and move; tracked ones (mainframe era on) with fuel dodge; the rest are destroyed with
