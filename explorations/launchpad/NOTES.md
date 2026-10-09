@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.7 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,54 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## Epoch 1–2 pacing for a new player, measured (QUEUE Q44, 2026-10-08, economy session)
+
+No game code changed: this is a measurement, a runner fix, and a proposal waiting on Caio (QUEUE **W12**).
+
+**The runner's new pacing report.** `PACE=1 node career.mjs 2 5` prints, per archetype × start: runs that reach
+first orbit (beeper or passenger orbiter), flights and days to it, the longest stretch with nothing worth flying,
+bailouts before orbit, and the lowest funds. `FAILFIRST=orbit` makes the first orbital attempt fail (the worst single
+failure: ~75–85M, nothing comes home); `FAILFIRST=1` fails the first try at every first. `TRACE=1` prints the
+pre-orbit decisions; `SEED0`, `ARCHS` and the starts argument narrow a run. Two experiment knobs, runner-only:
+`BONUS=` adds to the starting funds, `KEEP=` refunds that share of a failed first's cost.
+
+**A runner fix that changes its old numbers a little.** The scripted player valued a flight as pay − price and ignored
+refurbishment (65 % of what lands whole). It turned down sounding contracts that really break even, and a company at
+the floor waited for ever. It now learns the average refund per kind of flight from its own flights.
+
+**The numbers (2 years, 5 seeds, prices: weather 18M, hop 28M, beeper 71M, orbiter 74M; start 80/90/80M):**
+
+| | flights to orbit | day | bailouts before orbit | worst case |
+|---|---|---|---|---|
+| no forced failure | 4–6 | 119–255 | 0.6–2.0 (agency, consortium) | resource company 6 flights, day 639 |
+| **first orbital attempt fails** | 6–10 | 184–428 | 1.0–4.6 | **frugal company: 2 of 5 runs never reach orbit in two years** (wait 160 d); resource company 3 of 5 |
+| …with `BONUS=80` | 5–9 | 163–377 | 0–2.8 | frugal company still 3 of 5 |
+| …with `KEEP=0.5` | 5–8 | 163–340 | 0.4–2.2 | frugal company 3 of 5 |
+| …with `KEEP=0.75` | **5** (frugal company 7) | 163–349 | 0.2–1.0 | frugal company 5 of 5, wait 60 d |
+
+**What it says:**
+- With no failures the first hour is fine: about five flights to orbit.
+- **One failed orbit attempt breaks it.** The orbital flight costs 90 % of the starting money and nothing comes back.
+  Agencies are bailed out again and again; the bailout tops up to the 25M floor, which is not enough for any
+  orbital flight. A company's rescue loan also lifts it only to 25M, and then the sounding work it can afford
+  barely breaks even, so in a poor world (frugal, resource) it grinds for months or never gets back.
+  The QUEUE criterion "nothing unaffordable after one failure" fails.
+- **More starting money doesn't fix it.** The player spends it on the earlier steps, and still arrives at the orbital
+  attempt with about one flight's worth.
+- **Covering most of a failed first fixes it.** With 75 % back, every start reaches orbit in five flights except the
+  frugal company (seven).
+
+**Proposed (W12, default if Caio is silent: the first option):**
+1. *A failed first is mostly covered, once.* The first time a flight aimed at an open first is lost, the sponsor pays
+   back 75 % of its price: the government for an agency ("the program learns, the minister signs"), investors for a
+   company (an insurance-like milestone clause), members for a consortium. Once per first, with news. Needs the
+   flight to name the first it's going for (the builder's target picker, or the open first the stack can satisfy).
+2. *The rescue lifts to the next step,* not to the 25M floor: lend the price of the cheapest open first. Bigger debts.
+3. *Leave it hard,* and say so on the screen before the attempt ("a loss leaves you X").
+
+The frugal company's grind (cheap work that doesn't pay in a poor world) is a second, smaller problem: contract
+pay floors by world. A follow-up under *Proposed*.
 
 ## v1.53 — the ladder's balance: Nyx is found by looking; the pay floor (2026-10-08, economy session)
 
