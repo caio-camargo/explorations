@@ -57,7 +57,7 @@ the feedback I paste into PLAYTEST items.*
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
 - **Flaky page loads in previews = the server, not your code** (effects, 2026-10-09): since the split the page loads ~30 scripts at once, and `python -m http.server` listens with a backlog of 5, so some scripts get `ERR_CONNECTION_REFUSED` and the rest cascade (`editorChanged is not defined`, `gl.getExtension is not a function`, `refView` returning `{}`). Workaround: serve with `ThreadingHTTPServer` and `request_queue_size = 128` (a 6-line script), and use `127.0.0.1`.
-- **Version numbers:** latest on `main` is v1.66 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.69 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -125,7 +125,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ✓ v1.59 `b18db73` (`whyOf`: the strongest true reason, kept on the offer) |
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ✓ v1.63 `1312d39` (`dryQuote`/`orderDryRun`; margin cached; provisional estimates wider) |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ✓ v1.66 `812476b` (prices, gates at LAUNCH; six Selene science contracts) |
-| Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | → economy 2026-10-09 |
+| Q61 | Dispatch to a base: pass the base's `pf` as the landing `site` (procedures land within ~5 m) | M2 | S | ⚙ | ✓ v1.69 `1c546dd` (supply runs: ascent procedure + landAt on the beacon; joins the base) |
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
@@ -327,3 +327,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - orchestrator — **CREW.md part 2 is approved but not fanned out.** 📝 plan items (M3, allowed under the gate): the roster and the astronaut office's classes (economy, flow); the pilot's SAS modes by rank (vehicle: CREW's ranks don't line up with the `AV` generations, e.g. rank 2 has target but not docking, so `avOf` needs per-mode gating); requalification after a loss (economy); the scientist's and engineer's hooks (economy, space) — CREW.md § Part 2
 - vehicle + space — the builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line — MIDGAME.md § Satellites
 - vehicle — when the habitat budget lands (Q119), habitat and lab modules get power loads: "a dark station can't keep people" (v1.68's crew capsules draw nothing, which holds only for a capsule's 10 days); solar output by distance from Helios at M5 (LATE_GAME's 300/130/40/11 W/m²) — LATE_GAME.md § Habitats
+- economy — crew rotation by dispatch: a crewed supply run lands crew at a base and brings the old crew home (needs a crew record in headless flights) — NOTES v1.69
