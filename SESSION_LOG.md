@@ -4518,3 +4518,26 @@ smoke + own sections (and the full suite after core changes: 563 pass at the sch
 - [ ] look & sound: Q102 steps 6–7 (Proposed; step 7 with flow and visuals); the bodies Q80–Q85 after Caio's pick
 - [ ] world: the coast, the pad terrace, the salt-flat/wetland masks (Q52's remaining parts)
 - [ ] QA: Q120 (row 65 crew rotation driver); a robot pass over views 4–9/15–17 now that the Debrief panel is hidden
+
+## 2026-10-09 — Launchpad v1.86: dispatched flights leave debris (QUEUE Q149); Q27 blocked on powered presets (space session, unattended)
+
+### Summary
+- Q149: `procFly(…, {keepJunk})` hands back its flight's pieces; `dispatchRun` registers the ones that stay up via
+  `junkAdd` (the hand-flown path now uses it too). The dispatched payload itself still isn't registered (Q49).
+- Q27 looked at and set to blocked: no preset with an antenna makes power (the Probe runs on its 0.5 kWh core battery,
+  flat in ~33 h at 15 W). Gating registry service or the flight's link on power would end Probe satellites after ~4 days
+  and Probe antenna missions on long flights. Filed for vehicle: presets that carry an antenna make their own power.
+  Relay range folds into Q51 (the link budget).
+
+### Verification
+- New test `space-6` (1 check, 2 mutations caught; the one-line call in `dispatchRun` isn't driven by a test). Full suite
+  579 pass / 0 fail on `main` as pushed (`dff3e5d`).
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (`junkAdd`), `sim/procedures.js` (`procFly` keepJunk, `dispatchRun`),
+  `test.mjs` (`space-6`), `NOTES.md` § v1.86, `QUEUE.md` (Q149 ✓, Q27 blocked, a vehicle item)
+- `ACTIVE_WORK.md` (claim moved to Q114)
+
+### Next steps
+- [ ] Vehicle: powered presets (unblocks Q27)
+- [ ] Space: Q114, Q128, Q142
