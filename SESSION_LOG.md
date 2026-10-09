@@ -3926,3 +3926,51 @@ Took every ready QA item in turn, plus overflow from the lane's own follow-ups:
 - [ ] vehicle: PLAYTEST #24 (Beeper and Passenger Orbiter presets) unblocks the presets-only first hour
 - [ ] QA: robot driver for row 65; re-run `m1` as M1 items land, since its pass is M1's finish line
 - Note: git has no identity configured on this machine; commits passed `-c user.name/-c user.email` matching history.
+
+## 2026-10-09 — Launchpad v1.64: orbital decay, low orbits come down (QUEUE Q25; space session)
+
+### Summary
+- A thin upper atmosphere (Vallado's exponential table, 100–2,000 km) drags on registered orbits between flights.
+  `dragK` (Cd·A/m from the outline, 0.005–0.014 for preset payloads), orbit-averaged Gauss rates, `decayAE`/`decayStep`
+  on the rails. Re-entry at 100 km; a warning 10 days ahead that looks across long waits.
+- Holding now pays tides + drag (`holdRate`): a satellite with fuel holds itself up; a dry one sinks.
+- Lifetimes (typical payload): 110 km under an hour, 150 km 5 days, 200 km ~70 days, 250 km ~1 year, 300 km ~3 years.
+  The averaged rails agree with a direct RK4 to 1 %.
+- Found, not fixed: the flight itself ignores this air (20 m/s an hour at 110 km). Proposed.
+
+### Verification
+- New test `space-2` (4 checks, 5 mutations caught); full suite 490 pass / 0 fail on `main` as pushed (`21bbfa1`);
+  `career.mjs` output unchanged. Not browser-checked (one line of UI text).
+- Slip: I pushed `21bbfa1` before testing that last merge of `main`; the full run on it afterwards was clean.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `app/program-ui.js` (`slotLine`), `test.mjs` (`space-2`; `space-1` check
+  adjusted), new `study_decay.mjs`, `NOTES.md` § v1.64, `TESTING.md` row 140, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md` (claim made and cleared)
+
+### Next steps
+- [ ] Human: TESTING 140 (is "go higher or bring fuel" fair, or a surprise?)
+- [ ] Proposed in QUEUE: thin air in the flight's coast; reboost contracts (economy); parking orbits ≥ 200 km in PLAYROUTE and presets (QA/vehicle)
+- [ ] Space: next ready item Q26 (contact with debris and between satellites)
+
+## 2026-10-09 — Launchpad v1.65: Hesper's ground on the CPU (world session)
+
+### Summary
+The second planet's ground (QUEUE Q92's CPU half), Venus-like, not live (stub body):
+- ~140 craters over 2 km and none under 1.3 km (the thick air: only the three coarsest bands run);
+- basalt plains on 85 % of the planet, with wrinkle ridges;
+- raised, ridged slab rock (11 %, the roughest ground);
+- a 9 km massif, four gentle shields, three coronae, a pancake-dome cluster;
+- lava channels 1.5–3 km wide and ~80–110 m deep;
+- five surfaces by unit.
+Negative results: the first slab rock was too wide and too smooth; untextured plains were glass; a noise-isoline
+channel came out 2.5× wider than its threshold suggested (measured, then narrowed); a trough test must compare across
+with along. Test `ground-4` (7 checks, 3 mutations caught). Full suite 497 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`hesper`), `test.mjs` (`ground-4`), `NOTES.md` § v1.65, `GROUND.md` 0.1.5, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Astraea (bright-floored crater, a lonely mountain, g 0.28), then Hyperion's moons, Erebus
+- [ ] Space (Q87): Hesper into the body tree with `ground: HESPER_GROUND`

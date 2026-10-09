@@ -3452,7 +3452,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     return q; };
   const R = T.R, low = reg(R + 300e3, 0), nav = reg(R + 3000e3, 60), stat = reg(D.STAT_R, 0), k = q => D.slotRate(q);
   check('station-keeping: holding an orbit costs what the tides pull, nothing in low orbit, ~0.2–0.4 m/s a day at 3,000 km, ~0.3–0.5 stationary (study_slot.mjs)',
-    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5 && D.skLife(low) === Infinity,
+    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5,
     `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day`);
   // a stationary satellite with tanks for 100 m/s holds its rails for ~250 days; one with 4 days' worth goes adrift on day 4
   P.sats = []; news.length = 0; const held = reg(D.STAT_R, 0, 100), short = reg(D.STAT_R, 0, 4 * k(held)), none = reg(D.STAT_R, 0, 0);
@@ -3533,6 +3533,85 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       `probe ${api.avOf(probe).name} · bare probe ${api.AV[top - 1].name} · crew capsule ${api.AV[top].name} · ${msgs.filter(m => /Power/.test(m)).join(' / ')}`); }
   { const s = api.newShip(sat()); api.S = s; const T2 = api.tapeNew(sat()); api.tapeWings(T2, s, 'out'); const s2 = api.newShip(sat()); api.S = s2; api.tapePlay({ tape: T2, i: 0 }, s2, 10);
     check('power: an autopilot tape records the wings going out and replays it', api.wingsOut(s) && api.wingsOut(s2) && T2.ops.some(o => o[0] === 'W' && o[1] === 'out')); }
+}
+
+// ground-4. Hesper's ground (world session, GROUND.md G7): on the CPU, not live (stub body). Venus's character: craters
+// few, fresh and none small (the thick air), mostly smooth basalt plains, raised and rough slab rock, one high massif,
+// gentle shields, coronae, narrow lava channels. Numbers behind each parameter: `node study_ground.mjs hesper`.
+{
+  const G = new Function(src + 'return {HESPER_GROUND,hesperMap,hesperH,hesperChan,GROUND_STUBS,HE,llU,grBands,BODIES,surfaceAt,terrainSlope,bodyTop,get HESPER_MAP(){return HESPER_MAP}};')();
+  const S = G.GROUND_STUBS.Hesper, R = S.R, B = { name: S.name, R, mu: S.g * R * R, ground: G.HESPER_GROUND }, D = Math.PI / 180;
+  check('ground-4: Hesper\'s recipe is not live (no Hesper in the body tree), and its map is baked on first use', G.HESPER_MAP === null && !G.BODIES.some(b => b.name === 'Hesper'));
+  const M = G.hesperMap(), h = u => G.hesperH(u), area = 4 * Math.PI * (R / 1000) ** 2, bs = G.grBands(R, G.HE.c).slice(0, G.HE.bands);
+  const pts = []; for (let i = 0; i < 6000; i++) { const z = 1 - (2 * i + 1) / 6000, a = i * 2.39996, q = Math.sqrt(1 - z * z); pts.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const H = pts.map(h), un = pts.map(G.HESPER_GROUND.unit), share = k => un.filter(x => x === k).length / un.length;
+  const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], at = k => pts.filter((_, i) => un[i] === k), hOf = k => med(H.filter((_, i) => un[i] === k));
+  const nBig = Math.round(G.HE.c / 4 * area);   // craters over 2 km expected on the whole planet
+  check('ground-4: craters are few and none small: ~' + nBig + ' over 2 km on all of Hesper, the finest band stops at 1.3 km; relief within top',
+    nBig > 80 && nBig < 250 && bs[bs.length - 1].Dlo > 1200 && Math.max(...H) < G.bodyTop(B) && M.craters.length <= 3,
+    `${nBig} over 2 km · smallest ${(bs[bs.length - 1].Dlo / 1e3).toFixed(1)} km · ${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)})`);
+  const sl = k => med(at(k).slice(0, 300).map(u => G.terrainSlope(B, u) / D));
+  check('ground-4: smooth basalt plains cover most of Hesper; slab rock (~10 %) stands 1.5+ km above them and is rougher',
+    share('plains') > .7 && share('slab rock') > .05 && share('slab rock') < .2 && hOf('slab rock') > hOf('plains') + 1500 && sl('slab rock') > 3 * sl('plains'),
+    `plains ${(share('plains') * 100).toFixed(1)} % (${sl('plains').toFixed(1)}°), slab rock ${(share('slab rock') * 100).toFixed(1)} % (${sl('slab rock').toFixed(1)}°, ${(hOf('slab rock') - hOf('plains')).toFixed(0)} m higher)`);
+  const ma = G.llU(...G.HE.massif.at), shields = G.HE.shields.map(s => { const c = G.llU(s[0], s[1]), e = norm(cross([0, 1, 0], c)), n = cross(c, e), foot = Math.min(...[0, 1, 2, 3, 4, 5].map(k => h(norm(add(c, mul(add(mul(e, Math.cos(k * 1.05)), mul(n, Math.sin(k * 1.05))), 1.3 * s[2] / R)))))); return h(norm(add(c, mul(e, .1 * s[2] / R)))) - foot; });   // the foot: the lowest ground round it
+  check('ground-4: the massif rises past 8 km; every shield stands 3+ km above its foot', h(ma) > 8000 && shields.every(x => x > 3000), `massif ${h(ma).toFixed(0)} m; shields ${shields.map(x => x.toFixed(0)).join(', ')} m`);
+  const co = G.HE.coronae.map(s => { const c = G.llU(s[0], s[1]), e = norm(cross([0, 1, 0], c)), p = r => h(norm(add(c, mul(e, r * s[2] / R)))); return [p(0), p(.85), p(1.08)]; });
+  check('ground-4: coronae are rings: the rim stands above both the centre and the moat outside', co.every(([c, r, o]) => r > c + 300 && r > o + 300), co.map(x => x.map(v => v.toFixed(0)).join('/')).join(' · '));
+  // a lava channel: a narrow trough. 3 km out, the ground is higher across it and level along it
+  let rs = 9; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647, chs = [];
+  for (let i = 0; i < 400000 && chs.length < 5; i++) { const z = 2 * rnd() - 1, t = 2 * Math.PI * rnd(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)]; if (G.hesperChan(u, R, M) > .95) chs.push(u); }
+  // across a channel (the direction where both sides 3 km out are highest) the floor is 40+ m lower on both sides; along it
+  // (at right angles, 1 km out: channels meander, so 3 km along the tangent leaves them) it isn't: a channel, not a pit.
+  // The median of five channel points (the plains' wrinkle ridges make any one profile wander)
+  const prof = ch => { const e1 = norm(cross([0, 1, 0], ch)), n1 = cross(ch, e1), side = (a, r) => [-1, 1].map(k => h(norm(add(ch, mul(add(mul(e1, Math.cos(a)), mul(n1, Math.sin(a))), k * r / R)))));
+    let best = null; for (let k = 0; k < 18; k++) { const a = k * Math.PI / 18, d = Math.min(...side(a, 3e3)) - h(ch); if (!best || d > best.d) best = { a, d }; }
+    return { across: best.d, along: Math.min(...side(best.a + Math.PI / 2, 1e3)) - h(ch) }; };
+  const P = chs.map(prof), acr = med(P.map(p => p.across)), alg = med(P.map(p => p.along));
+  check('ground-4: lava channels are narrow troughs in the plains (3 km across: 40+ m higher on both sides; 1 km along: not; median of 5)',
+    chs.length === 5 && acr > 40 && alg < acr / 2 && chs.every(u => G.surfaceAt(B, u).name === 'channel floor'), `across +${acr.toFixed(0)} m, along ${alg.toFixed(0)} m (${chs.length} channel points)`);
+  let worst = 0; for (let i = 0; i < 2000; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const n = norm(u);
+    const e = norm(cross(n, Math.abs(n[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(n, mul(e, 0.5 / R))); worst = Math.max(worst, Math.abs(h(v) - h(n)) / 0.5); }
+  check('ground-4: surfaces by unit (basalt plains, slab rock); no seams on the cube faces',
+    G.surfaceAt(B, at('plains')[0]).name === 'basalt plains' && G.surfaceAt(B, at('slab rock')[0]).name === 'slab rock' && Math.atan(worst) / D < 60, `steepest seam step ${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
+// space-2. Orbital decay (space session, QUEUE Q25): above the flight's air a thin upper atmosphere (Vallado's exponential
+// table) drags on low orbits between flights. A satellite with propellant pays to hold its orbit (with Q50's tides); a dry
+// one sinks on its rails (orbit-averaged drag, study_decay.mjs) and re-enters when its periapsis reaches the air's top.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,thinAir,dragK,dragRate,holdRate,decayLife,decayStep,skDv,skLife,TELLUS,PROG,HOOK,DAY_S,len,add,mul};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R; P.sats = []; P.day = 0;
+  // a Probe left in a circular equatorial orbit at alt, its tanks emptied unless keep
+  const reg = (alt, keep = false) => { const s = D.newShip(D.PRESETS.Probe), a = R + alt, vc = Math.sqrt(T.mu / a);
+    Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -vc] }); D.satRegister(s, { day0: P.day }); const q = P.sats.at(-1);
+    if (!keep) for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+    return q; };
+  const ok1 = Math.abs(D.thinAir(200e3) / 2.789e-10 - 1) < 1e-9 && D.thinAir(99e3) === 0 && D.thinAir(150e3) < D.thinAir(140e3);
+  const lo = reg(200e3), hi = reg(700e3), K = D.dragK(lo), L = D.decayLife(lo);
+  check('decay: the upper air thins with height; a dry Probe at 200 km has a lifetime of tens of days, one at 700 km lasts',
+    ok1 && K > 0.005 && K < 0.05 && L > 10 && L < 200 && D.decayLife(hi) === Infinity, `Cd·A/m ${K.toFixed(4)} m²/kg; life at 200 km ${L.toFixed(1)} days`);
+  const pe0 = D.elements(lo.r, lo.v, T.mu).pe, hr0 = hi.r.slice(), hv0 = hi.v.slice();
+  D.advanceDays(Math.floor(L / 2)); const pe1 = D.elements(lo.r, lo.v, T.mu).pe, L1 = D.decayLife(lo), hiMoved = Math.abs(D.elements(hi.r, hi.v, T.mu).pe - D.elements(hr0, hv0, T.mu).pe);
+  D.advanceDays(Math.ceil(L - Math.floor(L / 2)) + 1);
+  check('decay: dry, it sinks on its rails as predicted, is warned about, and re-enters; the high one barely feels it',
+    pe1 < pe0 - 5e3 && Math.abs(L1 - (L - Math.floor(L / 2))) < 0.05 * L + 0.5 && !P.sats.includes(lo) && P.sats.includes(hi) && hiMoved < 100 &&
+    news.some(m => m.startsWith(lo.name) && /within/.test(m)) && news.some(m => m.startsWith(lo.name) && /re-entered/.test(m)),
+    `periapsis ${((pe0 - R) / 1e3).toFixed(0)} → ${((pe1 - R) / 1e3).toFixed(0)} km by day ${Math.floor(L / 2)}; life then ${L1.toFixed(1)} (expected ${(L - Math.floor(L / 2)).toFixed(1)}); 700 km periapsis moved ${hiMoved.toFixed(2)} m; news: ${news.filter(m => m.startsWith(lo.name)).join(' / ')}`);
+  // with its tanks, it holds: on its rails, paying the drag
+  P.sats = []; news.length = 0; P.day = 0; const held = reg(200e3, true), ep = held.epoch, dv0 = D.skDv(held), g = D.dragRate(held);
+  D.advanceDays(30);
+  check('decay: with propellant it holds its orbit, paying what the drag takes, and says how long that lasts',
+    P.sats.includes(held) && held.epoch === ep && held.adrift == null && Math.abs(dv0 - D.skDv(held) - 30 * D.holdRate(held)) < 0.05 * 30 * g && g > 0 && D.skLife(held) < Infinity,
+    `${g.toFixed(3)} m/s a day; ${(dv0 - D.skDv(held)).toFixed(2)} m/s in 30 days; ${D.skLife(held).toFixed(0)} days left`);
+  // the averaged rails against a direct RK4 with the same drag (no tides), 150 km down to 130 km
+  { const q = reg(150e3), K2 = D.dragK(q), a0 = R + 150e3; let r = [a0, 0, 0], v = [0, 0, -Math.sqrt(T.mu / a0)], t = 0; const h = 2, { add, mul, len } = D;
+    const acc = (r, v) => { const rl = len(r), vl = len(v), f = 0.5 * D.thinAir(rl - R) * vl * K2; return add(mul(r, -T.mu / rl ** 3), mul(v, -f)); };
+    while (D.elements(r, v, T.mu).pe > R + 130e3) { const a1 = acc(r, v), r2 = add(r, mul(v, h / 2)), v2 = add(v, mul(a1, h / 2)), a2 = acc(r2, v2), r3 = add(r, mul(v2, h / 2)), v3 = add(v, mul(a2, h / 2)), a3 = acc(r3, v3), r4 = add(r, mul(v3, h)), v4 = add(v, mul(a3, h)), a4 = acc(r4, v4);
+      r = add(r, mul(add(add(v, mul(v2, 2)), add(mul(v3, 2), v4)), h / 6)); v = add(v, mul(add(add(a1, mul(a2, 2)), add(mul(a3, 2), a4)), h / 6)); t += h; }
+    q.epoch = 0; q.r = [a0, 0, 0]; q.v = [0, 0, -Math.sqrt(T.mu / a0)]; let tr = 0; while (D.elements(q.r, q.v, T.mu).pe > R + 130e3) { tr += 600; D.decayStep(q, tr); }
+    check('decay: the averaged rails agree with a direct integration of the drag (150 → 130 km) to a few percent', Math.abs(tr / t - 1) < 0.05, `direct ${(t / 3600).toFixed(1)} h, rails ${(tr / 3600).toFixed(1)} h`); }
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
