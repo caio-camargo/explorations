@@ -73,6 +73,8 @@ const PARTS={
   batt:{name:'Battery 1 kWh',kind:'batt',m:0.02,h:0.15,kWh:1,C:900,T:600,B:200},
   bpanel:{name:'Solar cells (body)',kind:'solar',body:true,surf:true,noAero:true,m:0.01,h:0.8,r:0.02,off:0.02,Wp:40,C:300,T:200,S:150,B:60},
   wpanel:{name:'Solar wing',kind:'solar',wing:true,surf:true,noAero:true,m:0.03,h:0.6,r:0.06,off:0.06,Wp:300,span:2.4,qMax:1000,C:300,T:200,S:150,B:60},
+  // an RTG (vehicle session, Q131): steady power, sun or shadow, as on the rovers (SNAP-era: 60 W, 35 kg); dear
+  rtg:{name:'RTG',kind:'rtg',surf:true,noAero:true,m:0.035,h:0.6,r:0.18,off:0.18,Wg:60,C:900,T:600,S:300,B:150},
   rfin:{name:'Radial fin',kind:'rfin',surf:true,noAero:true,m:0.06,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9},
   // steerable fins (control session): the same plates, all-moving, turned about their span up to ctl degrees at ctlR °/s
   cfin:{name:'Steerable fin',kind:'rfin',surf:true,noAero:true,m:0.09,h:0.9,r:0.05,C:300,T:200,S:150,B:60,span:0.9,chord:0.9,ctl:20,ctlR:40},
@@ -787,3 +789,8 @@ function controlReport(s){geom(s);const ls=launchSegs(s),E=s.parts.filter(p=>p.o
   return{burn,coast,rcs,spin,roll:{wheel:s.torque,gim:ctrlAuthRoll(s,E,1)-s.torque,fin:fr},
     turn:{wheels:turnTime((s.torque+rcs)/Ip,rcs>0?0.6:Math.min(0.6,s.hmax/Ip)),burn:turnTime((ctrlAuthority(s,E,1)+rcs)/Ip)},hfull:s.hmax/Ip,steer:s.torque>0||E.some(p=>p.d.gim>0)||s.parts.some(p=>p.on&&p.d.ctl)||rcs>0,thrust}}
 function firstSeg(s){return launchSegs(s)[0]??0}
+// the Docking preset (vehicle session, Q78): a docking head on the Orbiter's launcher, so the docking rows can be flown from
+// presets. A port on top, a probe core with an onboard computer (Docking SAS needs one on a probe, v1.68) and a battery,
+// two RCS rings and two gas bottles on the upper tank. Launch it twice, one as the target; or chase a satellite with a port.
+PRESETS.Docking=(()=>{const d=toV2(['port','core','ocomp','batt','t2','petrel','dec','t8','fins','kestrel']),f=n=>n.k==='t2'?n:(n.c||[]).map(f).find(Boolean),h=f(d.root);
+  for(const y of[0.2,1.8])h.c.push({k:'rcs',at:{y,a:0,n:4,cy:0.1},c:[]});h.c.push({k:'gas',at:{y:1.0,a:Math.PI/4,n:2,cy:0.3},c:[]});return d})();

@@ -10,6 +10,7 @@ Object.assign(PARTS.ant,{W:5});Object.assign(PARTS.cam,{W:10});Object.assign(PAR
 const KWH=3.6e6,SOL_BODY=0.32,SOL_WING=0.9;   // cells on a skin average ~a third of full sun; a wing on its own arm loses ~10 %
 const powCap=s=>{let E=0;for(const p of s.parts)if(p.on&&p.d.kWh)E+=p.d.kWh*KWH;return E};
 const powLoad=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.W)W+=p.d.W;return W};
+const powRTG=s=>{let W=0;for(const p of s.parts)if(p.on&&p.d.Wg)W+=p.d.Wg;return W};   // RTGs: the same day and night (Q131)
 // what the panels give in full sun from direction u (the vessel's own frame): body cells their average share; a deployed wing
 // turns about its arm (the mount's outward normal n) to face the sun as well as that allows, so √(1 − (n·u)²) of its best
 function powSun(s,u){let W=0;for(const p of s.parts){if(!p.on||p.d.kind!=='solar')continue;
@@ -33,19 +34,19 @@ function powFlat(s,out){if(out===!!s.pwrOut)return;s.pwrOut=out;const comp=s.par
 function powerStep(s,dt){if(!s.alive)return;
   for(const p of s.parts.filter(p=>p.on&&p.dep&&p.d.qMax&&s.qdyn>p.d.qMax)){if(!p.on)continue;HOOK.msg(`${p.d.name} torn off at ${(s.qdyn/1000).toFixed(1)} kPa`);partLost(s,p)}
   s.Emax=powCap(s);if(s.E==null)s.E=s.Emax;const use=powLoad(s);
-  const gen=inShadow(s.body,s.r)?0:powSun(s,qrot(qconj(s.q),SUN_DIR));s.pGen=gen;s.pUse=use;
+  const gen=(inShadow(s.body,s.r)?0:powSun(s,qrot(qconj(s.q),SUN_DIR)))+powRTG(s);s.pGen=gen;s.pUse=use;
   s.E=clamp(s.E+(gen-use)*dt,0,s.Emax);powFlat(s,s.E<=0&&gen<use)}
 // a rails step: short ones like a physics step; long ones on the orbit's average (its share in shadow from the elements)
 function powerRails(s,dt){if(!s.alive||dt<=0)return;if(dt<=60){const q=s.qdyn;s.qdyn=0;powerStep(s,dt);s.qdyn=q;return}
   s.Emax=powCap(s);if(s.E==null)s.E=s.Emax;const use=powLoad(s),b=s.body,r=len(s.r),h=cross(s.r,s.v),hl=len(h);
   const v2=dot(s.v,s.v),a=1/(2/r-v2/b.mu),beta=hl>0?Math.asin(clamp(dot(h,SUN_DIR)/hl,-1,1)):0;
-  const ecl=s.landed||!(a>0)?(inShadow(b,s.r)?1:0):eclFrac(b.R,a,beta),gen=powSun(s,qrot(qconj(s.q),SUN_DIR))*(1-ecl);
+  const ecl=s.landed||!(a>0)?(inShadow(b,s.r)?1:0):eclFrac(b.R,a,beta),gen=powSun(s,qrot(qconj(s.q),SUN_DIR))*(1-ecl)+powRTG(s);
   s.pGen=gen;s.pUse=use;s.E=clamp(s.E+(gen-use)*dt,0,s.Emax);powFlat(s,s.E<=0&&gen<use)}
 // the steady state for a design in a circular orbit (default: Tellus, 10 km above the air), its plane at beta to the sun:
-// average generation against the load, and the battery needed to cross one shadow
+// average generation (panels and RTGs) against the load, and the battery needed to cross one shadow on what the RTGs don't cover
 function powerBudget(s,o={}){const b=o.body||TELLUS,r=o.r||b.R+(b.atm||0)+10000,beta=o.beta||0,ecl=eclFrac(b.R,r,beta),T=2*Math.PI*Math.sqrt(r*r*r/b.mu);
-  const peak=powPeak(s),use=powLoad(s),avg=peak*(1-ecl),tE=ecl*T,needWh=use*tE/3600,battWh=powCap(s)/3600;
-  return{peak,use,avg,ecl,T,tE,needWh,battWh,ok:avg>=use&&battWh>=needWh}}
+  const peak=powPeak(s),rtg=powRTG(s),use=powLoad(s),avg=peak*(1-ecl)+rtg,tE=ecl*T,needWh=Math.max(0,use-rtg)*tE/3600,battWh=powCap(s)/3600;
+  return{peak,rtg,use,avg,ecl,T,tE,needWh,battWh,alt:(r-b.R)/1000,ok:avg>=use&&battWh>=needWh}}
 // solar wings out ('out') or folded ('in'): instant for now (the look beat can animate them)
 function wingOp(s,op){const o=op==='out';let n=0;for(const p of s.parts)if(p.on&&p.d.wing&&!!p.dep!==o){p.dep=o;n++}
   if(n){HOOK.rebuild();HOOK.msg(o?'Solar wings out':'Solar wings folded')}return n}
