@@ -590,13 +590,43 @@ function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,
   return{stack:JSON.parse(JSON.stringify(D.stack)),shape:shapeOf(on,false),vst:vstOf(v),r:rr,v:vv,epoch:T,qo:qmul(qconj(orbQ(rr,vv)),q),cm:(v.cm||[0,0,0]).slice(),name:`${designName(D.stack)||'Dispatch'} ${D.id}`,attached:[]}}
 function loseDeviation(id,why){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.status==='deviated');if(!D)return false;D.status='failed';D.why=why||D.dev.why;
   HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');HOOK.save();return true}
+// ---- dispatch to a base (QUEUE Q61): a supply run. The design's own ascent procedure, then a transfer, a low capture and
+// a landing at the base's beacon (the bodies session's landAt: within ~5 m); what lands is registered there and joins the
+// base (within BASE_R) with its supplies, berths and crew. Repeats only: the body was landed on by hand first (its
+// landing first) and the base exists. Flown for real by procFly, so the design must have the Δv; no contract pays it.
+const BASE_FIRST={Selene:'selland',Nyx:'nyxland'};
+function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!asc||asc.kind!=='orbit'||!asc.pitch)return null;
+  const B=BODIES.find(b=>b.name===base.bodyName);if(!B||B===TELLUS)return null;const low=B.name==='Nyx'?{pass:15e3,ap:25e3,pe:10e3}:{pass:10e3,ap:20e3,pe:8e3};
+  return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
+function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
+  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
+  if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
+  if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
+  const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
+  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost,prep,pad,start,launch:start+prep}}
+function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
+  PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
+  HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days`,'');HOOK.save();return{...q,ok:true}}
+// the base's line in the Fleet tab: a supply run with the design in Assembly, or why not, or the one on its way
+function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.base===base.id);
+  if(D)return`<div class="sub dim">Supply run: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d</div>`;
+  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design in Assembly'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
+// the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
+function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
+  const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
+  const f=procFly(D.stack,proc,null,{name:`${designName(D.stack)||'Supply run'} ${D.id}`});const s=f.s;
+  if(!s||!s.alive)return{ok:false,why:f.why||'it was lost'};if(f.dev)return{deviation:{kind:f.dev.kind,why:f.dev.why,entry:f.entry}};
+  if(!s.landed||s.body!==B||!s.pf)return{ok:false,why:'it did not land'};const miss=pfDist(B,s.pf,base.pf);
+  s.rec.day0=PROG.day;const q=landRegister(s,s.rec);return{ok:true,landed:q,miss,joined:miss<=BASE_R,dv:f.dv}}
 function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)loseDeviation(D.id,`${D.dev.why}, and nobody was at the console`);
   for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
-  const c=(PROG.active||[]).find(x=>x.id===D.cid);if(!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
+  const c=D.base!=null?null:(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const site=homeSites()[0]||null;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
   const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
-  const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=run?run(D,v,c):dispatchRoll(D,v,c);
+  const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
+  if(D.base!=null&&!res.deviation){D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';const sb=(PROG.sats||[]).find(q=>q.id===D.base);   // a supply run: no contract to settle
+    HOOK.news(res.ok?`${D.title}: landed ${res.miss<1e3?`${res.miss.toFixed(0)} m`:`${(res.miss/1e3).toFixed(1)} km`} from the beacon${res.joined?`, now part of ${sb?sb.name:'the base'}`:', too far to join the base'}`:`${D.title} failed: ${res.why}`,res.ok&&res.joined?'ok':'bad');HOOK.save();continue}
   if(res.deviation){D.status='deviated';D.dev={...res.deviation,at:PROG.day};HOOK.news(`⚠ A dispatched flight needs you: ${D.title}. ${res.deviation.why}`,'bad');HOOK.save();continue}
   D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';if(res.orb)D.orb=res.orb;
   const seen={};for(const p of v.parts)if(p.on)seen[p.d.key]=p.d.kind==='engine'?{fly:1,maxq:1,burn:1}:{fly:1,maxq:1};khLearn({khSeen:seen});
