@@ -4084,7 +4084,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // edge), with its A/B uniforms uploaded; the deck's variety is behind its own toggle
   check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
     pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
-      && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
+      && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);') && pg.includes('gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
   // QUEUE Q66: per-engine voices. Smaller nozzles sing higher; voices go by kind of engine (two Kestrels are one voice), the
   // biggest thrust shares first, at most four; nothing when nothing burns; equal shares sum to the airborne level in power
   {
@@ -4095,6 +4095,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const many = sndVoices(['a', 'b', 'c', 'd', 'e'].map((k, i) => ({ key: k, T: 1e5 * (i + 1), exit: 0.3 + 0.1 * i })), 1);
     check('engine voices: a small nozzle sings higher than a big one; one voice per kind; ≤ 4, biggest first; silent when off (and the volume slider, Q35, is wired)',
       wren[0].f > 900 && alb[0].f < 260 && mix.length === 2 && Math.abs(mix[0].g ** 2 + mix[1].g ** 2 - 0.64) < 1e-9 && many.length === 4 && many[0].f < many[3].f
+        && /ice\*=1\.-\.85\*bare\*uIv;sn\*=1\.-\.85\*bare\*uIv;/.test(H) && /gl\.uniform1f\(u\.uIv,ICE_VARY\?1:0\)/.test(H)
         && /function sndSettings\(el\)/.test(H) && /if\(typeof sndSettings==='function'\)sndSettings\(\$\('setSound'\)\)/.test(H) && /localStorage\.getItem\('launchpad-volume'\)/.test(H)
         && sndVoices([], 1).length === 0 && sndVoices([{ key: 'x', T: 0, exit: 0.5 }], 1).length === 0 && /AUD\.V=\[0,1,2,3\]\.map/.test(H) && /sndVoices\(st\.engs,m\.air\)/.test(H),
       `Wren ${wren[0].f.toFixed(0)} Hz, Albatross ${alb[0].f.toFixed(0)} Hz, Kestrel×2 + Condor: ${mix.map(v => v.f.toFixed(0) + ' Hz ' + v.g.toFixed(2)).join(', ')}`);
@@ -4270,6 +4271,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   D.contractEval({ rec: R, att: [{ e: tv }] });
   check('servicing: a flight docked with it completes the contract, and the satellite is up to date again', before === 1 && P.active.length === 0 && P.funds > f0 && D.satEra(tv) === D.compEra() && D.satQual(tv) === 1 && !D.serviceTarget(),
     `paid ${(P.funds - f0).toFixed(0)}M; ${c.p.name}, ${c.p.n} era behind`);
+}
+
+// econ-12. A mission counts only on a flight launched while it was open (economy session, W11 defaulted; QUEUE Q113 /
+// PLAYTEST #29): chained firsts no longer complete together (a 2 t flight earned Heavy Lift I and II; the tracking flight
+// that weighs Nyx earned the flyby too). The flight's launch record lists what was open (R.open0, v1.74).
+{
+  const D = new Function(src + 'return {missionEval,recNew,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 50, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 4, cdone: 0, staged: {},
+    done: { weather: { flight: 1, day: 1 }, beeper: { flight: 2, day: 2 } } }); D.chooseStart('agency');
+  const open = () => D.MISSIONS.filter(M => !P.done[M.id] && (M.req || []).every(r => P.done[r])).map(M => M.id);
+  const R = D.recNew(); R.open0 = open(); Object.assign(R, { orbit: true, lift: 2, orb: { pe: 150e3, ap: 160e3, inc: 0 }, paid: [] });
+  D.missionEval({ rec: R, parts: [] }); D.missionEval({ rec: R, parts: [] });
+  const one = !!P.done.lift1 && !P.done.lift2;
+  const R2 = D.recNew(); R2.open0 = open(); Object.assign(R2, { orbit: true, lift: 2, orb: R.orb, paid: [] }); D.missionEval({ rec: R2, parts: [] });
+  check('W11: a 2 t flight launched with only Heavy Lift I open earns that one; the next flight earns Heavy Lift II', one && !!P.done.lift2, `after the first flight: lift1 ${!!P.done.lift1}, lift2 ${one ? 'not yet' : 'too'}`);
 }
 
 // space-5. Debris, slice 3 (space session, QUEUE Q147): fragments as a density per band. Breakups add 1 cm+ fragments

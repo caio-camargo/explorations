@@ -247,6 +247,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
     if(R.bio&&R.bioOK)HOOK.news(`${R.pet} is home safe, and immediately asks for a snack`,'ok');HOOK.save()}
   outThere(s,dt,phys);missionEval(s)}
 function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.bigContract))demandMet(s.rec.firstNow?'a first in the world':'a prestigious contract');for(const M of MISSIONS){if(PROG.done[M.id]||!missionOpen(M))continue;
+  if(s.rec.open0&&!s.rec.open0.includes(M.id))continue;   // W11 (PLAYTEST #29): a mission counts only on a flight launched while it was open
   if(M.ok(s.rec,s))missionComplete(M,s.rec)}}
 // a mission is done: pay it, move opinion, tell the world. rec is the flight's record, or null for a world mission
 // ---- staged pay for long missions (design: NOTES "Time, long missions and communication"). A mission to another body

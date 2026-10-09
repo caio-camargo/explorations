@@ -14,7 +14,7 @@ in vec2 vNdc;out vec4 o;
 uniform vec3 uR,uU,uF,uSun;uniform vec2 uTan;uniform float uFc;
 uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPdet;uniform sampler2D uCity;
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
-uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
+uniform float uIv;uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD,uVs,uVv;
 uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
@@ -175,6 +175,10 @@ vec3 tellus(vec3 pf,vec3 npf,float h,vec2 gx,float det,float fade,out float ocea
   col=mix(col,col*mix(vec3(.85,.92,.75),vec3(1.18,1.1,.85),hsh),farm*.45);col*=mix(1.,.85+.3*det,fade);}   // ×1 at fade 0: the old .85 floor made a visible ring where fade starts
  // snow and ice hold on gentle ground only: faces steeper than ~35° stay bare rock, which is what gives a range its relief
  float steep=sst(.12,.3,slope),sn=sst(-.5,-5.,T)*(1.-steep)*sst(.35,.7,vn(pf*220.)+.3),ice=sst(-11.,-15.,T)*(1.-.85*steep);
+ // (Q52) the high ranges were one white cap: wind-scoured rock shows through where the ice is thin (outcrops on a ~4 km
+ // and ~1.2 km noise, more on steeper slopes, none on flat ice sheets), old blue glacier ice in the hollows, and the snow's tone varies
+ if(uIv>0.){float ex=vn(pf*300.)*.6+vn(pf*1100.)*.4,bare=sst(.55,.68,ex+.25*sst(.05,.12,slope))*sst(.003,.02,slope);ice*=1.-.85*bare*uIv;sn*=1.-.85*bare*uIv;
+  snow=mix(snow,vec3(.42,.52,.62),sst(.6,.78,vn(pf*640.+5.))*.45*uIv*sst(.02,.0,slope))*(1.-.1*uIv+.2*uIv*mid);}
  return mix(col,snow,max(sn,ice));}
 // clouds: one thin shell at 3 km. Coverage is the same value noise, in planet-fixed coordinates (so weather turns with the
 // planet) drifting slowly (uCT), with a large-scale term that groups cells into weather systems.
@@ -1199,6 +1203,7 @@ function groundFrame(camW){const b=S.body,p=add(bodyPos(b,simT),S.r);
 // lower when the jet reaches the ground), coloured from the propellant's core and mantle, strength ∝ exit area × spool,
 // with the plume's flicker. PLT = {p: [camera-relative position, core radius], c: colour × strength, g: ground info}.
 let CLOUD_VOL=true;   // false: the flat shell everywhere (A/B)
+let ICE_VARY=true;   // false: the old uniform ice caps on the high ranges (A/B, Q52)
 let CLOUD_VARY=true;   // false: no 9 km swell in the deck's top heights (A/B, Q65: a more varied deck seen from 8 km)
 let CLOUD_SHADOW_V=true;   // false: the ground keeps the shell's cloud shadow under the volume too (A/B, Q65)
 let CLOUD_DT=0;   // debug/reference views only: shifts the drawn weather in time (s). cloudAt (satellites) ignores it

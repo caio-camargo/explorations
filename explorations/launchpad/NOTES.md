@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.22 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1085,6 +1085,19 @@ visible change), then Steppe.
   the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
   byte-identical** from here on: that's the livery POWERS.md asks for.
 - Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
+
+## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
+
+The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,
+in `tellus()`'s colour only, an outcrop mask (value noise at ~4 km and ~1.2 km, more on steeper ground, none on flat ice
+sheets) lets rock show through both terms; snow takes patches of old blue glacier ice in flat hollows and a ±10 % tone.
+The ground's height and `biomeAt` are untouched, so the physics and biome science see the same planet. `ICE_VARY = false`
+for A/B. Seen over an 8.5 km range at 41°N from 12 km up.
+- **Two wrong first tries**, both measured, not guessed: the noise was at ~0.6 km (invisible from altitude: `pf` is a unit
+  vector, so `vn(pf·k)` has features of R/k), and only the ice term was masked while `sn` was already 1, so `max(sn, ice)`
+  didn't move. The A/B picture was pixel-identical until both were fixed.
+- Not done here (world lane): the coast's smoothness and the pad's terrace are in the heightfield shared with `terrainH`;
+  the salt flats and wetlands are biome masks the CPU also uses.
 
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
@@ -3965,7 +3978,8 @@ Shading:
 3. **Look.**
    - The coast is smoother than wanted.
    - The pad's levelled disc shows as a faint terrace from altitude.
-   - High ranges are almost all ice (right at 7–8 km, but monotonous).
+   - ~~High ranges are almost all ice (right at 7–8 km, but monotonous).~~ Varied 2026-10-09 (effects beat, Q52): see
+     § "Wind-scoured ranges". The terrace and the coast are geometry (`terrainH` is the physics' ground too): world's call.
    - Salt flats and wetlands vanished with the wetter climate (re-tune their masks).
    - Distant land is washed out by the haze of the rescaled atmosphere (that's the visuals/rescale side).
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
@@ -8341,6 +8355,63 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## Plan: station, base, relay and rendezvous contracts (2026-10-09, economy session, QUEUE Q9; nothing built)
+
+**What exists to build on:** stations from docked modules with berths, crew, labs and supplies (`stationOf`, Phase C);
+lab-days earned between flights (`q.labDays`); moonbases (`baseOf`, E); flights from orbit (`R.fromOrbit`) and crew
+kept aboard across flights (rotation works by hand); the Selene relay and moon orbits in the registry; docking
+(`s.att`); supply runs to bases (v1.69) and the automation ladder (MIDGAME, D7). Contracts can now be judged on
+**state between flights** (`sel`/`done`, v1.66) or **by a flight** (`ok`), and take an `after` (v1.81).
+
+**The contract types** (the space session's five from Phase C, plus base, relay and rendezvous):
+
+| Type | Offered when | Done when | Judged | Pay (before multipliers) |
+|---|---|---|---|---|
+| **Resupply station X** | X has crew and < 40 days of supplies | X's supplies rise by N kg since taken (a module with `sup` docks) | state | 30 + 0.12/kg, ×1.5 under 15 days |
+| **Lab time on X** (sci, com) | X has a lab | N lab-days earned on X since taken | state | 4 per lab-day |
+| **Expansion of X** (com) | X has a free port | a module of the client's kind (lab, habitat) docked to X | state (X's `attached`) | the module's price × 1.3 + 40 |
+| **Crew rotation for X** | X's crew has served 120 days | a crewed capsule that left X lands home safe while X still has crew aboard | flight (`fromOrbit`, crew home) | 60 |
+| **Base resupply / base lab time** | as for stations, with `baseOf` | as above, on the base's members | state | as above |
+| **Relay coverage of Selene's far side** (sci, gov) | a far-side rover or station exists, or Selene science contracts are open | far-side contact ≥ 60 % of a day (`radioAt`, sampled each tick) for 30 days | state | 120 |
+| **Rendezvous** (gov, com) | a registry object the client cares about (a derelict, a rival's satellite) | a flight within 100 m of it, relative speed under 1 m/s | flight | 80 |
+| **Retrieval** (gov) | a valuable dead satellite (v1.81's `serviceTarget` rule, but dead) | it's docked and brought home (lands with it attached) | flight + `after` | 150 + its parts' value |
+
+**The first station as firsts, not contracts** (the space session's flagship): `station1` a habitat in a stable orbit
+with two free ports → `stationcrew` a crew docks → `stationlab` a lab added → `station30` 30 crewed days; epoch 3,
+paid like the epoch-3 firsts (80–120M), and not in the race (the race is Selene's). They give the contracts above a
+station to be about.
+
+**Rules carried over:** pay floors (v1.77) by the cheapest preset that can do it (the Docking preset for station work);
+W11 (a mission counts only on a flight launched while it was open) for the firsts; `whyOf` reasons: "*X* is down to
+12 days of supplies", "*X* has a free port". **Routines** follow MIDGAME's ladder: crewed rotation is the first
+routine (pilots), uncrewed resupply waits for onboard computers (D7's rule), so the resupply contract is flown by hand
+until then, which is what makes it a job early and a routine later.
+
+**Build order** (each a ⚙ slice):
+1. State-judged station work: resupply, lab time, expansion (no new flight checks; `selTick`'s pattern).
+2. The first-station firsts.
+3. Bases: the same three, on `baseOf`.
+4. Flight-judged: rendezvous, retrieval (needs the near-pass check during a flight).
+5. Relay coverage (a daily contact sample on Selene's far side).
+6. Crew rotation, after Q137's crew record in headless flights.
+
+**Questions for Caio** (numbered, with defaults; silence keeps the default):
+1. First station as **firsts** (default) or as a contract chain?
+2. Supplies running out at a station: today the crew goes on rations and labs stop (pillar 5). Should a resupply
+   contract's deadline be **when they run out** (default) or a fixed window?
+3. Rendezvous with **rivals' satellites**: allowed as a contract (default: only once rivals have stations, LATE_GAME
+   round 7), or never?
+4. Retrieval brings a satellite home whole: **its parts' value back as refurbishment** (default) or the pay only?
+
+## v1.81.1 — a mission counts only on a flight launched while it was open (2026-10-09, economy session, W11, Q113)
+
+W11 (defaulted by the design desk, Caio silent) built: `missionEval` skips a mission that wasn't open when the flight
+launched (`R.open0`, recorded since v1.74; older saves' flights as before). Chained firsts no longer pay together on
+one flight: a 2 t lift earned Heavy Lift I and II at once, and the tracking flight that weighs Nyx also earned *Nyx
+flyby* (PLAYTEST #29, +460M on one Probe). The flyby, Heavy Lift II and the like now need a flight of their own.
+Career runner: first orbit still 4 flights everywhere (5–8 with a lost attempt, every start reaching it); two-year
+funds a little lower (mean 423M). Test `econ-12` (mutation-tested).
 
 ## v1.81 — obsolescence and servicing: satellites replaced for upgrades (2026-10-09, economy session, QUEUE Q126)
 
