@@ -7384,7 +7384,7 @@ Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is 
 `pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
 (docking at Selene) are still undriven.
 
-## v1.67 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
+## v1.68 — power: the onboard computer, solar cells and wings, batteries (2026-10-09, vehicle session, QUEUE Q34a)
 
 Built to the plan in § "Vehicle parts" (Q34a), with Caio's call on the computer: **built into crew capsules, a part for
 probes**. Headless only: nobody has seen the parts drawn or the builder's power line yet (TESTING row 144).

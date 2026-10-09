@@ -147,7 +147,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
-| Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | → vehicle 2026-10-09 |
+| Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | ✓ v1.68 |
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M2 | M | ⚙ | after Q34a |
 | Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ready |
 | Q119 | 📝 The **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths); **shielding gets a design review with Caio before it's built** ([`LATE_GAME.md`](LATE_GAME.md) 1.1.0) | M4 | M | 📝 | after Q34b (plan only) |
@@ -315,3 +315,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - economy — reboost contracts now have a cause: a station or imaging satellite sinking (decayLife, the Program line) — NOTES v1.64, Q25
 - QA/vehicle — parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel; check PLAYROUTE and the presets' briefs — NOTES v1.64, Q25
 - economy — the career runner flies rovers (a Selene science program): measure v1.66's rover prices and R4 contract pay against income — NOTES v1.66
+- space — Q27/Q50 power side: what a flat battery does to the antenna, camera and a registered satellite's service; read `powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` (sim/power.js) — NOTES § v1.68
+- vehicle — the builder's power line picks the orbit (today: low Tellus orbit, β 0); battery charge carried past a flight's end; an RTG — NOTES § v1.68
+- QA — a robot career past year 7 that wants target/docking SAS on a probe now needs an `ocomp` on it; TESTING rows 139, 140, 142 are each used twice — NOTES § v1.68
