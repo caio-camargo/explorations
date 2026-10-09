@@ -160,10 +160,11 @@ function render(){
   // fin-tip vapor after the plumes: the trails don't write depth, so drawn before they'd vanish behind the exhaust even
   // where they're in front of it (they run beside it, a fin span out)
   if(near){drawFinTips(VP,camW,R,U);gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false)}
-  // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux; on
+  // re-entry plasma: the PLASMA volume (shock layer, wake streaks), its heat level from the stagnation heat flux faded in
+  // by airspeed (plasmaHeat, PLAYTEST #17); on
   // the ship and on spent stages falling back (debrisHeat)
-  if(PLASMA_FX&&near){if(S.alive&&S.qHeat>1.5e4)drawPlasma(VP,camW,S,shipWorld(),S.qHeat,false);
-    for(const d of debris){const g=DEBH.get(d);if(g&&g.q>1.5e4){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<2e4)drawPlasma(VP,camW,g.geo,p,g.q,true)}}}
+  if(PLASMA_FX&&near){const qS=S.alive?plasmaHeat(S.body,S.r,S.v,S.qHeat):0;if(qS>1.5e4)drawPlasma(VP,camW,S,shipWorld(),qS,false);
+    for(const d of debris){const g=DEBH.get(d),qd=g?plasmaHeat(d.body,d.r,d.v,g.q):0;if(qd>1.5e4){const p=add(bodyPos(d.body,simT),d.r);if(len(sub(p,camW))<2e4)drawPlasma(VP,camW,g.geo,p,qd,true)}}}
   // RCS: a puff at each nozzle that fired in the last 80 ms (so a single 20 ms pulse is still seen)
   if(near&&S.alive&&S.rcsJ){const J=S.rcsJ,p=shipWorld();for(const j of S.rcsShots||[])rcsSeen[j]=simT;
     for(const j in rcsSeen){const age=simT-rcsSeen[j],z=J.N[j];if(age<0||age>0.08||!z)continue;const q=qmul(S.q,qFromTo([0,-1,0],mul(z.d,-1)));

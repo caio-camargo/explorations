@@ -879,6 +879,19 @@ in a **flow-aligned frame** (y = upstream), reusing the plume's proxy lathe, cul
   leads, but a shield-first view would be the classic shot.
 - Transonic vapor cones (next idea).
 
+### Gated by speed, not just heat (2026-10-08, effects beat, QUEUE Q20 / PLAYTEST #17)
+The shell used to draw whenever the stagnation flux passed 15 kW/m². Dense air reaches that at about 1 km/s, so the
+Heavy's ordinary climb (Mach 3.5, 20 km, 77 kW/m²) wore a glowing shell. Air at that speed is a few hundred kelvin
+behind the shock and doesn't glow; the shock layer lights up at orbital-class speeds. `plasmaHeat(b,r,v,q)` (next
+to `drawPlasma` in `app/gl.js`) multiplies the flux by a smoothstep in airspeed over 0.85–1.05 × `PLASMA_V`, the
+terrain session's blackout threshold (Q17, 2213 m/s), so the Link blackout and the glow agree. The ship and falling
+stages both go through it.
+- Measured (`refView`): 40 (50 km, 2.6 km/s) 160 kW/m², glow unchanged; 42 (75 km), 44 and 45 unchanged; **43 (35 km,
+  1.55 km/s, 90 kW/m²) now has no shell**, just the charred shield (it used to show a faint one). Stage re-entries
+  103/104 run at 3.2 km/s: unchanged. Hot ascents peak at 1.7 km/s (Q17's flown check), under the 1.88 km/s fade start.
+- test.mjs `aerofx-1`: the fade numbers, and that both draws in `render.js` go through `plasmaHeat`.
+- Not changed: char marks, sparks and the smoke trail on falling stages still key on heat alone (ablation is heating).
+
 ## Transonic vapor cones (2026-10-07, aerofx session)
 
 Around Mach 1 in humid air, the flow speeds up round each convex corner of the hull, expands and cools, and water

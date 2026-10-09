@@ -3049,6 +3049,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check("split: every file starts 'use strict' (a classic script doesn't inherit it from the one before)", !lax.length, lax.join(', ') || 'all strict');
 }
 
+// aerofx-1. The plasma shell needs speed, not just heat (look & sound effects beat, QUEUE Q20 / PLAYTEST #17): the
+// glow's heat level is the stagnation flux faded in by airspeed over .85–1.05 PLASMA_V (terrain's blackout threshold),
+// so a hot climb at 1 km/s draws nothing, an orbital-speed entry draws the full shell, and it grows in smoothly. The
+// render call must go through plasmaHeat for both the ship and falling stages (no bare heat-flux gate).
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const fn = pg.slice(pg.indexOf('function plasmaHeat('), pg.indexOf('\n', pg.indexOf('function plasmaHeat(')));
+  const { TELLUS: T, PLASMA_V: PV } = api, clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+  const plasmaHeat = new Function('len', 'sub', 'surfVel', 'clamp', 'PLASMA_V', fn + ';return plasmaHeat')(len, sub, api.surfVel, clamp, PV);
+  const r = api.fromPF(T, mul(api.SITES[0].u, T.R + 20e3), 0), e = api.localFrame(r).e, at = va => plasmaHeat(T, r, add(api.surfVel(T, r), mul(e, va)), 7.7e4);
+  const ramp = []; for (let v = 0.8 * PV; v <= 1.1 * PV; v += PV / 200) ramp.push(at(v));
+  const mono = ramp.every((q, i) => !i || q >= ramp[i - 1]), jump = Math.max(...ramp.map((q, i) => i ? q - ramp[i - 1] : 0));
+  check('plasma shell: no glow from a hot climb at 1 km/s or at .85 PLASMA_V; full heat by 1.05 PLASMA_V; rises smoothly',
+    at(1041) === 0 && at(0.85 * PV) === 0 && Math.abs(at(1.05 * PV) - 7.7e4) < 1 && at(2600) === 7.7e4 && mono && jump < 7.7e4 * 0.05,
+    `PLASMA_V ${PV} · 1041 m/s ${at(1041)} · PLASMA_V ${at(PV).toFixed(0)} · 2600 m/s ${at(2600)} · largest step ${jump.toFixed(0)}`);
+  const blk = pg.slice(pg.indexOf('if(PLASMA_FX&&near)'), pg.indexOf('\n  // RCS:'));
+  check('plasma shell: the ship and debris draws are gated by plasmaHeat, not the bare heat flux',
+    (blk.match(/plasmaHeat\(/g) || []).length === 2 && !/qHeat>1\.5e4|g\.q>1\.5e4/.test(blk), blk.slice(0, 120));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

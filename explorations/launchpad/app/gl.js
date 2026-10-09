@@ -1133,6 +1133,10 @@ function drawFinTips(VP,camW,R,U){if(!FTR.size)return;const th=bodyTheta(TELLUS,
   const E=lightEnv(camW),u=PVTR.u;gl.useProgram(PVTR.p);gl.uniformMatrix4fv(u.uVP,false,VP);gl.uniform1f(u.uFc,FC);
   gl.uniform3fv(u.uLight,E.sun.map(x=>x*.45));gl.uniform3fv(u.uAmb,E.sky.map((x,i)=>x+E.gnd[i]));
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE_MINUS_SRC_ALPHA);gl.depthMask(false);gl.drawArrays(gl.TRIANGLES,0,n);gl.depthMask(true);gl.disable(gl.BLEND);gl.useProgram(PMESH.p)}
+// the glow's heat level: the stagnation flux, faded in by airspeed around PLASMA_V (terrain's blackout threshold, Q17).
+// Dense air on an ordinary climb reaches the flux at ~1 km/s (Mach 3.5, PLAYTEST #17) but is not hot enough to glow;
+// the shock layer lights up at orbital-class speeds. Fades over .85–1.05 PLASMA_V so the shell grows in, not pops.
+function plasmaHeat(b,r,v,q){const s=len(sub(v,surfVel(b,r))),x=clamp((s-.85*PLASMA_V)/(.2*PLASMA_V),0,1);return q*x*x*(3-2*x)}
 // the plasma for one body: S needs body, r, v, q, parts, cm, radius, yTop, yBot (the ship, or debrisGeo for a stage)
 function drawPlasma(VP,camW,S,p,qH,all){const va=sub(S.v,surfVel(S.body,S.r)),vl=len(va);if(vl>50){
   const f=mul(va,1/vl),k=clamp(Math.log(qH/1.5e4)/Math.log(1.6e5/1.5e4),0,1.5),Y=qrot(S.q,[0,1,0]),ca=Math.abs(dot(Y,f)),sa=Math.sqrt(Math.max(0,1-ca*ca)),
