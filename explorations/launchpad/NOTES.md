@@ -1479,7 +1479,7 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
-## v1.73 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
+## v1.74 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
 
 Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
 - `junkNote` (one call in `detach`, vehicle's `sim/vessel.js`): every piece a program flight drops is noted with its state,
@@ -1498,7 +1498,7 @@ Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In
 orbit is reached, upper stages left in orbit, and anything dropped on the way to Selene that stays in a closed orbit.
 
 Test `space-3` (3 checks; mutations caught: never noted, no orbit check, loud re-entry, no size floor, any flight's
-pieces). Full suite passes. TESTING row 147. Next: slice 2, conjunctions between flights (active entries only).
+pieces). Full suite passes. TESTING row 148. Next: slice 2, conjunctions between flights (active entries only).
 
 ## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
 
