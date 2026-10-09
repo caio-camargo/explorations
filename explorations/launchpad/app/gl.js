@@ -323,7 +323,7 @@ uniform mat4 uVP,uM;uniform float uFc;uniform vec4 uMv[48];out vec3 vN,vC,vP,vO,
 // plates (kind 6 beyond the ring radius), plate j by angle .[j] about its radial axis FIN4[j]; mode 3 a radial fin, .x
 vec3 rotA(vec3 v,vec3 a,float t){float c=cos(t),s=sin(t);return v*c+cross(a,v)*s+a*dot(a,v)*(1.-c);}
 vec3 qrv(vec4 q,vec3 v){return v+2.*cross(q.xyz,cross(q.xyz,v)+q.w*v);}
-void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5);
+void main(){vec3 P=aP,N=aN;int k=int(aK.x+.5)%32;
  if((k==2||k==6)&&aK.y>-.5)for(int j=0;j<16;j++){vec4 A=uMv[j*3],B=uMv[j*3+1],Q=uMv[j*3+2];if(B.x<.5||abs(A.w-aK.y)>.5)continue;vec3 d=P-A.xyz;
   if(B.x<1.5){if(k==2){P=A.xyz+qrv(Q,d);N=qrv(Q,N);}}
   else if(B.x<2.5){if(length(d.xz)>B.w){vec2 a=abs(d.x)>abs(d.z)?vec2(sign(d.x),0.):vec2(0.,sign(d.z));int i=a.x>.5?0:a.y>.5?1:a.x<-.5?2:3;
@@ -357,7 +357,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
- int k=int(vK.x+.5),pi=int(vK.y+.5);
+ int k=int(vK.x+.5),pi=int(vK.y+.5),sch=k/32;k-=32*sch;   // the part's hardware school rides in the kind (Q102)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
  vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;
@@ -370,6 +370,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    else if(h>1.5*sc){float dq=abs(fract(vU.x*2.+.5)-.5)*3.1416*R;blk=(1.-smoothstep(.09*sc,.09*sc+fs,dq))*paint;}   // two opposite stripes
    float ring=lin(v-b,1.25*sc,.006,fv)*paint,seam=lin(s-1.5708*R,6.2832*R,.004,fs)*paint,pan=hh(vec2(floor((v-b)/(1.25*sc)),3.))-.5;
    float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
+   if(sch==1)blk=0.;   // Steppe: no roll pattern (Q102)
    alb=mix(alb,vec3(.018),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));}
   else if(k==2){                                           // bell: regen tubes, heat tint toward the throat, a stiffener at the lip
@@ -436,13 +437,18 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    vec2 g=(side?vec2(s,v):vO.xz)/(.045*sc);g.x+=.5*floor(g.y);float fg=fp/(.045*sc);
    float cell=max(lin(g.x,1.,.06,fg),lin(g.y,1.,.06,fg));alb*=(1.-.5*cell)*(.75+.5*vn2(g*.3));rough=.95;}
   else if(k==12&&side){                                    // adapter: black roll quadrants on the cone, rivets on the flanges
-   float cone=band(v,.15*sc,1.35*sc,fv);blk=sqw(vU.x*2.,fu*2.)*cone;alb=mix(alb,vec3(.018),blk);
+   float cone=band(v,.15*sc,1.35*sc,fv);blk=sch==1?0.:sqw(vU.x*2.,fu*2.)*cone;alb=mix(alb,vec3(.018),blk);
    alb=mix(alb,vec3(.4),max(dots(s,v,.075*sc,.08*sc,.008*sc,fp),dots(vU.x*6.2832*.625*sc,v,1.425*sc,.07*sc,.008*sc,fp)));}
   else if(k==13){                                          // radial decoupler: hazard chevrons, bolts
    alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
   else if(k==14&&side){                                    // reinforcement collar: a bolt row
    alb=mix(alb,vec3(.6),dots(s,v,h*.5,.06,.01,fp));}
  }
+ // Steppe (Q102): grey-green enamel panel by panel, dark seams where Cape has its roll pattern; olive-tinted bells
+ if(uSeam>0.&&sch==1&&k>0){float wl=dot(alb,vec3(.3,.59,.11));
+  if(k!=2&&k!=15&&wl>.25){float pn=hh(vec2(floor(v/(1.3*sc)),floor(vU.x*8.)))-.5;alb=pow(vec3(.47,.54,.44),vec3(2.2))*(1.+.12*pn)*clamp(wl/.7,.6,1.1);
+   if(side)alb*=1.-.35*min(1.,lin(v,1.3*sc,.006,fv)+lin(s,6.2832*R/8.,.005,fs));rough=max(rough,.55);metal=0.;}
+  else if(k==2)alb*=vec3(.74,.84,.66);}
  // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
  // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
  // the side the air came from (all over on the shield); frost sits below the fuel line in patches that thin as it sheds;
@@ -885,7 +891,7 @@ const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
 const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
-  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k,PK.i)}
+  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0),PK.i)}   // the school rides in the kind (Q102)
 // surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
 function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
   const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
@@ -917,7 +923,18 @@ function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
-  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1};partBody(out,p);PK=PK0}
+  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch:partSchool(p)};partBody(out,p);PK=PK0}
+// ---- hardware schools (QUEUE Q102; NOTES § "Hardware schools in the game: the plan"). A part draws in its maker's school:
+// the seller's when it was bought abroad (sourceOf), else the program's. Built so far: Cape (0, today's look) and Steppe
+// (1); the other schools fall back to Cape until they get a look. A power's school is drawn once from POWERS.md's
+// affinity weights, seeded by the world and the power, so it never changes. SCHOOL_FORCE (tester, views) overrides.
+const SCHOOL_IDS={cape:0,steppe:1},SCHOOL_AFF={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},
+  rising:{arsenal:.4,mountain:.4,steppe:.2},frugal:{coastal:.5,mountain:.3,isle:.2},security:{arsenal:.6,steppe:.3,mountain:.1}};
+let SCHOOL_FORCE=null;
+function schoolOf(i){if(typeof POWERS==='undefined'||!POWERS[i])return 0;const aff=SCHOOL_AFF[typeof archOf==='function'?archOf(i):POWERS[i].arch];if(!aff)return 0;   // a resource state has none: its parts are its sellers'
+  const R=rng(WSEED*7907+i*131+17),x=R()*Object.values(aff).reduce((a,b)=>a+b,0);let acc=0;for(const k in aff){acc+=aff[k];if(x<acc)return SCHOOL_IDS[k]??0}return 0}
+function partSchool(p){if(SCHOOL_FORCE!=null)return SCHOOL_FORCE;try{const src=typeof sourceOf==='function'&&p.d?sourceOf(p.d.base||p.d.key):null;
+  return schoolOf(src&&src.how==='import'?src.from:HOME)}catch(e){return 0}}
 // an engine: the bell (exit → throat) gets kind 'bell' with R = its exit radius and h = the throat height; the rest is the
 // mount. Big engines carry a turbopump beside the throat, its exhaust duct running down into the bell wall.
 function engine(out,p,prof,o){let ti=0;for(let i=1;i<prof.length;i++)if(prof[i][0]<prof[ti][0])ti=i;const K=PK,[rt,yt]=prof[ti];
@@ -1113,7 +1130,7 @@ function setMarks(u,parts){MKA.fill(0);CHA.fill(0);for(const p of parts){const i
 // (p.fd, rad, about each plate's radial axis through mid-chord, the sim's sign). Up to 16; parts at rest are left out.
 const MVA=new Float32Array(48*4),BELL_YT=new Map();
 function bellThroat(d){let y=BELL_YT.get(d.key);if(y!=null)return y;const a=[],b=d.sc?PARTS[d.base]:d;partShape(a,{d:b,pos:[0,0,0],y0:0,h:b.h,i:0});y=0;
-  for(let i=0;i<a.length;i+=VX)if(a[i+14]===KIND.bell){y=a[i+13];break}y*=d.sc||1;BELL_YT.set(d.key,y);return y}
+  for(let i=0;i<a.length;i+=VX)if(a[i+14]%32===KIND.bell){y=a[i+13];break}y*=d.sc||1;BELL_YT.set(d.key,y);return y}
 function engMove(p){const g=p.gv;if(!g||Math.abs(g[0])+Math.abs(g[1])+Math.abs(g[2])<1e-5)return null;const t=p.tdir||[0,1,0],q=qFromTo(t,norm(add(t,g)));
   let pv=[p.pos[0],p.y0+bellThroat(p.d),p.pos[2]];if(p.tdir){const m=[p.pos[0],p.y0+p.h,p.pos[2]];pv=add(m,qrot(tiltQ(p.tdir),sub(pv,m)))}return{pv,q}}
 // an engine's exhaust frame (vessel coordinates): qt its tilt (null: straight down the axis), ex the nozzle exit. Follows
