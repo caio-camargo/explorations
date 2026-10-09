@@ -3386,6 +3386,32 @@ note shows only when a margin is negative; "Roll nothing" has no unit. test.mjs 
 the merged tree. Pushed with Caio's OK for this item. NOTES § v1.51.1.
 - [ ] Q29: re-run TESTING row 104 with the robot
 
+
+## 2026-10-08 — Launchpad v1.53: the ladder's balance (economy session, resumed in the new folder)
+
+### Summary
+- Resumed from `HANDOFF-economy.md` in worktree `launchpad-economy`. Took QUEUE Q8 / W1, the bodies session's balance note.
+- **Measured first:** Nyx orbits inside Selene's orbit, so the farside flight's slow transfer spends 22.7 h above the 1e-3
+  residual (fast ~18 h transfers: none), while high orbits get 8–52 h depending on radius. No threshold separates them.
+- **Nyx is found only by looking** (Caio): `R.nyxLook`, set at launch from `missionOpen(nyxfind)`, gates the tracking line
+  in `outThere`; the brief says so.
+- **Pay floor** (Caio): each first pays ≥ 1.3× the full cost (vehicle + ops, fresh) of the preset proven to fly it.
+  farside, selimp, nyxfind, nyxfly → 230; crewaround → 440. test.mjs §23 checks the floor for every Selene/Nyx mission.
+- Found: chained firsts complete on one flight (nyxfind's flight also earns nyxfly; lift1 + lift2). Left for Caio: QUEUE W9.
+
+### Files
+- `explorations/launchpad/index.html` (MISSIONS pays and nyxfind brief, launch line, `outThere` tracking line),
+  `test.mjs` §23 (2 checks), `NOTES.md` § v1.53 (+ a pointer in "The ladders, proven with real rockets"),
+  `TESTING.md` row 121, `QUEUE.md` (Q8 ✓, W1 answered, W9), `ACTIVE_WORK.md`
+
+### Verification
+`test.mjs`: all passed before the merge and 371 on the merged branch. `fly_ladder.mjs farside nyxfind`: farside no
+longer finds Nyx; nyxfind still flies (2.74 d).
+
+### Next steps
+- [ ] Caio: W9 (count a mission only on a flight launched while it was open?)
+- [ ] Economy: Q6 `siteAccess`, Q7 ballistic target, Q9 station/base/relay contracts (plan first), Q10 rover prices
+
 ## 2026-10-08 — Launchpad roadmap v1.1: pillars, systems closed, human playtest gate (roadmap session)
 
 ### Summary

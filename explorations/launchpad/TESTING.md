@@ -189,6 +189,7 @@ NOTES § "The robot playtester".
 | 92 | Get staged pay on a Selene mission | Far side mission flight | 20% on course / on arrival news appears at the right moment; mission list "(N paid)" clear | v1.44 | economy |
 | ~ 93 (robot) | Build ground stations at home and abroad | Program > Fleet > ground stations | Reason for refusal and lease costs clear; contact-time value understandable · *Robot: Fleet tab is empty until epoch 3; then stations list home 10M and abroad 20M + 2.0M/100 d, and Build opens one with news. Refusal reasons not seen.* | Ground stations | planning |
 | 94 | Use a camera satellite for imaging contracts and disasters | Camera + antenna sat in polar orbit; take image contracts | Waiting for daylight/clouds/downlink feels sensible; disaster offers arrive and are doable | Orbital registry | planning |
+| 121 | Look for Nyx, on purpose and by accident | Tester epoch 4: fly the far side on a slow transfer, then launch a probe with instruments and an antenna to a high orbit (~25,000 km) or toward Nyx | The farside flight doesn't find Nyx; the second flight weighs it after 12 h; the brief makes the "launched to look" rule findable and fair. Selene/Nyx firsts clear their rocket (230M on a ~175M Probe flight) | v1.53 | economy |
 
 ### UI & screens
 

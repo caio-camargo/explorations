@@ -1005,10 +1005,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `from 3 m: ${(s.touchV || 0).toFixed(1)} m/s, done; from 10 m: ${(hardV || 0).toFixed(1)} m/s, ${hardOK ? 'done (wrong)' : 'not counted'}`);
   // Nyx: weighed by tracking a craft where its pull matters (high orbit around Nyx's periapsis time)
   const P_N = 2 * Math.PI / NYX.n, tPe = (2 * Math.PI - NYX.orb.M0) / NYX.n + P_N, r30 = 3.0e7;
-  reset(['beeper', 'farside']); s = craft(['ant', 'sci', 't2', 'petrel'], TELLUS, [r30, 0, 0], [0, 0, -Math.sqrt(TELLUS.mu / r30)], tPe - 6 * 3600);
-  while (api.t < tPe + 10 * 3600 && !P.done.nyxfind) api.advRails(s, 600, 1000);
+  // economy: only a flight launched while nyxfind is open is tracked (rec.nyxLook, set at launch); craft() skips the
+  // launch, so first check the launch sets it, then fly the same high orbit unlooked (nothing found) and looked
+  const looks = done => { reset(done); api.t = 0; const L = api.newShip(['ant', 'sci', 't2', 'petrel']); api.S = L; L.landed = false; api.missionTick(L, 0, false); return !!L.rec.nyxLook; };
+  const lookOpen = looks(['beeper', 'farside']), lookShut = looks(['beeper']);
+  const highOrbit = look => { reset(['beeper', 'farside']); const c = craft(['ant', 'sci', 't2', 'petrel'], TELLUS, [r30, 0, 0], [0, 0, -Math.sqrt(TELLUS.mu / r30)], tPe - 6 * 3600); c.rec.nyxLook = look;
+    while (api.t < tPe + 10 * 3600 && !P.done.nyxfind) api.advRails(c, 600, 1000); return c; };
+  const blind = highOrbit(false), blindFound = !!P.done.nyxfind;
+  check('out there: Nyx is tracked only on a flight launched while "Something out there" is open (the farside flight can\'t find it in passing)', lookOpen && !lookShut && !blindFound && !blind.rec.nyxTrack,
+    `launch sets nyxLook: open ${lookOpen}, before farside ${lookShut}; same orbit unlooked: ${blindFound ? 'found (wrong)' : 'not found'}`);
+  s = highOrbit(true);
   check('out there: Nyx is weighed from tracking residuals (12 h where its pull is ≥ 1e-3 of Tellus\'s) and enters the logbook', !!P.done.nyxfind && !!P.log.nyx,
     `found after ${((s.rec.nyxTrack || 0) / 3600).toFixed(1)} h of tracking; logbook: ${P.log.nyx ? 'm/M ' + P.log.nyx.v.m.toExponential(2) : '—'}`);
+  // economy's pay floor: every epoch 4–5 first pays at least 1.3× the full launch cost (vehicle + operations, fresh program)
+  // of the preset proven to fly it (fly_ladder.mjs; the Crewed Lunar flight). NOTES "Nyx is found by looking; the pay floor"
+  { const full = pre => { const c = api.vesselCost(api.newShip(api.PRESETS[pre]).parts).cost; return c + api.OPS_FIX + api.OPS_FRAC * c; };
+    const VEH = { farside: 'Probe', selimp: 'Probe', selland: 'Probe', nyxfind: 'Probe', nyxfly: 'Probe', nyxorb: 'Probe', nyxland: 'Probe', selsample: 'Sample Return', crewaround: 'Crewed Lunar', crewland: 'Crewed Lunar' };
+    const low = Object.entries(VEH).map(([id, pre]) => [id, api.MISSIONS.find(m => m.id === id).pay / full(pre)]).filter(([, x]) => x < 1.3);
+    check('economy: every Selene and Nyx first pays at least 1.3× the full cost of the rocket proven to fly it', !low.length,
+      low.length ? low.map(([id, x]) => `${id} ${x.toFixed(2)}×`).join(', ') : `Probe ${full('Probe').toFixed(0)}M, Sample Return ${full('Sample Return').toFixed(0)}M, Crewed Lunar ${full('Crewed Lunar').toFixed(0)}M`); }
   // an orbit that lasts: retrograde survives two Nyx orbits, prograde is wrecked
   const tAp = (Math.PI - NYX.orb.M0) / NYX.n, [mA, vA] = bodyRel(NYX, tAp), hn = norm(cross(mA, vA)), ux = norm(mA), uy = cross(hn, ux), rr = NYX.R + 200e3;
   const orbitNyx = dir => { reset(['beeper', 'farside', 'nyxfind', 'nyxfly']); P.log.nyx = { v: { m: 1, pe: 1, ap: 1 } }; const c = craft(['sci', 't2', 'petrel'], NYX, mul(ux, rr), mul(uy, dir * Math.sqrt(NYX.mu / rr)), tAp);

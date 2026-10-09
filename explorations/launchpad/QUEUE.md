@@ -79,12 +79,11 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ready |
 | Q6 | **`siteAccess(site)` → {ok, why, fee}** and `R.site` | M1 | M | ⚙ | ready |
 | Q7 | Ballistic contract target from the flight's site (still `rg/600` from +X) | M1 | S | ⚙ | ready |
-| Q8 | selimp/nyxfind pay above the cheapest proven Probe; nyxfind stays free (W1 default) | M1 | S | ⚙ | ready |
+| Q8 | Ladder balance: Selene/Nyx firsts above their rocket; nyxfind not free on the farside flight (Caio overrode the W1 default) | M1 | S | ⚙ | ✓ economy v1.53 (Nyx found only by looking; pay floor 1.3×) |
 | Q45 | Every offer says **why it appeared**, in one line | M1 | S | ⚙ | ready |
 | Q46 | Dry runs as the trajectory office's study: a `procAdopt(stack)` button (days, price), a wider estimate for `prov`, the measured margin cached | M2 | S | ⚙ | ready |
 | Q10 | Rover part prices and era gates; price R4's science contracts (NOTES § R4) | M2 | S | ⚙ | ready |
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
-
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
 Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control` (branch `control`, port 8796).
 | # | Item | M | Size | Load | State |
@@ -164,7 +163,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 
 | # | Question | Default |
 |---|---|---|
-| W1 | nyxfind free on a Selene flight? | Keep it free; raise selimp/nyxfind pay above the cheapest Probe (→ Q8) |
+| W1 | nyxfind free on a Selene flight? | **Overridden by Caio 2026-10-08:** only a flight launched while nyxfind is open tracks Nyx; every Selene/Nyx first pays ≥ 1.3× its proven rocket (NOTES v1.53, Q8 ✓) |
 | W2 | Satellite lifetimes? | Yes, a fuel lifetime; at zero the service pauses, never dies (→ Q50) |
 | W3 | Flights from orbit: fee and contracts? | A reduced ops fee; may complete orbit contracts accepted before that flight |
 | W4 | Selene firsts in the race? | Yes, rivals no earlier than epoch 4; re-run the v1.28 balance |
@@ -179,6 +178,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | W8 | Hands-on: TESTING rows 100, 108–120 and the robot's `~` rows; Q54 gives you a route | M1's human playtest |
 | W9 | Edit the pillars (ROADMAP § Pillars, a draft) | what sessions may turn down |
 | W10 | Pick a freeze window for the file split, once Q58's plan is written | Q59 |
+| W11 | Should a mission count only on a flight launched while it was open? Today chained firsts complete together: the nyxfind flight also earns nyxfly (460M on one Probe), and a 2 t flight earns lift1 + lift2 | economy balance |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 
