@@ -1699,7 +1699,7 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
-## v1.80 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
+## v1.81 — debris, slice 2: conjunctions between flights (2026-10-09, space session, QUEUE Q146)
 
 Slice 2 of § "Plan: debris and Kessler". `conjTick` runs at the end of `orbTick` (each `advanceDays`), Tellus orbits only.
 - **Who meets whom:** big objects (Debris) against active entries (everything else in Tellus orbit), never object against
