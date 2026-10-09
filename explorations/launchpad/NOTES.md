@@ -8457,7 +8457,8 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/program.js` | 643 | missions, budget, calendar, tester menu, out there, staged pay, powers, industry, know-how, stand, development, facilities, compute, timeline, dispatch, deviation, production | economy |
 | `sim/atlas.js` | 40 | the atlas grid | world |
 | `sim/contracts.js` | 243 | contracts, sanctions, the race, ownership, decisions | economy |
-| `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS | space |
+| `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS; since v1.60: station-keeping, decay, debris (objects, conjunctions, fragment bands), missions in flight, planned burns | space |
+| `sim/system.js` | 40 | the star system on paper (v1.94): `SYSTEM_BODIES`, `TU`, the ecliptic, `helioPos`, `fromTellus` | space |
 | `sim/logbook.js` | 49 | the logbook, tools gated by it | economy |
 | `sim/debrief.js` | 40 | the flight's debrief record (`debSnap`, `debriefOf`, `debPaid`) | flow |
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |

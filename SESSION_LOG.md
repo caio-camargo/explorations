@@ -4628,3 +4628,32 @@ Caio left the session running ("keep going while you still have work"). Built, e
 - [ ] Caio: W22–W28 (defaults stand if silent); TESTING rows 128–171 (economy's)
 - [ ] Economy: Proposed slices (crew slice 1–2, Q9 slice 4, Q96's slice, Q110 slice 1) once ranked
 
+## 2026-10-09 — Launchpad v1.91–v1.94: missions in flight on the timeline, planned burns, payloads, the system on paper (space session, unattended)
+
+### Summary
+- Q49 slice 2 (v1.91): cruise events on the economy's timeline; atmosphere and impact always stop time (impact 3 h
+  ahead); a moon's sphere and the closest approach there stop it once per vessel and body.
+- v1.92: a dispatched flight's payload stays up (a satellite, or in flight).
+- Q166, Q49 slice 3 (v1.93): planned burns travel with the vessel; each stops time 3 h ahead; mission control flies it
+  with the era's error (5 / 2 / 0.2 %) from the tanks; missed ones are dropped; a burn out of orbit puts it in flight.
+- Q51 plan (data as a volume, the link budget, relays as nodes) and Q87 plan (the system on rails: Helios as the root
+  with the absolute frame kept on Tellus) in NOTES, slices proposed.
+- Q87 slice 1, sim half (v1.94): `sim/system.js`, the planets from SYSTEM.md where they really are (TU 15.78 Gm from
+  the 400-day year; the ecliptic 23° to the equator, turned so day 0's sun is the renderer's). The map drawing is flow's.
+
+### Verification
+- New tests `space-9`, `space-10`, `space-11`; `bodies-2` restores the registry between its two runs. Full suite 605
+  pass / 0 fail on `main` as pushed (`fd613d8`); `career.mjs` unchanged.
+- Merges: QUEUE/ACTIVE_WORK conflicts now resolved row by row (a row keyed by its first cells; keep our change, take
+  theirs where we didn't touch it); NOTES pure insertions by union. Slip: a close-out script failed mid-way and the
+  unchained commit after it pushed a partial change (`7b3fb42`, completed in `e631dcc`); close-outs are chained since.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, new `sim/system.js` (+ its script tag in `index.html`), `sim/program.js`
+  (two lines in `upcoming()`, one in `advanceTo`, flagged), `sim/procedures.js`, `app/program-ui.js`, `test.mjs`,
+  `NOTES.md` (v1.91–v1.94, two plans, the file map), `QUEUE.md`
+- `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Flow: draw the planets on the map (Q87 slice 1's drawing)
+- [ ] Space: Q51 slice 1 (`pathHome`), once ranked; "Let it go" for an atmosphere entry (flown headless)

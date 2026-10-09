@@ -388,3 +388,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W28 | **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- flow — Q87 slice 1, the drawing: the planets on the map's zoomed-out view from epoch 1, discs and labels at `fromTellus(name, T)` (and Helios), colours from `SYSTEM_BODIES` (PLAYTEST #11); the sim half is in (v1.94, `sim/system.js`) — space
