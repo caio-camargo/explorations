@@ -3367,7 +3367,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     return q; };
   const R = T.R, low = reg(R + 300e3, 0), nav = reg(R + 3000e3, 60), stat = reg(D.STAT_R, 0), k = q => D.slotRate(q);
   check('station-keeping: holding an orbit costs what the tides pull, nothing in low orbit, ~0.2–0.4 m/s a day at 3,000 km, ~0.3–0.5 stationary (study_slot.mjs)',
-    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5 && D.skLife(low) === Infinity,
+    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5,
     `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day`);
   // a stationary satellite with tanks for 100 m/s holds its rails for ~250 days; one with 4 days' worth goes adrift on day 4
   P.sats = []; news.length = 0; const held = reg(D.STAT_R, 0, 100), short = reg(D.STAT_R, 0, 4 * k(held)), none = reg(D.STAT_R, 0, 0);
@@ -3388,6 +3388,44 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('station-keeping: around Selene, a polar orbit the tide would pull into the ground holds while its tanks last',
     P.sats.includes(sq) && sq.epoch === sep && sq.adrift == null && D.skDv(sq) < dv0 && !news.some(m => /came down/.test(m)),
     `${D.slotRate(sq).toFixed(2)} m/s a day; ${(dv0 - D.skDv(sq)).toFixed(0)} of ${dv0.toFixed(0)} m/s spent in 45 days`);
+}
+
+// space-2. Orbital decay (space session, QUEUE Q25): above the flight's air a thin upper atmosphere (Vallado's exponential
+// table) drags on low orbits between flights. A satellite with propellant pays to hold its orbit (with Q50's tides); a dry
+// one sinks on its rails (orbit-averaged drag, study_decay.mjs) and re-enters when its periapsis reaches the air's top.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,thinAir,dragK,dragRate,holdRate,decayLife,decayStep,skDv,skLife,TELLUS,PROG,HOOK,DAY_S,len,add,mul};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R; P.sats = []; P.day = 0;
+  // a Probe left in a circular equatorial orbit at alt, its tanks emptied unless keep
+  const reg = (alt, keep = false) => { const s = D.newShip(D.PRESETS.Probe), a = R + alt, vc = Math.sqrt(T.mu / a);
+    Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -vc] }); D.satRegister(s, { day0: P.day }); const q = P.sats.at(-1);
+    if (!keep) for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+    return q; };
+  const ok1 = Math.abs(D.thinAir(200e3) / 2.789e-10 - 1) < 1e-9 && D.thinAir(99e3) === 0 && D.thinAir(150e3) < D.thinAir(140e3);
+  const lo = reg(200e3), hi = reg(700e3), K = D.dragK(lo), L = D.decayLife(lo);
+  check('decay: the upper air thins with height; a dry Probe at 200 km has a lifetime of tens of days, one at 700 km lasts',
+    ok1 && K > 0.005 && K < 0.05 && L > 10 && L < 200 && D.decayLife(hi) === Infinity, `Cd·A/m ${K.toFixed(4)} m²/kg; life at 200 km ${L.toFixed(1)} days`);
+  const pe0 = D.elements(lo.r, lo.v, T.mu).pe, hr0 = hi.r.slice(), hv0 = hi.v.slice();
+  D.advanceDays(Math.floor(L / 2)); const pe1 = D.elements(lo.r, lo.v, T.mu).pe, L1 = D.decayLife(lo), hiMoved = Math.abs(D.elements(hi.r, hi.v, T.mu).pe - D.elements(hr0, hv0, T.mu).pe);
+  D.advanceDays(Math.ceil(L - Math.floor(L / 2)) + 1);
+  check('decay: dry, it sinks on its rails as predicted, is warned about, and re-enters; the high one barely feels it',
+    pe1 < pe0 - 5e3 && Math.abs(L1 - (L - Math.floor(L / 2))) < 0.05 * L + 0.5 && !P.sats.includes(lo) && P.sats.includes(hi) && hiMoved < 100 &&
+    news.some(m => m.startsWith(lo.name) && /within/.test(m)) && news.some(m => m.startsWith(lo.name) && /re-entered/.test(m)),
+    `periapsis ${((pe0 - R) / 1e3).toFixed(0)} → ${((pe1 - R) / 1e3).toFixed(0)} km by day ${Math.floor(L / 2)}; life then ${L1.toFixed(1)} (expected ${(L - Math.floor(L / 2)).toFixed(1)}); 700 km periapsis moved ${hiMoved.toFixed(2)} m; news: ${news.filter(m => m.startsWith(lo.name)).join(' / ')}`);
+  // with its tanks, it holds: on its rails, paying the drag
+  P.sats = []; news.length = 0; P.day = 0; const held = reg(200e3, true), ep = held.epoch, dv0 = D.skDv(held), g = D.dragRate(held);
+  D.advanceDays(30);
+  check('decay: with propellant it holds its orbit, paying what the drag takes, and says how long that lasts',
+    P.sats.includes(held) && held.epoch === ep && held.adrift == null && Math.abs(dv0 - D.skDv(held) - 30 * D.holdRate(held)) < 0.05 * 30 * g && g > 0 && D.skLife(held) < Infinity,
+    `${g.toFixed(3)} m/s a day; ${(dv0 - D.skDv(held)).toFixed(2)} m/s in 30 days; ${D.skLife(held).toFixed(0)} days left`);
+  // the averaged rails against a direct RK4 with the same drag (no tides), 150 km down to 130 km
+  { const q = reg(150e3), K2 = D.dragK(q), a0 = R + 150e3; let r = [a0, 0, 0], v = [0, 0, -Math.sqrt(T.mu / a0)], t = 0; const h = 2, { add, mul, len } = D;
+    const acc = (r, v) => { const rl = len(r), vl = len(v), f = 0.5 * D.thinAir(rl - R) * vl * K2; return add(mul(r, -T.mu / rl ** 3), mul(v, -f)); };
+    while (D.elements(r, v, T.mu).pe > R + 130e3) { const a1 = acc(r, v), r2 = add(r, mul(v, h / 2)), v2 = add(v, mul(a1, h / 2)), a2 = acc(r2, v2), r3 = add(r, mul(v2, h / 2)), v3 = add(v, mul(a2, h / 2)), a3 = acc(r3, v3), r4 = add(r, mul(v3, h)), v4 = add(v, mul(a3, h)), a4 = acc(r4, v4);
+      r = add(r, mul(add(add(v, mul(v2, 2)), add(mul(v3, 2), v4)), h / 6)); v = add(v, mul(add(add(a1, mul(a2, 2)), add(mul(a3, 2), a4)), h / 6)); t += h; }
+    q.epoch = 0; q.r = [a0, 0, 0]; q.v = [0, 0, -Math.sqrt(T.mu / a0)]; let tr = 0; while (D.elements(q.r, q.v, T.mu).pe > R + 130e3) { tr += 600; D.decayStep(q, tr); }
+    check('decay: the averaged rails agree with a direct integration of the drag (150 → 130 km) to a few percent', Math.abs(tr / t - 1) < 0.05, `direct ${(t / 3600).toFixed(1)} h, rails ${(tr / 3600).toFixed(1)} h`); }
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
