@@ -3435,6 +3435,23 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${D.slotRate(sq).toFixed(2)} m/s a day; ${(dv0 - D.skDv(sq)).toFixed(0)} of ${dv0.toFixed(0)} m/s spent in 45 days`);
 }
 
+// qa-2. The tester's "go to body" view (QA session, QUEUE Q79): its catalogue holds every SYSTEM.md body with the
+// radius and tilt SYSTEM.md gives, render() hands it the frame, and the tester menu and views.js reach it.
+{
+  const bv = readFileSync(new URL('./app/bodyview.js', import.meta.url), 'utf8').replace(/\r\n/g, '\n');
+  const CAT = new Function(bv.slice(bv.indexOf('const BODY_CAT='), bv.indexOf('];', bv.indexOf('const BODY_CAT=')) + 2) + 'return BODY_CAT')();
+  const sys = readFileSync(new URL('./SYSTEM.md', import.meta.url), 'utf8'), num = s => +s.replace(/,/g, '');
+  const want = {}; for (const m of sys.matchAll(/^### (\w+)[^\n]*\n- \*\*Physical:\*\* R ([\d,]+) km[^\n]*?(?:tilt (?:\*\*)?(\d+)°)?/gm)) want[m[1]] = {R: num(m[2]) * 1e3, tilt: m[3] != null ? +m[3] : null};
+  for (const m of sys.matchAll(/\*\*(\w+)\*\* \([^)]*\): R ~?([\d,]+) km/g)) want[m[1]] = {R: num(m[2]) * 1e3, tilt: null};
+  for (const m of sys.matchAll(/\*\*(Pavor|Metus)\*\* \(R ~(\d+) km\)/g)) want[m[1]] = {R: +m[2] * 1e3, tilt: null};
+  const bad = Object.entries(want).filter(([k, w]) => { const c = CAT.find(b => b.name === k); return !c || Math.abs(c.R - w.R) > 1 || (w.tilt != null && c.tilt !== w.tilt); }).map(([k]) => k);
+  check('go to body: every SYSTEM.md body is in the catalogue with its radius and tilt', Object.keys(want).length >= 11 && !bad.length && CAT.length === Object.keys(want).length,
+    `${Object.keys(want).length} in SYSTEM.md (${Object.keys(want).join(', ')}), ${CAT.length} in the catalogue; mismatched: ${bad.join(', ') || 'none'}`);
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  check('go to body: render() hands over the frame first; the tester menu and refView(200 + 3·i + k) open it',
+    /function render\(\)\{\n\s*if\(self\.bodyViewDraw&&self\.bodyViewDraw\(\)\)return;/.test(pg) && /data-test-body=/.test(pg) && /bodyViewOpen\(d\.testBody/.test(pg) && /n >= 200 && typeof BODY_CAT/.test(vj) && /bodyViewClose\(\)/.test(vj));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

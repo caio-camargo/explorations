@@ -113,6 +113,7 @@ function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mo
     +[...new Set(MISSIONS.map(M=>M.ep))].map(n=>`<div class="sub">Epoch ${n}</div>`+MISSIONS.filter(M=>M.ep===n).map(M=>`<label><input type="checkbox" data-test-mis="${M.id}"${PROG.done[M.id]?' checked':''}${dis}> ${M.name}</label>`).join('')).join('')
     +`</details>`
     +(fl?'<div class="sub">Epoch, date, era, funds and missions wait until the flight is over.</div>':'')
+    +`<h3>Go to body</h3><div>${BODY_CAT.map(b=>`<button data-test-body="${b.name}"${dis}>${b.name}</button>`).join('')}</div><div class="sub">SYSTEM.md's bodies drawn alone, placeholder looks (Q79). Esc comes back.</div>`
     +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
     +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
     +`${act('leave','Leave tester mode')}`}
@@ -125,6 +126,7 @@ document.addEventListener('click',e=>{const d=e.target.dataset||{};if(!TEST.on)r
   if(e.target.id==='testerBadge'){ovToggle('tester');return}
   if(d.testEp){testEpoch(+d.testEp);HOOK.msg(`Tester: epoch ${d.testEp}`);testDone();return}
   if(d.testDay){testAdvance(+d.testDay);testDone();return}
+  if(d.testBody){ovClose('tester');bodyViewOpen(d.testBody,1);return}
   if(d.testEra){const ok=testEra(+d.testEra);HOOK.msg(ok?`Tester: ${COMP_ERAS[compEra()].name.toLowerCase()}, ${fmtDate(PROG.day)}`:"Tester: that era doesn't reach this program within 60 years");testDone();return}
   const a=d.testAct;if(!a)return;
   if((a==='copy'||a==='fresh')&&testArm!==a){testArm=a;renderTester();return}testArm=null;

@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.18 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.19 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -221,5 +221,6 @@ NOTES § "The robot playtester".
 | ✓ 100 (robot) | Exercise every tester menu control | `index.html?tester`, F2: each toggle, epoch 1–5, date jumps, finish jobs, copy career in, wipe | Each does what it says; career save untouched; epoch picker leaves a playable state · *Robot: each flag toggles and persists; epochs 5/3/1/4 set the mission set; date +1/+10/+100/+1 year (400 d in 15 ms); jobs finish; Fresh asks twice; epoch/date disabled in flight; the career save untouched.* | Tester menu | tester |
 
 | 126 | Use the new tester controls: go to a day (forward and back), set funds, skip to a computing era, tick missions one by one | `index.html?tester`, F2 | Each does what its line says; going back a few days leaves a playable program; an era skip lands on the era's first day with its news; ticking a mission opens the next one in the Missions tab | Q16 | QA |
+| 134 | Look at every SYSTEM.md body in the tester's "go to body" view | `index.html?tester`, F2 → Go to body; ◀ ▶ for the next body, 1 2 3 for near / whole disc / far, drag to turn, Esc back; or `refView(200 + 3·i + k)` | Sizes and tilts read right (Hyperion's rings open at 27°, Hesper upside down at 177°, Erebus on its side); the rings shade the planet and the planet shades the rings. The colours are placeholders: judge the shapes, not the looks (Q80–Q85) | Q79 | QA |
 
-Next free number: **134** (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **135** (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
