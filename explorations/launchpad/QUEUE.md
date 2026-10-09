@@ -117,7 +117,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
 | Q112 | PLAYTEST #28 (P2): staged pay goes to a mission nobody flew (a craft already at the body collects shares as missions unlock). **Holds M0: take first** | M1 | S | ⚙ | ✓ v1.74 `029df7a` (`R.open0`: shares only for missions open at launch) |
-| Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | ready |
+| Q118 | Re-run `career.mjs` PACE/FAILFIRST after v1.55: does a prudent player still reach first orbit in the intended flights, with one failure? (M1's finish line) | M1 | S | ⚙ | → economy 2026-10-09 |
 | Q144 | `career.mjs` `passOrbit`'s stack (bio, pod, shield, no decoupler) would bury its shield in real physics: fix the stack (NOTES § v1.73) | M1 | S | ⚙ | ready |
 | Q5 | PLAYTEST **#21**: settle `missionEnd` when leaving a finished flight | M0 | S | ⚙ | ✓ fixes (`ae3d4aa`) |
 | Q44 | **Epoch 1–2 pacing for a new player** (`career.mjs`: flights and days to first orbit; nothing unaffordable after one failure) | M1 | M | ⚙ | ✓ measured `d6792f2`: ~5 flights to orbit, but one failed orbit attempt breaks it → **W12** |
@@ -131,7 +131,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q9 | Station, base, relay and rendezvous contracts | M2 | L | 📝 | ready (plan first) |
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
-| Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | → economy 2026-10-09 |
+| Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
 | Q126 | **Replacement for upgrades**: service quality by the satellite's era (obsolescence); servicing contracts only for valuable assets; check TV's daily pay (v1.71: the capital sees it all day, tilt free) against it — MIDGAME.md § Satellites | M2 | M | ⚙ | ready |
 | Q130 | The career runner flies rovers (a Selene science program): measure v1.66's rover prices and R4 pay against income | M2 | S | ⚙ | ready |
 | Q123 | 📝 **Money buys capacity**: pads, sites and yards dearer as you grow; hardware as the late money sink; late revenue ([`LATE_GAME.md`](LATE_GAME.md) § Money) | M4 | M | 📝 | ready (plan only) |
