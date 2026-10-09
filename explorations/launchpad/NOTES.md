@@ -1369,6 +1369,43 @@ the floor waited for ever. It now learns the average refund per kind of flight f
 The frugal company's grind (cheap work that doesn't pay in a poor world) is a second, smaller problem: contract
 pay floors by world. A follow-up under *Proposed*.
 
+## v1.54 — the ground of every body, slice G1: the layer, no new relief (2026-10-08, world session)
+
+The first slice of [`GROUND.md`](GROUND.md) (QUEUE Q86 + Q18's plan). Every "is this Tellus?" test of the ground is now a
+lookup of the body's **`ground` recipe**, so Selene, Nyx and the SYSTEM.md bodies can get relief with no further edits to
+the physics. Nothing changes in play: Tellus is as before, and every other body is still a smooth sphere.
+
+- **The recipe** (`sim/world.js`, before `groundAlt`): `b.ground = {gen, top, sea}`. `gen` names a height function in
+  `GROUND_GEN` (metres above `b.R` at a planet-fixed point), `top` bounds it from above, and `sea` is an optional
+  liquid level: what comes down below it floats. No recipe means a smooth sphere. `TELLUS.ground = {gen:'tellus',
+  top:TERR_TOP, sea:0}`.
+- **New:**
+  - `bodyH(b, pf)`: the solid ground, sea floor included;
+  - `bodyTop(b)`;
+  - `seaAt(b, pf)`;
+  - `groundAlt` is now `max(sea, bodyH)` when the recipe has a sea, `bodyH` otherwise. That allows ground below `b.R`
+    (crater floors).
+- **Now dispatched:**
+  - `terrainSlope` and `groundNormal` (and `b.R` instead of `TELLUS.R`);
+  - the sea checks in contact and splashdown (`seaAt`), and the rover's spot check;
+  - the early-outs in `groundContact`, `groundCheck`, debris and `fall` (`bodyTop(b)` instead of `TERR_TOP`);
+  - `MOON_PE`, now a margin above the moon's `bodyTop`;
+  - the camera clamp and the ship's shadow plane (app/render.js).
+- **Left on purpose:**
+  - `surfaceAt` (the moons' `SURF_MOON`) and the biome code: G2 gives recipes their own surfaces.
+  - The radar readout's 20 km band (`TERR_TOP + 20000`, UI only).
+  - The shader: G3.
+
+**Tests:** `ground-1`, 3 checks:
+- neutral: Tellus's ground matches `terrainH` clamped at the sea at 2,000 points, and every other body is a sphere;
+- live: a test recipe on Selene (a 500 m plateau rising north at 20°) holds a pod at 500.00 m, and reads 20.00° as slope
+  and as the normal's tilt;
+- a recipe's liquid level.
+Three mutations (a Tellus-only `groundNormal` or `terrainSlope`, a contact early-out without `bodyTop`) each fail it.
+Full suite: 436 pass, 0 fail.
+
+**Next:** G2, Selene's baked map and crater bands on the CPU (GROUND.md § Slices).
+
 ## v1.53 — the ladder's balance: Nyx is found by looking; the pay floor (2026-10-08, economy session)
 
 This answers the bodies session's note in "The ladders, proven with real rockets" (QUEUE Q8, W1). Both choices were Caio's.

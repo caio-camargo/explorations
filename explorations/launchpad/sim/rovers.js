@@ -178,7 +178,7 @@ function rvDeployCheck(s,p){const d=p.dn&&p.dn.rvd;if(!rvPacked(p)||!d)return{ok
   const b=s.body,u=norm(s.pf),Ul=qrot(s.qLocal,[0,1,0]),tilt=Math.acos(clamp(dot(Ul,u),-1,1))*180/Math.PI;
   if(tilt>RV_TILT)return{ok:false,why:`the lander leans ${tilt.toFixed(0)}° (deploying needs under ${RV_TILT}°)`};
   const P0=rvProbe(b,s.pf),gp=mul(u,rvGroundR(P0,s.pf)),hor=v=>norm(sub(v,mul(u,dot(v,u)))),st=rvStats(d),X=b===TELLUS?st.T:st.S,sLim=Math.min(20,X.tipSide-15);
-  const spotWhy=(spot,what)=>{const P=rvProbe(b,spot);if(b===TELLUS&&terrainH(spot)<0)return`the sea where it would ${what}`;
+  const spotWhy=(spot,what)=>{const P=rvProbe(b,spot);if(seaAt(b,spot))return`the sea where it would ${what}`;
     const sl=rvSlopeAt(P,spot,G.C.L/2);if(sl>sLim)return`the ground where it would ${what} slopes ${sl.toFixed(0)}° (it needs under ${sLim.toFixed(0)}°)`;
     if(rvRock(P,spot))return`a rock where it would ${what}`;return''};
   const fr=rvFootR(s);
