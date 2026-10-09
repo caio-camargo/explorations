@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.10 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1320,6 +1320,29 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.56 — who may launch where: siteAccess (2026-10-08, economy session, QUEUE Q6)
+
+The terrain session's launch gate (`siteAccessOf`, `sim/world.js`) now finds economy's **`siteAccess(site)` → `{ok, why,
+fee, how}`** in `sim/program.js`:
+- **our sites:** free;
+- **a sea platform:** open to anyone, `SEA_FEE` = 4M a launch (a service);
+- **a consortium member's site:** shared, free;
+- **any other power's site:** leased, `LEASE` = 6M × (1 − ½ relation): 3M with the best friends, 6M at neutral,
+  refused below relation −0.25 (`LEASE_REL`), and closed while that power sanctions the program (or home does);
+- **nobody's land** (`power` null, not sea): refused, there is nobody to lease it from.
+
+**Charged at launch** on `missionTick`'s launch line with hardware and operations; the record keeps `R.site` (the id)
+and `R.siteFee`. The debrief lists *Site lease*, and now also *Sponsor covers the failed attempt* (v1.55's `R.cover`).
+Two lines in `app/editor.js` (flagged for vehicle/flow): the over-budget check counts the fee, and the picker shows how
+you'd use the site and the fee ("leased from X: 6M a launch"). Test `econ-2` (6 checks, mutation-tested).
+
+**Not yet:**
+- dispatched flights (`orderDispatch`) don't charge a lease: procedures fly from where they were recorded; when a
+  procedure's site is abroad, charge it there;
+- overflight politics (`site.downrange.over`), westward launches, sites closed by a war (relations already cover the
+  slow version), a lease line on budget day for a standing lease;
+- contracts that name a site (Q7 is next: the ballistic target from the flight's site).
 
 ## v1.55 — a failed attempt at the next step is mostly covered (2026-10-08, economy session, W12)
 
