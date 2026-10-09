@@ -4,7 +4,7 @@
 // ============================================================ render
 let W=1,H=1;
 // ---- adaptive resolution: GPU timer queries (async, never stall) drive a render-scale multiplier
-const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0;
+const TQ=gl.getExtension('EXT_disjoint_timer_query_webgl2'),tqPending=[];let tqCur=null,gpuMs=null,RS=1,rsT=0,slowAvg=0,RS_MAX=1;   // RS_MAX: the graphics quality's resolution cap (Settings, flow)
 const GPU_NAME=(()=>{const e=gl.getExtension('WEBGL_debug_renderer_info');const r=e?gl.getParameter(e.UNMASKED_RENDERER_WEBGL):gl.getParameter(gl.RENDERER);
   const m=/ANGLE \([^,]*, ([^(,]*?)\s*(\(|,|Direct|$)/.exec(r);return (m?m[1]:r).replace(/(NVIDIA|AMD|Intel\(R\)) /,'$1 ').trim()})();
 function gpuTimerBegin(){if(!TQ)return;if(tqPending.length<4){tqCur=gl.createQuery();gl.beginQuery(TQ.TIME_ELAPSED_EXT,tqCur)}else tqCur=null}
@@ -13,7 +13,7 @@ function gpuTimerEnd(){if(!TQ)return;if(tqCur){gl.endQuery(TQ.TIME_ELAPSED_EXT);
     if(!gl.getParameter(TQ.GPU_DISJOINT_EXT)){const ms=gl.getQueryParameter(q,gl.QUERY_RESULT)/1e6;gpuMs=gpuMs==null?ms:gpuMs*.85+ms*.15}gl.deleteQuery(q)}}
 function adaptRes(dtR){ // keep GPU under ~7 ms (or, without timers, frames under ~22 ms)
   const load=gpuMs!=null?gpuMs/7:dtR*1000/22;slowAvg=slowAvg*.9+load*.1;rsT+=dtR;if(rsT<0.6)return;rsT=0;
-  if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<1)RS=Math.min(1,RS*1.12)}
+  if(slowAvg>1.05&&RS>0.35)RS=Math.max(0.35,RS*0.82);else if(slowAvg<0.55&&RS<RS_MAX)RS=Math.min(RS_MAX,RS*1.12)}
 function render(){
   gpuTimerBegin();
   const dpr=Math.min(devicePixelRatio||1,1.5)*RS,w=Math.round(innerWidth*dpr),h=Math.round(innerHeight*dpr);

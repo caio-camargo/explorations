@@ -55,6 +55,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 .ovl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-height:84vh;overflow:auto;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px;box-shadow:0 10px 40px #000a;backdrop-filter:blur(6px)}
 .ovl .x{float:right;cursor:pointer;color:var(--dim)}.ovl h2{margin-top:0}
 #help{width:min(440px,92vw)}#help td:first-child{color:var(--acc);white-space:nowrap;padding-right:10px;vertical-align:top}#help td:last-child{text-align:left}#help h3{margin:8px 0 2px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:normal}
+#settings{width:min(360px,92vw)}#settings h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#settings label{display:block;margin:3px 0}#settings button{margin:2px 4px 2px 0}#settings button.on{border-color:var(--acc);color:var(--acc)}
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
 #tester{width:min(400px,92vw)}#tester h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#tester label{display:block;margin:2px 0}
@@ -70,6 +71,8 @@ body.noperf #perf{display:none}
 #debHead{flex:1}#debHead .dt{color:var(--acc);font-size:12px}#debBody{overflow:auto;padding:4px 2px;min-height:160px;columns:2 340px;column-gap:28px}#debBody .none{color:var(--dim);padding:20px 0}
 .dsec{break-inside:avoid;margin-bottom:4px}.dh{color:var(--acc);font-size:11.5px;margin-top:10px}#debBody td:last-child{text-align:right;white-space:nowrap;padding-left:10px}.dnet td{font-weight:bold;border-top:1px solid var(--line);padding-top:2px}
 .dout{column-span:all;margin:10px 0 4px;padding:4px 10px;border-left:3px solid var(--line);font-size:14px}.dout.k-orbit,.dout.k-landed,.dout.k-away{border-left-color:var(--ok)}.dout.k-lost{border-left-color:var(--bad)}.dout.k-flying{border-left-color:var(--warn)}.dout.k-escape{border-left-color:var(--acc)}
+#progBody .nw{font-size:11.5px;margin:2px 0;padding-left:8px;border-left:2px solid transparent;color:var(--dim)}#progBody .nw.new{border-left-color:var(--acc);color:var(--fg)}
+#progNext{margin:10px 0 0;padding:5px 10px;border-left:3px solid var(--acc);background:rgba(127,209,255,.07)}#progNext b{color:var(--acc);font-weight:normal;letter-spacing:.08em}#progNext button{margin-left:6px;padding:0 8px}
 #progBody.gate{columns:1}#progBody.gate .ms{margin:8px 0}#progBody.gate .ms.gc{margin:4px 0;display:grid;grid-template-columns:230px 1fr;align-items:center;column-gap:12px}#progBody.gate .ms.gc button{text-align:left}#progBody.gate .ms.on{border-left-color:var(--acc)}#progBody.gate .gq{margin:-2px 0 6px}#progBody .none{color:var(--dim);padding:20px 0}
 #hqStrip{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:6px 0 4px;font-size:11px}#hqStrip .ep{margin:0}#hqStrip .n{color:var(--warn)}#hqStrip button{padding:1px 7px}
 .stg{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
@@ -125,7 +128,7 @@ body.noperf #perf{display:none}
 
 <div id="prog" class="hidden"><div class="hq">
   <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
-  <div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
+  <div id="progNext" class="hidden"></div><div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
 </div></div>
 <div id="deb" class="hidden"><div class="hq">
   <div class="hqHead"><h1>DEBRIEF</h1><div id="debHead"></div><button id="bDebProg" data-go="program">Program [P]</button><button id="bDebAsm" data-go="assembly">Assembly [B]</button><button id="bDebAgain">Fly again [A]</button></div>
@@ -160,6 +163,7 @@ body.noperf #perf{display:none}
 <div id="help" class="ovl hidden"></div>
 <div id="escm" class="ovl hidden"></div>
 <div id="tester" class="ovl hidden"></div>
+<div id="settings" class="ovl hidden"></div>
 <div id="testerBadge" class="hidden" title="Tester mode: cheats on, saved apart from your career. F2 opens the menu">TESTER</div>
 <div id="msg"></div>
 <div id="news" class="hidden"></div>
@@ -176,6 +180,7 @@ body.noperf #perf{display:none}
 <script src="sim/space.js"></script>
 <script src="sim/logbook.js"></script>
 <script src="sim/debrief.js"></script>
+<script src="sim/next.js"></script>
 <script src="sim/procedures.js"></script>
 <script src="sim/rovers.js"></script>
 <script src="sim/ground.js"></script>
@@ -190,5 +195,6 @@ body.noperf #perf{display:none}
 <script src="app/render.js"></script>
 <script src="app/program-ui.js"></script>
 <script src="app/debrief.js"></script>
+<script src="app/settings.js"></script>
 </body>
 </html>
