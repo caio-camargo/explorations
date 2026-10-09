@@ -11,7 +11,7 @@ import { pageSource } from './page.mjs';
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,
+return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,withdrawContract,payFloor,curSite,rvPrice,sciGot,selSci,selN,SELENE,PARTS,DAY_S,
   PROG,CT,MISSIONS,START,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
   TELLUS,HOOK,rng,raceSchedule,PRESETS,PARTS,PRICE,norm,cross,khUse,FAC,facLv,facQuote,buildFac,standReady,buildStand,testQuote,startTest,STAND_COST,devQuote,startDev,devLv,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
 const { PROG: P, CT, TELLUS } = api;
@@ -28,14 +28,19 @@ const PLANS = {
   orbit: (alt, inc, m = 0) => ({ kind: 'orbit', stack: m > 1 ? 'Heavy' : 'Orbiter', alt, inc, m, p: 0.86, dur: 3600, drops: 2 }),
   passOrbit: g => ({ kind: 'passOrbit', stack: 'Orbiter', g, p: 0.8, dur: 9000, drops: 2, bio: true }),
   ballistic: u => ({ kind: 'ballistic', stack: SOUND_B, u, apex: 90, p: 0.9, dur: 1200 }),
+  // Selene (Q130): the Probe preset flies the moon firsts (fly_ladder.mjs proves it), abstracted like everything else
+  moon: flag => ({ kind: 'moon', stack: 'Probe', flag, p: 0.8, dur: 5 * 86400 }),
+  rover: () => ({ kind: 'rover', stack: 'Probe', flag: 'selLand', p: 0.75, dur: 5 * 86400 }),
 };
 function planCost(pl) {
   let st = typeof pl.stack === 'string' ? api.PRESETS[pl.stack] : pl.stack;
   if (pl.kind === 'orbit') st = [...(pl.m > 1 ? api.PRESETS.Heavy : api.PRESETS.Orbiter), 'sci', ...Array(Math.round(pl.m / 0.5)).fill('ballast')];
   if (pl.kind === 'passOrbit') st = ['chute', 'bio', 'pod', 'shield', ...api.PRESETS.Orbiter.slice(2)];
+  if (pl.kind === 'moon' || pl.kind === 'rover') st = api.PRESETS.Probe;
   let c = cost(st);
   if (pl.kind === 'orbit') c *= 1 + pl.alt / 1500 + pl.inc / 120;   // more fuel for higher and more inclined orbits
   if (pl.gentle) c *= 1.25;
+  if (pl.kind === 'rover') c += api.rvPrice(SCI_ROVER) + (api.PRICE.rvdeck ?? 3);   // the rover and its deck (v1.66 prices)
   return { c, st };
 }
 // the flight record a successful flight of this plan produces (filled into s.rec before the game evaluates it)
@@ -49,11 +54,12 @@ function outcome(pl, R, rnd) {
   }
   if (pl.kind === 'hop') { R.apex = 98e3; R.bioSpace = true; R.gMax = pl.g; pad(); return 'land'; }
   if (pl.kind === 'orbit') { const e = (rnd() * 15 + 2) * 1e3; R.orbit = R.orbitSci = true; R.orb = { pe: pl.alt * 1e3 - e, ap: pl.alt * 1e3 + e * rnd(), inc: pl.inc + (rnd() - 0.5), sci: true }; R.lift = pl.m; return 'orbit'; }
+  if (pl.kind === 'moon' || pl.kind === 'rover') { R[pl.flag] = true; return 'away'; }
   if (pl.kind === 'passOrbit') { R.orbit = true; R.bioSpace = true; R.bioOrbits = 1.2; R.gMax = 4.3; pad(); return 'land'; }
 }
 // what a candidate flight would satisfy, by running the game's own checks on the record it would produce
 function wouldDo(pl) {
-  const R = { bands: {}, qPart: {}, _keys: [pl.qk].filter(Boolean), apex: 0, apexSci: 0, recSci: true, landed: true, bio: !!(pl.kind === 'hop' || pl.bio), bioOK: true, approved: true, lift: 0, landDist: 1e9 };
+  const R = { bands: {}, qPart: {}, _keys: [pl.qk].filter(Boolean), apex: 0, apexSci: 0, recSci: true, landed: true, bio: !!(pl.kind === 'hop' || pl.bio), bioOK: true, approved: true, lift: 0, landDist: 1e9, site: api.curSite().id };   // flown from the program's site (ballistic tests count only from theirs, v1.57)
   const k = outcome(pl, R, () => 0.5); if (k === 'orbit') R.landed = false;
   let pay = 0; for (const c of P.active) if (CT[c.type].ok(R, c.p)) pay += c.p.pay;
   // firsts are worth more than their reward: they unlock contract types and the next firsts (a player goes for them)
@@ -75,7 +81,7 @@ function fitContract(c) {
     default: return null;   // imaging needs a camera satellite: outside this runner
   }
 }
-const FIRST_PLAN = { weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => PLANS.qual('kestrel', 40), range: () => PLANS.hop(7.5),
+const FIRST_PLAN = { farside: () => PLANS.moon('farSent'), selimp: () => PLANS.moon('selImpact'), selland: () => PLANS.moon('selLand'), weather: () => PLANS.sound(15), air: () => PLANS.sound(45), loads: () => PLANS.qual('kestrel', 40), range: () => PLANS.hop(7.5),
   beeper: () => PLANS.orbit(150, 0), hop: () => PLANS.hop(7.5), orbiter: () => PLANS.passOrbit(5), lift1: () => PLANS.orbit(150, 0, 0.5), lift2: () => PLANS.orbit(150, 0, 2) };
 
 // the regimes each part went through, as the game's own khMark would record them for this kind of flight
@@ -91,6 +97,19 @@ function ignitionFails(s) { const first = new Set((s.events[0] && s.events[0].ig
   for (const p of s.parts) { if (p.d.kind !== 'engine' || first.has(p.seg)) continue; const L = api.prodLine(p.d.key);
     okP *= 1 - api.IGN_FAIL * (1 - api.khUse(p.d.key)) ** 2 * (L ? 2 - L.m : 1); }
   return 1 - okP; }
+// a Selene science program (Q130, ROVERS=1): after the soft landing, one science rover on a Probe; while it lives it sends a
+// spectrometer reading every RV_READ days (a tenth of them from the dark plains, as the geology has it) and a panorama
+// each Selene day (13 days); its seismometer pack is set out on the near side, and the game's own seismic code locates
+// quakes and bounds the core between flights. The runner accepts Selene science contracts while the rover lives.
+const ROVERS = !!+(process.env.ROVERS || 0), SCI_ROVER = { name: 'Sci rover', ch: 'm', wh: 'm', n: 4, slots: ['bat', 'cam', 'ant', 'spec', 'seis'] }, RV_READ = 3, RV_LIFE = +(process.env.RV_LIFE || 400), RV_RESERVE = 60;
+function roverScience(m) { const R = m.rover; if (!R || R.dead) return; const now = P.day, sel = api.selSci();
+  if (!R.seis) { R.seis = 1; for (let i = 0; i < 4; i++) { const a = (i - 1.5) * 0.25, b = (i % 2 ? 1 : -1) * 0.2, u = [-Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)];
+      sel.seis.push({ id: sel.seis.length + 1, bodyName: 'Selene', pf: u.map(x => x * api.SELENE.R), T: now * api.DAY_S, buf: [], name: `Seismometer ${sel.seis.length + 1}` }); } }
+  const rnd = api.rng(Math.round(now * 7) + 13);
+  for (; R.next <= now && R.next < R.day + RV_LIFE; R.next += RV_READ) { const mare = rnd() < 0.1, near = rnd() < 0.85;
+    api.sciGot({ k: 'spec', unit: mare ? 'mare' : 'high', FeO: mare ? 11 : 5, TiO2: mare ? 4 : 0.5, Al2O3: mare ? 10 : 27, pf: [near ? -1 : 1, 0, 0] }, R.name); m.reads++;
+    if ((R.next - R.day) % 13 < RV_READ) { api.sciGot({ k: 'pano', q: 0.5 + 0.5 * rnd(), el: 15, unit: mare ? 'mare' : 'high' }, R.name); m.panos++; } }
+  if (now >= R.day + RV_LIFE) R.dead = true; }
 const SUPPORT_K = 1.5, SUPPORT_USE = 0.45, seenParts = new Set(), FAILFIRST = process.env.FAILFIRST, ORBITAL = new Set(['beeper', 'orbiter']), PACE = !!process.env.PACE, failed = new Set(), back = {};
 // FAILFIRST: the first try at a first fails (each first once, or only the first orbital attempt)
 function forcedFail(pl) { if (!FAILFIRST || !pl.first || failed.has(pl.first)) return false;
@@ -112,7 +131,7 @@ function fly(pl, rnd, m) {
   if (!ok) { s.alive = false; R.apex = 5e3; if (R.bio) { R.bioOK = false; R.bioWhy = 'was lost with the vessel'; } }
   else {
     const k = outcome(pl, R, rnd);
-    if (k === 'orbit') { s.landed = false; s.alive = true; }
+    if (k === 'orbit' || k === 'away') { s.landed = false; s.alive = true; }
     else { s.landed = true; s.alive = true; s.touchV = 5; s.pf = [TELLUS.R, 0, 0]; const ld = R.landDist; R.landed = false; api.missionTick(s, 0, false); R.landDist = ld; }
     api.missionEval(s);
   }
@@ -141,19 +160,23 @@ function run(arch, start, seed) {
   api.resetWorld(); seenParts.clear(); failed.clear(); for (const k in back) delete back[k];
   Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: 60, bailouts: 0, day: 0, rel: {}, op: {}, offers: null, active: [], cdone: 0, stand: {}, recs: {},
     cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
-    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {} });
+    nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {}, sel: null, procs: {} });
   api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); api.ensureBoard(); news.length = 0;
-  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0 };
+  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0, rover: null, rvSpend: 0, reads: 0, panos: 0, selDay: null, rvTries: 0 };
   while (P.day < DAYS && m.fl < 600) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
     for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
     // take the best-paying offers we have a design for, avoiding certain home sanctions
     for (const c of [...P.offers].sort((a, b) => b.p.pay - a.p.pay)) {
-      if (P.active.length >= api.capOf()) break; const pl = fitContract(c); if (!pl) continue;
-      if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds + c.p.pay) continue; api.acceptOffer(c.id);
+      if (P.active.length >= api.capOf()) break; if (api.CT[c.type].sel) { if (m.rover && !m.rover.dead) api.acceptOffer(c.id); continue; }   // Selene science: no flight, the rover does it
+      const pl = fitContract(c); if (!pl) continue;
+      if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds) continue; api.acceptOffer(c.id);   // only work it can pay for now
     }
     // the flight worth most (pay of everything it would complete, minus cost) that we can afford
     const cands = [...P.active.map(fitContract), ...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => { const pl = FIRST_PLAN[M.id]?.(); if (pl) pl.first = M.id; return pl; })].filter(Boolean);
+    if (ROVERS && P.done.selland && !m.rover && !m.roverTried) { const pl = PLANS.rover(), c = planCost(pl).c;
+      if (P.funds > c + RV_RESERVE) { const f0 = P.funds, ok = fly(pl, rnd, m); m.fl++; m.rvSpend += f0 - P.funds; if (ok) m.rover = { day: P.day, next: P.day, name: SCI_ROVER.name }; else m.fail++; m.roverTried = !ok && m.rvTries++ >= 1; continue; } }
+    roverScience(m);
     let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds) continue; const v = (wouldDo(pl) + refundOf(pl)) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
     if (process.env.TRACE && m.orbDay == null) console.log(`d${Math.round(P.day)} $${P.funds.toFixed(0)} debt${(api.own().debt||0).toFixed(0)} ${best && best.v > -5 ? (best.pl.first || best.pl.kind) + ' v' + best.v.toFixed(0) + ' c' + planCost(best.pl).c.toFixed(0) : 'none'} | board ${P.offers.map(c => c.type + ':' + c.p.pay.toFixed(0) + '/' + (fitContract(c) ? planCost(fitContract(c)).c.toFixed(0) : 'x')).join(' ')} | active ${P.active.map(c => c.type).join(',')} | open ${api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => M.id).join(',')}`);
     if (best && best.v > -5) { const ok = fly(best.pl, rnd, m); m.fl++; if (!ok) m.fail++;
@@ -164,6 +187,8 @@ function run(arch, start, seed) {
         const q = api.prodQuote(k), mode = q.lic.ok ? 'lic' : q.own.ok ? 'own' : null; if (!mode || P.funds < q[mode].cost + 120) continue;
         if (api.startProdLine(k, mode)) { m.lines++; m.lineSpend += q[mode].cost; } break; }
       if (VARIANT === 'all') invest(m); }
+    else if (api.withdrawContract && (() => { const stuck = P.active.map(c => ({ c, pl: fitContract(c) })).filter(x => !x.pl || planCost(x.pl).c > P.funds).sort((a, b) => (b.pl ? planCost(b.pl).c : 1e9) - (a.pl ? planCost(a.pl).c : 1e9))[0];
+      return stuck && P.active.length >= api.capOf() && api.withdrawContract(stuck.c.id) && ++m.wd; })()) {}   // slots full of work it can't afford: withdraw one (Q93)
     else { api.advanceDays(10); m.idle += 10; if (m.orbDay == null) { m.run += 10; m.wait = Math.max(m.wait, m.run); } }
     if (best && best.v > -5) m.run = 0;
     m.minF = Math.min(m.minF, P.funds);
@@ -172,6 +197,8 @@ function run(arch, start, seed) {
     if (m.orbDay == null) { m.bailPre = P.bailouts || 0; if (P.done.beeper || P.done.orbiter) { m.orbDay = Math.round(P.day); m.orbFl = m.fl; } }
   }
   m.sanc = news.filter(t => /imposes sanctions/.test(t)).length;
+  m.selDone = news.filter(t => /^Contract done for .*: (Read Selene|A panorama of Selene|A seismic network|Locate \d+ moonquakes|Bound Selene|Science from Selene)/.test(t));
+  m.selPay = m.selDone.reduce((a, t) => a + (+((t.match(/\(\+([\d.]+)M\)/) || [])[1] || 0)), 0); m.selDay = P.done.selland ? Math.round(P.done.selland.day) : null;
   return { ...m, final: P.funds, kh: avg(Object.keys(P.kh || {}).map(k => api.khUse(k))) || 0, kind: api.ownKind(), bail: P.bailouts || 0, debt: (api.own().debt || 0), cd: P.cdone || 0, op: api.opOf(api.home),
     race: api.RACE.map(id => P.done[id] ? (api.raceLost(id) != null ? '2' : '1') : (api.raceLost(id) != null ? 'L' : '-')).join(''), home: api.home };
 }
@@ -184,8 +211,10 @@ else console.log('archetype    start       flights fail% idle%  firsts  day:beep
 for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(',')) for (const start of (process.argv[5] || 'agency,company,consortium').split(',')) {
   const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + (+process.env.SEED0 || 1)));
   const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
+  if (process.env.SELENE) { const sd = rs.filter(r => r.selDay != null), rv = rs.filter(r => r.rover);
+    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} soft landing ${sd.length}/${rs.length} day ${sd.length ? f0(avg(sd.map(r => r.selDay))) : '   — '}  rover ${rv.length}/${rs.length} (spent ${f0(avg(rs.map(r => r.rvSpend)))})  Selene contracts ${(avg(rs.map(r => r.selDone.length))).toFixed(1).padStart(4)} paying ${f0(avg(rs.map(r => r.selPay)))}  readings ${f0(avg(rs.map(r => r.reads)))}  final ${f0(avg(rs.map(r => r.final)))}`); continue; }
   if (PACE) { const got = rs.filter(r => r.orbDay != null), a = f => got.length ? f0(avg(got.map(f))) : '   — ';
-    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}`); continue; }
+    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}  withdrawn ${(avg(rs.map(r => r.wd))).toFixed(1)}`); continue; }
   if (process.env.SPEND) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} fl ${f0(avg(rs.map(r => r.fl)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | lines ${f0(avg(rs.map(r => r.lineSpend)))} facilities ${f0(avg(rs.map(r => r.facSpend)))} (${(avg(rs.map(r => r.fac))).toFixed(1)}) tests ${f0(avg(rs.map(r => r.testSpend)))} (${(avg(rs.map(r => r.tests))).toFixed(0)}) dev ${f0(avg(rs.map(r => r.devSpend)))} (${(avg(rs.map(r => r.devs))).toFixed(0)}) kh ${f0(100 * avg(rs.map(r => r.kh)))}%`); continue; }
   console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')} | ${(avg(rs.map(r => r.ign))).toFixed(1).padStart(4)} ${f0(100 * avg(rs.map(r => r.kh)))} ${(avg(rs.map(r => r.lines))).toFixed(1).padStart(5)} ${f0(avg(rs.map(r => r.lineSpend)))}  ${(avg(rs.map(r => r.support))).toFixed(1).padStart(5)}`);
 }
