@@ -9569,3 +9569,11 @@ met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing
 **TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
 "Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
 suite you run before merging, instead of waiting for someone to read the file.
+
+**Row 65, crew rotation, and a driver fix (QA session, 2026-10-09; QUEUE Q120).** `node playtest.mjs 65`: a crewed capsule
+(chute, crew, shield, decoupler, a tank with a radial port) takes a habitat's nose port; leaving the flight registers the
+stack as a crewed station; Program → Fleet → **Fly**, the HUD's undock, a retro burn (the robot cuts the speed), the tank
+dropped, shield first, chute: home at 8.5 m/s with the crew safe. Found: the Debrief never mentions the crew (PLAYTEST #34).
+**Driver fix:** a robot that swaps `S` for a ship it built must call `HOOK.rebuild()`, or the scene keeps drawing the ship
+it launched first. `PT.park` does now. The numbers from Q30's docking and station rows stand, but their shots of 56, 59, 60,
+60c, 64, 66 and 116 drew the Orbiter; 59, 64, 66 and 116 were re-shot (`C:/Users/caioa/dev/playtest-out/reshoot`).
