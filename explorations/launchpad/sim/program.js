@@ -201,7 +201,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
   if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
-  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
+  if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));R.open0=MISSIONS.filter(M=>!PROG.done[M.id]&&missionOpen(M)).map(M=>M.id);importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;R.site=s.site?s.site.id:null;R.siteFee=s.site?siteAccessOf(s.site).fee||0:0;PROG.funds-=R.cost+R.ops+R.siteFee;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
       if(!v.ok)HOOK.news(`Flight safety did not sign off: ${v.p.d.name} / ${v.p.parent.d.name} at ${(v.worst*100).toFixed(0)}% of certified. ${R.pet} flies anyway, unofficially`,'warn')}
@@ -249,7 +249,8 @@ function missionEval(s){contractEval(s);if(PROG.demand&&(s.rec.firstNow||s.rec.b
 const STAGE_PAY={bound:0.2,arrive:0.2};
 for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Selene'],['selsample','Selene'],['crewaround','Selene',1],['crewland','Selene',1],
   ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
-const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
+// only a mission open when this flight launched (R.open0; PLAYTEST #28): one that opens mid-flight wasn't flown for
+const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!R.open0||R.open0.includes(M.id))&&(!M.crew||R.crewed))||null;
 const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
 function stagePay(M,k,R){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);debPaid(R,'stage',M.name,x);
   HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
@@ -597,11 +598,12 @@ function loseDeviation(id,why){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.
 // a landing at the base's beacon (the bodies session's landAt: within ~5 m); what lands is registered there and joins the
 // base (within BASE_R) with its supplies, berths and crew. Repeats only: the body was landed on by hand first (its
 // landing first) and the base exists. Flown for real by procFly, so the design must have the Δv; no contract pays it.
-const BASE_FIRST={Selene:'selland',Nyx:'nyxland'};
+const BASE_FIRST={Selene:'selland',Nyx:'nyxland'},BASE_ERA=COMP_ERAS.findIndex(e=>e.id==='board');
 function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!asc||asc.kind!=='orbit'||!asc.pitch)return null;
   const B=BODIES.find(b=>b.name===base.bodyName);if(!B||B===TELLUS)return null;const low=B.name==='Nyx'?{pass:15e3,ap:25e3,pe:10e3}:{pass:10e3,ap:20e3,pe:8e3};
   return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
 function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
+  if(compEra()<BASE_ERA)return{ok:false,why:`needs ${COMP_ERAS[BASE_ERA].name.toLowerCase()}: uncrewed runs to the moons arrive with them`};   // MIDGAME's automation ladder (D7)
   if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};

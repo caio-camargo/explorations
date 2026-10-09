@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.15 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.16 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1478,6 +1478,18 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
+
+## v1.74 — staged pay only for missions flown for; supply runs wait for onboard computers (2026-10-09, economy session, Q112, D7)
+
+- **Staged pay (QUEUE Q112, PLAYTEST #28).** A probe parked at Nyx collected the first two shares (20 % + 20 %) of
+  every later Nyx mission as each one unlocked: `stagedMission` gave the shares to the first *open* mission bound for
+  the body, so a mission that opened mid-flight was "on course" and "arrived" at once. The launch now records which
+  missions were open (`R.open0`, in `missionTick`'s launch line), and a share goes only to one of those. Flights from
+  older saves (no `R.open0`) behave as before. Test `econ-8` (2 checks, mutation-tested). `R.open0` is also what
+  W11's broader rule (a mission counts only on a flight launched while it was open) would read, if it's built.
+- **Supply runs follow the automation ladder (D7, Caio: option a).** MIDGAME.md: uncrewed runs to the moons arrive
+  with onboard computers. `baseRunQuote` refuses before that era (`BASE_ERA`): "needs onboard computers". `econ-7`
+  now checks the refusal and moves the date to the era (day ~3,010 in its world) before flying the run.
 
 ## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
 
