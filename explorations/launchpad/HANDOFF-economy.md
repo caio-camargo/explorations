@@ -132,6 +132,7 @@
     pacing", Q44).
   - The scripted player withdraws a contract it can't afford when its slots are full (v1.77); `TRACE=1`, `SEED0=`, `ARCHS=` narrow a run.
   - `SELENE=1` prints the Selene summary; `ROVERS=1` adds a science rover program (Q130, NOTES § "Rovers in the career runner").
+  - `ACCEPT=stake,ipo`: the scripted player accepts those offers (default: declines all but a rescue loan; Q150).
 
   Noise between policies is roughly ±400M at 5 seeds.
 - Claude memory for this project (key `G--Meu-Drive-CLAUDE-fun`): `shared-docs-commit-procedure`,

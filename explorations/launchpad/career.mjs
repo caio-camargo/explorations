@@ -103,6 +103,8 @@ function ignitionFails(s) { const first = new Set((s.events[0] && s.events[0].ig
 // spectrometer reading every RV_READ days (a tenth of them from the dark plains, as the geology has it) and a panorama
 // each Selene day (13 days); its seismometer pack is set out on the near side, and the game's own seismic code locates
 // quakes and bounds the core between flights. The runner accepts Selene science contracts while the rover lives.
+// ACCEPT=stake,ipo: the scripted player says yes to those offers (default: declines everything but a rescue loan) (Q150)
+const ACCEPT = (process.env.ACCEPT || '').split(',').filter(Boolean);
 const ROVERS = !!+(process.env.ROVERS || 0), SCI_ROVER = { name: 'Sci rover', ch: 'm', wh: 'm', n: 4, slots: ['bat', 'cam', 'ant', 'spec', 'seis'] }, RV_READ = 3, RV_LIFE = +(process.env.RV_LIFE || 400), RV_RESERVE = 60;
 function roverScience(m) { const R = m.rover; if (!R || R.dead) return; const now = P.day, sel = api.selSci();
   if (!R.seis) { R.seis = 1; for (let i = 0; i < 4; i++) { const a = (i - 1.5) * 0.25, b = (i % 2 ? 1 : -1) * 0.2, u = [-Math.cos(a) * Math.cos(b), Math.sin(b), Math.sin(a) * Math.cos(b)];
@@ -164,10 +166,10 @@ function run(arch, start, seed) {
     cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
     nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {}, sel: null, procs: {} });
   api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); api.ensureBoard(); news.length = 0;
-  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0, rover: null, rvSpend: 0, reads: 0, panos: 0, selDay: null, rvTries: 0 };
+  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0, rover: null, rvSpend: 0, reads: 0, panos: 0, selDay: null, rvTries: 0, accepted: 0 };
   while (P.day < DAYS && m.fl < 600) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
-    for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
+    for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (ACCEPT.includes(d.kind)) { api.resolveDecision(d.id, 'yes'); m.accepted++; } else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
     // take the best-paying offers we have a design for, avoiding certain home sanctions
     for (const c of [...P.offers].sort((a, b) => b.p.pay - a.p.pay)) {
       if (P.active.length >= api.capOf()) break; if (api.CT[c.type].sel) { if (m.rover && !m.rover.dead) api.acceptOffer(c.id); continue; }   // Selene science: no flight, the rover does it
@@ -214,7 +216,7 @@ for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(
   const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + (+process.env.SEED0 || 1)));
   const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
   if (process.env.SELENE) { const sd = rs.filter(r => r.selDay != null), rv = rs.filter(r => r.rover);
-    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} soft landing ${sd.length}/${rs.length} day ${sd.length ? f0(avg(sd.map(r => r.selDay))) : '   — '}  rover ${rv.length}/${rs.length} (spent ${f0(avg(rs.map(r => r.rvSpend)))})  Selene contracts ${(avg(rs.map(r => r.selDone.length))).toFixed(1).padStart(4)} paying ${f0(avg(rs.map(r => r.selPay)))}  readings ${f0(avg(rs.map(r => r.reads)))}  final ${f0(avg(rs.map(r => r.final)))}`); continue; }
+    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} soft landing ${sd.length}/${rs.length} day ${sd.length ? f0(avg(sd.map(r => r.selDay))) : '   — '}  rover ${rv.length}/${rs.length} (spent ${f0(avg(rs.map(r => r.rvSpend)))})  Selene contracts ${(avg(rs.map(r => r.selDone.length))).toFixed(1).padStart(4)} paying ${f0(avg(rs.map(r => r.selPay)))}  readings ${f0(avg(rs.map(r => r.reads)))}  accepted ${(avg(rs.map(r => r.accepted))).toFixed(1)}  final ${f0(avg(rs.map(r => r.final)))}`); continue; }
   if (PACE) { const got = rs.filter(r => r.orbDay != null), a = f => got.length ? f0(avg(got.map(f))) : '   — ';
     console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}  withdrawn ${(avg(rs.map(r => r.wd))).toFixed(1)}`); continue; }
   if (process.env.SPEND) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} fl ${f0(avg(rs.map(r => r.fl)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | lines ${f0(avg(rs.map(r => r.lineSpend)))} facilities ${f0(avg(rs.map(r => r.facSpend)))} (${(avg(rs.map(r => r.fac))).toFixed(1)}) tests ${f0(avg(rs.map(r => r.testSpend)))} (${(avg(rs.map(r => r.tests))).toFixed(0)}) dev ${f0(avg(rs.map(r => r.devSpend)))} (${(avg(rs.map(r => r.devs))).toFixed(0)}) kh ${f0(100 * avg(rs.map(r => r.kh)))}%`); continue; }

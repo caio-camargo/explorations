@@ -68,3 +68,40 @@ for (const [name, a, inc] of ORBITS) {
     console.log(`  year ${String(y).padStart(2)}: tilt ${incOf(q.r, q.v).toFixed(1)}°, TV ${(tv / G.YEAR_D * 100).toFixed(0)}% of days, ${(dv0 - G.skDv(q)).toFixed(0)} m/s spent so far`); }
   console.log(`  first day without TV: ${first ?? 'none'}`);
 }
+// D (2026-10-09, QUEUE Q142): a proper station-keeping controller on the full physics, to check v1.71's hold cost. A TV
+// satellite over the capital, its tilt left free (as v1.71). Longitude: kept inside ±box of its slot by reversing the drift
+// with a PAIR of along-track burns half an orbit apart (that changes the size without pumping the shape; the crude
+// controller of v1.71's negative result burned once and pumped the eccentricity). Shape: e held under 0.01 (TV needs < 0.02)
+// by a retrograde burn at perigee and a prograde one at apogee (no net change of size). Δv a year, against slotRate.
+{
+  const G = new Function(src + `ORB_T0=0;return {tideRK4,elements,TELLUS,DAY_S,YEAR_D,STAT_R,capital,rotY,absTh,slotRate,len,mul,add,norm};`)();
+  const T = G.TELLUS, mu = T.mu, a0 = G.STAT_R, vc0 = Math.sqrt(mu / a0), P = 2 * Math.PI * Math.sqrt(a0 ** 3 / mu), h = P / 120;
+  const c = G.capital(), u0 = G.rotY(c.u, G.absTh(0)), lon0 = Math.atan2(u0[2], u0[0]);
+  const lonOf = (r, t) => { const p = G.rotY(r, -G.absTh(t)); return Math.atan2(p[2], p[0]); }, wrap = x => Math.atan2(Math.sin(x), Math.cos(x));
+  const slotQ = { r: [a0 * Math.cos(lon0), 0, a0 * Math.sin(lon0)], v: [vc0 * Math.sin(lon0), 0, -vc0 * Math.cos(lon0)], epoch: 0 };
+  const rate = G.slotRate(slotQ);
+  console.log(`\nD. a TV satellite over the capital held by a deadband controller (tilt free), 3 years; slotRate says ${rate.toFixed(3)} m/s a day = ${(rate * G.YEAR_D).toFixed(0)} m/s a year:`);
+  // a proportional controller on the mean size: every 13 days (half the averaging), aim the mean drift at -λ/τ, i.e. a
+  // mean size a_s - λ a_s / (1.5 n τ) (prograde motion lowers this longitude: λ' = +1.5 n Δa/a), reached by a pair of
+  // along-track burns half an orbit apart; burns under 0.05 m/s are skipped. The mean size: the average of the daily
+  // samples (same phase each day: a stationary orbit's period is the day) over the last 13 days.
+  for (const tau of [20, 40, 80]) {
+    let r = slotQ.r.slice(), v = slotQ.v.slice(), t = 0, dvA = 0, dvE = 0, nA = 0, nE = 0, pend = null, eMax = 0, lonMax = 0, lonLate = 0, eTask = null; const hist = [], aH = [];
+    const END = 3 * G.YEAR_D * G.DAY_S, burn = dv => { v = G.add(v, G.mul(G.norm(v), dv)); }, n = 2 * Math.PI / G.DAY_S;
+    for (let day = 0; t < END; day++) {
+      const T1 = t + G.DAY_S;
+      while (t < T1) { const dt = Math.min(h, T1 - t); [r, v] = G.tideRK4(T, r, v, t, dt); t += dt;
+        if (pend && t >= pend.t) { burn(pend.dv); pend = null; }
+        if (eTask) { const nu = G.elements(r, v, mu).nu, near = x => Math.abs(wrap(nu - x)) < 2 * Math.PI / 120 * 1.5;
+          if (eTask.stage === 'pe' && near(0)) { burn(-eTask.dv); eTask.stage = 'ap'; } else if (eTask.stage === 'ap' && near(Math.PI)) { burn(eTask.dv); eTask = null; } } }
+      const lw = wrap(lonOf(r, t) - lon0), lon = hist.length ? hist[hist.length - 1] + wrap(lw - hist[hist.length - 1]) : lw; hist.push(lon);
+      const el = G.elements(r, v, mu); aH.push(el.a); lonMax = Math.max(lonMax, Math.abs(lon)); if (day > 120) lonLate = Math.max(lonLate, Math.abs(lon)); eMax = Math.max(eMax, el.e);
+      if (day >= 13 && day % 13 === 0 && !pend) {
+        const aMean = aH.slice(-13).reduce((x, y) => x + y, 0) / 13, aT = a0 - lon * a0 / (1.5 * n * tau * G.DAY_S), dv = vc0 * (aT - aMean) / (2 * a0);
+        if (Math.abs(dv) >= 0.05) { burn(dv / 2); pend = { t: t + P / 2, dv: dv / 2 }; dvA += Math.abs(dv); nA++; }
+      }
+      if (!eTask && el.e > 0.01) { const dv = vc0 * (el.e - 0.005) / 4; eTask = { stage: 'pe', dv }; dvE += 2 * dv; nE++; }
+    }
+    console.log(`  τ ${tau} days: ${((dvA + dvE) / 3).toFixed(1)} m/s a year (size ${(dvA / 3).toFixed(1)} in ${nA} pairs, shape ${(dvE / 3).toFixed(1)} in ${nE}); worst ${(lonMax * 180 / Math.PI).toFixed(1)}° off the slot (${(lonLate * 180 / Math.PI).toFixed(1)}° after the first 120 days), e up to ${eMax.toFixed(4)}`);
+  }
+}

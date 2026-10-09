@@ -218,7 +218,8 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(b===TELLUS&&h>b.atm&&!R.logSpace){R.logSpace=1;logNote(s,'space',R.dv)}
   if(b===SELENE&&!R.logSel){R.logSel=1;logNote(s,'selene',R.dv)}
   if(b===SELENE&&s.landed&&s.alive&&!R.logLand){R.logLand=1;logNote(s,'land',R.dv);logNote(s,'sg',SELENE.mu/dot(s.r,s.r))}   // a lander measures g
-  if(b===SELENE&&!s.landed&&!R.logSOrb){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
+  const coast=!(s.throttle>0&&activeEngines(s).length);   // the period is read off an orbit the engines have stopped changing (space Q114, PLAYTEST #30)
+  if(b===SELENE&&!s.landed&&!R.logSOrb&&coast){const e2=elements(s.r,s.v,b.mu);if(e2.e<1&&e2.pe>b.R+5000&&e2.ap<b.soi){R.logSOrb=1;logNote(s,'sorbit',{p:e2.period,alt:(e2.pe+e2.ap)/2-b.R})}}
   {const dT=len(b===TELLUS?s.r:add(s.r,bodyPos(b,simT)))-TELLUS.R;if(s.alive&&dT>R.far)R.far=dT}
   if(phys&&s.alive){if(s.qdyn>R.qMax)R.qMax=s.qdyn;for(const p of s.parts)if(p.on&&p.T>R.hotT){R.hotT=p.T;R.hotPart=p.d.name}
     if(b===TELLUS&&R.logSpace&&h<b.atm&&dot(s.v,s.r)<0){const sp=len(sub(s.v,surfVel(b,s.r)));if(sp>R.vEntry)R.vEntry=sp}}
@@ -232,7 +233,7 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
     if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
-    if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv);logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
+    if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv)}if(!R.logPeriod&&coast){R.logPeriod=1;logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}
   if(R.bio&&R.bioOK){let why='';
     if(!bio)why=s.alive?'was lost with its stage':'was lost with the vessel';
@@ -596,6 +597,30 @@ function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);i
 // dispatchRun will give; the interim resolver builds one for its two cases: the upper stage at apoapsis on the ascent's
 // transfer orbit (periapsis in the air), with the propellant the circularisation needs ('relight') or too little ('short').
 const devWaiting=()=>(PROG.dispatch||[]).filter(x=>x.status==='deviated');
+// ---- the network screen's model (QUEUE Q154; NOTES § UI "Network screen plan"): one pure function the screen draws
+// from, so it never computes. N1's fleet and pads (as flow's netFallback built them, plus dispatches waiting for you),
+// N2's nodes as they exist today (our sites, ground stations, satellites by body and orbit band, stations and bases
+// with their supplies), no routes until routines exist, and the bottleneck: the crewed node shortest of supplies.
+const NET_BAND=h=>h<2e6?'low':h<2e7?'high':'stationary';
+function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*DAY_S;
+  for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus',life=q.landed?Infinity:skLife(q);
+    fleet.push({name:q.name,kind:satKind(q),where:q.landed?`on ${body}`:`${body} orbit`,
+      next:q.landed?'on the surface':q.adrift!=null?'adrift: out of propellant':isFinite(life)?`holds its orbit ${Math.floor(life)} more days`:'holds its orbit',t:isFinite(life)?life:null})}
+  for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
+    else if(x.status==='deviated')fleet.push({name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
+  for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
+    .map(x=>({from:Math.max(D,x.ordered??D),to:x.launch,kind:'dispatch',title:`${x.title} · ${designName(x.stack)||'our design'}`}))});
+  for(const t of homeSites())nodes.push({id:`site:${t.id}`,kind:'site',body:'Tellus',slot:'surface',name:t.name,stock:{},need:{}});
+  for(const g of stationsAll())if(g.ci!=null)nodes.push({id:`gs:${g.ci}`,kind:'ground station',body:'Tellus',slot:'surface',name:g.name,stock:{},need:{}});
+  for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus';let slot='surface';
+    if(!q.landed){const B=BODIES.find(b=>b.name===body)||TELLUS;try{const[r]=q.bodyName?[q.r]:satAt(q,T);slot=NET_BAND(len(r)-B.R)}catch(e){slot='low'}}
+    const st=q.beacon?baseOf(q):q.landed?null:stationOf(q),crewed=st&&st.crew>0;
+    if(q.landed&&!q.beacon&&baseOfMember(q))continue;   // a base's member is part of the base's node
+    nodes.push({id:`reg:${q.id}`,kind:q.beacon?'base':st&&(st.berths||st.labs)?'station':satKind(q).toLowerCase(),body,slot,name:q.name,
+      stock:st?{supplies:Math.round(st.sup*1000)}:{},need:crewed?{supplies:Math.round(st.crew*SUP_DAY*1000)}:{},days:crewed?st.days:null,paused:!!(q.adrift!=null||q.supOut)})}
+  let worst=null;for(const n of nodes)if(n.days!=null&&n.days<30&&(!worst||n.days<worst.days))worst=n;
+  const bottleneck=worst?{text:`${worst.name} has ${Math.floor(worst.days)} day${Math.floor(worst.days)===1?'':'s'} of supplies left`,node:worst.id,good:'supplies'}:null;
+  return{nodes,routes,bottleneck,fleet,pads}}
 function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,c),T=PROG.day*DAY_S,alt=c.p.alt*1e3,ra=TELLUS.R+alt,rp=TELLUS.R+30e3;
   let n=0;while(v.events.slice(v.evIdx).some(x=>x.decouple.length)&&n++<20)stage(v);   // drop down to the top stage (lit in the ascent)
   const va=Math.sqrt(TELLUS.mu*2*rp/(ra*(ra+rp))),need=Math.sqrt(TELLUS.mu/ra)-va,want=kind==='short'?0.6*need:need+Math.max(0,e.margin||0);
@@ -717,6 +742,31 @@ function igniteOK(s,k){if(TEST.nofail||!khOn()||!s.rec)return true;
 (()=>{const R=rng(777),big=POWERS.slice().sort((a,b)=>b.econ*b.tech-a.econ*a.tech);
   big.forEach((p,k)=>{p.arch=k<2?(p.align[1]>0?'closedSuper':'openSuper'):p.econ>1.3&&p.tech<0.85?'resource':p.align[1]>0.4?'security':p.tech>0.95?'rising':R()<0.6?'frugal':'rising'});
   if(big[0].arch===big[1].arch)big[1].arch=big[0].arch==='openSuper'?'closedSuper':'openSuper'})();   // a rivalry needs both kinds
+// ---- powers as content (QUEUE Q103, POWERS.md 1.0.0): each power's hardware **school** (look only: a school never
+// changes a part's physics) drawn from its archetype's affinities; its name from the school's syllables, its form of
+// government from the archetype's list. A resource state has no school of its own: it flies its contractor's (its best
+// friend's). The superpowers' schools differ (their affinities don't overlap); two powers sharing a school get hues
+// apart. Its own seeded draws, after the archetypes, so places, economies and relations are as before; the launch sites
+// are named after this (extendSites).
+const SCHOOLS={cape:{name:'Cape',syl:['tor','hav','bru','den','kas','mar','tel','ston','wick','burn','ash'],n:[1,2]},
+  steppe:{name:'Steppe',syl:['ve','lo','rya','ma','risk','vo','ra','sko','na','tov','mir'],n:[2,3]},
+  arsenal:{name:'Arsenal',syl:['kat','tar','dunn','gor','bak','zar','rik','tuk','dag','mok'],n:[1,2]},
+  coastal:{name:'Coastal',syl:['a','les','sa','ou','relle','li','na','ve','ro','ette','mo'],n:[2,3]},
+  mountain:{name:'Mountain',syl:['ka','no','ra','i','su','ma','ta','ko','hi','ya','se'],n:[3,3]},
+  isle:{name:'Isle',syl:['ly','ra','pa','va','ki','mo','tai','no','re','wa'],n:[2,2]}};
+const SCHOOL_W={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},rising:{arsenal:.4,mountain:.4,steppe:.2},
+  frugal:{coastal:.5,mountain:.3,isle:.2},resource:null,security:{arsenal:.6,steppe:.3,mountain:.1}};
+const ARCH_FORMS={openSuper:['# Union','United Provinces of #','# Commonwealth'],closedSuper:['# Federation','# Union',"People's Republic of #"],
+  rising:['Republic of #','# Republic'],frugal:['Kingdom of #','# Confederacy','Free State of #'],resource:['Kingdom of #','Emirate of #','Sultanate of #'],security:['Republic of #','# State']};
+(()=>{const R=rng(31337),pick=w=>{let x=R()*Object.values(w).reduce((a,b)=>a+b,0);for(const k in w){x-=w[k];if(x<=0)return k}return Object.keys(w)[0]},used=new Set(),forms=new Set();
+  for(const p of POWERS)if(SCHOOL_W[p.arch]){const r=rng(WSEED*7907+p.i*131+17),w=SCHOOL_W[p.arch],x=r()*Object.values(w).reduce((a,b)=>a+b,0);let acc=0;   // the look lane's draw (app/gl.js schoolOf), so both agree
+    for(const k in w){acc+=w[k];if(x<acc){p.school=k;break}}p.school=p.school||Object.keys(w)[0]}
+  for(const p of POWERS)if(!p.school){const c=POWERS.filter(q=>q!==p&&q.school).sort((a,b)=>Math.hypot(a.align[0]-p.align[0],a.align[1]-p.align[1])-Math.hypot(b.align[0]-p.align[0],b.align[1]-p.align[1]))[0];p.school=c?c.school:'cape';p.contractor=c?c.i:null}
+  for(const p of POWERS){const S=SCHOOLS[p.school];let nm='';
+    for(let t=0;t<50&&(!nm||used.has(nm));t++){const n=S.n[0]+(R()*(S.n[1]-S.n[0]+1)|0);nm='';for(let k=0;k<n;k++)nm+=S.syl[R()*S.syl.length|0];nm=nm[0].toUpperCase()+nm.slice(1)}
+    used.add(nm);const F=ARCH_FORMS[p.arch]||FORMS,fs=F.filter(f=>!forms.has(f)),f=(fs.length?fs:F)[R()*(fs.length||F.length)|0];forms.add(f);
+    p.root=nm;p.name=f.replace('#',nm)}
+  for(const p of POWERS)for(const q of POWERS)if(q.i<p.i&&q.school===p.school&&Math.abs(((p.hue-q.hue+540)%360)-180)<40)p.hue=(p.hue+120)%360})();
 const archOf=i=>i===0&&PROG.homeArch?PROG.homeArch:POWERS[i].arch,flav=i=>ARCH[archOf(i)];
 const natOf=i=>(PROG.nat||{})[i]??flav(i).nat,natK=()=>0.3+1.4*natOf(HOME);   // natK: 1 at nationalism 0.5
 const tensionOf=i=>Math.max(0,...POWERS.filter(p=>p.i!==i).map(p=>-relOf(i,p.i)));

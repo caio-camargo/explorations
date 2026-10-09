@@ -149,7 +149,7 @@ if(TEST.on){$('testerBadge').classList.remove('hidden');testTopUp()}   // (also 
 // is never lost; test.mjs §32 lists any heading that would land there. Add it to progTabOf.
 const PROG_TABS=[['inbox','Inbox'],['missions','Missions'],['contracts','Contracts'],['fleet','Fleet'],['world','World'],['industry','Industry'],['company','Company'],['more','More']];
 const progTabOf=h=>/^(Whose program|How does the program start)/.test(h)?'gate':/^(Offers|Coming up|News)/.test(h)?'inbox':/^(Contracts|The race)/.test(h)?'contracts':
-  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|On the surface|Rovers in the field)/.test(h)?'fleet':/^The world/.test(h)?'world':
+  /^Epoch/.test(h)?'missions':/^(Ground stations|In orbit|In flight|On the surface|Rovers in the field)/.test(h)?'fleet':/^The world/.test(h)?'world':
   /^(Know-how|Test stand|Facilities|Development|Production|What we know|Compute)/.test(h)?'industry':h.startsWith(progName())?'company':'more';
 let progTab=null,progGate=false,progInbox=0;   // the tab isn't remembered across reloads: a fresh session opens on the Inbox (or Missions)
 function progLayout(){const kids=[...$('program').children];if(!kids.length)return;

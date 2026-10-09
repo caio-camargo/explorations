@@ -4475,3 +4475,98 @@ landing). Built and committed on branch `builder`; `test.mjs` section `vehicle-1
 on memory, and per policy not restarted. Parked at: run `node test.mjs` in `launchpad-builder` (the new preset meets the
 every-preset checks, e.g. the gantry clearance), then merge into main with `-X ignore-space-at-eol`, NOTES/TESTING
 numbers at merge time, mark Q152 ✓.
+
+## 2026-10-09 — Launchpad look & sound, effects beat: closing (unattended overnight run)
+
+### Summary
+Effects beat, then the overflow the orchestrator listed, then the idle lanes' ready items. All on `main`, each through
+smoke + own sections (and the full suite after core changes: 563 pass at the schools merge).
+- **Effects:** Q20 plasma shell gated on airspeed; Q63 plasma lights the hull (+ shield-first views); Q64 side boosters'
+  own vapor collars; Q65 cloud-volume shadows and a less uniform deck (+0.3–0.75 ms); Q64's cost measured (≤ 0.3 ms).
+- **Parts & pad (overflow):** Q23 gimbal and steerable fins drawn (`setMoves` in `MESH_VS`, plumes follow); Q97 legs,
+  solar wing, body cells, battery, computer; Q24 bay doors with an inside, char heat-tints dark shingles.
+- **Sky & bodies:** Q21 a galaxy per program (`PROG.gseed`); Q116 fill light from the ground on airless bodies (PLAYTEST #32).
+- **Sound:** Q66 per-engine voices (St·U/D); Q67 plasma by the heating model, other vessels and debris heard and panned;
+  Q35 the volume slider.
+- **Mock-ups for Caio (W18–W20):** Q72 crew styles, Q71 the bodies, Q89 Cape and Steppe schools (`mockups/`).
+- **Q102 hardware schools, steps 1–5:** a school per part (maker's), the school and the maker's hue ride in the vertex kind,
+  Steppe paint, interstage covers (Cape skirt / Steppe lattice: a visible change to Cape), roundels; 6–7 proposed.
+- **Reference views swept** (74 views): the Debrief panel covered close-ups; `bare()` hides it.
+- **Overflow from idle lanes:** QA Q143, Q129 (PLAYROUTE 0.1.4), Q132; world Q52 shader part (wind-scoured ranges);
+  platform Q156 (`.gitattributes`, LF) and Q57 (save versions).
+
+### Flags
+- **`main` had a crashing check for ~10 min** (`aa3ff1f` → `90f0013`): my `aerofx-3` threw after a rename, which ends its
+  shard early. A full or sharded run in that window under-reported; rerun it.
+- **Mistake:** at 22:54 I overwrote and then deleted the flow session's fresh `.game-busy` lock (~50 s overlap); restored it.
+- **Missed for a while:** the orchestrator's re-ordering (mock-ups before Q24/Q66/Q67). I re-read the flags after that.
+- **Previews are flaky with `python -m http.server`** (backlog 5 vs ~30 scripts): QUEUE flag + a platform proposal.
+
+### How I worked (for the next unattended session)
+- `gpulock.sh take|release`: takes `.game-busy` only if absent or older than 20 min, releases only its own.
+- `ship.sh "msg"`: commit, merge `origin/main`, run `--smoke` and the session's sections, push only if all pass; retry races.
+- A threaded static server with `request_queue_size = 128` on 127.0.0.1 for previews.
+
+### Files
+- `explorations/launchpad/`: `app/gl.js`, `app/render.js`, `app/sound.js`, `app/state.js`, `app/editor.js` (one field),
+  `app/settings.js` (one call), `views.js` (46–47, 54–56, 105–115), `test.mjs` (aerofx-1..3, platform-2), `NOTES.md`,
+  `TESTING.md`, `PLAYTEST.md`, `PLAYROUTE.md`, `mockups/` (crew, bodies, schools, README)
+- `.gitattributes`, `QUEUE.md`, `ACTIVE_WORK.md`, `INDEX.md`, `LESSONS_LEARNED.md` #43–#46
+
+### Next steps
+- [ ] Caio: W18 crew style, W19 bodies, W20 schools (defaults if silent are in QUEUE)
+- [ ] look & sound: Q102 steps 6–7 (Proposed; step 7 with flow and visuals); the bodies Q80–Q85 after Caio's pick
+- [ ] world: the coast, the pad terrace, the salt-flat/wetland masks (Q52's remaining parts)
+- [ ] QA: Q120 (row 65 crew rotation driver); a robot pass over views 4–9/15–17 now that the Debrief panel is hidden
+
+## 2026-10-09 — Launchpad v1.86: dispatched flights leave debris (QUEUE Q149); Q27 blocked on powered presets (space session, unattended)
+
+### Summary
+- Q149: `procFly(…, {keepJunk})` hands back its flight's pieces; `dispatchRun` registers the ones that stay up via
+  `junkAdd` (the hand-flown path now uses it too). The dispatched payload itself still isn't registered (Q49).
+- Q27 looked at and set to blocked: no preset with an antenna makes power (the Probe runs on its 0.5 kWh core battery,
+  flat in ~33 h at 15 W). Gating registry service or the flight's link on power would end Probe satellites after ~4 days
+  and Probe antenna missions on long flights. Filed for vehicle: presets that carry an antenna make their own power.
+  Relay range folds into Q51 (the link budget).
+
+### Verification
+- New test `space-6` (1 check, 2 mutations caught; the one-line call in `dispatchRun` isn't driven by a test). Full suite
+  579 pass / 0 fail on `main` as pushed (`dff3e5d`).
+
+### Files
+- `explorations/launchpad/`: `sim/space.js` (`junkAdd`), `sim/procedures.js` (`procFly` keepJunk, `dispatchRun`),
+  `test.mjs` (`space-6`), `NOTES.md` § v1.86, `QUEUE.md` (Q149 ✓, Q27 blocked, a vehicle item)
+- `ACTIVE_WORK.md` (claim moved to Q114)
+
+### Next steps
+- [ ] Vehicle: powered presets (unblocks Q27)
+- [ ] Space: Q114, Q128, Q142
+
+## 2026-10-09 — Launchpad v1.87–v1.90: Q114, Q142, Q128 assessed, Q49 plan and slice 1 (space session, unattended)
+
+### Summary
+- Q114 (v1.87, PLAYTEST #30): the orbital period is logged once the engines stop (around Tellus and Selene).
+- Q142 (v1.88, study): a real station-keeping controller (pairs of burns half an orbit apart; e held by perigee/apogee
+  burns) costs 46–67 m/s a year for the TV satellite vs the model's 89: the model stands. Two failed controllers noted.
+- Q128 assessed, not built: thin air in flight would bring every preset's 110 km parking orbit down within 1.4 h;
+  parking at 150 km costs +48 m/s. Now D8 with the default "as now".
+- Q49: plan in NOTES (four slices); slice 1 built (v1.90): vessels still coasting above the air at flight end become
+  cruise entries, carried leg by leg with the predictor (into Selene's sphere on the predicted day, out again, settling
+  into satellites, waiting at the top of an atmosphere, lost on airless ground); a Tellus orbit that reaches a moon is
+  no longer a satellite; *In flight* list.
+
+### Verification
+- New tests `space-7` (Q114), `space-8` (Q49; test 40 updated). Full suite 587 pass / 0 fail on `main` as pushed
+  (`fe9834e`); `career.mjs` unchanged. Not browser-checked (the *In flight* list).
+- Slip: a close-out script failed on a QUEUE line the orchestrator had changed, and the unchained commit after it pushed
+  only the TESTING fix under a "done, log" message (`7b3fb42`); this entry and the QUEUE row complete it.
+
+### Files
+- `explorations/launchpad/`: `sim/space.js`, `sim/program.js` (Q114), `app/program-ui.js` (`cruiseHTML`),
+  `app/screens.js` (`progTabOf`: *In flight*), `test.mjs`, `study_slot.mjs` (part D), `NOTES.md`, `TESTING.md` (row 168),
+  `PLAYTEST.md` (#30), `QUEUE.md`
+- `ACTIVE_WORK.md` (claim moved to Q49 slice 2)
+
+### Next steps
+- [ ] Space: Q49 slice 2 (in progress); the dispatched payload as a cruise entry
+- [ ] Design: D8 thin air in flight; vehicle: Q164 unblocks Q27

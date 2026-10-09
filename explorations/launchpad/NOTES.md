@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1831,6 +1831,170 @@ Test `econ-9` (3 checks; the floor mutation-tested).
 and no start stuck after one failed orbit attempt*, which `career.mjs` now shows (but for one frugal-company run in
 five, which a person would get out of by withdrawing and flying samples).
 
+
+## v1.90 — missions in flight, slice 1: nothing coasting is lost at flight end (2026-10-09, space session, QUEUE Q49)
+
+Slice 1 of § "Plan: missions in flight" (below).
+- **Settled or in flight** (`settled(B, el)`): a satellite's orbit is closed, clear of the air or ground, inside its
+  body's SOI and now also **short of every moon's** (apoapsis under the moon's closest approach less its smallest SOI).
+  A Selene transfer used to register as a Tellus satellite and ride Kepler rails straight through Selene; now it's in
+  flight. Stationary orbits stay satellites (Nyx's sphere never comes inside ~7,700 km; stationary is 6,942).
+- **Cruise entries** (`q.cruise`): `satRegister` registers anything not settled but above the air at flight end as an
+  entry in flight (same record: flyable again, kit, shape). The flown vessel and FLEET vessels alike. In the air at
+  flight end: dropped, as before.
+- **Between flights** (`cruiseStep` in `orbTick`): leg by leg with the predictor (`predictFrom`, program time): into a
+  moon's sphere (news), out of one, Kepler or integrated where a moon perturbs. When its orbit settles it becomes an
+  ordinary satellite (news; the v1.60+ rules then apply). Before an atmosphere it stops at the top and **waits there,
+  flyable** (news; time doesn't move it, a stopgap until slice 2 stops the clock first); on an airless body it's lost
+  (news).
+- `satsUp`/`moonSats` leave cruise entries out (no TV, contact, conjunctions or targeting while in flight).
+- **Program screen:** *In flight* (Fleet tab; `progTabOf` gets the heading, flow's file, one word): each entry, its height
+  over its body, what's next (`cruiseNext`: heading into a moon's pull, leaving, falling into the air, on course to
+  strike) and when; **Fly** where flyable.
+
+Test `space-8` (2 checks; mutations caught: moon reach ignored, no cruise entries, halt not held, `satsUp` including
+cruise entries). Test 40 updated: the two Selene orbits it refused (3 km periapsis, apoapsis past the SOI) are now in
+flight, still not satellites. Full suite 583 pass; `career.mjs` unchanged. TESTING row 168.
+## Why a company in a poor world stagnates (2026-10-09, economy session, QUEUE Q150; runner only, no game change)
+
+Re-measured on today's code (`SELENE=1 node career.mjs 4 3 base company`): after v1.77's floors and W11, a private
+company in a frugal world ends four years at **187M** (was 25M), a resource-world company at **64M**, while companies
+elsewhere end at 700–1,400M; funds sit flat (~72–75M) through years 1–2. **What it lacks is recurring income**: a
+company has no budget day, so it lives on contracts and firsts, and a poor world's work only just pays.
+
+**The game already offers the remedy:** a friendly power's **stake** (`decisionTick`: 15 % of the valuation in cash,
+plus a share of that power's budget days and its contracts), offered after the first first. The runner's scripted
+player declined everything but a rescue loan, so it never took one. With `ACCEPT=stake` (new runner switch) it accepts
+2–3 stakes in four years and the frugal company ends at **392M**, the resource company at **415M** (others 1.0–1.9 G).
+
+**Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
+partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
+conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89 — powers as content: schools, names, rivals' news (2026-10-09, economy session, QUEUE Q103, POWERS.md)
+
+POWERS.md's economy fan-out, in `sim/program.js` (after the archetypes) and `sim/contracts.js` (the race's news):
+- **A school per power** (`p.school`): drawn from its archetype's affinities (`SCHOOL_W`, POWERS.md's weights) with
+  **exactly the draw the look lane's `schoolOf` used** (`rng(WSEED·7907 + i·131 + 17)`), so every rocket keeps the look
+  it had; `schoolOf` (`app/gl.js`, one line) now reads `POWERS[i].school` first: one source of truth. A **resource
+  state** has none of its own: it takes its **contractor's**, the power whose alignment is nearest (`p.contractor`).
+  The superpowers' affinities don't overlap, so their schools differ; two powers sharing a school get hues 120° apart.
+- **Names from the school** (`SCHOOLS[k].syl`, syllable counts per school: Cape and Arsenal 1–2, Steppe and Coastal
+  2–3, Mountain 3, Isle 2) and **the form of government from the archetype** (`ARCH_FORMS`, with the new People's
+  Republic, Emirate, Sultanate and State), unique within the world, on their own seeded draws after the archetypes: the
+  world's places, economies and relations are unchanged, and the launch sites take the new roots (`extendSites` runs
+  after). This build's world: *Dunnzar Republic* (home, rising, Arsenal), *Asaro Commonwealth* (open superpower,
+  Coastal), *Mirtov Federation* (closed superpower, Steppe), *Republic of Dunndag* (rising, Arsenal), *Sultanate of
+  Natovtov* (resource state, Mirtov's Steppe). Names aren't saved, so old saves show the new names.
+- **Rivals' news by archetype** (`raceNews`, `RIVAL_WIN`): the open superpower **announces each attempt 30 days
+  ahead**; the closed superpower's attempts are preceded by **rumours from the open press** 10 days before, and its
+  wins come as a state bulletin; the others launch unannounced; each archetype wins in its own tone (live coverage; a
+  bulletin; "joins the front rank"; "on a shoestring"; "claims a world record"; a "satellite test"). The race's
+  schedule is unchanged (rising powers copying, frugal ones partnering: a later slice, with LATE_GAME round 7's rivals).
+
+**Not yet:** headline tone for the program's *own* news by archetype (mission control's voice); the home name doesn't
+follow a different archetype chosen at a career's start (the look does, as before); flags and roundels (flow, look).
+Test `econ-13` (4 checks; the announcements mutation-tested). Traps hit, again: a mid-line `//` comment in `gl.js`
+swallowed `const aff=` (the suite's page-parse check caught it), and an apostrophe in a heredoc ("People's").
+
+## Plan: missions in flight (2026-10-09, space session, QUEUE Q49; plan only)
+
+From NOTES § "Time, long missions" (*Missions in flight*, passive flybys, one event timeline) and LATE_GAME.md § "Keeping
+flight in play" (the fleet strip, no silent misses). The pieces that exist: the registry and its rails (`satAt`,
+`moonOrbStep` with SOI exits, v1.60–v1.88's holding, decay and debris), the predictor's patched-conic legs
+(`predictFrom`, `numLeg` for perturbed legs), `vesselOf`/`flyEntry` (fly a registered vessel again), and the economy's
+timeline (`upcoming`, `advanceTo`, stops at events marked *stop*).
+
+**What changes for the player:** leaving a flight never loses a vessel. Anything still coasting (a transfer to Selene,
+an escape to Nyx, a capsule on its way home, a probe on a flyby) carries on between flights, shows in a list with its
+next event, and time stops before anything that needs a decision.
+
+**Who is "in flight":** at flight end (`missionEnd`), the flown vessel and each FLEET vessel that isn't landed or
+destroyed and isn't a satellite by `satRegister`'s rule (a closed orbit clear of the air, inside the SOI). Today those
+are dropped silently; they become **cruise entries** (`q.cruise`), registry entries with a trajectory.
+
+**Slices** (space unless noted):
+1. **Cruise entries on rails across bodies.** Registered at flight end with their state, shape, design and kit (as
+   satellites are, A2: flyable again). Between flights `orbTick` moves them leg by leg: Kepler in the current body's
+   frame up to the next SOI change (found as the predictor finds it), re-framed there (`bodyRel`); perturbed legs by the
+   RK4 stepper (`moonOrbStep`'s, generalised). A leg that becomes a closed orbit clear of the air turns the entry into an
+   ordinary satellite (the v1.60+ rules then apply). One that meets the ground or the air is the next slice's event.
+   The dispatched payload (Q149's note) registers here too: `dispatchRun` keeps `f.s`. Lists: *In flight* in the
+   Program screen (name, where it is, next event and when).
+2. **Events and stops** (with economy for `upcoming`): each cruise entry adds its next event: entering a body's gravity,
+   periapsis at a body (the closest approach), entering an atmosphere, meeting the ground. Rules, "no silent misses":
+   time **stops** before an atmosphere entry and before an impact, and once (the first time) before an SOI entry or a
+   periapsis that nothing is planned for. At the stop: **Fly it** (`flyEntry`, a flight that starts there) or **Let it
+   go**: an impact crashes it (logged, no surprise: it was announced); an atmosphere entry is flown headless by the
+   game's own physics (as `procFly` flies a dispatch) with the vessel's chute/shield, and lands or burns as physics says.
+3. **Planned burns carried** (with vehicle's nodes): maneuver nodes left on a vessel at flight end travel with its
+   entry. A node is an event that stops time (fly it), or, handed to mission control, is executed at the era's error
+   (`predErr`; exact with onboard computers), leaving a correction for later. This is "hand it off, or fly it".
+4. **The fleet strip** (flow) and **paying along the way** (economy): every vessel in flight with its next event and the
+   time to it, on the network screen and the pad calendar; prestige and public interest during a cruise (NOTES).
+
+**Defaults (Caio may override):**
+- a "Let it go" atmosphere entry is flown headless, not rolled: the result is what the vessel's design earns;
+- an SOI entry or periapsis with nothing planned stops time **once per entry per body** (then the player can ignore
+  it), as LATE_GAME asks;
+- cruise entries don't hold or decay; only satellites do (they keep the v1.60+ rules once their orbit closes);
+- debris pieces (v1.76) never become cruise entries: a spent stage on an escape trajectory is dropped, as now.
+
+**Costs** (to measure in slice 1): a cruise leg is Kepler (exact, one evaluation per SOI check) unless perturbed; the
+predictor already finds SOI changes in milliseconds. A few dozen vessels in flight cost nothing per day.
+
+**Tests to write first** (slice 1): a Selene transfer left at flight end arrives at Selene's SOI when the predictor said
+and its state matches a flight flown through (to the predictor's error); an escape from Tellus ends up around the root
+frame's body; a capsule on a return becomes "in flight" and re-entry is its next event; a closed orbit still registers
+as a satellite.
+
+## v1.88 — station-keeping checked against a real controller (2026-10-09, space session, QUEUE Q142; study only)
+
+v1.71 charges a held orbit the net change in its size and shape over 20 days; a crude controller (one burn to reverse
+the drift) had pumped the eccentricity, so it measured nothing. `study_slot.mjs` part D now flies a TV satellite over the
+capital on the full physics for 3 years, its tilt free as in v1.71, with a proper controller:
+- **Shape:** e held under 0.01 (TV needs < 0.02) by a retrograde burn at perigee and a prograde one at apogee (no net
+  change of size): 12–15 m/s a year.
+- **Size, so the longitude:** every 13 days, the mean size (daily samples at the same phase, averaged over 13 days)
+  is aimed at the value that brings the longitude back to its slot over τ days, by a pair of along-track burns half an
+  orbit apart (that changes the size without pumping the shape).
+
+| τ | Δv a year | worst off the slot, after the first 120 days |
+|---|---|---|
+| 20 days | 67 | 25° |
+| 40 days | 54 | 40° |
+| 80 days | 46 | 63° |
+
+v1.71's `slotRate` for the same satellite: 0.221 m/s a day = **89 m/s a year**, so the model is in the right range and
+on the conservative side (1.3–1.9× a controller that keeps it within 25–60°). No change to the game. Negative results
+on the way: reversing the measured daily drift chases the moons' periodic swing (the size swings ±40 km with Selene's
+13-day period, the longitude ±6°) and cost ~3,000 m/s a year; reversing a 26-day drift with a cooldown overshot by 100°+.
+The controller's first 13 days are open loop (60° off before it acts).
+
+## Assessed: thin air in the flight itself (2026-10-09, space session, QUEUE Q128; not built)
+
+Between flights a 110 km orbit decays in under an hour (v1.64); in flight the air stops at 100 km, so the same orbit is
+free. Measured with `dragRates`/`decayAE` for an Orbiter's payload (Cd·A/m 0.0068), if the flight felt the thin air:
+
+| parking orbit | lost an hour | down after | from 110 km (Hohmann) |
+|---|---|---|---|
+| 110 km (every preset's procedure today) | 13.6 m/s | 1.4 h | — |
+| 130 km | 1.2 m/s | 10 h | — |
+| 150 km | 0.28 m/s | 60 h (7.5 game days) | +48 m/s |
+| 200 km | 0.04 m/s | 815 h (~100 game days) | +105 m/s |
+
+So turning it on is not a physics fix to slip in: a craft warping in a 110 km parking orbit (waiting for a window, a
+rendezvous) would come down within the flight. It needs the presets' procedures to park at ~150 km (+48 m/s), the
+tests' `LEO`, the robot routes and PLAYROUTE to follow, and the "orbit" missions to keep their definition. That's every
+lane, so it goes to design (ROADMAP rule 8). **Default if silent: as now** (no air above 100 km in flight; decay
+between flights only), noted in the flight's HUD later as "decays in N h after the flight" if wanted.
+
+## v1.87 — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
+
+`missionTick` noted the first orbital period (around Tellus, `period`; around Selene, `sorbit`) the moment the orbit was
+bound with its periapsis clear, which is partway through the burn that closes it: the robot's Selene probe logged
+"1,521.9 min at 3,112 km" for a 200 × 20 km capture. Now both wait for a coast (`coast`: no engine burning); the Δv to
+low orbit is still noted when the orbit closes, since that's what it measures. Test `space-7` (mutation: no coast gate).
 
 ## v1.86 — dispatched flights leave debris too (2026-10-09, space session, QUEUE Q149)
 
@@ -7345,6 +7509,22 @@ screen, below, plus a compact copy in the Fleet tab.
   the registry, the dispatch queue, `padsN` and `upcoming`. **Economy:** when `netModel` lands, its `fleet` and `pads`
   replace the fallback with no change here; delete `netFallback` then.
 - Not yet (N2–N4): the schematic of nodes and routes, goods, the bottleneck line, the compact copy in the Fleet tab.
+
+### `netModel()` built (2026-10-09, economy session, QUEUE Q154; v1.89.1)
+The network screen's one SIM function, in `sim/program.js` beside dispatch, in the plan's shape
+`{nodes, routes, bottleneck, fleet, pads}`:
+- **fleet** and **pads**: exactly what `netFallback` built (registered craft with their next event; queued dispatches;
+  each pad's bookings), plus **dispatches waiting for you** after a deviation ("needs you: …", time 0, so first).
+  The screen already prefers `netModel()` (`netData`), so it switched over with no change. **Flow:** `netFallback` can
+  go now, as your note says.
+- **nodes** (N2's groundwork, today's things): our launch sites, ground stations, every registered craft by body and
+  slot (`surface`, or the orbit band: `low` under 2,000 km, `high`, `stationary` past 20,000 km), stations and bases
+  (a base's members fold into it) with **stock and need** in kg of supplies, days left, and `paused` (adrift, or out
+  of supplies).
+- **routes**: empty until routines exist (N3).
+- **bottleneck**: the crewed node with the fewest days of supplies once under 30 ("Selene Base 1 has 10 days of supplies
+  left"); the largest-shortfall rule across goods comes with routes.
+Test `econ-14` (3 checks; the bottleneck mutation-tested).
 
 ---
 

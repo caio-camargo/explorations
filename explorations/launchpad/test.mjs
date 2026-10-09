@@ -2680,9 +2680,9 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const reg = (...a) => { const n = P.sats.length; D.satRegister(put(...a), { day0: 0 }); return P.sats.length > n ? P.sats.at(-1) : null; };
   const q1 = reg(1000e3, 0, 0, true), low = reg(3e3, 0), wide = reg(1000e3, 0, 0.9);
   const v = q1 && D.vesselOf(q1, 5000), dv = v && len(sub(v.r, D.satAt(q1, 5000)[0]));
-  check('a vessel left in Selene orbit is registered in Selene\'s frame (a Relay, if an antenna is all it has); one that skims the ground or leaves the SOI is not',
-    q1 && q1.bodyName === 'Selene' && /^Relay/.test(q1.name) && !D.satsUp().includes(q1) && D.moonSats(B).includes(q1) && !low && !wide && v.body === B && dv < 1e-6,
-    `${q1 ? q1.name : '—'}; Tellus list ${D.satsUp().length}, Selene list ${D.moonSats(B).length}; 3 km periapsis ${low ? 'kept' : 'refused'}, apoapsis past the SOI ${wide ? 'kept' : 'refused'}; flown again around ${v ? v.body.name : '—'}`);
+  check('a vessel left in Selene orbit is registered in Selene\'s frame (a Relay, if an antenna is all it has); one that skims the ground or leaves the SOI is not (it is in flight, Q49)',
+    q1 && q1.bodyName === 'Selene' && /^Relay/.test(q1.name) && !D.satsUp().includes(q1) && D.moonSats(B).includes(q1) && (!low || low.cruise) && (!wide || wide.cruise) && !D.moonSats(B).includes(low) && !D.moonSats(B).includes(wide) && v.body === B && dv < 1e-6,
+    `${q1 ? q1.name : '—'}; Tellus list ${D.satsUp().length}, Selene list ${D.moonSats(B).length}; 3 km periapsis ${low ? (low.cruise ? 'in flight' : 'kept') : 'refused'}, apoapsis past the SOI ${wide ? (wide.cruise ? 'in flight' : 'kept') : 'refused'}; flown again around ${v ? v.body.name : '—'}`);
   // a far-side rover (high-gain antenna, Tellus never up) hears home only through a relay over its horizon that sees Tellus
   const rov = D.rvNew({ name: 'x', ch: 'm', wh: 'm', n: 6, spr: 'S', slots: ['cam', 'bat', 'ant', 'sol', null] }, B, [B.R, 0, 0], [0, 1, 0], {});
   const frac = (alt, rel) => { const per = 2 * Math.PI * Math.sqrt((B.R + alt) ** 3 / B.mu); let n = 0, N = 0, via = null, dl = 0, tOk = null;
@@ -4331,6 +4331,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     offOK && cs.R0 >= 1 && cs.gen <= 50 && casc === 1 && asatOK, `R0 ${cs.R0?.toFixed(1)}, next in ${cs.gen?.toFixed(1)} years, news ${casc}; ASAT ${Math.round(asat)} fragments`);
 }
 
+// econ-13. Powers as content (economy session, QUEUE Q103, POWERS.md): a hardware school per power from its archetype's
+// affinities (the same draw the look lane's schoolOf used, now read from POWERS), names from the school's syllables and
+// the archetype's forms of government, sites named after them; rivals' news by archetype.
+{
+  const D = new Function(src + 'return {POWERS,SITES,SCHOOLS,ARCH_FORMS,RIVAL_WIN,raceTick,MISSIONS,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},get RIVALS(){return RIVALS},set RIVALS(v){RIVALS=v},chooseStart};')();
+  const P = D.PROG, news = []; D.HOOK.news = t => news.push(t); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const W = D.POWERS, sup = W.filter(p => /Super$/.test(p.arch)), roots = W.map(p => p.root);
+  const formOk = p => D.ARCH_FORMS[p.arch].some(f => f.replace('#', p.root) === p.name);
+  check('powers: every power has a school (a resource state its contractor\'s), the superpowers\' differ, names unique and in their archetype\'s forms',
+    W.every(p => D.SCHOOLS[p.school]) && sup.length === 2 && sup[0].school !== sup[1].school && new Set(roots).size === roots.length && W.every(formOk)
+    && W.filter(p => p.arch === 'resource').every(p => p.contractor != null && W[p.contractor].school === p.school),
+    W.map(p => `${p.name} (${p.arch}, ${p.school})`).join('; '));
+  check('powers: launch sites carry the new names', D.SITES.filter(t => t.power != null).every(t => t.name.startsWith(W[t.power].root)), D.SITES.slice(0, 4).map(t => t.name).join(', '));
+  const H = html.replace(/\r\n/g, '\n');
+  check('powers: the look lane reads the SIM\'s school (one source of truth)', H.includes('if(POWERS[i].school&&') && H.includes('return SCHOOL_IDS[POWERS[i].school]'));
+  D.resetHome(); Object.assign(P, { homeArch: null, day: 0, rel: {}, op: {}, done: {}, raceLost: {}, raceAnn: {} }); D.chooseStart('agency');
+  const open = W.find(p => p.arch === 'openSuper'), closed = W.find(p => p.arch === 'closedSuper');
+  D.RIVALS = { beeper: { i: open.i, day: 100 }, hop: { i: closed.i, day: 100 } };
+  P.day = 69; D.raceTick(); const n0 = news.length; P.day = 70; D.raceTick(); const ann = news.slice(n0); P.day = 90; D.raceTick(); const rum = news.slice(n0 + ann.length);
+  P.day = 100; news.length = 0; D.raceTick();
+  check('rivals: the open superpower announces 30 days ahead, the closed one is preceded by rumours; each wins in its own tone',
+    ann.length === 1 && /announces an attempt at The beeper/.test(ann[0]) && rum.length === 1 && /Rumours from/.test(rum[0]) && news.some(t => /Live on every channel/.test(t)) && news.some(t => /state bulletin/.test(t)),
+    [...ann, ...rum, ...news].join(' | '));
+}
+
 // platform-2. Save versions (QUEUE Q57): a save carries `ver`; the loader runs MIGRATE from the save's version up to
 // SAVE_V. Fixtures: a version-0 save (no `ver`, no rel/op, a docked satellite, a broken day) comes up current and clean;
 // a current save passes through unchanged; a save from a newer game is left alone and flagged; garbage loads as nothing;
@@ -4365,6 +4390,77 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     f.ok && Array.isArray(f.junk) && f.junk.length >= 1 && f.junk.every(j => j.rec) && !('junk' in dry) && before === 1 && kept && f.T0 === Math.ceil(day - 1e-9) * D.DAY_S &&
     n0 === 0 && n1 === 1 && q.junk && D.satKind(q) === 'Debris' && Math.abs(q.epoch - (f.T0 + piece.t)) < 1e-6,
     `${f.junk ? f.junk.length : '—'} piece(s) dropped (${f.junk ? f.junk.map(j => Math.round(j.mass) + ' kg').join(', ') : ''}); registered ${n0} then ${n1}; list kept ${kept} (after the flight ${j1}, after the dry run ${j2}); T0 ${f.T0 / D.DAY_S} (day ${day}); epoch off by ${q ? (q.epoch - f.T0 - piece.t).toExponential(1) : '—'}`);
+}
+
+// space-7. The orbital period goes in the logbook once the engines stop (space session, QUEUE Q114, PLAYTEST #30): it
+// used to be logged the first moment the orbit was bound, mid-burn (a probe captured into 200 × 20 km logged "1,521.9 min
+// at 3,112 km"). The Δv to orbit is still noted at the moment the orbit closes.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,missionTick,elements,TELLUS,SELENE,PROG,HOOK,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG; P.day = 0; P.log = {};
+  const run = (B, alt, apAlt) => { const x = D.newShip(D.PRESETS.Probe); D.S = x; x.landed = false; D.t = 0; D.missionTick(x, 0, false);
+    const rp = B.R + alt, ra = B.R + apAlt, a = (rp + ra) / 2, vp = Math.sqrt(B.mu * (2 / rp - 1 / a));
+    Object.assign(x, { alive: true, landed: false, body: B, r: [rp, 0, 0], v: [0, 0, -vp], throttle: 1 }); x.rec.dv = 900; x.rec.launched = true;
+    x.parts.filter(p => p.on && p.d.kind === 'engine').forEach(p => { x.segs[p.seg].ignited = true; });
+    const id = B === D.SELENE ? 'sorbit' : 'period'; delete P.log[id]; D.missionTick(x, 0.1, true); const burning = !!P.log[id];
+    x.throttle = 0; D.missionTick(x, 0.1, true); const L = P.log[id], el = D.elements(x.r, x.v, B.mu);
+    return { burning, ok: !!L && Math.abs(L.v.p - el.period) < 1e-6, L, el }; };
+  const sel = run(D.SELENE, 20e3, 200e3), tel = run(D.TELLUS, 300e3, 300e3);
+  check('logbook: the orbital period is noted once the engines stop, around Selene and Tellus, not mid-burn',
+    !sel.burning && sel.ok && !tel.burning && tel.ok && D.PROG.log.orbit,
+    `Selene ${sel.L ? (sel.L.v.p / 60).toFixed(1) + ' min' : '—'} (logged while burning: ${sel.burning}); Tellus ${tel.L ? (tel.L.v.p / 60).toFixed(1) + ' min' : '—'} (while burning: ${tel.burning})`);
+}
+
+// econ-14. The network screen's model (economy session, QUEUE Q154): netModel() gives the screen its fleet and pads (as
+// flow's fallback did), today's nodes with stock and need, no routes yet, and the bottleneck (the crewed node shortest of
+// supplies). The screen reads it and computes nothing.
+{
+  const D = new Function(src + 'return {netModel,padsN,TELLUS,SELENE,PROG,HOOK,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, own: null, decisions: [], offers: [], active: [], flights: 5, fac: {}, stations: [] }); D.chooseStart('agency');
+  const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0), u = [-1, 0, 0].map(x => x * D.SELENE.R);
+  const sat = { id: 41, name: 'Lookout 1', cam: 1, ant: 1, r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [] };
+  const base = { id: 42, name: 'Selene Base 1', landed: true, beacon: true, bodyName: 'Selene', pf: u, ql: [0, 0, 0, 1], shape: [{ k: 'hab', crew: 2, res: { sup: 0.1 } }], pending: [], imgs: 0 };
+  P.sats = [sat, base];
+  P.dispatch = [{ id: 1, title: 'Supply run to Selene Base 1', base: 42, stack: ['sci', 't8', 'kestrel'], pad: 0, launch: 140, ordered: 100, status: 'queued' },
+    { id: 2, title: 'Dispatched: a satellite contract', cid: 9, stack: ['sci', 't8', 'kestrel'], pad: 0, launch: 90, status: 'deviated', dev: { why: 'the upper stage failed to relight' } }];
+  const M = D.netModel(), bn = M.nodes.find(n => n.id === 'reg:42'), sn = M.nodes.find(n => n.id === 'reg:41');
+  check('network model: fleet (craft, queued and deviated dispatches) and the pads\' bookings, as the screen draws them',
+    M.fleet.length === 4 && M.fleet.some(f => /needs you/.test(f.next)) && M.pads.length === D.padsN() && M.pads[0].bars.length === 1 && M.pads[0].bars[0].to === 140 && Array.isArray(M.routes) && !M.routes.length,
+    M.fleet.map(f => `${f.name}: ${f.next}`).join(' · '));
+  check('network model: nodes for our sites, the satellite by orbit band, the base with its stock and need; the bottleneck names it',
+    M.nodes.some(n => n.kind === 'site') && sn && sn.slot === 'low' && bn && bn.kind === 'base' && bn.stock.supplies === 100 && bn.need.supplies === 10 && Math.round(bn.days) === 10
+    && M.bottleneck && M.bottleneck.node === 'reg:42' && /10 days of supplies/.test(M.bottleneck.text), M.bottleneck ? M.bottleneck.text : 'no bottleneck');
+  const N = readFileSync(new URL('./app/network.js', import.meta.url), 'utf8');
+  check('network model: the screen reads netModel() when it exists', /typeof netModel==='function'\?netModel\(\)/.test(N));
+}
+
+// space-8. Missions in flight, slice 1 (space session, QUEUE Q49): a vessel still coasting above the air at flight end
+// that isn't in a lasting orbit becomes a cruise entry, carried between flights leg by leg as the predictor sees it.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,elements,kepler,predictFrom,cruiseNext,flyable,satsUp,TELLUS,SELENE,PROG,HOOK,DAY_S,STAT_R,len,sub,set ORB_T0(v){ORB_T0=v}};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, Sl = D.SELENE, R = T.R; D.ORB_T0 = 0;
+  const reg = (r, v) => { const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { alive: true, landed: false, body: T, r, v }); const n = P.sats.length; D.satRegister(s, { day0: 0 }); return P.sats.length > n ? P.sats.at(-1) : null; };
+  const reset = () => { P.sats = []; P.day = 0; news.length = 0; };
+  // a transfer to Selene: from 300 km, aimed so the predictor finds the encounter
+  const r0 = R + 300e3, vT = Math.sqrt(T.mu * (2 / r0 - 2 / (r0 + Sl.a))) * 1.002; let tr = null;
+  for (let k = 0; k < 360 && !tr; k++) { const a = k * Math.PI / 180, r = [r0 * Math.cos(a), 0, r0 * Math.sin(a)], v = [vT * Math.sin(a), 0, -vT * Math.cos(a)], L = D.predictFrom({ b: T, r, v, t: 0 });
+    if (L[0].endKind === 'enc' && L[1] && L[1].b === Sl) tr = { r, v, L }; }
+  reset(); const qt = reg(tr.r, tr.v), tArr = tr.L[0].endT; D.advanceDays(Math.ceil(tArr / D.DAY_S) + 0.01);
+  const arrived = qt && qt.bodyName === 'Selene' && news.some(m => /entered Selene/.test(m));
+  const back = qt && (qt.cruise || !P.sats.includes(qt) || qt.bodyName === 'Selene');
+  check('in flight: a Selene transfer left at flight end is carried between flights and enters Selene’s sphere when the predictor said',
+    !!tr && qt && qt.cruise !== undefined && arrived && back, `found an aim: ${!!tr}; arrives on day ${(tArr / D.DAY_S).toFixed(2)}; now around ${qt ? (qt.bodyName || 'Tellus') : '—'}; ${news.filter(m => /entered|settled|struck|left/.test(m)).join(' / ')}`);
+  // an escape stays on its rails; a return halts at the top of the air (flyable, waiting); lasting orbits are satellites
+  reset(); const ve = Math.sqrt(2 * T.mu / r0) * 1.05, qe = reg([r0, 0, 0], [0, 0, -ve]); D.advanceDays(3); const eExp = D.kepler([r0, 0, 0], [0, 0, -ve], 3 * D.DAY_S, T.mu)[0], qeUp = D.satsUp().includes(qe);
+  reset(); const ra = R + 5000e3, rp = R + 50e3, aa = (ra + rp) / 2, va = Math.sqrt(T.mu * (2 / ra - 1 / aa)), qr = reg([ra, 0, 0], [0, 0, -va]); D.advanceDays(1); const hr = qr && D.len(qr.r) - R, ep1 = qr && qr.epoch; D.advanceDays(1);
+  const halted = qr && qr.cruise && qr.halt && qr.halt.kind === 'air' && Math.abs(hr - T.atm) < 1 && qr.epoch > ep1 && Math.abs(D.len(D.satAt(qr, qr.epoch)[0]) - R - T.atm) < 1 && D.flyable(qr) && news.some(m => /top of Tellus/.test(m));
+  reset(); const ql = reg([R + 300e3, 0, 0], [0, 0, -Math.sqrt(T.mu / (R + 300e3))]), qs = reg([D.STAT_R, 0, 0], [0, 0, -Math.sqrt(T.mu / D.STAT_R)]);
+  check('in flight: an escape carries on outward (the moons perturb it as in flight); a return waits at the top of the air, flyable; low and stationary orbits are still satellites',
+    qe && qe.cruise && Math.abs(qe.epoch - 3 * D.DAY_S) < 1 && D.len(qe.r) > 0.9 * D.len(eExp) && D.elements(qe.r, qe.v, T.mu).e > 1 && halted && ql && !ql.cruise && qs && !qs.cruise && D.satsUp().includes(qs) && !qeUp,
+    `escape at ${qe ? (D.len(qe.r) / 1e6).toFixed(0) : '—'} Mm after 3 days (pure Kepler ${(D.len(eExp) / 1e6).toFixed(0)}, ${qe ? (D.len(D.sub(qe.r, eExp)) / 1e3).toFixed(0) : '—'} km apart); return halted at ${hr ? (hr / 1e3).toFixed(1) : '—'} km`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
