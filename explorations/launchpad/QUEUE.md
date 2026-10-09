@@ -235,7 +235,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | ✓ `6434d62` (go to day, set funds, era skip, mission toggles; TESTING row 126) |
 | Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 | Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | ✓ `e75d8d5` (clean: #15–#18, #21, #22 hold; new robot rows 97, 122; only #26 left on screen) |
-| Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | plan ✓; slice 1 moons ✓ `90f36a1`; slice 2 docking ✓ `352e938` (56, 58–63); slice 3 stations (+116, claw) → QA 2026-10-08 |
+| Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ✓ `d35f99a`: moons (68, 72, 55, 73, 125), docking (56, 58–63), stations (60 claw, 64, 66, 67, 98); left: 65, 115, 116, 117 (Proposed) |
 | Q79 | Tester **"go to body" view**: a `views.js` entry per [`SYSTEM.md`](SYSTEM.md) body, drawn alone from its physical row (radius, flattening, tilt, rings) at three distances, with no orbit or SOI yet. Unblocks Q80–Q85 | M5 | M | 🖥 | ready (the milestone gate allows it: SYSTEM.md § fan-out) |
 | Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ready |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ready |
@@ -297,3 +297,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- QA — robot drivers for the last undriven rows: 65 crew rotation, 115 Selene relay + far-side rover, 116 docking at Selene, 117 rover science (NOTES § Q30 slice 3) — Q30
