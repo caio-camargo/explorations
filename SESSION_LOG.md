@@ -3952,3 +3952,25 @@ Took every ready QA item in turn, plus overflow from the lane's own follow-ups:
 - [ ] Human: TESTING 140 (is "go higher or bring fuel" fair, or a surprise?)
 - [ ] Proposed in QUEUE: thin air in the flight's coast; reboost contracts (economy); parking orbits ≥ 200 km in PLAYROUTE and presets (QA/vehicle)
 - [ ] Space: next ready item Q26 (contact with debris and between satellites)
+
+## 2026-10-09 — Launchpad v1.65: Hesper's ground on the CPU (world session)
+
+### Summary
+The second planet's ground (QUEUE Q92's CPU half), Venus-like, not live (stub body):
+- ~140 craters over 2 km and none under 1.3 km (the thick air: only the three coarsest bands run);
+- basalt plains on 85 % of the planet, with wrinkle ridges;
+- raised, ridged slab rock (11 %, the roughest ground);
+- a 9 km massif, four gentle shields, three coronae, a pancake-dome cluster;
+- lava channels 1.5–3 km wide and ~80–110 m deep;
+- five surfaces by unit.
+Negative results: the first slab rock was too wide and too smooth; untextured plains were glass; a noise-isoline
+channel came out 2.5× wider than its threshold suggested (measured, then narrowed); a trough test must compare across
+with along. Test `ground-4` (7 checks, 3 mutations caught). Full suite 497 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`hesper`), `test.mjs` (`ground-4`), `NOTES.md` § v1.65, `GROUND.md` 0.1.5, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: Astraea (bright-floored crater, a lonely mountain, g 0.28), then Hyperion's moons, Erebus
+- [ ] Space (Q87): Hesper into the body tree with `ground: HESPER_GROUND`

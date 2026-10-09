@@ -1,5 +1,5 @@
 # GROUND — the ground of every body (plan)
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (world session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
 **Status**: **Plan, not built.** QUEUE Q86 (ground per body, from [`SYSTEM.md`](SYSTEM.md)'s ground briefs) and Q18
 (Selene's terrain) written as one plan, because Selene is the first user of the layer every other body needs.
 **Purpose**: What the world lane builds so that each body has real ground: which shared generators, which body uses
@@ -103,7 +103,7 @@ Priority is the epoch that first lands there (SYSTEM § "Where this sits").
 | **Nyx** | a battered small moon, slightly lumpy | G-lump (mild), G-crater | R 150 km, g 0.4; the same march as Selene with a different recipe: cheap once Selene works | M3 (after Selene) |
 | **Enyo** ✓ CPU (v1.62, not live) | craters, dunes, the canyon, the giant shield, layered ground, polar caps | G-crater, G-dune, G-carve, G-volcano, G-basin (the northern lowlands) | the richest rocky ground job; rovers drive here; the polar caps are a mask (look's colour plus an ice surface) | epoch 6 |
 | Pavor, Metus | dark captured lumps | G-lump, G-crater | R 2–3 km: the lump is most of the shape | epoch 6 |
-| **Hesper** | basalt plains, slab rock, a few shields, lava channels | G-basin, G-volcano, G-carve | seen by landers and radar only: modest detail, cheap. A lander lasts minutes, so the near field matters more than the far | epoch 6 |
+| **Hesper** ✓ CPU (v1.65, not live) | basalt plains, slab rock, a few shields, lava channels | G-basin, G-volcano, G-carve | seen by landers and radar only: modest detail, cheap. A lander lasts minutes, so the near field matters more than the far | epoch 6 |
 | **Astraea** | cratered regolith, the bright-floored crater, a lonely mountain | G-crater, G-volcano (one cone) | g 0.28: the bright crater is a mask the look lane colours (salts) | epoch 7 |
 | Hyperion | **none** | — | `ground:null`; an entry probe ends in the deep atmosphere (the space/vehicle lanes' job) | — |
 | Theia | lava plains and calderas | G-basin, G-volcano, G-crater (few) | plumes are look and effects, not ground | epoch 7 |
@@ -323,6 +323,7 @@ orbit.
 ---
 
 ## Version history
+- **0.1.5 (2026-10-09):** Hesper's ground built on the CPU (v1.65, not live; stub body).
 - **0.1.4 (2026-10-08):** Enyo's ground built on the CPU (v1.62, not live; a stub body until the space lane adds Enyo). The crater bands and surfaces are now per recipe.
 - **0.1.3 (2026-10-08):** § "G3: the port plan": the march as a per-body template, what must be bit-identical (`ptan` for crater centres), cost estimate and fallbacks, steps G3.0–G3.4, and what flips when the recipe goes live (saves, tapes, tests, `MOON_PE`, the bake).
 - **0.1.2 (2026-10-08):** G2 built (v1.58): the recipe is in `sim/ground.js`, not live until G3; the measured numbers are in NOTES § v1.58.

@@ -9,7 +9,7 @@ redo them.
 **Built on** (cite, don't redo): NOTES § "Rich programs" (the ladder of projects, waste heat, routine runs, pads as
 the scarce resource, compute eras, consortia), § "Time, long missions" (missions in flight, passive flybys, paying
 along the way), [`SYSTEM.md`](SYSTEM.md) (where you can go), [`POWERS.md`](POWERS.md) (rivals' personalities),
-[`TECH_SCOUTING.md`](TECH_SCOUTING.md), ROADMAP § Pillars (1 the boundary, 3 what you launch stays, 5 forgiving,
+[`MIDGAME.md`](MIDGAME.md) (the bridge: how routines begin, the automation ladder, windows), [`TECH_SCOUTING.md`](TECH_SCOUTING.md), ROADMAP § Pillars (1 the boundary, 3 what you launch stays, 5 forgiving,
 8 an era into the near future).
 
 ---

@@ -150,4 +150,49 @@ function enyoUnit(u){const m=enyoMap(),b=A=>mapBil(A,m.W,m.H,u);if(b(m.C)>.5)ret
 const ENYO_SURF={'polar ice':{name:'water ice',mu:.25,soft:2,rough:.02},dunes:{name:'dune sand',mu:.5,soft:4,rough:0},volcanic:{name:'basalt',mu:.7,soft:-2,rough:.3},
   canyon:{name:'layered sediment',mu:.6,soft:0,rough:.2},'lowland plains':{name:'dusty plains',mu:.6,soft:2,rough:.08},highlands:{name:'dusty regolith',mu:.6,soft:1,rough:.15}};
 const ENYO_GROUND={gen:'enyo',top:15000,surf:pf=>ENYO_SURF[enyoUnit(norm(pf))],unit:u=>enyoUnit(u)};   // top: checked in test ground-3
+// Hesper (Venus): SYSTEM.md § Hesper. R 1,210 km, g 8.87 (simple → complex at 3.3 km). Seen only by landers and radar, so
+// modest detail: a 7.4 km map plus a little procedural texture. The 90 bar air burns up small impactors and the surface is
+// young, so craters are few, fresh and never under ~1.3 km: c 3e-5 (Venus: under a thousand craters in all; at Hesper's
+// size ~140 over 2 km), only the three coarsest bands, no thinning. The map, in order: basalt plains (−0.5 km ± 0.4);
+// slab-rock highlands (Venus's tesserae: blocks raised 2 km, ~10 % of the globe, with ridged texture added procedurally);
+// one high massif (Maxwell Montes, to ~9 km); four broad, gentle shields (Maat Mons and kin: 150–200 km across, 4–7 km);
+// three coronae (rings: a raised rim, a moat outside, a sagged centre); a cluster of pancake domes (25 km, 0.7 km, flat
+// tops; blobs at this map's scale). Procedural on top: slab rock's ridges, the plains' wrinkle ridges, and lava channels: a narrow trough (~2 km wide at half depth, 80 m deep; measured) along the
+// isolines of a warped noise, in some of the plains. Channels: E height, T slab rock, V volcanic, O corona.
+GROUND_STUBS.Hesper={name:'Hesper',R:1.21e6,g:8.87};
+const HE={c:3e-5,salt:2,frPow:1,bands:3,seed:909,plains:[-500,800],tess:[.635,.69,2000],massif:{at:[65,0],r:.08,h:7000},
+  shields:[[0,-165,200e3,7e3],[-25,30,180e3,5e3],[22,-130,160e3,4.5e3],[-40,100,150e3,4e3]],coronae:[[-15,-60,150e3],[30,80,120e3],[-55,-150,180e3]],
+  domes:{at:[-30,10],n:12,spread:.06,R:12.5e3,h:700},ridge:700,wrinkle:110,chan:{depth:80,half:.00045,lam:900e3}};
+let HESPER_MAP=null;
+function hesperMap(){if(HESPER_MAP)return HESPER_MAP;const B=GROUND_STUBS.Hesper,R=B.R,Dt=GR_DT/B.g,W=1024,H=512,N=W*H,rnd=rng(HE.seed),
+    E=new Float32Array(N),T=new Float32Array(N),V=new Float32Array(N),O=new Float32Array(N);
+  const ma=llU(...HE.massif.at),sh=HE.shields.map(s=>({c:llU(s[0],s[1]),R:s[2],H:s[3]})),co=HE.coronae.map(s=>({c:llU(s[0],s[1]),R:s[2]})),dc=llU(...HE.domes.at),dm=[];
+  for(let q=0;q<HE.domes.n;q++){const e=norm(cross([0,1,0],dc)),n=cross(dc,e),a=HE.domes.spread*Math.sqrt(rnd()),t=2*Math.PI*rnd();
+    dm.push(norm(add(dc,add(mul(e,a*Math.cos(t)),mul(n,a*Math.sin(t))))))}
+  for(let j=0;j<H;j++)for(let i=0;i<W;i++){const u=mapU(W,H,i,j),k=j*W+i,gm=Math.exp(-((angTo(u,ma)/(HE.massif.r*2.2))**2));
+    T[k]=Math.max(sstep(HE.tess[0],HE.tess[1],tfbm(u[0]*1.6+31,u[1]*1.6+31,u[2]*1.6+31,4)),sstep(.3,.6,gm));
+    let e=HE.plains[0]+HE.plains[1]*(tfbm(u[0]*2+17,u[1]*2+17,u[2]*2+17,5)-.5)+HE.tess[2]*T[k]+HE.massif.h*Math.exp(-((angTo(u,ma)/HE.massif.r)**2)),v=0,o=0;
+    for(const s of sh){const r=angTo(u,s.c)*R/s.R;if(r<1){e+=shieldH(r,s.H,0,.08);v=Math.max(v,sstep(1,.7,r))}}
+    for(const c of co){const r=angTo(u,c.c)*R/c.R;if(r<1.4){e+=900*Math.exp(-(((r-.85)/.12)**2))-500*Math.exp(-(((r-1.05)/.07)**2))-200*sstep(.7,0,r);o=Math.max(o,sstep(1.3,1.1,r))}}
+    for(const d of dm){const r=angTo(u,d)*R/HE.domes.R;if(r<1){e+=HE.domes.h*sstep(1,.8,r);v=Math.max(v,sstep(1,.6,r))}}
+    E[k]=e;V[k]=v;O[k]=o}
+  const cr=bigCraters(rnd,R,HE.c,60e3,1);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);
+  let lo=Infinity,hi=-Infinity;for(const v of E){if(v<lo)lo=v;if(v>hi)hi=v}
+  return HESPER_MAP={W,H,E,T,V,O,Dt,craters:cr,lo,hi,thin:()=>0}}
+// wrinkle ridges on the plains: thin, low ridges ~30 km apart (the ridged noise raised to a high power)
+function hesperWrinkle(u,R){const f=1/30e3,r=1-Math.abs(2*tn(u[0]*R*f+21,u[1]*R*f+13,u[2]*R*f+17)-1);return r**8}
+// lava channels: a trough along an isoline of a warped noise, where a second noise allows it (some of the plains only)
+function hesperChan(u,R,m){const p=HE.chan.lam,x=u[0]*R/p,y=u[1]*R/p,z=u[2]*R/p,wv=tn(x*2.3+5,y*2.3+5,z*2.3+5)-.5,l=Math.abs(tn(x+wv*.9+11,y+wv*.9,z+wv*.9)-.5);
+  if(l>HE.chan.half*2.5)return 0;const ok=sstep(.5,.6,tn(x*.7+40,y*.7,z*.7))*(1-mapBil(m.T,m.W,m.H,u))*(1-mapBil(m.V,m.W,m.H,u));return ok*sstep(HE.chan.half*1.6,HE.chan.half*.6,l)}
+// slab rock's texture: ridged noise at ~12, 5.5 and 2.5 km, crossing (two directions), only on the slabs
+function hesperRidge(u,R){let s=0,a=1,f=1/12e3;for(let o=0;o<3;o++){const r=1-Math.abs(2*tn(u[0]*R*f+3,u[1]*R*f*1.7+7,u[2]*R*f+1)-1),q=1-Math.abs(2*tn(u[0]*R*f*1.7+9,u[1]*R*f+2,u[2]*R*f*1.3+4)-1);s+=a*(r*r+q*q)*.5;a*=.5;f*=2.2}return s/1.75}
+function hesperH(pf,bands=HE.bands){const u=norm(pf),m=hesperMap(),R=GROUND_STUBS.Hesper.R,t=mapBil(m.T,m.W,m.H,u);
+  return mapSpl(m.E,m.W,m.H,u)+craterBands(u,R,m.Dt,null,Math.min(bands,HE.bands),HE.c,HE.salt,HE.frPow)+(t>0?t*HE.ridge*hesperRidge(u,R):0)+(t<1?(1-t)*HE.wrinkle*hesperWrinkle(u,R):0)-HE.chan.depth*hesperChan(u,R,m)}
+GROUND_GEN.hesper=pf=>hesperH(pf);
+const HESPER_UNITS=['mountains','slab rock','volcanic','corona','lava channel','plains'];
+function hesperUnit(u){const m=hesperMap(),b=A=>mapBil(A,m.W,m.H,u),R=GROUND_STUBS.Hesper.R;if(b(m.T)>.5)return mapSpl(m.E,m.W,m.H,u)>5000?'mountains':'slab rock';
+  if(b(m.V)>.5)return'volcanic';if(b(m.O)>.5)return'corona';return hesperChan(u,R,m)>.3?'lava channel':'plains'}
+const HESPER_SURF={mountains:{name:'slab rock',mu:.75,soft:-2,rough:.4},'slab rock':{name:'slab rock',mu:.75,soft:-2,rough:.4},volcanic:{name:'lava flows',mu:.7,soft:-2,rough:.3},
+  corona:{name:'fractured basalt',mu:.7,soft:-1,rough:.25},'lava channel':{name:'channel floor',mu:.65,soft:-1,rough:.05},plains:{name:'basalt plains',mu:.7,soft:-1,rough:.15}};
+const HESPER_GROUND={gen:'hesper',top:12000,surf:pf=>HESPER_SURF[hesperUnit(norm(pf))],unit:u=>hesperUnit(u)};   // top: checked in test ground-4
 // ==== SIM END

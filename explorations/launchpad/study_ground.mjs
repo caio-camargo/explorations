@@ -1,16 +1,18 @@
 // study_ground.mjs — measures a body's ground recipe headless (world session, GROUND.md G2/G7): bake time and sample
 // cost, continuity across the crater cells' cube-face seams, crater counts against the target, relief, slopes by unit,
 // flat ground for landers, and (Selene) the ground that never sees the sun.
-//   node study_ground.mjs [selene|enyo] [quick]      (selene by default; quick skips the polar darkness scan)
+//   node study_ground.mjs [selene|enyo|hesper] [quick]      (selene by default; quick skips the polar darkness scan)
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
+const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
 const { norm, dot, cross, add, mul } = G, D2R = Math.PI / 180, args = process.argv.slice(2), quick = args.includes('quick');
 const BODY = {
   selene: () => { const b = G.SELENE; b.ground = G.SELENE_GROUND; const m = G.seleneMap();
     return { b, m, h: G.seleneH, c: G.GR_C, salt: 0, unit: u => G.geoAt(b, u).unit, units: ['mare', 'high'], young: 'mare', dark: true }; },
   enyo: () => { const S = G.GROUND_STUBS.Enyo, b = { name: S.name, R: S.R, mu: S.g * S.R * S.R, ground: G.ENYO_GROUND }; const m = G.enyoMap();
     return { b, m, h: G.enyoH, c: G.EN.c, salt: G.EN.salt, unit: G.ENYO_GROUND.unit, units: G.ENYO_UNITS, young: 'lowland plains', dark: false }; },
+  hesper: () => { const S = G.GROUND_STUBS.Hesper, b = { name: S.name, R: S.R, mu: S.g * S.R * S.R, ground: G.HESPER_GROUND }; const m = G.hesperMap();
+    return { b, m, h: G.hesperH, c: G.HE.c, salt: G.HE.salt, nb: G.HE.bands, unit: G.HESPER_GROUND.unit, units: G.HESPER_UNITS, dark: false }; },
 }[args.find(a => a !== 'quick') || 'selene'];
 let t0 = performance.now(); const X = BODY(), tBake = performance.now() - t0, { b: B, m: M } = X, R = B.R;
 const pct = (a, p) => a[Math.min(a.length - 1, Math.floor(p * a.length))], f1 = x => x.toFixed(1), f0 = x => x.toFixed(0);
@@ -22,7 +24,7 @@ console.log(`== ${B.name}: R ${f0(R / 1000)} km, g ${(B.mu / R / R).toFixed(2)},
 const U = []; for (let i = 0; i < 20000; i++) U.push(sph());
 t0 = performance.now(); for (const u of U) X.h(u); const tH = (performance.now() - t0) / U.length * 1000;
 console.log(`bake ${f0(tBake)} ms (map ${M.W}×${M.H}, ${(R * 2 * Math.PI / M.W / 1000).toFixed(2)} km a texel at the equator, ${M.craters.length} baked craters ≥ 20 km); one height ${tH.toFixed(1)} µs`);
-console.log(`bands: ${G.grBands(R, X.c).map(b => `${f1(b.Dlo / 1000)}–${f1(b.Dhi / 1000)} km (n ${b.n}, λ ${b.lam.toFixed(2)})`).join(' · ')}`);
+console.log(`bands: ${G.grBands(R, X.c).slice(0, X.nb || 6).map(b => `${f1(b.Dlo / 1000)}–${f1(b.Dhi / 1000)} km (n ${b.n}, λ ${b.lam.toFixed(2)})`).join(' · ')}`);
 
 // 2. relief, and the share of each unit
 const H = U.map(u => X.h(u)), Hs = H.slice().sort((a, b) => a - b), un = U.map(X.unit);
@@ -41,7 +43,7 @@ console.log(`continuity: steepest 0.5 m step ${f1(Math.atan(worst) / D2R)}° any
 const area = 4 * Math.PI * (R / 1000) ** 2, bins = [20, 10, 5, 2, 1, .5, .2], cnt = Object.fromEntries(bins.map(d => [d, 0])), s0 = 7001 + X.salt * 16;
 const per = {}; for (const k of X.units) per[k] = 0;
 for (const c of M.craters) for (const d of bins) if (c.D / 1000 >= d) cnt[d]++;
-G.grBands(R, X.c).forEach((b, bi) => { const n = b.n, frac = n > 900 ? 0.02 : 1;
+G.grBands(R, X.c).slice(0, X.nb || 6).forEach((b, bi) => { const n = b.n, frac = n > 900 ? 0.02 : 1;
   for (let f = 0; f < 6; f++) for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { if (frac < 1 && G.ih3(i, j, f + 99) > frac) continue;
     const key = f * 65536 + i, zz = j * 8 + bi * 131072; if (G.ih3(key, zz, s0) >= b.lam) continue;
     const ax = f >> 1, sg = f & 1 ? -1 : 1, FACE = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]][ax * 2], c = [0, 0, 0];
