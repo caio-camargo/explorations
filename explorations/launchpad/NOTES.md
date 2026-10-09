@@ -6876,7 +6876,7 @@ at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap her
 
 **Overlaps (so nobody builds the same thing twice):**
 - space Q27 "relay range and power": reads the power budget and `hasComputer`; it doesn't build its own.
-- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared.
+- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared. *(Space, v1.60: fuel-flat turned out to be physical drift, not a switch, so there is no field yet; Q34a adds `q.off`, see § v1.60 "Decisions".)*
 - economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
 - Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
   session builds the gating.

@@ -146,7 +146,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 |---|---|---|---|---|---|
 | Q11 | `dispatchRun`: dispatch flown, not rolled; dry runs | M2 | M | ⚙ | ✓ bodies (`a94ea97`) |
 | Q12 | Deviation rules + the climb's corridor | M2 | S | ⚙ | ✓ bodies (`c1d7afb`) |
-| Q50 | **Station-keeping as a fuel lifetime** (W2 default): propellant at zero → the satellite drifts and its service pauses, never dies | M2 | M | ⚙ | → space 2026-10-08 (reads Q34a's power budget once it lands) |
+| Q50 | **Station-keeping as a fuel lifetime** (W2 default): propellant at zero → the satellite drifts and its service pauses, never dies | M2 | M | ⚙ | ✓ `cf7d2d2` (v1.60: `slotRate`, `skDv`, `orbTick`; NOTES § v1.60; TESTING 134) |
 | Q25 | **Orbital decay** for low satellites (unblocks reboost) | M2 | M | ⚙ | ready |
 | Q26 | **Contact with debris** and between satellites (unblocks grabbing debris) | M2 | M | ⚙ | ready |
 | Q27 | Relay range and power | M2 | M | ⚙ | after Q34a (reads its power budget and `hasComputer(s)`; one shared "paused because…" field) |
@@ -297,3 +297,8 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - look & sound — PLAYTEST #32 (P3): sun-behind lander on Selene is a black silhouette (no fill light) — PLAYTEST #32
 - QA — robot `m1` now passes in full on `main` (Debrief, Esc pause, no overlapping boxes): M1's robot finish line; rerun after merges that touch screens — NOTES § "Esc pauses; two more lanes"
 - QA/orchestrator — TESTING has two rows numbered 131 (Selene views, line 174; Esc pause, line 213): renumber one — economy noticed
+- economy — reboost and servicing contracts for satellites adrift or low on propellant (the Program line shows days left) — NOTES v1.60, Q50
+- space — refuelling by docking: propellant transfer between docked craft, so a tanker restores a satellite's life — NOTES v1.60, Q50
+- vehicle — Q34a: power-flat adds `q.off` and gates TV pay, `navCover`'s list and the imaging contact on it (no fuel field to share) — NOTES v1.60 "Decisions"
+- orchestrator — W2 read physically: dry satellites drift, and only slot-bound jobs stop (TV grey on day 87); nav and imagery go on. Default, Caio may override — NOTES v1.60
+- QA — TESTING also has two rows numbered 133 (offer reasons; new career) — space noticed
