@@ -154,8 +154,8 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: effects — plumes, plasma, vapor, dust, explosions, debris re-entry, bloom · worktree `launchpad-aerofx` (branch `aerofx`)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q20 | PLAYTEST #17, plasma side: the shell uses terrain's `plasmaOn(s)` | M0 | S | 🖥 | → aerofx 2026-10-08 |
-| Q63 | Plasma lighting the hull; a shield-first reference view (NOTES § "Re-entry plasma") | — | S | 🖥 | ready |
+| Q20 | PLAYTEST #17, plasma side: the shell uses terrain's `plasmaOn(s)` | M0 | S | 🖥 | ✓ `be4ff2c` (`plasmaHeat`; Q29 can run) |
+| Q63 | Plasma lighting the hull; a shield-first reference view (NOTES § "Re-entry plasma") | — | S | 🖥 | → aerofx 2026-10-08 |
 | Q64 | Vapor collars on side boosters (NOTES § "Transonic vapor cones") | — | M | 🖥 | ready |
 
 #### beat: sky & bodies — atmosphere, clouds, stars, how each body looks · worktree `launchpad-sky` (new, branch `sky`, port 8802; create it on first start)
