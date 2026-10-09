@@ -4,7 +4,7 @@
 //   node study_ground.mjs [selene|enyo|hesper|astraea|theia|eos|tethys|phoebe|erebus|small:<kind>:<R m>:<seed>] [quick]      (selene by default; quick skips the polar darkness scan)
 import { pageSource } from './page.mjs';
 const html = pageSource(), src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
-const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,THEIA_GROUND,theiaMap,theiaH,THEIA_UNITS,EOS_GROUND,eosMap,eosH,EOS_UNITS,EO,TETHYS_GROUND,tethysMap,tethysH,TETHYS_UNITS,TT,PHOEBE_GROUND,phoebeMap,phoebeH,PH,EREBUS_GROUND,erebusMap,erebusH,EREBUS_UNITS,ER,smallBodyGround,smallH,smallMap,SB_KINDS,craterBands,grBands,GR_C,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
+const G = new Function(src + 'return {SELENE,SELENE_GROUND,seleneMap,seleneH,ENYO_GROUND,enyoMap,enyoH,GROUND_STUBS,ENYO_UNITS,EN,HESPER_GROUND,hesperMap,hesperH,HESPER_UNITS,HE,ASTRAEA_GROUND,astraeaMap,astraeaH,ASTRAEA_UNITS,AS,THEIA_GROUND,theiaMap,theiaH,THEIA_UNITS,EOS_GROUND,eosMap,eosH,EOS_UNITS,EO,TETHYS_GROUND,tethysMap,tethysH,TETHYS_UNITS,TT,PHOEBE_GROUND,phoebeMap,phoebeH,PH,EREBUS_GROUND,erebusMap,erebusH,EREBUS_UNITS,ER,smallBodyGround,smallH,smallMap,SB_KINDS,craterBands,grBands,GR_C,ptan,geoAt,terrainSlope,surfaceAt,ih3,SUN_DIR,norm,dot,cross,add,mul};')();
 const { norm, dot, cross, add, mul } = G, D2R = Math.PI / 180, args = process.argv.slice(2), quick = args.includes('quick');
 const stub = (name, ground, map, h, c, salt, units, nb) => { const S = G.GROUND_STUBS[name], b = { name, R: S.R, mu: S.g * S.R * S.R, ground }; const m = map();
   return { b, m, h, c, salt, nb, unit: ground.unit, units, dark: false }; };
@@ -59,7 +59,7 @@ G.grBands(R, X.c).forEach((b, bi) => { if (!inUse(b, bi)) return; const n = b.n,
   for (let f = 0; f < 6; f++) for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) { if (frac < 1 && G.ih3(i, j, f + 99) > frac) continue;
     const key = f * 65536 + i, zz = j * 8 + bi * 131072; if (G.ih3(key, zz, s0) >= b.lam) continue;
     const ax = f >> 1, sg = f & 1 ? -1 : 1, FACE = [[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]][ax * 2], c = [0, 0, 0];
-    c[ax] = sg; c[FACE[1]] = Math.tan(((i + G.ih3(key, zz, s0 + 1)) / n * 2 - 1) * Math.PI / 4); c[FACE[2]] = Math.tan(((j + G.ih3(key, zz, s0 + 2)) / n * 2 - 1) * Math.PI / 4);
+    c[ax] = sg; c[FACE[1]] = G.ptan(((i + G.ih3(key, zz, s0 + 1)) / n * 2 - 1) * Math.PI / 4); c[FACE[2]] = G.ptan(((j + G.ih3(key, zz, s0 + 2)) / n * 2 - 1) * Math.PI / 4);
     const cu = norm(c); if (G.ih3(key, zz, s0 + 4) < M.thin(cu)) continue;
     const D = 1 / Math.sqrt(1 / b.Dlo ** 2 - G.ih3(key, zz, s0 + 3) * (1 / b.Dlo ** 2 - 1 / b.Dhi ** 2)) / 1000;
     for (const d of bins) if (D >= d) cnt[d] += 1 / frac;

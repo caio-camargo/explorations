@@ -3408,7 +3408,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const med = a => a.slice().sort((x, y) => x - y)[Math.floor(a.length / 2)], hOf = k => med(H.filter((_, i) => un[i] === k));
   const b1 = G.grBands(R, G.EN.c)[1];
   check('ground-3: relief within the recipe\'s top; craters on target (baked ≥ 20 km = c·area/400, c 0.02); band λ scaled by c',
-    Math.max(...H) < G.bodyTop(B) && Math.min(...H) > -8000 && M.craters.length === Math.round(G.EN.c / 400 * area) && Math.abs(b1.lam / G.grBands(R)[1].lam - G.EN.c / 0.055) < 1e-9,
+    Math.max(...H) < G.bodyTop(B) && Math.min(...H) > -8000 && M.craters.length === Math.round(G.EN.c / 400 * area) && Math.abs(b1.lam / G.grBands(R)[1].lam - G.EN.c / 0.055) < 1e-6   /* λ is a float32 (G3.0) */,
     `${Math.min(...H).toFixed(0)}…${Math.max(...H).toFixed(0)} m (top ${G.bodyTop(B)}) · ${M.craters.length} baked craters`);
   // the dichotomy: northern lowlands low and smooth, a third or so of the globe
   const sl = k => med(pts.filter((_, i) => un[i] === k).slice(0, 400).map(u => G.terrainSlope(B, u)));
@@ -3890,6 +3890,17 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   // the high one, a month on: still there, decaying by metres
   D.advanceDays(30); const j1 = D.elements(q.r, q.v, T.mu);
   check('debris: a piece at 400 km stays, on its rails plus a trace of decay', P.sats.includes(q) && j0.pe - j1.pe >= 0 && j0.pe - j1.pe < 500, `periapsis down ${(j0.pe - j1.pe).toFixed(1)} m in 31 days`);
+}
+
+// ground-9. G3.0 (world session, QUEUE Q107; GROUND.md § G3): the crater cells' trigonometry goes through approximations
+// the shader will copy exactly (GLSL's tan/atan are only good to ~1e-5 rad: 3.5 m on Selene). The bands must not call the
+// built-ins again, and the approximations must stay as good as measured.
+{
+  const G = new Function(src + 'return {ptan,patanJ,craterBands,grBands};')();
+  let et = 0, ea = 0; for (let i = 0; i <= 20000; i++) { const x = (i / 20000 * 2 - 1) * Math.PI / 4, y = Math.tan(x) * 1.3; et = Math.max(et, Math.abs(G.ptan(x) - Math.tan(x))); ea = Math.max(ea, Math.abs(G.patanJ(y, 1) - Math.atan(y))); }
+  const srcB = G.craterBands.toString(), lam = G.grBands(3.48e5)[2].lam;
+  check('ground-9: crater cells use ptan (≤1e-12) and patanJ (≤5e-8 rad), not Math.tan/atan; λ is a float32',
+    et < 1e-12 && ea < 5e-8 && !/Math\.(tan|atan)\(/.test(srcB) && lam === Math.fround(lam), `ptan ${et.toExponential(1)}, patanJ ${ea.toExponential(1)} rad`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
