@@ -1832,6 +1832,29 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.90 — missions in flight, slice 1: nothing coasting is lost at flight end (2026-10-09, space session, QUEUE Q49)
+
+Slice 1 of § "Plan: missions in flight" (below).
+- **Settled or in flight** (`settled(B, el)`): a satellite's orbit is closed, clear of the air or ground, inside its
+  body's SOI and now also **short of every moon's** (apoapsis under the moon's closest approach less its smallest SOI).
+  A Selene transfer used to register as a Tellus satellite and ride Kepler rails straight through Selene; now it's in
+  flight. Stationary orbits stay satellites (Nyx's sphere never comes inside ~7,700 km; stationary is 6,942).
+- **Cruise entries** (`q.cruise`): `satRegister` registers anything not settled but above the air at flight end as an
+  entry in flight (same record: flyable again, kit, shape). The flown vessel and FLEET vessels alike. In the air at
+  flight end: dropped, as before.
+- **Between flights** (`cruiseStep` in `orbTick`): leg by leg with the predictor (`predictFrom`, program time): into a
+  moon's sphere (news), out of one, Kepler or integrated where a moon perturbs. When its orbit settles it becomes an
+  ordinary satellite (news; the v1.60+ rules then apply). Before an atmosphere it stops at the top and **waits there,
+  flyable** (news; time doesn't move it, a stopgap until slice 2 stops the clock first); on an airless body it's lost
+  (news).
+- `satsUp`/`moonSats` leave cruise entries out (no TV, contact, conjunctions or targeting while in flight).
+- **Program screen:** *In flight* (Fleet tab; `progTabOf` gets the heading, flow's file, one word): each entry, its height
+  over its body, what's next (`cruiseNext`: heading into a moon's pull, leaving, falling into the air, on course to
+  strike) and when; **Fly** where flyable.
+
+Test `space-8` (2 checks; mutations caught: moon reach ignored, no cruise entries, halt not held, `satsUp` including
+cruise entries). Test 40 updated: the two Selene orbits it refused (3 km periapsis, apoapsis past the SOI) are now in
+flight, still not satellites. Full suite 583 pass; `career.mjs` unchanged. TESTING row 168.
 ## Why a company in a poor world stagnates (2026-10-09, economy session, QUEUE Q150; runner only, no game change)
 
 Re-measured on today's code (`SELENE=1 node career.mjs 4 3 base company`): after v1.77's floors and W11, a private

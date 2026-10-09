@@ -70,7 +70,11 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
-function satsHTML(){return satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}
+function satsHTML(){return cruiseHTML()+satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}
+// missions in flight (space, Q49 slice 1): what each is doing next; one waiting at an atmosphere can be flown down
+function cruiseHTML(){const L=(PROG.sats||[]).filter(q=>q.cruise&&!q.docked);if(!L.length)return'';const T=tNow();
+  return`<div class="ep">In flight</div>`+L.map(q=>{const B=orbBody(q),[r]=satAt(q,T),n=cruiseNext(q,T);
+    return`<div class="sub"><b>${q.name}</b>${flyable(q)?` <button data-fly="${q.id}">Fly</button>`:''} · ${fmtD(len(r)-B.R)} above ${B.name} · ${n.text}${n.days!=null?`, in ${n.days<1?'less than a day':`${Math.round(n.days)} days`}`:''}</div>`}).join('')}
 // station-keeping (space, Q50) and decay (Q25): how long its propellant holds its orbit, since when it drifts, or when it
 // re-enters; nothing if no tide or air pulls on it
 function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
