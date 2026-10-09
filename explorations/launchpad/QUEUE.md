@@ -230,7 +230,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q72 | **Crew mock-ups for D2**: one scene (the capsule hatch on the pad walkway), three astronaut styles in the same pose: **cartoony** (Kerbal-like), **realistic**, **stylised human** (1960s illustration, Thunderbirds, Tintin); a wide still and a helmet close-up each. Trade-offs: ROADMAP § "Design catalogs". As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures. Any look beat may take it | M3 | M | 🖥 | ✓ `57b6541` (`mockups/crew/`; waiting on Caio's pick, W19) |
 | Q89 | **School mock-ups for [`POWERS.md`](POWERS.md)**: one Orbiter preset styled **Cape** and **Steppe** side by side (same parts and outlines, different surface detail, finish, paint and roundel), plus one signature design per school (Steppe's strap-on cluster) and each school's pad in a still. Standalone page in `mockups/`, stills to `output/launchpad/mockups/schools/`; Caio picks from pictures. Any look beat | M1 | M | 🖥 | ✓ `c6bf611` (`mockups/schools/`; waiting on Caio, W20) |
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ✓ `7aa705c` (bay door inside + hinges; dark-paint char heat-tint) |
-| Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | → aerofx: plan ✓ (`c765629`), steps 1–3 ✓ (`d72d9d3`: schools picked per part, Steppe paint); now step 4 (interstage cover) |
+| Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | ✓ steps 1–5 (`90f0013`: school per part, Steppe paint, interstage cover, roundel, livery hue); steps 6–7 proposed below |
 | Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -258,7 +258,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | after Q42 |
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ✓ `0458c99` (`sndPlasma`, `sndOthers`) |
 
@@ -350,3 +350,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - platform — **pin line endings**: add a root `.gitattributes` (`* text=auto eol=lf`, binaries as `binary`) and renormalize once. On 2026-10-09 `NOTES.md`, `test.mjs` and others flipped to CRLF blobs on main and back, so every merge of them became a whole-file conflict (economy hit it three times in an hour); `core.autocrlf=true` doesn't renormalize a file already tracked with CRLF — LESSONS #40
+- look & sound, parts & pad — Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) once something draws rivals' rockets (news pictures, a rival pad) — NOTES § "Hardware schools in the game: the plan"
+- look & sound, parts & pad (+ flow) — Q102 step 7: the Steppe pad, horizontal rollout on rails over a flame pit, the launch table's arms; touches `buildRig`/`drawPadRig` and flow's rollout screen — coordinate first — same NOTES
