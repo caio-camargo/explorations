@@ -3779,6 +3779,47 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('ground-7: continuous across the crater cells\' cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
 }
 
+// ground-8. The seeded small bodies (world session, GROUND.md G7): a recipe factory, smallBodyGround({kind, R, seed}), for
+// the classes SYSTEM.md seeds per world. None exists in the game yet, so the checks drive recipes directly, and through a
+// stand-in body to show they work as any body's `ground`. `node study_ground.mjs small:<kind>:<R>:<seed>`.
+{
+  const G = new Function(src + 'return {smallBodyGround,smallH,smallShape,smallMap,smallBoulders,smallPit,SB_KINDS,SB_CLASSES,SB_G,groundAlt,surfaceAt,bodyTop};')();
+  const D = Math.PI / 180, P = []; for (let i = 0; i < 1500; i++) { const z = 1 - (2 * i + 1) / 1500, a = i * 2.39996, q = Math.sqrt(1 - z * z); P.push([q * Math.cos(a), z, q * Math.sin(a)]); }
+  const mk = (kind, R, seed) => G.smallBodyGround({ kind, R, seed }), body = rc => ({ name: 'rock', R: rc.R, mu: rc.g * rc.R * rc.R, ground: rc });
+  // the same seed makes the same rock; another seed another; gravity from density
+  const a1 = mk('stony', 5000, 11), a2 = mk('stony', 5000, 11), a3 = mk('stony', 5000, 12);
+  check('ground-8: a seed makes the same rock every time and another seed another; gravity is G·(4/3)πρR; every class draws from known kinds',
+    P.slice(0, 200).every(u => G.smallH(u, a1) === G.smallH(u, a2)) && a1.ax.join() !== a3.ax.join() && Math.abs(a1.g - G.SB_G * 4 / 3 * Math.PI * 2000 * 5000) < 1e-12 && Object.values(G.SB_CLASSES).flat().every(k => G.SB_KINDS[k]),
+    `axes ${a1.ax.map(x => (x / 1e3).toFixed(2)).join('×')} km vs ${a3.ax.map(x => (x / 1e3).toFixed(2)).join('×')} km; g ${a1.g.toExponential(2)} m/s²`);
+  // every kind, a few sizes and seeds: finite, within its own bound, and usable as a body's ground (groundAlt, surfaceAt)
+  let bad = [], n = 0; for (const kind of Object.keys(G.SB_KINDS)) for (const [R, seed] of [[200, 1], [2000, 2], [20000, 3]]) { const rc = mk(kind, R, seed), B = body(rc);
+    for (const u of P.slice(0, 400)) { const h = G.smallH(u, rc); n++; if (!Number.isFinite(h)) bad.push(`${kind} ${R} m: not finite`); else if (h > G.bodyTop(B)) bad.push(`${kind} ${R} m: over top`); else if (Math.abs(G.groundAlt(B, mul(u, R)) - h) > 1e-6 * R) bad.push(`${kind} ${R} m: groundAlt differs`); }
+    if (G.surfaceAt(B, [R, 0, 0]).name !== G.SB_KINDS[kind].surf.name) bad.push(`${kind} surface`); }
+  check('ground-8: every kind at 0.2, 2 and 20 km: heights finite and under the recipe\'s top, the same through groundAlt, its own surface', !bad.length, bad.length ? [...new Set(bad)].join(', ') : `${n} heights`);
+  // shapes: a visitor is a needle (4:1 or more); some comets are contact binaries with a waist; rubble piles have a ridge
+  const vis = mk('visitor', 200, 7), vr = P.map(u => G.smallShape(u, vis)), bi = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(s => mk('comet', 2000, s)).find(c => c.lobes);
+  const waist = bi && G.smallShape([0, 1, 0], bi) < .85 * Math.max(G.smallShape([1, 0, 0], bi), G.smallShape([-1, 0, 0], bi));
+  const rb = mk('rubble', 500, 4), noShape = u => G.smallH(u, rb) - (G.smallShape(u, rb) - 500), eq = P.filter(u => Math.abs(u[1]) < .05).map(noShape), mid = P.filter(u => Math.abs(Math.abs(u[1]) - .5) < .1).map(noShape), avg = a => a.reduce((s, x) => s + x, 0) / a.length;   // noShape: the ridge itself, not the flattened shape
+  check('ground-8: shapes: a visitor is a needle (4:1+), some comets are contact binaries with a waist, rubble piles a spinning-top ridge',
+    Math.max(...vr) / Math.min(...vr) > 4 && !!bi && waist && avg(eq) - avg(mid) > .02 * 500,
+    `visitor ${(Math.max(...vr) / Math.min(...vr)).toFixed(1)}:1; comet seed ${bi ? bi.seed : '—'} bilobe, waist ${waist}; ridge +${(avg(eq) - avg(mid)).toFixed(0)} m on a 500 m rubble pile`);
+  // surface features: rubble piles are covered in boulders; comets have pits; a visitor has neither, nor craters
+  const bShare = P.filter(u => G.smallBoulders(u, 500, rb) > .5).length / P.length, cm = mk('comet', 2000, 6), pits = P.filter(u => G.smallPit(u, 2000, cm) < -.1 * cm.pL).length;
+  check('ground-8: rubble piles are strewn with boulders (5+ % of the ground under one); comets have steep pits; a visitor has no craters, boulders or pits',
+    bShare > .05 && pits > 3 && G.smallMap(vis).craters.length === 0 && !G.SB_KINDS.visitor.boulders && !G.SB_KINDS.visitor.pits, `boulders on ${(bShare * 100).toFixed(1)} % of the rubble pile; ${pits} comet points in pits`);
+  // boulders and pits are steep by design but continuous: every feature that touches a point is among its 27 neighbouring
+  // cells, so searching 125 finds nothing more (a feature the 27 missed would appear from one point and not the next)
+  let missB = 0, missP = 0, r3 = 7; const rn3 = () => (r3 = (r3 * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 20000; i++) { const z = 2 * rn3() - 1, t = 2 * Math.PI * rn3(), q = Math.sqrt(1 - z * z), u = [q * Math.cos(t), z, q * Math.sin(t)];
+    if (G.smallBoulders(u, 500, rb) !== G.smallBoulders(u, 500, rb, 2)) missB++; if (G.smallPit(u, 2000, cm) !== G.smallPit(u, 2000, cm, 2)) missP++; }
+  check('ground-8: boulders and pits are continuous: at 20,000 points the 27 neighbouring cells find every feature 125 do', !missB && !missP, `missed: boulders ${missB}, pits ${missP}`);
+  // the crater bands across the cube-face seams (boulders and pits are steep by design, so they're left out here)
+  const st = mk('stony', 20000, 5), cr = u => G.smallH(u, st) - G.smallBoulders(u, 20000, st); let rs = 17, worst = 0; const rnd = () => (rs = (rs * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 1500; i++) { const u = [0, 0, 0], ax = i % 3; u[ax] = rnd() < .5 ? 1 : -1; u[(ax + 1) % 3] = u[ax] * (rnd() < .5 ? 1 : -1); u[(ax + 2) % 3] = 2 * rnd() - 1; const nn = norm(u);
+    const e = norm(cross(nn, Math.abs(nn[1]) < .9 ? [0, 1, 0] : [1, 0, 0])), v = norm(add(nn, mul(e, 0.5 / 20000))); worst = Math.max(worst, Math.abs(cr(v) - cr(nn)) / 0.5); }
+  check('ground-8: a 20 km stony body\'s craters are continuous across the cube-face seams (under 60°)', Math.atan(worst) / D < 60, `${(Math.atan(worst) / D).toFixed(1)}°`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
