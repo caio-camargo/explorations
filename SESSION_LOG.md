@@ -4258,3 +4258,24 @@ window. **GROUND.md G7 is complete on the CPU.**
 - [ ] Human: TESTING 148
 - [ ] Space: Q26 slices 2–4 (under *Proposed*): conjunctions, fragment bands, the world setting
 - [ ] Orchestrator: version numbers race every few minutes now (LESSONS #37); consider dropping them from NOTES headings
+
+## 2026-10-09 — Launchpad look & sound, effects beat: Q20, Q63, Q64, Q23, Q21, Q97 (progress entry, session still running)
+
+### Summary
+Unattended overnight run of the effects beat, then overflow per the orchestrator's order (plus Q97, M1).
+- **Q20** (`be4ff2c`): the plasma shell fades in with airspeed around terrain's `PLASMA_V` (`plasmaHeat`); no shell on a hot climb.
+- **Q63** (`66995cd`): the plasma lights the hull (`plasmaLight` into the shared point light `PLT`); shield-first views 46–47.
+- **Q64** (`66995cd`): side boosters make their own vapor collars (`vaporLines`/`lineProfile`); views 54–56.
+- **Q23** (`2a6d719`): gimbal and steerable fins drawn in `MESH_VS` (`setMoves`), plumes follow (`plumeFrame`, also fixes canted exits); reaction wheel look; views 105–107.
+- **Q21** (`9efd54e`): a galaxy per program (`PROG.gseed`, `galaxy()`); reference views pin seed 13.
+- **Q97** (`719d69f`): landing leg, solar wing, body cells, battery, computer drawn; views 108–111.
+- **Found:** previews flake because `python -m http.server` has a backlog of 5 and the split page loads ~30 scripts (QUEUE flag + platform proposal).
+- **Mistake, fixed:** early on my `.game-busy` handling overwrote and deleted the flow session's fresh lock for ~50 s; restored it and switched to a take/release helper that refuses a foreign lock under 20 min.
+
+### Files
+- `explorations/launchpad/`: `app/gl.js`, `app/render.js`, `app/editor.js` (one `gseed:null`), `views.js` (46–47, 54–56, 105–111), `test.mjs` (aerofx-1..3), `NOTES.md`, `TESTING.md`, `PLAYTEST.md` (#17)
+- `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Q116, Q65, Q24, Q66, Q67 (this session continues)
+- [ ] Measure Q64's cost (not yet measured; GPU contended all night)

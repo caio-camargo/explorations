@@ -367,6 +367,27 @@ function dvPlan(s,pr){
 function stageStats(stack){const s=newShip(stack),v=dvPlan(s,0).filter(x=>x.dv>0.5),a=dvPlan(s,1).filter(x=>x.dv>0.5);
   return{stages:v.map((x,i)=>({dvV:x.dv,dvA:a[i]?a[i].dv:0,twr:x.twr,burn:x.burn,m0:x.m0,mf:x.m1})),mass:s.mass/1000}}
 
+// ---- launch warnings (vehicle session, Q48): what the design can't do for the flight it's aimed at; the Rollout screen lists
+// them with its own checks. Orbit: the stages' Δv against the least Δv any of the program's flights has taken to low orbit (the
+// logbook's 'orbit' fact), or a good ascent's ~4,500 m/s (the Orbiter's in test.mjs §2) until someone has been there, plus a Hohmann climb to a contract's altitude. A crew or a
+// passenger aboard with no parachute can't come home. Returns [[level, text], …], level 'ok' or 'warn' (never blocks: the
+// player may know better, and the flight is how they find out).
+const DV_ORBIT_EST=4500,ORBIT_MISSIONS=['beeper','orbiter','lift1','lift2'];
+function dvToAlt(b,alt){const r0=b.R+(b.atm||0)+10000,r1=Math.max(r0,b.R+alt*1000),mu=b.mu;if(r1<=r0)return 0;
+  return Math.sqrt(mu/r0)*(Math.sqrt(2*r1/(r0+r1))-1)+Math.sqrt(mu/r1)*(1-Math.sqrt(2*r0/(r0+r1)))}
+// what the next flight is aimed at: accepted orbit contracts, and the suggested mission if it's an orbit one
+function flightAims(){const A=[];for(const c of PROG.active||[]){if(c.type==='sat')A.push({name:cTitle(c),alt:c.p.alt});else if(c.type==='image')A.push({name:cTitle(c),alt:0})}
+  const n=typeof nextStep==='function'?nextStep():null;if(n&&n.kind==='mission'&&ORBIT_MISSIONS.includes(n.id))A.push({name:n.title,alt:0});return A}
+function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stack).stages,vac=st.reduce((a,x)=>a+x.dvV,0),
+    air=st.length?st[0].dvA+st.slice(1).reduce((a,x)=>a+x.dvV,0):0,L=PROG.log&&PROG.log.orbit,base=L?L.v:DV_ORBIT_EST,
+    src=L?`your best flight to orbit took ${Math.round(L.v).toLocaleString('en-US')} m/s`:'a good ascent takes about 4,500 m/s; nobody has reached orbit yet',f=x=>`${Math.round(x).toLocaleString('en-US')} m/s`;
+  const goal=aims.map(a=>({...a,need:base+dvToAlt(TELLUS,a.alt||0)})).sort((a,b)=>b.need-a.need)[0];
+  if(goal){if(vac<goal.need)out.push(['warn',`Short of orbit for ${goal.name}: ${f(vac)} of Δv against ${f(goal.need)} needed (${src})`]);
+    else if(air<goal.need)out.push(['warn',`Tight for ${goal.name}: ${f(vac)} of Δv in vacuum, less in the air, against ${f(goal.need)} needed (${src})`]);
+    else out.push(['ok',`Δv for ${goal.name}: ${f(air)} against ${f(goal.need)} (${src})`])}
+  const s=newShip(stack),who=s.parts.some(p=>p.d.crew)?'the crew':s.parts.some(p=>p.d.kind==='bio')?'the passenger':null;
+  if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
+  return out}
 // ---- the vessel: one rigid body. State is (body, r, v) relative to the body it orbits (patched conics).
 let S=null,simT=0;
 const debris=[];
