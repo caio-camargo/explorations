@@ -1,6 +1,7 @@
 # LATE_GAME — what a mature program is
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
-**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–3). Details stay revisable at the margins.
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–4). Details stay revisable at the margins; **the
+numbers in round 4's sections are placeholders, open to playability and to simplification** (Caio).
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
 the technology reaches, and what "settlement" means. It ties together pieces already designed elsewhere; it doesn't
 redo them.
@@ -24,7 +25,7 @@ along the way), [`SYSTEM.md`](SYSTEM.md) (where you can go), [`POWERS.md`](POWER
 
 ## Decisions (round 2, Caio, 2026-10-08)
 
-1. **Four goods** (propellant, supplies, crew, hardware).
+1. **Four goods** (propellant, supplies, crew, hardware). *Round 4 split hardware: now five, below.*
 2. **The network screen is the late game's main screen, but flight stays in play.** Long trips mean long gaps
    between manoeuvres, and **flights forgotten as time passes are a risk** to design against (§ "Keeping flight in
    play").
@@ -32,6 +33,20 @@ along the way), [`SYSTEM.md`](SYSTEM.md) (where you can go), [`POWERS.md`](POWER
 4. **Push harder on the interplanetary network** in the last stages (§ "The interplanetary network").
 5. **Fusion isn't excluded.** Caio flagged the 2026 news (TECH_SCOUTING § Propulsion: Pulsar Fusion's *Sunbird*
    exhaust test, DIU's 2027 orbital prototype). Near-term fusion **propulsion** is in, at the plausible end (below).
+
+## Decisions (round 4, Caio, 2026-10-08: logistics in detail)
+
+Caio's picture: relay networks are crucial for communication across the system; a well-flown flight becomes the
+template for a logistics run, so gains compound; asteroid and lunar mining give building materials already out of
+the wells, hence orbital construction; habitats are sized by energy, heat and supplies, and life support is tied to
+energy ("people can't survive on a dark station").
+1. **Five goods:** hardware splits into **hardware** (manufactured, from Tellus) and **materials** (bulk, mined).
+2. **Contact gates automation:** relays come before routes (§ "Comms").
+3. **Habitats are sized by a per-person budget** of power, heat, shielding and volume, with food closure traded
+   against energy (§ "Habitats").
+4. **Licensing templates to other powers: later,** not now.
+5. **Every number in these sections is a placeholder** for playability, and any mechanic may be simplified. **The
+   shielding mechanic especially gets a look before it's deployed** (Caio).
 
 ---
 
@@ -57,11 +72,16 @@ driver, solar power stations. **Edges** are routines between them.
 |---|---|---|
 | **Propellant** | Tellus (launched), ice mines + plants (Selene's poles, Astraea, Enyo's caps, Eos) | every vehicle; depots store and sell it |
 | **Supplies** (food, air, water, spares) | Tellus; outposts' greenhouses and recyclers | crewed stations and outposts |
-| **Crew** | Tellus (training, the astronaut office) | stations, outposts, crewed firsts |
-| **Hardware** (modules, parts, structure) | Tellus factories; later Selene's mass driver and in-space construction | building every node |
+| **Crew** | Tellus (training, the astronaut office: [`CREW.md`](CREW.md)) | stations, outposts, crewed firsts |
+| **Hardware** (manufactured: engines, electronics, life support, panels, reactors) | **Tellus only**; very late, orbital factories | building and growing every node |
+| **Materials** (bulk: structure, radiation shielding, tankage) | **Selene** (the mass driver) and **asteroids** (capture and mining) | yards, habitats, shielding |
 
-Power, compute and data stay where NOTES puts them: power and compute are properties of a node (panels, radiators,
-the waste-heat solve), and data flows over the link budget. **They aren't freight.**
+**The ratio is the point** (round 4). A big structure is mostly materials by mass and a small share of hardware. So
+mining doesn't replace Tellus: it **takes the bulk off the launches**. Tellus ships the precious few per cent that
+are hard to make; space supplies the heavy rest, already out of the gravity wells.
+
+Power, compute and data stay where NOTES puts them: power and compute are properties of a node (panels, reactors,
+radiators, the waste-heat solve), and data flows over the link budget. **They aren't freight.**
 
 **Chains, Factorio-style.** Each tier feeds the next, and each moves where the hard part is:
 1. *Launched from Tellus:* everything comes up the well. Pads and launch windows are the limit.
@@ -88,17 +108,73 @@ runs dry, a datacenter stops selling, an outpost goes dormant. Nothing is destro
 
 - **An outpost** is a surface or orbital node with crew, built module by module by flying them there (NOTES: "built by
   flying them there, piece by piece").
-- **Self-sufficiency**: for each good the outpost consumes (supplies, propellant, hardware), the share it makes
-  itself. Shown as one number, the lowest share, because that's what the resupply runs depend on.
-  - A greenhouse or recycler raises supplies; an ice plant raises propellant; a workshop raises hardware.
+- **Self-sufficiency**: for each good the outpost consumes to *keep running* (supplies, propellant), the share it
+  makes itself. Shown as one number, the lowest share, because that's what the resupply runs depend on. **Hardware is
+  for growth, not upkeep:** a self-sufficient outpost sustains itself, but grows with hardware from Tellus.
+  - A greenhouse or recycler raises supplies (at a cost in power: § "Habitats"); an ice plant raises propellant.
   - Each module you add cuts the routine runs it needs; at 100 % the outpost needs none.
-- **An outpost can export** what it makes beyond its needs: propellant to a depot, hardware to an orbital yard. Then
+- **An outpost can export** what it makes beyond its needs: propellant to a depot, materials to an orbital yard. Then
   it's a node in the chain, not a cost.
 - **Cut off,** an outpost goes dormant: the crew evacuates on its return vehicle, or the outpost holds in a safe
   mode. No deaths from neglect. (Crew loss in a flight is still possible; that's a flight, not upkeep.)
 - **No population:** no births, no growth curve, no politics inside it. Crew count = the berths you flew there.
 - **Settlement as the arc's end:** a **self-sufficient outpost** is a capstone. Several, linked by trade, are as far as
   "settlement" goes.
+
+## Comms: the network's nervous system (round 4)
+
+Built or planned: the link and relays (rovers already compute contact and light-time delay, `rvContact`), Q51 (data
+as a volume + the link budget), and the compute rule that a node out of contact can only do what its own computer can
+(NOTES § Compute).
+- **Contact gates automation.** A routine flies its burns only where it has contact, or where its onboard computer's
+  tier can fly them alone. **The relay network decides how far logistics can reach**, so comms are built before the
+  routes they serve.
+- **Problems it poses** (pillar 2):
+  - **Solar conjunction:** every ~2 years Enyo passes behind Helios and the direct link is cut; a relay at a Lagrange
+    point or off the plane fixes it.
+  - **Light delay:** about 0.5–2 minutes to Enyo and 4–5 to Hyperion in our scaled system. Remote driving gets
+    awkward and onboard autonomy pays.
+  - **Bandwidth:** dish arrays at home and the relays' link budget set how much science and data come back.
+- **Relays are nodes** on the network screen, with coverage drawn; a route through a gap is flagged.
+
+## Templates: gains compound (round 4)
+
+Half of it exists: a procedure is **kept only if a new flight beats the stored one** (less Δv), and every automated
+flight then uses the better one (NOTES § Procedures).
+- **A template is a route flown well.** A better hand-flown flight replaces it: less Δv means more payload on the same
+  rocket, **on every run after**. The network screen shows it: "this route delivers 14 t a launch, up from 9."
+- **Gravity-assist templates follow their alignment.** A Hesper-assist route to Enyo is valid only when the planets
+  line up again; the routine knows its window family and runs when one comes round. A brilliant one-off flight can
+  open a route that runs every few years.
+- **Later:** licensing a template to another power (selling know-how). Not now (decision 4).
+
+## Yards: orbital construction (round 4)
+
+A **yard** is a node that turns **materials + hardware** into structures too big to launch: habitats, depots, solar
+power stations, the interstellar probe's array. Yards sit where materials arrive cheaply: Selene orbit, the
+Tellus–Selene Lagrange points, near a captured asteroid. Building takes materials, hardware, power and crew time
+(engineers, [`CREW.md`](CREW.md)).
+
+## Habitats: sized by physics; life support is energy (round 4)
+
+**Placeholders, open to playability and simplification** (decision 5). The waste-heat model (NOTES § "Waste heat")
+anchors them:
+
+| A person needs | Placeholder | Why it matters |
+|---|---|---|
+| **Power** | ~3 kW with food shipped in; **~25 kW growing their own** (greenhouse lighting) | **self-sufficiency costs energy**: every share of food not shipped needs power |
+| **Radiators** | all power becomes heat: ~1.2 m² per kW at 300 K | ten self-fed crew need ~300 m² |
+| **Panels** | ~300 W/m² at Tellus, ~130 at Enyo, ~40 at the belt, ~11 at Hyperion | **solar fails past the belt**: outer outposts need fission reactors, a technology step (pillar 8) |
+| **Shielding** | beyond Tellus's field, ~5 t of regolith per m² of hull | **where materials matter**: a 1,000 m² hull needs ~5,000 t, impossible to launch, easy to scoop on Selene. **To be reviewed before it's deployed** (Caio); a simpler form, e.g. a shielding class per hull, may do. |
+| **Volume** | ~25–50 m³ for a long stay | sets the structure's size |
+
+**A dark station can't keep people** (Caio):
+- power out means life support out: the crew has hours on batteries;
+- so **every crewed node keeps return berths for all its crew** (the ISS's Soyuz rule), checked in the builder;
+- a dark node evacuates and goes dormant (pillar 5: no deaths from neglect; a design constraint, not a punishment).
+
+The builder computes the steady state ("12 people, 340 kW, 410 m² of radiators, 4,800 t of shielding"). Bigger
+means more power, more materials, more yards: the Factorio climb, with physics as the recipe book.
 
 ## The technology ceiling (decision 3)
 
@@ -193,7 +269,11 @@ Epochs stay what the program design made them: offers and missions open by era, 
 | Piece | New system? | Pillars | Owner (proposed) |
 |---|---|---|---|
 | The network screen (nodes, routes, tonnes/y, the bottleneck named) | yes: a view over routines | 1, 3 | flow, with economy |
-| Goods (four) on routines | extends routine runs | 1, 3 | economy |
+| Goods (five) on routines | extends routine runs | 1, 3 | economy |
+| Contact gating automation; relays as nodes | extends the link (Q51) and compute | 1, 2, 4 | space + economy |
+| Templates that compound; window families | extends procedures | 1, 3, 4 | space |
+| Yards | content on staged projects | 1, 3 | economy + space |
+| The habitat budget (power, heat, shielding, volume, return berths) | extends the steady-state thermal solve (Q34b) | 2, 5, 8 | vehicle (builder) + economy; **shielding reviewed first** |
 | Outposts and self-sufficiency | **yes** | 1, 3, 5, 8 | space (modules) + economy (goods) |
 | Exports from outposts | extends depots | 1, 3 | economy |
 | Capstones and records | content on missions | 1, 8 | economy |
@@ -214,6 +294,9 @@ Approved as the base.
 ---
 
 ## Version history
+- **1.1.0 (2026-10-08):** round 4, logistics in detail: five goods (materials split from hardware; the ratio),
+  comms gating automation, templates that compound, yards, the habitat budget and the dark-station rule. Numbers
+  are placeholders; shielding reviewed before it's deployed.
 - **1.0.0 (2026-10-08):** approved by Caio as the base.
 - **0.2.0 (2026-10-08):** round 2: fusion propulsion at the plausible end; the interplanetary network (depots at
   every stop, ISRU, cyclers, tugs, relays, convoy seasons, trade, the highway); keeping flight in play; epoch 9 the
