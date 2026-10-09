@@ -1888,6 +1888,57 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## Plan: data as a volume and the link budget (2026-10-09, space session, QUEUE Q51; plan only)
+
+From LATE_GAME.md § "Comms" (round 4: contact gates automation, solar conjunction, light delay, bandwidth, relays as
+nodes), MIDGAME's automation ladder, and Q27's "relay range" (folded in here: range falls out of the link budget).
+
+**What exists, scattered:** the flight's link (`linkOf`: a ground station in view, or a plasma blackout; away from Tellus
+"deep space holds"); line of sight for missions (`seesTellus`: the far side, the impactor); rover contact (`rvContact`:
+direct with a high-gain antenna, or a relay over its horizon, with light-time delay); imagery's contact share
+(`satTick`: the share of time a station sees the satellite, times `IMG_RATE`); image deliveries (`q.pending`, downlinked
+at the next contact); the flight's recorder (`R.sfRec`: loads measured out of contact count once the package is home).
+None of them has a rate: contact is yes or no, and data has no size.
+
+**The model (lean, pillar 6):**
+- **The link budget:** rate = K · P_tx · G_tx · G_rx / d² (bits a second), the free-space law with everything else
+  in one constant per era (receivers improve). An antenna part has a gain class (the low-gain whip `ant` today; a
+  high-gain dish later, vehicle's part), a ground station a dish class (the pad's, a city station's, a deep-space dish:
+  an economy facility). A link exists when there's line of sight (the bodies in the way, the plasma, as now) and the
+  rate clears a floor (telemetry); **range is where the rate meets the floor**, so a whip reaches low orbit and the
+  moons barely, a dish reaches the planets.
+- **Paths:** `pathHome(x, t)`: the best route from a vessel, satellite, lander or rover to a ground station, direct or
+  through one relay (any registered or flying vessel with a powered antenna), rate = the weaker hop, delay = the light
+  time of both. One function behind `linkOf`, `seesTellus` (where it's about radio), `rvContact` and imagery's share.
+- **Data as a volume:** instruments make bits (a camera frame, a spectrum, a panorama, telemetry at a trickle); each
+  vessel's recorder holds them (a capacity: a core's small one, a recorder part); contact drains it at the path's rate,
+  and data counts (and pays) when it's home. Today's yes/no rules become special cases: the far-side pictures are a
+  volume that needs a path home; imagery pays per frame received instead of per share of contact.
+- **Power:** a transmitter draws its antenna's load while sending (Q27's power side, once presets are powered, Q164).
+- **Automation:** a routine flies a burn only with a path home, or with an onboard computer of the tier the burn needs
+  (Q127's ladder): the relay network sets how far routines reach.
+
+**Slices:**
+1. **`pathHome` and the link budget** (space): gain classes, station dishes, line of sight, one relay hop, rate and
+   delay; `linkOf`, `rvContact` and imagery's contact share become calls to it, with today's behaviour as tests (the
+   same contact shares, the same far-side relay results) so nothing changes in play yet.
+2. **Data as a volume** (space + economy): instruments → recorders → downlink at the path's rate; imagery and science
+   pay on data received (economy's M2 item "pay on data received"); the far-side pictures and the recorder rule become
+   volumes.
+3. **Relays as nodes** (space + flow): coverage (the share of time a body or region has a path home, as `navCover`
+   does for navigation), drawn on the map and the network screen; a route through a gap is flagged; relay power (Q27).
+4. **Solar conjunction and light delay at the planets** (space): once Helios is the root (Q87), the Sun blocks paths;
+   a relay off the line fixes it.
+
+**Defaults (Caio may override):** one relay hop (no chains) until relays are nodes; rates tuned so a whip from low
+orbit to the pad's dish moves a few kbit/s (a 1960s TV frame per pass, so a day's pictures need several stations, as
+imagery's contact share already says), a dish ×100, a deep-space dish ×10 on the ground; the floor is a telemetry
+trickle (100 bit/s).
+
+**Tests to write first** (slice 1): the contact shares `satTick` measures today (polar 300 km and the pad ~10 %, a
+five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
+relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
+
 ## v1.92 — a dispatched flight's payload stays up (2026-10-09, space session, Q49 follow-up)
 
 `dispatchRun` settled the contract and dropped the vessel (pillar 3: what you launch stays). It now registers `f.s`
