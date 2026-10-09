@@ -1355,6 +1355,44 @@ two firsts, 460M, on one Probe. It is the same pattern as above, generalised: ch
 (lift1 + lift2 on a 2 t flight does it too). It is left as it is, pending Caio: should a mission count only on a flight
 launched while it was open?
 
+## v1.52 — the atlas: biomes, borders and coasts on the map (2026-10-08, terrain session)
+
+Open thread 5 of § v1.25: make the generated geography readable in play. **C** in the map cycles biomes → powers → off
+(remembered in `localStorage` `launchpad-atlas`). Tests in `test.mjs` §37e.
+
+- **The grid** (SIM, `ATLAS`): biome id and power of every point on a 1024×512 equirectangular grid, the city
+  texture's layout (x = `atan2(z, x)` from −π, y = latitude from the south pole; `atlasU`/`atlasXY` convert).
+  `biomeAt` + `powerAt` cost ~5 µs a point, so the bake is ~1 s in node and ~1.5 s in the page. It runs on first use,
+  6 ms a frame (`atlasBake(ms)`), with "Atlas: surveying n %" on the map meanwhile.
+- **Lines** (`atlasLines`): marching squares on every 2nd grid point. In each cell, the edges whose corners differ
+  (land/sea for coasts, two powers' land for borders); two such edges make a segment, any other number meet at the
+  centre (triple points, a border reaching the coast). 10,335 coast and 616 border segments on the default world.
+- **Names**: each power's name sits on its own land nearest the area-weighted centroid of that land (the plain
+  centroid can fall at sea or in a neighbour, for crescent-shaped land).
+- **Rendered map** ("modern look"): the planet shader samples `uAtlas` (texture unit 3) and mixes it over the
+  ground *after* the clouds, which thin to 15 % under it (`uAtl`). It's lit 50–100 % by the sun so the night side
+  stays readable. The texture is rebuilt from the grid when the mode changes (`atlasTex`): biome colours
+  (`BIOME_INK`) with light borders, or power colours (their `hue`) with dark borders; coasts dark in both. There's a
+  biome legend bottom-right.
+- **Notebook and terminal maps**: coasts in the main ink, borders dashed in the second ink (`atlasInk`, one call in
+  `drawEraMap`). The planet must be at least 25 px across. Points are culled in the planet frame (u·cam > R) and
+  `fromPF` is inlined: ~2 ms a frame for ~3k visible segments (4.6 ms before inlining).
+- **Readout**: point at the ground and a box names the biome, the power (or "unclaimed") and the height, or the sea's
+  depth, with latitude and longitude. It uses the live `atlasAt(pf)`, not the grid. The pointer is kept in CSS pixels
+  because the canvas resizes with the render scale (`RS`): stored canvas pixels drifted ~20 % from the pointer.
+- **Checked in the page:** at the pad (0°, 0°) the readout says rainforest · United Provinces of Fenfen · 157 m,
+  the same as headless `atlasAt`.
+
+**Negative results / limits**
+- A raster border is ~3.7 km a pixel: crisp from orbit, but it steps when zoomed onto a coast. The ink maps use the
+  smoother marching-squares lines.
+- Overlay text sizes follow `devicePixelRatio`, not `RS`, like every other map label. When the render scale drops,
+  the legend and names grow on screen. That's shared with the existing labels; not fixed here.
+- Ice dominates the poles and high ranges (§ v1.25 open thread 3), and the atlas makes that obvious.
+
+**Next on this line:** pencil hatching for biomes on the notebook map; contracts and site picking that use the
+readout (click to choose a station site, § v1.48 next item 2).
+
 ## v1.51 — spin stabilisation (2026-10-08, control session)
 
 The fourth slice of the control review. The rotation step applied τ/I and nothing else: Euler's equations were missing
@@ -1489,6 +1527,12 @@ Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs`
 - `linkOf(s)`: the flight's own link. Deep space counts as linked (no deep-space network yet), on the ground too;
   re-entry plasma (`qHeat > BLACKOUT_Q` = 5e4) blacks it out; otherwise the first station in view. HUD row "Link"
   (the station, or the reason and "· recorder").
+  **Fix (QUEUE Q17, PLAYTEST #17):** the heat alone blacked out ordinary climbs. Dense air reaches 50 kW/m² at only
+  ~1 km/s (the Heavy at Mach 3.5, 20 km). Now `plasmaOn(s)` also needs airspeed over `PLASMA_V` = 0.65 × circular
+  speed at the top of the air (~2.2 km/s; the shuttle's blackout ended near 5 of 7.8 km/s). Measured headless: hot
+  ascents peak at 1.1–1.7 km/s (Orbiter, Heavy, Asparagus); an orbital entry is hot from 3.1 down to 1.1 km/s and
+  still blacks out for its fast part. aerofx's plasma shell (Q20) can use `plasmaOn`/`PLASMA_V` for the same line.
+  test.mjs §37f.
 - Telemetry follows the link. Strain data (`R.sf`, the certification feed) is written only while linked; out of
   contact it goes to the recorder `R.sfRec`, which `missionEnd` merges into `R.sf` only if the instrument package came
   home (`R.recSci`). Economy: that one line before the cert loop is the only change in `missionEnd`'s certification.
@@ -1517,7 +1561,7 @@ Slices C–E of the geography plan (§ v1.25). All SIM-side; tests in `test.mjs`
   searches the news. If another session's test pins a specific offer, that is why.
 
 **Next on this line:** recovery that takes days and a recovery ship to send; stations bought at a chosen site (the mask
-makes the choice a real trade-off); the atlas view (open thread in § v1.25's "Next session" list).
+makes the choice a real trade-off); ~~the atlas view~~ (done, § v1.52).
 
 ## v1.47 — dispatch, the economy side (2026-10-08, economy session)
 
@@ -2755,8 +2799,8 @@ Shading:
    - A soft curved shading edge remains on the 44°S plain. It's not the distance level of detail; probably a real
      slope (unconfirmed).
 4. ~~**Stations with terrain (C), recovery (D), biome science (E)**~~: done in v1.48 (§ v1.48), with what's left listed there.
-5. **The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
-   in play.
+5. ~~**The world map / atlas view:** biomes and borders as an overlay on the map view would make the geography legible
+   in play.~~ Done in v1.52 (§ v1.52).
 
 ## v1.24 — power flavours, first slice (2026-10-07)
 
@@ -5854,6 +5898,7 @@ the arrows, and every key in the handlers present in its Help table.
   load `terrain-probe.js` and rerun `terrainProbe()`. See § v1.25 for how, and for the geography plan (slices B–E).
   Launch sites: `SITES` (plain data), `curSite()`/`homeSites()`, `newShip(stack, site)`; see § v1.27. Station horizons,
   the flight's link, recovery and geographic disasters/contracts: § v1.48.
+  The map's atlas (biomes, powers, coasts, borders; the C key; `ATLAS`/`atlasBake`/`atlasAt`): § v1.52.
 - In the in-app preview pane, `requestAnimationFrame` barely ticks while the pane is hidden.
   Drive the sim from `javascript_tool` (call `physStep` / `rails` / `render` directly), or open
   the page in a real browser.

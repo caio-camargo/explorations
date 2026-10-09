@@ -1520,6 +1520,11 @@ function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a
 // away. A target within a couple of km of the antenna (its own pad, the first seconds of a climb, a rocket still below
 // the mast top) is in direct line of sight over flat ground, so the station sees it (fixes session, PLAYTEST #19).
 const GS_MAST=20,GS_AZ=36,GS_REACH=300e3,GS_NEAR=2000,BLACKOUT_Q=5e4,gsMasks=new Map();
+// re-entry plasma: hot air (stagnation flux over BLACKOUT_Q) AND fast enough to ionise it. Dense air reaches that flux at
+// ~1 km/s on an ordinary climb (PLAYTEST #17: Mach 3.5 at 20 km); ionisation wants orbital-class speed. The shuttle's
+// blackout ended near 5 of 7.8 km/s, so ~2/3 of circular speed at the top of the air, scaled to this world: ~2.2 km/s.
+// Measured: hot ascents peak at 1.7 km/s, an orbital entry is hot from 3.1 down to 1.1 km/s. aerofx: the shell can use it.
+const PLASMA_V=Math.round(0.65*Math.sqrt(TELLUS.mu/(TELLUS.R+TELLUS.atm))),plasmaOn=s=>s.qHeat>BLACKOUT_Q&&len(sub(s.v,surfVel(TELLUS,s.r)))>PLASMA_V;
 function gsMask(st){const key=st.u.map(x=>x.toFixed(6)).join(',');let m=gsMasks.get(key);if(m)return m;
   const R=TELLUS.R,h0=groundAlt(TELLUS,st.u)+GS_MAST;m={h0,el:new Float32Array(GS_AZ)};
   for(let a=0;a<GS_AZ;a++){let mx=-1;for(let k=1;k<=24;k++){const d=GS_REACH*Math.pow(k/24,1.6),q=alongAz(st.u,a*2*Math.PI/GS_AZ,d/R);
@@ -1533,7 +1538,7 @@ function gsSees(st,pf){const m=gsMask(st),P=mul(st.u,TELLUS.R+m.h0),d=sub(pf,P),
 // the flight's radio link: the first station that sees the vessel, or a plasma blackout during re-entry heating. Away
 // from Tellus (Selene, Nyx) the deep-space antennas are assumed to hold the link.
 function linkOf(s){if(s.body!==TELLUS)return{ok:true,st:null,why:'deep space'};if(s.landed)return{ok:true,st:null,why:'on the ground'};
-  if(s.qHeat>BLACKOUT_Q)return{ok:false,st:null,why:'plasma blackout'};
+  if(plasmaOn(s))return{ok:false,st:null,why:'plasma blackout'};
   const pf=toPF(TELLUS,s.r,simT);for(const st of stationsAll())if(gsSees(st,pf))return{ok:true,st,why:''};return{ok:false,st:null,why:'no station in view'}}
 // compatibility with the old land mask: ≥ .52 is land, ≥ .58 is "safely inland" (now: 40 m above the sea)
 const landValue=pf=>.52+terrainH(pf)/700;
@@ -2224,6 +2229,32 @@ function powerAt(pf){const u=norm(pf);if(!isLand(u))return null;let best=null,bd
   for(const p of POWERS){const d=Math.acos(clamp(dot(u,p.u),-1,1))-0.12*Math.log(p.econ);if(d<bd){bd=d;best=p}}return best}
 for(const c of CITIES)c.power=powerAt(c.u);
 extendSites();   // the launch sites need the powers' land (terrain session)
+// ---- the atlas (terrain session): biome and power of every point on an equirectangular grid, the city texture's layout
+// (x: longitude atan2(z,x) from -π; y: latitude from the south pole). biomeAt + powerAt cost ~5 µs a point, so the
+// 1024×512 grid (~3 s) is baked a few rows at a time on first use. From it: the map's colour texture (render side), the
+// coasts and borders as lines (the notebook and terminal maps draw them in ink) and where each power's name goes.
+const ATLAS={W:1024,H:512,bio:null,pow:null,y:0,lines:null,names:null};
+const atlasU=(x,y)=>{const la=((y+.5)/ATLAS.H-.5)*Math.PI,lo=((x+.5)/ATLAS.W-.5)*2*Math.PI;return[Math.cos(la)*Math.cos(lo),Math.sin(la),Math.cos(la)*Math.sin(lo)]};
+const atlasXY=u=>{const W=ATLAS.W,H=ATLAS.H;return[((Math.floor((Math.atan2(u[2],u[0])/(2*Math.PI)+.5)*W)%W)+W)%W,clamp(Math.floor((Math.asin(clamp(u[1],-1,1))/Math.PI+.5)*H),0,H-1)]};
+function atlasBake(ms=Infinity){const A=ATLAS,t0=performance.now();if(!A.bio){A.bio=new Uint8Array(A.W*A.H);A.pow=new Uint8Array(A.W*A.H)}
+  while(A.y<A.H&&performance.now()-t0<ms){const y=A.y++;
+    for(let x=0;x<A.W;x++){const u=atlasU(x,y),k=y*A.W+x,b=biomeAt(u);A.bio[k]=b.id;if(b.id){const p=powerAt(u);A.pow[k]=p?p.i+1:0}}}
+  if(A.y<A.H)return false;if(!A.lines)atlasLines();return true}
+// coasts and borders by marching squares on every 2nd point: in each cell, the edges whose two corners differ (land/sea
+// for coasts; two powers' land for borders); two such edges are joined by a segment, any other number meet at the centre
+function atlasLines(s=2){const A=ATLAS,W=A.W/s,H=A.H/s,at=(x,y)=>(y*s)*A.W+((x%W+W)%W)*s,coast=[],border=[];
+  const P=(fx,fy)=>atlasU(fx*s,fy*s),E=[[.5,0],[1,.5],[.5,1],[0,.5]];
+  for(let y=0;y<H-1;y++)for(let x=0;x<W;x++){const c=[at(x,y),at(x+1,y),at(x+1,y+1),at(x,y+1)],L=c.map(k=>A.bio[k]>0),Q=c.map(k=>A.pow[k]);
+    for(const[out,diff]of[[coast,(i,j)=>L[i]!==L[j]],[border,(i,j)=>L[i]&&L[j]&&Q[i]!==Q[j]]]){
+      const es=[0,1,2,3].filter(i=>diff(i,(i+1)%4)).map(i=>P(x+E[i][0],y+E[i][1]));if(!es.length)continue;
+      if(es.length===2)out.push(es[0],es[1]);else{const m=P(x+.5,y+.5);for(const e of es)out.push(e,m)}}}
+  const f32=L=>Float32Array.from(L.flat());A.lines={coast:f32(coast),border:f32(border)};
+  // a power's name sits on its own land nearest the centroid of that land (area-weighted: the grid's cells shrink by cos lat)
+  A.names=POWERS.map(p=>{let c=[0,0,0],n=0;for(let k=0;k<A.W*A.H;k+=3)if(A.pow[k]===p.i+1){const u=atlasU(k%A.W,k/A.W|0),w=Math.sqrt(1-u[1]*u[1]);c=madd(c,u,w);n+=w}
+    if(!n)return null;c=norm(c);let best=null,bd=-2;for(let k=0;k<A.W*A.H;k+=3)if(A.pow[k]===p.i+1){const u=atlasU(k%A.W,k/A.W|0),d=dot(u,c);if(d>bd){bd=d;best=u}}
+    return{i:p.i,u:best,area:n}})}
+// what's under a planet-fixed point, from the live functions (the grid is for drawing): the map's hover readout
+function atlasAt(pf){const u=norm(pf),b=biomeAt(u),p=b.id?powerAt(u):null;return{biome:b.name,id:b.id,power:p,h:terrainH(u),lat:Math.asin(clamp(u[1],-1,1))*180/Math.PI,lon:Math.atan2(u[2],u[0])*180/Math.PI}}
 const pairKey=(i,j)=>i<j?i+'-'+j:j+'-'+i;
 const relBase=(i,j)=>{const a=POWERS[i].align,b=POWERS[j].align;return clamp(1-0.9*Math.hypot(a[0]-b[0],a[1]-b[1]),-1,1)};
 const relOf=(i,j)=>i===j?1:PROG.rel[pairKey(i,j)]??relBase(i,j);
@@ -3879,6 +3910,7 @@ uniform vec3 uPc;uniform float uPcc,uPR,uAR;uniform mat3 uProt;uniform vec3 uPde
 uniform highp sampler2D uWorld;uniform sampler2D uClim;uniform vec2 uGen;uniform float uTcc;uniform vec4 uSites[4];uniform int uNS;uniform vec3 uPadE,uPadS;uniform highp sampler2D uDepth;uniform float uUseDepth;
 uniform vec3 uMc;uniform float uMcc,uMR;uniform vec3 uMdet;uniform vec2 uMrot;uniform float uCcc,uCR,uCT,uPix;uniform vec3 uPadL;
 uniform sampler2D uCov;uniform vec3 uCv0,uCvE,uCvN;uniform float uCvX,uVk,uVD;
+uniform sampler2D uAtlas;uniform float uAtl;   // the map's atlas overlay (terrain session): colour + opacity, equirectangular like uCity
 uniform vec3 uGx,uGc,uGt;uniform vec4 uGp,uGs,uGn;
 const vec3 BR=vec3(5.8e-6,13.5e-6,33.1e-6);const float BM=5e-6,HR=${TELLUS.H.toFixed(1)},HM=${(TELLUS.H*1200/5600).toFixed(1)},SUNI=22.;
 // filmic tone curve (Narkowicz's ACES fit): a soft shoulder keeps gradients on bright paint instead of clipping to white
@@ -4094,7 +4126,7 @@ void main(){
  vec3 d=normalize(uR*vNdc.x*uTan.x+uU*vNdc.y*uTan.y+uF);
  float hT=0.,tP=march(d,hT,coarseStart()),tM=1e30;
  vec2 hm=sph(uMc,uMcc,d);if(uMcc>0.&&hm.x>0.)tM=hm.x;
- float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;
+ float tH=min(tP,tM);vec3 trans;vec3 ins=scatter(d,tH,trans);vec3 col;vec4 atl=vec4(0.);float atlL=1.;
  if(tP<tM){
   vec3 p=d*tP-uPc,n=normalize(p),pf=uProt*n,loc=uProt*(d*tP)+uPdet;
   float fw=tP*uPix/max(-dot(d,n),.06),lt=asin(clamp(pf.y,-1.,1.));vec2 gx=vec2(atan(pf.z,pf.x)*cos(lt),lt)*uPR;   // footprint, ground coords (m)
@@ -4113,7 +4145,8 @@ void main(){
   vec3 st=sunTrans(p+n*20.);vec3 nb=oc>.5?n:normalize(transpose(uProt)*npf);   // npf is planet-fixed; n is inertial
   float ndl=dot(n,uSun),ndb=max(dot(nb,uSun),0.)*smoothstep(-.05,.08,ndl);   // relief shading, but never lit past the terminator
   // cities: an equirectangular texture (r = built-up, g = lights); a street grid shows up close
-  vec4 ct=texture(uCity,vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5));float urb=ct.r*(1.-oc);
+  vec2 eq=vec2(atan(pf.z,pf.x)/6.2831853+.5,asin(clamp(pf.y,-1.,1.))/3.1415927+.5);vec4 ct=texture(uCity,eq);float urb=ct.r*(1.-oc);
+  if(uAtl>0.){atl=texture(uAtlas,eq);atlL=.5+.5*smoothstep(-.12,.2,ndl);}   // the atlas stays readable on the night side
   float street=0.;if(urb>.01){vec2 g=abs(fract(gx/90.)-.5);street=smoothstep(.46,.49,max(g.x,g.y));alb=mix(alb,vec3(.13,.12,.11)*(1.-.5*fade*street),urb*.85);}
   col=alb*(ndb*st*5.*cloudShadow(p)+vec3(.01,.016,.03));
   // night lights: a soft glow from orbit; up close they gather onto the streets
@@ -4161,7 +4194,8 @@ void main(){
    vec3 cc=vec3(.92)*sunTrans(cp)*5.*lit*mix(1.,.45,below*cov)*(.78+.22*cov)*(1.-near*.25*(1.-dn))+vec3(.015,.02,.03);
    vec2 ta=sph(uPc,dot(uPc,uPc)-uAR*uAR,d);float tEnd=tH<1e29?tH:max(ta.y,tC+1.);
    vec3 tr=pow(max(trans,vec3(1e-4)),vec3(clamp(tC/tEnd,0.,1.))),ic=ins*(1.-tr)/max(vec3(1.)-trans,vec3(1e-3));
-   col=mix(col,cc*tr+ic,cov*.95*shW);if(cov*shW>.5)tD=min(tD,tC);}}
+   col=mix(col,cc*tr+ic,cov*.95*shW*(1.-.85*uAtl));if(cov*shW>.5)tD=min(tD,tC);}}
+ if(atl.a>0.)col=mix(col,pow(atl.rgb,vec3(2.2))*1.7*atlL,atl.a*uAtl);   // over the clouds: it's a map
  col=aces(col*.85);o=vec4(pow(col,vec3(1./2.2)),1.);
  o.rgb+=(fract(52.9829189*fract(dot(gl_FragCoord.xy,vec2(.06711056,.00583715))))-.5)/255.;   // dither: dark gradients (the galaxy, night skies) band in 8 bits
  gl_FragDepth=tD<1e29?min(log2(1.+tD*dot(d,uF))*uFc*.5,.9999999):1.;
@@ -5648,6 +5682,7 @@ addEventListener('keydown',e=>{
   else if(k==='.'){warpTo=null;warpIdx=Math.min(WARPS.length-1,warpIdx+1)}
   else if(k===','){warpTo=null;warpIdx=Math.max(0,warpIdx-1)}
   else if(k==='/'){warpTo=null;warpIdx=0}
+  else if(k==='c'&&view==='map')cycleAtlas();
   else if(k==='tab'&&view==='map'){cam.focus=(cam.focus+1)%(BODIES.length+1);const fb=BODIES[cam.focus-1];cam.mDist=fb&&fb.parent?fb.R*9.15:5*TELLUS.R}
   else if(k==='g')cycleTarget();
   else if(k==='b'&&S.alive&&S.parts.some(p=>p.on&&p.d.kind==='bay'))tapeBay(recTape,S,S.parts.some(p=>p.on&&p.d.kind==='bay'&&p.open)?'close':'open');
@@ -5690,7 +5725,7 @@ const KEYS={
     {l:'drag · wheel',d:'orbit camera · zoom'},
     {l:'Autopilot',d:'menu → "Save as autopilot"; the next launch of the same design offers ▶ Autopilot (any control key takes over)'}],
   map:[{k:['tab'],l:'Tab',d:'cycle the camera focus between bodies'},{l:'click',d:'place a maneuver node on your orbit · target a satellite'},
-    {l:'drag handle',d:'change the node (the further, the faster)'}],
+    {l:'drag handle',d:'change the node (the further, the faster)'},{k:['c'],l:'C',d:'atlas: biomes → powers → off (point at the ground to read it)'}],
   program:[{k:['b'],l:'B',d:'build: go to Assembly',go:'assembly'},{l:'tabs',d:'Inbox holds what needs an answer: decisions with deadlines, contract offers'}],
   assembly:[{k:['p'],l:'P',d:'Program',go:'program'},{l:'click',d:'pick up / place a part'},{l:'Shift+click · Ctrl+click',d:'place a copy · pick up a copy'},
     {l:'right-click',d:'part options · drop the held part'},{k:['x'],l:'X / Shift+X',d:'symmetry'},{k:['c'],l:'C',d:'snap'},
@@ -5813,6 +5848,7 @@ addEventListener('mouseup',e=>{
     else if(q&&S.alive&&!S.landed){if(S.node){if(!S.node.burning)S.node.t=q.t}else{S.node={t:q.t,dv:[0,0,0]};HOOK.msg('Node placed — drag its handles')}}}
   drag=null;downAt=null;hDrag=null;nDrag=false});
 addEventListener('mousemove',e=>{
+  mapUI.mouse=e.target===cv?[e.clientX,e.clientY]:null;   // the atlas readout (terrain session); CSS pixels, the canvas resizes
   if(hDrag){hDrag.cur=toCv(e);return}
   if(nDrag){const q=pickOrbit(toCv(e));if(q&&S.node)S.node.t=q.t;return}
   if(!drag)return;const dx=e.clientX-drag[0],dy=e.clientY-drag[1];drag=[e.clientX,e.clientY];
@@ -6173,6 +6209,7 @@ function render(){
   bloomBegin(W,H);gl.viewport(0,0,W,H);gl.enable(gl.DEPTH_TEST);gl.depthMask(true);gl.clearStencil(0);gl.clear(gl.DEPTH_BUFFER_BIT|gl.COLOR_BUFFER_BIT|gl.STENCIL_BUFFER_BIT);
   // ---- near clouds: the volume fades in below ~20 km over Tellus; bake its coverage first (covBake)
   const camAlt=len(camW)-TELLUS.R,VK=CLOUD_VOL&&mode!=='editor'?1-sstep(15000,22000,camAlt):0;if(VK>0)covBake(camW);
+  if(view==='map'&&mode==='flight'&&atlasMode)atlasTick();
   // ---- sky / planets: one full-screen ray-cast
   for(const prog of PDEPTH?[PDEPTH,PSKY]:[PSKY]){gl.useProgram(prog.p);const u=prog.u;
   gl.uniform3fv(u.uR,R);gl.uniform3fv(u.uU,U);gl.uniform3fv(u.uF,Fw);gl.uniform3fv(u.uSun,SUN);gl.uniform2f(u.uTan,tanX,tanY);gl.uniform1f(u.uFc,FC);
@@ -6190,6 +6227,8 @@ function render(){
    const RC=TELLUS.R+3000;gl.uniform1f(u.uCR,RC);gl.uniform1f(u.uCcc,(d-RC)*(d+RC));gl.uniform1f(u.uCT,((tNow()+CLOUD_DT)*2e-4)%500);gl.uniform1f(u.uPix,2*tanY/H);   // clouds drift ~20 m/s
    {const th=bodyTheta(SELENE,simT);gl.uniform3fv(u.uMdet,rotY(sub(camW,mp),-th).map(x=>x-Math.round(x/1000)*1000));if(u.uMrot)gl.uniform2f(u.uMrot,Math.cos(th),Math.sin(th))}
    gl.uniform3fv(u.uGx,GAL.gx);gl.uniform3fv(u.uGc,GAL.gc);gl.uniform3fv(u.uGt,GAL.gt);gl.uniform4fv(u.uGp,GAL.p);gl.uniform4fv(u.uGs,GAL.s);gl.uniform4fv(u.uGn,GAL.n);
+   {const on=view==='map'&&mode==='flight'&&atlasMode&&ATLAS_GL.mode===atlasMode;gl.uniform1f(u.uAtl,on?1:0);
+    if(on){gl.activeTexture(gl.TEXTURE3);gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.uniform1i(u.uAtlas,3);gl.activeTexture(gl.TEXTURE0)}}
    gl.uniform1f(u.uVk,VK);gl.uniform1f(u.uVD,COV.vd);if(VK>0){gl.activeTexture(gl.TEXTURE6);gl.bindTexture(gl.TEXTURE_2D,COV.tex);gl.uniform1i(u.uCov,6);gl.activeTexture(gl.TEXTURE0);
     gl.uniform3fv(u.uCv0,COV.c0);gl.uniform3fv(u.uCvE,COV.e);gl.uniform3fv(u.uCvN,COV.n);gl.uniform1f(u.uCvX,COV.ext)}}}
   gl.bindVertexArray(quadVAO);
@@ -6341,7 +6380,8 @@ function render(){
       else if(L.mark==='impact'){octx.strokeStyle=L.c;octx.lineWidth=2.5;octx.beginPath();octx.moveTo(s[0]-6,s[1]-6);octx.lineTo(s[0]+6,s[1]+6);octx.moveTo(s[0]+6,s[1]-6);octx.lineTo(s[0]-6,s[1]+6);octx.stroke()}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)octx.fillText(L.t,s[0],s[1]-10)}}
+      if(L.t)octx.fillText(L.t,s[0],s[1]-10)}
+    if(atlasMode)atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY)}
   if(mode==='editor'&&S.ana){const pw=shipWorld(),mk=(y,c,t,dx)=>{const s=project(add(pw,qrot(S.q,[-S.cm[0],y-S.cm[1],-S.cm[2]])));if(!s)return;
       const k=Math.min(devicePixelRatio||1,1.5),x=s[0]+dx*k*3.2;
       octx.lineWidth=2*k;octx.strokeStyle=c;octx.beginPath();octx.moveTo(s[0],s[1]);octx.lineTo(x,s[1]);octx.stroke();
@@ -6602,6 +6642,53 @@ function rgbOf(c){if(inkCache.has(c))return inkCache.get(c);inkCv.fillStyle='#00
   if(f[0]==='#'){r=parseInt(f.slice(1,3),16);g=parseInt(f.slice(3,5),16);b=parseInt(f.slice(5,7),16)}else{const m=f.match(/[\d.]+/g)||[];[r,g,b]=m.map(Number);a=m[3]!=null?+m[3]:1}
   const v=[r,g,b,a];inkCache.set(c,v);return v}
 // warm colours (impacts, warnings, encounters) become red pencil / bright phosphor; everything else, ink / green
+// ---- the atlas on the map (terrain session): C cycles biomes → powers → off. The grid is baked by atlasBake (SIM);
+// the rendered map tints the planet with a texture made from it, the notebook and terminal maps draw its lines in ink.
+const BIOME_INK=['#2a5d8a','#eef3f6','#a9b49c','#47715a','#cdc386','#5b9a4e','#a3c45f','#bba98b','#2f7a3e','#d2b25c','#e6c47f','#9a948e','#6a4a42','#f4eee2','#5fa293'];
+let atlasMode=(()=>{try{return(+localStorage.getItem('launchpad-atlas')||0)%3}catch(e){return 0}})();const ATLAS_GL={tex:null,mode:0};
+function cycleAtlas(){atlasMode=(atlasMode+1)%3;try{localStorage.setItem('launchpad-atlas',atlasMode)}catch(e){}
+  HOOK.msg(['Atlas off','Atlas: biomes','Atlas: powers'][atlasMode]+(atlasMode&&!ATLAS.lines?' (surveying…)':''))}
+function atlasTick(){if(!atlasBake(6))return;if(ATLAS_GL.mode!==atlasMode)atlasTex(atlasMode)}
+// colour + opacity per point: biome or power colour, coasts dark, borders light (biomes) or dark (powers)
+function atlasTex(mode){const A=ATLAS,W=A.W,H=A.H,d=new Uint8Array(W*H*4),hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+  const bc=BIOME_INK.map(hex),pc=POWERS.map(p=>rgbOf(`hsl(${p.hue},50%,58%)`).slice(0,3)),edge=mode===1?[250,248,236]:[28,28,34];
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const k=y*W+x;if(!A.bio[k])continue;const nb=[y*W+(x+1)%W,y*W+(x+W-1)%W,y>0?k-W:k,y<H-1?k+W:k];
+    let c=mode===1?bc[A.bio[k]]:pc[A.pow[k]-1]||[200,200,200],a=mode===1?205:180;
+    if(nb.some(j=>!A.bio[j])){c=[22,26,34];a=240}else if(nb.some(j=>A.pow[j]!==A.pow[k])){c=edge;a=240}
+    d[k*4]=c[0];d[k*4+1]=c[1];d[k*4+2]=c[2];d[k*4+3]=a}
+  if(!ATLAS_GL.tex)ATLAS_GL.tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,ATLAS_GL.tex);gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,W,H,0,gl.RGBA,gl.UNSIGNED_BYTE,d);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.REPEAT);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);ATLAS_GL.mode=mode}
+// a planet-fixed unit vector on Tellus's surface, in world space, and whether it faces the camera
+const atlasW=u=>add(bodyPos(TELLUS,simT),fromPF(TELLUS,mul(u,TELLUS.R),simT)),atlasVis=(w,camW)=>dot(sub(w,bodyPos(TELLUS,simT)),sub(camW,w))>0;
+// the notebook and terminal maps: coasts in ink, borders dashed in the second ink
+function atlasInk(era,camW,project,tanY,k){const L=ATLAS.lines;if(!L)return;const o=octx,cen=bodyPos(TELLUS,simT),d=len(sub(cen,camW));
+  if(d<=TELLUS.R||(H/2)*Math.tan(Math.asin(TELLUS.R/d))/tanY<25)return;   // too small to carry a map
+  const th=bodyTheta(TELLUS,simT),c=Math.cos(th)*TELLUS.R,s=Math.sin(th)*TELLUS.R,cp=toPF(TELLUS,sub(camW,cen),simT),
+    Wd=(F,i)=>[cen[0]+c*F[i]+s*F[i+2],cen[1]+TELLUS.R*F[i+1],cen[2]-s*F[i]+c*F[i+2]];   // fromPF (rotY by θ), inlined: ~22k points a frame
+  for(const[F,col,dash]of[[L.coast,era===1?'rgba(29,42,82,.75)':'rgba(57,255,110,.75)',null],[L.border,era===1?'rgba(176,54,42,.8)':'rgba(214,255,120,.85)',[4*k,3*k]]]){
+    o.strokeStyle=col;o.lineWidth=(era===1?1.1:.9)*k;o.setLineDash(dash||[]);o.beginPath();
+    for(let i=0;i<F.length;i+=6){if(F[i]*cp[0]+F[i+1]*cp[1]+F[i+2]*cp[2]<=TELLUS.R)continue;const p=project(Wd(F,i)),q=project(Wd(F,i+3));   // facing the camera: u·cam > R
+      if(p&&q){o.moveTo(p[0],p[1]);o.lineTo(q[0],q[1])}}
+    o.stroke()}
+  o.setLineDash([])}
+// over every map look: the powers' names on their land, the biome legend (rendered map), and what's under the pointer
+function atlasOverlay(era,camW,project,R,U,Fw,tanX,tanY){const A=ATLAS,o=octx,k=Math.min(devicePixelRatio||1,1.5),ink=c=>era?eraInk(era,c):c,fnt=o.font;
+  if(!A.lines){o.textAlign='left';o.fillStyle=ink('#cfd8e3');o.fillText(`Atlas: surveying ${(100*A.y/A.H).toFixed(0)}%`,14*k,H-60*k);o.textAlign='center';return}
+  o.font=`600 ${11*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='center';
+  for(const nm of A.names){if(!nm)continue;const w=atlasW(nm.u);if(!atlasVis(w,camW))continue;const s=project(w);if(!s)continue;const P=POWERS[nm.i];
+    o.fillStyle=ink(`hsl(${P.hue},80%,${atlasMode===2?'92%':'78%'})`);o.strokeStyle=era===1?'rgba(246,240,222,.8)':'rgba(0,0,0,.65)';o.lineWidth=3*k;
+    const t=P.root.toUpperCase().split('').join(' ');o.strokeText(t,s[0],s[1]);o.fillText(t,s[0],s[1])}
+  if(atlasMode===1&&!era){const ids=[...new Set(A.bio)].filter(i=>i).sort((a,b)=>a-b),x=W-150*k,y0=H-(ids.length*14+24)*k;o.font=`${10.5*k}px ui-sans-serif,system-ui,sans-serif`;o.textAlign='left';
+    ids.forEach((id,j)=>{const y=y0+j*14*k;o.fillStyle=BIOME_INK[id];o.fillRect(x,y-8*k,10*k,10*k);o.fillStyle='rgba(225,232,240,.9)';o.fillText(BIOMES[id],x+15*k,y+1*k)})}
+  // the readout: cast the pointer's ray at Tellus
+  const m=mapUI.mouse&&[mapUI.mouse[0]*W/cv.clientWidth,mapUI.mouse[1]*H/cv.clientHeight];if(m){const dd=norm(add(Fw,add(mul(R,(2*m[0]/W-1)*tanX),mul(U,(1-2*m[1]/H)*tanY)))),cen=bodyPos(TELLUS,simT),oc=sub(camW,cen),b=dot(oc,dd),q=b*b-dot(oc,oc)+TELLUS.R*TELLUS.R;
+    if(q>0&&-b-Math.sqrt(q)>0){const a=atlasAt(toPF(TELLUS,madd(oc,dd,-b-Math.sqrt(q)),simT)),deg=(v,p,n)=>`${Math.abs(v).toFixed(1)}°${v>=0?p:n}`;
+      const t=a.id?`${a.biome[0].toUpperCase()+a.biome.slice(1)} · ${a.power?a.power.name:'unclaimed'} · ${Math.round(a.h).toLocaleString('en')} m`:`Sea · ${Math.round(-a.h).toLocaleString('en')} m deep`;
+      const t2=`${deg(a.lat,'N','S')} ${deg(a.lon,'E','W')}`;o.font=`${11*k}px ui-monospace,Consolas,monospace`;o.textAlign='left';
+      const wd=Math.max(o.measureText(t).width,o.measureText(t2).width)+12*k,x=Math.min(m[0]+14*k,W-wd-4),y=m[1]+18*k;
+      o.fillStyle=era===1?'rgba(246,240,222,.92)':'rgba(8,12,18,.82)';o.fillRect(x,y-12*k,wd,32*k);o.fillStyle=ink('#e6edf5');o.fillText(t,x+6*k,y);o.fillText(t2,x+6*k,y+14*k)}}
+  o.font=fnt;o.textAlign='center'}
 function eraInk(era,c){const[r,g,b,a]=rgbOf(c),warm=r>g+40&&r>b+40;
   return era===1?(warm?`rgba(176,54,42,${Math.max(.6,a)})`:`rgba(29,42,82,${Math.max(.55,a)})`):(warm?`rgba(214,255,120,${Math.max(.7,a)})`:`rgba(57,255,110,${Math.max(.55,a)})`)}
 const wob=(x,y,i)=>[x+Math.sin(i*1.7+y*.05)*.7,y+Math.cos(i*2.3+x*.05)*.7];   // a hand's tremor, steady from frame to frame
@@ -6629,6 +6716,7 @@ function drawEraMap(era,camW,project,tanY){const k=Math.min(devicePixelRatio||1,
         for(let u=0;u<1;u+=.05){const xa=x0+(x1-x0)*u,ya=y0+(y1-y0)*u,xb=x0+(x1-x0)*(u+.05),yb=y0+(y1-y0)*(u+.05);
           if((xa-c[0])*sx+(ya-c[1])*sy<0&&(xb-c[0])*sx+(yb-c[1])*sy<0){o.moveTo(xa,ya);o.lineTo(xb,yb)}}}
       o.stroke();o.restore()}}}
+  if(atlasMode)atlasInk(era,camW,project,tanY,k);   // coasts and borders (terrain session)
   // every line the map computed (orbits, plans, Selene, satellites, impact traces), in two inks
   const segs=MAPSEGS;if(!segs||!segs.length)return;const warm=[],cool=[];
   for(let i=0;i<segs.length;i+=14){const a=project(add([segs[i],segs[i+1],segs[i+2]],camW)),bb=project(add([segs[i+7],segs[i+8],segs[i+9]],camW));if(!a||!bb)continue;
