@@ -948,8 +948,8 @@ on its own axis, with `lineProfile` (radius about that axis) and `hullShoulders`
   exactly the old shoulders (test.mjs `aerofx-2`, the vapor check).
 - A booster's collar is not stopped by the core's hull (each volume only knows its own), so on the inner side it can
   run into the core; the core's mesh still hides what is behind it. It reads fine in views 54–56.
-- `VAPOR_SIDE = false`: core only (A/B). Cost: one more raymarched volume per booster, only while transonic below
-  15 km; not yet measured (the GPU was busy all evening)...
+- `VAPOR_SIDE = false`: core only (A/B). Cost (RTX 5050, 1280×800, RS 1, same page on/off, median of 7×15 frames):
+  Heavy at M 1.0 (view 54) 6.05 vs 6.06 ms, Big Lunar (55) 6.77 vs 6.51 ms: one more volume per booster, ≤ 0.3 ms.
 - New views: `refView(54)` Heavy at M 1.0, `55` Big Lunar, `56` Heavy close-up from below.
 
 ## Moving parts: the gimbal, steerable fins, a reaction wheel (2026-10-08, effects beat, QUEUE Q23)
@@ -1165,6 +1165,19 @@ Reference views: `refView(80)` on the pad, `81` 3 km, `82` 8 km looking down, `8
 **Still open:** no cloud shadows from the volume onto the ground (the shell's `cloudShadow` still applies); no rain or
 anvils; the deck from 8 km is still fairly uniform in brightness.
 
+### The volume's own shadows; a less uniform deck (2026-10-09, effects beat, QUEUE Q65)
+- **Shadows:** `cloudShadowV(p)` marches 5 steps from the ground point toward the sun through the 2–5.5 km slab with
+  `cloudDens` (the volume's extinction, 1/180 m⁻¹; floor 0.25 for skylight) and blends that into the shell's
+  `cloudShadow` by `uVk` and a fade at the bake's edge (36–47 % of its half-width). The cumulus over the sea in view 82
+  now cast their own dark patches, offset away from the sun; the shell's smeared shadow stays beyond 40 km and from
+  orbit. `CLOUD_SHADOW_V = false` for A/B. Cost: +0.3 ms at 3 km (view 81: 11.05 vs 10.73 ms), +0.75 ms on the pad
+  (view 80: 8.68 vs 7.93 ms), RTX 5050.
+- **Variety from 8 km:** the deck saturated to one white. Now a 9 km swell in each column's top height, a lower
+  multiple-scattering floor (0.4 → 0.28, so billows shade) and a ±15 % brightness swell over ~7 km. Better, still
+  modest: with a high sun a deck from above is mostly white. `CLOUD_VARY = false` for A/B; no measurable cost.
+- `cloudAt` (the CPU port for imaging) reads coverage, not `cloudDens`, so pictures and the sky still agree.
+- **Measuring pitfall:** the first timing loop of a page reported ~1 ms (warm-up); time each setting twice and use
+  the repeat.
 ## Effects for the new features: escape tower, landing dust, explosions (2026-10-08, aerofx session)
 
 Other sessions had added things with no visuals of their own: the crew escape tower (bodies), crewed Selene landings

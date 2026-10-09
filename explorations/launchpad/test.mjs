@@ -4064,6 +4064,11 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
         && far === null && high && high.gnd[0] < day.gnd[0] && /function lightEnv\(p\)\{const af=airlessFill\(p\);if\(af\)return af;/.test(pg),
       `day ground ${day && day.gnd[0].toFixed(3)}, night ${night && night.gnd[0]}, 1 R up ${high && high.gnd[0].toFixed(3)}`);
   }
+  // QUEUE Q65: the ground under the cloud volume takes the volume's own shadow (cloudShadowV, blended by uVk and the bake's
+  // edge), with its A/B uniforms uploaded; the deck's variety is behind its own toggle
+  check('cloud volume shadows: the ground shading uses cloudShadowV, which marches cloudDens toward the sun; toggles wired',
+    pg.includes('col=alb*(ndb*st*5.*cloudShadowV(p)+') && /float cloudShadowV\(vec3 p\)\{float sh=cloudShadow\(p\);/.test(pg) && /od\+=cloudDens\(p\+uSun\*/.test(pg)
+      && pg.includes('gl.uniform1f(u.uVs,CLOUD_SHADOW_V?1:0);gl.uniform1f(u.uVv,CLOUD_VARY?1:0);') && /uniform float uCvX,uVk,uVD,uVs,uVv;/.test(pg));
   // QUEUE Q97: the leg and the power parts have their own looks (placeholders gone); the deployed leg puts its footpad
   // where the sim's legFoot puts the foot (reach out, drop below), one case each
   const leg = body('partBody').slice(body('partBody').indexOf("case'leg':"));

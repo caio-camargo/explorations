@@ -153,15 +153,15 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q74 | **PLAYTEST #24 (P1): Beeper and Passenger Orbiter presets** (the Orbiter with `sci` / `bio` for `pod`): the presets-only first hour can't fly the first orbit missions without them. **Top** | M1 | S | ⚙ | ✓ v1.73 (Beeper, Passenger Orbiter; TESTING 147) |
 | Q77 | PLAYTEST #27: `builder.js` `overlay()` draws "NaN%" joint labels on the Program screen after a flight (missing `atHQ` check) | M1 | S | 🖥 | ✓ v1.73 (robot m1 passes) |
 | Q47 | **The construction screen usable by a newcomer**: walk building an Orbiter from scratch, fix what's unclear; Caio reviews. **Top priority: it blocks Caio's own playtesting** | M1 | M | 🖥 | ready |
-| Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | → vehicle 2026-10-09 |
-| Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | → vehicle 2026-10-09 |
+| Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | ✓ v1.79 (Rollout: Δv for the aim, parachute; TESTING 152) |
+| Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ✓ v1.79 (*Crew escape*) |
 | Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ✓ `0d1da8d` (v1.61) |
-| Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
+| Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | → vehicle 2026-10-09 |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
 | Q34a | Onboard computer, solar panels (body cells + a deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills. From the onboard-computer era, the guidance computer's SAS modes come built into crew capsules and need an `ocomp` part on probes (Caio decided 2026-10-08); uncrewed presets and the robot's probes get one (NOTES § "Vehicle parts") | M2 | M | ⚙ | ✓ v1.68 |
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M4 | M | ⚙ | 📝 plan only (M4 under the gate: steady-state temperature and the datacenter are M4) |
-| Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | → vehicle 2026-10-09 |
+| Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ✓ v1.79 (procedures; through the register; TESTING 153) |
 | Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | ready |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ready (plan only) |
 | Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ready |
@@ -338,4 +338,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W17 | **→ sent back to design as D6 (rule 8).** **A dry satellite that decays: re-entry, or never comes down?** MIDGAME § Satellites says running dry "pauses, never destroys"; v1.64 burns a dry low satellite up when its orbit sinks into the air (warned 10 days ahead). **Default: re-entry stays**, as the visible result of a careless design (too low, no fuel), now that a good design lasts its era (the re-tune) and the builder will show the lifetime. Override: dry satellites stop sinking at a floor and only pause | v1.64's re-entry; the builder lifetime readout |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- flow — `app/rollout.js` `rollChecks()` now calls vehicle's `launchWarnings(stackDef)` (one line, Q48); the long Δv line wraps to four lines in the panel at 1280×800: shorten or fold it as you see fit — NOTES § v1.79
+- vehicle — a legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) — NOTES § v1.79
 - flow — the flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper behind pale buttons and white text): give them the era's ink — NOTES § "Landing where you click" (seen in its probe)

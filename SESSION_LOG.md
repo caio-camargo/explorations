@@ -4279,3 +4279,19 @@ Unattended overnight run of the effects beat, then overflow per the orchestrator
 ### Next steps
 - [ ] Q116, Q65, Q24, Q66, Q67 (this session continues)
 - [ ] Measure Q64's cost (not yet measured; GPU contended all night)
+
+## 2026-10-09 — Launchpad v1.79: launch warnings, legs by themselves, the escape tower's shelf (Q48, Q121, Q32; vehicle session, unattended)
+
+- **Q48:** `launchWarnings` in the Rollout checks: Δv for the flight's aim (accepted orbit contracts, the suggested orbit
+  mission) against the logbook's best flight to orbit or ~4,500 m/s, plus a Hohmann climb to a contract's altitude;
+  "No parachute" when a crew or a passenger rides without one. Warnings only, never block. Next-step hints now name the
+  Beeper and Passenger Orbiter presets.
+- **Q121:** procedures put legs down descending within 1.5 km; deployed legs and wings survive the register (`vst.dep`).
+- **Q32:** *Crew escape* palette category.
+- **Checked:** full suite 527/527 before the last two merges; `playtest.mjs m1` passes; a tester probe showed both new
+  Rollout lines; smoke shard on the final merge. GPU lock taken once it went stale (world's, 20 min) and released.
+
+**Files:** `sim/vessel.js`, `sim/flight.js`, `sim/procedures.js`, `sim/space.js`, `sim/next.js`, `app/rollout.js` (one
+line, flow's), `builder.js`, `test.mjs` (vehicle-4, vehicle-5), launchpad `NOTES.md` § v1.79, `TESTING.md` 152–153,
+`QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** vehicle's M1 list is down to Q47 (🖥, needs Caio's review); M2: Q78 docking preset, Q33 node chains, Q131.
