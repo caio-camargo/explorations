@@ -3890,3 +3890,39 @@ had a lowland wall for 700 km; one unit's mask hid another's. Test `ground-3` (7
 - [ ] Human: TESTING 139
 - [ ] Economy: Q10 (rover prices), Q61 (dispatch to a base); Proposed: pay floors by world, dispatch leases, overflight politics
 
+
+## 2026-10-08 — Launchpad QA lane, unattended run (QA session)
+
+### Summary
+Took every ready QA item in turn, plus overflow from the lane's own follow-ups:
+- **Q54** `PLAYROUTE.md`: every TESTING row reachable with presets alone, in seven sittings, the first hour first; the
+  rest listed (builder, docking, already judged by the robot).
+- **Q55** `node playtest.mjs m1`: a new career with no tester flags, gate → Sounding → beeper orbit → debrief. Written ahead
+  of M1, so it fails on purpose. As of the end of the run: Debrief ✓ (it landed meanwhile); Esc pause (Q39), PLAYTEST #25
+  (key strip over the assembly panels) and #26 (`#msg` over the readout) still fail.
+- **Q16** tester cheats: go to any day, set funds (infinite money off), skip to a computing era, per-mission toggles
+  (test.mjs `qa-1`, TESTING 126).
+- **Q29** the M0 re-run: clean. #15–#18, #21, #22 hold; new robot rows 97 and 122.
+- **Q28** `shot.mjs` on the RTX by default (`SHOT_IGPU=1` for the Intel).
+- **Q30** robot drivers: moons (68, 72, 55, 73, 125, 92), docking (56, 58–63), stations (60 claw, 64, 66, 67, 98), then
+  Selene (115, 116, 117). Only 65 (crew rotation) is left undriven.
+- **Q79** the tester's "go to body" view: `app/bodyview.js`, all 11 SYSTEM.md bodies ray-traced alone (ellipsoid, tilt,
+  rings with shadows, bands, haze) at three distances; `refView(200 + 3·i + k)`; test.mjs `qa-2` checks the catalogue
+  against SYSTEM.md; TESTING 138.
+- **Q101** robot row 127 (the Debrief, four ways out). **Q117** TESTING duplicates 131/133/134 → 136–138.
+- Filed **PLAYTEST #24–#33**. Most important: #24 (P1), no preset flies the beeper or the passenger orbit, so a
+  presets-only career stalls at the end of epoch 1; #28 (P2), staged pay goes to a later mission nobody flew; #31 (P2),
+  map labels pile up in the top-left corner.
+
+### Files
+- `explorations/launchpad/`: new `PLAYROUTE.md`, new `app/bodyview.js`; `playtest.mjs` (rows m1, 97, 122, 68, 72, 55, 73,
+  125, 59–63, 60c, 56, 64, 66, 67, 98, 127, 115, 116, 117), `shot.mjs`, `sim/program.js` (tester block),
+  `app/screens.js` (tester menu), `app/render.js` (one hook line), `index.html` (one script line), `views.js` (views
+  200+), `test.mjs` (`qa-1`, `qa-2`), `NOTES.md`, `TESTING.md`, `PLAYTEST.md`, `QUEUE.md`
+- `INDEX.md` (PLAYROUTE), `LESSONS_LEARNED.md` (#37 the "next free" race, #38 robots need real input events), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Caio: PLAYROUTE sitting 1 once flow's Q39–Q41 land (W8); judge TESTING 138's shapes (go to body)
+- [ ] vehicle: PLAYTEST #24 (Beeper and Passenger Orbiter presets) unblocks the presets-only first hour
+- [ ] QA: robot driver for row 65; re-run `m1` as M1 items land, since its pass is M1's finish line
+- Note: git has no identity configured on this machine; commits passed `-c user.name/-c user.email` matching history.
