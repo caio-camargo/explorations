@@ -11,7 +11,7 @@ import { pageSource } from './page.mjs';
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,
+return {missionTick,missionEval,missionEnd,missionDrop,contractEval,acceptOffer,declineOffer,resolveDecision,advanceDays,chooseStart,ensureBoard,withdrawContract,payFloor,curSite,
   PROG,CT,MISSIONS,START,newShip,vesselCost,POWERS,ARCH,flav,opOf,own,ownKind,stateShare,raceLost,RACE,RIVALS,sanctioned,capOf,offerRisk,missionOpen,
   TELLUS,HOOK,rng,raceSchedule,PRESETS,PARTS,PRICE,norm,cross,khUse,FAC,facLv,facQuote,buildFac,standReady,buildStand,testQuote,startTest,STAND_COST,devQuote,startDev,devLv,prodLine,prodQuote,startProdLine,sourceOf,tierOf,IGN_FAIL,get home(){return HOME},resetWorld(){HOME=0;RIVALS=raceSchedule()},set S(v){S=v},set t(v){simT=v},get t(){return simT}};`)();
 const { PROG: P, CT, TELLUS } = api;
@@ -53,7 +53,7 @@ function outcome(pl, R, rnd) {
 }
 // what a candidate flight would satisfy, by running the game's own checks on the record it would produce
 function wouldDo(pl) {
-  const R = { bands: {}, qPart: {}, _keys: [pl.qk].filter(Boolean), apex: 0, apexSci: 0, recSci: true, landed: true, bio: !!(pl.kind === 'hop' || pl.bio), bioOK: true, approved: true, lift: 0, landDist: 1e9 };
+  const R = { bands: {}, qPart: {}, _keys: [pl.qk].filter(Boolean), apex: 0, apexSci: 0, recSci: true, landed: true, bio: !!(pl.kind === 'hop' || pl.bio), bioOK: true, approved: true, lift: 0, landDist: 1e9, site: api.curSite().id };   // flown from the program's site (ballistic tests count only from theirs, v1.57)
   const k = outcome(pl, R, () => 0.5); if (k === 'orbit') R.landed = false;
   let pay = 0; for (const c of P.active) if (CT[c.type].ok(R, c.p)) pay += c.p.pay;
   // firsts are worth more than their reward: they unlock contract types and the next firsts (a player goes for them)
@@ -143,14 +143,14 @@ function run(arch, start, seed) {
     cycle: 0, cyc: null, own: null, decisions: [], sanc: {}, home: 0, history: [], homeArch: arch, nat: {}, hush: 0, hushPen: 0, bmult: 1, demand: null, cancelled: false,
     nextElection: null, comm: 0, commPh: null, wseed: 1000 + seed * 77, raceLost: {}, sats: [], stations: [], kh: {}, lines: {}, fac: {}, stand2: null, dev: {}, devJob: null, studies: {}, studyQ: [], compEra: null, staged: {} });
   api.resetWorld(); api.chooseStart(start); P.funds += +(process.env.BONUS || 0); api.ensureBoard(); news.length = 0;
-  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0 };
+  const rnd = api.rng(seed * 9973 + 1), m = { fl: 0, fail: 0, minF: P.funds, at: {}, firsts: {}, careers: 0, sanc: 0, idle: 0, ign: 0, support: 0, lines: 0, lineSpend: 0, used: {}, fac: 0, facSpend: 0, tests: 0, testSpend: 0, devs: 0, devSpend: 0, orbFl: null, orbDay: null, wait: 0, run: 0, bailPre: 0, wd: 0 };
   while (P.day < DAYS && m.fl < 600) {
     // decisions: take a loan when rescued, otherwise decline offers (a conservative player)
     for (const d of [...(P.decisions || [])]) { if (d.kind === 'rescue') api.resolveDecision(d.id, 'loan'); else if (d.kind === 'defect' || d.kind === 'hire') m.careers++; }
     // take the best-paying offers we have a design for, avoiding certain home sanctions
     for (const c of [...P.offers].sort((a, b) => b.p.pay - a.p.pay)) {
       if (P.active.length >= api.capOf()) break; const pl = fitContract(c); if (!pl) continue;
-      if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds + c.p.pay) continue; api.acceptOffer(c.id);
+      if (api.offerRisk(c).now.includes(api.home)) continue; if (planCost(pl).c > P.funds) continue; api.acceptOffer(c.id);   // only work it can pay for now
     }
     // the flight worth most (pay of everything it would complete, minus cost) that we can afford
     const cands = [...P.active.map(fitContract), ...api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => { const pl = FIRST_PLAN[M.id]?.(); if (pl) pl.first = M.id; return pl; })].filter(Boolean);
@@ -164,6 +164,8 @@ function run(arch, start, seed) {
         const q = api.prodQuote(k), mode = q.lic.ok ? 'lic' : q.own.ok ? 'own' : null; if (!mode || P.funds < q[mode].cost + 120) continue;
         if (api.startProdLine(k, mode)) { m.lines++; m.lineSpend += q[mode].cost; } break; }
       if (VARIANT === 'all') invest(m); }
+    else if (api.withdrawContract && (() => { const stuck = P.active.map(c => ({ c, pl: fitContract(c) })).filter(x => !x.pl || planCost(x.pl).c > P.funds).sort((a, b) => (b.pl ? planCost(b.pl).c : 1e9) - (a.pl ? planCost(a.pl).c : 1e9))[0];
+      return stuck && P.active.length >= api.capOf() && api.withdrawContract(stuck.c.id) && ++m.wd; })()) {}   // slots full of work it can't afford: withdraw one (Q93)
     else { api.advanceDays(10); m.idle += 10; if (m.orbDay == null) { m.run += 10; m.wait = Math.max(m.wait, m.run); } }
     if (best && best.v > -5) m.run = 0;
     m.minF = Math.min(m.minF, P.funds);
@@ -185,7 +187,7 @@ for (const arch of (process.env.ARCHS || Object.keys(api.ARCH).join(',')).split(
   const rs = []; for (let k = 0; k < SEEDS; k++) rs.push(run(arch, start, k + (+process.env.SEED0 || 1)));
   const day = id => { const d = rs.map(r => r.firsts[id]).filter(x => x != null); return d.length ? f0(avg(d)) + (d.length < rs.length ? '*' : ' ') : '   — '; };
   if (PACE) { const got = rs.filter(r => r.orbDay != null), a = f => got.length ? f0(avg(got.map(f))) : '   — ';
-    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}`); continue; }
+    console.log(`${arch.padEnd(12)} ${start.padEnd(10)} orbit ${got.length}/${rs.length}  flights ${a(r => r.orbFl)}  day ${a(r => r.orbDay)} (max ${f0(Math.max(0, ...got.map(r => r.orbDay)))})  longest wait ${f0(avg(rs.map(r => r.wait)))} d  bailouts before ${(avg(rs.map(r => r.bailPre))).toFixed(1).padStart(4)}  min funds ${f0(avg(rs.map(r => r.minF)))}  withdrawn ${(avg(rs.map(r => r.wd))).toFixed(1)}`); continue; }
   if (process.env.SPEND) { console.log(`${arch.padEnd(12)} ${start.padEnd(10)} final ${f0(avg(rs.map(r => r.final)))} fl ${f0(avg(rs.map(r => r.fl)))} bail ${(avg(rs.map(r => r.bail))).toFixed(1)} | lines ${f0(avg(rs.map(r => r.lineSpend)))} facilities ${f0(avg(rs.map(r => r.facSpend)))} (${(avg(rs.map(r => r.fac))).toFixed(1)}) tests ${f0(avg(rs.map(r => r.testSpend)))} (${(avg(rs.map(r => r.tests))).toFixed(0)}) dev ${f0(avg(rs.map(r => r.devSpend)))} (${(avg(rs.map(r => r.devs))).toFixed(0)}) kh ${f0(100 * avg(rs.map(r => r.kh)))}%`); continue; }
   console.log(`${arch.padEnd(12)} ${start.padEnd(10)} ${f0(avg(rs.map(r => r.fl)))}  ${f0(100 * avg(rs.map(r => r.fail / Math.max(1, r.fl))))} ${f0(100 * avg(rs.map(r => r.idle / DAYS)))}   ${(avg(rs.map(r => Object.keys(r.firsts).length))).toFixed(1).padStart(4)}   ${day('beeper')}/${day('orbiter')}        ${f0(avg(rs.map(r => r.cd)))}   ${f0(avg(rs.map(r => r.at[1] ?? r.final)))}/${f0(avg(rs.map(r => r.at[2] ?? r.final)))}/${f0(avg(rs.map(r => r.final)))} ${f0(avg(rs.map(r => r.minF)))} ${(avg(rs.map(r => r.bail))).toFixed(1).padStart(4)} ${f0(avg(rs.map(r => r.debt)))} ${f0(avg(rs.map(r => r.op)))}  ${(avg(rs.map(r => r.careers))).toFixed(1).padStart(4)}  ${(avg(rs.map(r => r.sanc))).toFixed(1).padStart(4)}  ${rs.map(r => r.race).join(' ')} | ${(avg(rs.map(r => r.ign))).toFixed(1).padStart(4)} ${f0(100 * avg(rs.map(r => r.kh)))} ${(avg(rs.map(r => r.lines))).toFixed(1).padStart(5)} ${f0(avg(rs.map(r => r.lineSpend)))}  ${(avg(rs.map(r => r.support))).toFixed(1).padStart(5)}`);
 }

@@ -121,6 +121,15 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 // a client for a source: science and commerce come from any power (weighted by economy), government from home
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
+// a pay floor (QUEUE Q93): every offer pays at least FLOOR_K × the net cost of the cheapest preset that can fly it (its
+// price less the refurbishment a recovered flight usually brings back), whatever the world's priorities and the cycle,
+// so ordinary work always earns its way: a company in a frugal world can climb back from the floor.
+const FLOOR_K=1.3,FLOOR_PRESET={apex:'Sounding',sample:'Sounding',landing:'Sounding',field:'Sounding',aurora:'Sounding',ballistic:'Sounding',test:'Hopper',
+  bioHop:'Passenger',touristHop:'Passenger',sat:'Beeper',recon:'Beeper',touristOrbit:'Passenger Orbiter'},FLOOR_BACK={Sounding:.5,Hopper:.5,Passenger:.4};
+function payFloor(type){const k=FLOOR_PRESET[type];if(!k||!PRESETS[k])return 0;return Math.round(FLOOR_K*vesselCost(newShip(PRESETS[k]).parts).cost*(1-(FLOOR_BACK[k]||0))*10)/10}
+// withdrawing from a taken contract (Q93): the slot comes free at once, at a missed deadline's price (standing, opinion)
+function withdrawContract(id){const i=(PROG.active||[]).findIndex(c=>c.id===id);if(i<0)return false;const c=PROG.active.splice(i,1)[0];standAdd(c.src,-10);opAdd(c.client,-3);
+  HOOK.news(`Withdrawn: ${cTitle(c)} for ${POWERS[c.client].name}`,'warn');HOOK.save();return true}
 // why an offer appeared, in one line (QUEUE Q45): the strongest true reason among the things that make offers: a first
 // that opened the type, tension (military), the business cycle (commercial), what the client cares about, the program's
 // standing with that kind of client, home's own government. Worked out once, when the offer is made, and kept on it.
@@ -145,7 +154,7 @@ function selTick(){const A=(PROG.active||[]).filter(c=>CT[c.type]&&CT[c.type].se
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req])&&(!CT[k].open||CT[k].open()));if(!types.length)return null;
   const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
-  const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
+  const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.max(payFloor(type),Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10);   // clients pay for what they care about; never under the floor
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE,why:whyOf(type,src,client)}}
 function ensureBoard(){if(PROG.offers)return;PROG.offers=[];PROG.active=PROG.active||[];const R=rng(PROG.wseed^0x5eed);for(const k of['sci','sci','com','gov']){const o=genOffer(k,R);if(o)PROG.offers.push(o)}}
 const cTitle=c=>CT[c.type].title(c.p),cBrief=c=>CT[c.type].brief(c.p);
