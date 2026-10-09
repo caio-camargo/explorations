@@ -7060,6 +7060,10 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
 - Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
   Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
+- **The Program sits over the pad again after a flight** (Q145, PLAYTEST #27's second half): opening the Program while the
+  ship is a flown one (`S.rec.launched`) rebuilds the design on the pad (`editorChanged`), so the backdrop is the pad,
+  not the stage in orbit or the landing site. The Debrief still shows where the flight ended. Probed: an Orbiter left at
+  40 km, Debrief, then Program: the pad.
 
 ---
 
