@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — missions in flight, slice 1: nothing coasting is lost at flight end (2026-10-09, space session, QUEUE Q49)
+## v1.90 — missions in flight, slice 1: nothing coasting is lost at flight end (2026-10-09, space session, QUEUE Q49)
 
 Slice 1 of § "Plan: missions in flight" (below).
 - **Settled or in flight** (`settled(B, el)`): a satellite's orbit is closed, clear of the air or ground, inside its
