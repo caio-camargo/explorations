@@ -320,7 +320,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.4: sitting 6 parks at 250–300 km; contracts complete in flight, so low recon orbits still pay) |
 | Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ✓ effects 2026-10-09: rows renumbered (162/163 → 165/166); the `ocomp` half needs nothing today: `avCap` (sim/power.js) waives the computer under `TEST.tools` (the robot's docking rows) or with crew, and `career.mjs` sets no SAS mode. A future robot career flying target/dock SAS on an uncrewed probe must add an `ocomp` |
-| Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | picker ✓ (tester → Hardware school; TESTING 178/next); the four unbuilt schools light up by themselves after Q102 steps 6–7 |
+| Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | picker ✓ (tester → Hardware school; TESTING 178); the four unbuilt schools light up by themselves after Q102 steps 6–7 |
 
 ### platform — file split, test speed, saves, perf (new)
 Worktree `launchpad-platform` (branch `platform`, port 8801).
