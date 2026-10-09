@@ -1832,6 +1832,29 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
+## v1.NEXT — station-keeping checked against a real controller (2026-10-09, space session, QUEUE Q142; study only)
+
+v1.71 charges a held orbit the net change in its size and shape over 20 days; a crude controller (one burn to reverse
+the drift) had pumped the eccentricity, so it measured nothing. `study_slot.mjs` part D now flies a TV satellite over the
+capital on the full physics for 3 years, its tilt free as in v1.71, with a proper controller:
+- **Shape:** e held under 0.01 (TV needs < 0.02) by a retrograde burn at perigee and a prograde one at apogee (no net
+  change of size): 12–15 m/s a year.
+- **Size, so the longitude:** every 13 days, the mean size (daily samples at the same phase, averaged over 13 days)
+  is aimed at the value that brings the longitude back to its slot over τ days, by a pair of along-track burns half an
+  orbit apart (that changes the size without pumping the shape).
+
+| τ | Δv a year | worst off the slot, after the first 120 days |
+|---|---|---|
+| 20 days | 67 | 25° |
+| 40 days | 54 | 40° |
+| 80 days | 46 | 63° |
+
+v1.71's `slotRate` for the same satellite: 0.221 m/s a day = **89 m/s a year**, so the model is in the right range and
+on the conservative side (1.3–1.9× a controller that keeps it within 25–60°). No change to the game. Negative results
+on the way: reversing the measured daily drift chases the moons' periodic swing (the size swings ±40 km with Selene's
+13-day period, the longitude ±6°) and cost ~3,000 m/s a year; reversing a 26-day drift with a cooldown overshot by 100°+.
+The controller's first 13 days are open loop (60° off before it acts).
+
 ## Assessed: thin air in the flight itself (2026-10-09, space session, QUEUE Q128; not built)
 
 Between flights a 110 km orbit decays in under an hour (v1.64); in flight the air stops at 100 km, so the same orbit is
