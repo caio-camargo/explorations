@@ -1273,10 +1273,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   api.chooseStart('agency'); P.funds = 2000; P.day = 10; for (const p of api.newShip(sst).parts) { P.kh[p.d.key] = { use: 0.97, reg: {} }; P.cert[p.d.key] = 1; }
   const c = { id: 921, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
   const before = JSON.stringify(P), fly = () => { api.orderDispatch(c, sst); const L = P.dispatch[0].launch; let n = 0; while (P.day < L + 1 && n++ < 30) { P.decisions = []; api.advanceTo(L + 1); } return P.dispatch[0]; };
-  const D1 = fly(), o1 = D1.orb && { ...D1.orb }, paid = !P.active.includes(c); Object.assign(P, JSON.parse(before)); P.active = [c]; const D2 = fly();
+  const D1 = fly(), o1 = D1.orb && { ...D1.orb }, paid = !P.active.includes(c), kept = (P.sats || []).filter(q => !q.junk).length; Object.assign(P, JSON.parse(before)); P.sats = JSON.parse(before).sats || []; P.active = [c]; const D2 = fly();   // the same world: the first payload (now registered, Q49) isn't up for the second
   check('dispatch flights: a dispatched contract is flown by its procedure to the contract\'s orbit and paid; the same seed flies the same flight',
-    D1.status === 'done' && o1 && Math.abs((o1.pe + o1.ap) / 2 - 160e3) < 20e3 && paid && D2.status === 'done' && D2.orb && Math.abs(D2.orb.pe - o1.pe) < 1 && Math.abs(D2.orb.ap - o1.ap) < 1,
-    o1 ? `${D1.status}: ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km (contract 160 ± 20), paid ${paid}; again: ${D2.status} ${D2.orb ? (D2.orb.pe / 1e3).toFixed(1) + '×' + (D2.orb.ap / 1e3).toFixed(1) : ''}` : `${D1.status} ${D1.why || ''}`);
+    D1.status === 'done' && o1 && Math.abs((o1.pe + o1.ap) / 2 - 160e3) < 20e3 && paid && kept === 1 && D2.status === 'done' && D2.orb && Math.abs(D2.orb.pe - o1.pe) < 1 && Math.abs(D2.orb.ap - o1.ap) < 1,
+    o1 ? `${D1.status}: ${(o1.pe / 1e3).toFixed(1)}×${(o1.ap / 1e3).toFixed(1)} km (contract 160 ± 20), paid ${paid}, payload registered ${kept}; again: ${D2.status} ${D2.orb ? (D2.orb.pe / 1e3).toFixed(1) + '×' + (D2.orb.ap / 1e3).toFixed(1) : ''}` : `${D1.status} ${D1.why || ''}`);
   for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
 }
 

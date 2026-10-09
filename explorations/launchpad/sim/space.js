@@ -54,7 +54,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   if(!settled(B,el)){if(!(len(s.r)-B.R>(B.atm||0)))return;cruise=1}   // not a lasting orbit but above the air: in flight (Q49); in the air at flight end: dropped, as before
   const n=k=>s.parts.filter(p=>p.on&&p.d.kind===k).length+(s.att||[]).reduce((a,x)=>a+kitOwn(x.e,k),0),q={cam:n('cam'),ant:n('ant'),sci:n('sci'),ballast:n('ballast'),bio:n('bio')};if(B!==TELLUS)q.bodyName=B.name;
   PROG.sats=PROG.sats||[];PROG.satN=(PROG.satN||0)+1;const kind=satKind(q),same=PROG.sats.filter(x=>satKind(x)===kind).length;
-  Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
+  Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.T??R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
   const on=s.parts.filter(p=>p.on);q.shape=shapeOf(on,R.crewed&&R.crewOK);
