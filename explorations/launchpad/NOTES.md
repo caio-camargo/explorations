@@ -6829,6 +6829,18 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
 - Not yet (the spec's "then trim the Assembly right panel"): the cost, days and study lines still also show in the
   builder's panel (vehicle's), so they repeat here.
 
+### Landing where you click (2026-10-09, flow session, QUEUE Q62)
+- In the map, a click that misses orbits and satellites is cast onto the bodies (`surfacePick` in `sim/sitepick.js`, pure,
+  test `flow-3`): the first moon it meets gives a site in that body's own frame (`pf`, what bodies' `landAt` flies to). If
+  the design has a recorded procedure that lands on that moon (`procLandsOn`), it becomes `landPick`: a "landing site" ✕
+  on the map, the ▶ Procedure button says "→ 14.0°N 160.9°E", and starting it flies `procWithSite(pr, body, pf)`: the same
+  procedure with the transfer aiming its plane at the site and the descent landing on it (NOTES § "Landing on a chosen
+  point"). A design with no landing procedure there gets "land there once by hand". Picking again replaces it.
+- **The start buttons stay while the craft is on the pad** (`prelaunch()`): ▶ Procedure and ▶ Autopilot showed only at
+  `simT === 0`, but time runs on the pad, so they went away a few frames after LAUNCH. They now stay until liftoff.
+- Probed in Chrome on a Probe with a Selene landing procedure: the site is picked, marked and named on the button.
+  Not flown end to end here: `landAt` itself is bodies' and tested there (§ bodies-3, 5 m from any site).
+
 ---
 
 ## Picking this up cold

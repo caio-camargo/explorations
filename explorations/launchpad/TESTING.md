@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -235,5 +235,6 @@ NOTES § "The robot playtester".
 | 126 | Use the new tester controls: go to a day (forward and back), set funds, skip to a computing era, tick missions one by one | `index.html?tester`, F2 | Each does what its line says; going back a few days leaves a playable program; an era skip lands on the era's first day with its news; ticking a mission opens the next one in the Missions tab | Q16 | QA |
 | 138 | Look at every SYSTEM.md body in the tester's "go to body" view | `index.html?tester`, F2 → Go to body; ◀ ▶ for the next body, 1 2 3 for near / whole disc / far, drag to turn, Esc back; or `refView(200 + 3·i + k)` | Sizes and tilts read right (Hyperion's rings open at 27°, Hesper upside down at 177°, Erebus on its side); the rings shade the planet and the planet shades the rings. The colours are placeholders: judge the shapes, not the looks (Q80–Q85) | Q79 | QA |
 
-Next free number: **143** (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
+Next free number: **144** (QA, Q117, 2026-10-08: duplicates renumbered: Esc pause 131 → 136, new-career choices 133 → 137, go to body 134 → 138; 131 Selene, 133 offer reasons, 134 TV satellite keep theirs) (renumbered at the platform merge, 2026-10-08: the atlas rows 120–121 → 123–124, bodies' landing row 121 → 125).
 | 142 | Roll out before every launch | Assembly → ROLL OUT ▶: change the site, try an unaffordable design, a TWR < 1 stack, an unstable one, a passenger design flight safety refuses | Each problem shows as ⛔ or ⚠ in plain words before you launch; LAUNCH dims when something blocks it; ← Assembly goes back with the design untouched | Q4 | flow |
+| 143 | Land a procedure where you click | A design with a Selene landing procedure (fly one landing by hand first), LAUNCH, then on the pad: M, Tab to Selene, click a crater, ▶ Procedure | The ✕ and the button name the place; the flight lands there (within metres); a design with no landing procedure says so | Q62 | flow |

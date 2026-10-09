@@ -322,13 +322,16 @@ let rangeWarned=false,impSpread=null,impST=-1;const heard=new Set();
 const tapeKey=()=>'launchpad-tape:'+TAPE_V+':'+JSON.stringify(stackDef);
 function loadTape(){try{const t=JSON.parse(localStorage.getItem(tapeKey())||'null');return t&&t.v===TAPE_V?t:null}catch(e){return null}}
 const procsOf=stack=>{const k=procKey(stack),P=PROG.procs||{};return Object.keys(P).filter(x=>x===k||x.startsWith(k+'|')).map(x=>P[x])};
-function updateProcBtn(){const b=$('bProc');if(!b)return;const L=procsOf(stackDef),show=L.length&&mode==='flight'&&simT===0&&!player&&!(S&&S.proc);
+// (flow, Q62) the start buttons stay while the craft still sits on the pad unlaunched (time runs there; it used to be simT===0 only,
+// gone a few frames after LAUNCH, before a landing site could be picked on the map)
+const prelaunch=()=>mode==='flight'&&!!S&&(simT===0||S.landed&&!!S.rec&&!S.rec.launched);
+function updateProcBtn(){const b=$('bProc');if(!b)return;const L=procsOf(stackDef),show=L.length&&prelaunch()&&!player&&!(S&&S.proc);
   document.querySelectorAll('.bProcX').forEach(e=>e.remove());b.classList.toggle('hidden',!show);if(!show)return;
-  const label=pr=>pr.kind==='mission'?`▶ Procedure: ${pr.sig.replace(':',' ')} (${fmtDv(pr.dv)})`:`▶ Procedure: orbit ${(pr.target.pe/1e3).toFixed(0)}×${(pr.target.ap/1e3).toFixed(0)} km (${fmtDv(pr.dv)})`;
+  const label=pr=>pr.kind==='mission'?`▶ Procedure: ${pr.sig.replace(':',' ')} (${fmtDv(pr.dv)})${landPick&&procLandsOn(pr,landPick.body)?` → ${sitePlace(landPick.pf)}`:''}`:`▶ Procedure: orbit ${(pr.target.pe/1e3).toFixed(0)}×${(pr.target.ap/1e3).toFixed(0)} km (${fmtDv(pr.dv)})`;
   b.textContent=label(L[0]);b.dataset.i=0;
   L.slice(1).forEach((pr,i)=>{const x=b.cloneNode();x.id='';x.classList.add('bProcX');x.dataset.i=i+1;x.textContent=label(pr);x.onclick=b.onclick;b.after(x)})}
-function updateAutoBtn(){updateProcBtn();const t=loadTape();$('bAuto').classList.toggle('hidden',!(t&&mode==='flight'&&simT===0&&!player));if(t)$('bAuto').textContent=`▶ Autopilot (${fmtT(tapeDuration(t))})`}
-$('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0)];if(!pr)return;if(pr.site&&siteById(pr.site))PROG.site=pr.site;resetShip();procStart(S,pr);if(recTape)recTape.byProc=true;updateAutoBtn();
+function updateAutoBtn(){updateProcBtn();const t=loadTape();$('bAuto').classList.toggle('hidden',!(t&&prelaunch()&&!player));if(t)$('bAuto').textContent=`▶ Autopilot (${fmtT(tapeDuration(t))})`}
+$('bProc').onclick=e=>{const pr=procsOf(stackDef)[+(e.currentTarget.dataset.i||0)];if(!pr)return;if(pr.site&&siteById(pr.site))PROG.site=pr.site;resetShip();procStart(S,landPick?procWithSite(pr,landPick.body,landPick.pf):pr);if(recTape)recTape.byProc=true;updateAutoBtn();
   HOOK.msg(`Procedure: ${pr.by}, ${pr.kind==='mission'?pr.sig.replace(':',' '):'to orbit'}, the best flown so far · any control key takes over`)};
 function takeOver(){if(!player)return;recTape=tapeCut(player);player=null;warpIdx=0;HOOK.msg('Autopilot off — you have control')}
 $('bAuto').onclick=()=>{const t=loadTape();if(!t)return;if(t.site&&siteById(t.site))PROG.site=t.site;resetShip();S.rec.orbT0=t.orbT0??0;player={tape:t,i:0,n:0};updateAutoBtn();HOOK.msg('Autopilot: replaying your recorded flight · any control key takes over')};

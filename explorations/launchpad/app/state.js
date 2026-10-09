@@ -64,6 +64,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 // day) and the Program's Inbox lists them under "News", marking the ones since your last visit. (Here, not in debrief.js:
 // the Program's layout runs at start-up, before the later files load.)
 let settling=false;const NEWS=[];let newsSeen=0;
+let landPick=null;   // a landing site picked on the map ({body, pf}; Q62): ▶ Procedure lands there
 {const raw=missionEnd;missionEnd=function(s){settling=true;try{return raw(s)}finally{settling=false}}}
 {const raw=HOOK.news;HOOK.news=(t,cls='')=>{NEWS.unshift({t,cls,day:PROG.day||0});newsSeen++;if(NEWS.length>40)NEWS.length=40;if(!settling)raw(t,cls)}}
 function newsHTML(){if(!NEWS.length)return'';const fresh=Math.min(newsSeen,NEWS.length);
