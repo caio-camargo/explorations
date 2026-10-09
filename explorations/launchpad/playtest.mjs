@@ -257,6 +257,14 @@ ROWS[110] = {title: 'the Link row through a flight', steps: [
      // de-orbit: 8 % off the speed, retrograde hold, down to 20 km
      S.v = mul(S.v, 0.92); S.sas = true; S.sasMode = 'retro'; PT.fly(() => PT.alt() < 20000, 3000, {each: () => note('entry')});
      return seen })()`, `PT.look(2.2, -0.3, 12)`, {shot: 'entry_end'}]};
+// PLAYTEST #17 / Q17 + Q20: hard climbs through max heating show no blackout on the Link row and draw no plasma shell
+// (plasmaHeat over render.js's 1.5e4 gate); the entry half is row 110's
+ROWS[122] = {title: 'no blackout or plasma shell on a hard climb', steps: ['Heavy', 'Asparagus'].flatMap(d => [
+  `(()=>{ go('assembly'); PT.preset('${d}'); PT.launch(); S.throttle = 1; stage(S); const seen = new Set(); let qMax = 0, shell = 0, at = null;
+     PT.fly(() => PT.orbit().ap > 150000 || PT.alt() > 90000, 600, {ascent: true, autostage: true, each: () => { const l = linkOf(S); seen.add(l.ok ? (l.st ? 'station' : l.why) : l.why);
+       const h = plasmaHeat(S.body, S.r, S.v, S.qHeat || 0); if (S.qHeat > qMax) { qMax = S.qHeat; at = {t: +simT.toFixed(0), km: +(PT.alt()/1000).toFixed(1), mach: +S.mach.toFixed(1), v: Math.round(len(sub(S.v, surfVel(S.body, S.r))))} } shell = Math.max(shell, h) }});
+     PT.look(1.75, 0.05, 45); return {design: '${d}', link: [...seen], qHeatMax: Math.round(qMax), atMax: at, plasmaShellMax: Math.round(shell), shellDrawn: shell > 1.5e4, PLASMA_V} })()`, {shot: d.toLowerCase() + '_top'}]),
+  checks: {blackout: `false`}};
 
 // Program & economy
 const NOMONEY = {kh: true, tools: true, nofail: true, fast: true};
@@ -266,6 +274,17 @@ const SOUNDING = `(()=>{ go('assembly'); PT.preset('Sounding'); const f0 = PROG.
   for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); const apex = S.rec && S.rec.apex; go('program'); const fP = PROG.funds, flP = PROG.flights, settledAtProgram = !!S.rec.ended;
   resetShip();   // what the next launch (or Revert) does: since PLAYTEST #21 leaving the flight already settled it, so this pays nothing more
   return {landed: S.landed, apexKm: apex ? +(apex/1000).toFixed(1) : null, fundsBefore: +f0.toFixed(1), fundsAtProgram: +fP.toFixed(1), flightsAtProgram: flP, settledAtProgram, fundsAfterSettling: +PROG.funds.toFixed(1), flights: PROG.flights, log: PT.logSince(m0).filter(l => !/Logbook/.test(l))} })()`;
+// row 97: three ways to end a flight, each settled when you leave it for the Program (PLAYTEST #21 rerun for crash and
+// orbit); a debrief, once flow's Q2 lands, would show here too
+const ENDING = (how, design, fly) => `(()=>{ go('assembly'); PT.preset('${design}'); const f0 = PROG.funds, fl0 = PROG.flights, m0 = PT.log.length; PT.launch(); ${fly}
+  const end = {landed: S.landed, alive: S.alive, alt: Math.round(PT.alt())}; go('program');
+  return {how: '${how}', end, settled: !!S.rec.ended, flights: [fl0, PROG.flights], funds: +(PROG.funds - f0).toFixed(1), debrief: /debrief/.test(screenNow()) || !!document.querySelector('[id*=debrief]:not(.hidden),[class*=debrief]:not(.hidden)'),
+    news: PT.logSince(m0).filter(l => !/Logbook|Space to ignite/.test(l)).slice(-8)} })()`;
+ROWS[97] = {title: 'finish flights three ways', flags: NOMONEY, steps: [
+  ENDING('landed', 'Sounding', `S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000);`), {shot: 'landed'},
+  ENDING('crashed', 'Sounding', `S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); PT.fly(() => S.landed || !S.alive, 3000);`), {shot: 'crashed'},
+  ENDING('in orbit', 'Orbiter', `${ORBIT.replace(/;$/, '')}; PT.fly(() => false, 60);`), {shot: 'orbit'}],
+  checks: {settled: `true`}};
 ROWS[77] = {title: 'budget gate and recovery refund', flags: NOMONEY, steps: [
   `go('assembly'); PT.preset('Big Lunar'); render(); ({funds: PROG.funds, button: document.getElementById('launch').textContent, cost: vesselCost(S.parts).cost})`,
   `(()=>{ const m0 = PT.log.length; document.getElementById('launch').click(); return {screen: screenNow(), log: PT.logSince(m0)} })()`,
