@@ -197,9 +197,9 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | ready (plan first; include LATE_GAME.md § "Keeping flight in play": the fleet strip, "no silent misses") |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | ready (plan first; include LATE_GAME 1.1.0 § "Comms": contact gates automation, solar conjunction, relays as nodes) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | ready (plan only) |
-| Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ready |
+| Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
 | Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | ✓ `a9b2a09` (v1.71: the tilt is let go and really wanders; TV keeps ~6 years on ~500 m/s; decay already fits above ~300 km; dry re-entry is D6) |
-| Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | ready |
+| Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | 📝 assessed, not built: needs every preset to park at ~150 km (+48 m/s); → design (NOTES § "Assessed: thin air in the flight itself"); default if silent: as now |
 | Q142 | A proper deadband controller on the full physics, to check v1.71's hold cost (a crude one pumped the eccentricity) | M2 | S | ⚙ | ready |
 | Q139 | 📝 At M5: add **Helios's tide** to the Tellus system (Tellus–Helios L1/L2) with 6b's machinery; Selene's L4/L5 already hold (`study_lagrange.mjs`) | M5 | S | 📝 | ready (plan only) |
 | Q140 | 📝 **Asteroid capture and mining** (with economy): epoch 7 capture with solar-electric tugs, 8–9 mining in place, type → yield, deflection as a pressure — LATE_GAME.md § Asteroids | M5 | M | 📝 | ready (plan only) |
@@ -360,3 +360,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 - vehicle — **presets that carry an antenna make their own power** (Probe, and Q152's lander: body cells or a wing; check the builder's power line is green): unblocks Q27, whose service and link gating would otherwise end Probe satellites after ~4 days — space, NOTES § v1.68 "Not yet"
+- design (rule 8) — **thin air in the flight itself?** With it, every preset's 110 km parking orbit comes down within 1.4 h of flight; parking at 150 km costs +48 m/s and lasts 7.5 days. Options: (a) as now, decay between flights only (default); (b) thin air in flight, presets park at 150 km, tests/robot/PLAYROUTE follow — space, NOTES § "Assessed: thin air in the flight itself"

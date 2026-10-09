@@ -1858,6 +1858,24 @@ follow a different archetype chosen at a career's start (the look does, as befor
 Test `econ-13` (4 checks; the announcements mutation-tested). Traps hit, again: a mid-line `//` comment in `gl.js`
 swallowed `const aff=` (the suite's page-parse check caught it), and an apostrophe in a heredoc ("People's").
 
+## Assessed: thin air in the flight itself (2026-10-09, space session, QUEUE Q128; not built)
+
+Between flights a 110 km orbit decays in under an hour (v1.64); in flight the air stops at 100 km, so the same orbit is
+free. Measured with `dragRates`/`decayAE` for an Orbiter's payload (Cd·A/m 0.0068), if the flight felt the thin air:
+
+| parking orbit | lost an hour | down after | from 110 km (Hohmann) |
+|---|---|---|---|
+| 110 km (every preset's procedure today) | 13.6 m/s | 1.4 h | — |
+| 130 km | 1.2 m/s | 10 h | — |
+| 150 km | 0.28 m/s | 60 h (7.5 game days) | +48 m/s |
+| 200 km | 0.04 m/s | 815 h (~100 game days) | +105 m/s |
+
+So turning it on is not a physics fix to slip in: a craft warping in a 110 km parking orbit (waiting for a window, a
+rendezvous) would come down within the flight. It needs the presets' procedures to park at ~150 km (+48 m/s), the
+tests' `LEO`, the robot routes and PLAYROUTE to follow, and the "orbit" missions to keep their definition. That's every
+lane, so it goes to design (ROADMAP rule 8). **Default if silent: as now** (no air above 100 km in flight; decay
+between flights only), noted in the flight's HUD later as "decays in N h after the flight" if wanted.
+
 ## v1.87 — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
 
 `missionTick` noted the first orbital period (around Tellus, `period`; around Selene, `sorbit`) the moment the orbit was
