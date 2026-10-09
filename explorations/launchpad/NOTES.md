@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1946,6 +1946,23 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## v1.89.3 — station work: resupply, lab time, expansion (2026-10-09, economy session, QUEUE Q162; Q9 plan slice 1)
+
+Three contract types for **our stations** (`sim/contracts.js`), judged between flights on the station's state since
+they were taken (`baseOf` sets the baseline at acceptance; `selTick` judges, as for Selene science):
+- **Resupply *X*** (government, commercial): offered when a crewed station has under 40 days of supplies (`ST_LOW`).
+  It asks for 60 days' worth (two crew: 600 kg), **due when its supplies run out** (W22 default 2), pays
+  (30 + 0.12/kg)·1.6, ×1.5 under 15 days. Done when the station's supplies have risen by that much since (a module
+  carrying `sup` docks: a habitat brings 300 kg).
+- **N lab-days on *X*** (science, commercial): a station with a lab and a crew; 10–40 lab-days at 4M each (·1.6); done on
+  `q.labDays` earned since taken.
+- **A lab or habitat module for *X*** (commercial): a station with a free port; pays the module's price × 1.3 + 40
+  (·1.6); done when one more of that module kind is part of the station.
+Each gives its own reason line (`CT[type].why(p)`: "Station 1 has 35 days of supplies left", "has a free port").
+**Fixed on the way:** `selDone` applied the science yield to every state-judged contract; now only to science
+clients, as `contractEval` does. Test `econ-16` (3 checks; "since taken" mutation-tested).
+**Next:** slice 2, the first-station firsts (Q163); bases get the same three in slice 3.
 
 ## v1.89.2 — rivals' personalities in the race; our own voice (2026-10-09, economy session, QUEUE Q165)
 

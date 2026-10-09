@@ -4509,6 +4509,28 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `return: ${ea ? ea.text + ' on day ' + ea.day.toFixed(3) : '—'}; stopped on day ${P.day.toFixed(3)}, halted ${!!qr.halt}`);
 }
 
+// econ-16. Station work (economy session, QUEUE Q162, Q9's plan slice 1): resupply, lab time and expansion contracts,
+// offered for our stations and judged between flights on the station's state since they were taken.
+{
+  const D = new Function(src + 'return {CT,genOffer,acceptOffer,selTick,stState,stPick,TELLUS,PROG,HOOK,rng,resetHome:()=>{HOME=0;RIVALS=raceSchedule()},chooseStart};')();
+  const P = D.PROG; D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  D.resetHome(); Object.assign(P, { homeArch: 'openSuper', day: 100, rel: {}, op: {}, sanc: {}, stand: {}, own: null, decisions: [], offers: [], active: [], flights: 5, cdone: 0, done: { beeper: { day: 1, flight: 1 } } }); D.chooseStart('agency');
+  const R0 = D.TELLUS.R + 400e3, v0 = Math.sqrt(D.TELLUS.mu / R0);
+  const st = { id: 51, name: 'Station 1', r: [R0, 0, 0], v: [0, 0, v0], epoch: 0, pending: [], imgs: 0, shape: [{ k: 'hab', crew: 2, res: { sup: 0.35 } }, { k: 'lab' }], attached: [], labDays: 7 };
+  P.sats = [st];
+  const R = D.rng(5); let o = null; for (let k = 0; k < 400 && !o; k++) { const x = D.genOffer(k % 2 ? 'gov' : 'com', R); if (x && x.type === 'stResupply') o = x; }
+  check('station work: a crewed station short of supplies gets a resupply offer, due when they run out, saying why', o && o.p.st === 51 && o.p.days === 35 && o.p.kg === 600 && /35 days of supplies/.test(o.why), o ? `${D.CT[o.type].title(o.p)}: ${o.p.kg} kg in ${o.p.dur} days, ${o.p.pay.toFixed(0)}M; ${o.why}` : 'no offer');
+  P.offers = [o]; D.acceptOffer(o.id); const c = P.active[0], f0 = P.funds; D.selTick(); const before = P.active.length;
+  st.attached.push({ e: { id: 52, shape: [{ k: 'hab', res: { sup: 0.3 } }] } }); D.selTick(); const half = P.active.includes(c);
+  st.attached.push({ e: { id: 54, shape: [{ k: 'hab', res: { sup: 0.3 } }] } }); D.selTick();
+  check('station work: the resupply completes once 600 kg have docked (two habitats of 300 kg), not after the first', before === 1 && half && !P.active.includes(c) && P.funds > f0, `paid ${(P.funds - f0).toFixed(0)}M`);
+  const lab = { id: 901, type: 'stLab', src: 'sci', client: 0, p: { st: 51, name: 'Station 1', n: 10, pay: 64 }, deadline: P.day + 90 }, exp = { id: 902, type: 'stExpand', src: 'com', client: 0, p: { st: 51, name: 'Station 1', kind: 'lab', pay: 100 }, deadline: P.day + 300 };
+  P.offers = [lab, exp]; D.acceptOffer(901); D.acceptOffer(902); st.labDays = 12; D.selTick(); const midLab = P.active.includes(lab), midExp = P.active.includes(exp);
+  st.labDays = 17; st.attached.push({ e: { id: 53, shape: [{ k: 'lab' }] } }); D.selTick();
+  check('station work: lab time counts lab-days earned since taken; expansion counts a module docked since taken', midLab && midExp && !P.active.includes(lab) && !P.active.includes(exp) && D.stState(51, 'lab') === 2,
+    `lab-days 7 → 12 (not yet) → 17 (done); labs ${D.stState(51, 'lab')}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
