@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.23 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -8342,6 +8342,54 @@ Lesson (LESSONS_LEARNED): run `node playtest.mjs m1` before pushing anything tha
 **Checked:** `playtest.mjs m1` passes in full on this branch (the gate, a Sounding, the beeper to orbit, two debriefs,
 no boxes overlapping). `test.mjs` section `vehicle-3`: the Beeper in orbit; the Passenger Orbiter once round and home
 under 8 g and 330 K.
+
+## Plan: station, base, relay and rendezvous contracts (2026-10-09, economy session, QUEUE Q9; nothing built)
+
+**What exists to build on:** stations from docked modules with berths, crew, labs and supplies (`stationOf`, Phase C);
+lab-days earned between flights (`q.labDays`); moonbases (`baseOf`, E); flights from orbit (`R.fromOrbit`) and crew
+kept aboard across flights (rotation works by hand); the Selene relay and moon orbits in the registry; docking
+(`s.att`); supply runs to bases (v1.69) and the automation ladder (MIDGAME, D7). Contracts can now be judged on
+**state between flights** (`sel`/`done`, v1.66) or **by a flight** (`ok`), and take an `after` (v1.81).
+
+**The contract types** (the space session's five from Phase C, plus base, relay and rendezvous):
+
+| Type | Offered when | Done when | Judged | Pay (before multipliers) |
+|---|---|---|---|---|
+| **Resupply station X** | X has crew and < 40 days of supplies | X's supplies rise by N kg since taken (a module with `sup` docks) | state | 30 + 0.12/kg, ×1.5 under 15 days |
+| **Lab time on X** (sci, com) | X has a lab | N lab-days earned on X since taken | state | 4 per lab-day |
+| **Expansion of X** (com) | X has a free port | a module of the client's kind (lab, habitat) docked to X | state (X's `attached`) | the module's price × 1.3 + 40 |
+| **Crew rotation for X** | X's crew has served 120 days | a crewed capsule that left X lands home safe while X still has crew aboard | flight (`fromOrbit`, crew home) | 60 |
+| **Base resupply / base lab time** | as for stations, with `baseOf` | as above, on the base's members | state | as above |
+| **Relay coverage of Selene's far side** (sci, gov) | a far-side rover or station exists, or Selene science contracts are open | far-side contact ≥ 60 % of a day (`radioAt`, sampled each tick) for 30 days | state | 120 |
+| **Rendezvous** (gov, com) | a registry object the client cares about (a derelict, a rival's satellite) | a flight within 100 m of it, relative speed under 1 m/s | flight | 80 |
+| **Retrieval** (gov) | a valuable dead satellite (v1.81's `serviceTarget` rule, but dead) | it's docked and brought home (lands with it attached) | flight + `after` | 150 + its parts' value |
+
+**The first station as firsts, not contracts** (the space session's flagship): `station1` a habitat in a stable orbit
+with two free ports → `stationcrew` a crew docks → `stationlab` a lab added → `station30` 30 crewed days; epoch 3,
+paid like the epoch-3 firsts (80–120M), and not in the race (the race is Selene's). They give the contracts above a
+station to be about.
+
+**Rules carried over:** pay floors (v1.77) by the cheapest preset that can do it (the Docking preset for station work);
+W11 (a mission counts only on a flight launched while it was open) for the firsts; `whyOf` reasons: "*X* is down to
+12 days of supplies", "*X* has a free port". **Routines** follow MIDGAME's ladder: crewed rotation is the first
+routine (pilots), uncrewed resupply waits for onboard computers (D7's rule), so the resupply contract is flown by hand
+until then, which is what makes it a job early and a routine later.
+
+**Build order** (each a ⚙ slice):
+1. State-judged station work: resupply, lab time, expansion (no new flight checks; `selTick`'s pattern).
+2. The first-station firsts.
+3. Bases: the same three, on `baseOf`.
+4. Flight-judged: rendezvous, retrieval (needs the near-pass check during a flight).
+5. Relay coverage (a daily contact sample on Selene's far side).
+6. Crew rotation, after Q137's crew record in headless flights.
+
+**Questions for Caio** (numbered, with defaults; silence keeps the default):
+1. First station as **firsts** (default) or as a contract chain?
+2. Supplies running out at a station: today the crew goes on rations and labs stop (pillar 5). Should a resupply
+   contract's deadline be **when they run out** (default) or a fixed window?
+3. Rendezvous with **rivals' satellites**: allowed as a contract (default: only once rivals have stations, LATE_GAME
+   round 7), or never?
+4. Retrieval brings a satellite home whole: **its parts' value back as refurbishment** (default) or the pay only?
 
 ## v1.81.1 — a mission counts only on a flight launched while it was open (2026-10-09, economy session, W11, Q113)
 
