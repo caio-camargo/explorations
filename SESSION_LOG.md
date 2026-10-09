@@ -3702,3 +3702,38 @@ GROUND decisions were defaulted (design desk), so G2 may start now.
 - [ ] Human: TESTING 128 (lose your first orbit attempt: fair second chance or too soft?)
 - [ ] Economy: Q6 `siteAccess`; pay floors by world (Proposed)
 
+## 2026-10-08 — Launchpad v1.56 economy: siteAccess, who may launch where (QUEUE Q6; economy session)
+
+### Summary
+- `siteAccess(site)` → `{ok, why, fee, how}` in `sim/program.js`: own sites free; sea platforms 4M; a consortium
+  member's site free; other powers' sites leased at 6M × (1 − ½ relation), refused below −0.25 or under sanctions.
+- Launch charges the fee and records `R.site` and `R.siteFee`; the debrief lists *Site lease*, and v1.55's cover.
+- Builder (`app/editor.js`, flagged in ACTIVE_WORK): the budget check counts the fee; the picker shows it.
+
+### Verification
+- New test `econ-2` (6 checks, mutation-tested); full suite passes in 4 processes.
+
+### Files
+- `explorations/launchpad/sim/program.js`, `sim/debrief.js`, `app/editor.js`, `test.mjs`, `NOTES.md` § v1.56, `TESTING.md` row 129, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 129 (launch from abroad; is the fee a real choice?)
+- [ ] Economy: Q7 (ballistic target from the flight's site, now that `R.site` exists); Proposed: dispatch leases, overflight politics
+
+## 2026-10-08 — Launchpad v1.57 economy: the ballistic test aims from the program's site (QUEUE Q7; economy session)
+
+### Summary
+- `CT.ballistic`: the target is now the stated distance downrange of the program's current site (was `rg/600` rad
+  from +X, so 2.1× long and from no pad); the brief names the site, and the test counts only when flown from there
+  (`R.site`). Old saved contracts count from anywhere. `genOffer` skips a generator that finds nothing.
+
+### Verification
+- New test `econ-3` (3 checks, mutation-tested); full suite passes in 4 processes; career runner unchanged in shape.
+
+### Files
+- `explorations/launchpad/sim/contracts.js`, `test.mjs`, `NOTES.md` § v1.57, `TESTING.md` row 130, `QUEUE.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] Human: TESTING 130
+- [ ] Economy: Q45 (every offer says why it appeared), then Q46/Q10/Q61; Proposed: pay floors by world, dispatch leases, overflight politics
+

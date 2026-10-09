@@ -64,10 +64,12 @@ const CT={
   recon:{src:['mil'],req:'beeper',gen:R=>{const alt=10*Math.round(11+R()*7),inc=5*Math.round(12+R()*6);return{alt,tol:20,inc,itol:5,pay:(45+inc*0.6)*1.6,dur:90+R()*60}},
     title:p=>`Reconnaissance orbit, ${p.alt} km at ${p.inc}°`,brief:p=>`An instrument package in orbit at ${p.alt}±${p.tol} km, inclination ${p.inc}±${p.itol}°. Classified.`,
     ok:(R,p)=>{const o=R.orb;return!!o&&o.sci&&o.pe>=(p.alt-p.tol)*1e3&&o.ap<=(p.alt+p.tol)*1e3&&Math.abs(o.inc-p.inc)<=p.itol}},
-  ballistic:{src:['mil'],req:'weather',gen:R=>{for(let k=0;k<200;k++){const rg=300+R()*600,az=R()*6.2832,a=rg/600,u=[Math.cos(a),Math.sin(a)*Math.sin(az),Math.sin(a)*Math.cos(az)];
-      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60}}return{u:[Math.cos(.8),0,Math.sin(.8)],rg:480,rad:40,pay:70,dur:80}},
-    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km from the pad (marked on the map). Classified.`,
-    ok:(R,p)=>!!R.endPf&&R.endSci&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
+  // the target lies downrange of the program's current site (QUEUE Q7), and the test counts only when flown from there:
+  // a ballistic test belongs to its range. Contracts saved before Q7 have no p.site and count from anywhere.
+  ballistic:{src:['mil'],req:'weather',gen:R=>{const t=curSite();for(let k=0;k<200;k++){const rg=300+R()*600,u=alongAz(t.u,R()*6.2832,rg*1e3/TELLUS.R);
+      if(!isLand(u))return{u,rg:Math.round(rg),rad:40,pay:(30+rg/15)*1.6,dur:60+R()*60,site:t.id,sname:t.name}}return null},
+    title:p=>`Ballistic test, ${p.rg} km downrange`,brief:p=>`Launch from ${p.sname||'the pad'} and bring an instrument package down at sea within ${p.rad} km of a target point ${p.rg} km away (marked on the map). Classified.`,
+    ok:(R,p)=>!!R.endPf&&R.endSci&&(!p.site||R.site===p.site)&&Math.acos(clamp(dot(norm(R.endPf),p.u),-1,1))*TELLUS.R<=p.rad*1e3},
   milLift:{src:['mil'],req:'lift1',gen:R=>{const m=0.5*(2+(R()*5|0));return{m,pay:22*m*1.6,dur:90+R()*60}},
     title:p=>`Classified payload, ${p.m} t`,brief:p=>`${p.m} t of mass simulators to a stable orbit. Nobody asks what they simulate.`,ok:(R,p)=>R.lift>=p.m-1e-9},
 };
@@ -100,7 +102,7 @@ function raceTick(){PROG.raceLost=PROG.raceLost||{};for(const id of RACE){const 
 function pickClient(src,R){if(src==='mil'&&R()<0.6)return HOME;
   if(src==='gov'){const st=own().st,ks=Object.keys(st);if(!ks.length)return HOME;let x=R()*ks.reduce((a,k)=>a+st[k],0);for(const k of ks){x-=st[k];if(x<=0)return+k}return+ks[0]}let t=0;for(const p of POWERS)t+=p.econ;let x=R()*t;for(const p of POWERS){x-=p.econ;if(x<=0)return p.i}return HOME}
 function genOffer(src,R){const types=Object.keys(CT).filter(k=>CT[k].src.includes(src)&&(!CT[k].req||PROG.done[CT[k].req]));if(!types.length)return null;
-  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);
+  const type=types[R()*types.length|0],p=CT[type].gen(R),mult=0.7*(0.8+0.4*standOf(src)/100)*(src==='com'?(1+0.35*(PROG.cycle||0))*(1+0.15*own().pv):1);if(!p)return null;   // a generator may find nothing (a ballistic range all over land)
   p.pay=Math.round(p.pay*mult*10)/10;PROG.cseq=(PROG.cseq||0)+1;
   const client=pickClient(src,R);if(sanctioned(client))return null;p.pay=Math.round(p.pay*(0.7+1.2*flav(client).pri[PRI_OF[src]])*10)/10;   // clients pay for what they care about
   return{id:PROG.cseq,type,src,client,p,posted:PROG.day,expires:PROG.day+OFFER_LIFE}}
