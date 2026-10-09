@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2026,6 +2026,73 @@ player declined everything but a rescue loan, so it never took one. With `ACCEPT
 **Verdict:** no game change. A company in a poor world is the hard start, by design, and climbs out by taking
 partners, which is the archetype's story (POWERS.md: the frugal power "doesn't race; partners"). The runner stays
 conservative by default, so its numbers are a floor; `ACCEPT=stake,ipo` measures a player who takes offers.
+
+## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
+(`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
+`failHit(-20)` and one news line; capsules keep their crew across flights in the registry (rotation works by hand).
+
+### Q133 — the roster and the astronaut office's classes
+- **Data:** `PROG.crew = [{id, name, role: 'pilot'|'scientist'|'engineer', rank: 1–3, cls, joined, status:
+  'ready'|'flying'|'aboard'|'lost', where (registry id when aboard), rec: {flights, days, firsts: [], walked: []}}]`.
+  Level 3 (careers) adds fields to the same record; nothing here needs rework for it.
+- **Names** in home's style: a given name and a family name from home's school syllables (v1.89's `SCHOOLS`), on
+  their own seeded draws; unique in the program.
+- **Classes, not hiring:** the first class is selected **when the abort tests open** (crewed flight becomes possible);
+  then one every **2 program years**, 3 people + 1 per computing-centre level; roles follow the era (pilots only in
+  epochs ≤ 3; scientists from epoch 4; engineers once a station or base exists) and the archetype (security: pilots
+  first; frugal: scientist-heavy; resource: classes of 2, and an offer to **buy a seat** on a friend's flight).
+  News: "The second class: Vela Marisk, Ilo Tovvera, …".
+- **Crew picked automatically** at launch (`missionTick`'s launch line): seats = the capsules' `d.crew`; the best-ranked
+  ready pilot first, then by the mission (a scientist for a landing, an engineer for a station). A hand-flown flight
+  can swap them in Assembly (flow's screen) if the player wants (CREW round 2, decision 4). `R.crew` = their ids.
+- **At flight end** (`missionEnd`): each flown astronaut's record (flights, days, firsts named in the news: "Vela
+  Marisk, first person on Selene"), **rank up on firsts** (a first flight, a first orbit, a first landing on a body,
+  60 days in space), status back to ready, or *aboard* when their capsule docked and stayed. A loss: *lost*, named in
+  the news and in a memorial list.
+- **UI (flow):** a Crew tab or screen: the roster, the classes, the memorial.
+
+### Q135 — requalification after a loss (replaces the anonymous `failHit`)
+- On a crew loss, `PROG.requal = {cause, moment, design, day}` from the flight record: g (`cgMax`, when), cabin heat
+  (`ccab`), air, a part that failed (the breakup's part), a failed abort.
+- **While set, crewed launches are refused** at LAUNCH ("Requalify first: fly this rocket uncrewed through *the
+  moment* and show *the cause* is fixed"); everything uncrewed flies as usual.
+- **The qualification flight:** an uncrewed flight carrying a crew capsule (a dummy crew) that goes through the
+  recorded moment (the same max-q, the same re-entry, the same days) with **the cause inside its limit**. Then news
+  ("Requalified: …") and crewed flights resume. A loss costs a flight and a design problem, not a wait.
+- **Closed powers** get a decision instead: requalify, or **fly again now**, hushed, the cause unfixed, a leak risk
+  that grows with each crewed flight until a qualification flight is flown (the leak system, v1.24).
+
+### Q136 — the scientist's and engineer's hooks (economy's side)
+- **Scientist:** surface science counts **×1.25 / ×1.5 / ×2 by rank** for the Selene science contracts (a reading
+  taken in person weighs more: `sciGot` records `by` and a weight; `selN` counts weights); in person, no contact
+  needed. A sample return with a scientist pays more (the mission's pay ×1.25 by rank).
+- **Engineer:** **one retry of a failed ignition per burn** (two at rank 3) in `igniteOK`'s roll, economy's code; at
+  stations and outposts, production modules need one (LATE_GAME, later).
+- **Pilot** (vehicle's side, noted for them): SAS modes the computer lacks, by rank (CREW § roles), `avOf`.
+
+### Q137 — crew rotation by dispatch
+- Needs the roster (Q133) and **a crew record in headless flights** (`procFly` gets `R.crew`).
+- **The rotation run** is two linked dispatches: up, a crewed capsule docks at the station (a docking procedure;
+  crewed docking is open to a rank-2 pilot before onboard computers, MIDGAME's ladder: the first routine is crewed);
+  down, the old crew's capsule undocks and lands home (a flight from orbit, `R.fromOrbit`, with a deorbit procedure).
+  The space lane owns the procedures (docking and deorbit as recorded phases); economy owns the schedule (both on the
+  pad calendar), the crew assignment and the pay (Q9's *Crew rotation for X* contract).
+
+### Slices (⚙, in order)
+1. The roster: data, names, the first class, automatic picking, the record and ranks, the loss named (Q133).
+2. Requalification (Q135).
+3. Classes over time and the archetype mixes; the memorial (Q133's rest).
+4. The scientist's and engineer's hooks (Q136).
+5. Crew rotation by dispatch (Q137), with space's docking and deorbit procedures.
+
+### Questions for Caio (numbered, with defaults; silence keeps them)
+1. The first class when **the abort tests open** (default) or from the first passenger hop?
+2. A class every **2 program years**, 3 people + 1 per centre level (default)?
+3. Names as **given + family name** in home's school style (default) or one name?
+4. Crewed flights **blocked until requalification** after a loss (default), with the closed power's skip decision
+   (default, CREW round 2)?
 
 ## Plan: overflight politics (2026-10-09, economy session, QUEUE Q96; nothing built)
 
