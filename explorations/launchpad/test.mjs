@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {footPoints,legOp,legsDown,tapeLegs,toV2,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {footPoints,legOp,legsDown,tapeLegs,toV2,get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,nextStep,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,orderDryRun,dryQuote,dispatchLine,PROV_UNC,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -3414,6 +3414,45 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('why: the Contracts tab shows it', pg.includes('Why: ${c.why}'));
 }
 
+// flow-2. What to do next (flow session, QUEUE Q40): the Program screen's one suggestion. A new career is pointed at the
+// cheapest first step a preset can fly; a decision or an accepted contract comes first; done missions move it on.
+{
+  const P = api.PROG, save = { done: P.done, decisions: P.decisions, active: P.active, offers: P.offers, raceLost: P.raceLost };
+  Object.assign(P, { done: {}, decisions: [], active: [], offers: [], raceLost: {} });
+  const a = api.nextStep(); P.done.weather = P.done.loads = { flight: 1 }; const b = api.nextStep(); P.done.hop = P.done.beeper = { flight: 2 }; const c = api.nextStep();
+  P.decisions = [{ title: 'A public launch', expires: (P.day || 0) + 12, opts: [] }]; const d = api.nextStep();
+  check('flow-2: next step: a new career starts with a preset-flyable first step; then first orbit or a passenger; then what is left; a decision comes first',
+    a && a.id === 'weather' && a.preset === 'Sounding' && /opens/.test(a.why) && b && ['hop', 'beeper'].includes(b.id) && /be first/.test(b.why) && c && c.kind === 'mission' && !['weather', 'loads', 'hop', 'beeper'].includes(c.id) && d && d.kind === 'decision',
+    [a, b, c, d].map(x => x && `${x.title} (${x.why}${x.how ? '; ' + x.how : ''})`).join(' → '));
+  Object.assign(P, save);
+}
+
+// econ-5. Dry runs as the trajectory office's study (economy session, QUEUE Q46): dryQuote prices it like a study (era,
+// centre, procedures tried); orderDryRun pays, lets the days pass, runs procAdopt and keeps the measured margin; a
+// provisional procedure's estimate is PROV_UNC wider and uses that margin; the dispatch line offers it for the design
+// in Assembly when nothing stored can fly the contract.
+{
+  const P = api.PROG, saved = JSON.stringify(P), st = ['sci', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], heavy = ['sci', 't1', 't2', 'petrel', 'dec', 't8', 'fins', 'kestrel'], hk = api.procKey(heavy);
+  api.HOOK.news = () => {}; api.HOOK.msg = () => {}; api.HOOK.save = () => {};
+  P.procs = {}; P.done = { beeper: { flight: 0, day: 0 } }; P.funds = 1e6; handAscent(api, st);
+  const c = { id: 931, type: 'sat', src: 'com', client: 0, p: { alt: 160, tol: 20, inc: 0, itol: 3, pay: 50, dur: 300 }, deadline: P.day + 300 }; P.active = [c];
+  const line0 = api.dispatchLine(c, heavy), q = api.dryQuote(heavy), qOwn = api.dryQuote(st), qNone = api.dryQuote(null);
+  check('dry run: priced like a study (days and money), refused for a design with its own procedure or no design', q.ok && q.n === 1 && q.cost > 0 && q.days > 0 && !qOwn.ok && !qNone.ok, `${q.days} d, ${q.cost}M; own: ${qOwn.why}`);
+  P.funds = q.cost - 0.1; const poor = api.orderDryRun(heavy), none = !P.procs[hk]; P.funds = 1e6;
+  const d0 = P.day, r = api.orderDryRun(heavy), pr = P.procs[hk];
+  check('dry run: ordering it pays, lets its days pass, and adopts the procedure with the measured margin kept',
+    !poor.ok && none && r.ok && r.cost === q.cost && pr && pr.prov && Math.abs(pr.margin - r.margin) < 1e-9 && Math.abs(P.day - d0 - q.days) < 1e-6 && !api.dryQuote(heavy).ok,
+    `${r.ok ? `${r.margin.toFixed(0)} m/s to spare` : r.why}; ${(P.day - d0).toFixed(1)} d, ${r.cost}M; short of money: ${poor.why}`);
+  const e1 = api.dispatchEstimate(heavy, c); pr.prov = false; const e2 = api.dispatchEstimate(heavy, c); pr.prov = true;
+  const m0 = pr.margin; pr.margin = m0 + 500; const e3 = api.dispatchEstimate(heavy, c); pr.margin = m0;
+  check('dry run: a provisional procedure\'s estimate is wider, and its margin is the measured one', e1.ok && e2.ok && (e1.hi - e1.lo) > (e2.hi - e2.lo) && Math.abs(e3.margin - e1.margin - 500) < 1e-6,
+    `${Math.round(e1.lo * 100)}–${Math.round(e1.hi * 100)}% vs ${Math.round(e2.lo * 100)}–${Math.round(e2.hi * 100)}% if it were its own`);
+  P.procs = {}; const lineNo = api.dispatchLine(c, heavy);
+  check('dry run: the contract\'s dispatch line offers it for the design in Assembly (which has no procedure)', /data-dry="931"/.test(line0) && /Dispatch /.test(line0), line0.replace(/<[^>]+>/g, ' ').slice(0, 160));
+  check('dry run: …and not when there is no stored procedure to try', !/data-dry/.test(lineNo));
+  Object.keys(P).forEach(k => delete P[k]); Object.assign(P, JSON.parse(saved));
+}
+
 // ground-3. Enyo's ground (world session, GROUND.md G7), the first planet: on the CPU, not live (no Enyo in the body tree
 // yet; the recipe hangs on a stub with SYSTEM.md's radius and gravity). SYSTEM.md's ground brief, feature by feature:
 // the dichotomy, the giant shield, the canyon a third of the way round, the polar caps; craters, seams and surfaces as on
@@ -3475,7 +3514,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     return q; };
   const R = T.R, low = reg(R + 300e3, 0), nav = reg(R + 3000e3, 60), stat = reg(D.STAT_R, 0), k = q => D.slotRate(q);
   check('station-keeping: holding an orbit costs what the tides pull, nothing in low orbit, ~0.2–0.4 m/s a day at 3,000 km, ~0.3–0.5 stationary (study_slot.mjs)',
-    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5 && D.skLife(low) === Infinity,
+    k(low) === 0 && k(nav) > 0.2 && k(nav) < 0.4 && k(stat) > 0.3 && k(stat) < 0.5,
     `low ${k(low)}, nav ${k(nav).toFixed(3)}, stationary ${k(stat).toFixed(3)} m/s a day`);
   // a stationary satellite with tanks for 100 m/s holds its rails for ~250 days; one with 4 days' worth goes adrift on day 4
   P.sats = []; news.length = 0; const held = reg(D.STAT_R, 0, 100), short = reg(D.STAT_R, 0, 4 * k(held)), none = reg(D.STAT_R, 0, 0);
@@ -3513,6 +3552,44 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END')), vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('go to body: render() hands over the frame first; the tester menu and refView(200 + 3·i + k) open it',
     /function render\(\)\{\n\s*if\(self\.bodyViewDraw&&self\.bodyViewDraw\(\)\)return;/.test(pg) && /data-test-body=/.test(pg) && /bodyViewOpen\(d\.testBody/.test(pg) && /n >= 200 && typeof BODY_CAT/.test(vj) && /bodyViewClose\(\)/.test(vj));
+}
+
+// space-2. Orbital decay (space session, QUEUE Q25): above the flight's air a thin upper atmosphere (Vallado's exponential
+// table) drags on low orbits between flights. A satellite with propellant pays to hold its orbit (with Q50's tides); a dry
+// one sinks on its rails (orbit-averaged drag, study_decay.mjs) and re-enters when its periapsis reaches the air's top.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,satRegister,advanceDays,satAt,kepler,elements,thinAir,dragK,dragRate,holdRate,decayLife,decayStep,skDv,skLife,TELLUS,PROG,HOOK,DAY_S,len,add,mul};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, R = T.R; P.sats = []; P.day = 0;
+  // a Probe left in a circular equatorial orbit at alt, its tanks emptied unless keep
+  const reg = (alt, keep = false) => { const s = D.newShip(D.PRESETS.Probe), a = R + alt, vc = Math.sqrt(T.mu / a);
+    Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -vc] }); D.satRegister(s, { day0: P.day }); const q = P.sats.at(-1);
+    if (!keep) for (const o of q.shape) if (o.res) for (const k of ['fuel', 'gas']) if (o.res[k] > 0) { q.mass -= o.res[k] * 1000; o.res[k] = 0; }
+    return q; };
+  const ok1 = Math.abs(D.thinAir(200e3) / 2.789e-10 - 1) < 1e-9 && D.thinAir(99e3) === 0 && D.thinAir(150e3) < D.thinAir(140e3);
+  const lo = reg(200e3), hi = reg(700e3), K = D.dragK(lo), L = D.decayLife(lo);
+  check('decay: the upper air thins with height; a dry Probe at 200 km has a lifetime of tens of days, one at 700 km lasts',
+    ok1 && K > 0.005 && K < 0.05 && L > 10 && L < 200 && D.decayLife(hi) === Infinity, `Cd·A/m ${K.toFixed(4)} m²/kg; life at 200 km ${L.toFixed(1)} days`);
+  const pe0 = D.elements(lo.r, lo.v, T.mu).pe, hr0 = hi.r.slice(), hv0 = hi.v.slice();
+  D.advanceDays(Math.floor(L / 2)); const pe1 = D.elements(lo.r, lo.v, T.mu).pe, L1 = D.decayLife(lo), hiMoved = Math.abs(D.elements(hi.r, hi.v, T.mu).pe - D.elements(hr0, hv0, T.mu).pe);
+  D.advanceDays(Math.ceil(L - Math.floor(L / 2)) + 1);
+  check('decay: dry, it sinks on its rails as predicted, is warned about, and re-enters; the high one barely feels it',
+    pe1 < pe0 - 5e3 && Math.abs(L1 - (L - Math.floor(L / 2))) < 0.05 * L + 0.5 && !P.sats.includes(lo) && P.sats.includes(hi) && hiMoved < 100 &&
+    news.some(m => m.startsWith(lo.name) && /within/.test(m)) && news.some(m => m.startsWith(lo.name) && /re-entered/.test(m)),
+    `periapsis ${((pe0 - R) / 1e3).toFixed(0)} → ${((pe1 - R) / 1e3).toFixed(0)} km by day ${Math.floor(L / 2)}; life then ${L1.toFixed(1)} (expected ${(L - Math.floor(L / 2)).toFixed(1)}); 700 km periapsis moved ${hiMoved.toFixed(2)} m; news: ${news.filter(m => m.startsWith(lo.name)).join(' / ')}`);
+  // with its tanks, it holds: on its rails, paying the drag
+  P.sats = []; news.length = 0; P.day = 0; const held = reg(200e3, true), ep = held.epoch, dv0 = D.skDv(held), g = D.dragRate(held);
+  D.advanceDays(30);
+  check('decay: with propellant it holds its orbit, paying what the drag takes, and says how long that lasts',
+    P.sats.includes(held) && held.epoch === ep && held.adrift == null && Math.abs(dv0 - D.skDv(held) - 30 * D.holdRate(held)) < 0.05 * 30 * g && g > 0 && D.skLife(held) < Infinity,
+    `${g.toFixed(3)} m/s a day; ${(dv0 - D.skDv(held)).toFixed(2)} m/s in 30 days; ${D.skLife(held).toFixed(0)} days left`);
+  // the averaged rails against a direct RK4 with the same drag (no tides), 150 km down to 130 km
+  { const q = reg(150e3), K2 = D.dragK(q), a0 = R + 150e3; let r = [a0, 0, 0], v = [0, 0, -Math.sqrt(T.mu / a0)], t = 0; const h = 2, { add, mul, len } = D;
+    const acc = (r, v) => { const rl = len(r), vl = len(v), f = 0.5 * D.thinAir(rl - R) * vl * K2; return add(mul(r, -T.mu / rl ** 3), mul(v, -f)); };
+    while (D.elements(r, v, T.mu).pe > R + 130e3) { const a1 = acc(r, v), r2 = add(r, mul(v, h / 2)), v2 = add(v, mul(a1, h / 2)), a2 = acc(r2, v2), r3 = add(r, mul(v2, h / 2)), v3 = add(v, mul(a2, h / 2)), a3 = acc(r3, v3), r4 = add(r, mul(v3, h)), v4 = add(v, mul(a3, h)), a4 = acc(r4, v4);
+      r = add(r, mul(add(add(v, mul(v2, 2)), add(mul(v3, 2), v4)), h / 6)); v = add(v, mul(add(add(a1, mul(a2, 2)), add(mul(a3, 2), a4)), h / 6)); t += h; }
+    q.epoch = 0; q.r = [a0, 0, 0]; q.v = [0, 0, -Math.sqrt(T.mu / a0)]; let tr = 0; while (D.elements(q.r, q.v, T.mu).pe > R + 130e3) { tr += 600; D.decayStep(q, tr); }
+    check('decay: the averaged rails agree with a direct integration of the drag (150 → 130 km) to a few percent', Math.abs(tr / t - 1) < 0.05, `direct ${(t / 3600).toFixed(1)} h, rails ${(tr / 3600).toFixed(1)} h`); }
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

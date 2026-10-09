@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.12 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.13 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1377,6 +1377,58 @@ discovery rather than a points grind. Tone: lighter than "serious", possibly mor
   agency whose launches appear in the news, competing for firsts. Big. Parked.
 - **N-body gravity** (assessed in chat): feasible, with Lagrange points (Selene/Tellus = 1.8 % < 3.85 %, so L4/L5 are stable).
   Costs: numerical rails and numerical map lines. Bearings and SAS are unaffected. Best as a setting.
+
+## v1.64 — orbital decay: low orbits come down (2026-10-09, space session, QUEUE Q25)
+
+The air the flight flies through stops at 100 km. Above it, **a thin upper atmosphere now drags on registered orbits
+between flights**: a satellite with propellant pays to hold its orbit, and a dry one sinks and re-enters. In `sim/space.js`,
+after v1.60's station-keeping, which it extends.
+
+**How it works.**
+- `thinAir(h)`: Vallado's exponential model (CIRA-72, moderate sun), 100–1,000 km, its last scale height carried to 2,000 km.
+  Tellus is a fifth of Earth but its air is Earth's height (7.5 km scale height, top at 100 km), so the table carries over.
+  **The flight doesn't use it yet**, and that's a real gap at the bottom: coasting with Cd·A/m 0.01, the thin air takes
+  20 m/s an hour at 110 km, 1.7 at 130 km, 0.4 at 150 km, 0.05 at 200 km (measured with `dragRates`). So a flight that
+  parks at 110 km for hours is too kind; between flights the same orbit is gone in under an hour. Proposed as a follow-up
+  (it changes how long parking orbits last mid-flight, so it wants a look at the presets' ascents first).
+- `dragK(q)`: Cd·A/m. Tumbling, so A is the mean projected area of one cylinder around every part (a quarter of its
+  surface, Cauchy's theorem), Cd 2.2; docked modules count in area and mass. Preset payloads come out at 0.005–0.014 m²/kg,
+  like real satellites.
+- `dragRates(a, e, K)`: Gauss's equations for drag along the velocity, averaged over one orbit (36 points evenly in time).
+  `decayAE` steps (a, e) on the rails, the apsides fixed and the mean anomaly carried along, in steps that keep the
+  periapsis change under 5 % of its height above the air (at least one orbit). Below 100 km it's gone.
+- **Holding** (`holdRate` = v1.60's tide rate + `dragRate`, the orbit-mean drag × a day): a satellite with propellant stays
+  on its rails and pays both. Dry (`q.adrift`), a Tellus orbit with a real tide drifts as in v1.60; any other decays
+  (`decayStep`). Air rotation is ignored (the air turns at 278 m/s against 3.2 km/s of orbit: about 15 % less drag).
+- **Warned, then gone.** One news line *X is sinking into the upper air: it will re-enter within N days*, looked up across
+  the whole jump, so a long wait between flights can't skip it; then *X has re-entered … and burned up*. The Program line
+  reads *nothing to hold it up: re-enters in about N days*, or *holds its orbit N more years, then re-enters in about …*.
+
+**Measurements** (`node study_decay.mjs`; game days of 8 h, years of 400 days; circular orbits):
+
+| altitude | Cd·A/m 0.005 | 0.01 (a typical payload) | 0.02 |
+|---|---|---|---|
+| 110 km | 1.4 h | 0.7 h | 0.7 h |
+| 150 km | 10 days | 5 days | 2.7 days |
+| 200 km | 139 days | 69 days | 35 days |
+| 250 km | 1.8 years | 363 days | 182 days |
+| 300 km | 6.6 years | 3.3 years | 1.7 years |
+| 400 km | 53 years | 27 years | 13 years |
+
+Per game day, an orbit loses height ~33× more slowly than the same height on Earth per Earth day (slower orbits, a smaller
+planet, shorter days), so 200 km lasts weeks here, not days. The averaged rails agree with a direct RK4 with the same drag
+to 1 % (150 → 120 km: 4.52 days against 4.47; the test checks 150 → 130 km to 5 %).
+
+**What it changes in play** (Pillar 2: a design problem): the usual parking orbit, ~110 km, now lasts under an hour once a
+flight ends. Anything meant to stay (a docking target for the next flight, an imaging satellite, a station) goes above
+~200 km, or keeps some propellant: a dry Probe at 200 km lasts ~80 days; with fuel it holds itself up at ~0.09 m/s a day.
+Robot docking scenes are within one flight and unaffected; the full suite and `career.mjs` are unchanged.
+
+**Not yet:** reboost contracts (economy; v1.60 proposed servicing), the solar cycle (density swings ×10 at 400 km), air
+rotation, and drag on a moon (none has air). Spy satellites (NOTES § Military): lower is sharper but now really decays faster.
+
+Test `space-2` (4 checks; mutations caught: holding ignores drag, the warning not looking ahead, never removed, half the
+decay rate, Cd·A/m in the wrong units). Full suite 475 pass. TESTING row 140.
 
 ## v1.60 — station-keeping: a satellite's life is its propellant (2026-10-08, space session, QUEUE Q50, W2)
 
@@ -6330,6 +6382,30 @@ the arrows, and every key in the handlers present in its Help table.
   answer to), and every option is a row with its own sentence on screen (it used to be a hover tooltip for the powers,
   so only the chosen power's line showed). "Random world" names what it rolled. The consortium's blurb became one
   sentence. Same buttons and `data-arch` / `data-start` attributes, so the robot rows and handlers are unchanged.
+- **Settings** (Q42): ☰ → Settings (`app/settings.js`, `#settings`, loaded last). Sound on/off (same switch as F4;
+  `#setSound` is the empty slot for the volume slider, Q35), graphics quality, the performance readout (moved out of the
+  Esc menu), the flight gauges, the era look ("modern look", the same switch as the logbook's), and leaving tester mode.
+  Each kept per browser (`launchpad-quality`, `-gauges`, and the existing `-sound`, `-perf`, `-modern-ui`). **Quality**
+  is a preset over aerofx's A/B flags plus a cap on the adaptive resolution (`RS_MAX` in render.js, which `adaptRes`
+  never climbs past): High = everything; Medium = flat clouds (`CLOUD_VOL`), no plume ground glow (`IMPACT_FX`), up to
+  80 %; Low = also no bloom, plume light or vapor cones, up to 60 %. The re-entry plasma stays at every level: it tells
+  you something. Settings open pauses the game like the Esc menu. **Look & sound:** a new costly effect should get a
+  line in `QUAL`.
+- **What to do next** (Q40): one line above the Program tabs, **NEXT**, with why and, when a preset is known to fly it,
+  which. `nextStep()` (`sim/next.js`, pure, test `flow-2`) picks, in order: a decision waiting for an answer (soonest
+  deadline); an accepted contract (soonest deadline); an open mission, preferring ones a preset flies (`NEXT_PRESET`:
+  weather and loads → Sounding, beeper → Orbiter with an instrument package, hop → Passenger; all flown by the robot)
+  within one epoch of the earliest open one, then the earliest epoch, then the smallest pay; else the best offer. The
+  why names the pay, what it opens, and "be first" for a race mission nobody has won. Its button opens the right tab.
+  **Economy/bodies:** a mission a preset can fly may get a line in `NEXT_PRESET` (only when a flight has proved it).
+- **Results off the ticker; news in the Inbox** (Q99): `missionEnd` is wrapped app-side (`settling`), and headlines raised
+  while a flight settles (refurbishment, telemetry, records, missions completed at the end) skip the `#news` ticker:
+  the Debrief shows them. Headlines during the flight still show live. Every headline goes to `NEWS` (last 40, with the
+  day); the Inbox ends with a **News** section, the ones since you last left the Program marked.
+  **Caught on the way (the split's rule 1, app side):** the Program layout runs at start-up, at the end of
+  `program-ui.js`, so anything it calls must live in that file or an earlier one. A first cut kept `newsHTML` in
+  `debrief.js` (later): the page stopped at load, on the Assembly with a black view. `platform-1` only checks the SIM
+  files; robot `m1` on the plain page (no `?tester`) caught it.
 
 ### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
 **Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
@@ -6970,6 +7046,26 @@ write-back: robot notes in TESTING, problems in PLAYTEST. Order: moons first (th
 so it's mostly reading results), then docking (the controller is the only new code), then stations (builds on both).
 Not covered: anything that needs the builder to make the design (row 118's kick stage), and rows only a person can judge.
 
+## v1.63 — dry runs as the trajectory office's study (2026-10-08, economy session, QUEUE Q46)
+
+The bodies session's `procAdopt(stack)` (dry runs: a design with no procedure borrows a stored one if a headless run
+reaches orbit) now has the economy around it, in `sim/program.js`:
+- **`dryQuote(stack)`** → `{ok, why, n, cost, days}`. Priced like a trajectory study: the computing era's study cost
+  × `DRY_K` = 1.5 × (1 + ¼ per extra procedure tried); days = the era's study days × the centre's speed × (½ + ¼ per
+  procedure). Hand computers, one procedure: 18 days, 4.5M. Refused for a design with a procedure (its own or
+  borrowed), with none stored to try, or no design.
+- **`orderDryRun(stack)`** pays, lets the days pass (as launching does: you chose to wait), runs `procAdopt`, and
+  **keeps the measured margin** on the provisional procedure (`proc.margin`, `proc.mT`). A failed dry run is news:
+  the money is spent, the design needs a run-through by hand.
+- **`dispatchEstimate`** uses the cached margin when there is one (minus the target change, as before), and a
+  provisional procedure's spread is `PROV_UNC` = 0.15 wider (e.g. 43–100 % against 56–100 % for the design's own).
+- **The button:** the contract's dispatch line offers *Try our procedures on ⟨design⟩* for the design in Assembly,
+  whenever that design has no procedure and something is stored to try. `dispatchLine(c, stack)` takes the stack;
+  `app/program-ui.js` passes `stackDef` and handles `data-dry` (two lines, flagged for flow).
+
+Test `econ-5` (5 checks; the spread mutation-tested). A trap: in the full suite a budget day lands inside the 18 days,
+so "funds went down by the price" is not a check; the test checks the price and a refusal when short instead.
+
 ## v1.62 — Enyo's ground on the CPU, the first planet (2026-10-08, world session, GROUND.md G7)
 
 Enyo (Mars, SYSTEM.md § Enyo), built and measured headless like Selene in v1.58, at Caio's request. **Not live:** no
@@ -7153,3 +7249,10 @@ until the space lane gives the catalogue a home in `sim/` at M5.
 
 **Not yet:** no ground detail, no moons beside their planet, no star in the frame, and one fixed sun direction (from the
 camera's right).
+
+**Selene rows 115 and 117 (QA session, the Q30 follow-up).** `node playtest.mjs 115 117` puts a rover in `PROG.rvOut` at
+ground height (`groundR`, or it spawns in mid-air and the science buttons say "stop first"), and for 115 an antenna-only
+Probe registered at 1,000 km around Selene. The Program's Fleet tab and "Drive from home" then work as for a player.
+Contact over a relay orbit is sampled by moving `PROG.day`: `rvFieldContact` is pure. The science buttons listen for
+`pointerdown`, so a driver needs real mouse events (`{click:…}`), not `element.click()`. Rows 65 (crew rotation) and 116
+(docking at Selene) are still undriven.

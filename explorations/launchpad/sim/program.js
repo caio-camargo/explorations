@@ -530,13 +530,13 @@ function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];i
   const v=newShip(stack),T=dispatchTarget(c),R0={orb:{...T,sci:v.parts.some(p=>p.on&&p.d.kind==='sci'),cam:v.parts.some(p=>p.on&&p.d.kind==='cam')},cdone:[]};
   if(!CT[c.type].ok(R0,c.p,{rec:R0,parts:v.parts}))return{ok:false,why:'this design cannot do this contract (its payload)'};
   const a0=(proc.target?(proc.target.pe+proc.target.ap)/2:T.pe),vc=h=>Math.sqrt(TELLUS.mu/(TELLUS.R+h)),
-    extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=dvRemaining(v).tot-proc.dv-extra;
+    extra=Math.abs(vc(a0)-vc(T.pe))+vRot()*(1-Math.cos(T.inc*Math.PI/180)),margin=(proc.margin!=null?proc.margin:dvRemaining(v).tot-proc.dv)-extra;   // a dry run's measured margin when there is one
   const pM=1/(1+Math.exp(-(margin-40)/25));let pI=1,pS=1,nk=0,uk=0,uc=0;
   const eng=v.parts.filter(p=>p.on&&p.d.kind==='engine'),last=Math.max(...eng.map(p=>p.seg??0));
   let pT=1;for(const p of eng){const L=prodLine(p.d.key),f=0.6**devLv(p.d.key,'rel')*IGN_FAIL*(1-khUse(p.d.key))**2*(L?2-L.m:1);pI*=1-f;if((p.seg??0)===last)pT*=1-f}   // the top stage lights twice: once in the ascent, once to circularise (pT)
   pI*=pT;
   for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
-  const pr=pM*pI*pS,unc=nk?0.4*uc/nk+0.4*uk/nk:0;
+  const pr=pM*pI*pS,unc=(nk?0.4*uc/nk+0.4*uk/nk:0)+(proc.prov?PROV_UNC:0);   // a borrowed procedure (a dry run) is less certain
   return{ok:margin>-50,why:margin>-50?'':`${Math.round(-margin)} m/s short for this orbit`,p:pr,lo:clamp(pr*(1-unc),0,1),hi:clamp(pr*(1+unc/2),0,1),margin,proc,pM,pS,pRelight:pT,pLow:pI/pT}}
 const padsN=()=>1+facLv('pads');
 // when each pad is next free, from today (dispatch reservations)
@@ -593,12 +593,27 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
     HOOK.news(R.cdone.length?`Dispatched flight to orbit: ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, ${R.cdone.join(', ')}`:`Dispatched flight reached ${res.orb.pe/1e3|0}×${res.orb.ap/1e3|0} km, outside the contract's window`,R.cdone.length?'ok':'warn')}
   else HOOK.news(`Dispatched flight lost: ${D.title}. ${D.why}`,'bad');
   HOOK.save()}}
-function dispatchLine(c){const O=dispatchOptions(c);if(!O.length&&!DISPATCH_TYPES.includes(c.type))return'';const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.cid===c.id);
+// ---- dry runs as the trajectory office's study (QUEUE Q46; the bodies session's procAdopt does the flying): the office
+// tries every stored orbit procedure on a design that has none, headless. It costs like a study (the computing era,
+// the centre's speed), DRY_K times dearer and a quarter more per procedure tried, and the days pass when ordered.
+// What it measures is kept: the provisional procedure carries its margin, and its estimates are PROV_UNC wider.
+const DRY_K=1.5,PROV_UNC=0.15;
+const dryCands=()=>Object.keys(PROG.procs||{}).filter(k=>{const p=PROG.procs[k];return p.kind==='orbit'&&p.pitch&&!p.prov}).length;
+function dryQuote(stack){if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design on the floor'};const own=(PROG.procs||{})[procKey(stack)];
+  if(own)return{ok:false,why:own.prov?`already borrows ${own.from}'s procedure`:'it has its own procedure'};const n=dryCands();if(!n)return{ok:false,why:'no stored procedure to try'};
+  const E=COMP_ERAS[compEra()],sp=FAC.centre.speed[facLv('centre')];
+  return{ok:true,why:'',n,cost:Math.round(E.study.cost*DRY_K*(1+0.25*(n-1))*10)/10,days:Math.max(0.5,Math.round(E.study.days*sp*(0.5+0.25*n)*2)/2)}}
+function orderDryRun(stack,target){const q=dryQuote(stack);if(!q.ok)return q;if(PROG.funds<q.cost)return{ok:false,why:`the study costs ${fmtM(q.cost)}`};
+  PROG.funds-=q.cost;advanceDays(q.days);const r=procAdopt(stack,target);
+  if(r.ok){r.proc.margin=r.margin;r.proc.mT=target||r.proc.target||null}else HOOK.news(`Trajectory office, ${q.days} days and ${fmtM(q.cost)}: ${r.why}. This design needs a run-through by hand`,'warn');
+  HOOK.save();return{...r,cost:q.cost,days:q.days}}
+function dispatchLine(c,stack){const O=dispatchOptions(c);if(!O.length&&!DISPATCH_TYPES.includes(c.type))return'';const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.cid===c.id);
   if(D)return`<div class="sub dim">Dispatched: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d (~${Math.round(D.est.p*100)}%)</div>`;
-  if(!O.length)return`<div class="sub dim">Dispatch: no stored procedure can fly this yet (fly one to orbit by hand)</div>`;
+  const dq=dryQuote(stack),dry=dq.ok?`<div class="sub dim"><button data-dry="${c.id}" title="the trajectory office tries our ${dq.n} stored procedure${dq.n>1?'s':''} on the design in Assembly">Try our procedures on ${designName(stack)||'the design in Assembly'}</button> ${dq.days} d, ${fmtM(dq.cost)}</div>`:'';   // Q46
+  if(!O.length)return`<div class="sub dim">Dispatch: no stored procedure can fly this yet (fly one to orbit by hand)</div>`+dry;
   const o=O[0],q=dispatchQuote(c,o.stack),pc=x=>Math.round(x*100);
   return`<div class="sub">Dispatch ${designName(o.stack)||'our design'}: success ~${pc(o.e.p)}% (${pc(o.e.lo)}–${pc(o.e.hi)}%), launches in ${Math.ceil(q.launch-PROG.day)} d on pad ${q.pad+1}, ${fmtM(q.cost)} `+
-    `<button data-disp="${c.id}" ${q.ok?'':'disabled'}>Dispatch</button></div>`}
+    `<button data-disp="${c.id}" ${q.ok?'':'disabled'}>Dispatch</button></div>`+dry}
 function devTick(){const J=PROG.devJob;if(!J||PROG.day<J.end)return;PROG.devJob=null;PROG.dev=PROG.dev||{};const e=PROG.dev[J.k]||(PROG.dev[J.k]={});e[J.g]=(e[J.g]||0)+1;
   PROG.cert[J.k]=Math.max(0.5,certOf(J.k)-0.1);PROG.kh=PROG.kh||{};const h=PROG.kh[J.k]||(PROG.kh[J.k]={use:use0(J.k),reg:{}});h.use=Math.max(0,h.use-0.1);
   HOOK.news(`New design: the ${PARTS[J.k].name} is ${DEV_GOALS[J.g].toLowerCase()} (mark ${(e.cheap||0)+(e.rel||0)+(e.dur||0)+1}); it has to prove itself again`,'ok');HOOK.save()}

@@ -22,6 +22,7 @@ document.addEventListener('click',e=>{const ds=e.target.dataset||{};
   else if(ds.fac){if(!buildFac(ds.fac))HOOK.msg('Not possible right now');renderProgram();editorChanged()}
   else if(ds.devtake){takeDeviation(+ds.devtake)}
   else if(ds.devlose){loseDeviation(+ds.devlose,'let go');renderProgram()}
+  else if(ds.dry){const r=orderDryRun(stackDef);HOOK.msg(r.ok?`Dry run: ${r.proc.from}'s procedure flies it, ${fmtDv(r.margin)} to spare (provisional)`:`Trajectory office: ${r.why}`);renderProgram();editorChanged()}
   else if(ds.disp){const c=PROG.active.find(x=>x.id===+ds.disp),o=c&&dispatchOptions(c)[0];if(!o||!orderDispatch(c,o.stack))HOOK.msg('Not possible right now');renderProgram()}
   else if(ds.adv){const st=advanceTo(+ds.adv);HOOK.msg(st?`Stopped: ${st.text}`:`${fmtDate(PROG.day)}`);renderProgram();editorChanged()}
   else if(ds.dev){const[k,g]=ds.dev.split(':');if(!startDev(k,g))HOOK.msg('The design bureau is busy, or there is not enough money');renderProgram();editorChanged()}
@@ -32,7 +33,7 @@ function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%
     (()=>{const r=offerRisk(c),w=[...r.now.map(i=>`${POWERS[i].root} sanctions us at once`),...r.leak.map(i=>`${POWERS[i].root} if it leaks (${(LEAK_P(c)*100).toFixed(0)}%)`)];return w.length?`<div class="sub bad">⚠ ${w.join(' · ')}</div>`:''})()+
     (act?'':`<button data-acc="${c.id}" ${PROG.active.length>=capOf()?'disabled':''}>Take</button> <button data-dec="${c.id}">Pass</button>`)+`</div>`;
   return `<div class="ep">Contracts ${PROG.active.length}/${capOf()} <span class="dim">· economy ${cyc>.45?'booming':cyc<-.45?'in recession':cyc>.15?'growing':cyc<-.15?'slowing':'steady'}</span></div>`+
-    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
+    (PROG.active.length?PROG.active.map(c=>row(c,true)+dispatchLine(c,stackDef)).join(''):'<div class="sub">none taken: one flight can complete several</div>')+
     `<div class="ep">Offers</div>`+(PROG.offers.length?PROG.offers.map(c=>row(c,false)).join(''):'<div class="sub">none right now</div>')+
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+
@@ -68,9 +69,11 @@ document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.datase
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}
 function satsHTML(){return satsHTML0()+moonSatsHTML()+landedHTML()+rvFieldHTML()}
-// station-keeping (space, Q50): how long its propellant holds its orbit, or since when it drifts; nothing if no tide pulls it
-function slotLine(q){const k=slotRate(q);if(!(k>0))return'';if(q.adrift!=null)return` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`;
-  const d=skLife(q);return` · holds its orbit ${d>=YEAR_D?`${(d/YEAR_D).toFixed(1)} more years`:`${Math.floor(d)} more days`} (${k.toFixed(2)} m/s a day)`}
+// station-keeping (space, Q50) and decay (Q25): how long its propellant holds its orbit, since when it drifts, or when it
+// re-enters; nothing if no tide or air pulls on it
+function slotLine(q){const k=holdRate(q),L=decayLife(q),fall=L<Infinity?`re-enters in about ${daysS(L)}`:'';
+  if(q.adrift!=null){if(fall)return` · <span class="dim">nothing to hold it up: ${fall}</span>`;return slotRate(q)>0?` · <span class="dim">adrift since day ${Math.floor(q.adrift)}, nothing left to hold its orbit</span>`:''}
+  if(!(k>0))return'';return` · holds its orbit ${daysS(skLife(q))} more (${k.toFixed(2)} m/s a day)${fall?`, then ${fall}`:''}`}
 function moonSatsHTML(){const L=moonSats(),T=tNow();if(!L.length)return'';
   return[...new Set(L.map(q=>q.bodyName))].map(n=>`<div class="ep">In orbit around ${n}</div>`+L.filter(q=>q.bodyName===n).map(q=>{const B=orbBody(q),[r,v]=satAt(q,T),el=elements(r,v,B.mu),inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
     const kit=[q.ant&&'antenna: a relay for rovers',q.cam&&'camera',q.sci&&'instruments'].filter(Boolean).join(' + ');
