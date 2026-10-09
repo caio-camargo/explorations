@@ -83,8 +83,8 @@ A lane with nothing ready: take the top line of its **evergreen** list in ROADMA
 Worktree `launchpad-ui` (branch `ui`, port 8795).
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | → flow 2026-10-08 |
-| Q73 | **Visual identity mock-ups (Q53)**: three directions on the same two screens (the Program screen and the flight HUD, real layout, static): (a) **paperwork**: mission-control forms, typewriter type, stamps, like the notebook map; (b) **instrument panel**: phosphor CRT and backlit legends, like the terminal map; (c) **mid-century poster**: flat colour, bold geometric type. Note how each would shift by era (NOTES: "later eras can shift the palette"). As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures | M1 | M | 🖥 | ready (after Q2) |
+| Q2 | **Slice 3, Debrief**: `missionEnd` → summary record → screen (NOTES § UI "Slices"). Builds on fixes' `flightLeave` | M1 | M | 🖥 | ✓ `4f0adfc` (NOTES § UI "Slice 3 built"; TESTING 127) |
+| Q73 | **Visual identity mock-ups (Q53)**: three directions on the same two screens (the Program screen and the flight HUD, real layout, static): (a) **paperwork**: mission-control forms, typewriter type, stamps, like the notebook map; (b) **instrument panel**: phosphor CRT and backlit legends, like the terminal map; (c) **mid-century poster**: flat colour, bold geometric type. Note how each would shift by era (NOTES: "later eras can shift the palette"). As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures | M1 | M | 🖥 | → flow 2026-10-08 |
 | Q75 | PLAYTEST #25: the builder key strip `#bldhelp` overlaps both assembly panels at 1280×800 (fails `playtest.mjs m1`) | M1 | S | 🖥 | ready |
 | Q76 | PLAYTEST #26: `#msg` ("Mission complete") over the flight readout: give it a lane in `hudLayout()` (fails `playtest.mjs m1`) | M1 | S | 🖥 | ready |
 | Q39 | **Esc pauses** in flight and on every screen (W5 default) | M1 | S | 🖥 | ready |
@@ -121,11 +121,11 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q47 | **The construction screen usable by a newcomer**: walk building an Orbiter from scratch, fix what's unclear; Caio reviews. **Top priority: it blocks Caio's own playtesting** | M1 | M | 🖥 | ready |
 | Q48 | The builder **warns before launch**: won't reach the contract's orbit, TWR < 1, no chute on a crewed return | M1 | S | ⚙ | ready |
 | Q32 | The escape tower gets its own palette category | M1 | S | 🖥 | ready |
-| Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | → vehicle 2026-10-08 (plan) |
+| Q31 | Landing legs part (`footPoints` already takes their feet) | M1 | S | ⚙ | ready (planned: NOTES § "Vehicle parts") |
 | Q78 | A **Docking** preset (probe core, port, RCS quads, gas): makes TESTING 58–67, 98, 116 reachable without the builder (PLAYROUTE § Not on this route) | M2 | S | ⚙ | ready |
 | Q14 | PLAYTEST #18 + #23 | M0 | S | ⚙ | ✓ `0c2e701` (v1.51.1) |
 | Q33 | Maneuver nodes: chains, beyond an SOI change, finite-burn centroid correction | M2 | M | ⚙ | ready |
-| Q34 | Onboard-computer, radiator and solar-panel parts | M2 | M | ⚙ | → vehicle 2026-10-08 (plan) |
+| Q34 | Onboard-computer, radiator and solar-panel parts | M2 | M | ⚙ | planned (NOTES § "Vehicle parts"): split into Q34a, Q34b (Proposed) |
 | Q36 | Heat conduction between parts; heating from an engine's own plume (evergreen) | — | M | ⚙ | ready |
 | Q37 | Hypersonic capsule lift in the impact predictor (evergreen) | — | M | ⚙ | ready |
 
@@ -152,8 +152,8 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | ready |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
-| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | → world 2026-10-08 (plan, with Q86) |
-| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | → world 2026-10-08 (plan, with Q18) |
+| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q86) |
+| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ✓ plan: [`GROUND.md`](GROUND.md) (with Q18) |
 
 ### look & sound — always run as beats, one session each (ROADMAP § Lanes, "Beats")
 Collisions between beats: `render()`'s pass order, shared shader helpers, bloom, `views.js` numbering. Changing any of them needs an `ACTIVE_WORK.md` line.
@@ -202,9 +202,9 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q54 | **A presets-only playtest route for Caio**: the TESTING rows he can reach by flying presets, in a sensible order, so he can play before the builder is fixed. **Top priority** | M1 | S | 📝 | ✓ [`PLAYROUTE.md`](PLAYROUTE.md) (seven sittings, the first hour first) |
 | Q55 | **The new-career robot run** (M1's finish line): first-run gate → first orbit → debrief, no tester flags. Written first, fails until M1 is done | M1 | M | 🖥🖥 | ✓ `b21ae52` (`node playtest.mjs m1`; fails on Q2, Q39, PLAYTEST #25/#26 until M1 lands) |
 | Q28 | `shot.mjs` on the RTX (`--force_high_performance_gpu`) | M0 | S | 🖥 | ready |
-| Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | → QA 2026-10-08 |
+| Q16 | Tester cheats: any date, set funds, skip to a compute era, per-mission toggles | M0 | S | ⚙ | ✓ `6434d62` (go to day, set funds, era skip, mission toggles; TESTING row 126) |
 | Q15 | PLAYTEST #15: TESTER badge over "Save as autopilot" | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | ready (Q20 ✓ `be4ff2c`); QA next, when the browser is free |
+| Q29 | Re-run the robot on rows 104, 110, 84, 97 and the #15/#16/#17/#22 shots (M0's finish line) | M0 | S | 🖥🖥 | → QA 2026-10-08 |
 | Q30 | Drivers for untried rows: docking, stations, moons first | M0 | L | 🖥🖥 | ready (plan first; run when few others are in the browser) |
 | Q79 | Tester **"go to body" view**: a `views.js` entry per [`SYSTEM.md`](SYSTEM.md) body, drawn alone from its physical row (radius, flattening, tilt, rings) at three distances, with no orbit or SOI yet. Unblocks Q80–Q85 | M5 | M | 🖥 | ready (the milestone gate allows it: SYSTEM.md § fan-out) |
 
@@ -256,5 +256,21 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W12 | **A failed first is mostly covered, once?** One failed orbit attempt costs ~90 % of the start money; agencies get bailed out 3–4×, poor-world companies never reach orbit (`career.mjs` `PACE=1 FAILFIRST=orbit`). Options: (1) the sponsor pays back 75 % of the first lost flight aimed at an open first; (2) the rescue lifts to the next first's price, not the 25M floor; (3) leave it hard and warn before the attempt. **Default if silent: (1)** (NOTES § "Epoch 1–2 pacing") | Q44's fix; M1's "intended number of flights" (~5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- world — GROUND.md G1: the body-ground layer, no new relief (`b.ground`, `bodyH`, dispatch in groundAlt/terrainSlope/groundNormal, per-body TERR_TOP/MOON_PE); suite unchanged — M, ⚙ — GROUND.md § Slices (start now if Caio's GROUND decision 2 stands)
+- world — GROUND.md G2: Selene's baked map + crater bands on the CPU, `geoAt` on the bake (§42 retargeted), `study_ground.mjs` — M, ⚙ — GROUND.md § Slices
+- world — GROUND.md G3–G6: the march on Selene, shadows, consumers (with space for `landAt`), Nyx — 🖥, M3 — GROUND.md § Slices
+- world — GROUND.md G7+: per-planet ground items (Enyo → Hesper → Astraea → Hyperion's moons → Erebus → seeded lumps), after G3 and Q79 — GROUND.md § The bodies
+- design desk / Caio — GROUND.md decisions: maria to the near side? (default yes); G1–G2 before M3? (default yes); relief in real metres? (default yes) — GROUND.md § Decisions
 - economy — build W12's answer (default: a sponsor covers 75 % of the first lost flight aimed at an open first, once per first; the flight names its first) — NOTES § Epoch 1–2 pacing
 - economy — contract pay floors by world: in a frugal world a company at the floor can't earn its way back with sounding work — NOTES § Epoch 1–2 pacing
+- vehicle — **Q34a** onboard computer, solar panels (body cells + deployable wing), battery, and a steady-state power budget in the builder; running flat pauses, never kills — NOTES § "Vehicle parts" (⚙, M2)
+- vehicle — **Q34b** radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter — NOTES § "Vehicle parts" (⚙, M2–M3)
+- Caio (defaulted, override if you like) — from the onboard-computer era on, the guidance computer's SAS modes need an `ocomp` part on board; presets and the robot get one — NOTES § "Vehicle parts", Q34a
+- look & sound, parts & pad — draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer — NOTES § "Vehicle parts" (🖥)
+- flow — a key to deploy legs and wings (`G` if free) — NOTES § "Vehicle parts"
+- space — Q27 and Q50 read Q34a's power budget and `hasComputer(s)` instead of building their own; one shared "paused because…" field — NOTES § "Vehicle parts"
+- flow — flight results off the `#news` ticker now that the Debrief shows them; the Inbox collects what's left (spec: UI § "What each screen shows") — NOTES § UI "Slice 3 built"
+- flow — keep the last Debrief across reloads (`PROG.lastDebrief`, with platform's save versions Q57) — NOTES § UI "Slice 3 built"
+- economy — any new kind of flight pay calls `debPaid(R, kind, label, pay)` so the Debrief lists it (else it hides in "days passing") — NOTES § UI "Slice 3 built"
+- QA — robot row for TESTING 127: land, crash, End flight from orbit, the Assembly button; shots of each Debrief — TESTING 127
+- Caio — Revert and R skip the Debrief (quick retry; the record stays under Last flight). Default: keep it that way — TESTING 127

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.8 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.9 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -5840,7 +5840,7 @@ stage. Note the port's considerations here, don't act on them yet.
 - **Log depth** is written per fragment (`gl_FragDepth = log2(1+w)·Fc/2`). The vertex shader writes
   a matching log z, so nothing gets near/far clipped.
 
-## UI: screens and navigation — spec (2026-10-07, ui session with Caio; nothing built yet)
+## UI: screens and navigation — spec (2026-10-07, ui session with Caio; slices 1–3 built below)
 
 **The problem.** The app has two screens (`mode` = editor/flight) plus a `view` toggle for the map. Everything else
 was added to whichever panel was nearest when it got built. The whole career (ownership, contracts, race, ground stations,
@@ -5975,6 +5975,40 @@ the arrows, and every key in the handlers present in its Help table.
   is disabled (and `go('assembly')` refuses). This closes "nothing makes you choose before launching".
 - Not yet: Inbox doesn't collect news (the `#news` ticker still runs as before); the Assembly right panel is untouched
   (slice 5); the CoM/CoP markers still draw behind the Program panel.
+
+### Slice 3 built (2026-10-08, flow session, QUEUE Q2): Debrief
+- **The record is SIM data** (`sim/debrief.js`). `missionTick` takes a snapshot just before liftoff (`R.deb0 = debSnap()`:
+  funds, date, know-how, missions done, satellite count, the orbit record). `missionEnd`, once the flight is settled, builds
+  `R.debrief = debriefOf(s, R, ups)`, keeps it in `DEBRIEF_LAST` and returns it as `.debrief` beside `{ups, streak}`.
+  It never throws: a record that fails to build is `null` and the flight still settles.
+  - Outcome: landed (distance from the pad, recovery), lost (the apex), in orbit (pe × ap; "registered in the fleet" when
+    `satRegister` took it), landed on / in orbit of a moon, escaping, or ended in flight (written off). A passenger's fate.
+  - Money: hardware, launch operations, every pay item, refurbishment, damages, then **"N days passing"**: the rest of
+    the funds change (budget days, upkeep, debt) during the stacking and flight days. The lines add up to the net, which is
+    `PROG.funds` after minus before (test `flow-1` checks the sum).
+  - Missions, telemetry certifications (`ups`), logbook records set on this flight (with the old value), incidents
+    (stages on or near towns, on another power's land; a passenger lost), know-how gained per part.
+  - **Pay items need one call each where money is paid** (economy, additive): `debPaid(R, kind, label, pay)` in
+    `missionComplete` (`rec`), `contractEval` and `stagePay` (which now takes `R`). **A new kind of flight pay should add
+    its own `debPaid` line**, or it shows up inside "days passing". Missing lines never break the sum, only its detail.
+- **The screen** (`app/debrief.js`, `#deb`): a panel over the pad like Program; header with flight number, design, date and
+  time flown; sections in two columns (headings use class `dh`, not `ep`, so §32's Program-tab check ignores them).
+  Exits: **Program [P]**, **Assembly [B]** (same design), **Fly again [A]** (Assembly → the usual LAUNCH with its checks;
+  disabled for a flight that started in orbit). The one you were heading to is highlighted.
+- **How you get there.** `go()`: leaving flight or map for Program or Assembly settles the flight (as before) and, if that
+  flight has a record not shown yet, goes to `debrief` instead, remembering where you were going. So the toolbar's
+  Assembly, ☰ → Back to Assembly and `go('program')` all pass through it. New: ☰ → **End flight: debrief** (asks twice in
+  the air), and an **End flight ▸** button in the flight toolbar once the vessel has landed or is lost (`debEndBtn`, from
+  `hudLayout`). Program has **Last flight** to see it again (not kept across reloads). Rover yard skips it.
+- **Revert and `R` skip the Debrief on purpose**: they are the quick retry, and the record is still kept (Last flight).
+  TESTING row 127 asks whether that's right.
+- `atDeb` joins `atHQ`: builder.js ignores keys on Debrief, and render.js no longer draws the builder's CoM/CoP markers
+  and `edOverlay` behind either panel (they showed `NaN%` behind Program after a flight). §32 now counts `atDeb=` too.
+- Robot: rows that `go('program')` after a flight now land on Debrief first; the next `go('program')` goes on to Program.
+  Probed in Chrome (Sounding landed, Orbiter lost, a climb ended from the Esc menu, the Assembly button): screenshots in
+  `C:/Users/caioa/dev/playtest-out/flow/`.
+- Not yet: the `#news` lines still also run during the flight (the spec moves results off the ticker; they now
+  duplicate the Debrief); Inbox doesn't collect them yet.
 
 ---
 
@@ -6348,6 +6382,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/contracts.js` | 243 | contracts, sanctions, the race, ownership, decisions | economy |
 | `sim/space.js` | 647 | registry, rendezvous, contact, docking, fleets, bay, stations, arm, moonbases, moon orbits, RCS | space |
 | `sim/logbook.js` | 49 | the logbook, tools gated by it | economy |
+| `sim/debrief.js` | 40 | the flight's debrief record (`debSnap`, `debriefOf`, `debPaid`) | flow |
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
 | `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
 | `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
@@ -6360,6 +6395,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
 **Working in split files: the rules.**
 - **Find a function** with `grep -n "function name" sim/*.js app/*.js`. Markers (`SIM BEGIN/END`, `SOUND MIX`) are where
@@ -6412,3 +6448,117 @@ Q20: every fix holds (PLAYTEST #15, #16, #17, #18, #21, #22). Two new rows: **97
 crashed, left in orbit) and checks each is settled when you leave it; **122** flies the Heavy and the Asparagus through
 max heating and records the Link row and `plasmaHeat` (no blackout, shell 0; heat peaks at 1.0–1.4 km/s, the shell
 starts at 1.9). The one thing still in the way is a line, not a box: `#msg` is drawn over the readout (PLAYTEST #26).
+
+## Vehicle parts: landing legs (Q31) and power, computer, radiator (Q34) — plan (2026-10-08, vehicle session; nothing built)
+
+Planned without running the game (Caio: no heavy GPU for now). Both are ⚙ work: physics plus headless checks; the look
+beat draws the new parts afterwards. Numbers marked *tune* are starting points to measure, not results.
+
+### Q31 — landing legs
+
+**Why now.** § v1.37's contact model already makes legs worth having: with no legs a stack's footprint is its bottom
+rim, so the Orbiter (1.25 m base, CoM ~5 m up) topples on a 12° slope (atan(r/h)). Legs are only a wider footprint,
+plus a place for landing loads to go.
+
+**The part.**
+- `leg`: `kind:'leg'`, `surf:true`, `noAero:true`. It mounts on a part's side like `rfin`, so the builder's radial
+  count (`at.n`, 3 or 4) gives a symmetric set for free (`layoutDesign`'s surface-part branch).
+- Geometry: the root is on the host's skin; the foot sits `reach` out along the mount's normal and `drop` below the
+  root. *Tune:* reach 0.9 m, drop 0.8 m, so 4 legs on a 1.25 m body put the feet at r ≈ 1.5 m, 0.8 m below the rim.
+- Mass 0.04 t each. Price 1.5. `complexity` tier 1 (`sim/program.js:317`).
+- Joint ratings sized so a set of 4 survives ~6 m/s vertical at the stack's design mass and snaps a leg around ~9
+  (*tune* by measurement). Then a hard landing breaks a leg and the stack tips over, with no special rule: the
+  contact forces are already part forces (`p.F`/`p.L`) that the structural check reads.
+- **Deployable:** stowed for launch, deployed by a key (flow picks a free one; `G` if it's free). Stowed legs add no
+  feet. **Default:** deployable. Fixed legs would also need the pad and the rig to clear them.
+
+**Contact changes (`sim/flight.js` `footPoints`, one function):**
+- A deployed leg adds **one** contact point, at its foot, instead of the 4 rim points every other part gets.
+- `yb` (the lowest point) is taken over the feet as well as the rims, so with legs down the rims (≥ 0.8 m higher)
+  drop out by the existing 0.5 m rule.
+- The cache key adds each leg's deployed flag next to `p.on`.
+- Keep the spring-damper per point as it is (2 cm static deflection, ζ 0.6). A softer leg stroke is a later
+  refinement, and the verdict (`touchdown`, `TOUCH_MAX` 12 m/s + softness) doesn't change. Legs help by spreading the
+  footprint and by breaking, not by a speed bonus.
+- `rvFootR` (rovers) reads `footPoints`, so a lander's legs also widen the area a rover is placed around. Check that.
+
+**Checks for `test.mjs` (a new section at the end):**
+1. The Orbiter with 4 legs deployed stands on a 12° slope (it topples today) and on a slope up to atan(1.5/5) ≈ 17°.
+2. The same stack with the legs stowed topples as before (no regression).
+3. A 9 m/s vertical touchdown snaps at least one leg (`partLost`); 3 m/s snaps none.
+4. A Selene lander (Wren + legs) lands on regolith at 15°.
+5. `footPoints` with legs down returns only feet (4 points for 4 legs).
+
+**Others:** the look beat draws the leg (folded and deployed). Until then, a placeholder box at the foot. The
+TESTING row goes in when it's built: "land the Orbiter with legs on a slope".
+
+### Q34 — onboard computer, solar panels, battery, radiator
+
+**What exists.**
+- Rovers have a power model (`sim/rovers.js` R3: panels, an RTG, a battery, a night heater). Vessels have none.
+- Avionics come from the world's compute era alone (`avNow()`; v1.46). `s.av` is set at launch, so nothing on board
+  decides it.
+- The flight thermal pass (`thermal()`, `sim/vessel.js`) is the per-part skin model for re-entry. Orbital
+  steady-state thermal is a named M2–M5 system (§ "Rich programs", step 3) with no code yet.
+- The sun is fixed in the absolute frame (`SUN_DIR`), so a polar orbit whose plane is square to the sun is dawn-dusk
+  forever, with no J2 needed. That's convenient for the "no eclipse" case.
+
+**Scale (worked out from the constants; not run):** LEO here is r = 1,384 km (`TELLUS.R` + air + 10 km). That gives
+a 43-minute period and a shadow half-angle of acos(√(r²−R²)/r) = 67°, so **37% of each orbit is in eclipse (16 min)**
+at β = 0. A 50 W load needs 13 Wh through each eclipse. Batteries are cheap here; the panel area, generation ÷
+(1 − 0.37), is what costs.
+
+**Split into two slices (recommendation):**
+
+*Q34a — computer, panels, battery (M2, ⚙).*
+- **Parts:**
+  - `ocomp` Onboard computer: inline, 0.03 t, 50 W (the Apollo guidance computer: 32 kg, 55 W). Price 8, tier 2.
+  - `bpanel` Body-mounted solar cells: surface part, fixed, 0.01 t. *Tune:* 40 W in full sun, ×0.32 averaged over a
+    tumbling or spinning body (Vanguard, Explorer).
+  - `wpanel` Deployable solar wing: surface part, 0.03 t. *Tune:* 300 W in full sun, tracks the sun about its own
+    axis (×0.9). **Deployed, it snaps above ~1 kPa of dynamic pressure** (when to deploy is a design problem,
+    Pillar 2).
+  - `batt` Battery: inline or surface, 0.02 t, 1 kWh (silver-zinc, ~50 Wh/kg).
+- **Loads**, a `W` field on parts that draw power: computer 50, antenna 20 while it transmits, camera 15, crewed pod
+  150 (a cabin). A pod or core carries its own small battery (0.5 kWh) so short flights never need to think about it.
+- **The budget is a steady state first** (the lean pillar, like thermal step 1). For a design and an orbit: orbit-
+  average generation (with the eclipse fraction from the orbit's β), load, and the battery needed to cross the
+  eclipse. The builder shows one line: `Power +85 W / −70 W · eclipse 16 min needs 19 Wh (battery 1 kWh ✓)`.
+- **In flight:** the instantaneous version, integrated like the rovers' `R.E` (`gen − use`, clamped; sunlit from
+  `SUN_DIR` and the planet's shadow cylinder). One line in the step, no new state beyond `s.E`.
+- **Running flat never kills (Pillar 5):** the computer drops to the analog autopilot, the antenna and camera stop,
+  and on the registry the service **pauses** (the W2/Q50 pattern) until the budget is positive again. This differs
+  from rovers, which freeze to death at night; leave them alone, they're the space lane's call.
+- **The computer and avionics (decision, default yes):** from the onboard-computer era on, the **Guidance computer**
+  generation (`AV[2]`) needs an `ocomp` on board and powered. Without one, a vessel flies the analog autopilot.
+  - Before that era the part isn't offered, and nothing changes.
+  - Sandbox, physics tests and procedures (`s.proc`) keep the best avionics, as now (`avOf`).
+  - **What it breaks:** presets and robot designs flown after year 7 lose the target and docking modes unless they get
+    the part. Update the presets in the same commit, and tell QA (`career.mjs`).
+  - It gives the space lane a hook, `hasComputer(s)`, for onboard autonomy out of contact (§ "Compute", era 3).
+    Their Q27 and the link budget read it; Q34a doesn't build autonomy.
+- **Checks:**
+  1. The steady-state budget for a LEO satellite with a wing, against a hand calculation;
+  2. In flight, the battery drains through the shadow and refills in sun, and over one orbit the steady state and the
+     integration agree to within 5%;
+  3. A deployed wing snaps at max-q, and one deployed after fairing separation survives;
+  4. Running flat drops avionics to analog and pauses a satellite's service; recharging restores both;
+  5. Era ≥ onboard computers, with no `ocomp` → no docking mode.
+
+*Q34b — radiators and the steady-state thermal solve (M2–M3, with the economy's orbital datacenter).*
+- `rad`: a deployable surface panel. Its mass per m² and emissivity give εσAT⁴. Like the wing, it snaps in air.
+- **The solve** (§ "Waste heat", step 1): heat in is α·A·S + internal power, heat out is εσAT⁴; solve for T per
+  vessel. Parts get operating ranges (electronics 270–330 K). The builder shows "runs at 340 K, over the computer's
+  limit".
+- **Why wait:** until the datacenter exists, nothing on a vessel makes enough heat for a radiator to matter (a 50 W
+  computer on a 1.25 m bus runs a few kelvin warm). Build it when the economy starts datacenter revenue (that
+  section's order, step 3), so the part ships with a reason to fly.
+- In the flight's `thermal()`, a radiator is only a skin part with a low `Tmax`, so re-entry with it deployed burns
+  it off. The orbital solve is a separate function that shares only the radiation term.
+
+**Overlaps (so nobody builds the same thing twice):**
+- space Q27 "relay range and power": reads the power budget and `hasComputer`; it doesn't build its own.
+- space Q50: power-flat pauses service the same way fuel-flat does. One "paused because…" field, shared.
+- economy: chip sourcing (§ "Compute") can later price `ocomp` by `compLag`, like any part.
+- Q10 era gates: as far as I found, parts aren't era-gated yet. `ocomp` needs its gate (`compEra() ≥ 2`) whichever
+  session builds the gating.

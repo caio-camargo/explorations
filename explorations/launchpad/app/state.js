@@ -64,7 +64,7 @@ const headlines=[];HOOK.news=(t,cls='')=>{headlines.unshift({t,cls,at:simT});hea
 // other screen uses (Program, Assembly, Rover yard).
 // The news keeps its own lane: centred if it fits, but never over the flight readout (however wide its rows make it),
 // the toolbar, or a panel on the right (maneuver node, rover); with no room beside the readout, it goes under it.
-function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';
+function hudLayout(){const b=$('testerBadge'),tr=document.querySelector('#hud .tr'),fl=mode==='flight';if(typeof debEndBtn==='function')debEndBtn();   // (flow: End flight once it's over)
   if(b&&tr){const home=fl?tr:document.body;if(b.parentNode!==home)home.appendChild(b)}
   const n=$('news');if(!n||n.classList.contains('hidden'))return;const st=n.style;
   if(!fl){st.left=st.top=st.maxWidth=st.transform='';return}

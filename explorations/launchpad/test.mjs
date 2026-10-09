@@ -9,7 +9,7 @@ if (process.argv.length > 2) process.exit(await (await import('./shards.mjs')).m
 const html = pageSource();
 const src = html.slice(html.indexOf('// ==== SIM BEGIN'), html.indexOf('// ==== SIM END'));
 const api = new Function(src + `
-return {siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
+return {get DEBRIEF_LAST(){return DEBRIEF_LAST},debriefOf,siteAt,PLASMA_V,plasmaOn,BLACKOUT_Q,ATLAS,atlasBake,atlasU,atlasXY,atlasAt,flightLeave:typeof flightLeave==='function'?flightLeave:null,engAcc,procFly,dispatchRun,procAdopt,FLEET,get ORB_T0(){return ORB_T0},ctrlAuthority,ctrlAuthRoll,activeEngines,missionTick,missionComplete,dispatchEstimate,dispatchQuote,orderDispatch,padWait,padsFree,procKey,stagePaid,upcoming,nextEvent,advanceTo,acceptOffer,COMP_ERAS,compLag,compEra,worldEra,compYear,predErr,studyQuote,orderStudy,studyWait,studyKey,studyOf,predictImpact,FAC,facLv,buildFac,fleetSalvage,devLv,devQuote,startDev,devPriceK,wearOf,buildStand,startTest,testQuote,standReady,STAND_COST,prodLine,prodLineK,prodQuote,startProdLine,prodUnits,khVessel,khYield,khUse,khBar,use0,khLearn,igniteOK,khOn,OPS_FIX,OPS_FRAC,SITES,siteById,curSite,homeSite,homeSites,siteAccessOf,siteFits,siteFrame,terrainH,terrainSlope,SITE_GAP,PAD_FLAT,tapeNew,toolOK,TOOLS,eraOf,designName,LOGF,sourceOf,tierOf,indOf,cert0,IMPORT_K,GREY_K,cancelProgram,demandMet,flav,ARCH,natOf,moneyK,failHit,flavTick,sanction,sanctioned,offerRisk,RIVALS,RACE,raceLost,LEAK_P,genOffer,contractEval,chooseStart,own,stateShare,ownKind,floorCheck,offerDecision,resolveDecision,income,valuation,pickClient,rng,acceptOffer,CT,capOf,ensureBoard,standOf,GRANT_100,wearOf,makePowers,POWERS,powerAt,relOf,opOf,advanceDays,DAY_S,prepDays,HOME,vesselCost,FUNDS0,FUNDS_FLOOR,REFURB,advPhys,advRails,PROG,MISSIONS,missionEnd,missionDrop,safetyReview,certOf,atmU,G_LIM,CERT0,CITIES,landValue,isLand,dropVerdict,debrisImpact,fall,surfVelX:null,predictImpact,tapePhys,tapeRails,tapeStage,tapePlay,tapeDuration,toPF,railsOK,segFuel,stageStats,partMass,PARTS,analyze,nodeInfo,nodeBurnTime,predictFrom,dvPlan,kepler,elements,timeToNu,predict,newShip,physStep,rails,stage,dvRemaining,localFrame,qFromBasis,qrot,cross,norm,len,sub,add,mul,dot,probe,firstSeg,geom,INP,surfVel,SND,buildStation,gsCheck,stationsAll,GS_LEASE,pairKey,satAt,absTh,cloudAt,sunUp,relBase,siteWeather,weatherHold,downrangeWarning,SEA_DECK,SCRUB_MAX,alongAz,SURF_MOON,SURF,BIOMES,surfaceAt,surfaceHit,biomeAt,groundAlt,TOPPLE,groundGap,aglAt,MAIN_AGL,fromPF,density,HAZ,disCities,cityGround,fieldBiomes,polarKm,recoveryOf,gsMask,gsSees,linkOf,devState,loseDeviation,vesselOf,dispatchRoll,
   badness,careerMove,get home(){return HOME},resetHome(){HOME=0;RIVALS=raceSchedule()},
   TELLUS,SELENE,NYX,BODIES,soiAt,bodyRel,bodyPos,MISSIONS,SUN_DIR,advRails,satRegister,utilTick,navCover,capital,STAT_R,isTV,rotY,abort,activeEngines,procStart,procKey,TAPE_V,PRESETS,HOOK,moonPos,moonVel,get S(){return S},set S(v){S=v},get t(){return simT},set t(v){simT=v},DT};`)();
 const { kepler, elements, len, sub, add, mul, dot, norm, cross, TELLUS, SELENE } = api;
@@ -1878,8 +1878,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const d = ['flight', 'map', 'assembly'].flatMap(dup);
   check('no key means two things on one screen (R is revert in flight, RCS is V)', !d.length, d.join(' ') || 'ok');
   const goSrc = cut(page, 'function go(s){', '\n// Keys, one table');
-  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ)=[^=])/g) || [];
-  check('only go() changes the screen (no mode=/view=/atHQ= assignments outside it but their declarations)', goSrc && outside.length === 3, outside.join(' '));
+  const outside = (page.replace(goSrc, '') + bsrc).match(/[^=!\w.]((?:mode|view|atHQ|atDeb)=[^=])/g) || [];
+  check('only go() changes the screen (no mode=/view=/atHQ=/atDeb= assignments outside it but their declarations)', goSrc && outside.length === 4, outside.join(' '));
   // every Program section heading the page can write lands in a real tab, not "More"
   const progTabOf = new Function('progName', cut(page, 'const progTabOf=', ';\nlet progTab') + ';return progTabOf')(() => 'Fenfen Space Agency');
   const heads = [...html.matchAll(/class="ep">([A-Z][^<$]*)/g)].map(m => m[1].trim()).filter(h => !/^\.\*/.test(h));
@@ -3047,6 +3047,39 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     disk.every(f => files.includes(f)) && files.every(f => disk.includes(f)), `${files.length} on the page; not loaded: ${disk.filter(f => !files.includes(f)).join(', ') || 'none'}`);
   const lax = files.filter(f => !/^(\/\/[^\n]*\n)*'use strict';/.test(read(f).replace(/\r\n/g, '\n')));
   check("split: every file starts 'use strict' (a classic script doesn't inherit it from the one before)", !lax.length, lax.join(', ') || 'all strict');
+}
+
+// flow-1. Debrief (flow session, UI slice 3; QUEUE Q2): a settled flight leaves a summary record (sim/debrief.js) that the
+// Debrief screen renders: outcome, money line by line (adding up to what the program actually gained or lost), missions,
+// certifications, logbook records, incidents, know-how. Built once, at settlement; the page sends a flight that settles
+// on the way out to the Debrief screen.
+{
+  const P = api.PROG; api.HOOK.news = () => {};
+  Object.assign(P, { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {} });
+  api.t = 0; let s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); let armed = false, n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { api.stage(s); armed = true; } api.advPhys(s); }
+  const b = s.rec.deb0, out = api.flightLeave(s), D = out && out.debrief, M = D ? D.money : [];
+  const sum = M.reduce((a, m) => a + m.v, 0), row = l => M.find(m => m.l.startsWith(l));
+  check('flow-1: a landed flight, once settled, has a debrief record (returned, on the record, and the last one)',
+    !!b && !!D && D === s.rec.debrief && D === api.DEBRIEF_LAST && D.outcome.k === 'landed' && D.flight === P.flights, D ? `${D.outcome.t}: ${D.outcome.d}` : 'none');
+  check('flow-1: the money adds up: hardware, operations, refurbishment, the rest; their sum is what the program gained or lost',
+    D && Math.abs(sum - D.net) < 1e-6 && Math.abs(D.net - (P.funds - b.funds)) < 1e-6 && row('Hardware').v === -s.rec.cost && Math.abs(row('Refurbishment').v - s.rec.refund) < 1e-9,
+    M.map(m => `${m.l} ${m.v.toFixed(1)}`).join(' · ') + ` = ${D && D.net.toFixed(1)}M`);
+  const newly = Object.keys(P.done).filter(k => !b.done.includes(k)).map(k => api.MISSIONS.find(x => x.id === k).name);
+  check('flow-1: missions done on the flight are listed with their pay; know-how gained is listed by part',
+    D && D.missions.length === newly.length && D.missions.every(m => newly.includes(m.l) && row(m.l)) && D.kh.some(k => /Sparrow/.test(k.l) && k.b > k.a),
+    `missions: ${D && D.missions.map(m => `${m.l} +${m.pay.toFixed(0)}`).join(', ') || 'none'} · know-how: ${D && D.kh.map(k => `${k.l} ${(k.a * 100).toFixed(0)}→${(k.b * 100).toFixed(0)}%`).join(', ')}`);
+  check('flow-1: settled once: leaving again builds no second record', api.flightLeave(s) === null && api.DEBRIEF_LAST === D);
+  // a flight lost in the air
+  api.t = 0; s = api.newShip(api.PRESETS.Sounding); api.S = s; s.throttle = 1; api.stage(s); n = 0;
+  while (s.alive && api.t < 20 && n++ < 200000) api.advPhys(s);
+  s.alive = false; const L = api.flightLeave(s);
+  check('flow-1: a vessel destroyed in flight is debriefed as lost', L && L.debrief && L.debrief.outcome.k === 'lost' && L.debrief.flight === D.flight + 1, L && L.debrief && `${L.debrief.outcome.t}: ${L.debrief.outcome.d}`);
+  // the page: go() debriefs a flight that settles on the way out; the screen has its keys; the Esc menu can end a flight
+  const H = html.replace(/\r\n/g, '\n'), gi = H.indexOf('function go(s){'), goSrc = gi < 0 ? '' : H.slice(gi, H.indexOf('\n// Keys, one table', gi));
+  check('flow-1: leaving a flight goes to Debrief first; Debrief has keys and exits; the Esc menu has End flight',
+    /s='debrief'/.test(goSrc) && /debrief:\[\{k:\['p'\]/.test(H) && /b\('end','End flight/.test(H) && /id="bDebAgain"/.test(H) && /id="bEnd"/.test(H));
+  Object.assign(P, { done: {}, flights: 0, funds: api.FUNDS0, kh: {}, log: {} });
 }
 
 // aerofx-1. The plasma shell needs speed, not just heat (look & sound effects beat, QUEUE Q20 / PLAYTEST #17): the

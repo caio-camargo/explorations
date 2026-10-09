@@ -186,6 +186,7 @@ function safetyReview(sh){analyze(sh);let worst=0,wp=null;
 function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launched)stagedTick(s,R);   // economy: staged pay
   if(R.launched&&!R.endPf&&s.body===TELLUS&&(s.landed||!s.alive)){R.endPf=toPF(TELLUS,s.r,simT);R.endSci=R.lastSci}   // where it came down (landed or crashed)
   if(s.alive)R.lastSci=s.parts.some(p=>p.on&&p.d.kind==='sci');
+  if(!R.launched&&!s.landed&&!R.deb0)R.deb0=debSnap();   // the debrief's "before" (flow session, UI slice 3)
   if(!R.launched){if(s.landed)return;R.launched=true;R.nyxLook=missionOpen(MISSIONS.find(M=>M.id==='nyxfind'));importNews(s);prodUnits(s);R.cost=vesselCost(s.parts).cost;R.ops=OPS_FIX+OPS_FRAC*R.cost;PROG.funds-=R.cost+R.ops;R.prep=TEST.fast?0:prepDays(R.cost)*(1+0.5*(1-khVessel(s)))*FAC.hall.eff[facLv('hall')];R.launchPf=toPF(TELLUS,s.r,simT);R.studyWait=studyWait(s);R.padWait=padWait();advanceDays(R.studyWait+R.padWait);advanceDays(R.prep);advanceDays(Math.ceil(PROG.day-1e-9)-PROG.day);R.day0=PROG.day;{const n=weatherHold(s);if(n){R.day0=PROG.day;R.scrubs=n}}if(ORB_ABS){ORB_T0=R.orbT0!=null?R.orbT0:R.day0*DAY_S;R.orbT0=ORB_T0;if(typeof recTape!=='undefined'&&recTape)recTape.orbT0=ORB_T0}   // wait for the daily launch window
     const bio=s.parts.find(p=>p.on&&p.d.kind==='bio');
     if(bio){R.bio=true;R.tourist=(PROG.active||[]).some(c=>c.src==='tour');R.pet=R.tourist?TOURISTS[PROG.flights%TOURISTS.length]:PETS[PROG.flights%PETS.length];const v=safetyReview(newShip(s.stack));R.approved=v.ok;
@@ -236,17 +237,17 @@ for(const[id,to,crew]of[['farside','Selene'],['selimp','Selene'],['selland','Sel
   ['nyxfly','Nyx'],['nyxorb','Nyx'],['nyxland','Nyx']]){const M=MISSIONS.find(x=>x.id===id);if(M){M.to=to;if(crew)M.crew=true}}
 const stagedMission=(B,R)=>MISSIONS.find(M=>M.to===B.name&&!PROG.done[M.id]&&missionOpen(M)&&(!M.crew||R.crewed))||null;
 const stagePaid=M=>((PROG.staged||{})[M.id]||{}).paid||0;
-function stagePay(M,k){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);
+function stagePay(M,k,R){const st=PROG.staged[M.id],x=M.pay*STAGE_PAY[k];st[k]=1;st.paid=(st.paid||0)+x;income(x);debPaid(R,'stage',M.name,x);
   HOOK.news(k==='bound'?`Mission control: on course for ${M.to}. ${M.name} pays its first share (+${fmtM(x)})`:`Arrived at ${M.to}: ${M.name} pays its second share (+${fmtM(x)})`,'ok');HOOK.save()}
 function stagedTick(s,R){if(!s.alive||s.landed)return;PROG.staged=PROG.staged||{};
   for(const B of[SELENE,NYX]){const M=stagedMission(B,R);if(!M)continue;const st=PROG.staged[M.id]||(PROG.staged[M.id]={});
-    if(s.body===B){if(!st.bound)stagePay(M,'bound');if(!st.arrive)stagePay(M,'arrive');continue}
+    if(s.body===B){if(!st.bound)stagePay(M,'bound',R);if(!st.arrive)stagePay(M,'arrive',R);continue}
     if(st.bound||s.body!==TELLUS||simT-(R.boundT??-1e9)<30)continue;R.boundT=simT;   // (checked every 30 s of flight)
     const el=elements(s.r,s.v,TELLUS.mu);if(el.e<1&&el.ap<0.3*B.orb.a*(1-B.orb.e))continue;
-    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound')}}
+    const P=predict(s);if(P&&P.some(L=>L.b===B))stagePay(M,'bound',R)}}
 const stageNote=M=>M.to?` <span class="dim">· pays ${STAGE_PAY.bound*100}% on course, ${STAGE_PAY.arrive*100}% on arrival${stagePaid(M)?` (${fmtM(stagePaid(M))} paid)`:''}</span>`:'';
 function missionComplete(M,rec){PROG.done[M.id]={flight:PROG.flights+(rec?1:0),day:PROG.day};const lost=raceLost(M.id),racing=RACE.includes(M.id),pay=Math.max(0,M.pay*(racing?(lost!=null?0.5:1+2*flav(HOME).pri.prestige):1)-stagePaid(M));   // less what was paid along the way
-    income(pay);opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
+    income(pay);debPaid(rec,'mission',M.name,pay,{first:racing&&lost==null});opAdd(HOME,racing&&lost==null?8*(0.5+natOf(HOME)):4);if(flav(HOME).money==='patronage'&&racing&&lost==null){PROG.funds+=25;HOOK.news('The leadership rewards the triumph: +25M','ok')}
     if(racing&&lost==null&&rec)rec.firstNow=true;for(const p of POWERS)if(p.i!==HOME)opAdd(p.i,1.5);
     HOOK.news(racing?(lost!=null?`✔ ${M.name}, second after ${POWERS[lost].name} (+${fmtM(pay)})`:`✔ FIRST IN THE WORLD: ${M.name}, ${M.win} (+${fmtM(pay)})`):`✔ ${M.name}: ${M.win} (+${fmtM(pay)})`,'ok');HOOK.msg(`Mission complete: ${M.name}`);HOOK.save()}
 function missionDrop(s,verdict){if(s.rec&&!s.rec.ended)s.rec.drops.push(verdict)}
@@ -273,12 +274,12 @@ function missionEnd(s){const R=s&&s.rec;if(!R||!R.launched||R.ended)return null;
     for(const p of ps){const w=wearOf(p,tv)*rc.factor,q=partPrice(p)*REFURB;back+=q*w;full+=q;if(!worst||w<worst.w)worst={p,w}}
     PROG.funds+=back;R.refund=back;
     if(back>=0.5)HOOK.news(`Recovered hardware refurbished: +${fmtM(back)} (${(100*back/full).toFixed(0)}% of possible${worst&&worst.w<.85?`; ${worst.p.d.name} came back ${worst.w<.5?'as scrap':'worn'}`:''})`,'ok')}
-  const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
+  const dmg=R.drops.reduce((a,v)=>a+(DAMAGE[v.kind]||0)*(v.power&&v.power.i!==HOME?1.5:1),0);R.dmg=dmg;if(dmg){PROG.funds-=dmg;HOOK.news(`Damages paid to towns under the flight path: −${fmtM(dmg)}`,'bad')}
   if(R.orbit){const net=R.cost-(R.refund||0);PROG.recs=PROG.recs||{};if(!(PROG.recs.orbit<=net)){if(PROG.recs.orbit!=null)HOOK.news(`Record: cheapest trip to orbit yet, ${fmtM(net)} net`,'ok');PROG.recs.orbit=net}}
   floorCheck();
   const ups=Object.keys(R.cert0).filter(k=>certOf(k)>R.cert0[k]+0.005).map(k=>({k,a:R.cert0[k],b:certOf(k)})).sort((x,y)=>(y.b-y.a)-(x.b-x.a));
   if(ups.length)HOOK.news(`Telemetry certifies: ${ups.slice(0,3).map(u=>`${PARTS[u.k].name} ${(u.a*100).toFixed(0)}→${(u.b*100).toFixed(0)}%`).join(', ')}`,'ok');
-  missionEval(s);HOOK.save();return{ups,streak:PROG.streak}}
+  missionEval(s);R.debrief=debriefOf(s,R,ups);HOOK.save();return{ups,streak:PROG.streak,debrief:R.debrief}}
 // ---- the powers: N of them (the number is a parameter), generated from a seed like the cities. Each has a home region,
 // an economy size, a tech level and an alignment on two axes. Land belongs to the nearest home region (bigger economies
 // reach further); the sea belongs to no one. Power 0's home is the launch site. Relations between every pair drift
