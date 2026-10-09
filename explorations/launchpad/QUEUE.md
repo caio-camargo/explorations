@@ -258,7 +258,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
 |---|---|---|---|---|---|
-| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | → aerofx (effects, overflow) 2026-10-09 |
+| Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ✓ `ce44e42` (`sndSettings` in Settings, saved) |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ✓ `0458c99` (`sndPlasma`, `sndOthers`) |
 
