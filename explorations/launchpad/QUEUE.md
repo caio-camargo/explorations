@@ -57,7 +57,7 @@ the feedback I paste into PLAYTEST items.*
 - **Q17 landed** (`c227ed6`): `PLASMA_V` / `plasmaOn(s)` in `sim/world.js`. Effects (Q20): use it for the plasma shell, no
   second threshold.
 - **Flaky page loads in previews = the server, not your code** (effects, 2026-10-09): since the split the page loads ~30 scripts at once, and `python -m http.server` listens with a backlog of 5, so some scripts get `ERR_CONNECTION_REFUSED` and the rest cascade (`editorChanged is not defined`, `gl.getExtension is not a function`, `refView` returning `{}`). Workaround: serve with `ThreadingHTTPServer` and `request_queue_size = 128` (a 6-line script), and use `127.0.0.1`.
-- **Version numbers:** latest on `main` is v1.77 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
+- **Version numbers:** latest on `main` is v1.81 (economy). Check the latest `## v1.N` on `origin/main` right before numbering.
 - **Overnight run (2026-10-08 → 09): flow, QA and look & sound (effects) are unattended, and all three use the GPU.**
   Respect the `.game-busy` lock: while another session holds it, do ⚙/📝 work (QA: Q54 and Q16 first). Don't idle.
   **Effects:** after Q20, Q63, **Q72, Q71, Q89** (design desk, Caio's request) and Q64, the other beats have no session tonight, so overflow in this order: Q23 (M1), Q65,
@@ -136,7 +136,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q88 | 📝 Missions per body from [`SYSTEM.md`](SYSTEM.md) (each body's *role*): firsts, science, the race, which epoch opens each | M5 | M | 📝 | ready (plan only) |
 | Q103 | **Powers as content** from [`POWERS.md`](POWERS.md): school and government forms in `makePowers` (+ People's Republic, Emirate, Sultanate, State), syllable sets per school, rival news rules and headline tone per archetype | M1 | M | ⚙ | ready |
 | Q122 | PLAYTEST #33 (P3): "Sponsor covers the failed attempt" on a flight that reached orbit; "1 days passing" | M1 | S | ⚙ | ✓ v1.74.1 `b8854b3` (no cover in orbit; "1 day") |
-| Q126 | **Replacement for upgrades**: service quality by the satellite's era (obsolescence); servicing contracts only for valuable assets; check TV's daily pay (v1.71: the capital sees it all day, tilt free) against it — MIDGAME.md § Satellites | M2 | M | ⚙ | → economy 2026-10-09 |
+| Q126 | **Replacement for upgrades**: service quality by the satellite's era (obsolescence); servicing contracts only for valuable assets; check TV's daily pay (v1.71: the capital sees it all day, tilt free) against it — MIDGAME.md § Satellites | M2 | M | ⚙ | ✓ v1.81 `417d96e` (earnings 1/(1+0.35·eras behind); service contracts by docking; TV pay checked) |
 | Q130 | The career runner flies rovers (a Selene science program): measure v1.66's rover prices and R4 pay against income | M2 | S | ⚙ | ✓ `af3a6c6` (rover program +90M over 4 y on average; prices stand) |
 | Q123 | 📝 **Money buys capacity**: pads, sites and yards dearer as you grow; hardware as the late money sink; late revenue ([`LATE_GAME.md`](LATE_GAME.md) § Money) | M4 | M | 📝 | ready (plan only) |
 | Q133 | 📝 CREW part 2: **the roster and the astronaut office's classes** (with flow for the screen) — [`CREW.md`](CREW.md) § Part 2 | M3 | M | 📝 | ready (plan only) |
@@ -349,3 +349,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W21 | **Look at the hardware schools** (POWERS.md → Q102): `explorations/launchpad/mockups/schools/index.html`: the Orbiter as Cape and as Steppe, a signature design and the pad for each. Pick or say what to change. Defaults if silent: build Q102 from these, Cape first |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- platform — **pin line endings**: add a root `.gitattributes` (`* text=auto eol=lf`, binaries as `binary`) and renormalize once. On 2026-10-09 `NOTES.md`, `test.mjs` and others flipped to CRLF blobs on main and back, so every merge of them became a whole-file conflict (economy hit it three times in an hour); `core.autocrlf=true` doesn't renormalize a file already tracked with CRLF — LESSONS #40
