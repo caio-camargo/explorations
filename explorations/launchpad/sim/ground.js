@@ -342,4 +342,43 @@ function phoebeMap(){if(PHOEBE_MAP)return PHOEBE_MAP;const B=GROUND_STUBS.Phoebe
 function phoebeH(pf,bands){const u=norm(pf),m=phoebeMap(),R=GROUND_STUBS.Phoebe.R;return mapSpl(m.E,m.W,m.H,u)+craterBands(u,R,m.Dt,null,bands,PH.c,PH.salt,PH.frPow,PH.b0)}
 GROUND_GEN.phoebe=pf=>phoebeH(pf);
 const PHOEBE_GROUND={gen:'phoebe',top:6000,unit:()=>'regolith'};   // no surfaces of its own: regolith
+// Erebus (Pluto): SYSTEM.md § Erebus. R 238 km, g 0.62, a trace of N₂ (no aerodynamics). Icy crust (0.4, as Tethys and Eos:
+// an assumption, Pluto's own transition size isn't pinned down), so simple → complex near 19 km. The map: cratered
+// uplands (c 0.02, as Mars's highlands) with a swell; the dark tholin highlands (Cthulhu) in a warped equatorial patch,
+// old and the most cratered; the nitrogen-ice basin (Sputnik Planitia: 200 km across, the same share of the globe as
+// Pluto's, its glacier floor flat at −2.5 km, no craters: it renews itself); water-ice mountains, a dozen angular blocks
+// 10–20 km in radius, 2.5–4.5 km high, along the basin's western margin; bladed terrain (Tartarus Dorsa: ridges ~400 m high, ~5 km apart) east of
+// it. Procedural on the basin: convection cells ~25 km across, troughs along their edges, centres gently domed.
+// Channels: E, N nitrogen ice, K mountains, B blades, T tholin, Y young (crater thinning).
+GROUND_STUBS.Erebus={name:'Erebus',R:2.38e5,g:.62};
+const ER={c:.02,salt:7,frPow:3,crust:.4,seed:1701,basin:{at:[25,175],r:.42,floor:-2500},mtns:{n:12,az:[90,210]},blades:{az:[300,40],h:400,L:5e3},
+  tholin:{at:[-10,90],r:.55},cells:{L:25e3,trough:80,dome:50}};
+let EREBUS_MAP=null;
+function erebusMap(){if(EREBUS_MAP)return EREBUS_MAP;const B=GROUND_STUBS.Erebus,R=B.R,Dt=GR_DT/B.g*ER.crust,W=1024,H=512,Nn=W*H,rnd=rng(ER.seed),
+    E=new Float32Array(Nn),N=new Float32Array(Nn),K=new Float32Array(Nn),Bl=new Float32Array(Nn),T=new Float32Array(Nn),Y=new Float32Array(Nn);
+  const bc=llU(...ER.basin.at),th=llU(...ER.tholin.at),e0=norm(cross([0,1,0],bc)),n0=cross(bc,e0),azDir=a=>add(mul(e0,Math.cos(a*Math.PI/180)),mul(n0,Math.sin(a*Math.PI/180)));
+  const inArc=(u,[a0,a1])=>{const v=sub(u,mul(bc,dot(u,bc)));let a=Math.atan2(dot(v,n0),dot(v,e0))*180/Math.PI;a=(a+360)%360;return a0<=a1?a>=a0&&a<=a1:a>=a0||a<=a1};
+  // the blocks: on the basin's margin, over an arc of azimuths
+  const mt=[];for(let q=0;q<ER.mtns.n;q++){const a=ER.mtns.az[0]+(ER.mtns.az[1]-ER.mtns.az[0])*rnd(),dd=ER.basin.r*(.85+.25*rnd()),c=norm(add(mul(bc,Math.cos(dd)),mul(azDir(a),Math.sin(dd))));
+    mt.push({c,R:10e3+10e3*rnd(),H:2.5e3+2e3*rnd()})}
+  bakeEach(W,H,(u,k)=>{const sw=1200*(tfbm(u[0]*2.5+91,u[1]*2.5+91,u[2]*2.5+91,5)-.5);E[k]=sw;
+    T[k]=sstep(1,.75,angTo(u,th)/ER.tholin.r*(1+.5*(tfbm(u[0]*3+7,u[1]*3+7,u[2]*3+7,3)-.5)))});
+  const cr=bigCraters(rnd,R,ER.c,120e3,0);for(const c of cr)mapCrater(E,W,H,R,c.c,c.D,Dt,c.fr);   // (the band craters are thinned on the uplands, not the tholin: see Y)
+  bakeEach(W,H,(u,k)=>{const r=warpR(u,bc,R,ER.basin.r*R,.12,6),n=sstep(1,.9,r);
+    E[k]=E[k]*(1-n)+(ER.basin.floor)*n;N[k]=sstep(.93,.88,r);   // the glacier fills the basin: a flat floor (the unit), its shore
+    let m=0,bk=0,rm=9;for(const t of mt){const rr=warpR(u,t.c,R,t.R,.35,40);rm=Math.min(rm,rr);if(rr<1){bk=Math.max(bk,t.H*sstep(1,.45,rr));m=Math.max(m,sstep(1,.8,rr))}}E[k]+=bk;   // a block on whatever ground it stands; overlapping blocks: the taller
+    K[k]=m;N[k]*=sstep(.95,1.25,rm);   // a block's flanks aren't glacier floorconst rb=angTo(u,bc)/ER.basin.r;Bl[k]=rb>1.05&&rb<1.9&&inArc(u,ER.blades.az)?sstep(1.05,1.25,rb)*sstep(1.9,1.6,rb):0;
+    Y[k]=Math.max(N[k],K[k]*.8,.5*(1-T[k]))});
+  for(const A of[E,N,K,Bl,T,Y])polesFix(A,W,H);
+  return EREBUS_MAP={W,H,E,N,K,B:Bl,T,Y,Dt,craters:cr,mtns:mt,...mapRange(E),thin:cu=>mapBil(Y,W,H,cu)}}
+function erebusH(pf,bands){const u=norm(pf),m=erebusMap(),R=GROUND_STUBS.Erebus.R,b=X=>mapBil(X,m.W,m.H,u),n=b(m.N),bl=b(m.B);let h=mapSpl(m.E,m.W,m.H,u);
+  if(n>0){const L=ER.cells.L,d=worleyEdge(u[0]*R/L+3,u[1]*R/L+3,u[2]*R/L+3)*L;h+=n*(-ER.cells.trough*Math.exp(-((d/1000)**2))+ER.cells.dome*Math.min(1,d/8e3))}
+  if(bl>0){const f=1/ER.blades.L,r=1-Math.abs(2*tn(u[0]*R*f+1,u[1]*R*f*.35+2,u[2]*R*f+3)-1);h+=bl*ER.blades.h*r**4}
+  return h+craterBands(u,R,m.Dt,m.thin,bands,ER.c,ER.salt,ER.frPow)}
+GROUND_GEN.erebus=pf=>erebusH(pf);
+const EREBUS_UNITS=['nitrogen ice','mountains','blades','tholin highlands','uplands'];
+function erebusUnit(u){const m=erebusMap(),b=X=>mapBil(X,m.W,m.H,u);return b(m.N)>.5?'nitrogen ice':b(m.K)>.5?'mountains':b(m.B)>.5?'blades':b(m.T)>.5?'tholin highlands':'uplands'}
+const EREBUS_SURF={'nitrogen ice':{name:'nitrogen ice',mu:.2,soft:1,rough:.01},mountains:{name:'water-ice bedrock',mu:.7,soft:-2,rough:.4},blades:{name:'methane-ice blades',mu:.5,soft:-1,rough:.5},
+  'tholin highlands':{name:'dark tholin dust',mu:.6,soft:1,rough:.15},uplands:{name:'methane frost',mu:.45,soft:1,rough:.1}};
+const EREBUS_GROUND={gen:'erebus',top:6000,surf:pf=>EREBUS_SURF[erebusUnit(norm(pf))],unit:u=>erebusUnit(u)};
 // ==== SIM END

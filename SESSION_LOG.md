@@ -4144,3 +4144,25 @@ defaults if silent); every catalog below is approved unless noted. No game code.
 - [ ] Design desk: D6 (dry re-entry: keep, or dry satellites never come down?)
 - [ ] Vehicle + space: the satellite's lifetime as a builder readout (MIDGAME)
 - [ ] Space: next ready item Q26 (contact with debris and between satellites)
+
+## 2026-10-09 — Launchpad v1.72: Erebus's ground on the CPU (world session)
+
+### Summary
+The last hand-made body (QUEUE Q92's CPU half), Pluto-like, not live (stub body):
+- the nitrogen-ice basin: 2.6 km deep, flat (p99 4°), crater-free, broken into convection cells (troughs 116 m below the
+  cells' middles);
+- water-ice mountain blocks on its margin (to 6.5 km above the floor, flanks p90 40°);
+- bladed terrain;
+- dark tholin highlands, the most cratered;
+- methane-frost uplands.
+Every hand-made SYSTEM.md body now has ground on the CPU. Negative results: overlapping blocks summed (10 km); narrow
+blocks were cliffs; a unit mask that takes in the shore isn't the floor. Test `ground-7` (6 checks, 3 mutations caught);
+Erebus added to the pole check. Full suite 526 pass / 0 fail.
+
+### Files
+- `explorations/launchpad/`: `sim/ground.js`, `study_ground.mjs` (`erebus`), `test.mjs` (`ground-7`, ground-6), `NOTES.md` § v1.72, `GROUND.md` 0.1.8, `QUEUE.md`
+- `INDEX.md`, `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] World: the seeded small bodies (one lump recipe from `WSEED`)
+- [ ] Space (Q87): the planets and moons into the body tree, each with its `<NAME>_GROUND`
