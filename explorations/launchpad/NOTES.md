@@ -1958,6 +1958,38 @@ Enyo's closest approaches 2.12, 2.15, 2.19 years apart (its windows: 2.14). Test
 caught: the wrong year, the wrong tilt, Tellus by mean anomaly). The drawing (discs and labels on the map's zoomed-out
 view) is flow's, proposed in QUEUE.
 
+## Plan: Helios's tide on the Tellus system (2026-10-09, space session, QUEUE Q139; plan only, M5)
+
+Comes with Q87 slice 2 (Helios as the root). Measured with `sim/system.js` (TU 15.78 Gm, μ 1.17e18): Helios's tide
+2μr/D³ against Tellus's own pull at radius r:
+
+| where | Helios's tide | share of Tellus's pull |
+|---|---|---|
+| low orbit, 300 km | 9.4e-7 m/s² | 1.5e-7 |
+| stationary | 4.1e-6 | 1.3e-5 (Nyx's tide there is ~15× more) |
+| Nyx's distance, 18,000 km | 1.1e-5 | 2.2e-4 |
+| Selene, 38,440 km | 2.3e-5 | 2.1e-3 (the Sun on the Moon: 5.6e-3) |
+| 100,000 km | 6.0e-5 | 3.7e-2 |
+| L1 / L2, 261,000 km (the Hill radius) | 1.6e-4 | 0.66 |
+
+**The trap:** the moons get their parent's tide by `b.pert` (always on inside their spheres). Doing that for Tellus would
+put every Tellus orbit, low ones included, on numerical integration instead of exact Kepler rails, for a force of 1e-7
+of gravity there. So:
+- **Per orbit, like the moons' children** (`pertNear`'s threshold, PERT_MIN = 2e-6 of the central pull): Helios's tide
+  counts on an orbit whose apoapsis feels it above the threshold, i.e. above ~2,500 km of altitude; below, exact rails as
+  now. `pertAcc` adds it in Tellus's frame (Helios's pull minus Tellus's), as it adds Nyx's and Selene's.
+- **Selene and Nyx stay on their fixed rails** (the tide would precess them over years; their phases are the game's
+  clock, so they don't move).
+- **What it does:** station-keeping (v1.60+) measures it with the rest (it adds a little to high orbits); it shapes
+  orbits that reach far out (Lidov–Kozai on high inclined ones, as Tellus does to Selene's); **L1 and L2** exist (halo
+  orbits for a relay or an observatory: Q51 slice 4, "a relay off the line fixes it"); a cruise entry leaving Tellus
+  feels it on the way out.
+- **Measure first** (study, as `study_lagrange.mjs` did for Selene's L4/L5): a halo orbit's station-keeping at L1/L2;
+  how much stationary and navigation orbits' hold cost change; that a Tellus escape's energy still matches the
+  heliocentric leg it becomes.
+
+**Defaults (Caio may override):** per-orbit threshold as above; the moons unperturbed; no seasonal effects on low orbits.
+
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
 From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
