@@ -992,6 +992,17 @@ the battery and computer fell through to the default 1.25 m drum. `partBody` now
 - Views `refView(108)`–`(111)`: a lander's legs stowed and deployed, a satellite stowed and with its wings out.
 - test.mjs `aerofx-3` (part looks). Not yet: legs swinging down over a second, wings unfolding.
 
+## Fill light on airless bodies (2026-10-09, effects beat, QUEUE Q116, PLAYTEST #32)
+
+`lightEnv(p)` only knew Tellus's air: on Selene its "height" is the distance from Tellus, so sky and ground light were
+zero and a lander with the sun behind it was pure black against bright regolith. `airlessFill(p)` (checked first) finds
+an airless body within 4 radii and returns its own lighting: the sun unfiltered, `up` = that body's local up, and a
+ground term = 5 · albedo (0.12 unless the body says otherwise) · sun elevation, fading over 0.6 R of height; a token sky.
+- Measured: on Selene's day side with the sun 20° up the ground term is 0.195 (Tellus's daytime ground is ~0.18); 0 at
+  night; 0.108 one radius up. Earthshine (~1e-4 of the sun) is left out.
+- `refView(113)` (back-lit, shadow toward the camera): the tank reads grey, the dark pod stays dark; `FILL_FX = false`
+  gives the old black silhouette. `112` is the same lander from the sunny side.
+
 ## The plume meeting the ground (2026-10-07, aerofx session)
 
 Before this, a plume on the pad went straight into the concrete: the raymarch ignored the ground, so the flame showed

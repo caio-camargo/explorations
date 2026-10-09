@@ -1628,7 +1628,16 @@ function cityMesh(c){if(cityMeshes.has(c))return cityMeshes.get(c);const a=[],R=
   const m=makeMesh(a);cityMeshes.set(c,m);return m}
 // ---- light at a point (world): the sun's colour after the air between here and space (same coefficients as the sky
 // shader), plus hemispheric sky/ground ambient that fades with altitude and night. ×5 matches the ground's sun term.
-function lightEnv(p){const up=norm(p),h=len(p)-TELLUS.R,mu=dot(up,SUN),BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6*1.1;
+// near an airless body (QUEUE Q116, PLAYTEST #32) the fill comes from its own sunlit ground: light bounced up off the
+// regolith (albedo ~0.12) as the hemisphere's ground term, about that body's up, fading with height; no sky. Without it a
+// lander with the sun behind it was a black silhouette (this function only knew Tellus's air). Earthshine (~1e-4 of the
+// sun) is left out. FILL_FX = false turns it off (A/B).
+let FILL_FX=true;
+function airlessFill(p){let nb=null;if(!FILL_FX)return null;for(const b of BODIES){if(b===TELLUS||b.atm)continue;const q=sub(p,bodyPos(b,simT)),d=len(q);
+    if(d<b.R*4&&(!nb||d-b.R<nb.h))nb={b,q,h:d-b.R}}
+  if(!nb)return null;const up=norm(nb.q),g=5*(nb.b.albedo??.12)*Math.max(0,dot(up,SUN))*Math.exp(-Math.max(nb.h,0)/(nb.b.R*.6));
+  return{sun:[5,5,5],up,sky:[.006,.007,.01],gnd:[.95,.92,.88].map(x=>x*g)}}
+function lightEnv(p){const af=airlessFill(p);if(af)return af;const up=norm(p),h=len(p)-TELLUS.R,mu=dot(up,SUN),BR=[5.8e-6,13.5e-6,33.1e-6],BM=5e-6*1.1;
   let odR=0,odM=0;if(h<TELLUS.atm){const b=dot(p,SUN),c=dot(p,p)-(TELLUS.R+TELLUS.atm)**2,tl=-b+Math.sqrt(Math.max(b*b-c,0)),n=10,sl=tl/n;
     for(let i=0;i<n;i++){const q=madd(p,SUN,(i+.5)*sl),hq=Math.max(0,len(q)-TELLUS.R);odR+=Math.exp(-hq/TELLUS.H)*sl;odM+=Math.exp(-hq/(TELLUS.H*1200/5600))*sl}}
   const T=BR.map(b=>Math.exp(-(b*odR+BM*odM))),day=clamp((mu+.08)/.35,0,1),air=Math.exp(-Math.max(h,0)/22000),shine=clamp(mu+.25,0,1)*Math.exp(-Math.max(h,0)/2.5e6);
