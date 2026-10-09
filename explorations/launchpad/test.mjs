@@ -3306,6 +3306,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('why: every offer on a real board carries a one-line reason', ws.length > 0 && ws.every(w => typeof w === 'string' && w.length > 5 && w.length < 80 && !w.includes('\n')), ws.join(' | '));
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('why: the Contracts tab shows it', pg.includes('Why: ${c.why}'));
+}
 
 // space-1. Station-keeping as a fuel lifetime (space session, QUEUE Q50, ROADMAP W2): a satellite holds its orbit by
 // spending its own propellant against the moons' tides, at a rate measured once for its orbit (study_slot.mjs); dry, the
