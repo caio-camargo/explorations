@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.21 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.22 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,8 +13,8 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
-| 2 | **Your picks from the mock-ups**: **W19** astronauts, **W20** bodies, **W21** hardware schools (Q102 is already being built on W21's default) | you | D2's look, Q80–Q85, Q102's direction |
-| 3 | **Your design calls**: **D5** (rover lost at night when flat), **D6** (dry satellites), **W14** (screen identity). Plus **W23–W28**, six plan questions from economy (overflight, roster, capacity, rivals, routines, missions per body), all with defaults that hold if silent | you | rovers' R3, MIDGAME's line, Q53; the M3–M5 plans' shape |
+| 2 | **Mock-up picks W19, W20, W21**: all three now proceed **on their defaults** (W19 (c) stylised human; W20 build the bodies from the mock-ups; W21 Cape first). Override any time | look & sound, design desk | Q80–Q85 (now ready), D2's look, Q102/Q159 |
+| 3 | **W14: pick a screen identity** (the one call left with no default; D5, D6, D8, W22–W28 ✓ answered) | you | Q53, Q104's final look, slice 4's styling |
 | 1b | **Q19: the first load takes 86–88 s** on Windows; 71 s is linking the sky shader. The fix is built on branch `terrain` (`3a9cda2`); only its timing A/B and the merge are left, and they need a **quiet machine** (stopped twice, out of memory) | world, when few sessions run | every player's first visit; M1's steady frame rate |
 | 4 | **Q164** presets with an antenna make their own power | vehicle (Q152 parked: low memory) | Q27, relays and the link's power side |
 | 5 | **Q160** a duplicate-number check before push (Q57 ✓) | platform (**no session**) | no more renumbering after every merge |
@@ -118,6 +118,8 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
+| Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ready |
+| Q192 | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ready |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
@@ -158,6 +160,8 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q154 | `netModel()`: one pure function the network screen draws from (nodes, routes, goods, bottleneck, fleet, pads), with space; shape in NOTES § UI "Network screen plan". Flow's Q155 needs it | M2 | S | ⚙ | ✓ v1.89.1 `00e0e3a` (fleet, pads, nodes with stock/need, supplies bottleneck; the screen switched over) |
 | Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ✓ v1.89.2 `a151fc4` (frugal partners, rising copies then catches up; OWN_TONE) |
 | Q180 | Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, its parts' value back: W22 default 4) | M2 | M | ⚙ | ✓ v1.98 `33a14aa` (rendezvous: 100 m under 1 m/s during the flight; retrieval after `stationcrew`, only landed in a closed bay, hardware refunded; the part gate is proposed for vehicle) |
+| Q188 | **Rivals as programs from epoch 1** (W26.1, Caio): amend Q138's plan for a coarse early version (budget → capacity → progress) replacing the seeded schedules; tune so the early race keeps today's pacing | M2 | M | ⚙ | ready (plan the re-scope first) |
+| Q187 | 📝 **Rivals' satellites as targets** (W22.3, with space): rendezvous, retrieval (home or into your bay) and hacking under one stealth model (shadow, burn size…), with consequences (incident if spotted, sanctions, lost contracts, opinion) | M2 | M | 📝 | ready (plan only) |
 | Q181 | Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the Debrief line, a test (W23's defaults) | M2 | S | ⚙ | ready |
 | Q184 | Q110 slice 1: **routines**, a repeating supply run to a base (its window, its pad-calendar row, `netModel().routes`) (W27's defaults; ROADMAP § M2 lists "the routine run") | M2 | M | ⚙ | ready |
 | Q182 | Crew slice 1: the roster (data, names, the first class, automatic picking, record and ranks, the loss named) (W24's defaults) | M3 | M | ⚙ | blocked: milestone gate (M3) |
@@ -185,6 +189,8 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ✓ v1.79 (procedures; through the register; TESTING 153) |
 | Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | ✓ v1.80 (RTG; the aim's orbit; charge kept; TESTING 161) |
 | Q164 | **Presets that carry an antenna make their own power** (Probe, and Q152's lander: body cells or a wing; the builder's power line green). Unblocks Q27, whose service gating would end Probe satellites after ~4 days | M2 | S | ⚙ | ready (**top**) |
+| Q190 | **Era gates for vehicle parts**: only rover parts are gated today (`rvPartOpen`), so the cargo bay and the arm are buyable from the first flight. Gate `bay`, the arm and other late parts by era (from economy, Q180 v1.98) | M1 | S | ⚙ | ready |
+| Q189 | **D5: a rover frozen in the night goes dormant**, never dies: `R.dead` on a flat cold battery becomes `R.dormant`; it wakes when its panels see the sun (in flight `rvTick`, between flights the field tick); the lost night is the only price | M2 | S | ⚙ | ready |
 | Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | parked by vehicle (full suite stopped for low memory); resume from `builder` |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ✓ plan (NOTES § \"The pilot's SAS modes by rank\"); build after the roster |
 | Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ✓ v1.81 (Lifetime line; TESTING 165) |
@@ -220,7 +226,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q178 | Q87 slice 4 (with economy): warp to ~10⁶× on heliocentric legs; launch windows on the timeline | M5 | M | ⚙ | blocked: milestone gate (M5) |
 | Q114 | PLAYTEST #30 (P3): the first moon's orbital period is logged mid-capture | M2 | S | ⚙ | ✓ `9a8ca1a` (v1.87: the period is logged once the engines stop; PLAYTEST #30 fixed) |
 | Q125 | **Re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out) — MIDGAME.md § Satellites | M2 | S | ⚙ | ✓ `a9b2a09` (v1.71: the tilt is let go and really wanders; TV keeps ~6 years on ~500 m/s; decay already fits above ~300 km; dry re-entry is D6) |
-| Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | 📝 assessed, not built: needs every preset to park at ~150 km (+48 m/s); → design (NOTES § "Assessed: thin air in the flight itself"); default if silent: as now |
+| Q128 | The flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km): today it's free mid-flight. Check the presets' parking orbits first (NOTES v1.64) | M2 | S | ⚙ | closed: D8 (a), the air cuts off in flight as now; decay between flights stays |
 | Q142 | A proper deadband controller on the full physics, to check v1.71's hold cost (a crude one pumped the eccentricity) | M2 | S | ⚙ | ✓ (study, `study_slot.mjs` part D, NOTES § "station-keeping checked against a real controller": 46–67 m/s a year vs the model's 89; no change) |
 | Q139 | 📝 At M5: add **Helios's tide** to the Tellus system (Tellus–Helios L1/L2) with 6b's machinery; Selene's L4/L5 already hold (`study_lagrange.mjs`) | M5 | S | 📝 | ✓ plan (NOTES § "Plan: Helios's tide on the Tellus system": per-orbit like the moons' children, above ~2,500 km; the moons stay on rails; with Q87 slice 2) |
 | Q140 | 📝 **Asteroid capture and mining** (with economy): epoch 7 capture with solar-electric tugs, 8–9 mining in place, type → yield, deflection as a pressure — LATE_GAME.md § Asteroids | M5 | M | 📝 | ✓ plan (NOTES § "Plan: asteroid capture and mining, the space side": seven steps on LATE_GAME's design; needs Q87 slice 2 and a low-thrust stepper shared with Q109) |
@@ -279,12 +285,12 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q65 | Cloud-volume shadows on the ground; a more varied deck seen from 8 km (NOTES § "Clouds with depth") | — | M | 🖥 | ✓ `7859a55` (`cloudShadowV`, `CLOUD_VARY`; +0.3–0.75 ms) |
 | Q116 | PLAYTEST #32 (P3): a lander on Selene with the sun behind it is a black silhouette: a fill light (earthshine / sky) | — | S | 🖥 | ✓ `ab72a13` (`airlessFill`; views 112–113; re-run robot row 68) |
 | Q71 | **Body mock-ups from [`SYSTEM.md`](SYSTEM.md)**: a still per body from its look brief, beside its two real references: Hesper, Enyo (+ Pavor), Astraea, Hyperion with rings (close, and from Tellus's sky), Theia, Eos, Tethys (haze at the limb), Erebus. As standalone page(s) in `explorations/launchpad/mockups/` (never loaded by `index.html`, so no game code and no merge risk), stills to `output/launchpad/mockups/<topic>/`, one line per option in `mockups/README.md`; Caio picks from pictures; flags what each would need from the planet shader | M5 | M | 🖥 | ✓ `92abb68` (`mockups/bodies/`; waiting on Caio, W19) |
-| Q80 | Hesper's look: the cloud world (SYSTEM.md § Hesper) | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
-| Q81 | Enyo's look, with Pavor and Metus | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
-| Q82 | Astraea's look, and the belt as seen from it | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
-| Q83 | Hyperion's look: banding and rings, close and from Tellus's sky | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
-| Q84 | Hyperion's moons: Theia, Eos, Tethys (haze at the limb), Phoebe | M5 | M | 🖥 | after Q79; after Caio picks from Q71 |
-| Q85 | Erebus's look: the icy dwarf at the edge | M5 | S | 🖥 | after Q79; after Caio picks from Q71 |
+| Q80 | Hesper's look: the cloud world (SYSTEM.md § Hesper) | M5 | M | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
+| Q81 | Enyo's look, with Pavor and Metus | M5 | M | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
+| Q82 | Astraea's look, and the belt as seen from it | M5 | M | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
+| Q83 | Hyperion's look: banding and rings, close and from Tellus's sky | M5 | M | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
+| Q84 | Hyperion's moons: Theia, Eos, Tethys (haze at the limb), Phoebe | M5 | M | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
+| Q85 | Erebus's look: the icy dwarf at the edge | M5 | S | 🖥 | ready (Q79 ✓; on W20's default: build from the Q71 mock-ups) |
 
 #### beat: sound — the sound block · worktree `launchpad-sound` (branch `sound`, port 8798)
 | # | Item | M | Size | Load | State |
@@ -390,9 +396,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W28~~ | **Answered 2026-10-09 (Caio): all defaults.** Was: **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- economy + space — plan: **rivals' satellites as targets** from the start: rendezvous contracts, retrieval (taking it home or into your bay) and hacking under one stealth model (shadow, burn size near the target, the rival's radar era), with consequences when caught (incident, sanctions, lost contracts, opinion) — W22 3 (Caio 2026-10-09)
-- economy — Q138 re-scoped: **rivals as programs from epoch 1**, simplified early, replacing the seeded schedules; tune so the early race keeps today's pacing — W26 1 (Caio 2026-10-09)
-- vehicle — a rover frozen in the night goes **dormant**, never dies: `R.dead` on a flat cold battery becomes `R.dormant`, it wakes when its panels see the sun (in flight `rvTick`, between flights `rvFieldTick`), news line "went dormant for the night" (no damage, no cost); a test that a flat rover survives the night and drives at dawn — D5 (Caio 2026-10-09)
-- vehicle (from economy, Q180 v1.98) — **era gates for vehicle parts**: today only rover parts are gated (`rvPartOpen`), so the cargo bay and the arm are buyable from the first flight. Gate `bay` and `arm` on the first docking (`stationcrew`), as the retrieval contract already is; one refusal line in the LAUNCH handler like `rvLaunchWhy` (NOTES § v1.98, Not yet)
-- flow — PLAYTEST #34 (P2): the Debrief says nothing about the crew (home safe, or lost) — PLAYTEST #34
-flow — the map's planet labels: two planets close on the ring (a conjunction) lose one label to the overlap rule; merge them into one label (`Hesper, Astraea`) — NOTES § v1.99
