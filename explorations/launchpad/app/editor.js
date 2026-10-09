@@ -64,6 +64,15 @@ const powerAim=()=>{const a=flightAims().filter(x=>x.alt).sort((x,y)=>y.alt-x.al
 function powerLine(s){if(!s.parts.some(p=>p.d.W||p.d.Wg||p.d.kind==='solar'||p.d.kind==='batt'))return'';const B=powerBudget(s,powerAim()),f=x=>x.toFixed(0);
   const okA=B.avg>=B.use,okB=B.battWh>=B.needWh,c=x=>x?'ok':'bad';
   return`<div style="margin-top:6px">Power <b class="${c(okA)}">+${f(B.avg)} W</b> / −${f(B.use)} W <span class="dim">(${B.alt>(TELLUS.atm+10000)/1000+1?`${f(B.alt)} km orbit`:'low orbit'} average, the sun in its plane)</span> · shadow ${f(B.tE/60)} min needs <b class="${c(okB)}">${f(B.needWh)} Wh</b> <span class="dim">(battery ${f(B.battWh)} Wh)</span>${okA?'':' <span class="warn">the panels can’t keep up: it runs flat</span>'}</div>`}
+// a satellite's lifetime (vehicle session, Q141): for a design carrying an antenna, a camera or instruments, at the orbit the
+// flight is aimed at (else low Tellus orbit): what holding it costs a day, how long the Δv left pays for it, then what happens
+function lifeLine(s){if(!s.parts.some(p=>['ant','cam','sci'].includes(p.d.kind)))return'';const a=flightAims().filter(x=>x.alt).sort((x,y)=>y.alt-x.alt)[0],
+    alt=a?a.alt:Math.round((TELLUS.atm+10000)/1000),L=satLife(stackDef,alt),fall=L.fall<Infinity?`the air brings it down in ${daysS(L.fall)}`:null;
+  let t;if(!(L.rate>0))t=fall?`nothing worth burning against but the air: it comes down in ${daysS(L.fall)}`:'holds its orbit for good';
+  else if(!(L.spare>0))t=`holding it costs ${L.rate.toFixed(2)} m/s a day and it has none to spare: ${fall||'it drifts off its slot (its service pauses)'}`;
+  else t=`holding it costs ${L.rate.toFixed(2)} m/s a day; ~${Math.round(L.spare)} m/s left there holds it ${L.days>=20*YEAR_D?'past 20 years':daysS(L.days)}, then ${fall||'it drifts off its slot (its service pauses)'}`;
+  const c=L.days<YEAR_D&&L.rate>0||!(L.rate>0)&&fall&&L.fall<YEAR_D?'warn':'dim';
+  return`<div style="margin-top:4px">Lifetime at ${alt} km <span class="${c}">${t}</span></div>`}
 function editorChanged(){
   const empty=BLD.isEmpty(stackDef);
   if(!empty){resetShip();S.ana=analyze(S)}
@@ -76,6 +85,7 @@ function editorChanged(){
    html+=`<div style="margin-top:6px">Cost <b class="${ok?'acc':'bad'}">${fmtM(c.cost)}</b> <span class="dim">of ${fmtM(PROG.funds)} · ${fmtM(c.dry*REFURB)} back if it all lands intact</span>${importsLine(S.parts)}${knowhowLine(S.parts)}</div>`}
   html+=`<div style="margin-top:6px">Total Δv <b class="acc">${tot.toFixed(0)} m/s</b> · ${mass.toFixed(2)} t</div>
     ${powerLine(S)}
+    ${lifeLine(S)}
     <div class="sub">${logHintHTML()}</div>`;
   if(!S.parts.some(p=>p.d.torque))html+=S.ana&&S.ana.ctl.steer?'<div class="warn">No reaction wheels: it steers only with engines burning, steerable fins in the air, or RCS.</div>':'<div class="warn">No reaction wheels, gimbals, steerable fins or RCS: no control at all.</div>';
   BLD.frameCam();
