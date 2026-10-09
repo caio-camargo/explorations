@@ -2605,7 +2605,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
-  const rigSrc = cut('function buildRig(TH,rig){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
+  const rigSrc = cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5,BOXES=[];
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=()=>{},makeMesh=a=>({a,free(){}});
     ${rigSrc}\n${padRigSrc}
@@ -2882,7 +2882,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),makeMesh=a=>({a,free(){}});
-    ${cut('function buildRig(TH,rig){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
     return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
   const turn = (s, ang, drop) => { const c = Math.cos(ang), n = Math.sin(ang);
     if (drop != null) s.parts = s.parts.filter(p => Math.hypot(p.pos[0], p.pos[2]) < 0.05 || Math.abs(Math.atan2(p.pos[2], p.pos[0]) - drop) > 0.1);
@@ -4677,6 +4677,48 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('debrief: a flight left coasting above the air reads "In flight"; the last Debrief is kept with the save and comes back after a reload',
     out && out.k === 'cruise' && /In flight/.test(out.t) && P.lastDebrief && back && JSON.stringify(back) === JSON.stringify(D.DEBRIEF_LAST) && E.DEBRIEF_LAST === back,
     `outcome ${out ? out.k + ' "' + out.t + ': ' + out.d + '"' : '—'}; restored ${!!back}`);
+}
+
+// aerofx-4. The Steppe pad (look & sound effects beat, QUEUE Q159, Q102 step 7). A site's pad is in its owner's school
+// (SCHOOL_FORCE overrides); Steppe's rig (support arms, cable masts, service halves, the erector) comes from the page's
+// own buildRig/padRig with stubs, for every preset: the arms clamp the rocket without passing through it, the closed
+// service halves, the masts' arms and the erector's cradle arms stop short of it, the table ring clears its base
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),
+      lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}});
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const bad = [], seen = [];
+  for (const [k, st] of Object.entries(D.PRESETS)) {
+    const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig, 1);
+    const inside = (q, r) => s.parts.find(p => { const y0 = p.y0 + rig.base; return p.d.kind !== 'rdec' && q[1] >= y0 && q[1] <= y0 + p.h && Math.hypot(q[0] - p.pos[0], q[2] - p.pos[2]) < p.d.r + r - 1e-6; });   // (a radial decoupler is a bracket, not a cylinder)
+    const sweep = (T, P, u1, what) => { for (let i = 0; i <= 40; i++) { const u = u1 * i / 40, q = T.A.map((v, j) => P[j] + v + (T.B[j] - v) * u), p = inside(q, T.r); if (p) { bad.push(`${k}: ${what} through ${p.d.key}`); return true; } } };
+    if (R.sch !== 1) { bad.push(`${k}: not Steppe's rig`); continue; }
+    let clampOff = 0;
+    for (const Hd of R.holds) { for (const T of Hd.mesh.a.filter(x => x.A).slice(0, 2)) if (sweep(T, Hd.P, 0.9, 'support arm')) break;
+      const E = Hd.mesh.a[0].B, at = [Hd.P[0] + E[0], Hd.P[1] + E[1], Hd.P[2] + E[2]];   // the arm's top: at the rocket's skin
+      const gap = Math.min(...s.parts.filter(p => { const y0 = p.y0 + rig.base; return at[1] >= y0 && at[1] <= y0 + p.h; }).map(p => Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) - p.d.r), 9);
+      clampOff = Math.max(clampOff, Math.abs(gap)); if (gap > 0.6) bad.push(`${k}: a support arm ends ${gap.toFixed(2)} m short`); }
+    for (const M of R.arms) sweep(M.mesh.a.find(x => x.A), M.P, 1, 'cable mast arm');
+    for (const T of R.boom.a.filter(x => x.A && x.A[2] === 0 && x.B[2] > 0)) sweep(T, R.bP, 1, 'erector cradle');
+    // the closed halves (east as built, west turned 180°): every deck tube and column outside the rocket's reach
+    for (const T of R.gantry.a) { const xs = T.A ? [T.A[0], T.B[0]] : [T.c[0] - T.h[0], T.c[0] + T.h[0]];
+      if (Math.min(...xs.map(x => R.xh + x)) < rig.ext + 0.3) { bad.push(`${k}: service half within ${rig.ext.toFixed(2)} m`); break; } }
+    const ring = R.posts.a.find(x => x.prof); if (!ring || ring.prof[0][0] < rig.ext + 0.3) bad.push(`${k}: table ring inside the rocket`);
+    seen.push(`${k} ${clampOff.toFixed(2)}`);
+  }
+  check('Steppe pad: support arms clamp every preset without passing through it; masts, erector and the closed service halves stop short; the ring clears its base',
+    !bad.length, bad.slice(0, 4).join(' | ') || `clamp gaps (m): ${seen.join(', ')}`);
+  // the school per site, the per-site draw, the Cape pad untouched, the views
+  const P = new Function('SCHOOL_FORCE', 'schoolOf', 'HOME', cut('const padSchoolOf=', '\n') + ';return padSchoolOf');
+  const sch = i => i === 3 ? 1 : 0, vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  check('Steppe pad: a site is built in its owner\'s school (sea: home\'s), the tester\'s force wins; every site draws its own; views 116–119',
+    P(null, sch, 0)({ power: 3 }) === 1 && P(null, sch, 0)({ power: 0 }) === 0 && P(null, sch, 3)({ power: null }) === 1 && P(0, sch, 0)({ power: 3 }) === 0 && P(1, sch, 0)({ power: 0 }) === 1
+      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else\{/.test(page)
+      && /if\(key===padKey\)return;if\(H!==padTH\|\|sch!==padSch\)/.test(page) && /if\(RIG\.sch===1\)return drawSteppeRig/.test(page) && /SCHOOL_FORCE = 1;/.test(vj) && /n >= 116 && n <= 119/.test(vj));
 }
 
 // space-15. Data as a volume (space session, QUEUE Q172, Q51 slice 2): a camera fills its recorder, contact drains it at

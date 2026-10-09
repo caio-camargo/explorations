@@ -1084,7 +1084,32 @@ visible change), then Steppe.
   luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
   the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
   byte-identical** from here on: that's the livery POWERS.md asks for.
-- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
+- Next: 6 (signature designs for rivals); 7 built below.
+
+### Step 7 built: the Steppe pad (2026-10-09, effects beat, QUEUE Q159)
+Built on W21's default (Caio said go). **A site's pad is in its owner's school** (`padSchoolOf(t)`: the site's power, a sea
+platform home's; `SCHOOL_FORCE` wins), so every site draws its own (`padFor(t)` in `render()`'s site loop) and the current
+one is sized to the rocket as before (`padSync`'s key now carries the school). **Nothing changes in the default world**:
+home is Cape there, and Cape's `buildPad`/`buildRig` code paths are untouched (tests 38 and 39 still sweep them).
+- **Static (`steppeTable`):** no tower. A flame pit 13 m wide (`PIT_W` 6.5) under the rocket, opening south down a
+  sooted slope: the ground can't be dug, so its mouth is a near-black floor inside parapet walls with guard rails, as
+  Cape's flame channel. The erector's rail line (ballast, rails, sleepers) runs north to a horizontal assembly hall
+  (26 × 60 m, its door facing the pad). The propellant farm, gas racks, deluge, masts, bunkers and blockhouse are shared.
+- **Rig (`steppeRig`, drawn by `drawSteppeRig`):** a table ring round the rocket on two girders over the pit; four
+  support arms ("the tulip") pivoting on it at Cape's hold-down angles (so they miss the boosters), leaning in to clamp
+  the rocket 30 % up (2.5–18 m), falling back outward 66° in 1.4 s from 0.1 s after lift-off; two cable masts north of
+  the ring with an arm to the rocket's side, falling back north at lift-off; two service halves (one mesh, drawn east
+  and turned 180° west), lattice columns on the pit's edge with open grating decks every 5 m reaching to the rocket,
+  closed when a flight starts on the pad and folding down to the ground over 14 s from 2 s in (Cape's gantry takes 14 s
+  to roll away), down in the editor; the transporter-erector, its car on the rails and its boom with cradle arms, **up
+  in the editor and on the Rollout screen** (the rocket has just been stood up) and down on its car in flight.
+- Solid decks were tried first: folded down they stood up as grey walls. Radial decouplers are left out of the rig's
+  reach sums (`padRig`'s `pb`): they are brackets, and as stack-radius cylinders they bent the Heavy's arms.
+- Views 116 (complex, editor), 117 (a flight's start), 118 (1 s after lift-off), 119 (the table from above).
+  test.mjs `aerofx-4`: for every preset the arms clamp within 0.16 m of the skin without passing through anything, the
+  masts' arms, the cradle arms and the closed halves stop short, the ring clears the base; the school per site.
+- **Not built:** the rocket lying on the erector during the rollout itself (a horizontal rocket needs the Rollout screen
+  to draw the stack on its side: flow's screen, proposed); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
 
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
