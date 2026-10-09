@@ -59,7 +59,7 @@ function procKeep(s){const P=s.procRec;if(!P||!P.done||P.dv==null||P.pts.length<
 // procedure for the design and the mission ('Selene:land', 'Selene:orbit'), kept only if it spent less Δv in all.
 function procMission(s,P){const M=P.m||(P.m={ev:[],last:s.body,landed:false,surfStage:0}),b=s.body,t=simT;if(M.kept||!s.alive)return;
   if(b!==M.last){M.ev.push({k:b.parent===M.last?'enc':'esc',body:(b.parent===M.last?b:M.last).name,t});M.last=b;M.fresh=true}if(s.throttle>0)M.fresh=true;
-  if(s.landed&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,v:s.touchV||0,orb:M.orb,pass:M.pass})}
+  if(s.landed&&!M.landed){M.landed=true;M.ev.push({k:'land',body:b.name,t,v:s.touchV||0,orb:M.orb,pass:M.pass,pf:toPF(b,s.r,simT).map(x=>+x.toFixed(1))})}
   else if(!s.landed&&M.landed){M.landed=false;M.ev.push({k:'takeoff',body:b.name,t,staged:M.surfStage});M.surfStage=0;M.orb=null}
   if(!s.landed&&!(s.throttle>0)&&b!==TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e>=1||el.ap>soiAt(b,t)){if(!M.orb&&M.fresh){M.pass=el.pe-b.R;M.fresh=false}}else if(el.pe>b.R)M.orb={pe:el.pe-b.R,ap:el.ap-b.R}}   // the pass as the executor's trim sees it: osculating, right after SOI entry or a burn
@@ -74,7 +74,7 @@ function procMissionKeep(s,P,M){const E=M.ev,enc=E.find(e=>e.k==='enc');if(!enc|
   const B=enc.body,land=E.find(e=>e.k==='land'&&e.body===B),off=E.find(e=>e.k==='takeoff'&&e.body===B),esc=E.find(e=>e.k==='esc'&&e.body===B);
   const capOrb=land?land.orb:M.orbBeforeEsc||null,phases=[{k:'transfer',to:B,pass:Math.max(10e3,(land?land.pass:M.pass)??40e3)}];
   if(capOrb)phases.push({k:'capture',ap:capOrb.ap+20e3,pe:Math.max(10e3,capOrb.pe)});
-  if(land){phases.push({k:'land'},{k:'surface',t:off?off.t-land.t:600});
+  if(land){if(land.pf)phases[0].site=land.pf;phases.push(land.pf?{k:'land',site:land.pf}:{k:'land'},{k:'surface',t:off?off.t-land.t:600});   // back to the same spot (a base, say)
     const asc=M.orbAfterOff||{pe:15e3,ap:20e3};phases.push({k:'ascend',stage:off?off.staged:0,pitchH:3000,ap:Math.max(asc.pe,asc.ap-2e3),pe:asc.pe})}
   if(!capOrb&&!land)phases.push({k:'home',perigee:M.entryPe??45e3});   // a free return: past the moon and home
   else phases.push({k:'return',perigee:M.entryPe??45e3});
@@ -155,8 +155,14 @@ function homePe(p,B){const i=p.findIndex(x=>x.b===B),L=i>=0?p[i+1]:null;if(!L||L
 function passShape(L,B){const toP=norm(mul(bodyRel(B,L.t)[0],-1)),nB=norm(cross(B.P,B.Q)),el=L.el;let u=el.P;
   if(el.pe<B.R){const p=el.a*(1-el.e*el.e),nu=-Math.acos(clamp((p/B.R-1)/el.e,-1,1));u=add(mul(el.P,Math.cos(nu)),mul(el.Q,Math.sin(nu)))}   // an impact: where it hits, on the way in
   return{side:dot(u,toP),retro:dot(el.h,nB)<0}}
+// a landing site's distance from the arrival orbit's plane (m on the surface), when it's expected to land: the pass, then
+// about two hours of capture and waiting. Off-plane is what's expensive to fix in orbit; along the track is only waiting.
+function siteOff(L,B,site){const tL=L.t+(L.el.e<1?timeToNu(L.el,0):Math.max(0,-tPe(L.el,L.el.nu)))+7200,u=norm(fromPF(B,site,tL));let n=norm(L.el.h);
+  if(L.path&&L.path.length>4){const P=L.path;let i=1;for(let j=1;j<P.length-1;j++)if(len(P[j][0])<len(P[i][0]))i=j;i=Math.min(Math.max(i,1),P.length-2);
+    const c=cross(P[i-1][0],P[i+1][0]);if(len(c)>0)n=norm(c)}   // the plane at the low point of the integrated pass: the tide twists it on the way in
+  return B.R*Math.asin(Math.min(1,Math.abs(dot(n,u))))}
 function passScore(p,B,pass,home,opt){const L=p.find(x=>x.b===B);if(L){let e=Math.abs((L.path?L.endKind==='impact'?elements(L.end,L.endV,B.mu).pe:L.minR:L.el.pe)-B.R-pass);   // the integrated pass where the tide bends it (an impact: the orbit it hits on)
-    if(opt){const g=passShape(L,B);if(opt.side==='near'&&g.side<0.3||opt.side==='far'&&g.side>-0.3)e+=3e5;if(opt.retro!=null&&opt.retro!==g.retro)e+=3e5}
+    if(opt){const g=passShape(L,B);if(opt.side==='near'&&g.side<0.3||opt.side==='far'&&g.side>-0.3)e+=3e5;if(opt.retro!=null&&opt.retro!==g.retro)e+=3e5;if(opt.site)e+=siteOff(L,B,opt.site)}
     if(home==null)return e;
     const h=homePe(p,B);return h==null?5e5+e:Math.abs(h-home)+2*Math.max(0,e-0.5*pass)}   // a free return: the way home counts; the pass may sit within half its height
   const p0=p[0];let d=Infinity;
@@ -175,6 +181,41 @@ function transferNode(s,X,ph,B,b){const o=B.orb,Pv=B.P,Qv=B.Q,p=o.a*(1-o.e*o.e),
   const tD=tN-tof,el=elements(s.r,s.v,b.mu),ang=r=>Math.atan2(-r[2],r[0]),nuDep=ang(mul(u,-1))-ang(el.P);let t1=simT+timeToNu(el,nuDep);
   const TL=el.period;while(t1+TL<=tD)t1+=TL;if(Math.abs(t1+TL-tD)<Math.abs(t1-tD))t1+=TL;   // the pass nearest the ideal departure
   X.rTo=nd.r;X.tN=tN;X.uN=u;X.sub='wait';X.tBurn=t1-tb/2;X.wake=X.tBurn-ALIGN;HOOK.msg(`Procedure: ${B.name} met at its node ${(nd.r/1e3).toFixed(0)} km out; leaving in ${((X.tBurn-simT)/3600).toFixed(1)} h (${((t1-tD)/60).toFixed(0)} min from ideal)`);return false}
+// Landing on a chosen point (Q13): ph.site is a point in the body's own frame (pf, as landed objects are kept). From a
+// low, near-circular orbit whose plane the transfer aimed through the site, it waits for the pass that comes closest
+// (over the next day: the moon turns under the orbit), then flies a powered descent at the point: the horizontal
+// velocity it wants is the one that would stop it at the site under 60 % of its thrust, toward the site, so a late start,
+// a stronger engine or a cross-track miss all show up as a velocity error and get steered out; the vertical keeps a fall
+// rate that shrinks with height (√ of the height, at 30 % of thrust). The last 30 m are the usual touchdown.
+function siteAt(B,site,t){const u=norm(fromPF(B,site,t));return mul(u,B.R+groundAlt(B,toPF(B,u,t)))}   // (the ground there, inertial frame)
+function landAt(s,X,ph,B){const A=Math.max(engAcc(s),0.1),plan=dvPlan(s,0);
+  // from a higher orbit, down to a low near-circular one first (~10 × 20 km): periapsis down at apoapsis, then apoapsis down at periapsis
+  if(!X.sub||X.sub==='lw'){const e=elements(s.r,s.v,B.mu),lo=ph.pe??10e3;
+    if(!X.sub&&e.e<1&&(e.pe-B.R>lo+5e3||e.ap-B.R>lo+15e3)){const peFirst=e.pe-B.R>lo+5e3;X.lw=peFirst?'pe':'ap';X.tBurn=simT+timeToNu(e,peFirst?Math.PI:0);X.wake=X.tBurn-ALIGN;X.sub='lw';return false}
+    if(X.sub==='lw'){aimAt(s,mul(s.v,-1),5);if(simT<X.tBurn-1e-6){s.throttle=0;return false}X.wake=null;
+      const done=X.lw==='pe'?e.pe-B.R<=lo:e.ap-B.R<=lo+10e3||e.ap-e.pe<2e3;if(!done){burnTo(s,X,mul(s.v,-1));return false}s.throttle=0;X.sub=null;return false}}
+  if(!X.sub){const el=elements(s.r,s.v,B.mu),P=el.period,w=norm(el.h),aB=0.6*A,vo=len(s.v),lead=(vo*vo/(2*aB)+vo*60)/B.R;   // start this far ahead (+ a minute's travel)
+    let best=null;for(let t=0;t<Math.min(86400,30*P);t+=20){const[r]=kepler(s.r,s.v,t,B.mu),u=norm(siteAt(B,ph.site,simT+t)),x=Math.asin(clamp(dot(u,w),-1,1)),
+      ah=norm(sub(u,mul(w,dot(u,w)))),ang=Math.atan2(dot(cross(norm(r),ah),w),dot(norm(r),ah));   // the site ahead along the track (rad), and off it
+      if(Math.abs(ang-lead)<vo*20/(2*B.R)+1e-4){const sc=Math.abs(x)*B.R;if(!best||sc<best.sc-500)best={t,sc}}}
+    if(!best){procDev(s,'nosite','the landing site never comes near the ground track');return false}
+    X.tGo=simT+best.t;X.wake=X.tGo-ALIGN;X.sub='wait';X.xtrack=best.sc;HOOK.msg(`Procedure: landing site ${(best.sc/1e3).toFixed(1)} km off the track at its closest; descent in ${((X.tGo-simT)/3600).toFixed(1)} h`);return false}
+  if(X.sub==='wait'){s.throttle=0;aimAt(s,mul(sub(s.v,surfVel(B,s.r)),-1),5);if(simT>=X.tGo-1e-6){X.sub='go';X.wake=null}return false}
+  if(s.landed){s.throttle=0;X.noAuto=true;X.miss=len(sub(s.r,siteAt(B,ph.site,simT)));return true}
+  const up=norm(s.r),vs=sub(s.v,surfVel(B,s.r)),vv=dot(vs,up),vh=sub(vs,mul(up,vv)),g=B.mu/dot(s.r,s.r),hb=len(s.r)-B.R-groundAlt(B,toPF(B,s.r,simT))+s.yBot;
+  const S=siteAt(B,ph.site,simT),dvec=sub(S,s.r),dh=sub(dvec,mul(up,dot(dvec,up))),dist=len(dh),aB=0.6*A;
+  if(plan.length>1&&dvRemaining(s).cur<=0.5)stage(s);
+  if(hb<30){const vt=-Math.max(1.2,0.08*hb);aimAt(s,sub(up,mul(sub(vh,mul(dh,0.05)),0.08)),25);s.throttle=Math.min(1,Math.max(0,(g+1.5*(vt-vv))/A));return false}
+  const vt=dist>1?mul(dh,Math.min(Math.sqrt(2*aB*dist),dist/8)/dist):[0,0,0];   // close in, a linear law (dist/8 s): no chatter across the point
+  if(!X.brk){const along=dot(dh,norm(vh));   // coast until the site is a braking distance ahead along the track; passed it: plan the next pass
+    if(along<0){X.sub=null;return false}if(along>len(vh)**2/(2*aB)){s.throttle=0;aimAt(s,mul(vh,-1),5);return false}X.brk=true}
+  if(X.over||len(vh)<15&&dist<300){X.over=true;   // over the site: the usual suicide burn down, steering out what drift is left
+    if(plan.length>1&&hb>1500&&dvRemaining(s).cur<1.15*Math.sqrt(2*g*hb+vv*vv)){stage(s);return false}   // a lander that can't finish it drops off high
+    aimAt(s,sub(up,mul(sub(vh,vt),0.08)),25);const Au=A*Math.max(0.2,dot(qrot(s.q,[0,1,0]),up)),need=vv<0?vv*vv/(2*Math.max(hb-15,1))+g:0;
+    s.throttle=need>0.7*Au?Math.min(1,need/Au):len(sub(vh,vt))>3?0.05:0;return false}
+  const ah=mul(sub(vt,vh),1/3),vvT=-Math.min(100,Math.sqrt(2*0.3*A*Math.max(hb-20,0))),av=Math.max(0,g+(vvT-vv)/3);
+  let a=add(ah,mul(up,av));const L=len(a);if(L>A){const v2=Math.min(av,A),hs=Math.sqrt(Math.max(0,A*A-v2*v2))/Math.max(len(ah),1e-6);a=add(mul(ah,Math.min(1,hs)),mul(up,v2))}
+  const ok=aimAt(s,a,30),c=dot(qrot(s.q,[0,1,0]),norm(a));s.throttle=c>0.5?Math.min(1,len(a)/A):0;return false}
 const MP={
   transfer(s,X,ph){const B=bodyNamed(ph.to),b=s.body;
     if(!X.sub&&(B.orb.e>0.05||B.orb.i>0.01))return transferNode(s,X,ph,B,b);
@@ -191,12 +232,12 @@ const MP={
       const sc0=passScore(predict(s),B,ph.pass,home,ph);X.dv=solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),8,400);X.got=0;X.sub='mcc';X.mccN=(X.mccN||0)+1;
       if(typeof DEBUG_PROC!=='undefined')HOOK.msg(`MCC ${X.mccN}: score ${(sc0/1e3).toFixed(0)} → ${(passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,X.dv),t:simT}),B,ph.pass,home,ph)/1e3).toFixed(0)} km-ish with ${len(X.dv).toFixed(1)} m/s`);return false}
     if(X.sub==='mcc'){if(!impulse(s,X))return false;const p=predict(s),L=p.find(x=>x.b===B),hp=home!=null?homePe(p,B):null;
-      const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3)||passScore(p,B,ph.pass,null,ph)>=3e5;   // wrong side or sense counts as off too
+      const off=!L||(home!=null?(hp==null||Math.abs(hp-home)>20e3):Math.abs(L.el.pe-B.R-ph.pass)>20e3)||passScore(p,B,ph.pass,null,ph)>=3e5||!!(ph.site&&L&&siteOff(L,B,ph.site)>3e3);   // wrong side or sense counts as off too, and a landing site off the plane
       if(off&&X.mccN<3){X.sub='coast';X.wake=simT+3*3600;return false}   // not there yet: correct again later
       if(off&&!L){procDev(s,'offcourse',`three corrections and still no encounter with ${B.name}`);return false}
       X.sub='toSOI';X.wake=p[0].endT?p[0].endT+60:simT+3600;return false}
     if(X.sub==='toSOI'){s.throttle=0;s.sasMode='pro';if(s.body!==B){if(simT>=X.wake)X.wake=simT+600;return false}X.wake=null;
-      X.dv=home!=null||ph.side||ph.retro!=null||B.pert?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),2,100)   // a moon the tide bends: the integrated pass
+      X.dv=home!=null||ph.side||ph.retro!=null||ph.site||B.pert?solveDv(s,dv=>passScore(predictFrom({b:s.body,r:s.r,v:add(s.v,dv),t:simT}),B,ph.pass,home,ph)+0.01*len(dv),2,100)   // a moon the tide bends: the integrated pass
         :solveDv(s,dv=>{const e=elements(s.r,add(s.v,dv),B.mu);return Math.abs(e.pe-B.R-ph.pass)+0.01*len(dv)},2,100);X.got=0;X.sub='trim';return false}
     return impulse(s,X)},
   capture(s,X,ph){const B=s.body;
@@ -207,7 +248,7 @@ const MP={
       if(simT>=X.tBurn-1e-6){X.sub='burn';X.wake=null}return false}
     if(X.sub==='burn'){const e=elements(s.r,s.v,B.mu);if(e.e<1&&e.ap-B.R<ph.ap){s.throttle=0;X.sub='fix';return false}burnTo(s,X,mul(s.v,-1));return false}
     return fixPe(s,X,ph.pe)},
-  land(s,X,ph){const B=s.body;
+  land(s,X,ph){const B=s.body;if(ph.site)return landAt(s,X,ph,B);
     // first bring periapsis down near the ground (a small burn at apoapsis): braking low saves the fall, ~√(2gh) of Δv
     if(!X.sub){const e=elements(s.r,s.v,B.mu),peT=ph.pe??5e3;if(e.e<1&&e.pe-B.R>peT+2e3){X.tBurn=simT+timeToNu(e,Math.PI);X.wake=X.tBurn-ALIGN;X.sub='dwait';return false}
       X.tBurn=simT+Math.max(0,timeToNu(e,0)-60);X.wake=X.tBurn-ALIGN;X.sub='wait';X.fine=0;return false}

@@ -3522,3 +3522,53 @@ courtesy lock; two machines double throughput.
 - [ ] Orchestrator: tag look items by beat, at least 2 ready per beat
 - [ ] Create `launchpad-sky` when a sky & bodies session starts
 
+## 2026-10-08 — Launchpad: landing on a chosen point (bodies session, cont.; QUEUE Q13)
+
+A `site` (a point in the body's frame, as landed objects are kept) for the transfer and the landing:
+- the transfer aims the orbit's plane through it, scored on the integrated pass, since the tide twists the plane ~5° on
+  the way in;
+- the capture is lowered to ~10×20 km;
+- it waits for the pass that comes closest;
+- `landAt` flies a powered descent at the point.
+
+5 m off on Selene (20°N, 60°N, 85°N, far side) and on Nyx, for 60–150 m/s over an untargeted landing. Recorded landing
+procedures now keep their spot: the crewed re-flight lands 12 m from the hand-flown one. 387 checks pass.
+
+**Files:** `index.html` (siteOff, siteAt, landAt, recorder `pf`), `fly_ladder.mjs` (`flySite`, `siteOf`), `test.mjs`
+(bodies-3; §27 checks the spot), NOTES, QUEUE (Q13 ✓, two proposals), TESTING 121 (renumbered 125 at the platform merge: economy had 121).
+
+### Next steps
+- [ ] Bodies lane is empty in QUEUE: the orchestrator ranks the proposals
+
+## 2026-10-08 — Launchpad roadmap v1.3: the system catalog as an unblocker (roadmap session)
+
+### Summary
+Caio: working out how many planets there are, and what they're like, would let them be worked on in parallel. Nothing
+in NOTES or the code defined the system beyond Tellus, Selene and Nyx. ROADMAP now has **the system catalog**: a 📝
+item for the space lane, drafted with Caio, producing `SYSTEM.md` (per body: physical, orbit, look brief, ground brief,
+role, known or discovered; the object kinds to decide on; the constraints). Default: planets and major moons hand-made
+and fixed, minor bodies and visitors seeded per world. Once approved, each body fans out into a package across lanes;
+look and ground per body may start before M5 against a tester "go to body" view.
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.2.0 → 1.3.0, `QUEUE.md` (one flag)
+
+### Next steps
+- [ ] Space session (or Caio directly): draft `SYSTEM.md` with Caio
+- [ ] Orchestrator: fan out per-body items after approval
+
+## 2026-10-08 — Launchpad roadmap v1.4: design desk, design catalogs, next unblockers (roadmap session)
+
+### Summary
+Caio raised national flavours and astronauts (cartoony like Kerbals or human: open) as design work, and asked whether
+the orchestrator can name the next unblockers. Added a **design desk** role, which drafts Caio-approved catalogs by
+interviewing him: `SYSTEM.md` (moved here from the space lane), `POWERS.md` (flavours as content on top of the v1.24
+axes), `CREW.md` (art direction first, picked from mock-ups; named crew would be a new system) and Q53 identity. The
+orchestrator now keeps a *Next unblockers* list and answers "what are the next unblockers?".
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.3.0 → 1.4.0, `QUEUE.md` (one flag), `docs/session-roles.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Start a design desk session; first catalog: SYSTEM.md (or CREW.md's art direction, which needs mock-ups)
+

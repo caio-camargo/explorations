@@ -1,12 +1,13 @@
 # Session roles
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Standing briefs for named sessions. When Caio says "you are the <role> session", find the role here and
 follow its brief after the normal AGENTS.md startup. Add a section when a new standing role appears.
 
 | Role | Say | Brief |
 |---|---|---|
 | A launchpad lane (flow, economy, vehicle, space, world, look & sound, QA, platform) | "you are the launchpad **space** session"; look & sound also names a beat: "…**look & sound** session, beat: effects" | [`explorations/launchpad/QUEUE.md`](../explorations/launchpad/QUEUE.md): its kickoff line; lanes in [`ROADMAP.md`](../explorations/launchpad/ROADMAP.md) |
-| Orchestrator | "you are the orchestrator" | Its row in `ACTIVE_WORK.md` and the top of `QUEUE.md` |
+| Orchestrator | "you are the orchestrator"; ask it "what are the next unblockers?" | Its row in `ACTIVE_WORK.md`, the top of `QUEUE.md`, and ROADMAP § "Keeping the queue full" (incl. *Next unblockers*) |
+| Design desk | "you are the design desk" | [below](#design-desk) |
 | Playtest intake | "you are the playtest feedback session" | [below](#playtest-intake) |
 | Studio | "you are the studio session" | [below](#studio) |
 
@@ -26,6 +27,22 @@ Caio gives raw playtest observations in any shape: a list, a ramble, screenshots
 
 Ask Caio only when a note is ambiguous. Pull before each edit, and commit and push doc changes as you go (PLAYTEST.md,
 QUEUE.md, the session log). You can stay open alongside every other session: you only touch docs.
+
+## Design desk
+
+Launchpad's game design, the part only Caio can approve. **No game code.**
+
+Owns the design catalogs in ROADMAP § "Design catalogs": `SYSTEM.md` (the star system), `POWERS.md` (national flavours as
+content), `CREW.md` (astronauts, starting with the open art-direction question), and the visual identity plan (Q53).
+For each one:
+1. Read what NOTES already decided (cite the sections) and ROADMAP § Pillars.
+2. Interview Caio in short rounds: options with trade-offs and a recommendation, never a blank page. When a choice is
+   visual, ask a look session for mock-ups, so Caio picks from pictures.
+3. Write the catalog in `explorations/launchpad/`, marked draft until Caio approves it. Then flag the orchestrator to fan
+   out the build items, one per body, power or crew piece.
+
+A proposal that needs a new system goes to *Waiting on Caio* with the pillar it serves (ROADMAP § "Systems are complete").
+Pull before editing, push as you go.
 
 ## Studio
 

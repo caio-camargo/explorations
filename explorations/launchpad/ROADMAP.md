@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.4.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -86,13 +86,76 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 - **look:** satellites and constellations readable on the map; ground tracks.
 - **QA:** a robot career past epoch 3 (M2's finish line).
 
+### The system catalog (an unblocker, now)
+
+**Why now:** what the star system holds is the one design decision that lets the most work run in parallel. Once each
+body is fixed on paper, it becomes its own work package, and every lane can take a slice of it without waiting on the
+others. Today the game has Tellus, Selene and Nyx, all rooted at Tellus; no document says what else exists.
+
+**The item** (📝, L, the **design desk** with the space lane's input, **Caio approves the list**): `SYSTEM.md` in this folder, one entry
+per body or object class, each with:
+- **physical:** mass, radius, rotation (or tidal lock), axial tilt, atmosphere (surface pressure, scale height, makeup),
+  surface (rock, ice, ocean, none), rings, magnetic field;
+- **orbit:** parent, semi-major axis, eccentricity, inclination, SOI, transfer Δv and time from Tellus, window period;
+- **look brief:** a paragraph and two real-world references, enough for a sky & bodies session to start;
+- **ground brief:** what the world lane builds there (craters, maria, dunes, ice, ocean, nothing to land on);
+- **role:** the epoch it belongs to, the missions it poses (which physics makes them design problems), what it gives
+  back (science, resources, a discovery), and the pillar it serves;
+- **known at start or discovered** (PLAYTEST #11: the planets are known from epoch 1, as in reality; Nyx is found).
+
+**Object kinds to decide on:** the star · rocky planets · a gas giant (and its moons) · an ice world · major moons ·
+captured moons · dwarf planets · an asteroid belt and near-Tellus asteroids (M4's capture and mining) · comets ·
+interstellar visitors (M5, generated per playthrough) · Lagrange-point trojans (Selene's L4/L5 are stable, NOTES
+§ "Program design").
+
+**Constraints it must respect:**
+- Tellus's scale (a fifth of Earth, 9.81 m/s², an 8 h day, NOTES § "The planet's size"); other bodies are scaled in
+  the same spirit;
+- the year is Tellus's orbital period, tuned so a long probe spans about one compute era (NOTES § "Time, long
+  missions");
+- every orbit stable on rails (resonances and spacing; n-body stays a setting);
+- **default, Caio may override:** the planets and major moons are **hand-made and the same in every world**, so content
+  can be built on them; minor bodies, comets and visitors are **seeded per world** (`WSEED`), for replay variety.
+
+**What it unblocks:** each approved body becomes a package:
+- **look:** a sky & bodies session per body (several bodies, several sessions);
+- **world:** its ground;
+- **space:** its orbit, SOI and rails;
+- **economy:** its missions and contracts;
+- **QA:** a tester "go to body" cheat.
+
+Look and ground for a body may be built **before M5** against that tester view. It's content inside systems that already
+exist (ray-cast bodies, generated terrain), so the milestone gate doesn't hold it back. Heliocentric rails and the year
+wait for M5.
+
+### Design catalogs (the design desk, with Caio)
+
+Design that only Caio can approve, written as catalogs so lanes can fan out from them. The **design desk** session
+(`docs/session-roles.md`) drafts them by interviewing Caio; the orchestrator fans out the build items once he approves.
+
+| Catalog | What it settles | Unblocks |
+|---|---|---|
+| `SYSTEM.md` | The star system (above) | per-body look, ground, orbits, missions |
+| `POWERS.md` | **National flavours as content.** The axes and archetypes exist (v1.24, NOTES § "Power flavours"); this gives each archetype a name style, a flag, a hardware look (rocket shapes, paint, pads), its mission-control and news tone, its rival program's personality, and what it changes in play | the parts & pad beat per power, rival programs, site looks, economy contracts per power |
+| `CREW.md` | **Astronauts.** First the art direction, an **open question** (Caio, 2026-10-08): cartoony like Kerbals, realistic humans, or stylised humans between the two. Then whether crew are named people with careers, which would be a new system needing a pillar | crew visuals, EVA, crew-loss tone, any roster |
+| visual identity (Q53) | One look for the screens, matching the early-era hardware | flow's screen work, PLAYTEST #13 |
+
+**How to settle the astronaut question cheaply:** the design desk writes the trade-offs (below), a look session renders
+two or three mock-ups in the same scene (the capsule hatch, the pad walkway), and Caio picks from pictures, not words.
+- **Cartoony:** charm and comedy, no uncanny valley, cheap to animate, losing one stings less. Clashes with the realistic
+  early-era hardware unless the identity bends too.
+- **Realistic:** matches the hardware, and crew loss weighs what it did in 1967. Expensive to make convincing, and up
+  close it risks the uncanny valley.
+- **Stylised human** (1960s illustration, Thunderbirds, Tintin): human proportions with simple forms. Fits the era's look
+  and the lighter tone; the likely middle.
+
 ### M3–M5 — design only for now (📝 items, any lane)
 
 - **M3:** Selene terrain plan (Q18) · landing on a chosen crater (Q13) · rovers on real ground · crew rotation · the
   pre-flight **mission planner**, first slice (Selene windows and the free return; NOTES § "Planning before the flight").
 - **M4:** steady-state vessel temperature (NOTES § "Waste heat") · depots · the datacenter · Selene ISRU · the AI compute
   era · consortia.
-- **M5:** the star-centred system and the year · heliocentric rails · porkchops and the B-plane flyby solver · deep-space
+- **M5:** the star-centred system and the year (built from `SYSTEM.md`, above) · heliocentric rails · porkchops and the B-plane flyby solver · deep-space
   dish arrays · interstellar visitors · late propulsion and low-thrust propagation ([`TECH_SCOUTING.md`](TECH_SCOUTING.md)) ·
   PLAYTEST #11/#12.
 
@@ -186,7 +249,10 @@ In order:
    the next one.
 5. **Ship with a way to check it:** a new TESTING row, and a robot driver when it's cheap. Otherwise QA gets a line
    in Proposed.
-6. **Defaults:** a question for Caio goes to *Waiting on Caio* **with a recommended default**. Work proceeds on the
+6. **Next unblockers:** keep a short *Next unblockers* list at the top of QUEUE. It holds the items and decisions that
+   free the most other work: count the `after` / `blocked` states pointing at each, and add the design catalogs and the
+   *Waiting on Caio* answers. Caio can ask "what are the next unblockers?" and get the top three with what each frees.
+7. **Defaults:** a question for Caio goes to *Waiting on Caio* **with a recommended default**. Work proceeds on the
    default, and the item is marked "default, Caio may override". A real override goes in NOTES with its consequences.
 
 ---
