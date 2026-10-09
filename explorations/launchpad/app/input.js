@@ -27,7 +27,7 @@ addEventListener('keydown',e=>{
   else if(k==='['||k===']')cycleVessel(k===']'?1:-1);
   else if(k==='v'&&S.alive&&rcsJets(S)){S.rcs=!S.rcs;renderSAS();HOOK.msg(S.rcs?'RCS on':'RCS off')}
   else if(k==='n')nodeAtApoapsis();
-  else if(k==='delete'&&S.node){S.node=null;HOOK.msg('Node deleted')}
+  else if(k==='delete'&&S.node){S.node=null;nodeNext(S);HOOK.msg(S.node?'Node deleted; the next is up':'Node deleted')}
   else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();go('flight');HOOK.msg('Reverted to launch')}});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());

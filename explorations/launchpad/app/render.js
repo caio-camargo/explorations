@@ -297,9 +297,9 @@ function drawMap(VP,camW,labels){
   else if(p0&&p0.el.hl>1e-3&&!S.landed){const el=p0.el,off=bodyPos(p0.b,simT),[n0,n1]=patchRange(p0);
     for(let i=0;i<=360;i++){const nu=n0+(n1-n0)*i/360,den=1+el.e*Math.cos(nu);if(den<=1e-6)continue;const rr=el.p/den,t=nuToT(el,nu,simT);
       if(p0.endT&&t>p0.endT)continue;mapUI.pickW.push({p:add(off,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)))),t})}}
-  // the planned trajectory after the node, dashed
-  if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),key=JSON.stringify([S.body.name,I.t,I.rN.map(x=>Math.round(x/100)),add(I.vN,I.rem).map(x=>Math.round(x*100))]);
-    if(!planCache||planCache.key!==key&&!(planCache.num&&performance.now()-planCache.wall<250)){const p=predictFrom({b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planCache={key,p,num:p.some(x=>x.path),wall:performance.now()}}
+  // the planned trajectory after the node (after the last node of a chain: nodePlanEnd, vehicle Q33), dashed
+  if(S.node){const I=nodeInfo(S),off=bodyPos(S.body,simT),key=JSON.stringify([S.body.name,I.t,I.rN.map(x=>Math.round(x/100)),add(I.vN,I.rem).map(x=>Math.round(x*100)),(S.nodeQ||[]).map(n=>[n.t,n.dv])]);
+    if(!planCache||planCache.key!==key&&!(planCache.num&&performance.now()-planCache.wall<250)){const p=predictFrom(nodePlanEnd(S)||{b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planCache={key,p,num:p.some(x=>x.path),wall:performance.now()}}
     const plan=planCache.p;
     drawPatches(gateLegs(plan,labels),camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
     const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
