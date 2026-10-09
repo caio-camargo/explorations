@@ -7100,7 +7100,7 @@ top of the air · Keys leaves the toolbar (H and the menu still have it) · pins
   M, the HUD's glass buttons and white messages vanished on the cream paper: `body.paper` (set while that map shows)
   turns them to ink, with the "on" buttons in red pencil. (2) Keyboard paths: **L** rolls out from the Assembly and
   launches from the Rollout (the buttons say so), **1–8** pick the Program tabs; `KEYS` rows can carry `act` (called
-  with the key) as well as `go`.
+  with the key) as well as `go`. **Enter** ends a flight that is over (landed or lost), like the End flight ▸ button.
 
 ### Network screen plan (2026-10-09, flow session, QUEUE Q111; plan only)
 LATE_GAME.md (approved) makes the network screen the late game's main screen: nodes you built, routes that fly
