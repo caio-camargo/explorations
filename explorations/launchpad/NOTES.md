@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
+## v1.87 — the orbital period waits for the engines to stop (2026-10-09, space session, QUEUE Q114, PLAYTEST #30)
 
 `missionTick` noted the first orbital period (around Tellus, `period`; around Selene, `sorbit`) the moment the orbit was
 bound with its periapsis clear, which is partway through the burn that closes it: the robot's Selene probe logged
