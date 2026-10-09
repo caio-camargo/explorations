@@ -6213,6 +6213,65 @@ the arrows, and every key in the handlers present in its Help table.
   era for each: [`mockups/identity/`](mockups/identity/index.html), stills in `output/launchpad/mockups/identity/`, the
   options and trade-offs in [`mockups/README.md`](mockups/README.md). For Caio to pick (or mix: office screens in one,
   cockpit in another); Q53 builds the pick.
+- **First run explained** (Q41): the gate's two questions each open with one line on what the choice decides (the power:
+  how the money arrives, what the public wants, what a failure costs; the start: who owns the program and who you
+  answer to), and every option is a row with its own sentence on screen (it used to be a hover tooltip for the powers,
+  so only the chosen power's line showed). "Random world" names what it rolled. The consortium's blurb became one
+  sentence. Same buttons and `data-arch` / `data-start` attributes, so the robot rows and handlers are unchanged.
+
+### Slice 4 plan: the flight core and cards (2026-10-08, flow session, QUEUE Q3; plan only, build after Caio reads it)
+**Today.** One `#info` table: 13 rows always (MET, Body, Altitude, Radar alt, Speed, Apoapsis, Periapsis, Mass, Δv, Aero,
+Impact, Heat, Structure, Link) plus up to 16 more from ten helpers owned by six sessions (`spinRows`, `wheelRows`,
+`rcsRows`, `tgtRows`, `dockRows`, `fleetRows`, `bayRows`, `armRows`, `rvRows`, `payloadRows`). At ~25 rows it runs into
+the stages (PLAYTEST #9, TESTING 98). Aerofx's gauge strip (`drawGauges`: altitude tape, air depth, q with max-q, Mach,
+heat) sits right of the navball as a placeholder (`gaugeRect`). The toolbar has seven buttons.
+
+**1. The core** (top left, fixed, never more than 6 lines; the spec's list):
+- `MET` and the situation on one line: `T+04:12 · Tellus · flying · link Fenfen Cape` (the Link row folds in here; blackout
+  in amber).
+- `Altitude` (it becomes *radar* altitude, labelled so, below `TERR_TOP` + 20 km while descending), with the vertical speed
+  beside it as today.
+- `Speed`: one number, surface speed in the air and orbital speed above it (the label says which).
+- `Ap / Pe` on one line, each with its time.
+- `Δv`: stage · total · TWR.
+
+**2. The gauges are the instrument panel**: they stay bottom centre beside the navball (gauges | throttle | navball |
+SAS), shown while the Ascent condition holds (in the air with q > 1 kPa, or skin heating rising), hidden in space, so the
+cluster narrows. `gaugeRect` moves to the HUD layout (flow), the drawing stays aerofx's.
+
+**3. Cards**, a right-hand column under the toolbar. Each card: a title bar, its rows, a pin (📌 keeps it open). A card
+shows while its condition holds; the column is capped at the window height, and the oldest unpinned card folds to its
+title bar first. Today's rows, mapped:
+
+| Card | Shows while | Rows (from) |
+|---|---|---|
+| Ascent | the gauges show | Structure, Heat (the part, ablator) — the numbers the gauges don't draw |
+| Descent | descending with an impact predicted, or landed | Impact (+ spread, range safety), landing (`payloadRows` landing line) |
+| Target | a target is set | `tgtRows`, `dockRows` |
+| Payload | payload events, or opened from the core | `payloadRows` (passenger, instruments, contracts) |
+| Fleet | more than one vessel | `fleetRows` |
+| Vehicle | spinning, wheels saturating, RCS on, or opened | Mass · g, `spinRows`, `wheelRows`, `rcsRows` |
+| Hardware | a bay, arm or claw armed | `bayRows`, `armRows` |
+| Rover | driving | `rvRows` |
+
+**For the other sessions (additive): a card registry.** `HUD_CARDS.push({id, title, when: () => bool, rows: () =>
+[[label, html], …]})`. Today's helpers become `rows` unchanged, so their owners change nothing; new HUD content
+registers a card instead of appending to `updateHUD`'s list. A static check (like §32) fails if `updateHUD` gains a row
+outside the core.
+
+**4. Toolbar**: Map, warp (shown and clickable: ◀ ×N ▶), ☰. Revert, Assembly, Logbook, Keys and Save as autopilot
+leave it (all in the Esc menu; End flight ▸ appears when the flight is over, slice 3). The news and `#msg` lanes
+(`hudLayout`) take the card column's left edge as their right limit.
+
+**5. Map view**: the core stays; the navball shrinks to a heading line; gauges and cards hide except Target; the node
+panel as now.
+
+**Slices**, each merged alone and checked by robot `m1` (no box over another at 1280×800 and 1000×700) plus TESTING 98
+(a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
+new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
+
+**Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ---
 
