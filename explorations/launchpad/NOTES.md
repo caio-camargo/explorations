@@ -9547,3 +9547,7 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 preset (#24), the new-career robot run is green: weather ✓, beeper ✓ on the **Beeper** preset (51M of 104M), the clock
 stands still under Esc, a Debrief after each flight, and no overlapping boxes on any screen. M1's robot finish line is
 met (ROADMAP M1 row). What's left of M1 isn't the robot's: the career.mjs pacing check, and a person playing the first hour.
+
+**TESTING numbers are checked (QA session, 2026-10-09).** `test.mjs` `qa-3` fails if a TESTING row number is used twice or
+"Next free number" isn't above them all. Rows had collided twice in two days (LESSONS #37), so a collision now fails the
+suite you run before merging, instead of waiting for someone to read the file.
