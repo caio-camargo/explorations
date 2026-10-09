@@ -1,5 +1,5 @@
 # Launchpad — what still needs a human to try
-**Version**: 0.1.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
+**Version**: 0.1.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running checklist
 **Purpose**: Everything built that nobody has played yet. The headless checks (`node test.mjs`) prove the numbers; this list is
 for what only a person can judge: feel, difficulty, looks, whether a flow is findable and fun.
 
@@ -75,6 +75,7 @@ NOTES § "The robot playtester".
 
 | # | Try this | How to get there | Looks right if | From | Owner |
 |---|---|---|---|---|---|
+| 147 | Fly the first orbit missions on presets | New career: after the Sounding flights, Assembly → Presets → **Beeper** for *The beeper*; **Passenger Orbiter** for *Passenger: one orbit* (wait one orbit, retro burn, chute) | Both reach orbit flown by hand; the reaction wheel turns them for the circularisation and the retro burn; the passenger comes home with the mission paid | v1.73 | vehicle |
 | 144 | Power a probe | Tester epoch past the onboard-computer era (or a career past year 7): Assembly, Power category: put a computer, a battery and two solar wings on a probe; read the power line; fly it to orbit, press **P** after the fairing; fly through a night side | The power line reads sensibly and turns red when the wings can't keep up; P is in the key list; wings out in the air tear off; a probe without a computer has no target or docking SAS modes, a crew capsule has them; a battery that runs flat says so and comes back in the sun | v1.68 | vehicle |
 | 17 | Build a rocket from scratch with snapping, radial attach, symmetry (X), line-end pull (C), radial decoupler (R) | Program > BUILD, empty design | Ghost snaps where you expect; green/red validity obvious; a new player can make a 2-stage + boosters rocket without help | v1.17 | builder |
 | 18 | Pick up subtrees, Ctrl-copy, Shift-place-many, right-click options, undo/redo | Builder on any preset | Picking up the upper stage takes what you expect; undo never loses work; options menu not cluttered | v1.17 | builder |
