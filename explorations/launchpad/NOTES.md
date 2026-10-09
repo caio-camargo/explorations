@@ -1832,7 +1832,7 @@ and no start stuck after one failed orbit attempt*, which `career.mjs` now shows
 five, which a person would get out of by withdrawing and flying samples).
 
 
-## v1.NEXT — station-keeping checked against a real controller (2026-10-09, space session, QUEUE Q142; study only)
+## v1.88 — station-keeping checked against a real controller (2026-10-09, space session, QUEUE Q142; study only)
 
 v1.71 charges a held orbit the net change in its size and shape over 20 days; a crude controller (one burn to reverse
 the drift) had pumped the eccentricity, so it measured nothing. `study_slot.mjs` part D now flies a TV satellite over the
