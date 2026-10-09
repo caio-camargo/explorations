@@ -74,6 +74,7 @@ the feedback I paste into PLAYTEST items.*
 - **M0 bugs before anything else in your lane** (orchestrator, 2026-10-09): vehicle's **Q74, Q77** and economy's **Q112, Q118** were skipped for later items. Finish the item you're on, then take these. They're the only things between us and M0 (and M1's pacing check).
 - **World and anyone touching ground contact:** read NOTES § v1.61 "The contact model needed three fixes": `groundContact` sizes each point by its effective mass and holds with stiction (anchors).
 - **The robot's `m1` run passes in full on `main`** (QA): any merge that touches screens reruns `node playtest.mjs m1` before pushing.
+- **Design desk, 2026-10-09: [`MIDGAME.md`](MIDGAME.md) approved.** **Space (station-keeping, decay) and economy: read § Satellites before more satellite work**: lifetime is a design choice that a good satellite outlasts its era with, and replacement is for upgrades, not wear. Automation is opt-in per route and climbs with the compute eras.
 - **The milestone gate (ROADMAP):** code only for **M0 (stabilize, current)** and **M1 (the first hour, next)**, plus the
   space lane's M2 groundwork. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only.
 
@@ -304,6 +305,9 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W16 | **A person who isn't you plays the first hour** (M1's finish line): PLAYROUTE sitting 1, or the new career; QA writes where they got stuck in PLAYTEST | M1 done |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- space — **re-tune station-keeping (v1.60) and decay (v1.64)** so a well-designed satellite outlasts its era (Caio 2026-10-09: maintenance as a chore is out; "holds 240 more days" should be a careless design, not the norm); vehicle: the satellite's **lifetime as a builder readout** — MIDGAME.md § Satellites (⚙, M2)
+- economy — **replacement for upgrades**: service quality by the satellite's era (obsolescence), servicing contracts only for valuable assets — MIDGAME.md § Satellites (M2)
+- economy + space — **the automation ladder**: which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a **window rule** — MIDGAME.md (M2–M4)
 - space — the flight's own coast feels the thin air above 100 km (20 m/s an hour at 110 km, 1.7 at 130): today it's free mid-flight and gone in an hour after; check the presets' parking orbits first — NOTES v1.64, Q25
 - economy — reboost contracts now have a cause: a station or imaging satellite sinking (decayLife, the Program line) — NOTES v1.64, Q25
 - QA/vehicle — parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel; check PLAYROUTE and the presets' briefs — NOTES v1.64, Q25
