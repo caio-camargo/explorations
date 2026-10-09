@@ -11,6 +11,8 @@ window.refView = async (n) => {
   const settle = () => new Promise(r => setTimeout(r, 150));
   // the budget gate refuses expensive designs on a fresh program: reference views are screenshots, so fund them
   if (typeof PROG !== 'undefined' && PROG.funds < 1e6) PROG.funds = 1e6;
+  // the galaxy is per program (Q21); reference views keep the one they were tuned on
+  if (typeof PROG !== 'undefined') PROG.gseed = WSEED;
   // scene only: hide panels, HUD, messages, and the builder's CoM/CoP markers
   const bare = () => { document.querySelectorAll('.ui,#perf,#news,#msg').forEach(e => e.style.visibility = 'hidden'); if (S) S.ana = null; render(); };
   if (n === 1) { // the Orbiter on the pad, morning light
@@ -261,7 +263,7 @@ window.refView = async (n) => {
   // the band, 99 the sun, 100 the band over the planet's limb (D horizontal, the camera tipped down a little)
   if (n >= 97 && n <= 100) {
     stackDef = ['pod', 't2', 'petrel']; editorChanged(); document.getElementById('launch').click(); S.landed = false; S.mkLift = true; stage(S);
-    const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
+    galaxy(); const along = norm(cross(GAL.gx, GAL.gc)), D = n === 97 ? GAL.gc : n === 98 ? along : n === 99 ? norm(add(SUN, mul(GAL.gx, 0.04))) : along;
     let up = D; if (n === 100) { up = norm(cross(D, GAL.gx)); if (dot(up, SUN) < 0) up = mul(up, -1) }   // a sunlit limb
     const r = TELLUS.R + 300e3; S.r = mul(up, r); S.v = mul(norm(cross(GAL.gx, up)), Math.sqrt(TELLUS.mu / r)); S.throttle = 0; S.w = [0, 0, 0];
     const f = localFrame(S.r), Dv = n === 100 ? norm(add(D, mul(up, -0.25))) : D;

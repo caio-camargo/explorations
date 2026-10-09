@@ -1250,6 +1250,15 @@ which swallowed a declaration: `render()` threw every frame while the HUD was up
 commit of this session first runs a live-flight smoke test with the HUD up (3 s of flight plus the map), which fails on any
 console exception (LESSONS #34).
 
+### A galaxy per program (2026-10-09, effects beat, QUEUE Q21)
+`GAL` came from `WSEED`, the planet's seed, a constant: every playthrough had the same sky. The planet should stay fixed
+(sites, coasts, powers all hang on it), so the galaxy gets its own seed instead: `PROG.gseed`, drawn the first time the
+sky is drawn (`galaxy()`, called from `render()`) and saved with the program. `makeGal(seed)` is the old recipe.
+- A program reset clears it (`gseed:null` in the reset in `app/editor.js`), so a new playthrough gets a new sky; the
+  tester's sandbox is a separate saved program, so it has its own. An old save without the field draws one on load.
+- Reference views set `PROG.gseed = WSEED` (13), so views 97–100 stay the pictures they were tuned on.
+- Seen: `refView(97)` (aimed at seed 13's centre) shows the band; seeds 424242 and 99 put their galaxies elsewhere.
+- test.mjs `aerofx-3`.
 ## PLAYTEST #3 and #4: a new rocket that looks new, and the pad at night (2026-10-08, aerofx session; visuals' code)
 
 Taken with a note in the visuals session's claim (it was idle). PLAYTEST #2 (gantry clipping) had already been fixed by

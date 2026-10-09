@@ -3973,6 +3973,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('withdraw: taken contracts show the button', pg.includes('data-wd="${c.id}"') && pg.includes('withdrawContract(+ds.wd)'));
 }
 
+// aerofx-3. A different galaxy each playthrough (look & sound effects beat, QUEUE Q21): the sky's galaxy comes from the
+// program's own seed PROG.gseed, drawn once and kept (saved with PROG); a different seed gives a different sky; a program
+// reset clears it; the reference views pin it to WSEED so they stay the same pictures.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  const body = n => { const i = pg.indexOf('function ' + n + '('); let j = i, d = 0; for (; j < pg.length; j++) { if (pg[j] === '{') d++; else if (pg[j] === '}' && --d === 0) break; } return pg.slice(i, j + 1); };
+  const SIMF = new Function(src + 'return {rng,norm,add,sub,mul,dot,WSEED}')(), P = {};
+  const G = new Function('rng', 'norm', 'add', 'sub', 'mul', 'dot', 'WSEED', 'PROG', body('makeGal') + ';let GAL=makeGal(WSEED);' + body('galaxy') + ';return {makeGal,galaxy}')(
+    SIMF.rng, SIMF.norm, SIMF.add, SIMF.sub, SIMF.mul, SIMF.dot, SIMF.WSEED, P);
+  const a = G.galaxy(), s1 = P.gseed, b = G.galaxy(), w = G.makeGal(SIMF.WSEED), o = G.makeGal(s1 + 1);
+  P.gseed = null; const c = G.galaxy(), s2 = P.gseed;
+  const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8'), ed = readFileSync(new URL('./app/editor.js', import.meta.url), 'utf8');
+  check('galaxy per program: drawn once and kept, different seeds differ, a reset draws a new one; views pin WSEED',
+    s1 > 0 && a === b && a.seed === s1 && Math.abs(dot(w.gx, o.gx)) < 0.9999 && s2 > 0 && s2 !== s1 && c.seed === s2
+      && vj.includes('PROG.gseed = WSEED') && ed.includes('Object.assign(PROG,{gseed:null,') && /galaxy\(\);gl\.uniform3fv\(u\.uGx/.test(pg),
+    `seeds ${s1} → reset ${s2}; WSEED vs other gx·gx ${dot(w.gx, o.gx).toFixed(3)}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
