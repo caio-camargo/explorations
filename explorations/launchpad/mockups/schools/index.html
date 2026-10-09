@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>School mock-ups</title>
+<!-- Launchpad mock-up for POWERS.md's hardware schools (QUEUE Q89): the Orbiter preset styled Cape and Steppe side by side
+     (the same parts and outline: only surface, finish, paint and roundel differ), one signature design per school, and
+     each school's pad. A standalone page: never loaded by index.html. The Orbiter's outline is the game's own (its parts'
+     profiles, exported from the sim on 2026-10-09); everything is raymarched. ?view=<key> picks a still. -->
+<style>
+  :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #9aa3b2; --acc: #f2b84b; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #bar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
+    background: rgba(14, 17, 22, .78); padding: 6px 8px; border-radius: 6px; }
+  #bar button { background: #1b2029; color: var(--fg); border: 1px solid #333b48; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
+  #bar button.on { border-color: var(--acc); color: var(--acc); }
+  #cap { position: fixed; left: 12px; bottom: 10px; right: 12px; color: #fff; text-shadow: 0 1px 3px #000; }
+  body.still #bar { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="bar"></div>
+<div id="cap"></div>
+<script>
+'use strict';
+const VIEWS = {
+  orbiters:  { v: 0, cam: [6.5, 6, 13.5], tgt: [0, 7, 0], fov: 1.25, cap: 'The Orbiter preset, the same parts and outline: Cape (left: white, black roll pattern, a ribbed skirt over the upper engine) and Steppe (right: grey-green enamel, an open lattice interstage)' },
+  signature: { v: 1, cam: [8, 10, 22], tgt: [0, 11, 0], fov: 1.3, cap: 'Signature designs built from normal parts: Cape\'s tall slim stack of three stages (left) and Steppe\'s core with four conical strap-ons (right)' },
+  capePad:   { v: 2, cam: [11, 7, 15], tgt: [-1.5, 8, 0], fov: 1.35, cap: 'Cape\'s pad: a tall fixed service tower with swing arms, a flame deflector, the crawlerway' },
+  steppePad: { v: 3, cam: [9, 12, 17], tgt: [-4, 1, 0], fov: 1.35, cap: 'Steppe\'s pad: rolled out lying down on rails, raised over a flame pit; the launch table\'s arms fall back at lift-off' },
+};
+// the Orbiter's outline from the game (parts bottom to top: kestrel, fins, t8, dec, petrel, t2, pod, chute; r, y per part)
+const PARTS = [[0, [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 1.3]]], [1.3, [[.625, 0], [.625, .9]]], [2.2, [[.625, 0], [.625, 7.4]]],
+  [9.6, [[.625, 0], [.625, .25]]], [9.85, [[.6, 0], [.15, .7], [.3, .8], [.625, .9], [.625, 1]]], [10.85, [[.625, 0], [.625, 2]]],
+  [12.85, [[.625, 0], [.625, .06], [.34, 1], [.3, 1.06], [.3, 1.2]]], [14.05, [[.3, 0], [.3, .22], [.16, .38], [0, .42]]]];
+const ORB = []; for (const [y0, pr] of PARTS) for (const [r, y] of pr) ORB.push([r, y0 + y]);
+// Cape's signature: three stages, tall and slim (the same tank and engine radii, more tanks), a pod and a tower on top
+const CAPE = [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 13], [.6, 13], [.15, 13.7], [.3, 13.8], [.625, 13.9], [.625, 19], [.6, 19], [.15, 19.7], [.3, 19.8], [.5, 19.9], [.5, 23],
+  [.5, 23.05], [.3, 23.9], [.28, 24], [.12, 24.2], [.12, 26.6], [0, 26.8]];
+// Steppe's signature: a core (a long tank, a lattice, an upper stage, a small fairing) — the strap-ons are cones (shader)
+const STEP = [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 14.5], [.6, 14.5], [.15, 15.2], [.3, 15.3], [.625, 15.4], [.625, 18], [.5, 18.6], [.45, 19.8], [.2, 20.6], [0, 20.8]];
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov;uniform int uV;uniform vec2 uP[64];uniform ivec2 uPr[3];   // profiles: offset, count
+const vec3 SUN=normalize(vec3(-.5,.62,.6));
+float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+// a revolved profile (r, y pairs, y rising): distance to the polyline in the (r, y) half-plane, negative inside
+float sdProf(vec3 p,int k){int o=uPr[k].x,n=uPr[k].y;vec2 q=vec2(length(p.xz),p.y);float d=1e9;bool ins=false;
+ for(int i=0;i<63;i++){if(i>=n-1)break;vec2 a=uP[o+i],b=uP[o+i+1],ba=b-a,pa=q-a;float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-9),0.,1.);d=min(d,length(pa-ba*h));
+  if(q.y>=min(a.y,b.y)&&q.y<max(a.y,b.y)&&b.y>a.y){float r=mix(a.x,b.x,(q.y-a.y)/(b.y-a.y));if(q.x<r)ins=true;}}
+ vec2 top=uP[o+n-1],bot=uP[o];d=min(d,max(abs(q.y-bot.y),q.x-bot.x));
+ return ins?-d:d;}
+// an interstage cover around an exposed upper engine, y0..y1 at radius R: Cape a closed ribbed skirt, Steppe an open lattice
+float stage(vec3 p,float y0,float y1,float R,int school){vec2 q=vec2(length(p.xz),p.y);float sh=max(abs(q.x-R+.02)-.02,abs(q.y-(y0+y1)*.5)-(y1-y0)*.5);
+ if(school==0)return sh;
+ float a=atan(p.z,p.x)*R,s=.42,y=q.y-y0,l=min(abs(fract((a+y)/s)-.5),abs(fract((a-y)/s)-.5))*s-.035;   // diagonal struts
+ float ring=abs(abs(q.y-(y0+y1)*.5)-(y1-y0)*.5+.04)-.04;return max(sh,min(l,ring));}
+// fins: four plates around the fin ring (y 1.3–2.2)
+float fins(vec3 p,float y0){vec3 q=p;q.xz=abs(q.xz);if(q.z>q.x)q.xz=q.zx;return sdBox(q-vec3(.95,y0+.4,0.),vec3(.35,.42-.25*clamp((q.x-.6)/.7,0.,1.),.03));}
+// a Steppe strap-on: a cone resting against the core, its tip leaning in, four small bells at the base
+float strap(vec3 p,float ang){float c=cos(ang),s=sin(ang);vec3 q=vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);q.x-=1.05;
+ float lean=.035;q.x+=q.y*lean;vec2 w=vec2(length(q.xz),q.y);float h=10.,rr=mix(.55,.12,clamp(w.y/h,0.,1.));
+ float body=max(w.x-rr,max(-w.y+.9,w.y-h));float tip=length(w-vec2(0.,h))-.12;body=min(body,tip);
+ for(int i=0;i<4;i++){float aa=float(i)*1.5708+.785;vec3 b=q-vec3(cos(aa)*.25,.45,sin(aa)*.25);float bl=max(length(b.xz)-mix(.18,.08,clamp(b.y+.45,0.,1.)),abs(b.y)-.45);body=min(body,bl);}
+ return body;}
+// scene. Materials: 1 ground, 2 concrete pad, 3 rocket (school A = Cape), 4 rocket (Steppe), 5 interstage A, 6 interstage B,
+// 7 steel / tower red, 8 rails and dark steel, 9 bells, 10 strap-on (Steppe), 11 fins A, 12 fins B
+vec2 rocket(vec3 p,int k,int school,float iy0,float iy1){vec2 r=vec2(sdProf(p,k),school==0?3.:4.);
+ float st=stage(p,iy0,iy1,.625,school);if(st<r.x)r=vec2(st,school==0?5.:6.);
+ if(p.y<1.32){float b=sdProf(p,k);if(b<.05&&p.y<1.15)r.y=9.;}
+ return r;}
+vec2 map(vec3 p){
+ vec2 r=vec2(p.y,1.);
+ if(uV==0){   // both Orbiters on one concrete apron
+  float pad=sdBox(p-vec3(0.,.15,0.),vec3(8.,.15,4.));if(pad<r.x)r=vec2(pad,2.);
+  vec3 a=p-vec3(-2.4,.3,0.),b=p-vec3(2.4,.3,0.);
+  vec2 ra=rocket(a,0,0,9.6,10.85);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
+  vec2 rb=rocket(b,0,1,9.6,10.85);if(rb.x<r.x)r=rb;float fb=fins(b,1.3);if(fb<r.x)r=vec2(fb,12.);}
+ else if(uV==1){
+  float pad=sdBox(p-vec3(0.,.15,0.),vec3(10.,.15,5.));if(pad<r.x)r=vec2(pad,2.);
+  vec3 a=p-vec3(-3.,.3,0.);vec2 ra=rocket(a,1,0,13.,13.9);float s2=stage(a,19.,19.9,.6,0);if(s2<ra.x)ra=vec2(s2,5.);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
+  vec3 b=p-vec3(3.2,.3,0.);vec2 rb=rocket(b,2,1,14.5,15.4);if(rb.x<r.x)r=rb;
+  for(int i=0;i<4;i++){float s=strap(b,float(i)*1.5708+.785);if(s<r.x)r=vec2(s,10.);}}
+ else if(uV==2){   // Cape: the Orbiter on its pad, the fixed tower and its swing arms, the deflector, the crawlerway
+  float pad=sdBox(p-vec3(0.,.6,0.),vec3(7.,.6,7.));if(pad<r.x)r=vec2(pad,2.);
+  float trench=sdBox(p-vec3(0.,.6,4.),vec3(1.4,.8,3.));pad=max(pad,-trench);if(pad<r.x)r=vec2(pad,2.);
+  vec3 a=p-vec3(0.,1.2,0.);vec2 ra=rocket(a,0,0,9.6,10.85);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
+  vec3 t=p-vec3(-3.6,1.2,0.);float tw=sdBox(t-vec3(0.,9.,0.),vec3(1.1,9.,1.1));   // the tower: an open box truss
+  vec3 tq=t;tq.y=mod(tq.y,1.8)-.9;float holes=min(sdBox(tq,vec3(1.3,.72,.88)),sdBox(tq,vec3(.88,.72,1.3)));tw=max(tw,-holes);
+  if(tw<r.x)r=vec2(tw,7.);
+  for(int i=0;i<3;i++){float y=6.+float(i)*4.2;float arm=sdBox(t-vec3(1.9,y,0.),vec3(1.1,.18,.32));if(arm<r.x)r=vec2(arm,7.);}
+  float rail=min(abs(p.x-1.6),abs(p.x+1.6));float cw=max(rail-.0,abs(p.y)-.02);
+  float road=sdBox(p-vec3(0.,.02,-16.),vec3(4.,.02,9.));if(road<r.x)r=vec2(road,8.);}
+ else{   // Steppe: rolled out lying down on rails, over the flame pit; the launch table with its arms
+  float pit=sdBox(p-vec3(4.,-3.,0.),vec3(4.5,3.4,3.2));r.x=max(r.x,-pit);
+  float wall=max(sdBox(p-vec3(4.,-3.,0.),vec3(4.8,3.4,3.5)),-pit);if(wall<r.x)r=vec2(wall,2.);
+  float tbl=sdBox(p-vec3(4.,.4,0.),vec3(2.2,.4,2.2));tbl=max(tbl,-sdBox(p-vec3(4.,.4,0.),vec3(1.4,.6,1.4)));if(tbl<r.x)r=vec2(tbl,8.);
+  for(int i=0;i<4;i++){float aa=float(i)*1.5708+.785;vec3 q=p-vec3(4.+cos(aa)*1.6,1.6,sin(aa)*1.6);float arm=sdBox(q,vec3(.18,1.3,.18));if(arm<r.x)r=vec2(arm,8.);}
+  for(int i=0;i<2;i++){float z=i==0?-1.3:1.3;float rl=sdBox(p-vec3(-9.,.09,z),vec3(15.,.09,.08));if(rl<r.x)r=vec2(rl,8.);}
+  float car=sdBox(p-vec3(-8.,.9,0.),vec3(9.,.25,1.4));if(car<r.x)r=vec2(car,8.);   // the transporter-erector
+  for(int i=0;i<4;i++){float x=-15.+float(i)*4.5;float cr=sdBox(p-vec3(x,1.6,0.),vec3(.25,.6,1.1));if(cr<r.x)r=vec2(cr,8.);}   // cradles
+  vec3 q=p-vec3(-17.,2.4,0.);q=vec3(q.y,q.x,q.z);   // the Steppe signature, lying along +x, engines toward the pit
+  vec2 rb=rocket(q,2,1,14.5,15.4);if(rb.x<r.x)r=rb;for(int i=0;i<4;i++){float s=strap(q,float(i)*1.5708+.785);if(s<r.x)r=vec2(s,10.);}}
+ return r;}
+vec3 nrm(vec3 p){vec2 e=vec2(.003,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 o,vec3 d){float res=1.,t=.05;for(int i=0;i<64;i++){float h=map(o+d*t).x;res=min(res,8.*h/t);t+=clamp(h,.05,1.);if(res<.002||t>60.)break;}return clamp(res,0.,1.);}
+vec3 sky(vec3 d){vec3 c=mix(vec3(.7,.78,.86),vec3(.33,.52,.8),pow(max(d.y,0.),.5));if(d.y<0.)c=vec3(.48,.5,.42);return c;}
+// a roundel at the rocket's side: Cape stripes and a star field, Steppe one big star on a plain disc
+vec3 roundel(vec2 u,int school,vec3 base){float r=length(u);if(r>.42)return base;if(r>.39)return vec3(.95);
+ if(school==0){if(u.y>.0&&u.x<.0){vec2 g=fract(u*14.)-.5;return length(g)<.18?vec3(.95):vec3(.1,.18,.45);}return mod(floor(u.y*9.),2.)<.5?vec3(.75,.12,.12):vec3(.95);}
+ float a=atan(u.x,u.y),k=cos(floor(.5+a/1.2566)*1.2566-a)*r;return k<.16+.0*r?vec3(.95,.86,.3):vec3(.72,.1,.1);}
+vec3 paint(float m,vec3 p,vec3 lp,int school){   // lp: rocket-local position
+ float a=atan(lp.z,lp.x),y=lp.y;
+ if(school==0){vec3 c=vec3(.92,.92,.9);
+  if(y>2.6&&y<9.2){float quad=step(0.,sin(a*2.));float band=step(.5,fract((y-2.6)/1.85));c=mix(c,vec3(.06),quad==band?1.:0.);}   // the roll pattern
+  if(y>11.&&y<12.6&&abs(a-1.57)<.6)c=roundel(vec2((a-1.57)*.62,y-11.8),0,c);
+  if(y>12.85&&y<14.1)c=vec3(.1,.1,.11);return c;}
+ vec3 c=vec3(.46,.53,.43)*(.92+.08*h2(floor(vec2(a*8.,y*2.))));   // grey-green enamel, panel by panel
+ if(abs(fract(y/1.3)-.5)>.48)c*=.7;   // panel seams
+ if(y>11.&&y<12.6&&abs(a-1.57)<.6)c=roundel(vec2((a-1.57)*.62,y-11.8),1,c);
+ return c;}
+void main(){
+ vec2 uv=v*vec2(uRes.x/uRes.y,1.)*.5;vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
+ vec3 rd=normalize(fw+(uv.x*rt+uv.y*up)*uFov),ro=uCam;float t=0.;vec2 h;bool hit=false;
+ for(int i=0;i<300;i++){h=map(ro+rd*t);if(abs(h.x)<.002*t){hit=true;break;}t+=h.x*.6;if(t>220.)break;}
+ vec3 col=sky(rd);
+ if(hit){vec3 p=ro+rd*t,n=nrm(p);float m=h.y;vec3 al;int school=m==4.||m==6.||m==10.||m==12.?1:0;
+  vec3 lp=p-(uV==0?vec3(school==0?-2.4:2.4,.3,0.):uV==1?vec3(school==0?-3.:3.2,.3,0.):uV==2?vec3(0.,1.2,0.):vec3(-17.,2.4,0.));
+  if(uV==3)lp=vec3(lp.y,lp.x,lp.z);
+  if(m<1.5){float g=h2(floor(p.xz*.5));al=mix(vec3(.46,.48,.38),vec3(.55,.53,.44),g);}
+  else if(m<2.5)al=vec3(.6,.59,.56)*(.9+.1*h2(floor(p.xz*1.2)));
+  else if(m<4.5)al=paint(m,p,lp,school);
+  else if(m<5.5){al=vec3(.12);float rib=step(.5,fract(atan(lp.z,lp.x)*12./3.14159));al+=.1*rib;}   // a ribbed black skirt
+  else if(m<6.5)al=vec3(.2,.22,.2);
+  else if(m<7.5)al=vec3(.72,.2,.12);
+  else if(m<8.5)al=vec3(.3,.31,.32);
+  else if(m<9.5)al=vec3(.18,.17,.17);
+  else if(m<10.5)al=paint(4.,p,vec3(0.,4.,1.),1)*.95;
+  else if(m<11.5)al=vec3(.08);else al=vec3(.42,.49,.4);
+  float dif=max(dot(n,SUN),0.),sh=shadow(p+n*.01,SUN);
+  col=al*(dif*sh*vec3(1.,.97,.9)*1.2+(.35+.25*n.y)*vec3(.42,.5,.62));
+  vec3 rf=reflect(rd,n);col+=pow(max(dot(rf,SUN),0.),40.)*sh*(m>2.5&&m<4.5?.25:.05);
+  col=mix(col,sky(rd),1.-exp(-t*.006));}
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+{ const all = [...ORB, ...CAPE, ...STEP], f = new Float32Array(128); all.forEach((q, i) => { f[i * 2] = q[0]; f[i * 2 + 1] = q[1]; });
+  gl.uniform2fv(U('uP[0]'), f); gl.uniform2iv(U('uPr[0]'), new Int32Array([0, ORB.length, ORB.length, CAPE.length, ORB.length + CAPE.length, STEP.length])); }
+let view = new URLSearchParams(location.search).get('view') || 'orbiters';
+if (new URLSearchParams(location.search).has('still')) document.body.classList.add('still');
+const bar = document.getElementById('bar');
+for (const k in VIEWS) { const b = document.createElement('button'); b.textContent = k; b.dataset.v = k; bar.appendChild(b); }
+bar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { view = b.dataset.v; draw(); } });
+function draw() {
+  const V = VIEWS[view], dpr = Math.min(2, devicePixelRatio || 1);
+  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); gl.viewport(0, 0, cv.width, cv.height);
+  gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1i(U('uV'), V.v); gl.uniform3fv(U('uCam'), V.cam); gl.uniform3fv(U('uTgt'), V.tgt); gl.uniform1f(U('uFov'), V.fov);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
+  document.getElementById('cap').textContent = V.cap; window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
+}
+addEventListener('resize', draw); draw();
+</script>
+</body>
+</html>
