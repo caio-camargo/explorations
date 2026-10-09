@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.3.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
+**Version**: 1.4.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -92,7 +92,7 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 body is fixed on paper, it becomes its own work package, and every lane can take a slice of it without waiting on the
 others. Today the game has Tellus, Selene and Nyx, all rooted at Tellus; no document says what else exists.
 
-**The item** (📝, L, space lane, drafted with Caio, **Caio approves the list**): `SYSTEM.md` in this folder, one entry
+**The item** (📝, L, the **design desk** with the space lane's input, **Caio approves the list**): `SYSTEM.md` in this folder, one entry
 per body or object class, each with:
 - **physical:** mass, radius, rotation (or tidal lock), axial tilt, atmosphere (surface pressure, scale height, makeup),
   surface (rock, ice, ocean, none), rings, magnetic field;
@@ -127,6 +127,27 @@ interstellar visitors (M5, generated per playthrough) · Lagrange-point trojans 
 Look and ground for a body may be built **before M5** against that tester view. It's content inside systems that already
 exist (ray-cast bodies, generated terrain), so the milestone gate doesn't hold it back. Heliocentric rails and the year
 wait for M5.
+
+### Design catalogs (the design desk, with Caio)
+
+Design that only Caio can approve, written as catalogs so lanes can fan out from them. The **design desk** session
+(`docs/session-roles.md`) drafts them by interviewing Caio; the orchestrator fans out the build items once he approves.
+
+| Catalog | What it settles | Unblocks |
+|---|---|---|
+| `SYSTEM.md` | The star system (above) | per-body look, ground, orbits, missions |
+| `POWERS.md` | **National flavours as content.** The axes and archetypes exist (v1.24, NOTES § "Power flavours"); this gives each archetype a name style, a flag, a hardware look (rocket shapes, paint, pads), its mission-control and news tone, its rival program's personality, and what it changes in play | the parts & pad beat per power, rival programs, site looks, economy contracts per power |
+| `CREW.md` | **Astronauts.** First the art direction, an **open question** (Caio, 2026-10-08): cartoony like Kerbals, realistic humans, or stylised humans between the two. Then whether crew are named people with careers, which would be a new system needing a pillar | crew visuals, EVA, crew-loss tone, any roster |
+| visual identity (Q53) | One look for the screens, matching the early-era hardware | flow's screen work, PLAYTEST #13 |
+
+**How to settle the astronaut question cheaply:** the design desk writes the trade-offs (below), a look session renders
+two or three mock-ups in the same scene (the capsule hatch, the pad walkway), and Caio picks from pictures, not words.
+- **Cartoony:** charm and comedy, no uncanny valley, cheap to animate, losing one stings less. Clashes with the realistic
+  early-era hardware unless the identity bends too.
+- **Realistic:** matches the hardware, and crew loss weighs what it did in 1967. Expensive to make convincing, and up
+  close it risks the uncanny valley.
+- **Stylised human** (1960s illustration, Thunderbirds, Tintin): human proportions with simple forms. Fits the era's look
+  and the lighter tone; the likely middle.
 
 ### M3–M5 — design only for now (📝 items, any lane)
 
@@ -226,7 +247,10 @@ In order:
    the next one.
 5. **Ship with a way to check it:** a new TESTING row, and a robot driver when it's cheap. Otherwise QA gets a line
    in Proposed.
-6. **Defaults:** a question for Caio goes to *Waiting on Caio* **with a recommended default**. Work proceeds on the
+6. **Next unblockers:** keep a short *Next unblockers* list at the top of QUEUE. It holds the items and decisions that
+   free the most other work: count the `after` / `blocked` states pointing at each, and add the design catalogs and the
+   *Waiting on Caio* answers. Caio can ask "what are the next unblockers?" and get the top three with what each frees.
+7. **Defaults:** a question for Caio goes to *Waiting on Caio* **with a recommended default**. Work proceeds on the
    default, and the item is marked "default, Caio may override". A real override goes in NOTES with its consequences.
 
 ---

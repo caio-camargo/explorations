@@ -3531,3 +3531,18 @@ look and ground per body may start before M5 against a tester "go to body" view.
 - [ ] Space session (or Caio directly): draft `SYSTEM.md` with Caio
 - [ ] Orchestrator: fan out per-body items after approval
 
+## 2026-10-08 — Launchpad roadmap v1.4: design desk, design catalogs, next unblockers (roadmap session)
+
+### Summary
+Caio raised national flavours and astronauts (cartoony like Kerbals or human: open) as design work, and asked whether
+the orchestrator can name the next unblockers. Added a **design desk** role, which drafts Caio-approved catalogs by
+interviewing him: `SYSTEM.md` (moved here from the space lane), `POWERS.md` (flavours as content on top of the v1.24
+axes), `CREW.md` (art direction first, picked from mock-ups; named crew would be a new system) and Q53 identity. The
+orchestrator now keeps a *Next unblockers* list and answers "what are the next unblockers?".
+
+### Files
+- `explorations/launchpad/ROADMAP.md` 1.3.0 → 1.4.0, `QUEUE.md` (one flag), `docs/session-roles.md` 1.0.0 → 1.1.0
+
+### Next steps
+- [ ] Start a design desk session; first catalog: SYSTEM.md (or CREW.md's art direction, which needs mock-ups)
+
