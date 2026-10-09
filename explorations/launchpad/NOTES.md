@@ -1479,6 +1479,27 @@ Mutations caught: letting small craters through, no channels, smooth slab rock. 
 **Next, in GROUND.md's order:** Astraea (the belt's dwarf: a bright-floored crater, a lonely mountain), then Hyperion's
 moons, Erebus.
 
+## v1.73 — debris, slice 1: spent stages stay in orbit (2026-10-09, space session, QUEUE Q26)
+
+Slice 1 of § "Plan: debris and Kessler" (below): **big pieces are objects.** In `sim/space.js` after the registry.
+- `junkNote` (one call in `detach`, vehicle's `sim/vessel.js`): every piece a program flight drops is noted with its state,
+  shape and mass, sim-side, so headless flights see it too (the app's `debris` list only keeps a piece for 240 s).
+- `junkRegister(R)` at flight end, after `satRegister`: pieces of 100 kg or more (`JUNK_MIN`) in a closed orbit clear of the
+  air (a moon's: clear of its highest ground) and well inside the SOI (Tellus: under half the nearest moon's distance)
+  join the registry as **Debris** (`q.junk`, named after the stage's engine, e.g. *Kestrel booster (debris)*). One news line.
+- They're registry entries, so what exists already works on them: drawn when near, **G targets them**, contact in flight,
+  the arm grapples them. Never flyable (no command part), never held (`adrift` from birth, no propellant spent).
+- Between flights they ride their rails plus decay (v1.64), no tidal stepping (cheap for hundreds); a moon's still uses its
+  stepper. Low ones re-enter quietly (no warning, no news).
+- The Program screen sums them in one line under *In orbit* (count, tonnes) instead of listing each.
+- `procFly` saves and restores the list, so dry runs and dispatched flights leave none (dispatched debris: later).
+
+**In practice** a normal ascent drops its booster suborbital (nothing registered); debris comes from staging after
+orbit is reached, upper stages left in orbit, and anything dropped on the way to Selene that stays in a closed orbit.
+
+Test `space-3` (3 checks; mutations caught: never noted, no orbit check, loud re-entry, no size floor, any flight's
+pieces). Full suite passes. TESTING row 147. Next: slice 2, conjunctions between flights (active entries only).
+
 ## v1.72 — Erebus's ground on the CPU, the last hand-made body (2026-10-09, world session, GROUND.md G7)
 
 The icy dwarf at the edge (SYSTEM.md § Erebus, Pluto), built and measured headless like the others. **Not live:** it's on a
