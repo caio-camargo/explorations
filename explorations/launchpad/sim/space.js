@@ -79,6 +79,41 @@ function junkRegister(R){const L=JUNK.splice(0).filter(j=>j.rec===R&&j.mass>=JUN
       qo:qmul(qconj(orbQ(j.r,j.v)),j.q),attached:[],adrift:PROG.day,cam:0,ant:0,sci:0,ballast:0,bio:0};
     if(B!==TELLUS)q.bodyName=B.name;PROG.sats.push(q)}
   if(n)HOOK.news(`${n} spent stage${n>1?'s':''} from this flight stay${n>1?'':'s'} in orbit as debris`,'warn');return n}
+// ---- debris, slice 2 (space session, QUEUE Q146): conjunctions between flights. Big objects (Debris) against active
+// entries only (everything else in Tellus orbit), never object against object (LATE_GAME § "Debris and Kessler": the
+// measured costs). Each orbit is smeared over 50 km altitude bands by the share of its period it spends in each (resid).
+// A pair crosses at two nodes; for circular orbits of radius r and mutual inclination Δi, with radii spread over a band
+// of width W, the rate is Rs² v / (2π r² W cos(Δi/2)), Rs the two bounding radii added: at a node they hit if their
+// offsets across the band and along the track fall in an ellipse of area π Rs²/cos(Δi/2) (a Monte Carlo agrees,
+// study_debris.mjs). Summed over the bands both visit, weighted by their shares.
+// A hit: a crewed entry is always warned and moves (LATE_GAME: no surprise deaths); a tracked one (radar + compute: from
+// the mainframe era) with DODGE_DV in its tanks dodges and pays it; anything else is destroyed with the object, and the
+// breakup is recorded for the fragment bands (Q147). The whole pressure is a world setting (off / light / real).
+const BAND_W=50e3,BAND_N=38,DODGE_DV=0.5,PRESSURE_K={off:0,light:0.1,real:1};
+const pressureOf=k=>(PROG.pressures||{})[k]||'light';   // world settings for pressures (platform's Q124 adopts this)
+const bandR=b=>TELLUS.R+TELLUS.atm+(b+.5)*BAND_W;
+const RES_C=new WeakMap();
+function resid(q){let c=RES_C.get(q);if(c&&c.ep===q.epoch&&c.r===q.r)return c;const el=elements(q.r,q.v,TELLUS.mu),f=new Float64Array(BAND_N),N=72;
+  if(el.e<1)for(let i=0;i<N;i++){const M=2*Math.PI*(i+.5)/N;let E=M;for(let k=0;k<6;k++)E-=(E-el.e*Math.sin(E)-M)/(1-el.e*Math.cos(E));
+    const b=Math.floor((el.a*(1-el.e*Math.cos(E))-TELLUS.R-TELLUS.atm)/BAND_W);if(b>=0&&b<BAND_N)f[b]+=1/N}
+  c={ep:q.epoch,r:q.r,f,hn:mul(el.h,1/el.hl),R:satMP(q).R};RES_C.set(q,c);return c}
+// hits a day between two Tellus orbits (at full, "real" rates)
+function pairRate(A,B){const a=resid(A),b=resid(B),ci=Math.cos(Math.acos(clamp(dot(a.hn,b.hn),-1,1))/2),Rs=a.R+b.R;let s=0;
+  for(let k=0;k<BAND_N;k++)if(a.f[k]&&b.f[k]){const r=bandR(k);s+=a.f[k]*b.f[k]*Math.sqrt(TELLUS.mu/r)/(r*r)}
+  return s?Rs*Rs*s/(2*Math.PI*BAND_W*Math.max(ci,0.05))*DAY_S:0}
+const entryCrewed=q=>[q,...(q.attached||[]).map(x=>x.e)].some(e=>(e.shape||[]).some(o=>o.crew));
+const debrisTracked=()=>compEra()>=1;
+function conjTick(T0,T1,roll){const K=PRESSURE_K[pressureOf('debris')]||0,days=(T1-T0)/DAY_S;if(!(K>0)||!(days>0))return;
+  const up=satsUp(),J=up.filter(q=>q.junk),A=up.filter(q=>!q.junk);if(!J.length||!A.length)return;
+  for(const a of A){if(!PROG.sats.includes(a))continue;const rates=J.filter(o=>PROG.sats.includes(o)).map(o=>[o,pairRate(a,o)]).filter(x=>x[1]>0);
+    const L=K*days*rates.reduce((s,x)=>s+x[1],0);if(!(L>0))continue;
+    const u=(roll||rng((Math.floor(T1/DAY_S)*104729+a.id*7919)|0))();if(u>=1-Math.exp(-L))continue;
+    let w=u/(1-Math.exp(-L))*rates.reduce((s,x)=>s+x[1],0),o=rates[0][0];for(const[x,r]of rates){if(w<r){o=x;break}w-=r}
+    if(entryCrewed(a)){skSpend(a,DODGE_DV);HOOK.news(`${a.name} was warned of ${o.name} on a collision course and moved out of its way`,'warn');continue}
+    if(debrisTracked()&&skDv(a)>=DODGE_DV){skSpend(a,DODGE_DV);HOOK.news(`${a.name} dodged ${o.name}: tracked, warned, a ${DODGE_DV} m/s burn`,'ok');continue}
+    const h=len(satAt(a,T1)[0])-TELLUS.R;PROG.sats=PROG.sats.filter(x=>x!==a&&x!==o);
+    (PROG.breakups=PROG.breakups||[]).push({day:T1/DAY_S,h,mass:(a.mass||0)+(o.mass||0),a:a.name,o:o.name});
+    HOOK.news(`${a.name} was struck by ${o.name}${debrisTracked()?'':', which nobody was tracking'}: both are gone in a cloud of fragments`,'bad')}}
 // ---- rendezvous: a registered satellite as the flight's target (S.target = its id). Everything in program time.
 const progT=s=>(s.rec&&s.rec.launched?s.rec.day0:Math.ceil((PROG.day||0)-1e-9))*DAY_S+simT;
 function tgtOf(s){const tv=s.tgtV;if(tv&&tv!==s&&tv.alive&&FLEET.includes(tv)&&tv.body===s.body)return{q:tv,ves:true,r:tv.r,v:tv.v,dr:sub(tv.r,s.r),dv:sub(s.v,tv.v)};   // a vessel of this flight
@@ -648,7 +683,8 @@ function orbTick(T0,T1){for(const q of[...(PROG.sats||[])]){if(q.docked||q.lande
       if(had)HOOK.news(`${q.name} has used the last of its propellant holding its orbit: from now on it ${slotRate(q)>0?'drifts':'sinks'}`,'warn')}}   // (one that never had any just drifts)
     if(q.adrift==null){if(q.epoch<T1&&slotTilt(q)>TILT_MIN)tiltStep(q,T1);continue}}   // held (or nothing to hold): only the tilt moves
   if(!(q.epoch<T1))continue;
-  if(q.bodyName||tideMatters(q))moonOrbStep(q,T1);else decayStep(q,T1)}}
+  if(q.bodyName||tideMatters(q))moonOrbStep(q,T1);else decayStep(q,T1)}
+  conjTick(T0,T1)}   // debris, slice 2
 const pfDist=(b,a,c)=>Math.acos(clamp(dot(norm(a),norm(c)),-1,1))*b.R;   // along the surface
 // a landed object as a contact body at flight time t: fixed to its body, turning with it, immovable
 function landBody(q,t){const b=landedBody(q),M=satMP(q),r=fromPF(b,q.pf,t);return{sat:q,r,v:surfVel(b,r),q:qmul(qBody(b,t),q.ql),w:[0,bodyOmega(b),0],m:1e15,I:[1e18,1e18,1e18],cm:M.cm,parts:M.parts,R:M.R}}
