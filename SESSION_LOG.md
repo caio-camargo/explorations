@@ -4018,3 +4018,23 @@ Negative result: at 18 km the crater grows a central peak, which the first "pit"
 ### Next steps
 - [ ] World: Hyperion's moons (Theia, Eos, Tethys, Phoebe), then Erebus
 - [ ] Space (Q87): Astraea into the body tree with `ground: ASTRAEA_GROUND`
+
+## 2026-10-09 — Launchpad v1.68: power: onboard computer, solar cells and wings, battery (Q34a, vehicle session)
+
+- **Parts** (palette *Power*): onboard computer (50 W, offered from the onboard-computer era: the first era-gated part),
+  battery 1 kWh, body solar cells, a solar wing (**P** unfolds it; tears off deployed above 1 kPa). Probe cores hold 0.5 kWh;
+  antenna 5 W, camera 10 W; crew capsules draw nothing (own fuel cells).
+- **New `sim/power.js`:** one store per vessel, shadow as a cylinder, physics and rails steps (long rails steps on the orbit's
+  average shadow), a steady-state `powerBudget` shown in the builder. Running flat turns the computer off (analog SAS) and
+  it comes back in the sun; never kills.
+- **Caio's call applied:** guidance-computer SAS modes need a computer: built into crew capsules, the `ocomp` part on probes.
+  The control session's avionics check now gives its guidance-computer pod an `ocomp`.
+- **Measured:** low orbit 37.2 % in shadow (15.9 of 42.7 min); one orbit integrated +204 Wh vs steady state +202 Wh.
+- **Tests:** `vehicle-2`, 5 checks. Full suite 488/488 on the merge with main before economy's Q10; the last two merges
+  (Q10, world's Astraea ground) checked with `--smoke` plus the affected sections.
+- Renumbered at merge (v1.67 taken → **v1.68**); TESTING row **144**. FLAG: rows 139, 140, 142 are duplicated by others.
+
+**Files:** new `sim/power.js` (+ `index.html` script line), `sim/vessel.js`, `sim/procedures.js`, `sim/program.js`,
+`app/editor.js`, `app/gl.js`, `app/input.js`, `app/screens.js`, `builder.js`, `test.mjs`, launchpad `NOTES.md` (§ v1.68),
+`TESTING.md`, `QUEUE.md`, `ACTIVE_WORK.md`.
+**Next:** the space lane can build Q27/Q50's power side on this; vehicle's next ready items per QUEUE (Q48 warnings, Q33 nodes).
