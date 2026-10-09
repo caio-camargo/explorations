@@ -152,8 +152,8 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q17 | PLAYTEST #17, Link side: blackout gated on airspeed (`PLASMA_V`, `plasmaOn`) | M0 | S | ⚙ | ✓ `c227ed6` |
 | Q19 | Cost of low grazing views (8.8 ms over rugged hills): M1 needs a steady frame rate at the default site | M1 | M | 🖥 | ready |
 | Q52 | Terrain look: coasts too smooth, the pad terrace, monotone ice ranges, lost salt flats and wetlands (NOTES § v1.25 "Next session" #3) | — | M | 🖥 | ready (evergreen) |
-| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | ready (plan only) |
-| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | ready (plan only) |
+| Q18 | Selene terrain: craters, maria, slopes, shadows, horizons | M3 | L | 📝 | → world 2026-10-08 (plan, with Q86) |
+| Q86 | 📝 Ground per body from [`SYSTEM.md`](SYSTEM.md)'s ground briefs: which generator each needs (craters, dunes, ice, none for Hesper and Hyperion), shared with Q18 | M5 | L | 📝 | → world 2026-10-08 (plan, with Q18) |
 
 ### look & sound — always run as beats, one session each (ROADMAP § Lanes, "Beats")
 Collisions between beats: `render()`'s pass order, shared shader helpers, bloom, `views.js` numbering. Changing any of them needs an `ACTIVE_WORK.md` line.
