@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.29 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.30 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -323,6 +323,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 |---|---|---|---|---|---|
 | Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ✓ `ce44e42` (`sndSettings` in Settings, saved) |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
+| Q222 | A sound for the **Steppe rollout**: the erector car's rumble on the rails (7 s), the boom's hydraulics (5 s), the arms closing; the clock is `rollPhase()` in `app/rollout.js` (from flow's Q193, v1.111) | M1 | S | 🖥 | ready |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ✓ `0458c99` (`sndPlasma`, `sndOthers`) |
 
 ### QA — robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs (was playtest + tester)
@@ -432,4 +433,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W32 | **Look at the suits, round 2** (CREW.md 0.2.4 → Q219): `explorations/launchpad/mockups/suits/index.html` (bar: suit, pose, shot; the last four buttons are the brief's checks), or `output/launchpad/mockups/suits/r2-sheet-lineup.png` and `r2-check1-silhouettes.png` / `r2-check2-grey.png` / `r2-check3-48px.png`. Each suit built from its own pieces (Cape hard and glossy, hoses into the chest; Steppe canvas, laces, hoods, the ventilator case). Lost at 48 px: Apollo's bellows, Mercury's finger lights, the SK-1 letters; Orlan's door shows only from behind. Pick, or say what to change per suit. Defaults if silent: build these into `SUITS`, Cape then Steppe | the per-school suit build (after Q219) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- (look & sound, from flow's Q193 v1.111) **A sound for the Steppe rollout**: the erector car's rumble on the rails (7 s), the boom's hydraulics (5 s), the arms closing; the clock is `rollPhase()` in `app/rollout.js`. And, if it reads wrong, the rocket lies ~10 m up on the boom's cradle arms (the Q159 boom's geometry).
