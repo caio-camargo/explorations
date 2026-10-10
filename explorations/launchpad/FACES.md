@@ -172,4 +172,7 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Lips, jaw and the reach test** (Caio: deco lips are a line; Mr. Incredible as a reachable face): lip edge and lip
   colour, thin lips, narrow noses, jaw mass, chin size, planes crisp–soft; three structural bugs fixed (nose-root
   plane, neck cut, cheek-plane keel). A Mr. Incredible-like preset reaches his silhouette (jaw, chin, nose, line
-  mouth). Next: the eyes (Caio: socket bound by the nose and brow, 3D lids, spherical eyes). 49 genes.
+  mouth). 49 genes.
+- **Eyes** (Caio's notes): spherical eyeballs, 3D lids (upper arched, lower gentler), a socket hard at the brow and
+  against the nose, soft below and outward. Lower lid height, lid thickness, socket softness. 52 genes. Gaze (moving
+  irises) belongs to the expression layer (F7).

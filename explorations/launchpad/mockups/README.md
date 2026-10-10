@@ -197,6 +197,12 @@ the nose-root plane ran down through the nose (now the ridge sits on the forehea
 the bridge), the neck's end cut sliced long jaws flat, and the cheek planes met in a keel under a big jaw (they now
 recede below the nose when the jaw is heavy). Edit has **Presets** (the Mr. Incredible-like reach test, a deco face,
 three noses). Still: `faces/reach-mr-incredible.png`. 49 genes.
+**Eyes** (Caio: the recess was a spheroid; Mr. Incredible's socket is bound by the nose on the inner side, meeting the
+brow in a hard line, softer below into the cheekbone and outward; lids are 3D; eyes are spheres): the eyeball is a
+sphere; the lids are shells over it (the upper margin arched, the lower gentler, rounded edges); the socket is hard
+under the brow, soft below and outward, and the nose is put back after it is cut so the nose's side is the socket's
+inner wall. New genes: lower lid height, lid thickness, socket softness; upper-lid weight now moves the real lid.
+Still: `faces/eyes-ranges.png`. 52 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 
