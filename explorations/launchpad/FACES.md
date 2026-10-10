@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
 **Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -87,6 +87,17 @@ Five layers, built in this order. All in our existing tech: the SDF raymarcher t
 5. **Expression**: the five portrait expressions (neutral, grin, grit, alarm, wonder) as offsets on a small set of
    expression controls (inner brow, outer brow, upper lid, lower lid, mouth corners, lip press, jaw open, gaze),
    working on any identity. The puppet register: few moving parts, as the real swapped heads.
+
+**Extremes, pushed on purpose** (Caio, 2026-10-10: the reach tests paid off; Mr. Incredible's appeal is in his
+extremes: a tiny nose tip, a huge forehead, a huge chin). Stylised faces are compelling *because* a few features go
+far past normal. The rule from character design: **push one to three features hard, keep the rest quiet, and make
+the pushed ones agree** (one shape language: square and heroic, round and kind, long and dry). Random extremes on
+every gene make monsters; coherent extremes make characters. So ranges stay wide, and the generator, per face:
+1. picks a shape language and **one to three signature features** that fit it (a jaw, a forehead, a nose);
+2. pushes those toward their extremes, and keeps every other gene near the house face or its archetype;
+3. keeps the reach-test faces (Mr. Incredible, the deco woman, more to come) as **landmarks**: archetypes at the
+   edge of the space, so blends between them inherit their extremes instead of averaging them away.
+The distinctness check then has big differences to find.
 
 **The generator** (CK3-style). Hand-make **~12 archetype faces** in the lab, covering all skin tones, sexes and a range
 of ages and builds, with people from every school's region (CREW 0.2.5's varied-roster check). A recruit is:
