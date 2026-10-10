@@ -4864,3 +4864,10 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad `mockups/suits/index.html` (new), `mockups/README.md` § suits, QUEUE (Q199 ✓ mock-ups, W30); `ACTIVE_WORK.md`.
 **Notes:** the first faceplates were the crew mock-up's (very wide), which made every helmet a glass bowl; narrowed to fit the face. The Sokol hood reads as fabric only up close. Pilot blue is weak on the Sokol's blue fittings (an alternative is named in the README).
 **Next:** after W30, the suit build into `SUITS` (Cape then Steppe); Q209 (walk-out and boarding) is ranked.
+
+## 2026-10-09 — Launchpad Q173: relays as nodes (space session, Q51 slice 3)
+
+**Summary:** v1.109. A registered satellite out of contact reaches home through another powered satellite with a link (one hop, by v1.96's link budget; whips reach each other ~316 km). Relays work only while powered (`satOn`, Q27's other half). Coverage (`coverOf`): Tellus low orbit 10 % with the pad; Selene far side 0 → 37 % with one polar relay at 1,000 km, 47 % with two. Links home (`netLinks`): share, longest gap, relays, a flag for a mission-control burn in a gap. Shown on the Network screen (*Links home*) and as lines on the map; checked in Chrome.
+**Files:** launchpad `sim/space.js`, `sim/rovers.js`, `sim/program.js` (netModel, one line), `app/network.js`, `app/render.js`, `test.mjs` (space-19), NOTES § v1.109, TESTING 189, QUEUE (Q173 ✓, two Proposed); `ACTIVE_WORK.md`.
+**Notes:** full suite 619 passed; `career.mjs` (10 seeds) identical to `main` once both were on the same base (a first comparison against a `main` that had moved looked +5 %).
+**Next:** the space lane has no M2 item ready; satellite relays wait for vehicle's dish part. Q174 is M5.
