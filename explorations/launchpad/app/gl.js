@@ -343,14 +343,26 @@ float sdStar5(vec2 p,float r,float rf){const vec2 k1=vec2(.809016994,-.587785252
  p.x=abs(p.x);p.y-=r;vec2 ba=rf*vec2(-k1.y,k1.x)-vec2(0,1);float h=clamp(dot(p,ba)/dot(ba,ba),0.,r);return length(p-ba*h)*sign(p.y*ba.x-p.x*ba.y);}
 vec3 hsv(float h,float s,float v){vec3 c=clamp(abs(mod(h*6.+vec3(0.,4.,2.),6.)-3.)-1.,0.,1.);return v*mix(vec3(1.),c,s);}
 const bool ROUNDEL_ON=true;   // false: no roundels (edit here for an A/B)
-// the roundel (Q102 step 5): a disc of radius 1 in u, by school: Cape red and white stripes with a blue canton of small
-// stars, Steppe one gold star on red; a white rim. Returns (colour, coverage); px is the pixel size in u
+// the roundel (Q102 step 5; Q228 for the other four, app/flags.js roundelBody's designs): a disc of radius 1 in u, by
+// school: Cape red and white stripes with a blue canton of small stars; Steppe one gold star on red; Arsenal a chevron
+// and a gold disc on the dark field; Coastal rings; Mountain a sun with eight rays; Isle four stars on the dark field.
+// A white rim. Returns (colour, coverage); px is the pixel size in u. A is the power's hue, B its dark complement
 vec4 roundel(vec2 u,int sch,float px,float hue){float r=length(u),cov=1.-smoothstep(1.-px,1.+px,r);if(cov<=0.)return vec4(0.);vec3 c;
+ vec3 A=hsv(hue,.82,.71),B=hsv(fract(hue+.4167),.67,.39),W=vec3(.95,.94,.9);
  if(r>.88)c=vec3(.92);
  else if(sch==1)c=mix(hsv(hue,.88,.62),vec3(.95,.78,.22),1.-smoothstep(-px,px,sdStar5(u*1.05,.62,.42)));
+ else if(sch==2){float ay=abs(u.y),ch=max(max(-.1-1.3*ay-u.x,u.x-.2+1.3*ay),ay-.5);c=length(u-vec2(.42,0.))<.26?vec3(.91,.76,.23):mix(B,A,1.-smoothstep(-px,px,ch));}
+ else if(sch==3)c=r<.32?A:r<.6?W:B;
+ else if(sch==4){float da=mod(atan(u.y,u.x)+.3927,.7854)-.3927,ray=max(r*abs(sin(da))-.045,r-.8);c=r<.36||ray<0.?A:W;}
+ else if(sch==5){float st=min(min(sdStar5((u-vec2(0.,.5))/.17,1.,.42)*.17,sdStar5((u-vec2(.42,0.))/.14,1.,.42)*.14),min(sdStar5((u-vec2(0.,-.5))/.19,1.,.42)*.19,sdStar5((u-vec2(-.42,-.05))/.12,1.,.42)*.12));
+  c=mix(B,W,1.-smoothstep(-px,px,st));}
  else if(u.y>.05&&u.x<-.05){vec2 g=fract(u*6.)-.5;c=mix(hsv(fract(hue+.55),.75,.36),vec3(.95),1.-smoothstep(.13,.13+px*6.,length(g)));}
  else c=mod(floor(u.y*4.5+.5),2.)<.5?hsv(hue,.85,.68):vec3(.94);
  return vec4(pow(c,vec3(2.2)),cov);}
+// a stencilled four-digit serial from the part's index (Arsenal, Q228): a 3×5 font, q in font pixels from the bottom left
+const int DG[10]=int[10](31599,11415,29671,29391,23497,31183,31215,29330,31727,31695);
+float serial(vec2 q,int pi){if(q.x<0.||q.x>=15.||q.y<0.||q.y>=5.)return 0.;int i=int(q.x)/4,cx=int(q.x)-i*4;if(cx>2)return 0.;
+ int n=(max(pi,0)*37+1013)%9000+1000,d=(n/(i==0?1000:i==1?100:i==2?10:1))%10;return float((DG[d]>>(int(q.y)*3+(2-cx)))&1);}
 float vn2(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(hh(i),hh(i+vec2(1,0)),f.x),mix(hh(i+vec2(0,1)),hh(i+vec2(1,1)),f.x),f.y);}
 // Footprint-filtered pattern pieces; fw is the pixel footprint of the coordinate, taken once outside the per-part branches.
 // lin: lines of half-width hw every per (same units as x), fading to their mean coverage as the footprint grows
@@ -373,7 +385,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
  // Part detail, early-era hardware (ship, debris and the builder only). Each part carries its own surface frame: a = angle
  // around its axis, s = arc length at its nominal radius R, v = height above its bottom, h = its height; sc scales the
  // 1.25 m class detail sizes to the part. T is the tangent around the axis, for bump detail that tilts the normal.
- int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;float hue=float(hq)/36.;   // school and livery hue ride in the kind (Q102)
+ int k=int(vK.x+.5),pi=int(vK.y+.5),hq=k/256,sch=(k/32)%8;k=k%32;bool up=hq>=64;hq=hq%64;float hue=float(hq)/36.;   // school, livery hue and the upper-stage flag ride in the kind (Q102, Q228)
  float a=vU.x*6.2832,R=max(vU.z,.05),s=a*R,v=vU.y,h=vU.w,sc=R/.625,fu=fwidth(vU.x),fs=fu*6.2832*R,fv=fwidth(v);bool side=abs(vNo.y)<.6;
  float fp=side?max(fs,fv):length(fwidth(vO.xz));   // on caps the around-axis rate differs per triangle: use the planar footprint
  vec3 T=vec3(-sin(a),0.,cos(a));float blk=0.;vec4 rdl=vec4(0.);   // rdl: the roundel, laid on after the school's paint
@@ -386,7 +398,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    else if(h>1.5*sc){float dq=abs(fract(vU.x*2.+.5)-.5)*3.1416*R;blk=(1.-smoothstep(.09*sc,.09*sc+fs,dq))*paint;}   // two opposite stripes
    float ring=lin(v-b,1.25*sc,.006,fv)*paint,seam=lin(s-1.5708*R,6.2832*R,.004,fs)*paint,pan=hh(vec2(floor((v-b)/(1.25*sc)),3.))-.5;
    float str=vn2(vec2(s*2.2,v*.12))*vn2(vec2(s*7.,v*.5+9.)),fd=smoothstep(.05,.012,fp);
-   if(sch==1)blk=0.;   // Steppe: no roll pattern (Q102)
+   if(sch!=0)blk=0.;   // the roll pattern is Cape's alone (Q102, Q228)
    alb=mix(alb,pow(hsv(hue,.55,.16),vec3(2.2)),blk);alb*=(1.-.45*ring)*(1.-.3*seam)*(1.+.06*pan*fd)*(1.-.16*str*fd);
    float rv=max(dots(s,v,b*.5,.07*sc,.009*sc,fp),dots(s,v,h-b*.5,.07*sc,.009*sc,fp));alb=mix(alb,vec3(.09),rv*(1.-paint));
    if(ROUNDEL_ON&&h>1.5*sc&&h<=3.*sc){float rs=.3*sc;rdl=roundel(vec2(s-1.5708*R,v-h*.5)/rs,sch,fp/rs,hue);rdl.a*=paint;}}   // the roundel, between the stripes
@@ -454,7 +466,7 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
    vec2 g=(side?vec2(s,v):vO.xz)/(.045*sc);g.x+=.5*floor(g.y);float fg=fp/(.045*sc);
    float cell=max(lin(g.x,1.,.06,fg),lin(g.y,1.,.06,fg));alb*=(1.-.5*cell)*(.75+.5*vn2(g*.3));rough=.95;}
   else if(k==12&&side){                                    // adapter: black roll quadrants on the cone, rivets on the flanges
-   float cone=band(v,.15*sc,1.35*sc,fv);blk=sch==1?0.:sqw(vU.x*2.,fu*2.)*cone;alb=mix(alb,vec3(.018),blk);
+   float cone=band(v,.15*sc,1.35*sc,fv);blk=sch!=0?0.:sqw(vU.x*2.,fu*2.)*cone;alb=mix(alb,vec3(.018),blk);
    alb=mix(alb,vec3(.4),max(dots(s,v,.075*sc,.08*sc,.008*sc,fp),dots(vU.x*6.2832*.625*sc,v,1.425*sc,.07*sc,.008*sc,fp)));}
   else if(k==13){                                          // radial decoupler: hazard chevrons, bolts
    alb=mix(alb,vec3(.02),1.-sqw((v+vO.x*.5)/.12,fv/.12+.01));}
@@ -466,6 +478,38 @@ void main(){gl_FragDepth=log2(1.+vW)*uFc*.5;
   if(k!=2&&k!=15&&wl>.25){float pn=hh(vec2(floor(v/(1.3*sc)),floor(vU.x*8.)))-.5;alb=pow(vec3(.47,.54,.44),vec3(2.2))*(1.+.12*pn)*clamp(wl/.7,.6,1.1);
    if(side)alb*=1.-.35*min(1.,lin(v,1.3*sc,.006,fv)+lin(s,6.2832*R/8.,.005,fs));rough=max(rough,.55);metal=0.;}
   else if(k==2)alb*=vec3(.74,.84,.66);}
+ // Arsenal (2), Coastal (3), Mountain (4), Isle (5) (Q228; POWERS.md § "School briefs", mock-ups Q227): each repaints the
+ // white base as Steppe does, and has its own bells, joints, decals and interstage cover. up: an upper-stage part
+ if(uSeam>0.&&sch>=2&&k>0){float wl=dot(alb,vec3(.3,.59,.11)),lum=clamp(wl/.7,.6,1.1),fd=smoothstep(.05,.012,fp);vec3 hc=pow(hsv(hue,.8,.66),vec3(2.2)),
+   pas=pow(hsv(hue,.38,.88),vec3(2.2)),saf=pow(vec3(.96,.6,.15),vec3(2.2)),carb=pow(vec3(.075,.075,.085),vec3(2.2));
+  if(k==2){float t=clamp(v/max(h,.01),0.,1.);   // bells (t: 0 at the lip, 1 at the throat)
+   if(sch==2)alb=pow(mix(vec3(.42,.36,.55),vec3(.55,.38,.2),smoothstep(0.,.8,t)),vec3(2.2))*(1.-.45*lin(v,.18*sc,.014*sc,fv));   // heat-stained, thick rings
+   else if(sch==3)alb=mix(pow(vec3(.78,.79,.82),vec3(2.2)),vec3(.02),smoothstep(.6,.66,t));   // silver, a dark throat
+   else if(sch==4)alb*=vec3(1.,.8,.45);   // gold-tinted
+   else alb=pow(vec3(.76,.43,.27),vec3(2.2))*(1.-.15*lin(v,.02*sc,.004*sc,fv));   // copper, printed in layers
+   if(inside)alb*=.3;}
+  else if(k==14&&side){float ym=h*.5;metal=0.;   // the interstage cover
+   if(sch==2){float cl=(fract(vU.x*8.+.5)-.5)*6.2832*R/8.,w=max(abs(cl)-.13*sc,abs(v-ym)-h*.21);if(w<0.)discard;   // vent windows (hot staging): the engine shows through
+    alb=pow(vec3(.34,.37,.22),vec3(2.2))*(w<.05*sc?.45:1.);rough=.8;}
+   else if(sch==3){alb=mix(pow(vec3(.92,.92,.9),vec3(2.2)),pas,band(v,ym-.03*sc,ym+.03*sc,fv));alb=mix(alb,vec3(.02),dots(s,v,h*.75,6.2832*R/16.,.035*sc,fp));rough=.5;}   // smooth, a pastel stripe, round vent ports
+   else if(sch==4){alb=mix(pow(vec3(.94,.94,.92),vec3(2.2)),vec3(.3),dots(s,v,.06*sc,6.2832*R/20.,.022*sc,fp));rough=.6;}   // a ring of separation bolts
+   else{alb=mix(carb,hc,band(v,ym-.04*sc,ym+.04*sc,fv));rough=.45;}}   // flush carbon, a hue stripe
+  else if(k!=15&&wl>.25){float pn=hh(vec2(floor(v/(1.25*sc)),floor(vU.x*6.)))-.5;metal=0.;
+   if(sch==2){alb=pow(up?vec3(.66,.68,.7):vec3(.34,.37,.22),vec3(2.2))*(1.+(up?.12:.08)*pn*fd)*lum;metal=up?.75:0.;rough=up?.4:.8;}   // olive below, bare metal above, matte
+   else if(sch==3)rough=.5;   // satin white
+   else if(sch==4){alb=pow(up?vec3(.94,.94,.92):vec3(.64,.32,.19),vec3(2.2))*lum;rough=.7;}   // terracotta below, white above
+   else{float wv=sqw(s*20.+.5*sqw(v*20.,fv*20.),fs*20.);alb=carb*(1.+.35*(wv-.5)*fd)*lum;rough=.5-.15*wv*fd;}}   // matte black carbon; the weave shows in raking light
+  if(k==1&&side){float b=.07*sc;
+   if(sch==2&&h>1.5*sc)alb=mix(alb,vec3(.8),serial(vec2(s-1.5708*R+.8*sc,v-h*.28)/(.045*sc),pi)*smoothstep(.04*sc,.01*sc,fp));   // a stencilled serial
+   if(sch==3){if(up)alb=mix(alb,pas,band(v,h*.5-.16*sc,h*.5+.16*sc,fv));alb=mix(alb,pas,max(band(v,b,b+.025*sc,fv),band(v,h-b-.025*sc,h-b,fv)));}   // one pastel band round the upper stage; pin-stripes at the joints
+   if(sch==4)alb=mix(alb,saf,max(band(v,-1.,b+.03*sc,fv),band(v,h-b-.03*sc,h+1.,fv)));   // saffron at every joint
+   if(sch==5){if(up)alb=mix(alb,hc,band(v,h-b-.16*sc,h-b-.08*sc,fv));   // the hue band under the fairing; mission patches
+    alb=mix(alb,saf,1.-smoothstep(.12*sc,.12*sc+fp,length(vec2(s-1.5708*R-.45*sc,v-h*.72))));alb=mix(alb,pow(vec3(.25,.55,.85),vec3(2.2)),1.-smoothstep(.1*sc,.1*sc+fp,length(vec2(s-1.5708*R-.45*sc,v-h*.72+.3*sc))));}}
+  if(k==5&&side){float hz=band(v,0.,.12*sc,fv);   // the separation plane
+   if(sch==2)alb=mix(alb,step(.5,fract((s+v)/(.14*sc)))>.5?hc:vec3(.8),hz);   // a striped band, in the livery's hue
+   else if(sch==3)alb=mix(alb,mix(pow(vec3(.92),vec3(2.2)),pas,band(v,.045*sc,.075*sc,fv)),hz);
+   else if(sch==4)alb=mix(alb,saf,hz);
+   else alb=mix(alb,carb,hz);}}
  alb=mix(alb,rdl.rgb,rdl.a);
  // Flight marks, per part (see marksTick): uMk = (soot, frost, fuel level, nozzle glow), uCh = (windward direction in the
  // ship frame, char). Soot climbs streakily from the part's base; char scorches the paint yellow-brown, then blackens it, on
@@ -909,7 +953,7 @@ const VX=16,PK0={o:[0,0,0],k:0,R:0,h:0,i:-1};let PK=PK0;
 const KIND={tank:1,bell:2,pod:3,cone:4,dec:5,fins:6,sci:7,bio:8,ballast:9,chute:10,shield:11,adapt:12,rdec:13,collar:14,mount:15,rfin:6,cam:7,ant:7,rcs:15,gas:15,port:7,claw:15,core:7,bay:15,hab:16,lab:16,arm:15,beacon:15,rover:15};
 // one vertex; u = turns around the part axis (lathe passes its own angle; otherwise it comes from the position)
 function pv(out,P,N,c,u){if(u==null){u=Math.atan2(P[2]-PK.o[2],P[0]-PK.o[0])/6.2832;if(u<0)u+=1}
-  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0),PK.i)}   // the school (×32) and the maker's hue (×256, 10° steps) ride in the kind (Q102)
+  out.push(P[0],P[1],P[2],N[0],N[1],N[2],c[0],c[1],c[2],c[3]||0,u,P[1]-PK.o[1],PK.R,PK.h,PK.k+32*(PK.sch||0)+256*(PK.hq||0)+16384*(PK.up||0),PK.i)}   // the school (×32), the maker's hue (×256, 10° steps) and the upper-stage flag (×16384, Q228) ride in the kind (Q102)
 // surface of revolution around +Y; prof = [[r,y,rgb],...] bottom→top; per-vertex colour (duplicate a point for a hard band)
 function lathe(out,prof,o=[0,0,0],seg=28,caps=[true,true]){const own=o[0]===PK.o[0]&&o[2]===PK.o[2];
   const V=(r,y,a,nr,ny,c)=>{const ca=Math.cos(a),sa=Math.sin(a);pv(out,[o[0]+r*ca,o[1]+y,o[2]+r*sa],[nr*ca,ny,nr*sa],c,own?a/6.2832:null)};
@@ -941,12 +985,12 @@ function labWindow(out,x,y,z,yy,a){const c=Math.cos(a),sn=Math.sin(a);rbox(out,[
 function partShape(out,p){
   if(p.d.sc){const a=[],k=p.d.sc;partShape(a,{...p,d:PARTS[p.d.base],y0:0,pos:[0,0,0]});
     for(let i=0;i<a.length;i+=VX)out.push(a[i]*k+p.pos[0],a[i+1]*k+p.y0,a[i+2]*k+p.pos[2],a[i+3],a[i+4],a[i+5],a[i+6],a[i+7],a[i+8],a[i+9],a[i+10],a[i+11]*k,a[i+12]*k,a[i+13]*k,a[i+14],a[i+15]);return}
-  const d=p.d;PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch:partSchool(p),hq:partHue(p)};partBody(out,p);PK=PK0}
+  const d=p.d,sch=partSchool(p);PK={o:[p.pos[0],p.y0,p.pos[2]],k:KIND[d.kind]||KIND[d.key]||0,R:d.r,h:d.h,i:p.i??-1,sch,hq:partHue(p),up:sch>=2&&UPPER&&UPPER.has(p)?1:0};partBody(out,p);PK=PK0}
 // ---- hardware schools (QUEUE Q102; NOTES § "Hardware schools in the game: the plan"). A part draws in its maker's school:
-// the seller's when it was bought abroad (sourceOf), else the program's. Built so far: Cape (0, today's look) and Steppe
-// (1); the other schools fall back to Cape until they get a look. A power's school is drawn once from POWERS.md's
+// the seller's when it was bought abroad (sourceOf), else the program's. Built: Cape (0, today's look), Steppe (1), and
+// Arsenal (2), Coastal (3), Mountain (4), Isle (5) (Q228). Their pads and signature designs are still Cape's (steps 6–7). A power's school is drawn once from POWERS.md's
 // affinity weights, seeded by the world and the power, so it never changes. SCHOOL_FORCE (tester, views) overrides.
-const SCHOOL_IDS={cape:0,steppe:1},SCHOOL_AFF={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},
+const SCHOOL_IDS={cape:0,steppe:1,arsenal:2,coastal:3,mountain:4,isle:5},SCHOOL_AFF={openSuper:{cape:.6,coastal:.2,mountain:.2},closedSuper:{steppe:.7,arsenal:.3},
   rising:{arsenal:.4,mountain:.4,steppe:.2},frugal:{coastal:.5,mountain:.3,isle:.2},security:{arsenal:.6,steppe:.3,mountain:.1}};
 let SCHOOL_FORCE=null;
 function schoolOf(i){if(typeof POWERS==='undefined'||!POWERS[i])return 0;if(POWERS[i].school&&!(i===0&&PROG.homeArch&&PROG.homeArch!==POWERS[0].arch))return SCHOOL_IDS[POWERS[i].school]??0;/* the SIM's school (economy, Q103): one source of truth */const aff=SCHOOL_AFF[typeof archOf==='function'?archOf(i):POWERS[i].arch];if(!aff)return 0;   // a resource state has none: its parts are its sellers'
@@ -1101,17 +1145,21 @@ function partBody(out,p){
     default:{const b=.07;lathe(out,[[.625,0,C.D],[.625,b,C.D],[.625,b,C.W],[.625,h-b,C.W],[.625,h-b,C.D],[.625,h,C.D]],o)}}}
 // the rotation taking +y to t (t a unit vector near +y): a canted nozzle's frame
 function tiltQ(t){const Z=norm(cross([1,0,0],t)),X=cross(t,Z);return qFromBasis(X,t,Z)}
-function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;partShape(a,p);
+// the parts on an upper stage: above a decoupler on their own stack line (Q228: Arsenal and Mountain paint stages apart)
+let UPPER=null;
+function upperOf(parts){const decs=parts.filter(q=>q.d.kind==='dec');return new Set(parts.filter(p=>decs.some(q=>q!==p&&Math.abs(q.pos[0]-p.pos[0])<1e-3&&Math.abs(q.pos[2]-p.pos[2])<1e-3&&p.y0>=q.y0+q.h-1e-3)))}
+function partsMesh(parts){const a=[];UPPER=upperOf(parts);for(const p of parts){const n0=a.length;partShape(a,p);
     if(p.tdir){const q=tiltQ(p.tdir),m=[p.pos[0],p.y0+p.h,p.pos[2]];for(let i=n0;i<a.length;i+=VX){
       const v=qrot(q,[a[i]-m[0],a[i+1]-m[1],a[i+2]-m[2]]),nn=qrot(q,[a[i+3],a[i+4],a[i+5]]);a[i]=v[0]+m[0];a[i+1]=v[1]+m[1];a[i+2]=v[2]+m[2];a[i+3]=nn[0];a[i+4]=nn[1];a[i+5]=nn[2]}}
     // the interstage cover (Q102 step 4): a decoupler with an engine sitting right on top of it gets a cover around that
-    // engine at the stack's radius: Cape a closed ribbed skirt, Steppe an open lattice (the engine shows through). It is
+    // engine at the stack's radius: Cape a closed ribbed skirt, Steppe an open lattice (the engine shows through); Arsenal vent windows, Coastal smooth with a pastel stripe, Mountain bolts and spin rockets, Isle flush carbon (Q228, the paint in MESH_FS). It is
     // the decoupler's (its part index and school), so it falls away with the lower stage. Drawing only: outline, aero and
     // PARTS untouched. INTERSTAGE_FX = false leaves the engine bare, as before.
     if(INTERSTAGE_FX&&p.d.kind==='dec'){const up=parts.find(q=>q!==p&&q.d.kind==='engine'&&!q.tdir&&Math.abs(q.y0-(p.y0+p.h))<1e-3&&Math.abs(q.pos[0]-p.pos[0])<1e-3&&Math.abs(q.pos[2]-p.pos[2])<1e-3);
       if(up){const R=p.d.r+.004,H=up.h,y0=up.y0,x=p.pos[0],z=p.pos[2],sch=partSchool(p);PK={o:[x,y0,z],k:KIND.collar,R,h:H,i:p.i??-1,sch};
         if(sch!==1){const c=[.08,.08,.09,1];lathe(a,[[R,0,c],[R,H,c]],[x,y0,z],32,[false,false]);
-          for(let k=0;k<24;k++){const g=k/24*6.2832;rbox(a,[x+Math.cos(g)*(R+.008),y0+H/2,z+Math.sin(g)*(R+.008)],.008,H/2-.02,.018,c,g)}}   // ribs
+          if(sch===0)for(let k=0;k<24;k++){const g=k/24*6.2832;rbox(a,[x+Math.cos(g)*(R+.008),y0+H/2,z+Math.sin(g)*(R+.008)],.008,H/2-.02,.018,c,g)}   // Cape's ribs
+          if(sch===4)for(let k=0;k<4;k++){const g=(k+.5)/4*6.2832,P=yy=>[x+Math.cos(g)*(R+.05),y0+yy,z+Math.sin(g)*(R+.05)];tube(a,P(H-.36),P(H-.08),.045,[.3,.31,.32,1],8)}}   // Mountain's spin rockets
         else{const c=[.17,.2,.17,1],P=(g,yy)=>[x+Math.cos(g)*R,y0+yy,z+Math.sin(g)*R];lathe(a,[[R,0,c],[R,.07,c]],[x,y0,z],32,[false,false]);lathe(a,[[R,H-.07,c],[R,H,c]],[x,y0,z],32,[false,false]);
           for(let k=0;k<12;k++){const g=k/12*6.2832,dg=6.2832/12;tube(a,P(g,.07),P(g+dg,H-.07),.022,c,6);tube(a,P(g+dg,.07),P(g,H-.07),.022,c,6)}}   // lattice
         PK=PK0}}
@@ -1119,7 +1167,7 @@ function partsMesh(parts){const a=[];for(const p of parts){const n0=a.length;par
     if(p.jr&&p.parent&&parts.includes(p.parent)){const J=p.jP,rj=Math.min(p.d.r,p.parent.d.r)+.025,c=[.3,.32,.36,1];
       if(Math.abs(p.jA[1])>0.5)for(let k=0;k<p.jr;k++){const yy=J[1]+(k-(p.jr-1)/2)*.2;PK={o:[J[0],yy-.06,J[2]],k:KIND.collar,R:rj,h:.12,i:p.i??-1};lathe(a,[[rj,yy-.06,c],[rj,yy+.06,c]],[J[0],0,J[2]],28,[true,true])}
       else{PK={o:J,k:KIND.collar,R:.25,h:.5,i:p.i??-1};rbox(a,J,.1,.25+.1*p.jr,.25,c,p.phi||0)}PK=PK0}}
-  return makeMesh(a)}
+  UPPER=null;return makeMesh(a)}
 // ---- flight marks: what a flight leaves on the hardware. Render-side only, never read by the sim; kept per part object,
 // so they ride along onto debris and landed stages, and a new flight (new parts) starts clean.
 //   soot  — a burning engine, and the base of the parts within 3 m above it on its stack line; worse at altitude, where

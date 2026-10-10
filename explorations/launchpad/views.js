@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -333,12 +333,12 @@ window.refView = async (n) => {
     return 'Selene, sun ' + (Math.asin(dot(u, SUN)) * 57.3).toFixed(0) + '° up';
   }
   // 114–115 (Q102): the Orbiter on the pad in the builder as Cape (114, today's look) and as Steppe (115): same parts
-  // and outline, a different paint and finish
-  if (n === 114 || n === 115) {
+  // and outline, a different paint and finish; 123–126 (Q228) the same as Arsenal, Coastal, Mountain, Isle
+  if (n === 114 || n === 115 || n >= 123 && n <= 126) {
     if (mode !== 'editor') document.getElementById('bEditor').click();
-    SCHOOL_FORCE = n - 114; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true; HOOK.rebuild();
+    SCHOOL_FORCE = n <= 115 ? n - 114 : n - 121; stackDef = JSON.parse(JSON.stringify(PRESETS.Orbiter)); editorChanged(); HOOK.edStill = true; HOOK.noRig = true; HOOK.rebuild();
     cam.edY = 7 - S.cm[1]; cam.yaw = 0.2; cam.pitch = 0.05; cam.dist = 17; render(); await settle(); bare();
-    return n === 114 ? 'Cape' : 'Steppe';
+    return ['Cape', 'Steppe', 'Arsenal', 'Coastal', 'Mountain', 'Isle'][SCHOOL_FORCE];
   }
   // 116–119 (Q159): the Steppe pad, the Orbiter in Steppe's school. 116 the complex from the editor (the erector's boom
   // up beside the rocket, the service halves down); 117 a flight's start (the halves closed round it); 118 the same 1 s

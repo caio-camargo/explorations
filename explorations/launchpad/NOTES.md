@@ -1111,6 +1111,37 @@ home is Cape there, and Cape's `buildPad`/`buildRig` code paths are untouched (t
 - **Not built:** the rocket lying on the erector during the rollout itself (a horizontal rocket needs the Rollout screen
   to draw the stack on its side: flow's screen, proposed; **built v1.111, Q193**); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
 
+### The other four schools (2026-10-10, effects beat, QUEUE Q228; POWERS.md § "School briefs", mock-ups Q227, Caio's go W34)
+
+`SCHOOL_IDS` now has all six: Cape 0, Steppe 1, Arsenal 2, Coastal 3, Mountain 4, Isle 5. A power whose affinity draws
+one of the four now builds in it, not Cape (open superpowers: Cape .6, Coastal .2, Mountain .2; closed: Steppe .7,
+Arsenal .3). Each repaints the white base in `MESH_FS` after Steppe's pass, the same way:
+- **Arsenal:** matte olive lower stage, bare-metal upper stage panel by panel; a stencilled four-digit serial on each
+  tank (`serial()`, a 3×5 font, from the part index); a striped band at the separation plane in the livery's hue;
+  heat-stained bells (bronze to blue-purple at the lip, thick rings). Its cover is a skirt with eight **vent windows**
+  (`discard`), so the upper engine shows through (hot staging).
+- **Coastal:** satin white; one pastel band (the hue at low saturation) round the upper stage; pastel pin-stripes at
+  each tank joint; silver bells with a dark throat. Its cover is smooth white with a pastel stripe and round vent ports.
+- **Mountain:** terracotta lower stage, white upper; saffron at every joint; gold-tinted bells. Its cover is white with
+  a ring of separation bolts and four spin rockets (small tubes, mesh).
+- **Isle:** matte black carbon, the weave showing in raking light; mission patches on each tank; a hue band under the
+  top of the upper stage; copper bells printed in layers. Its cover is flush carbon with a hue stripe.
+- **No roll pattern** outside Cape (tanks, adapters).
+- **Roundels:** `app/flags.js` `roundelBody`'s designs, in the shader (absorbs Q223): Arsenal a chevron and a gold
+  disc; Coastal rings; Mountain a sun with eight rays; Isle four stars. A is the power's hue, B its dark complement.
+
+**Upper stage.** A part is upper when it sits above a decoupler on its own stack line (`upperOf`, built once per
+`partsMesh`). The flag rides in the kind as +16384 and is decoded as `up=hq>=64`. It is set only for schools 2–5, so Cape
+and Steppe vertices stay byte-identical.
+
+**Views:** `refView(123)`–`(126)` are the Orbiter in the builder as Arsenal, Coastal, Mountain, Isle (114 Cape, 115
+Steppe). test.mjs `aerofx-3` now expects open superpowers to be mostly Cape, else Coastal or Mountain.
+
+**Not built yet:**
+- These schools' pads and signature designs: they use Cape's pad for now (Q102 steps 6–7; the mock-ups have them).
+- Coastal's lettering and Isle's rocket names. A font now exists in `MESH_FS` (`serial`'s digits).
+- The fins' coloured tips (Mountain saffron, Isle hue): the shader has no radial coordinate on the fin mesh.
+
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
 The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,

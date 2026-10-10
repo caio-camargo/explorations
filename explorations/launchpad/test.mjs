@@ -4122,7 +4122,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       `plasma: climb ${climb}, onset ${onset.toFixed(2)}, peak ${peak.toFixed(2)} · others: 200 m ${near.g.toFixed(2)}, 8 km ${far.g.toFixed(3)}, debris ${deb.g.toFixed(2)}`);
   }
   // QUEUE Q102 (steps 1–3): hardware schools. A power's school is drawn once from its archetype's affinity (stable per
-  // world and power); unbuilt schools fall back to Cape; a part draws in its maker's school (an import: the seller's);
+  // world and power); all six national schools are built (Q228); a part draws in its maker's school (an import: the seller's);
   // the school rides in the vertex's kind (+32·school) and both mesh shaders decode it; reference views pin Cape
   {
     const SM = new Function(src + 'return {rng,WSEED,POWERS,HOME,archOf:typeof archOf==="function"?archOf:null}')();
@@ -4133,9 +4133,10 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     const pows = Array.from({ length: 400 }, (_, i) => ({ arch: i % 2 ? 'closedSuper' : 'openSuper' })), A = i => pows[i].arch;
     const S1 = mk(pows, A, () => ({ how: 'home' })), S2 = mk(pows, A, () => ({ how: 'home' }));
     const closed = pows.map((_, i) => i).filter(i => i % 2), steppeShare = closed.filter(i => S1.schoolOf(i) === 1).length / closed.length;
-    const stable = pows.every((_, i) => S1.schoolOf(i) === S2.schoolOf(i)), openCape = pows.map((_, i) => i).filter(i => !(i % 2)).every(i => S1.schoolOf(i) === 0);
+    const stable = pows.every((_, i) => S1.schoolOf(i) === S2.schoolOf(i)), open = pows.map((_, i) => i).filter(i => !(i % 2)), capeShare = open.filter(i => S1.schoolOf(i) === 0).length / open.length,
+      openCape = capeShare > 0.5 && capeShare < 0.7 && open.every(i => [0, 3, 4].includes(S1.schoolOf(i))) && closed.every(i => [1, 2].includes(S1.schoolOf(i)));   // open: Cape .6, Coastal and Mountain .2; closed: Steppe .7, Arsenal .3
     const imp = mk(pows, A, () => ({ how: 'import', from: 1 })).partSchool({ d: { key: 't2' } }), own = mk(pows, A, () => ({ how: 'home' })).partSchool({ d: { key: 't2' } });
-    check('hardware schools: a power\'s school follows its affinity (closed superpowers mostly Steppe, open ones Cape) and never changes; a part draws in its maker\'s school',
+    check('hardware schools: a power\'s school follows its affinity (closed superpowers mostly Steppe, else Arsenal; open ones mostly Cape, else Coastal or Mountain) and never changes; a part draws in its maker\'s school',
       steppeShare > 0.6 && steppeShare < 0.8 && stable && openCape && imp === S1.schoolOf(1) && own === S1.schoolOf(env.HOME)
         && /int k=int\(aK\.x\+\.5\)%32;/.test(pg) && /hq=k\/256,sch=\(k\/32\)%8;k=k%32;/.test(pg) && /PK\.k\+32\*\(PK\.sch\|\|0\)\+256\*\(PK\.hq\|\|0\)/.test(pg)
         && /rdl=roundel\(vec2\(s-1\.5708\*R,v-h\*\.5\)\/rs,sch,fp\/rs,hue\)/.test(pg) && pg.indexOf(' alb=mix(alb,rdl.rgb,rdl.a);') > pg.indexOf('Steppe (Q102): grey-green enamel')
