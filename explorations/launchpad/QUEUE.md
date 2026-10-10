@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.28 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.29 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -15,7 +15,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); Q216 ✓ (v1.73.2: the gyro holds retrograde); first QA's **Q221** (the robot's tester-mode URL bug) and **Q208** (row 147 on the new nose cone) | QA (**no session**); then you | **M1 done**; M2 becomes current |
 | 2 | **Q190** era gates for late parts (cargo bay and arm buyable from flight 1). Q201 ✓ (nose cone keeps the passenger cool) | vehicle (**no session**) | a clean first hour for W16's player |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world | every player's first visit |
-| 4 | **Three picks for you**: **W14** screen identity; **W29** the bodies, round 2 (`mockups/bodies/`, Q207 ✓); **W32** the suits, round 2 (`mockups/suits/`, Q219 ✓) | you | Q53 and slice 4c's styling; Q80–Q85; the suit build items |
+| 4 | **Your picks**: **W14** screen identity; **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (`mockups/heads/`, incl. the art-deco puppet round 2); **W32** suits round 2 (`mockups/suits/`) | you | Q53's styling; Q80–Q85; D11 and the suit build items |
 | 5 | **Q160** the duplicate-number check (versions collided twice in an hour) | platform (**no session**) | no renumbering after merges |
 
 ## How a session uses this
