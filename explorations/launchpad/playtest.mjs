@@ -293,7 +293,7 @@ ROWS[122] = {title: 'no blackout or plasma shell on a hard climb', steps: ['Heav
 
 // Program & economy
 const NOMONEY = {kh: true, tools: true, nofail: true, fast: true};
-const PROGTAB = t => `(()=>{ go('program'); PT.click('[data-ptab="${t}"]'); return document.getElementById('progBody').innerText.slice(0, 1500) })()`;
+const PROGTAB = t => `(()=>{ go('program'); PT.click('[data-ptab="${t}"]'); return document.getElementById(${JSON.stringify(t)} === 'inbox' ? 'deskTrayBox' : 'progBody').innerText.slice(0, 1500) })()`;   // (Q239) the Inbox is the desk's in-tray
 // a Sounding flight: up, chute, down, then back to the Program (that ends the flight); funds and news on the way
 const SOUNDING = `(()=>{ go('assembly'); PT.preset('Sounding'); const f0 = PROG.funds, m0 = PT.log.length; PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200);
   for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); const apex = S.rec && S.rec.apex; go('program'); const fP = PROG.funds, flP = PROG.flights, settledAtProgram = !!S.rec.ended;
@@ -403,7 +403,7 @@ ROWS['44b'] = {title: 'clouds: the 40 km hand-over', steps: [
 // UI & screens
 const OVS = `['help','logbook','escm','tester'].filter(id=>document.getElementById(id)&&!document.getElementById(id).classList.contains('hidden'))`;
 ROWS[95] = {title: 'every Program tab', steps: [`go('program'); [...document.querySelectorAll('[data-ptab]')].map(b=>b.dataset.ptab)`,
-  ...['inbox', 'missions', 'contracts', 'fleet', 'world', 'industry', 'company'].flatMap(t => [`PT.click('[data-ptab="${t}"]'); document.getElementById('progBody').innerText.slice(0,300)`, {shot: t}])],
+  ...['inbox', 'missions', 'contracts', 'fleet', 'world', 'industry', 'company'].flatMap(t => [`PT.click('[data-ptab="${t}"]'); document.getElementById('${t === 'inbox' ? 'deskTrayBox' : 'progBody'}').innerText.slice(0,300)`, {shot: t}])],
   checks: {tabs: `[...document.querySelectorAll('[data-ptab]')].map(b=>b.dataset.ptab).join(' ')`, more: `!!document.querySelector('[data-ptab="more"]')`, inboxN: `progInbox`},
   expect: {more: v => v === false}};
 ROWS[96] = {title: 'Esc, Help, Logbook, Program, Build keys', steps: [
@@ -466,6 +466,14 @@ PT.ascent = (flatKm = 38) => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tg
   const r = PT.loop(body, Infinity, {warp: () => phase === 'coast' && len(s.r) - TELLUS.R > ATM ? 20 : 1}); return r && r.then ? r.then(fin) : fin() };
 PT.state = () => ({screen: screenNow(), day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), flights: PROG.flights, done: Object.keys(PROG.done)});
 true`;
+// The Program as the director's desk (flow, QUEUE Q239 R1): a Sounding flown in real frames (so the liftoff photo is
+// taken by frame(), as in play), then the desk with the photo, the clipping and, after a first, a certificate.
+ROWS.desk = {title: 'the Program as a desk: photo, clipping, in-tray', gate: true, flags: null, steps: [M1_HELPERS,
+  {click: '[data-start="agency"]'}, {shot: 'desk_new'},
+  `(async()=>{ go('assembly'); PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); await new Promise(r => setTimeout(r, 6000)); return {photo: !!localStorage.getItem('launchpad-photo'), screen: screenNow(), room: document.body.classList.contains('room')} })()`,
+  `(()=>{ PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); go('program'); go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), wall: document.getElementById('deskWall').innerText.slice(0, 300)} })()`,
+  {shot: 'desk_after'}, `(()=>{ PT.click('[data-ptab="inbox"]'); return {tab: progTab, tray: document.getElementById('deskTrayBox').innerText.slice(0, 200)} })()`],
+  checks: {room: `document.body.classList.contains('room')`, photo: `!!document.querySelector('#deskWall img')`, boxes: `PT.boxes()`}};
 ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
   // the first-run gate, with real clicks
   {say: 'A new player opens the game for the first time'}, {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,

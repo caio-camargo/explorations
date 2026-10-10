@@ -5,6 +5,10 @@
 // One name for where you are. `mode`/`view` are still the state everything reads; go() is the one place that changes them.
 let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on the pad behind it), atHQ hides the Assembly panels
 let atDeb=false,debNext='program',debShown=null,atRoll=false,atNet=false;   // atNet: the network screen (Q155)   // atRoll: the Rollout screen (slice 5), a panel beside the ship on the pad   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
+// Rooms (Q239 R0): screens that are a place of their own, not a panel over the pad. While one shows, frame() skips the 3D
+// draw (the sim still runs, so days still pass on the Program); the room covers the window. The desk itself: app/desk.js.
+const ROOMS=new Set(['program']);
+const inRoom=()=>ROOMS.has(screenNow());
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atNet?'network':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;
   if((from==='flight'||from==='map')&&s!=='flight'&&s!=='map'&&S){flightLeave(S);   // leaving a flight settles it (PLAYTEST #21)
@@ -28,7 +32,7 @@ function go(s){const from=screenNow();if(s===from)return;
   else if(s==='network'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderNetwork()}
   else if(s==='debrief'){mode='editor';view='flight';atHQ=false;if(BLD.st&&BLD.st.held)BLD.drop();renderDebrief()}
   else if(s==='map'){if(mode!=='flight')return;view='map';cam.focus=0;const el=elements(S.r,S.v,S.body.mu);cam.mDist=clamp(3*Math.max(S.body.R*1.6,isFinite(el.ap)?el.ap:0),TELLUS.R*2,TELLUS.R*133)}
-  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atNet);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('net').classList.toggle('hidden',!atNet);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');
+  $('editor').classList.toggle('hidden',mode!=='editor'||atHQ||atDeb||atRoll||atNet);$('roll').classList.toggle('hidden',!atRoll);$('prog').classList.toggle('hidden',!atHQ);$('deb').classList.toggle('hidden',!atDeb);$('net').classList.toggle('hidden',!atNet);$('hud').classList.toggle('hidden',mode!=='flight');$('rover').classList.toggle('hidden',mode!=='drive');document.body.classList.toggle('room',inRoom());
   ovClose('escm');if(!$('help').classList.contains('hidden'))renderHelp();hudLayout()}
 // Keys, one table per screen: Help is generated from it, and test.mjs checks every key the handlers read is listed here.
 // k: the e.key names (lower case) the handlers match; l: label; d: what it does; go: the screen that key moves to, or act: what
@@ -171,10 +175,12 @@ function progLayout(){const kids=[...$('program').children];if(!kids.length)retu
   const nx=progGate?null:nextStep(),pn=$('progNext');pn.classList.toggle('hidden',!nx);   // what to do next (Q40), above the tabs
   if(nx)pn.innerHTML=`<b>NEXT</b> ${nx.title} <span class="dim">· ${nx.why}</span>${nx.how?` <span class="acc">· try ${nx.how}</span>`:''}<button data-ptab="${nx.tab}">${PROG_TABS.find(t=>t[0]===nx.tab)[1]} ▸</button>`;
   $('bBuild').disabled=progGate;$('bDebLast').classList.toggle('hidden',!DEBRIEF_LAST||progGate);$('bNet').classList.toggle('hidden',!netOpen()||progGate);
+  const tray=progTab==='inbox';deskLayout(box,progGate);   // (Q239) the Inbox is the desk's in-tray, not a folder tab; asking for it points at the tray
+  if(tray&&!progGate){progTab='missions';const t=$('deskTray');t.classList.remove('flash');void t.offsetWidth;t.classList.add('flash')}
   const body=$('progBody');body.classList.toggle('gate',progGate);
   if(progGate){$('progTabs').replaceChildren();body.replaceChildren(...box.gate)}
-  else{if(!progTab||!box[progTab])progTab=progInbox?'inbox':'missions';
-    $('progTabs').innerHTML=PROG_TABS.filter(([k])=>k!=='more'||box.more.length).map(([k,l])=>
+  else{if(!progTab||!box[progTab])progTab='missions';
+    $('progTabs').innerHTML=PROG_TABS.filter(([k])=>k!=='inbox'&&(k!=='more'||box.more.length)).map(([k,l])=>
       `<button data-ptab="${k}" class="${k===progTab?'on':''}">${l}${k==='inbox'&&progInbox?`<span class="n">${progInbox}</span>`:''}</button>`).join('');
     body.replaceChildren(...box[progTab]);if(!box[progTab].length)body.innerHTML=`<div class="none">${progTab==='inbox'?'Nothing waiting for an answer.':'Nothing here yet.'}</div>`}
   $('hqStrip').innerHTML=`${head.outerHTML}<span class="sp" style="flex:1"></span>${progInbox?`<span class="n">Inbox ${progInbox}</span>`:''}<button data-go="program">← Program [P]</button>`}

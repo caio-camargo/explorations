@@ -70,11 +70,64 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
-#prog,#deb,#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
+#deb,#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
 #progTabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 0;border-bottom:1px solid var(--line)}#progTabs button{border-radius:4px 4px 0 0;border-bottom:0;padding:4px 12px}#progTabs .n{color:var(--warn);margin-left:4px}
 #progBody{overflow:auto;padding:8px 2px 4px;min-height:200px;columns:2 340px;column-gap:28px}#progBody>*{break-inside:avoid}#progBody .ep{font-size:11.5px;margin-top:10px;break-after:avoid}
+/* ---- the Program as the director's desk (flow session, Q239 R1; NOTES § UI "Plan: real screens"). A room: it fills the
+   window and frame() draws no 3D behind it. Paperwork look (W14): bundled fonts, paper colours through the same vars. */
+@font-face{font-family:'Special Elite';src:url(fonts/special-elite.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'Courier Prime';src:url(fonts/courier-prime.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'Courier Prime';font-weight:700;src:url(fonts/courier-prime-bold.woff2) format('woff2');font-display:swap}
+@font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue.woff2) format('woff2');font-display:swap}
+#prog{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(210px,270px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:auto auto minmax(0,1fr);column-gap:22px;row-gap:12px;padding:0 20px 16px;
+  --fg:#2a2620;--dim:#6b6252;--acc:#1d4f8f;--ok:#2f6b2f;--warn:#a5521a;--bad:#b3262a;--line:#9c8f78;
+  font:13px/1.4 'Courier Prime',Courier,monospace;color:var(--fg);
+  background:repeating-linear-gradient(92deg,rgba(0,0,0,.06) 0 3px,transparent 3px 11px,rgba(255,255,255,.03) 11px 13px,transparent 13px 29px),linear-gradient(180deg,#6b4429,#5a371f 60%,#4c2e1a)}
+#prog button{font:bold 12px 'Courier Prime',Courier,monospace;color:#2a2620;background:#e9dcb9;border:2px solid #2a2620;border-radius:2px;box-shadow:2px 2px 0 #2a2620;padding:2px 9px}
+#prog button:hover{background:#f6ecd0}#prog button:disabled{opacity:.45;cursor:default}
+#prog .sub{color:var(--dim)}#prog .ep{color:#1d2a44;font:bold 12px 'Courier Prime',monospace;letter-spacing:.14em;text-transform:uppercase}
+#deskLH{grid-column:1/-1;margin:0 -20px;height:80px;display:flex;align-items:center;gap:16px;padding:0 26px;background:#efe6cf;border-bottom:3px double #2a2620;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+#deskLH .flag{border:1px solid #2a2620;flex:none}#deskLH .org{flex:1;min-width:0}
+#deskLH .org .n{font:30px/1 'Bebas Neue',Impact,sans-serif;letter-spacing:3px;color:#1d2a44}#deskLH .org .s{font-size:12px;color:var(--dim)}
+#deskLH .ledger{font-size:12px;text-align:right}#deskLH .ledger b{display:block;font-size:22px;color:#1d2a44}
+#deskLH .cal{width:80px;height:64px;background:#fff;border:1px solid #888;text-align:center;box-shadow:2px 2px 4px rgba(0,0,0,.3);flex:none}
+#deskLH .cal .m{background:#b3262a;color:#fff;font:bold 11px/17px 'Courier Prime',monospace;letter-spacing:1px}#deskLH .cal .d{font:bold 28px/30px 'Courier Prime',monospace}#deskLH .cal .y{font-size:10px;color:#555}
+#deskTray{grid-column:1;grid-row:2/4;display:flex;flex-direction:column;min-height:0}
+#prog #deskTrayN{align-self:flex-start;font:bold 13px 'Special Elite',monospace;color:#f3ead4;letter-spacing:3px;margin:8px 0 6px 4px;padding:0;background:none;border:0;box-shadow:none}
+#deskTrayBox{flex:1;overflow:auto;border:6px solid #3a2516;border-top-width:3px;background:rgba(0,0,0,.18);border-radius:3px;padding:10px 8px}
+#deskTrayBox>*{background:#f3ead4;box-shadow:0 2px 6px rgba(0,0,0,.45);margin:0 0 10px;padding:7px 9px}
+#deskTrayBox>.ep{background:none;box-shadow:none;color:#f3ead4;padding:2px 2px 0;margin:6px 0 4px}
+#deskTrayBox>.ms{border-left:none}#deskTrayBox>.ms:nth-child(odd){transform:rotate(-.6deg)}#deskTrayBox>.ms:nth-child(even){transform:rotate(.5deg)}
+#deskTrayBox>.nw{background:#e6e1d3;font:11px Georgia,serif;margin:0;padding:4px 9px;border-left:none;box-shadow:none}#deskTrayBox>.nw.new{color:#2a2620;font-weight:bold}
+#deskTrayBox>.none{color:#f3ead4;background:none;box-shadow:none}
+#deskTray.flash #deskTrayBox{animation:trayFlash .9s}@keyframes trayFlash{0%,100%{border-color:#3a2516}30%{border-color:#ffd04a}}
+#prog #progNext{grid-column:2;grid-row:2;margin:0;border-left:0;padding:6px 12px;background:#fff7a8;border:0;transform:rotate(-.6deg);box-shadow:2px 3px 6px rgba(0,0,0,.4);font-size:12.5px}
+#prog #progNext b{color:var(--bad);font-weight:bold;letter-spacing:.08em}#prog #progNext .acc{color:var(--acc)}#prog #progNext button{padding:0 7px}
+#prog [style*="color:hsl"],#prog [style*="color:#"]{filter:brightness(.55) saturate(1.5)}   /* power colours are picked for dark glass: darken them on paper */
+#deskFolder{grid-column:2;grid-row:3;display:flex;flex-direction:column;min-height:0;padding-top:4px}
+#prog #progTabs{display:flex;gap:2px;flex-wrap:wrap;margin:0;border:0;padding-left:10px}
+#prog #progTabs button{box-shadow:none;border:1px solid #9c7c40;border-bottom:0;border-radius:6px 6px 0 0;background:#d9b97a;color:#3a2a14;padding:4px 12px}
+#prog #progTabs button.on{background:#e8c98a;position:relative;top:1px}
+#prog #progBody{flex:1;min-height:0;margin:0;padding:18px 24px;background:#f3ead4;border:14px solid #e8c98a;border-radius:0 6px 6px 6px;box-shadow:0 6px 14px rgba(0,0,0,.5),inset 0 0 0 1px #9c7c40;columns:2 280px}
+#prog .ms{border-left-color:var(--line)}#prog .ms b{color:#2a2620}
+#prog .ms.done{color:#7a7266;border-left-color:#b3262a}#prog .ms.done b{color:#7a7266;text-decoration:line-through;text-decoration-color:#b3262a;text-decoration-thickness:2px}
+#prog .ms.lock{color:#9a907e;border-left-color:#c9bea6}
+#deskSide{grid-column:3;grid-row:2/4;display:flex;flex-direction:column;min-height:0}
+#deskWall{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;gap:18px;padding-top:6px}
+#deskWall .photo{position:relative;background:#fbf8f0;padding:8px 8px 26px;box-shadow:2px 4px 10px rgba(0,0,0,.5)}
+#deskWall .photo img,#deskWall .photo .img{display:block;width:100%;aspect-ratio:3/2;filter:sepia(.5) contrast(1.05) saturate(.8)}
+#deskWall .photo .img{background:#cfc6b0;color:#7a7266;display:flex;align-items:center;justify-content:center;font:13px 'Special Elite',monospace}
+#deskWall .photo .cap{position:absolute;left:9px;right:9px;bottom:5px;font:12px 'Special Elite',monospace;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#deskWall .pin{position:absolute;left:50%;top:-5px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f66,#a11);box-shadow:1px 2px 2px rgba(0,0,0,.5)}
+#deskWall .clip{background:#e6e1d3;color:#222;padding:7px 10px;font:11px Georgia,serif;box-shadow:2px 3px 8px rgba(0,0,0,.45)}
+#deskWall .clip .pp{font:9px Georgia,serif;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid #444;padding-bottom:2px}#deskWall .clip .hd{font:bold 15px/1.15 Georgia,serif;margin-top:4px}
+#deskWall .cert{background:#fbf6e6;border:7px double #b08d3a;padding:7px;text-align:center;box-shadow:2px 4px 10px rgba(0,0,0,.5)}
+#deskWall .cert .t{font:16px 'Bebas Neue',Impact,sans-serif;letter-spacing:2px;color:#1d2a44}#deskWall .cert .s{font-size:10px;color:var(--dim)}
+#deskExits{display:flex;flex-direction:column;gap:8px;align-items:stretch;padding-top:12px}
+#prog #bBuild{margin:0;padding:9px 10px;font-size:13px;letter-spacing:.06em;background:#2a2620;color:#f3ead4;box-shadow:2px 2px 0 #b3262a}
+#prog #progBody.gate{columns:1}
 #rollPanel{display:flex;flex-direction:column;width:340px}#rollChecks .ri{font-style:normal;color:var(--dim);cursor:help}#rollBody{overflow:auto;flex:1}#rollChecks .rc{margin:2px 0;padding-left:20px;text-indent:-20px}#rollChecks .rc span{display:inline-block;width:20px;text-indent:0}#rollChecks .ok span{color:var(--ok)}#rollChecks .warn{color:var(--warn)}#rollChecks .bad{color:var(--bad)}#rollBooks table{width:100%}#rollBooks td:last-child{text-align:right}#rollPlay b{color:var(--acc);font-weight:normal}
 #rollFoot{display:flex;gap:8px;align-items:center;margin-top:8px}#rollFoot .big{flex:1;margin:0}
 #netHead{flex:1}#netHead .dt{color:var(--acc);font-size:12px}#netBody{overflow:auto;padding:4px 2px}#netBody .none{color:var(--dim);padding:6px 0}.netf{width:100%;border-collapse:collapse}.netf td{padding:2px 8px 2px 0;vertical-align:top}
@@ -147,10 +200,14 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   </div>
 </div>
 
-<div id="prog" class="hidden"><div class="hq">
-  <div class="hqHead"><h1>LAUNCHPAD</h1><div id="progHead"></div><button id="bLog3">Logbook</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">BUILD ▶</button></div>
-  <div id="progNext" class="hidden"></div><div id="progTabs"></div><div id="progBody"></div><div id="program" class="hidden"></div>
-</div></div>
+<div id="prog" class="hidden">
+  <div id="deskLH"></div><div id="progHead" class="hidden"></div>
+  <div id="deskTray"><button id="deskTrayN" data-ptab="inbox" title="the Inbox: what needs an answer">IN</button><div id="deskTrayBox"></div></div>
+  <div id="progNext" class="hidden"></div>
+  <div id="deskFolder"><div id="progTabs"></div><div id="progBody"></div></div>
+  <div id="deskSide"><div id="deskWall"></div><div id="deskExits"><button id="bLog3">Logbook [F]</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">TO THE ASSEMBLY HALL ▶ [B]</button></div></div>
+  <div id="program" class="hidden"></div>
+</div>
 <div id="roll" class="ui hidden"><div class="panel right" id="rollPanel">
   <h1>ROLLOUT</h1><div class="sub" id="rollDesign"></div>
   <div id="rollBody"><h2>Launch site</h2><div id="sitePick"></div><h2>Checks</h2><div id="rollChecks"></div><h2>The flight</h2><div id="rollBooks"></div><h2>In play</h2><div id="rollPlay"></div></div>
@@ -228,6 +285,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 <script src="app/network.js"></script>
 <script src="app/input.js"></script>
 <script src="app/screens.js"></script>
+<script src="app/desk.js"></script>
 <script src="app/rover-yard.js"></script>
 <script src="app/sound.js"></script>
 <script src="app/loop.js"></script>

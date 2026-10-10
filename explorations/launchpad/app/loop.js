@@ -36,8 +36,7 @@ function frame(now){
   testTopUp();const t0s=simT;if(!gamePaused())simulate(dtR);emitSmoke(simT-t0s);sndTick(dtR);
   if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=Math.min(devicePixelRatio||1,1.5);
     const nd=ndNodes()[ndSel]||S.node;nd.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}   // (flow, Q157) the node the panel has selected
-  adaptRes(dtR);
-  render();
+  if(!inRoom()){adaptRes(dtR);render();deskPhotoTick()}   // (Q239) a room covers the window: no 3D draw behind it
   frameMs=frameMs*.9+(performance.now()-t0)*.1;
   fpsN++;fpsT+=dtR;if(fpsT>0.5){fpsShow=fpsN/fpsT;fpsN=0;fpsT=0;$('perf').textContent=`${fpsShow.toFixed(0)} fps · gpu ${gpuMs==null?'?':gpuMs.toFixed(1)} ms · cpu ${frameMs.toFixed(1)} ms · res ${Math.round(RS*100)}% · ${GPU_NAME}`}
   hudT-=dtR;if(hudT<=0&&mode==='flight'){hudT=0.1;updateHUD()}
