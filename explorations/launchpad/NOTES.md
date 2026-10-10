@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1963,6 +1963,20 @@ trickle (100 bit/s).
 **Tests to write first** (slice 1): the contact shares `satTick` measures today (polar 300 km and the pad ~10 %, a
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
+
+## v1.102 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
+
+- The map draws every node of a chain at its place from `nodePlan`. The node the panel has selected (◀ node k of n ▶)
+  carries the drag handles; the others get a ring marker. With more than one node, each is labelled
+  `node k · Δv m/s · in T`. These labels are placed before any other, so a Pe/Ap label can't hide them.
+- **A click on a marker selects that node** (the panel follows), and its handles edit that node's Δv. Moving a node in
+  time by dragging it along the orbit still works for the first node only, because the map's pick only knows the current leg.
+- A node on another body's leg is drawn by that body where it will be at the node's time, as the plan's legs are.
+- Checked in the page (a 200 km orbit, three nodes from N's `nodeAddNext`): markers at the planned places; selecting node
+  2 moves the handles to it; a 0.8 s drag on its normal handle changed node 2 only (normal 0 → 25.8 m/s), nodes 1 and 3
+  unchanged. Robot `m1`, 51 (the map, tools refused) and 98 pass.
+- Two nodes at the same point (a burn at apoapsis that doesn't circularise leaves the next apoapsis where it was) draw
+  on top of each other, and the later label is skipped.
 
 ## v1.101 — the flight readout: a core and cards (2026-10-09, flow session, QUEUE Q3, UI slice 4a; W15's defaults)
 
@@ -9666,7 +9680,7 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 "◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
 
 **Not yet:**
-- markers and drag handles for queued nodes on the map (flow / the map's owner);
+- ~~markers and drag handles for queued nodes on the map (flow / the map's owner);~~ done, § v1.102;
 - a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
   the capture case).
 
