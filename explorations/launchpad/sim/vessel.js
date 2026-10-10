@@ -139,7 +139,7 @@ const PRESETS={
   // uncrewed (bodies session): a probe with a camera, an antenna and instruments on a Lunar-class launcher, ~1,900 m/s
   // spare past orbit, a transfer, a capture and a landing (the far side, impactor, soft landing, and all four Nyx missions);
   // and Big Lunar with an instrument package in its capsule, to bring a sample back from Selene
-  Probe:['ant','cam','sci','core','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross'],
+  Probe:null,   // set below, after toV2 (Q164: body cells on its tank)
   'Sample Return':['chute','pod','sci','shield','dec','t2','wren','dec','t4','t4','t2','petrel','istage','adapt','T32','T16',{k:'fins25',rad:{n:2,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
   'Crewed Lunar':['les','chute','crew','shield','dec','t2','wren','dec','t8','t4','petrel','istage','adapt','T32','T32',{k:'fins25',rad:{n:4,dec:true,stack:['cone','t8','fins','kestrel']}},'albatross'],
 };
@@ -805,6 +805,13 @@ function controlReport(s){geom(s);const ls=launchSegs(s),E=s.parts.filter(p=>p.o
   return{burn,coast,rcs,spin,roll:{wheel:s.torque,gim:ctrlAuthRoll(s,E,1)-s.torque,fin:fr},
     turn:{wheels:turnTime((s.torque+rcs)/Ip,rcs>0?0.6:Math.min(0.6,s.hmax/Ip)),burn:turnTime((ctrlAuthority(s,E,1)+rcs)/Ip)},hfull:s.hmax/Ip,steer:s.torque>0||E.some(p=>p.d.gim>0)||s.parts.some(p=>p.on&&p.d.ctl)||rcs>0,thrust}}
 function firstSeg(s){return launchSegs(s)[0]??0}
+// the Probe (bodies session; powered by the space session as vehicle overflow, QUEUE Q164): a probe with a camera, an
+// antenna and instruments on a Lunar-class launcher, ~1,900 m/s spare past orbit, a transfer, a capture and a landing (the
+// far side, impactor, soft landing, all four Nyx missions). Three panels of body cells on its own upper tank (it keeps it
+// to the end) give ~38 W in sun against 15 W of antenna and camera: power-positive in low orbit, so a Probe satellite's
+// service no longer hangs on its core battery's 0.5 kWh (Q27).
+PRESETS.Probe=(()=>{const d=toV2(['ant','cam','sci','core','t4','t4','petrel','istage','adapt','T32','T16','fins25','albatross']),h=d.root.k==='t4'?d.root:(f=>f(f,d.root))((f,n)=>n.k==='t4'?n:(n.c||[]).map(c=>f(f,c)).find(Boolean));
+  h.c.push({k:'bpanel',at:{y:2.6,a:0,n:3,cy:0.4},c:[]});return d})();
 // the Docking preset (vehicle session, Q78): a docking head on the Orbiter's launcher, so the docking rows can be flown from
 // presets. A port on top, a probe core with an onboard computer (Docking SAS needs one on a probe, v1.68) and a battery,
 // two RCS rings and two gas bottles on the upper tank. Launch it twice, one as the target; or chase a satellite with a port.

@@ -44,6 +44,7 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #info td:first-child{color:var(--dim);padding-right:12px}
 #navwrap{position:absolute;left:50%;bottom:10px;transform:translateX(-50%);display:flex;align-items:flex-end;gap:10px}
 #nav{width:180px;height:180px;border-radius:50%;box-shadow:0 0 0 2px #223,0 0 18px #000}
+#gslot{width:318px;height:150px;flex:none}   /* (flow, slice 4b) the gauges' place in the cluster; aerofx's drawGauges draws into it */
 #thr{width:14px;height:150px;border:1px solid var(--line);border-radius:3px;position:relative;background:var(--panel)}
 #thrf{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(#ffcf6b,#ff7a2e)}
 #sas{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:118px}
@@ -106,7 +107,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 .grp .hd{display:flex;gap:3px;align-items:center;flex-wrap:wrap;color:var(--warn)}.grp .hd button{padding:0 5px}
 #target{color:var(--warn);font-size:11px;margin:-2px 0 6px}
 .jrow{display:flex;gap:6px;align-items:center;font-size:10.5px;padding:0 4px 0 10px;margin:-1px 0;color:var(--dim)}.jrow .jl{color:#5a6574}.jrow button{margin-left:auto;padding:0 5px;font-size:10px}.jrow button.on{background:rgba(255,180,84,.3);color:#fff}#target a{color:var(--acc);cursor:pointer;text-decoration:underline}
-@media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
+@media (max-width:1000px),(max-height:620px){body{font-size:10.5px}#nav{width:120px;height:120px}#gslot{width:254px;height:120px}#thr{height:100px}#sas{width:100px}#sas button{font-size:9.5px}
  .tl{min-width:0;padding:6px 8px}.bl{padding:6px 8px;min-width:0;max-width:170px}.left,.right{width:210px;padding:8px}#edFoot{bottom:-8px;margin:6px -8px -8px;padding:6px 8px 8px}#navtxt{font-size:9.5px;top:-16px}h2{margin:6px 0 3px}}
 /* the logbook, by era: a handwritten notebook on graph paper; a monochrome phosphor terminal; or plain (modern) */
 #logbook{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,92vw);max-height:84vh;overflow:auto;z-index:5;padding:18px 22px;border-radius:4px;box-shadow:0 10px 40px #000a}
@@ -164,6 +165,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="cards" class="hidden"></div>
   <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div id="navwrap">
+    <div id="gslot" class="hidden"></div>
     <div id="thr"><div id="thrf"></div></div>
     <div style="position:relative"><div id="navtxt"></div><canvas id="nav" width="180" height="180"></canvas></div>
     <div id="sas"></div>

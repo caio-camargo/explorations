@@ -28,6 +28,10 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
     day0:R.day0,day:PROG.day,met:simT,fromOrbit:!!R.fromOrbit,outcome:out,money:[],net:null,missions:[],certs:[],records:[],incidents:[],kh:[],streak:PROG.streak||0};
   if(b&&PROG.satN>b.satN)out.d+=' · registered in the fleet';
   if(R.bio)D.passenger={who:R.pet,ok:R.bioOK,why:R.bioWhy,tourist:!!R.tourist};
+  // the crew (flow, Q191; PLAYTEST #34): people, not the test dummies flown before the escape tower is qualified. How many,
+  // how it ended for them, and the days since liftoff (a crew brought home from a station: since this flight's start)
+  if(R.crewed){const n=R.crewN||2,days=simT/DAY_S,home=s.alive&&s.landed&&s.body===TELLUS;
+    D.crew={n,ok:!!R.crewOK,home,days,line:!R.crewOK?`The crew of ${n} ${R.crewWhy||'were lost'}`:home?`Crew of ${n} home safe${days>=1?` after ${days.toFixed(days<10?1:0)} days`:''}`:`Crew of ${n} aboard, all well`}}
   // money: what we know line by line; the rest is the days that passed (budget, upkeep, income, debt)
   const M=D.money,add=(l,v,k)=>{if(Math.abs(v)>=0.05)M.push({l,v,k})};
   add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');

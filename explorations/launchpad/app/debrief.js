@@ -10,6 +10,7 @@ function renderDebrief(){const D=debShown,el=$('debBody');if(!D){el.innerHTML='<
     rows=L=>`<table>${L.join('')}</table>`;
   $('debHead').innerHTML=`<div class="dt">Flight ${D.flight}${D.design?` · ${D.design}`:''}</div><div class="sub">${fmtDate(D.day)} · ${fmtT(D.met)} flown</div>`;
   let h=`<div class="dout k-${o.k}"><b>${o.t}</b><div class="sub">${o.d}</div>`
+    +(D.crew?`<div class="sub ${D.crew.ok?'ok':'bad'}">${D.crew.line}</div>`:'')   // (Q191)
     +(D.passenger?`<div class="sub">${D.passenger.ok?`${D.passenger.who} came through`:`${D.passenger.who} ${D.passenger.why}`}</div>`:'')+`</div>`;
   h+=sec('Money',D.money.length?rows(D.money.map(m=>`<tr><td>${m.l}</td><td>${money(m.v)}</td></tr>`))
     +(D.net!=null?`<table class="dnet"><tr><td>Net for the program</td><td>${money(D.net)}</td></tr></table>`:''):'');

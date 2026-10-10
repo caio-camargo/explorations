@@ -4779,3 +4779,88 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad new `app/crew-look.js` (+ `index.html` line), `app/gl.js` (crew arm in `buildRig`, `padRig`'s hatch, `drawPadRig`), `app/render.js` (`drawPadCrew`), `views.js` 120–122, `test.mjs` `aerofx-5`, NOTES § "The crew's look, slice 1" + file map row, TESTING 184 (also QA's picker row 178 → 179, doubled with the Steppe pad's), QUEUE (Q195 ✓, Q194 covered by Q106, a walk-out proposal); `ACTIVE_WORK.md`.
 **Tests:** `aerofx-1…5`, 38, 39, `qa-3`, `platform-1` pass; robot `m1` passes; smoke as before (vehicle-4 known). TESTING row numbers collided four times in an hour (175→177→178, 180→181→182→183→184): Q160 (a duplicate check before push) would have saved most of it.
 **Next:** Q199 (suit mock-ups, Cape and Steppe × three eras) is ready for a look beat; the crew walk-out/boarding and Steppe crew access are proposed.
+
+
+## 2026-10-09 — Launchpad vehicle lane: v1.73.1, the Passenger Orbiter's passenger and vehicle-4 in smoke (vehicle session, QUEUE Q201, Q204)
+
+### Summary
+- **Q201 / PLAYTEST #35:** the Passenger Orbiter cooked its passenger on every robot ascent. The narrow chute left the
+  biocapsule's shoulder in the flow (skin ~500 K), and its 10-minute cabin passed 330 K on the climb. The 10-minute lag is
+  deliberate (a bare animal capsule on an orbital ascent is meant to cook), so the fix is in the preset: a **nose cone over
+  the chute**. Measured: skin 318 K, cabin 300 K at orbit, 665 m/s spare (was 715). First flight 58 → 59M; career pacing
+  (`PACE=1 node career.mjs`) reaches orbit 3/3 everywhere, about a day later.
+- **`vehicle-3`** now reads the flight record (`S.rec`: `bioOK`, `bioOrbits`, `gMax`, the cabin) from liftoff, and fails
+  on the old preset with the game's own message.
+- **Q204:** `vehicle-4` failed only inside `--smoke` because it restored the logbook before two of its readings; an
+  earlier section's 5,000 m/s best orbit then read the Orbiter "short" of 400 km instead of "tight". The "Beeper short of
+  orbit" text in the failure line was the check's own deliberate 5,600 case, a red herring. `--smoke` passes.
+- New worktree `C:/Users/caioa/dev/launchpad-builder` on a new branch **`vehicle`**: this machine had no builder worktree,
+  and the other machine's `builder` holds Q152's unpushed commit.
+
+### Files
+- `explorations/launchpad/`: `sim/vessel.js` (`PRESETS['Passenger Orbiter']`), `test.mjs` (`vehicle-3`, `vehicle-4`),
+  `NOTES.md` (§ v1.73.1), `PLAYTEST.md` (#35 fixed), `TESTING.md` (row 147 note), `QUEUE.md` (Q201, Q204 ✓; smoke flag
+  struck; a QA follow-up)
+- `ACTIVE_WORK.md`, `SESSION_LOG.md`
+
+### Tests
+- `--smoke --jobs 2` passes after each merge of `main`; `vehicle-3`, `vehicle-4`, `qa-3` pass on the final merge. The full
+  suite wasn't run: its slow sections (the long flights and ladders) don't fly this preset, and the machine had low-memory
+  stops today.
+
+### Next steps
+- [ ] QA: browser re-run of TESTING 147 (`node playtest.mjs 147`, 🖥), then tick it and PLAYTEST #35
+- [ ] vehicle: Q190 (era gates for late parts) is the next first-hour item; Q152 waits on the other machine's `builder`
+
+## 2026-10-09 — Launchpad v1.105: the Probe makes its own power (space session, vehicle overflow, QUEUE Q164)
+
+**Summary:** The Probe, the only preset with an antenna, ran flat in ~33 h (15 W on a 0.5 kWh core), which blocked Q27. It's now a v2 preset with three body-cell panels on its upper tank: 24 W average in low orbit, 31 W at 1,000 km, 27.5 W at Selene, never flat on rails. +30 kg, +6M, so four moon firsts went 230 → 240M to keep economy's 1.3× pay floor. The v2 preset exposed array-only checks: supply runs ("no design in Assembly"), dry runs, dispatch candidates and `career.mjs` now take v2 designs.
+**Files:** launchpad `sim/vessel.js` (`PRESETS.Probe`), `sim/program.js` (four pays, three checks), `career.mjs` (`stackKeys`), `test.mjs` (space-17), NOTES § v1.105, TESTING 185, QUEUE; `ACTIVE_WORK.md`.
+**Tests:** full suite 616 pass after merging main (economy's v1.104 windows included). `career.mjs` 10 seeds × 3 years: final funds 702 → 659M mean (most starts −5 to −20 %, frugal richer; 3-seed runs swing ±40 %), firsts and bailouts unchanged; Caio said go ahead as is.
+**Next:** Q27 (power gates service) and Q173 (relays as nodes) are unblocked for space; vehicle's Q152 lander should be rebuilt on the v2 Probe.
+
+## 2026-10-09 — Launchpad v1.106–v1.107: the gauges as the instrument panel, the crew in the Debrief (flow session, continued)
+
+### Summary
+- **Q3 slice 4b (v1.106, closes PLAYTEST #9):** aerofx's gauges have a slot at the left of the bottom cluster (gauges |
+  throttle | navball | SAS), shown while climbing, landing or heating (held 3 s) and hidden on the pad and in space,
+  where the cluster narrows. The Ascent card keeps only AoA, Heat and Structure while the gauges are on. A fixed navball
+  with the gauges hung beside it was rejected: at 1000×700 they'd sit on the stages panel. Robot `m1` and 98 pass at
+  both sizes.
+- **Q191 (v1.107, closes PLAYTEST #34):** the Debrief says "Crew of 2 home safe after N days", "aboard, all well", or
+  how they were lost. `missionTick` keeps `R.crewN` and `R.crewWhy` (additive). Test `flow-6`; robot row 65 shows it.
+- One run of row 65 lost the capsule 12 s in; three others passed (with and without my change). Proposed to QA as a flake.
+
+### Files
+- `explorations/launchpad/`: `app/hud.js` (`ascentOn`, `gaugeSlot`), `app/gl.js` (`gaugeRect` reads `#gslot`),
+  `app/program-ui.js`, `index.html` (`#gslot`), `sim/program.js` (crew fields), `sim/debrief.js`, `app/debrief.js`,
+  `test.mjs` (`flow-6`), `NOTES.md`, `TESTING.md` (186, 187), `PLAYTEST.md` (#9, #34 closed), `QUEUE.md`
+- `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] flow: Q3 slice 4c (the map trims), Q193 (the Steppe rollout, with look & sound), Q104 (flags and roundels)
+- [ ] space: a rotation's days aboard in the Debrief (proposed)
+- [ ] QA: row 65's occasional lost capsule (proposed)
+
+## 2026-10-09 — Launchpad v1.108: power gates a satellite's service (space session, QUEUE Q27)
+
+**Summary:** Registry entries keep their power budget for their own orbit and their charge (`satPowInit`); between flights a power-negative design drains (`satPowTick`), then works only in sunlight as far as its cells cover the load, or goes quiet (`satDuty`). Imagery (camera take and downlinks), contract frames, TV income, `entryLink` (mission control, rover relays) and navigation (needs power round the clock) scale with it. A satellite with no power source at all, which used to earn, is silent from day one, so the weather/TV/nav briefs and the registration news now warn ("its battery lasts about 4 days; then it goes quiet"). Measured: the pre-v1.105 Probe flat by day 12, one panel 60 %, the v1.105 Probe never.
+**Files:** launchpad `sim/power.js` (the model, `satPowNote`), `sim/space.js` (`satRegister`, `satTick`, `entryLink`), `sim/program.js` (TV income, `navCover`, three briefs), `sim/rovers.js` (relays), `app/program-ui.js` (Fleet line), `test.mjs` (space-18; test 24's satellites powered), NOTES § v1.108, TESTING 188, QUEUE; `ACTIVE_WORK.md`.
+**Tests:** full suite 617 pass on the branch after merging main; after the last merge (flow's v1.106–107) the touched sections, qa-3 and smoke pass. `career.mjs` 10 seeds identical (its robot registers no powered services).
+**Collisions:** flow took v1.106–v1.107 and TESTING 186–187 during the merge: this is v1.108, row 188.
+**Next:** Q173 (relays as nodes) is space's last M2 item; it needs the browser and flow. Proposed: the builder's power line saying what it means between flights; landed entries' power.
+
+## 2026-10-09 — Launchpad Q207: body mock-ups, round 2 (look & sound, sky & bodies beat)
+
+**Summary:** Built round 2 of the body mock-ups from SYSTEM.md 1.1.0 § "Look, round 2" (Caio's W20 answers), on the same standalone page (`mockups/bodies/index.html`; round 1 kept as `r1-*`). 13 views: Hesper day (sideways Y, chevrons, polar swirls) and **night side** (red glow, dark filaments); Enyo redder, with the volcano as relief (irregular basal cliff, overlapping off-centre calderas, a Tharsis row) and a close-up; Astraea raymarched lumpy and flattened, with the south-polar basin and central mountain (from below and side-on); Hyperion in two seasons (hexagon, blue winter hemisphere, ring shadow, a gap with a moon, a braided outer ring) and from Tellus; Eos with cycloids, chaos and tiger-stripe plumes (two views); Tethys with thin haze, dunes, a highland and a lake glint; Erebus backlit in blue haze, and with Aether at true scale. Three tuning passes judged from the stills (the first had Hesper's night side looking like Mars, Enyo's shields as hemispheres, and Astraea's grooves as stacked ridges).
+**Files:** launchpad `mockups/bodies/index.html`, `mockups/README.md` (0.1.1, round-2 table: references and shader needs per view), `QUEUE.md` (Q207 ✓, W29); `ACTIVE_WORK.md`. Stills (local, gitignored) `output/launchpad/mockups/bodies/r2-*.png`. New worktree `C:/Users/caioa/dev/launchpad-sky` (branch `sky`).
+**Tests:** none apply (no game code). The page compiles and renders all 13 views in headless Chrome on the RTX (`shot.mjs`), under the `.game-busy` lock.
+**Notes:** this machine has no git identity: commit with `-c user.name=… -c user.email=…`. The claim commit (`58876ae`) went out with the wrong email.
+**Next:** Caio picks or comments (W29); then Q80–Q85 build each body's look from the chosen views.
+
+## 2026-10-09 — Launchpad Q199: suit mock-ups (look & sound, effects beat; on CREW 0.2.3)
+
+**Summary:** With D9's defaults taken (three generations per school, a spacewalk suit per school, a role stripe), mocked up Cape and Steppe: early, middle, late and spacewalk, in the crew mock-up's scene with the stylised human (`mockups/suits/`, a copy of the crew raymarcher with suit parameters: colours, helmet shell, faceplate size, Apollo's bubble, the SK-1's lettered brow, Sokol's soft hood, gold visors, backpacks, bulk, Orlan's rigid torso; role stripes pilot blue / scientist green / engineer yellow). Stills in `output/launchpad/mockups/suits/` (16 + 3 roles + 2 sheets). Caio's pick is **W30** (W29 went to bodies round 2 at the same minute).
+**Files:** launchpad `mockups/suits/index.html` (new), `mockups/README.md` § suits, QUEUE (Q199 ✓ mock-ups, W30); `ACTIVE_WORK.md`.
+**Notes:** the first faceplates were the crew mock-up's (very wide), which made every helmet a glass bowl; narrowed to fit the face. The Sokol hood reads as fabric only up close. Pilot blue is weak on the Sokol's blue fittings (an alternative is named in the README).
+**Next:** after W30, the suit build into `SUITS` (Cape then Steppe); Q209 (walk-out and boarding) is ranked.
