@@ -62,7 +62,7 @@
 <header>
   <h1>Face lab</h1>
   <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 52 identity genes. ★ = reads at 48 px.</span>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 55 identity genes. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -168,8 +168,11 @@ const GENES = [
   ['cz', 'Jaw', 'Chin size', 1, .7, 1.8, 'p', 1],
   // added with Caio's eye notes (the socket bound by brow and nose, 3D lids, spherical eyes)
   ['lb', 'Eyes', 'Lower lid height', 0, -.03, .04, 'q:eyes'],
-  ['lk', 'Eyes', 'Lid thickness', .012, .005, .028, 'q:eyes'],
+  ['lk', 'Eyes', 'Lid thickness', .012, .005, .021, 'q:eyes'],
   ['so', 'Eyes', 'Socket: crisp–soft below', .05, .012, .12, 'q:eyes'],
+  ['ua', 'Eyes', 'Upper lid: round–almond', .7, .3, 1.6, 'f:eyes'],
+  ['pk', 'Eyes', 'Lid peak: inner–outer', 0, -.35, .35, 'f:eyes'],
+  ['lf', 'Eyes', 'Lid fold: hooded–deep-set', .05, .012, .12, 'q:eyes'],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -281,11 +284,16 @@ float carve(vec3 p,float d){
 vec3 eyeC(){return vec3(g_es,.035,.62-g_ed);}
 vec3 eyeL(vec3 p){vec3 e=vec3(abs(p.x),p.y,p.z)-eyeC();e.xy=rot(g_et)*e.xy;return e/g_ez;}
 float eyeD(vec3 p){return (length(eyeL(p))-.14)*g_ez;}   // the eyeball: a sphere
-float lidD(vec3 p){vec3 e=eyeL(p);   // the lids: shells over the eyeball, the upper margin arched, the lower gentler
- float sh=abs(length(e)-.14-g_lk)-g_lk;
- float up=(.05-1.5*g_el)-.9*e.x*e.x,lo=-(.07-g_lb)+.5*e.x*e.x;
- float lid=smax(sh,-max(e.y-up,lo-e.y),.006);   // only above the upper margin and below the lower one
- return max(lid,-e.z-.03)*g_ez;}
+float lidD(vec3 p){vec3 e=eyeL(p);   // the lids, over the eyeball: a thick upper band ending in a fold, a thin lower band, thin skin elsewhere
+ float w=.125,t=clamp(e.x/w,-1.5,1.5);t-=g_pk*(1.-t*t);   // the aperture's corners at ±w; the peak shifted inward or outward
+ float q=max(1.-t*t,0.),yc=-.012;
+ float up=yc+(.062-1.5*g_el-yc)*pow(q,g_ua),lo=yc-(.07-g_lb+yc)*pow(q,.8);   // the margins: the upper arched by the shape, the lower gentler
+ float ap=max(e.y-up,lo-e.y),r=length(e);
+ float skin=smax(abs(r-.143)-.003,-ap,.004);   // thin skin over the eyeball outside the opening (recessed under the brow)
+ float ub=smax(abs(r-.14-g_lk)-g_lk,-min(e.y-up,up+g_lf-e.y),.007);   // the upper lid: a band from the margin to its fold
+ float lb=smax(abs(r-.14-.45*g_lk)-.45*g_lk,-min(lo-e.y,e.y-lo+.075),.005);   // the lower lid: a thinner band
+ float bands=smax(min(ub,lb),abs(e.x)-w*1.04,.012);   // the bands end at the corners
+ return max(min(skin,bands),-e.z-.03)*g_ez;}
 vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve
 float upLip(vec3 m){float f=.055*mix(1.,g_ul,.5);return smax(sdEll(m-vec3(0.,.045*g_ul,.735),vec3(.17,.045*g_ul,f)),m.z-.735-f*(1.-.45*g_lc),.004);}   // a crisp lip is cut flat in front: a carved plane
 float loLip(vec3 m){float f=.065*mix(1.,g_ll,.5);return smax(max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g_ll,f)),plane(m,vec3(0.,.7,.7),vec3(0.,-.03,.765))),m.z-.72-f*(1.-.45*g_lc),.004);}
@@ -367,7 +375,7 @@ for (const [n, c] of [['uSkin', P.skin], ['uHair', P.hair], ['uIris', P.iris], [
 function drawTile(cv, t, view, fov) {
   const [vk, tg] = view.split(':'), vf = k => val(IX[k], t[IX[k]]);
   const T = CLOSE[tg] || [0, -.22 - .35 * Math.max(0, vf('fl') - 1) - .25 * Math.max(0, vf('jm') - 1) - .1 * Math.max(0, vf('cz') - 1), 0];   // a long or heavy lower face lowers the frame
-  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? 2.7 : 6, H = glc.height;
+  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? (tg === 'eyes' ? 1.6 : 2.7) : 6, H = glc.height;
   gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.uniform2f(U('uRes'), s, s);
   gl.uniform3f(U('uCam'), T[0] + Math.sin(a) * d, T[1] + (tg ? .25 : .32), T[2] + Math.cos(a) * d); gl.uniform3f(U('uTgt'), ...T); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
   const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
@@ -425,7 +433,7 @@ function renderEdit() { const c = ':' + $('closeOn').value;
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
-const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080808080ffa001b880808001f0050a8080e7faeadbbf809780ff8b0cb01180a68025c70ed5e6df', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
+const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809980ffcf01c780808001f0050a8080fffaffedbf80ba80ffc016cf1180e64025c70ed5ffff808080b88080', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
   'Nose: button': 'LP1.80808080808080808080808080801a275d348080808080808080808080808080808080ff4d8d676d808080808080808080', 'Nose: bulb': 'LP1.8080808080808080808080808080a680a4808080808080808080808080808080808080fff2e680cccc8080808080808080', 'Nose: hawk': 'LP1.8080808080808080808080808080cca880e6ff80808080808080808080808080808080015c5c8067808080808080808080' };
 for (const k in PRESETS) $('preset').insertAdjacentHTML('beforeend', `<option>${k}</option>`);
 $('preset').onchange = () => { const t = fromDNA(PRESETS[$('preset').value]); if (t) { cur = t; syncSliders(); editChanged(); } $('preset').value = ''; };

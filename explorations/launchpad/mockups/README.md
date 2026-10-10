@@ -203,6 +203,11 @@ sphere; the lids are shells over it (the upper margin arched, the lower gentler,
 under the brow, soft below and outward, and the nose is put back after it is cut so the nose's side is the socket's
 inner wall. New genes: lower lid height, lid thickness, socket softness; upper-lid weight now moves the real lid.
 Still: `faces/eyes-ranges.png`. 52 genes.
+**Lid shapes** (Caio: the upper lid line should curve more; the lower lid shows as a thinner band; eye-shape references):
+the margins are curves between two corners; *upper lid: round–almond*, *lid peak: inner–outer* (almond vs downturned),
+*lid fold: hooded–deep-set* (the upper lid is a thick band ending in a fold, thin recessed skin above it under the
+brow); the lower lid is a band half as thick. The Mr. Incredible preset was retuned against his profile (sloped
+forehead, long nose off the brow, recessed mouth, big forward chin); his neck still reads as a column. 55 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

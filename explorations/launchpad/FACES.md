@@ -176,3 +176,6 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Eyes** (Caio's notes): spherical eyeballs, 3D lids (upper arched, lower gentler), a socket hard at the brow and
   against the nose, soft below and outward. Lower lid height, lid thickness, socket softness. 52 genes. Gaze (moving
   irises) belongs to the expression layer (F7).
+- **Lid shapes** (Caio's notes and eye-shape references): curved margins between corners; round–almond, lid peak,
+  lid fold (hooded to deep-set); a thinner lower lid. Mr. Incredible preset retuned to his profile. 55 genes.
+  Open: a sloped, forward neck (his reads as a column).
