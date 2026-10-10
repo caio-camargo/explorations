@@ -1,6 +1,6 @@
 # POWERS — national flavours as content
 **Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
-**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle approved 2026-10-10 (D14: defaults on 1 and 3; 2, tilted launches, being discussed; 4, the mock-ups, Caio runs in his design session).
+**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle approved 2026-10-10 (D14: defaults on 1 and 3; 2: tilted launches are a rail for every school, MIDGAME 1.1.0; 4, the mock-ups, Caio runs in his design session).
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
 already exist (ROADMAP § "Design catalogs"); no new system.
@@ -151,7 +151,7 @@ makes all four its own:
 1. **Coastal's pad changes from the table's "mobile gantry that rolls away"** to **vertical rollout on a table to a
    towerless pad with lightning masts** (default): Cape's gantry already rolls away (NOTES § Step 7), so the table's
    version wouldn't be told apart.
-2. **Mountain's rail launcher is look only** (default): the player's rocket sits on the rail raised to vertical, so
+2. **Answered (Caio, 2026-10-10): a launch rail for every school** (MIDGAME 1.1.0 § The launch rail, Q228); Mountain draws it by default. Was: **Mountain's rail launcher is look only** (default): the player's rocket sits on the rail raised to vertical, so
    the flight is the same as anywhere (a school never changes physics); only rivals' news pictures show it tilted. Or
    (b) a real tilted launch for small solids, a small physics change.
 3. **Isle's decals show the contract's client** when a flight has one (default), and each Isle rocket gets a joke name

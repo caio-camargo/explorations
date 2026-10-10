@@ -1,5 +1,5 @@
 # MIDGAME — from single flights to a network
-**Version**: 1.0.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-09
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-09 · **Updated**: 2026-10-10
 **Status**: **Approved by Caio 2026-10-09.** Numbers are placeholders for the lanes to measure and tune.
 **Purpose**: How the program turns from one-off flights into routines (epochs 3–6, M2–M4): what's automated first, how
 automation grows with the eras, what a routine's window is, and what satellites ask of the player. The bridge to
@@ -29,6 +29,7 @@ Each era moves the edge of automation outward; the player flies what's beyond it
 
 | Era (NOTES § Compute) | What can run as a routine | What you still fly |
 |---|---|---|
+| **Before computers: the launch rail** (year 0 on; § The launch rail) | **an aimed launch**: set the rail's angle and heading, and a small solid rocket flies itself to its orbit, no steering | anything crewed, liquid or heavy |
 | **Human computers** (year 0–3) | repeating an ascent you've flown (dispatch: exists, Q11) | everything else |
 | **Mainframes** (~year 3) | deploying satellites to orbits you've flown; ground-commanded | rendezvous, docking, anything beyond Tellus orbit |
 | **Onboard computers** (~year 7) | **uncrewed rendezvous and docking: cargo resupply** (Progress-like); Selene runs | the new: other bodies, first landings, the planets |
@@ -74,6 +75,26 @@ Station-keeping (v1.60) and decay (v1.64) are real physics and stay. What change
 
 ---
 
+## The launch rail (the bottom rung; Caio, 2026-10-10, from D14)
+
+Before any guidance, a launch can still be automated by **aiming it**. Japan's first satellite (Ohsumi, 1970) flew on
+an unguided solid rocket from a tilted rail: the rail set the angle, and gravity did the pitch-over. In the gyro era
+(SAS holds stability only) the player otherwise steers every ascent by hand; the rail turns a launch into a puzzle
+solved **before** lift-off: choose the angle and the heading, then watch. Once it's right, it repeats without flying.
+
+- **Any school, as a pad upgrade.** Physics never depends on the school (POWERS § schools), so the rail is a pad
+  option for everyone. **Mountain's pads show one by default** (its history; POWERS 1.2.0 § School briefs).
+- **What it takes:** small, **uncrewed** rockets that leave the rail fast: in practice solid stages with a high
+  thrust-to-weight ratio and fins or spin for stability. A heavy, slow rocket droops off the end of the rail (the
+  physics says so; the rollout screen warns). No crew: an unguided ride isn't for people, and the escape tower
+  assumes a vertical launch.
+- **How it flies:** the rocket starts at the rail's angle and heading and is held on the rail until it reaches its end
+  (a few tens of metres), then flies free: fins, spin and the shape of the gravity turn decide where it goes.
+  Staging can be on timers set at rollout (an early sequencer: no computer, a clock).
+- **Fades with the eras:** once a mainframe can fly ascents, the rail is history (pillar 8); it stays for sounding
+  rockets and nostalgia.
+- **Sizes and numbers** (rail length, angle range, the thrust-to-weight floor) are the lane's to measure.
+
 ## Follow-ups (in QUEUE *Proposed*)
 
 - **space:** re-tune station-keeping and decay so typical good designs outlast their era (v1.60/v1.64 numbers); a
@@ -81,6 +102,7 @@ Station-keeping (v1.60) and decay (v1.64) are real physics and stay. What change
 - **economy:** era-driven obsolescence as the reason to replace (service quality by the satellite's era); servicing
   contracts for valuable assets.
 - **space / economy:** routines' window rules (Q49's registry and the pad calendar).
+- **vehicle:** the launch rail (QUEUE Q228).
 - **economy:** the automation ladder: which routines each compute era permits; crewed routines before onboard
   computers.
 
@@ -89,3 +111,4 @@ Station-keeping (v1.60) and decay (v1.64) are real physics and stay. What change
 ## Version history
 - **1.0.0 (2026-10-09):** written and approved in one round: flying stays central, the automation ladder, windows,
   satellites replaced for upgrades.
+- **1.1.0 (2026-10-10):** the launch rail as the ladder's bottom rung (Caio, from D14 2).
