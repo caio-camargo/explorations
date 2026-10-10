@@ -1632,6 +1632,12 @@ const PAD_GLOW=(()=>{const a=[],L=[1,.9,.72];for(const[x,z]of PAD_LIGHTS){const 
 function buildRig(TH,rig,sch=0){if(sch===1)return steppeRig(TH,rig);const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],x0=7-1.5;
   const arms=[.3,.55,.8].map((f,i)=>{const h=Math.round(TH*f),xr=rig&&rig.xs[i],L=xr!=null?x0-(xr+.12):4.8,a=[];
     box(a,[-L/2,0,0],L/2,.35,.45,OR);box(a,[-L-.05,-.1,0],.05,.45,.35,STL);tube(a,[-.6,-.35,.3],[-L-.3,-.55,.3],.07,DK,6);return{mesh:makeMesh(a),h,reach:xr!=null}});
+  // the crew access arm (Q195): a walkway with railings to the capsule's hatch, hinged on the tower like the swing arms
+  // (west at angle 0); a swing arm within 1.6 m of it stands down. The crew stand on it in the Assembly (app/crew-look.js)
+  let crew=null,crewFig=null;if(rig&&rig.crew&&rig.crew.x!=null){const h=rig.crew.h,L=Math.max(1.5,x0-(rig.crew.x+.15)),a=[],GR=[.4,.41,.42,1];
+    box(a,[-L/2,-.06,0],L/2,.06,.8,GR);box(a,[-L/2,-.3,0],L/2,.18,.12,OR);
+    for(const z of[-.8,.8]){tube(a,[0,1.05,z],[-L,1.05,z],.025,OR,4);tube(a,[0,.55,z],[-L,.55,z],.02,OR,4);for(let x=0;x>=-L-.01;x-=Math.min(1.2,L/2))tube(a,[x,0,z],[x,1.05,z],.025,OR,4)}
+    crew={mesh:makeMesh(a),h,L};for(const A of arms)if(Math.abs(A.h-h)<1.6)A.skip=true;crewFig=typeof crewMeshes==='function'?crewMeshes(rig.crew.n,sch):null}
   // hold-downs: from the posts up to clamps on the rocket's base, above its engines (in the editor the ship hangs higher,
   // as in an assembly hall, and they become the launch stool it stands on)
   // Where they stand comes from padRig (rig.hold): turned off the diagonals if boosters sit there, each clamping the outermost
@@ -1650,7 +1656,7 @@ function buildRig(TH,rig,sch=0){if(sch===1)return steppeRig(TH,rig);const OR=[.7
   box(g,[0,GH+.25,0],GX+1.2,.25,7,RD);box(g,[0,GH+1.5,0],1,1,5,STL);box(g,[0,GH+2.6,3],.4,.15,4,RD);
   // service position: the decks (front edge at z = 1 here) stop 0.5 m short of the stack's widest reach, boosters included
   const gantry=makeMesh(g),zS=Math.min(-3.3,-((rig?rig.zr:R0)+1.5));
-  return{arms,holds,posts,gantry,zS,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();posts.free();gantry.free()}}}
+  return{arms,holds,posts,gantry,zS,crew,crewFig,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();posts.free();gantry.free();if(crew)crew.mesh.free();if(crewFig)for(const x of crewFig)x.mesh.free()}}}
 // Steppe's moving parts (Q159), each in its own frame like Cape's: the table ring (fixed), four support arms pivoting on
 // it and leaning in to clamp the rocket a third of the way up (holds; the same angles as Cape's hold-downs, so they miss
 // the boosters), two cable masts north of the ring (arms), one service half (gantry, drawn twice: east, and turned 180°
@@ -1695,6 +1701,7 @@ function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0
     ray=(t,h)=>{const c=Math.cos(t),s=Math.sin(t);let r=0;for(const p of pb){const y0=p.y0+base;if(h<y0||h>y0+p.h)continue;const x=p.pos[0],z=p.pos[2],b=x*c+z*s,D=b*b-(x*x+z*z-p.d.r*p.d.r);if(D>=0)r=Math.max(r,b+Math.sqrt(D))}return r||rB},
     L=Math.max(...pb.map(p=>p.y0+p.h)),hc=base+clamp(L*.3,2.5,18);
   return{base,hE:core?core.h:1,rB,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f))),zr:Math.max(...ps.map(p=>Math.abs(p.pos[2])+p.d.r)),hold,
+    crew:(c=>c?{n:c.d.crew,h:base+c.y0+c.h*.3,x:xAt(base+c.y0+c.h*.3)}:null)(ps.find(p=>p.d.crew)),   // the hatch (Q195)
     ext:Math.max(...pb.map(p=>Math.hypot(p.pos[0],p.pos[2])+p.d.r)),L,rAt,st:{hc,t:hold.t,r:hold.t.map(t=>ray(t,hc))},prof:Array.from({length:Math.ceil(L/2.5)+1},(_,i)=>rAt(base+i*2.5))}}
 // the hold-downs: four arms 90° apart, on the diagonals unless something stands there (boosters at 45°, three at 120°…);
 // then the set turns to the angle with the most room between the parts down at clamp height. Each arm clamps the
@@ -1711,7 +1718,7 @@ function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H),sch=padSchoolOf(curSite());
-  const key=H+'|'+sch+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(sch===1?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
+  const key=H+'|'+sch+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch===1?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
   if(key===padKey)return;if(H!==padTH||sch!==padSch){PAD.free();PAD=buildPad(H,sch);padTH=H;padSch=sch}RIG.free();RIG=buildRig(H,rig,sch);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)
@@ -1727,10 +1734,11 @@ function rotAx(k,ang){const c=Math.cos(ang),s=Math.sin(ang),R=v=>{const kv=dot(k
 // apart; arms with no rocket at their height stay folded. Hold-downs: tip outward 0.9 rad in 0.6 s at liftoff.
 function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5||HOOK.noRig)return;   // (noRig: views.js close-ups)
   const pre=mode==='editor'||S&&S.landed&&!S.mkLift,tl=S&&S.mkLiftT!=null?simT-S.mkLiftT:1e9;if(RIG.sch===1)return drawSteppeRig(drawMesh,F,pre,tl);
-  RIG.arms.forEach((A,i)=>{const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
+  RIG.arms.forEach((A,i)=>{if(A.skip)return;const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
   const al=pre?0:-.9*sstep(0,1,clamp(tl/.6,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
   drawMesh(RIG.posts,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]),F.site);
+  if(RIG.crew){const f=mode==='editor'?0:Math.PI/2;drawMesh(RIG.crew.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,RIG.crew.h,0]),F.site)}   // at the hatch in the Assembly; swung back in flight (the crew are aboard)
   const zg=mode==='editor'?-80:RIG.zS+(-80-RIG.zS)*sstep(0,1,clamp((simT-padT0)/14,0,1));drawMesh(RIG.gantry,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,zg]),F.site)}
 // Steppe's rig each frame (Q159). Support arms: closed until lift-off, then fall back outward 66° in 1.4 s, starting
 // 0.1 s after it (the counterweights take them as the rocket rises). Cable masts: fall back north 0.55 rad in 0.8 s at

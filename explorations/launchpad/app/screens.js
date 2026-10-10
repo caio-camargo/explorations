@@ -197,6 +197,7 @@ cv.addEventListener('mousedown',e=>{drag=[e.clientX,e.clientY];downAt=[e.clientX
     if(S.node&&!S.node.burning&&mapUI.node&&near(m,mapUI.node,11)){nDrag=true;drag=null}}});
 addEventListener('mouseup',e=>{
   if(!hDrag&&!nDrag&&downAt&&view==='map'&&mode==='flight'&&e.target===cv&&Math.hypot(e.clientX-downAt[0],e.clientY-downAt[1])<5){
+    const qn=(mapUI.qnodes||[]).find(x=>near(toCv(e),[x.x,x.y],9));if(qn){ndSel=qn.k;updateNodePanel();drag=null;downAt=null;return}   // (flow, Q157) a queued node: select it
     const st=(mapUI.sats||[]).find(x=>near(toCv(e),[x.x,x.y],9)),q=st?null:pickOrbit(toCv(e));if(st)setTarget(S.target===st.id?null:st.id);
     if(!st&&!q)pickLandSite(toCv(e));   // nothing else under the click: a point on a moon is a landing site (Q62)
     else if(q&&S.alive&&!S.landed&&!S.node&&!toolOK('nodes'))HOOK.msg(gateMsg('nodes'));

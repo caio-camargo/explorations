@@ -119,9 +119,11 @@ const PRESETS={
   // the first orbit missions on presets (vehicle session, Q74 / PLAYTEST #24): the Orbiter's launcher with the payload in the
   // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
   // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
-  // home (measured: 715 m/s spare in orbit, 4.2 g and a ~292 K cabin coming down)
+  // home. A nose cone over its chute (Q201, PLAYTEST #35): the bare capsule's shoulder took the ascent's heat (skin ~500 K,
+  // so its 10-min cabin passed 330 K by T+212 s); under the cone the skin stays ~320 K and the cabin ~300 K (measured: 665 m/s
+  // spare in orbit)
   Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
-  'Passenger Orbiter':['chute','bio','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],

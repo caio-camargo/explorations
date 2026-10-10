@@ -77,7 +77,7 @@ function render(){
   const near=view!=='map'||mode==='editor';
   {const th=bodyTheta(TELLUS,simT);for(const t of SITES){const site=fromPF(TELLUS,mul(t.u,TELLUS.R+t.h),simT);if(len(sub(site,camW))>3e5)continue;   // every pad nearby, in its own frame
    const f=siteFrame(t.u),M=mat4(rotY(f.e,th),rotY(f.up,th),rotY(f.s,th),sub(site,camW));if(t.kind==='sea')drawMesh(seaHull(),M,site);gl.uniform1f(m.uPadM,1);drawMesh(padFor(t),M,site);gl.uniform1f(m.uPadM,0)}}   // (each site in its owner's school, Q159)
-  gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);   // the pad's moving parts, at the current site (visuals session)
+  gl.uniform1f(m.uPadM,1);drawPadRig(drawMesh,camW);gl.uniform1f(m.uPadM,0);drawPadCrew(drawMesh,camW);   // the pad's moving parts, at the current site (visuals session)
   const nightCities=[];
   // cities within 60 km of the camera get their buildings (the tangent frame at the city, turned with the planet)
   if(len(camW)<TELLUS.R+80000){const th=bodyTheta(TELLUS,simT);for(const c of CITIES){const cp=fromPF(TELLUS,mul(c.u,TELLUS.R),simT);if(len(sub(cp,camW))>6e4)continue;
@@ -187,7 +187,7 @@ function render(){
   gl.disable(gl.BLEND);gl.depthMask(true);
   bloomEnd();
   // ---- 2D overlay
-  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];
+  octx.clearRect(0,0,W,H);mapUI.node=null;mapUI.handles=[];mapUI.pick=[];mapUI.sats=[];mapUI.qnodes=[];
   if(mode==='flight'&&view!=='map'){const gr=gaugeRect();if(gr)drawGauges(gr.x,gr.y,gr.s)}
   if(view==='map'&&mode==='flight'){
     for(const q of mapUI.pickW||[]){const p=project(q.p);if(p)mapUI.pick.push({x:p[0],y:p[1],t:q.t})}
@@ -197,7 +197,8 @@ function render(){
     const texts=[];   // (flow, PLAYTEST #31) label texts are placed after the marks, most useful first, and one that would overlap a placed one is skipped
     for(const L of labels){const s=project(L.p);if(!s)continue;octx.fillStyle=L.c;if(L.mark==='sat')mapUI.sats.push({x:s[0],y:s[1],id:L.id});
       if(L.mark==='ship'){octx.beginPath();octx.moveTo(s[0],s[1]-7);octx.lineTo(s[0]+6,s[1]);octx.lineTo(s[0],s[1]+7);octx.lineTo(s[0]-6,s[1]);octx.closePath();octx.fill()}
-      else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=s;mapUI.handles=[];
+      else if(L.mark==='qnode'){const k=Math.min(devicePixelRatio||1,1.5);mapUI.qnodes.push({x:s[0],y:s[1],k:L.k});octx.strokeStyle=L.c;octx.lineWidth=2*k;octx.beginPath();octx.arc(s[0],s[1],5.5*k,0,7);octx.stroke();octx.beginPath();octx.arc(s[0],s[1],2*k,0,7);octx.fill()}   // (flow, Q157) a queued node
+      else if(L.mark==='node'){const k=Math.min(devicePixelRatio||1,1.5),HC=['#d8f05a','#e07cff','#5fd0ff'];mapUI.node=L.k?null:s;mapUI.handles=[];
         for(const[d,axis,sign]of L.axes){const q=project(add(L.p,mul(d,cam.mDist*0.06)));let ux=q?q[0]-s[0]:0,uy=q?q[1]-s[1]:0,ul=Math.hypot(ux,uy);
           if(ul<1e-3){ux=sign;uy=0;ul=1}ux/=ul;uy/=ul;const hx=s[0]+ux*40*k,hy=s[1]+uy*40*k;mapUI.handles.push({x:hx,y:hy,ux,uy,axis,sign});
           let dx=hx,dy=hy;if(hDrag&&hDrag.h.axis===axis&&hDrag.h.sign===sign){const off=(hDrag.cur[0]-hDrag.h.x)*ux+(hDrag.cur[1]-hDrag.h.y)*uy;dx=hDrag.h.x+ux*off;dy=hDrag.h.y+uy*off}
@@ -213,7 +214,7 @@ function render(){
         if(L.sun){octx.strokeStyle=L.c;octx.lineWidth=1.5*k;octx.beginPath();for(let i=0;i<8;i++){const a=i*Math.PI/4;octx.moveTo(s[0]+Math.cos(a)*r*1.5,s[1]+Math.sin(a)*r*1.5);octx.lineTo(s[0]+Math.cos(a)*r*2.2,s[1]+Math.sin(a)*r*2.2)}octx.stroke()}}
       else if(L.mark==='ghost'){const e=project(L.edge);if(e){octx.strokeStyle=L.c;octx.setLineDash([4,4]);octx.beginPath();octx.arc(s[0],s[1],Math.hypot(e[0]-s[0],e[1]-s[1]),0,7);octx.stroke();octx.setLineDash([])}}
       else{octx.beginPath();octx.arc(s[0],s[1],3,0,7);octx.fill()}
-      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]||1})}
+      if(L.t)texts.push({t:L.t,x:s[0],y:s[1]-(L.mark==='planet'?L.px*1.6+8:10),c:L.c,o:{node:0,qnode:0,planet:5,city:4,gs:3,sat:3,ship:2}[L.mark]??1})}
     {const k=Math.min(devicePixelRatio||1,1.5),put=[],h=13*k;texts.sort((a,b)=>a.o-b.o);
       for(const T of texts){const w=octx.measureText(T.t).width+4*k,r=[T.x-w/2,T.y-h+3*k,T.x+w/2,T.y+3*k];
         if(put.some(q=>q[0]<r[2]&&r[0]<q[2]&&q[1]<r[3]&&r[1]<q[3]))continue;put.push(r);octx.fillStyle=T.c;octx.fillText(T.t,T.x,T.y)}}
@@ -304,7 +305,13 @@ function drawMap(VP,camW,labels){
     if(!planCache||planCache.key!==key&&!(planCache.num&&performance.now()-planCache.wall<250)){const p=predictFrom(nodePlanEnd(S)||{b:S.body,r:I.rN,v:add(I.vN,I.rem),t:I.t});planCache={key,p,num:p.some(x=>x.path),wall:performance.now()}}
     const plan=planCache.p;
     drawPatches(gateLegs(plan,labels),camW,out,labels,{0:[1,1,1,.9],1:[1,.75,.4,.9],2:[.85,.7,1,.9]},true,' ▸plan');
-    const f=nodeFrame(I.rN,I.vN);labels.push({p:add(off,I.rN),mark:'node',axes:[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]],c:'#5f9dff'})}
+    // (flow, Q157) every node of a chain: the one the node panel has selected (◀ node k of n ▶) gets the drag handles, the
+    // others a marker with its Δv and time (a click on one selects it). Places from nodePlan; a node on another body's leg is
+    // drawn by that body where it will be then, as the plan's legs are.
+    const NP=nodePlan(S),sel=clamp(typeof ndSel==='number'?ndSel:0,0,Math.max(0,NP.length-1)),axes=f=>[[f.pro,0,1],[mul(f.pro,-1),0,-1],[f.nrm,1,1],[mul(f.nrm,-1),1,-1],[f.rad,2,1],[mul(f.rad,-1),2,-1]];
+    if(!NP.length){labels.push({p:add(off,I.rN),mark:'node',k:0,axes:axes(nodeFrame(I.rN,I.vN)),c:'#5f9dff'})}
+    NP.forEach((P,k)=>{const p=add(k===0||P.b===S.body?off:bodyPos(P.b,P.t),P.rN),t=NP.length>1?`node ${k+1} · ${(k===0?len(I.rem):len(P.n.dv)).toFixed(0)} m/s · in ${fmtT(P.t-simT)}`:'';
+      labels.push(k===sel?{p,mark:'node',k,t,axes:axes(nodeFrame(P.rN,P.vN)),c:'#5f9dff'}:{p,mark:'qnode',k,t,c:'#8fb6ff'})})}
   // closest approach to the target: where we'll be and where it will be, on this orbit and on the planned one
   {const ca=tgtCA();if(ca)for(const[x,tag,c,cl]of[[ca.now,'','#7dffa8',[.5,1,.65,.8]],[ca.plan,' ▸plan','#ffffff',[1,1,1,.8]]])if(x){seg(x.p,x.pt,cl);
     labels.push({p:x.p,mark:'ca',t:`closest ${fmtD(x.d)} · in ${fmtT(x.t-progT(S))}${tag}`,c},{p:x.pt,mark:'ca',t:'',c:'#ffb347'})}}

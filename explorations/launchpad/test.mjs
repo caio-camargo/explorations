@@ -3807,6 +3807,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('supply run: refused before onboard computers (the automation ladder, D7)', !handEra.ok && /onboard computers/.test(handEra.why), `${handEra.why}; onboard computers from day ${P.day}`);
   check('supply run: refused before the landing first and for a design with no ascent procedure; quoted otherwise', !early.ok && /by hand first/.test(early.why) && !none.ok && q.ok && q.cost > 0,
     `${early.why} · ${none.why} · ${q.ok ? `${q.cost.toFixed(0)}M, launch day ${q.launch.toFixed(0)}` : q.why}`);
+  { const w = q.win, lit = api.dot(api.norm(api.fromPF(B, base.pf, (q.launch + q.rule.lead) * api.DAY_S)), api.SUN_DIR);   // Q185: the run lands in daylight
+    check('supply run: launches at its window, so it arrives in daylight at the base (MIDGAME § Windows)', q.rule.k === 'light' && w && lit > 0 && q.launch >= q.start + q.prep - 1e-9, `waits ${w ? w.wait.toFixed(2) : '?'} d; sun ${(Math.asin(lit) * 57.3).toFixed(0)}° up on arrival`); }
   const line = api.baseRunLine(base, st), r = api.orderBaseRun(base, st), D = P.dispatch[0];
   for (let k = 0; k < 8 && D.status === 'queued'; k++) { P.day = D.launch; api.dispatchTick(); }
   const lander = api.landedUp().find(x => x.id !== 777), b = api.baseOf(base);
@@ -3835,20 +3837,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // vehicle-3. The first orbit missions fly on presets (vehicle session, QUEUE Q74 / PLAYTEST #24): the Beeper puts an
 // instrument package in orbit; the Passenger Orbiter takes a biocapsule once round and home, inside the passenger's limits.
+// The limits are the game's own, from the flight record over the whole flight (`S.rec`: missionTick's cabin from liftoff),
+// so a cabin cooked on the way up fails here as it does in play (Q201, PLAYTEST #35).
 {
   const R = TELLUS.R, O = api.PRESETS.Orbiter, el = s => api.elements(s.r, s.v, TELLUS.mu);
   const b = handAscent(api, api.PRESETS.Beeper), eb = el(b);
-  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, cabUp = p.rec.cabin, msgs = []; api.HOOK.msg = m => msgs.push(m);
   api.advRails(p, ep.period, 10);   // once round
   const retro = () => { const v = mul(norm(p.v), -1), f = api.localFrame(p.r), X = norm(cross(v, f.n)); p.q = api.qFromBasis(X, v, cross(X, v)); p.w = [0, 0, 0]; };
   p.throttle = 1; for (let k = 0; k < 20000 && p.alive; k++) { retro(); api.advPhys(p); if (el(p).pe - R < 40e3 || api.dvRemaining(p).cur < 1) break; }
-  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'); let g1 = 0, gMax = 0, cab = 290, armed = false;
-  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); continue; }
-    api.advPhys(p); g1 += (p.gload - g1) * Math.min(1, api.DT); gMax = Math.max(gMax, g1); cab += (bio.T - cab) * api.DT / (bio.d.ins || 600);
+  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'), PR = p.rec; let cab = cabUp, armed = false;
+  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); cab = Math.max(cab, PR.cabin); continue; }
+    api.advPhys(p); cab = Math.max(cab, PR.cabin);
     if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
-  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K',
-    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && gMax < 8 && cab < 330 && O.length === 8,
-    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${gMax.toFixed(1)} g, cabin ~${cab.toFixed(0)} K, ${p.landed ? 'landed' : 'not landed'}`);
+  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K (the flight record, from liftoff)',
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && O.length === 8,
+    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${PR.gMax.toFixed(1)} g, cabin ${cabUp.toFixed(0)} K in orbit, peak ${cab.toFixed(0)} K (${PR.bioOK ? 'passenger fine' : PR.pet + ' ' + PR.bioWhy}), ${PR.bioOrbits.toFixed(2)} orbits, ${p.landed ? 'landed' : 'not landed'}`);
 }
 
 // ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not
@@ -3977,11 +3981,14 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], H = [{ name: 'Satellite to 400 km', alt: 400 }], lv = (st, a) => api.launchWarnings(st, a).map(x => x[0]).join();
   const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P.Orbiter, H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
+  // every reading with an empty logbook is taken before log0 is back: earlier sections leave a best orbit in it (5,000 m/s
+  // inside --smoke), which reads the Orbiter short of 400 km instead of tight (Q204)
+  const hop = api.launchWarnings(P.Hopper, B), tight = api.launchWarnings(P.Orbiter, H);
   PR.log = { orbit: { v: 5600 } }; const best = api.launchWarnings(P.Orbiter, B); PR.log = log0;
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
   check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
-    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(api.launchWarnings(P.Hopper, B)[0][1]) && /Tight/.test(api.launchWarnings(P.Orbiter, H)[0][1])
+    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(hop[0][1]) && /Tight/.test(tight[0][1])
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
       && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
     `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
@@ -4885,6 +4892,62 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester: the school picker lists Auto and every school, and a pick sets SCHOOL_FORCE and rebuilds the ship',
     /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
+}
+
+// aerofx-5. The crew's look, slice 1 (look & sound effects beat, QUEUE Q195; Caio: W19 stylised human, suits by school and
+// epoch from the default). The figure is built from app/crew-look.js with a recording pv: about 1.78 m tall standing on
+// its own feet, the waving glove above the helmet's top, the faceplate open (the face shows); suitOf falls back to the
+// default. Cape's crew arm (buildRig with stubs): at the hatch of every crewed design, its deck ending short of the
+// capsule, a swing arm at the same height standing down; Steppe's rig has none yet; the crew are drawn in the editor only.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const C = new Function(src + `const P=[];const pv=(o,p,n,c)=>{o.push(p);P.push({p,c})},tube=(o,A,B)=>{o.push(A,B)},lathe=(o,prof)=>{for(const[r,y]of prof)o.push([r,y,0])};
+    ${cut('const SUIT_DEFAULT=', '\n// The crew on the access arm')}
+    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,P};`)();
+  const pts = a => a.filter(Array.isArray), st = pts(C.crewFigure(C.suitOf(0, 0), 'stand', 0)), wv = pts(C.crewFigure(C.suitOf(1, 2), 'wave', 1));
+  const ys = st.map(p => p[1]), top = Math.max(...ys), foot = Math.min(...ys), wTop = Math.max(...wv.map(p => p[1]));
+  const skin = C.P.filter(v => Math.abs(v.c[0] - 0.95) < 1e-9 && Math.abs(v.c[1] - 0.76) < 1e-9).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
+  check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; the suit falls back to the default',
+    top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && C.suitOf(1, 2) === C.SUIT_DEFAULT && Object.keys(C.SUITS).length === 0,
+    `height ${top.toFixed(3)} m, feet at ${foot.toFixed(3)}, waving hand to ${wTop.toFixed(2)} m; ${faceFwd} face vertices forward`);
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}}),
+      crewMeshes=(n,sch)=>Array.from({length:Math.min(n,2)},(_,k)=>({mesh:{free(){}},k}));
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v},set mode(v){mode=v}};`)();
+  const bad = [], seen = [], designs = Object.entries(D.PRESETS).filter(([, st]) => JSON.stringify(st).includes('"crew"'));
+  designs.push(['small crewed', ['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel']]);
+  for (const md of ['flight', 'editor']) for (const [k, st] of designs) {
+    D.mode = md; const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig);
+    const cp = s.parts.find(p => p.d.crew), y0 = cp.y0 + rig.base;
+    if (!R.crew) { bad.push(`${k} (${md}): no crew arm`); continue; }
+    if (R.crew.h < y0 || R.crew.h > y0 + cp.h) bad.push(`${k}: the arm misses the capsule (${R.crew.h.toFixed(2)} m)`);
+    const deckEnd = 5.5 - R.crew.L; if (deckEnd < cp.pos[0] + cp.d.r) bad.push(`${k}: the deck reaches into the capsule`);
+    if (R.arms.some(A => !A.skip && Math.abs(A.h - R.crew.h) < 1.6)) bad.push(`${k}: a swing arm at the crew arm's height`);
+    if (R.crewFig.length !== 2) bad.push(`${k}: ${R.crewFig.length} crew`);
+    seen.push(`${k} ${md} at ${R.crew.h.toFixed(1)} m, gap ${(deckEnd - cp.pos[0] - cp.d.r).toFixed(2)}`);
+  }
+  D.mode = 'flight'; { const s = D.newShip(D.PRESETS.Orbiter); D.S = s; if (D.buildRig(20, D.padRig(20)).crew) bad.push('Orbiter (no crew): a crew arm'); }
+  { const s = D.newShip(D.PRESETS['Crewed Lunar']); D.S = s; if (D.buildRig(45, D.padRig(45), 1).crew) bad.push('Steppe: a crew arm (not built yet)'); }
+  check('crew look: Cape\'s crew arm reaches every crewed design\'s hatch and stops short of it; a swing arm there stands down; none without crew; the crew are drawn in the Assembly only',
+    !bad.length && /drawPadCrew\(drawMesh,camW\);/.test(H) && /mode!=='editor'\|\|HOOK\.noRig\)return;/.test(page) && /<script src="app\/crew-look\.js"><\/script>/.test(readFileSync(new URL('./index.html', import.meta.url), 'utf8')),
+    bad.slice(0, 4).join(' | ') || seen.join('; '));
+}
+
+// econ-20. Windows (economy session, QUEUE Q185, Q127 slice 2; MIDGAME § Windows): a routine's rule finds its next
+// valid window. 'any' launches when ready; 'light' waits for daylight at a Selene site on arrival (its day is the 13-day
+// orbit, so never more than about half of it); 'plane' waits for a target plane to pass over the site (twice a rotation).
+{
+  const D = new Function(src + 'return {windowRule,nextWindow,fromPF,SITES,TELLUS,SELENE,SUN_DIR,DAY_S,dot,norm,PROG};')();
+  const S = D.SELENE, pf = [-S.R, 0, 0], rule = D.windowRule('light', { body: 'Selene', pf, name: 'Base' }), sun = t => D.dot(D.norm(D.fromPF(S, pf, (t + rule.lead) * D.DAY_S)), D.SUN_DIR);
+  const any = D.nextWindow(D.windowRule('any'), 12.3);
+  let maxW = 0, zero = 0, bad = 0; for (let T = 0; T < 13; T += 0.25) { const w = D.nextWindow(rule, T); maxW = Math.max(maxW, w.wait); if (w.wait === 0) zero++; if (sun(w.day) < Math.sin(5 * Math.PI / 180) - 1e-9 || (w.wait > 0.02 && sun(w.day - 0.02) >= Math.sin(5 * Math.PI / 180))) bad++; }
+  check('windows: "any" launches when ready; "light" lands in daylight, at the first lit moment, never waiting more than ~half of Selene’s 13-day day',
+    any.day === 12.3 && any.wait === 0 && rule.lead > 1 && rule.lead < 3 && bad === 0 && zero > 10 && maxW > 4 && maxW < 7.2, `lead ${rule.lead.toFixed(2)} d; longest wait ${maxW.toFixed(2)} d; ${zero}/52 at once; ${bad} wrong`);
+  const i = 30 * Math.PI / 180, O = 1.1, n = [Math.sin(i) * Math.sin(O), Math.cos(i), -Math.sin(i) * Math.cos(O)], pr = D.windowRule('plane', { n });
+  let maxP = 0, offP = 0; for (let T = 0; T < 2; T += 0.1) { const w = D.nextWindow(pr, T); maxP = Math.max(maxP, w.wait); offP = Math.max(offP, Math.abs(D.dot(D.norm(D.fromPF(D.TELLUS, D.SITES[0].u, w.day * D.DAY_S)), n))); }
+  check('windows: a 30° plane passes over the equatorial pad twice a rotation (never over half a day’s wait), the pad in the plane at the window', maxP <= 0.5 + 1e-6 && offP < 1e-6, `longest wait ${maxP.toFixed(3)} d; off the plane ${offP.toExponential(1)}`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

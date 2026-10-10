@@ -4737,3 +4737,45 @@ Caio left the session running ("keep going while you still have work"). Built, e
 - [ ] vehicle: PLAYTEST #35, the Passenger Orbiter's cabin (and make `vehicle-3` read `S.rec`)
 - [ ] flow: PLAYTEST #34, crew in the Debrief
 - [ ] Caio: PLAYROUTE sitting 1 is M1's last piece (a person's first hour)
+
+## 2026-10-09 — Launchpad v1.99, v1.101, v1.103: planets on the map, the readout as a core and cards, chained nodes on the map (flow session)
+
+### Summary
+- **Q175 (v1.99, closes PLAYTEST #11):** Helios and the five planets on the map from epoch 1, on a dashed ring in the
+  ecliptic around the map's centre, each at its ecliptic longitude that day, labelled with its distance in TU.
+  `planetMarks(T)` appended to space's `sim/system.js`. **Negative result:** drawn at their true directions they were
+  99–137° from the map camera's axis, behind it, hence the ring.
+- **Q3 slice 4a (v1.101):** the flight readout is a 5-line core; the rest is cards on the right (`app/hud.js`,
+  `HUD_CARDS`: Ascent, Descent, Target, Payload, Fleet, Vehicle, Hardware, Rover), pinnable, folding oldest-first when too
+  tall. The toolbar is down to Map, ◀ N× ▶, End flight and ☰ (the rest is in Esc). Two layout bugs fixed: the news box
+  overran its lane by its padding, and `#msg` dodged the news's old place. Robot `m1` and 98 pass at 1280×800 and
+  1000×700.
+- **Q157 (v1.103):** every node of a chain is drawn on the map; a click selects one, and its handles edit that node.
+- Numbers collided at every merge (v1.98, TESTING 165/173/179/181, all taken by sessions that pushed during my test
+  runs). Each time I renumbered at the merge. QA's `qa-3` catches doubled rows.
+
+### Files
+- `explorations/launchpad/`: `app/hud.js` (new), `app/render.js`, `app/program-ui.js` (`updateHUD` core), `app/state.js`
+  (`cardsLayout`, news/msg lanes), `app/loop.js`, `app/screens.js`, `sim/system.js` (`planetMarks`), `index.html`
+  (cards column, toolbar, warp buttons, `hud.js` tag), `playtest.mjs` (`PT.hud` reads the cards), `test.mjs` (`flow-4`,
+  `flow-5`), `NOTES.md`, `TESTING.md` (175, 180, 182), `PLAYTEST.md` (#11 closed, #9 progress), `QUEUE.md`
+- `ACTIVE_WORK.md`; stills (local, gitignored) in `output/launchpad/q175-planets/` and `q3-slice4a/`
+
+### Next steps
+- [ ] flow: Q3 slice 4b, the gauges as the instrument panel beside the navball, hidden in space (closes PLAYTEST #9); then 4c
+- [ ] flow: proposed: merge the labels of planets in conjunction; drag a queued node in time
+- [ ] every lane: new flight-HUD content is a card (`HUD_CARDS` in `app/hud.js`)
+
+## 2026-10-09 — Launchpad v1.104: windows, a dispatch launches at its next valid window (economy session, QUEUE Q185)
+
+**Summary:** Q127 slice 2. `windowRule` (any / plane / light) and `nextWindow(rule, T)` in `sim/program.js`. The rule is kept on the procedure (`procWindow`, `proc.wins`) and on each dispatch (`rule`, `ready`). Supply runs to bases wait for daylight at the base on arrival: Selene's day is 13 days, so a run waits up to 6.7 d. Contract dispatches set an inclination only, so they never wait. Scrubs and money holds re-find the window. The pad calendar shows the wait as its own bar. Also recorded Caio's W answers (W23 amended, W25.3 parked for playtest, W26.1 confirmed, W27 closed with the gate: 3 clean runs + the automation ladder). Q186 had gone to space, so Q185 was taken instead.
+**Files:** launchpad `sim/program.js`, `test.mjs` (econ-20, one econ-7 check), NOTES § v1.104, TESTING row 183; QUEUE (Q185 ✓, W rows, two *Proposed* lines: flow's `.cbar.window`, platform's version-collision check).
+**Tests:** smoke suite all pass after each of the three merges. Versions collided twice: renumbered v1.102 → v1.103 → v1.104, TESTING 181 → 182 → 183.
+**Next:** the economy lane has nothing ready. Q167 (flow-led) is the remaining overflow; W25.3 waits on Caio's playtest.
+
+## 2026-10-09 — Launchpad Q195: the crew's look, slice 1 (look & sound, effects beat; Caio's go)
+
+**Summary:** Caio picked the crew look (W19: stylised human) and decided suits vary by school and epoch (D9), "start with the default". Built the astronaut as a mesh from the Q72 mock-up's style (c) (`app/crew-look.js`: `crewFigure`, `SUITS`/`suitOf` falling back to the default suit), and a crew access arm on Cape's tower: two crew stand at the hatch of any crewed design in the Assembly and on the Rollout (one waving; different skin and hair); in flight the arm is swung back. D9's decision recorded in its QUEUE row for the design desk to fold into CREW.md.
+**Files:** launchpad new `app/crew-look.js` (+ `index.html` line), `app/gl.js` (crew arm in `buildRig`, `padRig`'s hatch, `drawPadRig`), `app/render.js` (`drawPadCrew`), `views.js` 120–122, `test.mjs` `aerofx-5`, NOTES § "The crew's look, slice 1" + file map row, TESTING 184 (also QA's picker row 178 → 179, doubled with the Steppe pad's), QUEUE (Q195 ✓, Q194 covered by Q106, a walk-out proposal); `ACTIVE_WORK.md`.
+**Tests:** `aerofx-1…5`, 38, 39, `qa-3`, `platform-1` pass; robot `m1` passes; smoke as before (vehicle-4 known). TESTING row numbers collided four times in an hour (175→177→178, 180→181→182→183→184): Q160 (a duplicate check before push) would have saved most of it.
+**Next:** Q199 (suit mock-ups, Cape and Steppe × three eras) is ready for a look beat; the crew walk-out/boarding and Steppe crew access are proposed.

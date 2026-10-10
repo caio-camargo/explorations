@@ -35,7 +35,7 @@ function frame(now){
   const dtR=Math.min(0.1,(now-last)/1000);last=now;const t0=performance.now();
   testTopUp();const t0s=simT;if(!gamePaused())simulate(dtR);emitSmoke(simT-t0s);sndTick(dtR);
   if(hDrag&&S.node){const h=hDrag.h,off=(hDrag.cur[0]-h.x)*h.ux+(hDrag.cur[1]-h.y)*h.uy,k=Math.min(devicePixelRatio||1,1.5);
-    S.node.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}
+    const nd=ndNodes()[ndSel]||S.node;nd.dv[h.axis]+=h.sign*0.02*(off/k)*Math.abs(off/k)*dtR}   // (flow, Q157) the node the panel has selected
   adaptRes(dtR);
   render();
   frameMs=frameMs*.9+(performance.now()-t0)*.1;

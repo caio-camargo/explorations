@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1964,7 +1964,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
+## v1.105 — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
 
 The Probe is the only preset with an antenna: 15 W of antenna and camera on a probe core's 0.5 kWh, flat in ~33 h, which
 blocked Q27 (gating a satellite's service on power would have ended every Probe satellite after a few days).
@@ -1982,8 +1982,43 @@ blocked Q27 (gating a satellite's service on power would have ended every Probe 
   from this v2 Probe.
 
 Test `space-17` (1 check: budget positive in low orbit and at Selene, cells on the antenna's stage, ten days on rails
-never flat). Tests 23 (the pay floor) and econ-7 (supply runs) pass again after the two fixes.
+never flat). Tests 23 (the pay floor) and econ-7 (supply runs) pass again after the two fixes. `career.mjs` (10 seeds, 3 years): final funds 702 → 659M on average (most starts −5 to −20 %, frugal ones richer), firsts and bailouts unchanged; Caio took it as is. TESTING row 185.
 
+## v1.104 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
+
+MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
+- **`windowRule(kind, o)`**: `'any'` (an orbit by inclination alone: the calendar picks the slot); `'plane'` (a given
+  orbital plane, normal `n`, passing over the launch site); `'light'` (daylight at a surface site when the run
+  arrives: the sun ≥ 5° up, `lead` days after launch = the ascent and a Hohmann coast, 2.7 days to Selene).
+  Planetary alignment waits for planet routes (M5).
+- **`nextWindow(rule, T)` → {day, wait, why}**, in program days, sampled every 15 minutes (plane passes bisected to
+  the exact moment). Measured: Selene's day is its 13-day orbit, so a surface run waits up to 6.7 days and half of
+  them go at once. A 30° plane passes over the equatorial pad twice a rotation (≤ 0.49 d).
+- **Recorded with procedures:** `procWindow(proc, kind, o)` keeps the rule on the procedure that flies it
+  (`proc.wins`), and every dispatch carries its `rule` and `ready` day. Derived when quoted, not at fly time: the
+  procedure recorder is the space lane's code. Moving it there later changes nothing downstream.
+- **Who waits:** supply runs to bases (`baseRunQuote`) take the `'light'` rule. Contract dispatches take `'any'`
+  (contracts set an inclination only, so there's no wait). `'plane'` is ready for station routines, Q110's work. A
+  weather scrub or a money hold re-finds the window rather than adding a day. The news and the base's Fleet line say
+  "(waits 3.2 d for daylight at Selene Base 1)".
+- **The pad calendar** (`netModel().pads`): a dispatch is now two bars, stacking (`kind 'dispatch'`) and then the
+  wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
+  `app/network.js`'s fallback still builds one bar.
+Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.103 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
+
+- The map draws every node of a chain at its place from `nodePlan`. The node the panel has selected (◀ node k of n ▶)
+  carries the drag handles; the others get a ring marker. With more than one node, each is labelled
+  `node k · Δv m/s · in T`. These labels are placed before any other, so a Pe/Ap label can't hide them.
+- **A click on a marker selects that node** (the panel follows), and its handles edit that node's Δv. Moving a node in
+  time by dragging it along the orbit still works for the first node only, because the map's pick only knows the current leg.
+- A node on another body's leg is drawn by that body where it will be at the node's time, as the plan's legs are.
+- Checked in the page (a 200 km orbit, three nodes from N's `nodeAddNext`): markers at the planned places; selecting node
+  2 moves the handles to it; a 0.8 s drag on its normal handle changed node 2 only (normal 0 → 25.8 m/s), nodes 1 and 3
+  unchanged. Robot `m1`, 51 (the map, tools refused) and 98 pass.
+- Two nodes at the same point (a burn at apoapsis that doesn't circularise leaves the next apoapsis where it was) draw
+  on top of each other, and the later label is skipped.
 ## v1.102 — contact gates automation (2026-10-09, space session, QUEUE Q186, Q127 slice 3)
 
 Before onboard computers a command needs a station in contact: mission control flies a planned burn (v1.93) only if it
@@ -8837,6 +8872,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
 | `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
 | `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
+| `app/crew-look.js` | 77 | the astronauts' look (Q195): `crewFigure`, `SUITS`/`suitOf`, the crew on the access arm (`drawPadCrew`) | look & sound |
 | `app/state.js` | 111 | app state | flow |
 | `app/editor.js` | 127 | the editor UI | vehicle |
 | `app/input.js` | 30 | input | flow |
@@ -8846,6 +8882,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/hud.js` | 40 | the flight readout's cards (`HUD_CARDS`, `renderCards`, `cardFolds`, pins); new HUD content registers a card here (§ v1.101). Loads after `program-ui.js`: nothing at start-up calls it | flow |
 | `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
 **Working in split files: the rules.**
@@ -9712,7 +9749,7 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 "◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
 
 **Not yet:**
-- markers and drag handles for queued nodes on the map (flow / the map's owner);
+- ~~markers and drag handles for queued nodes on the map (flow / the map's owner);~~ done, § v1.103;
 - a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
   the capture case).
 
@@ -9752,3 +9789,55 @@ row (`RELOAD`: later steps use only the page's globals). 157 runs five designs t
 flies the Passenger Orbiter on `PT.ascent(flatKm)` (the turn ends at flatKm, 38 in fly_ladder). It found PLAYTEST #35: the
 passenger overheats whatever the ascent, and test.mjs `vehicle-3` can't see it, because it restarts its own cabin
 temperature at 290 K after the orbit. Also #36, the Hopper's own instability warning.
+
+## The crew's look, slice 1 (2026-10-09, effects beat, QUEUE Q195)
+Caio, 2026-10-09: **stylised human** (W19) and **suits that vary by school and epoch** (D9), "start with the default and
+we'll work from there" (his go lifts the M3 gate for this). Built:
+- **`app/crew-look.js`** (new, after `app/gl.js`): `crewFigure(suit, pose, k)` rebuilds the Q72 mock-up's style (c)
+  astronaut as a mesh (superellipsoids `blob`, tapered `limb`s, the helmet a shell open at the faceplate and underneath,
+  with a rim; skull, square jaw, nose, ears, hair cut at a hairline, eyes, brows, mouth), 1.78 m, feet at the origin,
+  facing +z; poses `stand` and `wave`. Person `k` picks one of four skin and hair tones, so two crew aren't twins.
+  The mock-up's flat light bands and ink outlines aren't here: the mesh shader has neither (a later look item if wanted).
+- **Suits:** `SUITS[school][gen]` with `suitOf(sch, gen)` falling back to `SUIT_DEFAULT`, the mock-up's pale layered suit
+  with red fittings and boots. D9's lines (CREW.md § Part 1's table: early, middle, late, spacewalk) fill it school by
+  school; the generation from the epoch isn't wired yet (nothing to choose between).
+- **Where they show:** a **crew access arm** on Cape's tower (`buildRig`: a grey walkway with orange railings at 30 % of
+  the capsule's height, ending 0.15 m short of it; a swing arm within 1.6 m stands down). In the Assembly and on the
+  Rollout the two crew stand on it at the hatch, one facing the capsule, one turned out and waving (`drawPadCrew`, drawn
+  without the pad's concrete detail); in flight the arm is swung back and the crew are aboard. Steppe's rig has no crew
+  access yet (its crew would ride the service half's lift).
+- Views 120 (the Crewed Lunar's arm), 121 (the two on a small crewed rocket), 122 (their faces from the south).
+  test.mjs `aerofx-5`: the figure's size, feet, wave and face; the default suit; the arm at the hatch for every crewed
+  design, short of it, the swing arm standing down, none without crew or on Steppe; TESTING 184.
+- Next: the walk-out and boarding (proposed in QUEUE; the crew cross the arm and go in during the flight's first
+  seconds, or the countdown), crew on Steppe's pad; D9's suit lines are Q199 (mock-ups first, then a build per school).
+## v1.73.1 — the Passenger Orbiter's nose cone; vehicle-4 alone and in the smoke run (2026-10-09, vehicle session, QUEUE Q201, Q204)
+
+**The passenger cooked on the way up (PLAYTEST #35).** The preset was chute, biocapsule, wheel: the chute (0.3 m) is
+narrower than the capsule (0.625 m), so the capsule's shoulder flew in the flow all the way up. On the robot's ascent
+(`handAscent`, level by 38 km) its skin reached ~500 K and the cabin, which follows the skin with a 10-minute lag from
+liftoff (`missionTick`), passed 330 K on the climb: "Biscuit overheated". The 10-minute lag stays: the crew capsule's
+comment in `sim/vessel.js` says a bare animal capsule on an orbital ascent is meant to cook, so this is the preset's
+design problem, not the physics'. **Fix:** a nose cone over the chute (`cone, chute, bio, rwheel, …`). Measured on the same
+ascent (scratch runs of the preset and variants):
+
+| Stack top | Skin at orbit | Cabin at orbit | Spare in orbit |
+|---|---|---|---|
+| chute, bio (was) | 499 K | 330 K: failed | 715 m/s |
+| cone, bio (no chute) | 319 K | 300 K | 822 m/s |
+| **cone, chute, bio** | 318 K | 300 K | 665 m/s |
+
+The chute is a staging event, not a position, so it opens under the cone as before. The first flight's price goes 58 →
+59M; `PACE=1 node career.mjs` reaches orbit 3/3 for every start, about a day later, minimum funds within the seeds' noise.
+
+**Why `vehicle-3` passed.** It kept its own cabin temperature, starting at 290 K after the orbit, and never read the flight
+record. It now reads `S.rec` over the whole flight: `bio`, `bioOK`, `bioOrbits ≥ 1`, `gMax`, and the cabin at orbit and
+coming home. On the old preset it fails with the game's own words ("Biscuit overheated (cabin 330 K)").
+
+**`vehicle-4` in `--smoke` (Q204).** The check put the logbook back (`PR.log = log0`) before two of its readings: the
+Hopper short and the Orbiter *tight* for 400 km. Alone the logbook is empty; in the smoke run an earlier section has left a
+5,000 m/s best orbit there, which reads the Orbiter *short* of 400 km instead of tight. Every empty-logbook reading is now
+taken before the logbook is restored. (The "Beeper short of orbit" in the failure's detail line was the check's own
+deliberate 5,600 m/s case, `best`, not the failure.)
+
+**Not yet:** the browser half of TESTING 147 (`node playtest.mjs 147`, 🖥): the robot's gentler ascent should now pass too.
