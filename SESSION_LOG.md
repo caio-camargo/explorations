@@ -5022,3 +5022,37 @@ deterministic flight tapes. **Also:** Q221 (PT_URL query), Q208 (row 147 passes 
 - Files: `explorations/launchpad/playtest.mjs`, `NOTES.md` (§ "Watching the robot play"), `QUEUE.md` (Q224, Q225, Q221, Q208), `TESTING.md` (147), `ACTIVE_WORK.md`.
 - Next: more rows written for watching (start from a new career, real clicks and keys only); Q225's plan (platform).
 
+## 2026-10-10 — Launchpad Q226: suit mock-ups, the other five schools (look & sound, effects beat)
+
+**Summary:** The design desk wrote briefs for the other five schools (CREW.md 0.2.7, D13), and Caio pointed me at them.
+`mockups/suits/` now has all 27 suits. The bar picks a school first; *Every school* draws them all in a grid (a row
+per era, a column per school), and the three checks run across that grid. Each school has its own construction and
+hose position, per the brief:
+- **Arsenal:** military issue, hoses at the hip; Feitian keeps Orlan's door, with the flag painted on it.
+- **Coastal:** smooth colour blocks, one round connector.
+- **Mountain:** quilting, pull-tabs, the sun disc, the hose over the shoulder.
+- **Isle:** surplus and outdoor gear, sponsors, the hose at the thigh.
+- **Foundry:** tailored, one thigh umbilical; launch, spacewalk and surface suits.
+
+**Fixed: the page was slow to open.** The first picture took ~90 s, and that was the "trouble opening" Caio reported
+earlier. Windows' HLSL compiler (via ANGLE) inlined `map()` at nine call sites and unrolled every loop. The fixes:
+- one loop does the march, the normal (four taps) and the shadow, through a single `map()` call;
+- loops start at `ZERO` (`min(uS,0)`), so they can't unroll;
+- each school group compiles its own program (`#if SCH`), all in parallel (`KHR_parallel_shader_compile`);
+- big views draw in strips of ~150k pixels.
+
+Cape now opens in ~1.5 s, the other schools in ~5 s each, and the full grid in ~14 s. Round 2's look is unchanged
+(Mercury's walkout checked against the round 2 still).
+
+The pick is still **W32**, now covering all seven schools.
+**Files:** launchpad `mockups/suits/index.html`, `mockups/README.md` 0.1.6 § suits ("The other five schools": table,
+check results, open points), QUEUE (Q226 ✓, W32 widened); `ACTIVE_WORK.md`. Stills (not in git):
+`output/launchpad/mockups/suits/r3-*.png` (4 sheets, 5 school lineups, 3 backs, 6 close-ups).
+**Notes:**
+- **What the checks changed.** Coastal early got an egg helmet (it was too close to Mountain early). Feitian got a
+  domed top and a wider waist; it still only fully parts from Orlan from behind. Mountain's spacewalk suit was shrunk.
+  The weakest pair left is Coastal late against Isle late.
+- **Lost at 48 px:** Coastal late's seam, Foundry's thermal bands, the Mountain rays, the Arsenal plates.
+- **Worth reusing:** the single-`map()` loop and `ZERO` apply to any raymarched page that is slow to open on Windows
+  (the crew, heads and faces mock-ups have the same structure).
+**Next:** after W32, the suit build into `SUITS` (`app/crew-look.js`): Cape, Steppe, then the other five.
