@@ -4632,6 +4632,31 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `${M.map(m => `${m.name} ${m.d.toFixed(2)} TU ${m.px.toFixed(1)} px`).join(', ')}; Enyo moved ${moved.toFixed(1)}° in 60 days`);
 }
 
+// flow-5. The flight readout's core and cards (flow session, UI slice 4a, QUEUE Q3; NOTES § UI "Slice 4 plan"): the core
+// in updateHUD has at most 6 rows and calls none of the row helpers; each helper sits in a card in app/hud.js's
+// HUD_CARDS; when the column is too tall, the oldest unpinned cards fold to their title bars first, pinned ones never.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const hud = cut(page, 'function updateHUD(){', '\nlet rangeWarned'), core = cut(hud, 'const core=[', "$('info').innerHTML");
+  // count the core array's top-level entries: commas at bracket depth 1, outside strings and template text
+  let depth = 0, n = 0, q = null, tl = [];
+  for (let i = 'const core='.length; i < core.length; i++) { const ch = core[i];
+    if (q) { if (ch === '\\') { i++; continue } if (q === '`' && ch === '$' && core[i + 1] === '{') { tl.push(depth); q = null; depth++; i++; continue } if (ch === q) q = null; continue }
+    if (ch === "'" || ch === '"' || ch === '`') { q = ch; continue }
+    if (ch === '}' && tl.length && depth - 1 === tl[tl.length - 1]) { depth = tl.pop(); q = '`'; continue }
+    if ('([{'.includes(ch)) depth++; else if (')]}'.includes(ch)) { depth--; if (depth === 0) { n++; break } } else if (ch === ',' && depth === 1) n++; }
+  const helpers = ['spinRows', 'wheelRows', 'rcsRows', 'tgtRows', 'dockRows', 'fleetRows', 'bayRows', 'armRows', 'rvRows', 'payloadRows'];
+  const cards = cut(page, 'const HUD_CARDS=[', '\n// Which cards fold'), inHud = helpers.filter(h => hud.includes(h + '(')), noCard = helpers.filter(h => !cards.includes(h));
+  check('flow-5: the flight readout\'s core has at most 6 rows and no helper rows; every row helper has a card (HUD_CARDS)',
+    core.length > 100 && n >= 4 && n <= 6 && !inHud.length && !noCard.length, `${n} core rows${inHud.length ? '; in updateHUD: ' + inHud.join(' ') : ''}${noCard.length ? '; no card: ' + noCard.join(' ') : ''}`);
+  const cardFolds = new Function(cut(page, 'function cardFolds(', '\nconst hudPins') + ';return cardFolds')();
+  const C = [{ id: 'a', h: 100, ht: 20, since: 3 }, { id: 'b', h: 120, ht: 20, since: 1, pinned: true }, { id: 'c', h: 80, ht: 20, since: 2 }, { id: 'd', h: 60, ht: 20, since: 4 }];
+  const f = a => [...cardFolds(C, a)].join('');
+  check('flow-5: a column too tall folds the oldest unpinned cards to their title bars first, never a pinned one, and only as many as it takes',
+    f(1000) === '' && f(320) === 'c' && f(260) === 'ca' && f(100) === 'cad', `fits: "${f(1000)}", 320 px: "${f(320)}", 260: "${f(260)}", 100: "${f(100)}"`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.
