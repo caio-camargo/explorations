@@ -351,6 +351,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ✓ effects 2026-10-09: rows renumbered (162/163 → 165/166); the `ocomp` half needs nothing today: `avCap` (sim/power.js) waives the computer under `TEST.tools` (the robot's docking rows) or with crew, and `career.mjs` sets no SAS mode. A future robot career flying target/dock SAS on an uncrewed probe must add an `ocomp` |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | picker ✓ (tester → Hardware school; TESTING 179); the four unbuilt schools light up by themselves after Q102 steps 6–7 |
+| Q224 | **Watch the robot play** (Caio 2026-10-10): `node playtest.mjs --watch m1` opens a visible Chrome and paces the run for a person: flights at real speed (warp in coasts), a caption for what the robot is doing, a mark where it clicks, a pause between steps | M1 | S | 🖥 | → QA 2026-10-10 |
 
 ### platform — file split, test speed, saves, perf (new)
 Worktree `launchpad-platform` (branch `platform`, port 8801).
@@ -367,7 +368,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q69 | Split `app/gl.js` (1,532 lines) by what it draws: setup, shaders, meshes, planet/sky, plume, pad | — | M | ⚙ | after Q20 (effects is in the shaders) |
 | Q70 | 📝 ES modules, one area at a time, once an area's cross-file names are few (ROADMAP § Platform step 4) | — | L | 📝 | ready (plan only) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
-
+| Q225 | 📝 **Record and replay a whole session** (Caio 2026-10-10): watch a recorded play (a person's or the robot's) at 1×, pause, scrub, share the file. Flights already record a deterministic tape (`tapeNew`/`tapePlay`, NOTES § "Autopilot = flight tapes"), so the plan is the rest: the starting save, the screens between flights (Assembly edits, Program clicks), the camera, a viewer that plays without handing control over, an export. Plan first: what the tape misses, a determinism check across a reload | M2 | M | 📝 | ready (plan only) |
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
 

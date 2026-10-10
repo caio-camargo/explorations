@@ -135,6 +135,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+| Caio + Claude (QA session) | 2026-10-10 | Launchpad **QUEUE Q224**: `playtest.mjs --watch`, a visible, paced robot run a person can watch live (headed Chrome, real-time flights, captions, click marks). Files Q225 (record/replay) for platform. Worktree `launchpad-playtest`, branch `playtest`. | `explorations/launchpad/playtest.mjs`, `QUEUE.md` (Q224, Q225), `NOTES.md` § robot playtester |
 | Caio + Claude (vehicle session) | 2026-10-10 | Launchpad **QUEUE Q190**: era/mission gates for late vehicle parts (bay, arm, docking, station modules, onboard computer…), like `rvPartOpen`. Worktree `launchpad-builder`, branch `vehicle`. | `sim/program.js` (near `rvPartOpen`), `app/editor.js` (palette, LAUNCH), `test.mjs` |
 | Caio + Claude (look & sound, heads → faces) | 2026-10-10 | Launchpad **Q220 puppet rounds 4–5**, then **D12 face lab F0–F1** (FACES.md § 4: round 5's head as genes, sliders, DNA, breeding grid). Worktree `launchpad-visuals`, branch `visuals`. | `explorations/launchpad/mockups/heads/`, `mockups/faces/` (new), `mockups/README.md` § heads/faces, `FACES.md` (status lines). Reads `intake/` (never commits it: copyrighted refs, public repo) |
 > Cleared 2026-10-10: look & sound, **Q220 round 3 for (b) puppet**: `mockups/heads/deco3.html` (block-built deco head; cut × eyes grid, finishes, sculpted expressions), stills `output/launchpad/mockups/heads/round3-*.png`; still W31.
