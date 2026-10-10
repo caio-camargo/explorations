@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (flow session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (flow session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -77,3 +77,27 @@ existing roll-pattern machinery; the signature stacks as preset designs for riva
 rollout as a new pad animation (the rig code, `buildRig`).
 
 **Pick / changes:** _(Caio)_
+
+## suits/ — the suit lines by school and era (QUEUE Q199 → D9, CREW.md § Part 1)
+
+Open `suits/index.html` (bar: suit, role, shot) or the stills in `output/launchpad/mockups/suits/` (`<suit>-<wide|close>.png`,
+`role-<role>.png`, `sheet-wide.png` / `sheet-close.png` with all eight side by side; 1280×800). The stylised human (W19) in
+the crew mock-up's scene, on CREW 0.2.3's defaults: three launch-suit generations per school plus a spacewalk suit, and a
+role stripe round the upper arms. Shapes stay the stylised figure's; what changes is colour, helmet, bulk and backpack.
+
+| Suit | What it is |
+|---|---|
+| **Cape early** | Mercury: aluminised silver suit, a silver hard helmet with a snug faceplate, dark boots |
+| **Cape middle** | Apollo (the Selene era): white layers, blue fittings, an **all-glass bubble helmet** |
+| **Cape late** | sleek tailored white and black, a slim helmet with a wider visor |
+| **Cape spacewalk** | the EMU: bulky white, a backpack, a closed gold visor |
+| **Steppe early** | the SK-1: an orange coverall, a white helmet lettered in red across the brow |
+| **Steppe middle** | Sokol: white, blue connectors, a soft fabric hood with its visor (the hood only reads as fabric up close) |
+| **Steppe late** | a refined, closer-fitting Sokol |
+| **Steppe spacewalk** | Orlan: a rigid torso entered from the back, a closed visor, red fittings |
+
+Role stripes proposed: **pilot blue, scientist green, engineer yellow**. Pilot blue is weak against the Sokol's blue
+fittings; an alternative is pilot white-on-red. The game already draws the default suit (Q195); the picked lines go into
+`SUITS` in `app/crew-look.js`, one build item per school.
+
+**Pick:** _(Caio)_
