@@ -369,6 +369,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q70 | 📝 ES modules, one area at a time, once an area's cross-file names are few (ROADMAP § Platform step 4) | — | L | 📝 | ready (plan only) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
 | Q225 | 📝 **Record and replay a whole session** (Caio 2026-10-10): watch a recorded play (a person's or the robot's) at 1×, pause, scrub, share the file. Flights already record a deterministic tape (`tapeNew`/`tapePlay`, NOTES § "Autopilot = flight tapes"), so the plan is the rest: the starting save, the screens between flights (Assembly edits, Program clicks), the camera, a viewer that plays without handing control over, an export. Plan first: what the tape misses, a determinism check across a reload | M2 | M | 📝 | ready (plan only) |
+
 ### design desk — catalogs only Caio can approve (role: `docs/session-roles.md` § Design desk; docs in the main clone, no worktree)
 The desk drafts by interviewing Caio; once he approves a catalog, the orchestrator fans out its build items into the lanes.
 
