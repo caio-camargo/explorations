@@ -1,6 +1,6 @@
 # FACES — the face engine
-**Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
-**Status**: draft. Research and a proposal; the open decision is **D12** in [`QUEUE.md`](QUEUE.md).
+**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
+**Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
 Parent: [`CREW.md`](CREW.md) § Part 1 (the look). The style itself is decided in the head mock-ups
@@ -99,6 +99,26 @@ the game regenerates the face on demand.
 circle with three slots); randomise; a **roster sheet** of 12 generated faces at portrait size and at 48 px, in front,
 ¾ and profile; copy and paste of the DNA string. This is where Caio judges the engine, and where archetypes are made.
 
+### Breeding mode (Caio, 2026-10-10: "evolve towards some good presets")
+
+A genetic algorithm needs a fitness score, and the score here is taste, so the fitness function is **Caio's eye**:
+*interactive evolution* (Dawkins' biomorphs, Karl Sims' evolved images, Picbreeder). In the lab:
+
+1. A grid of 12 faces. Caio clicks the ones he likes (or ranks them by eye: 1–3 stars).
+2. The next 12 are children of the picks: genes crossed over by region (eyes from one parent, jaw from another,
+   as in CK3), plus mutation; the best one or two carry over unchanged (elitism). A mutation-strength slider:
+   wide to explore, narrow to refine.
+3. Machine checks run **before** Caio sees anything, so his clicks go on taste only: features that pierce through
+   each other, eyes hidden by the brow, a broken silhouette, a face too close to one already on the sheet.
+   (A vision model could pre-rank the rest against the reference images; at most as a sort, never as the judge.)
+4. Every pick is saved. Picks become **archetypes**, and the spread of everything Caio picked sets each gene's
+   **safe range**: the picks play the part of FaceGen's scanned faces. The engine's generator then samples near
+   what he liked.
+
+What it can't fix: evolution only moves the genes the engine has. If every face in a generation looks wrong in the
+same way (no ears, flat mask), the base head or a gene is missing, and that goes back to a build session.
+Fatigue is the limit: aim for ~10 generations of 12 in a sitting, with a "start from my saved picks" button.
+
 ## 4. How it gets built (one region per session)
 
 Each stage is one prompt-sized job, judged on the lab's roster sheet before the next starts. This is what replaces
@@ -107,14 +127,14 @@ Each stage is one prompt-sized job, judged on the lab's roster sheet before the 
 | Stage | What | Done when |
 |---|---|---|
 | F0 | The lab shell: round 5's head moved in, every tuned number named as a gene, sliders, ¾/front/profile views, DNA copy/paste | the default genes reproduce round 5 exactly |
-| F1 | Head and jaw genes (the silhouette ★) | 12 random heads tell apart at 48 px with the same hair |
+| F1 | Head and jaw genes; a first **breeding grid** (picks, crossover, mutation) so every later stage can be judged and tuned by breeding (the silhouette ★) | 12 random heads tell apart at 48 px with the same hair |
 | F2 | Brow and eyes | the ¾ view reads open, awake eyes on every random face |
 | F3 | Nose and cheeks | profiles differ visibly; no broken noses at the range limits |
 | F4 | Mouth and chin | the same, in ¾ |
 | F5 | Hair library (8+ masses) and facial hair | silhouette row by hair alone |
 | F6 | Paint ramps | the varied-roster check passes (all tones look good, same finish) |
 | F7 | Expression layer | five expressions on any random face, without breaking it |
-| F8 | Archetypes and the generator, distinctness check | a generated roster of 12 passes Caio's look |
+| F8 | Archetypes and the generator, distinctness check; **breeding mode** (§ 3) | a generated roster of 12 passes Caio's look |
 | F9 | Into the game (needs D12 3) | crew portraits and figures drawn from DNA |
 
 **Rule for every stage:** test the extremes. Push each new gene to 0 and 1 on three different faces; if a corner
