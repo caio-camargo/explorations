@@ -189,6 +189,14 @@ gene, which mostly moved the nose root, is renamed *nose root*); *lower face pro
 front forward or back; *cheekbone prominence* swells the face itself along the zygomatic line, under the outer eye and back
 along the arch to the ear, soft above and steeper below into the hollow (a separate mass read as stuck on, Caio: "needs
 to feel more like underlying structure"); the cheek hollow's range is four times deeper. 44 genes.
+**Lips and the reach test** (Caio: deco lips are a defined line, not plump; Mr. Incredible should be reachable): *lip
+edge* soft–crisp (crisp cuts the lips flat in front with a sharp border), *lip colour* (fades to skin), lip fullness
+down to almost nothing, thinner house lips; narrower nose limits (tip, bridge, wings); *jaw mass* (down and out),
+*chin size*, *planes: crisp–soft* (deco to Pixar), wider jaw, face length, chin and neck ranges. Bugs found on the way:
+the nose-root plane ran down through the nose (now the ridge sits on the forehead's line and the plane stops above
+the bridge), the neck's end cut sliced long jaws flat, and the cheek planes met in a keel under a big jaw (they now
+recede below the nose when the jaw is heavy). Edit has **Presets** (the Mr. Incredible-like reach test, a deco face,
+three noses). Still: `faces/reach-mr-incredible.png`. 49 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

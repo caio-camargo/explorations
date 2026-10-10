@@ -169,3 +169,7 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Profiles and cheekbones** (Caio's notes): a real forehead slope (a shear above the brow; the old gene renamed nose
   root), lower face projection, cheekbone prominence (a swelling of the surface along the zygomatic line and arch, not an added mass; house .35), a deeper cheek
   hollow (house .2). 44 genes. Ranges stay wide on purpose (Caio: more options now, narrow later).
+- **Lips, jaw and the reach test** (Caio: deco lips are a line; Mr. Incredible as a reachable face): lip edge and lip
+  colour, thin lips, narrow noses, jaw mass, chin size, planes crisp–soft; three structural bugs fixed (nose-root
+  plane, neck cut, cheek-plane keel). A Mr. Incredible-like preset reaches his silhouette (jaw, chin, nose, line
+  mouth). Next: the eyes (Caio: socket bound by the nose and brow, 3D lids, spherical eyes). 49 genes.
