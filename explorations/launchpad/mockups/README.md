@@ -157,6 +157,12 @@ planes as smooth intersections (sharp at cheekbones and jaw line, bevelled elsew
 with an almond eye, a mouth groove, an upper lip, a lower lip plane), the neck joined after the carving. Hair one mass
 with four grooves. Neutral only, front and profile, **for shape approval** before expressions, roster and helmet.
 
+**Round 5 for (b)** (Caio: round 4 "the right track"): `heads/deco5.html`, still `round5-shape.png`; ¾ (the main view),
+front and profile, each beside three intake references at the same angle (new profile references added by Caio). On
+round 4's mass: a side plane with the cheekbone and jaw line running back to carved ears (the hair now stops above
+them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wrapped round the mouth's curve, a nose
+base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
+
 **Pick:** _(Caio)_
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
