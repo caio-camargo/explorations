@@ -290,7 +290,7 @@ let mapLinkMemo={t:NaN,n:-1,v:[]};
 function mapLinks(seg){const T=tNow(),n=(PROG.sats||[]).length;if(!(Math.abs(T-mapLinkMemo.t)<5)||n!==mapLinkMemo.n){const v=[];
     for(const q of[...satsUp(),...moonSats()]){if(q.junk)continue;const L=entryLink(q,T);if(!L.ok)continue;const P=add(bodyPos(orbBody(q),simT),satAt(q,T)[0]);
       if(L.viaId!=null){const p=(PROG.sats||[]).find(x=>x.id===L.viaId);if(p)v.push([P,add(bodyPos(orbBody(p),simT),satAt(p,T)[0]),[.4,.85,1,.55]]);continue}
-      v.push([P,L.st?add(bodyPos(TELLUS,simT),rotY(mul(L.st.u,TELLUS.R),absTh(T))):bodyPos(TELLUS,simT),[.45,1,.55,.45]])}
+      v.push([P,L.st?add(bodyPos(TELLUS,simT),rotY(mul(L.st.u,TELLUS.R),absTh(T))):add(bodyPos(TELLUS,simT),mul(norm(sub(P,bodyPos(TELLUS,simT))),TELLUS.R)),[.45,1,.55,.45]])}
     mapLinkMemo={t:T,n,v}}
   for(const[a,b,c]of mapLinkMemo.v)seg(a,b,c)}
 function drawMap(VP,camW,labels){
