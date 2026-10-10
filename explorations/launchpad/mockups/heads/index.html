@@ -306,6 +306,7 @@ function tile(x, y, w, h, hk, pi, ex, shot) {
   gl.uniform1f(U('uG'), E.g); gl.uniform3fv(U('uTint'), E.tint);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
 }
+let JOB = 0;
 const ov = document.getElementById('ov'), zc = document.getElementById('zoom'), zx = zc.getContext('2d');
 let LABELS = [], ZOOMS = [];
 const lab = (x, y, text, cls = 'l', w) => LABELS.push({ x, y, text, cls, w });
@@ -340,15 +341,17 @@ function layoutCompare() {
 function draw() {
   LABELS = []; ZOOMS = [];
   const [T, h] = VIEW === 'compare' ? layoutCompare() : layoutSheet(VIEW);
-  H_ = h; cv.width = 1280; cv.height = h; cv.style.width = '1280px'; cv.style.height = h + 'px'; zc.width = 1280; zc.height = h;
+  H_ = h; cv.width = 1280; cv.height = h; gl.disable(gl.SCISSOR_TEST); cv.style.width = '1280px'; cv.style.height = h + 'px'; zc.width = 1280; zc.height = h;
   gl.enable(gl.SCISSOR_TEST); gl.viewport(0, 0, 1280, h); gl.scissor(0, 0, 1280, h); gl.clearColor(.055, .067, .086, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-  for (const t of T) tile(...t);
-  gl.finish();
-  zx.clearRect(0, 0, 1280, h); zx.imageSmoothingEnabled = false;
-  for (const [sx, sy, dx, dy] of ZOOMS) zx.drawImage(cv, sx, sy, 48, 48, dx, dy, 96, 96);
+  // one tile per frame: a single long GPU job can trip Windows' GPU timeout and get WebGL disabled in the browser
+  const job = ++JOB; let k = 0;
+  const step = () => { if (job !== JOB) return; if (k < T.length) { tile(...T[k++]); gl.flush(); requestAnimationFrame(step); return; }
+    zx.clearRect(0, 0, 1280, H_); zx.imageSmoothingEnabled = false;
+    for (const [sx, sy, dx, dy] of ZOOMS) zx.drawImage(cv, sx, sy, 48, 48, dx, dy, 96, 96);
+    window.FRAME_DONE = (window.FRAME_DONE || 0) + 1; };
+  requestAnimationFrame(step);
   ov.innerHTML = LABELS.filter(l => l.text).map(l => `<div class="${l.cls}" style="left:${l.x}px;top:${l.y}px${l.w ? `;width:${l.w}px` : ''}">${l.text}</div>`).join('');
   document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.view === VIEW));
-  window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
 }
 document.getElementById('bar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; VIEW = b.dataset.view; draw(); });
 draw();
