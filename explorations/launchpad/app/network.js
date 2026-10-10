@@ -20,6 +20,7 @@ function renderNetwork(){const el=$('netBody');if(!el)return;const N=netData(),D
   $('netHead').innerHTML=`<div class="dt">${fmtDate(D)}</div><div class="sub">${(N.fleet||[]).length} in the fleet · ${(N.pads||[]).length} pad${(N.pads||[]).length>1?'s':''}</div>`;
   const F=(N.fleet||[]).slice().sort((a,b)=>(a.t??1e9)-(b.t??1e9));
   let h=`<div class="dh">The fleet</div>`+(F.length?`<table class="netf">${F.map(f=>`<tr><td>${f.name}</td><td class="dim">${f.kind}</td><td>${f.where}</td><td class="${/adrift/.test(f.next)?'warn':''}">${f.next||''}</td></tr>`).join('')}</table>`:'<div class="none">Nothing of ours is out there yet.</div>');
+  h+=netLinksHTML(N);   // space Q173: links home and coverage (one call; restyle freely)
   const ticks=[];for(let d=30;d<NET_DAYS;d+=30)ticks.push(`<i class="tk" style="left:${x(D+d)}"><b>${d} d</b></i>`);
   const ev=(typeof upcoming==='function'?upcoming():[]).filter(e=>e.day<=D+NET_DAYS);
   h+=`<div class="dh">The pads <span class="dim">· next ${NET_DAYS} days</span></div><div class="cal">`+
@@ -27,3 +28,10 @@ function renderNetwork(){const el=$('netBody');if(!el)return;const N=netData(),D
     `<div class="crow"><span class="cl">Events</span><div class="ctr">${ticks.join('')}${ev.map(e=>`<i class="cev" style="left:${x(e.day)}" title="${e.text} · in ${Math.ceil(e.day-D)} d"></i>`).join('')}</div></div></div>`+
     (ev.length?`<div class="sub" style="margin-top:4px">${ev.slice(0,4).map(e=>`in ${Math.ceil(e.day-D)} d: ${e.text}`).join(' · ')}</div>`:'');
   el.innerHTML=h}
+// links home and coverage (space session, QUEUE Q173): each orbiting entry's share of the next day with a path home, its
+// longest gap, the relays it goes through, and a burn mission control can't reach flagged; then each body's coverage
+function netLinksHTML(N){const L=N.links||[],C=N.cover||[],pc=x=>`${Math.round(100*x)} %`;if(!L.length&&!C.length)return'';
+  let h=`<div class="dh">Links home <span class="dim">· next day</span></div>`;
+  if(L.length)h+=`<table class="netf">${L.map(l=>`<tr><td>${l.name}</td><td class="dim">${l.body}</td><td>${l.now?'in contact':'<span class="dim">out of contact</span>'} · ${pc(l.share)} of the day${l.share<1?`, gaps up to ${l.gapH.toFixed(1)} h`:''}</td><td class="${l.flag?'warn':'dim'}">${l.flag||(l.via.length?`through ${l.via.join(', ')}`:'')}</td></tr>`).join('')}</table>`;
+  if(C.length)h+=`<div class="sub" style="margin-top:4px">${C.map(c=>c.low!=null?`Tellus: a low satellite has a station in view ${pc(c.low)} of the time`:`${c.body}: the ground reaches home ${pc(c.near)} of the time on the near side, ${pc(c.far)} on the far side`).join(' · ')}</div>`;
+  return h}

@@ -252,7 +252,7 @@ function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',dela
   const hR=P.hg?RV_HG:RV_LG;let best=null;
   const Tb=sub(bodyPos(TELLUS,t),bodyPos(b,t)),wr=fromPF(b,R.p,t),sin1=Math.sin(Math.PI/180);   // Tellus and the rover, in b's frame
   for(const q of relays||[]){if(q.body!==b)continue;
-    if(q.at){const Q=q.at(t),dq=sub(Q,wr),d=len(dq),qT=sub(Tb,Q),u=norm(qT),c=-dot(Q,u);   // in orbit: over the rover's horizon, and Tellus not behind b
+    if(q.at){if(q.on&&!q.on(t))continue;const Q=q.at(t),dq=sub(Q,wr),d=len(dq),qT=sub(Tb,Q),u=norm(qT),c=-dot(Q,u);   // in orbit: over the rover's horizon, and Tellus not behind b
       if(dot(up,dq)<d*sin1||c>0&&len(add(Q,mul(u,c)))<b.R)continue;
       const dl=2*(d+len(qT))/RV_CLIGHT;if(!best||d<best.d)best={ok:true,via:q.name,d,delay:dl,rate:Math.min(linkRate(P_ROVER,Gr,G_WHIP,d),linkRate(P_RADIO,G_WHIP,G_STATION,len(qT)))};continue}
     const d=len(sub(q.pf,R.p)),reach=Math.sqrt(2*b.R*hR)+Math.sqrt(2*b.R*Math.max(1,q.h));if(d>reach)continue;
@@ -263,7 +263,7 @@ function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',dela
 // relays in its orbit (at: flight time → position in its frame): vessels of this flight and registered ones
 function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;
     if(!v.landed){if(v.body!==TELLUS)out.push({body:v.body,at:()=>v.r,name:v.name||'the orbiter'});continue}if(!v.pf)continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
-  for(const q of moonSats())if(q.ant&&satDuty(q)>0)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],name:q.name});
+  for(const q of moonSats())if(q.ant&&satDuty(q)>0)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],on:t=>satOn(q,ORB_T0+t),name:q.name});   // on: powered then (Q173)
   for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant'))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),name:q.name})}return out}
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}
