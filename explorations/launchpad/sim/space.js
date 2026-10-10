@@ -30,6 +30,16 @@ const CAM_BPS=1e5,REC_CAP=3.6e8,IMG_FRAME=1.5e6,FAR_BITS=2e4,TLM_BITS=1e3;
 // a vessel's (or a registry entry's) radio: its antennas' power at whip gain; none aboard: a 1 W beacon
 const antOf=parts=>{const n=(parts||[]).filter(p=>(p.on!==false)&&((p.d&&p.d.kind)||(PARTS[p.k]||{}).kind)==='ant').length;return n?{P:P_RADIO*n,G:G_WHIP}:{P:1,G:G_WHIP}};
 const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a registry entry's radio, from its antenna count
+// a registry entry's link home at program time T (space Q186): r is its position in its body's frame then (default: on
+// its rails). Around Tellus: a ground station in view; elsewhere: Tellus not hidden behind the body, and the rate (by
+// v1.96's budget) above the telemetry floor, so a craft with no antenna (a 1 W beacon) can't be reached at Selene.
+function entryLink(q,T,r){const B=orbBody(q);r=r||satAt(q,T)[0];const A=satRadio(q);
+  if(B===TELLUS){const pf=rotY(r,-absTh(T));for(const st of stationsAll())if(gsSees(st,pf)){const rate=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));return{ok:true,st,rate}}
+    return{ok:false,why:'no station in view'}}
+  const o=ORB_T0;ORB_T0=0;const bp=bodyPos(B,T);ORB_T0=o;   // program time: the moons' phase is ORB_T0 + t
+  const toT=mul(add(bp,r),-1),d=len(toT),u=mul(toT,1/d),tc=-dot(r,u);
+  if(tc>0&&len(add(r,mul(u,tc)))<B.R)return{ok:false,why:`behind ${B.name}`};
+  const rate=linkRate(A.P,A.G,G_STATION,d);return rate>=LINK_FLOOR?{ok:true,st:null,rate}:{ok:false,why:'too far for its radio'}}
 function stationsAll(){return[padGS(),...(PROG.stations||[]).map(g=>{const c=CITIES[g.ci];return{name:c.name,u:c.u,power:c.power?c.power.i:HOME,ci:g.ci}})]}
 // candidate sites: each power's two biggest cities that don't have a station yet
 function gsSites(){const have=new Set((PROG.stations||[]).map(g=>g.ci)),out=[];
@@ -245,10 +255,18 @@ function nodeFire(q,n,roll){const B=orbBody(q),f=nodeFrame(q.r,q.v),dvW=add(add(
   HOOK.news(got<mag-0.5?`Mission control burned ${q.name} for ${got.toFixed(0)} of ${want.toFixed(0)} m/s: its tanks ran dry`:`Mission control flew ${q.name}'s planned burn: ${got.toFixed(1)} m/s (planned ${want.toFixed(1)})`,got<mag-0.5?'warn':'ok')}
 function nodesTick(q,T1){while(q.nodes&&q.nodes.length&&q.nodes[0].T<=T1&&PROG.sats.includes(q)&&!q.halt){const n=q.nodes.shift();entryTo(q,n.T);
     if(!PROG.sats.includes(q)||q.halt)break;
+    // contact gates automation (Q127 slice 3, Q186): before onboard computers, mission control needs a link at the burn's
+    // time; without one the burn passes, as a missed one does (a wait, never a failure)
+    let L=null;if(n.mc&&!autoAllowed('blind').ok&&!(L=entryLink(q,n.T,q.r)).ok){HOOK.news(`Mission control couldn't reach ${q.name} at its burn time (${L.why}): the burn passed; it carries on as it was`,'warn');continue}
     if(n.mc)nodeFire(q,n);else HOOK.news(`${q.name}'s planned burn passed with nobody at the controls; it carries on as it was`,'warn')}
   if(q.nodes&&!q.nodes.length)delete q.nodes}
+// why mission control can't take q's next burn ('' if it can): the era (Q127), then contact (Q186: in orbit on its rails
+// the burn's place is known now, so one it won't be able to reach is refused up front)
+function handOffWhy(q){const a=autoAllowed('burn');if(!a.ok)return a.why;const n=q.nodes&&q.nodes[0];if(!n||q.cruise||autoAllowed('blind').ok)return'';
+  const L=entryLink(q,n.T);return L.ok?'':`can't reach ${q.name} at the burn (${L.why}); onboard computers could fly it out of contact: fly it yourself${orbBody(q)===TELLUS?', or build a station under it':''}`}
 function nodeHandOff(id,on=true){const q=(PROG.sats||[]).find(x=>x.id===id);if(!q||!q.nodes||!q.nodes[0])return null;   // mission control: from mainframes (Q127)
-  if(on){const a=autoAllowed('burn');if(!a.ok){HOOK.msg(`Mission control ${a.why}`);return{refused:a.why}}}q.nodes[0].mc=!!on;return q}
+  if(on){const why=handOffWhy(q);if(why){HOOK.msg(`Mission control ${why}`);return{refused:why}}}
+  q.nodes[0].mc=!!on;return q}
 // what a cruise entry is doing next, for lists: {text, days} (program time T)
 function cruiseNext(q,T){if(q.halt)return{text:`waiting at the top of ${orbBody(q).name}'s air`,days:0};const o=ORB_T0;ORB_T0=0;
   try{const B=orbBody(q),[r,v]=satAt(q,T),L=predictFrom({b:B,r,v,t:T})[0],el=L.el,d=L.endKind?(L.endT-T)/DAY_S:null;

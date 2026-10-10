@@ -1,5 +1,5 @@
 # POWERS — national flavours as content
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
 **Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it.
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
@@ -23,7 +23,7 @@ livery" (NOTES § "Backlog — visual flavours").
 
 ---
 
-## The six hardware schools (kits)
+## The hardware schools (kits): six national, one commercial
 
 A **school** is a design lineage: the shapes parts take when this school builds them, the pad and buildings it
 builds, its flag motifs and the sound of its names. Look only: **a school never changes a part's physics** (mass,
@@ -52,6 +52,7 @@ floor is measured against those presets (NOTES v1.53). A school-specific preset 
 | **Coastal** | Europe / French Guiana | rounded and tidy, white with a pastel band, big solid boosters | a jungle-coast pad, a **mobile gantry that rolls away**, smart low buildings | tricolour bands, a disc on bands | lilting, many vowels: *Alessa, Ourelle* |
 | **Mountain** | Japan / India (solid-fuel lineage) | slender, many solid stages, launched off a rail at an angle in the early era | a pad cut into a ridge or a cove, a tidy rail launcher | a sun disc, rays, mountains | measured, open syllables: *Kanora, Isuma* |
 | **Isle** | New Zealand / small commercial launchers | compact, black carbon, small electric-pump engines, lots of decals | a tiny pad on a remote peninsula, a hangar and a shed | a constellation, a southern cross | friendly two-syllable names: *Lyra, Pava* |
+| **Foundry** (commercial, late) | SpaceX's Starship and Starbase; retrofuturist, the 1950s pulp rocket made real | huge, **one diameter top to bottom**, bare stainless steel with weld rings, a black tiled belly, **flaps** where others have fins (same area: look only) | a factory beside the pad, a tower whose arms **catch boosters**, tank farms | none: the company's logo | bold single words, a founder's sci-fi taste: *Ironworks, Starward* |
 
 **Livery** (the paint, always the power's own): the school's base pattern, tinted with the power's `hue`: the roll
 pattern's dark band, the stripe on a Coastal fairing, the decal colour on an Isle rocket. Each power also gets a
@@ -109,6 +110,19 @@ school affinities. Weights are draw probabilities when a world is generated.
 - **As a rival:** **buys its way in**: stakes, teams, foreign rides with its own passenger. A burst of activity in a
   commodity boom, quiet in a bust.
 - **Name forms:** *Kingdom of #*, *Emirate of #* (new), *Sultanate of #* (new).
+
+### Commercial giant (not a power; D10, 2026-10-09)
+A **company**, the one rival that isn't a nation: no territory, no flag, no relations of its own; it is based in a
+power and answers to its law (sanctions on that power reach it).
+- **School:** Foundry, always. It arrives with the **commercial era** (LATE_GAME § Rivals, rule 5), never earlier.
+- **Mission control:** a crowd in matching shirts, cheering in a factory; the founder posts the news before the press does.
+- **News:** iteration in public: prototypes blow up as headlines ("rapid unscheduled disassembly"), then fly. Launch
+  prices announced as a challenge to everyone else.
+- **As a rival:** **undercuts and out-builds.** Lowers launch and contract prices (W26 4), races for the capstones,
+  sells rides and parts to anyone, you included.
+- **For the player:** buying from it puts Foundry parts in your rockets, drawn in its school and your paint (mixed
+  rockets, decision 2).
+- **Name forms:** *# Industries*, *# Space*, *#works* (a company name, not a state).
 
 ### Security state
 - **School affinity:** Arsenal 0.6 · Steppe 0.3 · Mountain 0.1.
@@ -168,6 +182,8 @@ part *performance*; diplomacy actions.
 ---
 
 ## Version history
+- **1.1.0 (2026-10-09):** D10, approved by Caio: a seventh school, **Foundry** (commercial, late; Starship-like), and
+  the **commercial giant**, a company rival in the commercial era that can sell you its parts.
 - **1.0.0 (2026-10-08):** approved by Caio; round-2 decisions; what a school may change on a part (outline fixed),
   and the big silhouettes as school designs.
 - **0.1.0 (2026-10-08):** first draft. Round-1 decisions; six schools; tone, rival personality and affinities per
