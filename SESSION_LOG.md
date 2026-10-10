@@ -5111,3 +5111,16 @@ Stills (not in git): `output/launchpad/q228-schools/`, `output/launchpad/q229-su
   strongback) and their signature designs (Q158, blocked until rivals' rockets are drawn).
 - Steppe's crew arm, so its suits show.
 - Spacewalk suits once EVA exists.
+
+## 2026-10-10 — Launchpad Q190: gates for late parts (vehicle session)
+
+**Summary:** Caio's calls: locked parts are **listed and designable but never flown** (as rover parts are), and each opens
+with **the mission that first needs it** (table in NOTES § v1.113). `PART_GATE`, `partOpen`, `partLaunchWhy` in
+`sim/program.js`; LAUNCH, Rollout, dispatch and supply runs refuse; the palette dims a locked part with "🔒 <mission>".
+The RTG joins the onboard computer at era 2. Test `vehicle-10` (walks the missions' `req` chains so no gate comes after a
+mission that needs the part; fails without the bay's gate). Seen in the browser via `shot.mjs`. Full suite on the merge:
+634 checks, all pass.
+**Files:** `sim/program.js`, `sim/vessel.js`, `builder.js`, `app/editor.js`, `app/rollout.js`, `test.mjs`, NOTES § v1.113,
+TESTING 194, QUEUE (Q190 ✓), `ACTIVE_WORK.md`.
+**Next (vehicle lane):** today's playtest items Q235 (Assembly Clear button), Q236 (symmetry in plain sight), Q237 (the
+info panel sorted), Q238 (part pictures, folded palette). Q152 (Selene Lander) is still parked.
