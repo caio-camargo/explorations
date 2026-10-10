@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Version**: 0.2.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -128,10 +128,11 @@ modern one), plus a spacewalk or surface suit once EVA exists; look only, like e
 | **Mountain** | slim saffron-and-white | Gaganyaan-like | lightweight, a light visor | compact |
 | **Isle** | none (no crewed early era) | black carbon tones | black and white, dark visor | utilitarian, rental-grade |
 
-Generations: early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene. Open questions with defaults:
+Generations: early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene. **Decided (Caio, 2026-10-09): the defaults**:
 (1) three generations, not each school's compute eras; (2) a spacewalk suit per school, not one shared; (3) a role
 stripe on the shoulder (§ The roles) so crew read apart small. Then a look session mocks up Cape and Steppe across the
 three eras in the Q72 scene, and Caio picks.
+**Status (2026-10-09):** draft; Caio accepted the defaults on (1)–(3).
 
 ---
 
@@ -147,6 +148,7 @@ three eras in the Q72 scene, and Caio picks.
 ---
 
 ## Version history
+- **0.2.3 (2026-10-09):** D9: Caio took the three defaults.
 - **0.2.2 (2026-10-09):** D9 draft: suits by school and era (table, three questions with defaults).
 - **0.2.1 (2026-10-09):** part 1: stylised human chosen (W19); suits by school and era opened (D9).
 - **0.2.0 (2026-10-08):** part 2 approved; round 2: requalification and the lost person replace the timed stand-down.
