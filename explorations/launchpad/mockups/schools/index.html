@@ -4,18 +4,21 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>School mock-ups</title>
-<!-- Launchpad mock-up for POWERS.md's hardware schools (QUEUE Q89): the Orbiter preset styled Cape and Steppe side by side
-     (the same parts and outline: only surface, finish, paint and roundel differ), one signature design per school, and
-     each school's pad. A standalone page: never loaded by index.html. The Orbiter's outline is the game's own (its parts'
-     profiles, exported from the sim on 2026-10-09); everything is raymarched. ?view=<key> picks a still. -->
+<!-- Launchpad mock-up for POWERS.md's hardware schools. Round 1 (QUEUE Q89): Cape and Steppe, approved (W21). Round 2
+     (QUEUE Q227, POWERS.md § "School briefs", D14): Arsenal, Coastal, Mountain, Isle. The Orbiter preset in all six schools
+     side by side (the same parts and outline: only surface, finish, paint, bells, fin edges and roundel differ), each school's
+     two signature designs, and each school's pad. The Orbiter's outline is the game's own (its parts' profiles, exported
+     from the sim on 2026-10-09). A standalone page: never loaded by index.html. Each view compiles its own small shader
+     program (#if VIEW), with one map() call site, so it opens fast. ?view=<key> picks a view; &still hides the bar. -->
 <style>
   :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #9aa3b2; --acc: #f2b84b; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; width: 100vw; height: 100vh; }
   #bar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 5px; flex-wrap: wrap; align-items: center;
     background: rgba(14, 17, 22, .78); padding: 6px 8px; border-radius: 6px; }
   #bar button { background: #1b2029; color: var(--fg); border: 1px solid #333b48; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
   #bar button.on { border-color: var(--acc); color: var(--acc); }
+  #bar .lab { color: var(--dim); margin: 0 2px 0 6px; }
   #cap { position: fixed; left: 12px; bottom: 10px; right: 12px; color: #fff; text-shadow: 0 1px 3px #000; }
   body.still #bar { display: none; }
 </style>
@@ -26,152 +29,438 @@
 <div id="cap"></div>
 <script>
 'use strict';
-const VIEWS = {
-  orbiters:  { v: 0, cam: [6.5, 6, 13.5], tgt: [0, 7, 0], fov: 1.25, cap: 'The Orbiter preset, the same parts and outline: Cape (left: white, black roll pattern, a ribbed skirt over the upper engine) and Steppe (right: grey-green enamel, an open lattice interstage)' },
-  signature: { v: 1, cam: [8, 10, 22], tgt: [0, 11, 0], fov: 1.3, cap: 'Signature designs built from normal parts: Cape\'s tall slim stack of three stages (left) and Steppe\'s core with four conical strap-ons (right)' },
-  capePad:   { v: 2, cam: [11, 7, 15], tgt: [-1.5, 8, 0], fov: 1.35, cap: 'Cape\'s pad: a tall fixed service tower with swing arms, a flame deflector, the crawlerway' },
-  steppePad: { v: 3, cam: [9, 12, 17], tgt: [-4, 1, 0], fov: 1.35, cap: 'Steppe\'s pad: rolled out lying down on rails, raised over a flame pit; the launch table\'s arms fall back at lift-off' },
-};
-// the Orbiter's outline from the game (parts bottom to top: kestrel, fins, t8, dec, petrel, t2, pod, chute; r, y per part)
-const PARTS = [[0, [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 1.3]]], [1.3, [[.625, 0], [.625, .9]]], [2.2, [[.625, 0], [.625, 7.4]]],
+// ---- the schools: 0 Cape, 1 Steppe, 2 Arsenal, 3 Coastal, 4 Mountain, 5 Isle
+// ---- the designs. prof: the revolved outline, (r, y) bottom to top. di: bell top, lower stage top, payload start,
+// height. cv: interstage covers (y0, y1, radius at y0, at y1). fn: fins (y0, height, span, thickness), fn2: (root radius,
+// taper of the half-height toward the tip). br: a bounding radius. The Orbiter's outline is the game's own
+// (parts bottom to top: kestrel, fins, t8, dec, petrel, t2, pod, chute).
+const ORBP = []; for (const [y0, pr] of [[0, [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 1.3]]], [1.3, [[.625, 0], [.625, .9]]], [2.2, [[.625, 0], [.625, 7.4]]],
   [9.6, [[.625, 0], [.625, .25]]], [9.85, [[.6, 0], [.15, .7], [.3, .8], [.625, .9], [.625, 1]]], [10.85, [[.625, 0], [.625, 2]]],
-  [12.85, [[.625, 0], [.625, .06], [.34, 1], [.3, 1.06], [.3, 1.2]]], [14.05, [[.3, 0], [.3, .22], [.16, .38], [0, .42]]]];
-const ORB = []; for (const [y0, pr] of PARTS) for (const [r, y] of pr) ORB.push([r, y0 + y]);
-// Cape's signature: three stages, tall and slim (the same tank and engine radii, more tanks), a pod and a tower on top
-const CAPE = [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 13], [.6, 13], [.15, 13.7], [.3, 13.8], [.625, 13.9], [.625, 19], [.6, 19], [.15, 19.7], [.3, 19.8], [.5, 19.9], [.5, 23],
-  [.5, 23.05], [.3, 23.9], [.28, 24], [.12, 24.2], [.12, 26.6], [0, 26.8]];
-// Steppe's signature: a core (a long tank, a lattice, an upper stage, a small fairing) — the strap-ons are cones (shader)
-const STEP = [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 14.5], [.6, 14.5], [.15, 15.2], [.3, 15.3], [.625, 15.4], [.625, 18], [.5, 18.6], [.45, 19.8], [.2, 20.6], [0, 20.8]];
+  [12.85, [[.625, 0], [.625, .06], [.34, 1], [.3, 1.06], [.3, 1.2]]], [14.05, [[.3, 0], [.3, .22], [.16, .38], [0, .42]]]]) for (const [r, y] of pr) ORBP.push([r, y0 + y]);
+const DES = [
+  { k: 'Orbiter', prof: ORBP, di: [1.15, 9.6, 12.85, 14.47], cv: [[9.6, 10.85, .625, .625]], fn: [1.28, .84, .7, .03], fn2: [.6, .25], br: 1.4 },
+  { k: 'Cape: three stages', prof: [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 13], [.6, 13], [.15, 13.7], [.3, 13.8], [.625, 13.9], [.625, 19], [.6, 19], [.15, 19.7], [.3, 19.8], [.5, 19.9], [.5, 23],
+    [.5, 23.05], [.3, 23.9], [.28, 24], [.12, 24.2], [.12, 26.6], [0, 26.8]], di: [1.15, 13, 23, 26.8], cv: [[13, 13.9, .625, .625], [19, 19.9, .6, .6]], fn: [1.28, .84, .7, .03], fn2: [.6, .25], br: 1.4 },
+  { k: 'Steppe: a core and four cones', prof: [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 14.5], [.6, 14.5], [.15, 15.2], [.3, 15.3], [.625, 15.4], [.625, 18], [.5, 18.6], [.45, 19.8], [.2, 20.6], [0, 20.8]],
+    di: [1.15, 14.5, 18, 20.8], cv: [[14.5, 15.4, .625, .625]], br: 2.1 },
+  { k: 'Arsenal: the missile', prof: [[.5, 0], [.2, .65], [.35, .8], [.7, 1.0], [.7, 6.5], [.65, 6.5], [.18, 7.0], [.3, 7.1], [.7, 7.3], [.7, 9.6], [.67, 10.3], [.56, 10.9], [.37, 11.4], [.16, 11.7], [0, 11.78]],
+    di: [1.0, 6.5, 9.6, 11.8], cv: [[6.5, 7.4, .7, .7]], fn: [1.0, 1.4, .55, .07], fn2: [.68, .2], br: 1.35 },
+  { k: 'Arsenal: four ogive strap-ons', prof: [[.55, 0], [.22, .75], [.4, .9], [.625, 1.15], [.625, 14], [.6, 14], [.15, 14.6], [.3, 14.7], [.625, 14.8], [.625, 17.5], [.68, 17.7], [.68, 19.2], [.46, 20.2], [.16, 20.8], [0, 20.9]],
+    di: [1.15, 14, 17.5, 20.9], cv: [[14, 14.9, .625, .625]], br: 1.65 },
+  { k: 'Coastal: a core and two big solids', prof: [[.5, 0], [.22, .7], [.4, .85], [.7, 1.1], [.7, 13], [.6, 13], [.2, 13.4], [.3, 13.5], [.7, 13.6], [.7, 15.5], [.74, 15.6], [.74, 17.4], [.62, 18.3], [.36, 18.95], [0, 19.3]],
+    di: [1.1, 13, 15.5, 19.3], cv: [[13, 13.8, .7, .7]], br: 1.9 },
+  { k: 'Coastal: the early slim three-stage', prof: [[.35, 0], [.15, .5], [.28, .6], [.45, .75], [.45, 6.5], [.42, 6.5], [.12, 6.85], [.2, 6.95], [.42, 7.05], [.42, 9.3], [.35, 9.3], [.1, 9.55], [.15, 9.62], [.35, 9.7],
+    [.35, 10.6], [.38, 10.62], [.38, 11.5], [.3, 12.0], [.15, 12.35], [0, 12.45]], di: [.75, 6.5, 10.6, 12.45], cv: [[6.5, 7.1, .45, .42], [9.3, 9.7, .42, .35]], fn: [.75, 1.1, .45, .022], fn2: [.43, .25], br: 1.0 },
+  { k: 'Mountain: the rail-launched four-stage solid', prof: [[.32, 0], [.12, .45], [.2, .5], [.45, .6], [.45, 5.5], [.38, 5.5], [.1, 5.85], [.15, 5.9], [.4, 6.15], [.4, 9.0], [.33, 9.0], [.08, 9.3], [.12, 9.35], [.33, 9.45],
+    [.33, 11.0], [.27, 11.0], [.07, 11.25], [.1, 11.3], [.28, 11.38], [.28, 12.2], [.26, 12.6], [.2, 13.2], [.12, 13.7], [.04, 14.0], [0, 14.1]],
+    di: [.6, 5.5, 12.2, 14.1], cv: [[5.5, 6.2, .45, .4], [9.0, 9.5, .4, .33], [11.0, 11.4, .33, .28]], fn: [.6, 1.8, .75, .03], fn2: [.43, .05], br: 1.3 },
+  { k: 'Mountain: a core and six small solids', prof: [[.45, 0], [.2, .55], [.3, .65], [.625, .85], [.625, 9], [.58, 9], [.15, 9.45], [.25, 9.55], [.6, 9.75], [.6, 13], [.52, 13], [.15, 13.25], [.2, 13.3], [.6, 13.45],
+    [.6, 15], [.7, 15.4], [.7, 17], [.5, 17.8], [.2, 18.4], [0, 18.6]], di: [.85, 9, 15, 18.6], cv: [[9, 9.8, .625, .6], [13, 13.5, .6, .6]], br: 1.2 },
+  { k: 'Isle: the slim two-stage and its kick stage', prof: [[.6, .35], [.6, 11.6], [.45, 11.6], [.45, 12.0], [.6, 12.0], [.6, 13.3], [.46, 14.0], [.2, 14.5], [0, 14.65]],
+    di: [.35, 9, 12, 14.65], cv: [[9, 9.6, .6, .6]], br: .75 },
+  { k: 'Isle: medium, a wide fairing', prof: [[.9, .45], [.9, 14], [1.25, 14.6], [1.25, 17], [.9, 18], [.4, 18.7], [0, 18.9]],
+    di: [.45, 11, 14, 18.9], cv: [[11, 11.8, .9, .9]], br: 1.35 },
+];
+// ---- the views, in shader order (VIEW 0…13). Each lists its rockets: design, school, origin, lean from vertical, and the
+// lean's direction (from +x, in the ground plane)
+const R = (d, s, o, th = 0, ps = 0) => ({ d, s, o, th, ps });
+const ROW = (ds, gap, y = .3) => ds.map(([d, s], i) => R(d, s, [(i - (ds.length - 1) / 2) * gap, y, 0]));
+const VIEWS = {
+  orbiters: { g: 'Orbiter', t: 'All six', cam: [6, 7.5, 25], tgt: [0, 7.2, 0], fov: .74, rk: ROW([[0, 0], [0, 1], [0, 2], [0, 3], [0, 4], [0, 5]], 2.7),
+    cap: 'The Orbiter preset, the same parts and outline in every school: Cape, Steppe, Arsenal, Coastal, Mountain, Isle (left to right). Paint and finish, the interstage cover, the bells, the fin edges and the roundel change; the outline never does' },
+  sigAll: { g: 'Signatures', t: 'All six', cam: [0, 13, 52], tgt: [0, 12, 0], fov: .78, rk: ROW([[1, 0], [2, 1], [3, 2], [4, 2], [5, 3], [6, 3], [7, 4], [8, 4], [9, 5], [10, 5]], 4.1),
+    cap: 'Every school\'s signature designs, built from normal parts: Cape, Steppe, Arsenal ×2, Coastal ×2, Mountain ×2, Isle ×2 (left to right)' },
+  sigCS: { g: 'Signatures', t: 'Cape & Steppe', cam: [8, 10, 22], tgt: [0, 11, 0], fov: 1.3, rk: [R(1, 0, [-3, .3, 0]), R(2, 1, [3.2, .3, 0])],
+    cap: 'Round 1 (approved): Cape\'s tall slim stack of three stages (left) and Steppe\'s core with four conical strap-ons (right)' },
+  sigArs: { g: 'Signatures', t: 'Arsenal', cam: [6, 9, 20], tgt: [0, 9.6, 0], fov: 1.18, rk: [R(3, 2, [-2.8, .3, 0]), R(4, 2, [2.8, .3, 0])],
+    cap: 'Arsenal: the missile (a squat two-stage, stubby fins, no boosters) and a core with four cylindrical liquid strap-ons with ogive noses. Olive and bare metal, vented hot-staging skirts, stencils' },
+  sigCoa: { g: 'Signatures', t: 'Coastal', cam: [6, 9, 20], tgt: [0, 9.6, 0], fov: 1.18, rk: [R(6, 3, [-2.8, .3, 0]), R(5, 3, [2.8, .3, 0])],
+    cap: 'Coastal: the early slim three-stage, and a core with two big solid boosters. Satin white, one pastel band, smooth skirts, bullet fairings' },
+  sigMtn: { g: 'Signatures', t: 'Mountain', cam: [6, 9, 20], tgt: [0, 9.6, 0], fov: 1.18, rk: [R(7, 4, [-2.8, .3, 0]), R(8, 4, [2.8, .3, 0])],
+    cap: 'Mountain: the rail-launched four-stage solid (slim, finned) and a core with six small strap-on solids. Terracotta below, white above, saffron at every joint; cone interstages with bolts and spin rockets' },
+  sigIsl: { g: 'Signatures', t: 'Isle', cam: [6, 9, 20], tgt: [0, 9.6, 0], fov: 1.18, rk: [R(9, 5, [-2.8, .3, 0]), R(10, 5, [2.8, .3, 0])],
+    cap: 'Isle: the slim black two-stage with its kick stage showing, and a medium rocket with a wide fairing. Matte carbon, decals, many small copper bells' },
+  padCape: { g: 'Pads', t: 'Cape', cam: [11, 7, 15], tgt: [-1.5, 8, 0], fov: 1.35, rk: [R(0, 0, [0, 1.2, 0])],
+    cap: 'Cape (round 1, approved): a tall fixed service tower with swing arms, a flame deflector, the crawlerway' },
+  padSteppe: { g: 'Pads', t: 'Steppe', cam: [9, 12, 17], tgt: [-4, 1, 0], fov: 1.35, rk: [R(2, 1, [-17, 2.4, 0], Math.PI / 2, 0)],
+    cap: 'Steppe (round 1, approved): rolled out lying down on rails, raised over a flame pit; the launch table\'s arms fall back at lift-off' },
+  padArs: { g: 'Pads', t: 'Arsenal', cam: [26, 13, 30], tgt: [-1, 5, 1], fov: 1.0, rk: [R(3, 2, [0, 2.6, 1.9], .62, Math.PI / 2)],
+    cap: 'Arsenal: a terrace cut into a hillside, the flame chute running downhill out of the side. The missile arrives on a road transporter-erector, which raises it onto the table; a camouflaged lattice tower with one hinged umbilical mast, an earth-covered bunker, a blockhouse with periscopes, the assembly hall under a camouflage net' },
+  padCoa: { g: 'Pads', t: 'Coastal', cam: [27, 15, 38], tgt: [-2, 10, -6], fov: .85, rk: [R(5, 3, [0, 4.3, 0])],
+    cap: 'Coastal: stacked upright in the assembly building, rolled out standing on a mobile launch table along twin rails to a towerless pad: four lightning masts, short umbilical masts, the deluge water tower, low white buildings and a glass control centre, jungle, the sea behind' },
+  padMtnRail: { g: 'Pads', t: 'Mountain, early', cam: [30, 5, 3], tgt: [0, 8, 4], fov: .85, rk: [R(7, 4, [0, 2.4, 0], .26, Math.PI / 2)],
+    cap: 'Mountain, early: a tilting rail launcher (a boom on a turntable) on a ridge above the sea, the rocket hung under the rail; terraced ground, a tidy assembly hall. Look only: the player\'s rocket flies from it raised to vertical' },
+  padMtnCove: { g: 'Pads', t: 'Mountain, later', cam: [30, 13, 42], tgt: [-2, 10, -2], fov: .95, rk: [R(8, 4, [0, 2, 0])],
+    cap: 'Mountain, later: a pad in a cove, the rocket inside a tower-shaped shelter whose two halves swing open like doors before launch, a fixed umbilical tower' },
+  padIsl: { g: 'Pads', t: 'Isle', cam: [24, 14, -30], tgt: [0, 8, 6], fov: .9, rk: [R(9, 5, [0, 4.3, 0])],
+    cap: 'Isle: a tiny pad on a remote green peninsula, sea on three sides. Rolled out from the hangar on a trailer, raised by a strongback (one lattice arm) that stays leaning on it. A shed, a container office, one mast. Sheep' },
+};
+const VK = Object.keys(VIEWS);
+// ---- a 3×5 font for stencils, names and lettering (rows top to bottom)
+const FONT = { A: '010101111101101', B: '110101110101110', C: '011100100100011', D: '110101101101110', E: '111100110100111', F: '111100110100100',
+  G: '011100101101011', H: '101101111101101', I: '111010010010111', K: '101110100110101', L: '100100100100111', M: '101111111101101',
+  N: '110101101101101', O: '010101101101010', P: '110101110100100', R: '110101110101101', S: '011100010001110', T: '111010010010010',
+  U: '101101101101111', V: '101101101101010', W: '101101111111101', Y: '101101010010010', ' ': '000000000000000', '-': '000000111000000',
+  0: '111101101101111', 1: '010110010010111', 4: '101101111001001', 7: '111001010010010' };
+const GLYPHS = Object.keys(FONT);
+const STRS = ['NO STEP', 'OURELLE', 'STILL TESTING', 'KANORA', 'DK-0714', 'PAVA', 'PAVA SPACE'];
+// the generated part of a view's shader: its rockets, the design tables, the font, and the outlines it uses
+function fsFor(key, vi) {
+  const V = VIEWS[key], used = [...new Set(V.rk.map(r => r.d))], f = n => (+n).toFixed(4);
+  const v2 = ([a, b]) => `vec2(${f(a)},${f(b)})`, v4 = a => `vec4(${a.map(f).join(',')})`, N = DES.length;
+  let s = `#define VIEW ${vi}\n#define NI ${V.rk.length}\n`;
+  s += `const vec4 IO[NI]=vec4[NI](${V.rk.map(r => v4([...r.o, r.th])).join(',')});\nconst float IPS[NI]=float[NI](${V.rk.map(r => f(r.ps)).join(',')});\n`;
+  s += `const ivec2 ID[NI]=ivec2[NI](${V.rk.map(r => `ivec2(${r.d},${r.s})`).join(',')});\n`;
+  s += `const vec4 DI[${N}]=vec4[${N}](${DES.map(d => v4(d.di)).join(',')});\n`;
+  s += `const vec4 CV[${N * 3}]=vec4[${N * 3}](${DES.flatMap(d => [0, 1, 2].map(i => v4(d.cv[i] || [0, 0, 0, 0]))).join(',')});\n`;
+  s += `const vec4 FN[${N}]=vec4[${N}](${DES.map(d => v4(d.fn || [0, 0, 0, 0])).join(',')});\nconst vec2 FN2[${N}]=vec2[${N}](${DES.map(d => v2(d.fn2 || [0, 0])).join(',')});\n`;
+  s += `const vec2 BR[${N}]=vec2[${N}](${DES.map(d => v2([d.di[3], d.br])).join(',')});\n`;
+  s += `const int FONT[${GLYPHS.length}]=int[${GLYPHS.length}](${GLYPHS.map(g => parseInt(FONT[g], 2)).join(',')});\n`;
+  const codes = STRS.flatMap(t => [...t].map(c => GLYPHS.indexOf(c))), offs = []; let o = 0; for (const t of STRS) { offs.push(o); o += t.length; }
+  s += `const int STR[${codes.length}]=int[${codes.length}](${codes.join(',')});const int SOFF[${STRS.length}]=int[${STRS.length}](${offs.join(',')});const int SLEN[${STRS.length}]=int[${STRS.length}](${STRS.map(t => t.length).join(',')});\n`;
+  for (const d of used) { const P = DES[d].prof;
+    s += `const vec2 P${d}[${P.length}]=vec2[${P.length}](${P.map(v2).join(',')});
+float pf${d}(vec3 p){vec2 q=vec2(length(p.xz),p.y);float d=1e9;bool ins=false;
+ for(int i=ZERO;i<${P.length - 1};i++){vec2 a=P${d}[i],b=P${d}[i+1],ba=b-a,pa=q-a;float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-9),0.,1.);d=min(d,length(pa-ba*h));
+  if(q.y>=a.y&&q.y<b.y){float r=mix(a.x,b.x,(q.y-a.y)/(b.y-a.y));if(q.x<r)ins=true;}}
+ d=min(d,max(abs(q.y-P${d}[0].y),q.x-P${d}[0].x));return ins?-d:d;}
+#define D${d} 1\n`; }
+  s += `float prof(vec3 p,int d){${used.map(d => `if(d==${d})return pf${d}(p);`).join('')}return 1e9;}\n`;
+  return FS.replace('//@GEN', s);
+}
 const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true });
 const VS = `#version 300 es
 in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
 const FS = `#version 300 es
-precision highp float;in vec2 v;out vec4 o;
-uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov;uniform int uV;uniform vec2 uP[64];uniform ivec2 uPr[3];   // profiles: offset, count
+precision highp float;precision highp int;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov;uniform int uZero;
+// ZERO is 0 but not a constant, so loops stay loops: Windows' HLSL compiler (via ANGLE) unrolls and inlines otherwise
+#define ZERO uZero
 const vec3 SUN=normalize(vec3(-.5,.62,.6));
+const float PI=3.14159265;
+//@GEN
 float h2(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h2(i),h2(i+vec2(1.,0.)),f.x),mix(h2(i+vec2(0.,1.)),h2(i+1.),f.x),f.y);}
 float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
 float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
-// a revolved profile (r, y pairs, y rising): distance to the polyline in the (r, y) half-plane, negative inside
-float sdProf(vec3 p,int k){int o=uPr[k].x,n=uPr[k].y;vec2 q=vec2(length(p.xz),p.y);float d=1e9;bool ins=false;
- for(int i=0;i<63;i++){if(i>=n-1)break;vec2 a=uP[o+i],b=uP[o+i+1],ba=b-a,pa=q-a;float h=clamp(dot(pa,ba)/max(dot(ba,ba),1e-9),0.,1.);d=min(d,length(pa-ba*h));
-  if(q.y>=min(a.y,b.y)&&q.y<max(a.y,b.y)&&b.y>a.y){float r=mix(a.x,b.x,(q.y-a.y)/(b.y-a.y));if(q.x<r)ins=true;}}
- vec2 top=uP[o+n-1],bot=uP[o];d=min(d,max(abs(q.y-bot.y),q.x-bot.x));
- return ins?-d:d;}
-// an interstage cover around an exposed upper engine, y0..y1 at radius R: Cape a closed ribbed skirt, Steppe an open lattice
-float stage(vec3 p,float y0,float y1,float R,int school){vec2 q=vec2(length(p.xz),p.y);float sh=max(abs(q.x-R+.02)-.02,abs(q.y-(y0+y1)*.5)-(y1-y0)*.5);
- if(school==0)return sh;
- float a=atan(p.z,p.x)*R,s=.42,y=q.y-y0,l=min(abs(fract((a+y)/s)-.5),abs(fract((a-y)/s)-.5))*s-.035;   // diagonal struts
- float ring=abs(abs(q.y-(y0+y1)*.5)-(y1-y0)*.5+.04)-.04;return max(sh,min(l,ring));}
-// fins: four plates around the fin ring (y 1.3–2.2)
-float fins(vec3 p,float y0){vec3 q=p;q.xz=abs(q.xz);if(q.z>q.x)q.xz=q.zx;return sdBox(q-vec3(.95,y0+.4,0.),vec3(.35,.42-.25*clamp((q.x-.6)/.7,0.,1.),.03));}
-// a Steppe strap-on: a cone resting against the core, its tip leaning in, four small bells at the base
-float strap(vec3 p,float ang){float c=cos(ang),s=sin(ang);vec3 q=vec3(c*p.x+s*p.z,p.y,-s*p.x+c*p.z);q.x-=1.05;
- float lean=.035;q.x+=q.y*lean;vec2 w=vec2(length(q.xz),q.y);float h=10.,rr=mix(.55,.12,clamp(w.y/h,0.,1.));
- float body=max(w.x-rr,max(-w.y+.9,w.y-h));float tip=length(w-vec2(0.,h))-.12;body=min(body,tip);
- for(int i=0;i<4;i++){float aa=float(i)*1.5708+.785;vec3 b=q-vec3(cos(aa)*.25,.45,sin(aa)*.25);float bl=max(length(b.xz)-mix(.18,.08,clamp(b.y+.45,0.,1.)),abs(b.y)-.45);body=min(body,bl);}
- return body;}
-// scene. Materials: 1 ground, 2 concrete pad, 3 rocket (school A = Cape), 4 rocket (Steppe), 5 interstage A, 6 interstage B,
-// 7 steel / tower red, 8 rails and dark steel, 9 bells, 10 strap-on (Steppe), 11 fins A, 12 fins B
-vec2 rocket(vec3 p,int k,int school,float iy0,float iy1){vec2 r=vec2(sdProf(p,k),school==0?3.:4.);
- float st=stage(p,iy0,iy1,.625,school);if(st<r.x)r=vec2(st,school==0?5.:6.);
- if(p.y<1.32){float b=sdProf(p,k);if(b<.05&&p.y<1.15)r.y=9.;}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float cyl(vec3 p,float r,float y0,float y1){return max(length(p.xz)-r,max(y0-p.y,p.y-y1));}
+// an open box truss (the round 1 tower): a box with holes in each bay
+float truss(vec3 q,vec3 hb,float cell){float tw=sdBox(q,hb);q.y=mod(q.y,cell)-cell*.5;
+ float holes=min(sdBox(q,vec3(hb.x+.2,cell*.4,hb.z-.22)),sdBox(q,vec3(hb.x-.22,cell*.4,hb.z+.2)));return max(tw,-holes);}
+// ---- text: a 3×5 glyph; a string along u.x with letters u.y up, h the letter height, from its start on the baseline
+float glyph(int c,vec2 g){if(g.x<0.||g.x>=3.||g.y<0.||g.y>=5.)return 0.;int b=int(g.y)*3+(2-int(g.x));return float((FONT[c]>>b)&1);}
+float text(vec2 u,int s,float h){vec2 g=u/h*5.;if(g.x<0.)return 0.;int i=int(floor(g.x/4.));if(i>=SLEN[s])return 0.;return glyph(STR[SOFF[s]+i],vec2(g.x-float(i)*4.,g.y));}
+// stacked upright letters reading down, centred on u.x=0, the first letter's top at u.y=0
+float textV(vec2 u,int s,float h){float st=h*1.3;if(u.y>0.)return 0.;int i=int(floor(-u.y/st));if(i>=SLEN[s])return 0.;return glyph(STR[SOFF[s]+i],vec2(u.x/h*5.+1.5,(h-(-u.y-float(i)*st))/h*5.));}
+// ---- a rocket's frame: origin IO.xyz, leaning by IO.w from vertical toward the direction IPS (from +x, in the ground plane)
+vec3 toR(vec3 p,int i){vec3 q=p-IO[i].xyz;float th=IO[i].w,ps=IPS[i];vec3 u=vec3(cos(ps),0.,sin(ps)),ax=cos(th)*vec3(0.,1.,0.)+sin(th)*u,xl=cos(th)*u-sin(th)*vec3(0.,1.,0.),zl=vec3(-sin(ps),0.,cos(ps));
+ return vec3(dot(q,xl),dot(q,ax),dot(q,zl));}
+// an interstage cover (c: y0, y1, radius at y0, at y1) in the school's style; sb: its sub-material
+float cover(vec3 p,vec4 c,int s,out float sb){float y0=c.x,y1=c.y,hh=(y1-y0)*.5,ym=y0+hh;vec2 q=vec2(length(p.xz),p.y);
+ float R=mix(c.z,c.w,clamp((q.y-y0)/(y1-y0),0.,1.)),sh=max(abs(q.x-R+.02)-.02,abs(q.y-ym)-hh);sb=1.;
+ if(s==1){float a=atan(p.z,p.x)*R,st=.42,y=q.y-y0,l=min(abs(fract((a+y)/st)-.5),abs(fract((a-y)/st)-.5))*st-.035;   // Steppe: an open lattice
+  float ring=abs(abs(q.y-ym)-hh+.04)-.04;return max(sh,min(l,ring));}
+ if(s==2){float a=atan(p.z,p.x),cl=(mod(a+PI/8.,PI/4.)-PI/8.)*R;return max(sh,-max(abs(cl)-.13,abs(q.y-ym)-hh*.42));}   // Arsenal: a ring of vent windows
+ if(s==4){float a=atan(p.z,p.x),ab=(mod(a+PI/16.,PI/8.)-PI/16.)*c.z,a4=(mod(a+PI/4.,PI/2.)-PI/4.)*R;   // Mountain: bolts and four spin rockets
+  float bolt=length(vec3(ab,q.y-y0-.05,q.x-c.z-.005))-.028,sr=sdCap(vec3(a4,q.y-y1+.22,q.x-R-.06),vec3(0.,-.12,0.),vec3(0.,.12,0.),.045);
+  if(min(bolt,sr)<sh){sb=7.;return min(bolt,sr);}}
+ return sh;}
+// fins (f: y0, height, span, thickness; f2: root radius, taper), four, edged in the school's style
+float fins(vec3 p,vec4 f,vec2 f2,int s){vec3 q=p;q.xz=abs(q.xz);if(q.z>q.x)q.xz=q.zx;
+ float th=s==2?.06:s==3?.022:s==5?.018:f.w,u=clamp((q.x-f2.x)/f.z,0.,1.);
+ return sdBox(q-vec3(f2.x+f.z*.5,f.x+f.y*.5,0.),vec3(f.z*.5,f.y*.5-f2.y*u,th))-(s==3?.01:0.);}
+// a strap-on or booster (local to its own axis): a cylinder y0..y1, a nose (ogive or cone) of length nl, a nozzle below
+float booster(vec3 q,float r,float y0,float y1,float nl,bool og,out float sb){vec2 w=vec2(length(q.xz),q.y);
+ float t=clamp((w.y-y1)/nl,0.,1.),rn=og?r*sqrt(max(1.-t*t,0.)):r*(1.-t);
+ float body=max(w.x-(w.y>y1?rn:r),max(y0-w.y,w.y-y1-nl))*.8;
+ float noz=max(w.x-mix(r*.45,r*.7,clamp((y0-w.y)/max(y0,.01),0.,1.)),max(w.y-y0,-w.y));sb=noz<body?2.:4.;return min(body,noz);}
+// a small bell (Isle's clusters): r1 at the lip (y0), r0 at the top (y1)
+float bell(vec3 q,float r1,float r0,float y0,float y1){return max(length(q.xz)-mix(r1,r0,clamp((q.y-y0)/(y1-y0),0.,1.)),max(y0-q.y,q.y-y1))*.8;}
+// one rocket, in its own frame. Returns distance, sub-material: 0 body, 1 cover, 2 bell, 3 fins, 4 strap-on, 5 dark inside, 7 metal
+vec2 rocket(vec3 p,int d,int s){vec2 r=vec2(prof(p,d),0.);vec4 di=DI[d];
+ if(p.y<di.x)r.y=2.;
+ for(int k=ZERO;k<3;k++){vec4 c=CV[d*3+k];if(c.y>c.x){if(p.y>c.x&&p.y<c.y&&length(p.xz)<min(c.z,c.w)-.04)r.y=5.;float sb,cd=cover(p,c,s,sb);if(cd<r.x)r=vec2(cd,sb);}}
+ vec4 f=FN[d];if(f.y>0.){float fd=fins(p,f,FN2[d],s);if(fd<r.x)r=vec2(fd,3.);}
+ float sb;
+#ifdef D2
+ if(d==2)for(int i=ZERO;i<4;i++){float ang=float(i)*1.5708+.785,c=cos(ang),sn=sin(ang);vec3 q=vec3(c*p.x+sn*p.z,p.y,-sn*p.x+c*p.z);q.x-=1.05;   // Steppe's cones
+  q.x+=q.y*.035;vec2 w=vec2(length(q.xz),q.y);float h=10.,rr=mix(.55,.12,clamp(w.y/h,0.,1.));
+  float body=max(w.x-rr,max(-w.y+.9,w.y-h));body=min(body,length(w-vec2(0.,h))-.12);if(body<r.x)r=vec2(body,4.);
+  for(int j=ZERO;j<4;j++){float aa=float(j)*1.5708+.785;vec3 b=q-vec3(cos(aa)*.25,.45,sin(aa)*.25);float bl=max(length(b.xz)-mix(.18,.08,clamp(b.y+.45,0.,1.)),abs(b.y)-.45);if(bl<r.x)r=vec2(bl,2.);}}
+#endif
+#ifdef D4
+ if(d==4)for(int i=ZERO;i<4;i++){float ang=float(i)*1.5708+.785;vec3 q=p-vec3(cos(ang)*1.07,0.,sin(ang)*1.07);float bd=booster(q,.42,.9,8.,1.5,true,sb);if(bd<r.x)r=vec2(bd,sb);}   // four cylinders, ogive noses
+#endif
+#ifdef D5
+ if(d==5)for(int i=ZERO;i<2;i++){vec3 q=p-vec3(i==0?-1.28:1.28,0.,0.);float bd=booster(q,.5,.6,13.5,1.8,false,sb);if(bd<r.x)r=vec2(bd,sb);   // two big solids and their struts
+  float at=sdBox(q-vec3(i==0?.62:-.62,7.,0.),vec3(.2,.12,.1));if(at<r.x)r=vec2(at,7.);}
+#endif
+#ifdef D8
+ if(d==8)for(int i=ZERO;i<6;i++){float ang=float(i)*1.0472+.5236;vec3 q=p-vec3(cos(ang)*.87,0.,sin(ang)*.87);float bd=booster(q,.22,.5,7.5,.8,true,sb);if(bd<r.x)r=vec2(bd,sb);}   // six small solids
+#endif
+#ifdef D9
+ if(d==9&&p.y<.5){float bd=bell(p,.13,.07,0.,.35);for(int i=ZERO;i<8;i++){float ang=float(i)*.7854;bd=min(bd,bell(p-vec3(cos(ang)*.4,0.,sin(ang)*.4),.13,.07,0.,.35));}if(bd<r.x)r=vec2(bd,2.);}   // nine small copper bells
+#endif
+#ifdef D10
+ if(d==10&&p.y<.6){float bd=bell(p,.2,.1,0.,.45);for(int i=ZERO;i<6;i++){float ang=float(i)*1.0472;bd=min(bd,bell(p-vec3(cos(ang)*.56,0.,sin(ang)*.56),.2,.1,0.,.45));}if(bd<r.x)r=vec2(bd,2.);}
+#endif
  return r;}
-vec2 map(vec3 p){
- vec2 r=vec2(p.y,1.);
- if(uV==0){   // both Orbiters on one concrete apron
-  float pad=sdBox(p-vec3(0.,.15,0.),vec3(8.,.15,4.));if(pad<r.x)r=vec2(pad,2.);
-  vec3 a=p-vec3(-2.4,.3,0.),b=p-vec3(2.4,.3,0.);
-  vec2 ra=rocket(a,0,0,9.6,10.85);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
-  vec2 rb=rocket(b,0,1,9.6,10.85);if(rb.x<r.x)r=rb;float fb=fins(b,1.3);if(fb<r.x)r=vec2(fb,12.);}
- else if(uV==1){
-  float pad=sdBox(p-vec3(0.,.15,0.),vec3(10.,.15,5.));if(pad<r.x)r=vec2(pad,2.);
-  vec3 a=p-vec3(-3.,.3,0.);vec2 ra=rocket(a,1,0,13.,13.9);float s2=stage(a,19.,19.9,.6,0);if(s2<ra.x)ra=vec2(s2,5.);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
-  vec3 b=p-vec3(3.2,.3,0.);vec2 rb=rocket(b,2,1,14.5,15.4);if(rb.x<r.x)r=rb;
-  for(int i=0;i<4;i++){float s=strap(b,float(i)*1.5708+.785);if(s<r.x)r=vec2(s,10.);}}
- else if(uV==2){   // Cape: the Orbiter on its pad, the fixed tower and its swing arms, the deflector, the crawlerway
-  float pad=sdBox(p-vec3(0.,.6,0.),vec3(7.,.6,7.));if(pad<r.x)r=vec2(pad,2.);
-  float trench=sdBox(p-vec3(0.,.6,4.),vec3(1.4,.8,3.));pad=max(pad,-trench);if(pad<r.x)r=vec2(pad,2.);
-  vec3 a=p-vec3(0.,1.2,0.);vec2 ra=rocket(a,0,0,9.6,10.85);if(ra.x<r.x)r=ra;float fa=fins(a,1.3);if(fa<r.x)r=vec2(fa,11.);
-  vec3 t=p-vec3(-3.6,1.2,0.);float tw=sdBox(t-vec3(0.,9.,0.),vec3(1.1,9.,1.1));   // the tower: an open box truss
-  vec3 tq=t;tq.y=mod(tq.y,1.8)-.9;float holes=min(sdBox(tq,vec3(1.3,.72,.88)),sdBox(tq,vec3(.88,.72,1.3)));tw=max(tw,-holes);
-  if(tw<r.x)r=vec2(tw,7.);
-  for(int i=0;i<3;i++){float y=6.+float(i)*4.2;float arm=sdBox(t-vec3(1.9,y,0.),vec3(1.1,.18,.32));if(arm<r.x)r=vec2(arm,7.);}
-  float rail=min(abs(p.x-1.6),abs(p.x+1.6));float cw=max(rail-.0,abs(p.y)-.02);
-  float road=sdBox(p-vec3(0.,.02,-16.),vec3(4.,.02,9.));if(road<r.x)r=vec2(road,8.);}
- else{   // Steppe: rolled out lying down on rails, over the flame pit; the launch table with its arms
-  float pit=sdBox(p-vec3(4.,-3.,0.),vec3(4.5,3.4,3.2));r.x=max(r.x,-pit);
-  float wall=max(sdBox(p-vec3(4.,-3.,0.),vec3(4.8,3.4,3.5)),-pit);if(wall<r.x)r=vec2(wall,2.);
-  float tbl=sdBox(p-vec3(4.,.4,0.),vec3(2.2,.4,2.2));tbl=max(tbl,-sdBox(p-vec3(4.,.4,0.),vec3(1.4,.6,1.4)));if(tbl<r.x)r=vec2(tbl,8.);
-  for(int i=0;i<4;i++){float aa=float(i)*1.5708+.785;vec3 q=p-vec3(4.+cos(aa)*1.6,1.6,sin(aa)*1.6);float arm=sdBox(q,vec3(.18,1.3,.18));if(arm<r.x)r=vec2(arm,8.);}
-  for(int i=0;i<2;i++){float z=i==0?-1.3:1.3;float rl=sdBox(p-vec3(-9.,.09,z),vec3(15.,.09,.08));if(rl<r.x)r=vec2(rl,8.);}
-  float car=sdBox(p-vec3(-8.,.9,0.),vec3(9.,.25,1.4));if(car<r.x)r=vec2(car,8.);   // the transporter-erector
-  for(int i=0;i<4;i++){float x=-15.+float(i)*4.5;float cr=sdBox(p-vec3(x,1.6,0.),vec3(.25,.6,1.1));if(cr<r.x)r=vec2(cr,8.);}   // cradles
-  vec3 q=p-vec3(-17.,2.4,0.);q=vec3(q.y,q.x,q.z);   // the Steppe signature, lying along +x, engines toward the pit
-  vec2 rb=rocket(q,2,1,14.5,15.4);if(rb.x<r.x)r=rb;for(int i=0;i<4;i++){float s=strap(q,float(i)*1.5708+.785);if(s<r.x)r=vec2(s,10.);}}
+// ---- the scene. Materials: 1 grass (rock where steep), 2 concrete, 3 sea, 4 tower red, 5 dark steel, 6 camouflage, 7 olive,
+// 8 tyres, 9 white building, 10 glass, 11 jungle, 12 earth, 13 wool, 14 sheep face, 15 red and white bands, 16 asphalt,
+// 17 container, 18 hangar wall, 19 lattice grey, 20 sand, 21 water tower, 22 blue roof, 23 steel (round 1), 24 dark door;
+// 100 + 10·rocket + its sub-material
+vec2 U(vec2 r,float d,float m){return d<r.x?vec2(d,m):r;}
+float isleTop(vec2 p){return mix(4.,4.+1.6*vn(p*.05),smoothstep(10.,18.,length(p)));}
+vec2 scene(vec3 p){vec2 r=vec2(p.y,1.);
+#if VIEW<7
+ r=U(r,sdBox(p-vec3(0.,.15,0.),vec3(VIEW==1?22.:VIEW==0?9.5:6.,.15,4.)),2.);   // an apron
+#endif
+#if VIEW==7
+ r=U(r,max(sdBox(p-vec3(0.,.6,0.),vec3(7.,.6,7.)),-sdBox(p-vec3(0.,.6,4.),vec3(1.4,.8,3.))),2.);   // Cape: the pad, its trench, the tower and its arms, the crawlerway
+ vec3 t=p-vec3(-3.6,1.2,0.);r=U(r,truss(t-vec3(0.,9.,0.),vec3(1.1,9.,1.1),1.8),4.);
+ for(int i=ZERO;i<3;i++){float y=6.+float(i)*4.2;r=U(r,sdBox(t-vec3(1.9,y,0.),vec3(1.1,.18,.32)),4.);}
+ r=U(r,sdBox(p-vec3(0.,.02,-16.),vec3(4.,.02,9.)),23.);
+#endif
+#if VIEW==8
+ float pit=sdBox(p-vec3(4.,-3.,0.),vec3(4.5,3.4,3.2));r.x=max(r.x,-pit);   // Steppe: the flame pit, the table, its arms, the rails
+ r=U(r,max(sdBox(p-vec3(4.,-3.,0.),vec3(4.8,3.4,3.5)),-pit),2.);
+ r=U(r,max(sdBox(p-vec3(4.,.4,0.),vec3(2.2,.4,2.2)),-sdBox(p-vec3(4.,.4,0.),vec3(1.4,.6,1.4))),23.);
+ for(int i=ZERO;i<4;i++){float aa=float(i)*1.5708+.785;r=U(r,sdBox(p-vec3(4.+cos(aa)*1.6,1.6,sin(aa)*1.6),vec3(.18,1.3,.18)),23.);}
+ for(int i=ZERO;i<2;i++){float z=i==0?-1.3:1.3;r=U(r,sdBox(p-vec3(-9.,.09,z),vec3(15.,.09,.08)),23.);}
+ r=U(r,sdBox(p-vec3(-8.,.9,0.),vec3(9.,.25,1.4)),23.);
+ for(int i=ZERO;i<4;i++){float x=-15.+float(i)*4.5;r=U(r,sdBox(p-vec3(x,1.6,0.),vec3(.25,.6,1.1)),23.);}
+#endif
+#if VIEW==9
+ // Arsenal: a terrace cut into the hill, the ground falling away to the right; the chute runs downhill out of the side
+ float H=10.*smoothstep(-8.5,-12.5,p.z)+7.*smoothstep(-14.,-40.,p.z)+2.5*vn(p.xz*.07)*smoothstep(-10.,-16.,p.z)-8.*smoothstep(15.,36.,p.x)+5.*smoothstep(-24.,-38.,p.x);
+ vec3 cq=p;cq.y+=max(cq.x-15.,0.)*.38;   // the chute follows the slope
+ r=vec2((p.y-H)*.4,1.);r.x=max(r.x,-sdBox(cq-vec3(17.,.6,0.),vec3(15.,.8,1.3)));
+ r=U(r,min(sdBox(cq-vec3(17.,.45,1.5),vec3(15.,.65,.2)),min(sdBox(cq-vec3(17.,.45,-1.5),vec3(15.,.65,.2)),sdBox(cq-vec3(17.,-.25,0.),vec3(15.,.1,1.5))))*.85,2.);
+ r=U(r,sdBox(p-vec3(2.,.12,1.),vec3(13.,.12,8.)),2.);   // the apron
+ r=U(r,sdBox(p-vec3(0.,1.2,0.),vec3(1.8,1.2,1.8)),2.);   // the launch table
+ r=U(r,truss(p-vec3(-4.4,11.,-1.6),vec3(1.,11.,1.),1.8),6.);   // the camouflaged tower
+ {vec3 q=p-vec3(-2.7,2.4,-.6);float c=cos(.2),s=sin(.2);q.xy=vec2(c*q.x+s*q.y,-s*q.x+c*q.y);r=U(r,truss(q-vec3(0.,7.,0.),vec3(.28,7.,.28),1.2),5.);}   // the umbilical mast, swung back
+ r=U(r,sdBox(p-vec3(0.,1.15,8.8),vec3(1.2,.3,5.8)),7.);r=U(r,sdBox(p-vec3(0.,2.1,14.2),vec3(1.25,1.25,1.0))-.15,7.);   // the transporter-erector truck
+ r=U(r,sdBox(p-vec3(0.,2.55,15.22),vec3(1.,.45,.05)),10.);
+ for(int i=ZERO;i<5;i++){float z=i==0?4.6:i==1?6.2:i==2?10.:i==3?11.6:14.;r=U(r,max(length(vec2(p.y-.62,p.z-z))-.62,abs(abs(p.x)-1.)-.28),8.);}
+ r=U(r,sdCap(p,vec3(0.,1.5,7.6),vec3(0.,4.49,4.42),.16),5.);   // its ram
+ r=U(r,sdEll(p-vec3(-11.,0.,7.),vec3(4.,2.6,3.4)),1.);r=U(r,sdBox(p-vec3(-7.3,1.1,7.),vec3(.5,1.1,1.8)),2.);r=U(r,sdBox(p-vec3(-6.78,.9,7.),vec3(.05,.9,1.)),24.);   // a bunker, its blast door
+ r=U(r,sdBox(p-vec3(11.,1.3,-5.),vec3(2.6,1.3,2.)),2.);for(int i=ZERO;i<2;i++)r=U(r,sdCap(p,vec3(10.2+1.6*float(i),2.5,-4.2),vec3(10.2+1.6*float(i),3.5,-4.2),.12),5.);   // the blockhouse, periscopes
+ r=U(r,sdBox(p-vec3(-18.,3.,-1.),vec3(4.,3.,5.)),2.);   // the hall, under its net
+ {vec2 e2=abs(p.xz-vec2(-18.,-1.))-vec2(4.3,5.3);float e=max(e2.x,e2.y),yn=6.4+.25*sin(p.x*1.3)*sin(p.z*1.1)-6.*smoothstep(0.,1.4,e);r=U(r,max(abs(p.y-yn)*.35-.05,e-1.4),6.);}
+#endif
+#if VIEW==10
+ // Coastal: a clearing in the jungle, the rails to the assembly building, the sea behind
+ float sh=-.6*smoothstep(-106.,-122.,p.z);r=vec2(p.y-sh,p.z<-118.?3.:p.z<-106.?20.:1.);
+ float cl=smoothstep(56.,66.,length((p.xz-vec2(15.,0.))*vec2(.75,1.)))*smoothstep(-104.,-96.,p.z)*(1.-(1.-smoothstep(10.,16.,abs(p.z)))*step(0.,p.x)*step(p.x,100.));
+ float J=(8.+3.*vn(p.xz*.12)+1.5*vn(p.xz*.45))*cl;if(J>.2)r=U(r,(p.y-J)*.5,11.);
+ r=U(r,sdBox(p-vec3(0.,.1,0.),vec3(16.,.1,16.)),2.);
+ for(int i=ZERO;i<2;i++)r=U(r,sdBox(p-vec3(45.,.14,i==0?-3.:3.),vec3(45.,.14,.16)),5.);   // the twin rails
+ r=U(r,max(sdBox(p-vec3(0.,2.3,0.),vec3(6.,2.,5.)),-sdBox(p-vec3(0.,2.3,0.),vec3(2.4,2.5,1.6))),5.);   // the mobile launch table
+ for(int i=ZERO;i<2;i++){float z=i==0?-2.6:2.6;r=U(r,truss(p-vec3(-4.6,9.4,z),vec3(.55,5.,.55),1.4),19.);r=U(r,sdBox(p-vec3(-2.6,12.6+float(i)*1.5,z*.4),vec3(1.6,.13,.2)),19.);}   // short umbilical masts
+ for(int i=ZERO;i<4;i++){vec2 c=vec2(i<2?-15.:15.,i%2==0?-15.:15.);r=U(r,min(sdBox(p-vec3(c.x,22.,c.y),vec3(.3,22.,.3)),sdCap(p,vec3(c.x,44.,c.y),vec3(c.x,47.,c.y),.08)),15.);}   // four lightning masts
+ r=U(r,sdBox(p-vec3(84.,17.,0.),vec3(11.,17.,10.)),9.);r=U(r,sdBox(p-vec3(72.95,13.,0.),vec3(.1,13.,4.5)),24.);   // the assembly building
+ {vec3 q=p-vec3(-28.,0.,-24.);r=U(r,min(cyl(q,1.8,0.,30.),min(cyl(q,6.,30.,38.),max(length(q.xz)-6.*(1.-(q.y-38.)/3.),max(38.-q.y,q.y-41.))*.7)),21.);}   // the deluge water tower
+ r=U(r,sdBox(p-vec3(30.,2.5,26.),vec3(9.,2.5,5.)),9.);r=U(r,sdBox(p-vec3(-30.,2.,24.),vec3(7.,2.,6.)),10.);r=U(r,sdBox(p-vec3(-30.,4.15,24.),vec3(7.4,.15,6.4)),9.);
+#endif
+#if VIEW==11
+ // Mountain, early: a ridge above the sea, terraced; the rail launcher on its turntable
+ float H=-46.*smoothstep(9.,80.,p.z)-12.*smoothstep(-14.,-60.,p.z)+2.*vn(p.xz*.05);H=H<-.5?(floor(H/4.)+smoothstep(.7,1.,fract(H/4.)))*4.:H;
+ r=vec2((p.y-H)*.35,1.);r=U(r,p.y+42.,3.);
+ r=U(r,sdBox(p-vec3(-4.,.2,-1.),vec3(12.,.2,8.)),2.);
+ r=U(r,max(length(p.xz)-3.,abs(p.y-.75)-.35),5.);   // the turntable
+ {vec3 lp=toR(p,0);r=U(r,truss(lp-vec3(-.78,7.4,0.),vec3(.26,8.6,.42),1.1),19.);   // the boom, the rail above the rocket, its hangers
+  for(int i=ZERO;i<3;i++)r=U(r,sdBox(lp-vec3(-.55,2.5+4.*float(i),0.),vec3(.2,.1,.1)),19.);}
+ for(int i=ZERO;i<2;i++){float x=i==0?-1.5:1.5;r=U(r,sdCap(p,vec3(x,1.,-1.2),vec3(x*.25,8.2,.85),.16),5.);}   // its struts
+ r=U(r,sdBox(p-vec3(-22.,4.,-6.),vec3(8.,4.,6.)),9.);r=U(r,sdBox(p-vec3(-22.,8.2,-6.),vec3(8.4,.25,6.4)),22.);   // the assembly hall
+#endif
+#if VIEW==12
+ // Mountain, later: a cove; the shelter's two halves swung open, the fixed umbilical tower
+ float bay=length(p.xz-vec2(0.,56.)),H=14.*smoothstep(28.,72.,length(p.xz-vec2(0.,8.)))*smoothstep(30.,50.,bay)+2.*vn(p.xz*.06);H=mix(-3.,H,smoothstep(36.,46.,bay));
+ r=vec2((p.y-H)*.4,bay<44.&&H<.2?20.:1.);r=U(r,p.y+1.,3.);
+ r=U(r,sdBox(p-vec3(0.,.15,0.),vec3(13.,.15,13.)),2.);r=U(r,sdBox(p-vec3(0.,1.,0.),vec3(2.4,1.,2.4)),2.);
+ {vec3 q=vec3(abs(p.x),p.y,p.z)-vec3(3.3,0.,-3.3);float a=1.75,c=cos(a),s=sin(a);q.xz=vec2(c*q.x-s*q.z,s*q.x+c*q.z);q+=vec3(3.3,0.,-3.3);   // each half swung about its back corner
+  float hf=max(max(sdBox(q-vec3(0.,11.5,0.),vec3(3.3,11.5,3.3)),-sdBox(q-vec3(0.,11.5,0.),vec3(3.,12.,3.))),-q.x);r=U(r,hf,9.);}
+ r=U(r,truss(p-vec3(-8.,13.,-8.),vec3(1.2,13.,1.2),1.8),4.);for(int i=ZERO;i<2;i++){float y=9.+5.*float(i);r=U(r,sdCap(p,vec3(-7.,y,-7.),vec3(-.9,y,-.9),.2),4.);}
+#endif
+#if VIEW==13
+ // Isle: a green peninsula, sea on three sides; the tiny pad, the strongback, the hangar, a shed, a container office, a mast, sheep
+ vec2 b=abs(p.xz-vec2(0.,131.))-vec2(26.,169.)+18.;float d2=length(max(b,0.))+min(max(b.x,b.y),0.)-18.+3.*vn(p.xz*.06)-1.5;
+ r=vec2(max(p.y-isleTop(p.xz),d2)*.7,1.);r=U(r,p.y,3.);
+ r=U(r,sdBox(p-vec3(0.,4.15,0.),vec3(4.5,.15,4.5)),2.);
+ r=U(r,truss(p-vec3(-1.5,11.8,0.),vec3(.4,7.5,.55),1.2),19.);for(int i=ZERO;i<3;i++)r=U(r,sdBox(p-vec3(-.95,8.+3.5*float(i),0.),vec3(.45,.1,.12)),19.);   // the strongback, behind the rocket
+ r=U(r,sdBox(p-vec3(-4.,8.5,30.),vec3(12.,4.5,8.)),18.);r=U(r,sdBox(p-vec3(-4.,13.15,30.),vec3(12.5,.2,8.5)),22.);   // the hangar
+ r=U(r,sdBox(p-vec3(12.,5.6,20.),vec3(3.,1.6,2.5)),9.);r=U(r,sdBox(p-vec3(-13.,5.3,12.),vec3(3.1,1.3,1.25)),17.);r=U(r,sdCap(p,vec3(-9.,4.,-4.),vec3(-9.,21.,-4.),.12),5.);
+ for(int i=ZERO;i<7;i++){vec2 c=i==0?vec2(-6.,-14.):i==1?vec2(-9.,-19.):i==2?vec2(7.,-17.):i==3?vec2(10.,9.):i==4?vec2(-15.,-6.):i==5?vec2(14.,-3.):vec2(-3.,-24.);   // sheep
+  vec3 sp=p-vec3(c.x,isleTop(c)+.55,c.y);float a=float(i)*1.7,cs=cos(a),sn=sin(a);sp.xz=vec2(cs*sp.x-sn*sp.z,sn*sp.x+cs*sp.z);
+  r=U(r,sdEll(sp,vec3(.5,.42,.72)),13.);r=U(r,sdEll(sp-vec3(0.,.12,.72),vec3(.18,.2,.26)),14.);}
+#endif
  return r;}
-vec3 nrm(vec3 p){vec2 e=vec2(.003,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
-float shadow(vec3 o,vec3 d){float res=1.,t=.05;for(int i=0;i<64;i++){float h=map(o+d*t).x;res=min(res,8.*h/t);t+=clamp(h,.05,1.);if(res<.002||t>60.)break;}return clamp(res,0.,1.);}
+vec2 map(vec3 p){vec2 r=scene(p);
+ for(int i=ZERO;i<NI;i++){vec3 lp=toR(p,i);int d=ID[i].x;vec2 bb=BR[d];float bd=sdCap(lp,vec3(0.,.4,0.),vec3(0.,bb.x-.4,0.),bb.y+.4);
+  if(bd<r.x){vec2 rr=rocket(lp,d,ID[i].y);if(rr.x<r.x)r=vec2(rr.x,100.+float(i)*10.+rr.y);}}
+#if VIEW==9
+ {vec3 lp=toR(p,0);r=U(r,sdBox(lp-vec3(.95,5.5,0.),vec3(.14,5.5,.4)),7.);for(int i=ZERO;i<2;i++)r=U(r,sdBox(lp-vec3(.3,2.5+5.*float(i),0.),vec3(.75,.18,.85))-.02,7.);}   // the erector's beam and clamps
+#endif
+ return r;}
+// the tetrahedron's four taps for the normal
+vec3 tet(int i){return .5773*(2.*vec3((((i+3)>>1)&1),((i>>1)&1),(i&1))-1.);}
 vec3 sky(vec3 d){vec3 c=mix(vec3(.7,.78,.86),vec3(.33,.52,.8),pow(max(d.y,0.),.5));if(d.y<0.)c=vec3(.48,.5,.42);return c;}
-// a roundel at the rocket's side: Cape stripes and a star field, Steppe one big star on a plain disc
-vec3 roundel(vec2 u,int school,vec3 base){float r=length(u);if(r>.42)return base;if(r>.39)return vec3(.95);
- if(school==0){if(u.y>.0&&u.x<.0){vec2 g=fract(u*14.)-.5;return length(g)<.18?vec3(.95):vec3(.1,.18,.45);}return mod(floor(u.y*9.),2.)<.5?vec3(.75,.12,.12):vec3(.95);}
- float a=atan(u.x,u.y),k=cos(floor(.5+a/1.2566)*1.2566-a)*r;return k<.16+.0*r?vec3(.95,.86,.3):vec3(.72,.1,.1);}
-vec3 paint(float m,vec3 p,vec3 lp,int school){   // lp: rocket-local position
- float a=atan(lp.z,lp.x),y=lp.y;
- if(school==0){vec3 c=vec3(.92,.92,.9);
-  if(y>2.6&&y<9.2){float quad=step(0.,sin(a*2.));float band=step(.5,fract((y-2.6)/1.85));c=mix(c,vec3(.06),quad==band?1.:0.);}   // the roll pattern
-  if(y>11.&&y<12.6&&abs(a-1.57)<.6)c=roundel(vec2((a-1.57)*.62,y-11.8),0,c);
-  if(y>12.85&&y<14.1)c=vec3(.1,.1,.11);return c;}
- vec3 c=vec3(.46,.53,.43)*(.92+.08*h2(floor(vec2(a*8.,y*2.))));   // grey-green enamel, panel by panel
- if(abs(fract(y/1.3)-.5)>.48)c*=.7;   // panel seams
- if(y>11.&&y<12.6&&abs(a-1.57)<.6)c=roundel(vec2((a-1.57)*.62,y-11.8),1,c);
- return c;}
+// ---- the roundel per school (generic colours; in the game each power tints its own)
+vec3 roundel(vec2 u,int s,vec3 base){float r=length(u);if(r>.42)return base;if(r>.39)return vec3(.95);
+ if(s==0){if(u.y>.0&&u.x<.0){vec2 g=fract(u*14.)-.5;return length(g)<.18?vec3(.95):vec3(.1,.18,.45);}return mod(floor(u.y*9.),2.)<.5?vec3(.75,.12,.12):vec3(.95);}
+ if(s==1){float a=atan(u.x,u.y),k=cos(floor(.5+a/1.2566)*1.2566-a)*r;return k<.16?vec3(.95,.86,.3):vec3(.72,.1,.1);}
+ if(s==2){if(length(u-vec2(0.,.17))<.08)return vec3(.98,.8,.15);if(abs(u.y+abs(u.x)*.9+.04)<.06)return vec3(.95);return vec3(.72,.12,.1);}   // a disc and a chevron
+ if(s==3)return r<.13?vec3(.15,.3,.7):r<.26?vec3(.95):vec3(.8,.15,.15);   // rings
+ if(s==4){if(r<.13)return vec3(.95,.55,.12);if(r<.33&&fract(atan(u.y,u.x)*12./6.2832)<.4)return vec3(.95,.62,.2);return u.y<-.22?vec3(.1,.45,.3):vec3(.97);}   // the sun, its rays
+ if(length(u-vec2(0.,.22))<.05||length(u-vec2(0.,-.22))<.055||length(u-vec2(-.18,.02))<.045||length(u-vec2(.16,.07))<.045||length(u-vec2(.07,-.08))<.025)return vec3(.97);   // a southern cross
+ return vec3(.1,.16,.42);}
+// ---- paint and finish: albedo and gloss for one rocket's surface (lp in its frame; fa the angle that faces the camera)
+vec4 paint(int s,int d,float sb,vec3 lp,float fa){vec4 di=DI[d];float a=atan(lp.z,lp.x),y=lp.y,R=max(length(lp.xz),.05),da=mod(a-fa+PI,2.*PI)-PI;
+ vec2 u=vec2(-da*R,y);   // u.x: arc length from the front, rightward on screen
+ bool lower=y<di.y,pay=y>di.z;float yr=di.z-di.y>2.2?di.z-1.05:di.y-1.2,rs=min(1.,R/.625);
+ if(sb==5.)return vec4(vec3(.07),0.);
+ if(sb==7.)return vec4(vec3(.62,.63,.65),.4);
+ if(sb==2.){float t=clamp(y/di.x,0.,1.);bool solid=d==7||d==8;bool booz=length(lp.xz)>.95;
+  if(s==2)return vec4(mix(vec3(.3,.25,.45),vec3(.5,.35,.2),smoothstep(0.,1.,t))*(fract(t*5.)<.14?.6:1.),.3);   // heat-stained, ringed
+  if(s==3)return booz?vec4(y<.08?vec3(.5):vec3(.1),.15):vec4(t>.62?vec3(.14):vec3(.76,.77,.8),.6);   // silver, a dark throat; solid nozzles black carbon
+  if(s==4)return solid||booz?vec4(t>.72?vec3(.05)*(.7+.6*step(.5,fract(y*30.))):vec3(.13),.1):vec4(.78,.62,.32,.5);   // a dark flex boot; liquid bells gold-tinted
+  if(s==5)return vec4(vec3(.76,.43,.27)*(fract(y*40.)<.25?.85:1.),.2);   // copper, 3D-printed
+  return vec4(vec3(.18,.17,.17),.2);}
+ if(sb==3.){vec3 q=lp;q.xz=abs(q.xz);if(q.z>q.x)q.xz=q.zx;vec4 f=FN[d];float ur=(q.x-FN2[d].x)/f.z;
+  if(s==0)return vec4(vec3(.08),.2);if(s==1)return vec4(.42,.49,.4,.1);
+  if(s==2)return ur>.84?vec4(vec3(.58)*(fract(y*7.)<.3?.55:1.),.2):vec4(.34,.37,.22,.04);   // a bolted edge strip
+  if(s==3)return vec4(.93,.93,.91,.25);if(s==4)return ur>.72?vec4(.96,.6,.15,.1):vec4(d==7?vec3(.64,.32,.19):vec3(.94,.94,.92),.08);
+  return ur>.75?vec4(.95,.45,.15,.2):vec4(.08,.08,.09,.3);}
+ float cy=-1.;vec4 cc=vec4(0.);for(int k=ZERO;k<3;k++){vec4 c=CV[d*3+k];if(c.y>c.x&&y>c.x-.01&&y<c.y+.01){cy=float(k);cc=c;}}
+ if(sb==1.){float ym=(cc.x+cc.y)*.5;
+  if(s==0){float rib=step(.5,fract(a*12./PI));return vec4(vec3(.12)+.1*rib,.2);}
+  if(s==1)return vec4(.2,.22,.2,.1);
+  if(s==2){float cl=(mod(a+PI/8.,PI/4.)-PI/8.)*R,w=max(abs(cl)-.13,abs(y-ym)-(cc.y-cc.x)*.21);return vec4(vec3(.34,.37,.22)*(w<.06?.45:1.),.04);}   // darkened round the vents
+  if(s==3){if(abs(y-ym)<.06)return vec4(.62,.85,.82,.25);vec2 pv=vec2(mod(u.x+.15,.3)-.15,y-ym-.2);return vec4(length(pv)<.045?vec3(.15):vec3(.93,.93,.91),.25);}   // a pastel stripe, round vent ports
+  if(s==4)return vec4(.94,.94,.92,.1);
+  return vec4(abs(y-ym)<.07?vec3(.95,.45,.15):vec3(.08,.08,.09),.3);}
+ bool strap=sb==4.;vec3 c;float g;
+ if(s==0){c=vec3(.92,.92,.9);g=.25;   // Cape: gloss white, the black roll pattern
+  if(y>di.x+1.45&&y<di.y-.4&&!strap){float quad=step(0.,sin(a*2.)),band=step(.5,fract((y-2.6)/1.85));c=mix(c,vec3(.06),quad==band?1.:0.);}
+  if(abs(y-yr)<.45)c=roundel(vec2(u.x*.62/rs,y-yr)/rs,0,c);if(d==0&&pay)c=vec3(.1,.1,.11);return vec4(c,g);}
+ if(s==1){c=vec3(.46,.53,.43)*(.92+.08*h2(floor(vec2(a*8.,y*2.))));if(abs(fract(y/1.3)-.5)>.48)c*=.7;   // Steppe: enamel, panel by panel
+  if(abs(y-yr)<.45&&!strap)c=roundel(vec2(u.x*.62/rs,y-yr)/rs,1,c);return vec4(c,.1);}
+ if(s==2){   // Arsenal: olive below, bare metal above, matte; stencils; a striped band at each separation plane
+  c=lower||strap?vec3(.34,.37,.22)*(.95+.07*h2(floor(vec2(a*5.,y*1.2)))):vec3(.66,.68,.7)*(.93+.12*h2(floor(vec2(a*6.,y*1.5))));g=lower||strap?.04:.22;
+  float sep=strap?8.:di.y;if(y<sep&&y>sep-.28||cy>=0.&&y>cc.y&&y<cc.y+.2)c=step(.5,fract((u.x+y)*2.2))>.5?vec3(.75,.15,.1):vec3(.93);
+  if(!strap&&text(vec2(u.x+.45*rs,y-(di.y-2.6)),4,.2*rs)>.5)c=vec3(.93);   // the serial
+  if(!strap&&di.z-di.y>2.&&text(vec2(u.x+.3*rs,y-(di.y+1.5)),0,.12*rs)>.5)c=vec3(.93);   // NO STEP
+  if(pay&&(abs(y-di.z-.45)<.05||abs(y-di.z-1.15)<.05))c=vec3(.18);   // the nose's clamp bands
+  if(abs(y-yr)<.45&&!strap)c=roundel(vec2(u.x*.62/rs,y-yr)/rs,2,c);return vec4(c,g);}
+ if(s==3){c=vec3(.93,.93,.91);g=.22;   // Coastal: satin white, one pastel band, pin-stripes at the joints, lettering
+  float yb=(di.y+di.z)*.5;if(!strap&&!pay&&!lower&&abs(y-yb)<.28||!strap&&(abs(y-di.y)<.035||abs(y-di.z)<.035))c=vec3(.42,.74,.72);
+  if(strap&&fract(y/2.2)<.025)c=vec3(.6);
+  if(!strap&&lower&&textV(vec2(u.x,y-(di.y-.9)),1,.4*rs)>.5)c=vec3(.12,.2,.45);
+  if(pay&&!strap){if(abs(abs(da)-PI*.5)*R<.012)c=vec3(.3);float yl=(di.z+di.w)*.5-.2;if(abs(y-yl)<.45)c=roundel(vec2(u.x*.62/rs,y-yl)/rs,3,c);}   // the fairing's split line, the agency logo
+  return vec4(c,g);}
+ if(s==4){c=lower||strap?vec3(.64,.32,.19):vec3(.94,.94,.92);g=.08;   // Mountain: terracotta below, white above, saffron at every joint
+  bool j=!strap&&(abs(y-di.y)<.12||abs(y-di.z)<.1||cy>=0.&&(abs(y-cc.x)<.1||abs(y-cc.y)<.1))||strap&&abs(y-7.4)<.1;if(j)c=vec3(.96,.6,.15);
+  if(abs(y-yr)<.45&&!strap)c=roundel(vec2(u.x*.62/rs,y-yr)/rs,4,c);
+  if(!strap&&text(vec2(u.x+.33*rs,y-(yr-.75)),3,.13*rs)>.5)c=vec3(.2,.25,.3);
+  return vec4(c,g);}
+ // Isle: matte black carbon (the weave shows in raking light), decals everywhere
+ float wv=step(.5,fract(u.x*18.+step(.5,fract(y*18.))*.5));c=vec3(.075,.075,.085)*(.85+.3*wv);g=.12+.25*wv;
+ if(lower&&!strap&&text(vec2(y-(di.x+1.3),-u.x+.24*rs),2,.48*rs)>.5)c=vec3(.95);   // the rocket's name, along its length
+ if(lower&&length(u-vec2(.42*rs,di.y-1.6))<.16*rs)c=vec3(.95,.62,.15);if(lower&&length(u-vec2(.42*rs,di.y-2.1))<.13*rs)c=vec3(.25,.55,.85);   // mission patches
+ if(abs(y-di.z+.14)<.06)c=vec3(.95,.45,.15);   // the hue band under the fairing
+ if(pay){float yw=di.z+(di.w-di.z)*.32;if(abs(y-yw)<.12)c=vec3(.95);if(abs(u.x)<.32*rs&&abs(y-yw-.45)<.16)c=vec3(.2,.6,.9);}   // a white band, the customer's logo
+ if(abs(y-yr)<.45&&!pay&&!strap&&d!=9)c=roundel(vec2(u.x*.62/rs,y-yr)/rs,5,c);
+ return vec4(c,g);}
 void main(){
  vec2 uv=v*vec2(uRes.x/uRes.y,1.)*.5;vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
- vec3 rd=normalize(fw+(uv.x*rt+uv.y*up)*uFov),ro=uCam;float t=0.;vec2 h;bool hit=false;
- for(int i=0;i<300;i++){h=map(ro+rd*t);if(abs(h.x)<.002*t){hit=true;break;}t+=h.x*.6;if(t>220.)break;}
+ vec3 rd=normalize(fw+(uv.x*rt+uv.y*up)*uFov),ro=uCam;
+ // one loop, one map() call: the march (ph 0), the normal's four taps (1), the shadow ray (2)
+ float t=0.,st=.05,sha=1.;vec2 h=vec2(0.);bool hit=false;int ph=0,tap=0;vec3 p=vec3(0.),n=vec3(0.),so=vec3(0.);
+ for(int i=ZERO;i<400;i++){vec2 hh=map(ph==0?ro+rd*t:ph==1?p+tet(tap)*.003:so+SUN*st);
+  if(ph==0){h=hh;if(abs(h.x)<.0015*t){hit=true;p=ro+rd*t;ph=1;}else{t+=h.x*.6;if(t>300.)break;}}
+  else if(ph==1){n+=tet(tap)*hh.x;tap++;if(tap==4){n=normalize(n);so=p+n*.02;ph=2;}}
+  else{sha=min(sha,8.*hh.x/st);st+=clamp(hh.x,.05,1.);if(sha<.002||st>70.)break;}}
+ sha=clamp(sha,0.,1.);
  vec3 col=sky(rd);
- if(hit){vec3 p=ro+rd*t,n=nrm(p);float m=h.y;vec3 al;int school=m==4.||m==6.||m==10.||m==12.?1:0;
-  vec3 lp=p-(uV==0?vec3(school==0?-2.4:2.4,.3,0.):uV==1?vec3(school==0?-3.:3.2,.3,0.):uV==2?vec3(0.,1.2,0.):vec3(-17.,2.4,0.));
-  if(uV==3)lp=vec3(lp.y,lp.x,lp.z);
-  if(m<1.5){float g=h2(floor(p.xz*.5));al=mix(vec3(.46,.48,.38),vec3(.55,.53,.44),g);}
+ if(hit){float m=h.y;vec3 al;float g=.05;
+  if(m>99.5){int i=int((m-100.)/10.+.001);float sb=floor(m-100.-float(i)*10.+.5);vec3 lp=toR(p,i),lc=toR(uCam,i);vec4 pa=paint(ID[i].y,ID[i].x,sb,lp,atan(lc.z,lc.x));al=pa.rgb;g=pa.a;}
+  else if(m<1.5){al=n.y<.72?vec3(.45,.4,.34)*(.85+.3*h2(floor(p.xz*.7))):mix(vec3(.4,.5,.3),vec3(.5,.55,.38),h2(floor(p.xz*.5)));}
   else if(m<2.5)al=vec3(.6,.59,.56)*(.9+.1*h2(floor(p.xz*1.2)));
-  else if(m<4.5)al=paint(m,p,lp,school);
-  else if(m<5.5){al=vec3(.12);float rib=step(.5,fract(atan(lp.z,lp.x)*12./3.14159));al+=.1*rib;}   // a ribbed black skirt
-  else if(m<6.5)al=vec3(.2,.22,.2);
-  else if(m<7.5)al=vec3(.72,.2,.12);
-  else if(m<8.5)al=vec3(.3,.31,.32);
-  else if(m<9.5)al=vec3(.18,.17,.17);
-  else if(m<10.5)al=paint(4.,p,vec3(0.,4.,1.),1)*.95;
-  else if(m<11.5)al=vec3(.08);else al=vec3(.42,.49,.4);
-  float dif=max(dot(n,SUN),0.),sh=shadow(p+n*.01,SUN);
-  col=al*(dif*sh*vec3(1.,.97,.9)*1.2+(.35+.25*n.y)*vec3(.42,.5,.62));
-  vec3 rf=reflect(rd,n);col+=pow(max(dot(rf,SUN),0.),40.)*sh*(m>2.5&&m<4.5?.25:.05);
-  col=mix(col,sky(rd),1.-exp(-t*.006));}
+  else if(m<3.5){al=vec3(.1,.22,.32);g=.6;}
+  else if(m<4.5)al=vec3(.72,.2,.12);
+  else if(m<5.5)al=vec3(.25,.26,.27);
+  else if(m<6.5){float k=vn(p.xz*.9+p.y*.6);al=k<.35?vec3(.3,.33,.2):k<.6?vec3(.42,.38,.25):vec3(.2,.24,.16);}   // camouflage
+  else if(m<7.5)al=vec3(.34,.37,.22);
+  else if(m<8.5)al=vec3(.06);
+  else if(m<9.5){al=vec3(.9,.9,.88);g=.1;}
+  else if(m<10.5){al=vec3(.18,.3,.4);g=.7;}
+  else if(m<11.5)al=vec3(.12,.3,.14)*(.75+.5*vn(p.xz*1.3+p.y));
+  else if(m<12.5)al=vec3(.45,.4,.34);
+  else if(m<13.5)al=vec3(.92,.9,.84);else if(m<14.5)al=vec3(.08);
+  else if(m<15.5)al=mod(floor(p.y/4.),2.)<.5?vec3(.85,.15,.12):vec3(.95);
+  else if(m<16.5)al=vec3(.2);
+  else if(m<17.5)al=vec3(.6,.22,.12)*(fract(p.x*4.)<.5?.85:1.);
+  else if(m<18.5){al=vec3(.88,.88,.85);if(p.z<22.1&&text(vec2(-(p.x+4.)+8.,p.y-9.),6,2.2)>.5)al=vec3(.12,.2,.45);}   // the hangar, the company's name
+  else if(m<19.5)al=vec3(.55,.57,.58);
+  else if(m<20.5)al=vec3(.78,.72,.55);
+  else if(m<21.5)al=vec3(.9,.92,.95);
+  else if(m<22.5)al=vec3(.25,.4,.6);
+  else if(m<23.5)al=vec3(.3,.31,.32);
+  else al=vec3(.08);
+  float dif=max(dot(n,SUN),0.);
+  col=al*(dif*sha*vec3(1.,.97,.9)*1.2+(.35+.25*n.y)*vec3(.42,.5,.62));
+  vec3 rf=reflect(rd,n);col+=pow(max(dot(rf,SUN),0.),40.)*sha*g;
+  if(m>2.5&&m<3.5)col=mix(col,sky(rf),.35);
+  col=mix(col,sky(rd),1.-exp(-t*.004));}
  col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+// ---- programs: one per view, compiled on first use (the rest start in the background, side by side)
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
-const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog); gl.useProgram(prog);
+gl.getExtension('KHR_parallel_shader_compile');
 const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
-const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-const U = n => gl.getUniformLocation(prog, n);
-{ const all = [...ORB, ...CAPE, ...STEP], f = new Float32Array(128); all.forEach((q, i) => { f[i * 2] = q[0]; f[i * 2 + 1] = q[1]; });
-  gl.uniform2fv(U('uP[0]'), f); gl.uniform2iv(U('uPr[0]'), new Int32Array([0, ORB.length, ORB.length, CAPE.length, ORB.length + CAPE.length, STEP.length])); }
-let view = new URLSearchParams(location.search).get('view') || 'orbiters';
-if (new URLSearchParams(location.search).has('still')) document.body.classList.add('still');
+const PROGS = {};
+function prog(key) {
+  if (PROGS[key]) return PROGS[key];
+  const p = gl.createProgram(); gl.attachShader(p, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fsFor(key, VK.indexOf(key)))); gl.linkProgram(p);
+  const uc = {}; return PROGS[key] = { p, loc: -1, U: n => uc[n] ?? (uc[n] = gl.getUniformLocation(p, n)) };
+}
+// Every draw gets a number; a newer draw cancels an older one between strips. Big views draw in strips (~120k px each),
+// so no single draw runs long enough to stall the GPU, and the picture fills in from the top.
+let GEN = 0; class Stale extends Error {}
+const frame = () => new Promise(r => { let done = false; const f = () => { if (!done) { done = true; r(); } }; requestAnimationFrame(f); setTimeout(f, 40); });
+async function render(key, w, h, gen) {
+  const V = VIEWS[key], P = prog(key), U = P.U;
+  if (P.loc < 0) { if (!gl.getProgramParameter(P.p, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(P.p)); P.loc = gl.getAttribLocation(P.p, 'p'); }
+  gl.useProgram(P.p); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.enableVertexAttribArray(P.loc); gl.vertexAttribPointer(P.loc, 2, gl.FLOAT, false, 0, 0);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  gl.viewport(0, 0, w, h); gl.uniform2f(U('uRes'), w, h); gl.uniform1i(U('uZero'), 0);
+  gl.uniform3fv(U('uCam'), V.cam); gl.uniform3fv(U('uTgt'), V.tgt); gl.uniform1f(U('uFov'), V.fov);
+  const n = Math.max(1, Math.ceil(w * h / 120000)); gl.enable(gl.SCISSOR_TEST);
+  for (let k = n - 1; k >= 0; k--) { const y0 = Math.floor(h * k / n), y1 = Math.floor(h * (k + 1) / n);
+    gl.scissor(0, y0, w, y1 - y0); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.flush();
+    if (n > 1) { await frame(); if (gen !== GEN) { gl.disable(gl.SCISSOR_TEST); throw new Stale(); } } }
+  gl.disable(gl.SCISSOR_TEST);
+}
+const Q = new URLSearchParams(location.search);
+let view = VIEWS[Q.get('view')] ? Q.get('view') : 'orbiters';
+if (Q.has('still')) document.body.classList.add('still');
 const bar = document.getElementById('bar');
-for (const k in VIEWS) { const b = document.createElement('button'); b.textContent = k; b.dataset.v = k; bar.appendChild(b); }
+{ let g = ''; for (const k of VK) { const V = VIEWS[k]; if (V.g !== g) { g = V.g; const l = document.createElement('span'); l.className = 'lab'; l.textContent = g + ':'; bar.appendChild(l); }
+  const b = document.createElement('button'); b.textContent = V.t; b.dataset.v = k; bar.appendChild(b); } }
 bar.addEventListener('click', e => { const b = e.target.closest('button'); if (b) { view = b.dataset.v; draw(); } });
 function draw() {
-  const V = VIEWS[view], dpr = Math.min(2, devicePixelRatio || 1);
-  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); gl.viewport(0, 0, cv.width, cv.height);
-  gl.uniform2f(U('uRes'), cv.width, cv.height); gl.uniform1i(U('uV'), V.v); gl.uniform3fv(U('uCam'), V.cam); gl.uniform3fv(U('uTgt'), V.tgt); gl.uniform1f(U('uFov'), V.fov);
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  const gen = ++GEN, V = VIEWS[view], s = Math.min(Math.min(1.5, devicePixelRatio || 1), Math.sqrt(2.4e6 / (innerWidth * innerHeight)));
   document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.v === view));
-  document.getElementById('cap').textContent = V.cap; window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
+  document.getElementById('cap').textContent = V.cap;
+  window.DRAWN = render(view, Math.round(innerWidth * s), Math.round(innerHeight * s), gen).then(() => { window.FRAME_DONE = (window.FRAME_DONE || 0) + 1; return 'done'; },
+    e => { if (!(e instanceof Stale)) throw e; return 'stale'; });
+  if (!Q.has('still')) setTimeout(() => { for (const k of VK) prog(k); }, 0);   // the other views compile in the background
 }
-addEventListener('resize', draw); draw();
+window.go = k => { view = k; draw(); return window.DRAWN; };
+let rz; addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(draw, 250); });
+draw();
 </script>
 </body>
 </html>

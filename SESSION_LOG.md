@@ -5056,3 +5056,36 @@ check results, open points), QUEUE (Q226 ✓, W32 widened); `ACTIVE_WORK.md`. St
 - **Worth reusing:** the single-`map()` loop and `ZERO` apply to any raymarched page that is slow to open on Windows
   (the crew, heads and faces mock-ups have the same structure).
 **Next:** after W32, the suit build into `SUITS` (`app/crew-look.js`): Cape, Steppe, then the other five.
+
+## 2026-10-10 — Launchpad Q227: school mock-ups round 2, the rockets (look & sound, effects beat)
+
+**Summary:** Caio: the rocket briefs are in (POWERS.md § "School briefs", D14), turn to them next. `mockups/schools/`
+is rebuilt with three groups:
+- **Orbiter:** the preset in all six schools side by side, one outline.
+- **Signatures:** two designs per new school, plus a row of all six schools'.
+- **Pads:** a pad per school (Mountain's early rail launcher and its later cove shelter).
+
+Each new school owns its paint, interstage cover, bells, fins, nose, roundel and lettering:
+- **Arsenal:** stencils.
+- **Coastal:** lettering.
+- **Mountain:** saffron joints.
+- **Isle:** decals and its name.
+
+Round 1's Cape and Steppe views are ported unchanged. On the brief's defaults for its questions 1–4.
+
+The pick is **W34**.
+
+Also left a note in QUEUE § Proposed for the faces session (Caio asked): `mockups/faces/` has the slow-compile
+pattern Q226 fixed for the suits.
+**Files:** launchpad `mockups/schools/index.html` (rewritten; round 1 is in git history), `mockups/README.md` 0.1.7
+§ schools (round 2 table, what reads, the questions), QUEUE (Q227 ✓, W34, the picks row, the faces note);
+`ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/schools/r2-*.png` (11).
+**Notes:**
+- **Built per view.** Each view compiles its own program from generated code (only the outlines it uses), with the
+  single-`map()` loop and `ZERO`, so the first view shows in ~1.3 s and the others in under a second.
+- **Text** is a 3×5 pixel font in the shader, for stencils, names and the hangar sign. The first pass drew it upside
+  down (the row order was flipped).
+- **Weak spots:** the bells are small at the Orbiter's size; Coastal's pastel band is pale on satin white; Mountain's
+  rail launcher hides its rocket from most angles.
+**Next:** after W34, Q102 steps 3–7 for the four schools (paint and finish in `MESH_FS` by school, the interstage covers
+in `partsMesh`, roundels, signature designs for rivals, then the pads as rigs).

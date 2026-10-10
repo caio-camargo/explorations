@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.6 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -86,7 +86,51 @@ Same page; the bar's first row. Stills in `output/launchpad/mockups/bodies/r2-<v
 
 **Pick / changes:** _(Caio)_
 
-## schools/ — the hardware schools (QUEUE Q89 → POWERS.md → Q102)
+## schools/ — the hardware schools (QUEUE Q89, round 2 Q227 → POWERS.md → Q102)
+
+### Round 2: Arsenal, Coastal, Mountain, Isle (QUEUE Q227, POWERS.md § "School briefs", D14; on the brief's defaults)
+
+Same page, rebuilt: the bar now has three groups. **Orbiter** is the preset in all six schools side by side.
+**Signatures** has every school's two designs in one row, then one view per school. **Pads** has all six schools'
+pads; Mountain gets two, the early rail launcher and the later cove. Round 1's views are kept as they were (Cape &
+Steppe signatures, the Cape and Steppe pads). Stills are in `output/launchpad/mockups/schools/r2-*.png`:
+`r2-orbiters.png`, `r2-sig-all.png`, `r2-sig-<school>.png`, `r2-pad-<school>.png` (Mountain: `-mountain-rail`,
+`-mountain-cove`). Round 1's stills are kept beside them.
+
+As the brief asks, each school owns the four things a rocket is recognised by: the paint, the interstage, the bells
+and the pad. The Orbiter keeps its outline in every school (the brief's limit); only what sits on it changes.
+
+| | Paint and finish | Interstage cover | Bells, fins, nose | Signature designs | Pad |
+|---|---|---|---|---|---|
+| **Arsenal** | matte; olive lower stage, bare-metal upper stage panel by panel; white stencils (serial "DK-0714", "NO STEP"); a red-and-white striped band at each separation plane; a disc-and-chevron roundel | a solid skirt with a ring of **vent windows** (hot staging), darkened round them; the engine shows through | heat-stained (bronze to blue-purple at the lip) with thick rings; stubby thick fins with a bolted edge strip; a blunt nose with clamp bands | the squat **missile** with stubby fins; a core with **four cylindrical strap-ons with ogive noses** | a **terrace cut into a hillside**, the flame chute running downhill out of the side; the **road transporter-erector** caught raising the missile onto the table; a camouflaged lattice tower and its hinged umbilical mast; an earth-covered bunker with a blast door, a blockhouse with periscopes, the hall under a **camouflage net** |
+| **Coastal** | satin white, **one pastel band** round the upper stage, pastel pin-stripes at the joints, "OURELLE" lettered down the lower stage; a rings roundel as the agency logo on the fairing | a smooth white skirt with a pastel stripe and a row of round vent ports | silver bells with a dark throat; black carbon nozzles on the solids; thin rounded fins; a bullet fairing with its split line | a core with **two big solid boosters**; the early **slim three-stage** | **rolled out standing** on a mobile launch table along twin rails from a tall assembly building; **no tower: four lightning masts**, two short umbilical masts; the deluge water tower; low white buildings, a glass control centre; jungle round the clearing |
+| **Mountain** | **terracotta** lower stage and strap-ons, white above, a **saffron band at every joint**; a sun-and-rays roundel with "KANORA" under it | a **cone with a ring of separation bolts and four tiny spin rockets** | solid nozzles with a dark ribbed **flex boot**; liquid bells gold-tinted; square fins with saffron tips; a long pointed nose | the **rail-launched four-stage solid** (slim, big fins); a core with **six small strap-on solids** | early: a **tilting rail launcher**, a boom on a turntable on a terraced ridge above the sea, the rocket hung under the rail; later: a cove, a **tower-shaped shelter whose two halves have swung open**, a fixed umbilical tower |
+| **Isle** | **matte black carbon** (the weave catches the light); decals everywhere: the rocket's name "STILL TESTING" along its length, two mission patches, a hue band under the fairing, the customer's logo; a southern-cross roundel | a flush black carbon band with a hue stripe | **many small copper bells** with print layer lines (nine under the slim one, seven under the medium one); thin carbon fins with hue tips; a black clamshell fairing with a white band | the **slim two-stage with its kick stage showing**; a **medium rocket with a wide fairing** | a **tiny pad on a green peninsula**, sea on three sides, cliffs; the rocket standing against its **strongback**; a hangar lettered "PAVA SPACE", a shed, a container office, one mast, **sheep** |
+
+**What reads, and what doesn't:**
+- In the Orbiter row, the six tell apart at a glance:
+  - **by paint:** Cape's roll pattern, Steppe's green, Arsenal's olive and metal, Coastal's white with lettering,
+    Mountain's terracotta, Isle's black;
+  - **by interstage:** ribs, lattice, vents, smooth, the bolted cone, flush.
+- The bells are the weakest of the four at the Orbiter's size; each school's colour is there, but small.
+- Coastal's pastel band is pale by design (a pastel on satin white). I deepened it once and it still reads mostly from
+  close up; the pin-stripes and lettering carry Coastal from afar.
+- Mountain's rail launcher hides much of its rocket behind the boom from most angles; the still is side-on.
+- Lettering uses a 3×5 pixel font, so it reads as stencil and decal, not typography.
+
+**The brief's questions, on their defaults:**
+1. Coastal's pad is the towerless pad with lightning masts and a vertical rollout (not "a gantry that rolls away",
+   which Cape already has).
+2. Mountain's rail launcher is look only (the caption says so).
+3. Isle's rockets carry a joke name ("STILL TESTING") and a customer's logo.
+4. This round.
+
+**Speed:** each view compiles its own small program (`#if VIEW`), with one `map()` call site and loops that can't
+unroll (as Q226 did for the suits). The first view shows ~1.3 s after load, every other view in under a second.
+
+**Pick / changes:** _(Caio: **W34**)_
+
+### Round 1 (QUEUE Q89; Cape and Steppe, approved as W21)
 
 Open `schools/index.html` or the stills in `output/launchpad/mockups/schools/` (`<view>.png`, 1280×800). The Orbiter's
 outline is the game's own (its parts' profiles exported from the sim); only surface, finish, paint and roundel change
