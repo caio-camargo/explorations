@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -38,6 +38,20 @@ Coding sessions pick items from here and strike them through with the version th
 | 43 | P2 | **Hold a part or group in the air while building** (Caio, 2026-10-10), e.g. to insert a part between two others. Maybe like KSP: one part (the first) is the anchor for everything. | The design is one tree from `root`; a held part snaps or goes nowhere (`findSlot`, `builder.js` ~85). Parked groups beside the root. QUEUE Q246 | vehicle |
 | 44 | P2 | **Removing parts underneath moves the whole rocket down** (Caio, 2026-10-10); it should stay pinned where it was. | `layoutDesign` stands the stack on the ground; anchor on the root instead, the rollout puts it on the pad. QUEUE Q247 | vehicle |
 | 45 | P3 | **Idea: the builder as a model on a desk, not a real rocket** (Caio, 2026-10-10); the player clicks *Build and launch*. Since the build leaves the launchpad for its own screen, placement matters less. | Design, pillar: the era's tone (a 1960s design office, the scale model on the drafting table). **Caio, 2026-10-10: yes, the desk; W35 closed.** The desk scene is QUEUE Q242 (look & sound, parts & pad), the room and *Build and launch* Q241 R5 (flow), the panels Q237/Q238 (vehicle) | look & sound + flow |
+| 46 | P2 | **Parts need a tooltip or info element** saying what they do, maybe a basic spec sheet (Caio, 2026-10-10, playing the monochrome computer era). | No hover text in the palette today. QUEUE Q248 (with Q238) | vehicle |
+| 47 | P2 | **Staging should be drag and drop**, and allow **several events per stage transition** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q249 | vehicle |
+| 48 | P2 | **The 3D clouds at liftoff alias badly** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q250 | look & sound (sky) |
+| 49 | P2 | **Selene seen from low Tellus orbit looks aliased** (Caio, 2026-10-10, playing the monochrome computer era). | Likely the moon's texture or crater bands sampled without mips at that size. QUEUE Q250 | look & sound (sky & bodies) |
+| 50 | P2 | **Aliasing looking down at the planet**, especially mountains (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q251 | world |
+| 51 | P3 | **Solid vs liquid motors, like KSP: solids can't be turned off.** Realistic? If so, a good mechanic (Caio, 2026-10-10, playing the monochrome computer era). | Yes, realistic: a solid burns to the end once lit (no throttle or shutdown; only some late military motors have thrust termination). Pillar: realism, choices with consequences. QUEUE Q252 (plan first) | vehicle |
+| 52 | P3 | **The sky in space needs design work; it should be beautiful** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q253 (mock-ups first) | look & sound (sky & bodies) |
+| 53 | P2 | **The navball should show in the map view** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
+| 54 | P2 | **Deleting a maneuver doesn't seem to work** (Caio, 2026-10-10, playing the monochrome computer era). | `program-ui.js` ~363 clears the node then promotes the next queued one (`nodeNext`); maybe it works but looks like nothing happened. QUEUE Q255 | flow |
+| 55 | P2 | **On the map, the other planets and the sun sit on a dotted line closer to Tellus than Selene**: confusing (Caio, 2026-10-10, playing the monochrome computer era). | Q175's ring (`render.js` ~336). QUEUE Q256 | flow |
+| 56 | P1 | **A reverted flight left its rocket in orbit as "Object 1"** (Caio, 2026-10-10, playing the monochrome computer era). | `resetShip` calls `missionEnd(S)`, which registers a coasting vessel. QUEUE Q257 | space |
+| 57 | P2 | **The navball needs a north**, maybe degree markings (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
+| 58 | P2 | **The monochrome-era display graphics look bad, low-res** (Caio, 2026-10-10, playing the monochrome computer era). | The vector terminal canvases (`program-ui.js` ~134), probably not at device pixels. QUEUE Q258 | flow |
+| 59 | P3 | **The Steppe rocket's texture is low-res**; not sure improving it is affordable (Caio, 2026-10-10, playing the monochrome computer era). | Measure first. QUEUE Q259 | look & sound (parts & pad) |
 
 ## Done
 
