@@ -4857,3 +4857,10 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Tests:** none apply (no game code). The page compiles and renders all 13 views in headless Chrome on the RTX (`shot.mjs`), under the `.game-busy` lock.
 **Notes:** this machine has no git identity: commit with `-c user.name=… -c user.email=…`. The claim commit (`58876ae`) went out with the wrong email.
 **Next:** Caio picks or comments (W29); then Q80–Q85 build each body's look from the chosen views.
+
+## 2026-10-09 — Launchpad Q199: suit mock-ups (look & sound, effects beat; on CREW 0.2.3)
+
+**Summary:** With D9's defaults taken (three generations per school, a spacewalk suit per school, a role stripe), mocked up Cape and Steppe: early, middle, late and spacewalk, in the crew mock-up's scene with the stylised human (`mockups/suits/`, a copy of the crew raymarcher with suit parameters: colours, helmet shell, faceplate size, Apollo's bubble, the SK-1's lettered brow, Sokol's soft hood, gold visors, backpacks, bulk, Orlan's rigid torso; role stripes pilot blue / scientist green / engineer yellow). Stills in `output/launchpad/mockups/suits/` (16 + 3 roles + 2 sheets). Caio's pick is **W30** (W29 went to bodies round 2 at the same minute).
+**Files:** launchpad `mockups/suits/index.html` (new), `mockups/README.md` § suits, QUEUE (Q199 ✓ mock-ups, W30); `ACTIVE_WORK.md`.
+**Notes:** the first faceplates were the crew mock-up's (very wide), which made every helmet a glass bowl; narrowed to fit the face. The Sokol hood reads as fabric only up close. Pilot blue is weak on the Sokol's blue fittings (an alternative is named in the README).
+**Next:** after W30, the suit build into `SUITS` (Cape then Steppe); Q209 (walk-out and boarding) is ranked.
