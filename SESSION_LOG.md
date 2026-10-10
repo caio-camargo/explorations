@@ -4779,3 +4779,35 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad new `app/crew-look.js` (+ `index.html` line), `app/gl.js` (crew arm in `buildRig`, `padRig`'s hatch, `drawPadRig`), `app/render.js` (`drawPadCrew`), `views.js` 120–122, `test.mjs` `aerofx-5`, NOTES § "The crew's look, slice 1" + file map row, TESTING 184 (also QA's picker row 178 → 179, doubled with the Steppe pad's), QUEUE (Q195 ✓, Q194 covered by Q106, a walk-out proposal); `ACTIVE_WORK.md`.
 **Tests:** `aerofx-1…5`, 38, 39, `qa-3`, `platform-1` pass; robot `m1` passes; smoke as before (vehicle-4 known). TESTING row numbers collided four times in an hour (175→177→178, 180→181→182→183→184): Q160 (a duplicate check before push) would have saved most of it.
 **Next:** Q199 (suit mock-ups, Cape and Steppe × three eras) is ready for a look beat; the crew walk-out/boarding and Steppe crew access are proposed.
+
+
+## 2026-10-09 — Launchpad vehicle lane: v1.73.1, the Passenger Orbiter's passenger and vehicle-4 in smoke (vehicle session, QUEUE Q201, Q204)
+
+### Summary
+- **Q201 / PLAYTEST #35:** the Passenger Orbiter cooked its passenger on every robot ascent. The narrow chute left the
+  biocapsule's shoulder in the flow (skin ~500 K), and its 10-minute cabin passed 330 K on the climb. The 10-minute lag is
+  deliberate (a bare animal capsule on an orbital ascent is meant to cook), so the fix is in the preset: a **nose cone over
+  the chute**. Measured: skin 318 K, cabin 300 K at orbit, 665 m/s spare (was 715). First flight 58 → 59M; career pacing
+  (`PACE=1 node career.mjs`) reaches orbit 3/3 everywhere, about a day later.
+- **`vehicle-3`** now reads the flight record (`S.rec`: `bioOK`, `bioOrbits`, `gMax`, the cabin) from liftoff, and fails
+  on the old preset with the game's own message.
+- **Q204:** `vehicle-4` failed only inside `--smoke` because it restored the logbook before two of its readings; an
+  earlier section's 5,000 m/s best orbit then read the Orbiter "short" of 400 km instead of "tight". The "Beeper short of
+  orbit" text in the failure line was the check's own deliberate 5,600 case, a red herring. `--smoke` passes.
+- New worktree `C:/Users/caioa/dev/launchpad-builder` on a new branch **`vehicle`**: this machine had no builder worktree,
+  and the other machine's `builder` holds Q152's unpushed commit.
+
+### Files
+- `explorations/launchpad/`: `sim/vessel.js` (`PRESETS['Passenger Orbiter']`), `test.mjs` (`vehicle-3`, `vehicle-4`),
+  `NOTES.md` (§ v1.73.1), `PLAYTEST.md` (#35 fixed), `TESTING.md` (row 147 note), `QUEUE.md` (Q201, Q204 ✓; smoke flag
+  struck; a QA follow-up)
+- `ACTIVE_WORK.md`, `SESSION_LOG.md`
+
+### Tests
+- `--smoke --jobs 2` passes after each merge of `main`; `vehicle-3`, `vehicle-4`, `qa-3` pass on the final merge. The full
+  suite wasn't run: its slow sections (the long flights and ladders) don't fly this preset, and the machine had low-memory
+  stops today.
+
+### Next steps
+- [ ] QA: browser re-run of TESTING 147 (`node playtest.mjs 147`, 🖥), then tick it and PLAYTEST #35
+- [ ] vehicle: Q190 (era gates for late parts) is the next first-hour item; Q152 waits on the other machine's `builder`
