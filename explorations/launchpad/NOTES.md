@@ -9665,7 +9665,7 @@ so the first seed came out NaN and every stage was dropped; the test now starts 
 **Tester school picker (QA session, 2026-10-09; QUEUE Q106).** Tester menu → **Hardware school**: Auto and every school
 in `SCHOOLS`; a pick sets `SCHOOL_FORCE` (app/gl.js) and redraws the ship. Only Cape and Steppe have a look so far, so the
 other four are greyed with "draws as Cape" until Q102's steps 6–7; then they need no change here. `refView(114)`/`(115)`
-already show Cape and Steppe on the Orbiter for shot.mjs. test.mjs `qa-5`; TESTING 178.
+already show Cape and Steppe on the Orbiter for shot.mjs. test.mjs `qa-5`; TESTING 179 (178 at first; the Steppe pad row had it, qa-3 caught the collision).
 
 **New robot rows (QA session, 2026-10-09).** `node playtest.mjs 155 172 157 147`. 155 and 172 reload the page inside a
 row (`RELOAD`: later steps use only the page's globals). 157 runs five designs through Roll out with `rollChecks()`. 147
