@@ -2006,7 +2006,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## VNUM — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
+## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
 
 - aerofx's gauge strip (altitude tape, air depth, q with max-q, Mach, heat) now has its own place: `#gslot`, the left of
   the bottom cluster, **gauges | throttle | navball | SAS**. The cluster stays centred, so it narrows in space and the
@@ -8353,7 +8353,7 @@ panel as now.
 (a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
 new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
 
-**4a built 2026-10-09: § v1.101; 4b: § VNUM.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+**4a built 2026-10-09: § v1.101; 4b: § v1.106.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
