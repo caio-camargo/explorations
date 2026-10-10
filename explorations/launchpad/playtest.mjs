@@ -416,7 +416,7 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
 // and its debrief. Written before M1 is done, so it FAILS until the flow lane's M1 items land; each check names its item.
 // Two flights: a Sounding for "Above the weather", then the beeper (an instrument package in orbit). No preset carries
 // one to orbit until PLAYTEST #24 added the Beeper preset; the robot flies it (or, on an old page, the Orbiter with the package for the pod). The ascent
-// is fly_ladder.mjs's handAscent: attitude set directly, so it proves the career path, not that the rocket is flyable.
+// is fly_ladder.mjs's handAscent (PT.ascent(flatKm): the turn ends at flatKm, 38 there): attitude set directly, so it proves the career path, not that the rocket is flyable.
 // Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
 const M1_HELPERS = String.raw`
 PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e => { if (e.tagName === 'CANVAS' || e.closest('.hidden')) return false; const cs = getComputedStyle(e);
@@ -426,11 +426,11 @@ PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e
     const w = Math.min(A.right, B.right) - Math.max(A.left, B.left), h = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top); if (w > 0 && h > 0 && w * h >= 40) out.push(name(top[i]) + ' × ' + name(top[j]) + ' ' + Math.round(w * h) + ' px²') }
   return out };
 PT.debrief = () => /debrief/.test(screenNow()) || [...document.querySelectorAll('[id*=debrief],[class*=debrief]')].some(e => !e.closest('.hidden') && e.getBoundingClientRect().height > 0);
-PT.ascent = () => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up';
+PT.ascent = (flatKm = 38) => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up';
   const point = Y => { const f = localFrame(s.r), X = norm(cross(Y, f.n)); s.q = qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0] };
   const pitch = d => { const f = localFrame(s.r), r = d * Math.PI / 180; point(norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r))))) };
   while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
-    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (38000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast' } }
+    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (flatKm * 1000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast' } }
     else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
       const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) phase = 'circ' }
     else { const f = localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); point(norm(need)); s.throttle = 1;
@@ -640,6 +640,42 @@ ROWS[65] = {title: 'rotate a crew: fly the station, undock the capsule, bring it
   `go('program'); ({screen: screenNow(), debrief: (PT.text('#debBody') || '').split(String.fromCharCode(10)).slice(0, 12).join(' / ')})`, {shot: 'debrief'},
   `go('program'); PT.click('[data-ptab="fleet"]'); true`, CREWTXT(), {shot: 'fleet_after'}],
   checks: {home: `PT.home`}, expect: {home: v => v === true}};
+
+// New rows, 2026-10-09 (QA evergreen). A page reload inside a row: the step reloads, the next waits, and later steps use
+// only the page's own globals (PT and views.js are gone after a reload).
+const RELOAD = [`setTimeout(() => location.reload(), 50); true`, {wait: 6000}];
+ROWS[155] = {title: 'Settings survive a reload', steps: [
+  `ovOpen('settings'); PT.click('[data-qual="low"]'); for (const id of ['setPerf', 'setGauges', 'setModern']) { const e = document.getElementById(id); e.checked = !e.checked; e.dispatchEvent(new Event('change', {bubbles: true})) }
+   PT.wanted = {quality, perfOn, GAUGES, modern: modernUI()}; PT.wanted`, {shot: 'set'}, `JSON.stringify(PT.wanted)`,
+  ...RELOAD, `({quality, perfOn, GAUGES, modern: modernUI()})`],
+  checks: {after: `JSON.stringify({quality, perfOn, GAUGES, modern: modernUI()})`}, expect: {after: v => /"quality":"low"/.test(v)}};
+ROWS[172] = {title: 'the last Debrief survives a reload', steps: [
+  `PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); go('program');
+   localStorage.setItem('pt-deb', document.getElementById('debBody').innerText.slice(0, 400)); screenNow()`, {shot: 'before'},
+  ...RELOAD, `go('program'); ({lastShown: !document.getElementById('bDebLast').classList.contains('hidden')})`, {click: '#bDebLast'},
+  `({screen: screenNow(), same: document.getElementById('debBody').innerText.slice(0, 400) === localStorage.getItem('pt-deb'), now: document.getElementById('debBody').innerText.slice(0, 200)})`, {shot: 'after'}],
+  checks: {same: `document.getElementById('debBody').innerText.slice(0, 400) === localStorage.getItem('pt-deb')`}, expect: {same: v => v === true}};
+// 157 and 152: five designs through Roll out; each one's checks (rollChecks) and whether LAUNCH is offered
+const ROLL = (tag, stack, pre = '') => `(()=>{ go('assembly'); ${pre} stackDef = JSON.parse(JSON.stringify(${stack})); editorChanged(); go('rollout');
+  const ck = rollChecks(), L = document.getElementById('launch'); const r = {tag: '${tag}', screen: screenNow(), checks: ck.map(c => (c.k || c.lvl || c.level || '') + ' ' + (c.t || c.text || c.msg || JSON.stringify(c)).slice(0, 140)), launch: L ? {text: L.textContent, disabled: L.disabled, opacity: L.style.opacity} : null}; return r })()`;
+ROWS[157] = {title: 'roll out: the checks before launch (with 152)', flags: {kh: true, tools: true, nofail: true, fast: true}, steps: [
+  `testMission('weather', true); testFunds(200); go('program'); true`,
+  ROLL('Orbiter, fine', `PRESETS.Orbiter`), {shot: 'ok'},
+  ROLL('Hopper, beeper next', `PRESETS.Hopper`), {shot: 'short'},
+  ROLL('Big Lunar, over budget', `PRESETS['Big Lunar']`), {shot: 'budget'},
+  ROLL('TWR under 1', `['pod', 'T32', 'sparrow']`), {shot: 'twr'},
+  ROLL('Orbiter without fins', `PRESETS.Orbiter.filter(k => k !== 'fins')`), {shot: 'unstable'},
+  ROLL('biocapsule, no chute', `['bio', 'dec', 't4', 'fins', 'sparrow']`), {shot: 'nochute'},
+  `go('assembly'); ({screen: screenNow(), stack: stackDef.join(' ')})`]};
+// 147: the Passenger Orbiter once round and home (the robot's ascent, a period on rails, a retro cut, the chute)
+ROWS[147] = {title: 'Passenger: one orbit, on the Passenger Orbiter preset', steps: [M1_HELPERS, `PT.flatKm = +(new URLSearchParams(location.search).get('flat') || 60); testEpoch(2); testMission('hop', true); missionOpen(MISSIONS.find(m => m.id === 'orbiter'))`,
+  `go('assembly'); PT.preset('Passenger Orbiter'); ({cost: vesselCost(S.parts).cost, stack: stackDef.map(e => typeof e === 'string' ? e : e.k).join(' ')})`, `go('rollout'); rollChecks().map(c => JSON.stringify(c).slice(0, 120))`,
+  {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(PT.flatKm || 38), bioOK: S.rec.bioOK, cabin: +S.rec.cabin.toFixed(0), why: S.rec.bioWhy, skin: (S.parts.find(p => p.on && p.d.kind === 'bio') || {}).T, passenger: PT.log.filter(l => /Passenger|overheat/.test(l))})`,
+  `(()=>{ const o = elements(S.r, S.v, TELLUS.mu), per = 2 * Math.PI * Math.sqrt(o.a ** 3 / TELLUS.mu), t0 = simT; while (simT - t0 < per * 1.05 && S.alive) advPhys(S);   // physics steps: the flight record counts orbits per step
+     for (let k = 0; k < 60 && PT.orbit().pe > 45e3; k++) S.v = mul(S.v, 0.998); S.sas = true; S.sasMode = 'retro'; for (let k = 0; k < 6 && !S.chute; k++) stage(S); const f = PT.fly(() => S.landed || !S.alive, 8000);
+     return {pe: Math.round(PT.orbit().pe / 1e3), orbits: S.rec.bioOrbits, cabin: S.rec.cabinMax, landed: S.landed, alive: S.alive, bioOK: S.rec.bioOK, gMax: S.rec.cgMax || S.rec.gMax, fly: f, log: PT.log.slice(-5)} })()`, {shot: 'home'},
+  `go('program'); ({done: !!PROG.done.orbiter, debrief: (document.getElementById('debBody').innerText || '').split(String.fromCharCode(10)).slice(0, 8).join(' / ')})`, {shot: 'debrief'}],
+  checks: {done: `!!PROG.done.orbiter`}, expect: {done: v => v === true}};
 
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
