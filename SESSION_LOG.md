@@ -4737,3 +4737,31 @@ Caio left the session running ("keep going while you still have work"). Built, e
 - [ ] vehicle: PLAYTEST #35, the Passenger Orbiter's cabin (and make `vehicle-3` read `S.rec`)
 - [ ] flow: PLAYTEST #34, crew in the Debrief
 - [ ] Caio: PLAYROUTE sitting 1 is M1's last piece (a person's first hour)
+
+## 2026-10-09 — Launchpad v1.99, v1.101, v1.103: planets on the map, the readout as a core and cards, chained nodes on the map (flow session)
+
+### Summary
+- **Q175 (v1.99, closes PLAYTEST #11):** Helios and the five planets on the map from epoch 1, on a dashed ring in the
+  ecliptic around the map's centre, each at its ecliptic longitude that day, labelled with its distance in TU.
+  `planetMarks(T)` appended to space's `sim/system.js`. **Negative result:** drawn at their true directions they were
+  99–137° from the map camera's axis, behind it, hence the ring.
+- **Q3 slice 4a (v1.101):** the flight readout is a 5-line core; the rest is cards on the right (`app/hud.js`,
+  `HUD_CARDS`: Ascent, Descent, Target, Payload, Fleet, Vehicle, Hardware, Rover), pinnable, folding oldest-first when too
+  tall. The toolbar is down to Map, ◀ N× ▶, End flight and ☰ (the rest is in Esc). Two layout bugs fixed: the news box
+  overran its lane by its padding, and `#msg` dodged the news's old place. Robot `m1` and 98 pass at 1280×800 and
+  1000×700.
+- **Q157 (v1.103):** every node of a chain is drawn on the map; a click selects one, and its handles edit that node.
+- Numbers collided at every merge (v1.98, TESTING 165/173/179/181, all taken by sessions that pushed during my test
+  runs). Each time I renumbered at the merge. QA's `qa-3` catches doubled rows.
+
+### Files
+- `explorations/launchpad/`: `app/hud.js` (new), `app/render.js`, `app/program-ui.js` (`updateHUD` core), `app/state.js`
+  (`cardsLayout`, news/msg lanes), `app/loop.js`, `app/screens.js`, `sim/system.js` (`planetMarks`), `index.html`
+  (cards column, toolbar, warp buttons, `hud.js` tag), `playtest.mjs` (`PT.hud` reads the cards), `test.mjs` (`flow-4`,
+  `flow-5`), `NOTES.md`, `TESTING.md` (175, 180, 182), `PLAYTEST.md` (#11 closed, #9 progress), `QUEUE.md`
+- `ACTIVE_WORK.md`; stills (local, gitignored) in `output/launchpad/q175-planets/` and `q3-slice4a/`
+
+### Next steps
+- [ ] flow: Q3 slice 4b, the gauges as the instrument panel beside the navball, hidden in space (closes PLAYTEST #9); then 4c
+- [ ] flow: proposed: merge the labels of planets in conjunction; drag a queued node in time
+- [ ] every lane: new flight-HUD content is a card (`HUD_CARDS` in `app/hud.js`)
