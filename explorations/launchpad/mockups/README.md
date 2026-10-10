@@ -319,6 +319,18 @@ its ears, so a bob covers them): zero at a sculpted hairline, rising over a long
 sideburns, full on top; grooves and partings carve the thickness. The first ramps were short and left a ledge with a
 dark underside; now hair and skin are one surface and the hairline is a colour edge. Stills:
 `faces/hair-from-skull.png`, `faces/hairline-closeup.png`.
+**Pass 3, proportions and pushed signatures**: five new genes with wide ranges: face length (the whole head, about
+the eye line), eye line low–high, nose-to-mouth gap, cheek mass (hollow–full) and flesh (lean: hollow cheeks and
+temples; fleshy: full cheeks, jowls, a soft double chin). Randomise and a fresh Breed grid now use the **signature
+generator** (FACES § 3 "Extremes"): a shape language (square and heroic, round and kind, long and dry, comic), its quiet
+base, and one to three signature features from it pushed to 85–100%, the first always one that changes the outline
+(jaw, chin, forehead, face length, flesh, block, round, pear or dome head...); the rest stay near the house face or a
+roster archetype. Each tile names its language and features. The reach-test faces show in the Roster as landmarks.
+Check (`?mode=breed&same=1`: one hair and one skin for all; greyscale; 48 px), six seeds: 8–10 of 12 told apart per
+row; the long, narrow, dry faces are the cluster that still look alike. Soft planes round the face back and leave the
+eyes standing proud, so the soft signatures carry eye depth (sinking the eyes in the shader instead lost Mr.
+Incredible's eyes in his socket). Stills: `faces/proportion-genes.png`, `faces/signature-generator.png`,
+`faces/distinct-48px-grey.png`. 78 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
