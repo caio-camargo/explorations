@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.20 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running list
+**Version**: 0.1.21 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-08 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -29,6 +29,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 34 | P2 | **The Debrief says nothing about the crew** (robot, row 65). A capsule bringing a station crew home reads "Landed / home · recovery: returned" and money, with no word that two people came back; when the crew dies, it reads "Lost / destroyed after reaching 300 km" and the crew's loss is only in the news ticker. | Neither `sim/debrief.js` nor `app/debrief.js` reads `R.crewed` / `R.crewOK`. Add an outcome line for crewed flights ("Crew of 2 home safe after N days", "The crew were lost") and, for a rotation, the days they spent aboard. `r65_debrief.png`. | flow (+ space for the station days) |
 | 35 | P2 | **The Passenger Orbiter cooks its passenger** (robot, row 147). On fly_ladder's ascent (level by 38 km) the game fails Biscuit at T+212 s, "overheated (cabin 330 K)", skin 505 K; on a gentler one (level by 60 km) the cabin is 315 K at orbit and passes 330 K a few minutes later, as the cabin catches up with the hot skin. *Passenger: one orbit* fails either way, so PLAYTEST #24's fix may not hold for the passenger half. | test.mjs `vehicle-3` passes because it keeps its own cabin temperature, starting at 290 K only after the orbit, and never reads the flight record's `R.cabin`/`bioOK` (`missionTick`: the cabin follows the biocapsule's skin with a 600 s lag from liftoff). Make the check use `S.rec` over the whole flight; then either a fairing or shroud over the Biocapsule on the preset, a lower `bio` skin heating, or a longer insulation lag. `r147_debrief.png`; `node playtest.mjs 147`. | vehicle |
 | 36 | P3 | **The Hopper preset warns that it's unstable** (robot, row 157). Roll out shows ⚠ "Aerodynamically unstable (−0.05 calibers): only steering keeps it straight" for the stock Hopper. | A preset shouldn't open with a warning a newcomer can't act on: a little more fin (or the fins lower), or a margin that treats −0.05 as neutral. `r157_short.png`. | vehicle |
+| 37 | P3 | **The Network screen says "holds its orbit 0 more days"** (robot, row 164) for a satellite with no propellant, where the Fleet tab says "nothing to hold it up: re-enters in about 11 years". | Same entry, two phrasings; the Network wording reads as if it falls today. Use the Fleet tab wording (or one shared helper) for both. `r164_network.png`. | flow |
 
 ## Done
 
