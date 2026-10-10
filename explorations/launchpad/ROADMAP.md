@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.6.2 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 1.7.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -19,7 +19,7 @@ lane splits the file (still no build step); blocked decisions proceed on a defau
 
 ---
 
-## Pillars (reviewed with Caio 2026-10-08, design desk; 7 is provisional)
+## Pillars (reviewed with Caio 2026-10-08, design desk; 7 settled 2026-10-10)
 
 What the game is about. A feature has to serve at least one; a session can turn down or reshape work that serves none
 without asking. Each line points at where NOTES already said it.
@@ -40,9 +40,10 @@ without asking. Each line points at where NOTES already said it.
    contact never kills a vessel. (§ "Time, long missions", principles; § "Routine runs")
 6. **Lean and exact** (the engineering pillar; a **constraint**: it can refuse a feature, never justify one). Float64 state, exact rails, one rigid body, a pure SIM block: no Kraken,
    cheap warp, a port that stays cheap. (§ "The idea", § "Platform direction")
-7. **Lighter than serious, never a joke** (*provisional*, Caio 2026-10-08: "still somewhat tbd"). The physics is real and
-   the stakes are felt; the people are warm and a little funny. A lost crew weighs; a tourist's excitement is charming.
-   (§ "Program design — direction": "lighter than serious"; CREW.md's art direction hangs on it)
+7. **Earnest heroism, warm, with dry humour** (Caio, 2026-10-10; was "lighter than serious, never a joke", provisional).
+   The physics is real and the stakes are felt; the people are brave, competent and a little funny, never slapstick.
+   A lost crew weighs; a tourist's excitement is charming. The model is Thunderbirds played straight (D11's puppet
+   direction), not KSP's minion comedy. (§ "Program design — direction"; CREW.md's art direction hangs on it)
 8. **You live through an era, into the near future.** Tools, looks and the world move on with the date: the program
    starts on paper and slide rules and grows into interplanetary travel, and possibly settlement. (Caio, 2026-10-08;
    § "Compute — a resource across eras", the logbook's ageing interface, § "Early-era realism"; SYSTEM.md)

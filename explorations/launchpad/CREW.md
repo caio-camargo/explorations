@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Version**: 0.2.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -113,6 +113,16 @@ crew tell the era's history).
 `mockups/crew/`). Not a retread of KSP's cartoon crew, not realistic either: the stylisation is what allows the lighter
 tone (pillar 7). Human proportions with simple forms, flat colour bands and ink outlines; faces readable small.
 
+**The puppet direction (D11; Caio's favourite 2026-10-10, mock-ups in progress):** if it wins, "stylised human" here
+means **carved, lacquered puppet heads lit like sculpture** (Thunderbirds, art deco relief), replacing the flat colour
+and ink outlines above, and `app/crew-look.js` (slice 1) follows. Two rules either way:
+- **Faces don't age with the eras.** The people are the game's lens (Tintin stayed Tintin); suits, screens and hardware
+  carry pillar 8. No lane "modernises" the faces.
+- **A varied roster is a pass/fail check** before any head is approved: every skin tone and the six schools' name
+  styles, carved with respect. Carved stylisation of non-European features has a history of caricature; the sheet
+  shows it doesn't happen here.
+- Crew mostly **stand and sit** (the hatch, portraits); a walkout is a cut or a short pose, never a long walk cycle.
+
 **Suits by school and by era (Caio's idea, 2026-10-09; design open, D9).** Each hardware school (POWERS.md) dresses its
 crew in its own suit line, and the line changes with the epochs, as real suits did: Cape from Mercury's silver to
 Apollo's white to the Shuttle's orange launch suit to today's sleek one; Steppe from the SK-1 to Sokol, with Orlan
@@ -188,6 +198,8 @@ stripe round the upper arms (D9 3).
 ---
 
 ## Version history
+- **0.2.5 (2026-10-10):** the puppet direction (D11): faces constant across eras, a varied roster as a pass/fail check,
+  no walk cycles.
 - **0.2.4 (2026-10-10):** the suit brief, round 2 (construction per school, silhouette per era, colour rules, a
   signature per suit, checks); Cape late becomes the orange launch-and-entry suit, the sleek suit moves to Foundry.
 - **0.2.3 (2026-10-09):** D9: Caio took the three defaults.
