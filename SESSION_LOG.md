@@ -5011,3 +5011,14 @@ broke (cheek hollow → dimple, chin → knob, cheekbone height → crease). Ran
 (floating nostrils, slot mouths), so untuned regions sample at 45 % until F2–F4. F1's 48 px test is not met: with one
 hair mass the thumbnails look alike; hair (F5) and paint (F6) will carry the thumbnail.
 **Next:** Caio breeds in the lab (W33); then F2 brow and eyes.
+
+## 2026-10-10 — QA session: watch the robot play (Q224)
+
+Caio asked for a way to watch a play session live. **Built:** `node playtest.mjs --watch[=speed] m1` (headed Chrome, flights at
+real speed with warp in coasts via `PT.loop`, captions, click marks, pauses; results in `<out>/watch`). m1 passes watched at 8×
+(~4 min; ~15 min at 1×). **Filed:** Q225 (platform, plan only), record and replay a whole session, building on the existing
+deterministic flight tapes. **Also:** Q221 (PT_URL query), Q208 (row 147 passes both ascents with the nose cone; TESTING 147 ~).
+
+- Files: `explorations/launchpad/playtest.mjs`, `NOTES.md` (§ "Watching the robot play"), `QUEUE.md` (Q224, Q225, Q221, Q208), `TESTING.md` (147), `ACTIVE_WORK.md`.
+- Next: more rows written for watching (start from a new career, real clicks and keys only); Q225's plan (platform).
+
