@@ -9885,10 +9885,16 @@ ascent (scratch runs of the preset and variants):
 |---|---|---|---|
 | chute, bio (was) | 499 K | 330 K: failed | 715 m/s |
 | cone, bio (no chute) | 319 K | 300 K | 822 m/s |
-| **cone, chute, bio** | 318 K | 300 K | 665 m/s |
+| cone, chute, bio | 318 K | 300 K | 665 m/s |
+| **cone, chute, bio, … t8, fins, fins** | 316 K | 300 K | 580 m/s |
 
-The chute is a staging event, not a position, so it opens under the cone as before. The first flight's price goes 58 →
-59M; `PACE=1 node career.mjs` reaches orbit 3/3 for every start, about a day later, minimum funds within the seeds' noise.
+The chute is a staging event, not a position, so it opens under the cone as before. **The cone cost the stability margin**
+(+0.94 → −0.67 calibers: Rollout said "Aerodynamically unstable … only steering keeps it straight", seen on the browser run
+of row 147). A second fin ring at the bottom puts it back (+0.91); fins higher up (between `dec` and `t8`) made it worse
+(−1.24). `vehicle-3` now also fails a Passenger Orbiter under 0 calibers. The first flight's price goes 58 → 60.3M.
+`PACE=1 node career.mjs 3 12`, one fin ring against two: frugal programs reach orbit ~10–30 days later and their minimum
+funds drop ~10M (frugal company 11/12 to orbit either way); resource programs about the same. Caio chose the second ring:
+a first-hour preset shouldn't warn.
 
 **Why `vehicle-3` passed.** It kept its own cabin temperature, starting at 290 K after the orbit, and never read the flight
 record. It now reads `S.rec` over the whole flight: `bio`, `bioOK`, `bioOrbits ≥ 1`, `gMax`, and the cabin at orbit and
@@ -9900,4 +9906,13 @@ Hopper short and the Orbiter *tight* for 400 km. Alone the logbook is empty; in 
 taken before the logbook is restored. (The "Beeper short of orbit" in the failure's detail line was the check's own
 deliberate 5,600 m/s case, `best`, not the failure.)
 
-**Not yet:** the browser half of TESTING 147 (`node playtest.mjs 147`, 🖥): the robot's gentler ascent should now pass too.
+**Browser, row 147 (tester mode):** the gentle ascent passes: cabin 290 K at orbit, Biscuit home at 4.2 g, +180M. The steep
+one wasn't run in tester mode: `PT_URL` with a query (`?flat=38`) breaks the page's `?tester` (playtest appends `?tester`
+to whatever is there), so those runs flew without tester mode. They found the next problem:
+
+**Without a retrograde hold the passenger cooks coming home (PLAYTEST #38, Q216).** At *Passenger: one orbit* a real
+program is still in the human computers' era (`compEra` 0 until year 3), so its avionics are the Gyro autopilot: `stab`
+only, no `retro` (`avNow`, `AV`). Row 147 sets `sasMode = 'retro'`, which only tester mode's "all tools" honours. Headless,
+the robot's way home (a period, speed cut until periapsis < 45 km, chute armed) with `stab` or SAS off: the passenger
+overheats on every version of the preset, the old one included (bio skin 630–910 K, the stack 70–125° off retrograde);
+with `retro`, under 270 K.
