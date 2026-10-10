@@ -214,6 +214,11 @@ a ridge, skin sloping down to the edge and the lip's face tilting back to the sl
 (broad–steep), *upper/lower lip height*, *Cupid's bow*, *corners down–up*, *lower lip forward*; *lip edge* softens
 the ridge. The tint fills only between the edges. Eye depth reaches deeper; a heavy jaw's sides stand upright (a
 broad chin, not a point). 60 genes.
+**Lips in profile** (Caio's line drawing): the upper lip is one straight slope back from its edge to the slit; the
+lower lip is a roll, round on top, tucked under to a defined bottom edge, the skin falling back into the fold. New
+genes *lower lip: full–rolled in* and *lower lip tuck*; the house lips are ~30 % taller; the philtrum is a shallow
+dent (the old slot cut a thread on long faces); close-ups follow the face's length. Still: `faces/lips-profile.png`.
+61 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 
