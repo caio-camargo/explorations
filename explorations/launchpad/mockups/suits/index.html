@@ -4,76 +4,89 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Suit mock-ups</title>
-<!-- Launchpad mock-up for CREW.md § Part 1's suits (QUEUE Q199, D9; Caio took the defaults, CREW 0.2.3): the stylised
-     human (W19) in each school's suit line, Cape and Steppe, three generations (early, middle, late) and the spacewalk
-     suit, with a role stripe on the shoulder. Same scene as the crew mock-up (mockups/crew/, Q72), whose raymarcher this
-     copies. A standalone page: never loaded by index.html. ?suit=cape-early|…|steppe-eva&role=pilot|scientist|engineer
-     &shot=wide|close picks a still (the bar does the same). -->
+<!-- Launchpad mock-up for CREW.md § "The suit brief, round 2" (QUEUE Q219; round 1 was Q199, "too samey"): the stylised
+     human (W19) in each school's suit line, Cape and Steppe, early / middle / late / spacewalk. Each suit is built from
+     its own pieces (helmets, torsos, props), not one body recoloured: Cape is hard shells, gloss and metal, hoses into the
+     chest; Steppe is canvas, laces and hoods, hoses into the belly and a ventilator case carried by hand. Same raymarcher
+     as the crew mock-up (mockups/crew/, Q72). A standalone page: never loaded by index.html.
+     ?suit=cape-early|…|steppe-eva &role=pilot|scientist|engineer &pose=stand|walk &shot=pad|close|front|back
+     &sheet=lineup|sil|grey|thumb (the brief's checks) &still (hides the bar). -->
 <style>
   :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; width: 100vw; height: 100vh; }
+  #sh { position: fixed; inset: 0; display: none; background: #f4f2ee; }
+  body.sheet #sh { display: block; }
+  body.sheet #c { position: fixed; left: 0; top: 0; visibility: hidden; width: auto; height: auto; }
   #bar { position: fixed; top: 8px; left: 8px; right: 8px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
-    background: rgba(14, 17, 22, .78); padding: 6px 8px; border-radius: 6px; }
-  #bar button { background: #222833; color: var(--fg); border: 1px solid #39414f; border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+    background: rgba(14, 17, 22, .8); padding: 6px 8px; border-radius: 6px; z-index: 2; }
+  #bar button { background: #222833; color: var(--fg); border: 1px solid #39414f; border-radius: 4px; padding: 3px 8px; cursor: pointer; }
   #bar button.on { border-color: var(--acc); color: var(--acc); }
-  #bar .sep { width: 1px; height: 20px; background: #39414f; margin: 0 4px; }
-  #cap { color: var(--dim); margin-left: 6px; }
+  #bar .sep { width: 1px; height: 20px; background: #39414f; margin: 0 3px; }
+  #cap { color: var(--dim); flex-basis: 100%; }
   body.still #bar { display: none; }
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
+<canvas id="sh"></canvas>
 <div id="bar">
   <span id="suits"></span>
   <span class="sep"></span>
   <button data-role="pilot">Pilot</button><button data-role="scientist">Scientist</button><button data-role="engineer">Engineer</button>
   <span class="sep"></span>
-  <button data-shot="wide">Wide</button><button data-shot="close">Helmet close-up</button>
+  <button data-pose="stand">Standing</button><button data-pose="walk">Walkout</button>
+  <span class="sep"></span>
+  <button data-shot="pad">On the arm</button><button data-shot="close">Helmet</button><button data-shot="front">Studio</button><button data-shot="back">From behind</button>
+  <span class="sep"></span>
+  <button data-sheet="lineup">All eight</button><button data-sheet="sil">Check 1: silhouettes</button><button data-sheet="grey">Check 2: grey squint</button><button data-sheet="thumb">Check 3: 48 px</button>
   <span id="cap"></span>
 </div>
 <script>
 'use strict';
 const Q = new URLSearchParams(location.search);
-const ST = { style: 'c', suit: Q.get('suit') || 'cape-early', role: Q.get('role') || 'pilot', shot: Q.get('shot') || 'wide' };
+const ST = { suit: Q.get('suit') || 'cape-early', role: Q.get('role') || 'pilot', pose: Q.get('pose') || 'walk', shot: Q.get('shot') || 'front', sheet: Q.get('sheet') || '' };
 if (Q.has('still')) document.body.classList.add('still');
-const CAP = {
-  a: 'Cartoony (Kerbal-like): a big head in a fishbowl, stubby limbs, bright suit',
-  b: 'Realistic: human proportions, a silvered Mercury pressure suit, a faceplate helmet',
-  c: 'Stylised human (1960s illustration, puppet shows, Tintin): human proportions, simple forms, flat colour and ink',
-};
-// per-style parameters, all in metres; the pose is the same for all three
-const STYLES = {
-  a: { H: 1.30, head: .25, helmR: .37, open: -1.0, torsoW: .27, torsoD: .19, torsoH: .30, legL: .30, legR: .085, armL: .26, armR: .07,
-       boot: [.11, .07, .15], glove: .075, suit: [.93, .93, .9], trim: [.95, .45, .1], skin: [.98, .78, .62], eye: .055, toon: 0, metal: 0, jaw: 0, hairOn: 0, hair: [0, 0, 0] },
-  b: { H: 1.80, head: .105, helmR: .165, open: .35, torsoW: .2, torsoD: .13, torsoH: .58, legL: .86, legR: .075, armL: .62, armR: .052,
-       boot: [.065, .055, .14], glove: .05, suit: [.78, .79, .8], trim: [.25, .26, .28], skin: [.86, .66, .53], eye: .011, toon: 0, metal: 1, jaw: 0, hairOn: 1, hair: [.16, .11, .07] },
-  c: { H: 1.78, head: .13, helmR: .19, open: .25, torsoW: .22, torsoD: .14, torsoH: .55, legL: .8, legR: .072, armL: .58, armR: .055,
-       boot: [.07, .06, .15], glove: .058, suit: [.82, .86, .9], trim: [.86, .22, .16], skin: [.95, .76, .6], eye: .018, toon: 1, metal: 0, jaw: 1, hairOn: 1, hair: [.36, .2, .09] },
-};
-// The suit lines (CREW.md § Part 1's table; D9). Each overrides colours and adds features: shell (the helmet's
-// colour), metal (aluminised), band (a lettered band across the helmet's brow), hood (a soft fabric hood, not a hard
-// shell), gold (a closed gold visor), pack (a life-support backpack), bulk (limbs and torso fattened by pressure),
-// rigid (a hard upper torso), open (the faceplate's size). The role stripe goes round the upper arms.
+// The eight suits (CREW.md 0.2.4 § "The suit brief, round 2"). n picks the suit's own pieces in the shader; c1 is the
+// dominant colour, c2 the second, acc a signature accent; body = limb bulk, torso width, torso depth, arm length;
+// face = the faceplate's half-size (x, y, centre height, as direction cosines; metres for Orlan's flat visor) and the
+// glass (1 clear faceplate, 2 all-glass bubble, 3 flat visor, 4 gold visor).
 const SUITS = {
-  'cape-early':    { cap: 'Cape, early (Mercury): aluminised silver pressure suit, a hard silver helmet, dark boots',
-    suit: [.72, .74, .78], trim: [.3, .32, .36], boot: [.12, .12, .13], shell: [.78, .8, .84], metal: 1, open: .78 },
-  'cape-middle':   { cap: 'Cape, middle (the Selene era, Apollo): white layered suit, blue fittings, an all-glass bubble helmet',
-    suit: [.9, .9, .88], trim: [.18, .3, .62], boot: [.82, .82, .8], shell: [.93, .93, .92], open: -1 },
-  'cape-late':     { cap: 'Cape, late: sleek tailored white and black, a slim helmet with a wide visor',
-    suit: [.92, .92, .93], trim: [.06, .06, .07], boot: [.08, .08, .09], shell: [.95, .95, .96], open: .66, bulk: .9 },
-  'cape-eva':      { cap: 'Cape, spacewalk (EMU): bulky white, a backpack, a closed gold visor',
-    suit: [.93, .93, .91], trim: [.55, .56, .58], boot: [.85, .85, .83], shell: [.95, .95, .95], gold: 1, pack: 1, bulk: 1.3, open: .5 },
-  'steppe-early':  { cap: 'Steppe, early (SK-1): an orange coverall over the pressure suit, a white helmet lettered across the brow',
-    suit: [.88, .42, .12], trim: [.35, .3, .26], boot: [.18, .14, .1], shell: [.94, .94, .92], band: [.78, .12, .1], open: .76 },
-  'steppe-middle': { cap: 'Steppe, middle (Sokol): white, blue connectors on the chest, a soft hood with its visor',
-    suit: [.88, .89, .9], trim: [.15, .32, .7], boot: [.2, .2, .22], shell: [.86, .87, .88], hood: 1, open: .7 },
-  'steppe-late':   { cap: 'Steppe, late: a refined Sokol, closer-fitting, blue panels at the knees and chest',
-    suit: [.9, .91, .92], trim: [.12, .28, .62], boot: [.15, .16, .2], shell: [.88, .89, .9], hood: 1, open: .66, bulk: .92 },
-  'steppe-eva':    { cap: 'Steppe, spacewalk (Orlan): a rigid torso entered from the back, a closed visor, red and blue stripes',
-    suit: [.9, .9, .88], trim: [.75, .15, .12], boot: [.82, .82, .8], shell: [.92, .92, .9], gold: 1, pack: 1, rigid: 1, bulk: 1.25, open: .5 },
+  'cape-early':    { n: 0, name: 'Cape early', real: 'Mercury', sig: 'mirror silver head to toe; finger-tip lights',
+    cap: 'aluminised silver, gold connectors on the chest and a hose loop; slim, bloused at the knees; a round hard shell with a small oval faceplate and a mic boom',
+    c1: [.74, .76, .8], c2: [.85, .62, .2], acc: [.85, .62, .2], boot: [.7, .72, .76], glove: [.72, .74, .78], shell: [.8, .82, .86],
+    body: [.82, .86, .9, 1], helmR: .17, face: [.42, .36, .06, 1] },
+  'cape-middle':   { n: 1, name: 'Cape middle', real: 'Apollo', sig: 'bellows joints; the bubble over a Snoopy cap',
+    cap: 'white Beta cloth, a row of red and blue connectors and a diagonal zip; upright, bellows rings at shoulders, elbows, knees; the all-glass bubble over a black-and-white "Snoopy cap"',
+    c1: [.95, .95, .93], c2: [.2, .35, .75], acc: [.8, .15, .12], boot: [.9, .9, .88], glove: [.8, .82, .85], shell: [.93, .93, .92],
+    body: [1.12, 1.05, 1.1, 1], helmR: .235, face: [1, 1, 0, 2] },
+  'cape-late':     { n: 2, name: 'Cape late', real: 'Shuttle launch-and-entry', sig: 'international orange and the harness',
+    cap: 'international orange, black boots and gloves; bulky padded "pumpkin" with a parachute harness over the chest; a white helmet with a wide clamshell visor and a neck ring; a mirror on the wrist',
+    c1: [.96, .4, .08], c2: [.08, .08, .09], acc: [.25, .35, .6], boot: [.1, .1, .11], glove: [.1, .1, .11], shell: [.95, .95, .95],
+    body: [1.62, 1.45, 1.6, 1], helmR: .21, face: [.74, .44, .04, 1] },
+  'cape-eva':      { n: 3, name: 'Cape spacewalk', real: 'EMU', sig: 'the chest control box and the helmet lamps',
+    cap: 'white with a gold visor and red identity stripes on the legs; a hard upper torso, a big backpack, a box on the chest; two helmet lamps and a camera',
+    c1: [.94, .94, .92], c2: [.62, .64, .67], acc: [.8, .12, .1], boot: [.88, .88, .86], glove: [.86, .86, .84], shell: [.96, .96, .95],
+    body: [1.42, 1.35, 1.35, 1], helmR: .215, face: [.66, .52, .03, 4] },
+  'steppe-early':  { n: 4, name: 'Steppe early', real: 'SK-1', sig: 'the lettered helmet and the ventilator case in hand',
+    cap: 'an orange coverall, belted, high black boots; a white hard shell lettered in red across the brow, the visor slid up; hoses from the belly to the ventilator case',
+    c1: [.9, .46, .12], c2: [.12, .11, .1], acc: [.8, .12, .1], boot: [.1, .09, .09], glove: [.85, .84, .8], shell: [.95, .95, .93],
+    body: [1, .95, 1, 1], helmR: .225, face: [.5, .4, .02, 1] },
+  'steppe-middle': { n: 5, name: 'Steppe middle', real: 'Sokol', sig: 'the soft hood and the blue lacing',
+    cap: 'off-white canvas, soft and creased, blue lacing straps round every limb and a V-shaped laced opening on the chest; a soft hood sewn to the suit with a hinged visor ring; two hoses into the belly and the ventilator case',
+    c1: [.87, .84, .75], c2: [.18, .36, .72], acc: [.18, .36, .72], boot: [.3, .33, .42], glove: [.26, .4, .7], shell: [.87, .84, .75],
+    body: [1.06, 1, 1.04, 1], helmR: .2, face: [.5, .5, -.02, 1] },
+  'steppe-late':   { n: 6, name: 'Steppe late', real: 'the school\'s own', sig: 'grey-green, the school\'s rocket enamel',
+    cap: 'grey-green with orange flashes; closer cut but still canvas, padded panels at chest and knees; a hard hood with the visor ring kept from Sokol; the ventilator is now a slim pack on a shoulder strap',
+    c1: [.3, .37, .28], c2: [.94, .5, .12], acc: [.94, .5, .12], boot: [.14, .15, .13], glove: [.24, .27, .21], shell: [.38, .45, .35],
+    body: [.97, .97, 1, 1], helmR: .2, face: [.52, .48, -.01, 1] },
+  'steppe-eva':    { n: 7, name: 'Steppe spacewalk', real: 'Orlan', sig: 'the door in its back',
+    cap: 'white with red arm and blue leg stripes; a fridge-like rigid body entered through a door in the back (see "From behind"), short stiff arms; a boxy helmet with a large flat visor and lamps on both "ears"; a control panel on a lanyard',
+    c1: [.93, .93, .9], c2: [.6, .62, .64], acc: [.8, .14, .1], boot: [.84, .84, .82], glove: [.76, .76, .74], shell: [.95, .95, .93],
+    body: [1.35, 1.45, 1.5, .84], helmR: .19, face: [.135, .1, -.01, 3] },
 };
-// role stripes (CREW.md § The roles; D9 default 3): the colour round both upper arms
+const ORDER = Object.keys(SUITS);
+// role stripes (CREW.md § The roles; D9 3): the colour round both upper arms, edged in ink so it reads on any suit
 const ROLES = { pilot: [.16, .36, .85], scientist: [.18, .62, .3], engineer: [.95, .7, .1] };
 const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true });
 const VS = `#version 300 es
@@ -81,140 +94,249 @@ in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
 const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
 uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov;
-uniform float uH,uHead,uHelmR,uOpen,uTW,uTD,uTH,uLegL,uLegR,uArmL,uArmR,uGlove,uEye,uToon,uMetal,uJaw;
-uniform vec3 uBoot,uSuit,uTrim,uSkin,uHair;uniform float uHairOn;
-uniform vec3 uBootC,uShell,uBand,uStripe;uniform float uBandOn,uHood,uGold,uPack,uBulk,uRigid;
+uniform int uS;uniform float uPose,uStudio,uSil,uHelmR;uniform vec4 uFace,uBody;
+uniform vec3 uC1,uC2,uBootC,uGloveC,uShell,uAcc,uStripe;
 const vec3 SUN=normalize(vec3(-.55,.75,.6));
+const float HEAD=.13,YAW=.35,PI=3.14159;
+const vec3 A=vec3(.75,0.,.05),SKIN=vec3(.95,.76,.6),HAIR=vec3(.36,.2,.09);
 // ---- primitives
 float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
 float sdRBox(vec3 p,vec3 b,float r){return sdBox(p,b-r)-r;}
 float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
-float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float limb(vec3 p,vec3 a,vec3 b,float ra,float rb,out float h){vec3 pa=p-a,ba=b-a;h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
 float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
 float sdCone(vec3 p,float h,float r1,float r2){vec2 q=vec2(length(p.xz),p.y),k1=vec2(r2,h),k2=vec2(r2-r1,2.*h);
  vec2 ca=vec2(q.x-min(q.x,(q.y<0.)?r1:r2),abs(q.y)-h);vec2 cb=q-k1+k2*clamp(dot(k1-q,k2)/dot(k2,k2),0.,1.);
  float s=(cb.x<0.&&ca.y<0.)?-1.:1.;return s*sqrt(min(dot(ca,ca),dot(cb,cb)));}
 float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
-// ---- the scene. Materials: 1 deck, 2 rail (red), 3 capsule shingles, 4 hatch interior, 5 suit, 6 trim, 7 skin, 8 helmet
-// shell, 9 eye white, 10 pupil, 11 boots/gloves, 12 gantry, 13 mouth, 14 hatch door
-// the astronaut stands at A facing +z, turned a little toward the camera; the helmet's centre is HC
-vec3 A=vec3(.75,0.,.05);
-vec2 mapA(vec3 p){   // the astronaut, in its own frame (y up, facing +z)
- vec3 q=p-A;float c=cos(.35),s=sin(.35);q.xz=mat2(c,s,-s,c)*q.xz;   // turned toward +x (the camera); glassT and helmetC use its inverse
- float hip=uLegL+uBoot.y*1.2,sh=hip+uTH,neck=sh+uHead*.25;vec3 HC=vec3(0.,neck+uHead*1.05,uHead*.05);
- vec2 r=vec2(1e9,0.);
- float LR=uLegR*uBulk,AR=uArmR*uBulk,TW=uTW*mix(1.,uBulk,.6)*(1.+.12*uRigid),TD=uTD*mix(1.,uBulk,.8)*(1.+.2*uRigid);
+vec2 U(vec2 r,float d,float m){return d<r.x?vec2(d,m):r;}
+// the astronaut's frame: stands at A facing +z, turned toward the camera by YAW
+vec3 toL(vec3 p){vec3 q=p-A;float c=cos(YAW),s=sin(YAW);return vec3(c*q.x-s*q.z,q.y,s*q.x+c*q.z);}
+vec3 dirL(vec3 d){float c=cos(YAW),s=sin(YAW);return vec3(c*d.x-s*d.z,d.y,s*d.x+c*d.z);}
+vec3 dirW(vec3 d){float c=cos(YAW),s=sin(YAW);return vec3(c*d.x+s*d.z,d.y,-s*d.x+c*d.z);}
+// ---- the skeleton, from the suit's bulk and the pose (uPose 0 standing and waving, 1 the walkout: a stride, one arm up)
+float TW,TD,TH,AR,LR,GR,AL,HIP,SH,NECK;vec3 HC,CC;bool CASE;
+vec3 JH[2],JK[2],JA[2],JS[2],JE[2],JW[2];float FP[2];int AM[2];   // arm modes: 0 down, 1 wave, 2 carry the case, 3 swing
+void skel(){
+ TW=.22*uBody.y;TD=.14*uBody.z;TH=.55;AR=.055*uBody.x;LR=.072*uBody.x;GR=.058*mix(1.,uBody.x,.6);AL=.58*uBody.w;
+ float lt=.391,w=uPose;vec2 a0=vec2(.34,.04)*w,a1=vec2(-.26,-.62)*w;   // thigh and shin angles from the vertical, + forward
+ HIP=.09+lt*(cos(a0.x)+cos(a0.y));
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;vec2 a=i==0?a0:a1;
+  JH[i]=vec3(sx*TW*.48,HIP,0.);JK[i]=JH[i]+vec3(sx*TW*.04,-lt*cos(a.x),lt*sin(a.x)+.02);JA[i]=JK[i]+vec3(-sx*TW*.02,-lt*cos(a.y),lt*sin(a.y)-.02);
+  FP[i]=i==0?-.12*w:.5*w;}
+ SH=HIP+TH;NECK=SH+HEAD*.25;HC=vec3(0.,NECK+HEAD*1.05,HEAD*.05);
+ CASE=uS==4||uS==5;
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;
+  int m=((w<.5)==(i==1))?1:(CASE?2:(w>.5?3:0));AM[i]=m;
+  vec3 s=vec3(sx*(TW*1.05+(uS==7?.03:0.)),SH-AR,0.),e,wr;JS[i]=s;
+  if(m==1){e=s+vec3(sx*.42*AL,.12*AL,.05);wr=e+vec3(sx*.04,.5*AL,.02);}
+  else if(m==2){e=s+vec3(sx*.07,-.5*AL,-.01);wr=e+vec3(sx*.03,-.48*AL,.02);}
+  else if(m==3){e=s+vec3(sx*.05,-.47*AL,.13);wr=e+vec3(0.,-.38*AL,.2);}
+  else{e=s+vec3(sx*.06,-.5*AL,.04);wr=e+vec3(0.,-.48*AL,.06);}
+  if(uS==7&&m!=1){e+=vec3(sx*.05,0.,0.);wr+=vec3(sx*.1,0.,0.);}   // Orlan's stiff arms stand off the body
+  JE[i]=e;JW[i]=wr;if(m==2)CC=wr+vec3(sx*.02,-GR*1.3-.15,0.);}
+}
+// Apollo's bellows: ribs within ~9 cm of a joint (e0, e1: at the segment's start, end)
+float ribs(float h,float L,float e0,float e1){float d0=h*L,d1=(1.-h)*L,m=max(e0*smoothstep(.1,.06,d0),e1*smoothstep(.1,.06,d1));return m*(.5+.5*cos(min(d0,d1)*2.*PI/.028));}
+// a limb segment's material (sg 0 upper arm, 1 forearm, 2 thigh, 3 shin; h 0 at the body end)
+float limbMat(int sg,float h){
+ if(sg==0){if(h>.2&&h<.225||h>.395&&h<.42)return 32.;if(h>.225&&h<.395)return 18.;}   // the role stripe, inked
+ if(uS==3){if(sg==2&&h>.3&&h<.45||sg==3&&h>.2&&h<.3)return 27.;}
+ else if(uS==4){if(sg==3&&h>.28)return 11.;}   // high boots
+ else if(uS==5){if(sg==0&&h>.62&&h<.7||sg==1&&h>.4&&h<.48||sg==2&&(h>.3&&h<.37||h>.72&&h<.79)||sg==3&&h>.42&&h<.49)return 28.;}   // lacing straps
+ else if(uS==6){if(sg==0&&h<.16||sg==1&&h>.84)return 6.;}   // orange flashes
+ else if(uS==7){if(sg==1&&h>.25&&h<.6)return 27.;if(sg==2&&h>.35&&h<.62)return 28.;}
+ return 5.;}
+float hose(vec3 q,vec3 a,vec3 c,vec3 sag,float r){vec3 b=mix(a,c,.5)+sag;return min(sdCap(q,a,b,r),sdCap(q,b,c,r));}
+// ---- the astronaut. Materials: 5 dominant, 6 second, 7 skin, 8 helmet shell, 9 eye white, 10 pupil, 11 boots, 13 mouth,
+// 15 hair, 16 lettering, 17 dark (straps, zip, cables), 18 role stripe, 19 gloves, 20 metal, 21 gold, 22 lamp, 23 Snoopy
+// cap, 25 ventilator case, 26 hose, 27 red, 28 blue, 30 padding, 31 Orlan's door, 32 ink
+vec2 mapA(vec3 p){
+ vec3 q=toL(p);
+ float bb=sdCap(q,vec3(0.,.3,-.05),vec3(0.,1.75,-.05),.68);if(bb>.08)return vec2(bb,0.);
+ vec2 r=vec2(1e9,0.);float h;vec3 hp=q-HC;float R=uHelmR;
  // legs and boots
- for(int i=0;i<2;i++){float sx=i==0?-1.:1.;vec3 h=vec3(sx*uTW*.48,hip,0.),k=vec3(sx*uTW*.52,hip*.5,.02),an=vec3(sx*uTW*.5,uBoot.y*1.5,0.);
-  float d=min(sdCapT(q,h,k,LR*1.08,LR),sdCapT(q,k,an,LR,LR*.85));if(d<r.x)r=vec2(d,5.);
-  float b=sdRBox(q-vec3(sx*uTW*.5,uBoot.y,uBoot.z*.35),uBoot,min(uBoot.x,uBoot.y)*.7);if(b<r.x)r=vec2(b,11.);}
- // torso, with a chest pack and a belt band
- float t=sdRBox(q-vec3(0.,hip+uTH*.5,0.),vec3(TW,uTH*.55,TD),min(TW,TD)*mix(.85,.35,uRigid));
- float pk=sdRBox(q-vec3(0.,hip+uTH*.62,TD*.95),vec3(TW*.55,uTH*.16,TD*.25),.02);
- float bt=sdRBox(q-vec3(0.,hip+uTH*.08,0.),vec3(TW*1.04,uTH*.06,TD*1.06),.02);
- if(uPack>.5){float bp=sdRBox(q-vec3(0.,hip+uTH*.58,-TD-uTD*.55),vec3(TW*.95,uTH*.45,uTD*.6),.04);if(bp<r.x)r=vec2(bp,17.);}   // the backpack
- if(t<r.x)r=vec2(t,5.);if(pk<r.x)r=vec2(pk,6.);if(bt<r.x)r=vec2(bt,6.);
- // arms: the right one raised in a wave, the left one at the side; gloves
- vec3 sL=vec3(-uTW*1.05,sh-uArmR,0.),sR=vec3(uTW*1.05,sh-uArmR,0.);
- vec3 eL=sL+vec3(-.06,-uArmL*.5,.04),wL=eL+vec3(.0,-uArmL*.48,.06);
- vec3 eR=sR+vec3(uArmL*.42,uArmL*.12,.05),wR=eR+vec3(.04,uArmL*.5,.02);
- float a=min(min(sdCapT(q,sL,eL,AR*1.1,AR),sdCapT(q,eL,wL,AR,AR*.9)),min(sdCapT(q,sR,eR,AR*1.1,AR),sdCapT(q,eR,wR,AR,AR*.9)));
- if(a<r.x)r=vec2(a,5.);
- float sp=min(sdCapT(q,mix(sL,eL,.22),mix(sL,eL,.4),AR*1.16,AR*1.12),sdCapT(q,mix(sR,eR,.22),mix(sR,eR,.4),AR*1.16,AR*1.12));if(sp<r.x)r=vec2(sp,18.);   // the role stripe
- float gR=uGlove*mix(1.,uBulk,.5);float g=min(length(q-wL-vec3(0.,-gR*.6,0.))-gR,length(q-wR-vec3(0.,gR*.6,0.))-gR);if(g<r.x)r=vec2(g,11.);
- // the neck ring (trim) and the helmet: a shell with a faceplate opening (uOpen = cos of its half-angle; −1: all glass)
- float nr=length(vec2(length(q.xz)-uHelmR*.78,(q.y-neck-.01)*1.6))-.028;if(nr<r.x)r=vec2(nr,6.);   // a flat ring, the helmet's seat
- vec3 hp=q-HC;float sh2=abs(length(hp)-uHelmR)-.012,fwd=dot(normalize(hp),normalize(vec3(0.,.12,1.)));
- sh2=max(sh2,(fwd-uOpen)*uHelmR);sh2=max(sh2,-(hp.y+uHelmR*.82));
- if(uOpen>-.9&&sh2<r.x){float hy=hp.y/uHelmR;r=vec2(sh2,uHood>.5?19.:uBandOn>.5&&hy>.5&&hy<.74&&fwd>-.2?16.:8.);}
- // the head: a skull, a jaw (squarer when stylised), ears, a nose; eyes, pupils and a mouth
- vec3 hq=q-(HC+vec3(0.,-uHead*.12,0.));
- float hd=sdEll(hq,vec3(uHead*.86,uHead,uHead*.9));
- float jw=mix(sdEll(hq-vec3(0.,-uHead*.45,uHead*.12),vec3(uHead*.62,uHead*.5,uHead*.62)),sdRBox(hq-vec3(0.,-uHead*.5,uHead*.12),vec3(uHead*.58,uHead*.42,uHead*.56),uHead*.18),uJaw);
- hd=smin(hd,jw,uHead*.15);hd=smin(hd,sdEll(hq-vec3(0.,-uHead*.05,uHead*.86),vec3(uHead*.13,uHead*.18,uHead*.16)),uHead*.06);   // nose
- for(int i=0;i<2;i++){float sx=i==0?-1.:1.;hd=smin(hd,sdEll(hq-vec3(sx*uHead*.86,-uHead*.05,0.),vec3(uHead*.1,uHead*.2,uHead*.14)),uHead*.04);}
- if(hd<r.x)r=vec2(hd,7.);
- if(uHairOn>.5){float hr=sdEll(hq-vec3(0.,uHead*.04,-uHead*.03),vec3(uHead*.91,uHead*1.04,uHead*.95)),cut=hq.y-mix(-.15,.42,smoothstep(-.4,.7,hq.z/uHead))*uHead;
-  hr=max(hr,-cut);if(hr<r.x)r=vec2(hr,15.);   // short hair: a cap over the skull, its hairline high at the front
-  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;float bw=sdCap(hq,vec3(sx*uHead*.22,uHead*.38,uHead*.84),vec3(sx*uHead*.5,uHead*.36,uHead*.72),uHead*.035);if(bw<r.x)r=vec2(bw,15.);}}
- for(int i=0;i<2;i++){float sx=i==0?-1.:1.;vec3 ec=hq-vec3(sx*uHead*.36,uHead*.16,uHead*.8-uEye*.4);
-  float ew=length(ec)-uEye;if(ew<r.x)r=vec2(ew,9.);float pu=length(ec-vec3(sx*uEye*-.1,0.,uEye*.72))-uEye*.45;if(pu<r.x)r=vec2(pu,10.);}
- vec3 mq=hq-vec3(0.,-uHead*.42,uHead*.82);float mo=sdCap(mq,vec3(-uHead*.26,uHead*.06,0.),vec3(uHead*.26,uHead*.06,0.),uHead*.045);
- mo=max(mo,-(mq.y-uHead*.02-abs(mq.x)*.3));if(mo<r.x)r=vec2(mo,13.);
+ for(int i=0;i<2;i++){float L1=length(JK[i]-JH[i]),L2=length(JA[i]-JK[i]);
+  float d=limb(q,JH[i],JK[i],LR*1.08,LR,h);
+  if(uS==1)d-=LR*.24*ribs(h,L1,0.,1.);if(uS==2)d-=LR*.12*sin(h*PI);
+  r=U(r,d,limbMat(2,h));
+  d=limb(q,JK[i],JA[i],LR,LR*.85,h);if(uS==1)d-=LR*.24*ribs(h,L2,1.,0.);
+  r=U(r,d,limbMat(3,h));
+  if(uS==0)r=U(r,length(q-JK[i]-vec3(0.,-.04,.01))-LR*1.5,5.);   // bloused at the knee
+  if(uS==6)r=U(r,sdEll(q-JK[i]-vec3(0.,0.,LR*.72),vec3(LR*.85,LR*1.,LR*.5)),30.);   // knee pads
+  vec3 bq=q-JA[i];float c=cos(FP[i]),s=sin(FP[i]);bq.yz=vec2(c*bq.y+s*bq.z,-s*bq.y+c*bq.z);
+  vec3 bs=vec3(.07*mix(1.,uBody.x,.5),.06,.15);r=U(r,sdRBox(bq-vec3(0.,-.03,bs.z*.35),bs,.042),11.);}
+ // the torso
+ float tc=HIP+TH*.5,t;
+ if(uS==3){t=min(sdRBox(q-vec3(0.,HIP+TH*.68,0.),vec3(TW,TH*.36,TD),.06),sdRBox(q-vec3(0.,HIP+TH*.24,0.),vec3(TW*.82,TH*.3,TD*.88),.1));}   // hard upper torso, soft trousers
+ else if(uS==7){t=min(sdRBox(q-vec3(0.,HIP+TH*.64,-.02),vec3(TW,TH*.6,TD),.08),sdRBox(q-vec3(0.,HIP+TH*.12,0.),vec3(TW*.7,TH*.2,TD*.75),.1));}   // the fridge
+ else if(uS==2){t=smin(sdRBox(q-vec3(0.,tc,0.),vec3(TW,TH*.55,TD),min(TW,TD)*.9),sdEll(q-vec3(0.,tc+.03,.01),vec3(TW*1.08,TH*.58,TD*1.12)),.05);}   // the pumpkin
+ else t=sdRBox(q-vec3(0.,tc,0.),vec3(TW,TH*.55,TD),min(TW,TD)*.85);
+ float tm=5.;
+ if(uS==5||uS==6){   // the hood, sewn to the suit (soft) or a hard hood; a hollow with the face opening
+  float ho=sdEll(hp-vec3(0.,-.01,-.015),vec3(R*.98,R*1.05,R*1.02));if(uS==5)ho+=.005*sin(hp.y*70.+hp.x*30.)*sin(hp.z*50.);
+  float t0=t;t=smin(t,ho,uS==5?.12:.05);if(uS==6&&ho<t0-.01)tm=8.;
+  t=max(t,-sdEll(hp-vec3(0.,-.01,-.01),vec3(R*.9,R*.97,R*.94)));
+  vec3 nl=normalize(hp);float mk=nl.z>0.?1.-length(vec2(nl.x/uFace.x,(nl.y-uFace.z)/uFace.y)):-1.;t=max(t,mk*R*.35);
+  float rg=max(abs(length(hp)-R*1.01)-.02,abs(mk)*R*.5-.016);if(nl.z>.1)r=U(r,rg,20.);   // the visor ring
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(hp,vec3(sx*R*.82,uFace.z*R,.08),vec3(sx*R*1.02,uFace.z*R,.1),.026),20.);}}   // its hinges
+ if(uS==7){vec3 bq=hp-vec3(0.,0.,.02);float hb=sdRBox(bq,vec3(.165,.18,.165),.075);if(hb<t-.005)tm=8.;
+  t=smin(t,hb,.05);t=max(t,-sdRBox(bq,vec3(.145,.16,.148),.065));
+  float vis=sdRBox(bq-vec3(0.,uFace.z,.17),vec3(uFace.x,uFace.y,.1),.03);t=max(t,-vis);
+  r=U(r,max(sdRBox(bq-vec3(0.,uFace.z,.16),vec3(uFace.x+.022,uFace.y+.022,.03),.04),-vis),20.);   // the visor's frame
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(bq,vec3(sx*.2,.07,-.06),vec3(sx*.2,.07,.07),.036),8.);r=U(r,length(bq-vec3(sx*.2,.07,.085))-.027,22.);}}   // lamps on the "ears"
+ r=U(r,t,tm);
+ // per suit: torso hardware
+ if(uS==0){for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(q,vec3(sx*.06,HIP+TH*.45,TD-.01),vec3(sx*.06,HIP+TH*.45,TD+.035),.022),21.);}
+  r=U(r,min(hose(q,vec3(-.06,HIP+TH*.45,TD+.035),vec3(-.04,HIP+.02,TD+.07),vec3(-.04,0.,.03),.015),hose(q,vec3(.06,HIP+TH*.45,TD+.035),vec3(-.04,HIP+.02,TD+.07),vec3(.05,0.,.04),.015)),20.);}
+ else if(uS==1){for(int i=0;i<4;i++){float x=-.11+.073*float(i);r=U(r,sdCap(q,vec3(x,HIP+TH*.42,TD-.01),vec3(x,HIP+TH*.42,TD+.02),.019),i==0||i==2?28.:27.);}
+  r=U(r,sdCap(q,vec3(-.1,SH-.06,TD+.002),vec3(.1,HIP+TH*.6,TD+.002),.007),17.);}   // connectors, the diagonal zip
+ else if(uS==2){float zf=TD*1.16;
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,min(sdCap(q,vec3(sx*TW*.42,SH+.03,-TD*.3),vec3(sx*TW*.42,SH-.07,zf),.022),sdCap(q,vec3(sx*TW*.42,SH-.07,zf),vec3(sx*TW*.3,HIP+.03,zf*.98),.022)),17.);}
+  r=U(r,sdCap(q,vec3(-TW*.55,HIP+TH*.6,zf),vec3(TW*.55,HIP+TH*.6,zf),.022),17.);r=U(r,sdRBox(q-vec3(0.,HIP+TH*.6,zf+.01),vec3(.04,.035,.015),.008),20.);   // the harness and its buckle
+  r=U(r,hose(q,vec3(TW*.32,HIP+TH*.4,zf),vec3(TW*.75,HIP-.12,TD*.9),vec3(.05,-.04,.1),.017),26.);}   // a hose into the chest
+ else if(uS==3){r=U(r,sdRBox(q-vec3(0.,HIP+TH*.6,-TD-.13),vec3(TW*.95,TH*.42,.13),.04),5.);   // the backpack
+  r=U(r,sdRBox(q-vec3(0.,HIP+TH*.6,TD+.07),vec3(TW*.42,.065,.07),.015),6.);   // the chest box
+  for(int i=0;i<3;i++)r=U(r,sdCap(q,vec3(-.05+.05*float(i),HIP+TH*.6+.06,TD+.09),vec3(-.05+.05*float(i),HIP+TH*.6+.09,TD+.09),.012),i==1?27.:17.);
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(q,JS[i]-vec3(sx*.03,0.,0.),JS[i]+vec3(sx*.015,0.,0.),AR*1.3),6.);}}   // shoulder bearings
+ else if(uS==4)r=U(r,sdRBox(q-vec3(0.,HIP+.05,0.),vec3(TW*1.05,.035,TD*1.08),.03),17.);   // the belt
+ else if(uS==5){for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(q,vec3(sx*TW*.6,SH-.04,TD+.004),vec3(0.,HIP+TH*.42,TD+.004),.01),28.);}   // the laced V
+  r=U(r,sdRBox(q-vec3(0.,HIP+.08,0.),vec3(TW*1.03,.022,TD*1.05),.02),28.);}
+ else if(uS==6){r=U(r,sdRBox(q-vec3(0.,HIP+TH*.7,TD*.9),vec3(TW*.74,TH*.15,.045),.035),30.);   // the padded chest
+  vec3 pk=vec3(TW*1.05+AR+.05,HIP+.02,.03);r=U(r,sdRBox(q-pk,vec3(.04,.12,.14),.03),25.);   // the slim ventilator pack
+  r=U(r,min(sdCap(q,vec3(-TW*.55,SH+.03,-.03),vec3(-TW*.42,SH-.03,TD*1.04),.016),sdCap(q,vec3(-TW*.42,SH-.03,TD*1.04),pk+vec3(-.02,.11,.06),.016)),17.);
+  r=U(r,hose(q,vec3(.03,HIP+.13,TD),pk+vec3(-.03,0.,.12),vec3(0.,-.06,.07),.014),26.);}
+ else if(uS==7){r=U(r,sdRBox(q-vec3(0.,HIP+TH*.66,-TD-.11),vec3(TW*.92,TH*.52,.12),.05),31.);   // the back door (the life support)
+  r=U(r,sdCap(q,vec3(TW+.02,HIP+.12,-TD-.18),vec3(TW+.02,HIP+.55,-TD+.02),.017),27.);   // its lever
+  for(int i=0;i<2;i++)r=U(r,sdCap(q,vec3(-TW*.9,HIP+TH*(.4+.5*float(i)),-TD-.23),vec3(-TW*.9,HIP+TH*(.52+.5*float(i)),-TD-.23),.025),20.);   // its hinges
+  vec3 pc=vec3(0.,HIP+TH*.16,TD+.1);r=U(r,sdRBox(q-pc,vec3(.1,.055,.035),.012),6.);   // the control panel on its lanyard
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(q,pc+vec3(sx*.08,.05,-.01),vec3(sx*TW*.55,HIP+TH*.78,TD+.01),.007),17.);}}
+ // arms and gloves
+ for(int i=0;i<2;i++){float L1=length(JE[i]-JS[i]),L2=length(JW[i]-JE[i]);
+  float d=limb(q,JS[i],JE[i],AR*1.1,AR,h);if(uS==1)d-=AR*.26*ribs(h,L1,1.,1.);r=U(r,d,limbMat(0,h));
+  d=limb(q,JE[i],JW[i],AR,AR*.9,h);if(uS==1)d-=AR*.26*ribs(h,L2,1.,0.);r=U(r,d,limbMat(1,h));
+  vec3 dir=normalize(JW[i]-JE[i]);r=U(r,length(q-JW[i]-dir*GR*.6)-GR,19.);
+  if(uS==0)r=U(r,length(q-JW[i]-dir*GR*1.5)-.014,22.);   // finger-tip lights
+  if(uS==2&&i==0)r=U(r,sdRBox(q-mix(JE[i],JW[i],.7)-vec3(0.,0.,AR*.95),vec3(.03,.022,.012),.004),20.);}   // the wrist mirror
+ // the ventilator case, carried by hand, two hoses from the belly
+ if(CASE){int ci=AM[0]==2?0:1;float sx=ci==0?-1.:1.;
+  r=U(r,sdRBox(q-CC,vec3(.06,.13,.19),.02),25.);
+  vec3 tp=CC+vec3(0.,.13,0.),hw=JW[ci]-vec3(0.,GR*.7,0.);r=U(r,min(sdCap(q,tp-vec3(0.,0.,.07),hw-vec3(0.,0.,.03),.011),sdCap(q,tp+vec3(0.,0.,.07),hw+vec3(0.,0.,.03),.011)),17.);
+  for(int k=0;k<2;k++){float o=k==0?-.035:.035;r=U(r,hose(q,vec3(sx*.02+o,HIP+.14,TD+.005),CC+vec3(-sx*.03,.1,.13+o),vec3(sx*.02,-.15,.1),.016),26.);}}
+ // the neck ring
+ if(uS<5){float nr=length(vec2(length(q.xz-vec2(0.,HC.z*.3))-R*(uS==1?.8:.78),(q.y-NECK-.01)*1.6))-(uS==1?.05:.028);r=U(r,nr,uS==0?21.:uS==1?28.:20.);}
+ // hard helmets: a shell with a faceplate opening (uFace: its half-size and centre, as direction cosines)
+ if(uS==0||uS==2||uS==3||uS==4){vec3 nl=normalize(hp);float mk=nl.z>0.?1.-length(vec2(nl.x/uFace.x,(nl.y-uFace.z)/uFace.y)):-1.;
+  float sd=abs(length(hp)-R)-.012;sd=max(sd,mk*R*.35);sd=max(sd,-(hp.y+R*.82));
+  if(uS==2)sd=min(sd,max(sdEll(hp-vec3(0.,-.06,-.07),vec3(R*.88,R*.78,R*.9)),-(hp.y+R*.95)));   // the launch helmet's long back and neck dam
+  r=U(r,sd,uS==4&&nl.y>.47&&nl.y<.7&&nl.z>-.25?16.:8.);
+  if(uS==4)r=U(r,max(max(abs(length(hp)-R-.008)-.009,abs(nl.y-.78)*R-.014),(.1-nl.z)*R),20.);   // the visor, slid up
+  if(uS==0)r=U(r,sdCap(hp,vec3(-R*.75,-R*.45,R*.25),vec3(-R*.15,-R*.56,R*.76),.008),17.);   // the mic boom
+  if(uS==2)for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(hp,vec3(sx*(R-.02),.0,-.01),vec3(sx*(R+.03),0.,-.01),.06),20.);}   // the clamshell's pivots
+  if(uS==3){for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdCap(hp,vec3(sx*R*.84,R*.48,-.06),vec3(sx*R*.84,R*.48,.07),.032),8.);r=U(r,length(hp-vec3(sx*R*.84,R*.48,.085))-.024,22.);}
+   r=U(r,sdRBox(hp-vec3(R*.84,R*.48+.055,.0),vec3(.026,.026,.045),.006),17.);}}   // lamps and the camera
+ // the head: a skull, a jaw, ears, a nose; eyes, pupils and a mouth; hair, or Apollo's Snoopy cap
+ vec3 hq=q-(HC+vec3(0.,-HEAD*.12,0.));
+ float hd=sdEll(hq,vec3(HEAD*.86,HEAD,HEAD*.9));
+ hd=smin(hd,sdRBox(hq-vec3(0.,-HEAD*.5,HEAD*.12),vec3(HEAD*.58,HEAD*.42,HEAD*.56),HEAD*.18),HEAD*.15);
+ hd=smin(hd,sdEll(hq-vec3(0.,-HEAD*.05,HEAD*.86),vec3(HEAD*.13,HEAD*.18,HEAD*.16)),HEAD*.06);
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;hd=smin(hd,sdEll(hq-vec3(sx*HEAD*.86,-HEAD*.05,0.),vec3(HEAD*.1,HEAD*.2,HEAD*.14)),HEAD*.04);}
+ r=U(r,hd,7.);
+ if(uS==1){float cp=sdEll(hq-vec3(0.,HEAD*.05,-HEAD*.04),vec3(HEAD*.95,HEAD*1.08,HEAD*1.)),fr=max(HEAD*.25-hq.z,hq.y-HEAD*.5);
+  cp=max(max(cp,-fr),-(hq.y+HEAD*.55));r=U(r,cp,23.);
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;r=U(r,sdEll(hq-vec3(sx*HEAD*.95,-HEAD*.08,0.),vec3(HEAD*.13,HEAD*.26,HEAD*.22)),23.);
+   r=U(r,sdCap(hq,vec3(sx*HEAD*.95,-HEAD*.3,HEAD*.12),vec3(sx*HEAD*.3,-HEAD*.52,HEAD*.88),.006),17.);}}
+ else{float hr=sdEll(hq-vec3(0.,HEAD*.04,-HEAD*.03),vec3(HEAD*.91,HEAD*1.04,HEAD*.95)),cut=hq.y-mix(-.15,.42,smoothstep(-.4,.7,hq.z/HEAD))*HEAD;
+  r=U(r,max(hr,-cut),15.);}
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;vec3 ec=hq-vec3(sx*HEAD*.36,HEAD*.16,HEAD*.8-.007);
+  r=U(r,length(ec)-.018,9.);r=U(r,length(ec-vec3(sx*-.0018,0.,.013))-.008,10.);
+  r=U(r,sdCap(hq,vec3(sx*HEAD*.22,HEAD*.38,HEAD*.84),vec3(sx*HEAD*.5,HEAD*.36,HEAD*.72),HEAD*.035),15.);}
+ vec3 mq=hq-vec3(0.,-HEAD*.42,HEAD*.82);float mo=sdCap(mq,vec3(-HEAD*.26,HEAD*.06,0.),vec3(HEAD*.26,HEAD*.06,0.),HEAD*.045);
+ r=U(r,max(mo,-(mq.y-HEAD*.02-abs(mq.x)*.3)),13.);
  return r;}
 vec2 map(vec3 p){
- vec2 r=vec2(p.y+.06,1.);   // the walkway's grating
- r.x=max(r.x,abs(p.z-.2)-1.45);r.x=max(r.x,abs(p.x)-6.);
- // railing on the open side (z = +1.6, behind the camera) and along the walkway's end (x = 3.3): posts, rails, a kick plate
- float rl=min(sdCap(p,vec3(-6.,1.05,1.6),vec3(6.,1.05,1.6),.025),sdCap(p,vec3(-6.,.55,1.6),vec3(6.,.55,1.6),.018));
- float px=p.x-clamp(floor(p.x/1.2+.5)*1.2,-6.,6.);rl=min(rl,sdCap(vec3(px,p.y,p.z),vec3(0.,0.,1.6),vec3(0.,1.05,1.6),.025));
- rl=min(rl,sdBox(p-vec3(0.,.06,1.6),vec3(6.,.06,.008)));
- vec3 sq=p-vec3(3.3,0.,0.);rl=min(rl,min(sdCap(sq,vec3(0.,1.05,-1.2),vec3(0.,1.05,1.6),.025),sdCap(sq,vec3(0.,.55,-1.2),vec3(0.,.55,1.6),.018)));
- float pz=sq.z-clamp(floor(sq.z/.95+.5)*.95,-1.2,1.6);rl=min(rl,sdCap(vec3(sq.x,sq.y,pz),vec3(0.),vec3(0.,1.05,0.),.025));if(rl<r.x)r=vec2(rl,2.);
- // the gantry behind: two red box columns with cross-bracing
- for(int i=0;i<2;i++){float gx=i==0?-3.4:3.6;float c=sdBox(p-vec3(gx,1.5,-2.6),vec3(.16,4.,.16));if(c<r.x)r=vec2(c,12.);}
- vec3 bq=p-vec3(.1,2.1,-2.75);float br=min(sdCap(bq,vec3(-3.4,-2.1,0.),vec3(3.6,2.,0.),.05),sdCap(bq,vec3(-3.4,2.,0.),vec3(3.6,-2.1,0.),.05));if(br<r.x)r=vec2(br,12.);
- // the capsule: a Mercury-like truncated cone, its axis at (−.55, ·, −1.25), the hatch in its side facing the walkway
- vec3 cq=p-vec3(-.55,1.25,-1.25);float cap=sdCone(cq,1.15,.95,.42);
- cap=min(cap,sdCap(cq,vec3(0.,1.15,0.),vec3(0.,1.55,0.),.3));   // the antenna canister
- float hole=sdRBox(cq-vec3(.2,-.25,.85),vec3(.32,.42,.5),.08);float shellIn=sdCone(cq,1.1,.88,.36);
- float hatchIn=max(hole,shellIn+.0);   // the cabin you see through the hatch
- cap=max(cap,-hole);if(cap<r.x)r=vec2(cap,3.);
- float inside=max(-shellIn,hole-.01);inside=max(inside,-(cq.y+1.1));if(hatchIn<r.x&&hatchIn<cap)r=vec2(hatchIn+.01,4.);
- // the hatch door, swung open on the side
- vec3 dq=cq-vec3(.62,-.25,.62);float dc=cos(1.1),ds=sin(1.1);dq.xz=mat2(dc,-ds,ds,dc)*dq.xz;float dr=sdRBox(dq-vec3(.3,0.,0.),vec3(.3,.4,.03),.05);if(dr<r.x)r=vec2(dr,14.);
+ vec2 r;
+ if(uStudio>.5)r=vec2(p.y,29.);
+ else{r=vec2(p.y+.06,1.);   // the walkway's grating, its railing, the gantry, the capsule with its hatch open
+  r.x=max(r.x,abs(p.z-.2)-1.45);r.x=max(r.x,abs(p.x)-6.);
+  float rl=min(sdCap(p,vec3(-6.,1.05,1.6),vec3(6.,1.05,1.6),.025),sdCap(p,vec3(-6.,.55,1.6),vec3(6.,.55,1.6),.018));
+  float px=p.x-clamp(floor(p.x/1.2+.5)*1.2,-6.,6.);rl=min(rl,sdCap(vec3(px,p.y,p.z),vec3(0.,0.,1.6),vec3(0.,1.05,1.6),.025));
+  rl=min(rl,sdBox(p-vec3(0.,.06,1.6),vec3(6.,.06,.008)));
+  vec3 sq=p-vec3(3.3,0.,0.);rl=min(rl,min(sdCap(sq,vec3(0.,1.05,-1.2),vec3(0.,1.05,1.6),.025),sdCap(sq,vec3(0.,.55,-1.2),vec3(0.,.55,1.6),.018)));
+  float pz=sq.z-clamp(floor(sq.z/.95+.5)*.95,-1.2,1.6);rl=min(rl,sdCap(vec3(sq.x,sq.y,pz),vec3(0.),vec3(0.,1.05,0.),.025));r=U(r,rl,2.);
+  for(int i=0;i<2;i++){float gx=i==0?-3.4:3.6;r=U(r,sdBox(p-vec3(gx,1.5,-2.6),vec3(.16,4.,.16)),12.);}
+  vec3 bq=p-vec3(.1,2.1,-2.75);r=U(r,min(sdCap(bq,vec3(-3.4,-2.1,0.),vec3(3.6,2.,0.),.05),sdCap(bq,vec3(-3.4,2.,0.),vec3(3.6,-2.1,0.),.05)),12.);
+  vec3 cq=p-vec3(-.55,1.25,-1.25);float cap=sdCone(cq,1.15,.95,.42);cap=min(cap,sdCap(cq,vec3(0.,1.15,0.),vec3(0.,1.55,0.),.3));
+  float hole=sdRBox(cq-vec3(.2,-.25,.85),vec3(.32,.42,.5),.08),shellIn=sdCone(cq,1.1,.88,.36),hatchIn=max(hole,shellIn);
+  cap=max(cap,-hole);r=U(r,cap,3.);if(hatchIn<r.x&&hatchIn<cap)r=vec2(hatchIn+.01,4.);
+  vec3 dq=cq-vec3(.62,-.25,.62);float dc=cos(1.1),ds=sin(1.1);dq.xz=mat2(dc,-ds,ds,dc)*dq.xz;r=U(r,sdRBox(dq-vec3(.3,0.,0.),vec3(.3,.4,.03),.05),14.);}
  vec2 a=mapA(p);if(a.x<r.x)r=a;
  return r;}
 vec3 nrm(vec3 p){vec2 e=vec2(.0007,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
 float shadow(vec3 o,vec3 d){float res=1.,t=.02;for(int i=0;i<48;i++){float h=map(o+d*t).x;res=min(res,10.*h/t);t+=clamp(h,.02,.4);if(res<.002||t>12.)break;}return clamp(res,0.,1.);}
-float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.04*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-2.2*a,0.,1.);}
 vec3 sky(vec3 d){vec3 c=mix(vec3(.62,.74,.86),vec3(.24,.45,.78),pow(max(d.y,0.),.6));
- if(d.y<0.){float t=-24./d.y;vec2 g=(uCam.xz+d.xz*t)*.02;float f=exp(-t*.0016);vec3 gr=mix(vec3(.38,.5,.3),vec3(.66,.62,.5),step(.5,hash(floor(g))));c=mix(c,gr,f);}   // the ground far below
+ if(d.y<0.){float t=-24./d.y;vec2 g=(uCam.xz+d.xz*t)*.02;float f=exp(-t*.0016);vec3 gr=mix(vec3(.38,.5,.3),vec3(.66,.62,.5),step(.5,hash(floor(g))));c=mix(c,gr,f);}
  c+=vec3(1.,.9,.7)*pow(max(dot(d,SUN),0.),400.)*4.;return c;}
-vec3 albedo(float m,vec3 p,vec3 n){
- if(m<1.5){vec2 g=fract(p.xz*vec2(18.,6.));return vec3(.42,.43,.42)*(.55+.45*step(.18,g.x)*step(.15,g.y));}   // grating
+vec3 studioBg(vec3 d){return mix(vec3(.6,.64,.7),vec3(.44,.5,.6),clamp(d.y*2.+.4,0.,1.));}
+vec3 albedo(float m,vec3 p){vec3 q=toL(p);
+ if(m<1.5){vec2 g=fract(p.xz*vec2(18.,6.));return vec3(.42,.43,.42)*(.55+.45*step(.18,g.x)*step(.15,g.y));}
  if(m<2.5)return vec3(.75,.16,.1);
- if(m<3.5){float rib=.5+.5*cos((atan(p.z+1.25,p.x+.55))*80.);return vec3(.08,.085,.1)*(.8+.4*rib);}   // shingles
+ if(m<3.5){float rib=.5+.5*cos((atan(p.z+1.25,p.x+.55))*80.);return vec3(.08,.085,.1)*(.8+.4*rib);}
  if(m<4.5)return vec3(.18,.17,.15);
- if(m<5.5)return uSuit;if(m<6.5)return uTrim;if(m<7.5)return uSkin;if(m<8.5)return uShell;
+ if(m<5.5)return uC1;if(m<6.5)return uC2;if(m<7.5)return SKIN;if(m<8.5)return uShell;
  if(m<9.5)return vec3(.96);if(m<10.5)return vec3(.03,.04,.06);if(m<11.5)return uBootC;if(m<12.5)return vec3(.68,.18,.1);if(m<13.5)return vec3(.35,.08,.07);
- if(m<14.5)return vec3(.1,.1,.11);if(m<15.5)return uHair;
- if(m<16.5){float l=step(.5,fract(p.x*55.));return mix(uShell,uBand,.35+.65*l);}   // the lettered band (a stripe of letters)
- if(m<17.5)return uSuit*.92;if(m<18.5)return uStripe;return uShell;}   // backpack, role stripe, the soft hood
-// the helmet's glass: an analytic sphere over the faceplate (or the whole bowl)
-float glassT(vec3 ro,vec3 rd,out vec3 gn){vec3 q=A;float c=cos(.35),s=sin(.35);
- float hip=uLegL+uBoot.y*1.2,sh=hip+uTH,neck=sh+uHead*.25;vec3 hcL=vec3(0.,neck+uHead*1.05,uHead*.05);
- vec3 hc=A+vec3(c*hcL.x+s*hcL.z,hcL.y,-s*hcL.x+c*hcL.z);
- vec3 oc=ro-hc;float b=dot(oc,rd),cc=dot(oc,oc)-uHelmR*uHelmR,h=b*b-cc;if(h<0.)return -1.;float t=-b-sqrt(h);if(t<0.)return -1.;
- gn=normalize(ro+rd*t-hc);vec3 f=normalize(vec3(0.,.12,1.));f.xz=vec2(c*f.x+s*f.z,-s*f.x+c*f.z);
- if(dot(gn,f)<uOpen||dot(gn,vec3(0.,1.,0.))<-.82)return -1.;return t;}
+ if(m<14.5)return vec3(.1,.1,.11);if(m<15.5)return HAIR;
+ if(m<16.5){vec3 hp=q-HC;float a=atan(hp.x,hp.z),f=fract(a*3.4+.5),y=(normalize(hp).y-.47)/.23;   // four block letters across the brow
+  float l=step(abs(a),.6)*step(.18,f)*step(f,.82)*(1.-step(.38,f)*step(f,.62)*step(.3,y)*step(y,.7));return mix(uShell,uAcc,l);}
+ if(m<17.5)return vec3(.13,.13,.14);if(m<18.5)return uStripe;if(m<19.5)return uGloveC;
+ if(m<20.5)return vec3(.72,.74,.78);if(m<21.5)return vec3(.92,.7,.26);if(m<22.5)return vec3(1.,.96,.8);
+ if(m<23.5){vec3 hq=q-HC-vec3(0.,-HEAD*.12,0.);return (hq.y>-HEAD*.05&&abs(hq.x)<HEAD*.52)?vec3(.96,.96,.94):vec3(.17,.12,.09);}
+ if(m<24.5)return vec3(.25,.22,.15);
+ if(m<25.5)return vec3(.58,.63,.66)*(1.-.25*step(.84,fract(q.y*14.)));
+ if(m<26.5)return vec3(.6,.61,.6)*(.82+.18*step(.5,fract(length(q-vec3(0.,HIP,TD))*90.)));
+ if(m<27.5)return vec3(.82,.14,.1);if(m<28.5)return vec3(.16,.34,.74);if(m<29.5)return vec3(.66,.68,.72);
+ if(m<30.5)return uC1*.8;
+ if(m<31.5){vec3 dq=q-vec3(0.,HIP+TH*.66,-TD-.11);float e=max(abs(dq.x)/(TW*.78),abs(dq.y)/(TH*.44));
+  float hinge=step(abs(dq.x+TW*.78),.012)*step(.3,fract(dq.y*6.));return e>.95&&e<1.02||hinge>.5?vec3(.12):uC1;}   // the door's seam and hinge
+ return vec3(.03);}
+// glass: an analytic sphere over the faceplate (or the whole bubble), or Orlan's flat visor; in the astronaut's frame
+float glassT(vec3 ro,vec3 rd,out vec3 gn){float k=uFace.w;vec3 lo=toL(ro),ld=dirL(rd);
+ if(k>2.5&&k<3.5){float zv=HC.z+.02+.15;if(abs(ld.z)<1e-4)return -1.;float t=(zv-lo.z)/ld.z;if(t<0.)return -1.;vec3 hp=lo+ld*t-HC;
+  if(abs(hp.x)>uFace.x||abs(hp.y-uFace.z)>uFace.y)return -1.;gn=dirW(normalize(vec3(hp.x*1.5,(hp.y-uFace.z)*1.5,1.)));return t;}
+ float R=uHelmR+.003;vec3 oc=lo-HC;float b=dot(oc,ld),cc=dot(oc,oc)-R*R,h=b*b-cc;if(h<0.)return -1.;float t=-b-sqrt(h);if(t<0.)return -1.;
+ vec3 nl=normalize(oc+ld*t);
+ if(k>1.5&&k<2.5){if(nl.y<-.82)return -1.;}else if(nl.z<0.||length(vec2(nl.x/uFace.x,(nl.y-uFace.z)/uFace.y))>1.)return -1.;
+ gn=dirW(nl);return t;}
 void main(){
+ skel();
  vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
  vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;
  float t=0.,mn=1e9,tMn=0.;vec2 h=vec2(0.);bool hit=false;
- for(int i=0;i<200;i++){h=map(ro+rd*t);float r=h.x/max(t,.3);if(r<mn&&t>.5){mn=r;tMn=t;}if(h.x<.0006*t){hit=true;break;}t+=h.x*.9;if(t>60.)break;}
- vec3 col;
- if(!hit)col=sky(rd);
- else{vec3 p=ro+rd*t,n=nrm(p);float m=h.y;vec3 al=albedo(m,p,n);
-  if(m>4.5&&m<5.5||m>16.5&&m<17.5||m>18.5)n=normalize(n+.035*(vec3(hash(floor(p.xy*45.)),hash(floor(p.yz*45.)),hash(floor(p.zx*45.)))-.5)*(1.-uToon));   // fabric
-  float dif=max(dot(n,SUN),0.),sha=shadow(p+n*.004,SUN),oc=ao(p,n);vec3 skyC=vec3(.45,.55,.7),bnc=vec3(.32,.3,.27);
-  if(uToon>.5){float l=dif*sha;l=l<.12?.3:l<.55?.68:1.;col=al*(l*vec3(1.,.97,.9)*.95+.18*skyC);}   // three flat bands
-  else{col=al*(dif*sha*vec3(1.,.96,.88)*1.25+oc*(skyC*(.5+.5*n.y)*.55+bnc*(.5-.5*n.y)*.35));
-   bool metal=(m>4.5&&m<6.5||m>7.5&&m<8.5||m>10.5&&m<11.5)&&uMetal>.5;
-   vec3 rf=reflect(rd,n);float fr=.04+.96*pow(1.-max(dot(-rd,n),0.),5.);
-   if(metal){vec3 env=sky(rf)*shadow(p+n*.004,rf)*.9+.1;col=mix(col,al*env*1.1,.65);}
-   col+=vec3(1.)*pow(max(dot(rf,SUN),0.),metal?60.:28.)*sha*(metal?.9:.12);
-   col+=fr*sky(rf)*.06*oc;}
-  col=mix(col,sky(rd),1.-exp(-max(t-14.,0.)*.03));}
- // ink outline (stylised): silhouettes where the ray grazed something nearer than what it hit
- if(uToon>.5&&mn<.0035&&(!hit||t>tMn+.15))col*=.08;
- // the helmet's glass: tint, fresnel reflection of the sky, a sun glint
- vec3 gn;float tg=glassT(ro,rd,gn);
- if(tg>0.&&(!hit||tg<t)){float fr=.08+.92*pow(1.-max(dot(-rd,gn),0.),4.);vec3 rf=reflect(rd,gn);
-  if(uGold>.5){col=mix(col*.15,vec3(.9,.66,.22)*(.35+.65*sky(rf).b),.85)+vec3(1.,.9,.6)*pow(max(dot(rf,SUN),0.),60.)*.8;}else
-  col=col*vec3(.86,.9,.94)*(1.-fr*.6)+sky(rf)*fr*.55+vec3(1.,.95,.85)*pow(max(dot(rf,SUN),0.),uToon>.5?20.:120.)*(uToon>.5?.7:2.);
-  if(uToon>.5){float rim=1.-abs(dot(rd,gn));col=mix(col,vec3(.03),smoothstep(.93,.97,rim));}}
+ for(int i=0;i<220;i++){h=map(ro+rd*t);float r=h.x/max(t,.3);if(r<mn&&t>.5&&(uStudio<.5||h.y>4.5&&h.y<28.5||h.y>29.5)){mn=r;tMn=t;}if(h.x<.0005*t){hit=true;break;}t+=h.x*.9;if(t>60.)break;}
+ vec3 col,bgc=uStudio>.5?studioBg(rd):sky(rd);
+ bool steppe=uS>3&&uS<7;   // the canvas suits (Orlan is hard)
+ if(!hit)col=bgc;
+ else{vec3 p=ro+rd*t,n=nrm(p);float m=h.y;vec3 al=albedo(m,p);
+  bool fab=m>4.5&&m<6.5||m>29.5&&m<30.5||m>7.5&&m<8.5&&uS==5;
+  if(fab&&steppe){vec3 q=toL(p);n=normalize(n+.11*vec3(sin(q.y*34.+sin(q.x*23.)*2.),0.,cos(q.y*27.+q.z*19.)));}   // canvas creases
+  float dif=max(dot(n,SUN),0.),sha=shadow(p+n*(m>28.5&&m<29.5?.02:.004),SUN),l=dif*sha;l=l<.12?.3:l<.55?.68:1.;   // three flat bands
+  col=al*(l*vec3(1.,.97,.9)*.95+.18*vec3(.45,.55,.7));
+  vec3 rf=reflect(rd,n);
+  bool metal=m>19.5&&m<21.5||uS==0&&(m>4.5&&m<5.5||m>7.5&&m<8.5||m>10.5&&m<11.5||m>18.5&&m<19.5);
+  bool gloss=!steppe&&(m>4.5&&m<6.5||m>10.5&&m<11.5)||m>7.5&&m<8.5&&uS!=5&&uS!=6||m>24.5&&m<25.5;
+  if(metal){float e=rf.y>.06?1.05+.35*rf.y:rf.y>-.04?.35:.22;col=al*e*(l>.5?1.1:.8);col+=step(.9,dot(rf,SUN))*.7;}   // illustration chrome: bright above the horizon line, dark below
+  else if(gloss)col+=vec3(1.)*step(.95,dot(rf,SUN))*sha*.35;   // a hard gloss highlight; canvas has none
+  if(m>21.5&&m<22.5)col=al*1.25;
+  if(m>28.5&&m<29.5)col=mix(col,bgc,smoothstep(4.,12.,t));
+  if(uStudio<.5)col=mix(col,sky(rd),1.-exp(-max(t-14.,0.)*.03));}
+ if(mn<.0035&&(!hit||t>tMn+.15))col*=.08;   // ink outline
+ vec3 gn;float tg=glassT(ro,rd,gn);bool glass=tg>0.&&(!hit||tg<t);
+ if(glass){float fr=.08+.92*pow(1.-max(dot(-rd,gn),0.),4.);vec3 rf=reflect(rd,gn);
+  if(uFace.w>3.5)col=mix(col*.15,vec3(.92,.68,.22)*(.4+.6*smoothstep(-.1,.3,rf.y)),.88)+vec3(1.,.9,.6)*step(.93,dot(rf,SUN))*.8;   // the gold visor
+  else col=col*vec3(.86,.9,.94)*(1.-fr*.6)+sky(rf)*fr*.55+vec3(1.,.95,.85)*pow(max(dot(rf,SUN),0.),20.)*.7;
+  float rim=1.-abs(dot(rd,gn));col=mix(col,vec3(.03),smoothstep(.93,.97,rim));}
+ if(uSil>.5){bool fig=glass||hit&&h.y>4.5&&h.y<28.5||hit&&h.y>29.5;o=vec4(vec3(fig?0.:1.),1.);return;}
  col=col/(1.+col*.25);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
@@ -224,30 +346,88 @@ gl.useProgram(prog);
 const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
 const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
 const U = n => gl.getUniformLocation(prog, n);
-// the helmet's centre in the world, for the close-up (mirrors the shader's mapA)
-function helmetC(s) { const hip = s.legL + s.boot[1] * 1.2, sh = hip + s.torsoH, neck = sh + s.head * .25, y = neck + s.head * 1.05, z = s.head * .05, c = Math.cos(.35), sn = Math.sin(.35);
-  return [.75 + sn * z, y, .05 + c * z]; }
-function draw() {
-  const S = SUITS[ST.suit], s = Object.assign({}, STYLES.c, { suit: S.suit, trim: S.trim, metal: S.metal || 0, open: S.open ?? STYLES.c.open }), dpr = Math.min(2, devicePixelRatio || 1);
-  cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); gl.viewport(0, 0, cv.width, cv.height);
-  gl.uniform2f(U('uRes'), cv.width, cv.height);
-  const hc = helmetC(s);
-  if (ST.shot === 'wide') { gl.uniform3f(U('uCam'), 2.9, 1.3, 1.45); gl.uniform3f(U('uTgt'), .2, .95, -.45); gl.uniform1f(U('uFov'), .9); }
-  else { const r = s.helmR; gl.uniform3f(U('uCam'), hc[0] + r * 1.9, hc[1] + r * .4, hc[2] + r * 3.1); gl.uniform3f(U('uTgt'), hc[0], hc[1] - r * .1, hc[2]); gl.uniform1f(U('uFov'), .5); }
-  for (const [k, n] of [['H', 'uH'], ['head', 'uHead'], ['helmR', 'uHelmR'], ['open', 'uOpen'], ['torsoW', 'uTW'], ['torsoD', 'uTD'], ['torsoH', 'uTH'], ['legL', 'uLegL'],
-    ['legR', 'uLegR'], ['armL', 'uArmL'], ['armR', 'uArmR'], ['glove', 'uGlove'], ['eye', 'uEye'], ['toon', 'uToon'], ['metal', 'uMetal'], ['jaw', 'uJaw'], ['hairOn', 'uHairOn']]) gl.uniform1f(U(n), s[k]);
-  for (const [k, n] of [['boot', 'uBoot'], ['suit', 'uSuit'], ['trim', 'uTrim'], ['skin', 'uSkin'], ['hair', 'uHair']]) gl.uniform3fv(U(n), s[k]);
-  gl.uniform3fv(U('uBootC'), S.boot); gl.uniform3fv(U('uShell'), S.shell); gl.uniform3fv(U('uBand'), S.band || [0, 0, 0]); gl.uniform3fv(U('uStripe'), ROLES[ST.role]);
-  for (const [k, n] of [['band', 'uBandOn'], ['hood', 'uHood'], ['gold', 'uGold'], ['pack', 'uPack'], ['rigid', 'uRigid']]) gl.uniform1f(U(n), S[k] ? 1 : 0);
-  gl.uniform1f(U('uBulk'), S.bulk || 1);
+const YAW = .35, AX = .75, AZ = .05;
+// the helmet's centre in the world (mirrors the shader's skel())
+function helmetC(pose) { const w = pose === 'walk' ? 1 : 0, hip = .09 + .391 * (Math.cos(.34 * w) + Math.cos(.04 * w)), z = .13 * .05;
+  return [AX + Math.sin(YAW) * z, hip + .55 + .13 * .25 + .13 * 1.05, AZ + Math.cos(YAW) * z]; }
+// one frame of one suit into the WebGL canvas at w×h: o = { suit, role, pose, shot, sil, d (studio distance) }
+function render(o, w, h) {
+  const S = SUITS[o.suit];
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  gl.viewport(0, 0, w, h); gl.uniform2f(U('uRes'), w, h);
+  const studio = o.shot === 'front' || o.shot === 'back';
+  if (o.shot === 'pad') { gl.uniform3f(U('uCam'), 2.9, 1.3, 1.45); gl.uniform3f(U('uTgt'), .2, .95, -.45); gl.uniform1f(U('uFov'), .9); }
+  else if (o.shot === 'close') { const hc = helmetC(o.pose), r = S.helmR;
+    gl.uniform3f(U('uCam'), hc[0] + r * 1.9, hc[1] + r * .4, hc[2] + r * 3.1); gl.uniform3f(U('uTgt'), hc[0], hc[1] - r * .15, hc[2]); gl.uniform1f(U('uFov'), .55); }
+  else { const ph = YAW + (o.shot === 'back' ? Math.PI - .7 : .5), d = o.d || 4.6;
+    gl.uniform3f(U('uCam'), AX + Math.sin(ph) * d, 1.2, AZ + Math.cos(ph) * d); gl.uniform3f(U('uTgt'), AX, 1., AZ); gl.uniform1f(U('uFov'), 2.3 / d); }
+  gl.uniform1i(U('uS'), S.n); gl.uniform1f(U('uPose'), o.pose === 'walk' ? 1 : 0); gl.uniform1f(U('uStudio'), studio ? 1 : 0); gl.uniform1f(U('uSil'), o.sil ? 1 : 0);
+  gl.uniform1f(U('uHelmR'), S.helmR); gl.uniform4fv(U('uFace'), S.face); gl.uniform4fv(U('uBody'), S.body);
+  for (const [k, n] of [['c1', 'uC1'], ['c2', 'uC2'], ['boot', 'uBootC'], ['glove', 'uGloveC'], ['shell', 'uShell'], ['acc', 'uAcc']]) gl.uniform3fv(U(n), S[k]);
+  gl.uniform3fv(U('uStripe'), ROLES[o.role || 'pilot']);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
-  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.suit === ST.suit || b.dataset.role === ST.role || b.dataset.shot === ST.shot));
-  document.getElementById('cap').textContent = S.cap + ' · stripe: ' + ST.role;
+}
+// ---- the brief's checks, drawn as sheets on a 2D canvas from tiles rendered one suit at a time
+const shc = document.getElementById('sh'), cx = shc.getContext('2d');
+function tile(o, w, h) { render(o, w, h); const c = document.createElement('canvas'); c.width = w; c.height = h; c.getContext('2d').drawImage(cv, 0, 0); return c; }
+function shrink(src, w, h) { let c = src;   // halve in steps, so a big shrink doesn't alias
+  while (c.width / 2 >= w) { const n = document.createElement('canvas'); n.width = Math.round(c.width / 2); n.height = Math.round(c.height / 2);
+    const x = n.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, n.width, n.height); c = n; }
+  const n = document.createElement('canvas'); n.width = w; n.height = h; const x = n.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(c, 0, 0, w, h); return n; }
+function text(s, x, y, o = {}) { cx.font = `${o.b ? '600 ' : ''}${o.s || 12}px system-ui, sans-serif`; cx.fillStyle = o.c || '#22262e'; cx.textAlign = o.a || 'center'; cx.fillText(s, x, y); }
+const ERAS = ['early', 'middle', 'late', 'eva'], ERA_N = { early: 'early', middle: 'middle', late: 'late', eva: 'spacewalk' };
+function sheet(kind) {
+  const W = innerWidth, H = innerHeight; shc.width = W; shc.height = H; cx.fillStyle = '#f4f2ee'; cx.fillRect(0, 0, W, H);
+  const role = ST.role;
+  if (kind === 'lineup') {   // all eight in the walkout, schools in rows, eras in columns
+    text('All eight, walking out: Cape (top) and Steppe; early, middle, late, spacewalk', W / 2, 22, { b: 1, s: 14 });
+    const cw = W / 4, ch = (H - 34) / 2;
+    ORDER.forEach((k, i) => { const x = (i % 4) * cw, y = 34 + Math.floor(i / 4) * ch, S = SUITS[k];
+      cx.drawImage(tile({ suit: k, role, pose: 'walk', shot: 'front' }, Math.round(cw), Math.round(ch - 36)), x, y);
+      text(`${S.name} (${S.real})`, x + cw / 2, y + ch - 22, { b: 1 }); text(S.sig, x + cw / 2, y + ch - 7, { c: '#5a606b', s: 11 }); });
+  } else if (kind === 'sil') {   // check 1: black fills in a row, walking out and standing; each must be nameable without colour
+    text('Check 1: silhouettes. Each should be nameable without colour (top: walking out; bottom: standing)', W / 2, 22, { b: 1, s: 14 });
+    const step = W / 8, th = Math.round((H - 70) / 2), tw = Math.round(th * .58);
+    cx.globalCompositeOperation = 'darken';
+    ['walk', 'stand'].forEach((pose, r) => ORDER.forEach((k, i) => cx.drawImage(tile({ suit: k, pose, shot: 'front', sil: 1 }, tw, th), step * (i + .5) - tw / 2, 32 + r * (th + 4))));
+    cx.globalCompositeOperation = 'source-over';
+    ORDER.forEach((k, i) => text(SUITS[k].name, step * (i + .5), H - 14, { b: 1 }));
+  } else if (kind === 'grey') {   // check 2: greyscale at a third of the size, the two suits of each era side by side
+    text('Check 2: grey squint. At a third of the size, in grey, the two suits of each era should still read apart', W / 2, 22, { b: 1, s: 14 });
+    const fw = 300, fh = 380, sw = fw / 3, shh = fh / 3, gw = W / 4;
+    ERAS.forEach((e, j) => { const x0 = gw * j + gw / 2;
+      ['cape', 'steppe'].forEach((s, i) => { const t = tile({ suit: `${s}-${e}`, role, pose: 'walk', shot: 'front' }, fw * 2, fh * 2);
+        const g = shrink(t, sw, shh); cx.filter = 'grayscale(1)'; cx.drawImage(g, x0 - sw + i * sw, 60); cx.filter = 'none';
+        cx.drawImage(shrink(t, sw * 1.5, shh * 1.5), x0 - sw * 1.5 + i * sw * 1.5, 250);
+        text(s === 'cape' ? 'Cape' : 'Steppe', x0 - sw / 2 + i * sw, 60 + shh + 14, { s: 11 }); });
+      text(ERA_N[e], x0, 50, { b: 1 }); });
+    text('↑ in grey, a third of the size', W / 2, 222, { c: '#5a606b', s: 11 }); text('↑ in colour, half the size, for reference', W / 2, 250 + shh * 1.5 + 18, { c: '#5a606b', s: 11 });
+  } else if (kind === 'thumb') {   // check 3: each at 48 px tall, as the game's crew lists show them; then the same pixels ×4
+    text('Check 3: 48 px tall, as crew lists show them (top: true size; below: the same pixels, enlarged ×4)', W / 2, 22, { b: 1, s: 14 });
+    const step = W / 8;
+    ORDER.forEach((k, i) => { const t = tile({ suit: k, role, pose: 'stand', shot: 'front', d: 3.4 }, 320, 400);   // the figure fills ~85% of the tile's height
+      const s = shrink(t, Math.round(48 / .85 * .8), Math.round(48 / .85));
+      cx.drawImage(s, step * (i + .5) - s.width / 2, 40);
+      cx.imageSmoothingEnabled = false; cx.drawImage(s, step * (i + .5) - s.width * 2, 130, s.width * 4, s.height * 4); cx.imageSmoothingEnabled = true;
+      text(SUITS[k].name, step * (i + .5), 130 + s.height * 4 + 18, { b: 1 }); });
+  }
+}
+function draw() {
+  document.body.classList.toggle('sheet', !!ST.sheet);
+  if (ST.sheet) sheet(ST.sheet);
+  else { const dpr = Math.min(2, devicePixelRatio || 1); render(ST, Math.round(innerWidth * dpr), Math.round(innerHeight * dpr)); }
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', ST.sheet ? b.dataset.sheet === ST.sheet || b.dataset.role === ST.role
+    : b.dataset.suit === ST.suit || b.dataset.role === ST.role || b.dataset.pose === ST.pose || b.dataset.shot === ST.shot));
+  const S = SUITS[ST.suit];
+  document.getElementById('cap').textContent = ST.sheet ? 'The brief\'s checks (CREW.md § "The suit brief, round 2"). Pick a suit to leave the sheet.'
+    : `${S.name} (${S.real}): ${S.cap}. Signature: ${S.sig}. Stripe: ${ST.role}.`;
   window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
 }
-document.getElementById('suits').innerHTML = Object.keys(SUITS).map(k => `<button data-suit="${k}">${k.replace('-', ' ')}</button>`).join('');
+document.getElementById('suits').innerHTML = ORDER.map(k => `<button data-suit="${k}">${SUITS[k].name.replace('spacewalk', 'EVA')}</button>`).join('');
 document.getElementById('bar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.suit) ST.suit = b.dataset.suit; if (b.dataset.role) ST.role = b.dataset.role; if (b.dataset.shot) ST.shot = b.dataset.shot; draw(); });
+  if (b.dataset.sheet) ST.sheet = b.dataset.sheet;
+  else { if (!b.dataset.role) ST.sheet = ''; for (const k of ['suit', 'role', 'pose', 'shot']) if (b.dataset[k]) ST[k] = b.dataset[k]; }
+  draw(); });
 addEventListener('resize', draw); draw();
 </script>
 </body>

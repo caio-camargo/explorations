@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -128,12 +128,61 @@ Default if silent: **(a)**, as D11 recommends.
 
 **Pick:** _(Caio)_
 
-## suits/ — the suit lines by school and era (QUEUE Q199 → D9, CREW.md § Part 1)
+## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 
-Open `suits/index.html` (bar: suit, role, shot) or the stills in `output/launchpad/mockups/suits/` (`<suit>-<wide|close>.png`,
-`role-<role>.png`, `sheet-wide.png` / `sheet-close.png` with all eight side by side; 1280×800). The stylised human (W19) in
-the crew mock-up's scene, on CREW 0.2.3's defaults: three launch-suit generations per school plus a spacewalk suit, and a
-role stripe round the upper arms. Shapes stay the stylised figure's; what changes is colour, helmet, bulk and backpack.
+### Round 2 (QUEUE Q219, CREW.md 0.2.4; Caio on round 1: "too samey across epochs and for the two schools")
+
+Open `suits/index.html`. The bar picks a suit, the role stripe, the pose (standing, or the walkout) and the shot: on the
+crew arm, the helmet, the studio, or from behind (for Orlan's door). The last four buttons draw the brief's checks as
+sheets. Stills are in `output/launchpad/mockups/suits/` (1280×800):
+- the sheets: `r2-sheet-lineup.png`, `r2-check1-silhouettes.png`, `r2-check2-grey.png`, `r2-check3-48px.png`;
+- per suit: `r2-<suit>-walk.png` and `r2-<suit>-close.png`, plus `r2-steppe-eva-back.png` and `r2-steppe-middle-pad.png`.
+
+Round 1's stills moved to `round1/`.
+
+Each suit is now built from its own pieces in the shader, not one body recoloured.
+- **Cape** is hard shells and gloss, with metal hardware on show and hoses into the chest.
+- **Steppe** is canvas: matte, creased shading, laces and hoods. Its hoses go into the belly, and on the early and
+  middle suits they run to a ventilator case carried by hand.
+- **Era** reads through mass: slim early suits, jointed middle ones, bulky or padded late ones, boxy spacewalk ones.
+
+| Suit | Built from | Signature |
+|---|---|---|
+| **Cape early** (Mercury) | aluminised silver drawn as illustration chrome (bright above the horizon line, dark below); slim, with bloused knees; gold connectors and a hose loop on the chest; a small round shell with an oval faceplate, a gold neck ring and a mic boom | mirror silver; finger-tip lights |
+| **Cape middle** (Apollo) | white; bellows ribs at the shoulders, elbows and knees; four red and blue connectors and a diagonal zip; a big blue neck ring under the **all-glass bubble**, with a **Snoopy cap** (white crown, dark sides, ear cups, mic booms) inside it | the bubble over the cap; the bellows |
+| **Cape late** (Shuttle launch-and-entry) | **international orange**, a padded "pumpkin" (the widest suit); black boots and gloves; a parachute harness with a buckle; a hose into the chest; a white helmet with a wide visor, big clamshell pivots and a long back; a mirror on the wrist | the orange and the harness |
+| **Cape spacewalk** (EMU) | a hard upper torso over soft trousers, with shoulder bearings; a big backpack; a **chest control box** with knobs; red identity bands on the legs; a white shell with a gold visor, **two lamps and a camera** | the chest box, the lamps |
+| **Steppe early** (SK-1) | an orange coverall with a black belt and high black boots; a big white shell with red block letters across the brow and the visor slid up above them; two hoses from the belly to the **ventilator case in hand** | the lettered helmet, the case |
+| **Steppe middle** (Sokol) | warm off-white canvas, creased; **blue lacing straps** round every limb, a **laced V** on the chest and a blue waist strap; the **hood sewn to the suit** (it melts into the shoulders, with no neck ring), a metal visor ring on hinges; the case and its hoses | the soft hood, the blue lacing |
+| **Steppe late** | **grey-green** enamel with orange flashes at the shoulders and cuffs; a padded chest panel and knee pads; a hard hood in a lighter green with the visor ring kept from Sokol; the ventilator is now a slim **pack on a shoulder strap**, with a short hose to the belly | the grey-green |
+| **Steppe spacewalk** (Orlan) | a **fridge**: one rigid box from hips to helmet, with no neck; short stiff arms standing off the body; red arm bands and blue leg bands; a boxy helmet with a **large flat visor** and **lamps on both "ears"**; a control panel on a lanyard; from behind, the **door** (the backpack, with its seam, hinges and red lever) | the back door |
+
+**The checks** (CREW.md's four, run before showing):
+1. **Silhouettes.** All eight can be told apart in black, walking and standing. The weakest pair standing is Apollo and
+   SK-1 (both a big round helmet); SK-1's case separates them.
+2. **Grey squint.** Each era's pair reads apart at a third of the size. Late was the weak one: Shuttle orange and
+   grey-green came out the same grey, so the enamel is darker now (the pumpkin's bulk also separates them).
+3. **48 px.** These signatures survive: the silver, the bubble's ring, the orange and harness, the gold visor, the case,
+   the blue laces, the green, Orlan's bands. These are lost at that size: Apollo's bellows, Mercury's finger-tip lights,
+   and the SK-1 letters (a red smudge on the brow). Orlan's door only shows from behind.
+4. **Walkout.** It's the default pose: a stride with one arm waving, and the case or pack in the other hand on the
+   Steppe suits.
+
+**Open:**
+- Cape late moved to the Shuttle's orange suit by the design desk's default. The sleek white-and-black suit goes to
+  Foundry (POWERS 1.1.0). This is Caio's to override.
+- The role stripes are unchanged (pilot blue, scientist green, engineer yellow), but each is now edged in ink, so pilot
+  blue reads even on the Sokol's blue lacing.
+- SK-1 and the Shuttle suit are both orange, but in different eras, so the brief's colour rules allow it. Their
+  silhouettes are far apart.
+
+**Pick:** _(Caio)_
+
+### Round 1 (QUEUE Q199, CREW 0.2.3's defaults; superseded by round 2)
+
+The page now shows round 2. Round 1's stills are in `output/launchpad/mockups/suits/round1/`; its page is in git history
+(`b999a54`). It was one stylised figure, recoloured, with a few toggles (a hood, a backpack, a gold visor). Six of the
+eight suits were white. Its notes, kept:
 
 | Suit | What it is |
 |---|---|
@@ -150,4 +199,4 @@ Role stripes proposed: **pilot blue, scientist green, engineer yellow**. Pilot b
 fittings; an alternative is pilot white-on-red. The game already draws the default suit (Q195); the picked lines go into
 `SUITS` in `app/crew-look.js`, one build item per school.
 
-**Pick:** _(Caio)_
+**Caio (2026-10-10):** too samey across eras and schools; replaced by round 2.
