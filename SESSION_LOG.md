@@ -4841,3 +4841,12 @@ Caio left the session running ("keep going while you still have work"). Built, e
 - [ ] flow: Q3 slice 4c (the map trims), Q193 (the Steppe rollout, with look & sound), Q104 (flags and roundels)
 - [ ] space: a rotation's days aboard in the Debrief (proposed)
 - [ ] QA: row 65's occasional lost capsule (proposed)
+
+## 2026-10-09 — Launchpad v1.108: power gates a satellite's service (space session, QUEUE Q27)
+
+**Summary:** Registry entries keep their power budget for their own orbit and their charge (`satPowInit`); between flights a power-negative design drains (`satPowTick`), then works only in sunlight as far as its cells cover the load, or goes quiet (`satDuty`). Imagery (camera take and downlinks), contract frames, TV income, `entryLink` (mission control, rover relays) and navigation (needs power round the clock) scale with it. A satellite with no power source at all, which used to earn, is silent from day one, so the weather/TV/nav briefs and the registration news now warn ("its battery lasts about 4 days; then it goes quiet"). Measured: the pre-v1.105 Probe flat by day 12, one panel 60 %, the v1.105 Probe never.
+**Files:** launchpad `sim/power.js` (the model, `satPowNote`), `sim/space.js` (`satRegister`, `satTick`, `entryLink`), `sim/program.js` (TV income, `navCover`, three briefs), `sim/rovers.js` (relays), `app/program-ui.js` (Fleet line), `test.mjs` (space-18; test 24's satellites powered), NOTES § v1.108, TESTING 188, QUEUE; `ACTIVE_WORK.md`.
+**Tests:** full suite 617 pass on the branch after merging main; after the last merge (flow's v1.106–107) the touched sections, qa-3 and smoke pass. `career.mjs` 10 seeds identical (its robot registers no powered services).
+**Collisions:** flow took v1.106–v1.107 and TESTING 186–187 during the merge: this is v1.108, row 188.
+**Next:** Q173 (relays as nodes) is space's last M2 item; it needs the browser and flow. Proposed: the builder's power line saying what it means between flights; landed entries' power.
+
