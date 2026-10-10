@@ -4836,6 +4836,21 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     side.ok > 6 && side.behind > 6 && side.ok + side.behind === 24 && !mute.ok && /too far/.test(mute.why), `24 points round Selene: ${side.ok} heard, ${side.behind} behind it; beacon only: ${mute.why}`);
 }
 
+// space-17. The Probe makes its own power (space session as vehicle overflow, QUEUE Q164): body cells on its upper tank
+// cover its antenna and camera in low orbit and at Selene, so ten days on rails don't run it flat (before: the core
+// battery's 0.5 kWh against 15 W, flat in ~33 h). Unblocks Q27's service gating.
+{
+  const D = new Function(src + 'return {PRESETS,newShip,powerBudget,powerRails,TELLUS,SELENE,DAY_S,HOOK,set t(v){simT=v}};')();
+  D.HOOK.msg = () => {}; D.t = 0;
+  const s = D.newShip(D.PRESETS.Probe), lo = D.powerBudget(s), sel = D.powerBudget(s, { body: D.SELENE, r: D.SELENE.R + 100e3 });
+  const T = D.TELLUS, a = T.R + 300e3, up = s.parts.filter(p => p.d.kind === 'solar'), ant = s.parts.find(p => p.d.kind === 'ant');
+  Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, 0, -Math.sqrt(T.mu / a)] });
+  let minE = Infinity; for (let k = 0; k < 10 * 24; k++) { D.powerRails(s, D.DAY_S / 24); minE = Math.min(minE, s.E); }
+  check('the Probe makes its own power: positive in low orbit and at Selene, never flat over ten days on rails, its cells on the stage it keeps',
+    lo.ok && lo.avg > lo.use && sel.ok && up.length === 3 && up.every(p => p.seg === ant.seg) && minE > 0.5 * s.Emax && !s.pwrOut,
+    `low orbit ${lo.avg.toFixed(1)} W average vs ${lo.use} W (eclipse ${(lo.ecl * 100).toFixed(0)} %), Selene ${sel.avg.toFixed(1)} W; lowest charge ${(minE / 3.6e3).toFixed(0)} of ${(s.Emax / 3.6e3).toFixed(0)} Wh`);
+}
+
 // qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and
 // 168 were each used twice). Every row number once, and "Next free number" above them all, so a collision fails here.
 {

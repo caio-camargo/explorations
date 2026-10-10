@@ -1964,6 +1964,26 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
+
+The Probe is the only preset with an antenna: 15 W of antenna and camera on a probe core's 0.5 kWh, flat in ~33 h, which
+blocked Q27 (gating a satellite's service on power would have ended every Probe satellite after a few days).
+- `PRESETS.Probe` is now a v2 design (as `PRESETS.Docking`): the same stack with **three body-cell panels** (`bpanel`,
+  40 Wp each, a third of it on a skin) on its upper tank, the stage it keeps to the end. +30 kg, +6M. Its place in the
+  preset list is kept (a `Probe: null` key, set after `toV2`).
+- **Measured** (`powerBudget`): low orbit 24.1 W average against 15 W (eclipse 37 %), 1,000 km 31.1 W, Selene 27.5 W;
+  each eclipse needs ~4–5 Wh of the 500. Ten days on rails never dip below a full battery.
+- **Economy (flagged):** the +6M put farside, selimp, nyxfind and nyxfly at 1.27× the Probe's full cost, under the
+  1.3× pay floor (NOTES v1.53 / v1.77), so they pay **240M** instead of 230 (1.33×). And three checks refused any
+  design that isn't a v1 part list (`Array.isArray`): `baseRunQuote` ("no design in Assembly"), `dryQuote`, and the
+  dispatch candidates from `PROG.procs`; they now accept v2 designs too.
+- **Saves and tapes:** the Probe's design key changed, so an ascent procedure recorded for the old Probe no longer
+  matches it (re-fly the ascent once). Q152's lander (on `builder`, unmerged) is the Probe with legs: it should start
+  from this v2 Probe.
+
+Test `space-17` (1 check: budget positive in low orbit and at Selene, cells on the antenna's stage, ten days on rails
+never flat). Tests 23 (the pay floor) and econ-7 (supply runs) pass again after the two fixes.
+
 ## v1.102 — contact gates automation (2026-10-09, space session, QUEUE Q186, Q127 slice 3)
 
 Before onboard computers a command needs a station in contact: mission control flies a planned burn (v1.93) only if it
