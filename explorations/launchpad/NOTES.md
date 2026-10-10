@@ -10019,3 +10019,37 @@ So only a held retrograde works, and the gyro's slower loop (2/s, 0.3 rad/s) is 
 `s.av = 0` now. In the builder and the flight panel the Retro button is lit from year 0 (`sasModeOK`, `editor.js`), and
 Q134's pilot ranks are unchanged (rank 1 is the analog autopilot's list).
 
+
+## v1.113 — gates for late parts (2026-10-10, vehicle session, QUEUE Q190; from economy's v1.98 note)
+
+Before this, only rover parts had gates (`rvPartOpen`) and the onboard computer was hidden before its era, so the cargo
+bay, the arm, the station modules and the crew capsule were all buyable on the first flight. Caio's calls (2026-10-10):
+**listed and designable, never flown** (as rover parts are), and **each part opens with the mission that first needs it**.
+
+| Opens with | Parts |
+|---|---|
+| "The beeper" (first orbit) | docking port, radial docking port, claw, habitat module, solar wing, landing leg |
+| "Passenger: one orbit" | crew capsule, escape tower (the pad abort, next on the ladder, needs both) |
+| "A station" (≈ the first docking) | cargo bay, robotic arm |
+| "A crew aboard" | laboratory module |
+| "Soft landing on Selene" | base beacon (bases already wait for it, `BASE_FIRST`) |
+| the onboard-computer era (`d.era: 2`) | onboard computer (it was hidden before; now listed), RTG (new) |
+| from the start | everything else: tanks, every engine (the big ones are dear through `sourceOf` instead), fins, chute, pods, instruments, RCS and gas, wheels, spin motors, battery, body cells |
+
+- **Code:** `PART_GATE`, `partOpen(k)` → `{ok, why, short}` and `partLaunchWhy(parts)` in `sim/program.js`, beside the rover
+  gates. No gates before a program starts (`khOn()`) or with the tester's tools (`TEST.tools`), as before for the era.
+- **Where it bites:** the LAUNCH handler (`app/editor.js`, after `rvLaunchWhy`), a red line in Rollout's checks
+  (`app/rollout.js`), `dispatchQuote` (a design borrowing a procedure, `procAdopt`, could carry a part its owner didn't) and
+  `baseRunQuote` (supply runs). The palette (`builder.js` `palette()`) lists a locked part dimmed with "🔒 The beeper"; its
+  tooltip has the sentence. Presets that carry one still load.
+- **Ordering check:** each gate is reachable no later than the first mission that needs the part (`vehicle-10` walks
+  the `req` chains). The crew capsule's gate is safe for "A crew aboard": crews fly only after the max-q abort test anyway
+  (`R.crewed` needs `PROG.done.maxqabort`), which comes after the passenger orbit.
+- **Seen in the browser** (`shot.mjs`, day 1 with one flight flown): 14 parts locked with their reasons; LAUNCH on the
+  Docking preset says "Not open yet: onboard computer (opens with the onboard computers era); docking port (opens with
+  “The beeper”)".
+- **Not done:** the rover yard's own gates are unchanged (`RV_GATE`). The race's rivals don't read gates (they don't build
+  from parts). Contracts that need a part (retrieval needs the bay) still check their own `req`, which already waits
+  for "A crew aboard".
+
+Test `vehicle-10` (1 check; fails with the bay's gate removed). Full suite: 634 checks, all pass.

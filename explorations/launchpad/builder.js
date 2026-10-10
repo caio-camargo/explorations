@@ -262,10 +262,10 @@ function palette(){const pal=el('palette');pal.innerHTML='';
   if(rest.length)CAT.push(['Other',rest]);
   for(const[cat,kinds]of CAT){const h=document.createElement('div');h.className='pcat';h.textContent=cat;pal.appendChild(h);
     for(const k in PARTS){const d=PARTS[k];if(d.radialOnly||!kinds.includes(d.kind))continue;
-      if(d.era!=null&&khOn()&&!TEST.tools&&compEra()<d.era)continue;   // not offered before its computing era (the onboard computer)
-      const b=document.createElement('button');
+      const b=document.createElement('button'),lk=typeof partOpen==='function'?partOpen(k):{ok:true};   // Q190: a part not open yet is listed, dimmed, with its reason
       const spec=d.kind==='engine'?`${d.thrust} kN · ${d.ispV}s`:d.kind==='tank'?`${d.wet} t`:`${d.m} t`;
-      b.innerHTML=`${d.name}<span>${spec}</span>`;if(st.held&&st.held.k===k&&!kids(st.held).length)b.className='on';
+      b.innerHTML=`${d.name}<span>${lk.ok?spec:'🔒 '+lk.short}</span>`;if(!lk.ok){b.classList.add('lock');b.title=`Not open yet: it ${lk.why}. You can design with it; a launch with it is refused.`}
+      if(st.held&&st.held.k===k&&!kids(st.held).length)b.classList.add('on');
       b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);pal.appendChild(b)}}
   const pre=el('presets');pre.innerHTML='';
   for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}}
@@ -284,6 +284,7 @@ function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
 function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw=draw;HOOK.edOverlay=overlay;
   const css=document.createElement('style');css.textContent=`
 .pcat{color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin:8px 0 2px}
+#palette button.lock{opacity:.5}#palette button.lock span{color:var(--warn)}
 .bbar{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.bgrp{display:flex;gap:3px;flex-wrap:wrap;align-items:center}.bgrp .dim{margin-right:3px}
 .bbar button,.bsel button{padding:1px 6px;font-size:11px}.bbar button:disabled{opacity:.35;cursor:default}
 .bsel{border-top:1px solid var(--line);padding-top:6px}.bhd{font-size:13px}.brow{display:flex;gap:3px;align-items:center;flex-wrap:wrap;margin-top:4px}.brow>.dim{min-width:70px}
