@@ -62,7 +62,7 @@
 <header>
   <h1>Face lab</h1>
   <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button><button data-m="roster">Roster</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 66 identity genes, early paint. ★ = reads at 48 px.</span>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 67 identity genes, early paint. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -194,6 +194,7 @@ const GENES = [
   ['fp', 'Brow', 'Forehead forward', 0, 0, .18, 'p', 1],
   ['cn', 'Head', 'Crown width (dome)', 1, .7, 1.1, 'f', 1],
   ['ba', 'Brow', 'Brow arch', 0, 0, 1, 'f'],
+  ['nf', 'Nose', 'Nose front: modelled–flat', 0, 0, 1, 'p:nose'],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -277,7 +278,7 @@ vec3 noseTip(){   // the bridge's lower front corner (where the ridge plane meet
 vec3 tipC(){vec3 c=noseTip();return c+vec3(0.,.065*g_ts,-.075*g_ts+.03*g_tr+g_tp);}
 vec3 wingC(){vec3 c=noseTip();return vec3(.1*g_aw,c.y+.07,.8);}
 float noseD(vec3 p){
- vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_nc*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge, on the forehead plane's line; a hump or a dip
+ vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_nc*(1.-g_nf)*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge, on the forehead plane's line; a hump or a dip
  float kr=.002+.035*g_sf+.07*g_tr*smoothstep(-.02,-.26,n.y);   // the round tip softens the bridge's edges near the bottom only; the ridge above stays sharp
  float wedge=smax(smax(abs(n.x)*.95/g_nw+n.z*.32-.38,ridge,kr),max(n.y-.32,-(n.y+.13+g_nl)-n.z*(.2+g_nt)),kr);   // the bridge, its base the plane under the tip
  wedge=max(wedge,-(n.z-.55));
@@ -290,6 +291,8 @@ float noseD(vec3 p){
  float wing=sdEll(s-wc,vec3(.065,.055,.07)*g_az);   // a wing, on the face
  float rim=sdCapT(s,tc+vec3(.02*g_tw,-.03*g_ts,-.01),wc+vec3(0.,-.015,.02),.026*g_ts,.035*g_az);   // the alar rim, tip to wing
  d=smin(d,smin(wing,rim,.03),.03);
+ float fr=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_tp*.8;   // a flat front: everything trimmed to one plane on the ridge's line (the tip's projection tilts it no further)
+ d=mix(d,smax(d,fr,.008),g_nf);
  return smax(d,noseFloor()-p.y,.03);}
 float mass(vec3 p){
  float d=sdEll(p-vec3(0.,.16,-.1),vec3(.78,.88,.94));   // cranium
@@ -482,7 +485,7 @@ function renderEdit() { const c = ':' + $('closeOn').value;
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
-const PRESETS = { 'Deco woman (the second reach test)': 'LP1.608080806880a080809c8080e6804d6b2b808080800199a0c780809580808080806080805c7580ae9967806ed58080c08080378080803d6f60a6808080cc803a4021aa80f2', 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ec0ffef01c780808001f021218080ffffa0a4bf80ba80ffd52bdf2180c0e6258e14d5ffcf808080b88080e1df80808080ff808dd580dc16', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
+const PRESETS = { 'Deco woman (the second reach test)': 'LP1.608080806880a080809c8080e6804d6b2b808080800199a0c780809580808080806080805c7580ae9967806ed58080c08080378080803d6f60a6808080e6803a4021aa80f2ff', 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ec0ffef01c780808001f021218080ffffa0a4bf80ba80ffd52bdf2180c0e6258e14d5ffcf808080b88080e1df80808080ff808dd580dc16', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
   'Nose: button': 'LP1.80808080808080808080808080801a275d348080808080808080808080808080808080ff4d8d676d808080808080808080', 'Nose: bulb': 'LP1.8080808080808080808080808080a680a4808080808080808080808080808080808080fff2e680cccc8080808080808080', 'Nose: hawk': 'LP1.8080808080808080808080808080cca880e6ff80808080808080808080808080808080015c5c8067808080808080808080' };
 for (const k in PRESETS) $('preset').insertAdjacentHTML('beforeend', `<option>${k}</option>`);
 $('preset').onchange = () => { const t = fromDNA(PRESETS[$('preset').value]); if (t) { cur = t; syncSliders(); editChanged(); } $('preset').value = ''; };

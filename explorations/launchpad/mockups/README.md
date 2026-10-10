@@ -236,6 +236,8 @@ macros Delicate–heroic and Feminine–masculine had their labels backwards; de
 flush no longer paints a pink ball on round tips; the flush root has rounded edges and runs down the bridge (no
 step); the cheekbone and forehead cuts get the softness compensation too, and eyes sink with softness; the socket's
 outer wall stays closed. Still: `faces/reach-deco-woman.png`. 69 genes.
+*Nose front: modelled–flat* (Caio: her nose's front is flat, no bulges or recesses) trims the whole nose to one plane
+on the ridge's line and drops any hump or dip. 70 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
