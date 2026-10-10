@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.22 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.23 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,12 +12,11 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Robot `m1` ✓, no overlapping boxes ✓, pacing ✓ (v1.77: 4–6 flights to orbit, now ROADMAP's target) | you | **M1 done**; M2 becomes current |
-| 2 | **Mock-up picks W19, W20, W21**: all three now proceed **on their defaults** (W19 (c) stylised human; W20 build the bodies from the mock-ups; W21 Cape first). Override any time | look & sound, design desk | Q80–Q85 (now ready), D2's look, Q102/Q159 |
-| 3 | **W14: pick a screen identity** (the one call left with no default; D5, D6, D8, W22–W28 ✓ answered) | you | Q53, Q104's final look, slice 4's styling |
-| 1b | **Q19: the first load takes 86–88 s** on Windows; 71 s is linking the sky shader. The fix is built on branch `terrain` (`3a9cda2`); only its timing A/B and the merge are left, and they need a **quiet machine** (stopped twice, out of memory) | world, when few sessions run | every player's first visit; M1's steady frame rate |
-| 4 | **Q164** presets with an antenna make their own power | vehicle (Q152 parked: low memory) | Q27, relays and the link's power side |
-| 5 | **Q160** a duplicate-number check before push (Q57 ✓) | platform (**no session**) | no more renumbering after every merge |
+| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓) | you | **M1 done**; M2 becomes current |
+| 2 | **Q201: the Passenger Orbiter overheats Biscuit on every robot ascent** (PLAYTEST #35, P2), a first-hour preset; plus Q190 (late parts buyable from flight 1) | vehicle (**no session**) | a clean first hour for W16's player |
+| 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world | every player's first visit |
+| 4 | **W14: the screen identity** (leaning: instrument panel in flight, paperwork for the Program, both by era) | you | Q53, Q3 4b–4c's styling, Q104 |
+| 5 | **Q164** presets with an antenna make their own power; **Q160** the duplicate-number check | vehicle; platform (**no session**) | Q27 and relays; no renumbering after merges |
 
 ## How a session uses this
 
@@ -82,6 +81,7 @@ the feedback I paste into PLAYTEST items.*
 - **Line endings are pinned** (Q156 ✓, `.gitattributes`). A NOTES merge that still conflicts on every line: `git merge -X ignore-space-at-eol`, or `git add --renormalize .` in a worktree that shows every file modified.
 - **Q3's build opens on W15's defaults** (orchestrator, 2026-10-09: Caio silent; flow's lane had drained). Build 4a first; Caio may still override from the plan.
 - **Memory:** two runs stopped for low memory on 2026-10-09 (vehicle's full suite, world's Q19 A/B). Use `--jobs 2` for the full suite when 4+ sessions are open, and leave 🖥🖥 items (Q19's A/B) for a quiet machine.
+- **New flight-HUD content is a card** (flow, Q3 4a, v1.101): `HUD_CARDS.push({id, title, when?, rows})` in `app/hud.js`; `updateHUD`'s core is capped at 6 rows (test flow-5).
 - **The milestone gate (ROADMAP):** code for **M1 (current)** and **M2 (next)**, any lane. M3+ items (crater landing, Selene terrain, crew) are 📝 plan items only,
   except where an item says the orchestrator allowed it (Q107, Q92's CPU half).
 
@@ -121,6 +121,9 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
 | Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ready |
 | Q192 | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ready |
+| Q196 | **Move a planned burn from the Program screen** (or "fly at the next contact"): since v1.102 a burn out of every station's view in the mainframe era can only be flown by hand | M2 | S | 🖥 | ready |
+| Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ready |
+| Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ready |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
@@ -162,6 +165,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q165 | Q103's next slice: the program's own news and mission control in its archetype's voice; rising powers copy claimed firsts, frugal ones partner in the race schedule (with Q138) — POWERS.md § archetypes | M2 | M | ⚙ | ✓ v1.89.2 `a151fc4` (frugal partners, rising copies then catches up; OWN_TONE) |
 | Q180 | Q9 slice 4: rendezvous and retrieval contracts (a near-pass check during a flight; retrieval brings a satellite home, its parts' value back: W22 default 4) | M2 | M | ⚙ | ✓ v1.98 `33a14aa` (rendezvous: 100 m under 1 m/s during the flight; retrieval after `stationcrew`, only landed in a closed bay, hardware refunded; the part gate is proposed for vehicle) |
 | Q188 | **Rivals as programs from epoch 1** (W26.1, Caio): amend Q138's plan for a coarse early version (budget → capacity → progress) replacing the seeded schedules; tune so the early race keeps today's pacing | M2 | M | ⚙ | ready (plan the re-scope first) |
+| Q206 | **The commercial giant** as a rival kind in Q138/Q188 (commercial era, undercuts prices, sells parts) — D10, POWERS.md 1.1.0 | M2 | M | ⚙ | after Q188 |
 | Q187 | 📝 **Rivals' satellites as targets** (W22.3, with space): rendezvous, retrieval (home or into your bay) and hacking under one stealth model (shadow, burn size…), with consequences (incident if spotted, sanctions, lost contracts, opinion) | M2 | M | 📝 | ready (plan only) |
 | Q181 | Q96's slice: overflight by the track flown (`R.over` in `missionTick`), tense neighbours' opinion and relation in `missionEnd`, the Debrief line, a test (W23's defaults) | M2 | S | ⚙ | ready |
 | Q184 | Q110 slice 1: **routines**, a repeating supply run to a base (its window, its pad-calendar row, `netModel().routes`) (W27's defaults; ROADMAP § M2 lists "the routine run") | M2 | M | ⚙ | ready |
@@ -189,9 +193,13 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q34b | Radiators + the steady-state orbital thermal solve; build alongside economy's orbital datacenter (NOTES § "Vehicle parts") | M4 | M | ⚙ | 📝 plan only (M4 under the gate: steady-state temperature and the datacenter are M4) |
 | Q121 | Legs go down by themselves in procedures (`landAt`) and the robot's landings; a deployed state that survives leaving the flight (`vesselOf` `vst`) (NOTES § v1.61) | M1 | S | ⚙ | ✓ v1.79 (procedures; through the register; TESTING 153) |
 | Q131 | Builder power line: pick the orbit (today low Tellus, β 0); battery charge carried past a flight's end; an RTG (NOTES § v1.68) | M2 | S | ⚙ | ✓ v1.80 (RTG; the aim's orbit; charge kept; TESTING 161) |
+| Q201 | **PLAYTEST #35 (P2): the Passenger Orbiter overheats Biscuit on any robot ascent**; test vehicle-3 tracks its own cabin from 290 K after the orbit and misses it. A first-hour preset: **top** | M1 | S | ⚙ | ready |
+| Q204 | vehicle-4's "launch warnings" fails inside `--smoke` on `main` (reads the Beeper short of orbit, 4,894 against 5,600 m/s); passes alone: order-dependent (Flags) | M1 | S | ⚙ | ready |
+| Q202 | PLAYTEST #36 (P3): the stock Hopper shows the unstable warning at roll out | M1 | S | ⚙ | ready |
 | Q164 | **Presets that carry an antenna make their own power** (Probe, and Q152's lander: body cells or a wing; the builder's power line green). Unblocks Q27, whose service gating would end Probe satellites after ~4 days | M2 | S | ⚙ | ready (**top**) |
 | Q190 | **Era gates for vehicle parts**: only rover parts are gated today (`rvPartOpen`), so the cargo bay and the arm are buyable from the first flight. Gate `bay`, the arm and other late parts by era (from economy, Q180 v1.98) | M1 | S | ⚙ | ready |
 | Q189 | **D5: a rover frozen in the night goes dormant**, never dies: `R.dead` on a flat cold battery becomes `R.dormant`; it wakes when its panels see the sun (in flight `rvTick`, between flights the field tick); the lost night is the only price | M2 | S | ⚙ | ready |
+| Q197 | A **high-gain dish** part (a gain class, ~×100 over the whip) so a high camera satellite can earn again after v1.100 (pay per bit: at 2,000 km a whip drains 5 kbit/s) | M2 | S | ⚙ | ready |
 | Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | parked by vehicle (full suite stopped for low memory); resume from `builder` |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ✓ plan (NOTES § \"The pilot's SAS modes by rank\"); build after the roster |
 | Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ✓ v1.81 (Lifetime line; TESTING 165) |
@@ -234,6 +242,8 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q127 | 📝 **The automation ladder** (with economy): which routines each compute era permits (dispatch → deployments → uncrewed docking → Selene → planets); crewed routines before onboard computers; templates store a window rule — [`MIDGAME.md`](MIDGAME.md) | M2 | M | 📝 | plan ✓; slice 1 ✓ `1522cb0` (v1.95: `autoAllowed`, the ladder as one table); slices 2–3 are Q185, Q186 |
 | Q185 | Q127 slice 2 (with economy): window rules recorded with procedures; `nextWindow(rule, T)`; routines launch at their next window | M2 | M | ⚙ | 🔒 economy session 2026-10-09 |
 | Q186 | Q127 slice 3: contact gates automation (a routine burns only in contact or within its computer's tier) | M2 | S | ⚙ | ✓ v1.102 (`entryLink`, `handOffWhy`; a burn out of contact is refused or passes before onboard computers; NOTES § v1.102; TESTING 181) |
+| Q200 | **Debris that exists only as you pass** (Caio 2026-10-09): during a monitored flight through a band, roll a few seconds ahead from density × cross-section × speed; on a hit, spawn the fragment on a collision course | M2 | M | ⚙ | ready |
+| Q198 | **Rover science as volumes** (spectrometer and camera readings through `rvContact`'s rate); imagery and contract frames sharing one pass budget (NOTES § v1.100) | M2 | S | ⚙ | ready |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ✓ study (`study_cycler.mjs`, NOTES § "Q108: a Tellus–Enyo cycler": ballistic with Tellus flybys under ~800 km on our scale; taxis 1,702 / 2,022 m/s) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
@@ -268,8 +278,10 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q24 | Cargo-bay doors mid-swing; char on dark capsule shingles | — | S | 🖥 | ✓ `7aa705c` (bay door inside + hinges; dark-paint char heat-tint) |
 | Q102 | **Hardware schools** from [`POWERS.md`](POWERS.md): a school as a style parameter in `partShape`/`partBody` (outline unchanged), Cape first then Steppe; one or two signature designs per school; livery and roundel from the roll-pattern machinery; the pad per school | M1 | L | 🖥 | ✓ steps 1–5 (`90f0013`: school per part, Steppe paint, interstage cover, roundel, livery hue); steps 6–7 proposed below |
 | Q159 | Q102 step 7: the **Steppe pad**: horizontal rollout on rails over a flame pit, the launch table's arms (`buildRig`/`drawPadRig`; flow's rollout screen: coordinate first) | M1 | M | 🖥 | ✓ effects beat, 2026-10-09, on W21's default (`steppeTable`, `steppeRig`; a pad per site in its owner's school; views 116–119; NOTES § "Step 7 built"; TESTING 178) |
+| Q205 | **The Foundry school** (D10, POWERS 1.1.0): steel, weld rings, a tiled belly, flaps in `partShape`/`partBody`; its signature design and the catching tower | M1 | L | 🖥 | ready (plan first) |
 | Q158 | Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) | — | M | 🖥 | blocked: nothing draws rivals' rockets yet |
 | Q195 | **Crew look slice 1** (Caio 2026-10-09: W19 stylised human, suits by school and epoch, "start with the default"; Caio's go lifts the M3 gate for it): the astronaut figure as a mesh from the Q72 mock-up's stylised proportions, in the default suit (`SUITS` keyed by school and generation, only the default filled); two crew on a new crew access arm at the capsule's hatch on Cape's tower in the Assembly and Rollout, the arm swung back in flight; reference views | M3 | M | 🖥 | **claimed** (effects beat, 2026-10-09) |
+| Q199 | **Suit mock-ups** (D9): Cape and Steppe, three eras each, the stylised-human crew in the Q72 scene; then one build item per school | M3 | M | 🖥 | ready (mock-ups; build after Caio looks) |
 | Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -400,15 +412,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W28~~ | **Answered 2026-10-09 (Caio): all defaults.** Was: **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- look & sound — the **Foundry** school in `partShape`/`partBody` (steel, weld rings, tiled belly, flaps) and its signature design + catching tower; economy — the **commercial giant** as a rival kind in Q138 (commercial era, undercuts prices, sells parts) — D10, POWERS.md 1.1.0 (Caio 2026-10-09)
-- flow — **move a planned burn from the Program screen** (or "fly at the next contact"): since v1.102 a burn out of every station's view in the mainframe era can only be flown by hand — NOTES § v1.102 (space, 2026-10-09)
-- flow + look & sound (from effects, Q159) — **Q193: the rollout itself, lying down**: on a Steppe pad the Rollout screen could show the rocket on its side on the transporter-erector, rolling north-to-south along the rails and being stood up over the pit (the boom's hinge and car are already in `steppeRig`, `RIG.bP`). Needs the stack drawn on its side (a ship transform in `render()`, not the rig) and the Rollout screen's camera: flow's screen, so flow says yes/no first. M, 🖥
-- QA (from effects, Q159) — **Q194: a tester switch for the hardware school** (`SCHOOL_FORCE`: auto / Cape / Steppe, then `HOOK.rebuild()` and `padKey=''`), so the Steppe parts and pad can be seen without a console. S, ⚙
-- vehicle — a **high-gain dish** part (a gain class, ~×100 over the whip) so a high camera satellite can earn again after v1.100 (pay per bit: at 2,000 km a whip drains 5 kbit/s) — NOTES § v1.100 (space, 2026-10-09)
-- space — **rover science as volumes** (spectrometer and camera readings through `rvContact`'s rate), and imagery and contract frames sharing one pass budget — NOTES § v1.100 (space, 2026-10-09)
-- look & sound — after D9: **suit mock-ups**, Cape and Steppe, three eras each, the stylised-human crew in the Q72 scene; then one build item per school — D9 (Caio 2026-10-09)
-- space — **debris that exists only as you pass** (Caio, 2026-10-09): during a **monitored** flight (in physics) through a band, roll a few seconds ahead from density × cross-section × speed; on a hit, spawn the fragment on a collision course; it exists only while passing, never tracked before or after. Unmonitored time (rails, warp, dispatch, between flights) keeps the band's roll only. 1 cm fragments spawn too close to dodge (untrackable: the roll is the verdict); ≥ 10 cm pieces in radar eras come with a warning and a lead time, and steering away is legitimate (tracking pays off). Optional: cosmetic near-miss streaks from the same density. No mass of tiny tracked objects — LATE_GAME § Debris
-- vehicle — PLAYTEST #35 (P2): the Passenger Orbiter overheats Biscuit on any robot ascent; test vehicle-3 tracks its own cabin from 290 K after the orbit and misses it — PLAYTEST #35
-- vehicle — PLAYTEST #36 (P3): the stock Hopper shows the unstable warning at roll out — PLAYTEST #36
-- flow (Q3 4a, v1.101) — **for every lane:** new flight-HUD content is a card, `HUD_CARDS.push({id, title, when?, rows})` in `app/hud.js`; `updateHUD`'s core is capped at 6 rows (test flow-5) — NOTES § v1.101
-- flow — PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "nothing to hold it up: re-enters in …" — PLAYTEST #37
+
+- ~~QA — Q194: a tester switch for the hardware school~~ already done as Q106's picker (tester → Hardware school, TESTING 179)
