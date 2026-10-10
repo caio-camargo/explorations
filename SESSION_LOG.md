@@ -5011,3 +5011,103 @@ broke (cheek hollow → dimple, chin → knob, cheekbone height → crease). Ran
 (floating nostrils, slot mouths), so untuned regions sample at 45 % until F2–F4. F1's 48 px test is not met: with one
 hair mass the thumbnails look alike; hair (F5) and paint (F6) will carry the thumbnail.
 **Next:** Caio breeds in the lab (W33); then F2 brow and eyes.
+
+## 2026-10-10 — QA session: watch the robot play (Q224)
+
+Caio asked for a way to watch a play session live. **Built:** `node playtest.mjs --watch[=speed] m1` (headed Chrome, flights at
+real speed with warp in coasts via `PT.loop`, captions, click marks, pauses; results in `<out>/watch`). m1 passes watched at 8×
+(~4 min; ~15 min at 1×). **Filed:** Q225 (platform, plan only), record and replay a whole session, building on the existing
+deterministic flight tapes. **Also:** Q221 (PT_URL query), Q208 (row 147 passes both ascents with the nose cone; TESTING 147 ~).
+
+- Files: `explorations/launchpad/playtest.mjs`, `NOTES.md` (§ "Watching the robot play"), `QUEUE.md` (Q224, Q225, Q221, Q208), `TESTING.md` (147), `ACTIVE_WORK.md`.
+- Next: more rows written for watching (start from a new career, real clicks and keys only); Q225's plan (platform).
+
+## 2026-10-10 — Launchpad Q226: suit mock-ups, the other five schools (look & sound, effects beat)
+
+**Summary:** The design desk wrote briefs for the other five schools (CREW.md 0.2.7, D13), and Caio pointed me at them.
+`mockups/suits/` now has all 27 suits. The bar picks a school first; *Every school* draws them all in a grid (a row
+per era, a column per school), and the three checks run across that grid. Each school has its own construction and
+hose position, per the brief:
+- **Arsenal:** military issue, hoses at the hip; Feitian keeps Orlan's door, with the flag painted on it.
+- **Coastal:** smooth colour blocks, one round connector.
+- **Mountain:** quilting, pull-tabs, the sun disc, the hose over the shoulder.
+- **Isle:** surplus and outdoor gear, sponsors, the hose at the thigh.
+- **Foundry:** tailored, one thigh umbilical; launch, spacewalk and surface suits.
+
+**Fixed: the page was slow to open.** The first picture took ~90 s, and that was the "trouble opening" Caio reported
+earlier. Windows' HLSL compiler (via ANGLE) inlined `map()` at nine call sites and unrolled every loop. The fixes:
+- one loop does the march, the normal (four taps) and the shadow, through a single `map()` call;
+- loops start at `ZERO` (`min(uS,0)`), so they can't unroll;
+- each school group compiles its own program (`#if SCH`), all in parallel (`KHR_parallel_shader_compile`);
+- big views draw in strips of ~150k pixels.
+
+Cape now opens in ~1.5 s, the other schools in ~5 s each, and the full grid in ~14 s. Round 2's look is unchanged
+(Mercury's walkout checked against the round 2 still).
+
+The pick is still **W32**, now covering all seven schools.
+**Files:** launchpad `mockups/suits/index.html`, `mockups/README.md` 0.1.6 § suits ("The other five schools": table,
+check results, open points), QUEUE (Q226 ✓, W32 widened); `ACTIVE_WORK.md`. Stills (not in git):
+`output/launchpad/mockups/suits/r3-*.png` (4 sheets, 5 school lineups, 3 backs, 6 close-ups).
+**Notes:**
+- **What the checks changed.** Coastal early got an egg helmet (it was too close to Mountain early). Feitian got a
+  domed top and a wider waist; it still only fully parts from Orlan from behind. Mountain's spacewalk suit was shrunk.
+  The weakest pair left is Coastal late against Isle late.
+- **Lost at 48 px:** Coastal late's seam, Foundry's thermal bands, the Mountain rays, the Arsenal plates.
+- **Worth reusing:** the single-`map()` loop and `ZERO` apply to any raymarched page that is slow to open on Windows
+  (the crew, heads and faces mock-ups have the same structure).
+**Next:** after W32, the suit build into `SUITS` (`app/crew-look.js`): Cape, Steppe, then the other five.
+
+## 2026-10-10 — Launchpad Q227: school mock-ups round 2, the rockets (look & sound, effects beat)
+
+**Summary:** Caio: the rocket briefs are in (POWERS.md § "School briefs", D14), turn to them next. `mockups/schools/`
+is rebuilt with three groups:
+- **Orbiter:** the preset in all six schools side by side, one outline.
+- **Signatures:** two designs per new school, plus a row of all six schools'.
+- **Pads:** a pad per school (Mountain's early rail launcher and its later cove shelter).
+
+Each new school owns its paint, interstage cover, bells, fins, nose, roundel and lettering:
+- **Arsenal:** stencils.
+- **Coastal:** lettering.
+- **Mountain:** saffron joints.
+- **Isle:** decals and its name.
+
+Round 1's Cape and Steppe views are ported unchanged. On the brief's defaults for its questions 1–4.
+
+The pick is **W34**.
+
+Also left a note in QUEUE § Proposed for the faces session (Caio asked): `mockups/faces/` has the slow-compile
+pattern Q226 fixed for the suits.
+**Files:** launchpad `mockups/schools/index.html` (rewritten; round 1 is in git history), `mockups/README.md` 0.1.7
+§ schools (round 2 table, what reads, the questions), QUEUE (Q227 ✓, W34, the picks row, the faces note);
+`ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/schools/r2-*.png` (11).
+**Notes:**
+- **Built per view.** Each view compiles its own program from generated code (only the outlines it uses), with the
+  single-`map()` loop and `ZERO`, so the first view shows in ~1.3 s and the others in under a second.
+- **Text** is a 3×5 pixel font in the shader, for stencils, names and the hangar sign. The first pass drew it upside
+  down (the row order was flipped).
+- **Weak spots:** the bells are small at the Orbiter's size; Coastal's pastel band is pale on satin white; Mountain's
+  rail launcher hides its rocket from most angles.
+**Next:** after W34, Q102 steps 3–7 for the four schools (paint and finish in `MESH_FS` by school, the interstage covers
+in `partsMesh`, roundels, signature designs for rivals, then the pads as rigs).
+
+## 2026-10-10 — Launchpad Q228 + Q229: the four schools' rockets and every school's suits in the game (look & sound, effects beat)
+
+**Summary:** Caio's go on both (W34: "yes go ahead"; W32: "suits look good").
+- **Q228:** Arsenal, Coastal, Mountain and Isle are built schools (`SCHOOL_IDS` 2–5). `MESH_FS` repaints each after
+  Steppe's pass: paint and finish by stage (an upper-stage flag rides in the kind, for schools 2–5 only), bells, joints,
+  decals, Arsenal's stencilled serials. Each has its own interstage cover (Arsenal vents, Coastal smooth, Mountain bolts
+  and spin rockets, Isle flush carbon) and roundel (from `flags.js`, so Q223 is done too). Views 123–126; aerofx-3
+  updated for the new affinities; TESTING 192.
+- **Q229:** 18 launch suits (6 schools × early/middle/late), each built from its own pieces in `crewFigure`, ported from
+  the Q219/Q226 mock-ups. `crewGen()` follows the program to the Selene era and past a crew landing. Views 127–144,
+  aerofx-5 updated, TESTING 193.
+
+The full suite passed on both, after fixing TESTING's counter.
+**Files:** `app/gl.js`, `app/crew-look.js`, `views.js`, `test.mjs`, NOTES (§ hardware schools "The other four schools", §
+crew "The suits by school and generation"), TESTING (192, 193), QUEUE (Q228 ✓, Q229 ✓, Q223 ✓); `ACTIVE_WORK.md`.
+Stills (not in git): `output/launchpad/q228-schools/`, `output/launchpad/q229-suits/`.
+**Next:**
+- Q102 steps 6–7 for the four schools: their pads (the mock-ups' truck erector, towerless pad, rail launcher and cove,
+  strongback) and their signature designs (Q158, blocked until rivals' rockets are drawn).
+- Steppe's crew arm, so its suits show.
+- Spacewalk suits once EVA exists.

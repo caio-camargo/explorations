@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
 **Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -87,6 +87,17 @@ Five layers, built in this order. All in our existing tech: the SDF raymarcher t
 5. **Expression**: the five portrait expressions (neutral, grin, grit, alarm, wonder) as offsets on a small set of
    expression controls (inner brow, outer brow, upper lid, lower lid, mouth corners, lip press, jaw open, gaze),
    working on any identity. The puppet register: few moving parts, as the real swapped heads.
+
+**Extremes, pushed on purpose** (Caio, 2026-10-10: the reach tests paid off; Mr. Incredible's appeal is in his
+extremes: a tiny nose tip, a huge forehead, a huge chin). Stylised faces are compelling *because* a few features go
+far past normal. The rule from character design: **push one to three features hard, keep the rest quiet, and make
+the pushed ones agree** (one shape language: square and heroic, round and kind, long and dry). Random extremes on
+every gene make monsters; coherent extremes make characters. So ranges stay wide, and the generator, per face:
+1. picks a shape language and **one to three signature features** that fit it (a jaw, a forehead, a nose);
+2. pushes those toward their extremes, and keeps every other gene near the house face or its archetype;
+3. keeps the reach-test faces (Mr. Incredible, the deco woman, more to come) as **landmarks**: archetypes at the
+   edge of the space, so blends between them inherit their extremes instead of averaging them away.
+The distinctness check then has big differences to find.
 
 **The generator** (CK3-style). Hand-make **~12 archetype faces** in the lab, covering all skin tones, sexes and a range
 of ages and builds, with people from every school's region (CREW 0.2.5's varied-roster check). A recruit is:
@@ -179,3 +190,20 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Lid shapes** (Caio's notes and eye-shape references): curved margins between corners; round–almond, lid peak,
   lid fold (hooded to deep-set); a thinner lower lid. Mr. Incredible preset retuned to his profile. 55 genes.
   Open: a sloped, forward neck (his reads as a column).
+- **The mouth as an edge** (Caio, after Lawrie's Atlas): lips are ridges, the red only on the faces that tilt back from
+  the edge to the slit; tilt, height, bow, corners, lower lip forward. Deeper eyes, broad heavy chins. 60 genes.
+- **Lips in profile** (Caio's line drawing): a straight upper slope, a rolled lower lip with a tucked bottom edge.
+  61 genes. Open: on extreme long noses the nostrils show as rings at the nose floor.
+- **Integration** (Caio): a flush nose root, softness through jaw and chin without shrinking the face. 62 genes.
+- **Variation** (Caio: sex and ethnic variation): not as labelled sliders but as the generator's distributions over
+  the genes (§ 3), overlapping, tuned by picks. Done first: an epicanthic fold, early paint (skin ramp, hair and iris
+  palettes), a masculine–feminine macro, a Roster tab of 12 archetypes across sexes and regions. Next: distributions
+  per population, after Caio reviews the roster; hair textures need F5.
+- **The bell head** (Caio's front reference of Mr. Incredible): crown width, a long skull-to-jaw blend on soft faces,
+  forehead forward.
+- **The second reach test** (Caio's deco woman): a Deco woman preset, brow arch; macro labels fixed; lip tint on deep
+  skin, the nose-root step and the soft face's eyes fixed. 69 genes. A flat nose front (one plane, root to tip). 70.
+- **F5 begun**: 7 hair masses (1950s–60s: quiff, crew cut, receding, flipped bob, bouffant, curls, the house sweep);
+  a nose root shaped like the bridge, blended into the brow. 71 genes. Next for hair: more eras, partings, facial hair.
+- **Thunderbirds quiff done properly** (profile-first: vertical front, curve back); the other six styles still rough.
+  **Age**: wrinkles and under-eye bags as genes the Age macro drives. Nose length limited above the lip. 73 genes.

@@ -1111,6 +1111,37 @@ home is Cape there, and Cape's `buildPad`/`buildRig` code paths are untouched (t
 - **Not built:** the rocket lying on the erector during the rollout itself (a horizontal rocket needs the Rollout screen
   to draw the stack on its side: flow's screen, proposed; **built v1.111, Q193**); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
 
+### The other four schools (2026-10-10, effects beat, QUEUE Q228; POWERS.md § "School briefs", mock-ups Q227, Caio's go W34)
+
+`SCHOOL_IDS` now has all six: Cape 0, Steppe 1, Arsenal 2, Coastal 3, Mountain 4, Isle 5. A power whose affinity draws
+one of the four now builds in it, not Cape (open superpowers: Cape .6, Coastal .2, Mountain .2; closed: Steppe .7,
+Arsenal .3). Each repaints the white base in `MESH_FS` after Steppe's pass, the same way:
+- **Arsenal:** matte olive lower stage, bare-metal upper stage panel by panel; a stencilled four-digit serial on each
+  tank (`serial()`, a 3×5 font, from the part index); a striped band at the separation plane in the livery's hue;
+  heat-stained bells (bronze to blue-purple at the lip, thick rings). Its cover is a skirt with eight **vent windows**
+  (`discard`), so the upper engine shows through (hot staging).
+- **Coastal:** satin white; one pastel band (the hue at low saturation) round the upper stage; pastel pin-stripes at
+  each tank joint; silver bells with a dark throat. Its cover is smooth white with a pastel stripe and round vent ports.
+- **Mountain:** terracotta lower stage, white upper; saffron at every joint; gold-tinted bells. Its cover is white with
+  a ring of separation bolts and four spin rockets (small tubes, mesh).
+- **Isle:** matte black carbon, the weave showing in raking light; mission patches on each tank; a hue band under the
+  top of the upper stage; copper bells printed in layers. Its cover is flush carbon with a hue stripe.
+- **No roll pattern** outside Cape (tanks, adapters).
+- **Roundels:** `app/flags.js` `roundelBody`'s designs, in the shader (absorbs Q223): Arsenal a chevron and a gold
+  disc; Coastal rings; Mountain a sun with eight rays; Isle four stars. A is the power's hue, B its dark complement.
+
+**Upper stage.** A part is upper when it sits above a decoupler on its own stack line (`upperOf`, built once per
+`partsMesh`). The flag rides in the kind as +16384 and is decoded as `up=hq>=64`. It is set only for schools 2–5, so Cape
+and Steppe vertices stay byte-identical.
+
+**Views:** `refView(123)`–`(126)` are the Orbiter in the builder as Arsenal, Coastal, Mountain, Isle (114 Cape, 115
+Steppe). test.mjs `aerofx-3` now expects open superpowers to be mostly Cape, else Coastal or Mountain.
+
+**Not built yet:**
+- These schools' pads and signature designs: they use Cape's pad for now (Q102 steps 6–7; the mock-ups have them).
+- Coastal's lettering and Isle's rocket names. A font now exists in `MESH_FS` (`serial`'s digits).
+- The fins' coloured tips (Mountain saffron, Isle hue): the shader has no radial coordinate on the fin mesh.
+
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
 The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,
@@ -9955,6 +9986,40 @@ we'll work from there" (his go lifts the M3 gate for this). Built:
   design, short of it, the swing arm standing down, none without crew or on Steppe; TESTING 184.
 - Next: the walk-out and boarding (proposed in QUEUE; the crew cross the arm and go in during the flight's first
   seconds, or the countdown), crew on Steppe's pad; D9's suit lines are Q199 (mock-ups first, then a build per school).
+
+### The suits by school and generation (2026-10-10, effects beat, QUEUE Q229; CREW.md suit briefs, mock-ups Q219/Q226, Caio's go W32)
+
+`SUITS[school][gen]` in `app/crew-look.js` now holds every national school's three launch suits (6 × 3). Each is built
+from its own pieces by `crewFigure`, not one body recoloured, following the mock-ups:
+- **Cape:** Mercury chrome with bloused knees, gold connectors and finger-tip lights; Apollo's bellows, connector row and
+  zip, the Snoopy cap under a glass bubble (its back half; the face shows through the open front); the Shuttle's orange
+  pumpkin with harness, buckle, chest hose, wrist mirror and the helmet's big pivots.
+- **Steppe:** SK-1 belted with high boots, the visor slid up, a red brow band, the ventilator case in hand with its two
+  belly hoses; Sokol's sewn hood and visor ring, blue lacing on every limb, the laced V, the case; late grey-green with a
+  hard hood, padded chest, knee pads, orange flashes and the shoulder pack.
+- **Arsenal:** a bone dome with the visor pushed up, a rubber oxygen mask hosed to the hip, capstan tubes, a G-harness and
+  leg loops; sand with red quilting, pockets and the visor frame up; gunmetal with plates and a gold sun strip.
+- **Coastal:** teal with a white yoke, an egg helmet, the round connector; Hermes's appliance shoulders, the helmet
+  growing out of the suit, one band; blue-grey with shoulder and hip pads and a teal seam.
+- **Mountain:** narrow quilting (saffron-banded early), the sun disc on every crown, the hose over the shoulder; green
+  pull-tabs on white straps; the slim late suit in an open cap.
+- **Isle:** surplus navy with patches, tape, rolled sleeves and a hand-painted helmet; a climbing harness and a dark
+  visor; black with hi-vis side panels, sponsor decals and a helmet decal. Each school's hose sits where the brief puts it.
+
+**Generation:** `crewGen()` is early until an epoch 4 mission is done, middle through the Selene era, and late once
+`crewland` is done. The rig's cache key carries it, so the crew change suits when it does. `CREW_GEN_FORCE` pins it for
+views.
+
+**Views:** `refView(127)`–`(144)` show school s, generation g at 127 + 3s + g, framed as view 121. Steppe's pad has no
+crew arm yet, so 130–132 show none (its suits are in the mock-up). test.mjs `aerofx-5`: six schools × three suits, no two
+generations of a school sharing a dominant colour; the figure's height and face checks as before. Stills:
+`output/launchpad/q229-suits/`.
+
+**Not built yet:**
+- The spacewalk suits and Foundry's: nothing draws them yet (EVA; the commercial giant's crews).
+- The role stripes: crew have no roles in the SIM yet.
+- The mock-ups' lettering and fleet numbers.
+
 ## v1.73.1 — the Passenger Orbiter's nose cone; vehicle-4 alone and in the smoke run (2026-10-09, vehicle session, QUEUE Q201, Q204)
 
 **The passenger cooked on the way up (PLAYTEST #35).** The preset was chute, biocapsule, wheel: the chute (0.3 m) is
@@ -10019,6 +10084,17 @@ So only a held retrograde works, and the gyro's slower loop (2/s, 0.3 rad/s) is 
 `s.av = 0` now. In the builder and the flight panel the Retro button is lit from year 0 (`sasModeOK`, `editor.js`), and
 Q134's pilot ranks are unchanged (rank 1 is the analog autopilot's list).
 
+
+**Watching the robot play (Q224, QA session, 2026-10-10).** `node playtest.mjs --watch m1` (or `--watch=4` for 4×) opens a
+visible Chrome window and paces the run for a person: a caption at the bottom says what the robot is doing (`{say: '…'}` steps,
+plus the ascent's phases and staging), a yellow ring marks each click before it lands, a key press is named first, and every
+step is followed by a short pause. Flights run on `PT.loop`: headless it is the old tight loop; watching (`PT.W`), the same
+per-step body runs across animation frames at speed × warp sim seconds per real second, with the game's `simulate` held off so
+the live loop only draws (warp ×20 above the air with the engines off, ×4 in it above 3 km; `PT.coastWarp`). `PT.fly` and
+`PT.ascent` return a promise when watching, so a step that uses their value must `await` it (m1 and 147 do). Results and shots
+go to `<out>/watch`, captions hidden in the shots. At 8× m1 takes ~4 min and passes; at 1× expect ~15 min (the Sounding's
+parachute descent is most of it). Rows that set a scene directly (a ship placed in orbit, `PT.steps`) still jump: only m1 and
+147 are written for watching. Also Q221: a `PT_URL` with its own query now joins `tester` with `&`.
 
 ## v1.113 — gates for late parts (2026-10-10, vehicle session, QUEUE Q190; from economy's v1.98 note)
 

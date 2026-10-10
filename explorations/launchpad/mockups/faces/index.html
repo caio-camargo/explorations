@@ -61,8 +61,8 @@
 <body>
 <header>
   <h1>Face lab</h1>
-  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 55 identity genes. ★ = reads at 48 px.</span>
+  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button><button data-m="roster">Roster</button></nav>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 69 identity genes, early paint, 7 hair styles. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -104,6 +104,10 @@
   <div class="btns"><span class="note" id="pickn"></span><button class="b" id="copyPicks">Copy all picks</button><button class="b" id="clearPicks">Forget picks</button></div>
 </section>
 
+<section id="roster" class="mode">
+  <div class="note">Hand-made archetypes across sexes and regions, the test of the engine's reach (FACES.md § 3: the generator samples near faces like these). Each is one person, not an average; the populations' spreads come later, from picks. Click one to edit it.</div>
+  <div id="rgrid" style="display:grid;grid-template-columns:repeat(5,250px);gap:12px;margin-top:10px"></div>
+</section>
 <section id="ranges" class="mode">
   <div class="note">Each gene at its low limit, the face in the editor, and its high limit (FACES.md § 4: push every gene to both ends on three different faces; if a corner breaks the style, narrow the range). Randomise in Edit, come back here, to test on another face.</div>
   <div id="cards"></div>
@@ -127,7 +131,7 @@ const GENES = [
   ['ez', 'Eyes', 'Eye size', 1, .8, 1.18, 'q'],
   ['et', 'Eyes', 'Eye tilt', 0, -.25, .25, 'f'],
   ['el', 'Eyes', 'Upper-lid weight', 0, -.03, .05, 'q:eyes'],
-  ['ed', 'Eyes', 'Eye depth', 0, -.05, .05, 'p'],
+  ['ed', 'Eyes', 'Eye depth', 0, -.05, .1, 'p'],
   ['nl', 'Nose', 'Nose length', 0, -.1, .1, 'p:nose', 1],
   ['np', 'Nose', 'Bridge projection', 0, -.06, .16, 'p:nose', 1],
   ['nw', 'Nose', 'Bridge width', 1, .55, 1.35, 'f:nose'],
@@ -137,8 +141,8 @@ const GENES = [
   ['cw', 'Cheeks', 'Cheekbone width', 0, -.08, .08, 'f'],
   ['cv', 'Cheeks', 'Cheek hollow', .2, 0, 1, 'q:cheek'],
   ['mw', 'Mouth', 'Mouth width', 1, .75, 1.25, 'f'],
-  ['ul', 'Mouth', 'Upper lip', .75, .1, 1.5, 'p'],
-  ['ll', 'Mouth', 'Lower lip', .8, .1, 1.5, 'p'],
+  ['ul', 'Mouth', 'Upper lip height', 1, .2, 1.8, 'q:mouth'],
+  ['ll', 'Mouth', 'Lower lip height', 1, .2, 1.8, 'q:mouth'],
   ['ph', 'Mouth', 'Philtrum height', 0, -.05, .05, 'f'],
   ['mp', 'Mouth', 'Mouth projection', 0, -.04, .035, 'p'],
   ['ja', 'Jaw', 'Jaw: square–soft', .012, .006, .12, 'q'],
@@ -173,7 +177,30 @@ const GENES = [
   ['ua', 'Eyes', 'Upper lid: round–almond', .7, .3, 1.6, 'f:eyes'],
   ['pk', 'Eyes', 'Lid peak: inner–outer', 0, -.35, .35, 'f:eyes'],
   ['lf', 'Eyes', 'Lid fold: hooded–deep-set', .05, .012, .12, 'q:eyes'],
+  // added with Caio's Atlas note: the mouth is an edge, the lips the tilted faces under it
+  ['mt', 'Mouth', 'Upper lip slope: broad–steep', .9, .15, 3, 'p:mouth'],
+  ['mu', 'Mouth', 'Lower lip: full–rolled in', .5, .1, 2.5, 'p:mouth'],
+  ['bw', 'Mouth', "Cupid's bow", .5, 0, 1.5, 'f:mouth'],
+  ['ml', 'Mouth', 'Lower lip forward', .006, -.03, .03, 'p:mouth'],
+  ['mc', 'Mouth', 'Corners down–up', 0, -.025, .025, 'f:mouth'],
+  ['lr', 'Mouth', 'Lower lip tuck (bottom edge)', .45, 0, 1, 'p:mouth'],
+  ['nr', 'Nose', 'Nose root: notched–flush', 0, 0, 1, 'p:nose'],
+  // added for the varied roster: the epicanthic fold, and early paint (FACES F6 refines these into ramps per population)
+  ['ep', 'Eyes', 'Epicanthic fold', 0, 0, 1, 'f:eyes'],
+  ['st', 'Paint', 'Skin tone: light–deep', .222, 0, 1, 'q'],
+  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1, 'q'],
+  ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1, 'q:eyes'],
+  // added with Caio's front and profile references of Mr. Incredible: the bell-shaped head, the forehead over the eyes
+  ['fp', 'Brow', 'Forehead forward', 0, 0, .18, 'p', 1],
+  ['cn', 'Head', 'Crown width (dome)', 1, .7, 1.1, 'f', 1],
+  ['ba', 'Brow', 'Brow arch', 0, 0, 1, 'f'],
+  ['nf', 'Nose', 'Nose front: modelled–flat', 0, 0, 1, 'p:nose'],
+  ['hs', 'Hair', 'Hair style', 0, 0, 1, 'q'],
+  ['wr', 'Age', 'Wrinkles', 0, 0, 1, 'q'],
+  ['ub', 'Age', 'Bags under the eyes', 0, 0, 1, 'q:eyes'],
 ];
+const HSTYLE = ['swept', 'Thunderbirds quiff', 'crew cut', 'receding, swept back', 'bob, flipped', 'bouffant', 'curls'];
+const fmtG = (i, t) => GENES[i][0] === 'hs' ? HSTYLE[Math.floor(val(i, t) * 6 + .5)] : val(i, t).toFixed(3);
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
 const STAR = GENES.map((g, i) => g[7] ? i : -1).filter(i => i >= 0);
@@ -185,9 +212,10 @@ function fromDNA(s) { const m = /^LP1\.([0-9a-f]+)$/i.exec((s || '').trim()); if
   const t = house(); for (let i = 0; i < NG && 2 * i + 2 <= m[1].length; i++) t[i] = Math.max(-1, Math.min(1, (parseInt(m[1].substr(2 * i, 2), 16) - 128) / 127)); return t; }
 // the macros: directions in gene space
 const MACROS = [
-  ['Heroic – delicate', { jw: .6, cnw: .5, cnp: .5, bd: .6, ch: .3, ja: -.5, nk: .5, np: .3, ez: -.2 }],
+  ['Delicate – heroic', { jw: .6, cnw: .5, cnp: .5, bd: .6, ch: .3, ja: -.5, nk: .5, np: .3, ez: -.2 }],
   ['Lean – broad', { hw: .6, jw: .6, nk: .6, fl: -.4, nw: .4, mw: .3, cw: .4 }],
-  ['Age', { cv: .8, el: .6, bd: .25, ul: -.4, ll: -.2, ja: .3, ers: .3 }],
+  ['Feminine – masculine', { bd: .5, jw: .4, cnw: .3, nk: .5, fh: .3, ul: -.3, ll: -.25, ez: -.3, el: .15, ja: -.3, np: .3, ts: .2, hw: .1, cp: -.2, es: -.1 }],
+  ['Age', { wr: 1, ub: .9, cv: .6, el: .5, bd: .2, ul: -.4, ll: -.2, ja: .3, ers: .3, hc: .7 }],
 ];
 // seeded random
 let seed = +(Q.get('seed') || Date.now() % 1e9);
@@ -195,16 +223,25 @@ const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = seed; x = Math.imul(
 const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * rnd());
 const clamp1 = x => Math.max(-1, Math.min(1, x));
 // regions not yet tuned in their own stage (F2–F4) vary less, so random faces stay whole while the silhouette is judged
-const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => TUNED.includes(g[1]) ? 1 : .45);
-const randomFace = (s = .6) => GENES.map((g, i) => clamp1(gauss() * s * SIG[i]));
+const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => ['cz', 'jm'].includes(g[0]) ? .4 : TUNED.includes(g[1]) ? 1 : .45);   // chin size and jaw mass go cartoonish fast: reach them by hand or breeding
+const randomFace = (s = .6) => GENES.map((g, i) => g[1] === 'Paint' || g[1] === 'Hair' ? 2 * rnd() - 1 : clamp1(gauss() * s * SIG[i]));   // paint: anywhere on its ramp
 const mutate = (t, s) => t.map((x, i) => clamp1(x + gauss() * s * SIG[i]));
 const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 2, 0) / STAR.length);
 
 // ---- the renderer: one WebGL canvas off-screen, each tile drawn there and copied to its own canvas
+// early paint (F6 refines): a skin ramp with its own flush and lip tint, short hair and iris palettes
+const SKIN = [[.95, .78, .66], [.92, .74, .6], [.9, .7, .56], [.84, .62, .47], [.76, .53, .38], [.65, .42, .29], [.53, .33, .22], [.43, .26, .17], [.3, .18, .12], [.2, .12, .08]];
+const HAIR = [[.05, .04, .035], [.14, .085, .05], [.4, .2, .1], [.48, .19, .07], [.78, .58, .32], [.62, .62, .6]];
+const IRIS = [[.22, .12, .06], [.36, .2, .1], [.42, .36, .18], [.3, .44, .3], [.3, .46, .62], [.48, .52, .56]];
+const ramp = (A, x) => { const f = Math.max(0, Math.min(1, x)) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(f)), k = f - i; return A[i].map((v, j) => v + (A[i + 1][j] - v) * k); };
+const pick = (A, x) => A[Math.round(Math.max(0, Math.min(1, x)) * (A.length - 1))];
+function paintOf(g) { const sk = ramp(SKIN, g[IX.st]), d = g[IX.st];
+  return { uSkin: sk, uFlush: sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * d)), uLip: sk.map((v, j) => v * [.8 + .05 * d, .47 + .2 * d, .53 + .12 * d][j] * (1 + .1 * d)),   // deeper skin: a browner, less pink lip
+    uHair: pick(HAIR, g[IX.hc]), uIris: pick(IRIS, g[IX.ic]) }; }
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
 const ANG = { q: .62, f: 0, p: Math.PI / 2 };
 // close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
-const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.6, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
+const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.58, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
 const glc = document.createElement('canvas'); glc.width = glc.height = 440;
 const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
 const VS = `#version 300 es
@@ -212,7 +249,9 @@ in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
 const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
 uniform vec2 uRes;uniform vec3 uCam,uTgt,uKey;uniform float uFov,uL;uniform vec3 uSkin,uHair,uIris,uLip,uFlush;
-uniform float G[${NG}];
+uniform float G[${NG}];uniform int uZ;
+// ZERO is 0 but not a constant, so Windows' HLSL compiler (via ANGLE) keeps loops as loops instead of unrolling them
+#define ZERO min(uZ,0)
 ${GENES.map((g, i) => `#define g_${g[0]} G[${i}]`).join('\n')}
 #define KEY uKey
 float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
@@ -220,32 +259,37 @@ float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=
 float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
 float smax(float a,float b,float k){return -smin(-a,-b,k);}
 float plane(vec3 p,vec3 n,vec3 at){return dot(p-at,normalize(n));}
-float cut(float d,vec3 p,vec3 n,vec3 at,float k){return smax(d,plane(p,n,at),k);}
+float SKF=1.;   // the softness factor while carving: a softened plane stands off by what its rounding takes away
+float cut(float d,vec3 p,vec3 n,vec3 at,float k){return smax(d,plane(p,n,at)-.25*k*(1.-1./SKF),k);}
 float cutM(float d,vec3 p,vec3 n,vec3 at,float k){d=cut(d,p,n,at,k);return cut(d,p,vec3(-n.x,n.y,n.z),vec3(-at.x,at.y,at.z),k);}
 float gs(vec3 p,vec3 c,float s2){vec3 d=p-c;return exp(-dot(d,d)/s2);}
 mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
 // ---- world to head space: the head-shape genes stretch regions of the house head (the hair and features ride along)
 vec3 warp(vec3 p){
- if(p.y<-.1)p.y=-.1+(p.y+.1)/g_fl;   // the lower face
- if(p.y>.16)p.y=.16+(p.y-.16)/g_cr;   // the crown
+ {float u=p.y+.1;p.y-=(1.-1./g_fl)*.5*(u-sqrt(u*u+.006));}   // the lower face, stretched below the cheekbones (a smooth join: a kink here shows as a crease)
+ {float u=p.y-.16;p.y-=(1.-1./g_cr)*.5*(u+sqrt(u*u+.006));}   // the crown
  if(p.z<-.1)p.z=-.1+(p.z+.1)/g_bk;   // the back of the skull
  float fz=smoothstep(-.3,.3,p.z);   // the face's half: the back of the skull and the neck stay put
+ p.z-=g_fp*smoothstep(.06-.32*exp(-p.x*p.x/.012),.26,p.y)*fz;   // (down the midline the push ramps along the whole bridge: no step on the nose)   // the forehead and brow pushed forward as one mass; the eyes stay, deep under it
  if(p.y>.28)p.z+=g_fh*(p.y-.28)*fz;   // the forehead leans back above the brow (the hair rides along)
  p.z-=g_lp*smoothstep(-.28,-.62,p.y)*fz;   // the lower face pushed forward: mouth, chin, jaw front
- p.x/=mix(g_jw,g_hw,smoothstep(-.6,-.05,p.y));   // width, the jaw's below, the skull's above
+ p.x/=mix(g_jw,g_hw,smoothstep(-.6-.3*g_sf,-.05+.4*g_sf,p.y));   // width, the jaw's below, the skull's above; a soft face blends them over a longer run
+ p.x/=mix(1.,g_cn,smoothstep(0.,.95,p.y));   // the crown narrows into a dome
  return p;}
 // ---- the house head (round 5), in head units (the cranium's half-width ~.8), face +z, y up
 const float SH=.012,SO=.07;
 // the nose: a bridge on the forehead's line, ending in a tip lobule; the wings sit on the face and the alar rim joins them to the tip
 float noseFloor(){return -.425-g_ph;}   // just above the upper lip: a long or drooping nose never reaches the mouth
+float nlE(){   // the nose's length, shortened where it would reach the lip (a long nose over a short philtrum): every part follows it
+ float n=g_nl,k=.2+g_nt;for(int i=ZERO;i<3;i++){float z=(.85+g_np+.2697*(.13+n))/(.9629-.2697*k),y=-.15-n-z*k;n-=.9*max(noseFloor()+.03-y,0.);}return n;}
 vec3 noseTip(){   // the bridge's lower front corner (where the ridge plane meets the base plane), head space
- float k=.2+g_nt,z=(.85+g_np+.2697*(.13+g_nl))/(.9629-.2697*k);return vec3(0.,max(-.15-g_nl-z*k,noseFloor()+.03),z);}
+ float k=.2+g_nt,nl=nlE(),z=(.85+g_np+.2697*(.13+nl))/(.9629-.2697*k);return vec3(0.,-.15-nl-z*k,z);}
 vec3 tipC(){vec3 c=noseTip();return c+vec3(0.,.065*g_ts,-.075*g_ts+.03*g_tr+g_tp);}
 vec3 wingC(){vec3 c=noseTip();return vec3(.1*g_aw,c.y+.07,.8);}
 float noseD(vec3 p){
- vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_nc*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge, on the forehead plane's line; a hump or a dip
- float kr=.002+.07*g_tr*smoothstep(-.02,-.26,n.y);   // the round tip softens the bridge's edges near the bottom only; the ridge above stays sharp
- float wedge=smax(smax(abs(n.x)*.95/g_nw+n.z*.32-.38,ridge,kr),max(n.y-.32,-(n.y+.13+g_nl)-n.z*(.2+g_nt)),kr);   // the bridge, its base the plane under the tip
+ vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_nc*(1.-g_nf)*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge, on the forehead plane's line; a hump or a dip
+ float kr=.002+.035*g_sf+.07*g_tr*smoothstep(-.02,-.26,n.y);   // the round tip softens the bridge's edges near the bottom only; the ridge above stays sharp
+ float wedge=smax(smax(abs(n.x)*.95/g_nw+n.z*.32-.38,ridge,kr),max(n.y-.32,-(n.y+.13+nlE())-n.z*(.2+g_nt)),kr);   // the bridge, its base the plane under the tip
  wedge=max(wedge,-(n.z-.55));
  vec3 c=noseTip(),tc=tipC(),dg=normalize(vec3(0.,-.6,1.));
  wedge=smax(wedge,dot(p-c,dg)+.11*g_tr*g_ts,.035*g_tr+.004);   // round off the corner: the more round, the deeper the chamfer
@@ -256,87 +300,134 @@ float noseD(vec3 p){
  float wing=sdEll(s-wc,vec3(.065,.055,.07)*g_az);   // a wing, on the face
  float rim=sdCapT(s,tc+vec3(.02*g_tw,-.03*g_ts,-.01),wc+vec3(0.,-.015,.02),.026*g_ts,.035*g_az);   // the alar rim, tip to wing
  d=smin(d,smin(wing,rim,.03),.03);
+ float fr=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_tp*.8;   // a flat front: everything trimmed to one plane on the ridge's line (the tip's projection tilts it no further)
+ d=mix(d,smax(d,fr,.008),g_nf);
  return smax(d,noseFloor()-p.y,.03);}
 float mass(vec3 p){
  float d=sdEll(p-vec3(0.,.16,-.1),vec3(.78,.88,.94));   // cranium
  float jm=g_jm-1.;   // jaw mass: a heavier jaw reaches lower and further forward
  d=smin(d,sdEll(p-vec3(0.,-.4-.3*jm,.1+.03*jm),vec3(.66*mix(1.,g_jm,.3),.58*g_jm,.64*mix(1.,g_jm,.2))),.28);   // growing down and out; forward is the chin's job   // the jaw, broad
  float cz=g_cz-1.;   // chin size: a bigger chin is a rounder mass, lower and further forward
- d=smin(d,sdEll(p-vec3(0.,-.78-g_cnh-.25*jm-.08*cz,.46+g_cnp+.12*jm+.12*cz),vec3(.34+g_cnw,.2,.3)*mix(1.,g_jm,.7)*g_cz),.16);   // the chin, forward
- float by=.24+g_bh+g_bt*abs(p.x)+g_as*.025*clamp(p.x*6.,-1.,1.);   // brow height, tilt, and the asymmetry: one brow higher
+ d=smin(d,sdEll(p-vec3(0.,-.78-g_cnh-.25*jm-.08*cz,.46+g_cnp+.12*jm+.12*cz),vec3(.34+g_cnw,.2,.3)*mix(1.,g_jm,.7)*g_cz),.16*(1.+.8*g_sf));   // the chin, forward
+ float by=.24+g_bh+g_bt*abs(p.x)+g_ba*.05*exp(-pow(abs(p.x)-.3,2.)/.018)+g_as*.025*clamp(p.x*6.,-1.,1.);   // brow height, tilt, and the asymmetry: one brow higher
  d=smin(d,sdEll(p-vec3(0.,by,.55+g_bd),vec3(.6,.15,.3)),.12);   // the brow, forward
- d=smin(d,noseD(p),.05);
+ d=smin(d,noseD(p),.05+.14*g_nr*smoothstep(-.05,.2,p.y));   // a flush root: the nose grows out of the brow, no notch
  return d;}
 float carve(vec3 p,float d){
- float cz=g_cz-1.,sk=1.+5.*g_sf,SH=.012*sk,SO=.07*mix(1.,sk,.5);   // planes: crisp (deco) to soft (the Pixar end)
+ float cz=g_cz-1.,sk=1.+5.*g_sf;SKF=sk;float SH=.012*sk,SO=.07*mix(1.,sk,.5);   // planes: crisp (deco) to soft (the Pixar end)
  float fr=clamp(2.5*max(g_jm-1.,0.)+1.5*max(g_cz-1.,0.),0.,1.);   // a heavy jaw or a big chin: the cheek planes recede gradually below the nose (else they meet in a keel)
- vec3 cq=vec3(abs(p.x),p.y,p.z);d=smax(d,plane(cq,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64))-fr*.9*max(-.3-p.y,0.),SH);   // the cheekbones: front meets side
+ vec3 cq=vec3(abs(p.x),p.y,p.z);d=smax(d,plane(cq,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64))-fr*.9*.5*(-.3-p.y+sqrt((.3+p.y)*(.3+p.y)+.01))-.25*SH*(1.-1./SKF),SH);   // the cheekbones: front meets side
  d=cutM(d,p,vec3(1.,-.05,-.08),vec3(.7,-.1,0.),SH*1.5);   // the side plane of the head
  float jm=g_jm-1.;
- d=cutM(d,p,vec3(.8,-.5,.3),vec3(.6,-.62-.45*jm-.15*cz,.3+.1*jm),g_ja);   // the jaw line
- d=cutM(d,p,vec3(.45-.6*max(jm,0.),-.85,0.),vec3(.5,-.74-.7*jm-.4*cz,0.),g_ja);   // a heavy jaw's underside flattens: a U, not a V   // the jaw's underside, back to the ear
+ d=cutM(d,p,vec3(.8,-.5+.8*max(jm,0.),.3),vec3(.6,-.62-.45*jm-.15*cz,.3+.1*jm),g_ja*mix(1.,sk,.6));   // a heavy jaw's sides stand upright: a broad chin, not a point   // the jaw line
+ d=cutM(d,p,vec3(.45-.6*max(jm,0.),-.85,0.),vec3(.5,-.74-.7*jm-.4*cz,0.),g_ja*mix(1.,sk,.6));   // a heavy jaw's underside flattens: a U, not a V   // the jaw's underside, back to the ear
  d=cutM(d,p,vec3(.8,.25,.55),vec3(.62,.36,.42),SO);   // temples
- d=smax(d,min(plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74)),p.y-.12),SO);   // the forehead plane, which sets the nose root; it stops above the bridge so it can never shave the nose
- d=cut(d,p,vec3(0.,-.45,.89),vec3(0.,-.78-g_cnh-.25*jm-.08*cz,.77+g_cnp+.12*jm+.36*cz),SO*.6);   // the chin's front
- d=cutM(d,p,vec3(.8,-.1,.6),vec3(.34+g_cnw,-.8-g_cnh-.25*jm-.08*cz,.68+g_cnp+.12*jm)+vec3(.8,-.1,.6)*(.55*max(cz,0.)+.35*max(jm,0.)),SO*.6);   // a big chin or a heavy jaw outgrows the side planes: they stand off, so no keel   // the chin's sides
+ d=smax(d,smin(plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74)),p.y-.12+.12*g_nr,.02+.1*g_nr)-.25*SO*(1.-1./SKF),SO);   // the forehead plane, which sets the nose root; it stops above the bridge so it can never shave the nose
+ d=cut(d,p,vec3(0.,-.45,.89),vec3(0.,-.78-g_cnh-.25*jm-.08*cz,.77+g_cnp+.12*jm+.36*cz),SO*.6*mix(1.,sk,.5));   // the chin's front
+ d=cutM(d,p,vec3(.8,-.1,.6),vec3(.34+g_cnw,-.8-g_cnh-.25*jm-.08*cz,.68+g_cnp+.12*jm)+vec3(.8,-.1,.6)*(.55*max(cz,0.)+.35*max(jm,0.)),SO*.6*mix(1.,sk,.5));   // a big chin or a heavy jaw outgrows the side planes: they stand off, so no keel   // the chin's sides
  return d;}
 // features (shared with the paint, so the albedo knows where the eyes and lips are)
-vec3 eyeC(){return vec3(g_es,.035,.62-g_ed);}
+vec3 eyeC(){return vec3(g_es,.035,.62-g_ed-.045*g_sf);}   // a soft face's planes round back: the eyes sink with them
 vec3 eyeL(vec3 p){vec3 e=vec3(abs(p.x),p.y,p.z)-eyeC();e.xy=rot(g_et)*e.xy;return e/g_ez;}
 float eyeD(vec3 p){return (length(eyeL(p))-.14)*g_ez;}   // the eyeball: a sphere
 float lidD(vec3 p){vec3 e=eyeL(p);   // the lids, over the eyeball: a thick upper band ending in a fold, a thin lower band, thin skin elsewhere
  float w=.125,t=clamp(e.x/w,-1.5,1.5);t-=g_pk*(1.-t*t);   // the aperture's corners at ±w; the peak shifted inward or outward
  float q=max(1.-t*t,0.),yc=-.012;
  float up=yc+(.062-1.5*g_el-yc)*pow(q,g_ua),lo=yc-(.07-g_lb+yc)*pow(q,.8);   // the margins: the upper arched by the shape, the lower gentler
+ float fi=g_ep*smoothstep(.05,-w*.9,e.x);up-=.06*fi;   // the epicanthic fold: skin from the upper lid drapes over the inner corner
  float ap=max(e.y-up,lo-e.y),r=length(e);
  float skin=smax(abs(r-.143)-.003,-ap,.004);   // thin skin over the eyeball outside the opening (recessed under the brow)
- float ub=smax(abs(r-.14-g_lk)-g_lk,-min(e.y-up,up+g_lf-e.y),.007);   // the upper lid: a band from the margin to its fold
+ float ub=smax(abs(r-.14-g_lk)-g_lk,-min(e.y-up,up+g_lf*(1.-.8*g_ep)-e.y),.007);   // the upper lid: a band from the margin to its fold (low, or hidden, under an epicanthic fold)
  float lb=smax(abs(r-.14-.45*g_lk)-.45*g_lk,-min(lo-e.y,e.y-lo+.075),.005);   // the lower lid: a thinner band
  float bands=smax(min(ub,lb),abs(e.x)-w*1.04,.012);   // the bands end at the corners
  return max(min(skin,bands),-e.z-.03)*g_ez;}
-vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve
-float upLip(vec3 m){float f=.055*mix(1.,g_ul,.5);return smax(sdEll(m-vec3(0.,.045*g_ul,.735),vec3(.17,.045*g_ul,f)),m.z-.735-f*(1.-.45*g_lc),.004);}   // a crisp lip is cut flat in front: a carved plane
-float loLip(vec3 m){float f=.065*mix(1.,g_ll,.5);return smax(max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g_ll,f)),plane(m,vec3(0.,.7,.7),vec3(0.,-.03,.765))),m.z-.72-f*(1.-.45*g_lc),.004);}
+vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.y-=g_mc*m.x*m.x/.0289;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve; its corners turn up or down
+// the mouth as Lawrie's Atlas carves it: the skin comes down to an edge; under the upper edge a face tilts back to the slit,
+// above the lower edge another tilts back up to it. Those faces are the lips (the red), steep (Mr. Incredible: almost none) or broad.
+float mYU(float x){float c=sqrt(max(1.-x*x/.0289,0.));return .058*g_ul*c-.014*g_bw*exp(-x*x/.0012)*c;}   // the upper edge, its bow
+float mYL(float x){return -.065*g_ll*pow(max(1.-x*x/.0225,0.),.7);}   // the lower edge
+const float ZE=.79;   // the upper edge's depth (mouth space)
+float lipBlock(vec3 m,bool upper){   // a lip as a ridge: the skin slopes to the edge (the front), the lip's face tilts back to the slit
+ float x=m.x,ze=ZE-.05*x*x/.0289,y=m.y;
+ float lk=mix(.03,.003,g_lc);   // the edge: soft to crisp
+ if(upper){float yu=mYU(x),s=y>yu?.45:g_mt,zf=smin(ze-.45*(y-yu),ze-g_mt*(yu-y),lk);
+  return max(max((m.z-zf)/sqrt(1.+s*s),-y),max(max(y-yu-.14,abs(x)-.2),.5-m.z));}
+ float yl=mYL(x),h=max(-yl,.004),u=clamp((y-yl)/h,0.,1.),zl=ze-.006+g_ml;   // the lower lip: a roll, round on top, tucked under to a crisp bottom edge
+ float zlip=zl-h*(g_mu*u*u+g_lr*(1.-u)*(1.-u)),zsk=zl-h*g_lr-1.3*(yl-y);   // its curved face; the skin under the edge falls back into the fold
+ float s=y<yl?1.3:abs(2.*g_mu*u-2.*g_lr*(1.-u)),zf=smin(zsk,zlip,lk);
+ return max(max((m.z-zf)/sqrt(1.+s*s),y),max(max(yl-.1-y,abs(x)-.2),.5-m.z));}   // (both end inside the head)
+float lipTint(vec3 m){return max(max(m.y-mYU(m.x)-.002,mYL(m.x)-.002-m.y),max(abs(m.x)-.17,.6-m.z));}   // <0 between the edges: the red never goes above the upper edge
 float features(vec3 p,float d){
  vec3 s=vec3(abs(p.x),p.y,p.z);
  d+=g_cv*.16*gs(s,vec3(.48,-.44+g_ch,.44),.06);   // the hollow under the cheekbone
+ if(g_wr>0.&&s.z>.3){float fm=smoothstep(.3,.6,s.z);   // wrinkles: forehead lines, crow's feet, the fold from nose to mouth
+  float fw=0.;for(int i=ZERO;i<3;i++){float yi=.36+.08*float(i)+.12*s.x*s.x;fw+=exp(-pow(s.y-yi,2.)/.0002);}
+  d+=g_wr*.01*fw*smoothstep(.45,.2,s.x)*smoothstep(.25,.32,s.y);
+  vec3 ec=eyeC();vec2 oc=vec2(ec.x+.125,ec.y-.005);float cf=0.;
+  for(int i=ZERO;i<3;i++){vec2 dir=vec2(cos(-.45+.45*float(i)),sin(-.45+.45*float(i)));vec2 v=s.xy-oc;float h=clamp(dot(v,dir),0.,.065);cf+=exp(-dot(v-dir*h,v-dir*h)/.00006)*(1.-h/.08);}
+  d+=g_wr*.005*cf;
+  vec3 wc=wingC();vec2 a=vec2(wc.x+.05,wc.y-.02),b=vec2(.2*g_mw+.03,-.6-g_ph),ab=b-a,v=s.xy-a;float h=clamp(dot(v,ab)/dot(ab,ab),0.,1.);
+  vec2 e=v-ab*h-vec2(.025,0.)*sin(3.1416*h);d+=g_wr*.014*exp(-dot(e,e)/.0005)*fm;}   // the nasolabial fold, bowed outward
+ if(g_ub>0.){vec3 ec=eyeC(),u=s-ec-vec3(0.,-.125,.1);   // bags under the lower lids, and the crease under them
+  d-=g_ub*.022*exp(-(u.x*u.x/.008+u.y*u.y/.0018+u.z*u.z/.006));
+  float cy=s.y-(ec.y-.18+1.4*pow(s.x-ec.x,2.));d+=g_ub*.007*exp(-cy*cy/.0002)*exp(-pow(s.x-ec.x,2.)/.012)*step(.4,s.z);}
  vec3 za=vec3(.42+g_cw,-.15+g_ch,.6),zb=vec3(.7+g_cw*.5,-.09+g_ch,.05);   // the cheekbone as bone under the skin: the zygomatic line, under the outer eye and back along the arch to the ear
  vec2 zd=zb.xz-za.xz;float zh=clamp(dot(s.xz-za.xz,zd)/dot(zd,zd),0.,1.),zy=s.y-mix(za.y,zb.y,zh);
  float zf=exp(-zy*zy/(zy>0.?.014:.005))*smoothstep(-.05,.3,zh)*(1.-.5*zh)*exp(-pow(length(s.xz-mix(za.xz,zb.xz,zh)),2.)/.03);   // soft above, steeper below into the hollow; strongest at the front
  d-=g_cp*.085*zf;
- float sk=mix(g_so,SH,smoothstep(0.,.09,s.y-.02));   // the socket: hard under the brow, soft into the cheek and outward
- float so=max(sdEll(s-vec3(g_es,.03,.8-g_ed),vec3(.22,.14,.15)*mix(1.,g_ez,.6)),s.y-.14-g_bh);d=smax(d,-so,sk);
- d=smin(d,smax(max(noseD(p),plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74))),s.y-.1-g_bh,.04),.015);   // only where the socket cut it, below the brow   // the nose bounds it on the inner side: a hard line where they meet
+ float sk=mix(g_so,SH,smoothstep(0.,.09,s.y-.02));sk=mix(sk,.06,g_nr*smoothstep(.22,.1,s.x));   // a flush root also softens the socket's corner beside the nose   // the socket: hard under the brow, soft into the cheek and outward
+ float so=max(sdEll(s-vec3(g_es,.03,.8-g_ed-.045*g_sf),vec3(.22,.14,.15)*mix(1.,g_ez,.6)),s.y-.14-g_bh-g_ba*.045*exp(-pow(s.x-.3,2.)/.018));so=smax(so,s.x-g_es-.15-.03*(g_ez-1.),.05);d=smax(d,-so,sk);   // (its outer wall stays closed: from the side the eye sits behind the cheek, never in a hole)
+ d=smin(d,smax(max(noseD(p),plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74))),s.y-.1-g_bh,.04),.015);
+ if(g_nr>0.){float fp=plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74))-g_np*smoothstep(.35,0.,p.y);   // the forehead's line, carried down onto the bridge
+  vec3 n=p-vec3(0.,-.02,0.);float root=smax(smax(fp,abs(n.x)*.95/g_nw+n.z*.32-.38,.02),max(max(p.y-.2-g_bh,-p.y-.14),.45-p.z),.1);   // the bridge's own cross-section, carried up into the brow   // rounded edges; it runs well down the bridge, so it never ends in a step   // a flush root: a slab on that line from brow to bridge
+  d=smin(d,root+(1.-g_nr)*.06,.03+.12*g_nr);}   // ending at the brow, blended wide: the nose rises into the brow, no strip up the forehead   // only where the socket cut it, below the brow   // the nose bounds it on the inner side: a hard line where they meet
  d=min(d,eyeD(p));
  d=smin(d,lidD(p),.01);
  vec3 m=mouthL(p);
- float lk=mix(1.,.2,g_lc);   // the crisper, the sharper the lips' border with the face
- d=smin(d,upLip(m),.03*lk);
- d=smax(d,-max(abs(m.x)-.02,sdEll(m-vec3(0.,.1,.79),vec3(.035,.06,.015))),.012);   // the philtrum, shallow
- d=smin(d,loLip(m),.025*lk);
- float gy=m.y-(-.012+.04*m.x*m.x-.012*exp(-m.x*m.x*300.));
- d=smax(d,-max(length(vec2(gy,max(abs(m.x)-.17*min(1.,.6+.4*min(g_ul,g_ll)),0.)))-.011,.62-m.z),.008);   // the groove, only at the front, no wider than the lips
- d=smax(d,-sdEll(m-vec3(0.,-.07-.1*g_ll,.8-.05*(1.-min(g_ll,1.))),vec3(.14,.035,.05)*min(1.,.3+.7*g_ll)),.03);   // under the lower lip: shallower and smaller with a thinner lip
+ d+=.007*exp(-m.x*m.x/.0005)*exp(-pow(m.y-.11,2.)/.003)*step(.55,m.z);   // the philtrum: a shallow dent, never a slot
+ d=smin(d,lipBlock(m,true),.02);d=smin(d,lipBlock(m,false),.02);   // the two lip blocks
+ d=smax(d,-max(length(vec2(m.y,max(abs(m.x)-.16,0.)))-.006,.6-m.z),.004);   // the slit, a dark line between the corners
  vec3 nc=mix(tipC(),wingC(),.5)+vec3(-.03,-.045,0.);nc.y=max(nc.y,noseFloor()+.014);d=smax(d,-sdEll(s-vec3(.05*g_aw,nc.y,nc.z),vec3(.032,.016,.05)*g_ts),.01);   // nostrils, under the rim
  return d;}
 float earD(vec3 p,float d){vec3 s=vec3(abs(p.x),p.y,p.z);
  vec3 e=s-vec3(.72,-.1,-.2);e.xz=rot(g_ea)*e.xz;e.z-=.1;e/=g_ers;   // turned about its back edge
  d=smin(d,sdEll(e,vec3(.085,.2,.13))*g_ers,.035);   // a simple ear
  return smax(d,-sdEll(e-vec3(.07,0.,.02),vec3(.035,.12,.065))*g_ers,.02);}   // its bowl
-float hairD(vec3 p){
- vec3 h=p-vec3(0.,.2,-.12);
- float d=sdEll(h,vec3(.91,1.,1.06)+vec3(0.,.05,0.)*smoothstep(.0,.8,p.z));
- float th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2),g=abs(fract(th*4./3.14159+.5)-.5);d+=.075*(1.-smoothstep(.03,.3,g));   // four grooves, never through the mass
- float F=p.y-mix(mix(-.55,.16,smoothstep(-.75,-.4,p.z)),.5,smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);   // the hairline: high on the brow, above the ears, down at the nape
- return smax(d,-F,.05);}
-float headD(vec3 p,vec3 q){float d=earD(q,features(q,carve(q,mass(q))))*uL;
+// ---- hair (F5): a library of carved masses, each one piece with a few big grooves; 1950s–60s first (Thunderbirds, The Incredibles)
+float hairline(vec3 p,float yf,float ys,float yn,float rc){   // >0 where hair may grow: front height, above the ears, the nape; rc recedes the temples
+ return p.y-mix(mix(yn,ys,smoothstep(-.75,-.4,p.z)),yf+rc*smoothstep(.08,.42,abs(p.x)),smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);}
+// hair grown from the skull (structural round, pass 2): every style is a thickness over the head's own surface, zero at
+// a sculpted hairline and rising behind it, so hair and skin meet without a gap or a shelf; hk scales the field where the
+// thickness changes fast (a quiff's front)
+float hairT(vec3 p,out float hk){
+ int st=int(floor(g_hs*6.+.5));float up=smoothstep(-.1,.7,p.y),T=0.,F;hk=.75;
+ if(st==1){   // Thunderbirds: thin at the sides, the front growing straight out of the forehead and curving back; strands combed back
+  F=hairline(p,.5,.2,-.35,0.);float M=smoothstep(0.,.22,F);
+  float qf=smoothstep(0.,.25,F)*exp(-pow(p.z-.42,2.)/.1)*smoothstep(.15,.5,p.y)*(1.-smoothstep(.3,.7,abs(p.x)));
+  float g=abs(fract(p.x*9.+.5)-.5);
+  T=M*(.025+.035*up)+.19*qf-.01*(1.-smoothstep(.1,.45,g))*M*smoothstep(.3,.6,p.y);
+  T-=.02*exp(-pow(p.x-.3,2.)/.0006)*smoothstep(.4,.7,p.y)*smoothstep(.45,.2,p.z)*M;   // the side parting
+  hk=.4;}
+ else if(st==2){F=hairline(p,.54,.24,-.3,.04);T=smoothstep(0.,.22,F)*(.022+.012*up);hk=.85;}   // crew cut
+ else if(st==3){F=hairline(p,.64,.2,-.35,.14);float M=smoothstep(0.,.22,F),g=abs(fract(p.x*5.+.5)-.5);   // receding, swept straight back
+  T=M*(.03+.05*up)-.012*(1.-smoothstep(.05,.35,g))*M*smoothstep(.3,.6,p.y);}
+ else if(st==4){F=hairline(p,.5,-.48,-.48,0.);float M=smoothstep(0.,.22,F)*smoothstep(-.52,-.44,p.y);   // a bob, over the ears, flipped at the ends
+  T=M*(.05+.06*up+.07*exp(-pow(p.y+.42,2.)/.004)+.12*exp(-(pow(abs(p.x)-.72,2.)/.02+pow(p.y+.1,2.)/.05+pow(p.z+.1,2.)/.03)))-.025*exp(-pow(p.x+.26,2.)/.0006)*smoothstep(.5,.75,p.y)*M;hk=.55;}
+ else if(st==5){F=hairline(p,.5,.22,-.2,0.);float M=smoothstep(0.,.25,F);   // a bouffant: volume on top and at the crown, a front roll
+  T=M*(.04+.26*smoothstep(.25,.95,p.y)*smoothstep(-.9,.1,p.z))+.07*M*exp(-pow(p.z-.5,2.)/.03)*smoothstep(.45,.75,p.y);hk=.45;}
+ else if(st==6){F=hairline(p,.5,.15,-.45,0.);T=smoothstep(0.,.22,F)*(.06+.02*up+.016*sin(p.x*28.)*sin(p.y*28.)*sin(p.z*28.));hk=.5;}   // short curls
+ else{   // 0, the house: one swept mass, four big grooves
+  F=p.y-mix(mix(-.55,.16,smoothstep(-.75,-.4,p.z)),.5,smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);
+  float M=smoothstep(0.,.25,F),th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2),g=abs(fract(th*4./3.14159+.5)-.5);
+  T=M*(.04+.08*up)-.035*(1.-smoothstep(.03,.3,g))*M*up;hk=.6;}
+ return max(T,0.);}
+float gNE;   // the head without its ears, for the hair to grow from
+float headD(vec3 p,vec3 q){float f=features(q,carve(q,mass(q)));gNE=f*uL;float d=earD(q,f)*uL;
  float nb=-1.32-.45*max(g_fl-1.,0.)-.3*max(g_jm-1.,0.)-.15*max(g_cz-1.,0.);   // the neck's cut end drops with a long or heavy jaw
  d=smin(d,max(sdCapT(p,vec3(0.,-.55,-.18),vec3(0.,-2.,-.1),.5*g_nk,.56*g_nk),nb-p.y),.16-.2*max(g_jm-1.,0.));   // a short, thick neck; a heavy jaw overhangs it
  return max(d,nb-p.y);}
-vec2 map(vec3 p){vec3 q=warp(p);vec2 r=vec2(headD(p,q),1.);float h=hairD(q)*uL;if(h<r.x)r=vec2(h,2.);return r;}
-vec3 nrm(vec3 p){vec2 e=vec2(.0012,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
-float shadow(vec3 o,vec3 d){float res=1.,t=.015;for(int i=0;i<64;i++){float h=map(o+d*t).x;res=min(res,16.*h/t);t+=clamp(h,.008,.25);if(res<.002||t>5.)break;}return clamp(res,0.,1.);}
-float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.035*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-3.*a,0.,1.);}
+vec2 map(vec3 p){vec3 q=warp(p);float hd=headD(p,q),hk,T=hairT(q,hk);   // the hair is the head's surface grown outward by T
+ float hr=(gNE-T*uL)*mix(1.,hk,smoothstep(0.,.03,T));return T>.004&&hr<hd?vec2(hr,2.):vec2(hd,1.);}
 // the paint: 0 skin (warmed), 1 lips, 2 eye, 3 hair; returns colour, and .w = gloss
 vec4 paint(vec3 p,float m){
  if(m>1.5)return vec4(uHair,.5);
@@ -344,22 +435,34 @@ vec4 paint(vec3 p,float m){
   if(r<.058)col=uIris*(.75+.4*smoothstep(.058,.02,r));if(r<.026)col=vec3(.03);
   if(length(e.xy-c-vec2(-.02,.024))<.011)col=vec3(1.4);   // the catchlight
   return vec4(col,1.);}
- vec3 mq=mouthL(p);if(min(upLip(mq),loLip(mq))<.012)return vec4(mix(mix(uSkin,uFlush,.3),uLip,g_lt),mix(.6,.8,g_lt));   // the tint fades to skin
+ vec3 mq=mouthL(p);if(lipTint(mq)<0.)return vec4(mix(mix(uSkin,uFlush,.3),uLip,g_lt),mix(.6,.8,g_lt));   // the tint fades to skin
  vec3 s=vec3(abs(p.x),p.y,p.z);
- float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.7*gs(p,tipC()+vec3(0.,0.,.04),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
+ float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.35*gs(p,tipC()+vec3(0.,0.,.04),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
  return vec4(mix(uSkin,uFlush,.32*clamp(w,0.,1.)),.6);}
+vec3 tet(int i){return .5773*(2.*vec3((((i+3)>>1)&1),((i>>1)&1),(i&1))-1.);}   // the normal's four taps (iq's tetrahedron)
 void main(){
  vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
  vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;
- float t=0.;vec2 h;bool hit=false;
- for(int i=0;i<220;i++){h=map(ro+rd*t);if(h.x<.0004*t){hit=true;break;}t+=h.x*.85;if(t>20.)break;}
+ // One loop, one map() call: the march (ph 0), the normal (1), the key's soft shadow (2), the occlusion (3). The HLSL
+ // compiler inlines every call site, so each extra site was another copy of the whole head to compile.
+ float t=0.,st=.015,sha=1.,occ=0.,w=1.;vec2 h=vec2(0.);bool hit=false;int ph=0,k=0;vec3 p=vec3(0.),n=vec3(0.);
+ for(int i=ZERO;i<330;i++){
+  vec3 q=ph==0?ro+rd*t:ph==1?p+tet(k)*.0012:ph==2?p+n*.004+KEY*st:p+n*(.05*float(k+1));
+  vec2 mq=map(q);float hx=mq.x;
+  if(ph==0){h=mq;if(h.x<.0004*t){hit=true;p=ro+rd*t;ph=1;}else{t+=h.x*.85;if(t>20.)break;}}
+  else if(ph==1){n+=tet(k)*hx;k++;if(k==4){n=normalize(n);ph=2;k=0;}}
+  else if(ph==2){sha=min(sha,7.*hx/st);st+=clamp(hx,.01,.25);k++;if(sha<.002||st>5.||k>60){ph=3;k=0;}}
+  else{occ+=w*(.05*float(k+1)-hx);w*=.7;k++;if(k==6)break;}}
  vec3 col=mix(vec3(.12,.12,.12),vec3(.27,.27,.27),smoothstep(-.5,.7,rd.y));
- if(hit){vec3 p=ro+rd*t,n=nrm(p);vec4 al=paint(warp(p),h.y);
-  float l=max(dot(n,KEY),0.)*shadow(p+n*.004,KEY),oc=ao(p,n);vec3 rf=reflect(rd,n);float fr=pow(1.-max(dot(n,-rd),0.),4.);
-  col=al.rgb*(l*vec3(1.,.95,.86)*1.3+(vec3(.11,.12,.15)*(.5+.5*n.y)+vec3(.07,.055,.045))*oc);
-  col+=vec3(1.,.95,.88)*(pow(max(dot(rf,KEY),0.),22.)*.16*al.w+pow(max(dot(rf,KEY),0.),200.)*1.2*step(.9,al.w))*l;   // satin; the eye's gloss
-  col+=vec3(.32,.34,.38)*fr*.18*oc;   // the sheen at grazing angles
-  col+=vec3(.3,.32,.36)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,normalize(vec3(.6,.2,-.7))),0.)*.4;}
+ if(hit){vec4 al=paint(warp(p),h.y);sha=clamp(sha,0.,1.);float oc=clamp(1.-1.6*occ,0.,1.);
+  // puppet-studio light: a soft key, a fill from the other side at about a third, a rim from behind, and occlusion
+  vec3 fillD=normalize(vec3(-KEY.x,.15,KEY.z+.3)),rimD=normalize(vec3(-KEY.x*.6,.45,-.85));
+  float key=max(dot(n,KEY),0.)*mix(.25,1.,sha),fill=max(dot(n,fillD),0.)*.36,sky=.5+.5*n.y;
+  col=al.rgb*(key*vec3(1.,.95,.87)*1.15+fill*vec3(.84,.9,1.)*oc+(vec3(.1,.11,.13)*sky+vec3(.07,.055,.045))*oc);
+  vec3 rf=reflect(rd,n);
+  col+=vec3(1.,.95,.88)*(pow(max(dot(rf,KEY),0.),22.)*.16*al.w+pow(max(dot(rf,KEY),0.),200.)*1.2*step(.9,al.w))*key;   // satin; the eye's gloss
+  col+=vec3(.9,.93,1.)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,rimD),0.)*.45*oc;   // the rim
+  col+=vec3(.32,.34,.38)*pow(1.-max(dot(n,-rd),0.),4.)*.12*oc;}
  col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
@@ -374,17 +477,20 @@ for (const [n, c] of [['uSkin', P.skin], ['uHair', P.hair], ['uIris', P.iris], [
 // one tile: draw at s px (thumbnails at twice their size, scaled down: the antialiasing), copy to the tile's canvas
 function drawTile(cv, t, view, fov) {
   const [vk, tg] = view.split(':'), vf = k => val(IX[k], t[IX[k]]);
-  const T = CLOSE[tg] || [0, -.22 - .35 * Math.max(0, vf('fl') - 1) - .25 * Math.max(0, vf('jm') - 1) - .1 * Math.max(0, vf('cz') - 1), 0];   // a long or heavy lower face lowers the frame
-  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? (tg === 'eyes' ? 1.6 : 2.7) : 6, H = glc.height;
+  const C = CLOSE[tg] && CLOSE[tg].slice(); if (C && C[1] < -.1) C[1] = -.1 + (C[1] + .1) * vf('fl');   // close-ups below the cheekbone follow the lower face's length
+  const T = C || [0, -.22 - .35 * Math.max(0, vf('fl') - 1) - .25 * Math.max(0, vf('jm') - 1) - .1 * Math.max(0, vf('cz') - 1), 0];   // a long or heavy lower face lowers the frame
+  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? (tg === 'eyes' || tg === 'mouth' ? 1.6 : 2.7) : 6, H = glc.height;
   gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.uniform2f(U('uRes'), s, s);
   gl.uniform3f(U('uCam'), T[0] + Math.sin(a) * d, T[1] + (tg ? .25 : .32), T[2] + Math.cos(a) * d); gl.uniform3f(U('uTgt'), ...T); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
   const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
   gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);
   const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
+  const pt = paintOf(g); for (const n in pt) gl.uniform3fv(U(n), pt[n]);
   // the head-shape stretches bend the distance field: march more carefully when any is off the house value
   const w = ['hw', 'jw', 'fl', 'cr', 'bk'].map(k => g[IX[k]]), off = t.some(x => x !== 0);
-  gl.uniform1f(U('uL'), off ? Math.min(1, ...w) * .9 * (1 - .4 * g[IX.cp]) : 1);   // the cheekbone's swelling steepens the field too
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.uniform1f(U('uL'), off ? Math.min(1, g[IX.cn], ...w) * .9 * (1 - .4 * g[IX.cp]) / (1 + 7 * g[IX.fp]) : 1);   // (the forehead push shears the field)   // the cheekbone's swelling steepens the field too
+  gl.uniform1i(U('uZ'), 0);
+  for (let y0 = 0; y0 < s; y0 += 140) { gl.scissor(0, H - s + y0, s, Math.min(140, s - y0)); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.flush(); }   // in strips: no single draw trips the GPU watchdog
   const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
 }
 // a queue, one tile per frame (a long single GPU job can trip Windows' GPU timeout); a new render replaces it
@@ -409,7 +515,7 @@ const sl = [];
       const row = document.createElement('div'); row.className = 'row';
       row.innerHTML = `<label class="${g[7] ? 'star' : ''}" title="${g[2]} (${g[0]}): house ${g[3]}, range ${g[4]} to ${g[5]}. Double-click to reset.">${g[2]}</label><input type="range" min="-127" max="127" step="1"><span></span>`;
       const inp = row.querySelector('input'), sp = row.querySelector('span');
-      inp.oninput = () => { cur[i] = inp.value / 127; sp.textContent = val(i, cur[i]).toFixed(3); editChanged(); };
+      inp.oninput = () => { cur[i] = inp.value / 127; sp.textContent = fmtG(i, cur[i]); editChanged(); };
       inp.ondblclick = () => { cur[i] = 0; syncSliders(); editChanged(); };
       sl[i] = [inp, sp]; det.appendChild(row); });
     box.appendChild(det);
@@ -425,7 +531,7 @@ const sl = [];
     inp.onchange = () => { inp.value = 0; base = null; };
     mb.appendChild(row); });
 })();
-function syncSliders() { GENES.forEach((g, i) => { sl[i][0].value = Math.round(cur[i] * 127); sl[i][1].textContent = val(i, cur[i]).toFixed(3); }); }
+function syncSliders() { GENES.forEach((g, i) => { sl[i][0].value = Math.round(cur[i] * 127); sl[i][1].textContent = fmtG(i, cur[i]); }); }
 const $ = id => document.getElementById(id);
 function editChanged() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
 function renderEdit() { const c = ':' + $('closeOn').value;
@@ -433,7 +539,7 @@ function renderEdit() { const c = ':' + $('closeOn').value;
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
-const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809980ffcf01c780808001f0050a8080fffaffedbf80ba80ffc016cf1180e64025c70ed5ffff808080b88080', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
+const PRESETS = { 'Deco woman (the second reach test)': 'LP1.608080806880a080809c8080e6804d6b2b808080800199a0c780809580808080806080805c7580ae9967806ed58080c08080378080803d6f60a6808080ff803a4021aa80f2ffea', 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ec0ffef01c780808001f021218080ffffa0a4bf80ba80ffd52bdf2180c0e6258e14d5ffcf808080b88080e1df80808080ff808dd580dc16', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
   'Nose: button': 'LP1.80808080808080808080808080801a275d348080808080808080808080808080808080ff4d8d676d808080808080808080', 'Nose: bulb': 'LP1.8080808080808080808080808080a680a4808080808080808080808080808080808080fff2e680cccc8080808080808080', 'Nose: hawk': 'LP1.8080808080808080808080808080cca880e6ff80808080808080808080808080808080015c5c8067808080808080808080' };
 for (const k in PRESETS) $('preset').insertAdjacentHTML('beforeend', `<option>${k}</option>`);
 $('preset').onchange = () => { const t = fromDNA(PRESETS[$('preset').value]); if (t) { cur = t; syncSliders(); editChanged(); } $('preset').value = ''; };
@@ -503,14 +609,35 @@ function renderRanges() {
   render(jobs);
 }
 
+// ---- Roster: the archetypes (name, DNA)
+const ARCH = [
+  ["West African man", "LP1.989780808080b0808080808080808040a48080808080b3b0b8808080809580808080808080b680ba9980808080808080808080808080804d8080808080a680e701018080"],
+  ["West African woman", "LP1.80608080808070808080aa805680802b92808080808080b8bf808080568080808060808080a480a38080808080808080808080808080808080808080808080d601018080"],
+  ["East Asian woman", "LP1.a0608080808080808080609e8080802b648080808080807888808080806780808080808080898080805780a780808080808080809c801c80808080808099ec8501098080"],
+  ["East Asian man", "LP1.b8978080808080808080808080808040728080808080807080808089808080808080808080928080808080b1808080808080808080802c80808080808080d98d01098080"],
+  ["South Asian woman", "LP1.805a8080808080808080b880808099908080808080808098a080808056808080804d8080808080808080808080808080808080807080a48080808080808080b601018080"],
+  ["Northern European man", "LP1.809c80808080c080808080808080b3a88080808080a080607080802b80a08080808080808060808080a0809d808080808080808080808080808080808080801ed5808080"],
+  ["North African man", "LP1.808e80808080c080808080809980c0b88080c980808080889080808080808080808080808080808080a08080808080808080808080808080808080808080809d40218080"],
+  ["Andean woman", "LP1.b080808058808080808060808080a6a08080b6808080808088808080808080808080808080808080808080c4808080808080808080803d80808080808080a6ad01018080"],
+  ["Polynesian man", "LP1.c0aa80808080b080808080808080806b92808080808080a0b08080808095808080ae808080ad80ae8080808080808080808080808080808080808080808080b601018080"],
+  ["Older Mediterranean woman", "LP1.806080808080708080808080b380a6988080808080b080506080808980808080808080808080808080808080808080808080808080808080808080808080808dff218080"],
+  ["Eastern European woman", "LP1.804d8080808080808080aa80808067808080808080808080808080804b808080808080bf5c80808080808080808080808080808080808080808080808080800caa608080"],
+  ["Southeast Asian man", "LP1.98808080808080808080808080808016928080808080809098808080808080808080808080a480a380808080808080808080808080803d80808080808099c0ad01018080"],
+];
+function renderRoster() { const box = $('rgrid'); box.innerHTML = ''; const jobs = [];
+  ARCH.forEach(([name, dna]) => { const t = fromDNA(dna); if (!t) return; const c = document.createElement('div'); c.className = 'cell';
+    c.innerHTML = `<canvas class="t" width="250" height="250"></canvas><div style="display:flex;gap:4px;margin-top:4px"><canvas class="t" width="122" height="122"></canvas><canvas class="t" width="122" height="122"></canvas></div><div class="note">${name}</div>`;
+    const [a, b, d] = c.querySelectorAll('canvas'); jobs.push([a, t, 'q'], [b, t, 'f'], [d, t, 'p']);
+    c.onclick = () => { cur = t.slice(); syncSliders(); setMode('edit'); editChanged(); }; box.appendChild(c); });
+  render(jobs); }
 // ---- modes
 let mode = '';
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
-  if (m === 'edit') renderEdit(); else if (m === 'breed') { if (!pop.length) freshGen(); renderBreed(); } else renderRanges(); }
+  if (m === 'edit') renderEdit(); else if (m === 'breed') { if (!pop.length) freshGen(); renderBreed(); } else if (m === 'roster') renderRoster(); else renderRanges(); }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
 syncSliders(); $('dna').value = toDNA(cur); showPicks();
-setMode(['edit', 'breed', 'ranges'].includes(Q.get('mode')) ? Q.get('mode') : 'edit');
+setMode(['edit', 'breed', 'ranges', 'roster'].includes(Q.get('mode')) ? Q.get('mode') : 'edit');
 </script>
 </body>
 </html>

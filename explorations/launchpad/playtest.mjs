@@ -1,6 +1,8 @@
 // The robot playtester: walks TESTING.md rows on the real GPU and records screenshots, numbers and console errors.
 // usage:  node playtest.mjs [rows…]           run those rows (default: every row in ROWS), e.g. node playtest.mjs 95 96 38
 //         node playtest.mjs --eval <js>…      probe: fresh tester page, evaluate each expression (awaited), screenshot after each
+//         node playtest.mjs --watch[=speed] m1  watch it play (Q224): a visible Chrome window, flights at real speed × speed
+//                                               (warped in coasts), a caption for what the robot does, a mark where it clicks
 // Needs the folder served (python -m http.server 8799 --directory <repo>/explorations). Env: PT_URL (page, default
 // http://localhost:8799/launchpad/index.html), PT_OUT (output dir, default C:/Users/caioa/dev/playtest-out), PT_W/PT_H,
 // PT_IGPU=1 (the integrated GPU instead of the discrete one), SHOT_FLAGS (Chrome GPU flags, overrides both).
@@ -16,7 +18,9 @@
 // What it can't judge is left to the human reading the screenshots (and to Caio): feel, difficulty, fun.
 import {spawn} from 'node:child_process';
 import fs from 'node:fs';
-const URL0 = process.env.PT_URL || 'http://localhost:8799/launchpad/index.html', OUT = process.env.PT_OUT || 'C:/Users/caioa/dev/playtest-out';
+// --watch[=speed] (Q224): headed Chrome, paced for a person watching; its results and shots go to <out>/watch
+const ARGV = process.argv.slice(2), WARG = ARGV.find(a => a.startsWith('--watch')), WATCH = WARG ? +(WARG.split('=')[1] || 1) : 0;
+const URL0 = process.env.PT_URL || 'http://localhost:8799/launchpad/index.html', OUT = (process.env.PT_OUT || 'C:/Users/caioa/dev/playtest-out') + (WATCH ? '/watch' : '');
 const W = +(process.env.PT_W || 1280), H = +(process.env.PT_H || 800);
 fs.mkdirSync(OUT, {recursive: true});
 const wait = ms => new Promise(r => setTimeout(r, ms));
@@ -39,7 +43,28 @@ window.PT = {
   preset(name) { stackDef = JSON.parse(JSON.stringify(PRESETS[name])); editorChanged(); return name },
   launch() { document.getElementById('launch').click(); return mode },
   // fly with the physics directly (rAF in a headless tab runs, but slowly for long flights): steps until cond or tmax s
-  fly(cond, tmax = 600, opts = {}) { const t0 = simT; let n = 0; while (S.alive && !cond() && simT - t0 < tmax) { if (opts.ascent) { INP.pitch = (simT >= (opts.kick||8) && simT < (opts.kick||8) + (opts.kickLen||0.8)) ? 1 : 0; if (simT > (opts.kick||8) + 1.8 && S.sasMode !== 'pro' && sasModeOK(S, 'pro')) { S.sas = true; S.sasMode = 'pro' } } if (opts.autostage && simT - t0 > 3 && S.thrust <= 0 && S.evIdx < S.events.length && simT - (PT._st ?? -9) > 1) { stage(S); PT._st = simT } if (opts.each) opts.each(); advPhys(S); if (opts.smoke) emitSmoke(DT); n++ } INP.pitch = 0; return {t: +(simT - t0).toFixed(1), steps: n, alive: S.alive} },
+  fly(cond, tmax = 600, opts = {}) { const t0 = simT; let n = 0; const fin = () => { INP.pitch = 0; return {t: +(simT - t0).toFixed(1), steps: n, alive: S.alive} };
+    const r = PT.loop(() => { if (!(S.alive && !cond() && simT - t0 < tmax)) return false; if (opts.ascent) { INP.pitch = (simT >= (opts.kick||8) && simT < (opts.kick||8) + (opts.kickLen||0.8)) ? 1 : 0; if (simT > (opts.kick||8) + 1.8 && S.sasMode !== 'pro' && sasModeOK(S, 'pro')) { S.sas = true; S.sasMode = 'pro' } } if (opts.autostage && simT - t0 > 3 && S.thrust <= 0 && S.evIdx < S.events.length && simT - (PT._st ?? -9) > 1) { stage(S); PT._st = simT; PT.W && PT.say('Staging') } if (opts.each) opts.each(); advPhys(S); if (opts.smoke && !PT.W) emitSmoke(DT); n++ }, Infinity, {warp: PT.coastWarp});
+    return r && r.then ? r.then(fin) : fin() },
+  // run body() (one physics step each, false ends it) to the end: at once, or in watch mode (PT.W) across animation frames at
+  // speed × warp() sim seconds per real second, the game's own simulate() held off so the live loop only draws
+  W: null,
+  loop(body, maxK = Infinity, opts = {}) {
+    if (!PT.W) { let k = 0; while (k++ < maxK && body() !== false); return k }
+    return new Promise(res => { const sim0 = window.simulate; window.simulate = () => {}; let k = 0, acc = 0, last = performance.now();
+      const tick = now => { const dt = Math.min(0.1, (now - last) / 1000), w = opts.warp ? opts.warp() : 1; last = now; acc += dt * PT.W.speed * w; PT.warpTag(w * PT.W.speed);
+        const t0 = simT; let done = false, n = 0; while (acc >= DT && n++ < 4000) { acc -= DT; if (k++ >= maxK || body() === false) { done = true; break } } if (n >= 4000) acc = 0; emitSmoke(simT - t0);
+        if (done) { window.simulate = sim0; PT.warpTag(0); res(k) } else requestAnimationFrame(tick) };
+      requestAnimationFrame(tick) }) },
+  // warp while nothing happens: engines off, high above the ground (×20 above the air, ×4 in it)
+  coastWarp() { if (!S.alive || S.throttle > 0 || groundGap(S) < 3000) return 1; return PT.alt() > (S.body.atm || 0) ? 20 : 4 },
+  say(text) { if (!PT.W) return text; let c = document.getElementById('ptcap'); if (!c) { c = document.createElement('div'); c.id = 'ptcap';
+      c.style.cssText = 'position:fixed;left:50%;bottom:150px;transform:translateX(-50%);max-width:70%;padding:10px 16px;border-radius:8px;background:rgba(10,14,22,.82);color:#fff;font:600 17px system-ui,sans-serif;z-index:99999;pointer-events:none;text-align:center;box-shadow:0 2px 12px rgba(0,0,0,.4)';
+      document.body.appendChild(c) }
+    c.innerHTML = '<span style="color:#7fd4ff;font-size:12px;letter-spacing:.12em;margin-right:10px">ROBOT</span>' + text + '<span id="ptwarp" style="color:#ffd27f;margin-left:10px"></span>'; return text },
+  warpTag(w) { const e = document.getElementById('ptwarp'); if (e) e.textContent = w > 1.01 ? '×' + Math.round(w) : '' },
+  dot(x, y) { const d = document.createElement('div'); d.style.cssText = 'position:fixed;left:' + (x - 18) + 'px;top:' + (y - 18) + 'px;width:36px;height:36px;border:3px solid #ffd27f;border-radius:50%;z-index:99999;pointer-events:none;transition:transform .6s,opacity .6s';
+    document.body.appendChild(d); requestAnimationFrame(() => requestAnimationFrame(() => { d.style.transform = 'scale(1.8)'; d.style.opacity = '0' })); setTimeout(() => d.remove(), 900); return true },
   alt() { return len(S.r) - S.body.R },
   agl() { return groundGap(S) },
   // the vessel's nose against its airflow, degrees
@@ -58,9 +83,9 @@ true`;
 
 // ---- Chrome over CDP -------------------------------------------------------------------------------------------------
 const port = 9300 + Math.floor(Math.random() * 500);
-const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', ['--headless=new', `--remote-debugging-port=${port}`,
+const ch = spawn('C:/Program Files/Google/Chrome/Application/chrome.exe', [...(WATCH ? ['--window-position=60,40', '--disable-renderer-backgrounding', '--disable-backgrounding-occluded-windows', '--no-first-run', '--no-default-browser-check'] : ['--headless=new']), `--remote-debugging-port=${port}`,
   ...(process.env.SHOT_FLAGS ? process.env.SHOT_FLAGS.split(' ') : (process.env.PT_IGPU ? ['--use-angle=d3d11', '--enable-gpu'] : ['--use-angle=d3d11', '--enable-gpu', '--force_high_performance_gpu'])), '--ignore-gpu-blocklist',
-  '--hide-scrollbars', `--window-size=${W},${H}`, `--user-data-dir=${process.env.TEMP}/ptprof${port}`, 'about:blank'], {stdio: 'ignore'});
+  '--hide-scrollbars', `--window-size=${W + (WATCH ? 16 : 0)},${H + (WATCH ? 48 : 0)}`, `--user-data-dir=${process.env.TEMP}/ptprof${port}`, WATCH ? '--app=about:blank' : 'about:blank'], {stdio: 'ignore'});
 let tabs;
 for (let i = 0; i < 50; i++) { try { tabs = await (await fetch(`http://127.0.0.1:${port}/json`)).json(); if (tabs.find(t => t.type === 'page')) break } catch {} await wait(200) }
 const ws = new WebSocket(tabs.find(t => t.type === 'page').webSocketDebuggerUrl); await new Promise(r => ws.onopen = r);
@@ -70,7 +95,7 @@ ws.onmessage = e => { const m = JSON.parse(e.data); if (m.id && pend.has(m.id)) 
   else if (m.method === 'Runtime.exceptionThrown') { const d = m.params.exceptionDetails; logs.push('EXC ' + (d.exception?.description || d.text).slice(0, 600)) } };
 const cmd = (method, params = {}) => new Promise(r => { const i = ++id; pend.set(i, r); ws.send(JSON.stringify({id: i, method, params})) });
 await cmd('Runtime.enable'); await cmd('Page.enable');
-await cmd('Emulation.setDeviceMetricsOverride', {width: W, height: H, deviceScaleFactor: 1, mobile: false});
+if (!WATCH) await cmd('Emulation.setDeviceMetricsOverride', {width: W, height: H, deviceScaleFactor: 1, mobile: false});   // watching: the window's own size
 const ev = async (expression, timeout = 300000) => { const r = await cmd('Runtime.evaluate', {expression, awaitPromise: true, returnByValue: true, timeout});
   if (r.result?.exceptionDetails) return {err: (r.result.exceptionDetails.exception?.description || r.result.exceptionDetails.text).slice(0, 600)};
   return {val: r.result?.result?.value} };
@@ -88,12 +113,12 @@ async function fresh(flags = {money: true, kh: true, tools: true, nofail: true, 
   await cmd('Storage.clearDataForOrigin', {origin: new URL(URL0).origin, storageTypes: 'all'});
   if (boot) await cmd('Page.removeScriptToEvaluateOnNewDocument', {identifier: boot});
   boot = (await cmd('Page.addScriptToEvaluateOnNewDocument', {source: flags ? `try{if(!localStorage.getItem('launchpad-tester-flags'))localStorage.setItem('launchpad-tester-flags',${JSON.stringify(JSON.stringify(flags))})}catch(e){}` : ''})).result.identifier;
-  const url = URL0 + (query ?? (flags ? '?tester' : ''));
+  const q = query ?? (flags ? '?tester' : ''), url = URL0 + (URL0.includes('?') && q.startsWith('?') ? '&' + q.slice(1) : q);   // Q221: PT_URL may carry its own query
   await cmd('Page.navigate', {url});
   for (let i = 0; i < 100; i++) { await wait(200); const r = await ev('typeof render==="function"&&typeof PROG==="object"&&document.readyState==="complete"'); if (r.val) break }
   await wait(1500);
   await ev(`new Promise(r=>{const s=document.createElement('script');s.src='views.js';s.onload=()=>r(true);s.onerror=()=>r(false);document.head.appendChild(s)})`);
-  await ev(HELPERS);
+  await ev(HELPERS); if (WATCH) await ev(`PT.W = {speed: ${WATCH}}; PT.say('Starting'); true`);
   if (!gate) await ev(`PT.start(); go('assembly'); screenNow()`);   // past the career gate, in the assembly (gate:true keeps the gate)
 }
 
@@ -419,46 +444,50 @@ ROWS[75] = {title: 'new career gate', gate: true, flags: null, steps: [{shot: 'g
 // is fly_ladder.mjs's handAscent (PT.ascent(flatKm): the turn ends at flatKm, 38 there): attitude set directly, so it proves the career path, not that the rocket is flyable.
 // Boxes: every visible panel on each screen, pairwise; any overlap ≥ 40 px² at 1280×800 is listed.
 const M1_HELPERS = String.raw`
-PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e => { if (e.tagName === 'CANVAS' || e.closest('.hidden')) return false; const cs = getComputedStyle(e);
+PT.boxes = () => { const els = [...document.querySelectorAll('body *')].filter(e => { if (e.tagName === 'CANVAS' || e.closest('.hidden') || e.id === 'ptcap' || e.closest('#ptcap')) return false; const cs = getComputedStyle(e);
     if (!/absolute|fixed|sticky/.test(cs.position) || cs.visibility === 'hidden' || cs.display === 'none' || +cs.opacity === 0) return false; const r = e.getBoundingClientRect(); return r.width > 4 && r.height > 4 && r.width * r.height < 0.5 * innerWidth * innerHeight && e.innerText.trim() });   // full-screen layers are containers, not boxes
   const top = els.filter(e => !els.some(o => o !== e && o.contains(e))), name = e => e.id ? '#' + e.id : e.tagName.toLowerCase() + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '');
   const out = []; for (let i = 0; i < top.length; i++) for (let j = i + 1; j < top.length; j++) { const A = top[i].getBoundingClientRect(), B = top[j].getBoundingClientRect();
     const w = Math.min(A.right, B.right) - Math.max(A.left, B.left), h = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top); if (w > 0 && h > 0 && w * h >= 40) out.push(name(top[i]) + ' × ' + name(top[j]) + ' ' + Math.round(w * h) + ' px²') }
   return out };
 PT.debrief = () => /debrief/.test(screenNow()) || [...document.querySelectorAll('[id*=debrief],[class*=debrief]')].some(e => !e.closest('.hidden') && e.getBoundingClientRect().height > 0);
-PT.ascent = (flatKm = 38) => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up';
+PT.ascent = (flatKm = 38) => { const s = S, ATM = TELLUS.atm, AS = ATM / 7e4, tgt = ATM + 10000; s.sas = false; s.throttle = 1; if (s.evIdx === 0) stage(s); let k = 0, phase = 'up'; const say = x => { if (PT.W) PT.say(x) }; say('Full throttle: liftoff, then a slow turn toward the horizon');
   const point = Y => { const f = localFrame(s.r), X = norm(cross(Y, f.n)); s.q = qFromBasis(X, Y, cross(X, Y)); s.w = [0, 0, 0] };
   const pitch = d => { const f = localFrame(s.r), r = d * Math.PI / 180; point(norm(add(mul(f.e, Math.cos(r)), mul(f.up, Math.sin(r))))) };
-  while (s.alive && k++ < 400000) { const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
-    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (flatKm * 1000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast' } }
+  const body = () => { if (!(s.alive && k++ < 400000)) return false; const el = elements(s.r, s.v, TELLUS.mu), h = len(s.r) - TELLUS.R;
+    if (phase === 'up') { const f = Math.min(1, Math.max(0, (h - 200 * AS) / (flatKm * 1000 * AS - 200 * AS))); pitch(90 * (1 - Math.pow(f, 0.6))); if (el.ap - TELLUS.R > tgt) { s.throttle = 0; phase = 'coast'; say('Apoapsis high enough: engine off, coasting up to it') } }
     else if (phase === 'coast') { pitch(0); s.throttle = h < ATM && el.ap - TELLUS.R < tgt - 500 ? 0.3 : 0;
-      const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) phase = 'circ' }
+      const dvC = Math.sqrt(TELLUS.mu / el.ap) - Math.sqrt(TELLUS.mu * (2 / el.ap - 1 / el.a)); if (h > ATM && timeToNu(el, Math.PI) < Math.max(25, 0.5 * dvC / Math.max(engAcc(s), 0.1))) { phase = 'circ'; say('At apoapsis: burning along the horizon to circularise') } }
     else { const f = localFrame(s.r), hv = norm(sub(s.v, mul(f.up, dot(s.v, f.up)))), need = sub(mul(hv, Math.sqrt(TELLUS.mu / len(s.r))), s.v); point(norm(need)); s.throttle = 1;
-      if (el.pe - TELLUS.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; break } }
-    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) stage(s);
-    advPhys(s) }
-  const o = PT.orbit(); return {alive: s.alive, pe: Math.round(o.pe / 1e3), ap: Math.round(o.ap / 1e3), atm: TELLUS.atm / 1e3, t: Math.round(simT)} };
+      if (el.pe - TELLUS.R > ATM + 2000 || len(need) < 3) { s.throttle = 0; say('In orbit'); return false } }
+    if (s.throttle > 0 && dvRemaining(s).cur <= 0.5 && s.evIdx < s.events.length) { stage(s); say('Stage empty: staging') }
+    advPhys(s) };
+  const fin = () => { const o = PT.orbit(); return {alive: s.alive, pe: Math.round(o.pe / 1e3), ap: Math.round(o.ap / 1e3), atm: TELLUS.atm / 1e3, t: Math.round(simT)} };
+  const r = PT.loop(body, Infinity, {warp: () => phase === 'coast' && len(s.r) - TELLUS.R > ATM ? 20 : 1}); return r && r.then ? r.then(fin) : fin() };
 PT.state = () => ({screen: screenNow(), day: +PROG.day.toFixed(1), funds: +PROG.funds.toFixed(1), flights: PROG.flights, done: Object.keys(PROG.done)});
 true`;
 ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
   // the first-run gate, with real clicks
-  {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,
-  {click: '[data-start="agency"]'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
+  {say: 'A new player opens the game for the first time'}, {shot: 'gate'}, `({tester: typeof TEST === 'object' ? TEST.on : null, gate: progGate, boxes: PT.boxes()})`,
+  {say: 'Picks a space agency to start a career'}, {click: '[data-start="agency"]'}, `({gate: progGate, build: document.getElementById('bBuild').disabled, ...PT.state(), program: PT.text('#prog').slice(0, 600)})`, {shot: 'program'},
   `PT.m1 = {boxes: {program: PT.boxes()}}; PT.m1.boxes.program`,
   // flight 1: Sounding, "Above the weather"
-  {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
-  {click: '#bRoll'}, `PT.m1.boxes.rollout = PT.boxes(); ({screen: screenNow(), checks: document.getElementById('rollChecks').innerText})`, {shot: 'rollout'}, {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
+  {say: 'First contract, "Above the weather": to the Assembly (B) to build a sounding rocket'}, {key: 'b'}, `PT.preset('Sounding'); ({screen: screenNow(), cost: vesselCost(S.parts).cost, funds: PROG.funds, boxes: (PT.m1.boxes.assembly = PT.boxes())})`, {shot: 'assembly'},
+  {say: 'Loads the Sounding preset and rolls it out'}, {click: '#bRoll'}, `PT.m1.boxes.rollout = PT.boxes(); ({screen: screenNow(), checks: document.getElementById('rollChecks').innerText})`, {shot: 'rollout'}, {say: 'Launch: full throttle, first stage lit'}, {click: '#launch'}, `S.throttle = 1; stage(S); PT.m1.t0 = simT; ({screen: screenNow()})`, {wait: 2500},
   `PT.m1.live = +(simT - PT.m1.t0).toFixed(2); PT.m1.boxes.flight = PT.boxes(); ({live: PT.m1.live, alt: Math.round(PT.alt())})`, {shot: 'climb'},
   // Esc pauses (Q39): the sim clock stands still while the Esc menu is open
-  {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
-  `({fly: PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}})`,
+  {say: 'Esc mid-flight: the game should pause'}, {key: 'Escape'}, `PT.m1.tE = simT; true`, {wait: 2500}, `PT.m1.escRun = +(simT - PT.m1.tE).toFixed(2); ({escRun: PT.m1.escRun, menu: PT.vis('#escm')})`, {shot: 'esc'}, {key: 'Escape'},
+  {say: 'Back to the flight: up above the weather, then down under the parachute'},
+  `(async () => ({fly: await PT.fly(() => S.landed || !S.alive, 4000, {autostage: true}), landed: S.landed, alive: S.alive, rec: {apex: Math.round(S.rec.apex), recSci: S.rec.recSci}}))()`,
+  {say: 'Landed: to the Program screen for the Debrief'},
   `go('program'); PT.m1.deb1 = PT.debrief(); ({debrief: PT.m1.deb1, ...PT.state(), boxes: PT.boxes(), news: PT.logSince(0).slice(-8)})`, {shot: 'after_sounding'},
   // flight 2: the beeper
+  {say: 'Second contract, "The beeper": an instrument package in orbit. The Beeper preset in the Assembly'},
   `go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper || PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k))); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
-  {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
+  {click: '#bRoll'}, {say: 'Roll out, launch, fly it to orbit'}, {click: '#launch'}, `(async () => ({screen: screenNow(), ascent: await PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}}))()`,
   `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
-  `go('map'); render(); PT.m1.boxes.map = PT.boxes(); ({line: PT.text('#navtxt'), ball: PT.vis('#nav')})`, {shot: 'orbit_map'}, `go('flight'); render(); true`,   // slice 4c: the heading line
-  `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
+  {say: 'The map (M): the orbit it reached'}, `go('map'); render(); PT.m1.boxes.map = PT.boxes(); ({line: PT.text('#navtxt'), ball: PT.vis('#nav')})`, {shot: 'orbit_map'}, `go('flight'); render(); true`,   // slice 4c: the heading line
+  {say: 'End of the flight: the Program screen and its Debrief'}, `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
   checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,
     escPauses: `PT.m1.escRun`, debrief: `[PT.m1.deb1, PT.m1.deb2]`, boxes: `Object.entries(PT.m1.boxes).filter(([k, v]) => v.length).map(([k, v]) => k + ': ' + v.join(', '))`},
   expect: {tester: v => !v, weather: v => v === true, beeper: v => v === true,
@@ -671,9 +700,9 @@ ROWS[157] = {title: 'roll out: the checks before launch (with 152)', flags: {kh:
 // 147: the Passenger Orbiter once round and home (the robot's ascent, a period on rails, a retro cut, the chute)
 ROWS[147] = {title: 'Passenger: one orbit, on the Passenger Orbiter preset', steps: [M1_HELPERS, `PT.flatKm = +(new URLSearchParams(location.search).get('flat') || 60); testEpoch(2); testMission('hop', true); missionOpen(MISSIONS.find(m => m.id === 'orbiter'))`,
   `go('assembly'); PT.preset('Passenger Orbiter'); ({cost: vesselCost(S.parts).cost, stack: stackDef.map(e => typeof e === 'string' ? e : e.k).join(' ')})`, `go('rollout'); rollChecks().map(c => JSON.stringify(c).slice(0, 120))`,
-  {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(PT.flatKm || 38), bioOK: S.rec.bioOK, cabin: +S.rec.cabin.toFixed(0), why: S.rec.bioWhy, skin: (S.parts.find(p => p.on && p.d.kind === 'bio') || {}).T, passenger: PT.log.filter(l => /Passenger|overheat/.test(l))})`,
-  `(()=>{ const o = elements(S.r, S.v, TELLUS.mu), per = 2 * Math.PI * Math.sqrt(o.a ** 3 / TELLUS.mu), t0 = simT; while (simT - t0 < per * 1.05 && S.alive) advPhys(S);   // physics steps: the flight record counts orbits per step
-     for (let k = 0; k < 60 && PT.orbit().pe > 45e3; k++) S.v = mul(S.v, 0.998); S.sas = true; S.sasMode = 'retro'; for (let k = 0; k < 6 && !S.chute; k++) stage(S); const f = PT.fly(() => S.landed || !S.alive, 8000);
+  {click: '#launch'}, `(async () => ({screen: screenNow(), ascent: await PT.ascent(PT.flatKm || 38), bioOK: S.rec.bioOK, cabin: +S.rec.cabin.toFixed(0), why: S.rec.bioWhy, skin: (S.parts.find(p => p.on && p.d.kind === 'bio') || {}).T, passenger: PT.log.filter(l => /Passenger|overheat/.test(l))}))()`,
+  `(async ()=>{ const o = elements(S.r, S.v, TELLUS.mu), per = 2 * Math.PI * Math.sqrt(o.a ** 3 / TELLUS.mu), t0 = simT; while (simT - t0 < per * 1.05 && S.alive) advPhys(S);   // physics steps: the flight record counts orbits per step
+     for (let k = 0; k < 60 && PT.orbit().pe > 45e3; k++) S.v = mul(S.v, 0.998); S.sas = true; S.sasMode = 'retro'; for (let k = 0; k < 6 && !S.chute; k++) stage(S); const f = await PT.fly(() => S.landed || !S.alive, 8000);
      return {pe: Math.round(PT.orbit().pe / 1e3), orbits: S.rec.bioOrbits, cabin: S.rec.cabinMax, landed: S.landed, alive: S.alive, bioOK: S.rec.bioOK, gMax: S.rec.cgMax || S.rec.gMax, fly: f, log: PT.log.slice(-5)} })()`, {shot: 'home'},
   `go('program'); ({done: !!PROG.done.orbiter, debrief: (document.getElementById('debBody').innerText || '').split(String.fromCharCode(10)).slice(0, 8).join(' / ')})`, {shot: 'debrief'}],
   checks: {done: `!!PROG.done.orbiter`}, expect: {done: v => v === true}};
@@ -699,7 +728,9 @@ ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, st
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
 // ---- run ---------------------------------------------------------------------------------------------------------------
-const args = process.argv.slice(2);
+const args = ARGV.filter(a => a !== WARG);
+// watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
+const pace = ms => WATCH ? wait(ms) : null, rearm = () => WATCH ? ev(`if (window.PT && !PT.W) PT.W = {speed: ${WATCH}}; true`) : null;
 if (args[0] === '--eval') {
   await fresh();
   logs = [];
@@ -714,13 +745,15 @@ if (args[0] === '--eval') {
     try {
       await fresh(R.flags === undefined ? undefined : R.flags, R.query, R.gate); logs = [];
       for (const st of R.steps || []) {
-        if (typeof st === 'string') { const r = await ev(st); res.steps.push(r.err ? {err: r.err} : r.val); if (r.err) res.failed.push('step threw: ' + r.err.split('\n')[0]) }
+        if (typeof st === 'string') { await rearm(); const r = await ev(st); res.steps.push(r.err ? {err: r.err} : r.val); if (r.err) res.failed.push('step threw: ' + r.err.split('\n')[0]); await pace(700) }
+        else if (st.say) { if (WATCH) { console.log('   robot:', st.say); await rearm(); await ev(`window.PT && PT.say(${JSON.stringify(st.say)})`); await wait(st.ms ?? 1800) } }
         else if (st.wait) await wait(st.wait);
-        else if (st.key) { for (const k of [].concat(st.key)) { await press(k, st.ms); await wait(st.gap ?? 150) } }
+        else if (st.key) { for (const k of [].concat(st.key)) { if (WATCH) { await ev(`window.PT && PT.say('Key: ' + ${JSON.stringify(k === ' ' ? 'Space' : k)})`); await wait(600) } await press(k, st.ms); await wait(st.gap ?? 150) } await pace(900) }
         else if (st.hold) { await keyEv('keyDown', st.hold); await wait(st.ms); await keyEv('keyUp', st.hold) }
         else if (st.click) { const r = await ev(`(()=>{const e=typeof ${JSON.stringify(st.click)}==='string'?document.querySelector(${JSON.stringify(st.click)}):null;if(!e)return null;const b=e.getBoundingClientRect();return [b.left+b.width/2,b.top+b.height/2]})()`);
-          if (!r.val) res.failed.push('no element to click: ' + st.click); else { await clickAt(...r.val); await wait(150) } }
-        else if (st.shot) { await wait(st.settle ?? 300); res.shots.push(await shot(`r${n}_${st.shot}.png`)) }
+          if (!r.val) res.failed.push('no element to click: ' + st.click); else { if (WATCH) { await ev(`window.PT && PT.dot(${r.val[0]}, ${r.val[1]})`); await wait(700) } await clickAt(...r.val); await wait(150); await pace(1100) } }
+        else if (st.shot) { await wait(st.settle ?? 300); if (WATCH) await ev(`(document.getElementById('ptcap') || {}).style && (document.getElementById('ptcap').style.visibility = 'hidden')`);
+          res.shots.push(await shot(`r${n}_${st.shot}.png`)); if (WATCH) await ev(`(document.getElementById('ptcap') || {}).style && (document.getElementById('ptcap').style.visibility = '')`) }
       }
       for (const [k, e] of Object.entries(R.checks || {})) { const r = await ev(e); res.checks[k] = r.err ? {err: r.err} : r.val;
         if (r.err) res.failed.push(`check ${k} threw`); else if (R.expect && R.expect[k] && !R.expect[k](r.val)) res.failed.push(`check ${k} = ${JSON.stringify(r.val)}`) }
@@ -729,6 +762,7 @@ if (args[0] === '--eval') {
     res.secs = +((Date.now() - t0) / 1000).toFixed(1);
     const all = fs.existsSync(resPath) ? JSON.parse(fs.readFileSync(resPath, 'utf8')) : {}; all[n] = res;   // re-read: runs may overlap
     console.log(`row ${n} ${res.failed.length ? 'FAIL ' + res.failed.join('; ') : 'ok'} (${res.secs} s) shots ${res.shots.join(' ')}`);
+    if (WATCH) { await ev(`window.PT && PT.say(${JSON.stringify(`Row ${n} done: ${res.failed.length ? 'FAILED (see the terminal)' : 'all checks passed'}`)})`); await wait(6000) }
     console.log('   checks', JSON.stringify(res.checks).slice(0, 1500)); if (res.console.length) console.log('   console', res.console.slice(0, 5).join(' | ').slice(0, 800));
     fs.writeFileSync(resPath, JSON.stringify(all, null, 1));
   }

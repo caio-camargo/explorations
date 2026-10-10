@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -86,7 +86,51 @@ Same page; the bar's first row. Stills in `output/launchpad/mockups/bodies/r2-<v
 
 **Pick / changes:** _(Caio)_
 
-## schools/ — the hardware schools (QUEUE Q89 → POWERS.md → Q102)
+## schools/ — the hardware schools (QUEUE Q89, round 2 Q227 → POWERS.md → Q102)
+
+### Round 2: Arsenal, Coastal, Mountain, Isle (QUEUE Q227, POWERS.md § "School briefs", D14; on the brief's defaults)
+
+Same page, rebuilt: the bar now has three groups. **Orbiter** is the preset in all six schools side by side.
+**Signatures** has every school's two designs in one row, then one view per school. **Pads** has all six schools'
+pads; Mountain gets two, the early rail launcher and the later cove. Round 1's views are kept as they were (Cape &
+Steppe signatures, the Cape and Steppe pads). Stills are in `output/launchpad/mockups/schools/r2-*.png`:
+`r2-orbiters.png`, `r2-sig-all.png`, `r2-sig-<school>.png`, `r2-pad-<school>.png` (Mountain: `-mountain-rail`,
+`-mountain-cove`). Round 1's stills are kept beside them.
+
+As the brief asks, each school owns the four things a rocket is recognised by: the paint, the interstage, the bells
+and the pad. The Orbiter keeps its outline in every school (the brief's limit); only what sits on it changes.
+
+| | Paint and finish | Interstage cover | Bells, fins, nose | Signature designs | Pad |
+|---|---|---|---|---|---|
+| **Arsenal** | matte; olive lower stage, bare-metal upper stage panel by panel; white stencils (serial "DK-0714", "NO STEP"); a red-and-white striped band at each separation plane; a disc-and-chevron roundel | a solid skirt with a ring of **vent windows** (hot staging), darkened round them; the engine shows through | heat-stained (bronze to blue-purple at the lip) with thick rings; stubby thick fins with a bolted edge strip; a blunt nose with clamp bands | the squat **missile** with stubby fins; a core with **four cylindrical strap-ons with ogive noses** | a **terrace cut into a hillside**, the flame chute running downhill out of the side; the **road transporter-erector** caught raising the missile onto the table; a camouflaged lattice tower and its hinged umbilical mast; an earth-covered bunker with a blast door, a blockhouse with periscopes, the hall under a **camouflage net** |
+| **Coastal** | satin white, **one pastel band** round the upper stage, pastel pin-stripes at the joints, "OURELLE" lettered down the lower stage; a rings roundel as the agency logo on the fairing | a smooth white skirt with a pastel stripe and a row of round vent ports | silver bells with a dark throat; black carbon nozzles on the solids; thin rounded fins; a bullet fairing with its split line | a core with **two big solid boosters**; the early **slim three-stage** | **rolled out standing** on a mobile launch table along twin rails from a tall assembly building; **no tower: four lightning masts**, two short umbilical masts; the deluge water tower; low white buildings, a glass control centre; jungle round the clearing |
+| **Mountain** | **terracotta** lower stage and strap-ons, white above, a **saffron band at every joint**; a sun-and-rays roundel with "KANORA" under it | a **cone with a ring of separation bolts and four tiny spin rockets** | solid nozzles with a dark ribbed **flex boot**; liquid bells gold-tinted; square fins with saffron tips; a long pointed nose | the **rail-launched four-stage solid** (slim, big fins); a core with **six small strap-on solids** | early: a **tilting rail launcher**, a boom on a turntable on a terraced ridge above the sea, the rocket hung under the rail; later: a cove, a **tower-shaped shelter whose two halves have swung open**, a fixed umbilical tower |
+| **Isle** | **matte black carbon** (the weave catches the light); decals everywhere: the rocket's name "STILL TESTING" along its length, two mission patches, a hue band under the fairing, the customer's logo; a southern-cross roundel | a flush black carbon band with a hue stripe | **many small copper bells** with print layer lines (nine under the slim one, seven under the medium one); thin carbon fins with hue tips; a black clamshell fairing with a white band | the **slim two-stage with its kick stage showing**; a **medium rocket with a wide fairing** | a **tiny pad on a green peninsula**, sea on three sides, cliffs; the rocket standing against its **strongback**; a hangar lettered "PAVA SPACE", a shed, a container office, one mast, **sheep** |
+
+**What reads, and what doesn't:**
+- In the Orbiter row, the six tell apart at a glance:
+  - **by paint:** Cape's roll pattern, Steppe's green, Arsenal's olive and metal, Coastal's white with lettering,
+    Mountain's terracotta, Isle's black;
+  - **by interstage:** ribs, lattice, vents, smooth, the bolted cone, flush.
+- The bells are the weakest of the four at the Orbiter's size; each school's colour is there, but small.
+- Coastal's pastel band is pale by design (a pastel on satin white). I deepened it once and it still reads mostly from
+  close up; the pin-stripes and lettering carry Coastal from afar.
+- Mountain's rail launcher hides much of its rocket behind the boom from most angles; the still is side-on.
+- Lettering uses a 3×5 pixel font, so it reads as stencil and decal, not typography.
+
+**The brief's questions, on their defaults:**
+1. Coastal's pad is the towerless pad with lightning masts and a vertical rollout (not "a gantry that rolls away",
+   which Cape already has).
+2. Mountain's rail launcher is look only (the caption says so).
+3. Isle's rockets carry a joke name ("STILL TESTING") and a customer's logo.
+4. This round.
+
+**Speed:** each view compiles its own small program (`#if VIEW`), with one `map()` call site and loops that can't
+unroll (as Q226 did for the suits). The first view shows ~1.3 s after load, every other view in under a second.
+
+**Pick / changes:** _(Caio: **W34**)_
+
+### Round 1 (QUEUE Q89; Cape and Steppe, approved as W21)
 
 Open `schools/index.html` or the stills in `output/launchpad/mockups/schools/` (`<view>.png`, 1280×800). The Orbiter's
 outline is the game's own (its parts' profiles exported from the sim); only surface, finish, paint and roundel change
@@ -208,8 +252,119 @@ the margins are curves between two corners; *upper lid: round–almond*, *lid pe
 *lid fold: hooded–deep-set* (the upper lid is a thick band ending in a fold, thin recessed skin above it under the
 brow); the lower lid is a band half as thick. The Mr. Incredible preset was retuned against his profile (sloped
 forehead, long nose off the brow, recessed mouth, big forward chin); his neck still reads as a column. 55 genes.
+**The mouth as an edge** (Caio, after Lawrie's Atlas: the lips start at the edge; under it a face tilts back to the
+slit, steep for Mr. Incredible, broad for Atlas; the edge's shape is the mouth's shape; no red above it): each lip is
+a ridge, skin sloping down to the edge and the lip's face tilting back to the slit. Genes: *upper/lower lip tilt*
+(broad–steep), *upper/lower lip height*, *Cupid's bow*, *corners down–up*, *lower lip forward*; *lip edge* softens
+the ridge. The tint fills only between the edges. Eye depth reaches deeper; a heavy jaw's sides stand upright (a
+broad chin, not a point). 60 genes.
+**Lips in profile** (Caio's line drawing): the upper lip is one straight slope back from its edge to the slit; the
+lower lip is a roll, round on top, tucked under to a defined bottom edge, the skin falling back into the fold. New
+genes *lower lip: full–rolled in* and *lower lip tuck*; the house lips are ~30 % taller; the philtrum is a shallow
+dent (the old slot cut a thread on long faces); close-ups follow the face's length. Still: `faces/lips-profile.png`.
+61 genes.
+**Integration** (Caio: Mr. Incredible's nose is continuous with forehead and brow; his chin and jaw are integrated,
+ours blocky): *nose root: notched–flush* carries the forehead's line down onto the bridge (the socket used to cut a
+notch); *planes: crisp–soft* now also softens the bridge's edges, the jaw, the chin and the chin–jaw join, and a
+softened plane stands off by what its rounding takes away (before, soft faces shrank behind their features). 62 genes.
+**Variation and the bell head**: an *epicanthic fold*; early paint (a 10-tone skin ramp with matching flush and lip
+tint, hair and iris palettes; F6 refines them); a *masculine–feminine* macro; a **Roster** tab of 12 hand-made
+archetypes across sexes and regions (one person each, not an average; still one hair shape for all until F5).
+From Caio's front reference of Mr. Incredible: *crown width* (a dome), a softer skull-to-jaw blend on soft faces,
+*forehead forward* (brow and forehead pushed out as one mass, the eyes left deep under it); two creases removed
+(the joins of the face-length stretch and of the cheek planes' recession were kinks). Stills:
+`faces/roster-archetypes.png`, `faces/reach-mr-incredible.png`. 68 genes (65 identity + 3 paint).
+**The second reach test** (Caio's deco sculpture of a woman: softer, still in the style): a *Deco woman* preset and
+a *brow arch* gene (it arches the socket's top too, which is the visible brow line). Fixed on the way: the two
+macros Delicate–heroic and Feminine–masculine had their labels backwards; deeper skin got a browner lip; the nose's
+flush no longer paints a pink ball on round tips; the flush root has rounded edges and runs down the bridge (no
+step); the cheekbone and forehead cuts get the softness compensation too, and eyes sink with softness; the socket's
+outer wall stays closed. Still: `faces/reach-deco-woman.png`. 69 genes.
+*Nose front: modelled–flat* (Caio: her nose's front is flat, no bulges or recesses) trims the whole nose to one plane
+on the ridge's line and drops any hump or dip. 70 genes.
+**Nose root and hair** (Caio: the root read as a box under the skin; a line under the brow): the flush root takes the
+bridge's own cross-section, ends at the brow and blends wide; the forehead plane's stop (which kept it off the nose)
+is smooth and drops with a flush root, which removed the line. **Hair library** (F5 begun, 1950s–60s): *hair style*
+picks one of 7 carved masses: swept (the house), Thunderbirds quiff, crew cut, receding swept back, flipped bob,
+bouffant, curls. Still: `faces/hair-styles.png`. 71 genes.
+**One hair done right, age, a nose fix** (Caio): the *Thunderbirds quiff* rebuilt from its profile (the front rises
+straight up off the forehead and curves back; its sides follow the skull; strands combed straight back);
+*wrinkles* (forehead lines, crow's feet, the nasolabial fold) and *bags under the eyes* (with the crease below), both
+driven by the Age macro, which also greys the hair; a long nose over a short philtrum is now shortened as a whole
+rather than clipped (the clip left a hole in Mr. Incredible's tip). Stills: `faces/hair-thunderbirds.png`,
+`faces/age.png`, `faces/nose-mr-incredible-fixed.png`. 73 genes.
+**Structural round** (design desk, FACES 0.1.3; QUEUE § Proposed): **speed** (as `suits/`: one loop and one `map()`
+call for the march, normal, shadow and occlusion; `ZERO` loops; big views in scissor strips): ~7 s to first picture
+headless, ~1 s per later view. **Pass 1, puppet-studio light**: a soft key, a fill from the other side at about a
+third, a rim from behind, occlusion over a longer range; the darkest skin now sits in the sockets, under the nose and
+under the jaw only. Still: `faces/studio-light.png` (old light bottom left).
+**Pass 2, hair grown from the skull**: every style is now a thickness over the head's own surface (the head without
+its ears, so a bob covers them): zero at a sculpted hairline, rising over a long ramp, thin at the temples and
+sideburns, full on top; grooves and partings carve the thickness. The first ramps were short and left a ledge with a
+dark underside; now hair and skin are one surface and the hairline is a colour edge. Stills:
+`faces/hair-from-skull.png`, `faces/hairline-closeup.png`.
 
-## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
+## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
+
+### The other five schools (QUEUE Q226, CREW.md 0.2.7, D13; on the brief's defaults)
+
+Same page. The bar now picks the **school** first (Cape … Foundry), then its suits. *This school* draws the picked
+school's suits walking out, and *Every school* draws all 27 in one grid: a row per era, a column per school. Foundry's
+surface suit gets its own column in the spacewalk row, and Foundry has no early or middle suit. The three checks now run
+on every school in that grid, so each row compares one era across all the schools. Stills are in
+`output/launchpad/mockups/suits/`:
+- the sheets: `r3-sheet-all.png`, `r3-check1-silhouettes.png`, `r3-check2-grey.png`, `r3-check3-48px.png`;
+- per school: `r3-<school>-lineup.png`;
+- from behind: `r3-arsenal-eva-back.png` (the flag on the door), `r3-isle-eva-back.png` (the fleet number),
+  `r3-foundry-surface-back.png` (the suitport);
+- close-ups: `r3-arsenal-early-close.png`, `r3-coastal-early-close.png`, `r3-coastal-middle-close.png`,
+  `r3-mountain-eva-close.png`, `r3-isle-early-close.png`, `r3-foundry-eva-close.png`.
+
+| School | Built from (each school's hoses go in where the brief says) | Early | Middle | Late | Spacewalk |
+|---|---|---|---|---|---|
+| **Arsenal** | military issue: harness webbing, a flag patch on the arm, canvas shading; a connector and hose **at the side of the hip** | olive coverall, **capstan tubes** down the limbs, a G-harness, a **bone dome** with its tinted visor pushed up and a **rubber oxygen mask** (no faceplate), its hose down to the hip | sand, **red diamond-quilted** chest, shoulders and knees, a belt, **pockets down the shins**, a white helmet with a **red visor frame hinged up** | gunmetal, **armour plates** on the knees, shins, forearms and chest, a red band, a dark shell with a **gold sun strip** on the visor | Feitian-like: Orlan's rear-entry body, squarer, the helmet **domed on top**, a **light bar** on the brow, gunmetal and red bands, **the flag big on the back door** |
+| **Coastal** | smooth glossy panels and colour blocks; **one big round teal connector at the hip** | pale teal with a **white yoke** and white boots; an **egg-shaped helmet** with a round **porthole** | white, **appliance-corner shoulders**, the **helmet growing out of the suit**, a wraparound visor, **one teal band** round the chest and down the outside of the legs | blue-grey, padded at the shoulders and hips only, a **teal seam line** down every limb and the body sides | white, a bubble with a teal neck ring, **pods**: a backpack pod with a teal clip band, a teal chest pod, teal tool pods on the thighs |
+| **Mountain** | light and matte; a **saffron sun disc on every helmet's crown**; the hose goes **over the shoulder** | ivory, **narrow quilting** with every fourth segment saffron, a **letterbox visor** | saffron, quilted, white straps with **deep green pull-tabs** (waist, wrists, knees) | pale gold with indigo cuffs and boots, the slimmest suit, an **open cap-like shell** with a light visor | white and saffron, the smallest spacewalk suit, its pack **folded flat**, **saffron rays painted round the visor** |
+| **Isle** | outdoor gear, matte; a hose **at the front of the right thigh** | navy, **baggy** (surplus), rolled sleeves, hiking boots, **hand-sewn patches**, **repair tape**, a helmet **painted over by hand** (olive showing through) with a stencilled "14" | forest green **ripstop** (grid, taped seams), a black **climbing harness** with a carabiner, black shell, **dark visor** | black, **hi-vis side panels** and cuffs, **sponsor decals** on the chest, arms and thighs, a yellow decal on the helmet, dark visor | light grey, a plain boxy pack with **fleet number "07"** on its back, a yellow **rental tag** at the wrist, a scuffed shell |
+| **Foundry** | tailored, flush, no hardware on show; **one umbilical at the right thigh** | none | none | **launch**: white, **black side panels** on body and limbs, black boots and gloves, a one-piece helmet with a **flush black visor** | **spacewalk**: the launch suit with **raised white thermal bands** at the joints, a slim pack, a **gold visor with a display** inside. **Surface**: bulky and rigid, a big dome, a **stainless suitport plate** with its hatch ring on the back |
+
+**The checks:**
+1. **Silhouettes.** Each era's row can be told apart at the walkout. Three pairs were weak, so I strengthened them:
+   - Coastal early against Mountain early (both slim, with small round helmets): Coastal got the egg helmet, and
+     Mountain's quilting roughens its outline.
+   - Arsenal spacewalk against Orlan (the brief makes Feitian Orlan's lineage): the domed top, the wider waist and
+     the light bar separate them a little, but **the flag on the back is what truly tells them apart**.
+   - Mountain's spacewalk suit is now visibly the smallest in its row.
+
+   The weakest pair left is **Coastal late against Isle late**: both are close-cut suits with round helmets.
+2. **Grey squint.** Every row spreads from dark to light: early runs navy, olive, orange, silver, teal, ivory; late
+   runs black, gunmetal, grey-green, orange, white. The middle row has three whites (Cape, Steppe and Coastal, as the
+   brief allows). In grey they separate by shape: the bubble, the hood and case, the square shoulders.
+3. **48 px.**
+   - **Survive:** Arsenal early's mask, the red quilting, Coastal's band, Mountain's banded quilting, the saffron suit,
+     Isle's patches, the hi-vis and decals, Foundry's black sides.
+   - **Lost:** Coastal late's seam line; Foundry spacewalk's thermal bands and the Mountain rays (the gold visor and
+     the saffron read instead); the Arsenal plates (only "dark grey suit, red trim" shows).
+   - **From behind only:** Isle's fleet number and the suitport.
+4. **Walkout.** The same pose as round 2, so the hoses, pods and tabs are all in view.
+
+**Also in this round:**
+- **The page opens fast now.** Round 2 took ~90 s to show its first picture on this machine, because Windows' shader
+  compiler inlined the whole scene at nine call sites and unrolled every loop. Now there is one `map()` call (the
+  march, the normal and the shadow share one loop), and the loops can't unroll. Each school group compiles its own
+  smaller program (`#if SCH`), all in parallel for the sheets. Cape opens in ~1.5 s; each other school adds ~5 s the
+  first time it's picked; the 27-suit grid draws in ~14 s. Big views draw in strips, so no single draw runs long
+  enough to stall the GPU.
+- Round 2's eight suits look the same as before (Mercury's walkout checked against the round 2 still).
+
+**Open:**
+- Feitian and Orlan only really part from behind, where the flag shows. That is the brief's choice (same lineage);
+  say if Arsenal's spacewalk suit should look less like Orlan.
+- Coastal and Foundry both use a bubble on a spacewalk-row suit (Coastal's spacewalk, Foundry's surface), as the brief
+  says. Foundry's is bigger and sits on a boxy body.
+- Isle early is the invented surplus suit (D13 question 1's default).
+
+**Pick:** _(Caio, with W32: one answer can cover all seven schools)_
 
 ### Round 2 (QUEUE Q219, CREW.md 0.2.4; Caio on round 1: "too samey across epochs and for the two schools")
 
