@@ -3807,6 +3807,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('supply run: refused before onboard computers (the automation ladder, D7)', !handEra.ok && /onboard computers/.test(handEra.why), `${handEra.why}; onboard computers from day ${P.day}`);
   check('supply run: refused before the landing first and for a design with no ascent procedure; quoted otherwise', !early.ok && /by hand first/.test(early.why) && !none.ok && q.ok && q.cost > 0,
     `${early.why} · ${none.why} · ${q.ok ? `${q.cost.toFixed(0)}M, launch day ${q.launch.toFixed(0)}` : q.why}`);
+  { const w = q.win, lit = api.dot(api.norm(api.fromPF(B, base.pf, (q.launch + q.rule.lead) * api.DAY_S)), api.SUN_DIR);   // Q185: the run lands in daylight
+    check('supply run: launches at its window, so it arrives in daylight at the base (MIDGAME § Windows)', q.rule.k === 'light' && w && lit > 0 && q.launch >= q.start + q.prep - 1e-9, `waits ${w ? w.wait.toFixed(2) : '?'} d; sun ${(Math.asin(lit) * 57.3).toFixed(0)}° up on arrival`); }
   const line = api.baseRunLine(base, st), r = api.orderBaseRun(base, st), D = P.dispatch[0];
   for (let k = 0; k < 8 && D.status === 'queued'; k++) { P.day = D.launch; api.dispatchTick(); }
   const lander = api.landedUp().find(x => x.id !== 777), b = api.baseOf(base);
@@ -4842,6 +4844,21 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
   check('tester: the school picker lists Auto and every school, and a pick sets SCHOOL_FORCE and rebuilds the ship',
     /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
+}
+
+// econ-20. Windows (economy session, QUEUE Q185, Q127 slice 2; MIDGAME § Windows): a routine's rule finds its next
+// valid window. 'any' launches when ready; 'light' waits for daylight at a Selene site on arrival (its day is the 13-day
+// orbit, so never more than about half of it); 'plane' waits for a target plane to pass over the site (twice a rotation).
+{
+  const D = new Function(src + 'return {windowRule,nextWindow,fromPF,SITES,TELLUS,SELENE,SUN_DIR,DAY_S,dot,norm,PROG};')();
+  const S = D.SELENE, pf = [-S.R, 0, 0], rule = D.windowRule('light', { body: 'Selene', pf, name: 'Base' }), sun = t => D.dot(D.norm(D.fromPF(S, pf, (t + rule.lead) * D.DAY_S)), D.SUN_DIR);
+  const any = D.nextWindow(D.windowRule('any'), 12.3);
+  let maxW = 0, zero = 0, bad = 0; for (let T = 0; T < 13; T += 0.25) { const w = D.nextWindow(rule, T); maxW = Math.max(maxW, w.wait); if (w.wait === 0) zero++; if (sun(w.day) < Math.sin(5 * Math.PI / 180) - 1e-9 || (w.wait > 0.02 && sun(w.day - 0.02) >= Math.sin(5 * Math.PI / 180))) bad++; }
+  check('windows: "any" launches when ready; "light" lands in daylight, at the first lit moment, never waiting more than ~half of Selene’s 13-day day',
+    any.day === 12.3 && any.wait === 0 && rule.lead > 1 && rule.lead < 3 && bad === 0 && zero > 10 && maxW > 4 && maxW < 7.2, `lead ${rule.lead.toFixed(2)} d; longest wait ${maxW.toFixed(2)} d; ${zero}/52 at once; ${bad} wrong`);
+  const i = 30 * Math.PI / 180, O = 1.1, n = [Math.sin(i) * Math.sin(O), Math.cos(i), -Math.sin(i) * Math.cos(O)], pr = D.windowRule('plane', { n });
+  let maxP = 0, offP = 0; for (let T = 0; T < 2; T += 0.1) { const w = D.nextWindow(pr, T); maxP = Math.max(maxP, w.wait); offP = Math.max(offP, Math.abs(D.dot(D.norm(D.fromPF(D.TELLUS, D.SITES[0].u, w.day * D.DAY_S)), n))); }
+  check('windows: a 30° plane passes over the equatorial pad twice a rotation (never over half a day’s wait), the pad in the plane at the window', maxP <= 0.5 + 1e-6 && offP < 1e-6, `longest wait ${maxP.toFixed(3)} d; off the plane ${offP.toExponential(1)}`);
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

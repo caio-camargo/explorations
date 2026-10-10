@@ -1964,6 +1964,28 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.102 — windows: a dispatch launches at its next valid window (2026-10-09, economy session, QUEUE Q185, Q127 slice 2)
+
+MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
+- **`windowRule(kind, o)`**: `'any'` (an orbit by inclination alone: the calendar picks the slot); `'plane'` (a given
+  orbital plane, normal `n`, passing over the launch site); `'light'` (daylight at a surface site when the run
+  arrives: the sun ≥ 5° up, `lead` days after launch = the ascent and a Hohmann coast, 2.7 days to Selene).
+  Planetary alignment waits for planet routes (M5).
+- **`nextWindow(rule, T)` → {day, wait, why}**, in program days, sampled every 15 minutes (plane passes bisected to
+  the exact moment). Measured: Selene's day is its 13-day orbit, so a surface run waits up to 6.7 days and half of
+  them go at once. A 30° plane passes over the equatorial pad twice a rotation (≤ 0.49 d).
+- **Recorded with procedures:** `procWindow(proc, kind, o)` keeps the rule on the procedure that flies it
+  (`proc.wins`), and every dispatch carries its `rule` and `ready` day. Derived when quoted, not at fly time: the
+  procedure recorder is the space lane's code. Moving it there later changes nothing downstream.
+- **Who waits:** supply runs to bases (`baseRunQuote`) take the `'light'` rule. Contract dispatches take `'any'`
+  (contracts set an inclination only, so there's no wait). `'plane'` is ready for station routines, Q110's work. A
+  weather scrub or a money hold re-finds the window rather than adding a day. The news and the base's Fleet line say
+  "(waits 3.2 d for daylight at Selene Base 1)".
+- **The pad calendar** (`netModel().pads`): a dispatch is now two bars, stacking (`kind 'dispatch'`) and then the
+  wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
+  `app/network.js`'s fallback still builds one bar.
+Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
 ## v1.101 — the flight readout: a core and cards (2026-10-09, flow session, QUEUE Q3, UI slice 4a; W15's defaults)
 
 The readout top left is now the **core**, 5 lines that never grow: `MET · body · situation · link` (the Link row folded
