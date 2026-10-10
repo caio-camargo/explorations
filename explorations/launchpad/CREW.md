@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.3 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Version**: 0.2.4 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -134,6 +134,46 @@ stripe on the shoulder (§ The roles) so crew read apart small. Then a look sess
 three eras in the Q72 scene, and Caio picks.
 **Status (2026-10-09):** draft; Caio accepted the defaults on (1)–(3).
 
+### The suit brief, round 2 (Caio, 2026-10-10: round 1 was "too samey across epochs and for the two schools")
+
+**Why round 1 was samey:** one body with colour swaps and a few toggles (hood, backpack, gold visor), and six of the
+eight suits white. Real suits differ in **construction**, not paint. Round 2 builds each suit from its own pieces.
+
+**Two axes, read two ways:**
+- **Era reads through silhouette and mass.** Early: slim and bloused, a pressure suit worn like clothing. Middle:
+  structured, with visible joints (bellows, lacing). Late (launch): padded and bulky, built to survive an ejection, or
+  cut close and tailored. Spacewalk: a small spacecraft, rigid and boxy.
+- **School reads through how a suit is made.** **Cape:** hard shells and gloss, metal hardware on show, hoses into
+  the chest, helmets that are separate rigid objects. **Steppe:** soft canvas, laces and straps, hoods sewn to the suit,
+  hoses into the belly, and **a portable ventilator case carried by hand** to the pad (real: Gagarin's and every Sokol
+  crew's walkout).
+
+**Colour rules:** within one school, no two generations share a dominant colour; within one era, the two schools
+never do. Where real suits are white, the second colour and the shape carry the read.
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature (the one thing only it has) |
+|---|---|---|---|---|
+| **Cape early** (Mercury) | aluminised silver / gold-anodised connectors | slim, bloused at the knees, laced silver boots | a round hard shell, a small oval faceplate, a mic boom inside | **mirror silver head to toe**; finger-tip lights on the gloves |
+| **Cape middle** (Apollo) | white Beta cloth / blue and red connectors | upright, **bellows rings at shoulders, elbows, knees** | the **all-glass bubble**, over a black-and-white **"Snoopy cap"** | the bellows and the Snoopy cap; a row of coloured connectors on the chest, a diagonal zip |
+| **Cape late** (Shuttle launch-and-entry) | **international orange** / black boots and gloves | **bulky, padded "pumpkin"**, parachute harness straps over the chest | white, a wide clamshell visor, a neck ring | the orange and the harness; a mirror on the wrist |
+| **Cape spacewalk** (EMU) | white / gold visor, red identity stripes on the legs | a **hard upper torso**, a big backpack, a box on the chest | white shell, gold visor, **two helmet lamps and a camera** | the chest control box and the helmet lamps |
+| **Steppe early** (SK-1) | orange coverall / white helmet, red lettering | slim coverall, belted, high black boots | white hard shell, red lettering across the brow, a visor that slides up | the **lettered helmet** and the **ventilator case in hand** |
+| **Steppe middle** (Sokol) | off-white canvas / **blue everywhere it adjusts** | soft and creased, **blue lacing straps** round every limb, a **V-shaped laced opening** on the chest | **a soft hood sewn to the suit**, a hinged visor ring | the hood and the blue lacing; two hoses into the belly; the ventilator case |
+| **Steppe late** | **grey-green** (the school's rocket enamel) / orange flashes | closer cut but still canvas, padded panels at chest and knees | a hard hood, the visor ring kept from Sokol | the grey-green, echoing its rockets; the ventilator case is now a slim shoulder pack |
+| **Steppe spacewalk** (Orlan) | white / **red and blue limb stripes** | **a fridge-like rigid body, entered through a door in the back**, short stiff arms | boxy, a large rectangular visor, **lamps on both "ears"** | the back door (seen from behind) and a control panel on a lanyard |
+
+**The sleek tailored white-and-black suit moves to Foundry** (POWERS 1.1.0), where it belongs: it's SpaceX's. Cape late
+becomes the Shuttle's orange pumpkin suit. (Default, design desk 2026-10-10; Caio may override.)
+
+**Shared, so they read as one crew:** the stylised-human proportions (W19), flat colour with ink outlines, the role
+stripe round the upper arms (D9 3).
+
+**Checks before Caio sees them:**
+1. **Silhouette:** all eight as black fills in a row; each must be nameable without colour.
+2. **Greyscale squint:** in grey at a third of the size, the two suits of any one era still read apart.
+3. **Thumbnail:** each at 48 px tall (how the game shows crew in lists); the signature still visible.
+4. A walkout pose too, not only standing, so the props show (the ventilator case, the Snoopy cap under the bubble).
+
 ---
 
 ## Decisions (round 2, Caio, 2026-10-08)
@@ -148,6 +188,8 @@ three eras in the Q72 scene, and Caio picks.
 ---
 
 ## Version history
+- **0.2.4 (2026-10-10):** the suit brief, round 2 (construction per school, silhouette per era, colour rules, a
+  signature per suit, checks); Cape late becomes the orange launch-and-entry suit, the sleek suit moves to Foundry.
 - **0.2.3 (2026-10-09):** D9: Caio took the three defaults.
 - **0.2.2 (2026-10-09):** D9 draft: suits by school and era (table, three questions with defaults).
 - **0.2.1 (2026-10-09):** part 1: stylised human chosen (W19); suits by school and era opened (D9).
