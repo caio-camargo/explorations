@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.4 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.5 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -164,6 +164,20 @@ them), open eyes (a carved upper-lid ledge, painted iris, a catchlight), lips wr
 base with nostril wings, a shorter thicker neck (Thunderbirds' ratio) and a broader jaw, painted warmth and tinted lips.
 
 **Pick:** _(Caio)_
+
+## faces/ — the face engine's lab (D12 → [`FACES.md`](../FACES.md) § 4, stages F0–F1)
+
+`faces/index.html`: round 5's carved puppet head (`heads/deco5.html`) as the **house head**, with 35 identity genes
+(head, brow, eyes, nose, cheeks, mouth, jaw, ears and neck, asymmetry), each a byte inside a hand-set safe range
+(128 = the house value). The default genome matches round 5 to within one colour level (checked pixel by pixel).
+Tabs: **Edit** (sliders by region, ★ for those that read at 48 px; three macros, *heroic–delicate*, *lean–broad*,
+*age*; ¾, front, profile and 48 px; DNA `LP1.<hex>` copy and paste), **Breed** (a grid of 12: click the ones you like;
+the next generation crosses regions between picks, mutates, keeps the first two picks; picks are saved in the browser
+and copyable), **Ranges** (every gene at both limits on the face in the editor; `?size=`, `?gene=`).
+URL: `?mode=edit|breed|ranges`, `?dna=`, `?seed=`. Stills: `output/launchpad/mockups/faces/`.
+Ranges were widened about ×1.6 after the first test (most genes were invisible) and narrowed where a corner broke:
+cheek hollow (a round dimple), chin projection (a knob), cheekbone height (a crease), jaw width, mouth projection.
+Until F2–F4 tune their regions, random faces move brow, eye, nose, cheek and mouth genes at 45 % of their range.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

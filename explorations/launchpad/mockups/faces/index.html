@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Face lab</title>
+<!-- Launchpad face engine, D12 (FACES.md § 4), stages F0–F1: round 5's carved puppet head (Q220, mockups/heads/deco5.html)
+     moved in as the house head, with its identity numbers named as genes (35, by region, each inside a hand-set safe
+     range; the default genome reproduces round 5). Three tabs: Edit (sliders, macros, DNA copy and paste), Breed (a grid
+     of 12; click the ones you like, the next generation breeds from your picks: region crossover, mutation, elitism,
+     a distinctness check) and Ranges (every gene at its two limits, on the face in the editor).
+     A gene is stored as one byte: 128 is the house value, 1 and 255 the two ends of its safe range.
+     URL: ?mode=edit|breed|ranges, ?dna=LP1.<hex>, ?seed=<n> (breed), ?gene=<key,key> (ranges). Picks live in this
+     browser (localStorage) and as copyable DNA. -->
+<style>
+  :root { --bg: #0e1116; --panel: #151a22; --line: #262d39; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; --pick: #6fd08c; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  header { display: flex; gap: 18px; align-items: baseline; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0; color: var(--acc); }
+  .tabs button { background: none; border: 0; color: var(--dim); font: inherit; font-size: 14px; padding: 4px 8px; cursor: pointer; }
+  .tabs button.on { color: var(--fg); border-bottom: 2px solid var(--acc); }
+  .note { color: var(--dim); font-size: 12px; }
+  button.b { background: #232a36; color: var(--fg); border: 1px solid var(--line); border-radius: 4px; padding: 4px 9px; font: inherit; cursor: pointer; }
+  button.b:hover { border-color: var(--acc); }
+  .mode { display: none; padding: 12px 14px; }
+  .mode.on { display: block; }
+  canvas.t { display: block; background: #1b1f27; }
+  /* edit */
+  #edit.on { display: flex; gap: 16px; align-items: flex-start; }
+  #side { width: 300px; flex: none; max-height: calc(100vh - 70px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  #side details { border-top: 1px solid var(--line); padding: 4px 0; }
+  #side summary { cursor: pointer; color: var(--acc); font-weight: 600; padding: 2px 0; }
+  .row { display: grid; grid-template-columns: 112px 1fr 44px; gap: 6px; align-items: center; margin: 2px 0; }
+  .row label { font-size: 12px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row label.star::after { content: ' ★'; color: var(--acc); }
+  .row span { font: 11px ui-monospace, monospace; color: var(--dim); text-align: right; }
+  .row input { width: 100%; }
+  .btns { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+  #views { display: grid; grid-template-columns: 420px 300px; gap: 10px 14px; }
+  #views .cap { color: var(--dim); font-size: 12px; margin-top: 3px; }
+  .thumbs { display: flex; gap: 10px; align-items: flex-end; }
+  #dna { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; background: #0b0e13; color: var(--fg); border: 1px solid var(--line); padding: 5px; }
+  /* breed */
+  #grid { display: grid; grid-template-columns: repeat(4, 230px); gap: 12px; margin-top: 10px; }
+  .cell { position: relative; cursor: pointer; border: 2px solid transparent; border-radius: 4px; }
+  .cell.picked { border-color: var(--pick); }
+  .cell .th { position: absolute; right: 4px; bottom: 4px; border: 1px solid #0008; }
+  .cell .tag { position: absolute; left: 6px; top: 4px; font-size: 11px; color: var(--dim); }
+  .cell .tag b { color: var(--pick); }
+  .cell a { position: absolute; left: 6px; bottom: 4px; font-size: 11px; color: var(--dim); }
+  #strip { display: flex; gap: 6px; margin-top: 12px; }
+  #strip canvas.picked { outline: 2px solid var(--pick); }
+  /* ranges */
+  #cards { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px; }
+  .card h3 { margin: 0 0 4px; font-size: 12px; font-weight: 600; }
+  .card h3 small { color: var(--dim); font-weight: 400; }
+  .card .three { display: flex; gap: 4px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Face lab</h1>
+  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 35 identity genes. ★ = reads at 48 px.</span>
+</header>
+
+<section id="edit" class="mode">
+  <div id="side">
+    <div class="btns">
+      <button class="b" id="reset">House head</button><button class="b" id="rand">Randomise</button>
+      <button class="b" id="nudge">Nudge</button><button class="b" id="save">Save to picks</button>
+    </div>
+    <details open><summary>Macros</summary><div id="macros"></div>
+      <div class="note">Macros move several genes at once from where they were when you grabbed the slider. Age is sculpt only for now (grey hair comes with the paint, F6).</div></details>
+    <div id="sliders"></div>
+  </div>
+  <div>
+    <div id="views">
+      <div><canvas class="t" id="vq" width="420" height="420"></canvas><div class="cap">¾</div></div>
+      <div><canvas class="t" id="vf" width="300" height="300"></canvas><div class="cap">Front</div>
+        <canvas class="t" id="vp" width="300" height="300" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
+      <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span></div>
+    </div>
+    <p class="note" style="margin:12px 0 4px">DNA (copy to keep a face, paste and Apply to bring one back):</p>
+    <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
+  </div>
+</section>
+
+<section id="breed" class="mode">
+  <div class="btns" style="align-items:center">
+    <button class="b" id="next">Next generation</button>
+    <button class="b" id="fresh">New random generation</button>
+    <button class="b" id="fromPicks">Start from saved picks</button>
+    <label class="note">Mutation <input type="range" id="mut" min="5" max="60" value="25" style="vertical-align:middle"> <span id="mutv">0.25</span></label>
+    <span class="note" id="gen"></span>
+  </div>
+  <div class="note">Click the faces you like (green). <b>Next generation</b> breeds 12 children from your picks: each region (head, brow, eyes, nose, cheeks, mouth, jaw, ears) from one parent, plus mutation; the first two picks carry over unchanged. No picks: a fresh random grid. Every pick is saved.</div>
+  <div id="grid"></div>
+  <div id="strip"></div>
+  <div class="btns"><span class="note" id="pickn"></span><button class="b" id="copyPicks">Copy all picks</button><button class="b" id="clearPicks">Forget picks</button></div>
+</section>
+
+<section id="ranges" class="mode">
+  <div class="note">Each gene at its low limit, the face in the editor, and its high limit (FACES.md § 4: push every gene to both ends on three different faces; if a corner breaks the style, narrow the range). Randomise in Edit, come back here, to test on another face.</div>
+  <div id="cards"></div>
+</section>
+
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+// ---- the genes: [key, region, label, house value, low, high, view for the range test, ★ reads at 48 px]
+const GENES = [
+  ['hw', 'Head', 'Head width', 1, .84, 1.16, 'f', 1],
+  ['jw', 'Head', 'Jaw width', 1, .8, 1.18, 'f', 1],
+  ['cr', 'Head', 'Crown height', 1, .82, 1.2, 'p'],
+  ['bk', 'Head', 'Skull back', 1, .78, 1.2, 'p'],
+  ['fl', 'Head', 'Lower face length', 1, .84, 1.2, 'f', 1],
+  ['fs', 'Brow', 'Forehead slope', 0, -.25, .35, 'p'],
+  ['bd', 'Brow', 'Brow ridge depth', 0, -.08, .08, 'p', 1],
+  ['bh', 'Brow', 'Brow height', 0, -.05, .05, 'f'],
+  ['bt', 'Brow', 'Brow tilt', 0, -.12, .12, 'f'],
+  ['es', 'Eyes', 'Eye spacing', .3, .26, .345, 'f'],
+  ['ez', 'Eyes', 'Eye size', 1, .8, 1.18, 'q'],
+  ['et', 'Eyes', 'Eye tilt', 0, -.25, .25, 'f'],
+  ['el', 'Eyes', 'Upper-lid weight', 0, -.03, .05, 'q'],
+  ['ed', 'Eyes', 'Eye depth', 0, -.05, .05, 'p'],
+  ['nl', 'Nose', 'Nose length', 0, -.1, .1, 'p', 1],
+  ['np', 'Nose', 'Bridge projection', 0, -.08, .08, 'p', 1],
+  ['nw', 'Nose', 'Nose base width', 1, .7, 1.45, 'f'],
+  ['nt', 'Nose', 'Tip up–down', 0, -.18, .18, 'p'],
+  ['nc', 'Nose', 'Concave–convex', 0, -.07, .07, 'p'],
+  ['ch', 'Cheeks', 'Cheekbone height', 0, -.07, .05, 'q'],
+  ['cw', 'Cheeks', 'Cheekbone width', 0, -.08, .08, 'f'],
+  ['cv', 'Cheeks', 'Cheek hollow', 0, 0, 1, 'q'],
+  ['mw', 'Mouth', 'Mouth width', 1, .75, 1.25, 'f'],
+  ['ul', 'Mouth', 'Upper lip', 1, .55, 1.5, 'p'],
+  ['ll', 'Mouth', 'Lower lip', 1, .55, 1.5, 'p'],
+  ['ph', 'Mouth', 'Philtrum height', 0, -.05, .05, 'f'],
+  ['mp', 'Mouth', 'Mouth projection', 0, -.04, .035, 'p'],
+  ['ja', 'Jaw', 'Jaw: square–soft', .012, .006, .12, 'q'],
+  ['cnw', 'Jaw', 'Chin width', 0, -.12, .12, 'f'],
+  ['cnp', 'Jaw', 'Chin projection', 0, -.1, .06, 'p', 1],
+  ['cnh', 'Jaw', 'Chin drop', 0, -.08, .08, 'p'],
+  ['ers', 'Ears & neck', 'Ear size', 1, .75, 1.3, 'p'],
+  ['ea', 'Ears & neck', 'Ear angle', 0, -.2, .5, 'f'],
+  ['nk', 'Ears & neck', 'Neck thickness', 1, .8, 1.2, 'q'],
+  ['as', 'Asymmetry', 'Asymmetry', 0, -1, 1, 'f'],
+];
+const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
+const REGIONS = [...new Set(GENES.map(g => g[1]))];
+const STAR = GENES.map((g, i) => g[7] ? i : -1).filter(i => i >= 0);
+// a genome is NG numbers t in [-1, 1]: 0 is the house value, ±1 the ends of the safe range
+const val = (i, t) => { const g = GENES[i]; return t < 0 ? g[3] + t * (g[3] - g[4]) : g[3] + t * (g[5] - g[3]); };
+const house = () => new Array(NG).fill(0);
+const toDNA = t => 'LP1.' + t.map(x => (Math.round(x * 127) + 128).toString(16).padStart(2, '0')).join('');
+function fromDNA(s) { const m = /^LP1\.([0-9a-f]+)$/i.exec((s || '').trim()); if (!m) return null;
+  const t = house(); for (let i = 0; i < NG && 2 * i + 2 <= m[1].length; i++) t[i] = Math.max(-1, Math.min(1, (parseInt(m[1].substr(2 * i, 2), 16) - 128) / 127)); return t; }
+// the macros: directions in gene space
+const MACROS = [
+  ['Heroic – delicate', { jw: .6, cnw: .5, cnp: .5, bd: .6, ch: .3, ja: -.5, nk: .5, np: .3, ez: -.2 }],
+  ['Lean – broad', { hw: .6, jw: .6, nk: .6, fl: -.4, nw: .4, mw: .3, cw: .4 }],
+  ['Age', { cv: .8, el: .6, bd: .25, ul: -.4, ll: -.2, ja: .3, ers: .3 }],
+];
+// seeded random
+let seed = +(Q.get('seed') || Date.now() % 1e9);
+const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
+const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * rnd());
+const clamp1 = x => Math.max(-1, Math.min(1, x));
+// regions not yet tuned in their own stage (F2–F4) vary less, so random faces stay whole while the silhouette is judged
+const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => TUNED.includes(g[1]) ? 1 : .45);
+const randomFace = (s = .6) => GENES.map((g, i) => clamp1(gauss() * s * SIG[i]));
+const mutate = (t, s) => t.map((x, i) => clamp1(x + gauss() * s * SIG[i]));
+const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 2, 0) / STAR.length);
+
+// ---- the renderer: one WebGL canvas off-screen, each tile drawn there and copied to its own canvas
+const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
+const ANG = { q: .62, f: 0, p: Math.PI / 2 };
+const glc = document.createElement('canvas'); glc.width = glc.height = 440;
+const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt,uKey;uniform float uFov,uL;uniform vec3 uSkin,uHair,uIris,uLip,uFlush;
+uniform float G[${NG}];
+${GENES.map((g, i) => `#define g_${g[0]} G[${i}]`).join('\n')}
+#define KEY uKey
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+float plane(vec3 p,vec3 n,vec3 at){return dot(p-at,normalize(n));}
+float cut(float d,vec3 p,vec3 n,vec3 at,float k){return smax(d,plane(p,n,at),k);}
+float cutM(float d,vec3 p,vec3 n,vec3 at,float k){d=cut(d,p,n,at,k);return cut(d,p,vec3(-n.x,n.y,n.z),vec3(-at.x,at.y,at.z),k);}
+float gs(vec3 p,vec3 c,float s2){vec3 d=p-c;return exp(-dot(d,d)/s2);}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+// ---- world to head space: the head-shape genes stretch regions of the house head (the hair and features ride along)
+vec3 warp(vec3 p){
+ if(p.y<-.1)p.y=-.1+(p.y+.1)/g_fl;   // the lower face
+ if(p.y>.16)p.y=.16+(p.y-.16)/g_cr;   // the crown
+ if(p.z<-.1)p.z=-.1+(p.z+.1)/g_bk;   // the back of the skull
+ p.x/=mix(g_jw,g_hw,smoothstep(-.6,-.05,p.y));   // width, the jaw's below, the skull's above
+ return p;}
+// ---- the house head (round 5), in head units (the cranium's half-width ~.8), face +z, y up
+const float SH=.012,SO=.07;
+float mass(vec3 p){
+ float d=sdEll(p-vec3(0.,.16,-.1),vec3(.78,.88,.94));   // cranium
+ d=smin(d,sdEll(p-vec3(0.,-.4,.1),vec3(.66,.58,.64)),.28);   // the jaw, broad
+ d=smin(d,sdEll(p-vec3(0.,-.78-g_cnh,.46+g_cnp),vec3(.34+g_cnw,.2,.3)),.16);   // the chin, forward
+ float by=.24+g_bh+g_bt*abs(p.x)+g_as*.025*clamp(p.x*6.,-1.,1.);   // brow height, tilt, and the asymmetry: one brow higher
+ d=smin(d,sdEll(p-vec3(0.,by,.55+g_bd),vec3(.6,.15,.3)),.12);   // the brow, forward
+ vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.9+g_np)-g_nc*exp(-(n.y-.06)*(n.y-.06)/.02);   // the nose on the forehead's line; a hump or a dip
+ float nw=mix(1.,g_nw,smoothstep(.1,-.2,n.y));
+ float wedge=max(max(abs(n.x)*.95/nw+n.z*.32-.38,ridge),max(n.y-.32,-(n.y+.13+g_nl)-n.z*(.2+g_nt)));   // its base: the plane under the tip
+ wedge=max(wedge,-(n.z-.55));d=smin(d,wedge,.05);
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=smin(d,sdEll(p-vec3(sx*.1*g_nw,-.33-g_nl,.78+g_np),vec3(.075,.06,.07)),.035);}   // nostril wings, riding on the bridge
+ return d;}
+float carve(vec3 p,float d){
+ d=cutM(d,p,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64),SH);   // the cheekbones: front meets side
+ d=cutM(d,p,vec3(1.,-.05,-.08),vec3(.7,-.1,0.),SH*1.5);   // the side plane of the head
+ d=cutM(d,p,vec3(.8,-.5,.3),vec3(.6,-.62,.3),g_ja);   // the jaw line
+ d=cutM(d,p,vec3(.45,-.85,0.),vec3(.5,-.74,0.),g_ja);   // the jaw's underside, back to the ear
+ d=cutM(d,p,vec3(.8,.25,.55),vec3(.62,.36,.42),SO);   // temples
+ d=cut(d,p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74),SO);   // the forehead
+ d=cut(d,p,vec3(0.,-.45,.89),vec3(0.,-.78-g_cnh,.77+g_cnp),SO*.6);   // the chin's front
+ d=cutM(d,p,vec3(.8,-.1,.6),vec3(.34+g_cnw,-.8-g_cnh,.68+g_cnp),SO*.6);   // the chin's sides
+ return d;}
+// features (shared with the paint, so the albedo knows where the eyes and lips are)
+vec3 eyeC(){return vec3(g_es,.035,.62-g_ed);}
+vec3 eyeL(vec3 p){vec3 e=vec3(abs(p.x),p.y,p.z)-eyeC();e.xy=rot(g_et)*e.xy;return e/g_ez;}
+float eyeD(vec3 p){vec3 e=eyeL(p);float al=max(length(e-vec3(0.,-.09,0.))-.17,length(e+vec3(0.,-.09,0.))-.17);return max(al,length(e*vec3(.8,1.,1.))-.15)*g_ez;}
+vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve
+float upLip(vec3 m){return sdEll(m-vec3(0.,.045*g_ul,.735),vec3(.17,.045*g_ul,.055*mix(1.,g_ul,.5)));}
+float loLip(vec3 m){return max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g_ll,.065*mix(1.,g_ll,.5))),plane(m,vec3(0.,.7,.7),vec3(0.,-.03,.765)));}
+float features(vec3 p,float d){
+ vec3 s=vec3(abs(p.x),p.y,p.z);
+ d+=g_cv*.04*gs(s,vec3(.46,-.46+g_ch,.46),.035);   // the hollow under the cheekbone
+ float so=max(sdEll(s-vec3(g_es,.04,.8-g_ed),vec3(.21,.13,.14)*mix(1.,g_ez,.6)),s.y-.14-g_bh);d=smax(d,-so,SH);   // the socket under the brow
+ d=smin(d,eyeD(p),.01);
+ vec3 le=s-eyeC();le.xy=rot(g_et)*le.xy;
+ d=smin(d,sdEll(le-vec3(0.,.085-g_el,.11),vec3(.155*g_ez,.028+g_el*.5,.06)),.014);   // the upper lid's ledge
+ vec3 m=mouthL(p);
+ d=smin(d,upLip(m),.03);
+ d=smax(d,-max(abs(m.x)-.02,sdEll(m-vec3(0.,.1,.79),vec3(.035,.06,.015))),.012);   // the philtrum, shallow
+ d=smin(d,loLip(m),.025);
+ float gy=m.y-(-.012+.04*m.x*m.x-.012*exp(-m.x*m.x*300.));
+ d=smax(d,-max(length(vec2(gy,max(abs(m.x)-.17*min(1.,.6+.4*min(g_ul,g_ll)),0.)))-.011,.62-m.z),.008);   // the groove, only at the front, no wider than the lips
+ d=smax(d,-sdEll(m-vec3(0.,-.17,.8),vec3(.14,.035,.05)),.03);   // under the lower lip
+ d=smax(d,-sdEll(s-vec3(.055*g_nw,-.36-g_nl,.84+g_np),vec3(.025,.012,.03)),.008);   // nostrils
+ return d;}
+float earD(vec3 p,float d){vec3 s=vec3(abs(p.x),p.y,p.z);
+ vec3 e=s-vec3(.72,-.1,-.2);e.xz=rot(g_ea)*e.xz;e.z-=.1;e/=g_ers;   // turned about its back edge
+ d=smin(d,sdEll(e,vec3(.085,.2,.13))*g_ers,.035);   // a simple ear
+ return smax(d,-sdEll(e-vec3(.07,0.,.02),vec3(.035,.12,.065))*g_ers,.02);}   // its bowl
+float hairD(vec3 p){
+ vec3 h=p-vec3(0.,.2,-.12);
+ float d=sdEll(h,vec3(.91,1.,1.06)+vec3(0.,.05,0.)*smoothstep(.0,.8,p.z));
+ float th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2),g=abs(fract(th*4./3.14159+.5)-.5);d+=.075*(1.-smoothstep(.03,.3,g));   // four grooves, never through the mass
+ float F=p.y-mix(mix(-.55,.16,smoothstep(-.75,-.4,p.z)),.5,smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);   // the hairline: high on the brow, above the ears, down at the nape
+ return smax(d,-F,.05);}
+float headD(vec3 p,vec3 q){float d=earD(q,features(q,carve(q,mass(q))))*uL;
+ d=smin(d,sdCapT(p,vec3(0.,-.55,-.18),vec3(0.,-1.5,-.1),.5*g_nk,.56*g_nk),.16);   // a short, thick neck
+ return max(d,-(p.y+1.32));}
+vec2 map(vec3 p){vec3 q=warp(p);vec2 r=vec2(headD(p,q),1.);float h=hairD(q)*uL;if(h<r.x)r=vec2(h,2.);return r;}
+vec3 nrm(vec3 p){vec2 e=vec2(.0012,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 o,vec3 d){float res=1.,t=.015;for(int i=0;i<64;i++){float h=map(o+d*t).x;res=min(res,16.*h/t);t+=clamp(h,.008,.25);if(res<.002||t>5.)break;}return clamp(res,0.,1.);}
+float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.035*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-3.*a,0.,1.);}
+// the paint: 0 skin (warmed), 1 lips, 2 eye, 3 hair; returns colour, and .w = gloss
+vec4 paint(vec3 p,float m){
+ if(m>1.5)return vec4(uHair,.5);
+ if(eyeD(p)<.006){vec3 e=eyeL(p);vec2 c=vec2(0.,.0);float r=length(e.xy-c);vec3 col=vec3(.9,.87,.82);
+  if(r<.058)col=uIris*(.75+.4*smoothstep(.058,.02,r));if(r<.026)col=vec3(.03);
+  if(length(e.xy-c-vec2(-.02,.024))<.011)col=vec3(1.4);   // the catchlight
+  return vec4(col,1.);}
+ vec3 mq=mouthL(p);if(min(upLip(mq),loLip(mq))<.012)return vec4(uLip,.8);
+ vec3 s=vec3(abs(p.x),p.y,p.z);
+ float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.7*gs(p,vec3(0.,-.32-g_nl,.9+g_np),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
+ return vec4(mix(uSkin,uFlush,.32*clamp(w,0.,1.)),.6);}
+void main(){
+ vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
+ vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;
+ float t=0.;vec2 h;bool hit=false;
+ for(int i=0;i<220;i++){h=map(ro+rd*t);if(h.x<.0004*t){hit=true;break;}t+=h.x*.85;if(t>20.)break;}
+ vec3 col=mix(vec3(.12,.12,.12),vec3(.27,.27,.27),smoothstep(-.5,.7,rd.y));
+ if(hit){vec3 p=ro+rd*t,n=nrm(p);vec4 al=paint(warp(p),h.y);
+  float l=max(dot(n,KEY),0.)*shadow(p+n*.004,KEY),oc=ao(p,n);vec3 rf=reflect(rd,n);float fr=pow(1.-max(dot(n,-rd),0.),4.);
+  col=al.rgb*(l*vec3(1.,.95,.86)*1.3+(vec3(.11,.12,.15)*(.5+.5*n.y)+vec3(.07,.055,.045))*oc);
+  col+=vec3(1.,.95,.88)*(pow(max(dot(rf,KEY),0.),22.)*.16*al.w+pow(max(dot(rf,KEY),0.),200.)*1.2*step(.9,al.w))*l;   // satin; the eye's gloss
+  col+=vec3(.32,.34,.38)*fr*.18*oc;   // the sheen at grazing angles
+  col+=vec3(.3,.32,.36)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,normalize(vec3(.6,.2,-.7))),0.)*.4;}
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+gl.enable(gl.SCISSOR_TEST);
+for (const [n, c] of [['uSkin', P.skin], ['uHair', P.hair], ['uIris', P.iris], ['uLip', P.lip], ['uFlush', P.flush]]) gl.uniform3fv(U(n), c);
+// one tile: draw at s px (thumbnails at twice their size, scaled down: the antialiasing), copy to the tile's canvas
+function drawTile(cv, t, view, fov) {
+  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[view], d = 6, H = glc.height;
+  gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.uniform2f(U('uRes'), s, s);
+  gl.uniform3f(U('uCam'), Math.sin(a) * d, .1, Math.cos(a) * d); gl.uniform3f(U('uTgt'), 0, -.22, 0); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
+  const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
+  gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);
+  const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
+  // the head-shape stretches bend the distance field: march more carefully when any is off the house value
+  const w = ['hw', 'jw', 'fl', 'cr', 'bk'].map(k => g[IX[k]]), off = t.some(x => x !== 0);
+  gl.uniform1f(U('uL'), off ? Math.min(1, ...w) * .9 : 1);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
+}
+// a queue, one tile per frame (a long single GPU job can trip Windows' GPU timeout); a new render replaces it
+let queue = [], busy = false;
+function render(jobs) { queue = jobs; window.FRAME_DONE = 0; if (!busy) { busy = true; requestAnimationFrame(step); } }
+function step() { const j = queue.shift(); if (!j) { busy = false; window.FRAME_DONE = 1; return; } drawTile(...j); requestAnimationFrame(step); }
+
+// ---- picks, kept in this browser (and as copyable DNA)
+let picks = [];
+try { picks = JSON.parse(localStorage.getItem('lp.faces.picks') || '[]'); } catch (e) { picks = []; }
+function savePick(t) { const d = toDNA(t); if (!picks.includes(d)) picks.push(d); try { localStorage.setItem('lp.faces.picks', JSON.stringify(picks)); } catch (e) {} showPicks(); }
+function showPicks() { document.getElementById('pickn').textContent = `Saved picks: ${picks.length}`; }
+
+// ---- Edit
+let cur = fromDNA(Q.get('dna')) || house();
+const sl = [];
+(function buildSliders() {
+  const box = document.getElementById('sliders');
+  for (const r of REGIONS) {
+    const det = document.createElement('details'); det.open = true; det.innerHTML = `<summary>${r}</summary>`;
+    GENES.forEach((g, i) => { if (g[1] !== r) return;
+      const row = document.createElement('div'); row.className = 'row';
+      row.innerHTML = `<label class="${g[7] ? 'star' : ''}" title="${g[2]} (${g[0]}): house ${g[3]}, range ${g[4]} to ${g[5]}. Double-click to reset.">${g[2]}</label><input type="range" min="-127" max="127" step="1"><span></span>`;
+      const inp = row.querySelector('input'), sp = row.querySelector('span');
+      inp.oninput = () => { cur[i] = inp.value / 127; sp.textContent = val(i, cur[i]).toFixed(3); editChanged(); };
+      inp.ondblclick = () => { cur[i] = 0; syncSliders(); editChanged(); };
+      sl[i] = [inp, sp]; det.appendChild(row); });
+    box.appendChild(det);
+  }
+  const mb = document.getElementById('macros');
+  MACROS.forEach(([name, dir]) => {
+    const row = document.createElement('div'); row.className = 'row';
+    row.innerHTML = `<label title="${Object.keys(dir).join(', ')}">${name}</label><input type="range" min="-100" max="100" value="0"><span></span>`;
+    const inp = row.querySelector('input'); let base = null;
+    inp.onpointerdown = () => { base = cur.slice(); };
+    inp.oninput = () => { if (!base) base = cur.slice(); const k = inp.value / 100;
+      cur = base.map((x, i) => clamp1(x + k * (dir[GENES[i][0]] || 0))); syncSliders(false); editChanged(); };
+    inp.onchange = () => { inp.value = 0; base = null; };
+    mb.appendChild(row); });
+})();
+function syncSliders() { GENES.forEach((g, i) => { sl[i][0].value = Math.round(cur[i] * 127); sl[i][1].textContent = val(i, cur[i]).toFixed(3); }); }
+const $ = id => document.getElementById(id);
+function editChanged() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
+function renderEdit() { render([[$('vq'), cur, 'q'], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+$('reset').onclick = () => { cur = house(); syncSliders(); editChanged(); };
+$('rand').onclick = () => { cur = randomFace(); syncSliders(); editChanged(); };
+$('nudge').onclick = () => { cur = mutate(cur, .15); syncSliders(); editChanged(); };
+$('save').onclick = () => savePick(cur);
+$('apply').onclick = () => { const t = fromDNA($('dna').value); if (t) { cur = t; syncSliders(); editChanged(); } };
+$('copy').onclick = () => { try { navigator.clipboard.writeText(toDNA(cur)); } catch (e) {} };
+
+// ---- Breed
+let pop = [], picked = new Set(), gen = 0;
+function freshGen() {   // the house head plus 11 random faces, each distinct from the rest in the ★ genes
+  pop = [house()];
+  for (let n = 0; n < 200 && pop.length < 12; n++) { const c = randomFace(); if (pop.every(o => starDist(o, c) > .35)) pop.push(c); }
+  while (pop.length < 12) pop.push(randomFace());
+}
+function nextGen() {
+  const par = [...picked].map(i => pop[i]); const s = $('mut').value / 100;
+  if (!par.length) { freshGen(); gen++; return; }
+  const kids = par.slice(0, 2).map(t => t.slice());   // elitism: the first two picks carry over
+  for (let n = 0; n < 400 && kids.length < 12; n++) {
+    const a = par[Math.floor(rnd() * par.length)], b = par[Math.floor(rnd() * par.length)];
+    const from = Object.fromEntries(REGIONS.map(r => [r, rnd() < .5 ? a : b]));   // each region from one parent
+    const c = mutate(GENES.map((g, i) => from[g[1]][i]), s);
+    if (kids.every(o => starDist(o, c) > s * .6)) kids.push(c);   // the distinctness check, looser as mutation narrows
+  }
+  while (kids.length < 12) kids.push(mutate(par[0], s));
+  pop = kids; gen++;
+}
+function startFromPicks() { const t = picks.map(fromDNA).filter(Boolean).slice(-12); if (!t.length) return;
+  pop = t; while (pop.length < 12) pop.push(mutate(t[pop.length % t.length], .2)); gen = 0; picked = new Set(); renderBreed(); }
+function renderBreed() {
+  $('gen').textContent = `Generation ${gen}`;
+  const grid = $('grid'), strip = $('strip'); grid.innerHTML = ''; strip.innerHTML = ''; const jobs = [], thumbs = [];
+  pop.forEach((t, i) => {
+    const cell = document.createElement('div'); cell.className = 'cell' + (picked.has(i) ? ' picked' : '');
+    cell.innerHTML = `<canvas class="t" width="230" height="230"></canvas><canvas class="t th" width="48" height="48"></canvas><span class="tag">#${i + 1}${picked.has(i) ? ' <b>picked</b>' : ''}</span><a href="#">edit</a>`;
+    const [big, th] = cell.querySelectorAll('canvas');
+    cell.onclick = e => { if (e.target.tagName === 'A') return;
+      if (picked.has(i)) picked.delete(i); else { picked.add(i); savePick(t); }
+      cell.classList.toggle('picked', picked.has(i)); cell.querySelector('.tag').innerHTML = `#${i + 1}${picked.has(i) ? ' <b>picked</b>' : ''}`; st.classList.toggle('picked', picked.has(i)); };
+    cell.querySelector('a').onclick = e => { e.preventDefault(); cur = t.slice(); syncSliders(); setMode('edit'); editChanged(); };
+    grid.appendChild(cell);
+    const st = document.createElement('canvas'); st.className = 't'; st.width = st.height = 48; strip.appendChild(st);
+    jobs.push([big, t, 'q']); thumbs.push([th, t, 'f'], [st, t, 'q']);
+  });
+  render(jobs.concat(thumbs));
+}
+$('next').onclick = () => { nextGen(); picked = new Set(); renderBreed(); };
+$('fresh').onclick = () => { freshGen(); gen++; picked = new Set(); renderBreed(); };
+$('fromPicks').onclick = startFromPicks;
+$('mut').oninput = () => { $('mutv').textContent = ($('mut').value / 100).toFixed(2); };
+$('copyPicks').onclick = () => { try { navigator.clipboard.writeText(picks.join('\n')); } catch (e) {} };
+$('clearPicks').onclick = () => { picks = []; try { localStorage.removeItem('lp.faces.picks'); } catch (e) {} showPicks(); };
+
+// ---- Ranges
+function renderRanges() {
+  const only = (Q.get('gene') || '').split(',').filter(Boolean), cards = $('cards'); cards.innerHTML = ''; const jobs = [];
+  GENES.forEach((g, i) => { if (only.length && !only.includes(g[0])) return;
+    const card = document.createElement('div'); card.className = 'card';
+    card.innerHTML = `<h3>${g[2]}${g[7] ? ' ★' : ''} <small>${g[4]} · ${val(i, cur[i]).toFixed(3)} · ${g[5]}</small></h3><div class="three"></div>`;
+    const three = card.querySelector('.three');
+    for (const x of [-1, null, 1]) { const c = document.createElement('canvas'); c.className = 't'; c.width = c.height = +(Q.get('size') || 130); three.appendChild(c);
+      const t = cur.slice(); if (x !== null) t[i] = x; jobs.push([c, t, g[6]]); }
+    cards.appendChild(card); });
+  render(jobs);
+}
+
+// ---- modes
+let mode = '';
+function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m));
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
+  if (m === 'edit') renderEdit(); else if (m === 'breed') { if (!pop.length) freshGen(); renderBreed(); } else renderRanges(); }
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
+syncSliders(); $('dna').value = toDNA(cur); showPicks();
+setMode(['edit', 'breed', 'ranges'].includes(Q.get('mode')) ? Q.get('mode') : 'edit');
+</script>
+</body>
+</html>

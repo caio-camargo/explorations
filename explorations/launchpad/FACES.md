@@ -1,5 +1,5 @@
 # FACES — the face engine
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-10 · **Updated**: 2026-10-10
 **Status**: draft. D12 answered 2026-10-10 (Caio): **defaults, provisionally, depending on how the engine performs**: hybrid engine, generated recruits the player can edit, portraits baked.
 **Purpose**: Build crew faces from parameters instead of one whole face per prompt: a small engine that makes any
 number of distinct heads in the carved-puppet style (D11), for mock-ups now and for recruits generated in play later.
@@ -153,3 +153,13 @@ breaks the style, narrow the range rather than adding a fix.
    Decide by F9; the engine is the same either way.
 
 Defaults if silent: **1(a), 2(a), 3(a).**
+
+## 6. Progress
+
+- **F0 done, F1 built** (2026-10-10, look & sound): [`mockups/faces/index.html`](mockups/faces/index.html), round 5 as the
+  house head with 35 genes (the list in § 3 layer 2, plus the forehead slope and the lip groove's coupling), the default
+  genome matching round 5 pixel for pixel; Edit, Breed (picks, region crossover, mutation, elitism, a distinctness check
+  on the ★ genes) and Ranges tabs; macros heroic, lean–broad, age (sculpt only). Couplings so far: nostril wings ride on
+  the bridge, the lip groove shrinks with the lips. **F1's test is not yet met:** with the same hair, 12 random heads
+  differ at portrait size but look alike at 48 px; the hair mass dominates the thumbnail, so hair parts (F5) and paint
+  (F6) will carry most of it. Seen in the grid, for F3: a tip-up nose shows a dark underside.

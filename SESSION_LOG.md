@@ -4990,3 +4990,24 @@ odd-looking; proposed to look & sound with a rollout sound). Some flag draws com
 star, a red-disc Mountain); flagged in NOTES v1.112 for Caio. Q175's planet labels can sit on another planet's disc when
 Helios is near in the sky (noted in v1.110, not fixed).
 **Next:** flow is idle: the M2 items (Q170, Q196, Q167, Q192, Q203) and Q43 (watch mode) when Caio says go.
+
+## 2026-10-10 — Launchpad Q220 puppet rounds 4–5, then the face lab F0–F1 (D12) (look & sound, heads)
+
+**Summary:** **Round 4** (Caio's brief "carve, don't assemble"): `mockups/heads/deco4.html`, one carved mass (cranium egg,
+narrower jaw, a real neck), profile first (forward brow, the nose on the forehead's line, a forward chin), then 8–12
+cutting planes, hair one mass with swept grooves; neutral front and profile beside the intake references. Caio: "the
+right track". **Round 5** (`deco5.html`, `b7c69b6`): the side plane and carved ears, open eyes under a lid ledge with a
+painted iris and catchlight, a mouth wrapped round a curve, a nose base with wings, a thick Thunderbirds neck, painted
+warmth and satin; ¾, front and profile beside references. **Face lab F0–F1** (Caio: "we need a face creator engine"):
+`mockups/faces/index.html` takes round 5 as the house head with 35 named genes (default genome = round 5, checked pixel
+by pixel, max difference 1/255), Edit / Breed / Ranges tabs, macros, DNA strings, a breeding grid of 12 (region
+crossover, mutation, elitism, distinctness on the ★ genes; picks saved in the browser).
+**Files:** launchpad `mockups/heads/deco4.html`, `deco5.html`, `mockups/faces/index.html` (new), `mockups/README.md`
+(§ heads rounds 4–5, § faces), `FACES.md` 0.1.2 (§ 6 Progress), QUEUE (W31, W33, the F0 proposal ✓); `INDEX.md`,
+`ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/heads/round4-shape.png`, `round5-shape.png`,
+`output/launchpad/mockups/faces/breed-grid.png`, `ranges-before-narrowing.png`. The intake references are read, never committed.
+**Notes:** first ranges were too timid (most genes invisible at portrait size); widened ×1.6, then narrowed where a corner
+broke (cheek hollow → dimple, chin → knob, cheekbone height → crease). Random faces with every region at full range broke
+(floating nostrils, slot mouths), so untuned regions sample at 45 % until F2–F4. F1's 48 px test is not met: with one
+hair mass the thumbnails look alike; hair (F5) and paint (F6) will carry the thumbnail.
+**Next:** Caio breeds in the lab (W33); then F2 brow and eyes.
