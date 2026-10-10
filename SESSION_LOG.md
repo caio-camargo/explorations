@@ -4915,3 +4915,28 @@ a suit with a cap (Snoopy cap, Sokol hood) the hair, the roster's main tell, is 
 The suits session was not touched (`mockups/suits/` unchanged).
 **Next:** after W31, CREW.md part 1 records the head (design desk), then a head build into `app/crew-look.js` with the
 five expressions as face textures.
+
+## 2026-10-10 — Launchpad Q219: suit mock-ups, round 2 (look & sound, effects beat)
+
+**Summary:** Caio found round 1 (Q199) "too samey across epochs and for the two schools", and the design desk wrote
+CREW.md 0.2.4 § "The suit brief, round 2". `mockups/suits/` is rewritten so each suit is built from its own pieces in
+the shader (helmets, torsos, props), not one body recoloured.
+- **Cape:** chrome or gloss highlights, metal hardware, hoses into the chest.
+- **Steppe:** creased matte canvas, laces, hoods sewn on, hoses into the belly, the ventilator case carried by hand.
+- **Signatures, per the brief:** Mercury chrome with finger lights; Apollo's bellows and its bubble over the Snoopy cap;
+  the Shuttle's orange pumpkin with its harness; the EMU's chest box and lamps; the SK-1's lettered helmet; Sokol's soft
+  hood and blue lacing; grey-green with a shoulder pack; Orlan's fridge and its back door.
+- **Poses and shots:** a walkout pose (stride, wave, prop in hand) and a "from behind" shot.
+- **The brief's checks** are drawn by the page as sheets: silhouettes, grey squint, and 48 px.
+
+Caio's pick is **W32**.
+**Files:** launchpad `mockups/suits/index.html` (rewritten; round 1 is in git history, `b999a54`), `mockups/README.md` 0.1.4 § suits (round 2 table, the checks' results, round 1 kept below), QUEUE (Q219 ✓, W32, unblockers row); `ACTIVE_WORK.md`. Stills are in `output/launchpad/mockups/suits/r2-*.png`; round 1's moved to `round1/`.
+**Notes:**
+- **What the checks changed.** The first silhouette pass failed: Mercury, Apollo, the Shuttle suit and SK-1 were all a
+  ball on a box. The fixes: slimmer Mercury with bigger knee blouses; a bigger bubble and deeper bellows on Apollo; the
+  widest pumpkin, a long-backed helmet and big pivots on the Shuttle suit; a bigger SK-1 helmet.
+- **Grey squint.** Shuttle orange and grey-green came out the same grey, so the enamel is darker.
+- **Lost at 48 px:** Apollo's bellows, Mercury's finger lights, the SK-1 letters.
+- **Heads (Q220, W31).** The Snoopy cap and the hoods hide the hair, so a head pick has to carry identity without it.
+**Next:** after W32, the per-school suit build into `SUITS` (`app/crew-look.js`): Cape first, then Steppe. Each needs the
+pieces as meshes; the ventilator case and Orlan's door are props that Q209 (the walkout) can use.
