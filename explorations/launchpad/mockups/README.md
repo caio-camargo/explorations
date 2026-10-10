@@ -287,6 +287,12 @@ bridge's own cross-section, ends at the brow and blends wide; the forehead plane
 is smooth and drops with a flush root, which removed the line. **Hair library** (F5 begun, 1950s–60s): *hair style*
 picks one of 7 carved masses: swept (the house), Thunderbirds quiff, crew cut, receding swept back, flipped bob,
 bouffant, curls. Still: `faces/hair-styles.png`. 71 genes.
+**One hair done right, age, a nose fix** (Caio): the *Thunderbirds quiff* rebuilt from its profile (the front rises
+straight up off the forehead and curves back; its sides follow the skull; strands combed straight back);
+*wrinkles* (forehead lines, crow's feet, the nasolabial fold) and *bags under the eyes* (with the crease below), both
+driven by the Age macro, which also greys the hair; a long nose over a short philtrum is now shortened as a whole
+rather than clipped (the clip left a hole in Mr. Incredible's tip). Stills: `faces/hair-thunderbirds.png`,
+`faces/age.png`, `faces/nose-mr-incredible-fixed.png`. 73 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
