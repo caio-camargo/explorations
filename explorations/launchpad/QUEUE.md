@@ -323,7 +323,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 |---|---|---|---|---|---|
 | Q35 | **Volume slider** (it sits in flow's settings overlay Q42) | M1 | S | 🖥 | ✓ `ce44e42` (`sndSettings` in Settings, saved) |
 | Q66 | Per-engine voices (pitch by size) | — | M | 🖥 | ✓ `d358a50` (`sndVoices`: St·U/D per kind of engine) |
-| Q222 | A sound for the **Steppe rollout**: the erector car's rumble on the rails (7 s), the boom's hydraulics (5 s), the arms closing; the clock is `rollPhase()` in `app/rollout.js` (from flow's Q193, v1.111) | M1 | S | 🖥 | ready |
+| Q222 | A sound for the **Steppe rollout**: the erector car's rumble on the rails (7 s), the boom's hydraulics (5 s), the arms closing; the clock is `rollPhase()` in `app/rollout.js` (from flow's Q193, v1.111). Also, if it reads wrong: the rocket lies ~10 m up on the boom's cradle arms (the Q159 boom's geometry) | M1 | S | 🖥 | ready |
 | Q67 | Re-entry plasma crackle tuned against the heating model; spatial audio for other vessels and debris | — | M | 🖥 | ✓ `0458c99` (`sndPlasma`, `sndOthers`) |
 
 ### QA — robot playtester, tester menu, TESTING/PLAYTEST upkeep, balance runs (was playtest + tester)
