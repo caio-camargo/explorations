@@ -391,8 +391,9 @@ function tapeCut(pl){const T=tapeNew(pl.tape.stack,siteById(pl.tape.site));T.orb
 // ---- the automation ladder (space session, QUEUE Q127 slice 1; NOTES § "Plan: the automation ladder", MIDGAME decision
 // 2): what each computing era lets run as a routine, in one table, so balancing it is one edit. Every routine asks
 // autoAllowed(kind) → {ok, why, era}; a refusal says which era unlocks it.
-const AUTO_LADDER={ascent:'hand',burn:'main',deploy:'main','dock-crewed':'main',dock:'board',moon:'board',planet:'cheap',assist:'ai'};
+const AUTO_LADDER={ascent:'hand',burn:'main',deploy:'main','dock-crewed':'main',dock:'board',moon:'board',planet:'cheap',assist:'ai',
+  blind:'board'};   // blind: a ground-commanded step run out of contact, from the craft's own stored commands (Q186)
 const AUTO_WHY={burn:'until then burns are worked out by hand, so fly it yourself',deploy:'to command the deployment from the ground',
-  dock:'uncrewed rendezvous and docking arrive with them',moon:'uncrewed runs to the moons arrive with them',planet:'and the planets are M5'};
+  dock:'uncrewed rendezvous and docking arrive with them',blind:'until then a command needs a station in contact',moon:'uncrewed runs to the moons arrive with them',planet:'and the planets are M5'};
 function autoAllowed(kind){const id=AUTO_LADDER[kind],i=COMP_ERAS.findIndex(x=>x.id===id);if(i<0)return{ok:true,why:'',era:0};
   if(compEra()>=i)return{ok:true,why:'',era:i};return{ok:false,era:i,why:`needs ${COMP_ERAS[i].name.toLowerCase()}${AUTO_WHY[kind]?`: ${AUTO_WHY[kind]}`:''}`}}

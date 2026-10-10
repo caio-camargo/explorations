@@ -1964,7 +1964,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.102 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
+## v1.103 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
 
 - The map draws every node of a chain at its place from `nodePlan`. The node the panel has selected (◀ node k of n ▶)
   carries the drag handles; the others get a ring marker. With more than one node, each is labelled
@@ -1977,6 +1977,31 @@ relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under th
   unchanged. Robot `m1`, 51 (the map, tools refused) and 98 pass.
 - Two nodes at the same point (a burn at apoapsis that doesn't circularise leaves the next apoapsis where it was) draw
   on top of each other, and the later label is skipped.
+## v1.102 — contact gates automation (2026-10-09, space session, QUEUE Q186, Q127 slice 3)
+
+Before onboard computers a command needs a station in contact: mission control flies a planned burn (v1.93) only if it
+can reach the craft at the burn's time. From onboard computers the craft runs stored commands, out of contact too.
+- `entryLink(q, T, r)` (`sim/space.js`, next to the link budget): a registry entry's link home. Around Tellus, a ground
+  station in view; elsewhere, Tellus not hidden behind the body and v1.96's rate above `LINK_FLOOR`. So at Selene a whip
+  is heard except from behind the moon, and a craft with no antenna (a 1 W beacon) is too far for its radio.
+- The ladder (`AUTO_LADDER`, `sim/procedures.js`) gains `blind: 'board'`: a ground-commanded step run out of contact.
+- `handOffWhy(q)`: the era (Q127), then contact. A satellite on its rails has a known place at the burn, so a hand-off
+  that would be out of reach is **refused up front**: "can't reach Lookout 1 at the burn (no station in view);
+  onboard computers could fly it out of contact: fly it yourself, or build a station under it". A cruise entry's place
+  isn't predicted, so it's checked when the burn comes. `nodesTick`: a handed burn with no link at its time **passes
+  unflown** (news says why), as a missed burn does: a wait, never a failure.
+- **What it means in play:** with only the pad's station, a low satellite is in view ~5 % of the time, so in the
+  mainframe era most burns in Tellus orbit are yours to fly unless stations cover them; burns on the way to Selene are
+  nearly always in reach.
+- **Flow:** the burn line in the Fleet list (`app/program-ui.js`, one template) shows `handOffWhy`'s reason in place of
+  the button, as it already did for the era.
+- **Not in this slice:** deployments (dispatched flights are abstracted, with no time to check); rovers already wait for
+  contact; planned burns can't be moved from the Program screen yet, so a refused one can only be flown.
+
+Tests `space-16` (2 checks: refused at hand-off; passes when handed over anyway; flown blind with onboard computers;
+Selene's shadow and the beacon); `space-10` and `space-12` now put their burns where a station sees them, and space-10's
+orbit check uses exact vis-viva bounds (its linear guess missed ~0.14 %, which the moved burn's error then exceeded).
+TESTING row 181.
 
 ## v1.101 — the flight readout: a core and cards (2026-10-09, flow session, QUEUE Q3, UI slice 4a; W15's defaults)
 
@@ -9680,7 +9705,7 @@ against its plan and the lead); the full suite 554/554; `playtest.mjs m1` passes
 "◀ node 1 of 2 ▶ … 1 more node after it", ▶ selects node 2, and the map draws the plan after the last node.
 
 **Not yet:**
-- ~~markers and drag handles for queued nodes on the map (flow / the map's owner);~~ done, § v1.102;
+- ~~markers and drag handles for queued nodes on the map (flow / the map's owner);~~ done, § v1.103;
 - a node placed by clicking on a later leg past an SOI change (the map's pick only knows the current leg; N covers
   the capture case).
 

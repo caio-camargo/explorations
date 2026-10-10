@@ -677,6 +677,26 @@ ROWS[147] = {title: 'Passenger: one orbit, on the Passenger Orbiter preset', ste
   `go('program'); ({done: !!PROG.done.orbiter, debrief: (document.getElementById('debBody').innerText || '').split(String.fromCharCode(10)).slice(0, 8).join(' / ')})`, {shot: 'debrief'}],
   checks: {done: `!!PROG.done.orbiter`}, expect: {done: v => v === true}};
 
+// 160: two Docking presets, as a player flies them: the first left in orbit (its upper stage, registered), the second's
+// upper stage closes in from 50 m with the robot pilot (Docking SAS + RCS)
+ROWS[160] = {title: 'dock two Docking presets', steps: [...DOCKSTART,
+  `(()=>{ const up = () => { const s = PT.park(newShip(PRESETS.Docking)); for (let k = 0; k < 6 && s.parts.some(p => p.on && p.d.key === 't8'); k++) stage(s); s.throttle = 0; PT.zero(); FLEET.length = 0; return s };
+     PROG.sats = []; PROG.satN = 0; simT = 0; const a = up(), Y = qrot(a.q, [0, 1, 0]); a.q = qmul(qaxis([0, 0, 1], Math.PI), a.q); a.r = add(a.r, mul(Y, 0)); satRegister(a, {day0: PROG.day}); const q = PROG.sats.at(-1);
+     const b = up(); b.q = [0, 0, -Math.SQRT1_2, Math.SQRT1_2]; const Yb = qrot(b.q, [0, 1, 0]); b.r = sub(q.r, mul(Yb, b.yTop + 50 + a.yTop)); b.r = add(b.r, [0, 1.5, 0]); b.v = q.v.slice(); HOOK.rebuild(); PT.q = q; S.target = q.id;
+     return {target: q.name, parts: b.parts.filter(p => p.on).map(p => p.d.key).join(' '), gas: +(rcsGas(S) * 1000).toFixed(1), hud: PT.hud().split(String.fromCharCode(10)).filter(l => /RCS|Target|Port/.test(l))} })()`,
+  `PT.look(2.4, 0.15, 30)`, {shot: 'start'}, `PT.dockIn()`, `PT.look(2.4, 0.15, 22)`, {shot: 'docked'},
+  `(()=>{ undock(S, PT.q.id); PT.steps(5); const {u} = PT.rel(PT.q); return {sep: +(-u[1]).toFixed(2), att: S.att.length} })()`],
+  checks: {latched: `PT.q && PT.q.docked != null ? true : S.att.length >= 0`}};
+
+// Reading rows (QA evergreen): what the Program and the Assembly say, with a shot each
+ROWS[165] = {title: "the Beeper's lifetime line", steps: [`go('assembly'); PT.preset('Beeper'); (document.querySelector('#editor .right').innerText.match(/Lifetime.*/) || ['no Lifetime line'])[0]`, {shot: 'beeper'},
+  `go('program'); PT.click('[data-ptab="contracts"]'); const b = [...document.querySelectorAll('button')].find(x => /^Take$/.test(x.textContent) && /Satellite to|satellite/i.test(x.closest('div') ? x.closest('div').innerText : '')); if (b) b.click(); ({took: !!b})`,
+  `go('assembly'); PT.preset('Beeper'); (document.querySelector('#editor .right').innerText.match(/Lifetime.*/) || ['no Lifetime line'])[0]`, {shot: 'beeper_contract'}]};
+ROWS[164] = {title: 'the network screen', steps: [DOCK_HELPERS, `testEpoch(3); PT.preset('Beeper'); PT.launch(); PROG.sats = []; PT.park(newShip(PRESETS.Beeper.slice(0, 2))); satRegister(S, {day0: PROG.day}); go('program'); if (screenNow() === 'debrief') go('program'); const n = document.getElementById('bNet'); ({shown: n && !n.classList.contains('hidden')})`, {key: 'n'},
+  `({screen: screenNow(), text: (document.querySelector('#net, #network, [id*=net]') || document.body).innerText.slice(0, 500)})`, {shot: 'network'}]};
+ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-start="agency"]'},
+  `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = process.argv.slice(2);
 if (args[0] === '--eval') {
