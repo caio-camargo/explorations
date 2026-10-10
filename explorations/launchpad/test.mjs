@@ -4823,7 +4823,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const sch = i => i === 3 ? 1 : 0, vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
   check('Steppe pad: a site is built in its owner\'s school (sea: home\'s), the tester\'s force wins; every site draws its own; views 116–119',
     P(null, sch, 0)({ power: 3 }) === 1 && P(null, sch, 0)({ power: 0 }) === 0 && P(null, sch, 3)({ power: null }) === 1 && P(0, sch, 0)({ power: 3 }) === 0 && P(1, sch, 0)({ power: 0 }) === 1
-      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else\{/.test(page)
+      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else if/.test(page)
       && /if\(key===padKey\)return;if\(H!==padTH\|\|sch!==padSch\)/.test(page) && /if\(RIG\.sch===1\)return drawSteppeRig/.test(page) && /SCHOOL_FORCE = 1;/.test(vj) && /n >= 116 && n <= 119/.test(vj));
 }
 
@@ -5052,6 +5052,57 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('crew look: Cape\'s crew arm reaches every crewed design\'s hatch and stops short of it; a swing arm there stands down; none without crew; the crew are drawn in the Assembly only',
     !bad.length && /drawPadCrew\(drawMesh,camW\);/.test(H) && /mode!=='editor'\|\|HOOK\.noRig\)return;/.test(page) && /<script src="app\/crew-look\.js"><\/script>/.test(readFileSync(new URL('./index.html', import.meta.url), 'utf8')),
     bad.slice(0, 4).join(' | ') || seen.join('; '));
+}
+
+// aerofx-6. The other four schools' pads (look & sound parts & pad beat, QUEUE Q231, Q102 step 7). Their rigs come from
+// the page's own buildRig/padRig with stubs, for every preset in each school: what is built round the rocket (the
+// Coastal table, the masts and their arms, Mountain's rail launcher and its closed shelter, Isle's strongback) stops
+// short of it; Mountain hangs a small uncrewed rocket on the rail and stands anything else in the shelter; a crewed
+// rocket gets Cape's crew arm in every one of the four. The static complexes build and stay on the sea platform's deck.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),
+      lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}});
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const bad = [], seen = [];
+  for (const sch of [2, 3, 4, 5]) for (const [k, st] of Object.entries(D.PRESETS)) {
+    const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig, sch), tag = `${sch} ${k}`;
+    if (R.sch !== sch) { bad.push(`${tag}: not its school's rig`); continue; }
+    const body = s.parts.filter(p => p.d.kind !== 'rdec');
+    const inBox = (c, h) => body.find(p => { const y0 = p.y0 + rig.base; if (c[1] + h[1] < y0 || c[1] - h[1] > y0 + p.h) return false;
+      const dx = Math.max(Math.abs(p.pos[0] - c[0]) - h[0], 0), dz = Math.max(Math.abs(p.pos[2] - c[2]) - h[2], 0); return Math.hypot(dx, dz) < p.d.r - 0.03; });
+    const inTube = (A, B, r) => { for (let i = 0; i <= 30; i++) { const q = A.map((v, j) => v + (B[j] - v) * i / 30), p = body.find(p => { const y0 = p.y0 + rig.base; return q[1] >= y0 && q[1] <= y0 + p.h && Math.hypot(q[0] - p.pos[0], q[2] - p.pos[2]) < p.d.r + r - 0.03; }); if (p) return p; } };
+    const clear = (items, P, what) => { for (const T of items) { const o = (v) => v.map((x, j) => x + P[j]);
+      const p = T.prof ? (T.prof[0][0] < rig.ext + 0.2 ? body[0] : null) : T.A ? inTube(o(T.A), o(T.B), T.r) : inBox(o(T.c), T.h);
+      if (p) { bad.push(`${tag}: ${what} through ${p.d.key}`); return; } } };
+    if (R.fixed) clear(R.fixed.a, [0, 0, 0], 'the fixed rig');
+    for (const M of R.movers) clear(M.mesh.a, M.P, 'a mast or strongback');
+    for (const Dr of R.doors) clear(Dr.mesh.a, Dr.P, 'the closed shelter');
+    const crewed = s.parts.some(p => p.d.crew), small = !crewed && !rig.side && rig.L <= 24;
+    if (sch === 4 && R.rail !== small) bad.push(`${tag}: rail ${R.rail}, expected ${small}`);
+    if (crewed && !R.crew) bad.push(`${tag}: crewed, no crew arm`);
+    if (!crewed && R.crew) bad.push(`${tag}: a crew arm, no crew`);
+    if (sch === 4) seen.push(`${k}: ${R.rail ? 'rail' : 'shelter'}`);
+  }
+  check('school pads: Arsenal, Coastal, Mountain, Isle rigs stop short of every preset; Mountain: rail for small uncrewed rockets, the shelter otherwise; a crew arm for crewed ones',
+    !bad.length, bad.slice(0, 4).join(' | ') || [...new Set(seen)].slice(0, 6).join(', '));
+  // the static complexes: each builds, and nothing leaves the sea platform's deck (x −256…86, z −194…80)
+  const pts = [], P = new Function(src + `const pts=[],C={W:[1,1,1],D:[0,0,0],GL:[0,0,0,4],BK:[0,0,0]};
+    const pv=(o,p)=>pts.push(p),box=(o,c,hx,hy,hz)=>{pts.push([c[0]-hx,c[1],c[2]-hz],[c[0]+hx,c[1],c[2]+hz])},rbox=(o,c,hx,hy,hz)=>{const m=Math.max(hx,hz);pts.push([c[0]-m,c[1],c[2]-m],[c[0]+m,c[1],c[2]+m])},
+      tube=(o,A,B)=>pts.push(A,B),lathe=(o,prof,c=[0,0,0])=>{const m=Math.max(...prof.map(q=>q[0]));pts.push([c[0]-m,0,c[2]-m],[c[0]+m,0,c[2]+m])},strip=(o,A,B)=>pts.push([A[0],0,A[1]],[B[0],0,B[1]]),
+      lattice=(o,x,z,w)=>pts.push([x-w,0,z-w],[x+w,0,z+w]);
+    ${cut("// ---- the other four schools' pads", "// the school a site's pad is built in")}
+    return {pads:[arsenalPad,coastalPad,mountainPad,islePad],pts};`)();
+  const out = [];
+  P.pads.forEach((f, i) => { const n = P.pts.length; f([], 40, [0, 0, 0, 2], [0, 0, 0, 1], [0, 0, 0, 2]); const mine = P.pts.slice(n);
+    if (mine.length < 50) out.push(`${i + 2}: only ${mine.length} points`);
+    const o = mine.find(p => p[0] < -256 || p[0] > 86 || p[2] < -194 || p[2] > 80); if (o) out.push(`${i + 2}: off the deck at ${o.map(v => v.toFixed(0))}`); });
+  const vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  check('school pads: the four complexes build and stay on the sea platform\'s deck; buildPad and drawPadRig dispatch them; views 145–151',
+    !out.length && /else if\(sch>=2\)\[arsenalPad,coastalPad,mountainPad,islePad\]\[sch-2\]\(a,TH,CO,STL,DK\)/.test(page) && /if\(RIG\.sch>=2\)return drawSchoolRig/.test(page) && /n >= 145 && n <= 151/.test(vj), out.join(' | '));
 }
 
 // econ-20. Windows (economy session, QUEUE Q185, Q127 slice 2; MIDGAME § Windows): a routine's rule finds its next

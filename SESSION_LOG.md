@@ -5111,3 +5111,27 @@ Stills (not in git): `output/launchpad/q228-schools/`, `output/launchpad/q229-su
   strongback) and their signature designs (Q158, blocked until rivals' rockets are drawn).
 - Steppe's crew arm, so its suits show.
 - Spacewalk suits once EVA exists.
+
+## 2026-10-10 — Launchpad Q231: the four schools' pads (look & sound, parts & pad beat)
+
+**Summary:** Caio: "check for new work, there's some parts and pad in the queue". Took Q231, the top ready parts & pad
+item (Q102 step 7 for Arsenal, Coastal, Mountain, Isle; mock-ups Q227).
+- Each school's site now builds its own complex in place of Cape's: Arsenal's terrace under a hill, camouflaged tower,
+  parked truck erector, bunkers and netted hall; Coastal's towerless pad with four lightning masts, rails to a tall
+  assembly building, the water tower; Mountain's terraces and hall; Isle's tiny pad, hangar, shed, container office,
+  mast and sheep.
+- The moving parts (`schoolRig`): Arsenal's umbilical mast falls back at lift-off; Coastal's mobile table with two
+  umbilical masts whose arms swing clear; Mountain's rail launcher for small uncrewed single stacks, otherwise a shelter
+  whose halves swing open after a flight starts; Isle's strongback tilting back.
+- Cape's swing arms, crew arm and hold-downs are split into helpers and reused. Crewed rockets get a crew arm in every
+  school, so the Q229 suits still show for Coastal and Isle.
+- Views 145–151, test aerofx-6, TESTING 194.
+
+**Files:** `app/gl.js`, `views.js`, `test.mjs`, NOTES (§ "The four schools' pads"), TESTING (194), QUEUE (Q231 ✓, four
+Proposed lines), `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/q231-pads/`.
+**Next:**
+- The sites' ground (world's Q105).
+- Rollouts for the three new schools (flow).
+- Q230's rail tilting the Mountain boom (vehicle).
+- Lettering on the pads.
+- Next parts & pad items: Q238's plan (part pictures, with vehicle), Q205 Foundry (plan first), Q209 (the crew walk out).

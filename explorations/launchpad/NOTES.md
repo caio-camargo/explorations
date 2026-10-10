@@ -1142,6 +1142,55 @@ Steppe). test.mjs `aerofx-3` now expects open superpowers to be mostly Cape, els
 - Coastal's lettering and Isle's rocket names. A font now exists in `MESH_FS` (`serial`'s digits).
 - The fins' coloured tips (Mountain saffron, Isle hue): the shader has no radial coordinate on the fin mesh.
 
+### The four schools' pads (2026-10-10, look & sound parts & pad beat, QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227)
+
+A site's pad is built in its owner's school (as Q159), so Arsenal, Coastal, Mountain and Isle sites now have their own
+complexes. In `buildPad`, `arsenalPad`/`coastalPad`/`mountainPad`/`islePad` replace Cape's complex; Cape's buildings
+(propellant farm, gas racks, deluge tank, masts, blockhouse) are now drawn only for Cape and Steppe. The floodlight poles
+stay for everyone, because `padLights` lights from them. The moving parts are `schoolRig`, drawn by `drawSchoolRig`:
+- **Arsenal:** a terrace slab with a retaining wall, the hill rising behind it to the north (a mesh heightfield, `hfield`;
+  the two north floodlight poles stand on it). The flame chute runs south. A camouflaged lattice tower (`camoLattice`)
+  stands east. *Rig:* one umbilical mast north of the rocket, its arm on the upper stage; it falls back north at
+  lift-off. Also: the road transporter-erector parked west with its beam down, two earth bunkers with blast doors, a
+  blockhouse with periscopes, the hall under a camouflage net, hypergolic tanks in a revetment.
+- **Coastal:** a towerless pad: four lightning masts with wires between their tops, the twin rails north to a tall
+  assembly building, the deluge water tower, low white buildings with a pastel band, a glass control centre,
+  cryogenic spheres. *Rig:* the mobile launch table round the engines (on bogies over the rails), with two short
+  umbilical masts on its west side; their arms swing clear at lift-off.
+- **Mountain:** terraces step up a ridge to the north, with railings; a tidy hall on top with a saffron band, a control
+  house up-range, motor stores. *Rig:* **the rail launcher** for a small uncrewed single stack (≤ 24 m, no side
+  boosters; MIDGAME § The launch rail): a turntable ring and the boom, raised to vertical beside the rocket with
+  hangers and struts. It is look only until Q230 tilts it. **The shelter** for anything else: two halves, closed round the rocket
+  when a flight starts on the pad and swinging open from 2 s to 12 s (as Cape's gantry rolls back; open in the editor).
+  They are hinged at the east ends of their outer walls, so they swing outward. Also an umbilical tower east, with
+  Cape's swing arms.
+- **Isle:** a tiny pad, a gravel track north to the hangar (a sign; no lettering yet), a shed, a container office, one
+  mast, eleven sheep. *Rig:* a strongback north of the rocket on its trailer, clamped on, tilting back 4° at lift-off.
+
+**Shared with Cape** (`swingArms`, `crewArm`, `holdDowns`, split out of `buildRig`, same geometry):
+- The hold-downs, wherever the rocket stands on a table (not on Mountain's rail).
+- The crew access arm, wherever a tower stands at x = 7: Arsenal's tower and Mountain's umbilical tower. Coastal and
+  Isle put up a slim crew tower there for a crewed rocket, so their suits (Q229) still show in the Assembly.
+
+`padRig` gained `side` (any part off the axis). `padSync`'s key carries the stack's shape for every school but Cape.
+All of it stays on the sea platform's deck.
+
+**Views:** `refView(145)`–`(151)`: Arsenal, Coastal, Mountain's rail, Mountain's shelter open with a crewed rocket, Isle;
+Mountain's shelter closed at a flight's start; Arsenal 1 s after lift-off. test.mjs `aerofx-6`:
+- Every preset in each of the four schools: the table, masts, arms, rail launcher, closed shelter and strongback stop
+  short of the rocket.
+- Mountain picks the rail or the shelter as above; a crew arm appears if and only if the rocket is crewed.
+- The four complexes build inside the deck.
+
+Stills: `output/launchpad/q231-pads/`.
+
+**Not built yet:**
+- The sites' ground: Arsenal's hillside, Coastal's jungle and sea, Mountain's ridge above the sea, Isle's green
+  peninsula (world's Q105). The meshes here assume flat ground.
+- Rollouts: the truck erector driving in and raising the rocket, the table rolling out, the trailer and strongback
+  raising it. Only Steppe's is animated (flow's `rollPhase`).
+- The rail tilting (Q230), and lettering on the hangar and the assembly buildings.
+
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
 The high ranges were one white cap: above ~7 km the snow term (`sn`) and the ice term are both 1 on any gentle slope. Now,

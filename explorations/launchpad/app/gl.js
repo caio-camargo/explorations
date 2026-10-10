@@ -1602,7 +1602,7 @@ function strip(out,A,B,w,h,col){const dx=B[0]-A[0],dz=B[1]-A[1],L=Math.hypot(dx,
 // road leaving to the north-west). Further out, slabs, rail beds and roads are thin meshes. TH is the umbilical tower's
 // height (sized to the rocket); the service gantry and the lightning masts scale with it. Early-era Cape style.
 function buildPad(TH,sch=0){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],AS=[.06,.06,.065,2],W=C.W;
-  if(sch===1)steppeTable(a,CO,STL,DK);else{   // (the pad per school, Q159: Steppe's below)
+  if(sch===1)steppeTable(a,CO,STL,DK);else if(sch>=2)[arsenalPad,coastalPad,mountainPad,islePad][sch-2](a,TH,CO,STL,DK);else{   // (the pad per school, Q159: Steppe's below; Q231: the other four)
   // launch table: the concrete pad, a steel flame grate under the engines with radial bars, four hold-down posts
   lathe(a,[[7,-.8,[.3,.29,.28,2]],[7,.02,[.3,.29,.28,2]]],[0,0,0],36);lathe(a,[[2.6,.02,[.05,.05,.05,1]],[2.6,.035,[.05,.05,.05,1]]],[0,0,0],32);
   for(let i=0;i<8;i++)rbox(a,[0,.05,0],2.6,.02,.06,STL,i*Math.PI/8);
@@ -1616,6 +1616,7 @@ function buildPad(TH,sch=0){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.
   box(a,[TX,TH/2,0],.5,TH/2,.5,[.22,.23,.25,1]);
   // the service gantry's twin rails, from the launch table to its parking spot ~80 m north (the gantry is in the rig)
   for(const x of[-PAD_GX,PAD_GX]){strip(a,[x,5],[x,-118],1.6,.05,CO);strip(a,[x-.25,5],[x-.25,-118],.12,.17,STL);strip(a,[x+.25,5],[x+.25,-118],.12,.17,STL)}}
+  if(sch<2){   // Cape's buildings, which Steppe shares (the other schools build their own, Q231)
   // propellant farm on its slab: a LOX sphere on legs, a horizontal RP-1 tank on saddles, both feeding the pad by pipe
   {const pr=[];for(let i=0;i<=14;i++){const t=-Math.PI/2+i/14*Math.PI;pr.push([4.5*Math.cos(t),6+4.5*Math.sin(t),W])}lathe(a,pr,[33,0,13],24,[false,false]);
    for(let i=0;i<6;i++){const t=i/6*6.2832;tube(a,[33+5*Math.cos(t),0,13+5*Math.sin(t)],[33+4.4*Math.cos(t),6,13+4.4*Math.sin(t)],.18,STL,6)}}
@@ -1642,6 +1643,7 @@ function buildPad(TH,sch=0){const a=[],OR=[.78,.3,.12],CO=[.48,.47,.44,2],STL=[.
   {const BX=-230,BZ=-60;lathe(a,[[26,.03,CO],[26,.05,CO]],[BX,0,BZ],40);
    lathe(a,[[11,0,CO],[11,1.8,CO],[11,1.8,DK],[10.8,2.4,DK],[10.8,2.4,CO],[9.6,5,CO],[7.5,7.4,CO],[4.5,8.9,CO],[0,9.6,CO]],[BX,0,BZ],36,[false,false]);
    tube(a,[BX,9.5,BZ],[BX,16,BZ],.06,STL,4);strip(a,[BX,BZ-26],[BX,-194],6,.04,AS);strip(a,[BX+24,BZ+4],[-7,-2],.7,.08,CO)}
+  }
   // floodlight poles around the apron, their heads aimed at the pad (lit at night: PAD_LIGHTS, padLights, PAD_GLOW)
   for(const[x,z]of PAD_LIGHTS){tube(a,[x,0,z],[x,16,z],.15,STL,6);box(a,[x,16.4,z],.8,.4,.3,C.D)}
   return makeMesh(a)}
@@ -1664,6 +1666,84 @@ function steppeTable(a,CO,STL,DK){const PIT=[.012,.012,.014,2],GL=[.64,.62,.57,2
   for(let z=zN-3;z>-122;z-=4)box(a,[0,.08,z],2.2,.03,.15,[.2,.18,.16,2]);
   // the horizontal assembly hall: the rocket is put together lying down and leaves through the door facing the pad
   box(a,[0,8,-152],13,8,30,GL);box(a,[0,16.2,-152],13.4,.2,30.4,C.D);box(a,[0,6.5,-121.9],7,6.5,.1,[.16,.17,.18,2])}
+// ---- the other four schools' pads (QUEUE Q231, Q102 step 7; POWERS.md § "School briefs", mock-ups Q227 `mockups/schools/`
+// Pads). Each builds its own complex in place of Cape's; only the floodlight poles are shared (padLights lights them).
+// The moving parts are schoolRig's. The ground stays the sky shader's, and the site's shape (Arsenal's hill, Coastal's
+// jungle, Mountain's ridge, Isle's peninsula) is world's (Q105): what rises above it here is mesh, inside the sea
+// platform's deck (x −256…86, z −194…80).
+// a heightfield patch y = f(x, z) over [x0, x1] × [z0, z1] in n × m cells (earth banks, the Arsenal hall's net); col a
+// colour or a function of the cell's corner
+function hfield(out,f,x0,x1,z0,z1,n,m,col){const P=(i,j)=>{const x=x0+(x1-x0)*i/n,z=z0+(z1-z0)*j/m;return[x,f(x,z),z]},e=.4,
+    N=p=>norm([f(p[0]-e,p[2])-f(p[0]+e,p[2]),2*e,f(p[0],p[2]-e)-f(p[0],p[2]+e)]),cf=typeof col==='function'?col:()=>col;
+  for(let i=0;i<n;i++)for(let j=0;j<m;j++){const q=[P(i,j),P(i+1,j),P(i+1,j+1),P(i,j+1)],k=cf(q[0]);for(const t of[0,2,1,0,3,2])pv(out,q[t],N(q[t]),k)}}
+// a lattice like lattice(), every member coloured by col(y, i): Arsenal's camouflaged tower
+function camoLattice(out,x,z,w,H,col){const c=[[x-w/2,z-w/2],[x+w/2,z-w/2],[x+w/2,z+w/2],[x-w/2,z+w/2]],n=Math.round(H/2.5);
+  for(let i=0;i<n;i++){const y0=i*H/n,y1=(i+1)*H/n;for(let k=0;k<4;k++){const[a,b]=c[k],[a2,b2]=c[(k+1)%4],f=(i+k)%2,cc=col(y0,i*4+k);
+    tube(out,[a,y0,b],[a,y1,b],.12,cc);tube(out,[a,y1,b],[a2,y1,b2],.07,cc,5);tube(out,[a,f?y0:y1,b],[a2,f?y1:y0,b2],.05,cc,4)}}}
+const CAMO=[[.3,.34,.2,2],[.4,.33,.21,2],[.56,.52,.38,2],[.18,.2,.14,2]],camoAt=(x,z)=>CAMO[Math.abs(Math.floor(x/4.3)*7+Math.floor(z/3.1)*3+Math.floor((x+z)/5.7))%4];
+// an earth-covered bunker at (x, z): a low mound with a concrete portal and a blast door facing the pad
+function bunker(a,x,z,r,CO){const pr=[];for(let i=0;i<=8;i++){const t=i/8*Math.PI/2;pr.push([r*Math.cos(t),r*.55*Math.sin(t),[.36,.37,.24,2]])}lathe(a,pr,[x,0,z],18,[false,false]);
+  const t=Math.atan2(z,x),c=Math.cos(t),s=Math.sin(t);rbox(a,[x-c*(r*.82),1.2,z-s*(r*.82)],.6,1.2,1.9,CO,t);rbox(a,[x-c*(r*.82+.62),1,z-s*(r*.82+.62)],.03,.95,1.2,[.24,.26,.2,1],t)}
+// Arsenal: a terrace cut into a hillside, the hill rising behind it (north); the flame chute a concrete channel out of
+// the side (south); a camouflaged lattice tower east (its crew arm, if any, is the rig's, as Cape's); the road
+// transporter-erector parked on the apron, its beam down, having raised the rocket and driven off; earth-covered bunkers
+// with blast doors, a blockhouse with periscopes up-range, the assembly hall under a camouflage net, the propellant
+// tanks in a revetment
+function arsenalPad(a,TH,CO,STL,DK){const OL=[.31,.34,.21,2],EA=[.36,.37,.24,2];
+  box(a,[0,.05,0],17,.05,10.4,CO);box(a,[0,2.3,-10.8],17,2.3,.4,CO);   // the terrace and its retaining wall
+  hfield(a,(x,z)=>(4.6+8*sstep(-11,-34,z)+.7*Math.sin(x*.23)*Math.sin(z*.19))*(1-sstep(17,44,Math.abs(x)))*Math.max(1-sstep(15,19,Math.abs(x)),sstep(-11.2,-22,z))*(1-sstep(-50,-64,z)),-46,46,-64,-11.2,23,13,EA);   // (the floodlights' north poles stand on it)
+  lathe(a,[[2.6,.1,[.05,.05,.05,1]],[2.6,.12,[.05,.05,.05,1]]],[0,0,0],32);for(let i=0;i<8;i++)rbox(a,[0,.13,0],2.6,.02,.06,STL,i*Math.PI/8);
+  for(const s of[-1,1])box(a,[2.7*s,.75,19],.35,.75,15.5,CO);box(a,[0,.11,19],2.35,.01,15.5,DK);   // the chute, south
+  const TX=7,TW=3;camoLattice(a,TX,0,TW,TH,(y,i)=>CAMO[(Math.floor(y/5)*3+i)%4]);box(a,[TX,TH+.15,0],TW/2+.5,.15,TW/2+.5,OL);tube(a,[TX,TH+.3,0],[TX,TH+7,0],.08,STL,6);
+  // the transporter-erector, parked west of the apron facing south: cab, chassis, five axles, the beam lowered on it
+  {const X=-21,Z=4;box(a,[X,1.15,Z],1.25,.3,7.5,OL);rbox(a,[X,2.05,Z+8.3],1.3,1.2,1,OL,0);box(a,[X,2.6,Z+9.31],1.05,.42,.02,C.GL);
+   for(const z of[-5.6,-3.8,1.2,3,5.4])for(const s of[-1,1])tube(a,[X+s*.95,.62,Z+z],[X+s*1.35,.62,Z+z],.62,[.1,.1,.1,2],10,true);
+   box(a,[X,1.75,Z-.6],.42,.3,6.6,OL);for(const z of[-4.5,0,4])box(a,[X,2.15,Z+z],.9,.12,.25,STL);tube(a,[X,1.5,Z+4.6],[X,1.95,Z+2.2],.16,STL,6)}
+  bunker(a,-36,18,5.5,CO);bunker(a,30,26,4.8,CO);
+  // the blockhouse up-range: a squat concrete block banked with earth, periscopes on its roof
+  {const BX=-82,BZ=6;box(a,[BX,1.4,BZ],4,1.4,3,CO);hfield(a,(x,z)=>Math.max(0,2.6-.8*Math.max(Math.abs(x-BX)-4,Math.abs(z-BZ)-3,0)),BX-8,BX+2,BZ-7,BZ+7,6,8,EA);
+   for(const z of[-1.6,0,1.6])tube(a,[BX+2.6,2.8,BZ+z],[BX+2.6,3.9,BZ+z],.13,STL,6,true)}
+  // the assembly hall on the north-west slab, under a camouflage net draped to the ground
+  box(a,[-45,3,-25],7,3,9,[.5,.48,.42,2]);
+  hfield(a,(x,z)=>{const e=Math.max(Math.abs(x+45)-7.6,Math.abs(z+25)-9.6,0);return 6.6+.3*Math.sin(x*1.1)*Math.sin(z*.9)-6.5*sstep(0,3.2,e)},-55.5,-34.5,-37.5,-12.5,24,28,q=>camoAt(q[0],q[2]));
+  // the propellant tanks (hypergolic: low, horizontal) in an earth revetment on the east slab
+  for(const z of[14,20])tube(a,[29,1.4,z],[43,1.4,z],1.35,OL,14,true);for(const[x,z,hx,hz]of[[36,10.6,8.5,.8],[36,23.4,8.5,.8],[45.5,17,.8,5.6]])box(a,[x,1.2,z],hx,1.2,hz,EA);
+  tube(a,[29,.4,17],[3.5,.4,2],.22,STL,8)}
+// Coastal: stacked upright in the assembly building and rolled out standing on a mobile launch table (the rig's) along
+// twin rails to a towerless pad: four lightning masts with wires between their tops, the giant deluge water tower,
+// smart low white buildings and a glass control centre, the cryogenic spheres
+function coastalPad(a,TH,CO,STL,DK){const WH=[.9,.9,.88,2],PA=[.62,.75,.86,2];
+  box(a,[0,.04,0],17,.04,17,[.68,.67,.64,2]);box(a,[0,.09,8.5],2.6,.01,8.5,DK);for(const s of[-1,1])box(a,[3*s,.35,9.5],.3,.35,7.5,WH);   // the slab, the flame duct's mouth
+  for(const x of[-3,3]){strip(a,[x,8],[x,-128],1.4,.05,CO);strip(a,[x,8],[x,-128],.14,.2,STL)}   // the twin rails, north to the building
+  box(a,[0,17,-140],12,17,11,WH);box(a,[0,13,-128.95],5,13,.06,[.3,.31,.33,1]);box(a,[0,30.5,-128.9],12.05,.6,.06,PA);   // the assembly building, its door, a pastel band
+  for(const[x,z]of[[-15,-15],[15,-15],[15,15],[-15,15]]){tube(a,[x,0,z],[x,TH+14,z],.32,[.82,.83,.84,1],8);tube(a,[x,TH+14,z],[x,TH+17,z],.06,STL,4);box(a,[x,.5,z],.9,.5,.9,CO)}
+  for(let i=0;i<4;i++){const P=[[-15,-15],[15,-15],[15,15],[-15,15]],[x0,z0]=P[i],[x1,z1]=P[(i+1)%4];tube(a,[x0,TH+16.5,z0],[x1,TH+16.5,z1],.025,DK,4)}
+  lathe(a,[[1.8,0,WH],[1.8,30,WH],[6,30,WH],[6,38,WH],[6,38,PA],[5.6,38.8,PA],[0,40.5,WH]],[-42,0,-30],28,[false,true]);   // the deluge water tower
+  box(a,[36,2.5,22],9,2.5,5,WH);box(a,[36,3.9,22],9.04,.22,5.04,PA);box(a,[36,5.06,22],9.2,.06,5.2,[.6,.6,.6,2]);   // low white buildings
+  box(a,[-30,2,24],7,2,6,C.GL);box(a,[-30,4.15,24],7.4,.15,6.4,WH);box(a,[-30,.12,24],7.4,.12,6.4,WH);   // the glass control centre
+  for(const[x,z,r]of[[22,-30,4],[13,-34,5]]){const pr=[];for(let i=0;i<=14;i++){const t=-Math.PI/2+i/14*Math.PI;pr.push([r*Math.cos(t),r+1.5+r*Math.sin(t),WH])}lathe(a,pr,[x,0,z],24,[false,false]);
+    for(let i=0;i<6;i++){const t=i/6*6.2832;tube(a,[x+(r+.4)*Math.cos(t),0,z+(r+.4)*Math.sin(t)],[x+(r-.3)*Math.cos(t),r+1.5,z+(r-.3)*Math.sin(t)],.15,STL,6)}}
+  tube(a,[18,.35,-26],[3.6,.35,-3],.22,STL,8)}
+// Mountain: a pad on terraces stepping up a ridge to the north, a tidy assembly hall and a control house on them. What
+// holds the rocket (the rail launcher, or the shelter and its umbilical tower) is the rig's: it depends on the rocket
+function mountainPad(a,TH,CO,STL,DK){const ST=[.62,.6,.54,2],GR=[.38,.47,.29,2],WH=[.9,.9,.88,2];
+  box(a,[0,.05,0],14,.05,13,CO);lathe(a,[[2.4,.1,[.05,.05,.05,1]],[2.4,.12,[.05,.05,.05,1]]],[0,0,0],32);box(a,[0,.11,9],2.2,.01,4,DK);
+  for(let k=1;k<=3;k++){const z0=-12-8*(k-1),z1=k<3?-12-8*k:-64;box(a,[-12,1.5*k,(z0+z1)/2],40,1.5*k,(z0-z1)/2,ST);box(a,[-12,3*k+.03,(z0+z1)/2-.15],40,.03,(z0-z1)/2-.15,GR)}
+  for(let k=1;k<=3;k++)for(let x=-48;x<=24;x+=6)tube(a,[x,3*k,-12-8*(k-1)+.1],[x+6,3*k,-12-8*(k-1)+.1],.04,STL,4);   // railings along each terrace's edge
+  box(a,[-22,13,-48],9,4,7,WH);box(a,[-22,17.3,-48],9.4,.3,7.4,[.22,.32,.46,2]);box(a,[-22,10.2,-40.95],3,1.2,.06,[.3,.31,.33,1]);box(a,[-22,15.5,-40.96],9.02,.18,.05,[.95,.62,.2,2]);   // the hall, its door, a saffron band
+  box(a,[-58,2.2,6],5,2.2,4,WH);box(a,[-58,4.5,6],5.3,.12,4.3,[.22,.32,.46,2]);box(a,[-52.95,2.6,6],.06,.7,3,C.GL);   // the control house, its window to the pad
+  for(const z of[-6,-2])box(a,[30,1.1,z],2.2,1.1,1.5,ST)}   // motor stores
+// Isle: a tiny pad, a gravel track north to the hangar the rocket rolls out of; a shed, a container office, one mast;
+// sheep. The strongback and its trailer are the rig's
+function islePad(a,TH,CO,STL,DK){const GV=[.5,.48,.44,2],WO=[.88,.86,.8,2],SH=[.12,.11,.1,2];
+  box(a,[0,.15,0],5.5,.15,5.5,CO);box(a,[0,.31,2.6],1.6,.01,2.2,DK);strip(a,[0,-5.5],[0,-75],4,.03,GV);
+  box(a,[0,5,-84],13,5,9,[.8,.81,.82,1]);box(a,[0,10.1,-84],13.3,.12,9.3,[.3,.31,.32,1]);box(a,[0,4.2,-74.96],7,4.2,.05,[.32,.33,.35,1]);box(a,[0,8.9,-74.95],9,.75,.05,C.BK);
+  for(let i=0;i<5;i++)box(a,[-6+i*3,8.9,-74.9],1,.45,.02,C.W);   // the company's name (a sign; lettering not built)
+  box(a,[14,1.6,-20],3,1.6,2.5,[.55,.5,.42,2]);box(a,[14,3.3,-20],3.2,.12,2.7,[.3,.29,.28,1]);   // the shed
+  box(a,[-14,1.3,-14],3.05,1.3,1.22,[.16,.32,.56,1]);box(a,[-14,1.5,-12.77],1.4,.5,.02,C.GL);   // the container office
+  tube(a,[-10,0,6],[-10,20,6],.12,STL,6);box(a,[-10,20.2,6],.25,.2,.25,C.D);   // the mast
+  const R=rng(4242);for(let i=0;i<11;i++){const t=R()*6.2832,r=46+R()*34,x=r*Math.cos(t),z=r*Math.sin(t),ph=R()*6.2832,c=Math.cos(ph),s=Math.sin(ph);   // sheep
+    rbox(a,[x,.78,z],.55,.36,.34,WO,-ph);rbox(a,[x+c*.68,.92,z-s*.68],.16,.15,.13,SH,-ph);for(const[u,v]of[[.35,.2],[.35,-.2],[-.35,.2],[-.35,-.2]])box(a,[x+c*u+s*v,.22,z-s*u+c*v],.05,.22,.05,SH)}}
 // the school a site's pad is built in, and the mesh it draws (the current site's is sized to the rocket, padSync; any
 // other site in another school gets a default-height one, built once)
 const padSchoolOf=t=>SCHOOL_FORCE!=null?SCHOOL_FORCE:schoolOf(t&&t.power!=null?t.power:HOME);
@@ -1677,23 +1757,8 @@ const PAD_GLOW=(()=>{const a=[],L=[1,.9,.72];for(const[x,z]of PAD_LIGHTS){const 
 // The moving parts of the pad, each built in its own frame so animating it is just a matrix: three swing arms hinged at
 // the tower's west face (pointing west at angle 0, folded north along the face at 90°), four hold-down arms pivoting on
 // their table posts, and the mobile service gantry rolling along its rails. rig (padRig) says where the rocket is.
-function buildRig(TH,rig,sch=0){if(sch===1)return steppeRig(TH,rig);const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],x0=7-1.5;
-  const arms=[.3,.55,.8].map((f,i)=>{const h=Math.round(TH*f),xr=rig&&rig.xs[i],L=xr!=null?x0-(xr+.12):4.8,a=[];
-    box(a,[-L/2,0,0],L/2,.35,.45,OR);box(a,[-L-.05,-.1,0],.05,.45,.35,STL);tube(a,[-.6,-.35,.3],[-L-.3,-.55,.3],.07,DK,6);return{mesh:makeMesh(a),h,reach:xr!=null}});
-  // the crew access arm (Q195): a walkway with railings to the capsule's hatch, hinged on the tower like the swing arms
-  // (west at angle 0); a swing arm within 1.6 m of it stands down. The crew stand on it in the Assembly (app/crew-look.js)
-  let crew=null,crewFig=null;if(rig&&rig.crew&&rig.crew.x!=null){const h=rig.crew.h,L=Math.max(1.5,x0-(rig.crew.x+.15)),a=[],GR=[.4,.41,.42,1];
-    box(a,[-L/2,-.06,0],L/2,.06,.8,GR);box(a,[-L/2,-.3,0],L/2,.18,.12,OR);
-    for(const z of[-.8,.8]){tube(a,[0,1.05,z],[-L,1.05,z],.025,OR,4);tube(a,[0,.55,z],[-L,.55,z],.02,OR,4);for(let x=0;x>=-L-.01;x-=Math.min(1.2,L/2))tube(a,[x,0,z],[x,1.05,z],.025,OR,4)}
-    crew={mesh:makeMesh(a),h,L};for(const A of arms)if(Math.abs(A.h-h)<1.6)A.skip=true;crewFig=typeof crewMeshes==='function'?crewMeshes(rig.crew.n,sch):null}
-  // hold-downs: from the posts up to clamps on the rocket's base, above its engines (in the editor the ship hangs higher,
-  // as in an assembly hall, and they become the launch stool it stands on)
-  // Where they stand comes from padRig (rig.hold): turned off the diagonals if boosters sit there, each clamping the outermost
-  // part on its line, its post 1.2 m beyond. With no rocket the posts stand on the diagonals at 3.4 m.
-  const HD=rig?rig.hold:{t:[0,1,2,3].map(i=>Math.PI/4+i*Math.PI/2),rp:[3.4,3.4,3.4,3.4]},pa=[];
-  HD.t.forEach((t,i)=>box(pa,[HD.rp[i]*Math.cos(t),.25,HD.rp[i]*Math.sin(t)],.3,.25,.3,STL));const posts=makeMesh(pa);
-  const holds=rig?[0,1,2,3].map(i=>{const t=HD.t[i],c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=HD.r[i],P=[HD.rp[i]*c,.45,HD.rp[i]*sn],a=[];
-    const E=[r*c-P[0],y-P[1],r*sn-P[2]];tube(a,[0,0,0],E,.14,STL,8);box(a,add(E,[.1*c,0,.1*sn]),.18,.22,.18,OR);return{mesh:makeMesh(a),P,k:[-sn,0,c]}}):[];
+function buildRig(TH,rig,sch=0){if(sch===1)return steppeRig(TH,rig);if(sch>=2)return schoolRig(TH,rig,sch);const OR=[.78,.3,.12],RD=[.6,.16,.1],STL=[.45,.46,.48,1];
+  const arms=swingArms(TH,rig,OR),{crew,crewFig}=crewArm(rig,arms,sch,OR),{holds,posts}=holdDowns(rig,OR);
   // the gantry, centred on z = 0 here: four lattice columns on rail trucks, work decks across its back half (the open
   // front closes around the rocket in service position), girders, a roof, a bridge crane
   const g=[],GH=TH+6,GX=PAD_GX,z0=-6,z1=6;
@@ -1705,6 +1770,26 @@ function buildRig(TH,rig,sch=0){if(sch===1)return steppeRig(TH,rig);const OR=[.7
   // service position: the decks (front edge at z = 1 here) stop 0.5 m short of the stack's widest reach, boosters included
   const gantry=makeMesh(g),zS=Math.min(-3.3,-((rig?rig.zr:R0)+1.5));
   return{arms,holds,posts,gantry,zS,crew,crewFig,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();posts.free();gantry.free();if(crew)crew.mesh.free();if(crewFig)for(const x of crewFig)x.mesh.free()}}}
+// Cape's swing arms (three, at 30, 55 and 80 % of the tower) in colour col; also Mountain's umbilical tower's (Q231)
+function swingArms(TH,rig,col){const STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],x0=7-1.5;
+  return[.3,.55,.8].map((f,i)=>{const h=Math.round(TH*f),xr=rig&&rig.xs[i],L=xr!=null?x0-(xr+.12):4.8,a=[];
+    box(a,[-L/2,0,0],L/2,.35,.45,col);box(a,[-L-.05,-.1,0],.05,.45,.35,STL);tube(a,[-.6,-.35,.3],[-L-.3,-.55,.3],.07,DK,6);return{mesh:makeMesh(a),h,reach:xr!=null}})}
+// the crew access arm (Q195): a walkway with railings to the capsule's hatch, hinged on the tower's west face (x = 5.5)
+// like the swing arms (west at angle 0); a swing arm within 1.6 m of it stands down. The crew stand on it in the Assembly
+// (app/crew-look.js), in the pad's school's suits. Cape's tower, and every school's with a tower at x = 7 (Q231)
+function crewArm(rig,arms,sch,col){if(!(rig&&rig.crew&&rig.crew.x!=null))return{crew:null,crewFig:null};const x0=7-1.5,h=rig.crew.h,L=Math.max(1.5,x0-(rig.crew.x+.15)),a=[],GR=[.4,.41,.42,1];
+  box(a,[-L/2,-.06,0],L/2,.06,.8,GR);box(a,[-L/2,-.3,0],L/2,.18,.12,col);
+  for(const z of[-.8,.8]){tube(a,[0,1.05,z],[-L,1.05,z],.025,col,4);tube(a,[0,.55,z],[-L,.55,z],.02,col,4);for(let x=0;x>=-L-.01;x-=Math.min(1.2,L/2))tube(a,[x,0,z],[x,1.05,z],.025,col,4)}
+  for(const A of arms)if(Math.abs(A.h-h)<1.6)A.skip=true;return{crew:{mesh:makeMesh(a),h,L},crewFig:typeof crewMeshes==='function'?crewMeshes(rig.crew.n,sch):null}}
+// hold-downs: from the posts up to clamps on the rocket's base, above its engines (in the editor the ship hangs higher,
+// as in an assembly hall, and they become the launch stool it stands on)
+// Where they stand comes from padRig (rig.hold): turned off the diagonals if boosters sit there, each clamping the outermost
+// part on its line, its post 1.2 m beyond. With no rocket the posts stand on the diagonals at 3.4 m.
+function holdDowns(rig,col){const STL=[.45,.46,.48,1],HD=rig?rig.hold:{t:[0,1,2,3].map(i=>Math.PI/4+i*Math.PI/2),rp:[3.4,3.4,3.4,3.4]},pa=[];
+  HD.t.forEach((t,i)=>box(pa,[HD.rp[i]*Math.cos(t),.25,HD.rp[i]*Math.sin(t)],.3,.25,.3,STL));const posts=makeMesh(pa);
+  const holds=rig?[0,1,2,3].map(i=>{const t=HD.t[i],c=Math.cos(t),sn=Math.sin(t),y=rig.base+rig.hE*.85,r=HD.r[i],P=[HD.rp[i]*c,.45,HD.rp[i]*sn],a=[];
+    const E=[r*c-P[0],y-P[1],r*sn-P[2]];tube(a,[0,0,0],E,.14,STL,8);box(a,add(E,[.1*c,0,.1*sn]),.18,.22,.18,col);return{mesh:makeMesh(a),P,k:[-sn,0,c]}}):[];
+  return{holds,posts}}
 // Steppe's moving parts (Q159), each in its own frame like Cape's: the table ring (fixed), four support arms pivoting on
 // it and leaning in to clamp the rocket a third of the way up (holds; the same angles as Cape's hold-downs, so they miss
 // the boosters), two cable masts north of the ring (arms), one service half (gantry, drawn twice: east, and turned 180°
@@ -1735,6 +1820,51 @@ function steppeRig(TH,rig){const STL=[.42,.44,.45,1],SG=[.6,.63,.64,1],ER=[.32,.
   for(let y=4;y<Lb-1;y+=7){const r=rig?Math.max(rig.rAt(y+1.2),rig.rAt(y+1.4),rig.rAt(y+1.6)):R0;if(r<=0)continue;const rch=zb-r-.25;tube(b,[0,y,0],[0,y,rch],.12,ER,6);box(b,[0,y,rch],1,.2,.1,ER)}
   const car=makeMesh(c),boom=makeMesh(b),gantry=makeMesh(g);
   return{sch:1,arms,holds,posts,gantry,car,boom,xh,bP:[0,1.4,-zb],zS:0,free(){for(const x of arms)x.mesh.free();for(const x of holds)x.mesh.free();posts.free();gantry.free();car.free();boom.free()}}}
+// The other four schools' moving parts (Q231), in the same frames: fixed (built with the rocket, still: the Coastal
+// table, Mountain's rail launcher or umbilical tower, a crew tower), movers (each tips about its axis k at its pivot P by
+// angle a, from t0 s after lift-off over d s), doors (Mountain's shelter halves, turned a about the vertical at P as they
+// open, from a flight's start). Cape's hold-downs where the rocket stands on a table, and Cape's crew arm wherever a
+// tower stands at x = 7 (Arsenal's, Mountain's umbilical tower; Coastal and Isle put up a slim crew tower there for a
+// crewed rocket).
+//  Arsenal: one umbilical mast north of the rocket, its arm on the upper stage; it falls back north at lift-off.
+//  Coastal: the mobile launch table round the engines, on bogies over the rails; two short umbilical masts on its west
+//    side, their arms swinging clear at lift-off.
+//  Mountain: a small uncrewed single stack (≤ 24 m, no side boosters) hangs under the rail launcher: a turntable ring, the boom raised to
+//    vertical beside it with hangers, two struts (look only: the rocket flies vertically until QUEUE Q230 tilts it).
+//    Anything else stands in the shelter: two halves, closed round it when a flight starts, swinging open like doors
+//    (hinged at the east ends of their outer walls; the east side is open to the umbilical tower, whose swing arms are Cape's).
+//  Isle: a strongback north of the rocket on its trailer, clamped on, tilting back 4° at lift-off.
+function schoolRig(TH,rig,sch){const STL=[.45,.46,.48,1],DK=[.1,.1,.1,2],ext=rig?rig.ext:R0,base=rig?rig.base:0,L=rig?rig.L:20,rAt=rig?rig.rAt:()=>R0,crewed=!!(rig&&rig.crew);
+  const fx=[],movers=[],doors=[],rp=rig?Math.max(...rig.hold.rp):3.4,OL=[.31,.34,.21,2],WH=[.86,.87,.86,1],SF=[.95,.62,.2,2];
+  const rail=sch===4&&rig&&!crewed&&!rig.side&&L<=24;let arms=[],tower=sch===2;
+  const mover=(a,P,k,ang,t0,d)=>movers.push({mesh:makeMesh(a),P,k,a:ang,t0,d});
+  if(sch===2){const zm=-Math.max(ext+2.2,rp+.6),hm=base+clamp(L*.7,4,TH-2),a=[];lattice(a,0,0,.7,hm,OL);
+    const r=Math.max(rAt(hm-.5),rAt(hm-.7),rAt(hm-.3));tube(a,[0,hm-.5,0],[0,hm-.5,-zm-r-.15],.12,OL,6);box(a,[0,hm-.5,-zm-r-.2],.3,.25,.06,STL);
+    mover(a,[0,0,zm],[1,0,0],-.42,0,1.3)}
+  if(sch===3){const hh=ext+.4,ox=Math.max(hh+3.5,rp+1.2),oz=Math.max(hh+2.5,rp+.8),GY=[.55,.56,.57,1];   // the table: a deck round a hole for the engines
+    box(fx,[0,.35,-(oz+hh)/2],ox,.35,(oz-hh)/2,GY);box(fx,[0,.35,(oz+hh)/2],ox,.35,(oz-hh)/2,GY);for(const s of[-1,1])box(fx,[s*(ox+hh)/2,.35,0],(ox-hh)/2,.35,hh,GY);
+    for(const x of[-3,3])for(const z of[-oz+.8,oz-.8])box(fx,[x,.2,z],.5,.2,.7,DK);
+    const mx=-(ox-.9);[[-1.7,.42],[1.7,.68]].forEach(([mz,f])=>{const h=Math.min(base+clamp(L*f,3,40),TH),d=norm([-mx,0,-mz]),r=Math.max(rAt(h-.3),rAt(h),rAt(h+.3)),D=Math.hypot(mx,mz)-r-.2,a=[];
+      lattice(fx,mx,mz,1,h+.6,WH);tube(a,[0,0,0],mul(d,D),.16,WH,6);box(a,mul(d,D-.1),.12,.25,.12,STL);mover(a,[mx,h,mz],[0,1,0],mz<0?1.3:-1.3,0,1.4)})}
+  if(sch===4&&rail){const ri=ext+.3,ro=Math.max(3,ext+2),xb=-(ext+.6),hb=base+L*.9,LG=[.7,.72,.72,1];
+    lathe(fx,[[ri,0,STL],[ro,0,STL],[ro,.6,STL],[ri,.6,STL],[ri,0,STL]],[0,0,0],40,[false,false]);
+    lattice(fx,xb,0,.7,hb,LG);tube(fx,[xb+.38,.6,0],[xb+.38,hb,0],.07,SF,6);
+    for(const f of[.2,.5,.8]){const h=base+L*f,r=Math.max(rAt(h-.2),rAt(h),rAt(h+.2));if(r>0)box(fx,[(xb+.35-r)/2,h,0],Math.max(.05,(-r-(xb+.35))/2),.1,.1,LG)}
+    for(const s of[-1,1])tube(fx,[-(ro-.2),.6,1.4*s],[xb,hb*.5,.3*s],.14,LG,6)}
+  if(sch===4&&!rail){tower=true;arms=swingArms(TH,rig,WH);
+    const hs=Math.max(3.3,ext+1.2),he=Math.min(hs,5.2),Hh=base+L+1.5,WL=[.9,.9,.87,2];
+    for(const s of[-1,1]){const P=[he,0,s*hs],W=he+hs,a=[];   // a half: its outer wall and half the west wall, built from its hinge at the outer wall's east end (so it swings outward)
+      box(a,[-W/2,Hh/2,0],W/2,Hh/2,.15,WL);box(a,[-W,Hh/2,-s*hs/2],.15,Hh/2,hs/2,WL);box(a,[-W/2,Hh-.6,0],W/2+.02,.25,.17,SF);
+      doors.push({mesh:makeMesh(a),P,a:s*1.75})}}
+  if(sch===5){const zs=-(ext+.9),hs=base+L*.92,GD=[.24,.25,.26,1],a=[];lattice(a,0,0,.8,hs,GD);
+    for(const f of[.3,.6,.85]){const h=base+L*f,r=Math.max(rAt(h-.2),rAt(h),rAt(h+.2));if(r>0){const D=-zs-r-.05;box(a,[0,h,D/2],.3,.12,Math.max(.05,D/2),GD);box(a,[0,h,D],.7,.2,.06,DK)}}
+    mover(a,[0,0,zs],[1,0,0],-.07,0,1.5);
+    box(fx,[0,.8,zs-7.5],1.3,.25,7,[.12,.12,.13,1]);for(const z of[-12,-10.6,-3])for(const s of[-1,1])tube(fx,[s*1.05,.45,zs+z],[s*1.45,.45,zs+z],.45,DK,10,true)}
+  if((sch===3||sch===5)&&crewed){tower=true;lattice(fx,7,0,3,rig.crew.h+3,sch===3?WH:[.24,.25,.26,1])}
+  if(sch===4&&!rail){lattice(fx,7,0,3,TH,WH);box(fx,[7,TH+.15,0],2,.15,2,STL)}
+  const{crew,crewFig}=tower?crewArm(rig,arms,sch,sch===2?OL:sch===4?SF:WH):{crew:null,crewFig:null},{holds,posts}=rail?{holds:[],posts:null}:holdDowns(rig,sch===2?OL:sch===4?SF:[.78,.3,.12]);
+  const fixed=fx.length?makeMesh(fx):null;
+  return{sch,rail,arms,holds,posts,fixed,movers,doors,crew,crewFig,zS:0,free(){for(const x of[...arms,...holds,...movers,...doors])x.mesh.free();if(posts)posts.free();if(fixed)fixed.free();if(crew)crew.mesh.free();if(crewFig)for(const x of crewFig)x.mesh.free()}}}
 // The tower is sized to the rocket standing on the pad (or being built): about 3 m above its top, in whole lattice bays,
 // 12.5–60 m. While a rocket stands there (or is being built) the pad holds it: swing arms reach from the tower to the
 // widest thing at each arm's height (boosters included), and hold-downs clamp its base. Ship x is pad x (east) here.
@@ -1750,7 +1880,7 @@ function padRig(TH){const base=mode==='editor'?(typeof LIFT==='number'?LIFT:3):0
     L=Math.max(...pb.map(p=>p.y0+p.h)),hc=base+clamp(L*.3,2.5,18);
   return{base,hE:core?core.h:1,rB,xs:[.3,.55,.8].map(f=>xAt(Math.round(TH*f))),zr:Math.max(...ps.map(p=>Math.abs(p.pos[2])+p.d.r)),hold,
     crew:(c=>c?{n:c.d.crew,h:base+c.y0+c.h*.3,x:xAt(base+c.y0+c.h*.3)}:null)(ps.find(p=>p.d.crew)),   // the hatch (Q195)
-    ext:Math.max(...pb.map(p=>Math.hypot(p.pos[0],p.pos[2])+p.d.r)),L,rAt,st:{hc,t:hold.t,r:hold.t.map(t=>ray(t,hc))},prof:Array.from({length:Math.ceil(L/2.5)+1},(_,i)=>rAt(base+i*2.5))}}
+    ext:Math.max(...pb.map(p=>Math.hypot(p.pos[0],p.pos[2])+p.d.r)),side:pb.some(p=>Math.hypot(p.pos[0],p.pos[2])>.05),L,rAt,st:{hc,t:hold.t,r:hold.t.map(t=>ray(t,hc))},prof:Array.from({length:Math.ceil(L/2.5)+1},(_,i)=>rAt(base+i*2.5))}}
 // the hold-downs: four arms 90° apart, on the diagonals unless something stands there (boosters at 45°, three at 120°…);
 // then the set turns to the angle with the most room between the parts down at clamp height. Each arm clamps the
 // outermost part on its line (the core, or a booster if one is in the way) and its post stands 1.2 m beyond, ≥ 3.4 m.
@@ -1766,7 +1896,7 @@ function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H),sch=padSchoolOf(curSite());
-  const key=H+'|'+sch+'|'+(typeof crewGen==='function'?crewGen():0)+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch===1?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
+  const key=H+'|'+sch+'|'+(typeof crewGen==='function'?crewGen():0)+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch!==0?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
   if(key===padKey)return;if(H!==padTH||sch!==padSch){PAD.free();PAD=buildPad(H,sch);padTH=H;padSch=sch}RIG.free();RIG=buildRig(H,rig,sch);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)
@@ -1781,13 +1911,24 @@ function rotAx(k,ang){const c=Math.cos(ang),s=Math.sin(ang),R=v=>{const kv=dot(k
 // its parking spot (−80 m) over 14 s. Swing arms: connected until liftoff, then swing back top first, 1.5 s each, 0.25 s
 // apart; arms with no rocket at their height stay folded. Hold-downs: tip outward 0.9 rad in 0.6 s at liftoff.
 function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5||HOOK.noRig)return;   // (noRig: views.js close-ups)
-  const pre=mode==='editor'||S&&S.landed&&!S.mkLift,tl=S&&S.mkLiftT!=null?simT-S.mkLiftT:1e9;if(RIG.sch===1)return drawSteppeRig(drawMesh,F,pre,tl);
+  const pre=mode==='editor'||S&&S.landed&&!S.mkLift,tl=S&&S.mkLiftT!=null?simT-S.mkLiftT:1e9;if(RIG.sch===1)return drawSteppeRig(drawMesh,F,pre,tl);if(RIG.sch>=2)return drawSchoolRig(drawMesh,F,pre,tl);
   RIG.arms.forEach((A,i)=>{if(A.skip)return;const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
     drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
   const al=pre?0:-.9*sstep(0,1,clamp(tl/.6,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
   drawMesh(RIG.posts,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]),F.site);
   if(RIG.crew){const f=mode==='editor'?0:Math.PI/2;drawMesh(RIG.crew.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,RIG.crew.h,0]),F.site)}   // at the hatch in the Assembly; swung back in flight (the crew are aboard)
   const zg=mode==='editor'?-80:RIG.zS+(-80-RIG.zS)*sstep(0,1,clamp((simT-padT0)/14,0,1));drawMesh(RIG.gantry,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,zg]),F.site)}
+// The other four schools' rigs each frame (Q231): hold-downs and Cape-style swing arms as Cape's; movers tip at lift-off;
+// Mountain's shelter halves are open in the editor, closed when a flight starts on the pad and swing open from 2 s to
+// 12 s (as Cape's gantry rolls back); the crew arm at the hatch in the Assembly, swung back in flight.
+function drawSchoolRig(drawMesh,F,pre,tl){const R=RIG,I=padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]);
+  if(R.fixed)drawMesh(R.fixed,I,F.site);if(R.posts)drawMesh(R.posts,I,F.site);
+  const al=pre?0:-.9*sstep(0,1,clamp(tl/.6,0,1));for(const Hd of R.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
+  R.arms.forEach((A,i)=>{if(A.skip)return;const u=!A.reach?1:pre?0:clamp((tl-(2-i)*.25)/1.5,0,1),f=sstep(0,1,u)*Math.PI/2;
+    drawMesh(A.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,A.h,0]),F.site)});
+  if(R.crew){const f=mode==='editor'?0:Math.PI/2;drawMesh(R.crew.mesh,padMat(F,[Math.cos(f),0,Math.sin(f)],[0,1,0],[-Math.sin(f),0,Math.cos(f)],[5.5,R.crew.h,0]),F.site)}
+  for(const M of R.movers){const[a,b,c]=rotAx(M.k,pre?0:M.a*sstep(0,1,clamp((tl-M.t0)/M.d,0,1)));drawMesh(M.mesh,padMat(F,a,b,c,M.P),F.site)}
+  const o=mode==='editor'?1:sstep(0,1,clamp((simT-padT0-2)/10,0,1));for(const D of R.doors){const[a,b,c]=rotAx([0,1,0],D.a*o);drawMesh(D.mesh,padMat(F,a,b,c,D.P),F.site)}}
 // Steppe's rig each frame (Q159). Support arms: closed until lift-off, then fall back outward 66° in 1.4 s, starting
 // 0.1 s after it (the counterweights take them as the rocket rises). Cable masts: fall back north 0.55 rad in 0.8 s at
 // lift-off. Service halves: closed round the rocket when a flight starts on the pad, folding down to the ground over

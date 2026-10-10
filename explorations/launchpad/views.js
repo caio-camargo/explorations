@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 127–144 the suits by school and generation (Q229), 145–151 the other four schools' pads (Q231), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe (123–126 as Arsenal, Coastal, Mountain, Isle). Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -352,6 +352,23 @@ window.refView = async (n) => {
     }
     const v = { 116: [-0.9, 0.2, 75], 117: [-0.5, 0.15, 45], 118: [-0.5, 0.12, 45], 119: [0.6, 0.85, 35] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
     render(); await settle(); bare(); return { 116: 'Steppe complex', 117: 'Steppe service', 118: 'Steppe lift-off', 119: 'Steppe table' }[n];
+  }
+  // 145–151 (Q231): the other four schools' pads, from the editor unless noted. 145 Arsenal, 146 Coastal, 147 Mountain's
+  // rail launcher (the Orbiter: small and uncrewed), 148 Mountain's shelter, open, round a small crewed rocket (its crew
+  // arm), 149 Isle; 150 Mountain's shelter closed at a flight's start; 151 Arsenal 1 s after lift-off (the mast falling back)
+  if (n >= 145 && n <= 151) {
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    SCHOOL_FORCE = { 145: 2, 146: 3, 147: 4, 148: 4, 149: 5, 150: 4, 151: 2 }[n];
+    stackDef = n === 148 || n === 150 ? ['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel'] : JSON.parse(JSON.stringify(PRESETS.Orbiter));
+    editorChanged(); HOOK.edStill = true; HOOK.rebuild(); cam.edY = 0; padKey = '';
+    if (n === 150 || n === 151) {
+      document.getElementById('launch').click(); markT = null; render();
+      if (n === 151) { padT0 -= 20; S.throttle = 1; stage(S); for (let k = 0; k < 4000 && (S.mkLiftT == null || simT - S.mkLiftT < 1.0); k++) { advPhys(S); marksTick() } }
+    }
+    const v = { 145: [-0.9, 0.2, 80], 146: [-0.9, 0.2, 90], 147: [-0.6, 0.12, 40], 148: [-0.6, 0.15, 40], 149: [-0.9, 0.25, 70], 150: [-0.6, 0.15, 40], 151: [-0.5, 0.12, 45] }[n];
+    [cam.yaw, cam.pitch, cam.dist] = v;
+    render(); await settle(); bare();
+    return { 145: 'Arsenal pad', 146: 'Coastal pad', 147: 'Mountain rail', 148: 'Mountain shelter', 149: 'Isle pad', 150: 'Mountain shelter closed', 151: 'Arsenal lift-off' }[n];
   }
   // 120–122 (Q195): the crew, stylised human in the default suit, on the access arm at the hatch in the Assembly. 120 the
   // Crewed Lunar's top from the tower side; 121 a small crewed rocket, the two of them on the arm; 122 their faces, from the south (the camera circles the rocket, so this is as close as it gets)
