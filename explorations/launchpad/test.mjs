@@ -5159,6 +5159,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('windows: a 30° plane passes over the equatorial pad twice a rotation (never over half a day’s wait), the pad in the plane at the window', maxP <= 0.5 + 1e-6 && offP < 1e-6, `longest wait ${maxP.toFixed(3)} d; off the plane ${offP.toExponential(1)}`);
 }
 
+// flow-11. The model on the desk (flow session at Caio's ask, QUEUE Q242; PLAYTEST #45): in the Assembly the design is a
+// scale model on a drafting table. render() skips the sky, the pads, the pad rig and crew, the cities and the floodlights
+// there, lights by the lamp, and shadows the model onto the drawing; the scale is a kit scale that keeps the model under
+// 45 cm. Only the Assembly: the Rollout and the flight stay on the real pad.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const sc = new Function(cut(page, 'const DESK_SCALES=', ';\nconst DESK_BG') + ';' + cut(page, 'const deskScaleFor=', '\n') + ';return deskScaleFor')();
+  const picks = [1, 9, 14.47, 30, 60, 120, 400].map(h => [h, sc(h)]), fit = picks.every(([h, n]) => h / n <= 0.45 || n === 500), tight = picks.every(([h, n]) => n === 20 || h / [20, 24, 32, 48, 72, 96, 144, 200, 288, 400, 500][[20, 24, 32, 48, 72, 96, 144, 200, 288, 400, 500].indexOf(n) - 1] > 0.45);
+  const only = /const deskScene=\(\)=>DESK_FX&&mode==='editor'&&[^\n]*screenNow\(\)==='assembly'/.test(page);
+  const r = cut(page, 'function render(){', '\nfunction nuToT');
+  const skips = /if\(!desk\)\{for\(const prog of PDEPTH/.test(r) && /if\(!DF\)\{const th=bodyTheta\(TELLUS,simT\);for\(const t of SITES\)/.test(r) && /if\(!DF\)\{gl\.uniform1f\(m\.uPadM,1\);drawPadRig/.test(r)
+    && /if\(!DF&&len\(camW\)<TELLUS\.R\+80000\)/.test(r) && /if\(!DF\)drawPadGlow/.test(r);
+  const lamp = /const lit=DF\?\(\)=>1:/.test(r) && /if\(DF\)deskLight\(m,DF\)/.test(r) && /deskShadowM\(DF,camW,Mship\)/.test(r) && /if\(DF\)deskDraw\(drawMesh,m,DF\)/.test(r);
+  check('flow-11: the Assembly is a scale model on a desk (a kit scale under 45 cm; no sky, pads or cities there; lamp light and its shadow); only the Assembly',
+    fit && tight && only && skips && lamp, `scales ${picks.map(([h, n]) => `${h} m→1:${n}`).join(', ')} · fit ${fit} · tight ${tight} · assembly only ${only} · skips ${skips} · lamp ${lamp}`);
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
