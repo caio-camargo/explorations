@@ -51,3 +51,26 @@ function powerBudget(s,o={}){const b=o.body||TELLUS,r=o.r||b.R+(b.atm||0)+10000,
 function wingOp(s,op){const o=op==='out';let n=0;for(const p of s.parts)if(p.on&&p.d.wing&&!!p.dep!==o){p.dep=o;n++}
   if(n){HOOK.rebuild();HOOK.msg(o?'Solar wings out':'Solar wings folded')}return n}
 const wingsOut=s=>s.parts.some(p=>p.on&&p.d.wing&&p.dep);
+// ---- a registered satellite's power between flights (space session, QUEUE Q27; NOTES § v1.68's "what a flat battery does
+// to their service is the space lane's"). At registration the entry keeps its steady state for its own orbit (q.pw, from
+// powerBudget) and its charge (q.Ewh). A power-negative design drains its battery between flights; once flat it works
+// only in sunlight, as far as its cells cover the load (a design with no cells goes quiet). A design whose battery can't
+// cross an eclipse loses the rest of each one. satDuty(q) is the share of the time it can work: its service (imagery,
+// TV, its link) scales with it. Entries saved before Q27 have no q.pw and work as before.
+function satPowInit(s,q){const B=s.body,el=elements(s.r,s.v,B.mu);if(!(el.a>0)||!(el.e<1))return;
+  const beta=el.hl>0?Math.asin(clamp(dot(el.h,SUN_DIR)/el.hl,-1,1)):0,b=powerBudget(s,{body:B,r:el.a,beta});if(!(b.use>0))return;
+  q.pw={avg:b.avg,use:b.use,ecl:b.ecl,cap:b.battWh,need:b.needWh,peak:b.peak,rtg:b.rtg};q.Ewh=Math.min(b.battWh,(s.E??powCap(s))/3600)}
+function satDuty(q){const w=q.pw;if(!w)return 1;
+  if(w.avg>=w.use&&w.cap<w.need)return(1-w.ecl)+w.ecl*(w.need>0?w.cap/w.need:1);   // flat in each shadow
+  if(q.Ewh>0)return 1;
+  return clamp((1-w.ecl)*Math.min(1,(w.peak+w.rtg)/w.use)+w.ecl*Math.min(1,w.rtg/w.use),0,1)}   // flat: sunlight only
+function satPowTick(d){for(const q of PROG.sats||[]){const w=q.pw;if(!w||q.junk)continue;const was=satDuty(q);
+  q.Ewh=clamp(q.Ewh+(w.avg-w.use)*d*DAY_S/3600,0,w.cap);const k=satDuty(q);
+  if(was>=1&&k<1)HOOK.news(k>0?`${q.name}'s batteries are flat: it works only in sunlight now, ${Math.round(k*100)} % of the time`:`${q.name}'s batteries are flat and it has no cells: it has gone quiet`,'warn')}}
+// what registration news says about it (Q27): nothing if it holds; how long the battery lasts; or that it has no power
+function satPowNote(q){const w=q.pw;if(!w||satDuty(q)<1&&q.Ewh>0)return'';if(w.avg>=w.use&&w.cap>=w.need)return'';
+  if(w.cap<=0&&w.peak+w.rtg<=0)return'. It has no power of its own (no battery, no cells): it cannot work';
+  if(w.avg<w.use){const d=q.Ewh/(w.use-w.avg)*3600/DAY_S;return`. Its battery lasts about ${d<1?'less than a day':Math.round(d)+' days'}; then ${satFlatShare(q)>0?`it works only in sunlight, ${Math.round(satFlatShare(q)*100)} % of the time`:'it goes quiet'} (solar cells would keep it going)`}
+  return`. Its battery can't cross an eclipse: it's off for part of each one`}
+const satFlatShare=q=>{const w=q.pw;return clamp((1-w.ecl)*Math.min(1,(w.peak+w.rtg)/w.use)+w.ecl*Math.min(1,w.rtg/w.use),0,1)};
+
