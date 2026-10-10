@@ -4969,3 +4969,24 @@ Expressions move geometry only (brow tilt, cheek lift, jaw drop by a domain warp
 ventriloquist's jaw), a sideburn plane that cut all the front hair, sockets so deep the three eye treatments were
 indistinguishable (fixed with eye mounds nearer the front and more fill). Soft (~6 planes, rounded) loses the brow ledge.
 **Next:** Caio picks a cell and finish (or a direction for round 4); W31.
+
+
+## 2026-10-10 — Launchpad v1.110–v1.112: the map's heading line, the Steppe rollout, flags and roundels (flow session, continued)
+
+**Summary:** Three flow items, each merged and pushed alone. **Q3 slice 4c (v1.110, `e211647`; Q3 complete):** in the map
+the navball is a one-line heading readout (`HDG · PITCH · ORBIT · THR %`) beside the SAS buttons; `body.mapv` hides the
+ball and the throttle bar. Robot `m1` gained a map step; no overlaps at 1280×800 or 1000×700. **Q193 (v1.111, `e4ed8c2`):**
+on a Steppe pad the Rollout rolls the rocket out of the hall lying on the erector's car (7 s), raises it on the boom
+(5 s), then closes the support arms and masts (1.5 s); `rollPhase()` in `app/rollout.js`, drawing additive in `app/gl.js`
+(`drawSteppeRig`, `rollTilt`). **Q104 (v1.112, `08173cf`):** `app/flags.js` draws every power's flag and roundel as SVG
+from its school's motifs in its hue (four variants each; resource states get their own crescent or lozenge); shown in
+the world section, the race and the Program's News.
+**Files:** launchpad `app/render.js`, `app/gl.js`, `app/rollout.js`, `app/screens.js`, `app/flags.js` (new),
+`app/editor.js`, `app/program-ui.js`, `app/state.js`, `index.html`, `playtest.mjs` (m1 map step), `test.mjs` (flow-7, flow-8,
+flow-9); NOTES (v1.110–v1.112, file map, slice 4 plan, Q159's "not built"), TESTING 190–191, QUEUE (Q3, Q193, Q104 ✓; two
+proposals for look & sound); `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/q3-slice4c/`, `q193-rollout/`, `q104-flags/`.
+**Notes:** the rocket lies ~10 m up during the rollout, on the Q159 boom's long cradle arms (consistent with that mesh,
+odd-looking; proposed to look & sound with a rollout sound). Some flag draws come close to real flags (a red Steppe
+star, a red-disc Mountain); flagged in NOTES v1.112 for Caio. Q175's planet labels can sit on another planet's disc when
+Helios is near in the sky (noted in v1.110, not fixed).
+**Next:** flow is idle: the M2 items (Q170, Q196, Q167, Q192, Q203) and Q43 (watch mode) when Caio says go.

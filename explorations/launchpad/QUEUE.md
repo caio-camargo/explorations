@@ -131,7 +131,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
-| Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ✓ v1.112 `{SHA}` (`app/flags.js`: the world, the race, news; restyle with Q53 later) |
+| Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ✓ v1.112 `08173cf` (`app/flags.js`: the world, the race, news; restyle with Q53 later) |
 | Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | plan ✓ (NOTES § UI "Network screen plan"); N1 buildable now, N3 waits on routines (W16) |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
