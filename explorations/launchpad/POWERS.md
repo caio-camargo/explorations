@@ -151,7 +151,7 @@ makes all four its own:
 1. **Coastal's pad changes from the table's "mobile gantry that rolls away"** to **vertical rollout on a table to a
    towerless pad with lightning masts** (default): Cape's gantry already rolls away (NOTES § Step 7), so the table's
    version wouldn't be told apart.
-2. **Answered (Caio, 2026-10-10): a launch rail for every school** (MIDGAME 1.1.0 § The launch rail, Q228); Mountain draws it by default. Was: **Mountain's rail launcher is look only** (default): the player's rocket sits on the rail raised to vertical, so
+2. **Answered (Caio, 2026-10-10): a launch rail for every school** (MIDGAME 1.1.0 § The launch rail, Q230); Mountain draws it by default. Was: **Mountain's rail launcher is look only** (default): the player's rocket sits on the rail raised to vertical, so
    the flight is the same as anywhere (a school never changes physics); only rivals' news pictures show it tilted. Or
    (b) a real tilted launch for small solids, a small physics change.
 3. **Isle's decals show the contract's client** when a flight has one (default), and each Isle rocket gets a joke name

@@ -102,7 +102,7 @@ solved **before** lift-off: choose the angle and the heading, then watch. Once i
 - **economy:** era-driven obsolescence as the reason to replace (service quality by the satellite's era); servicing
   contracts for valuable assets.
 - **space / economy:** routines' window rules (Q49's registry and the pad calendar).
-- **vehicle:** the launch rail (QUEUE Q228).
+- **vehicle:** the launch rail (QUEUE Q230).
 - **economy:** the automation ladder: which routines each compute era permits; crewed routines before onboard
   computers.
 
