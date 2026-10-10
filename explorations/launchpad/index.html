@@ -51,6 +51,9 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #sas button{padding:2px 3px;font-size:11px}
 #sas .wide{grid-column:span 2}
 #navtxt{position:absolute;left:0;right:0;top:-22px;text-align:center;color:var(--acc)}
+body.mapv #nav,body.mapv #thr{display:none}   /* (flow, slice 4c) on the map the navball is a heading line (#navtxt, with the throttle), beside SAS */
+body.mapv #navtxt{position:static;white-space:nowrap;padding:5px 10px;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+body.paper.mapv #navtxt{color:var(--acc)}   /* a dark pill like the other panels on the paper */
 #msg{position:fixed;left:50%;top:18%;transform:translateX(-50%);font-size:18px;letter-spacing:.12em;color:#fff;text-shadow:0 0 8px #000,0 0 2px #000;pointer-events:none;transition:opacity .4s;text-align:center}
 #perf{position:fixed;right:12px;bottom:8px;color:var(--fg);font-size:11.5px;pointer-events:none;text-align:right;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
 .ovl{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-height:84vh;overflow:auto;z-index:6;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:12px 16px;box-shadow:0 10px 40px #000a;backdrop-filter:blur(6px)}

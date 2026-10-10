@@ -457,6 +457,7 @@ ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)
   `go('assembly'); stackDef = JSON.parse(JSON.stringify(PRESETS.Beeper || PRESETS.Orbiter.map(k => k === 'pod' ? 'sci' : k))); editorChanged(); ({stack: stackDef.join(' '), cost: vesselCost(S.parts).cost, funds: PROG.funds, open: missionOpen(MISSIONS.find(m => m.id === 'beeper'))})`, {shot: 'beeper_assembly'},
   {click: '#bRoll'}, {click: '#launch'}, `({screen: screenNow(), ascent: PT.ascent(), rec: {orbit: S.rec.orbit, orbitSci: S.rec.orbitSci}})`,
   `PT.showUI(); PT.m1.boxes.orbit = PT.boxes(); ({hud: PT.hud().slice(0, 400)})`, {shot: 'orbit'},
+  `go('map'); render(); PT.m1.boxes.map = PT.boxes(); ({line: PT.text('#navtxt'), ball: PT.vis('#nav')})`, {shot: 'orbit_map'}, `go('flight'); render(); true`,   // slice 4c: the heading line
   `go('program'); PT.m1.deb2 = PT.debrief(); ({debrief: PT.m1.deb2, ...PT.state(), boxes: (PT.m1.boxes.after = PT.boxes()), news: PT.logSince(0).slice(-10)})`, {shot: 'after_orbit'}],
   checks: {tester: `typeof TEST === 'object' ? TEST.on : false`, weather: `!!PROG.done.weather`, beeper: `!!PROG.done.beeper`, flights: `PROG.flights`,
     escPauses: `PT.m1.escRun`, debrief: `[PT.m1.deb1, PT.m1.deb2]`, boxes: `Object.entries(PT.m1.boxes).filter(([k, v]) => v.length).map(([k, v]) => k + ': ' + v.join(', '))`},
