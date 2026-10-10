@@ -4819,6 +4819,47 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
 }
 
+// aerofx-5. The crew's look, slice 1 (look & sound effects beat, QUEUE Q195; Caio: W19 stylised human, suits by school and
+// epoch from the default). The figure is built from app/crew-look.js with a recording pv: about 1.78 m tall standing on
+// its own feet, the waving glove above the helmet's top, the faceplate open (the face shows); suitOf falls back to the
+// default. Cape's crew arm (buildRig with stubs): at the hatch of every crewed design, its deck ending short of the
+// capsule, a swing arm at the same height standing down; Steppe's rig has none yet; the crew are drawn in the editor only.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const C = new Function(src + `const P=[];const pv=(o,p,n,c)=>{o.push(p);P.push({p,c})},tube=(o,A,B)=>{o.push(A,B)},lathe=(o,prof)=>{for(const[r,y]of prof)o.push([r,y,0])};
+    ${cut('const SUIT_DEFAULT=', '\n// The crew on the access arm')}
+    return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,P};`)();
+  const pts = a => a.filter(Array.isArray), st = pts(C.crewFigure(C.suitOf(0, 0), 'stand', 0)), wv = pts(C.crewFigure(C.suitOf(1, 2), 'wave', 1));
+  const ys = st.map(p => p[1]), top = Math.max(...ys), foot = Math.min(...ys), wTop = Math.max(...wv.map(p => p[1]));
+  const skin = C.P.filter(v => Math.abs(v.c[0] - 0.95) < 1e-9 && Math.abs(v.c[1] - 0.76) < 1e-9).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
+  check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; the suit falls back to the default',
+    top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && C.suitOf(1, 2) === C.SUIT_DEFAULT && Object.keys(C.SUITS).length === 0,
+    `height ${top.toFixed(3)} m, feet at ${foot.toFixed(3)}, waving hand to ${wTop.toFixed(2)} m; ${faceFwd} face vertices forward`);
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}}),
+      crewMeshes=(n,sch)=>Array.from({length:Math.min(n,2)},(_,k)=>({mesh:{free(){}},k}));
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v},set mode(v){mode=v}};`)();
+  const bad = [], seen = [], designs = Object.entries(D.PRESETS).filter(([, st]) => JSON.stringify(st).includes('"crew"'));
+  designs.push(['small crewed', ['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel']]);
+  for (const md of ['flight', 'editor']) for (const [k, st] of designs) {
+    D.mode = md; const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig);
+    const cp = s.parts.find(p => p.d.crew), y0 = cp.y0 + rig.base;
+    if (!R.crew) { bad.push(`${k} (${md}): no crew arm`); continue; }
+    if (R.crew.h < y0 || R.crew.h > y0 + cp.h) bad.push(`${k}: the arm misses the capsule (${R.crew.h.toFixed(2)} m)`);
+    const deckEnd = 5.5 - R.crew.L; if (deckEnd < cp.pos[0] + cp.d.r) bad.push(`${k}: the deck reaches into the capsule`);
+    if (R.arms.some(A => !A.skip && Math.abs(A.h - R.crew.h) < 1.6)) bad.push(`${k}: a swing arm at the crew arm's height`);
+    if (R.crewFig.length !== 2) bad.push(`${k}: ${R.crewFig.length} crew`);
+    seen.push(`${k} ${md} at ${R.crew.h.toFixed(1)} m, gap ${(deckEnd - cp.pos[0] - cp.d.r).toFixed(2)}`);
+  }
+  D.mode = 'flight'; { const s = D.newShip(D.PRESETS.Orbiter); D.S = s; if (D.buildRig(20, D.padRig(20)).crew) bad.push('Orbiter (no crew): a crew arm'); }
+  { const s = D.newShip(D.PRESETS['Crewed Lunar']); D.S = s; if (D.buildRig(45, D.padRig(45), 1).crew) bad.push('Steppe: a crew arm (not built yet)'); }
+  check('crew look: Cape\'s crew arm reaches every crewed design\'s hatch and stops short of it; a swing arm there stands down; none without crew; the crew are drawn in the Assembly only',
+    !bad.length && /drawPadCrew\(drawMesh,camW\);/.test(H) && /mode!=='editor'\|\|HOOK\.noRig\)return;/.test(page) && /<script src="app\/crew-look\.js"><\/script>/.test(readFileSync(new URL('./index.html', import.meta.url), 'utf8')),
+    bad.slice(0, 4).join(' | ') || seen.join('; '));
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));

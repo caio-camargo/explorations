@@ -1,5 +1,5 @@
 // Fixed reference views for judging graphics changes before/after. Paste into the page console (or load via the
-// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe. Each one rebuilds the same scene deterministically: same design,
+// in-app browser tooling) and call refView(1..14): 1–3 whole-scene views, 4–9 part close-ups, 10 a firing engine from below, 11–14 flight marks, 15–17 the launch complex, 18–19 the pad at the start of a flight (day, night), 30–36 engine plumes, 40–47 re-entry plasma (46–47 shield-first), 50–56 vapor cones (54–56 side boosters), 60–67 plume on the pad (65–67 at night), 68–72 ignition, 73–77 cutoff and staging, 80–83 clouds, 84–86 escape tower, 87–89 landing dust, 90–93 explosions, 94–96 HUD gauges, 97–100 the sky from space, 101–102 fin-tip vapor, 103–104 a spent stage re-entering, 105–107 moving parts (gimbal, steerable fins, reaction wheel), 116–119 the Steppe pad (Q159), 120–122 the crew at the hatch (Q195), 108–111 legs and power parts, 112–113 a lander on Selene against the sun, 114–115 the Orbiter as Cape and as Steppe. Each one rebuilds the same scene deterministically: same design,
 // same sim time, same camera — so screenshots from different versions line up.
 window.refView = async (n) => {
   if (typeof bodyViewClose === 'function') bodyViewClose();
@@ -352,6 +352,19 @@ window.refView = async (n) => {
     }
     const v = { 116: [-0.9, 0.2, 75], 117: [-0.5, 0.15, 45], 118: [-0.5, 0.12, 45], 119: [0.6, 0.85, 35] }[n]; [cam.yaw, cam.pitch, cam.dist] = v;
     render(); await settle(); bare(); return { 116: 'Steppe complex', 117: 'Steppe service', 118: 'Steppe lift-off', 119: 'Steppe table' }[n];
+  }
+  // 120–122 (Q195): the crew, stylised human in the default suit, on the access arm at the hatch in the Assembly. 120 the
+  // Crewed Lunar's top from the tower side; 121 a small crewed rocket, the two of them on the arm; 122 their faces, from the south (the camera circles the rocket, so this is as close as it gets)
+  // helmet. [design, camera height (m above the arm), yaw, pitch, dist]
+  const crewV = { 120: ['Crewed Lunar', 0, 0.55, 0.08, 16], 121: [['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel'], 0.9, 0.75, 0.05, 6.5],
+    122: [['les', 'chute', 'crew', 'shield', 'dec', 't4', 'kestrel'], 1.3, 0.2, 0.06, 4.5] };
+  if (crewV[n]) {
+    const [design, dy, yaw, pitch, dist] = crewV[n];
+    if (mode !== 'editor') document.getElementById('bEditor').click();
+    stackDef = JSON.parse(JSON.stringify(typeof design === 'string' ? PRESETS[design] : design)); editorChanged(); HOOK.edStill = true; padKey = ''; render();
+    if (!RIG.crew) return 'no crew arm';
+    cam.edY = RIG.crew.h - (typeof LIFT === 'number' ? LIFT : 3) + dy - S.cm[1]; [cam.yaw, cam.pitch, cam.dist] = [yaw, pitch, dist];   // (the ship's own point already stands LIFT up)
+    render(); await settle(); bare(); return { 120: 'crew arm', 121: 'crew', 122: 'helmet' }[n];
   }
   // 103–104: a spent stage re-entering beside the capsule. A capsule on a tank comes in from orbit (as view 40), drops the
   // tank at 85 km and both fall to alt km; frozen. [alt, yaw, pitch, dist]
