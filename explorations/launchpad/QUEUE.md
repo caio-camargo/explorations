@@ -106,7 +106,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a → flow 2026-10-09** on W15's defaults (Caio may override) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ready** (the gauges as the instrument panel, hidden in space; closes PLAYTEST #9), then 4c (map trims) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -116,7 +116,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q153 | The flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper, pale buttons, white text): give them the era's ink | M1 | S | 🖥 | ✓ `960cd84` (body.paper: ink buttons and messages) |
 | Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ✓ `d35e9bf` |
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
-| Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ready |
+| Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | → flow 2026-10-09 |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
 | Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ready |
@@ -408,3 +408,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - space — **debris that exists only as you pass** (Caio, 2026-10-09): during a **monitored** flight (in physics) through a band, roll a few seconds ahead from density × cross-section × speed; on a hit, spawn the fragment on a collision course; it exists only while passing, never tracked before or after. Unmonitored time (rails, warp, dispatch, between flights) keeps the band's roll only. 1 cm fragments spawn too close to dodge (untrackable: the roll is the verdict); ≥ 10 cm pieces in radar eras come with a warning and a lead time, and steering away is legitimate (tracking pays off). Optional: cosmetic near-miss streaks from the same density. No mass of tiny tracked objects — LATE_GAME § Debris
 - vehicle — PLAYTEST #35 (P2): the Passenger Orbiter overheats Biscuit on any robot ascent; test vehicle-3 tracks its own cabin from 290 K after the orbit and misses it — PLAYTEST #35
 - vehicle — PLAYTEST #36 (P3): the stock Hopper shows the unstable warning at roll out — PLAYTEST #36
+- flow (Q3 4a, v1.101) — **for every lane:** new flight-HUD content is a card, `HUD_CARDS.push({id, title, when?, rows})` in `app/hud.js`; `updateHUD`'s core is capped at 6 rows (test flow-5) — NOTES § v1.101
