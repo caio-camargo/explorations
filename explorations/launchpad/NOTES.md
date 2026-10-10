@@ -8852,6 +8852,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `sim/procedures.js` | 338 | stepping, flight tapes, procedures, headless flights | space |
 | `sim/rovers.js` | 349 | rovers (ends with `SIM END`) | space |
 | `app/gl.js` | 1,532 | WebGL2, shaders, meshes, planet/sky/plume/pad drawing | look & sound |
+| `app/crew-look.js` | 77 | the astronauts' look (Q195): `crewFigure`, `SUITS`/`suitOf`, the crew on the access arm (`drawPadCrew`) | look & sound |
 | `app/state.js` | 111 | app state | flow |
 | `app/editor.js` | 127 | the editor UI | vehicle |
 | `app/input.js` | 30 | input | flow |
@@ -9769,6 +9770,27 @@ flies the Passenger Orbiter on `PT.ascent(flatKm)` (the turn ends at flatKm, 38 
 passenger overheats whatever the ascent, and test.mjs `vehicle-3` can't see it, because it restarts its own cabin
 temperature at 290 K after the orbit. Also #36, the Hopper's own instability warning.
 
+## The crew's look, slice 1 (2026-10-09, effects beat, QUEUE Q195)
+Caio, 2026-10-09: **stylised human** (W19) and **suits that vary by school and epoch** (D9), "start with the default and
+we'll work from there" (his go lifts the M3 gate for this). Built:
+- **`app/crew-look.js`** (new, after `app/gl.js`): `crewFigure(suit, pose, k)` rebuilds the Q72 mock-up's style (c)
+  astronaut as a mesh (superellipsoids `blob`, tapered `limb`s, the helmet a shell open at the faceplate and underneath,
+  with a rim; skull, square jaw, nose, ears, hair cut at a hairline, eyes, brows, mouth), 1.78 m, feet at the origin,
+  facing +z; poses `stand` and `wave`. Person `k` picks one of four skin and hair tones, so two crew aren't twins.
+  The mock-up's flat light bands and ink outlines aren't here: the mesh shader has neither (a later look item if wanted).
+- **Suits:** `SUITS[school][gen]` with `suitOf(sch, gen)` falling back to `SUIT_DEFAULT`, the mock-up's pale layered suit
+  with red fittings and boots. D9's lines (CREW.md § Part 1's table: early, middle, late, spacewalk) fill it school by
+  school; the generation from the epoch isn't wired yet (nothing to choose between).
+- **Where they show:** a **crew access arm** on Cape's tower (`buildRig`: a grey walkway with orange railings at 30 % of
+  the capsule's height, ending 0.15 m short of it; a swing arm within 1.6 m stands down). In the Assembly and on the
+  Rollout the two crew stand on it at the hatch, one facing the capsule, one turned out and waving (`drawPadCrew`, drawn
+  without the pad's concrete detail); in flight the arm is swung back and the crew are aboard. Steppe's rig has no crew
+  access yet (its crew would ride the service half's lift).
+- Views 120 (the Crewed Lunar's arm), 121 (the two on a small crewed rocket), 122 (their faces from the south).
+  test.mjs `aerofx-5`: the figure's size, feet, wave and face; the default suit; the arm at the hatch for every crewed
+  design, short of it, the swing arm standing down, none without crew or on Steppe; TESTING 184.
+- Next: the walk-out and boarding (proposed in QUEUE; the crew cross the arm and go in during the flight's first
+  seconds, or the countdown), crew on Steppe's pad; D9's suit lines are Q199 (mock-ups first, then a build per school).
 ## v1.73.1 — the Passenger Orbiter's nose cone; vehicle-4 alone and in the smoke run (2026-10-09, vehicle session, QUEUE Q201, Q204)
 
 **The passenger cooked on the way up (PLAYTEST #35).** The preset was chute, biocapsule, wheel: the chute (0.3 m) is
