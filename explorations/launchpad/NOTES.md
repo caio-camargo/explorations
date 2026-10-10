@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.42 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1964,6 +1964,37 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.108 — power gates a satellite's service (2026-10-09, space session, QUEUE Q27)
+
+v1.68 put power on vessels and left "what a flat battery does to their service" to the space lane; v1.105 made the
+Probe power-positive, so this no longer ends every Probe satellite.
+- **At registration** (`satPowInit`, `sim/power.js`): the entry keeps `powerBudget` for its own orbit (`q.pw`: average
+  generation, load, eclipse share, battery and what one eclipse needs, peak, RTG) and its charge (`q.Ewh`).
+- **Between flights** (`satPowTick`, first thing in `satTick`): a power-negative design drains its battery. `satDuty(q)`
+  is the share of the time it can work: 1 on the battery; once flat, the sunlit share as far as its cells (and RTGs)
+  cover the load; 0 with no cells. A design whose battery can't cross an eclipse loses the rest of each one. News when it
+  first drops: "batteries are flat: it works only in sunlight now, 60 % of the time" / "has gone quiet".
+- **What it gates:** the camera's take and every downlink (imagery sales, contract frames), TV income, `entryLink`
+  (a flat, cell-less satellite can't be reached: mission control and rover relays), and navigation (a fix needs power
+  round the clock, so `navCover` counts only `satDuty` = 1). Collisions, decay, station-keeping: unchanged.
+- **Measured** (300 km, inclined): the pre-v1.105 Probe (no cells, 15 W on 500 Wh) is flat between day 3 and day 12 and
+  silent after; with one panel (9.0 W average) it ends at 60 %; the v1.105 Probe (26.9 W) never runs down.
+- **Saves:** entries registered before this have no `q.pw` and work as before.
+- **Made visible, not a trap:** a satellite with no power source at all (an antenna on a tank and an engine, which earned
+  TV and imagery money before) is silent from day one. So the weather, TV and navigation briefs now say "it needs power
+  between flights: the battery in a probe core lasts days, solar cells keep it going" (economy's table, flagged), and the
+  registration news warns: "its battery lasts about 4 days; then it goes quiet (solar cells would keep it going)", "it
+  has no power of its own", or "its battery can't cross an eclipse" (`satPowNote`).
+- **Flow:** the Fleet line (`app/program-ui.js`, one template) adds "batteries flat: works N % of the time, in sunlight"
+  or "silent".
+- **Not in this slice:** landed entries (bases, landers: their crews and RTGs are another budget); recharging a flat
+  battery by servicing; a relay's own transmit draw (Q173).
+
+Test `space-18` (1 check: three designs, flat in days, sunlight-only, never; no pictures and no link once silent; the
+news and the registration warning). Test 24's TV and disaster-watch satellites (an antenna on a tank, no power) now carry
+a probe core and three panels of cells. `career.mjs` (10 seeds) identical: its robot registers no powered services.
+TESTING row 188.
+
 ## v1.105 — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
 
 The Probe is the only preset with an antenna: 15 W of antenna and camera on a probe core's 0.5 kWh, flat in ~33 h, which
@@ -2005,6 +2036,35 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.107 — the crew in the Debrief (2026-10-09, flow session, QUEUE Q191; closes PLAYTEST #34)
+
+- A crewed flight (people, once the escape tower is qualified; not the test dummies before it) gets a line in the
+  Debrief's outcome block: **"Crew of 2 home safe after 2.5 days"** (green; the days only from one day up), **"Crew of 2
+  aboard, all well"** (still flying), or **"The crew of 2 were lost"** / "…were hurt by 9.1 g" / "…overheated (cabin
+  340 K)" / "…ran out of air" (red; the same reason the news gives).
+- The crew block in `missionTick` (`sim/program.js`, additive) now keeps the seats at liftoff (`R.crewN`) and the
+  reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
+- Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
+  shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
+- **Not yet (space):** for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+  time; the station's `crewDays` is per station, not per person.
+
+## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
+
+- aerofx's gauge strip (altitude tape, air depth, q with max-q, Mach, heat) now has its own place: `#gslot`, the left of
+  the bottom cluster, **gauges | throttle | navball | SAS**. The cluster stays centred, so it narrows in space and the
+  navball moves over. (I tried a fixed navball with the gauges hung to its left; at 1000×700 they'd sit on the stages panel.)
+  `gaugeRect` (gl.js) reads the slot and scales the strip to it (254 px wide on small windows).
+- **Shown while the Ascent condition holds** (`ascentOn`, app/hud.js): in the air with q over 1 kPa or below 20 km (the
+  climb's start, and a landing's radar tape), low (under 20 km) over an airless body, or the skin above 30 % of its
+  limit. Held 3 s after it ends, so it doesn't flicker. Hidden on the pad, in space and on the map. Settings' "flight
+  gauges" off hides it, as before.
+- **The Ascent card** shows with the gauges and keeps only what they don't draw: AoA, Heat (the part, ablator),
+  Structure. With the gauges off it shows the Aero row (Mach, AoA, q) again.
+- Checked in the page: hidden on the pad, shown 5 s into a climb, hidden 3.6 s after reaching orbit (the cluster 334 px
+  wide). Robot `m1` and 98 pass at 1280×800 and 1000×700. Stills (local): `output/launchpad/q3-slice4b/`.
+- **Next, 4c:** the map trims (the navball shrinks to a heading line on the map).
 
 ## v1.103 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
 
@@ -8337,7 +8397,7 @@ panel as now.
 (a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
 new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
 
-**4a built 2026-10-09: § v1.101.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+**4a built 2026-10-09: § v1.101; 4b: § v1.106.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout

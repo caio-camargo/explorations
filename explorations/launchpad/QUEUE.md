@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.23 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.25 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,11 +12,11 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓) | you | **M1 done**; M2 becomes current |
-| 2 | **Q201: the Passenger Orbiter overheats Biscuit on every robot ascent** (PLAYTEST #35, P2), a first-hour preset; plus Q190 (late parts buyable from flight 1) | vehicle (**no session**) | a clean first hour for W16's player |
+| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); first QA re-runs row 147 on the Passenger Orbiter's new nose cone (Q208) | you; QA | **M1 done**; M2 becomes current |
+| 2 | **Q190** era gates for late parts (cargo bay and arm buyable from flight 1). Q201 ✓ (nose cone keeps the passenger cool) | vehicle (**no session**) | a clean first hour for W16's player |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world | every player's first visit |
-| 4 | **W14: the screen identity** (leaning: instrument panel in flight, paperwork for the Program, both by era) | you | Q53, Q3 4b–4c's styling, Q104 |
-| 5 | **Q164** presets with an antenna make their own power; **Q160** the duplicate-number check | vehicle; platform (**no session**) | Q27 and relays; no renumbering after merges |
+| 4 | **W14: the screen identity** (leaning: instrument panel in flight, paperwork for the Program, both by era); **W20 round 2** after Q207's mock-ups | you | Q53, Q3 4b–4c's styling, Q104; Q80–Q85 |
+| 5 | **Q160** the duplicate-number check (versions collided twice in an hour) | platform (**no session**) | no renumbering after merges |
 
 ## How a session uses this
 
@@ -106,7 +106,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b → flow 2026-10-09** (the gauges as the instrument panel, hidden in space; closes PLAYTEST #9), then 4c (map trims) |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ✓ `c19a965`** (v1.106: the gauges as the instrument panel, PLAYTEST #9 closed); **4c ready** (map trims: the navball to a heading line) |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
@@ -119,9 +119,12 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ✓ `3f2d857` (v1.103: every node drawn; a click selects it, its handles edit it) |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
-| Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | → flow 2026-10-09 (after Q3 4b) |
+| Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ✓ `e05b426` (v1.107: home safe / aboard / lost and why) |
 | Q192 | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ready |
 | Q196 | **Move a planned burn from the Program screen** (or "fly at the next contact"): since v1.102 a burn out of every station's view in the mainframe era can only be flown by hand | M2 | S | 🖥 | ready |
+| Q210 | Drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) (NOTES § v1.103) | M2 | S | 🖥 | ready |
+| Q211 | The pad calendar's `kind 'window'` bar (a dispatch waiting for its window, pad held) needs a `.cbar.window` style; `app/network.js`'s fallback still builds one bar per dispatch (from economy, Q185 v1.104) | M2 | S | 🖥 | ready |
+| Q212 | The builder's power line says what v1.108 means between flights ("as a satellite here: battery lasts N days, then sunlight only"), so the warning comes before launch | M2 | S | 🖥 | ready |
 | Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ready |
 | Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ready |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
@@ -200,7 +203,7 @@ Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control`
 | Q190 | **Era gates for vehicle parts**: only rover parts are gated today (`rvPartOpen`), so the cargo bay and the arm are buyable from the first flight. Gate `bay`, the arm and other late parts by era (from economy, Q180 v1.98) | M1 | S | ⚙ | ready |
 | Q189 | **D5: a rover frozen in the night goes dormant**, never dies: `R.dead` on a flat cold battery becomes `R.dormant`; it wakes when its panels see the sun (in flight `rvTick`, between flights the field tick); the lost night is the only price | M2 | S | ⚙ | ready |
 | Q197 | A **high-gain dish** part (a gain class, ~×100 over the whip) so a high camera satellite can earn again after v1.100 (pay per bit: at 2,000 km a whip drains 5 kbit/s) | M2 | S | ⚙ | ready |
-| Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | parked by vehicle (full suite stopped for low memory); resume from `builder` |
+| Q152 | A legged lander preset (or legs on Probe/Sample Return) so `fly_ladder.mjs` exercises the legs end to end (Q121 is checked unit-level) | M2 | S | ⚙ | parked by vehicle (low memory); resume from `builder`, and **rebuild the lander from v1.105's v2 Probe** (body cells on its upper tank) |
 | Q134 | 📝 CREW part 2: **the pilot's SAS modes by rank**: CREW's ranks don't line up with the `AV` generations (rank 2 has target, not docking), so `avOf` needs per-mode gating | M3 | S | 📝 | ✓ plan (NOTES § \"The pilot's SAS modes by rank\"); build after the roster |
 | Q141 | The builder shows a satellite's **lifetime** ("holds its slot 12 years at 0.37 m/s a day") beside the power line (with space; v1.71) — MIDGAME.md § Satellites | M2 | S | 🖥 | ✓ v1.81 (Lifetime line; TESTING 165) |
 | Q119 | 📝 The **habitat budget** in the builder on top of Q34b's steady-state solve (power per person with food closure, radiators, panels by distance, return berths; habitat and lab modules get power loads, "a dark station can't keep people"; solar output by distance from Helios at M5); **shielding gets a design review with Caio before it's built** ([`LATE_GAME.md`](LATE_GAME.md) 1.1.0) | M4 | M | 📝 | after Q34b (plan only) |
@@ -220,14 +223,14 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q147 | Debris slice 3: fragments as density per 50 km band (drag clears, collisions feed, the cascade with warnings; POWERS' anti-satellite test) | M2 | M | ⚙ | ✓ `94192f4` (v1.83: fragment bands by NASA's breakup model, drag drain, dead hulks, 40 J/g to shatter, the cascade as R0 ≥ 1 due within 50 years, `asatTest`) |
 | Q148 | Debris slice 4 (with flow, economy): the world setting off / light / real (default light; with platform's Q124); the map's band view; cleanup contracts | M2 | M | 🖥 | after Q147 |
 | Q149 | Dispatched routine flights leave no debris yet (`procFly` restores the list) | M2 | S | ⚙ | ✓ `dff3e5d` (v1.86: `procFly` keepJunk, `junkAdd`; the dispatched payload itself is Q49) |
-| Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | blocked: the presets with an antenna make no power of their own (the Probe: core battery 0.5 kWh, 15 W of antenna and camera, flat in ~33 h). Gating service or the link on power now would end Probe TV/imaging service after ~4 days and Probe antenna missions on long flights. Needs the vehicle item under *Proposed* first; relay range folds into Q51's link budget (space, 2026-10-09) |
+| Q27 | Relay range and power; the power side: what a flat battery does to the antenna, camera and a registered satellite's service (`powerBudget`, `hasComputer`, `s.E`/`s.pwrOut` in `sim/power.js`; NOTES § v1.68) | M2 | M | ⚙ | ✓ v1.108 (`satPowInit`/`satDuty`/`satPowTick`: a flat satellite works only in sunlight or goes quiet; imagery, TV, link, nav gated; briefs and registration news warn; NOTES § v1.108; TESTING 188) |
 | Q49 | **Missions in flight**: every vessel coasting at flight end joins the registry, on rails across bodies, raising events | M2 | L | 📝 | plan ✓; slice 1 ✓ `fe9834e` (v1.90: cruise entries on rails across bodies, *In flight* list); slice 2 ✓ `1f2eb35` (cruise events on the timeline, no silent misses); slices 3–4 are Q166, Q167 |
 | Q166 | Q49 slice 3 (with vehicle): maneuver nodes carried with a cruise entry; executed by mission control at the era's error, or flown — NOTES § "Plan: missions in flight" | M2 | M | ⚙ | ✓ `87f8588` (v1.93: nodes carried, a stop 3 h ahead, mission control at the era's error, missed ones dropped) |
 | Q168 | The dispatched payload as a cruise entry or satellite (`dispatchRun` still drops `f.s`) (NOTES v1.86, v1.90) | M2 | S | ⚙ | ✓ `c364972` (a dispatched flight's payload stays up) |
 | Q51 | Data as a volume + the link budget | M2 | L | 📝 | plan ✓ (NOTES § "Plan: data as a volume and the link budget"); slices are Q171–Q174 |
 | Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ✓ `96d98dc` (v1.96: rate and light delay on every link; whip over the pad 333 kbit/s, at Selene 20.5 bit/s) |
 | Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | ✓ `df49ab1` (v1.100: recorders, downlinks, imagery paid per bit received; NOTES § v1.100; TESTING 176) |
-| Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | after Q172 and Q164 |
+| Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | ready (Q172, Q164 ✓) |
 | Q174 | Q51 slice 4: solar conjunction and light delay at the planets | M5 | S | ⚙ | after Q87's slices; blocked: milestone gate (M5) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | plan ✓ (NOTES § "Plan: the system on rails"); slice 1 → space (sim ✓ `55d8115`, `sim/system.js`), its map drawing is flow's Q175; slices 2–4 are Q176–Q178 (M5) |
 | Q176 | Q87 slice 2: Helios as the root, the Tellus-centred absolute frame, `SUN_DIR(t)`, Tellus's finite sphere, heliocentric legs | M5 | L | ⚙ | blocked: milestone gate (M5) |
@@ -244,6 +247,8 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q186 | Q127 slice 3: contact gates automation (a routine burns only in contact or within its computer's tier) | M2 | S | ⚙ | ✓ v1.102 (`entryLink`, `handOffWhy`; a burn out of contact is refused or passes before onboard computers; NOTES § v1.102; TESTING 181) |
 | Q200 | **Debris that exists only as you pass** (Caio 2026-10-09): during a monitored flight through a band, roll a few seconds ahead from density × cross-section × speed; on a hit, spawn the fragment on a collision course | M2 | M | ⚙ | ready |
 | Q198 | **Rover science as volumes** (spectrometer and camera readings through `rvContact`'s rate); imagery and contract frames sharing one pass budget (NOTES § v1.100) | M2 | S | ⚙ | ready |
+| Q213 | Landed entries' power (bases, landers), and recharging a flat satellite by servicing (NOTES § v1.108) | M2 | M | ⚙ | ready |
+| Q214 | A crew rotation's days aboard the station in the Debrief (the Debrief knows this flight's time only; `crewDays` is per station) (PLAYTEST #34's follow-up) | M2 | S | ⚙ | ready |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ✓ study (`study_cycler.mjs`, NOTES § "Q108: a Tellus–Enyo cycler": ballistic with Tellus flybys under ~800 km on our scale; taxis 1,702 / 2,022 m/s) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
@@ -282,6 +287,7 @@ Collisions between beats: `render()`'s pass order, shared shader helpers, bloom,
 | Q158 | Q102 step 6: signature designs per school for rivals (Cape tall stack, Steppe cluster on conical strap-ons) | — | M | 🖥 | blocked: nothing draws rivals' rockets yet |
 | Q195 | **Crew look slice 1** (Caio 2026-10-09: W19 stylised human, suits by school and epoch, "start with the default"; Caio's go lifts the M3 gate for it): the astronaut figure as a mesh from the Q72 mock-up's stylised proportions, in the default suit (`SUITS` keyed by school and generation, only the default filled); two crew on a new crew access arm at the capsule's hatch on Cape's tower in the Assembly and Rollout, the arm swung back in flight; reference views | M3 | M | 🖥 | ✓ effects beat, 2026-10-09 (`app/crew-look.js`; Cape's crew arm; views 120–122; NOTES § "The crew's look, slice 1"; TESTING 184) |
 | Q199 | **Suit mock-ups** (D9): Cape and Steppe, three eras each, the stylised-human crew in the Q72 scene; then one build item per school | M3 | M | 🖥 | **claimed** (effects beat, 2026-10-09; on CREW 0.2.3's specs) |
+| Q209 | **The crew walk out and board**: in a crewed flight's countdown (or its first seconds on the pad) the two cross the access arm and go in through the hatch, then the arm swings back (from effects, Q195) | M3 | M | 🖥 | ready (crew look: Caio's go) |
 | Q97 | Draw the landing leg (stowed and deployed), solar wing, body cells, battery, computer | M1 | M | 🖥 | ✓ `719d69f` (leg, wing, cells, battery, computer; views 108–111) |
 | Q22 | PLAYTEST #22: `refView(8)`, the rig in close-ups | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
 
@@ -330,6 +336,8 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ✓ `b4fc3eb` (`node playtest.mjs 127`: four ways out, exits and money checked; PLAYTEST #33) |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ✓ `20a87e2` (`playtest.mjs 65`: crew home safe; PLAYTEST #34) |
+| Q208 | Re-run `node playtest.mjs 147` (steep and gentle ascents) on the Passenger Orbiter's nose cone; tick TESTING 147 and PLAYTEST #35 (Q201, v1.73.1) | M1 | S | 🖥🖥 | ready |
+| Q215 | Robot row 65 lost the capsule 12 s in on one run of four (the others brought the crew home): find the flake (NOTES § v1.107) | M2 | S | 🖥🖥 | ready |
 | Q161 | A tester button for `asatTest` (and a breakup at a chosen height), so a person can see the fragment line, warnings and the cascade (v1.83) | M2 | S | 🖥 | ✓ (tester → Debris, with the off/light/real setting; TESTING 178) |
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.4: sitting 6 parks at 250–300 km; contracts complete in flight, so low recon orbits still pay) |
 | Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
@@ -342,7 +350,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 |---|---|---|---|---|---|
 | Q56 | Test shards: `node test.mjs --only …` and `--smoke` under a minute | M0 | S | ⚙ | ✓ `0bf85c2` (NOTES § "Test shards": `--smoke --jobs 4` ~25 s) |
 | Q156 | **`.gitattributes`** (`*.md *.js *.mjs *.html text eol=lf`) and one normalising commit, announced in this file's Flags first (every branch merges `main` right after, like the split) | M1 | S | ⚙ | ✓ effects 2026-10-09: `.gitattributes` (md, js, mjs, html → LF); no file on `main` had CRs, so no normalising commit was needed |
-| Q160 | **A duplicate-number check before push** (`node check_numbers.mjs`: fails on a repeated `## v1.N` in NOTES or a repeated TESTING row; in the merge recipe, or a pre-push hook). Every lane renumbers after merges today | M1 | S | ⚙ | ready (**top**) |
+| Q160 | **A duplicate-number check before push** (`node check_numbers.mjs`: fails on a repeated `## v1.N` in NOTES or a repeated TESTING row; in the merge recipe, or a pre-push hook). Every lane renumbers after merges today: v1.102 and v1.103 were each taken twice within an hour on 2026-10-09 | M1 | S | ⚙ | ready (**top**) |
 | Q57 | Save versions: schema version + migration chain on `launchpad-program-v1`, a test that loads an old save (independent of Q56: a second platform session may take it) | M1 | S | ⚙ | ✓ `9ca68fd` (`SAVE_V`, `MIGRATE`, `migrateSave`; test.mjs `platform-2`) |
 | Q124 | **World settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events | M2 | S | ⚙ | ready (debris Q146–Q147 and Q57 ✓; with Q148) |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
@@ -413,13 +421,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W28~~ | **Answered 2026-10-09 (Caio): all defaults.** Was: **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- space — **Q27 and Q173 are unblocked** by v1.105 (the Probe makes its own power): rank them (space, 2026-10-09)
-- vehicle — **Q152's lander** (on `builder`, unmerged) is "the Probe with legs": rebuild it from v1.105's v2 Probe (body cells on its upper tank) when you resume — NOTES § v1.105 (space, 2026-10-09)
-
-- QA — re-run `node playtest.mjs 147` (the steep and the gentle ascent) on the Passenger Orbiter's nose cone; tick TESTING 147 and PLAYTEST #35 — Q201 v1.73.1
-- look & sound (from effects, Q195) — **the crew walk out and board**: in a crewed flight's countdown (or its first seconds on the pad) the two cross the access arm and go in through the hatch, then the arm swings back; and **crew access on Steppe's pad** (the service half's lift and deck). The suit lines themselves are Q199's (mock-ups, then a build item per school). M, 🖥
-
-- ~~QA — Q194: a tester switch for the hardware school~~ already done as Q106's picker (tester → Hardware school, TESTING 179)
-- flow (Q157, v1.103) — drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) — NOTES § v1.103
-- flow (from economy, Q185 v1.104): the pad calendar's new `kind 'window'` bar (a dispatch waiting for its window, the pad held) has no `.cbar.window` style, and `app/network.js`'s fallback still builds one bar per dispatch (NOTES § v1.104)
-- platform (from economy, 2026-10-09): **version numbers collide like TESTING rows did** — v1.102 and v1.103 were each taken twice within the hour (space/economy/flow). A qa-3-style check (NOTES `## v1.N` headings unique) would catch it at merge time

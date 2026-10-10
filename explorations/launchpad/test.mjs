@@ -1050,17 +1050,19 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   reset(['beeper']); let [r, v] = orbit(300e3, 90); let s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const polar = !!P.done.wxsat;
   reset(['beeper']); [r, v] = orbit(300e3, 0); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const eq = !!P.done.wxsat;
   check('epoch 3: a weather satellite needs a polar orbit (an equatorial one doesn\'t count)', polar && !eq, `polar ${polar}, equatorial ${eq}`);
+  // a service satellite needs power between flights (Q27): a probe core's battery and three panels of body cells on the tank
+  const powered = st => { const d = api.toV2(st), f = n => n.k === 't2' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({ k: 'bpanel', at: { y: 1, a: 0, n: 3, cy: 0.4 }, c: [] }); return d; };
   // TV: stationary, over the capital's longitude; it pays every day it stays there, and a sloppy one drifts away
   const cap = api.capital(), T0 = P.day * api.DAY_S, ua = api.rotY(norm([cap.u[0], 0, cap.u[2]]), api.absTh(T0));   // over the capital's longitude, now
   const stat = (k = 1) => { const R0 = api.STAT_R, vS = Math.sqrt(TELLUS.mu / R0) * k; return [mul(ua, R0), mul([ua[2], 0, -ua[0]], vS)]; };   // prograde about +Y
-  reset(['beeper']); [r, v] = stat(); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const tvOK = !!P.done.tv;
+  reset(['beeper']); [r, v] = stat(); s = craft(powered(['ant', 'core', 't2', 'petrel']), r, v); api.advRails(s, 60, 100); const tvOK = !!P.done.tv;
   api.satRegister(s, s.rec); const q = P.sats[0], f0 = P.funds; api.utilTick(10); const paid = P.funds - f0;
   reset(['beeper']); [r, v] = stat(1.002); s = craft(['ant', 't2', 'petrel'], r, v); api.advRails(s, 60, 100); const sloppy = !!P.done.tv; api.satRegister(s, s.rec);
   let lostDay = null; for (let d = 0; d < 200 && lostDay === null; d++) { P.day += 1; api.utilTick(1); if (news.some(m => /drifted out of the capital/.test(m))) lostDay = d; }
   check('epoch 3: TV for the capital from a stationary orbit pays daily; one 0.2 % too fast misses the mark and drifts out of the sky', tvOK && Math.abs(paid - 10 * 0.4) < 1e-9 && !sloppy && lostDay !== null,
     `capital ${cap.name} (${(Math.asin(cap.u[1]) * 57.3).toFixed(0)}°), ${(api.STAT_R / 1e3 - TELLUS.R / 1e3).toFixed(0)} km up: ${tvOK ? 'done' : 'not done'}, ${paid.toFixed(1)}M over 10 days; the sloppy one ${sloppy ? 'counted (wrong)' : 'not counted'}, out of sight after ${lostDay} days`);
   // disaster watch: a polar camera satellite with an antenna delivers pictures within 12 h of the call
-  reset(['beeper', 'wxsat']); [r, v] = orbit(300e3, 90); s = craft(['ant', 'cam', 't2', 'petrel'], r, v); api.satRegister(s, s.rec);
+  reset(['beeper', 'wxsat']); [r, v] = orbit(300e3, 90); s = craft(powered(['ant', 'cam', 'core', 't2', 'petrel']), r, v); api.satRegister(s, s.rec);
   const ci = api.CITIES.map((c, i) => ({ i, d: Math.acos(Math.min(1, dot(c.u, [1, 0, 0]))) })).sort((a, b) => a.d - b.d)[0].i;   // a city near the pad (a station in reach)
   let got = null;
   for (let k = 0; k < 8 && !got; k++) { P.active = [{ id: 900 + k, type: 'image', src: 'gov', client: 0, p: { ci, res: 8, dis: 'Floods', pay: 30, dur: 5 }, posted: P.day, deadline: P.day + 5 }]; P.disDone = [];
@@ -4666,6 +4668,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     f(1000) === '' && f(320) === 'c' && f(260) === 'ca' && f(100) === 'cad', `fits: "${f(1000)}", 320 px: "${f(320)}", 260: "${f(260)}", 100: "${f(100)}"`);
 }
 
+// flow-6. The crew in the Debrief (flow session, QUEUE Q191; PLAYTEST #34): a crewed flight records its seats at liftoff,
+// and the Debrief says how it ended for the people: home safe after so many days, aboard and well, or how they were lost.
+// Test dummies (before the escape tower is qualified) get no crew line.
+{
+  const P = api.PROG, d0 = P.done; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fly = (people, end) => { P.done = { ...d0, maxqabort: people ? 1 : undefined }; if (!people) delete P.done.maxqabort;
+    api.t = 0; const s = api.newShip(['chute', 'crew', 't2', 'petrel']); api.S = s; s.landed = false; api.missionTick(s, 0, false); end(s); return { s, D: api.debriefOf(s, s.rec, []) }; };
+  const home = fly(true, s => { s.landed = true; s.alive = true; api.t = 2.5 * api.DAY_S; s.rec.crewOK = true; });
+  const lost = fly(true, s => { s.alive = false; api.t = 300; api.missionTick(s, 0, false); });
+  const up = fly(true, s => { api.t = 3600; });
+  const dummies = fly(false, s => { s.landed = true; });
+  P.done = d0; api.t = 0;
+  check('flow-6: the Debrief has the crew: home safe after the days flown, aboard and well, or lost and why; dummies get no line',
+    home.s.rec.crewN === 2 && home.D.crew && /^Crew of 2 home safe after 2\.5 days$/.test(home.D.crew.line) && lost.D.crew && !lost.D.crew.ok && /^The crew of 2 were lost$/.test(lost.D.crew.line)
+      && up.D.crew && /aboard, all well/.test(up.D.crew.line) && !dummies.D.crew,
+    [home, lost, up].map(x => x.D.crew ? x.D.crew.line : 'none').join(' · ') + ` · dummies: ${dummies.D.crew ? dummies.D.crew.line : 'no line'}`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.
@@ -4856,6 +4876,26 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   check('the Probe makes its own power: positive in low orbit and at Selene, never flat over ten days on rails, its cells on the stage it keeps',
     lo.ok && lo.avg > lo.use && sel.ok && up.length === 3 && up.every(p => p.seg === ant.seg) && minE > 0.5 * s.Emax && !s.pwrOut,
     `low orbit ${lo.avg.toFixed(1)} W average vs ${lo.use} W (eclipse ${(lo.ecl * 100).toFixed(0)} %), Selene ${sel.avg.toFixed(1)} W; lowest charge ${(minE / 3.6e3).toFixed(0)} of ${(s.Emax / 3.6e3).toFixed(0)} Wh`);
+}
+
+// space-18. Power gates service (space session, QUEUE Q27): a registered satellite keeps its power budget for its orbit and
+// its charge. A design with no cells (the Probe before v1.105) runs its battery flat in ~4 days and goes quiet: no
+// pictures, no link; one with too few cells works only in sunlight once flat; the powered Probe never runs down.
+{
+  const D = new Function(src + 'return {PRESETS,newShip,toV2,satRegister,satDuty,advanceDays,entryLink,PROG,HOOK,TELLUS,DAY_S};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG, T = D.TELLUS, a = T.R + 300e3, vc = Math.sqrt(T.mu / a), OLD = ['ant', 'cam', 'sci', 'core', 't4', 't4', 'petrel', 'istage', 'adapt', 'T32', 'T16', 'fins25', 'albatross'];
+  const oneCell = (() => { const d = D.toV2(OLD), f = n => n.k === 't4' ? n : (n.c || []).map(f).find(Boolean); f(d.root).c.push({ k: 'bpanel', at: { y: 2.6, a: 0, n: 1, cy: 0.4 }, c: [] }); return d; })();
+  const reg = st => { const s = D.newShip(st); Object.assign(s, { alive: true, landed: false, body: T, r: [a, 0, 0], v: [0, vc * Math.sin(1.4), -vc * Math.cos(1.4)] }); D.satRegister(s, { day0: P.day }); return P.sats.at(-1); };
+  Object.assign(P, { sats: [], satN: 0, day: 0, stations: [], active: [], offers: [], decisions: [], dispatch: [], funds: 1000, cycle: 0 }); news.length = 0;
+  const dead = reg(OLD), weak = reg(oneCell), good = reg(D.PRESETS.Probe);
+  D.advanceDays(3); const d3 = [D.satDuty(dead), D.satDuty(weak), D.satDuty(good)], got3 = dead.got || 0;
+  D.advanceDays(9); const d12 = [D.satDuty(dead), D.satDuty(weak), D.satDuty(good)], got12 = dead.got || 0, L = D.entryLink(dead, P.day * D.DAY_S);
+  D.advanceDays(30); const gotLate = dead.got || 0;
+  check('power gates service: a satellite with no cells runs flat in days and goes quiet (no pictures, no link); one with too few cells works only in sunlight; the powered Probe never runs down',
+    d3.every(x => x === 1) && d12[0] === 0 && d12[1] > 0.3 && d12[1] < 0.8 && d12[2] === 1 && got12 > 0 && gotLate === got12 && !L.ok && /flat/.test(L.why)
+      && news.some(m => /has gone quiet/.test(m)) && news.some(m => /only in sunlight/.test(m)) && news.some(m => /Its battery lasts about \d+ days; then it goes quiet/.test(m)),
+    `day 3: ${d3.map(x => x.toFixed(2)).join(' / ')}; day 12: no cells ${d12[0].toFixed(2)}, one panel ${d12[1].toFixed(2)}, Probe ${d12[2].toFixed(2)}; budgets ${[dead, weak, good].map(q => `${q.pw.avg.toFixed(1)}/${q.pw.use} W`).join(', ')}; link: ${L.why || 'ok'}`);
 }
 
 // qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and

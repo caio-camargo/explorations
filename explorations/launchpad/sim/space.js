@@ -33,7 +33,7 @@ const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a regist
 // a registry entry's link home at program time T (space Q186): r is its position in its body's frame then (default: on
 // its rails). Around Tellus: a ground station in view; elsewhere: Tellus not hidden behind the body, and the rate (by
 // v1.96's budget) above the telemetry floor, so a craft with no antenna (a 1 W beacon) can't be reached at Selene.
-function entryLink(q,T,r){const B=orbBody(q);r=r||satAt(q,T)[0];const A=satRadio(q);
+function entryLink(q,T,r){const B=orbBody(q),on=satDuty(q);if(!(on>0))return{ok:false,why:'its batteries are flat'};r=r||satAt(q,T)[0];const A=satRadio(q);   // flat and no cells: silent (Q27)
   if(B===TELLUS){const pf=rotY(r,-absTh(T));for(const st of stationsAll())if(gsSees(st,pf)){const rate=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));return{ok:true,st,rate}}
     return{ok:false,why:'no station in view'}}
   const o=ORB_T0;ORB_T0=0;const bp=bodyPos(B,T);ORB_T0=o;   // program time: the moons' phase is ORB_T0 + t
@@ -84,7 +84,7 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   Object.assign(q,{id:PROG.satN,name:`${kind} ${same+1}`,epoch:R.T??R.day0*DAY_S+simT,r:s.r.slice(),v:s.v.slice(),mass:s.mOwn??s.mass,born:PROG.day,imgs:0,pending:[]});PROG.sats.push(q);
   // what it looks like, for the 3D view: the parts still on, and its attitude held in the orbital frame (prograde, normal,
   // radial), so a camera that looked down at registration still looks down a week later. Render-only; the sim ignores it.
-  const on=s.parts.filter(p=>p.on);q.shape=shapeOf(on,R.crewed&&R.crewOK);
+  const on=s.parts.filter(p=>p.on);q.shape=shapeOf(on,R.crewed&&R.crewOK);satPowInit(s,q);   // its power between flights (Q27)
   q.qo=qmul(qconj(orbQ(s.r,s.v)),s.q);q.cm=(s.cmOwn||s.cm).slice();R.satId=q.id;
   q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));HOOK.satLook&&HOOK.satLook(q.shape,on);   // what's docked goes up with it, as itself
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);   // A2: what it takes to fly it again
@@ -92,8 +92,8 @@ function satRegister(s,R){if(s.alive&&s.landed&&s.body!==TELLUS&&s.pf)return lan
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,imgs:o.imgs||0,pending:o.pending||[],labDays:o.labDays,contact:o.contact})}   // the same object, back on the register
   if(cruise){q.cruise=1;return HOOK.news(`${q.name} is on its way, in flight around ${B.name}: it carries on between flights (Program → In flight)`,'ok')}
   const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578;
-  if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}`,'ok');
-  HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}`,'ok')}
+  if(B!==TELLUS)return HOOK.news(`${q.name} stays in orbit around ${B.name} (${kmS(el.pe-B.R)}–${kmS(el.ap-B.R)} km, ${inc.toFixed(0)}°)${q.ant?': a relay for rovers out of sight of Tellus':''}${satPowNote(q)}`,satPowNote(q)?'warn':'ok');
+  HOOK.news(`${q.name} stays in orbit (${kmS(el.pe-TELLUS.R)}–${kmS(el.ap-TELLUS.R)} km, ${inc.toFixed(0)}°)${q.cam&&q.ant?': a working camera satellite, on the job between flights':q.cam?', though without an antenna its pictures stay up there':''}${satPowNote(q)}`,satPowNote(q)?'warn':'ok')}
 // ---- debris, slice 1 (space session, QUEUE Q26; NOTES § "Plan: debris and Kessler"): big pieces are objects. Every
 // piece a flight drops (detach) is noted with its state; at flight end the ones of JUNK_MIN or more in a closed orbit clear
 // of the air, and well inside the SOI, join the registry as Debris (q.junk): drawn, targetable, grabbable, hit in flight
@@ -946,14 +946,14 @@ const HAZ={Floods:g=>g.coast||g.has[14]||g.wet>0.7,Wildfire:g=>g.has[3]||g.has[5
 function cityGround(c){const b0=biomeAt(c.u),g={has:{},coast:false,T:b0.T,wet:b0.wet};g.has[b0.id]=1;
   for(const km of[25,60,120])for(let a=0;a<8;a++){const id=biomeAt(alongAz(c.u,a*Math.PI/4,km*1e3/TELLUS.R)).id;g.has[id]=1;if(!id&&km<=60)g.coast=true}return g}
 function disCities(dis){if(!hazMemo){hazMemo={};const gs=CITIES.map(cityGround);for(const k in HAZ)hazMemo[k]=gs.map((g,i)=>HAZ[k](g)?i:-1).filter(i=>i>=0)}return hazMemo[dis]||[]}
-function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
+function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=>q.cam);ensureBoard();
   // imagery sales scale with contact time: the share of the time a satellite has a ground station in view (sampled every
   // 2 min). A polar satellite at 300 km sees the pad ~10 % of the time and a five-station network ~50 %: that's what
   // stations are for on a planet this small (a single pass comes soon enough; a whole day's pictures don't fit in it).
   // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
-  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q);q.rec=q.rec||0;
-    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120);
-      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const x=Math.min(q.rec,k*120);q.rec-=x;got+=x}}
+  {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
+    for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
+      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const x=Math.min(q.rec,k*120*on);q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
      income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
@@ -970,6 +970,6 @@ function satTick(d,R){stationTick(d);const sats=satsUp().filter(q=>q.cam);ensure
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
       // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first
       if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;const A=satRadio(q);
-        let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP;
+        let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP*satDuty(q);
         while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
         q.pendB=q.pending.length?b:0;break}}}}
