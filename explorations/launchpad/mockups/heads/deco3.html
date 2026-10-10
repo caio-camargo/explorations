@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puppet heads, round 3</title>
+<!-- Launchpad mock-up, Q220 round 3 for head (b), from Caio's brief (2026-10-10): art deco, one face (Ada Marsh) explored
+     many ways. References: Lee Lawrie's Atlas and the Rockefeller Center reliefs, Mukhina's Worker and Kolkhoz Woman,
+     Lempicka, The Incredibles, the Thunderbirds puppets' proportion. The head is a BLOCK cut by a few big planes (no
+     sphere, no egg: round 2's planes all sat tangent to an egg, so chins receded): a flat front, a brow ledge, cheek
+     planes, a jaw wedge, a square chin pad as far forward as the lips, a prism nose, deep sockets under the brow. Eyes
+     are carved mounds, painted three ways. Expressions are sculpted: the brow planes tilt, the jaw drops, the cheeks
+     lift, the mouth is a carved slot. One key light from above and to the side.
+     Sheet: a 3 × 3 grid (rows: the cut, ~6 / 12 / 20 face planes; columns: a painted dot, a bare carved eye, a painted
+     iris), each at 3/4 with a front and profile; then the chosen cell in three finishes (matte painted wood, satin
+     lacquer, bronze); its sculpted expressions; then in the helmet and at 48 px.
+     ?view=study shows the chosen cell big; ?still hides the bar. A standalone page: never loaded by index.html. -->
+<style>
+  :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  #wrap { position: relative; width: 1280px; }
+  canvas { display: block; }
+  #ov { position: absolute; inset: 0; pointer-events: none; }
+  #ov div { position: absolute; white-space: nowrap; }
+  #ov .h { font-size: 15px; font-weight: 600; color: var(--acc); }
+  #ov .l { color: var(--dim); font-size: 12px; }
+  #ov .t { white-space: normal; color: var(--fg); font-size: 12px; line-height: 1.4; }
+  #bar { position: fixed; top: 8px; right: 8px; z-index: 2; background: rgba(14, 17, 22, .85); padding: 6px 8px; border-radius: 6px; }
+  #bar a { color: var(--acc); margin-left: 8px; }
+  body.still #bar { display: none; }
+</style>
+</head>
+<body>
+<div id="bar"><a href="?view=sheet">Sheet</a><a href="?view=study">The chosen cell, big</a><a href="index.html">The three heads</a></div>
+<div id="wrap"><canvas id="c"></canvas><canvas id="zoom" style="position:absolute;left:0;top:0"></canvas><div id="ov"></div></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const VIEW = Q.get('view') || 'sheet';
+if (Q.has('still')) document.body.classList.add('still');
+const CUTS = ['Softly chiselled (~6 face planes)', 'Mid (~12)', 'Hard-cut (~20)'];
+const EYES = ['A painted dot', 'A bare carved eye', 'A painted iris'];
+const FINS = ['Matte painted wood', 'Satin lacquer', 'Bronze'];
+// the chosen cell (after looking at the grid) and its finish for the helmet check
+const WIN = { cut: +(Q.get('cut') ?? 1), eye: +(Q.get('eye') ?? 2), fin: +(Q.get('fin') ?? 1) };
+const P = { name: 'Ada Marsh', skin: [.93, .74, .6], hair: [.36, .17, .08], iris: [.28, .45, .62] };
+// sculpted expressions: brow tilt (+ inner end up), brow height, cheek lift, jaw drop, mouth opening, width, corner curve, teeth, squint, gaze
+const EXPR = {
+  neutral: { label: 'Neutral', tilt: 0, browY: 0, lift: 0, drop: 0, open: 0, mw: .2, mc: 0, teeth: 0, squint: 0, look: [.2, 0] },
+  grin: { label: 'Grin', tilt: .06, browY: .02, lift: .05, drop: .03, open: .02, mw: .26, mc: 1.1, teeth: 1, squint: .03, look: [.25, 0] },
+  grit: { label: 'Grit (high g)', tilt: -.28, browY: -.035, lift: .05, drop: 0, open: .025, mw: .27, mc: -.35, teeth: 1, squint: .07, look: [0, 0] },
+  alarm: { label: 'Alarm', tilt: .24, browY: .07, lift: 0, drop: .11, open: .04, mw: .12, mc: 0, teeth: 0, squint: -.03, look: [.6, -.1] },
+  wonder: { label: 'Wonder (a first sight)', tilt: .1, browY: .07, lift: .03, drop: .06, open: .02, mw: .09, mc: .3, teeth: 0, squint: -.02, look: [0, .6] },
+};
+const EX = ['neutral', 'grin', 'grit', 'alarm', 'wonder'];
+
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov,uShell;
+uniform float uHead,uHelmR;uniform vec3 uHC,uHCw;
+uniform vec3 uSkin,uHair,uIris;uniform float uCut,uEye,uFin;
+uniform float uTilt,uBrowY,uLift,uDrop,uOpen,uMW,uMC,uTeeth,uSquint;uniform vec2 uLook;
+const vec3 SUN=normalize(vec3(-.45,.8,.5));
+const vec3 SUIT=vec3(.82,.86,.9),TRIM=vec3(.86,.22,.16),BRONZE=vec3(.7,.47,.25);
+const float TW=.22,TD=.14,TH=.55,LEGL=.8,ARML=.58,ARMR=.055;const vec3 BOOT=vec3(.07,.06,.15);
+const vec3 A=vec3(.75,0.,.05);const float YAW=.35;
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdRBox(vec3 p,vec3 b,float r){return sdBox(p,b-r)-r;}
+float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float smin(float a,float b,float k){if(k<=0.)return min(a,b);float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
+vec3 toLocal(vec3 p){vec3 q=p-A;float c=cos(YAW),s=sin(YAW);q.xz=mat2(c,s,-s,c)*q.xz;return q;}
+// ---- planes placed through points: P(n, point). The polyhedron is their (softened) intersection
+float sS,K;
+void beg(float k){sS=-1e9;K=k;}
+void P(vec3 q,vec3 n,vec3 at){n=normalize(n);float v=dot(q-at,n);sS=K>0.?smax(sS,v,K):max(sS,v);}
+void PM(vec3 q,vec3 n,vec3 at){P(q,n,at);P(q,vec3(-n.x,n.y,n.z),vec3(-at.x,at.y,at.z));}
+float KC(){return uCut<.5?.06:uCut<1.5?.018:.0;}   // edge softness by cut
+// the block: head units (R), face +z, y up. Back and top: a box with bevels, hidden by the hair cap
+void blockP(vec3 q,float off){
+ P(q,vec3(0.,1.,0.),vec3(0.,.96+off,0.));PM(q,vec3(.7,.7,0.),vec3(.74+off,.6,0.));P(q,vec3(0.,.7,.7),vec3(0.,.62,.82+off));
+ PM(q,vec3(1.,0.,0.),vec3(.74+off,0.,0.));P(q,vec3(0.,0.,-1.),vec3(0.,0.,-.85-off));PM(q,vec3(.7,0.,-.7),vec3(.74+off,0.,-.55));
+ PM(q,vec3(0.,.7,-.7),vec3(0.,.62+off,-.85));}
+float headC(vec3 q){beg(KC());
+ blockP(q,0.);
+ vec3 ql=q-vec3(0.,uLift,0.);
+ // ~6: the flat front, the forehead tipping back, two cheek planes, the jaw wedge, the chin's underside
+ P(q,vec3(0.,0.,1.),vec3(0.,0.,.82));P(q,vec3(0.,.3,.95),vec3(0.,.3,.84));
+ PM(ql,vec3(.62,-.1,.78),vec3(.5,0.,.8));PM(q,vec3(.8,-.6,0.),vec3(.68,-.55,0.));
+ P(q,vec3(0.,-1.,0.),vec3(0.,-.98,0.));P(q,vec3(0.,-.75,-.66),vec3(0.,-.98,.4));
+ if(uCut>.5){   // ~12: temples, the hollow under the cheekbone, the chin's sides, the jaw's underside
+  PM(q,vec3(.75,.35,.56),vec3(.62,.4,.6));PM(ql,vec3(.45,-.3,.84),vec3(.45,-.35,.8));PM(q,vec3(.75,0.,.66),vec3(.34,-.8,.82));PM(q,vec3(.45,-.85,-.25),vec3(.55,-.8,.2));}
+ if(uCut>1.5){   // ~20: a ridge down the muzzle, the lower forehead, the cheekbone's top, the chin's front, the jaw's angle
+  PM(q,vec3(.3,0.,.95),vec3(.12,-.4,.82));PM(q,vec3(.28,.1,.95),vec3(.2,.35,.84));PM(ql,vec3(.85,.2,.48),vec3(.62,.05,.6));
+  PM(q,vec3(.22,-.05,.97),vec3(.14,-.8,.83));PM(q,vec3(.55,-.7,-.45),vec3(.62,-.7,-.2));}
+ return sS;}
+// the brow ledge, per side, tilting about its middle
+vec3 browS(vec3 q,float k){vec3 s=vec3(abs(q.x),q.y-uBrowY*k,q.z);vec2 c=vec2(.3,.2);s.xy=rot(uTilt*k)*(s.xy-c)+c;return s;}
+float browC(vec3 q){vec3 s=browS(q,1.);beg(KC()*.6);
+ P(s,vec3(0.,.2,.98),vec3(0.,.2,.9));P(s,vec3(0.,-.9,.43),vec3(0.,.12,.9));P(s,vec3(0.,1.,0.),vec3(0.,.3,0.));
+ P(s,vec3(0.,0.,-1.),vec3(0.,0.,.62));P(s,vec3(.85,0.,.53),vec3(.56,0.,.8));return sS;}
+float sockC(vec3 q){vec3 s=browS(q,.6);beg(KC()*.4);
+ P(s,vec3(0.,1.,0.),vec3(0.,.13,0.));P(s,vec3(.4,-1.,.5),vec3(.34,-.1+uSquint+uLift*.5,.85));
+ P(s,vec3(-1.,0.,.3),vec3(.11,0.,.82));P(s,vec3(1.,0.,.4),vec3(.6,0.,.82));P(s,vec3(0.,0.,-1.),vec3(0.,0.,.7));return sS;}
+float eyeC(vec3 q){vec3 e=vec3(abs(q.x),q.y,q.z)-vec3(.34,.01,0.);beg(.0);   // a carved mound in the socket
+ P(e,vec3(0.,.6,.8),vec3(0.,0.,.78));P(e,vec3(0.,-.6,.8),vec3(0.,0.,.78));P(e,vec3(.5,0.,.87),vec3(0.,0.,.78));P(e,vec3(-.5,0.,.87),vec3(0.,0.,.78));
+ P(e,vec3(0.,0.,-1.),vec3(0.,0.,.5));return sS;}
+float noseC(vec3 q){beg(KC()*.7);
+ P(q,vec3(.9,0.,.42),vec3(0.,-.25,.965));P(q,vec3(-.9,0.,.42),vec3(0.,-.25,.965));P(q,vec3(0.,.28,.96),vec3(0.,-.26,.97));
+ P(q,vec3(0.,-1.,-.3),vec3(0.,-.28,.9));P(q,vec3(0.,1.,0.),vec3(0.,.2,0.));P(q,vec3(0.,0.,-1.),vec3(0.,0.,.6));return sS;}
+float chinC(vec3 q){beg(KC()*.8);   // the square chin pad, as far forward as the lips
+ P(q,vec3(0.,0.,1.),vec3(0.,0.,.855));P(q,vec3(0.,-1.,0.),vec3(0.,-.98,0.));P(q,vec3(0.,1.,.25),vec3(0.,-.7,.85));
+ PM(q,vec3(.9,0.,.43),vec3(.3,0.,.8));P(q,vec3(0.,0.,-1.),vec3(0.,0.,.5));return sS;}
+float earC(vec3 q){vec3 s=vec3(abs(q.x),q.y,q.z);beg(KC()*.5);
+ P(s,vec3(1.,0.,0.),vec3(.85,0.,0.));P(s,vec3(-1.,0.,0.),vec3(.6,0.,0.));P(s,vec3(0.,1.,0.),vec3(0.,.12,0.));P(s,vec3(0.,-1.,0.),vec3(0.,-.32,0.));
+ P(s,vec3(0.,0.,1.),vec3(0.,0.,.08));P(s,vec3(0.,0.,-1.),vec3(0.,0.,-.16));P(s,vec3(.6,0.,.8),vec3(.85,0.,-.05));return sS;}
+// the mouth: a carved slot; lips as two small prisms; teeth a block behind
+vec3 mouthS(vec3 q){vec3 m=q-vec3(0.,-.52,0.);return vec3(abs(m.x),m.y-uMC*m.x*m.x*1.4,m.z);}
+float grooveC(vec3 q){vec3 m=mouthS(q);beg(0.);
+ P(m,vec3(0.,1.,0.),vec3(0.,.012+uOpen*.3,0.));P(m,vec3(0.,-1.,0.),vec3(0.,-.012-uOpen,0.));P(m,vec3(1.,0.,0.),vec3(uMW,0.,0.));P(m,vec3(0.,0.,-1.),vec3(0.,0.,.62));return sS;}
+float lipsC(vec3 q){vec3 m=mouthS(q);beg(KC()*.5);   // upper and lower lip, one each side of the slot
+ P(m,vec3(1.,0.,.25),vec3(uMW*1.05,0.,.85));P(m,vec3(0.,0.,-1.),vec3(0.,0.,.6));
+ float x=sS;beg(KC()*.5);P(m,vec3(0.,-1.,0.),vec3(0.,.012+uOpen*.3,0.));P(m,vec3(0.,1.,0.),vec3(0.,.065,0.));P(m,vec3(0.,-.3,.95),vec3(0.,.03,.85));
+ float up=max(sS,x);beg(KC()*.5);P(m,vec3(0.,1.,0.),vec3(0.,-.012-uOpen,0.));P(m,vec3(0.,-1.,0.),vec3(0.,-.085-uOpen,0.));P(m,vec3(0.,.35,.94),vec3(0.,-.04-uOpen,.86));
+ return min(up,max(sS,x));}
+float teethC(vec3 q){vec3 m=mouthS(q);beg(0.);
+ P(m,vec3(0.,1.,0.),vec3(0.,.01+uOpen*.3,0.));P(m,vec3(0.,-1.,0.),vec3(0.,-.01-uOpen*.75,0.));P(m,vec3(1.,0.,0.),vec3(uMW*.85,0.,0.));P(m,vec3(0.,0.,1.),vec3(0.,0.,.74));P(m,vec3(0.,0.,-1.),vec3(0.,0.,.6));return sS;}
+// the hair: the block inflated, V grooves in waves, a hairline parted to one side
+float hairC(vec3 q){float ph=q.y*5.5+.45*sin(q.z*3.+q.x*2.5),tri=abs(fract(ph)*2.-1.);float th=.05+.035*smoothstep(.15,.6,tri);
+ beg(KC()*.6);blockP(q,th);P(q,vec3(0.,.3,.95),vec3(0.,.3,.84+th));PM(q,vec3(.75,.35,.56),vec3(.62+th,.4,.6));
+ P(q,vec3(.25,-.8,.6),vec3(0.,.5,.84));P(q,vec3(0.,-1.,0.),vec3(0.,-.3,0.));P(q,vec3(0.,-.8,.6),vec3(0.,0.,.3));return sS;}
+vec2 headD(vec3 q){
+ vec3 w=q;w.y+=uDrop*smoothstep(-.5,-.64,q.y);   // the jaw drops: everything below the mouth comes down
+ float k=KC();
+ float f=headC(w);f=smin(f,browC(w),k*.5);f=max(f,-sockC(w));f=smin(f,noseC(w),k*.5);f=min(f,earC(w));
+ f=max(f,-grooveC(w));
+ vec2 r=vec2(f,7.);
+ float e=eyeC(w);if(e<r.x)r=vec2(e,9.);
+ float lp=lipsC(w);if(lp<r.x)r=vec2(lp,10.);
+ if(uTeeth>.5){float t=teethC(w);if(t<r.x)r=vec2(t,16.);}
+ float h=hairC(w);if(h<r.x)r=vec2(h,15.);
+ return r;}
+// ---- the figure: torso, arms, a collar (studies) or the neck ring and helmet (portraits)
+vec2 map(vec3 p){
+ vec3 q=toLocal(p);float hip=LEGL+BOOT.y*1.2,sh=hip+TH,neck=sh+.0325;vec2 r=vec2(1e9,0.);
+ float t=sdRBox(q-vec3(0.,hip+TH*.5,0.),vec3(TW,TH*.55,TD),min(TW,TD)*.85);if(t<r.x)r=vec2(t,5.);
+ vec3 sL=vec3(-TW*1.05,sh-ARMR,0.),sR=vec3(TW*1.05,sh-ARMR,0.);
+ float a=min(sdCapT(q,sL,sL+vec3(-.06,-ARML*.5,.04),ARMR*1.1,ARMR),sdCapT(q,sR,sR+vec3(.06,-ARML*.5,.04),ARMR*1.1,ARMR));if(a<r.x)r=vec2(a,5.);
+ if(uShell>.5){float nr=length(vec2(length(q.xz)-uHelmR*.78,(q.y-neck-.01)*1.6))-.028;if(nr<r.x)r=vec2(nr,6.);
+  vec3 hp=q-uHC;float s2=abs(length(hp)-uHelmR)-.012,fwd=dot(normalize(hp),normalize(vec3(0.,.12,1.)));
+  s2=max(s2,(fwd-.2)*uHelmR);s2=max(s2,-(hp.y+uHelmR*.82));if(s2<r.x)r=vec2(s2,8.);}
+ else{float nr=sdCapT(q,vec3(0.,neck-.02,0.),vec3(0.,neck+.025,0.),.11,.1);if(nr<r.x)r=vec2(nr,6.);}
+ float R=uHead;
+ float nk=sdCapT(q,vec3(0.,neck-.03,-.01),uHC-vec3(0.,.7*R,.1*R),.055,.05);if(nk<r.x)r=vec2(nk,7.);
+ vec2 hd=headD((q-uHC)/R);hd.x*=R;if(hd.x<r.x)r=hd;
+ return r;}
+vec3 nrm(vec3 p){vec2 e=vec2(.0003,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 o,vec3 d){float res=1.,t=.004;for(int i=0;i<48;i++){float h=map(o+d*t).x;res=min(res,24.*h/t);t+=clamp(h,.004,.2);if(res<.002||t>3.)break;}return clamp(res,0.,1.);}
+float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.008*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-28.*a,0.,1.);}
+vec3 bg(vec3 d){
+ if(uShell>.5){vec3 c=mix(vec3(.07,.08,.1),vec3(.17,.19,.23),smoothstep(-.6,.6,d.y));vec2 g=d.xy/max(-d.z,.3);return c*(.85+.15*step(.08,fract(g.x*2.))*step(.08,fract(g.y*2.5)));}
+ return mix(vec3(.11,.105,.1),vec3(.24,.23,.22),smoothstep(-.5,.7,d.y));}
+vec3 albedo(float mt,vec3 p){
+ if(mt<5.5)return SUIT;if(mt<6.5)return TRIM;if(mt>7.5&&mt<8.5)return SUIT*.97;
+ bool bz=uFin>1.5;
+ if(mt>15.5)return bz?vec3(.85,.8,.68):vec3(.93,.91,.86);
+ if(mt>14.5)return bz?BRONZE*.8:uHair;
+ if(mt>9.5)return bz?BRONZE*.9:uSkin*vec3(.86,.52,.48);
+ if(mt>8.5){vec3 h=(toLocal(p)-uHC)/uHead;vec2 e=vec2(abs(h.x),h.y)-vec2(.34,.01);float sx=h.x<0.?-1.:1.;
+  vec2 g=e-uLook*vec2(.045*sx,.03);vec3 sk=bz?BRONZE:uSkin;
+  if(uEye<.5)return length(g)<.034?vec3(.06,.05,.05):sk;   // a painted dot
+  if(uEye<1.5)return sk;   // bare
+  vec3 c=bz?vec3(.9,.88,.82):vec3(.94,.93,.9);float r=length(g);   // painted: white, iris, pupil
+  if(r<.05)c=bz?vec3(.12,.35,.38):uIris;if(r<.022)c=vec3(.03);float ax=e.x/.12;if(abs(ax)>1.||abs(e.y)>.055*(1.-ax*ax))c=sk;return c;}   // the white is an almond
+ return bz?BRONZE:uSkin;}
+float glassT(vec3 ro,vec3 rd,out vec3 gn){vec3 oc=ro-uHCw;float b=dot(oc,rd),cc=dot(oc,oc)-uHelmR*uHelmR,h=b*b-cc;if(h<0.)return -1.;float t=-b-sqrt(h);if(t<0.)return -1.;
+ gn=normalize(ro+rd*t-uHCw);float c=cos(YAW),s=sin(YAW);vec3 f=normalize(vec3(0.,.12,1.));f.xz=vec2(c*f.x+s*f.z,-s*f.x+c*f.z);
+ if(dot(gn,f)<.2||gn.y<-.82)return -1.;return t;}
+void main(){
+ vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
+ vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;float pix=uFov/uRes.y;
+ float t=0.;vec2 h=vec2(0.);bool hit=false;
+ for(int i=0;i<220;i++){h=map(ro+rd*t);if(h.x<.00025*t){hit=true;break;}t+=h.x*.8;if(t>8.)break;}
+ vec3 col;
+ if(!hit)col=bg(rd);
+ else{vec3 p=ro+rd*t,n=nrm(p);float m=h.y;vec3 al=albedo(m,p);
+  float l=max(dot(n,SUN),0.)*shadow(p+n*.0015,SUN),oc=ao(p,n);vec3 rf=reflect(rd,n);
+  vec3 amb=(vec3(.17,.18,.21)*(.55+.45*n.y)+vec3(.1,.085,.07))*mix(1.,oc,.7),key=vec3(1.,.95,.86)*1.35;
+  float rim=pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,normalize(vec3(.6,.3,-.7))),0.);
+  bool head=m>6.5;
+  if(uFin>1.5&&head){vec3 env=bg(rf)*.5+vec3(.2,.18,.15)*(.5+.5*rf.y);   // bronze: a metal, the key's highlight in its colour
+   col=al*(l*key*.55+amb)+al*env*.7*oc+al*pow(max(dot(rf,SUN),0.),36.)*l*2.2+al*rim*.4;}
+  else{col=al*(l*key+amb)+vec3(.35,.38,.45)*rim*.35;
+   if(head&&uFin>.5)col+=vec3(1.,.95,.88)*(pow(max(dot(rf,SUN),0.),14.)*.12+pow(max(dot(rf,SUN),0.),90.)*.55)*l;   // satin: a broad sheen and a clear-coat glint
+   if(head&&uFin<.5){vec3 lp=toLocal(p)*90.;col*=.96+.04*sin(lp.y*3.+sin(lp.x*.7)*2.);}}}   // matte wood: a faint grain under the paint
+ vec3 gn;float tg=glassT(ro,rd,gn);
+ if(uShell>.5&&tg>0.&&(!hit||tg<t)){float fr=.06+.94*pow(1.-max(dot(-rd,gn),0.),4.);vec3 rfl=reflect(rd,gn);
+  col=col*vec3(.95,.97,.98)*(1.-fr*.33)+bg(rfl)*fr*.3+vec3(1.,.95,.85)*pow(max(dot(rfl,SUN),0.),160.)*1.2;
+  float rr=1.-abs(dot(rd,gn));col=mix(col,vec3(.03),smoothstep(1.-pix*14.,1.-pix*5.,rr));}
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+
+const A = [.75, 0, .05], YAW = .35, NECK = .8 + .06 * 1.2 + .55 + .0325, R = .17, HELM = 1.5;
+const L2W = l => [A[0] + Math.cos(YAW) * l[0] + Math.sin(YAW) * l[2], A[1] + l[1], A[2] - Math.sin(YAW) * l[0] + Math.cos(YAW) * l[2]];
+const HC = [0, NECK + 1.08 * R, 0], HCW = L2W(HC), HR = R * HELM;
+let H_ = 0;
+// a tile: x, y, w, h, cell {cut, eye, fin}, expression, shot ('34', 'front', 'profile', 'helmet')
+function tile(x, y, w, h, c, ex, shot) {
+  const E = EXPR[ex];
+  gl.viewport(x, H_ - y - h, w, h); gl.scissor(x, H_ - y - h, w, h); gl.uniform2f(U('uRes'), w, h);
+  const shell = shot === 'helmet', a = shot === 'front' ? 0 : shot === 'profile' ? Math.PI / 2 : .6, d = shell ? HR * 5 : R * 7.6;
+  const cam = L2W([Math.sin(a) * d, HC[1] + d * (shell ? .08 : .1), Math.cos(a) * d]), tgt = L2W([0, HC[1] - (shell ? HR * .14 : R * .2), 0]);
+  gl.uniform3fv(U('uCam'), cam); gl.uniform3fv(U('uTgt'), tgt); gl.uniform1f(U('uFov'), .5); gl.uniform1f(U('uShell'), shell ? 1 : 0);
+  gl.uniform1f(U('uHead'), R); gl.uniform1f(U('uHelmR'), HR); gl.uniform3fv(U('uHC'), HC); gl.uniform3fv(U('uHCw'), HCW);
+  gl.uniform3fv(U('uSkin'), P.skin); gl.uniform3fv(U('uHair'), P.hair); gl.uniform3fv(U('uIris'), P.iris);
+  gl.uniform1f(U('uCut'), c.cut); gl.uniform1f(U('uEye'), c.eye); gl.uniform1f(U('uFin'), c.fin);
+  for (const [k, n] of [['tilt', 'uTilt'], ['browY', 'uBrowY'], ['lift', 'uLift'], ['drop', 'uDrop'], ['open', 'uOpen'], ['mw', 'uMW'], ['mc', 'uMC'], ['teeth', 'uTeeth'], ['squint', 'uSquint']]) gl.uniform1f(U(n), E[k]);
+  gl.uniform2fv(U('uLook'), E.look);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+let JOB = 0;
+const ov = document.getElementById('ov'), zc = document.getElementById('zoom'), zx = zc.getContext('2d');
+function layout() {
+  const T = [], L = [], Z = [], win = { ...WIN };
+  const winName = `${CUTS[win.cut].split(' (')[0]} × ${EYES[win.eye].toLowerCase()}`;
+  if (VIEW === 'study') {
+    L.push([12, 14, `Puppet, round 3: ${winName}, ${FINS[win.fin].toLowerCase()}`, 'h']);
+    [['34', '3/4'], ['front', 'Front'], ['profile', 'Profile']].forEach(([s, t], i) => { T.push([12 + i * 422, 44, 416, 416, win, 'neutral', s]); L.push([12 + i * 422, 462, t, 'l']); });
+    EX.forEach((e, i) => { T.push([12 + i * 253, 490, 247, 247, win, e, '34']); L.push([12 + i * 253, 739, EXPR[e].label, 'l']); });
+    return [T, L, Z, 764];
+  }
+  L.push([12, 14, `(b) Puppet, round 3: art deco. One face (${P.name}), cut × eyes, then finishes, expressions, the helmet`, 'h']);
+  L.push([12, 34, 'A block cut by planes (no sphere underneath), one key light from above and to the side. Each cell: 3/4, front, profile. All matte, neutral.', 'l']);
+  EYES.forEach((e, ci) => L.push([12 + ci * 422, 58, e, 'h']));
+  CUTS.forEach((cn, r) => {
+    const y = 84 + r * 300;
+    L.push([12, y, cn, 'l']);
+    EYES.forEach((_, ci) => { const x = 12 + ci * 422, c = { cut: r, eye: ci, fin: 0 };
+      T.push([x, y + 18, 270, 270, c, 'neutral', '34']); T.push([x + 276, y + 18, 134, 134, c, 'neutral', 'front']); T.push([x + 276, y + 154, 134, 134, c, 'neutral', 'profile']); });
+  });
+  let y = 84 + 3 * 300 + 8;
+  L.push([12, y, `The chosen cell (${winName}) in three finishes`, 'h']);
+  FINS.forEach((f, i) => { const x = 12 + i * 422, c = { ...win, fin: i };
+    T.push([x, y + 26, 270, 270, c, 'neutral', '34']); T.push([x + 276, y + 26, 134, 134, c, 'grin', '34']); T.push([x + 276, y + 162, 134, 134, c, 'neutral', 'profile']); L.push([x, y + 298, f, 'l']); });
+  y += 326;
+  L.push([12, y, `Sculpted expressions (${FINS[win.fin].toLowerCase()}): the brows tilt, the cheeks lift, the jaw drops, the mouth is a carved slot`, 'h']);
+  EX.forEach((e, i) => { T.push([12 + i * 253, y + 26, 247, 247, win, e, '34']); L.push([12 + i * 253, y + 275, EXPR[e].label, 'l']); });
+  y += 302;
+  L.push([12, y, 'In the helmet, and at 48 px (true size, then ×2)', 'h']);
+  EX.forEach((e, i) => T.push([12 + i * 196, y + 26, 190, 190, win, e, 'helmet']));
+  EX.forEach((e, i) => { T.push([1000 + (i % 3) * 54, y + 26 + Math.floor(i / 3) * 54, 48, 48, win, e, 'helmet']); });
+  [0, 1, 3].forEach((i, j) => Z.push([1000 + (i % 3) * 54, y + 26 + Math.floor(i / 3) * 54, 1000 + j * 92, y + 140]));
+  return [T, L, Z, y + 250];
+}
+function draw() {
+  const [T, L, Z, h] = layout();
+  H_ = h; cv.width = 1280; cv.height = h; cv.style.height = h + 'px'; zc.width = 1280; zc.height = h;
+  gl.enable(gl.SCISSOR_TEST); gl.viewport(0, 0, 1280, h); gl.scissor(0, 0, 1280, h); gl.clearColor(.055, .067, .086, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  ov.innerHTML = L.map(([x, y, t, c, w]) => `<div class="${c}" style="left:${x}px;top:${y}px${w ? `;width:${w}px` : ''}">${t}</div>`).join('');
+  // one tile per frame: a single long GPU job can trip Windows' GPU timeout and get WebGL disabled in the browser
+  const job = ++JOB; let k = 0;
+  const step = () => { if (job !== JOB) return; if (k < T.length) { tile(...T[k++]); gl.flush(); requestAnimationFrame(step); return; }
+    zx.clearRect(0, 0, 1280, H_); zx.imageSmoothingEnabled = false;
+    for (const [sx, sy, dx, dy] of Z) zx.drawImage(cv, sx, sy, 48, 48, dx, dy, 86, 86);
+    window.FRAME_DONE = (window.FRAME_DONE || 0) + 1; };
+  requestAnimationFrame(step);
+}
+draw();
+</script>
+</body>
+</html>

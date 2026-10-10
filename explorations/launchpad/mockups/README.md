@@ -136,6 +136,18 @@ hair), **6 bronze** (enamel eyes; loses skin tone). Each: 3/4 in the helmet, fro
 48 px. Seen so far: 1, 3 and 4 read as faces at 48 px; the inked ones (2, 5) turn to noise small and the eye band
 still hints at glasses.
 
+**Round 3 for (b)** (Caio's brief, 2026-10-10: art deco after Lawrie's Atlas, Mukhina, Lempicka, The Incredibles,
+Thunderbirds' proportion; and "round 2 still started from a sphere": its planes sat tangent to an egg, so chins
+receded): `heads/deco3.html`, stills `round3-sheet.png`, `round3-study.png` (`?view=study`: the chosen cell big with its
+expressions; `?cut=&eye=&fin=` picks the cell). The head is a **block**: a flat front, the forehead tipping back, cheek
+planes, a jaw wedge, the chin as far forward as the lips, a prism nose, a brow ledge over deep sockets, a sculpted
+hair cap with V grooves. Expressions are sculpted (brows tilt, cheeks lift, the jaw drops, the mouth is a carved slot,
+teeth a block). The sheet: a 3 × 3 grid, cut (soft ~6 / mid ~12 / hard ~20 face planes) × eyes (painted dot, bare
+carved, painted iris); the chosen cell (**mid × painted iris**, default) in matte wood, satin lacquer, bronze; its five
+expressions; in the helmet and at 48 px. Seen: mid and hard read as carved deco heads; soft loses its brow ledge to the
+rounding and looks like a mannequin; at 48 px the eyes go to shadow (the brow carries the face), and the dot reads
+more clearly than the iris. All three finishes work; bronze loses skin tone.
+
 **Pick:** _(Caio)_
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")

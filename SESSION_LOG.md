@@ -4955,3 +4955,17 @@ streamline, ziggurat, bronze), each at 3/4 in the helmet, front and profile with
 carved, Lempicka and streamline survive. The main clone had another session's unpushed merge in progress, so this
 session committed and pushed from `launchpad-visuals` (`git push origin visuals:main`).
 **Next:** Caio's reaction picks a treatment to push further (or a mix: e.g. streamline's form with carved's lacquer).
+
+
+## 2026-10-10 — Launchpad Q220 round 3 for (b) puppet: a block-built art deco head (look & sound, heads)
+
+**Summary:** Caio's round-3 brief (references Lawrie, Mukhina, Lempicka, The Incredibles, Thunderbirds; a head from a few
+big planes, deep sockets, a sculpted grooved cap, sculpted expressions, one key light; a 3 × 3 grid of cut × eyes,
+three finishes, then the helmet and 48 px) and his note that round 2 still started from a sphere. `mockups/heads/deco3.html`
+builds the head from a block with planes placed through named points; the chin stands as far forward as the lips.
+Expressions move geometry only (brow tilt, cheek lift, jaw drop by a domain warp below the mouth, a carved mouth slot).
+**Files:** launchpad `mockups/heads/deco3.html` (new), `mockups/README.md` § heads (round 3), QUEUE (W31); `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/heads/round3-*.png`.
+**Notes:** first pass mistakes worth keeping: a brow slab wider than the head, a separate chin pad (read as a
+ventriloquist's jaw), a sideburn plane that cut all the front hair, sockets so deep the three eye treatments were
+indistinguishable (fixed with eye mounds nearer the front and more fill). Soft (~6 planes, rounded) loses the brow ledge.
+**Next:** Caio picks a cell and finish (or a direction for round 4); W31.
