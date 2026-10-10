@@ -396,47 +396,38 @@ float earD(vec3 p,float d){vec3 s=vec3(abs(p.x),p.y,p.z);
 // ---- hair (F5): a library of carved masses, each one piece with a few big grooves; 1950s–60s first (Thunderbirds, The Incredibles)
 float hairline(vec3 p,float yf,float ys,float yn,float rc){   // >0 where hair may grow: front height, above the ears, the nape; rc recedes the temples
  return p.y-mix(mix(yn,ys,smoothstep(-.75,-.4,p.z)),yf+rc*smoothstep(.08,.42,abs(p.x)),smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);}
-float hairD(vec3 p){
- int st=int(floor(g_hs*6.+.5));
- if(st==1){   // Thunderbirds: in profile the front rises straight up off the forehead, then curves back over the top; strands combed straight back
-  vec2 q=vec2(p.z-.15,p.y-.78+.06*p.z);   // the profile (z, y): from the crown forward to a vertical front just over the forehead
-  vec2 qb=abs(q)-vec2(.6,.33)+.24;float d=length(max(qb,0.))+min(max(qb.x,qb.y),0.)-.24;   // a rounded slab: the front rises straight up, its top corner curves back
-  d=smax(d,length(vec2(p.x/.66,max(p.y-.55,0.)/.62))-1.,.12);   // its sides follow the skull's curve, narrowing toward the top   // its sides narrow toward the top
-  d=smin(d,sdEll(p-vec3(0.,.16,-.12),vec3(.83,.94,.99)),.1);   // close at the sides and back
-  float g=abs(fract(p.x*9.+.5)-.5);d+=.008*(1.-smoothstep(.1,.45,g))*smoothstep(.35,.7,p.y);   // strands: grooves running up the front and back over the top
-  d+=.03*exp(-pow(p.x-.3,2.)/.0006)*smoothstep(.45,.75,p.y)*smoothstep(.2,-.2,p.z-.2);   // a side parting, behind the quiff
-  return smax(d,-hairline(p,.5,.2,-.35,0.),.04);}
- if(st==2){   // crew cut: a thin close layer, flat on top
-  float d=smax(sdEll(p-vec3(0.,.16,-.1),vec3(.81,.91,.97)),p.y-1.,.05);
-  return smax(d,-hairline(p,.54,.24,-.3,.04),.03);}
- if(st==3){   // swept back, receding at the temples, a forelock (Mr. Incredible)
-  float d=sdEll(p-vec3(0.,.18,-.12),vec3(.84,.98,1.03));
-  float g=abs(fract(p.x*4.5+.5)-.5);d+=.025*(1.-smoothstep(.05,.3,g))*smoothstep(.3,.6,p.y);   // grooves running back
-  return smax(d,-hairline(p,.64,.2,-.35,.14),.04);}
- if(st==4){   // a bob with flipped ends, side-swept (Helen Parr)
-  float d=smax(sdEll(p-vec3(0.,.15,-.1),vec3(.9,1.,1.04)),-.42-p.y,.04);
-  float e=length(p.xz/vec2(.95,1.02)),ring=smax(length(vec2(e-.92,p.y+.39))-.06,p.z+.25,.2);d=smin(d,ring,.05);   // the flip
-  d=smax(d,-sdEll(p-vec3(0.,-.08,.62),vec3(.62,.7+.12*p.x,.64)),.1);   // the face's opening: an oval the hair frames, higher on the parted side
-  d+=.03*exp(-pow(p.x+.26,2.)/.0006)*smoothstep(.5,.7,p.y);   // the part
-  return d;}
- if(st==5){   // a bouffant, swept up off the neck (Lady Penelope)
-  float d=smin(sdEll(p-vec3(0.,.17,-.1),vec3(.84,.95,1.)),sdEll(p-vec3(0.,.82,-.15),vec3(.86,.62,.9)),.2);
-  d=smin(d,sdEll(p-vec3(0.,1.04,.4),vec3(.5,.16,.2)),.1);   // the front roll
-  return smax(d,-hairline(p,.5,.22,-.2,0.),.04);}
- if(st==6){   // short curls
-  float d=sdEll(p-vec3(0.,.18,-.1),vec3(.88,.98,1.04));
-  d+=.022*sin(p.x*26.)*sin(p.y*26.)*sin(p.z*26.);
-  return smax(d*.6,-hairline(p,.5,.15,-.45,0.),.03);}
- vec3 h=p-vec3(0.,.2,-.12);   // 0: the house: one swept mass, four big grooves
- float d=sdEll(h,vec3(.91,1.,1.06)+vec3(0.,.05,0.)*smoothstep(.0,.8,p.z));
- float th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2),g=abs(fract(th*4./3.14159+.5)-.5);d+=.075*(1.-smoothstep(.03,.3,g));   // four grooves, never through the mass
- float F=p.y-mix(mix(-.55,.16,smoothstep(-.75,-.4,p.z)),.5,smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);   // the hairline: high on the brow, above the ears, down at the nape
- return smax(d,-F,.05);}
-float headD(vec3 p,vec3 q){float d=earD(q,features(q,carve(q,mass(q))))*uL;
+// hair grown from the skull (structural round, pass 2): every style is a thickness over the head's own surface, zero at
+// a sculpted hairline and rising behind it, so hair and skin meet without a gap or a shelf; hk scales the field where the
+// thickness changes fast (a quiff's front)
+float hairT(vec3 p,out float hk){
+ int st=int(floor(g_hs*6.+.5));float up=smoothstep(-.1,.7,p.y),T=0.,F;hk=.75;
+ if(st==1){   // Thunderbirds: thin at the sides, the front growing straight out of the forehead and curving back; strands combed back
+  F=hairline(p,.5,.2,-.35,0.);float M=smoothstep(0.,.22,F);
+  float qf=smoothstep(0.,.25,F)*exp(-pow(p.z-.42,2.)/.1)*smoothstep(.15,.5,p.y)*(1.-smoothstep(.3,.7,abs(p.x)));
+  float g=abs(fract(p.x*9.+.5)-.5);
+  T=M*(.025+.035*up)+.19*qf-.01*(1.-smoothstep(.1,.45,g))*M*smoothstep(.3,.6,p.y);
+  T-=.02*exp(-pow(p.x-.3,2.)/.0006)*smoothstep(.4,.7,p.y)*smoothstep(.45,.2,p.z)*M;   // the side parting
+  hk=.4;}
+ else if(st==2){F=hairline(p,.54,.24,-.3,.04);T=smoothstep(0.,.22,F)*(.022+.012*up);hk=.85;}   // crew cut
+ else if(st==3){F=hairline(p,.64,.2,-.35,.14);float M=smoothstep(0.,.22,F),g=abs(fract(p.x*5.+.5)-.5);   // receding, swept straight back
+  T=M*(.03+.05*up)-.012*(1.-smoothstep(.05,.35,g))*M*smoothstep(.3,.6,p.y);}
+ else if(st==4){F=hairline(p,.5,-.48,-.48,0.);float M=smoothstep(0.,.22,F)*smoothstep(-.52,-.44,p.y);   // a bob, over the ears, flipped at the ends
+  T=M*(.05+.06*up+.07*exp(-pow(p.y+.42,2.)/.004)+.12*exp(-(pow(abs(p.x)-.72,2.)/.02+pow(p.y+.1,2.)/.05+pow(p.z+.1,2.)/.03)))-.025*exp(-pow(p.x+.26,2.)/.0006)*smoothstep(.5,.75,p.y)*M;hk=.55;}
+ else if(st==5){F=hairline(p,.5,.22,-.2,0.);float M=smoothstep(0.,.25,F);   // a bouffant: volume on top and at the crown, a front roll
+  T=M*(.04+.26*smoothstep(.25,.95,p.y)*smoothstep(-.9,.1,p.z))+.07*M*exp(-pow(p.z-.5,2.)/.03)*smoothstep(.45,.75,p.y);hk=.45;}
+ else if(st==6){F=hairline(p,.5,.15,-.45,0.);T=smoothstep(0.,.22,F)*(.06+.02*up+.016*sin(p.x*28.)*sin(p.y*28.)*sin(p.z*28.));hk=.5;}   // short curls
+ else{   // 0, the house: one swept mass, four big grooves
+  F=p.y-mix(mix(-.55,.16,smoothstep(-.75,-.4,p.z)),.5,smoothstep(.3,.68,p.z))+.1*smoothstep(.15,.6,abs(p.x))*smoothstep(.25,.6,p.z);
+  float M=smoothstep(0.,.25,F),th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2),g=abs(fract(th*4./3.14159+.5)-.5);
+  T=M*(.04+.08*up)-.035*(1.-smoothstep(.03,.3,g))*M*up;hk=.6;}
+ return max(T,0.);}
+float gNE;   // the head without its ears, for the hair to grow from
+float headD(vec3 p,vec3 q){float f=features(q,carve(q,mass(q)));gNE=f*uL;float d=earD(q,f)*uL;
  float nb=-1.32-.45*max(g_fl-1.,0.)-.3*max(g_jm-1.,0.)-.15*max(g_cz-1.,0.);   // the neck's cut end drops with a long or heavy jaw
  d=smin(d,max(sdCapT(p,vec3(0.,-.55,-.18),vec3(0.,-2.,-.1),.5*g_nk,.56*g_nk),nb-p.y),.16-.2*max(g_jm-1.,0.));   // a short, thick neck; a heavy jaw overhangs it
  return max(d,nb-p.y);}
-vec2 map(vec3 p){vec3 q=warp(p);vec2 r=vec2(headD(p,q),1.);float h=hairD(q)*uL;if(h<r.x)r=vec2(h,2.);return r;}
+vec2 map(vec3 p){vec3 q=warp(p);float hd=headD(p,q),hk,T=hairT(q,hk);   // the hair is the head's surface grown outward by T
+ float hr=(gNE-T*uL)*mix(1.,hk,smoothstep(0.,.03,T));return T>.004&&hr<hd?vec2(hr,2.):vec2(hd,1.);}
 // the paint: 0 skin (warmed), 1 lips, 2 eye, 3 hair; returns colour, and .w = gloss
 vec4 paint(vec3 p,float m){
  if(m>1.5)return vec4(uHair,.5);

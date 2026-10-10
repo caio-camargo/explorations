@@ -298,6 +298,11 @@ call for the march, normal, shadow and occlusion; `ZERO` loops; big views in sci
 headless, ~1 s per later view. **Pass 1, puppet-studio light**: a soft key, a fill from the other side at about a
 third, a rim from behind, occlusion over a longer range; the darkest skin now sits in the sockets, under the nose and
 under the jaw only. Still: `faces/studio-light.png` (old light bottom left).
+**Pass 2, hair grown from the skull**: every style is now a thickness over the head's own surface (the head without
+its ears, so a bob covers them): zero at a sculpted hairline, rising over a long ramp, thin at the temples and
+sideburns, full on top; grooves and partings carve the thickness. The first ramps were short and left a ledge with a
+dark underside; now hair and skin are one surface and the hairline is a colour edge. Stills:
+`faces/hair-from-skull.png`, `faces/hairline-closeup.png`.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
