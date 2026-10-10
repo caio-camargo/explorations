@@ -135,7 +135,7 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
-| Caio + Claude (look & sound, heads) | 2026-10-10 | Launchpad **Q220 round 4 for (b) puppet** (carve, don't assemble; neutral head front + profile beside the intake references). Worktree `launchpad-visuals`, branch `visuals`. | `explorations/launchpad/mockups/heads/` (a new page), `mockups/README.md` § heads only. Reads `intake/` (never commits it: copyrighted refs, public repo) |
+| Caio + Claude (look & sound, heads) | 2026-10-10 | Launchpad **Q220 rounds 4–5 for (b) puppet** (carved mass; round 5: side planes, open eyes, wrapped mouth, nose base, heroic neck, paint; ¾/front/profile beside intake refs). Worktree `launchpad-visuals`, branch `visuals`. | `explorations/launchpad/mockups/heads/` (a new page), `mockups/README.md` § heads only. Reads `intake/` (never commits it: copyrighted refs, public repo) |
 > Cleared 2026-10-10: look & sound, **Q220 round 3 for (b) puppet**: `mockups/heads/deco3.html` (block-built deco head; cut × eyes grid, finishes, sculpted expressions), stills `output/launchpad/mockups/heads/round3-*.png`; still W31.
 > Cleared 2026-10-10: look & sound, **Q220 round 2 for (b) puppet, art deco**: `mockups/heads/deco.html` (six treatments of one face), stills `output/launchpad/mockups/heads/deco-*.png`; still W31.
 > Cleared 2026-10-10: look & sound, **Q220 head mock-ups** on `main`: `mockups/heads/`, stills in `output/launchpad/mockups/heads/`; Caio's pick is **W31**. **Suits (Q219):** README § heads sits just above § suits; your section is untouched. Under a cap or hood the hair (the roster's main tell) is hidden.
