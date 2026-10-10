@@ -1,6 +1,6 @@
 # POWERS — national flavours as content
-**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
-**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle is a draft (D14); it becomes 1.2.0 when Caio approves it.
+**Version**: 1.2.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle approved 2026-10-10 (D14: defaults on 1 and 3; 2, tilted launches, being discussed; 4, the mock-ups, Caio runs in his design session).
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
 already exist (ROADMAP § "Design catalogs"); no new system.
