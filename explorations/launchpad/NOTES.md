@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.42 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.43 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -8631,6 +8631,70 @@ The network screen's one SIM function, in `sim/program.js` beside dispatch, in t
 Test `econ-14` (3 checks; the bottleneck mutation-tested).
 
 ---
+
+### Plan: real screens, not panels over the pad (2026-10-10, flow session, QUEUE Q239, PLAYTEST #6; plan only)
+**Caio, 2026-10-10 playtest:** the Program, the Assembly and maybe mission control should be screens of their own, not
+UI over the flight view. The Program matters most: it should give the program weight. **Today** `go(screen)` (slice 1)
+switches between screens, but Program, Debrief, Network and Rollout are all a panel (`#prog`, `#deb`, `#net`, `#roll`)
+over the 3D pad, and `mode` stays `'editor'` behind them (`app/screens.js` 6–31). Mock-ups:
+[`mockups/screens/`](mockups/screens/index.html), stills in `output/launchpad/mockups/screens/` (`<screen>.png`, 1280×800).
+
+**The rule: a screen is a place.** If the ship is the subject (Assembly, Rollout, Flight, Map), the 3D view stays and
+the screen gets its own setting. Every other screen is a room that fills the window, and the 3D view isn't drawn behind
+it. That's also a GPU saving: today the pad renders at full rate behind the Program. Looks follow W14's default: the
+**office is paperwork**, the **cockpit and mission control are instrument panels**, and **big moments get poster
+headings**.
+
+| Screen | The place | What carries the weight | Mock-up |
+|---|---|---|---|
+| **Title / first run** | A founding charter on a dimmed night pad; New / Continue / Settings / Tester at the left | The game's name; you sign the charter; the program's seal | `title` |
+| **Program** | **The director's desk**, seen from above | Letterhead with the flag and name; a desk calendar for the date; funds on a ledger slip; the **in-tray** (decisions as memos with deadline stamps, offers as folders, news clippings); the **open folder** (tabs as folder tabs, flown missions struck through in red); a **pinned photo** of the last flight (a real frame captured at liftoff), a newspaper cutting for standing, framed certificates for firsts; NEXT as a sticky note | `program` |
+| **Debrief** | A typed **flight report** on the same desk, with the photo and the next day's paper beside it | A poster headline for a first ("FIRST IN SPACE"), money as a ledger with a double-underlined net, a FILED stamp, a signature | `debrief` |
+| **Mission control** | **A control room**: a ground-track wall screen with stations' circles, clocks and pads beside it, and a row of consoles | Every craft in flight on one screen: FLIGHT (vessels and next events: watch, fly it, warp to), NETWORK (stations, links, gaps), TRAJECTORY (planned burns: move to the next pass, hand off, fly by hand), RECOVERY · DISPATCH | `mission` |
+| **Assembly** | **The assembly hall**: a high bay, a gantry crane, floodlights, the ship on a stand (still the 3D view, a new scene instead of the pad) | Blueprint sheets: a **parts catalogue** by category with pictures (Q238), the **specification** in groups (Q237: mass and cost, stages and Δv, for this flight, flight qualities), radial mounts shown when a radial part is held (Q236), Clear (Q235) | `assembly` |
+| Rollout | Stays on the pad: the pad is its point. Later its panel becomes a clipboard checklist | — | none |
+| Network | Becomes mission control's NETWORK console and wall (N2's schematic is the wall's second page) | — | (in `mission`) |
+
+**Mission control's content already exists**, spread around: the fleet strip (N1), stations and links (`coverOf`,
+v1.109), planned burns and hand-offs (`nodeHandOff`, v1.93; Q196 moves them), dispatch and pads (`padsFree`, the pad
+calendar), and watch mode (Q43). This is where those flow items get a home, instead of more Program tabs. It opens once
+something is in orbit, the same rule as `netOpen()`. **C** opens it from the Program. During a flight, it's one key away
+for any craft other than the one you're flying.
+
+**How it's built.**
+- **R0, the room layer:** `go()` gets a `ROOMS` set (`title`, `program`, `debrief`, `mission`, later `network`). Entering
+  a room shows one full-window `#room` container with its own background, and `frame()` skips the 3D draw (the sim
+  keeps running, so time still passes on the Program). Leaving rebuilds nothing: the ship is still on the pad. Panel
+  content keeps its render functions: `renderProgram`/`progLayout`, `renderDebrief` and `renderNetwork` fill the room's
+  slots instead of a panel. Economy and bodies change nothing (the same rule as slice 2). Tests: robot `m1`, §32 (go-only
+  screen changes), and a new check that no room screen calls the 3D draw. Measure the GPU time on Program before and
+  after.
+- **R1, Program as the desk:** the letterhead (`powerMark` from `app/flags.js`), the in-tray (Inbox), the folder with tab
+  sheets (the other tabs), the right-hand wall (photo, clipping, certificates). The photo is the **last flight's liftoff
+  frame**, captured from the canvas when `missionTick` sees liftoff, kept as a small JPEG in `PROG` (a first flight shows
+  the empty pad). Fonts: bundle Special Elite, Courier Prime and Bebas Neue (all OFL, ~150 KB of woff2), as Q53 allows.
+- **R2, Debrief as the report:** the same desk; `debriefOf` already has every line. The poster headline only for a
+  first, a record or a loss.
+- **R3, Title and first run as the charter:** the gate becomes the title screen. Continue skips it.
+- **R4, Mission control:** the room and its four consoles from today's functions. This takes Q43, Q167, Q196, Q203
+  and N2 (Q170) with it: build those into it, not into Program tabs.
+- **R5, the assembly hall** (with **vehicle**, whose Q235–Q238 fill the panels, and **look & sound**, whose hall interior
+  replaces the pad scene in the Assembly): a scene switch in `render.js` and the blueprint panels. The hall's 3D is look &
+  sound's item; the panels' new layout waits for Q237's sketch and Q238's plan, so the vehicle lane's work lands in this
+  layout.
+- **Later eras:** each room shifts the way the identity mock-ups do. The desk goes from typewriter to printouts to
+  monitors; mission control from amber to green to colour glass. That's one class on `body` per era, as the map already
+  does.
+
+**Defaults, for Caio to override (W35):**
+1. **The Program is the desk seen from above** (flat, cheap, readable, holds a lot), not an illustrated office in
+   perspective.
+2. **No 3D behind the rooms.** The pad shows up as the pinned photo, not as a live window. A live picture-in-picture of
+   the pad could come later.
+3. **Mission control is its own screen**, opened after the first orbit, and the Network screen folds into it.
+4. **The Assembly moves into a hall** (a new 3D scene) with blueprint panels, rather than staying on the pad.
+5. **Order:** R0 → R1 → R2 → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
+   or M2 (R4).
 
 ## Picking this up cold
 

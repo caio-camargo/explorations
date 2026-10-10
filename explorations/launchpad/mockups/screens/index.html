@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Launchpad screen mock-ups</title>
+<!-- QUEUE Q239 / PLAYTEST #6, flow session 2026-10-10. Static mock-ups of the screens as places of their own, not panels
+     over the flight view, in W14's default identity (paperwork office, instrument-panel cockpit, poster headings).
+     Never loaded by the game. ?s=title|program|debrief|mission|assembly  &still=1 (no controls, for screenshots).
+     Fonts come from Google Fonts here (Q53 decides whether the game bundles them). The photo is a real frame. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=VT323&family=Bebas+Neue&family=Jost:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#111;color:#ddd;font:13px/1.4 system-ui,sans-serif}
+#bar{display:flex;gap:10px;align-items:center;padding:6px 12px;background:#1b1f27;flex-wrap:wrap}
+#bar a{color:#9cf;text-decoration:none;padding:2px 6px;border-radius:3px}#bar a.on{background:#9cf;color:#111}
+#bar b{color:#888;font-weight:normal}
+body.still #bar{display:none}
+#wrap{display:flex;justify-content:center;padding:10px}body.still #wrap{padding:0}
+#stage{position:relative;width:1280px;height:800px;overflow:hidden;transform-origin:top left;background:#222}
+.scr{display:none;position:absolute;inset:0}
+body.s-title .title,body.s-program .program,body.s-debrief .debrief,body.s-mission .mission,body.s-assembly .assembly{display:block}
+.tagline{position:absolute;right:10px;bottom:8px;font:11px system-ui,sans-serif;color:#fff;background:rgba(0,0,0,.6);padding:3px 8px;border-radius:3px;z-index:50}
+.abs{position:absolute}
+
+/* ================= shared: the office (paperwork) ================= */
+.desk{position:absolute;inset:0;background:
+  repeating-linear-gradient(92deg,rgba(0,0,0,.06) 0 3px,transparent 3px 11px,rgba(255,255,255,.03) 11px 13px,transparent 13px 29px),
+  linear-gradient(180deg,#6b4429,#5a371f 60%,#4c2e1a)}
+.blotter{position:absolute;left:300px;top:96px;width:690px;height:690px;background:#2f4a3a;border:10px solid #2a1c12;border-radius:4px;box-shadow:0 6px 18px rgba(0,0,0,.5);
+  background-image:radial-gradient(ellipse at 40% 30%,rgba(255,255,255,.06),transparent 60%)}
+.paper{background:#f3ead4;color:#2a2620;font-family:'Courier Prime',Courier,monospace;box-shadow:0 3px 10px rgba(0,0,0,.45);
+  background-image:repeating-linear-gradient(180deg,transparent 0 21px,rgba(60,90,140,.13) 21px 22px)}
+.paper.plain{background-image:none}
+.type{font-family:'Special Elite','Courier Prime',monospace}
+.stamp{position:absolute;font:bold 18px 'Special Elite',monospace;color:#b3262a;border:3px solid #b3262a;padding:2px 10px;border-radius:4px;transform:rotate(-8deg);opacity:.82;letter-spacing:2px;mix-blend-mode:multiply}
+.stamp.blue{color:#24508f;border-color:#24508f}
+.clip{position:absolute;width:16px;height:46px;border:3px solid #9aa0a6;border-radius:8px;top:-18px;box-shadow:1px 1px 1px rgba(0,0,0,.3)}
+.pin{position:absolute;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f66,#a11);box-shadow:1px 2px 2px rgba(0,0,0,.5)}
+.strike{text-decoration:line-through;text-decoration-color:#b3262a;text-decoration-thickness:2px;color:#7a7266}
+.btnp{display:inline-block;font:bold 13px 'Courier Prime',monospace;color:#2a2620;background:#e9dcb9;border:2px solid #2a2620;padding:5px 12px;border-radius:2px;box-shadow:2px 2px 0 #2a2620}
+.btnp.go{background:#2a2620;color:#f3ead4;box-shadow:2px 2px 0 #b3262a}
+.key{opacity:.6;font-weight:normal}
+.poster{font-family:'Bebas Neue',Jost,sans-serif;letter-spacing:2px}
+
+/* ================= Program: the director's desk ================= */
+.lh{position:absolute;left:0;right:0;top:0;height:84px;background:#efe6cf;border-bottom:3px double #2a2620;display:flex;align-items:center;gap:16px;padding:0 26px;box-shadow:0 3px 10px rgba(0,0,0,.4)}
+.lh .flag{width:62px;height:40px;border:1px solid #2a2620}
+.lh .org{flex:1}
+.lh .org .n{font:30px/1 'Bebas Neue',sans-serif;letter-spacing:3px;color:#1d2a44}
+.lh .org .s{font:12px 'Courier Prime',monospace;color:#5a5144}
+.cal{width:86px;height:70px;background:#fff;border:1px solid #888;text-align:center;font-family:'Courier Prime',monospace;box-shadow:2px 2px 4px rgba(0,0,0,.3)}
+.cal .m{background:#b3262a;color:#fff;font:bold 11px/18px 'Courier Prime',monospace;letter-spacing:1px}
+.cal .d{font:bold 30px/34px 'Courier Prime',monospace;color:#222}.cal .y{font-size:10px;color:#555}
+.ledger{font-family:'Courier Prime',monospace;font-size:12px;color:#2a2620;text-align:right;line-height:1.35}
+.ledger b{font-size:20px;display:block;color:#1d2a44}
+
+.tray{position:absolute;left:22px;top:100px;width:262px;height:640px}
+.tray .lbl{font:bold 13px 'Special Elite',monospace;color:#f3ead4;letter-spacing:3px;margin:0 0 6px 4px}
+.tray .box{position:absolute;inset:24px 0 0 0;border:6px solid #3a2516;border-top-width:3px;background:rgba(0,0,0,.18);border-radius:3px}
+.memo{position:absolute;left:12px;width:236px;padding:10px 12px 12px;font-size:11.5px;line-height:1.35}
+.memo .h{font:bold 12px 'Courier Prime',monospace;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid #2a2620;margin-bottom:5px;padding-bottom:2px}
+.memo .t{font-weight:bold;font-size:12.5px;margin-bottom:3px}
+.memo .row{display:flex;gap:6px;margin-top:7px}.memo .row .btnp{font-size:11px;padding:2px 8px;box-shadow:1px 1px 0 #2a2620}
+.folderTab{position:absolute;top:-24px;height:26px;padding:3px 12px;font:bold 12px 'Courier Prime',monospace;background:#d9b97a;color:#3a2a14;border-radius:6px 6px 0 0;border:1px solid #9c7c40;border-bottom:none}
+.folderTab.on{background:#e8c98a;z-index:3;top:-27px;height:29px}
+.folder{position:absolute;left:330px;top:184px;width:630px;height:570px;background:#e8c98a;border:1px solid #9c7c40;border-radius:0 6px 6px 6px;box-shadow:0 6px 14px rgba(0,0,0,.5);padding:16px}
+.folder .sheet{position:absolute;inset:16px 16px 16px 16px;padding:18px 24px}
+.sheet h2{margin:0 0 2px;font:26px/1 'Bebas Neue',sans-serif;letter-spacing:2px;color:#1d2a44}
+.sheet .sub{font-size:11px;color:#6b6252;margin-bottom:12px}
+.mi{display:flex;gap:10px;align-items:baseline;font-size:13px;margin:5px 0}
+.mi .ck{width:16px;font-weight:bold;color:#b3262a}
+.mi .nm{flex:1}.mi .nm i{display:block;font-style:normal;font-size:11px;color:#6b6252}
+.mi .p{font-weight:bold}
+.ep{font:bold 12px 'Courier Prime',monospace;letter-spacing:2px;text-transform:uppercase;margin:14px 0 4px;padding-top:6px;border-top:1px dashed #9c8f78;color:#1d2a44}
+.next{position:absolute;left:330px;top:98px;width:440px;padding:7px 12px;background:#fff7a8;color:#2a2620;font:12.5px 'Courier Prime',monospace;transform:rotate(-1.2deg);box-shadow:2px 3px 6px rgba(0,0,0,.4);z-index:5}
+.next b{color:#b3262a}
+.photo{position:absolute;background:#fbf8f0;padding:9px 9px 30px;box-shadow:2px 4px 10px rgba(0,0,0,.5)}
+.photo .img{width:100%;height:100%;background:url(../identity/bg-pad.jpg) 52% 40%/190% no-repeat;filter:sepia(.55) contrast(1.05) saturate(.8)}
+.photo .cap{position:absolute;left:10px;right:10px;bottom:6px;font:13px 'Special Elite',monospace;color:#333}
+.clipping{position:absolute;background:#e6e1d3;color:#222;padding:8px 10px;font:11px Georgia,serif;box-shadow:2px 3px 8px rgba(0,0,0,.45)}
+.clipping .hd{font:bold 17px/1.05 Georgia,serif;margin:2px 0 4px}
+.clipping .pp{font:9px Georgia,serif;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid #444;padding-bottom:2px}
+.cert{position:absolute;color:#2a2620;background:#fbf6e6;border:8px double #b08d3a;padding:8px;text-align:center;font-family:'Courier Prime',monospace;box-shadow:2px 4px 10px rgba(0,0,0,.5)}
+.exits{position:absolute;right:24px;bottom:22px;display:flex;flex-direction:column;gap:9px;align-items:flex-end}
+.phone{position:absolute;width:90px;height:60px;border-radius:12px 12px 6px 6px;background:#1b1b1b;box-shadow:2px 4px 8px rgba(0,0,0,.6)}
+.phone:after{content:'';position:absolute;left:28px;top:16px;width:34px;height:34px;border-radius:50%;border:5px solid #333;background:#ddd}
+.mug{position:absolute;width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,#3b2316 52%,#e9e2d2 54% 68%,transparent 70%);filter:drop-shadow(2px 3px 3px rgba(0,0,0,.5))}
+
+/* ================= Debrief: the flight report ================= */
+.report{position:absolute;left:300px;top:28px;width:680px;height:752px;padding:30px 40px 20px}
+.report .hd{display:flex;justify-content:space-between;border-bottom:2px solid #2a2620;padding-bottom:6px;margin-bottom:10px;font-size:12px}
+.report .big{font:62px/0.95 'Bebas Neue',sans-serif;letter-spacing:3px;color:#b3262a;margin:2px 0 4px}
+.report .lead{font-size:13.5px;margin-bottom:12px}
+.report .cols{display:grid;grid-template-columns:1fr 1fr;gap:4px 34px}
+.report h4{font:bold 12.5px 'Courier Prime',monospace;letter-spacing:2px;text-transform:uppercase;margin:18px 0 5px;color:#1d2a44}
+.ln{display:flex;justify-content:space-between;font-size:13px;margin:4px 0}
+.ln.tot{border-top:1px solid #2a2620;margin-top:4px;padding-top:3px;font-weight:bold}
+.ln.tot span:last-child{border-bottom:3px double #2a2620}
+.neg{color:#b3262a}
+.sig{font:22px 'Special Elite',monospace;color:#24508f;transform:rotate(-3deg);display:inline-block}
+
+/* ================= title: the charter ================= */
+.title{background:#10141d}
+.title .bg{position:absolute;inset:0;background:url(../identity/bg-pad.jpg) center/cover;filter:brightness(.38) sepia(.4) blur(1px)}
+.charter{position:absolute;left:330px;top:34px;width:620px;height:730px;padding:34px 46px;background:#f3ead4;
+  background-image:radial-gradient(ellipse at 50% 0,rgba(255,255,255,.4),transparent 60%),repeating-linear-gradient(180deg,transparent 0 23px,rgba(0,0,0,.025) 23px 24px)}
+.charter .t1{font:84px/0.85 'Bebas Neue',sans-serif;letter-spacing:8px;color:#1d2a44;text-align:center}
+.charter .t2{text-align:center;font:13px 'Courier Prime',monospace;letter-spacing:5px;color:#6b6252;margin:6px 0 16px;text-transform:uppercase}
+.charter .rule{border-top:3px double #2a2620;margin:10px 0 12px}
+.charter .q{font:bold 13px 'Courier Prime',monospace;letter-spacing:2px;text-transform:uppercase;color:#1d2a44;margin:10px 0 2px}
+.charter .why{font:italic 12px 'Courier Prime',monospace;color:#6b6252;margin-bottom:6px}
+.opt{display:flex;gap:10px;font-size:12.5px;margin:4px 0;align-items:flex-start;font-family:'Courier Prime',monospace}
+.opt .bx{flex:none;width:15px;height:15px;border:2px solid #2a2620;margin-top:1px;position:relative}
+.opt.on .bx:after{content:'✗';position:absolute;left:0;top:-7px;font:bold 20px 'Courier Prime';color:#b3262a}
+.opt b{display:inline-block;min-width:205px}
+.seal{position:absolute;width:110px;height:110px;border-radius:50%;background:radial-gradient(circle,#c33 0 55%,#a11 56% 62%,#c33 63%);box-shadow:0 2px 6px rgba(0,0,0,.4);color:#fde;font:bold 12px/1.1 'Courier Prime';display:flex;align-items:center;justify-content:center;text-align:center;letter-spacing:1px}
+.menuT{position:absolute;left:46px;top:300px;display:flex;flex-direction:column;gap:12px}
+.menuT span{font:30px 'Bebas Neue',sans-serif;letter-spacing:4px;color:#e9dcb9;text-shadow:0 2px 6px #000}
+.menuT span.dim{opacity:.45}
+
+/* ================= mission control (instrument panel) ================= */
+.mission{background:#07090c}
+.room{position:absolute;inset:0;background:linear-gradient(180deg,#0d1218 0,#121820 55%,#0a0d11 56%,#151a20 100%)}
+.wall{position:absolute;border:10px solid #2a2f36;border-radius:3px;background:#04130a;box-shadow:0 0 0 2px #000,0 0 40px rgba(60,255,120,.08) inset}
+.crt{font-family:VT323,monospace;color:#7dff9c;text-shadow:0 0 6px rgba(80,255,140,.55)}
+.crt.amb{color:#ffb547;text-shadow:0 0 6px rgba(255,170,60,.55)}
+.scan{position:absolute;inset:0;background:repeating-linear-gradient(180deg,rgba(0,0,0,.28) 0 1px,transparent 1px 3px);pointer-events:none}
+.wlbl{position:absolute;top:-24px;left:0;font:bold 11px 'Jost',sans-serif;letter-spacing:4px;color:#8c96a3}
+.con{position:absolute;bottom:0;height:390px;background:linear-gradient(180deg,#3a4049 0,#2b3038 8%,#22262c 100%);border-top:4px solid #555d68;clip-path:polygon(2% 0,98% 0,100% 100%,0 100%)}
+.con .scr2{position:absolute;left:8%;right:8%;top:24px;height:236px;background:#120c02;border:7px solid #15181c;border-radius:10px/14px;box-shadow:0 0 0 2px #444 inset;padding:8px 12px;overflow:hidden;font-size:19px;line-height:1.15}
+.con .nm{position:absolute;left:0;right:0;top:272px;text-align:center;font:bold 12px 'Jost',sans-serif;letter-spacing:5px;color:#c9d0d8}
+.legends{position:absolute;left:8%;right:8%;top:298px;display:flex;gap:6px;flex-wrap:wrap}
+.lg{font:bold 10px/1.1 'Jost',sans-serif;padding:5px 7px;background:#1a1d22;color:#56606c;border:2px solid #0d0f12;border-radius:2px;letter-spacing:1px;text-align:center;min-width:58px}
+.lg.on{background:#ffe9a8;color:#3a2a00;box-shadow:0 0 12px rgba(255,220,120,.7)}
+.lg.red{background:#ff6a5a;color:#300;box-shadow:0 0 12px rgba(255,90,70,.7)}
+.lg.grn{background:#9dffb8;color:#032;box-shadow:0 0 12px rgba(120,255,160,.6)}
+.screw{position:absolute;width:8px;height:8px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#aaa,#444)}
+.tbl{width:100%;border-collapse:collapse}.tbl td{padding:0 4px 0 0;white-space:nowrap}
+.mbtn{position:absolute;font:bold 11px 'Jost',sans-serif;letter-spacing:2px;padding:6px 12px;background:#1a1d22;border:2px solid #444c56;color:#c9d0d8;border-radius:2px}
+
+/* ================= assembly: the hall ================= */
+.assembly{background:#0e1114}
+.hall{position:absolute;inset:0;background:
+  linear-gradient(90deg,rgba(0,0,0,.35),transparent 18%,transparent 82%,rgba(0,0,0,.35)),
+  repeating-linear-gradient(90deg,#2b3036 0 2px,#22272c 2px 120px),
+  linear-gradient(180deg,#1b1f24,#2a2f35 70%)}
+.floor{position:absolute;left:0;right:0;bottom:0;height:190px;background:linear-gradient(180deg,#3d4146,#2b2e32);clip-path:polygon(18% 0,82% 0,100% 100%,0 100%)}
+.floor:before{content:'';position:absolute;left:41%;right:41%;top:0;bottom:0;background:repeating-linear-gradient(90deg,#d8b030 0 3px,transparent 3px 100%);opacity:.0}
+.yline{position:absolute;bottom:0;height:190px;width:6px;background:#c9a12a;opacity:.7}
+.beam{position:absolute;left:0;right:0;top:40px;height:26px;background:repeating-linear-gradient(60deg,#c9a12a 0 14px,#2a2a2a 14px 28px);box-shadow:0 6px 12px rgba(0,0,0,.6)}
+.cone{position:absolute;top:66px;width:300px;height:640px;background:linear-gradient(180deg,rgba(255,240,200,.16),rgba(255,240,200,0) 85%);clip-path:polygon(44% 0,56% 0,100% 100%,0 100%)}
+.lamp{position:absolute;top:62px;width:40px;height:12px;background:#ffeebb;border-radius:0 0 20px 20px;box-shadow:0 0 30px 10px rgba(255,235,180,.35)}
+.bp{background:#1f4a7a;color:#e6f0ff;font-family:'Courier Prime',monospace;border:2px solid #a9c4e6;box-shadow:0 6px 14px rgba(0,0,0,.55);
+  background-image:linear-gradient(rgba(255,255,255,.07) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.07) 1px,transparent 1px);background-size:16px 16px}
+.bp h3{margin:0 0 6px;font:22px/1 'Bebas Neue',sans-serif;letter-spacing:3px;color:#fff;border-bottom:1px solid #a9c4e6;padding-bottom:4px}
+.cat{font:bold 12px 'Courier Prime',monospace;padding:5px 2px;border-bottom:1px dashed rgba(169,196,230,.5);display:flex;justify-content:space-between}
+.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:6px 0 8px}
+.th{height:62px;border:1px solid rgba(169,196,230,.6);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;font-size:9.5px;padding-bottom:2px;background:rgba(0,0,0,.12)}
+.th svg{flex:1}
+.grp{margin:8px 0 2px;font:bold 11px 'Courier Prime',monospace;letter-spacing:2px;color:#ffd77a;text-transform:uppercase}
+.kv{display:flex;justify-content:space-between;font-size:12px;margin:1px 0}
+.warnl{font-size:11.5px;color:#ffd0c4;margin:2px 0}
+.strip{position:absolute;left:0;right:0;top:0;height:34px;background:rgba(10,12,15,.85);display:flex;align-items:center;gap:18px;padding:0 14px;font:12px 'Courier Prime',monospace;color:#c9d6e6;border-bottom:1px solid #333}
+.strip .sp{flex:1}
+.hbtn{font:bold 12px 'Courier Prime',monospace;color:#e6f0ff;background:#1f4a7a;border:2px solid #a9c4e6;padding:4px 10px}
+.hbtn.go{background:#e6f0ff;color:#1f4a7a}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="wrap"><div id="stage">
+
+<!-- ======================= title: the founding charter (first run) ======================= -->
+<div class="scr title"><div class="bg"></div>
+  <div class="menuT"><span>New program</span><span class="dim">Continue · day 41</span><span class="dim">Settings</span><span class="dim">Tester</span></div>
+  <div class="charter paper plain">
+    <div class="t1">LAUNCHPAD</div>
+    <div class="t2">Charter of a space program · 1957</div>
+    <div class="rule"></div>
+    <div class="q">Article 1 · Whose program?</div>
+    <div class="why">Decides how the money arrives, what the public wants, and what a failure costs.</div>
+    <div class="opt on"><span class="bx"></span><span><b>Fenfen (national)</b>a budget every quarter; the ministry wants firsts, and a loss costs standing.</span></div>
+    <div class="opt"><span class="bx"></span><span><b>Arkadia (industrial)</b>contracts pay; the board wants profit, a loss costs the share price.</span></div>
+    <div class="opt"><span class="bx"></span><span><b>Ostrava (resource state)</b>oil money in lumps; prestige for the regime, a loss is hushed up.</span></div>
+    <div class="opt"><span class="bx"></span><span><b>Random world</b>rolled: powers, rivals and your seat at the table.</span></div>
+    <div class="q" style="margin-top:16px">Article 2 · How does it start?</div>
+    <div class="why">Who owns the program and who you answer to.</div>
+    <div class="opt"><span class="bx"></span><span><b>A ministry office</b>you answer to a minister; the budget is safe, the dates are not.</span></div>
+    <div class="opt on"><span class="bx"></span><span><b>A rocket society</b>amateurs with a field; little money, nobody to answer to.</span></div>
+    <div class="opt"><span class="bx"></span><span><b>A consortium</b>three firms share the cost and the say.</span></div>
+        <div style="position:absolute;left:46px;right:46px;bottom:34px;display:flex;justify-content:space-between;align-items:flex-end;font:12px 'Courier Prime',monospace;border-top:3px double #2a2620;padding-top:12px">
+      <div>Signed, for the program:<br><span class="sig">C. Camargo</span><br><span style="color:#6b6252">Director · day 1</span></div>
+      <span class="btnp go">FOUND THE PROGRAM ▶</span>
+    </div>
+    <div class="seal" style="right:250px;bottom:20px;transform:rotate(12deg);opacity:.9">FENFEN<br>SPACE<br>AGENCY</div>
+  </div>
+</div>
+
+<!-- ======================= Program: the director's desk ======================= -->
+<div class="scr program"><div class="desk"></div>
+  <div class="lh">
+    <svg class="flag" viewBox="0 0 62 40"><rect width="62" height="40" fill="#1d6f5a"/><rect y="14" width="62" height="12" fill="#f3ead4"/><circle cx="31" cy="20" r="9" fill="#c33"/></svg>
+    <div class="org"><div class="n">FENFEN SPACE AGENCY</div><div class="s">Office of the Director · a rocket society, chartered 1957 · standing: <b>promising</b></div></div>
+    <div class="ledger">funds<b>84.6M</b>budget in 19 days: +22M</div>
+    <div class="cal"><div class="m">YEAR 1</div><div class="d">41</div><div class="y">day</div></div>
+  </div>
+
+  <div class="tray"><div class="lbl">IN · 3</div><div class="box"></div>
+    <div class="memo paper" style="top:40px;transform:rotate(-1.5deg)"><div class="h">Memo · waiting for an answer</div><div class="t">The ministry asks for a public launch</div>A crowd at the coast on budget day. Accept and the date is fixed; refuse and standing drops a little.<div class="row"><span class="btnp">Accept</span><span class="btnp">Refuse</span></div><div class="stamp" style="right:10px;bottom:10px;font-size:13px">12 DAYS</div></div>
+    <div class="memo paper" style="top:236px;transform:rotate(1deg)"><div class="h">Offer · Meteorological Office</div><div class="t">Upper-air sample, 40–60 km <span style="float:right">+18M</span></div>60 days · because your last flight reached 52 km.<div class="row"><span class="btnp">Take</span><span class="btnp">Decline</span></div></div>
+    <div class="memo paper" style="top:392px;transform:rotate(-.6deg)"><div class="h">Offer · Defence Board</div><div class="t">Ballistic test, 600 km <span style="float:right">+32M</span></div>90 days · over the sea only.<div class="row"><span class="btnp">Take</span><span class="btnp">Decline</span></div></div>
+    <div class="memo paper plain" style="top:530px;transform:rotate(1.4deg);background:#e6e1d3;font-family:Georgia,serif;font-size:11px"><div class="h" style="font-family:Georgia">News since your last visit</div>Arkadia's rocket breaks up at 9 km · Ostrava opens a second pad</div>
+  </div>
+
+  <div class="next"><b>NEXT</b> · Reach space (100 km): +40M, and the race has no one yet. A Sounding with a second stage flies it.</div>
+  <div class="folder">
+    <div class="folderTab" style="left:0">Inbox 3</div><div class="folderTab on" style="left:78px">Missions</div><div class="folderTab" style="left:170px">Contracts</div><div class="folderTab" style="left:266px">Fleet</div><div class="folderTab" style="left:328px">World</div><div class="folderTab" style="left:392px">Industry</div><div class="folderTab" style="left:476px">Company</div>
+    <div class="sheet paper">
+      <div class="clip" style="left:40px"></div>
+      <h2>MISSIONS · THE PROGRAM'S PLAN</h2><div class="sub">Typed by the planning office · struck through when flown</div>
+      <div class="ep">Epoch 1 · Getting up</div>
+      <div class="mi"><span class="ck">✓</span><span class="nm strike">Structural test flight<i>flown, flight 1</i></span><span class="p strike">+20M</span></div>
+      <div class="mi"><span class="ck">✓</span><span class="nm strike">Above the weather<i>flown, flight 1</i></span><span class="p strike">+15M</span></div>
+      <div class="mi"><span class="ck">✓</span><span class="nm strike">Weather sounding<i>flown, flight 3</i></span><span class="p strike">+12M</span></div>
+      <div class="mi"><span class="ck">→</span><span class="nm"><b>Reach space</b><i>100 km, any vessel · the race: no one yet</i></span><span class="p">+40M</span></div>
+      <div class="mi"><span class="ck"></span><span class="nm">Hop<i>a passenger up and back · once something reaches space</i></span><span class="p">+35M</span></div>
+      <div class="mi"><span class="ck"></span><span class="nm">First orbit<i>once something reaches space</i></span><span class="p">+90M</span></div>
+      <div class="ep">Epoch 2 · Around the world <span style="font-weight:normal;letter-spacing:0;text-transform:none;color:#6b6252">(opens with the first orbit)</span></div>
+      <div class="mi" style="opacity:.55"><span class="ck"></span><span class="nm">The beeper<i>a satellite that talks for 21 days</i></span><span class="p">+60M</span></div>
+      <div class="mi" style="opacity:.55"><span class="ck"></span><span class="nm">A passenger in orbit<i>and back alive</i></span><span class="p">+120M</span></div>
+      <div class="stamp" style="right:28px;top:120px">ON SCHEDULE</div>
+    </div>
+  </div>
+
+  <div class="photo" style="left:1010px;top:110px;width:240px;height:206px;transform:rotate(2.5deg)"><div class="pin" style="left:112px;top:-4px"></div><div class="img"></div><div class="cap">Flight 3 · Sounding · on the pad</div></div>
+  <div class="clipping" style="left:1018px;top:344px;width:222px;transform:rotate(-2deg)"><div class="pp">The Coastal Herald · day 38</div><div class="hd">Fenfen rocket climbs over the coast</div>Crowds on the beach; the agency says space is "a season away". Its rival in Arkadia lost a rocket the same week.</div>
+  <div class="cert" style="left:1036px;top:500px;width:180px;transform:rotate(1.5deg)"><div style="font:16px 'Bebas Neue';letter-spacing:2px">FIRST ABOVE THE WEATHER</div><div style="font-size:10px">awarded to the Fenfen Space Agency<br>flight 1 · day 9</div></div>
+  <div class="exits">
+    <span class="btnp" style="font-size:12px">Logbook <span class="key">[F]</span></span>
+    <span class="btnp" style="font-size:12px;opacity:.55">Mission control <span class="key">[C]</span> · after first orbit</span>
+    <span class="btnp go" style="font-size:15px;padding:8px 16px">TO THE ASSEMBLY HALL ▶ <span class="key" style="opacity:.7">[B]</span></span>
+  </div>
+</div>
+
+<!-- ======================= Debrief: the flight report on the desk ======================= -->
+<div class="scr debrief"><div class="desk"></div>
+  <div class="photo" style="left:40px;top:70px;width:240px;height:206px;transform:rotate(-3deg)"><div class="pin" style="left:112px;top:-4px"></div><div class="img" style="background-position:52% 28%;background-size:260%"></div><div class="cap">Flight 4 · liftoff, 09:14</div></div>
+  <div class="clipping" style="left:46px;top:310px;width:226px;transform:rotate(1.5deg)"><div class="pp">The Coastal Herald · extra</div><div class="hd" style="font-size:20px">FENFEN IN SPACE</div>A rocket from the coast passed 100 km this morning, the first of any nation. Arkadia "congratulates its neighbour".</div>
+  <div class="report paper">
+    <div class="clip" style="left:60px"></div><div class="clip" style="right:60px"></div>
+    <div class="hd"><span>FLIGHT REPORT · No. 4</span><span>design: Sounding II · year 1, day 47 · 6 min 40 s flown</span></div>
+    <div class="big poster">FIRST IN SPACE</div>
+    <div class="lead">Apex <b>118 km</b>. Capsule recovered by chute 2.1 km from the pad. The race: <b>Fenfen first</b> (Arkadia, Ostrava: no attempt yet).</div>
+    <div class="cols">
+      <div>
+        <h4>Money</h4>
+        <div class="ln"><span>Hardware</span><span class="neg">−9.4M</span></div>
+        <div class="ln"><span>Launch operations</span><span class="neg">−2.0M</span></div>
+        <div class="ln"><span>Reach space (mission)</span><span>+40.0M</span></div>
+        <div class="ln"><span>First in space (race bonus)</span><span>+15.0M</span></div>
+        <div class="ln"><span>Upper-air sample (contract)</span><span>+18.0M</span></div>
+        <div class="ln"><span>Refurbishment, capsule</span><span class="neg">−0.8M</span></div>
+        <div class="ln"><span>6 days passing</span><span class="neg">−1.1M</span></div>
+        <div class="ln tot"><span>Net</span><span>+59.7M</span></div>
+        <h4>Records</h4>
+        <div class="ln"><span>Highest</span><span>118 km <span style="color:#6b6252">(was 52)</span></span></div>
+        <div class="ln"><span>Fastest</span><span>1,710 m/s <span style="color:#6b6252">(was 980)</span></span></div>
+      </div>
+      <div>
+        <h4>Missions</h4>
+        <div class="ln"><span>✓ Reach space</span><span></span></div>
+        <div class="ln"><span>✓ Upper-air sample, 40–60 km</span><span></span></div>
+        <h4>Know-how</h4>
+        <div class="ln"><span>Kestrel engine</span><span>47 → 58 %</span></div>
+        <div class="ln"><span>Sparrow chute</span><span>30 → 41 %</span></div>
+        <h4>Certified</h4>
+        <div class="ln"><span>Telemetry to 120 km</span><span></span></div>
+        <h4>Incidents</h4>
+        <div class="ln"><span>Stage 1 fell in the sea, 38 km out</span><span>none</span></div>
+        <h4>What it opens</h4>
+        <div class="ln"><span>Hop · First orbit · the beeper's study</span><span></span></div>
+      </div>
+    </div>
+    <div style="position:absolute;left:40px;right:40px;bottom:20px;display:flex;justify-content:space-between;align-items:flex-end;font-size:12px">
+      <div>Filed by flight control<br><span class="sig">R. Okafor</span></div>
+      <div style="display:flex;gap:10px"><span class="btnp">Fly again <span class="key">[A]</span></span><span class="btnp">Assembly <span class="key">[B]</span></span><span class="btnp go">To the office ▶ <span class="key" style="opacity:.7">[P]</span></span></div>
+    </div>
+    <div class="stamp" style="right:46px;top:74px;font-size:22px">FILED</div>
+  </div>
+  <div class="mug" style="left:1060px;top:120px"></div>
+</div>
+
+<!-- ======================= mission control ======================= -->
+<div class="scr mission"><div class="room"></div>
+  <!-- the big wall: ground track -->
+  <div class="wall" style="left:250px;top:40px;width:780px;height:300px">
+    <div class="wlbl">GROUND TRACK · TELLUS</div>
+    <svg width="760" height="280" viewBox="0 0 760 280" style="position:absolute;left:0;top:0">
+      <g stroke="#1f6b39" stroke-width="1" fill="none" opacity=".7">
+        <path d="M0 140H760M380 0V280M0 70H760M0 210H760M190 0V280M570 0V280"/>
+      </g>
+      <g fill="none" stroke="#2fae5c" stroke-width="1.6" opacity=".9">
+        <path d="M60 60 C110 50 150 72 200 66 S260 96 300 92 S350 120 330 140 S280 160 250 172 S190 196 150 200 S90 186 70 170 S40 120 60 60Z"/>
+        <path d="M430 50 C480 40 540 56 600 60 S690 80 700 110 S660 150 620 150 S560 140 520 160 S470 200 450 230 S420 200 430 160 S410 90 430 50Z"/>
+        <path d="M520 200 C560 196 600 210 620 230 S580 262 548 250 S510 220 520 200Z"/>
+      </g>
+      <path d="M0 200 C95 200 95 80 190 80 S285 200 380 200 S475 80 570 80 S665 200 760 200" fill="none" stroke="#7dff9c" stroke-width="2" stroke-dasharray="7 5" opacity=".55"/>
+      <path d="M0 180 C95 180 95 60 190 60 S285 180 380 180 S475 60 570 60" fill="none" stroke="#7dff9c" stroke-width="2.4"/>
+      <circle cx="560" cy="62" r="6" fill="#ffe9a8" stroke="#000"/>
+      <text x="572" y="58" fill="#ffe9a8" font-family="VT323" font-size="18">BEEPER-1</text>
+      <g fill="none" stroke="#ffb547" stroke-width="1.3" opacity=".85"><circle cx="150" cy="110" r="46"/><circle cx="470" cy="140" r="52"/><circle cx="640" cy="95" r="40"/></g>
+      <g fill="#ffb547" font-family="VT323" font-size="16"><circle cx="150" cy="110" r="3"/><text x="158" y="106">CAPE</text><circle cx="470" cy="140" r="3"/><text x="478" y="136">ISLA</text><circle cx="640" cy="95" r="3"/><text x="648" y="91">NORTH</text></g>
+      <text x="10" y="270" fill="#7dff9c" font-family="VT323" font-size="18">AOS ISLA 03:12 · LOS NORTH 11:40 · NEXT PASS CAPE 1:22:05</text>
+    </svg><div class="scan"></div>
+  </div>
+  <div class="wall" style="left:30px;top:40px;width:200px;height:300px;background:#120c02">
+    <div class="wlbl">CLOCKS</div>
+    <div class="crt amb" style="padding:10px 12px;font-size:22px;line-height:1.15">GMT  Y1 D112<br>     14:06:31<br><br>MET  BEEPER-1<br>   T+3d 04:11<br><br>NEXT EVENT<br>  LOS  11:40<br>  BURN 2:10:00</div><div class="scan"></div>
+  </div>
+  <div class="wall" style="left:1050px;top:40px;width:200px;height:300px;background:#120c02">
+    <div class="wlbl">PADS</div>
+    <div class="crt amb" style="padding:10px 12px;font-size:20px;line-height:1.15">PAD 1  STACKING<br> ORBITER  4 D<br>PAD 2  FREE<br><br>WINDOW<br> SELENE  D131<br><br>WEATHER CAPE<br> WIND 9 M/S OK</div><div class="scan"></div>
+  </div>
+  <!-- the consoles -->
+  <div class="con" style="left:20px;width:300px"><div class="screw" style="left:14px;top:10px"></div>
+    <div class="scr2 crt amb"><table class="tbl"><tr><td>VESSEL</td><td>NEXT</td><td>IN</td></tr><tr><td>BEEPER-1</td><td>LOS NORTH</td><td>11:40</td></tr><tr><td>BEEPER-1</td><td>BATT 40%</td><td>6 D</td></tr><tr><td>WX-2</td><td>DECAY</td><td>19 D</td></tr><tr><td>PROBE-1</td><td>SELENE SOI</td><td>2 D</td></tr></table><div class="scan"></div></div>
+    <div class="nm">FLIGHT</div><div class="legends"><span class="lg on">WATCH</span><span class="lg">FLY IT</span><span class="lg">WARP TO</span><span class="lg grn">ALL NOMINAL</span></div></div>
+  <div class="con" style="left:330px;width:300px"><div class="screw" style="left:14px;top:10px"></div>
+    <div class="scr2 crt amb"><table class="tbl"><tr><td>STATION</td><td>LINK</td><td>KBPS</td></tr><tr><td>CAPE</td><td>--</td><td></td></tr><tr><td>ISLA</td><td>BEEPER-1</td><td>1.2</td></tr><tr><td>NORTH</td><td>PROBE-1</td><td>0.3</td></tr><tr><td>RELAY</td><td>NONE YET</td><td></td></tr></table><div class="scan"></div></div>
+    <div class="nm">NETWORK</div><div class="legends"><span class="lg on">COVERAGE</span><span class="lg">BUILD STATION</span><span class="lg red">GAP 02:10</span></div></div>
+  <div class="con" style="left:640px;width:300px"><div class="screw" style="left:14px;top:10px"></div>
+    <div class="scr2 crt amb">PROBE-1 · PLANNED BURN<br>  42 M/S PROGRADE<br>  AT T+2:10:00<br>  OUT OF CONTACT<br>> MOVE TO NEXT PASS<br>  (CAPE, +1:22:05)<div class="scan"></div></div>
+    <div class="nm">TRAJECTORY</div><div class="legends"><span class="lg on">MOVE BURN</span><span class="lg">HAND OFF</span><span class="lg">FLY BY HAND</span></div></div>
+  <div class="con" style="left:950px;width:310px"><div class="screw" style="left:14px;top:10px"></div>
+    <div class="scr2 crt amb">RECOVERY<br>  CAPSULE 4: HOME<br>  CREW: NONE ABOARD<br>DISPATCH<br>  WX-3 WAITS FOR PAD 1<br>  SELENE WINDOW D131<div class="scan"></div></div>
+    <div class="nm">RECOVERY · DISPATCH</div><div class="legends"><span class="lg">NETWORK [N]</span><span class="lg on">QUEUE</span></div></div>
+  <span class="mbtn" style="left:20px;top:358px">◀ OFFICE [P]</span>
+  <span class="mbtn" style="right:20px;top:358px;background:#ffe9a8;color:#3a2a00">MAP [M]</span>
+</div>
+
+<!-- ======================= assembly: the hall ======================= -->
+<div class="scr assembly"><div class="hall"></div>
+  <div class="beam"></div>
+  <div class="cone" style="left:340px"></div><div class="cone" style="left:640px"></div>
+  <div class="lamp" style="left:470px"></div><div class="lamp" style="left:770px"></div>
+  <div class="floor"></div>
+  <div class="yline" style="left:500px;transform:skewX(-14deg)"></div><div class="yline" style="left:776px;transform:skewX(14deg)"></div>
+  <!-- the ship (stands in for the 3D view, which stays) -->
+  <svg class="abs" style="left:560px;top:120px" width="160" height="560" viewBox="0 0 160 560">
+    <rect x="76" y="0" width="8" height="40" fill="#bbb"/>
+    <path d="M62 40 L98 40 L94 92 L66 92Z" fill="#e7e7e7" stroke="#222"/>
+    <path d="M66 92 h28 v100 h-28z" fill="#f2f2f2" stroke="#222"/><rect x="66" y="120" width="28" height="18" fill="#222"/><rect x="66" y="160" width="28" height="12" fill="#222"/>
+    <path d="M60 192 h40 v8 h-40z" fill="#555"/>
+    <path d="M58 200 h44 v190 h-44z" fill="#f2f2f2" stroke="#222"/><rect x="58" y="230" width="44" height="22" fill="#222"/><rect x="58" y="300" width="44" height="22" fill="#222"/><rect x="58" y="360" width="44" height="16" fill="#222"/>
+    <path d="M58 340 L30 400 L58 390Z M102 340 L130 400 L102 390Z" fill="#c33" stroke="#222"/>
+    <path d="M66 390 L94 390 L100 420 L60 420Z" fill="#444"/>
+    <rect x="40" y="420" width="80" height="10" fill="#555"/>
+    <rect x="20" y="430" width="120" height="130" fill="#3b3f45"/><rect x="20" y="430" width="120" height="6" fill="#c9a12a"/>
+  </svg>
+  <div style="position:absolute;left:700px;top:330px;font:11px 'Courier Prime',monospace;color:#9fe0ff">● CoM<br><span style="color:#ffd77a">● CoP</span></div>
+
+  <div class="strip"><span>◀ Office [P]</span><span>Year 1 · day 41</span><span>funds 84.6M</span><span>In tray 3</span><span class="sp"></span><span>Sounding II</span><span class="hbtn">Clear</span><span class="hbtn">Undo</span><span class="hbtn">Save design</span></div>
+
+  <div class="bp abs" style="left:14px;top:48px;width:290px;height:690px;padding:12px 14px">
+    <h3>PARTS CATALOGUE</h3>
+    <div class="cat"><span>▸ Pods &amp; probes</span><span>4</span></div>
+    <div class="cat" style="border-bottom:none;color:#fff"><span>▾ Engines</span><span>5</span></div>
+    <div class="thumbs">
+      <div class="th"><svg viewBox="0 0 40 40" width="40"><path d="M14 4h12v14l6 16H8l6-16z" fill="none" stroke="#e6f0ff" stroke-width="1.5"/></svg>Kestrel</div>
+      <div class="th"><svg viewBox="0 0 40 40" width="40"><path d="M12 4h16v12l8 20H4l8-20z" fill="none" stroke="#e6f0ff" stroke-width="1.5"/></svg>Petrel</div>
+      <div class="th"><svg viewBox="0 0 40 40" width="40"><path d="M15 4h10v18l4 12H11l4-12z" fill="none" stroke="#e6f0ff" stroke-width="1.5"/></svg>Wren</div>
+      <div class="th"><svg viewBox="0 0 40 40" width="40"><rect x="12" y="3" width="16" height="26" fill="none" stroke="#e6f0ff" stroke-width="1.5"/><path d="M12 29l-3 8h22l-3-8" fill="none" stroke="#e6f0ff" stroke-width="1.5"/></svg>Booster</div>
+      <div class="th" style="opacity:.45"><svg viewBox="0 0 40 40" width="40"><path d="M10 4h20v10l6 22H4l6-22z" fill="none" stroke="#e6f0ff" stroke-width="1.5"/></svg>Condor · era 2</div>
+    </div>
+    <div class="cat"><span>▸ Tanks</span><span>6</span></div>
+    <div class="cat"><span>▸ Structure &amp; decouplers</span><span>5</span></div>
+    <div class="cat"><span>▸ Fins &amp; control</span><span>4</span></div>
+    <div class="cat"><span>▸ Recovery</span><span>3</span></div>
+    <div class="cat"><span>▸ Crew escape</span><span>1</span></div>
+    <div class="cat"><span>▸ Payload &amp; science</span><span>5</span></div>
+    <div class="cat"><span>▸ Power &amp; comms</span><span>4</span></div>
+    <div style="margin-top:14px;padding:8px;border:1px dashed #ffd77a;font-size:11.5px"><b style="color:#ffd77a">RADIAL MOUNTS</b> &nbsp;<span class="hbtn" style="padding:1px 6px">1</span> <span class="hbtn go" style="padding:1px 6px">2</span> <span class="hbtn" style="padding:1px 6px">3</span> <span class="hbtn" style="padding:1px 6px">4</span> <span class="hbtn" style="padding:1px 6px">6</span> <span class="hbtn" style="padding:1px 6px">8</span><br><span style="opacity:.75">shown while a radial part is held · X / Shift+X</span></div>
+    <h3 style="margin-top:14px;font-size:18px">PRESETS</h3>
+    <div style="font-size:12px;line-height:1.6">Sounding · Sounding II · Orbiter · Passenger · Probe</div>
+  </div>
+
+  <div class="bp abs" style="right:14px;top:48px;width:300px;height:610px;padding:12px 14px">
+    <h3>SPECIFICATION · SOUNDING II</h3>
+    <div class="grp">Mass &amp; cost</div>
+    <div class="kv"><span>Mass at liftoff</span><span>11.8 t</span></div><div class="kv"><span>Cost</span><span>9.4M of 84.6M</span></div><div class="kv"><span>Stack time</span><span>4 days</span></div>
+    <div class="grp">Stages &amp; Δv</div>
+    <div class="kv"><span>2 · Petrel</span><span>1,830 m/s · TWR 1.9</span></div><div class="kv"><span>1 · Kestrel</span><span>1,240 m/s · TWR 1.42</span></div><div class="kv" style="border-top:1px solid #a9c4e6;padding-top:2px"><span><b>Total</b></span><span><b>3,070 m/s</b></span></div>
+    <div class="grp">For this flight</div>
+    <div class="warnl">✓ Reach space: needs ~1,900 m/s straight up</div>
+    <div class="warnl">⚠ No chute on stage 2: it won't come back</div>
+    <div class="grp">Flight qualities</div>
+    <div class="kv"><span>Stability</span><span>stable to Mach 3</span></div><div class="kv"><span>Peak heating</span><span>mild</span></div><div class="kv"><span>Max-q load</span><span>61 % of rated</span></div>
+    <div style="margin-top:10px;font-size:11.5px;opacity:.8">▸ Aero &amp; structure details</div>
+    <div class="grp" style="margin-top:14px">Selected · Kestrel engine</div>
+    <div class="kv"><span>Gimbal</span><span>on · 4°</span></div><div class="kv"><span>Know-how</span><span>47 %</span></div>
+  </div>
+  <span class="hbtn go abs" style="right:14px;bottom:30px;font-size:17px;padding:10px 22px">ROLL OUT ▶ [L]</span>
+  <div class="abs" style="left:330px;right:330px;bottom:14px;text-align:center;font:11px 'Courier Prime',monospace;color:#9aa6b4">drag parts from the catalogue · R radial decoupler · X radial mounts · Ctrl+Z undo · H keys</div>
+</div>
+
+<div class="tagline" id="tag"></div>
+</div></div>
+<script>
+const Q=new URLSearchParams(location.search),S={title:'Title: the charter (first run)',program:'Program: the director\'s desk',debrief:'Debrief: the flight report',mission:'Mission control',assembly:'Assembly: the hall'};
+const s=S[Q.get('s')]?Q.get('s'):'program';
+document.body.className=`s-${s}${Q.has('still')?' still':''}`;
+document.getElementById('tag').textContent=`${S[s]} · Q239 mock-up · era 1 (1950s–60s)`;
+document.getElementById('bar').innerHTML=`<b>Screen</b>`+Object.entries(S).map(([k,l])=>`<a href="?s=${k}" class="${k===s?'on':''}">${l}</a>`).join('');
+const fit=()=>{if(Q.has('still'))return;const st=document.getElementById('stage'),k=Math.min(1,(innerWidth-20)/1280);st.style.transform=`scale(${k})`;document.getElementById('wrap').style.height=800*k+20+'px'};addEventListener('resize',fit);fit();
+</script>
+</body>
+</html>

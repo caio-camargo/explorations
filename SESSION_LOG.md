@@ -5124,3 +5124,22 @@ mission that needs the part; fails without the bay's gate). Seen in the browser 
 TESTING 194, QUEUE (Q190 ✓), `ACTIVE_WORK.md`.
 **Next (vehicle lane):** today's playtest items Q235 (Assembly Clear button), Q236 (symmetry in plain sight), Q237 (the
 info panel sorted), Q238 (part pictures, folded palette). Q152 (Selene Lander) is still parked.
+
+## 2026-10-10 — Launchpad Q239: real screens, the plan and five mock-ups (flow session)
+
+**Summary:** PLAYTEST #6 (Caio's playtest today): the Program, the Assembly and maybe mission control should be screens of
+their own, not panels over the flight view. Plan in NOTES § UI "Plan: real screens". The rule: a screen is a place. The
+ship's screens keep the 3D view in a setting of their own. Every other screen is a room with no 3D behind it, which also
+frees the GPU. Five stills in W14's default identity: **title** (the founding charter as the first-run gate),
+**program** (the director's desk from above: letterhead, in-tray, the open folder with tabs, a pinned photo of the last
+flight, clippings, certificates), **debrief** (a typed flight report with a poster headline for a first), **mission**
+(a control room: ground-track wall and four consoles, the home for Q43, Q167, Q196, Q203 and N2), **assembly** (a hall
+with blueprint panels, vehicle's Q235–Q238 laid out in it). Slices R0 (room layer) to R5 (the hall). Defaults are W35.
+No game code.
+**Files:** `explorations/launchpad/mockups/screens/index.html` (new), `mockups/README.md` (0.1.8), NOTES (v1.21.43, §
+UI), QUEUE (0.1.35: Q239 plan ✓, W35, four *Proposed* lines), `INDEX.md`, `ACTIVE_WORK.md`. Stills (not in git):
+`output/launchpad/mockups/screens/`.
+**Next:**
+- Flow: Q239 R0+R1 on W35's defaults (the room layer, the Program as a desk). Then R2–R4.
+- Look & sound: the assembly hall interior.
+- Vehicle: lay out Q237 and Q238 for the blueprint panels.
