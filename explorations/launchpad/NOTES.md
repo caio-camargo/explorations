@@ -2006,7 +2006,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## VNUM — the crew in the Debrief (2026-10-09, flow session, QUEUE Q191; closes PLAYTEST #34)
+## v1.107 — the crew in the Debrief (2026-10-09, flow session, QUEUE Q191; closes PLAYTEST #34)
 
 - A crewed flight (people, once the escape tower is qualified; not the test dummies before it) gets a line in the
   Debrief's outcome block: **"Crew of 2 home safe after 2.5 days"** (green; the days only from one day up), **"Crew of 2
