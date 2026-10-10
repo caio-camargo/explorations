@@ -126,6 +126,16 @@ Notes: expressions are brows + eyes + mouth only (no head turn); grit pulls the 
 the hair silhouette, the roster's main tell, disappears: then skin, brows and a name tag have to carry it.
 Default if silent: **(a)**, as D11 recommends.
 
+**Round 2 for (b), art deco** (Caio 2026-10-10: the round-1 puppet "is not what i expected and does not look good"; go
+faceted and chiselled, not a round head; one face many ways): `heads/deco.html`, stills `deco-all.png` (also
+`deco-1-3.png`, `deco-4-6.png`). One face (Ada Marsh) as a polyhedron (mirrored planes, an eye band under a brow
+ledge, a wedge nose, a hair shell), six treatments: **1 carved block** (few planes, flat-lit lacquer), **2 chiselled,
+inked** (more planes, two tones, ink on every facet edge: W19's ink on a cut head), **3 Lempicka** (softened edges,
+warm light, cool shade), **4 streamline** (planes rounded into a keel, grooved hair), **5 ziggurat** (inked, stepped
+hair), **6 bronze** (enamel eyes; loses skin tone). Each: 3/4 in the helmet, front and profile studies, grin, alarm,
+48 px. Seen so far: 1, 3 and 4 read as faces at 48 px; the inked ones (2, 5) turn to noise small and the eye band
+still hints at glasses.
+
 **Pick:** _(Caio)_
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")

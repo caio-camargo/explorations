@@ -4940,3 +4940,18 @@ Caio's pick is **W32**.
 - **Heads (Q220, W31).** The Snoopy cap and the hoods hide the hair, so a head pick has to carry identity without it.
 **Next:** after W32, the per-school suit build into `SUITS` (`app/crew-look.js`): Cape first, then Steppe. Each needs the
 pieces as meshes; the ventilator case and Orlan's door are props that Q209 (the walkout) can use.
+
+
+## 2026-10-10 — Launchpad Q220 round 2 for (b) puppet: art deco (look & sound, heads)
+
+**Summary:** Caio found the round-1 puppet unappealing and asked for an art deco direction: faceted, chiselled, not a
+round base, one face many ways. `mockups/heads/deco.html`: Ada Marsh's head as a polyhedron (mirrored planes, an eye
+band under a chamfered brow ledge, a wedge nose, block ears, a hair shell with waves, terraces or grooves), painted
+almond eyes with heavy lids, arched brows, bowed lips. Six treatments (carved block, chiselled + inked, Lempicka,
+streamline, ziggurat, bronze), each at 3/4 in the helmet, front and profile without it, grin, alarm, and 48 px. Still W31.
+**Files:** launchpad `mockups/heads/deco.html` (new), `mockups/README.md` § heads (round 2 paragraph), QUEUE (W31); `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/heads/deco-*.png`.
+**Notes:** facet ink needs distance to the edge line, not the gap between the two nearest planes: nearly parallel planes
+(forehead and muzzle) otherwise ink a whole band (it looked like glasses). The inked treatments are noise at 48 px;
+carved, Lempicka and streamline survive. The main clone had another session's unpushed merge in progress, so this
+session committed and pushed from `launchpad-visuals` (`git push origin visuals:main`).
+**Next:** Caio's reaction picks a treatment to push further (or a mix: e.g. streamline's form with carved's lacquer).
