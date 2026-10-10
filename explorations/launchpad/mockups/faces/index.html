@@ -249,7 +249,9 @@ in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
 const FS = `#version 300 es
 precision highp float;in vec2 v;out vec4 o;
 uniform vec2 uRes;uniform vec3 uCam,uTgt,uKey;uniform float uFov,uL;uniform vec3 uSkin,uHair,uIris,uLip,uFlush;
-uniform float G[${NG}];
+uniform float G[${NG}];uniform int uZ;
+// ZERO is 0 but not a constant, so Windows' HLSL compiler (via ANGLE) keeps loops as loops instead of unrolling them
+#define ZERO min(uZ,0)
 ${GENES.map((g, i) => `#define g_${g[0]} G[${i}]`).join('\n')}
 #define KEY uKey
 float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
@@ -279,7 +281,7 @@ const float SH=.012,SO=.07;
 // the nose: a bridge on the forehead's line, ending in a tip lobule; the wings sit on the face and the alar rim joins them to the tip
 float noseFloor(){return -.425-g_ph;}   // just above the upper lip: a long or drooping nose never reaches the mouth
 float nlE(){   // the nose's length, shortened where it would reach the lip (a long nose over a short philtrum): every part follows it
- float n=g_nl,k=.2+g_nt;for(int i=0;i<3;i++){float z=(.85+g_np+.2697*(.13+n))/(.9629-.2697*k),y=-.15-n-z*k;n-=.9*max(noseFloor()+.03-y,0.);}return n;}
+ float n=g_nl,k=.2+g_nt;for(int i=ZERO;i<3;i++){float z=(.85+g_np+.2697*(.13+n))/(.9629-.2697*k),y=-.15-n-z*k;n-=.9*max(noseFloor()+.03-y,0.);}return n;}
 vec3 noseTip(){   // the bridge's lower front corner (where the ridge plane meets the base plane), head space
  float k=.2+g_nt,nl=nlE(),z=(.85+g_np+.2697*(.13+nl))/(.9629-.2697*k);return vec3(0.,-.15-nl-z*k,z);}
 vec3 tipC(){vec3 c=noseTip();return c+vec3(0.,.065*g_ts,-.075*g_ts+.03*g_tr+g_tp);}
@@ -359,10 +361,10 @@ float features(vec3 p,float d){
  vec3 s=vec3(abs(p.x),p.y,p.z);
  d+=g_cv*.16*gs(s,vec3(.48,-.44+g_ch,.44),.06);   // the hollow under the cheekbone
  if(g_wr>0.&&s.z>.3){float fm=smoothstep(.3,.6,s.z);   // wrinkles: forehead lines, crow's feet, the fold from nose to mouth
-  float fw=0.;for(int i=0;i<3;i++){float yi=.36+.08*float(i)+.12*s.x*s.x;fw+=exp(-pow(s.y-yi,2.)/.0002);}
+  float fw=0.;for(int i=ZERO;i<3;i++){float yi=.36+.08*float(i)+.12*s.x*s.x;fw+=exp(-pow(s.y-yi,2.)/.0002);}
   d+=g_wr*.01*fw*smoothstep(.45,.2,s.x)*smoothstep(.25,.32,s.y);
   vec3 ec=eyeC();vec2 oc=vec2(ec.x+.125,ec.y-.005);float cf=0.;
-  for(int i=0;i<3;i++){vec2 dir=vec2(cos(-.45+.45*float(i)),sin(-.45+.45*float(i)));vec2 v=s.xy-oc;float h=clamp(dot(v,dir),0.,.065);cf+=exp(-dot(v-dir*h,v-dir*h)/.00006)*(1.-h/.08);}
+  for(int i=ZERO;i<3;i++){vec2 dir=vec2(cos(-.45+.45*float(i)),sin(-.45+.45*float(i)));vec2 v=s.xy-oc;float h=clamp(dot(v,dir),0.,.065);cf+=exp(-dot(v-dir*h,v-dir*h)/.00006)*(1.-h/.08);}
   d+=g_wr*.005*cf;
   vec3 wc=wingC();vec2 a=vec2(wc.x+.05,wc.y-.02),b=vec2(.2*g_mw+.03,-.6-g_ph),ab=b-a,v=s.xy-a;float h=clamp(dot(v,ab)/dot(ab,ab),0.,1.);
   vec2 e=v-ab*h-vec2(.025,0.)*sin(3.1416*h);d+=g_wr*.014*exp(-dot(e,e)/.0005)*fm;}   // the nasolabial fold, bowed outward
@@ -435,9 +437,6 @@ float headD(vec3 p,vec3 q){float d=earD(q,features(q,carve(q,mass(q))))*uL;
  d=smin(d,max(sdCapT(p,vec3(0.,-.55,-.18),vec3(0.,-2.,-.1),.5*g_nk,.56*g_nk),nb-p.y),.16-.2*max(g_jm-1.,0.));   // a short, thick neck; a heavy jaw overhangs it
  return max(d,nb-p.y);}
 vec2 map(vec3 p){vec3 q=warp(p);vec2 r=vec2(headD(p,q),1.);float h=hairD(q)*uL;if(h<r.x)r=vec2(h,2.);return r;}
-vec3 nrm(vec3 p){vec2 e=vec2(.0012,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
-float shadow(vec3 o,vec3 d){float res=1.,t=.015;for(int i=0;i<64;i++){float h=map(o+d*t).x;res=min(res,16.*h/t);t+=clamp(h,.008,.25);if(res<.002||t>5.)break;}return clamp(res,0.,1.);}
-float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.035*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-3.*a,0.,1.);}
 // the paint: 0 skin (warmed), 1 lips, 2 eye, 3 hair; returns colour, and .w = gloss
 vec4 paint(vec3 p,float m){
  if(m>1.5)return vec4(uHair,.5);
@@ -449,18 +448,30 @@ vec4 paint(vec3 p,float m){
  vec3 s=vec3(abs(p.x),p.y,p.z);
  float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.35*gs(p,tipC()+vec3(0.,0.,.04),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
  return vec4(mix(uSkin,uFlush,.32*clamp(w,0.,1.)),.6);}
+vec3 tet(int i){return .5773*(2.*vec3((((i+3)>>1)&1),((i>>1)&1),(i&1))-1.);}   // the normal's four taps (iq's tetrahedron)
 void main(){
  vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
  vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;
- float t=0.;vec2 h;bool hit=false;
- for(int i=0;i<220;i++){h=map(ro+rd*t);if(h.x<.0004*t){hit=true;break;}t+=h.x*.85;if(t>20.)break;}
+ // One loop, one map() call: the march (ph 0), the normal (1), the key's soft shadow (2), the occlusion (3). The HLSL
+ // compiler inlines every call site, so each extra site was another copy of the whole head to compile.
+ float t=0.,st=.015,sha=1.,occ=0.,w=1.;vec2 h=vec2(0.);bool hit=false;int ph=0,k=0;vec3 p=vec3(0.),n=vec3(0.);
+ for(int i=ZERO;i<330;i++){
+  vec3 q=ph==0?ro+rd*t:ph==1?p+tet(k)*.0012:ph==2?p+n*.004+KEY*st:p+n*(.05*float(k+1));
+  vec2 mq=map(q);float hx=mq.x;
+  if(ph==0){h=mq;if(h.x<.0004*t){hit=true;p=ro+rd*t;ph=1;}else{t+=h.x*.85;if(t>20.)break;}}
+  else if(ph==1){n+=tet(k)*hx;k++;if(k==4){n=normalize(n);ph=2;k=0;}}
+  else if(ph==2){sha=min(sha,7.*hx/st);st+=clamp(hx,.01,.25);k++;if(sha<.002||st>5.||k>60){ph=3;k=0;}}
+  else{occ+=w*(.05*float(k+1)-hx);w*=.7;k++;if(k==6)break;}}
  vec3 col=mix(vec3(.12,.12,.12),vec3(.27,.27,.27),smoothstep(-.5,.7,rd.y));
- if(hit){vec3 p=ro+rd*t,n=nrm(p);vec4 al=paint(warp(p),h.y);
-  float l=max(dot(n,KEY),0.)*shadow(p+n*.004,KEY),oc=ao(p,n);vec3 rf=reflect(rd,n);float fr=pow(1.-max(dot(n,-rd),0.),4.);
-  col=al.rgb*(l*vec3(1.,.95,.86)*1.3+(vec3(.11,.12,.15)*(.5+.5*n.y)+vec3(.07,.055,.045))*oc);
-  col+=vec3(1.,.95,.88)*(pow(max(dot(rf,KEY),0.),22.)*.16*al.w+pow(max(dot(rf,KEY),0.),200.)*1.2*step(.9,al.w))*l;   // satin; the eye's gloss
-  col+=vec3(.32,.34,.38)*fr*.18*oc;   // the sheen at grazing angles
-  col+=vec3(.3,.32,.36)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,normalize(vec3(.6,.2,-.7))),0.)*.4;}
+ if(hit){vec4 al=paint(warp(p),h.y);sha=clamp(sha,0.,1.);float oc=clamp(1.-1.6*occ,0.,1.);
+  // puppet-studio light: a soft key, a fill from the other side at about a third, a rim from behind, and occlusion
+  vec3 fillD=normalize(vec3(-KEY.x,.15,KEY.z+.3)),rimD=normalize(vec3(-KEY.x*.6,.45,-.85));
+  float key=max(dot(n,KEY),0.)*mix(.25,1.,sha),fill=max(dot(n,fillD),0.)*.36,sky=.5+.5*n.y;
+  col=al.rgb*(key*vec3(1.,.95,.87)*1.15+fill*vec3(.84,.9,1.)*oc+(vec3(.1,.11,.13)*sky+vec3(.07,.055,.045))*oc);
+  vec3 rf=reflect(rd,n);
+  col+=vec3(1.,.95,.88)*(pow(max(dot(rf,KEY),0.),22.)*.16*al.w+pow(max(dot(rf,KEY),0.),200.)*1.2*step(.9,al.w))*key;   // satin; the eye's gloss
+  col+=vec3(.9,.93,1.)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,rimD),0.)*.45*oc;   // the rim
+  col+=vec3(.32,.34,.38)*pow(1.-max(dot(n,-rd),0.),4.)*.12*oc;}
  col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
 function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
   if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
@@ -487,7 +498,8 @@ function drawTile(cv, t, view, fov) {
   // the head-shape stretches bend the distance field: march more carefully when any is off the house value
   const w = ['hw', 'jw', 'fl', 'cr', 'bk'].map(k => g[IX[k]]), off = t.some(x => x !== 0);
   gl.uniform1f(U('uL'), off ? Math.min(1, g[IX.cn], ...w) * .9 * (1 - .4 * g[IX.cp]) / (1 + 7 * g[IX.fp]) : 1);   // (the forehead push shears the field)   // the cheekbone's swelling steepens the field too
-  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.uniform1i(U('uZ'), 0);
+  for (let y0 = 0; y0 < s; y0 += 140) { gl.scissor(0, H - s + y0, s, Math.min(140, s - y0)); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.flush(); }   // in strips: no single draw trips the GPU watchdog
   const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
 }
 // a queue, one tile per frame (a long single GPU job can trip Windows' GPU timeout); a new render replaces it

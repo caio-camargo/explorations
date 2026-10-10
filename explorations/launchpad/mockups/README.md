@@ -293,6 +293,11 @@ straight up off the forehead and curves back; its sides follow the skull; strand
 driven by the Age macro, which also greys the hair; a long nose over a short philtrum is now shortened as a whole
 rather than clipped (the clip left a hole in Mr. Incredible's tip). Stills: `faces/hair-thunderbirds.png`,
 `faces/age.png`, `faces/nose-mr-incredible-fixed.png`. 73 genes.
+**Structural round** (design desk, FACES 0.1.3; QUEUE § Proposed): **speed** (as `suits/`: one loop and one `map()`
+call for the march, normal, shadow and occlusion; `ZERO` loops; big views in scissor strips): ~7 s to first picture
+headless, ~1 s per later view. **Pass 1, puppet-studio light**: a soft key, a fill from the other side at about a
+third, a rim from behind, occlusion over a longer range; the darkest skin now sits in the sockets, under the nose and
+under the jaw only. Still: `faces/studio-light.png` (old light bottom left).
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
