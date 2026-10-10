@@ -466,7 +466,9 @@ const TGT_M=['tgt','antitgt','rpro','rretro','dock'];
 // computer with every mode and the full-speed loop (onboard computers). k: rate-loop gain (1/s), w: fastest commanded turn
 // (rad/s), db: attitude deadband (rad). A vessel keeps the avionics it launched with (s.av); with no program running
 // (sandbox, physics tests), with the tester's all-tools cheat, and on ground-guided procedures it has the best.
-const AV=[{name:'Gyro autopilot',modes:['stab'],k:2,w:0.3,db:0.0087,era:0},
+// the gyro autopilot holds retrograde too (Q216, Caio 2026-10-10): early capsules held their retrofire attitude, and without
+// it an orbital passenger cooks coming home (PLAYTEST #38)
+const AV=[{name:'Gyro autopilot',modes:['stab','retro'],k:2,w:0.3,db:0.0087,era:0},
   {name:'Analog autopilot',modes:['stab','pro','retro','normal','anti','radout','radin'],k:3,w:0.45,db:0.0035,era:1},
   {name:'Guidance computer',modes:null,k:4,w:0.6,db:0,era:2}];
 const avNow=()=>khOn()&&!TEST.tools?Math.min(AV.length-1,compEra()):AV.length-1;   // the tester's "all tools" includes the best avionics

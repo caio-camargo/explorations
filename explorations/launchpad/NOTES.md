@@ -3971,8 +3971,8 @@ compute eras of v1.38. Caio's choice: **two steps by era**.
 
 | Avionics | Comes with | SAS modes | Loop (gain · fastest turn · deadband) |
 |---|---|---|---|
-| Gyro autopilot | human computers (year 0) | Stability only | 2/s · 0.3 rad/s · 0.5° |
-| Analog autopilot | mainframes (year 3) | + Prograde, Retro, Normal, Anti-normal, Radial in/out | 3/s · 0.45 rad/s · 0.2° |
+| Gyro autopilot | human computers (year 0) | Stability, Retro (Retro since v1.73.2, Q216) | 2/s · 0.3 rad/s · 0.5° |
+| Analog autopilot | mainframes (year 3) | + Prograde, Normal, Anti-normal, Radial in/out | 3/s · 0.45 rad/s · 0.2° |
 | Guidance computer | onboard computers (year 7) | + Maneuver, Target, Anti-target, Relative pro/retro, Docking | 4/s · 0.6 rad/s · 0 |
 
 - The program's era is `compEra()`, so a power that lags in computing gets each step later (up to 4 years).
@@ -9916,3 +9916,22 @@ only, no `retro` (`avNow`, `AV`). Row 147 sets `sasMode = 'retro'`, which only t
 the robot's way home (a period, speed cut until periapsis < 45 km, chute armed) with `stab` or SAS off: the passenger
 overheats on every version of the preset, the old one included (bio skin 630–910 K, the stack 70–125° off retrograde);
 with `retro`, under 270 K.
+
+## v1.73.2 — the gyro autopilot holds retrograde (2026-10-10, vehicle session, QUEUE Q216, PLAYTEST #38)
+
+**Caio's call:** the first generation of avionics gets a retrograde hold (`AV[0].modes`: `stab`, `retro`), as early
+capsules held their retrofire attitude. The analog autopilot (mainframes) still adds prograde, normal, anti-normal and
+radial; the avionics table above says so. Why (v1.73.1 § "Without a retrograde hold"), the Passenger Orbiter's way home
+from one orbit, measured headless:
+
+| Coming home | Cabin peak | |
+|---|---|---|
+| SAS off, or `stab` on a fixed direction (pointed retrograde once, at 105 or 300 km) | 330 K | cooked: skin 630–910 K, 80–125° off retrograde |
+| the capsule alone, upper stage dropped (with a shield; bio's `cm` .4, .25, .15) | 330 K | cooked: it flies apex-first, or base-first at 506 K skin |
+| cabin lag 30 or 60 min instead of 10 | 328–330 K | cooked, or hurt at 8 g |
+| **the gyro autopilot on `retro`** | **268 K** | home: skin 262 K, within 25° of retrograde |
+
+So only a held retrograde works, and the gyro's slower loop (2/s, 0.3 rad/s) is enough. `vehicle-3` flies its way home on
+`s.av = 0` now. In the builder and the flight panel the Retro button is lit from year 0 (`sasModeOK`, `editor.js`), and
+Q134's pilot ranks are unchanged (rank 1 is the analog autopilot's list).
+
