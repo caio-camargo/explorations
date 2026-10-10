@@ -1374,10 +1374,10 @@ const VBOX=(()=>{const F=[[[1,0,0],[0,1,0],[0,0,1]],[[-1,0,0],[0,0,1],[0,1,0]],[
 let GAUGES=true;   // false hides the strip
 const GQ={ship:null,peak:0,peakT:0};   // max-q, held per vessel (render-side)
 const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'#1b1a17',red:'#b8322a',amber:'#d79b1c',green:'#4f7f3a',lab:'#b9b29c'};
-function gaugeRect(){const nw=document.getElementById('navwrap');if(!nw||!nw.offsetParent||getComputedStyle(nw).visibility==='hidden')return null;   // the HUD hidden: no gauges
-  const r=nw.getBoundingClientRect(),k=ov.width/ov.clientWidth;
-  const x=r.right+14+318<=ov.clientWidth-6?r.right+14:Math.max(6,r.left-14-318);   // right of the navball, or left of it when the window is narrow
-  return{x:x*k,y:(r.bottom-150)*k,s:k}}
+// (flow, UI slice 4b) the strip's place is #gslot, the left of the bottom cluster (gauges | throttle | navball | SAS);
+// app/hud.js shows the slot while the Ascent condition holds, so in space the cluster narrows. Scaled to the slot's width.
+function gaugeRect(){const g=document.getElementById('gslot');if(!g||g.closest('.hidden')||!g.offsetParent||getComputedStyle(g).visibility==='hidden')return null;   // the HUD hidden: no gauges
+  const r=g.getBoundingClientRect(),k=ov.width/ov.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
 function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
 function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S.r)-b.R;
   // the data

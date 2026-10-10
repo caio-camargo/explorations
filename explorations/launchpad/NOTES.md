@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.40 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.41 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1985,6 +1985,22 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## VNUM — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
+
+- aerofx's gauge strip (altitude tape, air depth, q with max-q, Mach, heat) now has its own place: `#gslot`, the left of
+  the bottom cluster, **gauges | throttle | navball | SAS**. The cluster stays centred, so it narrows in space and the
+  navball moves over. (I tried a fixed navball with the gauges hung to its left; at 1000×700 they'd sit on the stages panel.)
+  `gaugeRect` (gl.js) reads the slot and scales the strip to it (254 px wide on small windows).
+- **Shown while the Ascent condition holds** (`ascentOn`, app/hud.js): in the air with q over 1 kPa or below 20 km (the
+  climb's start, and a landing's radar tape), low (under 20 km) over an airless body, or the skin above 30 % of its
+  limit. Held 3 s after it ends, so it doesn't flicker. Hidden on the pad, in space and on the map. Settings' "flight
+  gauges" off hides it, as before.
+- **The Ascent card** shows with the gauges and keeps only what they don't draw: AoA, Heat (the part, ablator),
+  Structure. With the gauges off it shows the Aero row (Mach, AoA, q) again.
+- Checked in the page: hidden on the pad, shown 5 s into a climb, hidden 3.6 s after reaching orbit (the cluster 334 px
+  wide). Robot `m1` and 98 pass at 1280×800 and 1000×700. Stills (local): `output/launchpad/q3-slice4b/`.
+- **Next, 4c:** the map trims (the navball shrinks to a heading line on the map).
 
 ## v1.103 — every node of a chain on the map (2026-10-09, flow session, QUEUE Q157; v1.85's "not yet")
 
@@ -8317,7 +8333,7 @@ panel as now.
 (a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
 new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
 
-**4a built 2026-10-09: § v1.101.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+**4a built 2026-10-09: § v1.101; 4b: § VNUM.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
