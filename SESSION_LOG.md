@@ -4707,3 +4707,33 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Collisions:** economy took v1.98 and TESTING 174, flow v1.101, main 179–180, while these were in flight: renumbered at each merge (LESSONS #37 holds: take numbers right before the commit).
 **Next:** Caio's call on high camera satellites (default: as built; TESTING 176 asks). Proposed: vehicle's high-gain dish; rover science as volumes; flow's "move a planned burn". Space's ready items left: none in M2 (Q173 needs Q164; Q148 needs the browser); Q185 is economy's now.
 
+
+## 2026-10-09 — Launchpad QA lane, second unattended run (QA session)
+
+### Summary
+- **M1's robot finish line passes:** `playtest.mjs m1`, now flown on the Beeper preset: Esc pauses, a Debrief after each
+  flight, no box overlaps. ROADMAP's M1 row says so. Left for M1: the career.mjs pacing check, and a person's first hour.
+- **TESTING numbering:** the second 168 → 173, the counter fixed, and test.mjs **`qa-3`** now fails on any doubled row
+  number. It caught one within the hour (my 178 against the Steppe pad's), renumbered to 179.
+- **PLAYROUTE 0.2.0:** the ~30 new rows placed, and a sitting 8 for the Docking preset.
+- **Q120** robot row 65 (crew rotation: the crew home safe). **Q161** tester Debris block: breakup, ASAT test, dead
+  stages, and the debris setting off/light/real (on *real* the 800–850 km band "feeds itself"). **Q106** tester school
+  picker (Cape, Steppe; the other four greyed until they get a look).
+- Robot rows 155, 172, 157/152, 147, 160, 136, 165, 164, 156.
+- Driver fix: drivers that swap `S` must call `HOOK.rebuild()`; earlier docking/station shots had drawn the Orbiter
+  (numbers unaffected; re-shot).
+- Filed **PLAYTEST #34–#37**. #35 (P2): the Passenger Orbiter overheats its passenger on any robot ascent, and test
+  `vehicle-3` can't see it. #34 (P2): the Debrief never mentions the crew. #36: the Hopper's own unstable warning. #37:
+  a Network wording nit.
+
+### Files
+- `explorations/launchpad/`: `playtest.mjs` (rows 65, 147, 155, 156, 157, 160, 164, 165, 172; `m1` on the Beeper;
+  `PT.ascent(flatKm)`; `PT.park` rebuilds), `sim/program.js` (testBreakup/testAsat/testClutter), `app/screens.js` (Debris
+  and Hardware school blocks), `test.mjs` (`qa-3`, `qa-4`, `qa-5`), `TESTING.md`, `PLAYTEST.md`, `PLAYROUTE.md`,
+  `NOTES.md`, `QUEUE.md`, `ROADMAP.md` (M1 row)
+- `LESSONS_LEARNED.md` (#39 gate pushes on tests, #40 escapes in injected code), `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] vehicle: PLAYTEST #35, the Passenger Orbiter's cabin (and make `vehicle-3` read `S.rec`)
+- [ ] flow: PLAYTEST #34, crew in the Debrief
+- [ ] Caio: PLAYROUTE sitting 1 is M1's last piece (a person's first hour)

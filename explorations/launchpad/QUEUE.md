@@ -412,3 +412,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - vehicle — PLAYTEST #35 (P2): the Passenger Orbiter overheats Biscuit on any robot ascent; test vehicle-3 tracks its own cabin from 290 K after the orbit and misses it — PLAYTEST #35
 - vehicle — PLAYTEST #36 (P3): the stock Hopper shows the unstable warning at roll out — PLAYTEST #36
 - flow (Q3 4a, v1.101) — **for every lane:** new flight-HUD content is a card, `HUD_CARDS.push({id, title, when?, rows})` in `app/hud.js`; `updateHUD`'s core is capped at 6 rows (test flow-5) — NOTES § v1.101
+- flow — PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "nothing to hold it up: re-enters in …" — PLAYTEST #37
