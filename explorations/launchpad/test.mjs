@@ -3835,20 +3835,22 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // vehicle-3. The first orbit missions fly on presets (vehicle session, QUEUE Q74 / PLAYTEST #24): the Beeper puts an
 // instrument package in orbit; the Passenger Orbiter takes a biocapsule once round and home, inside the passenger's limits.
+// The limits are the game's own, from the flight record over the whole flight (`S.rec`: missionTick's cabin from liftoff),
+// so a cabin cooked on the way up fails here as it does in play (Q201, PLAYTEST #35).
 {
   const R = TELLUS.R, O = api.PRESETS.Orbiter, el = s => api.elements(s.r, s.v, TELLUS.mu);
   const b = handAscent(api, api.PRESETS.Beeper), eb = el(b);
-  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, cabUp = p.rec.cabin, msgs = []; api.HOOK.msg = m => msgs.push(m);
   api.advRails(p, ep.period, 10);   // once round
   const retro = () => { const v = mul(norm(p.v), -1), f = api.localFrame(p.r), X = norm(cross(v, f.n)); p.q = api.qFromBasis(X, v, cross(X, v)); p.w = [0, 0, 0]; };
   p.throttle = 1; for (let k = 0; k < 20000 && p.alive; k++) { retro(); api.advPhys(p); if (el(p).pe - R < 40e3 || api.dvRemaining(p).cur < 1) break; }
-  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'); let g1 = 0, gMax = 0, cab = 290, armed = false;
-  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); continue; }
-    api.advPhys(p); g1 += (p.gload - g1) * Math.min(1, api.DT); gMax = Math.max(gMax, g1); cab += (bio.T - cab) * api.DT / (bio.d.ins || 600);
+  p.throttle = 0; p.sas = true; p.sasMode = 'retro'; const bio = p.parts.find(q => q.d.kind === 'bio'), PR = p.rec; let cab = cabUp, armed = false;
+  for (let k = 0; k < 2e6 && p.alive && !p.landed; k++) { const h = len(p.r) - R; if (h > TELLUS.atm + 5e3) { api.advRails(p, 20, 10); cab = Math.max(cab, PR.cabin); continue; }
+    api.advPhys(p); cab = Math.max(cab, PR.cabin);
     if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
-  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K',
-    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && gMax < 8 && cab < 330 && O.length === 8,
-    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${gMax.toFixed(1)} g, cabin ~${cab.toFixed(0)} K, ${p.landed ? 'landed' : 'not landed'}`);
+  check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K (the flight record, from liftoff)',
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && O.length === 8,
+    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${PR.gMax.toFixed(1)} g, cabin ${cabUp.toFixed(0)} K in orbit, peak ${cab.toFixed(0)} K (${PR.bioOK ? 'passenger fine' : PR.pet + ' ' + PR.bioWhy}), ${PR.bioOrbits.toFixed(2)} orbits, ${p.landed ? 'landed' : 'not landed'}`);
 }
 
 // ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not
@@ -3978,12 +3980,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], H = [{ name: 'Satellite to 400 km', alt: 400 }], lv = (st, a) => api.launchWarnings(st, a).map(x => x[0]).join();
   const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P.Orbiter, H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
   PR.log = { orbit: { v: 5600 } }; const best = api.launchWarnings(P.Orbiter, B); PR.log = log0;
+  // the default aims come from the program (contracts held, the next step): a fresh one has none. Earlier sections leave
+  // missions done and contracts held, which made the beeper an aim inside --smoke (Q204), so set a fresh program here
+  const kept = { done: PR.done, active: PR.active, decisions: PR.decisions }; Object.assign(PR, { done: {}, active: [], decisions: [] });
+  const aims0 = api.flightAims(); Object.assign(PR, kept);
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
   check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
     est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(api.launchWarnings(P.Hopper, B)[0][1]) && /Tight/.test(api.launchWarnings(P.Orbiter, H)[0][1])
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
-      && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
+      && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && aims0.length === 0,
     `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
 }
 
