@@ -271,11 +271,10 @@ float loLip(vec3 m){return max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g
 float features(vec3 p,float d){
  vec3 s=vec3(abs(p.x),p.y,p.z);
  d+=g_cv*.16*gs(s,vec3(.48,-.44+g_ch,.44),.06);   // the hollow under the cheekbone
- vec3 cn=normalize(vec3(.72,-.12,.68)),cu=normalize(cross(vec3(0.,1.,0.),cn)),cvv=cross(cn,cu);   // the cheek plane's frame
- vec3 cs=vec3(.53+g_cw,-.18+g_ch,.6),cb=s-(cs-cn*(.09-(g_cp*.065-.03)));   // the cheekbone: a broad mass under the outer eye, standing proud of the cheek plane by its prominence
- vec3 cl=vec3(dot(cb,cu),dot(cb,cvv),dot(cb,cn));cl.xy=rot(-.3)*cl.xy;   // rising toward the temple
- float cbD=smax(sdEll(cl,vec3(.2,.14,.1)),dot(cl,normalize(vec3(0.,-.75,.66)))-.01,.008);   // its lower half cut by a facet facing down and out: the deco break into the hollow, never an undercut
- d=smin(d,cbD,.04);
+ vec3 za=vec3(.42+g_cw,-.15+g_ch,.6),zb=vec3(.7+g_cw*.5,-.09+g_ch,.05);   // the cheekbone as bone under the skin: the zygomatic line, under the outer eye and back along the arch to the ear
+ vec2 zd=zb.xz-za.xz;float zh=clamp(dot(s.xz-za.xz,zd)/dot(zd,zd),0.,1.),zy=s.y-mix(za.y,zb.y,zh);
+ float zf=exp(-zy*zy/(zy>0.?.014:.005))*smoothstep(-.05,.3,zh)*(1.-.5*zh)*exp(-pow(length(s.xz-mix(za.xz,zb.xz,zh)),2.)/.03);   // soft above, steeper below into the hollow; strongest at the front
+ d-=g_cp*.085*zf;
  float so=max(sdEll(s-vec3(g_es,.04,.8-g_ed),vec3(.21,.13,.14)*mix(1.,g_ez,.6)),s.y-.14-g_bh);d=smax(d,-so,SH);   // the socket under the brow
  d=smin(d,eyeD(p),.01);
  vec3 le=s-eyeC();le.xy=rot(g_et)*le.xy;
@@ -351,7 +350,7 @@ function drawTile(cv, t, view, fov) {
   const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
   // the head-shape stretches bend the distance field: march more carefully when any is off the house value
   const w = ['hw', 'jw', 'fl', 'cr', 'bk'].map(k => g[IX[k]]), off = t.some(x => x !== 0);
-  gl.uniform1f(U('uL'), off ? Math.min(1, ...w) * .9 : 1);
+  gl.uniform1f(U('uL'), off ? Math.min(1, ...w) * .9 * (1 - .4 * g[IX.cp]) : 1);   // the cheekbone's swelling steepens the field too
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
 }

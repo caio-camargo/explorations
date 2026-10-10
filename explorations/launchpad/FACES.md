@@ -167,5 +167,5 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   new genes (tip roundness, size, width, projection; wing flare, size), 41 in all; a nose floor above the lip;
   close-up views. The house head now differs from round 5 at the nose (tip roundness .4).
 - **Profiles and cheekbones** (Caio's notes): a real forehead slope (a shear above the brow; the old gene renamed nose
-  root), lower face projection, cheekbone prominence (a mass with a down-facing facet; house .35), a deeper cheek
+  root), lower face projection, cheekbone prominence (a swelling of the surface along the zygomatic line and arch, not an added mass; house .35), a deeper cheek
   hollow (house .2). 44 genes. Ranges stay wide on purpose (Caio: more options now, narrow later).

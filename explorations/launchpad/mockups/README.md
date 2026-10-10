@@ -186,8 +186,9 @@ A floor just above the upper lip keeps any nose off the mouth. Edit has close-up
 profile); the nose genes test in close-up. Still: `faces/nose-types.png` (house, button, bulb, hawk, broad).
 **Profiles and cheekbones** (Caio's notes): *forehead slope* now leans the forehead itself back above the brow (the old
 gene, which mostly moved the nose root, is renamed *nose root*); *lower face projection* pushes mouth, chin and jaw
-front forward or back; *cheekbone prominence* adds a broad mass under the outer eye whose lower half ends in a facet
-facing down and out (the deco break, never an undercut); the cheek hollow's range is four times deeper. 44 genes.
+front forward or back; *cheekbone prominence* swells the face itself along the zygomatic line, under the outer eye and back
+along the arch to the ear, soft above and steeper below into the hollow (a separate mass read as stuck on, Caio: "needs
+to feel more like underlying structure"); the cheek hollow's range is four times deeper. 44 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 
