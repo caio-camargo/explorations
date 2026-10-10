@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.43 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.44 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,37 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.114 — the Program as the director's desk, the first room (2026-10-10, flow session, QUEUE Q240 = Q239 R0+R1; PLAYTEST #6)
+- **Rooms (R0).** `ROOMS` and `inRoom()` in `app/screens.js`. A room is a screen that is a place of its own, not a panel
+  over the pad. So far only `program` is one. While a room shows, `frame()` skips `adaptRes` and `render()`. The sim
+  still runs, so days still pass. `go()` sets `body.room`. Measured headless on the RTX: the
+  Program's frame was 0.02 ms of CPU and no GPU. The same pad scene in the Assembly costs 0.39 ms of CPU and 5.9 ms of
+  GPU, which is roughly what the Program cost while the pad was drawn behind it.
+- **The desk (R1), `app/desk.js`**, laid out by `deskLayout(box, gate)` from `progLayout` (the sections are sorted into
+  tabs as before, so economy and bodies change nothing):
+  - The **letterhead**: the home power's flag (`flagSVG`), the program's name, "Office of the Director", the kind and the
+    power, funds, and a desk calendar (year, day).
+  - The **in-tray** (left) is the Inbox: decisions, offers, what's coming up, the news. It isn't a folder tab any more.
+    Its label **IN · n** is the `data-ptab="inbox"` button, so NEXT's "Inbox ▸" and the robot rows still work: asking for
+    the Inbox flashes the tray.
+  - The **folder** (centre) has the other tabs as folder tabs and a paper sheet. Flown missions are struck through in
+    red. NEXT is a sticky note above it. Keys 1–8 now count from Missions.
+  - The **wall** (right): **the last flight's photo**. `deskPhotoTick()` reads the canvas 2.5 s after liftoff, in the
+    same task as the draw, so no `preserveDrawingBuffer`. It's kept per browser (`launchpad-photo`, not game state), and
+    shown only for the same program and flight count. Below it, a cutting from *The <home> Herald* (our own news first,
+    then the latest headline that isn't a warning), and certificates for the race firsts we won (the latest two).
+  - The exits: Logbook, Last flight, Network, Rover yard, and **TO THE ASSEMBLY HALL ▶ [B]** (`#bBuild`, same id).
+- **The look** follows W14's paperwork: the CSS vars are redefined inside `#prog`, so the economy's markup reads in ink on
+  paper. Power colours meant for dark glass are darkened on paper by a filter. **Fonts are bundled** in `fonts/`
+  (Special Elite under Apache-2.0, Courier Prime and Bebas Neue under OFL; 105 KB of woff2, latin subset, licences
+  beside them), loaded with `@font-face` and falling back to Courier/Impact.
+- **Checks:** test `flow-10` (the gated draw is the only `render()` call; rooms, `body.room`, no Inbox folder tab, the
+  tray button, fonts). Robot row **`desk`** flies a Sounding in real frames, so `frame()` takes the photo as it does in
+  play, then shoots the desk: photo, clipping and in-tray present, no overlapping boxes. `m1` passes in full.
+- **Not yet:** the first-run gate still sits in the folder (R3 makes it the charter). Debrief and Network are still
+  panels over the pad (R2, R4: Q241). The Assembly's hall is R5. The in-tray's offers are long: a memo could fold to its
+  title line.
 
 ## v1.112 — flags and roundels in the UI (2026-10-10, flow session, QUEUE Q104; POWERS.md § Schools "Flag motifs")
 
@@ -8742,7 +8773,7 @@ for any craft other than the one you're flying.
    the pad could come later.
 3. **Mission control is its own screen**, opened after the first orbit, and the Network screen folds into it.
 4. **The Assembly moves into a hall** (a new 3D scene) with blueprint panels, rather than staying on the pad.
-5. **Order:** R0 → R1 → R2 → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
+5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
    or M2 (R4).
 
 ## Picking this up cold
