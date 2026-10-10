@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Version**: 0.2.7 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -176,6 +176,86 @@ never do. Where real suits are white, the second colour and the shape carry the 
 
 **The sleek tailored white-and-black suit moves to Foundry** (POWERS 1.1.0), where it belongs: it's SpaceX's. Cape late
 becomes the Shuttle's orange pumpkin suit. (Default, design desk 2026-10-10; Caio may override.)
+
+### The suit brief, the other five schools (design desk, 2026-10-10; Caio: look & sound needs briefs before building them)
+
+Same method as Cape and Steppe above: **era reads through silhouette, school through construction**, each suit has
+one signature, and the round-2 checks apply. This supersedes the one-line rows for these schools in the table above.
+
+**Construction, one language per school** (and where the hoses go in, so even the plumbing differs):
+
+| School | Built like | Hoses | Thread colour (in every era) |
+|---|---|---|---|
+| Cape | hard shells, gloss, metal hardware on show | chest | chrome hardware, coloured connectors |
+| Steppe | soft canvas, laces and straps, sewn-on hoods | belly | blue |
+| **Arsenal** | **military issue**: webbing, harness, buckles, pockets, rank and flag patches; nothing tailored | **side, at the hip** | red |
+| **Coastal** | **industrial design** (1960s Paris and Milan: Courrèges, Braun, Olivetti): smooth panels, colour blocks, hidden fasteners | **one big round connector at the hip** | pastel teal |
+| **Mountain** | **light and economical**: compact, narrow quilted segments (like a down jacket), a coloured pull-tab on every adjustment, a sun disc on the helmet crown | **over the shoulder** | saffron |
+| **Isle** | **outdoor gear and sponsors**: ripstop, taped seams, gear bought from different suppliers, decals everywhere | **thigh** | decals and hi-vis yellow |
+| **Foundry** | **tailored product**: one clean line, flush surfaces, no visible hardware | **one umbilical at the right thigh** | black |
+
+**Arsenal** (missile-derived: early China, Israel, the DPRK)
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature |
+|---|---|---|---|---|
+| **Early** | olive drab / bare steel | a flight coverall over a partial-pressure suit: **laced capstan tubes down the arms and legs**, a G-harness, combat boots | a fighter **"bone dome"** with a tinted visor pushed up and a **rubber oxygen mask** over the nose and mouth (no faceplate) | the oxygen mask and the capstan tubes |
+| **Middle** | **sand** / red quilted panels | padded and quilted, belted, **pockets down the shins** | a white hard helmet, a red-framed visor hinged up | the red quilting at the chest, shoulders and knees |
+| **Late** | **gunmetal** / red | **armoured**: hard plates over the knees, shins and forearms | a dark shell, a gold sun strip across the visor | the plates |
+| **Spacewalk** (Feitian-like) | white / red and gunmetal stripes | a rigid torso entered from the back (Orlan's lineage, as Feitian is), but squarer | a rounded-square helmet with a **light bar along the brow** | **the flag painted big on the back door**; the light bar |
+
+**Coastal** (Europe / French Guiana)
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature |
+|---|---|---|---|---|
+| **Early** | **pale teal** / white | slim, **colour-blocked** like 1964 Paris space-age couture: a white yoke and white ankle boots over the teal | a small round white helmet with a **round porthole visor** | the porthole and the colour blocks |
+| **Middle** (Hermes) | white / one **pastel band** across the chest and down the outside of the leg | smooth and rounded, shoulders like an appliance's corners, almost no visible joints | a rounded helmet built into the suit, a visor that wraps round to the sides | the single band; the big round connector at the hip |
+| **Late** | **blue-grey** / teal | slim, padded only at the shoulders and hips | the wraparound visor, slimmer | a teal seam line tracing the whole body |
+| **Spacewalk** | white / teal | **modular**: smooth pods clipped on (backpack, chest pack, tool pods on the thighs) | a round bubble with a teal ring at the neck | the clip-on pods |
+
+**Mountain** (Japan / India, the solid-fuel lineage)
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature |
+|---|---|---|---|---|
+| **Early** | **ivory** / saffron segments | slim, narrow horizontal quilting, soft boots | a light white shell, a narrow letterbox visor | the saffron-banded quilting |
+| **Middle** | **saffron** / white, deep green pull-tabs | compact, quilted, every strap with a coloured tab | a light helmet, the sun disc on the crown | the tabs and the crown's sun disc |
+| **Late** | **pale gold** / indigo | lightweight, close-fitting, minimal | almost a cap: a thin shell, **a light visor** | the lightness: the slimmest launch suit in the game |
+| **Spacewalk** | white / saffron | **compact**: the smallest spacewalk suit, its backpack folded flat into the back | **rays painted round the visor** (the flag's sun) | the painted rays |
+
+**Isle** (New Zealand / small commercial launchers)
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature |
+|---|---|---|---|---|
+| **Early** (needed if Isle is the player's school) | **navy** / hand-sewn patches in many colours | a **surplus high-altitude suit, a little too big**, sleeves rolled, hiking boots, repair tape | a surplus helmet painted over by hand, a stencilled number | the hand-sewn patches and the tape |
+| **Middle** | **forest green** ripstop / black | mountaineering kit: taped seams, ripstop panels, a chest harness | black shell, dark visor | the climbing harness |
+| **Late** | **black** / hi-vis yellow | close-cut technical fabric, **sponsor decals on the chest and arms like a racing driver** | black shell, dark visor, a decal on the side | the sponsor decals |
+| **Spacewalk** | light grey / black | utilitarian, **rental-grade**: plain panels, a fleet number | a plain shell, scuffed | **the fleet number painted big on the backpack**; a rental tag on the wrist |
+
+**Foundry** (commercial, late only: one launch suit)
+
+| Suit | Dominant / second | Silhouette | Helmet | Signature |
+|---|---|---|---|---|
+| **Launch** | white / black | close-cut and **tailored**, black panels at the sides, black ankle boots, touchscreen gloves | one piece, the black visor **flush** with the shell | the clean line and **the single thigh umbilical** |
+| **Spacewalk** | white / black, thermal bands | the launch suit stiffened, **white thermal bands at the joints**, a slim pack; works on an umbilical | the launch helmet with a gold visor and **a display inside it** | the thermal bands and the slim pack |
+| **Surface** (when Foundry lands people) | white / stainless | bulky and rigid, **a suitport plate on the back** (it docks to the ship instead of using an airlock) | a big dome | the suitport plate |
+
+**Colours across all seven schools** (the round-2 rules, widened): within one school, no two generations share a
+dominant colour; within one era, no two schools do, **except white in the middle era** (Cape, Steppe, Coastal: real
+suits, told apart by their second colour and their construction) and **white for spacewalks** (thermal, as real
+ones; silhouette and signature carry them). The dominants by era:
+- early: silver, orange, olive, pale teal, ivory, navy;
+- middle: white ×3, sand, saffron, forest green;
+- late: orange, grey-green, gunmetal, blue-grey, pale gold, black, white (Foundry).
+
+The two dark late suits (gunmetal, black) separate by second colour (red vs hi-vis yellow) and by silhouette (plates
+vs racing decals).
+
+**Questions, defaults if silent:**
+1. **Isle early: an invented surplus suit** (default), or crew borrowed from another school (as real small nations
+   flew on others' hardware: Interkosmos guests wore Sokols), the Isle patches being the only Isle thing about them.
+2. **The player's crew always wear their home school's suits** (default), even on rockets with mixed parts; Foundry's
+   suits are for the commercial giant's crews and for passengers on its flights.
+3. **A mock-up round for these five schools** in the same scene as Q219 (Q219's page grows a school picker), with
+   the checks widened: a silhouette row per era (seven figures, six in the early era) and the 48 px row (default: yes).
 
 **Shared, so they read as one crew:** the stylised-human proportions (W19), flat colour with ink outlines, the role
 stripe round the upper arms (D9 3).
