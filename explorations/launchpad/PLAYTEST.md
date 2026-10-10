@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.26 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -52,6 +52,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 57 | P2 | **The navball needs a north**, maybe degree markings (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
 | 58 | P2 | **The monochrome-era display graphics look bad, low-res** (Caio, 2026-10-10, playing the monochrome computer era). | The vector terminal canvases (`program-ui.js` ~134), probably not at device pixels. QUEUE Q258 | flow |
 | 59 | P3 | **The Steppe rocket's texture is low-res**; not sure improving it is affordable (Caio, 2026-10-10, playing the monochrome computer era). | Measure first. QUEUE Q259 | look & sound (parts & pad) |
+| 60 | P2 | **Two arcs and two impact points on the map, one an X and one a dot**; not clear why (Caio, 2026-10-10, playing the monochrome computer era). | Probably the vacuum orbit (ends in a dot labelled *Impact*) and the drag-aware impact predictor (its own path, an X) drawn together; or a dropped stage's predicted impact. QUEUE Q260 | flow |
 
 ## Done
 

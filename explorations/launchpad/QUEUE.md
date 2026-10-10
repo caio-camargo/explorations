@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.40 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 0.1.41 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -141,6 +141,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q255 | PLAYTEST **#54**: **deleting a maneuver doesn't seem to work**: the button (`program-ui.js` ~363, `a==='del'`) clears `S.node`, then `nodeNext(S)` promotes the next queued node, which may read as nothing happening; check the button's wiring too | M1 | S | 🖥 | ready |
 | Q256 | PLAYTEST **#55**: on the map, **Helios and the planets sit on a dotted ring closer to Tellus than Selene's orbit** (Q175, `render.js` ~336): put the ring outside Selene's orbit (or draw it clearly as a compass, not a distance), labelled "not to scale" | M1 | S | 🖥 | ready |
 | Q258 | PLAYTEST **#58**: the **monochrome computer-era displays look low-res** (the vector terminal, `program-ui.js` ~134): draw the canvases at device pixels (DPR), crisp lines, and check the glow isn't a blurred upscale | M1 | S | 🖥 | ready |
+| Q260 | PLAYTEST **#60**: the map shows **two arcs and two impact points** (an X and a dot) with no way to tell them apart. Likely the vacuum conic, which ends in an *Impact* label (`render.js` ~267/281), drawn beside the drag-aware impact predictor's own path and X (`render.js` ~347–348); other candidates are a dropped stage's impact (`pendingDrops`, ~355), the spread marks (~354) and a ballistic contract's target (~351). Reproduce, then show one impact (the predictor's, inside the air), fade the conic below the top of the air, and give each remaining mark a label or legend | M1 | S | 🖥 | ready |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
