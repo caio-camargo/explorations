@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (flow session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -38,7 +38,7 @@ shading**, not finished faces: "realistic" would get a modelled head in the game
 
 **Pick:** _(Caio)_
 
-## bodies/ — how each body looks (QUEUE Q71 → SYSTEM.md look briefs → Q80–Q85)
+## bodies/ — how each body looks (QUEUE Q71, round 2 Q207 → SYSTEM.md look briefs → Q80–Q85)
 
 Open `bodies/index.html` (one button per view) or the stills in `output/launchpad/mockups/bodies/` (`<view>.png`,
 1280×800). Each is drawn from its `SYSTEM.md` look brief, lit from the side so the terminator shows. These are one
@@ -56,6 +56,33 @@ proposal per body, not alternatives: pick, or say what to change. Real reference
 | **eos** | white ice, red-brown cracks, plumes in the south | Europa by Galileo; Enceladus's plumes by Cassini | crack lines on ice, plume volumes |
 | **tethys** | a thick orange haze, a detached blue layer at the limb | Titan by Cassini; Huygens's descent | the haze as the body's whole look, a second thin layer above it; the surface only below the haze |
 | **erebus** | pale pinks and tans, a smooth bright basin, dark reddish highlands, a tiny sun | Pluto by New Horizons (Sputnik Planitia); Triton by Voyager 2 | a map with one big bright region; the sun drawn small at that distance |
+
+**Round 1 feedback (Caio, 2026-10-09, W20):** Hesper too featureless; Enyo's volcano a perfect ring, redder overall;
+Astraea too much like the Moon; Hyperion too much like Saturn; Eos's lines unclear; Tethys featureless; Erebus needs
+something distinctive. Round 1 stays on the page as the `r1-*` buttons; its stills keep their old names.
+
+### Round 2 (QUEUE Q207, SYSTEM.md 1.1.0 § each body "Look, round 2")
+
+Same page; the bar's first row. Stills in `output/launchpad/mockups/bodies/r2-<view>.png` (1280×800).
+
+| View | What changed | Real references (compare) | What the game's planet shader would need |
+|---|---|---|---|
+| **hesper** | day side: cream with faint chevron streaks, the sideways-Y shape, a swirl and cold collar at each pole | Mariner 10 / Akatsuki UV, toned down | a cloud map (or procedural Y + streaks) under the haze limb; no ground from space |
+| **hesperNight** | the night side glows dull red; dark cloud filaments and cooler highlands in silhouette; exaggerated | Akatsuki IR2; Parker Solar Probe WISPR (2021) | an emissive term on the night side (glow × (1 − cloud opacity) × highland mask), added before tone mapping |
+| **enyo** (+ Pavor) | redder: rust and ochre dust, dark basalt; the volcano with an irregular basal cliff, three smaller shields in a row, the canyon east of them | Viking colour mosaics ("Mars as people picture it") | land colour from a map; the volcano and its row as **ground height** (GROUND.md's Enyo recipe), lit by the bump, not painted |
+| **enyoVolcano** | the volcano from above at low sun: the cliff, overlapping off-centre calderas | Olympus Mons by Viking / Mars Express HRSC | the same height field at close range; the calderas need flat floors and steep walls in the recipe |
+| **astraea** | lumpy and flattened (0.8 at the poles); a giant south-polar basin with a central mountain; equatorial grooves; salt spots in a young crater; faint blue-white streaks | Vesta by Dawn (Rheasilvia, Divalia Fossae); Ceres's Occator | the basin, mountain and grooves as ground height; the flattening is a render-only scale on the sphere (physics stays round, SYSTEM.md says so) |
+| **astraeaSide** | the same body side-on: the flattened outline and the mountain standing out of the basin | Vesta's profile by Dawn | as above |
+| **hyperion** | northern summer: bands and storm spot, the polar hexagon, the southern winter hemisphere blue; rings with a broad dark gap and a small moon in it (drawn ~15× too big to see), a braided bright outer ring | Jupiter by Juno (bands); Saturn's hexagon and blue north by Cassini; the F ring, Pan and Daphnis | a band texture plus a hexagon mask; a **season uniform** (the sun's latitude in the planet frame) that tints the winter side; ring opacity as a 1D radial profile plus the braid and the gap's edge waves |
+| **hypWinter** | six years on: the north is winter, blue, with the rings' shadow across it; the rings seen from their unlit side | Cassini 2004–2005 (Saturn's blue north, ring shadows) | the same uniform; rings lit through their unlit face (thin parts glow, dense parts dark) |
+| **hypSky** | from Tellus after dusk, with a telescope inset showing the new rings | amateur telescope views | unchanged from round 1 (a point in the sky; a telescope view later) |
+| **eos** | scalloped crack chains (cycloids), two patches of jumbled ice blocks (chaos), four tiger stripes at the south pole with plume curtains over the limb | Europa by Galileo (cycloids, Conamara Chaos); Enceladus by Cassini (tiger stripes, plumes) | cycloids and chaos as decal maps; stripes a polar decal; plumes as a small volume (or stacked billboards) brightest looking toward the sun |
+| **eosSouth** | Eos from below: the stripes with frost on their flanks, cycloids and chaos | Enceladus's south pole by Cassini | as above |
+| **tethys** | haze thinned: dark dune belts, a bright highland, northern lakes, one glinting at the sun; the detached blue layer stays | Titan by Cassini VIMS (dunes, Xanadu, the 2009 Kraken Mare glint) | a surface map under a view-angle haze (thin at the centre, thick at the limb); a specular term masked by lakes |
+| **erebus** | backlit: a dark disc in thin layered blue haze, the sun just hidden | New Horizons' departing image of Pluto | a forward-scattering haze shell with layered density; only matters when the sun is behind the body |
+| **erebusAether** | Erebus and its companion at true size and distance: an irregular cellular nitrogen plain (no heart), a dark tholin belt, water-ice blocks on the plain's rim; Aether grey with a dark red polar stain | Pluto (Sputnik Planitia's cells, Cthulhu) and Charon (Mordor Macula) | a second body in the tree locked face to face; Erebus's map; Aether's cap as a polar decal |
+
+**Not in round 2:** Theia (no change was asked; round 1's `r1-theia` stands), Pavor and Metus (unchanged).
 
 **Pick / changes:** _(Caio)_
 
