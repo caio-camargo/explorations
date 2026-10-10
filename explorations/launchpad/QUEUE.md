@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.26 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.27 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -125,6 +125,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q210 | Drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) (NOTES § v1.103) | M2 | S | 🖥 | ready |
 | Q211 | The pad calendar's `kind 'window'` bar (a dispatch waiting for its window, pad held) needs a `.cbar.window` style; `app/network.js`'s fallback still builds one bar per dispatch (from economy, Q185 v1.104) | M2 | S | 🖥 | ready |
 | Q212 | The builder's power line says what v1.108 means between flights ("as a satellite here: battery lasts N days, then sunlight only"), so the warning comes before launch | M2 | S | 🖥 | ready |
+| Q218 | **Coverage drawn as an area**: a shaded footprint of where a relay reaches (`coverOf` has the numbers); today each link is a line | M2 | S | 🖥 | ready |
 | Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ready |
 | Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ready |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
@@ -232,6 +233,7 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q171 | Q51 slice 1: `pathHome` and the link budget (gain classes, station dishes, line of sight, one relay hop, rate and delay); `linkOf`, `rvContact` and imagery's contact share call it; today's behaviour as tests | M2 | M | ⚙ | ✓ `96d98dc` (v1.96: rate and light delay on every link; whip over the pad 333 kbit/s, at Selene 20.5 bit/s) |
 | Q172 | Q51 slice 2 (with economy): data as a volume (instruments → recorders → downlink at the path's rate); pay on data received | M2 | M | ⚙ | ✓ `df49ab1` (v1.100: recorders, downlinks, imagery paid per bit received; NOTES § v1.100; TESTING 176) |
 | Q173 | Q51 slice 3 (with flow): relays as nodes, coverage drawn, routes through gaps flagged; relay power | M2 | M | 🖥 | ✓ `4f7e99e` (v1.109: one relay hop by the link budget, relay power, coverage, links home on the Network screen and the map; NOTES § v1.109; TESTING 189) |
+| Q217 | **Relay chains and imagery through relays**: v1.109 is one hop and imagery still asks stations only; both wait for a dish part (whip-to-whip hops reach ~300 km) | M2 | M | ⚙ | after Q197 (the dish) |
 | Q174 | Q51 slice 4: solar conjunction and light delay at the planets | M5 | S | ⚙ | after Q87's slices; blocked: milestone gate (M5) |
 | Q87 | 📝 **The system on rails** from [`SYSTEM.md`](SYSTEM.md): Helios as the root (today Tellus is), each planet's orbit and SOI, time scales; and the cheap early part, the other planets on the map from epoch 1 (PLAYTEST #11) | M5 | L | 📝 | plan ✓ (NOTES § "Plan: the system on rails"); slice 1 → space (sim ✓ `55d8115`, `sim/system.js`), its map drawing is flow's Q175; slices 2–4 are Q176–Q178 (M5) |
 | Q176 | Q87 slice 2: Helios as the root, the Tellus-centred absolute frame, `SUN_DIR(t)`, Tellus's finite sphere, heliocentric legs | M5 | L | ⚙ | blocked: milestone gate (M5) |
@@ -424,6 +426,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W30 | **Look at the suits** (D9 → Q199): `explorations/launchpad/mockups/suits/index.html`, or the stills in `output/launchpad/mockups/suits/` (`sheet-wide.png`, `sheet-close.png`, `role-*.png`): Cape and Steppe, early / middle / late / spacewalk, and the role stripes (pilot blue, scientist green, engineer yellow; blue is weak on the Sokol). Pick or say what to change. Defaults if silent: build these into `SUITS`, Cape then Steppe | the per-school suit build (after Q199) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-
-- (space, from Q173) **Relay chains and imagery through relays**: v1.109 is one hop and imagery still asks stations only; both wait for a dish part (whip-to-whip hops reach ~300 km).
-- (flow, from Q173) **Coverage drawn as an area**: the map shows each link as a line; a shaded footprint of where a relay reaches (`coverOf` has the numbers) is flow's call.
