@@ -4731,7 +4731,7 @@ Caio left the session running ("keep going while you still have work"). Built, e
   `PT.ascent(flatKm)`; `PT.park` rebuilds), `sim/program.js` (testBreakup/testAsat/testClutter), `app/screens.js` (Debris
   and Hardware school blocks), `test.mjs` (`qa-3`, `qa-4`, `qa-5`), `TESTING.md`, `PLAYTEST.md`, `PLAYROUTE.md`,
   `NOTES.md`, `QUEUE.md`, `ROADMAP.md` (M1 row)
-- `LESSONS_LEARNED.md` (#39 gate pushes on tests, #40 escapes in injected code), `ACTIVE_WORK.md`
+- `LESSONS_LEARNED.md` (two lessons: gate pushes on tests; escapes in injected code), `ACTIVE_WORK.md`
 
 ### Next steps
 - [ ] vehicle: PLAYTEST #35, the Passenger Orbiter's cabin (and make `vehicle-3` read `S.rec`)
