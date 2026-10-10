@@ -4,6 +4,15 @@
 // The checkpoint between Assembly and the launch: a panel beside the ship on the pad with the launch site (the picker,
 // renderSites, moved here from Assembly), the checks, what the flight costs and how long it takes to stack, what's in
 // play, and LAUNCH (still #launch, with its own checks in editor.js). ⛔ blocks the launch, ⚠ is worth a look, ✔ is fine.
+// (Q193, with look & sound) the rollout lying down: on a Steppe pad (no tower) the Rollout opens with the rocket on its
+// side on the transporter-erector at the assembly hall's door; the car rolls it down the rails to the pit (ROLL_S[0] s),
+// the boom raises it (ROLL_S[1] s), then the support arms and cable masts close on it (ROLL_S[2] s). rollPhase() is the
+// clock gl.js draws from (drawSteppeRig, rollTilt): null when not rolling out on a Steppe pad. It restarts on entering
+// the Rollout or on picking another site. LAUNCH isn't held back: launching early stands the rocket up at once.
+const ROLL_S=[7,5,1.5];let rollT0=0,rollSite=null;
+function rollPhase(){if(!atRoll||mode!=='editor'||padSchoolOf(curSite())!==1)return null;const now=performance.now();
+  if(curSite()!==rollSite){rollSite=curSite();rollT0=now}const t=(now-rollT0)/1000,u=(a,d)=>sstep(0,1,clamp((t-a)/d,0,1));
+  return{t,roll:u(0,ROLL_S[0]),up:u(ROLL_S[0],ROLL_S[1]),arms:u(ROLL_S[0]+ROLL_S[1],ROLL_S[2])}}
 function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=t=>out.push(['warn',t]),bad=t=>out.push(['bad',t]);
   const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts),c=vesselCost(S.parts).cost,fee=a.fee||0,ops=OPS_FIX+OPS_FRAC*c,w=siteWeather(t,(PROG.day||0)*DAY_S);
   if(c+fee>PROG.funds+1e-9)bad(`Over budget: ${fmtM(c)}${fee?` + ${fmtM(fee)} site fee`:''}, the program has ${fmtM(PROG.funds)}`);

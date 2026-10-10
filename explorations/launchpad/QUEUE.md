@@ -127,7 +127,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q212 | The builder's power line says what v1.108 means between flights ("as a satellite here: battery lasts N days, then sunlight only"), so the warning comes before launch | M2 | S | 🖥 | ready |
 | Q218 | **Coverage drawn as an area**: a shaded footprint of where a relay reaches (`coverOf` has the numbers); today each link is a line | M2 | S | 🖥 | ready |
 | Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ready |
-| Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ready |
+| Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ✓ v1.111 `{SHA}` (rolls from the hall, raised, arms close; a sound for it proposed to look & sound) |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
@@ -432,3 +432,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W32 | **Look at the suits, round 2** (CREW.md 0.2.4 → Q219): `explorations/launchpad/mockups/suits/index.html` (bar: suit, pose, shot; the last four buttons are the brief's checks), or `output/launchpad/mockups/suits/r2-sheet-lineup.png` and `r2-check1-silhouettes.png` / `r2-check2-grey.png` / `r2-check3-48px.png`. Each suit built from its own pieces (Cape hard and glossy, hoses into the chest; Steppe canvas, laces, hoods, the ventilator case). Lost at 48 px: Apollo's bellows, Mercury's finger lights, the SK-1 letters; Orlan's door shows only from behind. Pick, or say what to change per suit. Defaults if silent: build these into `SUITS`, Cape then Steppe | the per-school suit build (after Q219) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- (look & sound, from flow's Q193 v1.111) **A sound for the Steppe rollout**: the erector car's rumble on the rails (7 s), the boom's hydraulics (5 s), the arms closing; the clock is `rollPhase()` in `app/rollout.js`. And, if it reads wrong, the rocket lies ~10 m up on the boom's cradle arms (the Q159 boom's geometry).

@@ -4700,6 +4700,23 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     css && tog && thr && cards && gauges, `css ${css} · toggle ${tog} · throttle ${thr} · cards ${cards} · gauges ${gauges}`);
 }
 
+// flow-8. The rollout lying down (flow session with look & sound, QUEUE Q193): on a Steppe pad the Rollout rolls the rocket
+// from the hall on the erector's car, raises it on the boom, then closes the arms (rollPhase, app/rollout.js); gl.js
+// draws the car, boom, arms and the ship from that clock. Checked in the source, and the clock's three phases run in turn.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const src = cut(page, 'const ROLL_S=', '\nfunction rollChecks');
+  let now = 0, site = {}, sch = 1;
+  const rp = new Function('atRoll', 'mode', 'padSchoolOf', 'curSite', 'performance', 'sstep', 'clamp', src + ';return rollPhase')(true, 'editor', () => sch, () => site, { now: () => now },
+    (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t) }, (x, a, b) => Math.min(b, Math.max(a, x)));
+  const at = ms => { now = ms; const r = rp(); return r && [r.roll, r.up, r.arms].map(x => +x.toFixed(2)).join('/') };
+  const seq = [at(0), at(3500), at(9500), at(12750), at(20000)]; sch = 0; const cape = rp(); sch = 1; site = {}; const again = at(20500);
+  const wired = /function drawSteppeRig[^\n]*rollPhase\(\)/.test(page) && /Mship=rollTilt\(camW,/.test(page) && /s==='rollout'\)\{[^\n]*rollSite=null/.test(page);
+  check('flow-8: on a Steppe pad the Rollout rolls the rocket out lying down, raises it, then closes the arms; a Cape pad has none; another site restarts it',
+    wired && seq.join(' ') === '0/0/0 0.5/0/0 1/0.5/0 1/1/0.5 1/1/1' && cape === null && again === '0/0/0', `${seq.join(' ')} · cape ${cape} · new site ${again} · wired ${wired}`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.

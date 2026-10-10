@@ -1745,13 +1745,22 @@ function drawPadRig(drawMesh,camW){const F=padFrame(camW);if(len(F.O)>3e5||HOOK.
 // lift-off. Service halves: closed round the rocket when a flight starts on the pad, folding down to the ground over
 // 14 s from 2 s in (as Cape's gantry rolls away); down in the editor. Erector: boom up in the editor, down on its car
 // in flight.
-function drawSteppeRig(drawMesh,F,pre,tl){const I=padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]);drawMesh(RIG.posts,I,F.site);drawMesh(RIG.car,I,F.site);
-  const al=pre?0:-1.15*sstep(0,1,clamp((tl-.1)/1.4,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
-  const am=pre?0:-.55*sstep(0,1,clamp(tl/.8,0,1));for(const M of RIG.arms){const[a,b,c]=rotAx([1,0,0],am);drawMesh(M.mesh,padMat(F,a,b,c,M.P),F.site)}
+// The Rollout (Q193, flow, rollPhase in app/rollout.js): the car comes down the rails from the hall's door (rollDz), the
+// boom rises from lying on it, and the support arms and masts stand open until the rocket is up, then close on it.
+const ROLL_DOOR=121.9;   // the hall's door, m north of the pad (steppeTable)
+const rollDz=R=>-(ROLL_DOOR+RIG.bP[2])*(1-R.roll);
+function drawSteppeRig(drawMesh,F,pre,tl){const R=typeof rollPhase==='function'?rollPhase():null,dz=R?rollDz(R):0,I=padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,0]);
+  drawMesh(RIG.posts,I,F.site);drawMesh(RIG.car,padMat(F,[1,0,0],[0,1,0],[0,0,1],[0,0,dz]),F.site);
+  const al=R?-1.15*(1-R.arms):pre?0:-1.15*sstep(0,1,clamp((tl-.1)/1.4,0,1));for(const Hd of RIG.holds){const[a,b,c]=rotAx(Hd.k,al);drawMesh(Hd.mesh,padMat(F,a,b,c,Hd.P),F.site)}
+  const am=R?-.55*(1-R.arms):pre?0:-.55*sstep(0,1,clamp(tl/.8,0,1));for(const M of RIG.arms){const[a,b,c]=rotAx([1,0,0],am);drawMesh(M.mesh,padMat(F,a,b,c,M.P),F.site)}
   const f=mode==='editor'?Math.PI/2:Math.PI/2*sstep(0,1,clamp((simT-padT0-2)/14,0,1));
   {const[a,b,c]=rotAx([0,0,1],-f);drawMesh(RIG.gantry,padMat(F,a,b,c,[RIG.xh,0,0]),F.site)}
   {const[a,b,c]=rotAx([0,0,1],f);drawMesh(RIG.gantry,padMat(F,mul(a,-1),b,mul(c,-1),[-RIG.xh,0,0]),F.site)}
-  const[a,b,c]=rotAx([1,0,0],mode==='editor'?0:-Math.PI/2);drawMesh(RIG.boom,padMat(F,a,b,c,RIG.bP),F.site)}
+  const[a,b,c]=rotAx([1,0,0],R?-Math.PI/2*(1-R.up):mode==='editor'?0:-Math.PI/2);drawMesh(RIG.boom,padMat(F,a,b,c,add(RIG.bP,[0,0,dz])),F.site)}
+// the ship's model matrix during the Rollout: turned with the boom about its hinge and carried with the car (Q193)
+function rollTilt(camW,M){const R=RIG.sch===1&&typeof rollPhase==='function'&&rollPhase();if(!R||R.up>=1)return M;
+  const F=padFrame(camW),[x,y,z]=rotAx(F.X,-Math.PI/2*(1-R.up)),H0=add(F.O,padW(F,RIG.bP)),H1=add(F.O,padW(F,add(RIG.bP,[0,0,rollDz(R)])));
+  return mmul(mat4(x,y,z,sub(H1,add(add(mul(x,H0[0]),mul(y,H0[1])),mul(z,H0[2])))),M)}
 // floodlights: on from dusk (the sun 4° above the pad's horizon) to dawn; four point lights for the mesh shader, which
 // lights the rocket, the tower and the pad's buildings with them
 function padLights(u,camW){const F=padFrame(camW),e=dot(norm(sub(F.site,bodyPos(TELLUS,simT))),SUN);padNight=len(F.O)<2e4?1-sstep(-.05,.07,e):0;

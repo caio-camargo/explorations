@@ -1109,7 +1109,7 @@ home is Cape there, and Cape's `buildPad`/`buildRig` code paths are untouched (t
   test.mjs `aerofx-4`: for every preset the arms clamp within 0.16 m of the skin without passing through anything, the
   masts' arms, the cradle arms and the closed halves stop short, the ring clears the base; the school per site.
 - **Not built:** the rocket lying on the erector during the rollout itself (a horizontal rocket needs the Rollout screen
-  to draw the stack on its side: flow's screen, proposed); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
+  to draw the stack on its side: flow's screen, proposed; **built v1.111, Q193**); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
 
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
@@ -2068,6 +2068,25 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.111 — the rollout lying down (2026-10-10, flow session with look & sound's pad, QUEUE Q193; Q159's "not built")
+
+- **On a Steppe pad the Rollout is a rollout**: the screen opens with the rocket on its side on the transporter-erector at
+  the assembly hall's door, 120 m north; the car rolls it down the rails to the pit (7 s), the boom raises it (5 s), then
+  the four support arms and the two cable masts, standing open until then, close on it (1.5 s). A Cape pad is unchanged.
+- The clock is `rollPhase()` in `app/rollout.js` (`ROLL_S`; null unless the Rollout is open on a Steppe pad); it
+  restarts on entering the Rollout (`go` clears `rollSite`) or on picking another site. In `app/gl.js` (additive):
+  `drawSteppeRig` moves the car (`rollDz`), turns the boom and holds the arms open from it, and `rollTilt(camW, M)`
+  turns the ship's model matrix with the boom about its hinge and carries it with the car (`render()`'s `Mship`, so the
+  shadow follows).
+- LAUNCH isn't held back: launching mid-rollout stands the rocket up at once (the flight's rig starts as before).
+- The rocket lies on top of the boom's cradle arms, ~10 m up: the boom (Q159) stands beside the rocket with arms reaching
+  across, so laid down they hold it that high. A real erector carries it just above the boom; that's look & sound's
+  mesh if it reads wrong.
+- Test `flow-8` (the clock's three phases in turn, none on a Cape pad, a new site restarts it; the wiring). TESTING 190.
+  Stills: `output/launchpad/q193-rollout/` (rolling, at the pit, rising, closed). Robot `m1` (a Cape rollout) passes.
+- **Not yet (look & sound):** a sound for it (the car's rumble, the boom's hydraulics); the camera stays where the
+  Rollout puts it, so the car is small at the hall's door for the first seconds.
 
 ## v1.110 — the map trims the navball to a heading line (2026-10-10, flow session, QUEUE Q3, UI slice 4c; closes Q3)
 
