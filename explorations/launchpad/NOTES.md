@@ -10019,3 +10019,13 @@ So only a held retrograde works, and the gyro's slower loop (2/s, 0.3 rad/s) is 
 `s.av = 0` now. In the builder and the flight panel the Retro button is lit from year 0 (`sasModeOK`, `editor.js`), and
 Q134's pilot ranks are unchanged (rank 1 is the analog autopilot's list).
 
+**Watching the robot play (Q224, QA session, 2026-10-10).** `node playtest.mjs --watch m1` (or `--watch=4` for 4×) opens a
+visible Chrome window and paces the run for a person: a caption at the bottom says what the robot is doing (`{say: '…'}` steps,
+plus the ascent's phases and staging), a yellow ring marks each click before it lands, a key press is named first, and every
+step is followed by a short pause. Flights run on `PT.loop`: headless it is the old tight loop; watching (`PT.W`), the same
+per-step body runs across animation frames at speed × warp sim seconds per real second, with the game's `simulate` held off so
+the live loop only draws (warp ×20 above the air with the engines off, ×4 in it above 3 km; `PT.coastWarp`). `PT.fly` and
+`PT.ascent` return a promise when watching, so a step that uses their value must `await` it (m1 and 147 do). Results and shots
+go to `<out>/watch`, captions hidden in the shots. At 8× m1 takes ~4 min and passes; at 1× expect ~15 min (the Sounding's
+parachute descent is most of it). Rows that set a scene directly (a ship placed in orbit, `PT.steps`) still jump: only m1 and
+147 are written for watching. Also Q221: a `PT_URL` with its own query now joins `tester` with `&`.
