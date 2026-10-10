@@ -116,7 +116,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q153 | The flight toolbar and `#msg` are hard to read over the notebook-era map (cream paper, pale buttons, white text): give them the era's ink | M1 | S | 🖥 | ✓ `960cd84` (body.paper: ink buttons and messages) |
 | Q151 | Rollout: the long Δv warning (vehicle's `launchWarnings`, Q48) wraps to four lines at 1280×800; shorten or fold it | M1 | S | 🖥 | ✓ `d35e9bf` |
 | Q155 | Network screen **N1**: the pad calendar (Gantt) and the fleet strip from what exists (pads, dispatch, timeline, registry), with economy's Q154 (NOTES § UI "Network screen plan"; W18's defaults) | M2 | M | 🖥 | ✓ `d35e9bf` |
-| Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | → flow 2026-10-09 |
+| Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ✓ `3f2d857` (v1.103: every node drawn; a click selects it, its handles edit it) |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
 | Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ready |
@@ -414,3 +414,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
 
 - ~~QA — Q194: a tester switch for the hardware school~~ already done as Q106's picker (tester → Hardware school, TESTING 179)
+- flow (Q157, v1.103) — drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) — NOTES § v1.103
