@@ -1,5 +1,5 @@
 # CREW — astronauts
-**Version**: 0.2.5 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Version**: 0.2.6 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
 **Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
 the whole file goes to 1.0.0 when it's settled.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
@@ -108,6 +108,8 @@ crew tell the era's history).
 ---
 
 ## Part 1 — how crew look
+
+**Faces are built by an engine**, not one by one: [`FACES.md`](FACES.md) (D12).
 
 **Decided (Caio, 2026-10-09, W19): (c) stylised human** (1960s illustration, Thunderbirds, Tintin; mock-up
 `mockups/crew/`). Not a retread of KSP's cartoon crew, not realistic either: the stylisation is what allows the lighter
