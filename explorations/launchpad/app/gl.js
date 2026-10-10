@@ -1766,7 +1766,7 @@ function padSync(){if(!S||!S.parts)return;const pre=mode==='editor'||S.landed&&!
   if(S!==padShip||mode!==padMode){padShip=S;padMode=mode;padT0=mode==='flight'&&S.landed&&!S.mkLift?simT:-1e9}
   if(!pre)return;   // after liftoff the rig keeps its shape and only animates
   const H=clamp(Math.ceil((S.len+3)/2.5)*2.5,12.5,60),rig=padRig(H),sch=padSchoolOf(curSite());
-  const key=H+'|'+sch+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch===1?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
+  const key=H+'|'+sch+'|'+(typeof crewGen==='function'?crewGen():0)+'|'+(rig?[rig.base,rig.hE.toFixed(2),rig.rB,rig.zr.toFixed(2),rig.hold.f.toFixed(3),...rig.hold.r.map(x=>x.toFixed(2)),...rig.xs.map(x=>x==null?'-':x.toFixed(2)),...(rig.crew?['c'+rig.crew.h.toFixed(2)]:[]),...(sch===1?[rig.ext.toFixed(2),rig.L.toFixed(1),...rig.st.r.map(x=>x.toFixed(2)),...rig.prof.map(x=>x.toFixed(2))]:[])].join(','):'free');
   if(key===padKey)return;if(H!==padTH||sch!==padSch){PAD.free();PAD=buildPad(H,sch);padTH=H;padSch=sch}RIG.free();RIG=buildRig(H,rig,sch);padKey=key}
 // the frame of the pad the rocket uses (curSite(): every site draws the static pad; the rig and the lights are only at
 // this one), with the same axes the pad's own draw uses (siteFrame: e, up, s)

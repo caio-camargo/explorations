@@ -5013,8 +5013,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 
 // aerofx-5. The crew's look, slice 1 (look & sound effects beat, QUEUE Q195; Caio: W19 stylised human, suits by school and
 // epoch from the default). The figure is built from app/crew-look.js with a recording pv: about 1.78 m tall standing on
-// its own feet, the waving glove above the helmet's top, the faceplate open (the face shows); suitOf falls back to the
-// default. Cape's crew arm (buildRig with stubs): at the hatch of every crewed design, its deck ending short of the
+// its own feet, the waving glove above the helmet's top, the faceplate open (the face shows); every national school has
+// its three launch suits (Q229), no two generations of a school sharing a dominant colour; unknown ones fall back to the default. Cape's crew arm (buildRig with stubs): at the hatch of every crewed design, its deck ending short of the
 // capsule, a swing arm at the same height standing down; Steppe's rig has none yet; the crew are drawn in the editor only.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
@@ -5022,11 +5022,13 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const C = new Function(src + `const P=[];const pv=(o,p,n,c)=>{o.push(p);P.push({p,c})},tube=(o,A,B)=>{o.push(A,B)},lathe=(o,prof)=>{for(const[r,y]of prof)o.push([r,y,0])};
     ${cut('const SUIT_DEFAULT=', '\n// The crew on the access arm')}
     return {crewFigure,suitOf,SUIT_DEFAULT,SUITS,CREW_C,P};`)();
+  const lines = [0, 1, 2, 3, 4, 5].map(k => C.SUITS[k]), key = c => c.slice(0, 3).map(x => x.toFixed(2)).join(),
+    suitsOk = lines.every(L => L && L.length === 3 && new Set(L.map(x => key(x.c1))).size === 3) && C.suitOf(9, 0) === C.SUIT_DEFAULT && C.suitOf(1, 2) !== C.SUIT_DEFAULT;
   const pts = a => a.filter(Array.isArray), st = pts(C.crewFigure(C.suitOf(0, 0), 'stand', 0)), wv = pts(C.crewFigure(C.suitOf(1, 2), 'wave', 1));
   const ys = st.map(p => p[1]), top = Math.max(...ys), foot = Math.min(...ys), wTop = Math.max(...wv.map(p => p[1]));
   const skin = C.P.filter(v => Math.abs(v.c[0] - 0.95) < 1e-9 && Math.abs(v.c[1] - 0.76) < 1e-9).map(v => v.p), faceFwd = skin.filter(p => p[2] > C.CREW_C.head * 0.7 && p[1] > 1.4).length;
-  check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; the suit falls back to the default',
-    top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && C.suitOf(1, 2) === C.SUIT_DEFAULT && Object.keys(C.SUITS).length === 0,
+  check('crew look: a stylised astronaut ~1.78 m tall on its own feet; the waving glove rises above the helmet; the face shows; six schools × three suits, each generation its own colour',
+    top > 1.74 && top < 1.82 && Math.abs(foot) < 0.02 && wTop > top && faceFwd > 20 && suitsOk,
     `height ${top.toFixed(3)} m, feet at ${foot.toFixed(3)}, waving hand to ${wTop.toFixed(2)} m; ${faceFwd} face vertices forward`);
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}}),

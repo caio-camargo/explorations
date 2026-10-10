@@ -9986,6 +9986,40 @@ we'll work from there" (his go lifts the M3 gate for this). Built:
   design, short of it, the swing arm standing down, none without crew or on Steppe; TESTING 184.
 - Next: the walk-out and boarding (proposed in QUEUE; the crew cross the arm and go in during the flight's first
   seconds, or the countdown), crew on Steppe's pad; D9's suit lines are Q199 (mock-ups first, then a build per school).
+
+### The suits by school and generation (2026-10-10, effects beat, QUEUE Q229; CREW.md suit briefs, mock-ups Q219/Q226, Caio's go W32)
+
+`SUITS[school][gen]` in `app/crew-look.js` now holds every national school's three launch suits (6 × 3). Each is built
+from its own pieces by `crewFigure`, not one body recoloured, following the mock-ups:
+- **Cape:** Mercury chrome with bloused knees, gold connectors and finger-tip lights; Apollo's bellows, connector row and
+  zip, the Snoopy cap under a glass bubble (its back half; the face shows through the open front); the Shuttle's orange
+  pumpkin with harness, buckle, chest hose, wrist mirror and the helmet's big pivots.
+- **Steppe:** SK-1 belted with high boots, the visor slid up, a red brow band, the ventilator case in hand with its two
+  belly hoses; Sokol's sewn hood and visor ring, blue lacing on every limb, the laced V, the case; late grey-green with a
+  hard hood, padded chest, knee pads, orange flashes and the shoulder pack.
+- **Arsenal:** a bone dome with the visor pushed up, a rubber oxygen mask hosed to the hip, capstan tubes, a G-harness and
+  leg loops; sand with red quilting, pockets and the visor frame up; gunmetal with plates and a gold sun strip.
+- **Coastal:** teal with a white yoke, an egg helmet, the round connector; Hermes's appliance shoulders, the helmet
+  growing out of the suit, one band; blue-grey with shoulder and hip pads and a teal seam.
+- **Mountain:** narrow quilting (saffron-banded early), the sun disc on every crown, the hose over the shoulder; green
+  pull-tabs on white straps; the slim late suit in an open cap.
+- **Isle:** surplus navy with patches, tape, rolled sleeves and a hand-painted helmet; a climbing harness and a dark
+  visor; black with hi-vis side panels, sponsor decals and a helmet decal. Each school's hose sits where the brief puts it.
+
+**Generation:** `crewGen()` is early until an epoch 4 mission is done, middle through the Selene era, and late once
+`crewland` is done. The rig's cache key carries it, so the crew change suits when it does. `CREW_GEN_FORCE` pins it for
+views.
+
+**Views:** `refView(127)`–`(144)` show school s, generation g at 127 + 3s + g, framed as view 121. Steppe's pad has no
+crew arm yet, so 130–132 show none (its suits are in the mock-up). test.mjs `aerofx-5`: six schools × three suits, no two
+generations of a school sharing a dominant colour; the figure's height and face checks as before. Stills:
+`output/launchpad/q229-suits/`.
+
+**Not built yet:**
+- The spacewalk suits and Foundry's: nothing draws them yet (EVA; the commercial giant's crews).
+- The role stripes: crew have no roles in the SIM yet.
+- The mock-ups' lettering and fleet numbers.
+
 ## v1.73.1 — the Passenger Orbiter's nose cone; vehicle-4 alone and in the smoke run (2026-10-09, vehicle session, QUEUE Q201, Q204)
 
 **The passenger cooked on the way up (PLAYTEST #35).** The preset was chute, biocapsule, wheel: the chute (0.3 m) is

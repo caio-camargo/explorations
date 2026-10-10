@@ -5089,3 +5089,25 @@ pattern Q226 fixed for the suits.
   rail launcher hides its rocket from most angles.
 **Next:** after W34, Q102 steps 3–7 for the four schools (paint and finish in `MESH_FS` by school, the interstage covers
 in `partsMesh`, roundels, signature designs for rivals, then the pads as rigs).
+
+## 2026-10-10 — Launchpad Q228 + Q229: the four schools' rockets and every school's suits in the game (look & sound, effects beat)
+
+**Summary:** Caio's go on both (W34: "yes go ahead"; W32: "suits look good").
+- **Q228:** Arsenal, Coastal, Mountain and Isle are built schools (`SCHOOL_IDS` 2–5). `MESH_FS` repaints each after
+  Steppe's pass: paint and finish by stage (an upper-stage flag rides in the kind, for schools 2–5 only), bells, joints,
+  decals, Arsenal's stencilled serials. Each has its own interstage cover (Arsenal vents, Coastal smooth, Mountain bolts
+  and spin rockets, Isle flush carbon) and roundel (from `flags.js`, so Q223 is done too). Views 123–126; aerofx-3
+  updated for the new affinities; TESTING 192.
+- **Q229:** 18 launch suits (6 schools × early/middle/late), each built from its own pieces in `crewFigure`, ported from
+  the Q219/Q226 mock-ups. `crewGen()` follows the program to the Selene era and past a crew landing. Views 127–144,
+  aerofx-5 updated, TESTING 193.
+
+The full suite passed on both, after fixing TESTING's counter.
+**Files:** `app/gl.js`, `app/crew-look.js`, `views.js`, `test.mjs`, NOTES (§ hardware schools "The other four schools", §
+crew "The suits by school and generation"), TESTING (192, 193), QUEUE (Q228 ✓, Q229 ✓, Q223 ✓); `ACTIVE_WORK.md`.
+Stills (not in git): `output/launchpad/q228-schools/`, `output/launchpad/q229-suits/`.
+**Next:**
+- Q102 steps 6–7 for the four schools: their pads (the mock-ups' truck erector, towerless pad, rail launcher and cove,
+  strongback) and their signature designs (Q158, blocked until rivals' rockets are drawn).
+- Steppe's crew arm, so its suits show.
+- Spacewalk suits once EVA exists.
