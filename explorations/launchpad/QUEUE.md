@@ -106,7 +106,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q42 | A **settings** overlay: volume, graphics quality, tester off (the volume slider itself is Q35) | M1 | S | 🖥 | ✓ `f0133e4` |
 | Q40 | **What to do next:** the Program screen always shows one suggested contract and why | M1 | M | 🖥 | ✓ `f0133e4` |
 | Q1 | PLAYTEST **#8**: the readout covers the tabs | M0 | S | 🖥 | ✓ fixes (`ae3d4aa`) |
-| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ✓ `c19a965`** (v1.106: the gauges as the instrument panel, PLAYTEST #9 closed); **4c ✓ `{SHA}`** (v1.110: on the map the navball is a heading line). ✓ |
+| Q3 | **Slice 4** flight core and cards; place the gauges; closes PLAYTEST #9 | M1 | L | 📝→🖥 | plan ✓ (NOTES § UI "Slice 4 plan"); **4a ✓ `75e443f`** (v1.101: a 5-line core + cards, `HUD_CARDS` in `app/hud.js`); **4b ✓ `c19a965`** (v1.106: the gauges as the instrument panel, PLAYTEST #9 closed); **4c ✓ `e211647`** (v1.110: on the map the navball is a heading line). ✓ |
 | Q4 | **Slice 5, Rollout**: site picker and launch checks out of Assembly | M1 | M | 🖥 | ✓ `de08668` |
 | Q62 | Pick a landing site on the map: a click on Selene/Nyx → `site` for the procedure (bodies' `landAt`) | M2 | S | 🖥 | ✓ `415cef1` |
 | Q43 | Watch mode for a dispatched flight (fly the same procedure on screen) | M2 | M | 🖥 | after Q3 |
