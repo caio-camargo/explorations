@@ -683,7 +683,8 @@ function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*
       stock:st?{supplies:Math.round(st.sup*1000)}:{},need:crewed?{supplies:Math.round(st.crew*SUP_DAY*1000)}:{},days:crewed?st.days:null,paused:!!(q.adrift!=null||q.supOut)})}
   let worst=null;for(const n of nodes)if(n.days!=null&&n.days<30&&(!worst||n.days<worst.days))worst=n;
   const bottleneck=worst?{text:`${worst.name} has ${Math.floor(worst.days)} day${Math.floor(worst.days)===1?'':'s'} of supplies left`,node:worst.id,good:'supplies'}:null;
-  return{nodes,routes,bottleneck,fleet,pads}}
+  const cover=[TELLUS,...BODIES.filter(b=>b!==TELLUS&&(PROG.sats||[]).some(q=>!q.junk&&q.bodyName===b.name))].map(b=>({body:b.name,...coverOf(b,T)}));   // space Q173: links home and coverage
+  return{nodes,routes,bottleneck,fleet,pads,links:netLinks(T),cover}}
 function devState(D,c,kind){const v=newShip(D.stack),e=dispatchEstimate(D.stack,c),T=PROG.day*DAY_S,alt=c.p.alt*1e3,ra=TELLUS.R+alt,rp=TELLUS.R+30e3;
   let n=0;while(v.events.slice(v.evIdx).some(x=>x.decouple.length)&&n++<20)stage(v);   // drop down to the top stage (lit in the ascent)
   const va=Math.sqrt(TELLUS.mu*2*rp/(ra*(ra+rp))),need=Math.sqrt(TELLUS.mu/ra)-va,want=kind==='short'?0.6*need:need+Math.max(0,e.margin||0);

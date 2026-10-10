@@ -33,13 +33,55 @@ const satRadio=q=>q.ant?{P:P_RADIO*q.ant,G:G_WHIP}:antOf(q.shape);   // a regist
 // a registry entry's link home at program time T (space Q186): r is its position in its body's frame then (default: on
 // its rails). Around Tellus: a ground station in view; elsewhere: Tellus not hidden behind the body, and the rate (by
 // v1.96's budget) above the telemetry floor, so a craft with no antenna (a 1 W beacon) can't be reached at Selene.
-function entryLink(q,T,r){const B=orbBody(q),on=satDuty(q);if(!(on>0))return{ok:false,why:'its batteries are flat'};r=r||satAt(q,T)[0];const A=satRadio(q);   // flat and no cells: silent (Q27)
+function entryLink(q,T,r){r=r||satAt(q,T)[0];const D=entryDirect(q,T,r);if(D.ok||D.flat)return D;   // flat and no cells: silent (Q27)
+  const R=entryRelay(q,T,r);return R||D}
+function entryDirect(q,T,r){if(!satOn(q,T,r))return{ok:false,flat:true,why:'its batteries are flat'};const B=orbBody(q),A=satRadio(q);
   if(B===TELLUS){const pf=rotY(r,-absTh(T));for(const st of stationsAll())if(gsSees(st,pf)){const rate=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));return{ok:true,st,rate}}
     return{ok:false,why:'no station in view'}}
   const o=ORB_T0;ORB_T0=0;const bp=bodyPos(B,T);ORB_T0=o;   // program time: the moons' phase is ORB_T0 + t
   const toT=mul(add(bp,r),-1),d=len(toT),u=mul(toT,1/d),tc=-dot(r,u);
   if(tc>0&&len(add(r,mul(u,tc)))<B.R)return{ok:false,why:`behind ${B.name}`};
   const rate=linkRate(A.P,A.G,G_STATION,d);return rate>=LINK_FLOOR?{ok:true,st:null,rate}:{ok:false,why:'too far for its radio'}}
+// ---- relays as nodes (space session, QUEUE Q173, Q51 slice 3). One hop: an entry out of contact reaches home through
+// another registered satellite with an antenna that is powered at that moment and has its own direct link, when neither
+// Tellus nor a moon is in the way and the hop clears the telemetry floor by v1.96's budget (both ends' radios; a whip
+// hears at whip gain, so whip-to-whip hops reach ~300 km: a constellation, or a dish once vehicle has one). The rate is
+// the weaker hop. satOn is the power side: a satellite whose battery is flat works only in the share of the time it has
+// power (satDuty), in sunlight; one on its battery always.
+const relayEntries=()=>[...satsUp(),...moonSats()].filter(p=>p.ant&&!p.junk);
+function losClear(a,b){const ab=sub(b,a),L=len(ab);if(!(L>0))return true;const u=mul(ab,1/L);
+  for(const B of BODIES){const c=sub(bodyPos(B,simT),a),tc=dot(c,u);if(tc<=0||tc>=L)continue;if(len(sub(c,mul(u,tc)))<B.R)return false}return true}
+const absAt=(q,T,r)=>{const o=ORB_T0,t=simT;ORB_T0=0;simT=T;const x=add(bodyPos(orbBody(q),T),r||satAt(q,T)[0]);ORB_T0=o;simT=t;return x};
+function entryRelay(q,T,r){const rs=relayEntries().filter(p=>p!==q&&p.id!==q.id);if(!rs.length)return null;const A=satRadio(q),me=absAt(q,T,r);let best=null;
+  const o=ORB_T0,t=simT;ORB_T0=0;simT=T;
+  try{for(const p of rs){const rp=satAt(p,T)[0],P=add(bodyPos(orbBody(p),T),rp),d=len(sub(P,me)),Ap=satRadio(p),up=linkRate(A.P,A.G,Ap.G,Math.max(d,1));
+    if(up<LINK_FLOOR||!losClear(me,P))continue;const H=entryDirect(p,T,rp);if(!H.ok)continue;
+    const rate=Math.min(up,H.rate);if(!best||rate>best.rate)best={ok:true,st:H.st,via:p.name,viaId:p.id,rate,d}}}
+  finally{ORB_T0=o;simT=t}return best}
+function satOn(q,T,r){const w=q.pw;if(!w)return true;const k=satDuty(q);if(k>=1)return true;if(!(k>0))return false;
+  const B=orbBody(q),lit=!inShadow(B,r||satAt(q,T)[0]),share=w.avg>=w.use&&w.cap<w.need?(lit?1:w.cap/w.need):lit?Math.min(1,(w.peak+w.rtg)/w.use):Math.min(1,w.rtg/w.use);
+  return share>=1||(T/600*0.6180339887)%1<share}   // a duty cycle spread over the hours
+// coverage (Q173): the share of the time a body has a path home. Tellus: a satellite in low orbit (300 km, sampled over
+// a planet-fixed grid) has a station in view; a moon: a lander or rover with a high-gain antenna on its ground (a grid,
+// over the next day) reaches home directly or through a relay, its near and far sides apart. Memoised per day.
+const COV_N=48,fibU=(i,n)=>{const z=1-2*(i+.5)/n,a=i*2.399963,s=Math.sqrt(1-z*z);return[s*Math.cos(a),z,s*Math.sin(a)]};
+let covMemo={k:'',v:{}};
+function coverOf(B,T=(PROG.day||0)*DAY_S){const k=`${Math.floor(T/DAY_S)}:${(PROG.sats||[]).length}:${(PROG.stations||[]).length}`;if(covMemo.k!==k)covMemo={k,v:{}};if(covMemo.v[B.name])return covMemo.v[B.name];
+  let out;if(B===TELLUS){const GS=stationsAll(),r=TELLUS.R+3e5;let n=0;for(let i=0;i<COV_N;i++){const pf=mul(fibU(i,COV_N),r);if(GS.some(st=>gsSees(st,pf)))n++}out={low:n/COV_N}}
+  else{let a=[0,0],b=[0,0];for(let i=0;i<COV_N;i++){const u=fibU(i,COV_N),pf=mul(u,B.R+2),far=u[0]>0;
+      for(let t=T;t<T+DAY_S;t+=DAY_S/16){const ok=radioAt(B,pf,true,t).ok?1:0;if(far){b[0]+=ok;b[1]++}else{a[0]+=ok;a[1]++}}}
+    out={near:a[1]?a[0]/a[1]:0,far:b[1]?b[0]/b[1]:0,all:(a[0]+b[0])/(a[1]+b[1])}}
+  return covMemo.v[B.name]=out}
+// each orbiting entry's link home over the next day (Q173): the share of the time it has one, the longest gap (hours),
+// the relays it goes through, and a flag when mission control holds its next burn and that burn falls in a gap (the
+// burn would pass: nodesTick)
+function netLinks(T=(PROG.day||0)*DAY_S){const out=[],N=96,dt=DAY_S/N;
+  for(const q of[...satsUp(),...moonSats()]){if(q.junk)continue;let n=0,run=0,gap=0;const via=new Set();
+    for(let i=0;i<N;i++){const L=entryLink(q,T+i*dt);if(L.ok){n++;run=0;if(L.via)via.add(L.via)}else{run++;gap=Math.max(gap,run)}}
+    const nd=q.nodes&&q.nodes[0],burn=nd&&nd.mc&&!autoAllowed('blind').ok&&!entryLink(q,nd.T).ok;
+    out.push({id:q.id,name:q.name,body:orbBody(q).name,share:n/N,gapH:gap*dt/3600,via:[...via],now:entryLink(q,T).ok,
+      flag:burn?`mission control can't reach it at its burn in ${Math.max(0,(nd.T-T)/DAY_S).toFixed(1)} days`:''})}
+  return out}
 function stationsAll(){return[padGS(),...(PROG.stations||[]).map(g=>{const c=CITIES[g.ci];return{name:c.name,u:c.u,power:c.power?c.power.i:HOME,ci:g.ci}})]}
 // candidate sites: each power's two biggest cities that don't have a station yet
 function gsSites(){const have=new Set((PROG.stations||[]).map(g=>g.ci)),out=[];

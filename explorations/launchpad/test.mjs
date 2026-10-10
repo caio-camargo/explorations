@@ -4900,6 +4900,32 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `day 3: ${d3.map(x => x.toFixed(2)).join(' / ')}; day 12: no cells ${d12[0].toFixed(2)}, one panel ${d12[1].toFixed(2)}, Probe ${d12[2].toFixed(2)}; budgets ${[dead, weak, good].map(q => `${q.pw.avg.toFixed(1)}/${q.pw.use} W`).join(', ')}; link: ${L.why || 'ok'}`);
 }
 
+// space-19. Relays as nodes (space session, QUEUE Q173, Q51 slice 3): an entry out of contact reaches home through a
+// powered satellite that has a link, one hop, by the link budget (whip to whip ~300 km); a flat relay relays nothing.
+// Coverage: a far-side lander on Selene reaches home only through a relay (one polar relay at 1,000 km: ~35 %, test 40's
+// figure); the network's links flag a burn mission control can't reach.
+{
+  const D = new Function(src + 'return {PROG,TELLUS,SELENE,coverOf,netLinks,entryLink,satOn,DAY_S,HOOK};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {};
+  const P = D.PROG, T = D.TELLUS, B = D.SELENE; Object.assign(P, { sats: [], day: 0, stations: [], procs: {}, done: {} });
+  const ent = o => ({ ant: 1, epoch: 0, shape: [], pending: [], imgs: 0, ...o });
+  const moon = (id, alt, inc) => { const r = B.R + alt * 1e3, v = Math.sqrt(B.mu / r); return ent({ id, name: 'Relay ' + id, bodyName: 'Selene', r: [r, 0, 0], v: [0, v * Math.sin(inc), v * Math.cos(inc)] }); };
+  const c0 = D.coverOf(B); P.sats.push(moon(1, 1000, 1.4)); P.day = 1; const c1 = D.coverOf(B);
+  P.sats[0].pw = { avg: 0, use: 15, ecl: 0.3, cap: 0, need: 1, peak: 0, rtg: 0 }; P.sats[0].Ewh = 0; P.day = 2; const cFlat = D.coverOf(B), offNow = D.satOn(P.sats[0], 2 * D.DAY_S);
+  // two Tellus satellites 150 km apart in one polar orbit: the trailing one is out of view while the leading one has the pad
+  const a = T.R + 300e3, vc = Math.sqrt(T.mu / a), th = 150e3 / a, tel = (id, f) => ent({ id, name: 'Sat ' + id, r: [a * Math.cos(f), 0, a * Math.sin(f)], v: [-vc * Math.sin(f) * Math.cos(1.4), vc * Math.sin(1.4), vc * Math.cos(f) * Math.cos(1.4)] });
+  P.sats = [tel(10, 0), tel(11, th)]; let via = null, viaOff = null;
+  for (let t = 0; t < D.DAY_S && !via; t += 30) { const L = D.entryLink(P.sats[1], t); if (L.ok && L.via) via = { t, L }; }
+  if (via) { P.sats[0].pw = { avg: 0, use: 15, ecl: 0.3, cap: 0, need: 1, peak: 0, rtg: 0 }; P.sats[0].Ewh = 0; viaOff = D.entryLink(P.sats[1], via.t); delete P.sats[0].pw; }
+  const far = ent({ id: 12, name: 'Sat 12', r: [a * 3, 0, 0], v: [0, Math.sqrt(T.mu / (3 * a)), 0] }); P.sats.push(far);   // 3 radii out: no relay reaches it
+  let gapT = 0; for (let t = 0; t < D.DAY_S; t += 300) if (!D.entryLink(P.sats[1], t).ok) { gapT = t; break; }
+  P.sats[1].nodes = [{ T: gapT, mc: true }]; const NL = D.netLinks(0), n11 = NL.find(x => x.id === 11);
+  check('relays as nodes: one hop through a powered satellite with a link (none through a flat one); a far-side lander reaches home only through a relay; a burn in a gap is flagged',
+    c0.near === 1 && c0.far === 0 && c1.far > 0.25 && c1.far < 0.5 && cFlat.far === 0 && !offNow && !!via && via.L.via === 'Sat 10' && via.L.rate >= 10 && viaOff && !viaOff.ok
+      && n11 && /can't reach it at its burn/.test(n11.flag) && n11.share > 0 && n11.share < 0.3 && NL.length === 3,
+    `Selene far side: alone ${c0.far}, one relay ${c1.far.toFixed(2)}, flat ${cFlat.far}; hop: ${via ? `${via.L.via} at ${via.L.rate.toFixed(0)} bit/s` : 'none'}, flat relay ${viaOff && viaOff.ok}; links: ${NL.map(x => `${x.name} ${(x.share * 100).toFixed(0)}% ${x.flag}`).join('; ')}`);
+}
+
 // qa-3. TESTING.md's row numbers (QA session, LESSONS #37): sessions number rows at once and collide (131, 133, 134 and
 // 168 were each used twice). Every row number once, and "Next free number" above them all, so a collision fails here.
 {

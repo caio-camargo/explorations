@@ -283,6 +283,16 @@ function predStill(){const c=predCache,p0=c&&c.p[0];if(!p0||!p0.path||c.body!==S
   if(simT>(p0.endT||p0.tEnd||-Infinity))return false;let i=1;while(i<P.length-1&&P[i][1]<simT)i++;
   const[a,ta]=P[i-1],[b,tb]=P[i],f=tb>ta?clamp((simT-ta)/(tb-ta),0,1):0,q=add(a,mul(sub(b,a),f));
   return len(sub(q,S.r))<Math.max(1000,1e-3*len(S.r))*(1+len(sub(b,a))/2e4)}
+// the map's link lines (space session, QUEUE Q173): from each satellite with a link home right now, green to the station
+// that hears it (or toward Tellus, from a moon), cyan to the relay it goes through; none when out of contact. Kept for
+// 5 s of program time, so a frame doesn't redo every link.
+let mapLinkMemo={t:NaN,n:-1,v:[]};
+function mapLinks(seg){const T=tNow(),n=(PROG.sats||[]).length;if(!(Math.abs(T-mapLinkMemo.t)<5)||n!==mapLinkMemo.n){const v=[];
+    for(const q of[...satsUp(),...moonSats()]){if(q.junk)continue;const L=entryLink(q,T);if(!L.ok)continue;const P=add(bodyPos(orbBody(q),simT),satAt(q,T)[0]);
+      if(L.viaId!=null){const p=(PROG.sats||[]).find(x=>x.id===L.viaId);if(p)v.push([P,add(bodyPos(orbBody(p),simT),satAt(p,T)[0]),[.4,.85,1,.55]]);continue}
+      v.push([P,L.st?add(bodyPos(TELLUS,simT),rotY(mul(L.st.u,TELLUS.R),absTh(T))):add(bodyPos(TELLUS,simT),mul(norm(sub(P,bodyPos(TELLUS,simT))),TELLUS.R)),[.45,1,.55,.45]])}
+    mapLinkMemo={t:T,n,v}}
+  for(const[a,b,c]of mapLinkMemo.v)seg(a,b,c)}
 function drawMap(VP,camW,labels){
   if(!predCache||predCache.t!==simT&&!predStill())predCache={t:simT,p:predict(S),wall:performance.now(),body:S.body};
   const out=[],seg=(a,b,c)=>out.push(a[0]-camW[0],a[1]-camW[1],a[2]-camW[2],...c,b[0]-camW[0],b[1]-camW[1],b[2]-camW[2],...c);
@@ -293,6 +303,7 @@ function drawMap(VP,camW,labels){
   for(const fv of FLEET){if(!fv.alive||fv.body!==TELLUS||fv.landed)continue;const el=elements(fv.r,fv.v,TELLUS.mu);if(!(el.e<1))continue;let pv=null;   // the other vessels' orbits
     for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu)));if(pv)seg(pv,p,[.79,.91,.42,.5]);pv=p}}
   for(const q of[...satsUp(),...moonSats()]){const B=orbBody(q),o=bodyPos(B,simT),[r,v]=satAt(q,tNow()),el=elements(r,v,B.mu);let pv=null;for(let i=0;i<=96;i++){const nu=i/96*6.2832,rr=el.p/(1+el.e*Math.cos(nu)),p=add(o,add(mul(el.P,rr*Math.cos(nu)),mul(el.Q,rr*Math.sin(nu))));if(pv)seg(pv,p,q.id===S.target?[1,.7,.3,.9]:q.cam?[.55,.9,1,.35]:[.6,.65,.7,.25]);pv=p}}
+  mapLinks(seg);   // space Q173: each satellite's link home right now
   drawPatches(gateLegs(predCache.p,labels),camW,out,labels,{0:[.45,.85,1,1],1:[1,.6,.25,1],2:[.8,.55,1,1]},false,'');
   // where a click lands on the current leg: world points with their times (projected in the overlay pass)
   mapUI.pickW=[];const p0=predCache.p[0];

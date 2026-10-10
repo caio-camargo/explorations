@@ -1964,6 +1964,38 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.109 — relays as nodes: one hop, coverage, links home on the network screen and the map (2026-10-09, space session, QUEUE Q173, Q51 slice 3)
+
+Slice 1 gave every link a rate; this lets a registered satellite reach home through another one, measures coverage,
+and shows both.
+- **One relay hop** (`entryLink` → `entryDirect`, then `entryRelay`, `sim/space.js`): an entry out of contact goes
+  through any registered satellite with an antenna (`relayEntries`) that is powered at that moment and has its own
+  direct link, when no body is in the way (`losClear`) and the hop clears the telemetry floor by v1.96's budget. The
+  rate is the weaker hop; the result says `via`. So mission control (`handOffWhy`, `nodesTick`) reaches through relays.
+- **Measured:** a whip hears a whip out to ~316 km (11 bit/s at 300 km, 1 bit/s at 1,000 km), so between satellites
+  relays work only in a close formation until there's a dish (vehicle's proposed part: the code reads the gain from
+  `satRadio`, so a dish only changes that). Rovers and landers on a moon (`rvContact`) already relayed, with their
+  own high-gain antennas.
+- **Relay power** (`satOn(q,T,r)`, Q27's other half): a satellite on its battery is always on; a flat one only for its
+  `satDuty` share, in sunlight (spread over the hours), so a flat relay relays nothing in shadow, and a silent one
+  never. `rvRelays` asks it for each moon relay.
+- **Coverage** (`coverOf(B,T)`, memoised per day): Tellus, the share of a low (300 km) satellite's sky with a station in
+  view: 10 % with the pad alone. A moon, a lander or rover with a high-gain antenna anywhere on its ground, over the next
+  day, near and far sides apart: Selene alone 100 % / 0 %; one polar relay at 1,000 km, far side 37 % (test 40's
+  ~35 %); two relays 47 %.
+- **Links home** (`netLinks(T)`): each orbiting entry over the next day: share with a link, longest gap, relays used,
+  and a flag when mission control holds its next burn and it falls in a gap ("mission control can't reach it at its
+  burn in 0.3 days": the burn would pass). `netModel` (economy's, one line flagged) returns `links` and `cover`.
+- **Flow (flagged, restyle freely):** the network screen gains *Links home* (`netLinksHTML`, `app/network.js`, one call
+  in `renderNetwork`); the map draws each satellite's link right now (`mapLinks`, `app/render.js`, one call in
+  `drawMap`): a line to the station that hears it (or to Tellus's limb from a moon), or to its relay; the paper map
+  inks it like the orbits. Checked in Chrome: two Selene relays and a Tellus pair, both screens as described.
+- **Not in this slice:** chains of relays; imagery through relays (its pass loop still asks stations; whips wouldn't
+  reach anyway); a relay's transmit draw beyond its antenna's 5 W; coverage drawn as an area on the map.
+
+Test `space-19` (1 check: the hop and its rate, none through a flat relay; Selene's far side 0 → ~35 % with a relay,
+0 with a flat one; the flagged burn). `career.mjs` (10 seeds): identical to `main` (its robot registers no relays). TESTING row 189.
+
 ## v1.108 — power gates a satellite's service (2026-10-09, space session, QUEUE Q27)
 
 v1.68 put power on vessels and left "what a flat battery does to their service" to the space lane; v1.105 made the
