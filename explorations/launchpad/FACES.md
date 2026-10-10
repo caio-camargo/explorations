@@ -184,3 +184,9 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Lips in profile** (Caio's line drawing): a straight upper slope, a rolled lower lip with a tucked bottom edge.
   61 genes. Open: on extreme long noses the nostrils show as rings at the nose floor.
 - **Integration** (Caio): a flush nose root, softness through jaw and chin without shrinking the face. 62 genes.
+- **Variation** (Caio: sex and ethnic variation): not as labelled sliders but as the generator's distributions over
+  the genes (§ 3), overlapping, tuned by picks. Done first: an epicanthic fold, early paint (skin ramp, hair and iris
+  palettes), a masculine–feminine macro, a Roster tab of 12 archetypes across sexes and regions. Next: distributions
+  per population, after Caio reviews the roster; hair textures need F5.
+- **The bell head** (Caio's front reference of Mr. Incredible): crown width, a long skull-to-jaw blend on soft faces,
+  forehead forward. Open: the forward forehead leaves a step on the nose bridge.

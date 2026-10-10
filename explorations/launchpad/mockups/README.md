@@ -223,6 +223,13 @@ dent (the old slot cut a thread on long faces); close-ups follow the face's leng
 ours blocky): *nose root: notched–flush* carries the forehead's line down onto the bridge (the socket used to cut a
 notch); *planes: crisp–soft* now also softens the bridge's edges, the jaw, the chin and the chin–jaw join, and a
 softened plane stands off by what its rounding takes away (before, soft faces shrank behind their features). 62 genes.
+**Variation and the bell head**: an *epicanthic fold*; early paint (a 10-tone skin ramp with matching flush and lip
+tint, hair and iris palettes; F6 refines them); a *masculine–feminine* macro; a **Roster** tab of 12 hand-made
+archetypes across sexes and regions (one person each, not an average; still one hair shape for all until F5).
+From Caio's front reference of Mr. Incredible: *crown width* (a dome), a softer skull-to-jaw blend on soft faces,
+*forehead forward* (brow and forehead pushed out as one mass, the eyes left deep under it); two creases removed
+(the joins of the face-length stretch and of the cheek planes' recession were kinks). Stills:
+`faces/roster-archetypes.png`, `faces/reach-mr-incredible.png`. 68 genes (65 identity + 3 paint).
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
