@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.44 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.45 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,37 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.115 — the Assembly as a scale model on a drafting table (2026-10-10, flow session at Caio's ask, QUEUE Q242; PLAYTEST #45)
+- **Caio's call (PLAYTEST #45, W35 (4) overridden):** the design is a scale model on a 1960s drafting table, not a real
+  rocket on the pad. The builder is untouched: its camera, picking, markers and panels are the same, and only what's
+  around the design changes. `app/model-desk.js`, loaded after `gl.js`.
+- **The scale is a kit scale.** `deskScaleFor(len)` picks the smallest of 1:20, 24, 32, 48, 72, 96, 144, 200, 288, 400
+  and 500 that keeps the model under 45 cm: the Orbiter (14.5 m) is 1:48, a 120 m rocket 1:288. The
+  desk is built in the ship's own frame (`modelQ(S.q, …, [-cm, yBot, -cm])`, the model's foot at the origin) and scaled
+  up by N. Everything around the model is N times its real size; the little figure on the base plate is a real 1.8 m
+  person. Meshes are cached per scale (the last four).
+- **The desk:** a walnut table on legs with a foot rail; an A2 drawing under the model (its border, a title block and a
+  few construction lines); a scale rule and a pencil; a black base plate with its pin; an architect's lamp (base, brass
+  post and arm, green shade, the bulb drawn with `uGlow`); a figure in a white coat; the office floor. There are no
+  walls, because the orbit camera passes through where they would be. The background is a dim warm room
+  (`DESK_BG`, the clear colour).
+- **`render()` in the Assembly** (`deskScene()`: editor mode on the `assembly` screen): no sky ray-cast or moons, pads,
+  pad rig and crew, cities or floodlights (`uFlI` 0). Light comes from the lamp: `uSun` is the lamp's direction in the
+  ship's frame, with warm sun, sky and bounce colours (`deskLight`). `lit()` is 1, so there's no night and no eclipse
+  on the desk. The model's shadow falls on the drawing along the lamp (`deskShadowM`, the pad's projection onto the
+  table plane). `DESK_FX = false` puts the Assembly back on the pad (A/B).
+- **Look & sound:** the pad crew (Q229's suits on Cape's crew arm) now show in the **Rollout**, not in the Assembly, because
+  the desk has no pad. The figure on the base plate stands in for them there; a suited one could be yours.
+- **Build and launch:** the Assembly's button now reads **BUILD AND LAUNCH ▶ [L]** (`#bRoll`, same id and key). It goes to
+  the Rollout, which stays on the real pad with the real rocket, so building it for real is the hand-over.
+- **Cost:** about the same as the pad. Headless on the RTX, the Assembly ran at 133 fps on the desk against 104 on the
+  pad. The GPU timer read 7.6 ms against 6.8 ms, but the model fills more of the frame up close.
+- **Checks:** test `flow-11` (the scale picks, the Assembly-only switch, every skip, the lamp light and its shadow).
+  Robot `m1` and `desk` pass, with no overlapping boxes.
+- **Not yet:** the panels are still the builder's dark glass (vehicle's Q237/Q238 and flow's R5, Q241, make them
+  paperwork on the desk). There's no title-block text with the design's name and scale yet; the scale could go in the
+  strip. A tilting drafting board, a T-square and an eraser would be look & sound's polish.
 
 ## v1.114 — the Program as the director's desk, the first room (2026-10-10, flow session, QUEUE Q240 = Q239 R0+R1; PLAYTEST #6)
 - **Rooms (R0).** `ROOMS` and `inRoom()` in `app/screens.js`. A room is a screen that is a place of its own, not a panel
