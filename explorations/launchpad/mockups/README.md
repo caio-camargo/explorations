@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: for Caio to pick
+**Version**: 0.1.3 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -104,6 +104,29 @@ existing roll-pattern machinery; the signature stacks as preset designs for riva
 rollout as a new pad animation (the rig code, `buildRig`).
 
 **Pick / changes:** _(Caio)_
+
+## heads/ — the head inside the helmet (QUEUE Q220 → D11, CREW.md § Part 1)
+
+Open `heads/index.html` (bar: one sheet per head, or *Side by side*) or the stills in `output/launchpad/mockups/heads/`
+(`sheet-a.png`, `sheet-b.png`, `sheet-c.png`, `sheet-compare.png`; 1280 wide). Each sheet: a close-up on the pad, the
+whole figure, true-size **48 px** thumbnails (the five expressions, then the roster) and the five enlarged ×2 with the
+pixels kept, the five **flight portraits** (neutral, grin, grit under high g, alarm, wonder at a first sight) and a
+**roster of six** (the same six people under each head: hair style and colour, nose, brow weight, skin tone, one
+moustache). The suit is the crew mock-up's placeholder, not a school's (suits are `suits/`). Faces are painted in head
+space, as a texture would be in the game; the portrait's light colours alarm red and wonder blue (a planet in the visor).
+
+| Option | What it is | Reads at 48 px | Costs |
+|---|---|---|---|
+| **(a) Ligne claire** | Tintin: a slightly big round head, dot eyes, brows and a one-line mouth carry the face, hair a flat silhouette with an inked edge, two flat bands of shade | **best**: dots, brows and hair shape survive; the roster tells apart by hair and skin | cheapest: a sphere-ish mesh and a face texture per expression; the nose needs an ink hook to show |
+| **(b) Puppet** | Thunderbirds: a big head with flat temples, cheek planes, a square jaw, a brow ledge, a block nose; glass eyes that turn, lids that close; a satin sheen | **worst**: the glass eyes and lids vanish; the head is a beige block | dearest: it needs a sculpted mesh (primitives make it a mask, as here) and per-eye rigs; strongest on the close-up |
+| **(c) Toy peg** | a tall rounded cylinder (taller than wide), the face printed on, the hair a clip-on piece, a plastic glint | good: printed features as clear as (a); the hair piece carries identity | cheap like (a); **the clip-on hair is the most LEGO-like part** (no stud, real skin tones and a head 1/6 of the body keep it off the minifig); painted hair would make it a wooden peg doll instead |
+
+Notes: expressions are brows + eyes + mouth only (no head turn); grit pulls the features down and clenches the teeth; on
+(a) and (c) wide eyes add whites, a squint is a line. Under any suit with a cap (Apollo's Snoopy cap, the Sokol hood)
+the hair silhouette, the roster's main tell, disappears: then skin, brows and a name tag have to carry it.
+Default if silent: **(a)**, as D11 recommends.
+
+**Pick:** _(Caio)_
 
 ## suits/ — the suit lines by school and era (QUEUE Q199 → D9, CREW.md § Part 1)
 

@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Head mock-ups</title>
+<!-- Launchpad mock-up for CREW.md part 1, the head (D11, QUEUE Q220): three heads on the stylised-human crew (W19), each
+     in a helmet. Per head: a close-up on the pad, the whole figure, true-size 48 px thumbnails, five flight-portrait
+     expressions and a roster of six people. A standalone page: never loaded by index.html.
+     A WebGL2 raymarcher over signed distance fields (forked from mockups/crew/), one draw per tile; faces are painted on
+     (decals in head space), as a texture would be in the game. ?view=a|b|c|compare picks a sheet; ?still hides the bar.
+     The suit is the crew mock-up's placeholder (style c), not a school's suit: suits are Q219's. -->
+<style>
+  :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  #wrap { position: relative; width: 1280px; }
+  canvas { display: block; }
+  #ov { position: absolute; inset: 0; pointer-events: none; }
+  #ov div { position: absolute; white-space: nowrap; }
+  #ov .h { font-size: 15px; font-weight: 600; color: var(--acc); }
+  #ov .l { color: var(--dim); font-size: 12px; }
+  #ov .t { white-space: normal; color: var(--fg); font-size: 12.5px; line-height: 1.45; }
+  #bar { position: fixed; top: 8px; left: 8px; display: flex; gap: 6px; align-items: center; z-index: 2;
+    background: rgba(14, 17, 22, .85); padding: 6px 8px; border-radius: 6px; }
+  #bar button { background: #222833; color: var(--fg); border: 1px solid #39414f; border-radius: 4px; padding: 4px 9px; cursor: pointer; }
+  #bar button.on { border-color: var(--acc); color: var(--acc); }
+  body.still #bar { display: none; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <button data-view="a">(a) Ligne claire</button><button data-view="b">(b) Puppet</button><button data-view="c">(c) Toy peg</button>
+  <button data-view="compare">Side by side</button>
+</div>
+<div id="wrap"><canvas id="c"></canvas><canvas id="zoom" style="position:absolute;left:0;top:0"></canvas><div id="ov"></div></div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+let VIEW = Q.get('view') || 'a';
+if (Q.has('still')) document.body.classList.add('still');
+
+// ---- the three heads. R: head radius (m); up: head centre above the neck, in R; helm: helmet radius, in R
+const HEADS = {
+  a: { type: 0, R: .15, up: 1.05, helm: 1.4, name: '(a) Ligne claire',
+    text: 'Tintin\'s school: a slightly big round head, dot eyes, the expression carried by the brows and a one-line mouth, hair as a flat silhouette with an ink edge. Two flat bands of shade. Faces are a painted texture on a simple mesh.' },
+  b: { type: 1, R: .17, up: 1.05, helm: 1.38, name: '(b) Puppet',
+    text: 'Thunderbirds: a big head carved in planes (flat temples, cheek facets, a square jaw, a brow ledge, a wedge nose), glass eyes that move in their sockets, lids that close over them, a satin sheen. The real puppets swapped heads for a smile or a frown.' },
+  c: { type: 2, R: .125, up: 1.2, helm: 1.52, name: '(c) Toy peg',
+    text: 'A turned-wood or moulded peg: a tall rounded cylinder (taller than wide), the face printed on, the hair a clip-on piece. Kept off LEGO\'s minifig: no stud, no yellow, a head a sixth of the body, not a third. A plastic glint.' },
+};
+// ---- six people, the same six under each head: skin, hair colour, hair style (0 crew cut, 1 side part, 2 bob, 3 bun,
+// 4 curls, 5 receding), nose (size, length, droop), brow weight, a moustache, iris colour (the puppet's glass eyes)
+const PEOPLE = [
+  { name: 'Ada Marsh', skin: [.97, .8, .67], hair: [.32, .18, .09], style: 1, nose: [1, 1, 0], brow: 1, mous: 0, iris: [.28, .45, .62] },
+  { name: 'Kofi Asante', skin: [.42, .27, .18], hair: [.06, .05, .05], style: 4, nose: [1.35, .85, .1], brow: 1.1, mous: 0, iris: [.25, .15, .08] },
+  { name: 'Mei Lin', skin: [.9, .73, .56], hair: [.07, .06, .07], style: 3, nose: [.8, .8, 0], brow: .8, mous: 0, iris: [.22, .13, .07] },
+  { name: 'Niamh Byrne', skin: [.99, .85, .77], hair: [.78, .36, .13], style: 2, nose: [.85, .75, -.3], brow: .85, mous: 0, iris: [.35, .55, .4] },
+  { name: 'Rafael Duarte', skin: [.72, .5, .35], hair: [.72, .72, .7], style: 5, nose: [1.4, 1.45, .4], brow: 1.3, mous: 1, iris: [.3, .2, .1] },
+  { name: 'Lars Holm', skin: [.94, .77, .62], hair: [.93, .8, .45], style: 0, nose: [.85, 1.45, .1], brow: 1.45, mous: 0, iris: [.4, .58, .75] },
+];
+// ---- expressions: brows (height, inner end up +, arch), eye opening, gaze, mouth (width, smile curve, opening,
+// teeth: 0 none, 1 top row, 2 clenched), g (features pulled down), a coloured light from the window side
+const EXPR = {
+  neutral: { label: 'Neutral', brow: [0, 0, .2], eye: 1, look: [.25, 0], mouth: [.13, .25, 0, 0], g: 0, tint: [0, 0, 0] },
+  grin: { label: 'Grin', brow: [.05, .2, .6], eye: .95, look: [.3, .05], mouth: [.24, 1, .1, 1], g: 0, tint: [0, 0, 0] },
+  grit: { label: 'Grit (high g)', brow: [-.07, -1, 0], eye: .3, look: [0, 0], mouth: [.25, -.25, .085, 2], g: 1, tint: [0, 0, 0] },
+  alarm: { label: 'Alarm', brow: [.11, 1, .3], eye: 1.45, look: [.7, -.1], mouth: [.075, 0, .16, 0], g: 0, tint: [.55, .07, .04] },
+  wonder: { label: 'Wonder (a first sight)', brow: [.13, .45, .7], eye: 1.3, look: [.1, .75], mouth: [.06, .4, .065, 0], g: 0, tint: [.12, .3, .55] },
+};
+const EX = ['neutral', 'grin', 'grit', 'alarm', 'wonder'];
+
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov,uScene,uWave;
+uniform float uType,uHead,uHelmR;uniform vec3 uHC,uHCw;
+uniform vec3 uSkin,uHair,uNose,uIris;uniform float uStyle,uBrowW,uMous;
+uniform vec3 uBrow;uniform float uEyeO;uniform vec2 uLook;uniform vec4 uMouth;uniform float uG;uniform vec3 uTint;
+const vec3 SUN=normalize(vec3(-.55,.75,.6));
+const vec3 SUIT=vec3(.82,.86,.9),TRIM=vec3(.86,.22,.16),INK=vec3(.045,.04,.045);
+const float TW=.22,TD=.14,TH=.55,LEGL=.8,LEGR=.072,ARML=.58,ARMR=.055,GLOVE=.058;const vec3 BOOT=vec3(.07,.06,.15);
+const vec3 A=vec3(.75,0.,.05);const float YAW=.35;
+float gAA=.01;
+// ---- primitives
+float sdBox(vec3 p,vec3 b){vec3 q=abs(p)-b;return length(max(q,0.))+min(max(q.x,max(q.y,q.z)),0.);}
+float sdRBox(vec3 p,vec3 b,float r){return sdBox(p,b-r)-r;}
+float sdCap(vec3 p,vec3 a,vec3 b,float r){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-r;}
+float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdCone(vec3 p,float h,float r1,float r2){vec2 q=vec2(length(p.xz),p.y),k1=vec2(r2,h),k2=vec2(r2-r1,2.*h);
+ vec2 ca=vec2(q.x-min(q.x,(q.y<0.)?r1:r2),abs(q.y)-h);vec2 cb=q-k1+k2*clamp(dot(k1-q,k2)/dot(k2,k2),0.,1.);
+ float s=(cb.x<0.&&ca.y<0.)?-1.:1.;return s*sqrt(min(dot(ca,ca),dot(cb,cb)));}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float seg2(vec2 p,vec2 a,vec2 b){vec2 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h);}
+vec3 toLocal(vec3 p){vec3 q=p-A;float c=cos(YAW),s=sin(YAW);q.xz=mat2(c,s,-s,c)*q.xz;return q;}
+// ---- heads, in head space h (centre of the head, facing +z, y up)
+vec3 eyeC(float sx){float R=uHead;return vec3(sx*.31*R,.04*R,.665*R);}   // the puppet's eyeballs
+float skull(vec3 h){float R=uHead;
+ if(uType<.5)return sdEll(h,R*vec3(.93,1.,.95));
+ if(uType<1.5)return max(sdEll(h,R*vec3(.86,1.02,.9)),abs(h.x)-.8*R);
+ float rc=.84*R*(1.-.05*h.y/R),hh=1.1*R,rr=.34*R;vec2 dd=vec2(length(h.xz)-rc+rr,abs(h.y)-hh+rr);
+ return min(max(dd.x,dd.y),0.)+length(max(dd,0.))-rr;}
+float headD(vec3 h){float R=uHead,d=skull(h);
+ if(uType<.5){   // ligne claire: a round head, a small round chin, a small nose, ears
+  d=smin(d,sdEll(h-vec3(0.,-.38*R,.1*R),R*vec3(.68,.58,.7)),.12*R);
+  vec3 nq=h-vec3(0.,(-.12-.07*uNose.z)*R,(.9+.03*uNose.y)*R);d=smin(d,sdEll(nq,R*vec3(.1,.09,.07+.06*uNose.y)*uNose.x),.04*R);
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=smin(d,sdEll(h-vec3(sx*.9*R,-.06*R,0.),R*vec3(.1,.19,.13)),.04*R);}}
+ else if(uType<1.5){   // puppet: carved planes
+  d=max(d,dot(h,normalize(vec3(0.,.3,1.)))-.86*R);   // the forehead's plane
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=max(d,dot(h,normalize(vec3(sx*.8,-.25,.55)))-.75*R);}   // cheek planes
+  float jw=sdRBox(h-vec3(0.,-.5*R,.05*R),R*vec3(.62,.42,.66),.1*R);
+  jw=max(jw,dot(h,normalize(vec3(0.,-.55,.85)))-.66*R);d=smin(d,jw,.04*R);   // a square jaw, its chin planed
+  d=smin(d,sdEll(h-vec3(0.,.2*R,.68*R),R*vec3(.58,.09,.18)),.07*R);   // the brow ledge
+  for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=max(d,-(length(h-eyeC(sx))-.185*R));   // sockets
+   d=smin(d,sdRBox(h-vec3(sx*.82*R,-.06*R,0.),R*vec3(.06,.2,.12),.04*R),.03*R);}   // ears, flat
+  vec3 nq=h-vec3(0.,(-.11-.05*uNose.z)*R,.84*R);float c=cos(-.28),s=sin(-.28);nq.yz=mat2(c,-s,s,c)*nq.yz;
+  d=smin(d,sdRBox(nq,R*vec3(.06*uNose.x,.13*uNose.y,.075),.025*R),.05*R);}   // a block nose
+ return d;}
+// the hairline: > 0 where hair grows (in R units)
+float hairKeep(vec3 h){float R=uHead,y=h.y/R,z=h.z/R;
+ if(uStyle>4.5)return min(min(.42-y,y+.32),.12-z);   // receding: sides and back only
+ vec4 k=uStyle<.5?vec4(-.22,.5,-.3,.62):uStyle<1.5?vec4(-.25,.44,-.3,.62):uStyle<2.5?vec4(-.82,.36,.32,.72):uStyle<3.5?vec4(-.3,.48,-.3,.62):vec4(-.4,.5,-.3,.6);
+ return y-mix(k.x,k.y,smoothstep(k.z,k.w,z));}
+float hairD(vec3 h){float R=uHead;if(uStyle>5.5)return 1e9;
+ float th=uType>1.5?.09*R:.055*R;
+ if(uStyle>3.5&&uStyle<4.5)th=.12*R+.035*R*sin(h.x/R*15.)*sin(h.y/R*15.+1.)*sin(h.z/R*15.+2.);   // curls
+ if(uStyle>1.5&&uStyle<2.5)th+=.07*R*smoothstep(.2,-.75,h.y/R);   // the bob flares
+ float d=max(skull(h)-th,-hairKeep(h)*R);
+ if(uStyle>.5&&uStyle<1.5)d=smin(d,sdEll(h-vec3(-.28*R,.78*R,.5*R),R*vec3(.42,.17,.3)),.05*R);   // the side part's wave
+ if(uStyle>2.5&&uStyle<3.5)d=min(d,length(h-vec3(0.,.45*R,uType>1.5?-.92*R:-.88*R))-.29*R);   // a bun
+ return d;}
+// ---- the astronaut (local frame, y up, facing +z). Materials: 5 suit, 6 trim, 7 skin, 8 helmet shell, 9 eyeball, 11 boots/gloves, 15 hair
+vec2 mapA(vec3 p){
+ vec3 q=toLocal(p);
+ float hip=LEGL+BOOT.y*1.2,sh=hip+TH,neck=sh+.0325;
+ vec2 r=vec2(1e9,0.);
+ if(uScene>.5){   // legs and boots (the portraits don't need them)
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;vec3 h=vec3(sx*TW*.48,hip,0.),k=vec3(sx*TW*.52,hip*.5,.02),an=vec3(sx*TW*.5,BOOT.y*1.5,0.);
+  float d=min(sdCapT(q,h,k,LEGR*1.08,LEGR),sdCapT(q,k,an,LEGR,LEGR*.85));if(d<r.x)r=vec2(d,5.);
+  float b=sdRBox(q-vec3(sx*TW*.5,BOOT.y,BOOT.z*.35),BOOT,min(BOOT.x,BOOT.y)*.7);if(b<r.x)r=vec2(b,11.);}}
+ float t=sdRBox(q-vec3(0.,hip+TH*.5,0.),vec3(TW,TH*.55,TD),min(TW,TD)*.85);
+ float pk=sdRBox(q-vec3(0.,hip+TH*.62,TD*.95),vec3(TW*.55,TH*.16,TD*.25),.02);
+ float bt=sdRBox(q-vec3(0.,hip+TH*.08,0.),vec3(TW*1.04,TH*.06,TD*1.06),.02);
+ if(t<r.x)r=vec2(t,5.);if(pk<r.x)r=vec2(pk,6.);if(bt<r.x)r=vec2(bt,6.);
+ vec3 sL=vec3(-TW*1.05,sh-ARMR,0.),sR=vec3(TW*1.05,sh-ARMR,0.);
+ vec3 eL=sL+vec3(-.06,-ARML*.5,.04),wL=eL+vec3(.0,-ARML*.48,.06);
+ vec3 eR=mix(sR+vec3(.06,-ARML*.5,.04),sR+vec3(ARML*.42,ARML*.12,.05),uWave),wR=eR+mix(vec3(0.,-ARML*.48,.06),vec3(.04,ARML*.5,.02),uWave);
+ float a=min(min(sdCapT(q,sL,eL,ARMR*1.1,ARMR),sdCapT(q,eL,wL,ARMR,ARMR*.9)),min(sdCapT(q,sR,eR,ARMR*1.1,ARMR),sdCapT(q,eR,wR,ARMR,ARMR*.9)));
+ if(a<r.x)r=vec2(a,5.);
+ float g=min(length(q-wL-vec3(0.,-GLOVE*.6,0.))-GLOVE,length(q-wR-vec3(0.,mix(-GLOVE,GLOVE,uWave)*.6,0.))-GLOVE);if(g<r.x)r=vec2(g,11.);
+ // the neck ring and the helmet shell, its faceplate opening forward and a little up
+ float nr=length(vec2(length(q.xz)-uHelmR*.78,(q.y-neck-.01)*1.6))-.028;if(nr<r.x)r=vec2(nr,6.);
+ vec3 hp=q-uHC;float s2=abs(length(hp)-uHelmR)-.012,fwd=dot(normalize(hp),normalize(vec3(0.,.12,1.)));
+ s2=max(s2,(fwd-.2)*uHelmR);s2=max(s2,-(hp.y+uHelmR*.82));if(s2<r.x)r=vec2(s2,8.);
+ // the neck, the head, the hair, the puppet's eyes
+ float nk=sdCap(q,vec3(0.,neck-.03,0.),uHC-vec3(0.,.5*uHead,.05*uHead),.048);if(nk<r.x)r=vec2(nk,7.);
+ vec3 h=q-uHC;
+ float hd=headD(h);if(hd<r.x)r=vec2(hd,7.);
+ float hr=hairD(h);if(hr<r.x)r=vec2(hr,15.);
+ if(uType>.5&&uType<1.5)for(int i=0;i<2;i++){float e=length(h-eyeC(i==0?-1.:1.))-.165*uHead;if(e<r.x)r=vec2(e,9.);}
+ if(uMous>.5&&uType>.5&&uType<1.5){float m=sdEll(h-vec3(0.,-.36*uHead,.84*uHead),uHead*vec3(.26,.06,.07));if(m<r.x)r=vec2(m,15.);}   // the puppet's is sculpted
+ return r;}
+vec2 map(vec3 p){
+ vec2 r=vec2(1e9,0.);
+ if(uScene>.5){
+ r=vec2(p.y+.06,1.);r.x=max(r.x,abs(p.z-.2)-1.45);r.x=max(r.x,abs(p.x)-6.);
+ float rl=min(sdCap(p,vec3(-6.,1.05,1.6),vec3(6.,1.05,1.6),.025),sdCap(p,vec3(-6.,.55,1.6),vec3(6.,.55,1.6),.018));
+ float px=p.x-clamp(floor(p.x/1.2+.5)*1.2,-6.,6.);rl=min(rl,sdCap(vec3(px,p.y,p.z),vec3(0.,0.,1.6),vec3(0.,1.05,1.6),.025));
+ rl=min(rl,sdBox(p-vec3(0.,.06,1.6),vec3(6.,.06,.008)));
+ vec3 sq=p-vec3(3.3,0.,0.);rl=min(rl,min(sdCap(sq,vec3(0.,1.05,-1.2),vec3(0.,1.05,1.6),.025),sdCap(sq,vec3(0.,.55,-1.2),vec3(0.,.55,1.6),.018)));
+ float pz=sq.z-clamp(floor(sq.z/.95+.5)*.95,-1.2,1.6);rl=min(rl,sdCap(vec3(sq.x,sq.y,pz),vec3(0.),vec3(0.,1.05,0.),.025));if(rl<r.x)r=vec2(rl,2.);
+ for(int i=0;i<2;i++){float gx=i==0?-3.4:3.6;float c=sdBox(p-vec3(gx,1.5,-2.6),vec3(.16,4.,.16));if(c<r.x)r=vec2(c,12.);}
+ vec3 bq=p-vec3(.1,2.1,-2.75);float br=min(sdCap(bq,vec3(-3.4,-2.1,0.),vec3(3.6,2.,0.),.05),sdCap(bq,vec3(-3.4,2.,0.),vec3(3.6,-2.1,0.),.05));if(br<r.x)r=vec2(br,12.);
+ vec3 cq=p-vec3(-.55,1.25,-1.25);float cap=sdCone(cq,1.15,.95,.42);
+ cap=min(cap,sdCap(cq,vec3(0.,1.15,0.),vec3(0.,1.55,0.),.3));
+ float hole=sdRBox(cq-vec3(.2,-.25,.85),vec3(.32,.42,.5),.08);float shellIn=sdCone(cq,1.1,.88,.36);
+ float hatchIn=max(hole,shellIn);cap=max(cap,-hole);if(cap<r.x)r=vec2(cap,3.);
+ if(hatchIn<r.x&&hatchIn<cap)r=vec2(hatchIn+.01,4.);
+ vec3 dq=cq-vec3(.62,-.25,.62);float dc=cos(1.1),ds=sin(1.1);dq.xz=mat2(dc,-ds,ds,dc)*dq.xz;float dr=sdRBox(dq-vec3(.3,0.,0.),vec3(.3,.4,.03),.05);if(dr<r.x)r=vec2(dr,14.);}
+ vec2 a=mapA(p);if(a.x<r.x)r=a;
+ return r;}
+vec3 nrm(vec3 p){vec2 e=vec2(.0005,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 o,vec3 d){float res=1.,t=.01;for(int i=0;i<40;i++){float h=map(o+d*t).x;res=min(res,10.*h/t);t+=clamp(h,.01,.4);if(res<.002||t>8.)break;}return clamp(res,0.,1.);}
+vec3 sky(vec3 d){
+ if(uScene<.5){   // the cabin behind a flight portrait: dim panels, a lit window edge
+  vec3 c=mix(vec3(.07,.08,.1),vec3(.17,.19,.23),smoothstep(-.6,.6,d.y));
+  vec2 g=d.xy/max(d.z*-1.,.3);c*=.85+.15*step(.08,fract(g.x*2.))*step(.08,fract(g.y*2.5));
+  return c+uTint*.18;}
+ vec3 c=mix(vec3(.62,.74,.86),vec3(.24,.45,.78),pow(max(d.y,0.),.6));
+ if(d.y<0.){float t=-24./d.y;vec2 g=(uCam.xz+d.xz*t)*.02;float f=exp(-t*.0016);vec3 gr=mix(vec3(.38,.5,.3),vec3(.66,.62,.5),step(.5,hash(floor(g))));c=mix(c,gr,f);}
+ c+=vec3(1.,.9,.7)*pow(max(dot(d,SUN),0.),400.)*4.;return c;}
+// ---- the painted face: returns colour and coverage, in face coordinates f (units of R)
+void paint(inout vec4 c,float d,vec3 col){c=mix(c,vec4(col,1.),1.-smoothstep(-gAA,gAA,d));}
+vec4 face(vec3 h){
+ float R=uHead;vec4 c=vec4(0.);if(h.z<0.)return c;
+ vec2 f=uType>1.5?vec2(atan(h.x,h.z)*.84,h.y/R):h.xy/R;
+ f.y+=.045*uG;   // under g the face is pulled down
+ float sx=f.x<0.?-1.:1.;vec2 m=vec2(abs(f.x),f.y);
+ float ex=uType>1.5?.3:.3,ey=uType>1.5?.16:.1,by=uType<.5?.34:uType<1.5?.22:.4,my=uType<.5?-.45:uType<1.5?-.5:-.4;
+ vec3 browC=uType<.5?mix(uHair,INK,.65):uType<1.5?uHair*.6:INK,lineC=uType<1.5&&uType>.5?uSkin*vec3(.55,.3,.28):INK;
+ // a moustache (painted on ligne claire and peg)
+ if(uMous>.5&&uType!=1.){vec2 mq=m-vec2(.12,my+.13);mq.y+=.25*mq.x*mq.x/.04;float md=(length(mq/vec2(.17,.075))-1.)*.075;md=max(md,.01-m.x);paint(c,md-.012,INK);paint(c,md,uHair);}
+ // the mouth: a line, or an open shape between an upper and a lower curve
+ float mw=uMouth.x,mc=uMouth.y,mo=uMouth.z;float s=clamp(f.x/mw,-1.,1.);
+ float base=my+mc*.085*(s*s-.35);
+ if(mo<.02){paint(c,length(vec2(max(abs(f.x)-mw,0.),f.y-base))-.019*(uType>1.5?1.2:1.),lineC);}
+ else{float k=uMouth.w>1.5?sqrt(max(1.-pow(s,4.),0.)):sqrt(max(1.-s*s,0.));float yU=base+mo*mix(.25,.75,smoothstep(.12,.06,mw))*k,yL=base-mo*k;
+  float din=max(max(f.y-yU,yL-f.y),abs(f.x)-mw);
+  paint(c,din-.02,lineC);paint(c,din,vec3(.38,.07,.07));
+  if(uMouth.w>.5&&uMouth.w<1.5)paint(c,max(din,yU-.05-f.y),vec3(.97));
+  if(uMouth.w>1.5){paint(c,din,vec3(.96));float mid=(yU+yL)*.5;paint(c,max(din,abs(f.y-mid)-.008),INK);
+   paint(c,max(din,abs(fract(f.x/.07+.5)-.5)*.07-.005),INK*2.);}}
+ // brows: an inner, a middle and an outer point; the inner end lifts in worry, drops in anger
+ vec2 b0=vec2(.08+(uType>1.5?.03:0.),by+uBrow.x+uBrow.y*.09),b1=vec2(.24,by+uBrow.x+uBrow.z*.045+uBrow.y*.02),b2=vec2(.42,by+uBrow.x-.03-uBrow.y*.03);
+ float bw=(uType<1.5&&uType>.5?.028:.034)*uBrowW;
+ paint(c,min(seg2(m,b0,b1),seg2(m,b1,b2))-bw,browC);
+ // ligne claire: a hook of ink under the modelled nose
+ if(uType<.5){float nb=-.12-.07*uNose.z-.09*uNose.x;paint(c,min(seg2(f,vec2(-.05,nb),vec2(.04,nb-.01)),seg2(f,vec2(.04,nb-.01),vec2(.08*uNose.x,nb+.04)))-.014,INK);}
+ // the nose, printed (peg only: the others are modelled)
+ if(uType>1.5){vec2 n0=vec2(.0,-.02),n1=vec2(.07*uNose.x,-.14*uNose.y-.04*uNose.z);paint(c,min(seg2(f,n0*vec2(1.,1.)+vec2(.03,0.),n1),seg2(f,n1,vec2(-.02,-.16*uNose.y)))-.016,INK);}
+ // eyes (ligne claire, peg): dots; wide open adds whites; a squint is a line
+ if(uType<.5||uType>1.5){vec2 e=vec2(ex,ey),lk=uLook*vec2(.035,.03);lk.x*=sx;
+  if(uEyeO<.45){paint(c,seg2(m,e+vec2(-.08,uBrow.y*.04),e+vec2(.08,-uBrow.y*.02))-.022,INK);}
+  else if(uEyeO>1.15){float rw=.1,rh=.1+.03*(uEyeO-1.15);float d=(length((m-e)/vec2(rw,rh))-1.)*rw;paint(c,d-.016,INK);paint(c,d,vec3(.98));
+   paint(c,length(m-e-lk*1.6)-.042,INK);}
+  else paint(c,(length((m-e-lk)/vec2(.06,.08*uEyeO))-1.)*.06,INK);}
+ return c;}
+vec3 albedo(float mt,vec3 p){
+ if(mt<1.5){vec2 g=fract(p.xz*vec2(18.,6.));return vec3(.42,.43,.42)*(.55+.45*step(.18,g.x)*step(.15,g.y));}
+ if(mt<2.5)return vec3(.75,.16,.1);
+ if(mt<3.5){float rib=.5+.5*cos((atan(p.z+1.25,p.x+.55))*80.);return vec3(.08,.085,.1)*(.8+.4*rib);}
+ if(mt<4.5)return vec3(.18,.17,.15);
+ if(mt<5.5)return SUIT;if(mt<6.5)return TRIM;
+ vec3 h=toLocal(p)-uHC;
+ if(mt<7.5){vec4 f=face(h);return mix(uSkin,f.rgb,f.a);}
+ if(mt<8.5)return SUIT*.97;
+ if(mt<9.5){   // the puppet's glass eye: iris and pupil toward the gaze, lids over it
+  float sx=h.x<0.?-1.:1.;vec3 d=normalize(h-eyeC(sx)),L=normalize(vec3(uLook.x*.4,uLook.y*.32,1.));
+  vec3 col=vec3(.95,.94,.92);float k=dot(d,L);
+  col=mix(col,uIris,smoothstep(.885,.9,k));col=mix(col,vec3(.02),smoothstep(.968,.975,k));
+  float lt=mix(-.25,.92,clamp(uEyeO/1.3,0.,1.))-.25*uBrow.y*(uBrow.y<0.?-1.:0.)*(d.x*sx<0.?1.:.3),lb=uEyeO<.45?-.15:-.72;
+  if(d.y>lt-.06||d.y<lb+.05)col=uSkin*vec3(.55,.35,.32);if(d.y>lt||d.y<lb)col=uSkin*.92;
+  return col;}
+ if(mt<11.5)return TRIM*.6+.08;if(mt<12.5)return vec3(.68,.18,.1);if(mt<13.5)return vec3(.35,.08,.07);if(mt<14.5)return vec3(.1,.1,.11);
+ return hairKeep(h)<.045&&uStyle<5.5&&uType<.5?mix(uHair,INK,.8):uHair;}   // ligne claire inks the hairline
+// the helmet's glass: an analytic sphere over the faceplate
+float glassT(vec3 ro,vec3 rd,out vec3 gn){vec3 oc=ro-uHCw;float b=dot(oc,rd),cc=dot(oc,oc)-uHelmR*uHelmR,h=b*b-cc;if(h<0.)return -1.;float t=-b-sqrt(h);if(t<0.)return -1.;
+ gn=normalize(ro+rd*t-uHCw);float c=cos(YAW),s=sin(YAW);vec3 f=normalize(vec3(0.,.12,1.));f.xz=vec2(c*f.x+s*f.z,-s*f.x+c*f.z);
+ if(dot(gn,f)<.2||gn.y<-.82)return -1.;return t;}
+void main(){
+ vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
+ vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;float pix=uFov/uRes.y;
+ float t=0.,mn=1e9,tMn=0.;vec2 h=vec2(0.);bool hit=false;
+ for(int i=0;i<220;i++){h=map(ro+rd*t);float r=h.x/max(t,.1);if(r<mn&&t>.2){mn=r;tMn=t;}if(h.x<.0004*t){hit=true;break;}t+=h.x*.9;if(t>60.)break;}
+ vec3 col;
+ if(!hit)col=sky(rd);
+ else{vec3 p=ro+rd*t,n=nrm(p);float m=h.y;gAA=t*pix/uHead*.8;vec3 al=albedo(m,p);
+  float dif=max(dot(n,SUN),0.),sha=shadow(p+n*.003,SUN),l=dif*sha;vec3 skyC=uScene>.5?vec3(.45,.55,.7):vec3(.42,.42,.46);
+  vec3 TD=normalize(normalize(uCam-p)+vec3(0.,-.4,0.));float tl=max(dot(n,TD),0.);
+  if(uType<.5){float b=l<.25?.86:1.;col=al*(b*vec3(1.,.97,.92)*.95+.12*skyC+uTint*.55*step(.4,tl));}   // flat: two bands
+  else if(uType<1.5){col=al*(l*vec3(1.,.96,.88)*1.0+(.42+.15*n.y)*skyC+(uTint*.6+vec3(.42,.38,.34)*(1.-uScene))*tl);   // portraits: a warm fill from the panel   // satin: smooth shade, a soft sheen
+   vec3 rf=reflect(rd,n);col+=vec3(1.,.95,.85)*pow(max(dot(rf,SUN),0.),m>8.5&&m<9.5?120.:22.)*sha*(m>8.5&&m<9.5?1.6:m>6.5&&m<7.5||m>14.5?.22:.1);}
+  else{float b=l<.12?.66:l<.5?.84:1.;col=al*(b*vec3(1.,.97,.9)*.92+.16*skyC+uTint*.55*step(.4,tl));   // plastic: bands and a hard glint
+   vec3 rf=reflect(rd,n);col+=vec3(1.)*smoothstep(.9,.93,pow(max(dot(rf,SUN),0.),8.))*sha*(m>6.5&&m<7.5||m>14.5?.7:.35);}
+  if(uScene>.5)col=mix(col,sky(rd),1.-exp(-max(t-14.,0.)*.03));}
+ // ink outline: silhouettes where the ray grazed something nearer than what it hit
+ float ow=uType<.5?1.7:uType<1.5?.9:1.3;
+ if(mn<pix*ow&&(!hit||t>tMn+.1*uHead))col*=.08;
+ vec3 gn;float tg=glassT(ro,rd,gn);
+ if(tg>0.&&(!hit||tg<t)){float fr=.06+.94*pow(1.-max(dot(-rd,gn),0.),4.);vec3 rf=reflect(rd,gn);
+  float gk=uScene>.5?1.:.6;col=col*mix(vec3(1.),vec3(.9,.93,.96),gk)*(1.-fr*.55*gk)+sky(rf)*fr*.5*gk+vec3(1.,.95,.85)*pow(max(dot(rf,SUN),0.),160.)*1.2;
+  if(uTint.z>.4&&uTint.x<.3)col+=uTint*.5*smoothstep(.5,.0,abs(length(rf.xy-vec2(.55,-.3))-.45))*fr*3.;   // a planet's limb in the visor
+  float rim=1.-abs(dot(rd,gn));col=mix(col,vec3(.03),smoothstep(1.-pix*14.,1.-pix*5.,rim));}
+ col=col/(1.+col*.25);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+
+// ---- frames. The figure stands at A, turned YAW toward +x; local → world mirrors the shader's toLocal
+const A = [.75, 0, .05], YAW = .35, NECK = .8 + .06 * 1.2 + .55 + .0325;
+const L2W = l => [A[0] + Math.cos(YAW) * l[0] + Math.sin(YAW) * l[2], A[1] + l[1], A[2] - Math.sin(YAW) * l[0] + Math.cos(YAW) * l[2]];
+const hcOf = H => [0, NECK + H.up * H.R, 0];
+// a tile: x, y, w, h (CSS px = device px: dpr 1, so 48 means 48), head key, person index, expression, shot
+let H_ = 0;
+function tile(x, y, w, h, hk, pi, ex, shot) {
+  const H = HEADS[hk], P = PEOPLE[pi], E = EXPR[ex], hc = hcOf(H), hcw = L2W(hc), helmR = H.R * H.helm;
+  gl.viewport(x, H_ - y - h, w, h); gl.scissor(x, H_ - y - h, w, h);
+  gl.uniform2f(U('uRes'), w, h);
+  let cam, tgt, fov, scene = 0, wave = 0;
+  if (shot === 'close') { cam = [hcw[0] + helmR * 1.9, hcw[1] + helmR * .4, hcw[2] + helmR * 3.1]; tgt = [hcw[0], hcw[1] - helmR * .1, hcw[2]]; fov = .55; scene = 1; }
+  else if (shot === 'figure') { cam = [A[0] + 1.7, 1.15, A[2] + 2.7]; tgt = [A[0] - .05, .92, A[2]]; fov = .74; scene = 1; wave = 1; }
+  else { const a = .24, d = helmR * 5; cam = L2W([hc[0] + Math.sin(a) * d, hc[1] + d * .08, hc[2] + Math.cos(a) * d]); tgt = L2W([hc[0], hc[1] - helmR * .14, hc[2]]); fov = .5; }
+  gl.uniform3fv(U('uCam'), cam); gl.uniform3fv(U('uTgt'), tgt); gl.uniform1f(U('uFov'), fov); gl.uniform1f(U('uScene'), scene); gl.uniform1f(U('uWave'), wave);
+  gl.uniform1f(U('uType'), H.type); gl.uniform1f(U('uHead'), H.R); gl.uniform1f(U('uHelmR'), helmR); gl.uniform3fv(U('uHC'), hc); gl.uniform3fv(U('uHCw'), hcw);
+  gl.uniform3fv(U('uSkin'), P.skin); gl.uniform3fv(U('uHair'), P.hair); gl.uniform3fv(U('uNose'), P.nose); gl.uniform3fv(U('uIris'), P.iris);
+  gl.uniform1f(U('uStyle'), P.style); gl.uniform1f(U('uBrowW'), P.brow); gl.uniform1f(U('uMous'), P.mous);
+  gl.uniform3fv(U('uBrow'), E.brow); gl.uniform1f(U('uEyeO'), E.eye); gl.uniform2fv(U('uLook'), E.look); gl.uniform4fv(U('uMouth'), E.mouth);
+  gl.uniform1f(U('uG'), E.g); gl.uniform3fv(U('uTint'), E.tint);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+}
+const ov = document.getElementById('ov'), zc = document.getElementById('zoom'), zx = zc.getContext('2d');
+let LABELS = [], ZOOMS = [];
+const lab = (x, y, text, cls = 'l', w) => LABELS.push({ x, y, text, cls, w });
+function layoutSheet(hk) {
+  const H = HEADS[hk], T = [];
+  lab(12, 50, H.name + ': ' + PEOPLE[0].name + ' (and five others)', 'h');
+  T.push([12, 78, 400, 400, hk, 0, 'neutral', 'close']); lab(12, 480, 'Close-up, on the pad');
+  T.push([418, 78, 200, 400, hk, 0, 'neutral', 'figure']); lab(418, 480, 'On the body');
+  lab(632, 76, 'At 48 px, true size: the five expressions, then the roster');
+  EX.forEach((e, i) => { T.push([632 + i * 54, 98, 48, 48, hk, 0, e, 'portrait']); ZOOMS.push([632 + i * 54, 98, 632 + i * 106, 186]); });
+  PEOPLE.forEach((p, i) => T.push([918 + i * 54, 98, 48, 48, hk, i, 'neutral', 'portrait']));
+  lab(632, 164, 'The five at 48 px, enlarged ×2 (pixels kept)');
+  lab(632, 296, H.text, 't', 620);
+  lab(12, 502, 'Flight portraits', 'h');
+  EX.forEach((e, i) => { T.push([12 + i * 252, 528, 240, 240, hk, 0, e, 'portrait']); lab(12 + i * 252, 770, EXPR[e].label); });
+  lab(12, 798, 'Roster: six people, neutral', 'h');
+  PEOPLE.forEach((p, i) => { T.push([12 + i * 208, 824, 200, 200, hk, i, 'neutral', 'portrait']); lab(12 + i * 208, 1026, p.name); });
+  return [T, 1052];
+}
+function layoutCompare() {
+  const T = [];
+  lab(12, 50, 'The three heads side by side: ' + PEOPLE[0].name + ', the five expressions, and the six at 48 px', 'h');
+  ['a', 'b', 'c'].forEach((hk, r) => {
+    const y = 80 + r * 262;
+    lab(12, y, HEADS[hk].name, 'h');
+    EX.forEach((e, i) => { T.push([12 + i * 196, y + 22, 190, 190, hk, 0, e, 'portrait']); if (r === 2) lab(12 + i * 196, y + 214, EXPR[e].label); });
+    PEOPLE.forEach((p, i) => T.push([1000 + (i % 3) * 54, y + 22 + Math.floor(i / 3) * 54, 48, 48, hk, i, 'neutral', 'portrait']));
+    if (r === 0) lab(1000, 76, 'At 48 px');
+  });
+  return [T, 860];
+}
+function draw() {
+  LABELS = []; ZOOMS = [];
+  const [T, h] = VIEW === 'compare' ? layoutCompare() : layoutSheet(VIEW);
+  H_ = h; cv.width = 1280; cv.height = h; cv.style.width = '1280px'; cv.style.height = h + 'px'; zc.width = 1280; zc.height = h;
+  gl.enable(gl.SCISSOR_TEST); gl.viewport(0, 0, 1280, h); gl.scissor(0, 0, 1280, h); gl.clearColor(.055, .067, .086, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+  for (const t of T) tile(...t);
+  gl.finish();
+  zx.clearRect(0, 0, 1280, h); zx.imageSmoothingEnabled = false;
+  for (const [sx, sy, dx, dy] of ZOOMS) zx.drawImage(cv, sx, sy, 48, 48, dx, dy, 96, 96);
+  ov.innerHTML = LABELS.filter(l => l.text).map(l => `<div class="${l.cls}" style="left:${l.x}px;top:${l.y}px${l.w ? `;width:${l.w}px` : ''}">${l.text}</div>`).join('');
+  document.querySelectorAll('#bar button').forEach(b => b.classList.toggle('on', b.dataset.view === VIEW));
+  window.FRAME_DONE = (window.FRAME_DONE || 0) + 1;
+}
+document.getElementById('bar').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; VIEW = b.dataset.view; draw(); });
+draw();
+</script>
+</body>
+</html>
