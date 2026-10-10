@@ -282,6 +282,11 @@ step); the cheekbone and forehead cuts get the softness compensation too, and ey
 outer wall stays closed. Still: `faces/reach-deco-woman.png`. 69 genes.
 *Nose front: modelled–flat* (Caio: her nose's front is flat, no bulges or recesses) trims the whole nose to one plane
 on the ridge's line and drops any hump or dip. 70 genes.
+**Nose root and hair** (Caio: the root read as a box under the skin; a line under the brow): the flush root takes the
+bridge's own cross-section, ends at the brow and blends wide; the forehead plane's stop (which kept it off the nose)
+is smooth and drops with a flush root, which removed the line. **Hair library** (F5 begun, 1950s–60s): *hair style*
+picks one of 7 carved masses: swept (the house), Thunderbirds quiff, crew cut, receding swept back, flipped bob,
+bouffant, curls. Still: `faces/hair-styles.png`. 71 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 

@@ -192,3 +192,5 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   forehead forward.
 - **The second reach test** (Caio's deco woman): a Deco woman preset, brow arch; macro labels fixed; lip tint on deep
   skin, the nose-root step and the soft face's eyes fixed. 69 genes. A flat nose front (one plane, root to tip). 70.
+- **F5 begun**: 7 hair masses (1950s–60s: quiff, crew cut, receding, flipped bob, bouffant, curls, the house sweep);
+  a nose root shaped like the bridge, blended into the brow. 71 genes. Next for hair: more eras, partings, facial hair.
