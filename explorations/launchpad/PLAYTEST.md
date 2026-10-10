@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.27 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -43,7 +43,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 48 | P2 | **The 3D clouds at liftoff alias badly** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q250 | look & sound (sky) |
 | 49 | P2 | **Selene seen from low Tellus orbit looks aliased** (Caio, 2026-10-10, playing the monochrome computer era). | Likely the moon's texture or crater bands sampled without mips at that size. QUEUE Q250 | look & sound (sky & bodies) |
 | 50 | P2 | **Aliasing looking down at the planet**, especially mountains (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q251 | world |
-| 51 | P3 | **Solid vs liquid motors, like KSP: solids can't be turned off.** Realistic? If so, a good mechanic (Caio, 2026-10-10, playing the monochrome computer era). | Yes, realistic: a solid burns to the end once lit (no throttle or shutdown; only some late military motors have thrust termination). Pillar: realism, choices with consequences. QUEUE Q252 (plan first) | vehicle |
+| 51 | P3 | **Solid vs liquid motors, like KSP: solids can't be turned off.** Realistic? If so, a good mechanic (Caio, 2026-10-10, playing the monochrome computer era). | Yes, realistic: a solid burns to the end once lit (no throttle or shutdown; only some late military motors have thrust termination). Pillar: realism, choices with consequences. QUEUE Q252 (plan first). **Caio, 2026-10-10: go, add the mechanic** | vehicle |
 | 52 | P3 | **The sky in space needs design work; it should be beautiful** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q253 (mock-ups first) | look & sound (sky & bodies) |
 | 53 | P2 | **The navball should show in the map view** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
 | 54 | P2 | **Deleting a maneuver doesn't seem to work** (Caio, 2026-10-10, playing the monochrome computer era). | `program-ui.js` ~363 clears the node then promotes the next queued one (`nodeNext`); maybe it works but looks like nothing happened. QUEUE Q255 | flow |
@@ -53,6 +53,8 @@ Coding sessions pick items from here and strike them through with the version th
 | 58 | P2 | **The monochrome-era display graphics look bad, low-res** (Caio, 2026-10-10, playing the monochrome computer era). | The vector terminal canvases (`program-ui.js` ~134), probably not at device pixels. QUEUE Q258 | flow |
 | 59 | P3 | **The Steppe rocket's texture is low-res**; not sure improving it is affordable (Caio, 2026-10-10, playing the monochrome computer era). | Measure first. QUEUE Q259 | look & sound (parts & pad) |
 | 60 | P2 | **Two arcs and two impact points on the map, one an X and one a dot**; not clear why (Caio, 2026-10-10, playing the monochrome computer era). | Probably the vacuum orbit (ends in a dot labelled *Impact*) and the drag-aware impact predictor (its own path, an X) drawn together; or a dropped stage's predicted impact. QUEUE Q260 | flow |
+| 61 | P2 | **The map needs toggles for what it displays**, or it gets too busy: cities, other planets and such (Caio, 2026-10-10). | No layer toggles today. QUEUE Q261 | flow |
+| 62 | P2 | **Centre the map on something else**, like KSP; not sure it exists yet (Caio, 2026-10-10). | It exists but is hidden: Tab in the map cycles the ship and bodies (`input.js` ~22). Make it visible, clickable, and include your other objects. QUEUE Q262 | flow |
 
 ## Done
 
