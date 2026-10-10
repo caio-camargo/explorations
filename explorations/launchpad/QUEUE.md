@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.38 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 0.1.39 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -13,7 +13,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 | # | Item | Who | What it frees |
 |---|---|---|---|
 | 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line. Everything before it is ✓ (robot `m1`, overlaps, pacing, Q216, Q221, Q208); `node playtest.mjs --watch m1` (Q224) shows the route first | **you** (find the player) | **M1 done**; M2 becomes current |
-| 2 | **Q240: the room layer and the Program as a desk** (Q239 R0+R1, PLAYTEST #6; W35's defaults stand unless you override). Q190 ✓ v1.113 | flow (→ 2026-10-10) | R2–R5 (Q241), mission control's consoles (Q43, Q167, Q196, Q203, Q170), the hall (Q242) |
+| 2 | **Q241: the other rooms**, one slice each (R2 the Debrief as the report, R3 the charter, R4 **mission control**, R5 the desk room with Q242's model). Q240 ✓ v1.114 (the Program is the desk) | flow (on Q242 now; R2–R4 free for a second flow session) | mission control's consoles (Q43, Q167, Q196, Q203, Q170); *Build and launch* |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world (**no session**) | every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
 | 5 | **Q160** the duplicate-number check: versions collided twice in an hour, and on 2026-10-10 **two items were both Q228** (one got the other's ✓) | platform (**no session**) | no renumbering after merges |
@@ -135,7 +135,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | plan ✓ (NOTES § UI "Network screen plan"); N1 buildable now, N3 waits on routines (W16) |
 | Q239 | 📝 PLAYTEST **#6** (Caio, 2026-10-10 playtest): **real screens, not overlays on the flight view**: the **Program first** (it needs weight: its own room, not a panel), then the Assembly, then **mission control**, maybe others. The state model exists (`go(screen)`, NOTES § UI "The map"); this plan is each screen's own space and look, with W14's identity (paperwork office, instrument-panel cockpit). Plan, a still per screen to Caio, then slices | M1 | L | 📝 | plan ✓ (NOTES § UI "Plan: real screens"; 5 stills, `mockups/screens/`; W35). R0+R1 (room layer, the Program as a desk) → flow 2026-10-10 |
 | Q240 | **Q239 R0+R1** on W35's defaults: the room layer (`ROOMS` in `go()`, `#room`, no 3D drawn behind a room) and **the Program as the director's desk**, the last flight's photo captured at liftoff (NOTES § UI "Plan: real screens"; still `mockups/screens/` *program*) | M1 | M | 🖥 | ✓ v1.114 `a0e4554` (`app/desk.js`; rooms skip the 3D draw; liftoff photo, the papers, firsts; robot row `desk`; TESTING 196) |
-| Q241 | Q239 **R2–R5**, one slice each: R2 the Debrief as the report, R3 the title and first run as the charter, R4 **mission control** (its consoles take Q43, Q167, Q196, Q203, Q170: build those there), R5 the Assembly as **a model on a desk** (Caio 2026-10-10: the desk room, *Build and launch*; with look's Q242, vehicle's Q237/Q238 as paperwork on the desk) | M1 | L | 🖥 | after Q240 |
+| Q241 | Q239 **R2–R5**, one slice each: R2 the Debrief as the report, R3 the title and first run as the charter, R4 **mission control** (its consoles take Q43, Q167, Q196, Q203, Q170: build those there), R5 the Assembly as **a model on a desk** (Caio 2026-10-10: the desk room, *Build and launch*; with look's Q242, vehicle's Q237/Q238 as paperwork on the desk) | M1 | L | 🖥 | ready (Q240 ✓ v1.114); R5 after flow's Q242 desk scene |
 | Q243 | **Rollouts for Arsenal, Coastal, Isle** like Steppe's (`rollPhase`, `app/rollout.js`): the truck erector driving onto the apron and raising the rocket, the launch table on its rails, the trailer; pads from Q231 (`schoolRig`) | M1 | M | 🖥 | ready |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
