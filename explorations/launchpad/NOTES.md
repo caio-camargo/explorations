@@ -9753,5 +9753,5 @@ we'll work from there" (his go lifts the M3 gate for this). Built:
 - Views 120 (the Crewed Lunar's arm), 121 (the two on a small crewed rocket), 122 (their faces from the south).
   test.mjs `aerofx-5`: the figure's size, feet, wave and face; the default suit; the arm at the hatch for every crewed
   design, short of it, the swing arm standing down, none without crew or on Steppe; TESTING 182.
-- Next (proposed in QUEUE as Q196, Q197): the walk-out and boarding (the crew cross the arm and go in during the flight's first
-  seconds, or the countdown), crew on Steppe's pad, then D9's suit lines (Cape and Steppe first, three generations).
+- Next: the walk-out and boarding (proposed in QUEUE; the crew cross the arm and go in during the flight's first
+  seconds, or the countdown), crew on Steppe's pad; D9's suit lines are Q199 (mock-ups first, then a build per school).
