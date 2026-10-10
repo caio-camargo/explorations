@@ -8839,6 +8839,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/hud.js` | 40 | the flight readout's cards (`HUD_CARDS`, `renderCards`, `cardFolds`, pins); new HUD content registers a card here (§ v1.101). Loads after `program-ui.js`: nothing at start-up calls it | flow |
 | `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
 **Working in split files: the rules.**
