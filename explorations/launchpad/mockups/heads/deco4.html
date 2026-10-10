@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Puppet heads, round 4</title>
+<!-- Launchpad mock-up, Q220 round 4 for head (b), Caio's brief (2026-10-10): carve, don't assemble. Mass first: a
+     cranium egg smoothly joined to a narrower jaw, a forward chin, a forward brow, the nose continuing the forehead's
+     line, a real neck. Then carve that one solid with ~10 planes (smooth intersections; sharp only on the brow ridge,
+     cheekbones, jaw line and nose bridge, softly bevelled elsewhere). Features cut into the surface: sockets under the
+     brow with an almond eye inside, a mouth groove with a shaped upper lip and a lower lip that catches the light.
+     Hair one mass with four big swept-back grooves. Only the neutral head, front and profile, beside the references.
+     The references load from the repo's intake/ folder and are never committed (copyrighted; the repo is public).
+     A standalone page: never loaded by index.html. ?still hides the bar. -->
+<style>
+  :root { --bg: #0e1116; --fg: #e7e9ee; --dim: #8b93a3; --acc: #f2b84b; }
+  html, body { margin: 0; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, sans-serif; }
+  #wrap { position: relative; width: 1280px; height: 980px; }
+  canvas { position: absolute; left: 0; top: 0; }
+  .ref { position: absolute; object-fit: cover; background: #1b1f27; }
+  .lab { position: absolute; color: var(--dim); font-size: 12px; }
+  .h { position: absolute; font-size: 15px; font-weight: 600; color: var(--acc); }
+  .t { position: absolute; font-size: 12.5px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="1280" height="980"></canvas>
+  <div class="h" style="left:12px;top:12px">(b) Puppet, round 4: carved from one mass. Ada Marsh, neutral, front and profile</div>
+  <img class="ref" src="../../../../intake/vera.jpg" style="left:12px;top:44px;width:300px;height:400px;object-position:50% 20%" alt="reference: Vera (missing: it lives in intake/)">
+  <div class="lab" style="left:12px;top:446px">Reference: Vera (carved wood bust)</div>
+  <div class="lab" style="left:320px;top:446px">Ours, front</div><div class="lab" style="left:728px;top:446px">Ours, profile (no reference at this angle)</div>
+  <img class="ref" src="../../../../intake/images (2).jpg" style="left:12px;top:480px;width:300px;height:300px" alt="reference: Thunderbirds">
+  <img class="ref" src="../../../../intake/images.jpg" style="left:320px;top:480px;width:300px;height:300px;object-position:50% 30%" alt="reference: Atlas">
+  <img class="ref" src="../../../../intake/images (1).jpg" style="left:628px;top:480px;width:300px;height:300px" alt="reference: Mr. Incredible">
+  <div class="lab" style="left:12px;top:782px">Thunderbirds: proportion</div><div class="lab" style="left:320px;top:782px">Lawrie's Atlas: the cut planes, the brow</div><div class="lab" style="left:628px;top:782px">The Incredibles: a stylised mass that stays appealing</div>
+  <div class="t" id="notes" style="left:944px;top:480px;width:324px"></div>
+</div>
+<script>
+'use strict';
+const Q = new URLSearchParams(location.search);
+const P = { skin: [.9, .7, .56], hair: [.4, .2, .1] };
+// the references live in the repo's intake/; ?intake=<folder URL> points elsewhere (a worktree has none)
+if (Q.get('intake')) document.querySelectorAll('img.ref').forEach(i => i.src = Q.get('intake') + decodeURIComponent(i.getAttribute('src').split('/intake/')[1]));
+document.getElementById('notes').innerHTML = `<b>How it is built</b><br>
+1. <b>Mass:</b> a cranium egg, a narrower jaw, a forward chin and brow, a nose on the forehead's line and a neck, all one smooth solid.<br>
+2. <b>Carve:</b> 10 planes cut it: cheeks, jaw line and temples in pairs, the forehead, the chin's front and sides. Sharp at the brow, cheekbones, jaw line and nose bridge; bevelled elsewhere.<br>
+3. <b>Features cut in:</b> sockets under the brow with an almond eye, a mouth groove, an upper lip with a philtrum, a lower lip whose top plane takes the light.<br>
+4. <b>Hair:</b> one mass, four grooves swept back.<br>
+One key light, above and to the side.`;
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+const VS = `#version 300 es
+in vec2 p;out vec2 v;void main(){v=p;gl_Position=vec4(p,0.,1.);}`;
+const FS = `#version 300 es
+precision highp float;in vec2 v;out vec4 o;
+uniform vec2 uRes;uniform vec3 uCam,uTgt;uniform float uFov;uniform vec3 uSkin,uHair,uKey;
+#define KEY uKey
+float sdEll(vec3 p,vec3 r){float k0=length(p/r),k1=length(p/(r*r));return k0*(k0-1.)/k1;}
+float sdCapT(vec3 p,vec3 a,vec3 b,float ra,float rb){vec3 pa=p-a,ba=b-a;float h=clamp(dot(pa,ba)/dot(ba,ba),0.,1.);return length(pa-ba*h)-mix(ra,rb,h);}
+float smin(float a,float b,float k){float h=clamp(.5+.5*(b-a)/k,0.,1.);return mix(b,a,h)-k*h*(1.-h);}
+float smax(float a,float b,float k){return -smin(-a,-b,k);}
+float plane(vec3 p,vec3 n,vec3 at){return dot(p-at,normalize(n));}
+// a cut: the solid d loses everything in front of the plane; k is the edge radius
+float cut(float d,vec3 p,vec3 n,vec3 at,float k){return smax(d,plane(p,n,at),k);}
+float cutM(float d,vec3 p,vec3 n,vec3 at,float k){d=cut(d,p,n,at,k);return cut(d,p,vec3(-n.x,n.y,n.z),vec3(-at.x,at.y,at.z),k);}
+// ---- the head, in head units (R = 1: the cranium's half-width ~.8), face +z, y up
+const float SH=.012,SO=.07;   // sharp and soft edge radii
+float mass(vec3 p){
+ float d=sdEll(p-vec3(0.,.16,-.1),vec3(.78,.88,.94));   // cranium
+ d=smin(d,sdEll(p-vec3(0.,-.4,.12),vec3(.58,.56,.62)),.28);   // the jaw, narrower
+ d=smin(d,sdEll(p-vec3(0.,-.78,.48),vec3(.27,.2,.3)),.16);   // the chin, forward
+ d=smin(d,sdEll(p-vec3(0.,.24,.55),vec3(.6,.15,.3)),.12);   // the brow, forward
+ // the nose: a wedge whose ridge continues the forehead's line, grown out of the face
+ vec3 n=p-vec3(0.,-.02,.0);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-.9;   // the profile line: forehead → nose tip
+ float wedge=max(max(abs(n.x)*.95+n.z*.32-.38,ridge),max(n.y-.32,-(n.y+.13)-n.z*.2));
+ wedge=max(wedge,-(n.z-.55));
+ d=smin(d,wedge,.06);
+ for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=smin(d,sdEll(p-vec3(sx*.68,-.08,-.08),vec3(.06,.17,.11)),.05);}   // ears, under the hair
+ return d;}
+float carve(vec3 p,float d){
+ d=cutM(d,p,vec3(.72,-.12,.68),vec3(.5,-.12,.64),SH);   // cheekbones (sharp)
+ d=cutM(d,p,vec3(.8,-.5,.3),vec3(.56,-.62,.3),SH);   // the jaw line (sharp)
+ d=cutM(d,p,vec3(.8,.25,.55),vec3(.6,.36,.42),SO);   // temples
+ d=cut(d,p,vec3(0.,.28,.96),vec3(0.,.48,.74),SO);   // the forehead
+ d=cut(d,p,vec3(0.,-.45,.89),vec3(0.,-.78,.77),SO*.6);   // the chin's front
+ d=cutM(d,p,vec3(.8,-.1,.6),vec3(.3,-.8,.68),SO*.6);   // the chin's sides
+ return d;}
+float features(vec3 p,float d){
+ vec3 s=vec3(abs(p.x),p.y,p.z);
+ // sockets: cut under the brow (a flat top makes the brow ridge sharp), an almond eye inside
+ float so=max(sdEll(s-vec3(.3,.04,.8),vec3(.2,.11,.13)),s.y-.13);d=smax(d,-so,SH);
+ vec3 e=s-vec3(.3,.035,.63);float al=max(length(e-vec3(0.,-.11,0.))-.17,length(e+vec3(0.,-.11,0.))-.17);al=max(al,length(e*vec3(.8,1.,1.))-.14);   // a lens: an almond seen from the front
+ d=smin(d,al,.012);
+ // the mouth: a groove with a slight bow; an upper lip with a philtrum; a lower lip whose top plane takes the light
+ vec3 m=p-vec3(0.,-.55,0.);
+ float up=sdEll(m-vec3(0.,.055,.73),vec3(.2,.065,.07));d=smin(d,up,.03);
+ d=smax(d,-max(abs(m.x)-.025,sdEll(m-vec3(0.,.08,.79),vec3(.05,.07,.03))),.01);   // philtrum
+ float lo=sdEll(m-vec3(0.,-.07,.71),vec3(.16,.055,.07));lo=max(lo,plane(m,vec3(0.,.7,.7),vec3(0.,-.045,.76)));d=smin(d,lo,.025);
+ float gy=m.y-(-.012+.05*m.x*m.x-.012*exp(-m.x*m.x*300.));   // the groove's line: corners a touch down, a dip at the bow
+ d=smax(d,-(length(vec2(gy,max(abs(m.x)-.2,0.)))-.014),.008);
+ d=smax(d,-sdEll(m-vec3(0.,-.16,.78),vec3(.14,.035,.05)),.03);   // the hollow under the lower lip
+ return d;}
+float hairD(vec3 p){
+ vec3 h=p-vec3(0.,.2,-.12);
+ float d=sdEll(h,vec3(.9,.98,1.04)+vec3(.08,0.,0.)*smoothstep(.1,-.6,p.y)+vec3(0.,.05,0.)*smoothstep(.0,.8,p.z));   // one mass: fuller at the front, falling wide at the sides
+ float th=atan(p.x,p.y+.2)+.25*sin(p.z*2.2);   // around the head's long axis: grooves run front to back
+ float g=abs(fract(th*4./3.14159+.5)-.5);d+=.1*(1.-smoothstep(.03,.3,g));   // four big grooves
+ float F=p.y-mix(-.7,.52,smoothstep(.15,.66,p.z))+.12*smoothstep(.15,.6,abs(p.x))*smoothstep(.2,.6,p.z);   // the hairline: high on the brow, swept back at the temples, down the sides to the jaw
+ return smax(d,-F,.05);}
+vec2 map(vec3 p){
+ float d=features(p,carve(p,mass(p)));
+ d=smin(d,sdCapT(p,vec3(0.,-.6,-.22),vec3(0.,-1.8,-.12),.34,.42),.14);d=max(d,-(p.y+1.55));   // the neck joins after the carving, so the planes never cut it
+ vec2 r=vec2(d,1.);float h=hairD(p);if(h<r.x)r=vec2(h,2.);
+ return r;}
+vec3 nrm(vec3 p){vec2 e=vec2(.0015,0.);return normalize(vec3(map(p+e.xyy).x-map(p-e.xyy).x,map(p+e.yxy).x-map(p-e.yxy).x,map(p+e.yyx).x-map(p-e.yyx).x));}
+float shadow(vec3 o,vec3 d){float res=1.,t=.02;for(int i=0;i<60;i++){float h=map(o+d*t).x;res=min(res,16.*h/t);t+=clamp(h,.01,.25);if(res<.002||t>5.)break;}return clamp(res,0.,1.);}
+float ao(vec3 p,vec3 n){float a=0.,w=1.;for(int i=1;i<=5;i++){float h=.04*float(i);a+=w*(h-map(p+n*h).x);w*=.6;}return clamp(1.-3.*a,0.,1.);}
+void main(){
+ vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
+ vec3 rd=normalize(fw+uv.x*rt*uFov+uv.y*up*uFov),ro=uCam;
+ float t=0.;vec2 h;bool hit=false;
+ for(int i=0;i<200;i++){h=map(ro+rd*t);if(h.x<.0005*t){hit=true;break;}t+=h.x*.85;if(t>20.)break;}
+ vec3 col=mix(vec3(.12,.12,.12),vec3(.27,.27,.27),smoothstep(-.5,.7,rd.y));
+ if(hit){vec3 p=ro+rd*t,n=nrm(p);vec3 al=h.y<1.5?uSkin:uHair;
+  float l=max(dot(n,KEY),0.)*shadow(p+n*.004,KEY),oc=ao(p,n);vec3 rf=reflect(rd,n);
+  col=al*(l*vec3(1.,.95,.86)*1.3+(vec3(.11,.12,.15)*(.5+.5*n.y)+vec3(.06,.05,.045))*oc);
+  col+=vec3(1.,.95,.88)*pow(max(dot(rf,KEY),0.),20.)*.12*l;   // a satin paint
+  col+=vec3(.3,.32,.36)*pow(1.-max(dot(n,-rd),0.),3.)*max(dot(n,normalize(vec3(.6,.2,-.7))),0.)*.5;}   // a faint rim
+ col=col/(1.+col*.2);o=vec4(pow(clamp(col,0.,1.),vec3(1./2.2)),1.);}`;
+function sh(type, src) { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+  if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) { console.error(gl.getShaderInfoLog(s)); document.title = 'SHADER ERROR'; } return s; }
+const prog = gl.createProgram(); gl.attachShader(prog, sh(gl.VERTEX_SHADER, VS)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FS)); gl.linkProgram(prog);
+if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) console.error(gl.getProgramInfoLog(prog));
+gl.useProgram(prog);
+const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+const U = n => gl.getUniformLocation(prog, n);
+const H = 980;
+// front and profile, the head (R = 1) framed with its neck; the profile looks at the head's left side
+const TILES = [[320, 44, 400, 400, 0], [728, 44, 400, 400, Math.PI / 2]];
+gl.enable(gl.SCISSOR_TEST); gl.clearColor(.055, .067, .086, 1); gl.viewport(0, 0, 1280, H); gl.scissor(0, 0, 1280, H); gl.clear(gl.COLOR_BUFFER_BIT);
+let k = 0;
+function step() {
+  if (k >= TILES.length) { window.FRAME_DONE = 1; return; }
+  const [x, y, w, h, a] = TILES[k++], d = 6.2;
+  gl.viewport(x, H - y - h, w, h); gl.scissor(x, H - y - h, w, h); gl.uniform2f(U('uRes'), w, h);
+  gl.uniform3f(U('uCam'), Math.sin(a) * d, .05, Math.cos(a) * d); gl.uniform3f(U('uTgt'), 0, -.3, 0); gl.uniform1f(U('uFov'), .5);
+  const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);
+  gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);   // the key: above and to the side of each view
+  gl.uniform3fv(U('uSkin'), P.skin); gl.uniform3fv(U('uHair'), P.hair);
+  gl.drawArrays(gl.TRIANGLES, 0, 3); gl.flush(); requestAnimationFrame(step);
+}
+requestAnimationFrame(step);
+</script>
+</body>
+</html>

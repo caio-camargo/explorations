@@ -148,6 +148,15 @@ expressions; in the helmet and at 48 px. Seen: mid and hard read as carved deco 
 rounding and looks like a mannequin; at 48 px the eyes go to shadow (the brow carries the face), and the dot reads
 more clearly than the iris. All three finishes work; bronze loses skin tone.
 
+**Round 4 for (b)** (Caio's brief: carve, don't assemble; match the references' construction): `heads/deco4.html`,
+still `round4-shape.png`. The references are Caio's files in the repo's `intake/` (Vera, a carved wood bust; Lawrie's
+Atlas; a Thunderbirds puppet; Mr. Incredible); the page shows them beside the head but **they are never committed**
+(copyrighted, public repo); from a worktree, `?intake=<file URL of the main clone's intake/>`. Mass first (a cranium
+egg smoothly joined to a narrower jaw, a forward chin and brow, a wedge nose on the forehead's line), then 10 cutting
+planes as smooth intersections (sharp at cheekbones and jaw line, bevelled elsewhere), then features cut in (sockets
+with an almond eye, a mouth groove, an upper lip, a lower lip plane), the neck joined after the carving. Hair one mass
+with four grooves. Neutral only, front and profile, **for shape approval** before expressions, roster and helmet.
+
 **Pick:** _(Caio)_
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
