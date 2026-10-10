@@ -263,7 +263,7 @@ function rvContact(R,t,relays){if(R.body===TELLUS)return{ok:true,via:'home',dela
 // relays in its orbit (at: flight time → position in its frame): vessels of this flight and registered ones
 function rvRelays(vs){const out=[];for(const v of vs){if(!v||!v.alive||!v.parts.some(p=>p.on&&p.d.kind==='ant'))continue;
     if(!v.landed){if(v.body!==TELLUS)out.push({body:v.body,at:()=>v.r,name:v.name||'the orbiter'});continue}if(!v.pf)continue;out.push({body:v.body,pf:v.pf,h:v.len,name:v.name||'the lander'})}
-  for(const q of moonSats())if(q.ant)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],name:q.name});
+  for(const q of moonSats())if(q.ant&&satDuty(q)>0)out.push({body:orbBody(q),at:t=>satAt(q,ORB_T0+t)[0],name:q.name});
   for(const q of landedUp()){if(!q.shape||!q.shape.some(o=>PARTS[o.k]&&PARTS[o.k].kind==='ant'))continue;const b=landedBody(q);if(b)out.push({body:b,pf:q.pf,h:Math.max(1,...q.shape.map(o=>o.y0+o.h)),name:q.name})}return out}
 // a command reaches the rover a round trip late, and not at all out of contact (then it stops and holds)
 function rvCommand(R,inp,c){if(!c.ok){R.in={thr:0,steer:0,brake:true};R.cq=[];return}if(!c.delay){R.in=inp;return}

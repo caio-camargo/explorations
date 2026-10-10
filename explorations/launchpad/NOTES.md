@@ -1964,6 +1964,37 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
+## v1.NEXT — power gates a satellite's service (2026-10-09, space session, QUEUE Q27)
+
+v1.68 put power on vessels and left "what a flat battery does to their service" to the space lane; v1.105 made the
+Probe power-positive, so this no longer ends every Probe satellite.
+- **At registration** (`satPowInit`, `sim/power.js`): the entry keeps `powerBudget` for its own orbit (`q.pw`: average
+  generation, load, eclipse share, battery and what one eclipse needs, peak, RTG) and its charge (`q.Ewh`).
+- **Between flights** (`satPowTick`, first thing in `satTick`): a power-negative design drains its battery. `satDuty(q)`
+  is the share of the time it can work: 1 on the battery; once flat, the sunlit share as far as its cells (and RTGs)
+  cover the load; 0 with no cells. A design whose battery can't cross an eclipse loses the rest of each one. News when it
+  first drops: "batteries are flat: it works only in sunlight now, 60 % of the time" / "has gone quiet".
+- **What it gates:** the camera's take and every downlink (imagery sales, contract frames), TV income, `entryLink`
+  (a flat, cell-less satellite can't be reached: mission control and rover relays), and navigation (a fix needs power
+  round the clock, so `navCover` counts only `satDuty` = 1). Collisions, decay, station-keeping: unchanged.
+- **Measured** (300 km, inclined): the pre-v1.105 Probe (no cells, 15 W on 500 Wh) is flat between day 3 and day 12 and
+  silent after; with one panel (9.0 W average) it ends at 60 %; the v1.105 Probe (26.9 W) never runs down.
+- **Saves:** entries registered before this have no `q.pw` and work as before.
+- **Made visible, not a trap:** a satellite with no power source at all (an antenna on a tank and an engine, which earned
+  TV and imagery money before) is silent from day one. So the weather, TV and navigation briefs now say "it needs power
+  between flights: the battery in a probe core lasts days, solar cells keep it going" (economy's table, flagged), and the
+  registration news warns: "its battery lasts about 4 days; then it goes quiet (solar cells would keep it going)", "it
+  has no power of its own", or "its battery can't cross an eclipse" (`satPowNote`).
+- **Flow:** the Fleet line (`app/program-ui.js`, one template) adds "batteries flat: works N % of the time, in sunlight"
+  or "silent".
+- **Not in this slice:** landed entries (bases, landers: their crews and RTGs are another budget); recharging a flat
+  battery by servicing; a relay's own transmit draw (Q173).
+
+Test `space-18` (1 check: three designs, flat in days, sunlight-only, never; no pictures and no link once silent; the
+news and the registration warning). Test 24's TV and disaster-watch satellites (an antenna on a tank, no power) now carry
+a probe core and three panels of cells. `career.mjs` (10 seeds) identical: its robot registers no powered services.
+TESTING row (number at merge).
+
 ## v1.105 — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
 
 The Probe is the only preset with an antenna: 15 W of antenna and camera on a probe core's 0.5 kWh, flat in ~33 h, which
