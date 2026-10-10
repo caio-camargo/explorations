@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.27 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.28 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,7 +12,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); first **Q216** (vehicle, in progress: a retrograde hold so the Passenger Orbiter brings its passenger home, PLAYTEST #38) and QA's Q208 (row 147 on the new nose cone) | vehicle, QA; then you | **M1 done**; M2 becomes current |
+| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); Q216 ✓ (v1.73.2: the gyro holds retrograde); first QA's **Q221** (the robot's tester-mode URL bug) and **Q208** (row 147 on the new nose cone) | QA (**no session**); then you | **M1 done**; M2 becomes current |
 | 2 | **Q190** era gates for late parts (cargo bay and arm buyable from flight 1). Q201 ✓ (nose cone keeps the passenger cool) | vehicle (**no session**) | a clean first hour for W16's player |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world | every player's first visit |
 | 4 | **Three picks for you**: **W14** screen identity; **W29** the bodies, round 2 (`mockups/bodies/`, Q207 ✓); **W30** the suits (`mockups/suits/`, Q199 ✓) | you | Q53 and slice 4c's styling; Q80–Q85; the suit build items |
@@ -341,6 +341,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q101 | Robot row for TESTING 127 (the Debrief): land, crash, End flight from orbit, the Assembly button; a shot of each | M1 | S | 🖥🖥 | ✓ `b4fc3eb` (`node playtest.mjs 127`: four ways out, exits and money checked; PLAYTEST #33) |
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ✓ `20a87e2` (`playtest.mjs 65`: crew home safe; PLAYTEST #34) |
+| Q221 | `playtest.mjs`: a `PT_URL` with a query string (`?flat=38`) turns the appended `?tester` into `?flat=38?tester`, so the row runs outside tester mode, silently; join with `&`. Do it before Q208 | M1 | S | ⚙ | ready (**top**) |
 | Q208 | Re-run `node playtest.mjs 147` (steep and gentle ascents) on the Passenger Orbiter's nose cone; tick TESTING 147 and PLAYTEST #35 (Q201, v1.73.1) | M1 | S | 🖥🖥 | ready |
 | Q215 | Robot row 65 lost the capsule 12 s in on one run of four (the others brought the crew home): find the flake (NOTES § v1.107) | M2 | S | 🖥🖥 | ready |
 | Q161 | A tester button for `asatTest` (and a breakup at a chosen height), so a person can see the fragment line, warnings and the cascade (v1.83) | M2 | S | 🖥 | ✓ (tester → Debris, with the off/light/real setting; TESTING 178) |
@@ -429,5 +430,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W30~~ | **Answered 2026-10-10 (Caio): round 1 too samey across eras and schools** → a detailed brief, CREW.md 0.2.4 § "The suit brief, round 2"; round 2 = Q219. **Look at the suits** (D9 → Q199): `explorations/launchpad/mockups/suits/index.html`, or the stills in `output/launchpad/mockups/suits/` (`sheet-wide.png`, `sheet-close.png`, `role-*.png`): Cape and Steppe, early / middle / late / spacewalk, and the role stripes (pilot blue, scientist green, engineer yellow; blue is weak on the Sokol). Pick or say what to change. Defaults if silent: build these into `SUITS`, Cape then Steppe | the per-school suit build (after Q199) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-
-- QA — `playtest.mjs`: a `PT_URL` with a query string (`?flat=38`) turns the appended `?tester` into `?flat=38?tester`, so the row runs outside tester mode, silently; join with `&`. Then row 147's steep ascent in tester mode — Q201/Q216 (vehicle 2026-10-10)
