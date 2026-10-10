@@ -1,6 +1,6 @@
 # POWERS — national flavours as content
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
-**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it.
+**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
+**Status**: **Approved by Caio 2026-10-08** (rounds 1 and 2). Lanes may build from it. § "School briefs" for Arsenal, Coastal, Mountain and Isle is a draft (D14); it becomes 1.2.0 when Caio approves it.
 **Purpose**: Give every generated power a recognisable identity: how its names sound, its flag, how its hardware and
 pads look, how its mission control and newspapers talk, and how it behaves as a rival. Content on top of systems that
 already exist (ROADMAP § "Design catalogs"); no new system.
@@ -61,6 +61,103 @@ cousins in different colours, not like the same power.
 
 **Mixed rockets.** Each part draws in its maker's school (decision 2), and the paint ties it together. A resource
 state's first rocket might be a Steppe core with Cape upper stages, all in its gold and green. That *is* its story.
+
+
+### School briefs: Arsenal, Coastal, Mountain, Isle (design desk, 2026-10-10; draft, D14)
+
+Cape and Steppe were mocked up (Q89) and approved (W21); these four had only their row in the table above. Each brief
+fills **the slots the build already has** (NOTES § "Hardware schools in the game": paint and finish and bells in
+`MESH_FS`, the interstage cover in `partsMesh`, the roundel, signature designs, the pad), so a look session can build
+from it directly. Same limits as all schools: outlines, sizes and `PARTS` never change.
+
+**A school is recognised at a glance by four things**: the paint, the interstage, the bells and the pad. Each brief
+makes all four its own:
+
+| | Paint and finish | Interstage cover | Bells | Pad, in one line |
+|---|---|---|---|---|
+| Cape | gloss white, black roll pattern | closed black skirt, 24 ribs | bare metal | fixed tower, swing arms, gantry rolls away |
+| Steppe | grey-green enamel, dark panel seams | open lattice of tubes | olive, cooling-tube ribs | horizontal rollout on rails, the tulip arms over a pit |
+| **Arsenal** | olive and bare metal, matte, stencils | **vented skirt** (hot staging) | dark, heat-stained | a **truck erector** on a terrace cut into a hill |
+| **Coastal** | satin white, one pastel band | **smooth white skirt, a pastel stripe** | silver, dark throat; black solid nozzles | **vertical rollout** to a bare pad ringed by four lightning masts |
+| **Mountain** | white upper stages, **terracotta lower stage** | **a cone with separation bolts and small spin rockets** | solid nozzles with a dark flex boot | early a **tilting rail launcher**; later a shelter whose doors swing open |
+| **Isle** | matte black carbon weave, decals everywhere | flush black carbon, no ribs | small, many, copper 3D-printed | a **strongback** on a tiny pad, a hangar and sheep |
+
+#### Arsenal (missile-derived: early China, Israel, the DPRK)
+- **Paint and finish:** matte, never gloss. Lower stages **olive drab**, upper stages **bare metal** (satin aluminium,
+  panel to panel shade like Steppe's ±6 %). **White stencils**: a serial number on every tank, "NO STEP" arrows, lifting
+  points. A **striped band** at each separation plane. *Livery hue:* the separation bands and the roundel's disc.
+- **Interstage:** a **solid skirt with a ring of rectangular vent windows** (hot staging: the upper engine lights before
+  separation and vents through them; look only). Darkened round the vents.
+- **Bells:** dark, **heat-stained** (bronze to blue-purple toward the lip), thick reinforcing rings.
+- **Fins:** stubby and thick, a bolted edge strip, stencilled.
+- **Nose:** a blunt ogive with visible clamp bands.
+- **Plume:** the reddish-orange hypergolic cloud at lift-off (already in the table; effects beat).
+- **Signature designs:** (1) the **missile**: a squat two-stage stack, four stubby fins, no boosters; (2) a core with
+  **four cylindrical liquid strap-ons with pointed ogive noses** (Long March 2E-like; Steppe's are cones).
+- **Pad:** a **terrace cut into a hillside**, the hill rising behind; the flame chute a concrete channel running
+  downhill out of the side (the ground can't be dug, as Steppe's pit). A **fixed lattice tower in camouflage paint**
+  with **one hinged umbilical mast** that swings away at lift-off. The rocket arrives on a **road transporter-erector
+  truck** (the missile heritage), which drives onto the apron, raises the rocket onto the table and drives off.
+  Earth-covered bunkers with blast doors, a blockhouse with periscopes, a **camouflage net** over the assembly hall.
+
+#### Coastal (Europe / French Guiana)
+- **Paint and finish:** **satin white**, few panel lines, **one pastel band** round the upper stage and a thin
+  pin-stripe at each stage joint; tidy agency lettering. Solid boosters white with their segment joints as rings.
+  *Livery hue:* the pastel band (the hue at low saturation, high value) and the pin-stripes.
+- **Interstage:** a **smooth closed white skirt** with the pastel stripe and a small row of round vent ports (Cape's
+  is black and ribbed).
+- **Bells:** liquid bells **silver with a dark throat ring**; solid motors' nozzles **black carbon** with a grey lip.
+- **Fins:** thin, rounded edges.
+- **Nose:** a rounded **bullet fairing** with its vertical split line showing and a big agency logo.
+- **Plume:** the solid boosters' dense white column (effects beat, shared with Mountain's solids).
+- **Signature designs:** (1) a core with **two big solid boosters** (Ariane 5-like); (2) the early **slim three-stage**
+  (Diamant-like).
+- **Pad:** the rocket is stacked upright in a tall assembly building and **rolls out standing up on a mobile launch
+  table**, along twin rails, to a pad with **no tower: four tall lightning masts** round it and short umbilical masts.
+  Beside it the giant **deluge water tower**, jungle to the treeline, the sea behind. Smart low white buildings, a glass
+  control centre.
+
+#### Mountain (Japan / India, the solid-fuel lineage)
+- **Paint and finish:** **white upper stages**; the first stage and its boosters in warm **terracotta** (the colour of
+  insulation and bare composite cases), a **saffron band** at every joint. Neat, sparse markings. *Livery hue:* the joint
+  bands.
+- **Interstage:** a **cone with a ring of separation bolts and four tiny spin rockets** (the early solids were spin
+  stabilised; look only).
+- **Bells:** solid nozzles with **a dark flex-joint boot** at the throat (a rubber bellows: how solids steer); liquid
+  bells gold-tinted.
+- **Fins:** early stacks carry big tail fins (same area), square-cut tips painted saffron.
+- **Nose:** a slim, long pointed ogive.
+- **Signature designs:** (1) the early **rail-launched four-stage solid** (Lambda / Mu-like): slim, finned; (2) a core
+  with **six small strap-on solids** (PSLV-like; Steppe has four cones, Coastal two big ones).
+- **Pad:** early: a **tilting rail launcher**, a boom on a turntable on a ridge above the sea (Uchinoura-like). Later:
+  a pad in a cove, the rocket inside a **tower-shaped shelter whose two halves swing open like doors** before launch,
+  plus a fixed umbilical tower. Terraced ground, a tidy assembly hall on the ridge.
+
+#### Isle (New Zealand / small commercial launchers)
+- **Paint and finish:** **matte black carbon**, the weave visible in raking light; **decals everywhere**: the rocket's
+  own name in big letters (each Isle rocket is named, with a joke), mission patches, the customer's logo. *Livery hue:*
+  the decals and a thin band under the fairing.
+- **Interstage:** a **flush black carbon cylinder**, no ribs, a hue stripe.
+- **Bells:** **small and many** (a cluster under every stage), **copper-coloured, 3D-printed** matte.
+- **Fins:** tiny or none; thin carbon with a hue tip.
+- **Nose:** a black **clamshell fairing** with a white band and the customer's logo.
+- **Signature designs:** (1) a **slim black two-stage launcher** with a kick stage showing (Electron-like); (2) later, a
+  **medium black rocket with a wide fairing**.
+- **Pad:** a **tiny pad on a remote green peninsula**, sea on three sides. The rocket rolls out lying on a trailer
+  from a **hangar with the company's name**, and a **strongback** (one lattice arm) raises it, stays leaning on it
+  and tilts back a few degrees at lift-off. A shed, a container office, one mast. Sheep.
+
+**Questions, defaults if silent:**
+1. **Coastal's pad changes from the table's "mobile gantry that rolls away"** to **vertical rollout on a table to a
+   towerless pad with lightning masts** (default): Cape's gantry already rolls away (NOTES § Step 7), so the table's
+   version wouldn't be told apart.
+2. **Mountain's rail launcher is look only** (default): the player's rocket sits on the rail raised to vertical, so
+   the flight is the same as anywhere (a school never changes physics); only rivals' news pictures show it tilted. Or
+   (b) a real tilted launch for small solids, a small physics change.
+3. **Isle's decals show the contract's client** when a flight has one (default), and each Isle rocket gets a joke name
+   drawn from a list.
+4. **A mock-up round** for the four, as Q89 did for Cape and Steppe: the Orbiter preset in all six schools side by
+   side, each school's two signature designs, each pad in a still (default: yes).
 
 ---
 
