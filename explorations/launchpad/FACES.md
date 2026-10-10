@@ -179,3 +179,5 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Lid shapes** (Caio's notes and eye-shape references): curved margins between corners; round–almond, lid peak,
   lid fold (hooded to deep-set); a thinner lower lid. Mr. Incredible preset retuned to his profile. 55 genes.
   Open: a sloped, forward neck (his reads as a column).
+- **The mouth as an edge** (Caio, after Lawrie's Atlas): lips are ridges, the red only on the faces that tilt back from
+  the edge to the slit; tilt, height, bow, corners, lower lip forward. Deeper eyes, broad heavy chins. 60 genes.

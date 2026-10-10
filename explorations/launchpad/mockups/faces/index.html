@@ -62,7 +62,7 @@
 <header>
   <h1>Face lab</h1>
   <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 55 identity genes. ★ = reads at 48 px.</span>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 60 identity genes. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -127,7 +127,7 @@ const GENES = [
   ['ez', 'Eyes', 'Eye size', 1, .8, 1.18, 'q'],
   ['et', 'Eyes', 'Eye tilt', 0, -.25, .25, 'f'],
   ['el', 'Eyes', 'Upper-lid weight', 0, -.03, .05, 'q:eyes'],
-  ['ed', 'Eyes', 'Eye depth', 0, -.05, .05, 'p'],
+  ['ed', 'Eyes', 'Eye depth', 0, -.05, .1, 'p'],
   ['nl', 'Nose', 'Nose length', 0, -.1, .1, 'p:nose', 1],
   ['np', 'Nose', 'Bridge projection', 0, -.06, .16, 'p:nose', 1],
   ['nw', 'Nose', 'Bridge width', 1, .55, 1.35, 'f:nose'],
@@ -137,8 +137,8 @@ const GENES = [
   ['cw', 'Cheeks', 'Cheekbone width', 0, -.08, .08, 'f'],
   ['cv', 'Cheeks', 'Cheek hollow', .2, 0, 1, 'q:cheek'],
   ['mw', 'Mouth', 'Mouth width', 1, .75, 1.25, 'f'],
-  ['ul', 'Mouth', 'Upper lip', .75, .1, 1.5, 'p'],
-  ['ll', 'Mouth', 'Lower lip', .8, .1, 1.5, 'p'],
+  ['ul', 'Mouth', 'Upper lip height', 1, .2, 1.8, 'q:mouth'],
+  ['ll', 'Mouth', 'Lower lip height', 1, .2, 1.8, 'q:mouth'],
   ['ph', 'Mouth', 'Philtrum height', 0, -.05, .05, 'f'],
   ['mp', 'Mouth', 'Mouth projection', 0, -.04, .035, 'p'],
   ['ja', 'Jaw', 'Jaw: square–soft', .012, .006, .12, 'q'],
@@ -173,6 +173,12 @@ const GENES = [
   ['ua', 'Eyes', 'Upper lid: round–almond', .7, .3, 1.6, 'f:eyes'],
   ['pk', 'Eyes', 'Lid peak: inner–outer', 0, -.35, .35, 'f:eyes'],
   ['lf', 'Eyes', 'Lid fold: hooded–deep-set', .05, .012, .12, 'q:eyes'],
+  // added with Caio's Atlas note: the mouth is an edge, the lips the tilted faces under it
+  ['mt', 'Mouth', 'Upper lip tilt: broad–steep', .55, .15, 3, 'p:mouth'],
+  ['mu', 'Mouth', 'Lower lip tilt: broad–steep', .45, .1, 3, 'p:mouth'],
+  ['bw', 'Mouth', "Cupid's bow", .5, 0, 1.5, 'f:mouth'],
+  ['ml', 'Mouth', 'Lower lip forward', .006, -.03, .03, 'p:mouth'],
+  ['mc', 'Mouth', 'Corners down–up', 0, -.025, .025, 'f:mouth'],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -195,7 +201,7 @@ const rnd = () => { seed = (seed + 0x6D2B79F5) | 0; let x = seed; x = Math.imul(
 const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * rnd());
 const clamp1 = x => Math.max(-1, Math.min(1, x));
 // regions not yet tuned in their own stage (F2–F4) vary less, so random faces stay whole while the silhouette is judged
-const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => TUNED.includes(g[1]) ? 1 : .45);
+const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => ['cz', 'jm'].includes(g[0]) ? .4 : TUNED.includes(g[1]) ? 1 : .45);   // chin size and jaw mass go cartoonish fast: reach them by hand or breeding
 const randomFace = (s = .6) => GENES.map((g, i) => clamp1(gauss() * s * SIG[i]));
 const mutate = (t, s) => t.map((x, i) => clamp1(x + gauss() * s * SIG[i]));
 const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 2, 0) / STAR.length);
@@ -204,7 +210,7 @@ const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
 const ANG = { q: .62, f: 0, p: Math.PI / 2 };
 // close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
-const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.6, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
+const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.58, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
 const glc = document.createElement('canvas'); glc.width = glc.height = 440;
 const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
 const VS = `#version 300 es
@@ -273,7 +279,7 @@ float carve(vec3 p,float d){
  vec3 cq=vec3(abs(p.x),p.y,p.z);d=smax(d,plane(cq,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64))-fr*.9*max(-.3-p.y,0.),SH);   // the cheekbones: front meets side
  d=cutM(d,p,vec3(1.,-.05,-.08),vec3(.7,-.1,0.),SH*1.5);   // the side plane of the head
  float jm=g_jm-1.;
- d=cutM(d,p,vec3(.8,-.5,.3),vec3(.6,-.62-.45*jm-.15*cz,.3+.1*jm),g_ja);   // the jaw line
+ d=cutM(d,p,vec3(.8,-.5+.8*max(jm,0.),.3),vec3(.6,-.62-.45*jm-.15*cz,.3+.1*jm),g_ja);   // a heavy jaw's sides stand upright: a broad chin, not a point   // the jaw line
  d=cutM(d,p,vec3(.45-.6*max(jm,0.),-.85,0.),vec3(.5,-.74-.7*jm-.4*cz,0.),g_ja);   // a heavy jaw's underside flattens: a U, not a V   // the jaw's underside, back to the ear
  d=cutM(d,p,vec3(.8,.25,.55),vec3(.62,.36,.42),SO);   // temples
  d=smax(d,min(plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74)),p.y-.12),SO);   // the forehead plane, which sets the nose root; it stops above the bridge so it can never shave the nose
@@ -294,9 +300,20 @@ float lidD(vec3 p){vec3 e=eyeL(p);   // the lids, over the eyeball: a thick uppe
  float lb=smax(abs(r-.14-.45*g_lk)-.45*g_lk,-min(lo-e.y,e.y-lo+.075),.005);   // the lower lid: a thinner band
  float bands=smax(min(ub,lb),abs(e.x)-w*1.04,.012);   // the bands end at the corners
  return max(min(skin,bands),-e.z-.03)*g_ez;}
-vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve
-float upLip(vec3 m){float f=.055*mix(1.,g_ul,.5);return smax(sdEll(m-vec3(0.,.045*g_ul,.735),vec3(.17,.045*g_ul,f)),m.z-.735-f*(1.-.45*g_lc),.004);}   // a crisp lip is cut flat in front: a carved plane
-float loLip(vec3 m){float f=.065*mix(1.,g_ll,.5);return smax(max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g_ll,f)),plane(m,vec3(0.,.7,.7),vec3(0.,-.03,.765))),m.z-.72-f*(1.-.45*g_lc),.004);}
+vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-g_ph,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.y-=g_mc*m.x*m.x/.0289;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve; its corners turn up or down
+// the mouth as Lawrie's Atlas carves it: the skin comes down to an edge; under the upper edge a face tilts back to the slit,
+// above the lower edge another tilts back up to it. Those faces are the lips (the red), steep (Mr. Incredible: almost none) or broad.
+float mYU(float x){float c=sqrt(max(1.-x*x/.0289,0.));return .045*g_ul*c-.014*g_bw*exp(-x*x/.0012)*c;}   // the upper edge, its bow
+float mYL(float x){return -.05*g_ll*pow(max(1.-x*x/.0225,0.),.7);}   // the lower edge
+const float ZE=.79;   // the upper edge's depth (mouth space)
+float lipBlock(vec3 m,bool upper){   // a lip as a ridge: the skin slopes to the edge (the front), the lip's face tilts back to the slit
+ float x=m.x,ze=ZE-.05*x*x/.0289,y=m.y;
+ float lk=mix(.03,.003,g_lc);   // the edge: soft to crisp
+ if(upper){float yu=mYU(x),s=y>yu?.45:g_mt,zf=smin(ze-.45*(y-yu),ze-g_mt*(yu-y),lk);
+  return max(max((m.z-zf)/sqrt(1.+s*s),-y),max(max(y-yu-.14,abs(x)-.2),.5-m.z));}
+ float yl=mYL(x),zl=ze-.006+g_ml,s=y<yl?1.3:g_mu,zf=smin(zl-1.3*(yl-y),zl-g_mu*(y-yl),lk);
+ return max(max((m.z-zf)/sqrt(1.+s*s),y),max(max(yl-.1-y,abs(x)-.2),.5-m.z));}   // (both end inside the head)
+float lipTint(vec3 m){return max(max(m.y-mYU(m.x)-.002,mYL(m.x)-.002-m.y),max(abs(m.x)-.17,.6-m.z));}   // <0 between the edges: the red never goes above the upper edge
 float features(vec3 p,float d){
  vec3 s=vec3(abs(p.x),p.y,p.z);
  d+=g_cv*.16*gs(s,vec3(.48,-.44+g_ch,.44),.06);   // the hollow under the cheekbone
@@ -310,13 +327,9 @@ float features(vec3 p,float d){
  d=min(d,eyeD(p));
  d=smin(d,lidD(p),.01);
  vec3 m=mouthL(p);
- float lk=mix(1.,.2,g_lc);   // the crisper, the sharper the lips' border with the face
- d=smin(d,upLip(m),.03*lk);
- d=smax(d,-max(abs(m.x)-.02,sdEll(m-vec3(0.,.1,.79),vec3(.035,.06,.015))),.012);   // the philtrum, shallow
- d=smin(d,loLip(m),.025*lk);
- float gy=m.y-(-.012+.04*m.x*m.x-.012*exp(-m.x*m.x*300.));
- d=smax(d,-max(length(vec2(gy,max(abs(m.x)-.17*min(1.,.6+.4*min(g_ul,g_ll)),0.)))-.011,.62-m.z),.008);   // the groove, only at the front, no wider than the lips
- d=smax(d,-sdEll(m-vec3(0.,-.07-.1*g_ll,.8-.05*(1.-min(g_ll,1.))),vec3(.14,.035,.05)*min(1.,.3+.7*g_ll)),.03);   // under the lower lip: shallower and smaller with a thinner lip
+ d=smax(d,-max(abs(m.x)-.02,sdEll(m-vec3(0.,.1,.8),vec3(.035,.06,.015))),.012);   // the philtrum, shallow
+ d=smin(d,lipBlock(m,true),.02);d=smin(d,lipBlock(m,false),.02);   // the two lip blocks
+ d=smax(d,-max(length(vec2(m.y,max(abs(m.x)-.16,0.)))-.006,.6-m.z),.004);   // the slit, a dark line between the corners
  vec3 nc=mix(tipC(),wingC(),.5)+vec3(-.03,-.045,0.);nc.y=max(nc.y,noseFloor()+.014);d=smax(d,-sdEll(s-vec3(.05*g_aw,nc.y,nc.z),vec3(.032,.016,.05)*g_ts),.01);   // nostrils, under the rim
  return d;}
 float earD(vec3 p,float d){vec3 s=vec3(abs(p.x),p.y,p.z);
@@ -344,7 +357,7 @@ vec4 paint(vec3 p,float m){
   if(r<.058)col=uIris*(.75+.4*smoothstep(.058,.02,r));if(r<.026)col=vec3(.03);
   if(length(e.xy-c-vec2(-.02,.024))<.011)col=vec3(1.4);   // the catchlight
   return vec4(col,1.);}
- vec3 mq=mouthL(p);if(min(upLip(mq),loLip(mq))<.012)return vec4(mix(mix(uSkin,uFlush,.3),uLip,g_lt),mix(.6,.8,g_lt));   // the tint fades to skin
+ vec3 mq=mouthL(p);if(lipTint(mq)<0.)return vec4(mix(mix(uSkin,uFlush,.3),uLip,g_lt),mix(.6,.8,g_lt));   // the tint fades to skin
  vec3 s=vec3(abs(p.x),p.y,p.z);
  float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.7*gs(p,tipC()+vec3(0.,0.,.04),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
  return vec4(mix(uSkin,uFlush,.32*clamp(w,0.,1.)),.6);}
@@ -433,7 +446,7 @@ function renderEdit() { const c = ':' + $('closeOn').value;
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
-const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809980ffcf01c780808001f0050a8080fffaffedbf80ba80ffc016cf1180e64025c70ed5ffff808080b88080', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
+const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ef2ffcf01c780808001f021218080ffffa0a4bf80ba80ffc016cf1180e6e6258e14d5ffcf808080b88080e5cd8080', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
   'Nose: button': 'LP1.80808080808080808080808080801a275d348080808080808080808080808080808080ff4d8d676d808080808080808080', 'Nose: bulb': 'LP1.8080808080808080808080808080a680a4808080808080808080808080808080808080fff2e680cccc8080808080808080', 'Nose: hawk': 'LP1.8080808080808080808080808080cca880e6ff80808080808080808080808080808080015c5c8067808080808080808080' };
 for (const k in PRESETS) $('preset').insertAdjacentHTML('beforeend', `<option>${k}</option>`);
 $('preset').onchange = () => { const t = fromDNA(PRESETS[$('preset').value]); if (t) { cur = t; syncSliders(); editChanged(); } $('preset').value = ''; };

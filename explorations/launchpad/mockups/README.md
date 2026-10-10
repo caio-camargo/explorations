@@ -208,6 +208,12 @@ the margins are curves between two corners; *upper lid: round–almond*, *lid pe
 *lid fold: hooded–deep-set* (the upper lid is a thick band ending in a fold, thin recessed skin above it under the
 brow); the lower lid is a band half as thick. The Mr. Incredible preset was retuned against his profile (sloped
 forehead, long nose off the brow, recessed mouth, big forward chin); his neck still reads as a column. 55 genes.
+**The mouth as an edge** (Caio, after Lawrie's Atlas: the lips start at the edge; under it a face tilts back to the
+slit, steep for Mr. Incredible, broad for Atlas; the edge's shape is the mouth's shape; no red above it): each lip is
+a ridge, skin sloping down to the edge and the lip's face tilting back to the slit. Genes: *upper/lower lip tilt*
+(broad–steep), *upper/lower lip height*, *Cupid's bow*, *corners down–up*, *lower lip forward*; *lip edge* softens
+the ridge. The tint fills only between the edges. Eye depth reaches deeper; a heavy jaw's sides stand upright (a
+broad chin, not a point). 60 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 
