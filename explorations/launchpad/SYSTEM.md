@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.0.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -93,6 +93,10 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
 - **Look brief:** from space, a featureless cream-yellow ball; only in a UV view do chevron-shaped cloud bands show. The
   brightest thing in Tellus's sky after Selene. Below the clouds, a dim orange world under a heavy overcast.
   *References:* Venus by Mariner 10 / MESSENGER (visible), Akatsuki's UV images; the Venera 13 surface panoramas.
+- **Look, round 2 (Caio, 2026-10-09; W20; supersedes the brief where they differ):** **day side** soft cream with faint streaks, the
+  big sideways-Y cloud shape and a swirl at each pole (enhanced Mariner 10 / Akatsuki UV, toned down to read as
+  visible); **night side, the signature:** a dull red glow from the hot surface with dark cloud filaments in silhouette
+  (Akatsuki's IR night side, Parker Solar Probe's WISPR 2021), exaggerated well past what an eye would see.
 - **Ground brief:** volcanic basalt plains, slab rock, a few shield volcanoes and lava channels. Seen only by landers
   and by radar, so modest detail is fine.
 - **Role (epoch 6):** the closest planet and the first planetary mission. *Design problems (pillar 2):* aerocapture
@@ -117,6 +121,9 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
 - **Look brief:** butterscotch and rust, dark basalt patches, white polar caps, a canyon scar across a third of the
   globe and a giant shield volcano. A thin pink-tan sky, blue at sunset. *References:* Viking orbiter mosaics; Curiosity's
   Gale crater panoramas (and its blue sunsets). Moons: HiRISE's Phobos and Deimos.
+- **Look, round 2 (Caio, 2026-10-09; W20; supersedes the brief where they differ):** **redder**: rust with ochre dust (the world's idea of
+  Mars, not true-colour butterscotch). **The shield volcano is not a ring:** an irregular cliff around its base,
+  overlapping off-centre craters at the summit, three smaller volcanoes in a row beside it (Olympus Mons and Tharsis).
 - **Ground brief:** craters, dunes, canyons, the volcano, layered sediment, ice at the poles; boulders like Selene's.
   Rovers drive here (rovers exist, R3/R4).
 - **Role (epoch 6):** *Design problems:* **air too thin to stop you and too thick to ignore** (chutes help but a
@@ -131,6 +138,10 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
   speeds at arrival, because its gravity is too weak to help.
 - **Look brief:** charcoal grey, cratered, with the salt spot as the one bright point. *References:* Ceres by Dawn
   (Occator's bright spots); Vesta by Dawn.
+- **Look, round 2 (Caio, 2026-10-09; W20; supersedes the brief where they differ):** **not the Moon:** too small to pull itself fully round, so
+  lumpy and flattened, with a **giant impact basin over one pole and a tall central mountain** (Vesta's Rheasilvia);
+  the salt spots in a young crater stay; faint blue-white ice streaks. The basin is carved as ground height on the
+  sphere (GROUND); a truly non-round body would need the physics lane and is not asked for.
 - **Ground brief:** cratered regolith, the bright-floored crater, a lonely mountain (Ahuna Mons).
 - **Role (epoch 7, bridges M4):** *Design problems:* landing where gravity barely holds you (closer to docking);
   a plane change of 10°. *Gives back:* water and salts for a depot (M4 depots, **pillar 3**).
@@ -152,6 +163,15 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
 - **Look brief:** cream and ochre bands, a storm spot, the rings casting a shadow on the clouds; a strong object in
   Tellus's sky (a telescope shows the rings). *References:* Jupiter by Juno/Cassini for bands; Saturn's rings by
   Cassini. Moons: Io and Europa by Galileo, Enceladus's plumes and Titan's haze by Cassini, Huygens's descent images.
+- **Look, round 2 (Caio, 2026-10-09; W20; supersedes the brief where they differ):** **not Saturn:** (1) **seasonal colour**: the winter
+  hemisphere blue-tinged as its haze thins (Saturn's north did this), so with the 27° tilt Hyperion's colours shift over
+  its 12-year orbit (pillar 4: it pays off watching); (2) **a hexagon at the pole** (Saturn's, little known); (3)
+  **rings with their own structure**: one broad dark gap with a small moon clearing it, and a bright narrow braided outer
+  ring. Jupiter-like banding stays. **Eos:** its cracks read as cracks: curved, scalloped crack chains (cycloids) and
+  patches of jumbled ice (chaos terrain) instead of straight lines, plus **four tiger stripes at the south pole** that the
+  plumes rise from. **Tethys:** **haze thinner than real**, so dark dune belts and one bright highland show faintly
+  through; a haze hood over the winter pole; **sunlight glinting off a methane lake** at the right angle (Cassini on
+  Kraken Mare).
 - **Ground brief:** none for Hyperion. Theia: lava plains and calderas; Eos: ridged ice and plumes; Tethys: lakes,
   dunes and drainage channels under haze (the richest ground job here); Phoebe: a cratered lump.
 - **Role (epoch 7):** the long mission. A 2.7-year transfer is about **one compute era**, matching the time design
@@ -166,6 +186,12 @@ Each entry: physical, orbit, look brief, ground brief, role. Real-world analogue
   as Pluto is protected from Neptune. Its perihelion (6.6 TU) stays clear of Hyperion.
 - **Look brief:** pale pinks and tans, a smooth glacier basin of nitrogen ice next to dark, reddish highlands; a
   black sky and a tiny sun. *References:* Pluto by New Horizons (Sputnik Planitia); Triton by Voyager 2.
+- **Look, round 2 (Caio, 2026-10-09; W20; supersedes the brief where they differ):** **backlit blue haze**: seen against the sun, thin
+  layered blue haze around the limb (New Horizons' departing image); and its **companion, Aether** (below), always
+  facing it, with a dark red polar stain from Erebus's escaping gas (Charon's Mordor Macula). No heart.
+- **Companion (new, 2026-10-09): Aether** (placeholder name; Erebus's child in myth): R ~120 km, at ~3,200 km, so its
+  period is 2.1 days, Erebus's own day: the two are **locked face to face**, and their balance point lies outside
+  Erebus (Pluto–Charon). Grey water ice with the red polar cap. A flyby gets two targets.
 - **Ground brief:** nitrogen-ice plains, water-ice mountains, dark tholin highlands.
 - **Role (epoch 8):** discovered by a telescope survey (**pillar 4**: you find the edge of your system). A 5-year
   passive flyby with a Hyperion assist (passive flybys are decided, NOTES § "Time, long missions"). The capstone
@@ -230,6 +256,9 @@ adds them to QUEUE.md. Look and ground may start before M5.
 ---
 
 ## Version history
+- **1.1.0 (2026-10-09):** W20 round 2, approved by Caio: look twists for Hesper (night glow), Enyo (redder, the volcano),
+  Astraea (lopsided, a polar basin), Hyperion (seasonal colour, hexagon, ring structure), Eos (cycloids, tiger stripes),
+  Tethys (thinner haze, lake glint), Erebus (blue haze); a new companion, **Aether**.
 - **1.0.0 (2026-10-08):** approved by Caio as the base; round-2 decisions recorded; names are placeholders.
 - **0.1.0 (2026-10-08):** first draft. Shape A chosen by Caio; scaling rules, overview, eight body entries, seeded
   classes, room to grow, round-2 questions.

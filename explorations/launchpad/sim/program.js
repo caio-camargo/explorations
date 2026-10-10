@@ -601,6 +601,29 @@ function dispatchEstimate(stack,c){const proc=(PROG.procs||{})[procKey(stack)];i
   for(const p of v.parts){if(!p.on)continue;const c1=certOf(p.d.key);pS*=1-0.02*(1-c1);uc+=1-c1;uk+=1-khUse(p.d.key);nk++}
   const pr=pM*pI*pS,unc=(nk?0.4*uc/nk+0.4*uk/nk:0)+(proc.prov?PROV_UNC:0);   // a borrowed procedure (a dry run) is less certain
   return{ok:margin>-50,why:margin>-50?'':`${Math.round(-margin)} m/s short for this orbit`,p:pr,lo:clamp(pr*(1-unc),0,1),hi:clamp(pr*(1+unc/2),0,1),margin,proc,pM,pS,pRelight:pT,pLow:pI/pT}}
+// ---- windows (QUEUE Q185, Q127 slice 2; MIDGAME § Windows): every routine has a window rule, and a dispatch launches
+// at the next valid window after its stacking. Rules: 'any' (an orbit by inclination alone: the calendar picks the
+// slot), 'plane' (a given orbital plane, normal n, passing over the site: twice a rotation, or the closest pass when
+// the site's latitude is above the inclination), 'light' (daylight at a surface site when the run arrives, lead days
+// after launch: Selene's day is its 13-day orbit). Planetary alignment waits for planet routes (M5). The rule is kept
+// on the procedure that flies it (procWindow) and on the dispatch (D.win). Times in program days.
+const WIN_LIT=Math.sin(5*Math.PI/180),WIN_STEP=1/96;   // the sun 5° up at the site; 15-minute samples
+const leadDays=B=>{const r0=TELLUS.R+3e5,a=(r0+B.orb.a)/2;return Math.PI*Math.sqrt(a**3/TELLUS.mu)/DAY_S+0.25};   // ascent and a Hohmann coast
+const siteDirAt=(st,t)=>norm(fromPF(TELLUS,st.u,t*DAY_S));
+function windowRule(k,o={}){if(k==='light'){const B=bodyNamed(o.body);return B?{k,body:B.name,pf:o.pf.slice(),lead:leadDays(B),name:o.name||B.name}:{k:'any'}}
+  if(k==='plane'&&o.n)return{k,n:o.n.slice(),site:o.site||null};return{k:'any'}}
+function procWindow(proc,k,o){if(!proc)return windowRule(k,o);const w=windowRule(k,o);(proc.wins||(proc.wins={}))[k+(o&&o.body?':'+o.body:'')]=w;return w}
+function nextWindow(rule,T){if(!rule||rule.k==='any')return{day:T,wait:0,why:''};
+  if(rule.k==='light'){const B=bodyNamed(rule.body),N=Math.ceil(1.05*2*Math.PI/(B.n||1)/DAY_S/WIN_STEP);
+    for(let i=0;i<=N;i++){const t=T+i*WIN_STEP;if(dot(norm(fromPF(B,rule.pf,(t+rule.lead)*DAY_S)),SUN_DIR)>=WIN_LIT)return{day:t,wait:t-T,why:i?`daylight at ${rule.name}`:''}}
+    return{day:T,wait:0,why:''}}
+  if(rule.k==='plane'){const st=(rule.site&&siteById(rule.site))||homeSites()[0]||SITES[0],f=t=>dot(siteDirAt(st,t),rule.n),N=Math.ceil(1/WIN_STEP);let best=T,bv=Infinity,a=f(T);
+    if(Math.abs(a)<1e-9)return{day:T,wait:0,why:''};
+    for(let i=1;i<=N;i++){const t=T+i*WIN_STEP,b=f(t);if(Math.abs(b)<bv){bv=Math.abs(b);best=t}
+      if(a*b<=0){let lo=t-WIN_STEP,hi=t;for(let j=0;j<30;j++){const m=(lo+hi)/2;if(f(lo)*f(m)<=0)hi=m;else lo=m}return{day:hi,wait:hi-T,why:hi-T>1e-6?'the target plane over the site':''}}a=b}
+    return{day:best,wait:best-T,why:'the closest the target plane comes to the site'}}
+  return{day:T,wait:0,why:''}}
+const winNote=w=>w&&w.wait>=0.05?` (waits ${w.wait<1?`${Math.round(w.wait*8)} h`:`${w.wait.toFixed(1)} d`} for ${w.why})`:'';   // a program day is 8 h
 const padsN=()=>1+facLv('pads');
 // when each pad is next free, from today (dispatch reservations)
 function padsFree(){const D=PROG.day,f=Array.from({length:padsN()},()=>D);for(const x of PROG.dispatch||[])if(x.status==='queued'&&x.pad<f.length)f[x.pad]=Math.max(f[x.pad],x.launch);return f}
@@ -617,10 +640,11 @@ function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)retur
   prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const busy=(PROG.dispatch||[]).some(x=>x.status==='queued'&&x.cid===c.id);
   const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
-  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:start+prep}}
+  const rule=procWindow(e.proc,'any'),win=nextWindow(rule,start+prep);
+  return{...e,ok:!busy,why:busy?'already dispatched':'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderDispatch(c,stack){const q=dispatchQuote(c,stack);if(!q.ok)return false;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
-  PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
-  HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
+  PROG.dispatch.push({id:PROG.dispN,cid:c.id,title:cTitle(c),stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:q.p,lo:q.lo,hi:q.hi},status:'queued',ordered:PROG.day});
+  HOOK.news(`Dispatched: ${cTitle(c)}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)} (success ~${Math.round(q.p*100)}%)`,'');HOOK.save();return true}
 // interim resolver: the estimate rolled with the dispatch's own seed, the orbit scattered by the procedure and the compute era
 function dispatchRoll(D,v,c){const R=rng(D.seed),e=dispatchEstimate(D.stack,c);if(!e.ok)return{ok:false,why:e.why};
   if(R()>=e.pS)return{ok:false,why:'it broke up in the climb'};if(R()>=e.pLow)return{ok:false,why:'an engine failed to light in the ascent; range safety ended the flight'};
@@ -647,7 +671,7 @@ function netModel(){const D=PROG.day||0,fleet=[],pads=[],nodes=[],routes=[],T=D*
   for(const x of PROG.dispatch||[]){if(x.status==='queued')fleet.push({name:x.title,kind:'Dispatch',where:`pad ${x.pad+1}`,next:`launches in ${Math.ceil(x.launch-D)} days`,t:x.launch-D});
     else if(x.status==='deviated')fleet.push({name:x.title,kind:'Dispatch',where:'in flight',next:`needs you: ${x.dev&&x.dev.why||'a deviation'}`,t:0})}
   for(let p=0;p<padsN();p++)pads.push({pad:p,bars:(PROG.dispatch||[]).filter(x=>x.status==='queued'&&x.pad===p)
-    .map(x=>({from:Math.max(D,x.ordered??D),to:x.launch,kind:'dispatch',title:`${x.title} · ${designName(x.stack)||'our design'}`}))});
+    .flatMap(x=>{const r=Math.min(x.launch,x.ready??x.launch),t=`${x.title} · ${designName(x.stack)||'our design'}`;return[{from:Math.max(D,x.ordered??D),to:r,kind:'dispatch',title:t},...(x.launch-r>=0.05?[{from:Math.max(D,r),to:x.launch,kind:'window',title:`${t}: waiting for its window`}]:[])]})});
   for(const t of homeSites())nodes.push({id:`site:${t.id}`,kind:'site',body:'Tellus',slot:'surface',name:t.name,stock:{},need:{}});
   for(const g of stationsAll())if(g.ci!=null)nodes.push({id:`gs:${g.ci}`,kind:'ground station',body:'Tellus',slot:'surface',name:g.name,stock:{},need:{}});
   for(const q of PROG.sats||[]){if(q.junk||q.docked)continue;const body=q.bodyName||'Tellus';let slot='surface';
@@ -686,14 +710,15 @@ function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'no
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
   const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
   const v=newShip(stack),cost=vesselCost(v.parts).cost,prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
-  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:start+prep}}
+  const rule=procWindow((PROG.procs||{})[procKey(stack)],'light',{body:base.bodyName,pf:base.pf,name:base.name}),win=nextWindow(rule,start+prep);   // land in daylight (Q185)
+  return{ok:true,why:'',cost:cost+OPS_FIX+OPS_FRAC*cost+ds.fee,fee:ds.fee,site:ds.t.id,prep,pad,start,launch:win.day,rule,win}}
 function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)return q;PROG.dispatch=PROG.dispatch||[];PROG.dispN=(PROG.dispN||0)+1;
-  PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
-  HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days`,'');HOOK.save();return{...q,ok:true}}
+  PROG.dispatch.push({id:PROG.dispN,base:base.id,title:`Supply run to ${base.name}`,stack,pad:q.pad,launch:q.launch,ready:q.start+q.prep,rule:q.rule,seed:(PROG.wseed^(PROG.dispN*2654435761))>>>0,est:{p:null},status:'queued',ordered:PROG.day});
+  HOOK.news(`Dispatched: a supply run to ${base.name}, ${designName(stack)||'our design'} on pad ${q.pad+1}, launch in ${Math.ceil(q.launch-PROG.day)} days${winNote(q.win)}`,'');HOOK.save();return{...q,ok:true}}
 // the base's line in the Fleet tab: a supply run with the design in Assembly, or why not, or the one on its way
 function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.base===base.id);
   if(D)return`<div class="sub dim">Supply run: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d</div>`;
-  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design in Assembly'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
+  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design in Assembly'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d${winNote(q.win)}, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
 // the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
 function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
   const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
@@ -705,8 +730,8 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
   for(const D of PROG.dispatch||[]){if(D.status!=='queued'||PROG.day<D.launch-1e-9)continue;
   const c=D.base!=null?null:(PROG.active||[]).find(x=>x.id===D.cid);if(D.base==null&&!c){D.status='cancelled';HOOK.news(`Dispatch stood down: ${D.title} is no longer on our books`,'warn');continue}
   const dsx=dispatchSite(D.stack);if(!dsx.ok){D.status='cancelled';D.why=dsx.why;HOOK.news(`Dispatch stood down: ${D.title}. ${dsx.why}`,'warn');continue}
-  const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch+=1;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
-  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch+=10;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
+  const site=dsx.t;if(site&&siteWeather(site,PROG.day*DAY_S).scrub&&(D.slips||0)<SCRUB_MAX){D.slips=(D.slips||0)+1;D.launch=nextWindow(D.rule,D.launch+1).day;HOOK.news(`Weather scrub: the dispatched ${D.title} slips a day`,'warn');continue}
+  const v=newShip(D.stack),cost=vesselCost(v.parts).cost,ops=OPS_FIX+OPS_FRAC*cost+dsx.fee;if(PROG.funds<cost+ops){D.launch=nextWindow(D.rule,D.launch+10).day;HOOK.news(`Dispatch held: not enough money to fly ${D.title}; 10 days`,'warn');continue}
   PROG.funds-=cost+ops;importNews(v);prodUnits(v);PROG.flights++;
   const run=HOOK.dispatchRun||(typeof dispatchRun==='function'?dispatchRun:null),res=D.base!=null?baseRun(D,v):run?run(D,v,c):dispatchRoll(D,v,c);
   if(D.base!=null&&!res.deviation){D.status=res.ok?'done':'failed';D.flown=PROG.day;D.why=res.why||'';const sb=(PROG.sats||[]).find(q=>q.id===D.base);   // a supply run: no contract to settle
