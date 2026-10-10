@@ -189,4 +189,6 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   palettes), a masculine–feminine macro, a Roster tab of 12 archetypes across sexes and regions. Next: distributions
   per population, after Caio reviews the roster; hair textures need F5.
 - **The bell head** (Caio's front reference of Mr. Incredible): crown width, a long skull-to-jaw blend on soft faces,
-  forehead forward. Open: the forward forehead leaves a step on the nose bridge.
+  forehead forward.
+- **The second reach test** (Caio's deco woman): a Deco woman preset, brow arch; macro labels fixed; lip tint on deep
+  skin, the nose-root step and the soft face's eyes fixed. 69 genes.

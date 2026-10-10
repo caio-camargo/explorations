@@ -230,6 +230,12 @@ From Caio's front reference of Mr. Incredible: *crown width* (a dome), a softer 
 *forehead forward* (brow and forehead pushed out as one mass, the eyes left deep under it); two creases removed
 (the joins of the face-length stretch and of the cheek planes' recession were kinks). Stills:
 `faces/roster-archetypes.png`, `faces/reach-mr-incredible.png`. 68 genes (65 identity + 3 paint).
+**The second reach test** (Caio's deco sculpture of a woman: softer, still in the style): a *Deco woman* preset and
+a *brow arch* gene (it arches the socket's top too, which is the visible brow line). Fixed on the way: the two
+macros Delicate–heroic and Feminine–masculine had their labels backwards; deeper skin got a browner lip; the nose's
+flush no longer paints a pink ball on round tips; the flush root has rounded edges and runs down the bridge (no
+step); the cheekbone and forehead cuts get the softness compensation too, and eyes sink with softness; the socket's
+outer wall stays closed. Still: `faces/reach-deco-woman.png`. 69 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 
