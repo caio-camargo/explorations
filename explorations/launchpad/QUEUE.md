@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.24 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
+**Version**: 0.1.25 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-09 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -124,6 +124,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q196 | **Move a planned burn from the Program screen** (or "fly at the next contact"): since v1.102 a burn out of every station's view in the mainframe era can only be flown by hand | M2 | S | 🖥 | ready |
 | Q210 | Drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) (NOTES § v1.103) | M2 | S | 🖥 | ready |
 | Q211 | The pad calendar's `kind 'window'` bar (a dispatch waiting for its window, pad held) needs a `.cbar.window` style; `app/network.js`'s fallback still builds one bar per dispatch (from economy, Q185 v1.104) | M2 | S | 🖥 | ready |
+| Q212 | The builder's power line says what v1.108 means between flights ("as a satellite here: battery lasts N days, then sunlight only"), so the warning comes before launch | M2 | S | 🖥 | ready |
 | Q203 | PLAYTEST #37 (P3): Network says "holds its orbit 0 more days" where Fleet says "re-enters in …" | M2 | S | 🖥 | ready |
 | Q193 | **The rollout lying down** (with look & sound): on a Steppe pad the Rollout screen shows the rocket on its side on the transporter-erector, rolling along the rails, then raised | M1 | M | 🖥 | ready |
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
@@ -246,6 +247,8 @@ Worktrees `launchpad-sats` (branch `sats`), `launchpad-bodies` (branch `bodies`,
 | Q186 | Q127 slice 3: contact gates automation (a routine burns only in contact or within its computer's tier) | M2 | S | ⚙ | ✓ v1.102 (`entryLink`, `handOffWhy`; a burn out of contact is refused or passes before onboard computers; NOTES § v1.102; TESTING 181) |
 | Q200 | **Debris that exists only as you pass** (Caio 2026-10-09): during a monitored flight through a band, roll a few seconds ahead from density × cross-section × speed; on a hit, spawn the fragment on a collision course | M2 | M | ⚙ | ready |
 | Q198 | **Rover science as volumes** (spectrometer and camera readings through `rvContact`'s rate); imagery and contract frames sharing one pass budget (NOTES § v1.100) | M2 | S | ⚙ | ready |
+| Q213 | Landed entries' power (bases, landers), and recharging a flat satellite by servicing (NOTES § v1.108) | M2 | M | ⚙ | ready |
+| Q214 | A crew rotation's days aboard the station in the Debrief (the Debrief knows this flight's time only; `crewDays` is per station) (PLAYTEST #34's follow-up) | M2 | S | ⚙ | ready |
 | Q108 | 📝 A **cycler study**: a Tellus–Enyo cycler on our rails (Aldrin geometry at 1.52 TU), Δv to keep it, taxi rendezvous Δv ([`LATE_GAME.md`](LATE_GAME.md) § network) | M5 | M | 📝 | ✓ study (`study_cycler.mjs`, NOTES § "Q108: a Tellus–Enyo cycler": ballistic with Tellus flybys under ~800 km on our scale; taxis 1,702 / 2,022 m/s) |
 | Q109 | 📝 Plausible **fusion propulsion** as a late part family, sharing low-thrust propagation with NEP (with vehicle; TECH_SCOUTING) | M5 | M | 📝 | ✓ plan (NOTES § "Plan: low thrust on rails": ~2e-3 m/s² halves the Enyo trip, i.e. ~50 W of jet per kg of craft; NEP is for tugs; thrust on rails, arcs between flights, Edelbaum for routines) |
 | Q13 | Landing on a chosen crater | M3 | M | ⚙ | ✓ bodies (`site`, `landAt`: 5 m on Selene and Nyx; recorded landings return to their spot) |
@@ -334,6 +337,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q117 | TESTING has two rows numbered 131 (Selene views; Esc pause): renumber one, fix references | — | S | 📝 | ✓ (131, 133 and 134 were each doubled: 136, 137, 138 now; next free 139) |
 | Q120 | Robot driver for the last undriven station row: 65, crew rotation (Q30's leftover) | M2 | S | 🖥🖥 | ✓ `20a87e2` (`playtest.mjs 65`: crew home safe; PLAYTEST #34) |
 | Q208 | Re-run `node playtest.mjs 147` (steep and gentle ascents) on the Passenger Orbiter's nose cone; tick TESTING 147 and PLAYTEST #35 (Q201, v1.73.1) | M1 | S | 🖥🖥 | ready |
+| Q215 | Robot row 65 lost the capsule 12 s in on one run of four (the others brought the crew home): find the flake (NOTES § v1.107) | M2 | S | 🖥🖥 | ready |
 | Q161 | A tester button for `asatTest` (and a breakup at a chosen height), so a person can see the fragment line, warnings and the cascade (v1.83) | M2 | S | 🖥 | ✓ (tester → Debris, with the off/light/real setting; TESTING 178) |
 | Q129 | Parking orbits for anything meant to last (docking targets, PLAYROUTE's satellites) go above ~200 km or keep fuel: check PLAYROUTE and the presets' briefs against v1.64 decay | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.4: sitting 6 parks at 250–300 km; contracts complete in flight, so low recon orbits still pay) |
 | Q143 | PLAYROUTE sitting 1 past step 4: use the new **Beeper** and **Passenger Orbiter** presets (v1.73) | M1 | S | 📝 | ✓ effects 2026-10-09 (PLAYROUTE 0.1.3: sitting 1 flies Beeper and Passenger Orbiter; ROLL OUT) |
@@ -417,7 +421,3 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W28~~ | **Answered 2026-10-09 (Caio): all defaults.** Was: **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
-- flow — the **builder's power line** could say what v1.108 makes it mean between flights ("as a satellite here: battery lasts N days, then sunlight only"), so the warning comes before launch — NOTES § v1.108 (space, 2026-10-09)
-- space — landed entries' power (bases, landers) and recharging a flat satellite by servicing — NOTES § v1.108 (space, 2026-10-09)
-- space (from flow, Q191 v1.107) — a crew rotation's days aboard the station in the Debrief (the Debrief knows this flight's time only; `crewDays` is per station) — PLAYTEST #34
-- QA (from flow) — robot row 65 lost the capsule 12 s in on one run of four (the others brought the crew home): a flake worth a look — NOTES § v1.107
