@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.39 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -1938,6 +1938,41 @@ trickle (100 bit/s).
 **Tests to write first** (slice 1): the contact shares `satTick` measures today (polar 300 km and the pad ~10 %, a
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
+
+## v1.101 — the flight readout: a core and cards (2026-10-09, flow session, QUEUE Q3, UI slice 4a; W15's defaults)
+
+The readout top left is now the **core**, 5 lines that never grow: `MET · body · situation · link` (the Link row folded
+in), `Altitude` (it becomes `Radar alt`, with the biome, below `TERR_TOP` + 20 km while descending), `Speed` (one number:
+surface in the air or landed, orbital above it), `Ap · Pe` with their times, and `Δv` (stage · total · TWR). Everything
+else is a **card** in a column on the right, under the toolbar (and under the maneuver node panel or the rover's panel when
+one is open):
+
+| Card | Shows while | Rows |
+|---|---|---|
+| Ascent | in the air, or the skin above 30 % of its limit | Aero, Heat, Structure |
+| Descent | coming down with an impact predicted, or any time range safety warns | Impact |
+| Target | it has rows (a target, a docking, a landed target) | `tgtRows`, `dockRows` |
+| Payload | it has rows | `payloadRows` |
+| Fleet | more than one vessel, or flyable ones nearby | `fleetRows` |
+| Vehicle | spinning, wheels saturating, or RCS on | Mass · g, `spinRows`, `wheelRows`, `rcsRows` |
+| Hardware | a bay or an arm | `bayRows`, `armRows` |
+| Rover | driving | `rvRows` |
+
+- A 📌 keeps a card open (pins remembered per browser, `launchpad-hud-pins`); a click on a title folds that card. When
+  the column is taller than the window, the oldest unpinned cards fold to their title bars first (`cardFolds`, pure).
+  On the map only the Target card stays.
+- **For other sessions:** new HUD content is a card: `HUD_CARDS.push({id, title, when?, rows})` in the new
+  `app/hud.js`. The row helpers are unchanged, their owners change nothing. Test `flow-5` fails if `updateHUD`'s core
+  passes 6 rows or calls a helper, or a helper has no card.
+- **Toolbar:** Map, warp as `◀ N× ▶` (clickable; amber when warping), End flight, ☰. Revert, Assembly, Logbook, Keys
+  and Save as autopilot are in the Esc menu only. Their buttons stay in the DOM, hidden, since the menu and the robot click them.
+- **Layout fixes found on the way:** the news box overran its lane by its padding (`max-width` leaves it out), which
+  the column made visible; `#msg` is placed again after the news, since it used to dodge the news's old place.
+- Robot `m1` and row 98 (the busy docking flight) pass with no overlapping boxes at 1280×800 and 1000×700. `PT.hud()`
+  reads the core and the cards. Test `flow-5` (2 checks; mutations caught: a 7th core row, a helper back in the core).
+  Stills (local): `output/launchpad/q3-slice4a/`.
+- **Next, 4b:** the gauges placed as the instrument panel beside the navball and hidden in space (today aerofx's strip
+  also shows in orbit), with the Ascent card trimmed to what they don't draw. Closes PLAYTEST #9. **4c:** the map trims.
 
 ## v1.99 — the planets on the map (2026-10-09, flow session, QUEUE Q175 = Q87 slice 1's drawing; closes PLAYTEST #11)
 
@@ -8167,7 +8202,7 @@ panel as now.
 (a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
 new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
 
-**Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+**4a built 2026-10-09: § v1.101.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout

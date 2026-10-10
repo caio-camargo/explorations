@@ -47,7 +47,7 @@ window.PT = {
   orbit() { const r = len(S.r), v2 = dot(S.v, S.v), mu = S.body.mu, a = 1 / (2 / r - v2 / mu), h = len(cross(S.r, S.v)), e = Math.sqrt(Math.max(0, 1 - h * h / (mu * a))); return {ap: a * (1 + e) - S.body.R, pe: a * (1 - e) - S.body.R} },
   // show the HUD and frame the camera on the ship: yaw, pitch, dist
   look(yaw, pitch, dist) { cam.yaw = yaw; cam.pitch = pitch; cam.dist = dist; PT.showUI(); render(); return true },
-  hud() { if (typeof updateHUD === 'function') updateHUD(); return document.getElementById('info').innerText },
+  hud() { if (typeof updateHUD === 'function') updateHUD(); const c = document.getElementById('cards'); return document.getElementById('info').innerText + (c ? String.fromCharCode(10) + c.innerText : '') },   // the core and the cards (flow, slice 4a)
   news() { const n = document.getElementById('news'); return n ? n.innerText : '' },
   msg() { const m = document.getElementById('msg'); return m ? m.innerText : '' },
   showUI() { document.querySelectorAll('.ui,#news,#msg').forEach(e => e.style.visibility = ''); if (mode === 'flight') updateHUD(); render(); return true },

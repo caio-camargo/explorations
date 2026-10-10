@@ -87,7 +87,15 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 .stg{padding:3px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 .stg.cur{color:#fff}.stg.cur b{color:var(--warn)}
 .bar{height:4px;background:rgba(255,255,255,.08);margin-top:2px}.bar i{display:block;height:100%;background:var(--warn)}
-#warp{color:var(--warn);min-width:90px;text-align:right}
+#warp{display:inline-flex;align-items:center;gap:4px;color:var(--dim);pointer-events:auto}#warp.on{color:var(--warn)}#warp button{padding:0 6px}#warpN{min-width:34px;text-align:center}
+/* (flow, slice 4a) the toolbar keeps Map, warp, End flight and ☰; the rest is in the Esc menu (the buttons stay for it) */
+#hud .tr #bRevert,#hud .tr #bEditor,#hud .tr #bLog2,#hud .tr #bHelp,#hud .tr #bSaveTape{display:none}
+/* the cards column (app/hud.js): right, under the toolbar; hudLayout sets its top */
+#cards{position:absolute;right:12px;top:52px;width:310px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;pointer-events:auto}
+#cards .card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:4px 10px 6px;backdrop-filter:blur(3px)}
+#cards .ct{display:flex;align-items:center;justify-content:space-between;color:var(--dim);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+#cards .ct span{cursor:pointer;flex:1}#cards .pin{padding:0 3px;font-size:10px;opacity:.35;background:none;border:none}#cards .pin.on{opacity:1}
+body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bottom:4px}#cards .card.fold table{display:none}#cards td:first-child{color:var(--dim);padding-right:10px;white-space:nowrap;vertical-align:top}
 #edFoot{position:sticky;bottom:-10px;margin:8px -12px -10px;padding:7px 12px 10px;background:#0b111b;border-top:1px solid var(--line);border-radius:0 0 6px 6px}#edFoot button.big{margin-top:6px}#siteLine{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #news{position:fixed;left:50%;transform:translateX(-50%);top:46px;max-width:min(560px,70vw);font-size:11.5px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 10px;pointer-events:none}
 #news div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#news div:first-child::before{content:'NEWS · ';color:var(--acc);letter-spacing:.1em}#news .old{color:var(--dim)}
@@ -153,7 +161,8 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 </div></div>
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
-  <div class="tr"><span id="warp"></span><button id="bMap">Map [M]</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
+  <div id="cards" class="hidden"></div>
+  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div id="navwrap">
     <div id="thr"><div id="thrf"></div></div>
     <div style="position:relative"><div id="navtxt"></div><canvas id="nav" width="180" height="180"></canvas></div>
@@ -216,6 +225,7 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 <script src="app/loop.js"></script>
 <script src="app/render.js"></script>
 <script src="app/program-ui.js"></script>
+<script src="app/hud.js"></script>
 <script src="app/debrief.js"></script>
 <script src="app/bodyview.js"></script>
 <script src="app/settings.js"></script>

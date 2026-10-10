@@ -300,19 +300,17 @@ function updateHUD(){
   else if(el.pe<b.R+(b.atm||0))sit='sub-orbital';else if(el.e>=1||el.ap>soiAt(b,simT))sit='escaping';else sit='<span class="ok">orbiting</span>';
   const thr=S.thrust,twr=thr/(S.mass*b.mu/(rl*rl)),dv=dvRemaining(S);
   const tAp=el.e<1&&!S.landed?timeToNu(el,Math.PI):NaN,tPe_=!S.landed&&el.hl>1e-3?timeToNu(el,0):NaN;
-  const met='T+'+fmtT(simT);
-  const rows=[['MET',met],['Body',`${b.name} · ${sit}`],['Altitude',`${fmtD(h)}  <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`],...(h<TERR_TOP+20000&&!S.landed?[['Radar alt',`${fmtD(Math.max(0,groundGap(S)))} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]]:[]),...(S.body===TELLUS&&!S.landed?[['Link',(()=>{const k=linkOf(S);return k.ok?`<span class="ok">${k.st?k.st.name:k.why}</span>`:`<span class="warn">${k.why}</span> <span class="dim">· recorder</span>`})()]]:[]),
-    ['Speed',`srf ${srf.toFixed(0)} · orb ${len(S.v).toFixed(0)} m/s`],
-    ['Apoapsis',S.landed?'—':el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'],
-    ['Periapsis',S.landed?'—':`${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
-    ['Mass',`${(S.mass/1000).toFixed(2)} t · TWR ${twr.toFixed(2)} · ${S.gload.toFixed(1)} g`],['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s`],
-    ['Aero',b.atm&&h<b.atm?`M ${S.mach.toFixed(2)} · AoA ${(S.aoa*57.3).toFixed(1)}° · q ${(S.qdyn/1000).toFixed(1)} kPa`:'—'],
-    ['Impact',!toolOK('impact')?'<span class="dim">no trajectory data yet</span>':impact?`in ${fmtT(impact.t-simT)} · ${impact.v.toFixed(0)} m/s${impact.v<12?' <span class="ok">(safe)</span>':''}${impSpread&&impSpread.km>0.5?` <span class="warn">± ${impSpread.km.toFixed(0)} km</span>`:''}${S.rangeWarn?` <span class="bad">over ${S.rangeWarn.city.name}!</span>`:''}`:'—'],
-    ['Heat',S.hot?`<span class="${S.hot.T>S.hot.d.Tmax*.9?'bad':S.hot.T>S.hot.d.Tmax*.7?'warn':'ok'}">${S.hot.T.toFixed(0)} / ${S.hot.d.Tmax} K</span> <span class="dim">${S.hot.d.name}${S.parts.some(p=>p.on&&p.cap.ablator)?` · ablator ${(100*S.parts.filter(p=>p.on&&p.cap.ablator).reduce((a,p)=>a+p.res.ablator/p.cap.ablator,0)/S.parts.filter(p=>p.on&&p.cap.ablator).length).toFixed(0)}%`:''}</span>`:'—'],
-    ...spinRows(),...wheelRows(),...rcsRows(),...tgtRows(),...dockRows(),...fleetRows(),...bayRows(),...armRows(),...rvRows(),...payloadRows(),
-    ['Structure',S.maxLoadP&&S.maxLoadP.on&&S.maxLoadP.sk1?(c=>`<span class="${c>1?'bad':c>.7?'warn':'ok'}">${(c*100).toFixed(0)}% ${S.maxLoadKind}</span>`)(S.maxLoad/Math.min(certOf(S.maxLoadP.sk1),certOf(S.maxLoadP.sk2)))+` <span class="dim">${S.maxLoadP.d.name} / ${S.maxLoadP.parent.d.name}</span>`:'—']];
-  $('info').innerHTML=rows.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
-  const w=WARPS[warpIdx];$('warp').textContent=w>1?`▶▶ ${w}×${railsOK(S)?'':' (physics)'}`:'';
+  // (flow, slice 4a) the core: never more than 6 lines; everything else is a card (app/hud.js, HUD_CARDS)
+  const link=S.body===TELLUS&&!S.landed?(k=>k.ok?` · <span class="dim">link</span> <span class="ok">${k.st?k.st.name:k.why}</span>`:` · <span class="warn">${k.why}</span> <span class="dim">· recorder</span>`)(linkOf(S)):'';
+  const radar=h<TERR_TOP+20000&&!S.landed&&vs<0,air=!!b.atm&&h<b.atm||S.landed,vsTxt=` <span class="dim">${vs>=0?'↑':'↓'} ${Math.abs(vs).toFixed(0)} m/s</span>`;
+  const core=[['MET',`T+${fmtT(simT)} · ${b.name} · ${sit}${link}`],
+    radar?['Radar alt',`${fmtD(Math.max(0,groundGap(S)))}${vsTxt} <span class="dim">above ${surfaceAt(S.body,toPF(S.body,S.r,simT)).name}</span>`]:['Altitude',`${fmtD(h)}${vsTxt}`],
+    ['Speed',air?`${srf.toFixed(0)} m/s <span class="dim">surface</span>`:`${len(S.v).toFixed(0)} m/s <span class="dim">orbital</span>`],
+    ['Ap · Pe',S.landed?'—':`${el.e<1?`${fmtD(el.ap-b.R)} <span class="dim">in ${fmtT(tAp)}</span>`:'escape'} · ${fmtD(el.pe-b.R)}${isFinite(tPe_)&&tPe_>0&&el.pe>b.R?` <span class="dim">in ${fmtT(tPe_)}</span>`:''}`],
+    ['Δv',`stage ${dv.cur.toFixed(0)} · total ${dv.tot.toFixed(0)} m/s · TWR ${twr.toFixed(2)}`]];
+  $('info').innerHTML=core.map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+  renderCards();
+  const w=WARPS[warpIdx];$('warpN').textContent=`${w}×${w>1&&!railsOK(S)?' (physics)':''}`;$('warp').classList.toggle('on',w>1);
   renderStages();updateNodePanel();updateAutoBtn();settleDrops();hudLayout();
   // the beeper: while an instrument package orbits, towns it passes over hear it (once each per flight)
   if(S.alive&&S.rec.orbitSci&&!S.landed&&S.body===TELLUS){const{city,dist}=nearestCity(toPF(TELLUS,S.r,simT));
