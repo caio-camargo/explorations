@@ -166,3 +166,6 @@ Defaults if silent: **1(a), 2(a), 3(a).**
 - **Nose in parts** (2026-10-10, Caio's notes; F3 started early): bridge, tip lobule, wings on the face, alar rim; six
   new genes (tip roundness, size, width, projection; wing flare, size), 41 in all; a nose floor above the lip;
   close-up views. The house head now differs from round 5 at the nose (tip roundness .4).
+- **Profiles and cheekbones** (Caio's notes): a real forehead slope (a shear above the brow; the old gene renamed nose
+  root), lower face projection, cheekbone prominence (a mass with a down-facing facet; house .35), a deeper cheek
+  hollow (house .2). 44 genes. Ranges stay wide on purpose (Caio: more options now, narrow later).

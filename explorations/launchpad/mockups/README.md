@@ -184,6 +184,10 @@ rim joining tip to wing. Six new genes, appended so older DNA still reads: tip s
 bridge's lower edges, never the ridge), tip size (button–bulb), tip width, tip projection, wing flare, wing size.
 A floor just above the upper lip keeps any nose off the mouth. Edit has close-ups (nose, eyes, mouth, ear; front, ¾,
 profile); the nose genes test in close-up. Still: `faces/nose-types.png` (house, button, bulb, hawk, broad).
+**Profiles and cheekbones** (Caio's notes): *forehead slope* now leans the forehead itself back above the brow (the old
+gene, which mostly moved the nose root, is renamed *nose root*); *lower face projection* pushes mouth, chin and jaw
+front forward or back; *cheekbone prominence* adds a broad mass under the outer eye whose lower half ends in a facet
+facing down and out (the deco break, never an undercut); the cheek hollow's range is four times deeper. 44 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

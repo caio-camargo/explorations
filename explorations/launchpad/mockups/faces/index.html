@@ -62,7 +62,7 @@
 <header>
   <h1>Face lab</h1>
   <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 41 identity genes. ★ = reads at 48 px.</span>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 44 identity genes. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -82,7 +82,7 @@
         <canvas class="t" id="vp" width="300" height="300" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
       <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span></div>
     </div>
-    <p class="note" style="margin:12px 0 4px">Close-up: <select id="closeOn"><option>nose</option><option>eyes</option><option>mouth</option><option>ear</option></select> (front, ¾, profile)</p>
+    <p class="note" style="margin:12px 0 4px">Close-up: <select id="closeOn"><option>nose</option><option>eyes</option><option>mouth</option><option>ear</option><option>cheek</option></select> (front, ¾, profile)</p>
     <div class="thumbs"><canvas class="t" id="cf" width="250" height="250"></canvas><canvas class="t" id="cq" width="250" height="250"></canvas><canvas class="t" id="cp" width="250" height="250"></canvas></div>
     <p class="note" style="margin:12px 0 4px">DNA (copy to keep a face, paste and Apply to bring one back):</p>
     <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
@@ -118,7 +118,7 @@ const GENES = [
   ['cr', 'Head', 'Crown height', 1, .82, 1.2, 'p'],
   ['bk', 'Head', 'Skull back', 1, .78, 1.2, 'p'],
   ['fl', 'Head', 'Lower face length', 1, .84, 1.2, 'f', 1],
-  ['fs', 'Brow', 'Forehead slope', 0, -.25, .35, 'p'],
+  ['fs', 'Brow', 'Nose root (brow to bridge)', 0, -.25, .35, 'p:nose'],
   ['bd', 'Brow', 'Brow ridge depth', 0, -.08, .08, 'p', 1],
   ['bh', 'Brow', 'Brow height', 0, -.05, .05, 'f'],
   ['bt', 'Brow', 'Brow tilt', 0, -.12, .12, 'f'],
@@ -132,9 +132,9 @@ const GENES = [
   ['nw', 'Nose', 'Bridge width', 1, .75, 1.35, 'f:nose'],
   ['nt', 'Nose', 'Tip up–down', 0, -.18, .18, 'p:nose'],
   ['nc', 'Nose', 'Concave–convex', 0, -.07, .07, 'p:nose'],
-  ['ch', 'Cheeks', 'Cheekbone height', 0, -.07, .05, 'q'],
+  ['ch', 'Cheeks', 'Cheekbone height', 0, -.07, .05, 'q:cheek'],
   ['cw', 'Cheeks', 'Cheekbone width', 0, -.08, .08, 'f'],
-  ['cv', 'Cheeks', 'Cheek hollow', 0, 0, 1, 'q'],
+  ['cv', 'Cheeks', 'Cheek hollow', .2, 0, 1, 'q:cheek'],
   ['mw', 'Mouth', 'Mouth width', 1, .75, 1.25, 'f'],
   ['ul', 'Mouth', 'Upper lip', 1, .55, 1.5, 'p'],
   ['ll', 'Mouth', 'Lower lip', 1, .55, 1.5, 'p'],
@@ -155,6 +155,10 @@ const GENES = [
   ['tp', 'Nose', 'Tip projection', 0, -.05, .04, 'p:nose'],
   ['aw', 'Nose', 'Wing flare', 1, .8, 1.55, 'f:nose'],
   ['az', 'Nose', 'Wing size', 1, .7, 1.5, 'q:nose'],
+  // added with Caio's profile and cheekbone notes
+  ['fh', 'Brow', 'Forehead slope', 0, -.25, .4, 'p', 1],
+  ['lp', 'Jaw', 'Lower face projection', 0, -.08, .1, 'p', 1],
+  ['cp', 'Cheeks', 'Cheekbone prominence', .35, 0, 1, 'q:cheek'],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -186,7 +190,7 @@ const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
 const ANG = { q: .62, f: 0, p: Math.PI / 2 };
 // close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
-const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.6, .75], ear: [.72, -.1, -.1] };
+const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.6, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
 const glc = document.createElement('canvas'); glc.width = glc.height = 440;
 const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
 const VS = `#version 300 es
@@ -211,6 +215,9 @@ vec3 warp(vec3 p){
  if(p.y<-.1)p.y=-.1+(p.y+.1)/g_fl;   // the lower face
  if(p.y>.16)p.y=.16+(p.y-.16)/g_cr;   // the crown
  if(p.z<-.1)p.z=-.1+(p.z+.1)/g_bk;   // the back of the skull
+ float fz=smoothstep(-.3,.3,p.z);   // the face's half: the back of the skull and the neck stay put
+ if(p.y>.28)p.z+=g_fh*(p.y-.28)*fz;   // the forehead leans back above the brow (the hair rides along)
+ p.z-=g_lp*smoothstep(-.28,-.62,p.y)*fz;   // the lower face pushed forward: mouth, chin, jaw front
  p.x/=mix(g_jw,g_hw,smoothstep(-.6,-.05,p.y));   // width, the jaw's below, the skull's above
  return p;}
 // ---- the house head (round 5), in head units (the cranium's half-width ~.8), face +z, y up
@@ -263,7 +270,12 @@ float upLip(vec3 m){return sdEll(m-vec3(0.,.045*g_ul,.735),vec3(.17,.045*g_ul,.0
 float loLip(vec3 m){return max(sdEll(m-vec3(0.,-.01-.05*g_ll,.72),vec3(.14,.05*g_ll,.065*mix(1.,g_ll,.5))),plane(m,vec3(0.,.7,.7),vec3(0.,-.03,.765)));}
 float features(vec3 p,float d){
  vec3 s=vec3(abs(p.x),p.y,p.z);
- d+=g_cv*.04*gs(s,vec3(.46,-.46+g_ch,.46),.035);   // the hollow under the cheekbone
+ d+=g_cv*.16*gs(s,vec3(.48,-.44+g_ch,.44),.06);   // the hollow under the cheekbone
+ vec3 cn=normalize(vec3(.72,-.12,.68)),cu=normalize(cross(vec3(0.,1.,0.),cn)),cvv=cross(cn,cu);   // the cheek plane's frame
+ vec3 cs=vec3(.53+g_cw,-.18+g_ch,.6),cb=s-(cs-cn*(.09-(g_cp*.065-.03)));   // the cheekbone: a broad mass under the outer eye, standing proud of the cheek plane by its prominence
+ vec3 cl=vec3(dot(cb,cu),dot(cb,cvv),dot(cb,cn));cl.xy=rot(-.3)*cl.xy;   // rising toward the temple
+ float cbD=smax(sdEll(cl,vec3(.2,.14,.1)),dot(cl,normalize(vec3(0.,-.75,.66)))-.01,.008);   // its lower half cut by a facet facing down and out: the deco break into the hollow, never an undercut
+ d=smin(d,cbD,.04);
  float so=max(sdEll(s-vec3(g_es,.04,.8-g_ed),vec3(.21,.13,.14)*mix(1.,g_ez,.6)),s.y-.14-g_bh);d=smax(d,-so,SH);   // the socket under the brow
  d=smin(d,eyeD(p),.01);
  vec3 le=s-eyeC();le.xy=rot(g_et)*le.xy;
@@ -386,6 +398,7 @@ const $ = id => document.getElementById(id);
 function editChanged() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
 function renderEdit() { const c = ':' + $('closeOn').value;
   render([[$('vq'), cur, 'q'], [$('cq'), cur, 'q' + c], [$('cp'), cur, 'p' + c], [$('cf'), cur, 'f' + c], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 $('reset').onclick = () => { cur = house(); syncSliders(); editChanged(); };
 $('rand').onclick = () => { cur = randomFace(); syncSliders(); editChanged(); };
