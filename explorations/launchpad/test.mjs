@@ -3838,11 +3838,12 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 // vehicle-3. The first orbit missions fly on presets (vehicle session, QUEUE Q74 / PLAYTEST #24): the Beeper puts an
 // instrument package in orbit; the Passenger Orbiter takes a biocapsule once round and home, inside the passenger's limits.
 // The limits are the game's own, from the flight record over the whole flight (`S.rec`: missionTick's cabin from liftoff),
-// so a cabin cooked on the way up fails here as it does in play (Q201, PLAYTEST #35).
+// so a cabin cooked on the way up fails here as it does in play (Q201, PLAYTEST #35). The Passenger Orbiter is also stable at
+// roll out (no "Aerodynamically unstable" line: its nose cone needs the second fin ring).
 {
   const R = TELLUS.R, O = api.PRESETS.Orbiter, el = s => api.elements(s.r, s.v, TELLUS.mu);
   const b = handAscent(api, api.PRESETS.Beeper), eb = el(b);
-  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, cabUp = p.rec.cabin, msgs = []; api.HOOK.msg = m => msgs.push(m);
+  const p = handAscent(api, api.PRESETS['Passenger Orbiter']), ep = el(p), dvP = api.dvRemaining(p).cur, cabUp = p.rec.cabin, msgs = [], s0 = api.newShip(api.PRESETS['Passenger Orbiter']), A0 = api.analyze(s0), cal = Math.min(...[A0.ful, A0.sup].map(x => (x.ycm - x.ycp) / (2 * s0.radius))); api.HOOK.msg = m => msgs.push(m);
   api.advRails(p, ep.period, 10);   // once round
   const retro = () => { const v = mul(norm(p.v), -1), f = api.localFrame(p.r), X = norm(cross(v, f.n)); p.q = api.qFromBasis(X, v, cross(X, v)); p.w = [0, 0, 0]; };
   p.throttle = 1; for (let k = 0; k < 20000 && p.alive; k++) { retro(); api.advPhys(p); if (el(p).pe - R < 40e3 || api.dvRemaining(p).cur < 1) break; }
@@ -3851,8 +3852,8 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     api.advPhys(p); cab = Math.max(cab, PR.cabin);
     if (!armed && h < 20e3) { armed = true; while (p.evIdx < p.events.length) api.stage(p); } }
   check('presets: the Beeper puts its instrument package in a stable orbit; the Passenger Orbiter goes once round and lands its biocapsule under 8 g and 330 K (the flight record, from liftoff)',
-    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && O.length === 8,
-    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${PR.gMax.toFixed(1)} g, cabin ${cabUp.toFixed(0)} K in orbit, peak ${cab.toFixed(0)} K (${PR.bioOK ? 'passenger fine' : PR.pet + ' ' + PR.bioWhy}), ${PR.bioOrbits.toFixed(2)} orbits, ${p.landed ? 'landed' : 'not landed'}`);
+    b.alive && eb.pe - R > TELLUS.atm && b.parts.some(q => q.on && q.d.kind === 'sci') && p.landed && bio.on && PR.bio && PR.bioOK && PR.bioOrbits >= 1 && PR.gMax < 8 && cab < 330 && cal >= 0 && O.length === 8,
+    `Beeper: periapsis ${((eb.pe - R) / 1e3).toFixed(0)} km, ${api.dvRemaining(b).cur.toFixed(0)} m/s spare · Passenger Orbiter: ${dvP.toFixed(0)} m/s spare in orbit, ${PR.gMax.toFixed(1)} g, cabin ${cabUp.toFixed(0)} K in orbit, peak ${cab.toFixed(0)} K (${PR.bioOK ? 'passenger fine' : PR.pet + ' ' + PR.bioWhy}), ${PR.bioOrbits.toFixed(2)} orbits, ${p.landed ? 'landed' : 'not landed'}; stability at roll out ${cal.toFixed(2)} calibers`);
 }
 
 // ground-7. Erebus's ground (world session, GROUND.md G7), the last hand-made body: Pluto's character on the CPU, not

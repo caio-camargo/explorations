@@ -120,10 +120,10 @@ const PRESETS={
   // pod's place and a reaction wheel to steer it, lighter than the pod. Beeper: an instrument package in orbit (1,550 m/s
   // to spare there). Passenger Orbiter: a biocapsule round the world and home on the upper stage, as the Orbiter's pod comes
   // home. A nose cone over its chute (Q201, PLAYTEST #35): the bare capsule's shoulder took the ascent's heat (skin ~500 K,
-  // so its 10-min cabin passed 330 K by T+212 s); under the cone the skin stays ~320 K and the cabin ~300 K (measured: 665 m/s
-  // spare in orbit)
+  // so its 10-min cabin passed 330 K by T+212 s); under the cone the skin stays ~320 K and the cabin ~300 K. The cone moves the
+  // centre of pressure forward (+0.94 → −0.67 calibers), so a second fin ring puts it back (+0.91; measured: 580 m/s spare in orbit)
   Beeper:['cone','sci','rwheel','t2','petrel','dec','t8','fins','kestrel'],
-  'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','kestrel'],
+  'Passenger Orbiter':['cone','chute','bio','rwheel','t2','petrel','dec','t8','fins','fins','kestrel'],
   Heavy:['chute','pod','t2','petrel','dec','t8','fins',{k:'kestrel',rad:{n:2,dec:true,stack:['cone','t4','fins','kestrel']}}],
   // two crossfed booster pairs: the upper pair drains first and drops, then the lower pair, then the core — whose tanks are still full
   Asparagus:['chute','pod','t2','petrel','dec',{k:'t8',rad:{n:2,dec:true,x:true,stack:['cone','t4','kestrel']}},'fins',{k:'kestrel',rad:{n:2,dec:true,x:true,stack:['cone','t4','fins','kestrel']}}],
