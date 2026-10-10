@@ -119,7 +119,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q157 | Draw queued maneuver nodes on the map (markers, maybe handles); today only the active node has them (NOTES § v1.85) | M2 | S | 🖥 | ✓ `3f2d857` (v1.103: every node drawn; a click selects it, its handles edit it) |
 | Q170 | Network screen N2: draw `netModel()`'s nodes (kind, body, slot, stock, need, days, paused) and `M.bottleneck`; delete `netFallback` in `app/network.js` (NOTES § "netModel() built") | M2 | M | 🖥 | ready |
 | Q175 | Q87 slice 1, the map: the planets as discs with labels where they are that day, from epoch 1 (`SYSTEM_BODIES`, `helioPos` in `sim/system.js`). Closes PLAYTEST #11 (P2) | M1 | S | 🖥 | ✓ `3a8db1e` (v1.99: on a ring in the ecliptic, their real places sit behind the map's camera; NOTES § v1.99) |
-| Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | → flow 2026-10-09 |
+| Q191 | **PLAYTEST #34 (P2): the Debrief says nothing about the crew** (home safe, or lost) | M1 | S | 🖥 | ✓ `e05b426` (v1.107: home safe / aboard / lost and why) |
 | Q192 | The map's planet labels: two planets close on the ring lose one label to the overlap rule; merge them (`Hesper, Astraea`) (NOTES § v1.99) | M2 | S | 🖥 | ready |
 | Q196 | **Move a planned burn from the Program screen** (or "fly at the next contact"): since v1.102 a burn out of every station's view in the mainframe era can only be flown by hand | M2 | S | 🖥 | ready |
 | Q210 | Drag a queued node in time along its own leg (today only the first node; the map's pick knows the current leg only) (NOTES § v1.103) | M2 | S | 🖥 | ready |
@@ -417,3 +417,5 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | ~~W28~~ | **Answered 2026-10-09 (Caio): all defaults.** Was: **Missions per body (Q88's plan)**, four questions with defaults: (1) epochs as SYSTEM.md has them (**6 near planets, 7 belt and Hyperion, 8 the edge**); (2) every body gets the **flyby → orbit → landing** ladder before its signature problem; (3) pay by the **1.3× proven-rocket floor** (v1.53); (4) Erebus **found by a survey** like Nyx. Silence keeps the defaults | Q88's slices (M5) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- space (from flow, Q191 v1.107) — a crew rotation's days aboard the station in the Debrief (the Debrief knows this flight's time only; `crewDays` is per station) — PLAYTEST #34
+- QA (from flow) — robot row 65 lost the capsule 12 s in on one run of four (the others brought the crew home): a flake worth a look — NOTES § v1.107

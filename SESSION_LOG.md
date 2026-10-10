@@ -4819,3 +4819,25 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Tests:** full suite 616 pass after merging main (economy's v1.104 windows included). `career.mjs` 10 seeds × 3 years: final funds 702 → 659M mean (most starts −5 to −20 %, frugal richer; 3-seed runs swing ±40 %), firsts and bailouts unchanged; Caio said go ahead as is.
 **Next:** Q27 (power gates service) and Q173 (relays as nodes) are unblocked for space; vehicle's Q152 lander should be rebuilt on the v2 Probe.
 
+## 2026-10-09 — Launchpad v1.106–v1.107: the gauges as the instrument panel, the crew in the Debrief (flow session, continued)
+
+### Summary
+- **Q3 slice 4b (v1.106, closes PLAYTEST #9):** aerofx's gauges have a slot at the left of the bottom cluster (gauges |
+  throttle | navball | SAS), shown while climbing, landing or heating (held 3 s) and hidden on the pad and in space,
+  where the cluster narrows. The Ascent card keeps only AoA, Heat and Structure while the gauges are on. A fixed navball
+  with the gauges hung beside it was rejected: at 1000×700 they'd sit on the stages panel. Robot `m1` and 98 pass at
+  both sizes.
+- **Q191 (v1.107, closes PLAYTEST #34):** the Debrief says "Crew of 2 home safe after N days", "aboard, all well", or
+  how they were lost. `missionTick` keeps `R.crewN` and `R.crewWhy` (additive). Test `flow-6`; robot row 65 shows it.
+- One run of row 65 lost the capsule 12 s in; three others passed (with and without my change). Proposed to QA as a flake.
+
+### Files
+- `explorations/launchpad/`: `app/hud.js` (`ascentOn`, `gaugeSlot`), `app/gl.js` (`gaugeRect` reads `#gslot`),
+  `app/program-ui.js`, `index.html` (`#gslot`), `sim/program.js` (crew fields), `sim/debrief.js`, `app/debrief.js`,
+  `test.mjs` (`flow-6`), `NOTES.md`, `TESTING.md` (186, 187), `PLAYTEST.md` (#9, #34 closed), `QUEUE.md`
+- `ACTIVE_WORK.md`
+
+### Next steps
+- [ ] flow: Q3 slice 4c (the map trims), Q193 (the Steppe rollout, with look & sound), Q104 (flags and roundels)
+- [ ] space: a rotation's days aboard in the Debrief (proposed)
+- [ ] QA: row 65's occasional lost capsule (proposed)
