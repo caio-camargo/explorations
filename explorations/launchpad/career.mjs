@@ -21,6 +21,7 @@ const news = []; api.HOOK.news = t => news.push(t); api.HOOK.msg = () => {}; api
 // ---- designs: what each costs (real presets) and the flight record it produces
 const SOUND_S = ['chute', 'sci', 't1', 'fins', 'sparrow'], SOUND_B = ['chute', 'sci', 't2', 'fins', 'sparrow'], QUAL = ['chute', 'sci', 't2', 'fins', 'kestrel'];
 const cost = st => api.vesselCost(api.newShip(st).parts).cost;
+const stackKeys = st => Array.isArray(st) ? st : api.newShip(st).parts.map(p => p.d.key);   // a v2 preset (the Probe since Q164): its parts' keys
 const PLANS = {
   sound: a => ({ kind: 'sound', stack: a > 20 ? SOUND_B : SOUND_S, apex: a, p: 0.93, dur: 900 }),
   qual: (k, q) => ({ kind: 'qual', stack: [...QUAL, ...(k && !QUAL.includes(k) ? [k] : [])], q: Math.max(q, 40), apex: 17, p: 0.88, dur: 700 }),
@@ -184,7 +185,7 @@ function run(arch, start, seed) {
     let best = null; for (const pl of cands) { const c = planCost(pl).c; if (c > P.funds) continue; const v = (wouldDo(pl) + refundOf(pl)) * pl.p - c; if (!best || v > best.v) best = { pl, v }; }
     if (process.env.TRACE && m.orbDay == null) console.log(`d${Math.round(P.day)} $${P.funds.toFixed(0)} debt${(api.own().debt||0).toFixed(0)} ${best && best.v > -5 ? (best.pl.first || best.pl.kind) + ' v' + best.v.toFixed(0) + ' c' + planCost(best.pl).c.toFixed(0) : 'none'} | board ${P.offers.map(c => c.type + ':' + c.p.pay.toFixed(0) + '/' + (fitContract(c) ? planCost(fitContract(c)).c.toFixed(0) : 'x')).join(' ')} | active ${P.active.map(c => c.type).join(',')} | open ${api.MISSIONS.filter(M => !P.done[M.id] && api.missionOpen(M)).map(M => M.id).join(',')}`);
     if (best && best.v > -5) { const ok = fly(best.pl, rnd, m); m.fl++; if (!ok) m.fail++;
-      for (const k of new Set(planCost(best.pl).st)) m.used[k] = (m.used[k] || 0) + 1;
+      for (const k of new Set(stackKeys(planCost(best.pl).st))) m.used[k] = (m.used[k] || 0) + 1;
       // lines policy: a part flown three times and bought abroad gets a line, if there's money to spare
       if (VARIANT === 'lines' || VARIANT === 'all') for (const k of Object.keys(m.used).filter(k => m.used[k] >= 3).sort((a, b) => m.used[b] - m.used[a])) {
         const x = api.sourceOf(k); if (x.how !== 'import' && x.how !== 'grey') continue; if ((P.lines || {})[k]) continue;

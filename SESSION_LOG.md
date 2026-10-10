@@ -4811,3 +4811,11 @@ Caio left the session running ("keep going while you still have work"). Built, e
 ### Next steps
 - [ ] QA: browser re-run of TESTING 147 (`node playtest.mjs 147`, 🖥), then tick it and PLAYTEST #35
 - [ ] vehicle: Q190 (era gates for late parts) is the next first-hour item; Q152 waits on the other machine's `builder`
+
+## 2026-10-09 — Launchpad v1.105: the Probe makes its own power (space session, vehicle overflow, QUEUE Q164)
+
+**Summary:** The Probe, the only preset with an antenna, ran flat in ~33 h (15 W on a 0.5 kWh core), which blocked Q27. It's now a v2 preset with three body-cell panels on its upper tank: 24 W average in low orbit, 31 W at 1,000 km, 27.5 W at Selene, never flat on rails. +30 kg, +6M, so four moon firsts went 230 → 240M to keep economy's 1.3× pay floor. The v2 preset exposed array-only checks: supply runs ("no design in Assembly"), dry runs, dispatch candidates and `career.mjs` now take v2 designs.
+**Files:** launchpad `sim/vessel.js` (`PRESETS.Probe`), `sim/program.js` (four pays, three checks), `career.mjs` (`stackKeys`), `test.mjs` (space-17), NOTES § v1.105, TESTING 185, QUEUE; `ACTIVE_WORK.md`.
+**Tests:** full suite 616 pass after merging main (economy's v1.104 windows included). `career.mjs` 10 seeds × 3 years: final funds 702 → 659M mean (most starts −5 to −20 %, frugal richer; 3-seed runs swing ±40 %), firsts and bailouts unchanged; Caio said go ahead as is.
+**Next:** Q27 (power gates service) and Q173 (relays as nodes) are unblocked for space; vehicle's Q152 lander should be rebuilt on the v2 Probe.
+
