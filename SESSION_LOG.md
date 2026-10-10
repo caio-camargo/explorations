@@ -5167,3 +5167,36 @@ Proposed lines), `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/q231-p
 - Q230's rail tilting the Mountain boom (vehicle).
 - Lettering on the pads.
 - Next parts & pad items: Q238's plan (part pictures, with vehicle), Q205 Foundry (plan first), Q209 (the crew walk out).
+
+## 2026-10-10 — Launchpad Q240 + Q242: the Program as the director's desk, the Assembly as a model on a drafting table (flow session)
+
+**Summary:** Two of today's real screens (PLAYTEST #6, #45).
+- **Q240, v1.114:** rooms (`ROOMS`, `inRoom()`). While the Program shows, `frame()` skips the 3D draw: 0.02 ms of CPU
+  and no GPU, where the pad scene costs ~6 ms of GPU. The Program is the director's desk (`app/desk.js`):
+  - a letterhead with the flag, the name, the funds and a desk calendar;
+  - the Inbox as an in-tray;
+  - the folder with its tabs, flown missions struck through;
+  - a NEXT sticky note;
+  - a wall with **the last flight's photo, taken from the canvas 2.5 s after liftoff**, a newspaper cutting (our own
+    news first) and certificates for race firsts.
+
+  Bundled fonts: Special Elite (Apache-2.0), Courier Prime and Bebas Neue (OFL), 105 KB.
+- **Q242, v1.115** (look & sound's item, taken at Caio's ask): the Assembly is a scale model on a 1960s drafting table
+  (`app/model-desk.js`). Everything is built in the ship's frame at a kit scale (1:20–1:500, model under 45 cm):
+  - the table, the drawing, a rule, a pencil and the base plate;
+  - an architect's lamp with a glowing bulb;
+  - a real 1.8 m figure.
+
+  In the Assembly, `render()` skips the sky, pads, rig, crew, cities and floodlights, lights by the lamp, and casts the
+  model's shadow onto the drawing. The Rollout and flight stay on the real pad. The button now says BUILD AND LAUNCH.
+
+**Tests:** `flow-10`, `flow-11` (new). Full suite on each merge: Q240's only failure was TESTING's counter (fixed);
+Q242's was crew look's source pattern (the call keeps its form; crew show in the Rollout now). Robot `m1` passes in full
+on both, and the new robot row `desk` passes (photo taken in real frames, no overlapping boxes).
+**Files:** `app/desk.js`, `app/model-desk.js` (new), `app/screens.js`, `app/loop.js`, `app/render.js`, `index.html`,
+`fonts/` (new), `test.mjs`, `playtest.mjs`, NOTES (§ v1.114, § v1.115), TESTING (196, 197), QUEUE (Q240 ✓, Q242 ✓, two
+*Proposed*), `ACTIVE_WORK.md`. Shots (not in git): `C:/Users/caioa/dev/playtest-out/flow/q239/`, `…/q242/`.
+**Next:**
+- Flow: Q241 R2 (the Debrief as the report on the desk), R3 (the charter), R4 (mission control).
+- Look & sound: the desk's polish.
+- Vehicle: Q237 and Q238 as paperwork for R5.
