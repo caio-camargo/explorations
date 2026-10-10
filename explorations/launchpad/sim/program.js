@@ -127,9 +127,9 @@ const MISSIONS=[
   {id:'station30',pay:120,ep:3,req:['stationlab'],world:true,name:'Thirty days aboard',brief:'Thirty crewed days on our station, with supplies to live on.',
    win:'people live in space',ok:()=>false,okW:()=>!!stFind((s,q)=>(q.crewDays||0)>=30),prog:()=>{const x=stFind(s=>s.crew>0);return x?`${Math.floor(x.q.crewDays||0)} of 30 days`:''}},
   // epochs 4–5, "out there" (bodies session): the Selene ladder, then Nyx. outThere() below reads them off the flight.
-  {id:'farside',pay:230,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
+  {id:'farside',pay:240,ep:4,req:['beeper'],name:'The far side',brief:'Photograph the sunlit far side of Selene (a camera, within three Selene radii) and get the pictures home. Selene blocks the radio while you are behind it: downlink once Tellus is back in sight (antenna), or bring the camera home.',
    win:'the first pictures of a side nobody has seen',ok:R=>R.farSent},
-  {id:'selimp',pay:230,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
+  {id:'selimp',pay:240,ep:4,req:['farside'],name:'Impactor',brief:'Crash an instrument package with an antenna into Selene, on the side facing Tellus, so it is heard to the last second.',
    win:'telemetry to the very end, then silence',ok:R=>R.selImpact},
   {id:'selland',pay:250,ep:4,req:['selimp'],name:'Soft landing on Selene',brief:'Land an instrument package with an antenna on Selene, under 4 m/s, on the side facing Tellus so it can phone home.',
    win:'a machine of ours stands on another world',ok:R=>R.selLand},
@@ -143,9 +143,9 @@ const MISSIONS=[
    win:'the first people to see the far side',ok:R=>R.crewed&&R.crewOK&&R.crewSel&&R.capHome},
   {id:'crewland',pay:600,ep:4,req:['crewaround','selland'],name:'Crew on Selene',brief:'Land a crew on Selene (under 4 m/s), then bring them home safe, same limits.',
    win:'footprints on Selene',ok:R=>R.crewed&&R.crewOK&&R.crewSelLand&&R.capHome},
-  {id:'nyxfind',pay:230,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it. Only a flight launched for this is tracked that closely.`,
+  {id:'nyxfind',pay:240,ep:5,req:['farside'],name:'Something out there',brief:`Nyx is in the sky, but nobody knows its orbit or its mass. Track a craft carrying an instrument package and an antenna for ${NYX_TRACK_H} h where Nyx's pull is at least a thousandth of Tellus's (high orbits, or near Nyx): the residuals Tellus and Selene can't explain will weigh it. Only a flight launched for this is tracked that closely.`,
    win:'Nyx weighed, and its orbit on the map',ok:R=>R.nyxFound},
-  {id:'nyxfly',pay:230,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
+  {id:'nyxfly',pay:240,ep:5,req:['nyxfind'],name:'Nyx flyby',brief:`Fly into Nyx's sphere of influence with a camera and an antenna.`,
    win:'a dark, cratered rock, close up',ok:R=>R.nyxFly},
   {id:'nyxorb',pay:250,ep:5,req:['nyxfly'],name:'An orbit that lasts',brief:`Keep an instrument package in orbit around Nyx for two of Nyx's own orbits (${(4*Math.PI/NYX.n/3600).toFixed(0)} h). Tellus's tide is strong out there: watch which way round you go.`,
    win:'an orbit around Nyx that lasts',ok:R=>R.nyxOrbT>=4*Math.PI/NYX.n},
@@ -630,7 +630,7 @@ function padsFree(){const D=PROG.day,f=Array.from({length:padsN()},()=>D);for(co
 const padWait=()=>Math.max(0,Math.min(...padsFree())-PROG.day);
 // the designs with a procedure that could fly this contract, best chance first
 function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const out=[];
-  for(const key in PROG.procs||{}){let st;try{st=JSON.parse(key)}catch(e){continue}if(!Array.isArray(st))continue;const e=dispatchEstimate(st,c);if(e.ok)out.push({stack:st,e})}
+  for(const key in PROG.procs||{}){let st;try{st=JSON.parse(key)}catch(e){continue}if(!Array.isArray(st)&&!isV2(st))continue;const e=dispatchEstimate(st,c);if(e.ok)out.push({stack:st,e})}
   return out.sort((a,b)=>b.e.p-a.e.p)}
 // where a dispatched flight launches (QUEUE Q95): the site its procedure was flown from (a tape flies from where it was
 // recorded), or home; that site's lease is paid per launch, and a site we may no longer use refuses the dispatch
@@ -705,7 +705,7 @@ function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!
   return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
 function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
   {const a=autoAllowed('moon');if(!a.ok)return{ok:false,why:a.why}}   // MIDGAME's automation ladder (D7; the table: space's autoAllowed, Q127)
-  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design in Assembly'};
+  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!isV2(stack)&&(!Array.isArray(stack)||!stack.length))return{ok:false,why:'no design in Assembly'};   // a v2 design counts (Q164: the Probe is one)
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
   const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
@@ -749,7 +749,7 @@ function dispatchTick(){for(const D of devWaiting())if(PROG.day>D.dev.at+0.5)los
 // What it measures is kept: the provisional procedure carries its margin, and its estimates are PROV_UNC wider.
 const DRY_K=1.5,PROV_UNC=0.15;
 const dryCands=()=>Object.keys(PROG.procs||{}).filter(k=>{const p=PROG.procs[k];return p.kind==='orbit'&&p.pitch&&!p.prov}).length;
-function dryQuote(stack){if(!Array.isArray(stack)||!stack.length)return{ok:false,why:'no design on the floor'};const own=(PROG.procs||{})[procKey(stack)];
+function dryQuote(stack){if(!isV2(stack)&&(!Array.isArray(stack)||!stack.length))return{ok:false,why:'no design on the floor'};const own=(PROG.procs||{})[procKey(stack)];
   if(own)return{ok:false,why:own.prov?`already borrows ${own.from}'s procedure`:'it has its own procedure'};const n=dryCands();if(!n)return{ok:false,why:'no stored procedure to try'};
   const E=COMP_ERAS[compEra()],sp=FAC.centre.speed[facLv('centre')];
   return{ok:true,why:'',n,cost:Math.round(E.study.cost*DRY_K*(1+0.25*(n-1))*10)/10,days:Math.max(0.5,Math.round(E.study.days*sp*(0.5+0.25*n)*2)/2)}}
