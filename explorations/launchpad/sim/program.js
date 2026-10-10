@@ -108,13 +108,13 @@ const MISSIONS=[
   {id:'lift2',pay:80,ep:2,req:['lift1'],name:'Heavy lift II',brief:'Two tonnes of mass simulators in a stable orbit.',win:'2 t in orbit, a record',ok:R=>R.lift>=2-1e-9},
   // epoch 3, utility (bodies session): satellites that do a job. Flight missions read outThere(); world ones (world:true)
   // are checked between flights by utilTick(), from the registry.
-  {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change.',
+  {id:'wxsat',pay:80,ep:3,req:['beeper'],name:'Weather satellite',brief:'A camera and an antenna in a stable polar orbit (inclined 80–100°), so every latitude passes under it. From an equatorial pad that means paying for the plane change. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.',
    win:'the whole planet\'s weather, every day',ok:R=>R.weather},
-  {id:'tv',pay:120,ep:3,req:['beeper'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there.`,
+  {id:'tv',pay:120,ep:3,req:['beeper'],name:'TV for the capital',brief:`An antenna in a stationary orbit (period one day to 0.2 %, nearly circular, under 2° inclination, ${(STAT_R/1e3-TELLUS.R/1e3).toFixed(0)} km up) at least 15° up in the capital's sky. It pays ${TV_RATE}M a day for as long as it stays there. It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
    win:'the capital watches the launch on TV',ok:R=>R.tv},
   {id:'diswatch',pay:60,ep:3,req:['wxsat'],world:true,name:'Disaster watch',brief:'Deliver pictures of a disaster within 12 hours of the call (take the job, and have a camera satellite with an antenna up, and a ground station it can reach).',
    win:'pictures before the evening news',ok:()=>false,okW:()=>(PROG.disDone||[]).some(x=>x.t-x.posted*DAY_S<=12*3600)},
-  {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments).`,
+  {id:'nav',pay:150,ep:3,req:['tv'],world:true,name:'Navigation constellation',brief:`Transit-style navigation: a position fix from one satellite's pass. Put up enough satellites with antennas that from anywhere on Tellus, at any moment, one will pass at least 10° up within half an hour (${NAV_MIN*100}% of places and moments). It needs power between flights: the battery in a probe core lasts days, solar cells keep it going.`,
    win:'nobody need ever be lost again',ok:()=>false,okW:()=>navCover(PROG.day*DAY_S)>=NAV_MIN,prog:()=>PROG.navCov!=null?`${(PROG.navCov*100).toFixed(0)}% covered`:''},
   // the first station (QUEUE Q163; Q9's plan slice 2, W22 default 1: firsts, not contracts; not in the race): judged
   // between flights on the registry's stations (stationOf), so it can be built over several flights
@@ -169,7 +169,8 @@ const isTV=(q,T)=>{if(!q.ant)return false;const el=elements(q.r,q.v,TELLUS.mu);
 // day from which a satellite with an antenna will be at least 10° up within NAV_WAIT. 64 places spread evenly over the
 // globe (a Fibonacci lattice), moments every 10 min. (Three in view at once almost everywhere would take ~12 satellites.)
 const NAV_PTS=Array.from({length:64},(_,i)=>{const y=1-2*(i+.5)/64,r=Math.sqrt(1-y*y),a=i*2.39996323;return[r*Math.cos(a),y,r*Math.sin(a)]});
-function navCover(T){const sats=satsUp().filter(q=>q.ant);if(!sats.length)return PROG.navCov=0;const s10=Math.sin(10*Math.PI/180),M=144,dtS=DAY_S/M,W=Math.round(NAV_WAIT/dtS);
+// navigation counts only satellites with power round the clock (Q27: a flat one can't hold a fix)
+function navCover(T){const sats=satsUp().filter(q=>q.ant&&satDuty(q)>=1);if(!sats.length)return PROG.navCov=0;const s10=Math.sin(10*Math.PI/180),M=144,dtS=DAY_S/M,W=Math.round(NAV_WAIT/dtS);
   const vis=NAV_PTS.map(()=>new Uint8Array(M+W));
   for(let k=0;k<M+W;k++){const t=T-DAY_S+k*dtS,P=sats.map(q=>rotY(satAt(q,t)[0],-absTh(t)));
     NAV_PTS.forEach((u,j)=>{for(const p of P){const d=sub(p,mul(u,TELLUS.R));if(dot(d,u)>=s10*len(d)){vis[j][k]=1;break}}})}
@@ -188,7 +189,7 @@ function obsTick(){const E=compEra();for(const q of satsUp()){if(q.junk)continue
 function stFind(f){for(const q of (typeof satsUp==='function'?satsUp():[])){if(q.junk||q.docked)continue;const s=typeof stationOf==='function'?stationOf(q):null;if(s&&f(s,q))return{q,s}}return null}
 function utilTick(d){const T=PROG.day*DAY_S;obsTick();
   for(const q of satsUp()){const s=q.shape&&stationOf(q);if(s&&s.crew>0&&s.sup>0)q.crewDays=(q.crewDays||0)+d}   // crewed days aboard (Q163)
-  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q));if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
+  for(const q of satsUp()){const tv=isTV(q,T);if(tv)income(d*TV_RATE*satQual(q)*satDuty(q));if(q.tvOn&&!tv)HOOK.news(`${q.name} has drifted out of the capital's sky: the screens go grey`,'warn');q.tvOn=tv}
   for(const M of MISSIONS)if(M.world&&!PROG.done[M.id]&&missionOpen(M)&&M.okW())missionComplete(M,null)}
 // Nyx's pull minus Tellus's reflex, as a fraction of Tellus's pull, at r (Tellus frame): what tracking can't explain without it
 const nyxResidual=r=>{const R0=bodyRel(NYX,simT)[0],d=sub(r,R0),ac=add(mul(d,-NYX.mu/len(d)**3),mul(R0,-NYX.mu/len(R0)**3));return len(ac)*dot(r,r)/TELLUS.mu};
@@ -196,12 +197,12 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
-    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290}
+    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)}   // crewN: seats, for the Debrief (flow, Q191)
     if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));
       if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
     if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT>CREW_AIR&&!R.capHome?'ran out of air':'';
-      if(why){R.crewOK=false;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
+      if(why){R.crewOK=false;R.crewWhy=why;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
