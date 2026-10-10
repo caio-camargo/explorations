@@ -12,7 +12,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); first QA re-runs row 147 on the Passenger Orbiter's new nose cone (Q208) | you; QA | **M1 done**; M2 becomes current |
+| 1 | **W16: a person who isn't you plays the first hour**: M1's last finish line (robot `m1`, no overlaps, pacing all ✓); first **Q216** (vehicle, in progress: a retrograde hold so the Passenger Orbiter brings its passenger home, PLAYTEST #38) and QA's Q208 (row 147 on the new nose cone) | vehicle, QA; then you | **M1 done**; M2 becomes current |
 | 2 | **Q190** era gates for late parts (cargo bay and arm buyable from flight 1). Q201 ✓ (nose cone keeps the passenger cool) | vehicle (**no session**) | a clean first hour for W16's player |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world | every player's first visit |
 | 4 | **Three picks for you**: **W14** screen identity; **W29** the bodies, round 2 (`mockups/bodies/`, Q207 ✓); **W30** the suits (`mockups/suits/`, Q199 ✓) | you | Q53 and slice 4c's styling; Q80–Q85; the suit build items |
