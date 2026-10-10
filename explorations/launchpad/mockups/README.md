@@ -219,6 +219,10 @@ lower lip is a roll, round on top, tucked under to a defined bottom edge, the sk
 genes *lower lip: full–rolled in* and *lower lip tuck*; the house lips are ~30 % taller; the philtrum is a shallow
 dent (the old slot cut a thread on long faces); close-ups follow the face's length. Still: `faces/lips-profile.png`.
 61 genes.
+**Integration** (Caio: Mr. Incredible's nose is continuous with forehead and brow; his chin and jaw are integrated,
+ours blocky): *nose root: notched–flush* carries the forehead's line down onto the bridge (the socket used to cut a
+notch); *planes: crisp–soft* now also softens the bridge's edges, the jaw, the chin and the chin–jaw join, and a
+softened plane stands off by what its rounding takes away (before, soft faces shrank behind their features). 62 genes.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

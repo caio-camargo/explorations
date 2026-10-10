@@ -183,3 +183,4 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   the edge to the slit; tilt, height, bow, corners, lower lip forward. Deeper eyes, broad heavy chins. 60 genes.
 - **Lips in profile** (Caio's line drawing): a straight upper slope, a rolled lower lip with a tucked bottom edge.
   61 genes. Open: on extreme long noses the nostrils show as rings at the nose floor.
+- **Integration** (Caio): a flush nose root, softness through jaw and chin without shrinking the face. 62 genes.
