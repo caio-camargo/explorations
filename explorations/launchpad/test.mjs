@@ -3981,17 +3981,16 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const P = api.PRESETS, PR = api.PROG, B = [{ name: 'The beeper', alt: 0 }], H = [{ name: 'Satellite to 400 km', alt: 400 }], lv = (st, a) => api.launchWarnings(st, a).map(x => x[0]).join();
   const log0 = PR.log; PR.log = {}; const est = [lv(P.Beeper, B), lv(P.Orbiter, H), lv(P.Hopper, B), lv(P['Passenger Orbiter'], B)];
+  // every reading with an empty logbook is taken before log0 is back: earlier sections leave a best orbit in it (5,000 m/s
+  // inside --smoke), which reads the Orbiter short of 400 km instead of tight (Q204)
+  const hop = api.launchWarnings(P.Hopper, B), tight = api.launchWarnings(P.Orbiter, H);
   PR.log = { orbit: { v: 5600 } }; const best = api.launchWarnings(P.Orbiter, B); PR.log = log0;
-  // the default aims come from the program (contracts held, the next step): a fresh one has none. Earlier sections leave
-  // missions done and contracts held, which made the beeper an aim inside --smoke (Q204), so set a fresh program here
-  const kept = { done: PR.done, active: PR.active, decisions: PR.decisions }; Object.assign(PR, { done: {}, active: [], decisions: [] });
-  const aims0 = api.flightAims(); Object.assign(PR, kept);
   const chute = [api.launchWarnings(['bio', 'rwheel', 't2', 'petrel'], []), api.launchWarnings(['les', 'crew', 't2', 'petrel'], []), api.launchWarnings(P['Passenger Orbiter'], []), api.launchWarnings(P.Beeper, [])];
   const climb = api.dvToAlt(TELLUS, 400), r0 = TELLUS.R + TELLUS.atm + 1e4, r1 = TELLUS.R + 4e5, hand = Math.sqrt(TELLUS.mu / r0) * (Math.sqrt(2 * r1 / (r0 + r1)) - 1) + Math.sqrt(TELLUS.mu / r1) * (1 - Math.sqrt(2 * r0 / (r0 + r1)));
   check('launch warnings: the Beeper is fine for the beeper, the Orbiter tight for 400 km, the Hopper short; the logbook\'s best sets the need; no chute under a crew or a passenger is flagged',
-    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(api.launchWarnings(P.Hopper, B)[0][1]) && /Tight/.test(api.launchWarnings(P.Orbiter, H)[0][1])
+    est.join('|') === 'ok|warn|warn|ok' && /Short of orbit/.test(hop[0][1]) && /Tight/.test(tight[0][1])
       && best[0][0] === 'warn' && /5,600 m\/s/.test(best[0][1]) && Math.abs(climb - hand) < 1e-6 && climb > 250 && climb < 350
-      && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && aims0.length === 0,
+      && /passenger can't come home/.test(chute[0].map(x => x[1]).join()) && /crew can't come home/.test(chute[1].map(x => x[1]).join()) && !chute[2].length && !chute[3].length && api.flightAims().length === 0,
     `${est.join(' / ')}; climb to 400 km ${climb.toFixed(0)} m/s; "${best[0][1]}"`);
 }
 

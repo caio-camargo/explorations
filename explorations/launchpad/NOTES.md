@@ -9768,3 +9768,34 @@ row (`RELOAD`: later steps use only the page's globals). 157 runs five designs t
 flies the Passenger Orbiter on `PT.ascent(flatKm)` (the turn ends at flatKm, 38 in fly_ladder). It found PLAYTEST #35: the
 passenger overheats whatever the ascent, and test.mjs `vehicle-3` can't see it, because it restarts its own cabin
 temperature at 290 K after the orbit. Also #36, the Hopper's own instability warning.
+
+## v1.73.1 — the Passenger Orbiter's nose cone; vehicle-4 alone and in the smoke run (2026-10-09, vehicle session, QUEUE Q201, Q204)
+
+**The passenger cooked on the way up (PLAYTEST #35).** The preset was chute, biocapsule, wheel: the chute (0.3 m) is
+narrower than the capsule (0.625 m), so the capsule's shoulder flew in the flow all the way up. On the robot's ascent
+(`handAscent`, level by 38 km) its skin reached ~500 K and the cabin, which follows the skin with a 10-minute lag from
+liftoff (`missionTick`), passed 330 K on the climb: "Biscuit overheated". The 10-minute lag stays: the crew capsule's
+comment in `sim/vessel.js` says a bare animal capsule on an orbital ascent is meant to cook, so this is the preset's
+design problem, not the physics'. **Fix:** a nose cone over the chute (`cone, chute, bio, rwheel, …`). Measured on the same
+ascent (scratch runs of the preset and variants):
+
+| Stack top | Skin at orbit | Cabin at orbit | Spare in orbit |
+|---|---|---|---|
+| chute, bio (was) | 499 K | 330 K: failed | 715 m/s |
+| cone, bio (no chute) | 319 K | 300 K | 822 m/s |
+| **cone, chute, bio** | 318 K | 300 K | 665 m/s |
+
+The chute is a staging event, not a position, so it opens under the cone as before. The first flight's price goes 58 →
+59M; `PACE=1 node career.mjs` reaches orbit 3/3 for every start, about a day later, minimum funds within the seeds' noise.
+
+**Why `vehicle-3` passed.** It kept its own cabin temperature, starting at 290 K after the orbit, and never read the flight
+record. It now reads `S.rec` over the whole flight: `bio`, `bioOK`, `bioOrbits ≥ 1`, `gMax`, and the cabin at orbit and
+coming home. On the old preset it fails with the game's own words ("Biscuit overheated (cabin 330 K)").
+
+**`vehicle-4` in `--smoke` (Q204).** The check put the logbook back (`PR.log = log0`) before two of its readings: the
+Hopper short and the Orbiter *tight* for 400 km. Alone the logbook is empty; in the smoke run an earlier section has left a
+5,000 m/s best orbit there, which reads the Orbiter *short* of 400 km instead of tight. Every empty-logbook reading is now
+taken before the logbook is restored. (The "Beeper short of orbit" in the failure's detail line was the check's own
+deliberate 5,600 m/s case, `best`, not the failure.)
+
+**Not yet:** the browser half of TESTING 147 (`node playtest.mjs 147`, 🖥): the robot's gentler ascent should now pass too.
