@@ -178,6 +178,12 @@ URL: `?mode=edit|breed|ranges`, `?dna=`, `?seed=`. Stills: `output/launchpad/moc
 Ranges were widened about ×1.6 after the first test (most genes were invisible) and narrowed where a corner broke:
 cheek hollow (a round dimple), chin projection (a knob), cheekbone height (a crease), jaw width, mouth projection.
 Until F2–F4 tune their regions, random faces move brow, eye, nose, cheek and mouth genes at 45 % of their range.
+**The nose in parts** (Caio: the tip was separate from the nostrils, the nostrils moved with the bridge, the tip too rigid):
+a bridge (the old wedge), a tip lobule at its lower corner, wings on the face (no longer on the bridge) and an alar
+rim joining tip to wing. Six new genes, appended so older DNA still reads: tip square–round (round also softens the
+bridge's lower edges, never the ridge), tip size (button–bulb), tip width, tip projection, wing flare, wing size.
+A floor just above the upper lip keeps any nose off the mouth. Edit has close-ups (nose, eyes, mouth, ear; front, ¾,
+profile); the nose genes test in close-up. Still: `faces/nose-types.png` (house, button, bulb, hawk, broad).
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219 → CREW.md § "The suit brief, round 2")
 

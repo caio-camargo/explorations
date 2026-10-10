@@ -163,3 +163,6 @@ Defaults if silent: **1(a), 2(a), 3(a).**
   the bridge, the lip groove shrinks with the lips. **F1's test is not yet met:** with the same hair, 12 random heads
   differ at portrait size but look alike at 48 px; the hair mass dominates the thumbnail, so hair parts (F5) and paint
   (F6) will carry most of it. Seen in the grid, for F3: a tip-up nose shows a dark underside.
+- **Nose in parts** (2026-10-10, Caio's notes; F3 started early): bridge, tip lobule, wings on the face, alar rim; six
+  new genes (tip roundness, size, width, projection; wing flare, size), 41 in all; a nose floor above the lip;
+  close-up views. The house head now differs from round 5 at the nose (tip roundness .4).

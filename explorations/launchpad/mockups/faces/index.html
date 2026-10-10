@@ -82,6 +82,8 @@
         <canvas class="t" id="vp" width="300" height="300" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
       <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span></div>
     </div>
+    <p class="note" style="margin:12px 0 4px">Close-up: <select id="closeOn"><option>nose</option><option>eyes</option><option>mouth</option><option>ear</option></select> (front, ¾, profile)</p>
+    <div class="thumbs"><canvas class="t" id="cf" width="250" height="250"></canvas><canvas class="t" id="cq" width="250" height="250"></canvas><canvas class="t" id="cp" width="250" height="250"></canvas></div>
     <p class="note" style="margin:12px 0 4px">DNA (copy to keep a face, paste and Apply to bring one back):</p>
     <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
   </div>
@@ -125,11 +127,11 @@ const GENES = [
   ['et', 'Eyes', 'Eye tilt', 0, -.25, .25, 'f'],
   ['el', 'Eyes', 'Upper-lid weight', 0, -.03, .05, 'q'],
   ['ed', 'Eyes', 'Eye depth', 0, -.05, .05, 'p'],
-  ['nl', 'Nose', 'Nose length', 0, -.1, .1, 'p', 1],
-  ['np', 'Nose', 'Bridge projection', 0, -.08, .08, 'p', 1],
-  ['nw', 'Nose', 'Nose base width', 1, .7, 1.45, 'f'],
-  ['nt', 'Nose', 'Tip up–down', 0, -.18, .18, 'p'],
-  ['nc', 'Nose', 'Concave–convex', 0, -.07, .07, 'p'],
+  ['nl', 'Nose', 'Nose length', 0, -.1, .1, 'p:nose', 1],
+  ['np', 'Nose', 'Bridge projection', 0, -.08, .08, 'p:nose', 1],
+  ['nw', 'Nose', 'Bridge width', 1, .75, 1.35, 'f:nose'],
+  ['nt', 'Nose', 'Tip up–down', 0, -.18, .18, 'p:nose'],
+  ['nc', 'Nose', 'Concave–convex', 0, -.07, .07, 'p:nose'],
   ['ch', 'Cheeks', 'Cheekbone height', 0, -.07, .05, 'q'],
   ['cw', 'Cheeks', 'Cheekbone width', 0, -.08, .08, 'f'],
   ['cv', 'Cheeks', 'Cheek hollow', 0, 0, 1, 'q'],
@@ -146,6 +148,13 @@ const GENES = [
   ['ea', 'Ears & neck', 'Ear angle', 0, -.2, .5, 'f'],
   ['nk', 'Ears & neck', 'Neck thickness', 1, .8, 1.2, 'q'],
   ['as', 'Asymmetry', 'Asymmetry', 0, -1, 1, 'f'],
+  // added with the nose's parts (kept at the end, so earlier DNA strings still read)
+  ['tr', 'Nose', 'Tip: square–round', .4, 0, 1, 'q:nose'],
+  ['ts', 'Nose', 'Tip size (button–bulb)', 1, .65, 1.6, 'q:nose'],
+  ['tw', 'Nose', 'Tip width', 1, .65, 1.7, 'f:nose'],
+  ['tp', 'Nose', 'Tip projection', 0, -.05, .04, 'p:nose'],
+  ['aw', 'Nose', 'Wing flare', 1, .8, 1.55, 'f:nose'],
+  ['az', 'Nose', 'Wing size', 1, .7, 1.5, 'q:nose'],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -176,6 +185,8 @@ const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 
 // ---- the renderer: one WebGL canvas off-screen, each tile drawn there and copied to its own canvas
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
 const ANG = { q: .62, f: 0, p: Math.PI / 2 };
+// close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
+const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.6, .75], ear: [.72, -.1, -.1] };
 const glc = document.createElement('canvas'); glc.width = glc.height = 440;
 const gl = glc.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
 const VS = `#version 300 es
@@ -204,17 +215,34 @@ vec3 warp(vec3 p){
  return p;}
 // ---- the house head (round 5), in head units (the cranium's half-width ~.8), face +z, y up
 const float SH=.012,SO=.07;
+// the nose: a bridge on the forehead's line, ending in a tip lobule; the wings sit on the face and the alar rim joins them to the tip
+float noseFloor(){return -.425-g_ph;}   // just above the upper lip: a long or drooping nose never reaches the mouth
+vec3 noseTip(){   // the bridge's lower front corner (where the ridge plane meets the base plane), head space
+ float k=.2+g_nt,z=(.9+g_np+.2697*(.13+g_nl))/(.9629-.2697*k);return vec3(0.,max(-.15-g_nl-z*k,noseFloor()+.03),z);}
+vec3 tipC(){vec3 c=noseTip();return c+vec3(0.,.065*g_ts,-.075*g_ts+.03*g_tr+g_tp);}
+vec3 wingC(){vec3 c=noseTip();return vec3(.1*g_aw,c.y+.07,.8);}
+float noseD(vec3 p){
+ vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.9+g_np)-g_nc*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge; a hump or a dip
+ float kr=.002+.07*g_tr*smoothstep(-.02,-.26,n.y);   // the round tip softens the bridge's edges near the bottom only; the ridge above stays sharp
+ float wedge=smax(smax(abs(n.x)*.95/g_nw+n.z*.32-.38,ridge,kr),max(n.y-.32,-(n.y+.13+g_nl)-n.z*(.2+g_nt)),kr);   // the bridge, its base the plane under the tip
+ wedge=max(wedge,-(n.z-.55));
+ vec3 c=noseTip(),tc=tipC(),dg=normalize(vec3(0.,-.6,1.));
+ wedge=smax(wedge,dot(p-c,dg)+.11*g_tr*g_ts,.035*g_tr+.004);   // round off the corner: the more round, the deeper the chamfer
+ vec3 q=p-tc;q.x/=g_tw;
+ float tip=sdEll(q,vec3(.09,.075,.08)*g_ts)*min(g_tw,1.);   // the tip lobule
+ float d=smin(wedge,tip,.025+.03*g_tr);
+ vec3 s=vec3(abs(p.x),p.y,p.z),wc=wingC();
+ float wing=sdEll(s-wc,vec3(.065,.055,.07)*g_az);   // a wing, on the face
+ float rim=sdCapT(s,tc+vec3(.02*g_tw,-.03*g_ts,-.01),wc+vec3(0.,-.015,.02),.026*g_ts,.035*g_az);   // the alar rim, tip to wing
+ d=smin(d,smin(wing,rim,.03),.03);
+ return smax(d,noseFloor()-p.y,.03);}
 float mass(vec3 p){
  float d=sdEll(p-vec3(0.,.16,-.1),vec3(.78,.88,.94));   // cranium
  d=smin(d,sdEll(p-vec3(0.,-.4,.1),vec3(.66,.58,.64)),.28);   // the jaw, broad
  d=smin(d,sdEll(p-vec3(0.,-.78-g_cnh,.46+g_cnp),vec3(.34+g_cnw,.2,.3)),.16);   // the chin, forward
  float by=.24+g_bh+g_bt*abs(p.x)+g_as*.025*clamp(p.x*6.,-1.,1.);   // brow height, tilt, and the asymmetry: one brow higher
  d=smin(d,sdEll(p-vec3(0.,by,.55+g_bd),vec3(.6,.15,.3)),.12);   // the brow, forward
- vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.9+g_np)-g_nc*exp(-(n.y-.06)*(n.y-.06)/.02);   // the nose on the forehead's line; a hump or a dip
- float nw=mix(1.,g_nw,smoothstep(.1,-.2,n.y));
- float wedge=max(max(abs(n.x)*.95/nw+n.z*.32-.38,ridge),max(n.y-.32,-(n.y+.13+g_nl)-n.z*(.2+g_nt)));   // its base: the plane under the tip
- wedge=max(wedge,-(n.z-.55));d=smin(d,wedge,.05);
- for(int i=0;i<2;i++){float sx=i==0?-1.:1.;d=smin(d,sdEll(p-vec3(sx*.1*g_nw,-.33-g_nl,.78+g_np),vec3(.075,.06,.07)),.035);}   // nostril wings, riding on the bridge
+ d=smin(d,noseD(p),.05);
  return d;}
 float carve(vec3 p,float d){
  d=cutM(d,p,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64),SH);   // the cheekbones: front meets side
@@ -247,7 +275,7 @@ float features(vec3 p,float d){
  float gy=m.y-(-.012+.04*m.x*m.x-.012*exp(-m.x*m.x*300.));
  d=smax(d,-max(length(vec2(gy,max(abs(m.x)-.17*min(1.,.6+.4*min(g_ul,g_ll)),0.)))-.011,.62-m.z),.008);   // the groove, only at the front, no wider than the lips
  d=smax(d,-sdEll(m-vec3(0.,-.17,.8),vec3(.14,.035,.05)),.03);   // under the lower lip
- d=smax(d,-sdEll(s-vec3(.055*g_nw,-.36-g_nl,.84+g_np),vec3(.025,.012,.03)),.008);   // nostrils
+ vec3 nc=mix(tipC(),wingC(),.5)+vec3(-.03,-.045,0.);nc.y=max(nc.y,noseFloor()+.014);d=smax(d,-sdEll(s-vec3(.05*g_aw,nc.y,nc.z),vec3(.032,.016,.05)*g_ts),.01);   // nostrils, under the rim
  return d;}
 float earD(vec3 p,float d){vec3 s=vec3(abs(p.x),p.y,p.z);
  vec3 e=s-vec3(.72,-.1,-.2);e.xz=rot(g_ea)*e.xz;e.z-=.1;e/=g_ers;   // turned about its back edge
@@ -275,7 +303,7 @@ vec4 paint(vec3 p,float m){
   return vec4(col,1.);}
  vec3 mq=mouthL(p);if(min(upLip(mq),loLip(mq))<.012)return vec4(uLip,.8);
  vec3 s=vec3(abs(p.x),p.y,p.z);
- float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.7*gs(p,vec3(0.,-.32-g_nl,.9+g_np),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
+ float w=.8*gs(s,vec3(.38,-.28+g_ch,.62),.04)+.7*gs(p,tipC()+vec3(0.,0.,.04),.012)+.8*gs(s,vec3(.74,-.1,-.1),.02);   // cheeks, nose, ears
  return vec4(mix(uSkin,uFlush,.32*clamp(w,0.,1.)),.6);}
 void main(){
  vec2 uv=(v*.5)*vec2(uRes.x/uRes.y,1.);vec3 fw=normalize(uTgt-uCam),rt=normalize(cross(fw,vec3(0.,1.,0.))),up=cross(rt,fw);
@@ -302,9 +330,10 @@ gl.enable(gl.SCISSOR_TEST);
 for (const [n, c] of [['uSkin', P.skin], ['uHair', P.hair], ['uIris', P.iris], ['uLip', P.lip], ['uFlush', P.flush]]) gl.uniform3fv(U(n), c);
 // one tile: draw at s px (thumbnails at twice their size, scaled down: the antialiasing), copy to the tile's canvas
 function drawTile(cv, t, view, fov) {
-  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[view], d = 6, H = glc.height;
+  const [vk, tg] = view.split(':'), T = CLOSE[tg] || [0, -.22, 0];
+  const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? 2.7 : 6, H = glc.height;
   gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.uniform2f(U('uRes'), s, s);
-  gl.uniform3f(U('uCam'), Math.sin(a) * d, .1, Math.cos(a) * d); gl.uniform3f(U('uTgt'), 0, -.22, 0); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
+  gl.uniform3f(U('uCam'), T[0] + Math.sin(a) * d, T[1] + (tg ? .25 : .32), T[2] + Math.cos(a) * d); gl.uniform3f(U('uTgt'), ...T); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
   const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
   gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);
   const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
@@ -355,7 +384,9 @@ const sl = [];
 function syncSliders() { GENES.forEach((g, i) => { sl[i][0].value = Math.round(cur[i] * 127); sl[i][1].textContent = val(i, cur[i]).toFixed(3); }); }
 const $ = id => document.getElementById(id);
 function editChanged() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
-function renderEdit() { render([[$('vq'), cur, 'q'], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+function renderEdit() { const c = ':' + $('closeOn').value;
+  render([[$('vq'), cur, 'q'], [$('cq'), cur, 'q' + c], [$('cp'), cur, 'p' + c], [$('cf'), cur, 'f' + c], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+$('closeOn').onchange = renderEdit;
 $('reset').onclick = () => { cur = house(); syncSliders(); editChanged(); };
 $('rand').onclick = () => { cur = randomFace(); syncSliders(); editChanged(); };
 $('nudge').onclick = () => { cur = mutate(cur, .15); syncSliders(); editChanged(); };
