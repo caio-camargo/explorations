@@ -17,6 +17,7 @@ function rollChecks(){const out=[],ok=t=>out.push(['ok',t]),warn=t=>out.push(['w
   const t=curSite(),a=siteAccessOf(t),fz=siteFits(t,S.parts),c=vesselCost(S.parts).cost,fee=a.fee||0,ops=OPS_FIX+OPS_FRAC*c,w=siteWeather(t,(PROG.day||0)*DAY_S);
   if(c+fee>PROG.funds+1e-9)bad(`Over budget: ${fmtM(c)}${fee?` + ${fmtM(fee)} site fee`:''}, the program has ${fmtM(PROG.funds)}`);
   else if(c+fee+ops>PROG.funds+1e-9)warn(`The ops fee (${fmtM(ops)}) takes the program below zero`);else ok(`Affordable: ${fmtM(c+fee+ops)} of ${fmtM(PROG.funds)}`);
+  {const lk=partLaunchWhy(S.parts);if(lk)bad(lk)}   // a part not open yet (vehicle, Q190)
   if(!a.ok)bad(a.why);if(!fz.ok)bad(fz.why);if(a.ok&&fz.ok)ok(`${t.name}: open to us, the stages fit`);
   const dw=downrangeWarning(t);if(dw)warn(dw);
   if(w.scrub)warn(`Weather at ${t.name}: ${w.word}; the launch may wait for a clear day`);

@@ -1,5 +1,5 @@
 # Launchpad — mock-ups
-**Version**: 0.1.7 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
+**Version**: 0.1.8 · **Author**: Caio Camargo + Claude (flow session; bodies round 2: sky & bodies beat; suits: effects beat; heads, faces: look & sound) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: for Caio to pick
 **Purpose**: Static pages for choosing how things look, from pictures. **Never loaded by `index.html`**: no game code, no merge risk.
 Stills go to `output/launchpad/mockups/<topic>/`. One line per option; Caio's pick is recorded here and in QUEUE.
 
@@ -22,6 +22,22 @@ HUD and map (the cockpit), with a shared palette. Fonts: the game uses system fo
 either bundles its font files (a few hundred KB, no build step needed) or falls back to the system face named after it.
 
 **Pick:** _(Caio)_
+
+## screens/ — the screens as places, not panels over the pad (QUEUE Q239 → W35, PLAYTEST #6)
+
+Open `screens/index.html` (one button per screen) or the stills in `output/launchpad/mockups/screens/`
+(`<screen>.png`, 1280×800). All five use W14's default identity, era 1. The plan and the build order are in
+[NOTES § UI "Plan: real screens"](../NOTES.md).
+
+| Screen | The place |
+|---|---|
+| **title** | the founding charter (the first-run gate) over a dimmed pad |
+| **program** | the director's desk from above: letterhead, in-tray, the open folder with tabs, the last flight's photo, a clipping, certificates |
+| **debrief** | the typed flight report on the same desk, a poster headline for a first |
+| **mission** | the control room: ground-track wall, clocks, pads, four consoles (flight, network, trajectory, recovery and dispatch) |
+| **assembly** | the assembly hall with blueprint panels (the catalogue by category, the specification in groups; vehicle's Q235–Q238) |
+
+**Pick:** _(Caio; W35's defaults hold if silent)_
 
 ## crew/ — how astronauts look (QUEUE Q72 → CREW.md part 1)
 

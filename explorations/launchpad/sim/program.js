@@ -29,6 +29,16 @@ const rvParts=d=>[['ch',d.ch||'m',RV_CH[d.ch||'m'].name],['wh',d.wh||'m',RV_WH[d
 function rvPrice(d){if(!d)return 0;const n=d.n===6?6:4;return RV_PRICE.ch[d.ch||'m']+n*RV_PRICE.wh[d.wh||'m']+(d.slots||[]).reduce((a,k)=>a+(k&&RV_PRICE.it[k]||0),0)}
 // what a rover design still lacks to fly ('' if nothing): the parts not open yet
 function rvLocked(d){const L=[];for(const[kind,k,name]of rvParts(d)){const o=rvPartOpen(kind,k);if(!o.ok&&!L.some(x=>x.k===k&&x.kind===kind))L.push({kind,k,name,why:o.why})}return L}
+// vehicle parts (Q190, Caio 2026-10-10): a late part opens with the mission that first needs it, or with its computing era
+// (d.era: the onboard computer, the RTG). Like rover parts it is listed and designable before that, but a launch carrying
+// one is refused (partLaunchWhy). No gates before a program starts (khOn) or with the tester's tools.
+const PART_GATE={port:'beeper',rport:'beeper',claw:'beeper',hab:'beeper',wpanel:'beeper',leg:'beeper',crew:'orbiter',les:'orbiter',
+  bay:'station1',arm:'station1',lab:'stationcrew',beacon:'selland'};
+function partOpen(k){const d=PARTS[k];if(!d||!khOn()||TEST.tools)return{ok:true,why:''};
+  if(d.era!=null&&compEra()<d.era)return{ok:false,why:`opens with the ${COMP_ERAS[d.era].name.toLowerCase()} era`,short:COMP_ERAS[d.era].name,era:d.era};
+  const id=PART_GATE[k];if(!id||PROG.done[id])return{ok:true,why:''};const M=MISSIONS.find(m=>m.id===id);return{ok:false,why:`opens with “${M?M.name:id}”`,short:M?M.name:id,id}}
+function partLaunchWhy(parts){const L=[];for(const p of parts||[]){const o=partOpen(p.d.key);if(!o.ok&&!L.some(x=>x.k===p.d.key))L.push({k:p.d.key,name:p.d.name,why:o.why})}
+  return L.length?`Not open yet: ${L.map(x=>`${x.name.toLowerCase()} (${x.why})`).join('; ')}`:''}
 function rvLaunchWhy(parts){for(const p of parts||[]){if(p.d.kind!=='rover'||!p.dn||!p.dn.rvd)continue;const L=rvLocked(p.dn.rvd);
   if(L.length)return`The rover ${p.dn.rvd.name||''} can't fly yet: ${L.map(x=>`${x.name.toLowerCase()} ${x.why}`).join('; ')}`.replace('  ',' ')}return''}
 const partPrice=p=>(p.d.kind==='rover'&&p.dn&&p.dn.rvd?rvPrice(p.dn.rvd):0)+(PRICE[p.d.key]??3)*sourceOf(p.d.key).k*devPriceK(p.d.key)+[0,.5,1.5][p.jr||0]*((p.parent?Math.min(p.d.r,p.parent.d.r):p.d.r)/R0)**2;
@@ -637,7 +647,7 @@ function dispatchOptions(c){if(!DISPATCH_TYPES.includes(c.type))return[];const o
 // recorded), or home; that site's lease is paid per launch, and a site we may no longer use refuses the dispatch
 function procSiteOf(stack){const pr=(PROG.procs||{})[procKey(stack)];return(pr&&pr.site&&siteById(pr.site))||homeSites()[0]||curSite()}
 function dispatchSite(stack){const t=procSiteOf(stack),a=siteAccessOf(t);return{t,ok:a.ok,why:a.ok?'':a.why,fee:a.ok?a.fee||0:0}}
-function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),cost=vesselCost(v.parts).cost,
+function dispatchQuote(c,stack){const e=dispatchEstimate(stack,c);if(!e.ok)return e;const v=newShip(stack),lk=partLaunchWhy(v.parts);if(lk)return{ok:false,why:lk};const cost=vesselCost(v.parts).cost,
   prep=prepDays(cost)*(1+0.5*(1-khVessel(v)))*FAC.hall.eff[facLv('hall')],f=padsFree(),pad=f.indexOf(Math.min(...f)),start=f[pad];
   const busy=(PROG.dispatch||[]).some(x=>x.status==='queued'&&x.cid===c.id);
   const ds=dispatchSite(stack);if(!ds.ok)return{...e,ok:false,why:ds.why};
@@ -708,6 +718,7 @@ function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!
 function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
   {const a=autoAllowed('moon');if(!a.ok)return{ok:false,why:a.why}}   // MIDGAME's automation ladder (D7; the table: space's autoAllowed, Q127)
   if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!isV2(stack)&&(!Array.isArray(stack)||!stack.length))return{ok:false,why:'no design in Assembly'};   // a v2 design counts (Q164: the Probe is one)
+  {const lk=partLaunchWhy(newShip(stack).parts);if(lk)return{ok:false,why:lk}}   // Q190: no late parts on a supply run either
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
   const ds=dispatchSite(stack);if(!ds.ok)return{ok:false,why:ds.why};
