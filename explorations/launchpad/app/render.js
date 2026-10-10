@@ -245,6 +245,7 @@ function render(){
     for(const v of FLEET){if(!v.alive)continue;const p=add(bodyPos(v.body,simT),v.r),q=project(p),d=len(sub(p,me));if(!q)continue;
       octx.fillStyle='#c9e86a';octx.beginPath();octx.arc(q[0],q[1],4*k,0,7);octx.fill();if(d>30)octx.fillText(`${v.name} · ${fmtD(d)}`,q[0],q[1]-10*k)}}
   if(view!=='map'&&document.body.classList.contains('paper'))document.body.classList.remove('paper');
+  {const mv=mode==='flight'&&view==='map';if(mv!==document.body.classList.contains('mapv')){document.body.classList.toggle('mapv',mv);hudLayout()}}   // (flow, slice 4c) the map trims the navball to a heading line
   if(mode==='flight'&&S.alive)drawNavball();
   gpuTimerEnd()}
 function nuToT(el,nu,t0){let dt=tPe(el,nu)-tPe(el,el.nu);if(el.e<1)dt=((dt%el.period)+el.period)%el.period;return t0+dt}
@@ -378,7 +379,7 @@ function drawNavball(){
     nctx.strokeStyle='#5f9dff';nctx.lineWidth=3;nctx.beginPath();nctx.arc(sx,sy,8,0,7);nctx.stroke();nctx.beginPath();nctx.moveTo(sx-13,sy);nctx.lineTo(sx+13,sy);nctx.moveTo(sx,sy-13);nctx.lineTo(sx,sy+13);nctx.stroke()}}}
   nctx.strokeStyle='#ffb000';nctx.lineWidth=3;nctx.beginPath();nctx.moveTo(NS/2-26,NS/2);nctx.lineTo(NS/2-9,NS/2);nctx.lineTo(NS/2,NS/2+8);nctx.lineTo(NS/2+9,NS/2);nctx.lineTo(NS/2+26,NS/2);nctx.stroke();
   const hdg=(Math.atan2(dot(Y,f.e),dot(Y,f.n))*57.2958+360)%360,pit=Math.asin(clamp(dot(Y,f.up),-1,1))*57.2958;
-  $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}`;
+  $('navtxt').textContent=`HDG ${pit>89.5?'—':hdg.toFixed(0).padStart(3,'0')+'°'}  PITCH ${pit.toFixed(0)}°  ${sr.srf?'SURFACE':'ORBIT'}${view==='map'?`  THR ${(S.throttle*100).toFixed(0)}%`:''}`;
   $('thrf').style.height=(S.throttle*100)+'%'}
 
 // ---- HUD text

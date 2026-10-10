@@ -4688,6 +4688,18 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     [home, lost, up].map(x => x.D.crew ? x.D.crew.line : 'none').join(' · ') + ` · dummies: ${dummies.D.crew ? dummies.D.crew.line : 'no line'}`);
 }
 
+// flow-7. Slice 4c, the map trims (flow session, QUEUE Q3; NOTES § UI "Slice 4 plan" 5): in the map the core stays, the
+// navball becomes a heading line (body.mapv hides the ball and the throttle bar; the line carries the throttle), the gauges
+// and every card but Target hide.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const css = /body\.mapv #nav,body\.mapv #thr\{display:none\}/.test(H) && /body\.mapv #navtxt\{position:static/.test(H);
+  const tog = /const mv=mode==='flight'&&view==='map';[^\n]*toggle\('mapv',mv\)/.test(page), thr = /view==='map'\?`  THR /.test(page);
+  const cards = /view!=='map'\|\|c\.id==='target'/.test(page), gauges = /function gaugeSlot\(\)[^\n]*view!=='map'/.test(page);
+  check('flow-7: in the map the navball is a heading line with the throttle, the gauges hide and only the Target card shows',
+    css && tog && thr && cards && gauges, `css ${css} · toggle ${tog} · throttle ${thr} · cards ${cards} · gauges ${gauges}`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.

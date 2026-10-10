@@ -2069,6 +2069,18 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.110 — the map trims the navball to a heading line (2026-10-10, flow session, QUEUE Q3, UI slice 4c; closes Q3)
+
+- **On the map the navball is one line**: `HDG 090°  PITCH -2°  ORBIT  THR 0%` in a small panel beside the SAS buttons,
+  which stay (SAS → node is a map action). The ball and the throttle bar hide; the line carries the throttle instead.
+  `body.mapv` (set in `render()` when the map opens in flight, like `body.paper`) does it in CSS; on the notebook paper the
+  line is a dark pill like the other panels. The core, the Target card and the node panel stay; the gauges and the other
+  cards already hid on the map (4a, 4b).
+- Test `flow-7` (static: the CSS, the toggle, the throttle in the line, cards and gauges off on the map). Robot row `m1`
+  gained a map step after the orbit (`orbit_map` shot, `PT.boxes()`): no box over another at 1280×800 and 1000×700.
+- Seen in the stills, not fixed (Q175's labels): with Helios close in the sky, a planet's label can sit on another
+  planet's disc (Hesper's "0.40 TU" under its own disc beside Enyo's label).
+
 ## v1.107 — the crew in the Debrief (2026-10-09, flow session, QUEUE Q191; closes PLAYTEST #34)
 
 - A crewed flight (people, once the escape tower is qualified; not the test dummies before it) gets a line in the
@@ -8429,7 +8441,7 @@ panel as now.
 (a busy docking flight): **4a** the core, the toolbar trim and the card frame with the helpers mapped (same content,
 new places); **4b** the gauges placed and the Ascent/Descent cards (closes PLAYTEST #9); **4c** the map trims.
 
-**4a built 2026-10-09: § v1.101; 4b: § v1.106.** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
+**4a built 2026-10-09: § v1.101; 4b: § v1.106; 4c: § v1.110 (Q3 done).** **Defaults, for Caio to override** (W15): gauges beside the navball, not in a card · one speed that switches at the
 top of the air · Keys leaves the toolbar (H and the menu still have it) · pins remembered per browser.
 
 ### Slice 5 built (2026-10-09, flow session, QUEUE Q4): Rollout
