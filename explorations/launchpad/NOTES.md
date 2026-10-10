@@ -1964,7 +1964,7 @@ trickle (100 bit/s).
 five-station network ~50 %) come out of `pathHome`; the far-side rover cases of test 40 (alone 0 %, through the 1,000 km
 relay ~35 %, the extra light time) hold; a whip at Nyx's distance falls under the floor; plasma still blacks out.
 
-## v1.NEXT — power gates a satellite's service (2026-10-09, space session, QUEUE Q27)
+## v1.106 — power gates a satellite's service (2026-10-09, space session, QUEUE Q27)
 
 v1.68 put power on vessels and left "what a flat battery does to their service" to the space lane; v1.105 made the
 Probe power-positive, so this no longer ends every Probe satellite.
@@ -1993,7 +1993,7 @@ Probe power-positive, so this no longer ends every Probe satellite.
 Test `space-18` (1 check: three designs, flat in days, sunlight-only, never; no pictures and no link once silent; the
 news and the registration warning). Test 24's TV and disaster-watch satellites (an antenna on a tank, no power) now carry
 a probe core and three panels of cells. `career.mjs` (10 seeds) identical: its robot registers no powered services.
-TESTING row (number at merge).
+TESTING row 186.
 
 ## v1.105 — the Probe makes its own power (2026-10-09, space session as vehicle overflow, QUEUE Q164)
 
