@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.41 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.42 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2005,6 +2005,19 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## VNUM — the crew in the Debrief (2026-10-09, flow session, QUEUE Q191; closes PLAYTEST #34)
+
+- A crewed flight (people, once the escape tower is qualified; not the test dummies before it) gets a line in the
+  Debrief's outcome block: **"Crew of 2 home safe after 2.5 days"** (green; the days only from one day up), **"Crew of 2
+  aboard, all well"** (still flying), or **"The crew of 2 were lost"** / "…were hurt by 9.1 g" / "…overheated (cabin
+  340 K)" / "…ran out of air" (red; the same reason the news gives).
+- The crew block in `missionTick` (`sim/program.js`, additive) now keeps the seats at liftoff (`R.crewN`) and the
+  reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
+- Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
+  shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
+- **Not yet (space):** for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+  time; the station's `crewDays` is per station, not per person.
 
 ## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
 

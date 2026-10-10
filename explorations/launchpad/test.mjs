@@ -4666,6 +4666,24 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     f(1000) === '' && f(320) === 'c' && f(260) === 'ca' && f(100) === 'cad', `fits: "${f(1000)}", 320 px: "${f(320)}", 260: "${f(260)}", 100: "${f(100)}"`);
 }
 
+// flow-6. The crew in the Debrief (flow session, QUEUE Q191; PLAYTEST #34): a crewed flight records its seats at liftoff,
+// and the Debrief says how it ended for the people: home safe after so many days, aboard and well, or how they were lost.
+// Test dummies (before the escape tower is qualified) get no crew line.
+{
+  const P = api.PROG, d0 = P.done; api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const fly = (people, end) => { P.done = { ...d0, maxqabort: people ? 1 : undefined }; if (!people) delete P.done.maxqabort;
+    api.t = 0; const s = api.newShip(['chute', 'crew', 't2', 'petrel']); api.S = s; s.landed = false; api.missionTick(s, 0, false); end(s); return { s, D: api.debriefOf(s, s.rec, []) }; };
+  const home = fly(true, s => { s.landed = true; s.alive = true; api.t = 2.5 * api.DAY_S; s.rec.crewOK = true; });
+  const lost = fly(true, s => { s.alive = false; api.t = 300; api.missionTick(s, 0, false); });
+  const up = fly(true, s => { api.t = 3600; });
+  const dummies = fly(false, s => { s.landed = true; });
+  P.done = d0; api.t = 0;
+  check('flow-6: the Debrief has the crew: home safe after the days flown, aboard and well, or lost and why; dummies get no line',
+    home.s.rec.crewN === 2 && home.D.crew && /^Crew of 2 home safe after 2\.5 days$/.test(home.D.crew.line) && lost.D.crew && !lost.D.crew.ok && /^The crew of 2 were lost$/.test(lost.D.crew.line)
+      && up.D.crew && /aboard, all well/.test(up.D.crew.line) && !dummies.D.crew,
+    [home, lost, up].map(x => x.D.crew ? x.D.crew.line : 'none').join(' · ') + ` · dummies: ${dummies.D.crew ? dummies.D.crew.line : 'no line'}`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.

@@ -196,12 +196,12 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
   // crew (epoch 4): people fly once the escape tower is qualified (the max-q abort); until then the capsule carries dummies,
   // whose g and cabin are measured all the same. Limits are the passenger's: 8 g (1 s average), a 330 K cabin; 10 days of air.
   {const cap=s.parts.find(p=>p.on&&p.d.crew);
-    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290}
+    if(!R.crewInit){R.crewInit=1;R.crewed=!!cap&&!!PROG.done.maxqabort;R.crewOK=true;R.cg=0;R.cgMax=0;R.ccab=290;R.crewN=s.parts.reduce((a,p)=>a+(p.on&&p.d.crew||0),0)}   // crewN: seats, for the Debrief (flow, Q191)
     if(cap){if(phys&&s.alive){R.cg+=(s.gload-R.cg)*Math.min(1,dt/1);R.cgMax=Math.max(R.cgMax,R.cg)}R.ccab+=(cap.T-R.ccab)*Math.min(1,dt/(cap.d.ins||600));
       if(s.alive&&s.landed&&b===TELLUS)R.capHome=true;
       if(s.alive&&b===SELENE&&R.crewed&&R.crewOK){R.crewSel=true;if(s.landed&&(s.touchV||0)<4)R.crewSelLand=true}}
     if(R.crewed&&R.crewOK){const why=!s.alive||!cap?'were lost':R.cgMax>G_LIM?`were hurt by ${R.cgMax.toFixed(1)} g`:R.ccab>CABIN_MAX?`overheated (cabin ${R.ccab.toFixed(0)} K)`:simT>CREW_AIR&&!R.capHome?'ran out of air':'';
-      if(why){R.crewOK=false;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
+      if(why){R.crewOK=false;R.crewWhy=why;failHit(-20,'a crew was lost');HOOK.news(`The crew ${why}. The program stops to mourn and to ask how`,'bad')}}}
   // epoch 3: a working orbit for the job (stable, coasting)
   if(b===TELLUS&&s.alive&&!s.landed&&ant&&!(s.throttle>0)&&(!R.weather&&cam||!R.tv)){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){const inc=Math.acos(clamp(el.h[1]/el.hl,-1,1))*180/Math.PI;
