@@ -4871,3 +4871,31 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad `sim/space.js`, `sim/rovers.js`, `sim/program.js` (netModel, one line), `app/network.js`, `app/render.js`, `test.mjs` (space-19), NOTES § v1.109, TESTING 189, QUEUE (Q173 ✓, two Proposed); `ACTIVE_WORK.md`.
 **Notes:** full suite 619 passed; `career.mjs` (10 seeds) identical to `main` once both were on the same base (a first comparison against a `main` that had moved looked +5 %).
 **Next:** the space lane has no M2 item ready; satellite relays wait for vehicle's dish part. Q174 is M5.
+
+
+## 2026-10-10 — Launchpad vehicle lane, continued: row 147 in the browser, the fin ring, the gyro's retrograde hold (vehicle session, QUEUE Q201, Q216)
+
+### Summary
+- **Row 147 in the browser** (Caio: go): the gentle ascent passes in tester mode, and showed a regression of mine: the
+  nose cone made the Passenger Orbiter **unstable at Rollout** (+0.94 → −0.67 calibers). **A second fin ring** puts it back
+  (+0.91; Caio chose it over keeping the warning). Costs 60.3M; `career.mjs 3 12`: frugal programs reach orbit ~10–30
+  days later. `vehicle-3` now fails a preset under 0 calibers.
+- **New: PLAYTEST #38 / Q216.** Runs whose `PT_URL` had a query string ran outside tester mode (playtest's `?tester` gets
+  mangled) and cooked Biscuit on re-entry: the first hour has the Gyro autopilot only (`stab`). Headless, every variant
+  without a held retrograde cooked the passenger (fixed `stab` direction, capsule alone with or without shield, a lower
+  centre of mass, a 30–60 min cabin lag). **Caio's call: the Gyro autopilot holds retrograde** (`AV[0].modes`). Home at
+  268 K; `vehicle-3` flies home on `s.av = 0` and fails without it; robot row 147 outside tester mode: Biscuit home safe.
+
+### Files
+- `explorations/launchpad/`: `sim/vessel.js` (`AV`, `PRESETS['Passenger Orbiter']`), `test.mjs` (`vehicle-3`), `NOTES.md`
+  (§ v1.73.1 updated, § v1.73.2, the avionics table), `PLAYTEST.md` (#35, #38), `TESTING.md` (147), `QUEUE.md` (Q201, Q216)
+- `ACTIVE_WORK.md`, `SESSION_LOG.md`
+
+### Tests
+- `--smoke --jobs 2` passes after each merge; `vehicle-3`, `vehicle-4`, `qa-3` on the final one. `vehicle-3` checked to
+  fail on the change undone (both the fin ring's margin and the gyro's retro). Robot row 147: tester and non-tester pass.
+  Full suite not run (its slow sections don't fly this preset; nothing else reads `AV[0]`'s modes but the editor buttons).
+
+### Next steps
+- [ ] QA: row 147's steep ascent in tester mode; the `PT_URL`-query bug in `playtest.mjs` (proposed in QUEUE)
+- [ ] vehicle: Q190 (era gates for late parts); Q202 now also covers the Beeper's −0.05 calibers
