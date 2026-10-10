@@ -4772,3 +4772,10 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad `sim/program.js`, `test.mjs` (econ-20, one econ-7 check), NOTES § v1.104, TESTING row 183; QUEUE (Q185 ✓, W rows, two *Proposed* lines: flow's `.cbar.window`, platform's version-collision check).
 **Tests:** smoke suite all pass after each of the three merges. Versions collided twice: renumbered v1.102 → v1.103 → v1.104, TESTING 181 → 182 → 183.
 **Next:** the economy lane has nothing ready. Q167 (flow-led) is the remaining overflow; W25.3 waits on Caio's playtest.
+
+## 2026-10-09 — Launchpad Q195: the crew's look, slice 1 (look & sound, effects beat; Caio's go)
+
+**Summary:** Caio picked the crew look (W19: stylised human) and decided suits vary by school and epoch (D9), "start with the default". Built the astronaut as a mesh from the Q72 mock-up's style (c) (`app/crew-look.js`: `crewFigure`, `SUITS`/`suitOf` falling back to the default suit), and a crew access arm on Cape's tower: two crew stand at the hatch of any crewed design in the Assembly and on the Rollout (one waving; different skin and hair); in flight the arm is swung back. D9's decision recorded in its QUEUE row for the design desk to fold into CREW.md.
+**Files:** launchpad new `app/crew-look.js` (+ `index.html` line), `app/gl.js` (crew arm in `buildRig`, `padRig`'s hatch, `drawPadRig`), `app/render.js` (`drawPadCrew`), `views.js` 120–122, `test.mjs` `aerofx-5`, NOTES § "The crew's look, slice 1" + file map row, TESTING 184 (also QA's picker row 178 → 179, doubled with the Steppe pad's), QUEUE (Q195 ✓, Q194 covered by Q106, a walk-out proposal); `ACTIVE_WORK.md`.
+**Tests:** `aerofx-1…5`, 38, 39, `qa-3`, `platform-1` pass; robot `m1` passes; smoke as before (vehicle-4 known). TESTING row numbers collided four times in an hour (175→177→178, 180→181→182→183→184): Q160 (a duplicate check before push) would have saved most of it.
+**Next:** Q199 (suit mock-ups, Cape and Steppe × three eras) is ready for a look beat; the crew walk-out/boarding and Steppe crew access are proposed.
