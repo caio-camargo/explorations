@@ -71,6 +71,17 @@ function testFunds(m){m=+m;if(!isFinite(m))return false;TEST.money=false;PROG.fu
 function testEra(j){const cap=PROG.day+60*YEAR_D;while(compEra()<j&&PROG.day<cap)testAdvance(1);return compEra()>=j}
 // one mission done or not, flagged test:true like the epoch picker's
 function testMission(id,on){if(!MISSIONS.some(M=>M.id===id))return false;if(on){if(!PROG.done[id])PROG.done[id]={flight:PROG.flights,day:PROG.day,test:true}}else delete PROG.done[id];return true}
+// QUEUE Q161: debris by hand (v1.83's bands). A breakup or an ASAT test at a chosen height puts fragments in the bands
+// (breakup/asatTest, sim/space.js); clutter adds n dead 2 t stages near that height on random planes, the population a
+// cascade needs. Heights below the air are refused (it would take them at once).
+function testBreakup(km,t){const h=+km*1e3,m=+t*1e3;if(!(h>TELLUS.atm)||!(m>0))return 0;const n=breakup(h,m);
+  HOOK.news(`Tester: a ${+t} t breakup at ${+km} km: about ${Math.round(n).toLocaleString('en')} fragments of 1 cm and more`,'warn');return n}
+function testAsat(km){const h=+km*1e3;if(!(h>TELLUS.atm))return 0;const P=POWERS.find((p,i)=>i!==HOME)||POWERS[0];return asatTest(P.name,h)}
+function testClutter(n,km){const h=+km*1e3;n=Math.round(+n);if(!(h>TELLUS.atm)||!(n>0))return 0;const s=newShip(['t8','kestrel']),sh=shapeOf(s.parts.filter(p=>p.on),false),L=[];
+  let x=((PROG.satN||0)*7919+n)%2147483646+1;const rnd=()=>((x=(x*16807)%2147483647)/2147483647),unit=()=>{const z=2*rnd()-1,a=6.2832*rnd(),c=Math.sqrt(1-z*z);return[c*Math.cos(a),z,c*Math.sin(a)]};
+  for(let k=0;k<n;k++){const R=TELLUS.R+h+(rnd()-.5)*50e3,u=unit(),vd=norm(cross(u,unit()));
+    L.push({rec:null,body:TELLUS,r:mul(u,R),v:mul(vd,Math.sqrt(TELLUS.mu/R)),t:0,q:[0,0,0,1],shape:sh,cm:s.cm.slice(),mass:2000,name:'Kestrel stage'})}
+  return junkAdd(L,PROG.day*DAY_S)}
 const TOURISTS=['a retired dentist','a lottery winner','a famous chef','an influencer','a philosophy professor','a very excited grandmother','a pop star','a shipping magnate'];
 const CERT0=0.7,G_LIM=8,CABIN_MAX=330,AIR_S=4*3600,PETS=['Biscuit','Pickles','Comet','Mitzi','Noodle','Major Tom','Pepper','Dumpling'];
 const certOf=k=>TEST.kh?1:Math.min(1,PROG.cert[k]??cert0(k));   // (tester: fully certified)
@@ -198,7 +209,10 @@ function outThere(s,dt,phys){const R=s.rec,b=s.body,on=k=>s.parts.some(p=>p.on&&
       if(Math.abs(el.period/DAY_S-1)<0.002&&el.e<0.01&&inc<2&&capSees(s.r,progT(s)))R.tv=true}}
   // Selene: far-side photos (sunlit ground below, the side away from Tellus), downlinked in line of sight or carried home
   if(b===SELENE&&s.alive&&!s.landed&&cam&&!R.farPhoto){const u=norm(s.r);if(len(s.r)<3*b.R&&dot(u,SUN_DIR)>0.1&&dot(u,toT)<-0.3){R.farPhoto=true;HOOK.msg('Far side photographed'+(ant?': downlink when Tellus is back in sight':''))}}
-  if(R.farPhoto&&!R.farSent&&s.alive&&(ant&&seesTellus(s)||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
+  // the pictures are FAR_BITS of slow-scan (Q172): in sight of Tellus they trickle down at the link's rate (~16 min from
+  // Selene on one whip); carried home, they're developed on the ground
+  if(R.farPhoto&&!R.farSent&&s.alive&&ant&&seesTellus(s)){if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}if(R.lk.ok)R.farGot=(R.farGot||0)+R.lk.rate*dt}
+  if(R.farPhoto&&!R.farSent&&s.alive&&((R.farGot||0)>=FAR_BITS||b===TELLUS&&s.landed&&cam)){R.farSent=true;HOOK.news(`The first pictures of Selene's far side reach home`,'ok')}
   if(!s.alive&&!R.hitDone&&b===SELENE){R.hitDone=true;if(sci&&ant){if(nearSide(b,s.r))R.selImpact=true;else HOOK.news('Our impactor hit the far side of Selene: nobody heard a thing','warn')}}
   if(s.landed&&s.alive&&b===SELENE&&sci){R.selSampled=true;if(!R.selLand&&ant&&(s.touchV||0)<4){if(nearSide(b,s.r))R.selLand=true;else if(!R.farLandNews){R.farLandNews=1;HOOK.news('Down on the far side of Selene, with no way to phone home','warn')}}}
   // Nyx: found by tracking; weighed on discovery (that logbook fact unlocks its orbit on the map and its encounter forecasts)
@@ -246,6 +260,10 @@ function missionTick(s,dt,phys){const R=s.rec;if(!R||R.ended)return;if(R.launche
   if(phys&&sci){R.sciQ=Math.max(R.sciQ,s.qdyn);   // telemetry: the hardest each part aboard has been loaded
     if(!(R.lkT>=simT-1)){R.lkT=simT;R.lk=linkOf(s)}const SF=R.lk.ok?R.sf:(R.sfRec=R.sfRec||{});   // linked: straight down; otherwise to the recorder (terrain session)
     for(const p of s.order)if(p.on&&p.sk1){for(const[k,f]of[[p.sk1,p.sf1],[p.sk2,p.sf2]])if(f>(SF[k]||0))SF[k]=f}}
+  // the recorder plays back once the link is back (Q172): TLM_BITS a reading at the link's rate, so a blackout's readings
+  // come down after it; a package that comes home still brings all of them (missionEnd)
+  if(s.alive&&R.sfRec&&!s.landed&&(R.lkT>=simT-1||(R.lkT=simT,R.lk=linkOf(s)))&&R.lk.ok){R.recB=(R.recB||0)+R.lk.rate*dt;
+    for(const k in R.sfRec){if(R.recB<TLM_BITS)break;R.recB-=TLM_BITS;R.sf[k]=Math.max(R.sf[k]||0,R.sfRec[k]);delete R.sfRec[k]}if(!Object.keys(R.sfRec).length)R.recB=0}
   if(s.alive&&!s.landed&&b===TELLUS){const el=elements(s.r,s.v,b.mu);
     if(el.e<1&&el.pe>b.R+b.atm){if(!R.logOrbit){R.logOrbit=1;logNote(s,'orbit',R.dv)}if(!R.logPeriod&&coast){R.logPeriod=1;logNote(s,'period',{p:el.period,alt:(el.pe+el.ap)/2-b.R})}R.orbit=true;if(sci)R.orbitSci=true;R.orb={pe:el.pe-b.R,ap:el.ap-b.R,inc:Math.acos(clamp(el.h[1]/el.hl,-1,1))*57.29578,sci:!!sci};R.lift=Math.max(R.lift,s.parts.reduce((m,p)=>m+(p.on&&p.d.kind==='ballast'?p.d.m:0),0));
       if(bio&&R.bioOK)R.bioOrbits+=dt/el.period}}

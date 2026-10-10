@@ -2605,7 +2605,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
-  const rigSrc = cut('function buildRig(TH,rig){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
+  const rigSrc = cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized'), padRigSrc = cut('function padRig(TH){', '\nfunction padSync');
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5,BOXES=[];
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=()=>{},makeMesh=a=>({a,free(){}});
     ${rigSrc}\n${padRigSrc}
@@ -2882,7 +2882,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
   const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;
     const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=()=>{},tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),makeMesh=a=>({a,free(){}});
-    ${cut('function buildRig(TH,rig){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
     return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
   const turn = (s, ang, drop) => { const c = Math.cos(ang), n = Math.sin(ang);
     if (drop != null) s.parts = s.parts.filter(p => Math.hypot(p.pos[0], p.pos[2]) < 0.05 || Math.abs(Math.atan2(p.pos[2], p.pos[0]) - drop) > 0.1);
@@ -4704,6 +4704,79 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     `outcome ${out ? out.k + ' "' + out.t + ': ' + out.d + '"' : '—'}; restored ${!!back}`);
 }
 
+// aerofx-4. The Steppe pad (look & sound effects beat, QUEUE Q159, Q102 step 7). A site's pad is in its owner's school
+// (SCHOOL_FORCE overrides); Steppe's rig (support arms, cable masts, service halves, the erector) comes from the page's
+// own buildRig/padRig with stubs, for every preset: the arms clamp the rocket without passing through it, the closed
+// service halves, the masts' arms and the erector's cradle arms stop short of it, the table ring clears its base
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (a, b) => { const i = page.indexOf(a); return i < 0 ? '' : page.slice(i, page.indexOf(b, i + a.length)); };
+  const D = new Function(src + `let mode='flight';const LIFT=3,PAD_GX=10.5;${cut('const PIT_W=', '\n')}
+    const box=(o,c,hx,hy,hz)=>o.push({c:c.slice(),h:[hx,hy,hz]}),lattice=(o,x,z,w,Hh)=>o.push({c:[x,Hh/2,z],h:[w/2,Hh/2,w/2]}),tube=(o,A,B,r)=>o.push({A:A.slice(),B:B.slice(),r}),
+      lathe=(o,prof)=>o.push({prof}),makeMesh=a=>({a,free(){}});
+    ${cut('function buildRig(TH,rig,sch=0){', '\n// The tower is sized')}\n${cut('function padRig(TH){', '\nfunction padSync')}
+    return {buildRig,padRig,newShip,PRESETS,set S(v){S=v}};`)();
+  const bad = [], seen = [];
+  for (const [k, st] of Object.entries(D.PRESETS)) {
+    const s = D.newShip(st); D.S = s; const TH = Math.min(60, Math.max(12.5, Math.ceil((s.len + 3) / 2.5) * 2.5)), rig = D.padRig(TH), R = D.buildRig(TH, rig, 1);
+    const inside = (q, r) => s.parts.find(p => { const y0 = p.y0 + rig.base; return p.d.kind !== 'rdec' && q[1] >= y0 && q[1] <= y0 + p.h && Math.hypot(q[0] - p.pos[0], q[2] - p.pos[2]) < p.d.r + r - 1e-6; });   // (a radial decoupler is a bracket, not a cylinder)
+    const sweep = (T, P, u1, what) => { for (let i = 0; i <= 40; i++) { const u = u1 * i / 40, q = T.A.map((v, j) => P[j] + v + (T.B[j] - v) * u), p = inside(q, T.r); if (p) { bad.push(`${k}: ${what} through ${p.d.key}`); return true; } } };
+    if (R.sch !== 1) { bad.push(`${k}: not Steppe's rig`); continue; }
+    let clampOff = 0;
+    for (const Hd of R.holds) { for (const T of Hd.mesh.a.filter(x => x.A).slice(0, 2)) if (sweep(T, Hd.P, 0.9, 'support arm')) break;
+      const E = Hd.mesh.a[0].B, at = [Hd.P[0] + E[0], Hd.P[1] + E[1], Hd.P[2] + E[2]];   // the arm's top: at the rocket's skin
+      const gap = Math.min(...s.parts.filter(p => { const y0 = p.y0 + rig.base; return at[1] >= y0 && at[1] <= y0 + p.h; }).map(p => Math.hypot(at[0] - p.pos[0], at[2] - p.pos[2]) - p.d.r), 9);
+      clampOff = Math.max(clampOff, Math.abs(gap)); if (gap > 0.6) bad.push(`${k}: a support arm ends ${gap.toFixed(2)} m short`); }
+    for (const M of R.arms) sweep(M.mesh.a.find(x => x.A), M.P, 1, 'cable mast arm');
+    for (const T of R.boom.a.filter(x => x.A && x.A[2] === 0 && x.B[2] > 0)) sweep(T, R.bP, 1, 'erector cradle');
+    // the closed halves (east as built, west turned 180°): every deck tube and column outside the rocket's reach
+    for (const T of R.gantry.a) { const xs = T.A ? [T.A[0], T.B[0]] : [T.c[0] - T.h[0], T.c[0] + T.h[0]];
+      if (Math.min(...xs.map(x => R.xh + x)) < rig.ext + 0.3) { bad.push(`${k}: service half within ${rig.ext.toFixed(2)} m`); break; } }
+    const ring = R.posts.a.find(x => x.prof); if (!ring || ring.prof[0][0] < rig.ext + 0.3) bad.push(`${k}: table ring inside the rocket`);
+    seen.push(`${k} ${clampOff.toFixed(2)}`);
+  }
+  check('Steppe pad: support arms clamp every preset without passing through it; masts, erector and the closed service halves stop short; the ring clears its base',
+    !bad.length, bad.slice(0, 4).join(' | ') || `clamp gaps (m): ${seen.join(', ')}`);
+  // the school per site, the per-site draw, the Cape pad untouched, the views
+  const P = new Function('SCHOOL_FORCE', 'schoolOf', 'HOME', cut('const padSchoolOf=', '\n') + ';return padSchoolOf');
+  const sch = i => i === 3 ? 1 : 0, vj = readFileSync(new URL('./views.js', import.meta.url), 'utf8');
+  check('Steppe pad: a site is built in its owner\'s school (sea: home\'s), the tester\'s force wins; every site draws its own; views 116–119',
+    P(null, sch, 0)({ power: 3 }) === 1 && P(null, sch, 0)({ power: 0 }) === 0 && P(null, sch, 3)({ power: null }) === 1 && P(0, sch, 0)({ power: 3 }) === 0 && P(1, sch, 0)({ power: 0 }) === 1
+      && /drawMesh\(padFor\(t\),M,site\)/.test(H) && /function buildPad\(TH,sch=0\)\{[^\n]*\n  if\(sch===1\)steppeTable\(a,CO,STL,DK\);else\{/.test(page)
+      && /if\(key===padKey\)return;if\(H!==padTH\|\|sch!==padSch\)/.test(page) && /if\(RIG\.sch===1\)return drawSteppeRig/.test(page) && /SCHOOL_FORCE = 1;/.test(vj) && /n >= 116 && n <= 119/.test(vj));
+}
+
+// space-15. Data as a volume (space session, QUEUE Q172, Q51 slice 2): a camera fills its recorder, contact drains it at
+// the link's rate and imagery sells per bit received; the far side's slow-scan pictures trickle home; a recorder plays a
+// blackout's readings back once the link returns.
+{
+  const D = new Function(src + 'return {PROG,HOOK,TELLUS,SELENE,DAY_S,advanceDays,CAM_BPS,REC_CAP,FAR_BITS,TLM_BITS,newShip,PRESETS,missionTick,physStep,advRails,linkOf,fromPF,curSite,bodyRel,SUN_DIR,DT,get t(){return simT},set t(v){simT=v},set ORB_T0(v){ORB_T0=v}};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; D.HOOK.save = () => {}; D.HOOK.logged = () => {};
+  const P = D.PROG, T = D.TELLUS; D.ORB_T0 = 0;
+  const fresh = () => Object.assign(P, { done: { beeper: {} }, cert: {}, atm: {}, streak: 0, flights: 0, funds: 500, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, day: 0, sats: [], satN: 0, wseed: 4242, rel: {}, op: {}, stations: [] });
+  const sat = altKm => { fresh(); const r0 = T.R + altKm * 1e3, v = Math.sqrt(T.mu / r0); P.sats.push({ id: 1, name: 'L', epoch: 0, r: [r0, 0, 0], v: [0, v, 0], imgs: 0, pending: [], cam: 1, ant: 1, sci: 0, ballast: 0, bio: 0 });
+    for (let k = 0; k < 10; k++) D.advanceDays(2); const q = P.sats[0]; return { q, share: q.got / (D.CAM_BPS * D.DAY_S * 20), contact: q.contact, rate: q.rate }; };
+  const lo = sat(300), hi = sat(2000);
+  // the far side: a Probe-like craft past Selene's sunlit far side with its picture taken, then in sight of Tellus
+  const toT = t => norm(mul(D.bodyRel(D.SELENE, t)[0], -1)); let tF = 0; while (dot(toT(tF), D.SUN_DIR) > -0.6) tF += 3600;
+  fresh(); D.t = tF; const rF = 3 * D.SELENE.R, uN = toT(tF), wN = norm(cross(uN, [0, 1, 0])), f = D.newShip(['ant', 'cam', 't2', 'petrel']);
+  Object.assign(f, { alive: true, landed: false, body: D.SELENE, r: mul(uN, rF), v: mul(wN, Math.sqrt(D.SELENE.mu / rF)), throttle: 0 }); Object.assign(f.rec, { launched: true, dv: 5000, farPhoto: true });
+  let at5 = null; while (D.t < tF + 4 * 3600 && !f.rec.farSent) { D.advRails(f, 60, 1); if (at5 === null && D.t >= tF + 300) at5 = !!f.rec.farSent; }
+  const farMin = (D.t - tF) / 60;
+  // the recorder: strain logged out of contact (the far side of the planet), then the craft passes over the pad
+  D.t = 0; const home = D.curSite(), x = D.newShip(['sci', 'pod']); x.landed = false; x.rec.launched = true;
+  x.r = D.fromPF(T, mul(mul(home.u, -1), T.R + 50e3), 0); x.v = [0, 0, 0]; D.physStep(x, D.DT); for (const p of x.order) if (p.on && p.sk1) { p.sf1 = 0.3; p.sf2 = 0.3; } x.rec.lkT = undefined; D.missionTick(x, D.DT, true);
+  const nRec = Object.keys(x.rec.sfRec || {}).length; for (const p of x.order) if (p.on && p.sk1) { p.sf1 = 0; p.sf2 = 0; }
+  x.r = D.fromPF(T, mul(home.u, T.R + 300e3), 0); x.rec.lkT = undefined; for (let i = 0; i * D.DT < 1; i++) D.missionTick(x, D.DT, true);   // a second of playback
+  const back = Object.keys(x.rec.sf).length, left = Object.keys(x.rec.sfRec).length;
+  check('data as a volume: a 300 km camera downlinks about its contact share of a day\'s take (sales as before); at 2,000 km it\'s seen longer but drains far less; the recorder never overfills',
+    lo.share > 0.7 * lo.contact && lo.share < 1.05 * lo.contact && hi.contact > 2 * lo.contact && hi.share < 0.5 * lo.share && lo.q.rec <= D.REC_CAP && hi.q.rec <= D.REC_CAP,
+    `300 km: contact ${(lo.contact * 100).toFixed(1)}% at ${(lo.rate / 1e3).toFixed(0)} kbit/s → ${(lo.share * 100).toFixed(1)}% of the take home; 2,000 km: ${(hi.contact * 100).toFixed(1)}% at ${(hi.rate / 1e3).toFixed(1)} kbit/s → ${(hi.share * 100).toFixed(1)}%`);
+  check('data as a volume: the far side\'s pictures trickle home from Selene (not in the first 5 minutes, done within an hour); a blackout\'s readings play back once the link returns',
+    f.rec.farSent && at5 === false && farMin < 60 && f.rec.farGot >= D.FAR_BITS && nRec > 0 && back === nRec && left === 0,
+    `far side home after ${farMin.toFixed(0)} min (${(D.FAR_BITS / 1e3).toFixed(0)} kbit); recorder: ${nRec} readings held out of contact, ${back} played back over the pad`);
+}
+
 // econ-19. Rendezvous and retrieval (economy session, QUEUE Q180; Q9's plan slice 4): a rendezvous is a near pass during
 // the flight (within 100 m, under 1 m/s, sampled each tick); a retrieval lands a dead satellite at home stowed in a
 // closed bay, and its hardware comes back refurbished. Retrieval waits for the first docking (stationcrew).
@@ -4743,6 +4816,32 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const next = +((T.match(/Next free number: \*\*(\d+)\*\*/) || [])[1] || 0);
   check('TESTING.md: every row number is used once, and "Next free number" is above them all', nums.length > 100 && !dup.length && next > Math.max(...nums),
     `${nums.length} rows, highest ${Math.max(...nums)}, next free ${next}; doubled: ${dup.join(', ') || 'none'} (renumber the newer row, fix its references)`);
+}
+
+// qa-4. Debris by hand (QA session, QUEUE Q161): the tester's breakup, ASAT test and clutter put fragments and dead stages
+// where they say; below the air nothing happens. Own SIM copy.
+{
+  const D = new Function(src + 'return {TEST,testBreakup,testAsat,testClutter,fragBands,fragsOf,BAND_W,PROG,TELLUS,POWERS,HOOK,elements,satsUp};')();
+  const news = []; D.HOOK.news = m => news.push(m); D.HOOK.msg = () => {}; D.HOOK.save = () => {};
+  const P = D.PROG; Object.assign(P, { day: 0, frag: null }); delete P.sats; delete P.satN; D.TEST.on = true;   // a fresh program has neither
+  const tot = () => D.fragBands().reduce((a, b) => a + b, 0), b400 = Math.floor((400e3 - D.TELLUS.atm) / D.BAND_W);
+  const n1 = D.testBreakup(400, 1), t1 = tot(), peak = D.fragBands().indexOf(Math.max(...D.fragBands())), none = D.testBreakup(60, 1) + D.testAsat(50) + D.testClutter(10, 80);
+  const n2 = D.testAsat(800), t2 = tot();
+  check('tester debris: a 1 t breakup at 400 km adds NASA\'s 46,774 fragments, thickest in the 400 km band; an ASAT test names a foreign power; below the air nothing',
+    Math.abs(n1 - D.fragsOf(1000)) < 1 && Math.abs(t1 - n1) < n1 * 0.02 && Math.abs(peak - b400) <= 1 && none === 0 && t2 > t1 && news.some(m => /tests an anti-satellite weapon at 800 km/.test(m)) && !news.some(m => /Tester: a 1 t breakup at 60/.test(m)),
+    `${Math.round(n1)} fragments (in the bands ${Math.round(t1)}), peak band ${peak} (400 km is ${b400}); ASAT ${Math.round(n2)}; news: ${news.find(m => /anti-satellite/.test(m)) || 'none'}`);
+  const k = D.testClutter(50, 800), J = P.sats.filter(q => q.junk), hs = J.map(q => { const el = D.elements(q.r, q.v, D.TELLUS.mu); return (el.a - D.TELLUS.R) / 1e3; });
+  check('tester debris: clutter adds dead 2 t stages near the height, on many planes', k === 50 && J.length === 50 && J.every(q => q.mass === 2000) && Math.min(...hs) > 770 && Math.max(...hs) < 830 && new Set(J.map(q => Math.round(Math.acos(q.r[1] / Math.hypot(...q.r)) * 10))).size > 20,
+    `${k} added, heights ${Math.min(...hs).toFixed(0)}–${Math.max(...hs).toFixed(0)} km`);
+  D.TEST.on = false;
+}
+
+// qa-5. The tester's school picker (QA session, QUEUE Q106): Auto plus every school in SCHOOLS; the ones without a look
+// yet are disabled, and a pick sets SCHOOL_FORCE and redraws the ship.
+{
+  const H = html.replace(/\r\n/g, '\n'), pg = H.slice(H.indexOf('// ==== SIM END'));
+  check('tester: the school picker lists Auto and every school, and a pick sets SCHOOL_FORCE and rebuilds the ship',
+    /data-test-school="\$\{k\}"/.test(pg) && /\['auto',\.\.\.Object\.keys\(SCHOOLS\)\]/.test(pg) && /if\(d\.testSchool\)\{SCHOOL_FORCE=[^}]*HOOK\.rebuild\(\)/.test(pg));
 }
 
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)

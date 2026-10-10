@@ -1084,7 +1084,32 @@ visible change), then Steppe.
   luminance as before, tinted); the roundel's stripes are the hue, its canton the hue + 200°; Steppe's disc is the hue,
   the star stays gold. Seen at hue 20 (the default world's home: warm red stripes) and 220 (blue). **Cape is no longer
   byte-identical** from here on: that's the livery POWERS.md asks for.
-- Next: 6 (signature designs for rivals) and 7 (the Steppe pad).
+- Next: 6 (signature designs for rivals); 7 built below.
+
+### Step 7 built: the Steppe pad (2026-10-09, effects beat, QUEUE Q159)
+Built on W21's default (Caio said go). **A site's pad is in its owner's school** (`padSchoolOf(t)`: the site's power, a sea
+platform home's; `SCHOOL_FORCE` wins), so every site draws its own (`padFor(t)` in `render()`'s site loop) and the current
+one is sized to the rocket as before (`padSync`'s key now carries the school). **Nothing changes in the default world**:
+home is Cape there, and Cape's `buildPad`/`buildRig` code paths are untouched (tests 38 and 39 still sweep them).
+- **Static (`steppeTable`):** no tower. A flame pit 13 m wide (`PIT_W` 6.5) under the rocket, opening south down a
+  sooted slope: the ground can't be dug, so its mouth is a near-black floor inside parapet walls with guard rails, as
+  Cape's flame channel. The erector's rail line (ballast, rails, sleepers) runs north to a horizontal assembly hall
+  (26 × 60 m, its door facing the pad). The propellant farm, gas racks, deluge, masts, bunkers and blockhouse are shared.
+- **Rig (`steppeRig`, drawn by `drawSteppeRig`):** a table ring round the rocket on two girders over the pit; four
+  support arms ("the tulip") pivoting on it at Cape's hold-down angles (so they miss the boosters), leaning in to clamp
+  the rocket 30 % up (2.5–18 m), falling back outward 66° in 1.4 s from 0.1 s after lift-off; two cable masts north of
+  the ring with an arm to the rocket's side, falling back north at lift-off; two service halves (one mesh, drawn east
+  and turned 180° west), lattice columns on the pit's edge with open grating decks every 5 m reaching to the rocket,
+  closed when a flight starts on the pad and folding down to the ground over 14 s from 2 s in (Cape's gantry takes 14 s
+  to roll away), down in the editor; the transporter-erector, its car on the rails and its boom with cradle arms, **up
+  in the editor and on the Rollout screen** (the rocket has just been stood up) and down on its car in flight.
+- Solid decks were tried first: folded down they stood up as grey walls. Radial decouplers are left out of the rig's
+  reach sums (`padRig`'s `pb`): they are brackets, and as stack-radius cylinders they bent the Heavy's arms.
+- Views 116 (complex, editor), 117 (a flight's start), 118 (1 s after lift-off), 119 (the table from above).
+  test.mjs `aerofx-4`: for every preset the arms clamp within 0.16 m of the skin without passing through anything, the
+  masts' arms, the cradle arms and the closed halves stop short, the ring clears the base; the school per site.
+- **Not built:** the rocket lying on the erector during the rollout itself (a horizontal rocket needs the Rollout screen
+  to draw the stack on its side: flow's screen, proposed); a tester switch for `SCHOOL_FORCE` (console only, as Q102).
 
 ## Wind-scoured ranges (2026-10-09, effects beat, QUEUE Q52 shader part)
 
@@ -1973,6 +1998,35 @@ one is open):
   Stills (local): `output/launchpad/q3-slice4a/`.
 - **Next, 4b:** the gauges placed as the instrument panel beside the navball and hidden in space (today aerofx's strip
   also shows in orbit), with the Ascent card trimmed to what they don't draw. Closes PLAYTEST #9. **4c:** the map trims.
+## v1.100 — data as a volume: recorders, downlinks, pay on data received (2026-10-09, space session, QUEUE Q172, Q51 slice 2)
+
+Instruments make bits, a recorder holds them, a link drains them at its rate (v1.96's budget), and data counts once it's
+home. Constants next to the link budget in `sim/space.js`: `CAM_BPS` 100 kbit/s (a survey camera's take: about one
+1960s TV frame, `IMG_FRAME` 1.5 Mbit, every 15 s), `REC_CAP` 360 Mbit (an hour of it on tape), `FAR_BITS` 20 kbit (the
+far side as slow-scan), `TLM_BITS` 1 kbit (a telemetry reading). A registry entry's radio is now its antenna count
+(`satRadio`: 5 W a whip), no longer read off its render shape.
+- **Imagery sales** (`satTick`): every 2-minute sample the camera fills `q.rec`; in contact the pass drains it at the
+  link's rate; the sale is `IMG_RATE` per day's take received (`q.got`, all time). `q.contact` is still measured (the
+  logbook, `contracts.js`'s upgrade offer and the Fleet line read it).
+- **Measured** (pad only, 20 days, polar): 300 km, contact 5.8 % at 79 kbit/s → **4.9 %** of the take home (sales as
+  before, within ~15 %); 2,000 km, contact 21 % at 5.4 kbit/s → **1.0 %** (before v1.98 it earned 21 %). Earlier
+  measurement with five stations: 300 km 31 % contact at ~100 kbit/s, 800 km 75 % at 22 kbit/s, 2,000 km 98 % at 5 kbit/s.
+  **The balance change:** with a whip, higher is slower by 1/d², so imaging pays low; a high orbit needs a dish (vehicle,
+  a gain class) to earn. Retune with `CAM_BPS` (where the take saturates) or `IMG_RATE`.
+- **Contract pictures:** a picture is a frame; a pass downlinks as many as its rate allows in each 30 s step, oldest
+  first (`q.pendB` carries a part-sent frame); undelivered ones wait for the next pass (before: all at once on any pass).
+  At 300 km that's ~1.5 frames a step, so nothing changes in play; slow links now queue.
+- **The far side** (`outThere`): in sight of Tellus the pictures trickle down at the link's rate (`R.farGot`): **16 min**
+  from Selene on one whip at 20 bit/s; carried home they still count. Before: on the first moment in sight.
+- **The flight's recorder:** readings logged out of contact (v1.x, terrain session) now **play back once the link
+  returns** at `TLM_BITS` each (`R.recB`), in flight or on rails; landing with the package still brings them all.
+  So a blackout's strain readings certify after the blackout, not only on a recovered package.
+- **Flow:** the Fleet line (`app/program-ui.js`, one template) adds the rate and the recorder fill after "in contact".
+- **Not in this slice:** rovers' science volumes (they already wait for contact: `rvSciSent`); imagery and contract frames
+  draw on separate budgets (a pass downlinks both in full); the transmitter's power draw (Q27, after Q164).
+
+`career.mjs` unchanged, bit for bit (its robot flies no camera satellites). Test `space-15` (2 checks; mutations they catch, reasoned not run: drain without the rate (2,000 km earns its contact share), the far
+side sent on sight, no playback). Tests 23, the stations section and telemetry unchanged. TESTING row 176.
 
 ## v1.99 — the planets on the map (2026-10-09, flow session, QUEUE Q175 = Q87 slice 1's drawing; closes PLAYTEST #11)
 
@@ -9632,3 +9686,17 @@ dropped, shield first, chute: home at 8.5 m/s with the crew safe. Found: the Deb
 **Driver fix:** a robot that swaps `S` for a ship it built must call `HOOK.rebuild()`, or the scene keeps drawing the ship
 it launched first. `PT.park` does now. The numbers from Q30's docking and station rows stand, but their shots of 56, 59, 60,
 60c, 64, 66 and 116 drew the Orbiter; 59, 64, 66 and 116 were re-shot (`C:/Users/caioa/dev/playtest-out/reshoot`).
+
+**Tester debris (QA session, 2026-10-09; QUEUE Q161).** Tester menu → **Debris**: a height and a mass, *Breakup*
+(`testBreakup`, v1.83's `breakup` plus a news line), *ASAT test* (`asatTest` named for the first foreign power), *+100 dead
+stages there* (`testClutter`: 2 t Kestrel stages within 25 km of the height on seeded random planes, through `junkAdd` like
+a flight's spent stages), and the **debris setting** off / light / real (`PROG.pressures.debris`, which had no UI). Heights
+below the air are refused. Measured in the page: on *light* (the default), 1,500 stages and a 1 t breakup at 825 km give
+R0 11 but the next breakup is ~300 years off, so no news; on *real*, R0 110, due in ~30 years, and "The 800–850 km band now
+feeds itself" arrives in the first days. test.mjs `qa-4`; TESTING 177. Found on the way: a fresh program has no `PROG.satN`,
+so the first seed came out NaN and every stage was dropped; the test now starts without it.
+
+**Tester school picker (QA session, 2026-10-09; QUEUE Q106).** Tester menu → **Hardware school**: Auto and every school
+in `SCHOOLS`; a pick sets `SCHOOL_FORCE` (app/gl.js) and redraws the ship. Only Cape and Steppe have a look so far, so the
+other four are greyed with "draws as Cape" until Q102's steps 6–7; then they need no change here. `refView(114)`/`(115)`
+already show Cape and Steppe on the Orbiter for shot.mjs. test.mjs `qa-5`; TESTING 178.

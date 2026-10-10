@@ -4691,3 +4691,10 @@ Caio left the session running ("keep going while you still have work"). Built, e
 **Files:** launchpad `sim/contracts.js`, `sim/program.js` (one line in `missionTick`), `test.mjs` econ-19 (3 checks; kept QA's qa-3 in the merge), NOTES § v1.98, TESTING row 174 (renumbered from 173, which QA had taken); QUEUE (Q180 ✓, a vehicle *Proposed* line).
 **Tests:** econ-19 + smoke suite all pass, after both merges with main.
 **Next:** the economy lane has nothing else ready; overflow candidates Q186 (S), Q185, Q172, Q167. W23–W28 still waiting on Caio, with defaults.
+
+## 2026-10-09 — Launchpad Q159: the Steppe pad (look & sound, effects beat; Caio said go on W21's default)
+
+**Summary:** Q102 step 7. A site's pad is now built in its owner's hardware school, and Steppe's is new: no tower, a flame pit under the rocket, the rocket hanging in four support arms that fall back at lift-off, two cable masts, two service halves that fold down to the ground over the first 14 s of a flight, the transporter-erector (boom up in the Assembly and Rollout, down in flight) on a rail line to a horizontal assembly hall. The default world is Cape, so nothing changes there; `SCHOOL_FORCE = 1` or views 116–119 show it.
+**Files:** launchpad `app/gl.js` (`steppeTable`, `steppeRig`, `drawSteppeRig`, `padSchoolOf`, `padFor`, `padRig`'s Steppe numbers, `padSync` key), `app/render.js` (one call: `padFor(t)`), `views.js` 116–119, `test.mjs` `aerofx-4` (2 checks) and the two Cape rig tests' slice strings, NOTES § "Step 7 built", TESTING 178, QUEUE (Q159 ✓, Q193–Q194 proposed, a smoke flag); `ACTIVE_WORK.md`.
+**Tests:** `aerofx-1…4`, 38, 39, `qa-3` pass; robot `m1` passes; smoke passes except vehicle-4's "launch warnings", which fails on `main` too inside the smoke shard (passes alone): flagged in QUEUE for vehicle. Pushed `d98b541`.
+**Next:** Q193 (the rollout lying down: flow says yes/no first), Q194 (a tester switch for the school, QA). Q158 (rivals' signature designs) stays blocked until something draws rivals' rockets. The rest of look & sound waits on Caio's mock-up picks (W19, W20).
