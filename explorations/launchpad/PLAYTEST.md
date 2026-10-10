@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.24 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.25 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -35,6 +35,9 @@ Coding sessions pick items from here and strike them through with the version th
 | 40 | P3 | **Pictures for the parts, palette opened by category** (Caio, 2026-10-10): images make the list much longer, so open it one category at a time. | Thumbnails from `partShape`/`partsMesh` rendered offscreen or baked; categories already exist (Q32's *Crew escape*). Plan first: QUEUE Q238 | vehicle (+ look & sound) |
 | 41 | P2 | **The Assembly's info on the right is convoluted** (Caio, 2026-10-10): needs to be better organized. | `#stats` (index.html ~145) and the builder readouts; group by question (cost, Δv, warnings, flight qualities). Sketch first: QUEUE Q237 | vehicle (+ flow) |
 | 42 | P2 | **No way to clear the design and start from scratch** (Caio, 2026-10-10). | A Clear button in the Assembly, undoable with Ctrl+Z. QUEUE Q235 | vehicle |
+| 43 | P2 | **Hold a part or group in the air while building** (Caio, 2026-10-10), e.g. to insert a part between two others. Maybe like KSP: one part (the first) is the anchor for everything. | The design is one tree from `root`; a held part snaps or goes nowhere (`findSlot`, `builder.js` ~85). Parked groups beside the root. QUEUE Q246 | vehicle |
+| 44 | P2 | **Removing parts underneath moves the whole rocket down** (Caio, 2026-10-10); it should stay pinned where it was. | `layoutDesign` stands the stack on the ground; anchor on the root instead, the rollout puts it on the pad. QUEUE Q247 | vehicle |
+| 45 | P3 | **Idea: the builder as a model on a desk, not a real rocket** (Caio, 2026-10-10); the player clicks *Build and launch*. Since the build leaves the launchpad for its own screen, placement matters less. | Design, pillar: the era's tone (a 1960s design office, the scale model on the drafting table). **Caio, 2026-10-10: yes, the desk; W35 closed.** The desk scene is QUEUE Q242 (look & sound, parts & pad), the room and *Build and launch* Q241 R5 (flow), the panels Q237/Q238 (vehicle) | look & sound + flow |
 
 ## Done
 

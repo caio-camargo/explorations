@@ -8776,6 +8776,12 @@ for any craft other than the one you're flying.
 5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
    or M2 (R4).
 
+**Caio, 2026-10-10 (playtest, PLAYTEST #45): W35 closed; (4) overridden, the Assembly is a model on a desk, not a hall.**
+The design is a scale model on a drafting table, not the real rocket; the player clicks *Build and launch*, and the
+rollout shows the real one on the pad. Consequences: no hall scene (Q242 becomes the desk scene, look & sound parts &
+pad); R5 is the desk room around the model (flow), with the builder's panels as paperwork on the desk (vehicle's
+Q237/Q238); the model can sit anywhere in its frame (PLAYTEST #44 pinning is easier); defaults 1, 2, 3, 5 stand.
+
 ## Picking this up cold
 
 - **Direction:** native desktop eventually, the browser for now (§ "Platform direction"). Keep the SIM pure: it is what ports.
