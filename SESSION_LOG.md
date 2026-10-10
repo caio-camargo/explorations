@@ -4899,3 +4899,19 @@ Caio left the session running ("keep going while you still have work"). Built, e
 ### Next steps
 - [ ] QA: row 147's steep ascent in tester mode; the `PT_URL`-query bug in `playtest.mjs` (proposed in QUEUE)
 - [ ] vehicle: Q190 (era gates for late parts); Q202 now also covers the Beeper's −0.05 calibers
+
+
+## 2026-10-10 — Launchpad Q220: head mock-ups (look & sound, heads)
+
+**Summary:** D11's three heads on the stylised-human crew, each in a helmet: (a) ligne claire, (b) puppet, (c) toy peg.
+`mockups/heads/` is a fork of the crew raymarcher that draws a sheet of tiles: a close-up on the pad, the whole figure,
+true-size 48 px thumbnails (with a ×2 pixel enlargement), five flight portraits (neutral, grin, grit under g, alarm,
+wonder) and a roster of the same six people under each head (hair style and colour, nose, brows, skin, a moustache).
+Faces are painted in head space (as a texture would be); the puppet has turning glass eyes with lids. Caio's pick is **W31**.
+**Files:** launchpad `mockups/heads/index.html` (new), `mockups/README.md` § heads (inserted before § suits, which Q219 holds), QUEUE (Q220 ✓ mock-ups, W31); `INDEX.md`, `ACTIVE_WORK.md`. Stills (not in git): `output/launchpad/mockups/heads/sheet-{a,b,c,compare}.png`.
+**Notes:** at 48 px (a) reads best, (c) nearly as well, (b) loses its eyes and becomes a beige block. The puppet built from
+primitives looks like a mask: it would need a sculpted mesh. The peg's clip-on hair is its most LEGO-like part. Under
+a suit with a cap (Snoopy cap, Sokol hood) the hair, the roster's main tell, is hidden: worth knowing for the suits (Q219).
+The suits session was not touched (`mockups/suits/` unchanged).
+**Next:** after W31, CREW.md part 1 records the head (design desk), then a head build into `app/crew-look.js` with the
+five expressions as face textures.
