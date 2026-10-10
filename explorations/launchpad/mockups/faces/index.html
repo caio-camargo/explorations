@@ -61,8 +61,8 @@
 <body>
 <header>
   <h1>Face lab</h1>
-  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button></nav>
-  <span class="note">F0–F1 (FACES.md): round 5's carved head, 62 identity genes. ★ = reads at 48 px.</span>
+  <nav class="tabs"><button data-m="edit">Edit</button><button data-m="breed">Breed</button><button data-m="ranges">Ranges</button><button data-m="roster">Roster</button></nav>
+  <span class="note">F0–F1 (FACES.md): round 5's carved head, 65 identity genes, early paint. ★ = reads at 48 px.</span>
 </header>
 
 <section id="edit" class="mode">
@@ -104,6 +104,10 @@
   <div class="btns"><span class="note" id="pickn"></span><button class="b" id="copyPicks">Copy all picks</button><button class="b" id="clearPicks">Forget picks</button></div>
 </section>
 
+<section id="roster" class="mode">
+  <div class="note">Hand-made archetypes across sexes and regions, the test of the engine's reach (FACES.md § 3: the generator samples near faces like these). Each is one person, not an average; the populations' spreads come later, from picks. Click one to edit it.</div>
+  <div id="rgrid" style="display:grid;grid-template-columns:repeat(5,250px);gap:12px;margin-top:10px"></div>
+</section>
 <section id="ranges" class="mode">
   <div class="note">Each gene at its low limit, the face in the editor, and its high limit (FACES.md § 4: push every gene to both ends on three different faces; if a corner breaks the style, narrow the range). Randomise in Edit, come back here, to test on another face.</div>
   <div id="cards"></div>
@@ -181,6 +185,14 @@ const GENES = [
   ['mc', 'Mouth', 'Corners down–up', 0, -.025, .025, 'f:mouth'],
   ['lr', 'Mouth', 'Lower lip tuck (bottom edge)', .45, 0, 1, 'p:mouth'],
   ['nr', 'Nose', 'Nose root: notched–flush', 0, 0, 1, 'p:nose'],
+  // added for the varied roster: the epicanthic fold, and early paint (FACES F6 refines these into ramps per population)
+  ['ep', 'Eyes', 'Epicanthic fold', 0, 0, 1, 'f:eyes'],
+  ['st', 'Paint', 'Skin tone: light–deep', .222, 0, 1, 'q'],
+  ['hc', 'Paint', 'Hair: black · browns · auburn · blond · grey', .4, 0, 1, 'q'],
+  ['ic', 'Paint', 'Eyes: brown · hazel · green · blue · grey', .8, 0, 1, 'q:eyes'],
+  // added with Caio's front and profile references of Mr. Incredible: the bell-shaped head, the forehead over the eyes
+  ['fp', 'Brow', 'Forehead forward', 0, 0, .18, 'p', 1],
+  ['cn', 'Head', 'Crown width (dome)', 1, .7, 1.1, 'f', 1],
 ];
 const NG = GENES.length, IX = Object.fromEntries(GENES.map((g, i) => [g[0], i]));
 const REGIONS = [...new Set(GENES.map(g => g[1]))];
@@ -195,6 +207,7 @@ function fromDNA(s) { const m = /^LP1\.([0-9a-f]+)$/i.exec((s || '').trim()); if
 const MACROS = [
   ['Heroic – delicate', { jw: .6, cnw: .5, cnp: .5, bd: .6, ch: .3, ja: -.5, nk: .5, np: .3, ez: -.2 }],
   ['Lean – broad', { hw: .6, jw: .6, nk: .6, fl: -.4, nw: .4, mw: .3, cw: .4 }],
+  ['Masculine – feminine', { bd: .5, jw: .4, cnw: .3, nk: .5, fh: .3, ul: -.3, ll: -.25, ez: -.3, el: .15, ja: -.3, np: .3, ts: .2, hw: .1, cp: -.2, es: -.1 }],
   ['Age', { cv: .8, el: .6, bd: .25, ul: -.4, ll: -.2, ja: .3, ers: .3 }],
 ];
 // seeded random
@@ -204,11 +217,20 @@ const gauss = () => Math.sqrt(-2 * Math.log(rnd() + 1e-9)) * Math.cos(6.2832 * r
 const clamp1 = x => Math.max(-1, Math.min(1, x));
 // regions not yet tuned in their own stage (F2–F4) vary less, so random faces stay whole while the silhouette is judged
 const TUNED = ['Head', 'Jaw', 'Ears & neck'], SIG = GENES.map(g => ['cz', 'jm'].includes(g[0]) ? .4 : TUNED.includes(g[1]) ? 1 : .45);   // chin size and jaw mass go cartoonish fast: reach them by hand or breeding
-const randomFace = (s = .6) => GENES.map((g, i) => clamp1(gauss() * s * SIG[i]));
+const randomFace = (s = .6) => GENES.map((g, i) => g[1] === 'Paint' ? 2 * rnd() - 1 : clamp1(gauss() * s * SIG[i]));   // paint: anywhere on its ramp
 const mutate = (t, s) => t.map((x, i) => clamp1(x + gauss() * s * SIG[i]));
 const starDist = (a, b) => Math.sqrt(STAR.reduce((s, i) => s + (a[i] - b[i]) ** 2, 0) / STAR.length);
 
 // ---- the renderer: one WebGL canvas off-screen, each tile drawn there and copied to its own canvas
+// early paint (F6 refines): a skin ramp with its own flush and lip tint, short hair and iris palettes
+const SKIN = [[.95, .78, .66], [.92, .74, .6], [.9, .7, .56], [.84, .62, .47], [.76, .53, .38], [.65, .42, .29], [.53, .33, .22], [.43, .26, .17], [.3, .18, .12], [.2, .12, .08]];
+const HAIR = [[.05, .04, .035], [.14, .085, .05], [.4, .2, .1], [.48, .19, .07], [.78, .58, .32], [.62, .62, .6]];
+const IRIS = [[.22, .12, .06], [.36, .2, .1], [.42, .36, .18], [.3, .44, .3], [.3, .46, .62], [.48, .52, .56]];
+const ramp = (A, x) => { const f = Math.max(0, Math.min(1, x)) * (A.length - 1), i = Math.min(A.length - 2, Math.floor(f)), k = f - i; return A[i].map((v, j) => v + (A[i + 1][j] - v) * k); };
+const pick = (A, x) => A[Math.round(Math.max(0, Math.min(1, x)) * (A.length - 1))];
+function paintOf(g) { const sk = ramp(SKIN, g[IX.st]), d = g[IX.st];
+  return { uSkin: sk, uFlush: sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * d)), uLip: sk.map((v, j) => v * [.8, .47, .53][j] * (1 + .25 * d)),
+    uHair: pick(HAIR, g[IX.hc]), uIris: pick(IRIS, g[IX.ic]) }; }
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
 const ANG = { q: .62, f: 0, p: Math.PI / 2 };
 // close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
@@ -235,13 +257,15 @@ float gs(vec3 p,vec3 c,float s2){vec3 d=p-c;return exp(-dot(d,d)/s2);}
 mat2 rot(float a){float c=cos(a),s=sin(a);return mat2(c,s,-s,c);}
 // ---- world to head space: the head-shape genes stretch regions of the house head (the hair and features ride along)
 vec3 warp(vec3 p){
- if(p.y<-.1)p.y=-.1+(p.y+.1)/g_fl;   // the lower face
- if(p.y>.16)p.y=.16+(p.y-.16)/g_cr;   // the crown
+ {float u=p.y+.1;p.y-=(1.-1./g_fl)*.5*(u-sqrt(u*u+.006));}   // the lower face, stretched below the cheekbones (a smooth join: a kink here shows as a crease)
+ {float u=p.y-.16;p.y-=(1.-1./g_cr)*.5*(u+sqrt(u*u+.006));}   // the crown
  if(p.z<-.1)p.z=-.1+(p.z+.1)/g_bk;   // the back of the skull
  float fz=smoothstep(-.3,.3,p.z);   // the face's half: the back of the skull and the neck stay put
+ p.z-=g_fp*smoothstep(.06,.26,p.y)*fz;   // the forehead and brow pushed forward as one mass; the eyes stay, deep under it
  if(p.y>.28)p.z+=g_fh*(p.y-.28)*fz;   // the forehead leans back above the brow (the hair rides along)
  p.z-=g_lp*smoothstep(-.28,-.62,p.y)*fz;   // the lower face pushed forward: mouth, chin, jaw front
- p.x/=mix(g_jw,g_hw,smoothstep(-.6,-.05,p.y));   // width, the jaw's below, the skull's above
+ p.x/=mix(g_jw,g_hw,smoothstep(-.6-.3*g_sf,-.05+.4*g_sf,p.y));   // width, the jaw's below, the skull's above; a soft face blends them over a longer run
+ p.x/=mix(1.,g_cn,smoothstep(0.,.95,p.y));   // the crown narrows into a dome
  return p;}
 // ---- the house head (round 5), in head units (the cranium's half-width ~.8), face +z, y up
 const float SH=.012,SO=.07;
@@ -279,7 +303,7 @@ float mass(vec3 p){
 float carve(vec3 p,float d){
  float cz=g_cz-1.,sk=1.+5.*g_sf;SKF=sk;float SH=.012*sk,SO=.07*mix(1.,sk,.5);   // planes: crisp (deco) to soft (the Pixar end)
  float fr=clamp(2.5*max(g_jm-1.,0.)+1.5*max(g_cz-1.,0.),0.,1.);   // a heavy jaw or a big chin: the cheek planes recede gradually below the nose (else they meet in a keel)
- vec3 cq=vec3(abs(p.x),p.y,p.z);d=smax(d,plane(cq,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64))-fr*.9*max(-.3-p.y,0.),SH);   // the cheekbones: front meets side
+ vec3 cq=vec3(abs(p.x),p.y,p.z);d=smax(d,plane(cq,vec3(.72,-.12-g_ch*2.,.68),vec3(.5+g_cw,-.12+g_ch,.64))-fr*.9*.5*(-.3-p.y+sqrt((.3+p.y)*(.3+p.y)+.01)),SH);   // the cheekbones: front meets side
  d=cutM(d,p,vec3(1.,-.05,-.08),vec3(.7,-.1,0.),SH*1.5);   // the side plane of the head
  float jm=g_jm-1.;
  d=cutM(d,p,vec3(.8,-.5+.8*max(jm,0.),.3),vec3(.6,-.62-.45*jm-.15*cz,.3+.1*jm),g_ja*mix(1.,sk,.6));   // a heavy jaw's sides stand upright: a broad chin, not a point   // the jaw line
@@ -297,9 +321,10 @@ float lidD(vec3 p){vec3 e=eyeL(p);   // the lids, over the eyeball: a thick uppe
  float w=.125,t=clamp(e.x/w,-1.5,1.5);t-=g_pk*(1.-t*t);   // the aperture's corners at ±w; the peak shifted inward or outward
  float q=max(1.-t*t,0.),yc=-.012;
  float up=yc+(.062-1.5*g_el-yc)*pow(q,g_ua),lo=yc-(.07-g_lb+yc)*pow(q,.8);   // the margins: the upper arched by the shape, the lower gentler
+ float fi=g_ep*smoothstep(.05,-w*.9,e.x);up-=.06*fi;   // the epicanthic fold: skin from the upper lid drapes over the inner corner
  float ap=max(e.y-up,lo-e.y),r=length(e);
  float skin=smax(abs(r-.143)-.003,-ap,.004);   // thin skin over the eyeball outside the opening (recessed under the brow)
- float ub=smax(abs(r-.14-g_lk)-g_lk,-min(e.y-up,up+g_lf-e.y),.007);   // the upper lid: a band from the margin to its fold
+ float ub=smax(abs(r-.14-g_lk)-g_lk,-min(e.y-up,up+g_lf*(1.-.8*g_ep)-e.y),.007);   // the upper lid: a band from the margin to its fold (low, or hidden, under an epicanthic fold)
  float lb=smax(abs(r-.14-.45*g_lk)-.45*g_lk,-min(lo-e.y,e.y-lo+.075),.005);   // the lower lid: a thinner band
  float bands=smax(min(ub,lb),abs(e.x)-w*1.04,.012);   // the bands end at the corners
  return max(min(skin,bands),-e.z-.03)*g_ez;}
@@ -330,7 +355,7 @@ float features(vec3 p,float d){
  float so=max(sdEll(s-vec3(g_es,.03,.8-g_ed),vec3(.22,.14,.15)*mix(1.,g_ez,.6)),s.y-.14-g_bh);d=smax(d,-so,sk);
  d=smin(d,smax(max(noseD(p),plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74))),s.y-.1-g_bh,.04),.015);
  if(g_nr>0.){float fp=plane(p,vec3(0.,.28,.96)+vec3(0.,g_fs,-g_fs*.29),vec3(0.,.48,.74))-g_np*smoothstep(.35,0.,p.y);   // the forehead's line, carried down onto the bridge
-  float root=max(max(fp,abs(p.x)*1.4-.13*g_nw),max(p.y-.38,-p.y-.02));   // a flush root: a slab on that line from brow to bridge
+  float root=max(max(fp,abs(p.x)*1.4-.13*g_nw),max(max(p.y-.38,-p.y-.02),.45-p.z));   // a flush root: a slab on that line from brow to bridge
   d=smin(d,root+(1.-g_nr)*.06,.04);}   // only where the socket cut it, below the brow   // the nose bounds it on the inner side: a hard line where they meet
  d=min(d,eyeD(p));
  d=smin(d,lidD(p),.01);
@@ -403,9 +428,10 @@ function drawTile(cv, t, view, fov) {
   const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
   gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);
   const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
+  const pt = paintOf(g); for (const n in pt) gl.uniform3fv(U(n), pt[n]);
   // the head-shape stretches bend the distance field: march more carefully when any is off the house value
   const w = ['hw', 'jw', 'fl', 'cr', 'bk'].map(k => g[IX[k]]), off = t.some(x => x !== 0);
-  gl.uniform1f(U('uL'), off ? Math.min(1, ...w) * .9 * (1 - .4 * g[IX.cp]) : 1);   // the cheekbone's swelling steepens the field too
+  gl.uniform1f(U('uL'), off ? Math.min(1, g[IX.cn], ...w) * .9 * (1 - .4 * g[IX.cp]) / (1 + 7 * g[IX.fp]) : 1);   // (the forehead push shears the field)   // the cheekbone's swelling steepens the field too
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   const c2 = cv.getContext('2d'); c2.imageSmoothingQuality = 'high'; c2.drawImage(glc, 0, 0, s, s, 0, 0, W, W);
 }
@@ -455,7 +481,7 @@ function renderEdit() { const c = ':' + $('closeOn').value;
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
-const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ef2ffcf01c780808001f021218080ffffa0a4bf80ba80ffc016cf1180e6e6258e14d5ffcf808080b88080e1df808080ff', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
+const PRESETS = { 'Mr. Incredible-like (the reach test)': 'LP1.01f70f80ed4dff4d806080809ec0ffef01c780808001f021218080ffffa0a4bf80ba80ffd52bdf2180c0e6258e14d5ffcf808080b88080e1df80808080ff808dd580dc16', 'Deco: sharp cheekbones, thin crisp lips': 'LP1.808080808080cf8080808080808080808080808080cf804f53808001808080808080808080808080808080ffff80808080',
   'Nose: button': 'LP1.80808080808080808080808080801a275d348080808080808080808080808080808080ff4d8d676d808080808080808080', 'Nose: bulb': 'LP1.8080808080808080808080808080a680a4808080808080808080808080808080808080fff2e680cccc8080808080808080', 'Nose: hawk': 'LP1.8080808080808080808080808080cca880e6ff80808080808080808080808080808080015c5c8067808080808080808080' };
 for (const k in PRESETS) $('preset').insertAdjacentHTML('beforeend', `<option>${k}</option>`);
 $('preset').onchange = () => { const t = fromDNA(PRESETS[$('preset').value]); if (t) { cur = t; syncSliders(); editChanged(); } $('preset').value = ''; };
@@ -525,14 +551,35 @@ function renderRanges() {
   render(jobs);
 }
 
+// ---- Roster: the archetypes (name, DNA)
+const ARCH = [
+  ["West African man", "LP1.989780808080b0808080808080808040a48080808080b3b0b8808080809580808080808080b680ba9980808080808080808080808080804d8080808080a680e701018080"],
+  ["West African woman", "LP1.80608080808070808080aa805680802b92808080808080b8bf808080568080808060808080a480a38080808080808080808080808080808080808080808080d601018080"],
+  ["East Asian woman", "LP1.a0608080808080808080609e8080802b648080808080807888808080806780808080808080898080805780a780808080808080809c801c80808080808099ec8501098080"],
+  ["East Asian man", "LP1.b8978080808080808080808080808040728080808080807080808089808080808080808080928080808080b1808080808080808080802c80808080808080d98d01098080"],
+  ["South Asian woman", "LP1.805a8080808080808080b880808099908080808080808098a080808056808080804d8080808080808080808080808080808080807080a48080808080808080b601018080"],
+  ["Northern European man", "LP1.809c80808080c080808080808080b3a88080808080a080607080802b80a08080808080808060808080a0809d808080808080808080808080808080808080801ed5808080"],
+  ["North African man", "LP1.808e80808080c080808080809980c0b88080c980808080889080808080808080808080808080808080a08080808080808080808080808080808080808080809d40218080"],
+  ["Andean woman", "LP1.b080808058808080808060808080a6a08080b6808080808088808080808080808080808080808080808080c4808080808080808080803d80808080808080a6ad01018080"],
+  ["Polynesian man", "LP1.c0aa80808080b080808080808080806b92808080808080a0b08080808095808080ae808080ad80ae8080808080808080808080808080808080808080808080b601018080"],
+  ["Older Mediterranean woman", "LP1.806080808080708080808080b380a6988080808080b080506080808980808080808080808080808080808080808080808080808080808080808080808080808dff218080"],
+  ["Eastern European woman", "LP1.804d8080808080808080aa80808067808080808080808080808080804b808080808080bf5c80808080808080808080808080808080808080808080808080800caa608080"],
+  ["Southeast Asian man", "LP1.98808080808080808080808080808016928080808080809098808080808080808080808080a480a380808080808080808080808080803d80808080808099c0ad01018080"],
+];
+function renderRoster() { const box = $('rgrid'); box.innerHTML = ''; const jobs = [];
+  ARCH.forEach(([name, dna]) => { const t = fromDNA(dna); if (!t) return; const c = document.createElement('div'); c.className = 'cell';
+    c.innerHTML = `<canvas class="t" width="250" height="250"></canvas><div style="display:flex;gap:4px;margin-top:4px"><canvas class="t" width="122" height="122"></canvas><canvas class="t" width="122" height="122"></canvas></div><div class="note">${name}</div>`;
+    const [a, b, d] = c.querySelectorAll('canvas'); jobs.push([a, t, 'q'], [b, t, 'f'], [d, t, 'p']);
+    c.onclick = () => { cur = t.slice(); syncSliders(); setMode('edit'); editChanged(); }; box.appendChild(c); });
+  render(jobs); }
 // ---- modes
 let mode = '';
 function setMode(m) { mode = m; document.querySelectorAll('.mode').forEach(s => s.classList.toggle('on', s.id === m));
   document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.m === m));
-  if (m === 'edit') renderEdit(); else if (m === 'breed') { if (!pop.length) freshGen(); renderBreed(); } else renderRanges(); }
+  if (m === 'edit') renderEdit(); else if (m === 'breed') { if (!pop.length) freshGen(); renderBreed(); } else if (m === 'roster') renderRoster(); else renderRanges(); }
 document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => setMode(b.dataset.m));
 syncSliders(); $('dna').value = toDNA(cur); showPicks();
-setMode(['edit', 'breed', 'ranges'].includes(Q.get('mode')) ? Q.get('mode') : 'edit');
+setMode(['edit', 'breed', 'ranges', 'roster'].includes(Q.get('mode')) ? Q.get('mode') : 'edit');
 </script>
 </body>
 </html>
