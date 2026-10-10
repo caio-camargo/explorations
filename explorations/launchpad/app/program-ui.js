@@ -40,7 +40,7 @@ function contractsHTML(){ensureBoard();const pc=i=>`hsl(${POWERS[i].hue},70%,68%
     `<div class="sub">Standing: ${Object.keys(SRC).map(k=>`${SRC[k].name.toLowerCase()} ${standOf(k).toFixed(0)}`).join(' · ')}</div>`+
     (Object.keys(PROG.sanc||{}).filter(i=>sanctioned(+i)).map(i=>`<div class="sub bad">Sanctioned by ${POWERS[+i].name} for ${(PROG.sanc[i]-PROG.day).toFixed(0)} more days</div>`).join(''))+
     `<div class="ep">The race</div><div class="sub">`+RACE.map(id=>{const M=MISSIONS.find(m=>m.id===id),r=RIVALS[id],l=raceLost(id);
-      return `${M.name.replace(/^Passenger: /,'Passenger, ')}: `+(PROG.done[id]?(l!=null?`<span class="warn">second, after ${POWERS[l].root}</span>`:'<span class="ok">first in the world</span>'):l!=null?`<span class="bad">${POWERS[l].root} got there first</span>`:r?`${POWERS[r.i].root} expected ${r.day-PROG.day<60?'<span class="warn">soon</span>':`around day ${r.day}`}`:'open')}).join('<br>')+'</div>'}
+      return `${M.name.replace(/^Passenger: /,'Passenger, ')}: `+(PROG.done[id]?(l!=null?`<span class="warn">second, after ${powerMark(l)}${POWERS[l].root}</span>`:'<span class="ok">first in the world</span>'):l!=null?`<span class="bad">${powerMark(l)}${POWERS[l].root} got there first</span>`:r?`${powerMark(r.i)}${POWERS[r.i].root} expected ${r.day-PROG.day<60?'<span class="warn">soon</span>':`around day ${r.day}`}`:'open')}).join('<br>')+'</div>'}
 document.addEventListener('click',e=>{const a=e.target.dataset&&(e.target.dataset.acc||e.target.dataset.dec);if(!a)return;
   if(e.target.dataset.acc){if(!acceptOffer(+a))HOOK.msg(`At capacity: ${capOf()} contracts at once`)}else declineOffer(+a);renderProgram()});
 // ============================================================ program UI: satellites (planning session)

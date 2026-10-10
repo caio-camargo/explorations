@@ -131,7 +131,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q167 | Q49 slice 4 (with economy): cruise entries on the fleet strip (N1 ✓); paying along the way — same plan | M2 | S | 🖥 | ready (slice 2 ✓) |
 | Q100 | Keep the last Debrief across reloads (`PROG.lastDebrief`) | M1 | S | ⚙ | ✓ `618c587` (space overflow: the last Debrief survives a reload) |
 | Q98 | A key to deploy legs and wings (`G` if free) | M1 | S | 🖥 | ✓ vehicle: Y legs (v1.61), P solar wings (v1.68), taped and in the key list; flow may still move the keys |
-| Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ready (Q103 ✓ v1.89; restyle with Q53 later) |
+| Q104 | Flags and roundels in the UI (the world section, the race, news), from [`POWERS.md`](POWERS.md) | M1 | M | 🖥 | ✓ v1.112 `{SHA}` (`app/flags.js`: the world, the race, news; restyle with Q53 later) |
 | Q111 | 📝 The **network screen** (nodes, routes, t/y, the named bottleneck) beside the pad calendar ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | M | 📝 | plan ✓ (NOTES § UI "Network screen plan"); N1 buildable now, N3 waits on routines (W16) |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
@@ -433,3 +433,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 | W32 | **Look at the suits, round 2** (CREW.md 0.2.4 → Q219): `explorations/launchpad/mockups/suits/index.html` (bar: suit, pose, shot; the last four buttons are the brief's checks), or `output/launchpad/mockups/suits/r2-sheet-lineup.png` and `r2-check1-silhouettes.png` / `r2-check2-grey.png` / `r2-check3-48px.png`. Each suit built from its own pieces (Cape hard and glossy, hoses into the chest; Steppe canvas, laces, hoods, the ventilator case). Lost at 48 px: Apollo's bellows, Mercury's finger lights, the SK-1 letters; Orlan's door shows only from behind. Pick, or say what to change per suit. Defaults if silent: build these into `SUITS`, Cape then Steppe | the per-school suit build (after Q219) |
 
 ## Proposed (sessions add follow-ups here; the orchestrator ranks them)
+- (look & sound, from flow's Q104 v1.112) **Roundels on the hulls for the other four schools**: the shader's `roundel` draws Cape and Steppe; `roundelBody` in `app/flags.js` has Arsenal (chevron and disc), Coastal (rings), Mountain (sun and rays), Isle (stars) and the resource states' crescent and lozenge to copy.

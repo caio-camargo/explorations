@@ -4717,6 +4717,25 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     wired && seq.join(' ') === '0/0/0 0.5/0/0 1/0.5/0 1/1/0.5 1/1/1' && cape === null && again === '0/0/0', `${seq.join(' ')} · cape ${cape} · new site ${again} · wired ${wired}`);
 }
 
+// flow-9. Flags and roundels (flow session, QUEUE Q104; POWERS.md § Schools "Flag motifs"): every school and variant
+// draws a well-formed flag and roundel in the power's hue; this world's powers fly different flags; a resource state has
+// its own (not its contractor's); a news line gets the roundel of the first power it names.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const cut = (t, a, b) => { const i = t.indexOf(a); return i < 0 ? '' : t.slice(i, t.indexOf(b, i + a.length)); };
+  const F = new Function('POWERS', cut(page, 'const FLAG_W=', '\nconst powerMark') + ';' + cut(page, 'function newsMark(', '\n') + ';return {flagSVG, roundelSVG, newsMark, flagVar, flagKind}');
+  const tags = s => { const st = []; for (const m of s.matchAll(/<(\/?)([a-zA-Z]+)[^>]*?(\/?)>/g)) { if (m[3]) continue; if (m[1]) { if (st.pop() !== m[2]) return false } else st.push(m[2]) } return !st.length };
+  const f0 = F([]), bad = [];
+  for (const school of ['cape', 'steppe', 'arsenal', 'coastal', 'mountain', 'isle']) for (const c of [null, 1]) for (const nm of ['Kingdom of X', 'Emirate of X', 'X Union']) for (const hue of [0, 137, 275]) for (let k = 0; k < 12; k++) {
+    const p = { name: nm, root: 'R' + k, school, contractor: c, hue }, a = f0.flagSVG(p, 24), b = f0.roundelSVG(p, 14);
+    if (!tags(a) || !tags(b) || /NaN|undefined/.test(a + b) || !a.includes(`hsl(${hue},70%,42%)`)) bad.push(`${school}/${c}/${nm}/${hue}/${k}`) }
+  const P = api.POWERS, f1 = F(P), flags = P.map(p => f1.flagSVG(p, 24)), distinct = new Set(flags).size;
+  const res = P.find(p => p.contractor != null), own = res ? f1.flagKind(res) !== res.school : true;
+  const two = P.slice(1, 3), line = `${two[1].root} answers ${two[0].name}'s launch`, nm = f1.newsMark(line), none = f1.newsMark('A quiet day');
+  check('flow-9: flags and roundels: every school and variant draws in the power\'s hue; this world\'s powers fly different flags; a resource state has its own; news gets the first named power\'s roundel',
+    !bad.length && distinct === P.length && own && nm.includes(two[1].name) && none === '', `${bad.length} bad${bad.length ? ' (' + bad.slice(0, 3).join(', ') + ')' : ''} · ${distinct}/${P.length} distinct · resource state's own ${own} · news "${line}" → ${(nm.match(/aria-label="([^"]*)"/) || [])[1]}`);
+}
+
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run
 // as a routine; mission control's burns wait for mainframes, uncrewed runs to the moons for onboard computers, and a
 // refusal says which era unlocks it.

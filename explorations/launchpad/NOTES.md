@@ -2069,6 +2069,26 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.112 — flags and roundels in the UI (2026-10-10, flow session, QUEUE Q104; POWERS.md § Schools "Flag motifs")
+
+- **Every power has a flag and a roundel** (`app/flags.js`, SVG), from its hardware school's motifs in its own hue
+  (`p.hue`), with one of four variants per power (from its name), so two powers of one school fly cousins:
+  Cape stripes and a starred canton; Steppe one gold star on a plain field; Arsenal chevrons and a disc; Coastal
+  tricolour bands, some with a disc; Mountain a sun disc, rays or mountains; Isle a constellation by a hoist band. A
+  resource state flies its contractor's hardware but **its own flag**: a crescent and star for an Emirate or Sultanate,
+  a lozenge for a Kingdom. The roundel is the flag as a disc with a white rim; Cape's and Steppe's match the rockets'
+  (gl.js's GLSL `roundel`); the other four schools' discs are new here, for look & sound to follow on the hulls.
+- **Where:** the world section (home's flag by its name, a small flag by each other power), the race (a roundel by the
+  rival who's expected or got there first), the Program's News (the roundel of the first power a line names,
+  `newsMark`). Contracts, ownership shares and the map's cities still show only the power's colour.
+- Test `flow-9` (every school × variant × hue draws a well-formed flag and roundel in the hue; this world's five
+  powers fly five different flags; the resource state's isn't its contractor's; news gets the first named power).
+  TESTING 191. Stills: `output/launchpad/q104-flags/` (the sheet of every school, variant and three hues; the world;
+  the news).
+- Some draws come close to real flags (a red Steppe flag, a white Mountain one with a red disc, a red crescent). The
+  schools echo real programmes on purpose (POWERS.md), but a hue rule could steer away from the closest matches if
+  Caio wants.
+
 ## v1.111 — the rollout lying down (2026-10-10, flow session with look & sound's pad, QUEUE Q193; Q159's "not built")
 
 - **On a Steppe pad the Rollout is a rollout**: the screen opens with the rocket on its side on the transporter-erector at
@@ -9005,6 +9025,7 @@ by their text, gave each file after the first a two-line prelude and `'use stric
 | `app/loop.js` | 43 | `frame()` | flow |
 | `app/render.js` | 347 | `render()`, bloom | look & sound |
 | `app/program-ui.js` | 345 | the Program screen: contract board, satellites, logbook, era map; the start-up calls at the end | economy / flow |
+| `app/flags.js` | 40 | flags and roundels as SVG (`flagSVG`, `roundelSVG`, `powerMark`, `newsMark`), from a power's school and hue (§ v1.112). Loads before `state.js` | flow |
 | `app/hud.js` | 40 | the flight readout's cards (`HUD_CARDS`, `renderCards`, `cardFolds`, pins); new HUD content registers a card here (§ v1.101). Loads after `program-ui.js`: nothing at start-up calls it | flow |
 | `app/debrief.js` | 30 | the Debrief screen (`renderDebrief`, Fly again, the End flight button) | flow |
 
