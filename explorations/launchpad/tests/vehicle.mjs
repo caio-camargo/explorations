@@ -409,3 +409,15 @@
       && port1 && !/docking port/.test(dock1) && /onboard computer/.test(dock1) && bay2 && tl && sb && !bad.length && !order.length,
     `early presets blocked: ${early.join(', ') || 'none'}; day 1 Docking: "${dock0}"; after the beeper: "${dock1}"; bad gates ${bad.join(',') || 'none'}; out of order ${order.join(',') || 'none'}`);
 }
+
+// vehicle-11. Every part says what it does (vehicle session, QUEUE Q248; PLAYTEST #46): the palette's card has a sentence
+// for every listed part (its own, its 1.25 m sibling's, or its kind's) and a spec sheet with mass, size and price.
+{
+  const bsrc = readFileSync(new URL('./builder.js', import.meta.url), 'utf8');
+  const D = new Function(src + 'let stackDef=null;' + bsrc + ';return {PARTS,BLD};')();
+  const listed = Object.keys(D.PARTS).filter(k => !D.PARTS[k].radialOnly);
+  const mute = listed.filter(k => D.BLD.partInfo(D.PARTS[k]).length < 20);
+  const thin = listed.filter(k => { const L = D.BLD.partSpecs(D.PARTS[k]).map(r => r[0]); return !L.includes('mass') || !L.includes('size') || (D.PARTS[k].kind === 'engine' && !L.includes('Isp')); });
+  check('part cards: every listed part has a sentence and a spec sheet (engines with Isp)', !mute.length && !thin.length && listed.length > 40,
+    `${listed.length} parts; no sentence: ${mute.join(', ') || 'none'}; thin sheet: ${thin.join(', ') || 'none'}`);
+}

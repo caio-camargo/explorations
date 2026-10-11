@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.7.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 1.8.2 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -63,7 +63,7 @@ Anything further out gets 📝 design items only, so breadth keeps moving withou
 | | Milestone | Finish line | State |
 |---|---|---|---|
 | M0 | **Stabilize** | No open P1/P2 in PLAYTEST; the robot has judged every TESTING row it can drive; Q29's re-run is clean | ✓ **done 2026-10-09** (Q29 clean; last bugs Q74, Q77, Q112 in v1.73–v1.74; #9, #11 left to M1/M5 by W13's default) |
-| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **a person who isn't Caio plays the first hour**, and where they got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09); **robot run ✓ 2026-10-09** (QA: `playtest.mjs m1` passes on the Beeper preset: Esc pauses, a Debrief after each flight, no box overlaps); still open: the career.mjs pacing check and a person's first hour |
+| M1 | **The first hour** | A scripted *new career* (`playtest.mjs`) goes from the first-run gate to first orbit and its debrief with no tester flags; `career.mjs` says a prudent player reaches first orbit in **4–6 flights**, and no start is stuck after one failed orbit attempt (default 2026-10-09 from v1.77's measurement; Caio may override); no box covers another at 1280×800; **Caio plays the first hour as a new player would** (a fresh career, no tester flags; 2026-10-11: there's no outside player, and the game's measure is that Caio enjoys playing it), and where he got stuck or bored is written in PLAYTEST | **current** (since 2026-10-09); **robot run ✓ 2026-10-09** (QA: `playtest.mjs m1` passes on the Beeper preset: Esc pauses, a Debrief after each flight, no box overlaps); still open: the career.mjs pacing check and Caio's first hour |
 | M2 | **Satellites that work** (epoch 3) | A robot career reaches a weather + TV network that earns over time, with one routine resupply, using "advance to next event" only | **next** (code open since 2026-10-09) |
 | M3 | **Crew and Selene** (epoch 4) | Crew to a chosen Selene crater and home, a rover driven on real Selene ground, all from contracts | design only |
 | M4 | **Big projects** (epoch 5) | A depot and a datacenter built over several flights, sized by waste heat, earning | design only |
@@ -245,6 +245,23 @@ In order:
    Later, per area: ES modules once an area's cross-file names are few.
 5. **Cheap wins** (Q38): world generation in a worker and cached, typed arrays and no small-array allocation in hot
    loops. Cold load is ~1.5–1.8 s today.
+
+### Graphics budget (Caio, 2026-10-11: playability over realism, but find the best point)
+
+What exists: adaptive resolution holds GPU time under ~7 ms (35–100 % of a 1.5×-capped DPR), GPU timer queries, the
+perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
+- **Targets.** 60 fps at 1080p on a mid-range discrete GPU (Caio's RTX 3050 stands in) at a resolution scale of 75 % or
+  better; **30 fps on integrated graphics** (Caio's Intel iGPU) as the floor. A change that drops either, measured on
+  the reference scenes, needs a reason in its NOTES entry.
+- **Spend the beauty where the eye is:** the rocket and its plume at launch, the horizon and atmosphere on the climb,
+  the planet from orbit, the first sight of a new body. Elsewhere the style does the work (puppet heads, paperwork,
+  the pencil map): stylised looks are cheap and age well.
+- **No high-end requirement** (Caio, 2026-10-11): his mid-range machine is the ceiling, not the floor. **High** is what
+  runs well on it; nothing is built for hardware above it.
+- **Two graphics settings, Low and High**, from the start of any costly effect: High may spend more, Low keeps the iGPU
+  floor. Beauty never costs a player who can't run it.
+- **The desktop app** (the long-term plan) raises the ceiling: no shader translation layer (first loads, Q169), better
+  drivers, compute shaders, more memory. It moves the budget; it doesn't remove it.
 
 ---
 
