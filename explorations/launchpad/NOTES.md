@@ -2149,6 +2149,80 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.118 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
+
+A splashdown used to be snapped upright with its bottom at sea level and frozen as landed: no waterline, no float, no
+motion (Caio: "a craft landing in water stays there as if on land"). Now the water holds a vessel up by its own buoyancy.
+
+**The numbers first** (before building; `study_sea.mjs` re-measures them). The parts are dense for their size: the command
+pod is 840 kg in ~0.8 m³ of outline. With every tank empty, each preset's returning piece (everything above its top
+decoupler) against the water its hull displaces:
+
+| Piece | Mass | Hull | Density | Without bags |
+|---|---|---|---|---|
+| Probe (stage, tanks, core) | 1.75 t | 11.3 m³ | 155 kg/m³ | floats high |
+| Beeper, Passenger Orbiter, Sounding, Docking (stage + package) | 0.8–1.5 t | 3.2–5.0 m³ | 220–330 | floats |
+| Orbiter, Heavy, Asparagus, Lunar (pod + stage), Hopper (whole) | 1.2–2.7 t | 2.4–4.8 m³ | 460–570 | floats |
+| Passenger (biocapsule) | 0.55 t | 0.9 m³ | 608 | floats |
+| Sample Return, Big Lunar (pod + heat shield) | 1.1 t | 1.2–1.75 m³ | 660–900 | floats, barely (Big Lunar 12 % dry if fully loaded) |
+| **Crewed Lunar** (crew capsule + shield, tower gone) | 1.64 t | 1.2 m³ | **1,370** | **sinks** |
+
+So an honest sea sinks the crewed capsule. Real ones had flotation: Apollo's three uprighting bags at the apex. **Default:**
+the pod and the crew capsule carry **flotation bags** (`float: 1.0` m³, `PARTS.pod`, `PARTS.crew`) that inflate at
+splashdown, on top of the capsule. Caio may override (heavier bags, a separate part, or let crewed capsules sink).
+
+**How it works** (`sim/flight.js` § "the sea"; one call each in `physStep` and `syncLanded`):
+- **Buoyancy.** Each stack line's outer profile (`s.lines`, the aero's) is cut into slices up to 0.5 m tall, each slice a
+  disc sampled at 8 points on the ring of radius r/√2 (that ring keeps the disc's waterplane moment, so the righting moment
+  is right). A point under the water pushes up with ρ·g·(its share of the volume), smoothed over its own vertical extent
+  so the force doesn't step. The bags are four more points above the capsule. Cached per shape (`seaPts`).
+- **Open volumes.** An engine is an open bell: 35 % of its outline holds air (`SEA_KEEP`). Everything else is sealed.
+- **Drag.** Each wet point drags against the water: quadratic (Cd 0.5 on its volume's face) plus a linear term for the
+  waves it makes (500 N·s/m per m³), capped by its share of the mass as the ground's contact is. A capsule bobs 3–5 times.
+- **The liquid's density** is the body's: a recipe's `rho` (Tethys's methane lakes, 450 kg/m³: almost everything sinks
+  there), else sea water's 1,025.
+- **Splash** (`seaCheck`, from `groundCheck`, which now looks at the sea before the "nose hit" test: a top dipping under
+  the surface is not the nose in the ground): the touchdown verdict as before (speed against the sea's limit, 12 + 2 = 14 m/s);
+  the bags go out; the main chute is cut. The old "sideways, destroyed" rule is gone: tipping is what water does.
+- **Sinking at once:** fully under, still too dense, and deeper than its own length: "Sank — went straight to the bottom".
+- **At rest** (under 0.3 m/s and 0.05 rad/s for 2 s) the vessel is **afloat** (`afloat`): `landed`, `s.water`, and
+  `s.float` holds the rest pose, the wind's heading there, the share of the hull above water and `sinkAt`. From then on
+  it's kinematic, so it holds on rails and at warp (`seaPose`, called by `syncLanded`): it heaves on two crossing swells
+  (0.8 m, 8 s and 5.8 s; ~1.6 m peak to peak), rocks with their slope (less for a long hull), and drifts downwind at
+  0.25 m/s. Staging or lighting an engine afloat clears it and the physics takes over again.
+- **Flooding** (`sinkTime`): parts flood after `SEA_FLOOD` hours (engines at once, decouplers 2, adapters 6, tanks,
+  instruments and probe cores 24, capsules 72, others 12). `sinkAt` is when what's still dry can't hold the vessel up.
+  Then "Sank — flooded and went down", and the Debrief says "sank at sea".
+- **Recovery** (`recoveryOf`, `sim/world.js`): the ships sail at 10 m/s after an hour's notice. If the vessel sinks before
+  they arrive, it's lost (`kind: 'sank'`). Within the 200 km local reach that takes at most 6.6 h, and nothing floods
+  that fast yet, so this bites only with the recovery fleet's longer range, or a leakier part.
+- **SAS still works afloat.** The pod's wheel (10 kN·m) can hold a stage upright against a 2.5 kN·m righting moment until
+  it saturates. Physical, so it stays.
+
+**Measured** (`node study_sea.mjs [tilt] [v]`, SAS off, 7 m/s, so 9.5 m/s at the surface): every piece comes to rest in
+6–23 s. Stages lie on their side (70–88°), 54–85 % dry. The Hopper floats upright, engine down, 53 % dry, if it comes down upright; tilted 30° or more it ends on its side. Big Lunar's
+capsule floats upright, or at 24° when it hits tilted (a second stable pose of that hull, kept with the drag almost off).
+The crew capsule floats upright on its bags, 28 % dry. The biocapsule (a cone, no bags) floats **apex down**, 41 % dry:
+Apollo's "Stable 2", without the bags that righted it. A Hopper with 50 t in its tank sinks within 1 s. Sinks after: 24 h
+(stages: the tank floods and the engine can't be held up) to 72 h (capsules).
+
+**Checked:** test `sea-1` (`tests/world.mjs`): the Orbiter's piece on its side 65 % dry, the crew capsule upright, the
+overweight piece sinks; afloat it heaves 1.6 m peak to peak and drifts 0.25 m/s, sinks at `sinkAt`; ships 51 km out
+recover it 2 h later; a hull that floods in an hour is lost before they arrive. Full suite 630 PASS, 0 FAIL after two
+fixes to flights that end in the sea: the pod's impact-prediction check now compares the predicted speed with the splash's
+(`s.touchV`), not the last step before it is afloat; and `fly_crewlunar.mjs` stops forcing the capsule retrograde once it's
+wet (`point` set the attitude and zeroed the spin every step, so it could never come to rest).
+**Not seen in a browser yet** (TESTING 200).
+
+**Not yet:**
+- **The sea is drawn flat**, so the heave shows as a craft bobbing on still water. Q268 (the sea's look) should draw the
+  same swell: `SEA_SWELL`, `SEA_SWELL_T`, and the 1.37 ratio between the two in `seaPose`.
+- Q267's splash plays at `seaCheck`'s first contact (`s.wet` turns true there).
+- Debris (spent stages that fell off) still end at the sea floor with a boom: `stepDebris` doesn't float them.
+- Shallow water: the seabed doesn't hold anything up; a craft in 2 m of water floats as in deep water.
+- Flooding is by part kind, not by damage: a hard splash doesn't hole the hull.
+- Other landed vessels in the registry (not the one you fly) don't drift or sink.
+
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
 Caio landed a rocket and had nothing to read back: no `console.log` anywhere. Now, with `?tester`, the tester menu has a
