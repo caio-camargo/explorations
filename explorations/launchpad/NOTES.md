@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.48 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.49 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2165,7 +2165,7 @@ written, the flight was counted. A revert now goes back to launch, as KSP's does
   skip the "handed over from a dispatch, no revert" check; it doesn't now. It saves after restoring.
 - **Unchanged:** a flight already settled (left for another screen, PLAYTEST #21) can't be reverted into; loading a design
   or starting a procedure or a tape still settles the flight in progress, as before.
-- **Test:** `space Q257 #56` in `fixes-1`: an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
+- **Test:** `space-20` (`tests/space.mjs`): an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
   liftoff state and `missionEnd` returns null after.
 - **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
 
@@ -9189,6 +9189,23 @@ probably harness-only, but `frame()` could clamp `dtR` at 0.
 
 ## Test shards (2026-10-08, platform session; ROADMAP § Platform lane, step 1)
 
+> **Since 2026-10-11 (QUEUE Q68): the sections live in `tests/<lane>.mjs`, not in `test.mjs`.** Every lane appended to
+> one 5,200-line file, the next conflict hotspot after the script split. Now `test.mjs` is the prelude (the SIM as `api`,
+> `check`, the planet's `LEO`/`ATM`/`VENT`) and the summary, with a `// ==== SECTIONS: tests/` line between them; the
+> 171 sections moved unchanged to `tests/core.mjs` (the 78 numbered ones, and `fixes-1`) and one file per lane:
+> `flow`, `economy` (`econ-`), `vehicle` (`vehicle-`, `control-`), `space` (`space-`, `bodies-`), `world` (`ground-`),
+> `look` (`aerofx-`, `sound-`), `qa`, `platform`. `shards.mjs` splices them back in `TEST_FILES` order and runs the result
+> as one module, so **every run, the full one too, is the shard runner's**: `node test.mjs` with no arguments builds the
+> whole suite and runs it in one child process (the same scope, the same `PASS`/`FAIL` lines). Labels, selectors,
+> `--smoke`, `--jobs`, `--isolation` are unchanged; `--list` shows `file:line`.
+> - **A new section:** at the end of your lane's file, `// <lane>-<n>. Title` at column 0, then a `{ … }` block. A new
+>   lane file needs its name in `TEST_FILES`. The files aren't modules on their own (they use `api` and `check`).
+> - **A branch cut before the split** that added a section to `test.mjs`: merging `main` conflicts in `test.mjs`. Keep
+>   `main`'s `test.mjs` and move your section to the end of your lane's file. A section left inline above `END OF
+>   SECTIONS` still runs (first), so a half-done move doesn't silently drop checks.
+> - **Checked:** the full run after the split has the same 629 `PASS` names as before it (sorted; the order across files
+>   changed, which `--isolation` had already shown is safe), 0 `FAIL`; `--list` has the same 171 sections.
+
 `test.mjs` had grown to 82 sections (84 after merging `main`), and every session paid for all of them on each edit. `node test.mjs` with no
 arguments still runs everything in one process, exactly as before: **merges run that**. With arguments, `test.mjs`
 hands over to `shards.mjs`, which cuts the file into sections and runs a chosen subset in a child process:
@@ -9204,7 +9221,7 @@ hands over to `shards.mjs`, which cuts the file into sections and runs a chosen 
 
 **What a section is.** A comment at column 0, `// 12. Title` or `// control-3. Title`, up to the next one. Everything
 before the first (the SIM, `api`, `check`) and everything after `// ==== END OF SECTIONS` (the summary, the exit code)
-runs in every shard. **New sections go above that line.** A section using a top-level function another section declares
+runs in every shard. **New sections go at the end of your lane's file in `tests/`** (since Q68; was: above that line). A section using a top-level function another section declares
 is run with it (`fly` lives in §3, so 10 sections pull §3 in). Labels repeat (§25 is four sections) because lanes
 numbered in parallel; that's why selectors also take words. Renumbering would break the "§N" references in this file.
 

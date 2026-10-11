@@ -1,6 +1,6 @@
 // Test shards for test.mjs (platform session, ROADMAP § Platform lane step 1). test.mjs hands its arguments here:
-//   node test.mjs                       the full suite, as always (this file isn't loaded)
-//   node test.mjs --list                every section: label, line, title
+//   node test.mjs                       the full suite, as always
+//   node test.mjs --list                every section: label, file:line, title
 //   node test.mjs --only 12,#53,docking  sections by label (all that carry it), --list position, or a word in the header
 //   node test.mjs --smoke               all but the SLOW sections below, under a minute
 //   node test.mjs --skip 27,docking     all but these (same selectors as --only; combines with --only)
@@ -8,6 +8,8 @@
 //   … --jobs 4                          with --only/--skip/--smoke/--times/--isolation: N processes at once
 //   node test.mjs --isolation [--jobs 4] [--only …]  each section run alone vs the full run: which checks change
 // A section is a top-level comment at column 0 like "// 12. Title" or "// control-3. Title", up to the next one.
+// Since Q68 the sections live in tests/<lane>.mjs (TEST_FILES, in that order), not in test.mjs: each lane appends to its
+// own file. parse() puts them back between test.mjs's prelude and its summary, so every run is one module, as before.
 // Everything before the first section (the SIM, `api`, `check`) runs in every shard, and so does everything after the
 // "// ==== END OF SECTIONS" line (the summary and exit code). A section that uses a top-level function another section
 // declares (`fly` in §3) pulls that section in. NOTES § "Test shards" says which sections cover what.
@@ -22,25 +24,38 @@ import { fileURLToPath } from 'node:url';
 export const SLOW = ['crewed selene landing and return', 'ladders, flown from the pad', 'the program (v1.12)',
   'procedures flown headless', 'procedures (bodies session)'];
 
-const HEAD = /^\/\/ ([0-9]+[a-z]?|[a-z]+-[0-9]+)\. (.*)$/, END = '// ==== END OF SECTIONS';
+const HEAD = /^\/\/ ([0-9]+[a-z]?|[a-z]+-[0-9]+)\. (.*)$/, END = '// ==== END OF SECTIONS', MARK = '// ==== SECTIONS: tests/';
+// the section files, in run order (QUEUE Q68): the first suite, then the lanes in ROADMAP's order. A new file goes here.
+export const TEST_FILES = ['core', 'flow', 'economy', 'vehicle', 'space', 'world', 'look', 'qa', 'platform'];
+const lines0 = text => text.replace(/\r\n/g, '\n').split('\n');
 
-export function parse(text) {
-  const lines = text.replace(/\r\n/g, '\n').split('\n'), end = lines.findIndex(l => l.startsWith(END));
-  if (end < 0) throw new Error(`test.mjs has no "${END}" line`);
-  const secs = [];
-  for (let i = 0; i < end; i++) {
-    const m = HEAD.exec(lines[i]);
-    if (m) secs.push({ ord: secs.length + 1, label: m[1], title: m[2], line: i + 1, from: i });
-  }
-  secs.forEach((s, k) => {
-    s.to = k + 1 < secs.length ? secs[k + 1].from : end;
-    s.body = lines.slice(s.from, s.to).join('\n');
+// the sections in lines[from, to) of one file, appended to secs
+function collect(lines, file, from, to, secs) {
+  const at = [];
+  for (let i = from; i < to; i++) { const m = HEAD.exec(lines[i]); if (m) at.push({ label: m[1], title: m[2], file, line: i + 1, from: i }); }
+  at.forEach((s, k) => {
+    s.ord = secs.length + 1; s.to = k + 1 < at.length ? at[k + 1].from : to;
+    const own = lines.slice(s.from, s.to);
+    s.body = own.join('\n');
     // top-level declarations (column 0) other sections may use
     s.decls = [...s.body.matchAll(/^(?:async )?function\*? ?([\w$]+)|^(?:const|let|var) ([\w$]+)/gm)].map(m => m[1] || m[2]);
-    s.text = [s.label, s.title, ...lines.slice(s.from + 1, s.to).filter(l => l.startsWith('//')).map(l => l.slice(3))]
-      .join(' ').toLowerCase();
+    s.text = [s.label, s.title, ...own.slice(1).filter(l => l.startsWith('//')).map(l => l.slice(3))].join(' ').toLowerCase();
+    secs.push(s);
   });
-  return { prelude: lines.slice(0, secs[0].from).join('\n'), secs, epilogue: lines.slice(end).join('\n') };
+}
+
+// test.mjs's text → {prelude, secs, epilogue}. Sections still written inline in test.mjs (an old branch) run first.
+export function parse(text, url) {
+  const lines = lines0(text), end = lines.findIndex(l => l.startsWith(END)), mark = lines.findIndex(l => l.startsWith(MARK));
+  if (end < 0) throw new Error(`test.mjs has no "${END}" line`);
+  const secs = []; collect(lines, 'test.mjs', 0, end, secs);
+  const pre = secs.length ? secs[0].from : mark >= 0 ? mark : end;
+  if (mark >= 0) for (const f of TEST_FILES) {
+    const fl = lines0(readFileSync(new URL(`tests/${f}.mjs`, url), 'utf8'));
+    collect(fl, `tests/${f}.mjs`, 0, fl.length, secs);
+  }
+  if (!secs.length) throw new Error('no test sections found');
+  return { prelude: lines.slice(0, pre).join('\n'), secs, epilogue: lines.slice(end).join('\n') };
 }
 
 // a selector is a label ("12", "control-3": every section with it), "#53" (the position --list shows; it moves when
@@ -102,7 +117,7 @@ function run(src, { echo = true } = {}) {
 const fmt = ms => (ms / 1000).toFixed(1).padStart(6) + ' s';
 
 export async function main(argv, url) {
-  const P = parse(readFileSync(fileURLToPath(url), 'utf8'));
+  const P = parse(readFileSync(fileURLToPath(url), 'utf8'), url);
   const opt = (k) => { const i = argv.findIndex(a => a === k || a.startsWith(k + '=')); if (i < 0) return null;
     return argv[i].includes('=') ? argv[i].split('=').slice(1).join('=') : (argv[i + 1] && !argv[i + 1].startsWith('--') ? argv[i + 1] : ''); };
   const known = ['--list', '--only', '--skip', '--smoke', '--times', '--isolation', '--jobs'];
@@ -111,7 +126,7 @@ export async function main(argv, url) {
 
   if (opt('--list') !== null) {
     const dup = l => P.secs.filter(s => s.label === l).length > 1 ? '*' : ' ';
-    for (const s of P.secs) console.log(`${String(s.ord).padStart(3)}  ${(s.label + dup(s.label)).padEnd(11)} line ${String(s.line).padEnd(5)} ${s.title.slice(0, 96)}`);
+    for (const s of P.secs) console.log(`${String(s.ord).padStart(3)}  ${(s.label + dup(s.label)).padEnd(11)} ${(s.file.replace('tests/', '') + ':' + s.line).padEnd(17)} ${s.title.slice(0, 90)}`);
     console.log(`\n${P.secs.length} sections; * = a label more than one section carries (--only picks them all; a title word picks one)`);
     return 0;
   }
@@ -174,7 +189,7 @@ async function isolation(P, picked, url, jobs) {
   };
   await Promise.all(Array.from({ length: jobs }, worker));
   for (const d of diff) {
-    console.log(`\n--- ${d.s.label} (line ${d.s.line}) ${d.s.title.slice(0, 80)}\n  alone fails: ${d.a.fail.join(' / ') || '-'}\n  full fails:  ${d.f.fail.join(' / ') || '-'}\n  alone exit ${d.code}; last lines:\n${d.tail}`);
+    console.log(`\n--- ${d.s.label} (${d.s.file}:${d.s.line}) ${d.s.title.slice(0, 80)}\n  alone fails: ${d.a.fail.join(' / ') || '-'}\n  full fails:  ${d.f.fail.join(' / ') || '-'}\n  alone exit ${d.code}; last lines:\n${d.tail}`);
   }
   console.log(`\n${diff.length} of ${picked.length} sections behave differently alone`);
   return diff.length ? 1 : 0;
