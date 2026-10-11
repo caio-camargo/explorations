@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.32 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -61,6 +61,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 66 | P2 | **After a retrograde burn in Tellus orbit, when the orbit would decay, a bunch of paths appeared that covered the planet** (Caio, 2026-10-10). Maybe uncertainty, but looks like a bug. | Likely the impact predictor drawing its whole fall: a slow decay is many revolutions, every one drawn. QUEUE Q266 | flow (+ space: `predictImpact`) |
 | 67 | P2 | **A splash effect at splashdown** (Caio, 2026-10-10). | None today: a sea landing only posts a news line. QUEUE Q267 | look & sound (effects) |
 | 68 | P3 | **Should the sea be a featureless blue?** (Caio, 2026-10-10) | No: from altitude a real sea shows sunglint, Fresnel sky reflection, colour changes, swell and coastal foam. The shader has depth colour only (`gl.js` ~159). Stills first. QUEUE Q268 | world (+ look & sound) |
+| 69 | P2 | **On the opening menu, choosing the country etc. shows no indicator that one is selected** (Caio, 2026-10-11). | The selected state is a faint fill and a thin left border on some buttons, none on the decision buttons. QUEUE Q269 (or with Q241 R3, the charter) | flow |
 
 ## Done
 
