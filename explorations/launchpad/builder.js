@@ -55,7 +55,25 @@ function rootPath(r,n){if(r===n)return[r];for(const c of kids(r)){const p=rootPa
 function reroot(path){const D=design();for(let i=0;i<path.length-1;i++){const p=path[i],c=path[i+1],at=c.at,j=c.j;
     p.c.splice(p.c.indexOf(c),1);kids(c).push(p);p.at=at==='u'?'d':'u';if(j)p.j=j;else delete p.j}
   const r=path[path.length-1];delete r.at;delete r.j;D.root=r}
-function detachNode(n){const D=design();if(n===D.root){D.root=null;return}const p=parentOf(D.root,n);if(p)p.c.splice(p.c.indexOf(n),1)}
+function detachNode(n){const D=design();if(n===D.root){D.root=null;delete D.park;return}
+  const k=(D.park||[]).findIndex(e=>e.n===n);if(k>=0){D.park.splice(k,1);if(!D.park.length)delete D.park;return}
+  for(const r of[D.root,...(D.park||[]).map(e=>e.n)]){const p=r&&parentOf(r,n);if(p){p.c.splice(p.c.indexOf(n),1);return}}}
+// ---- parts parked in the air (Q246, PLAYTEST #43). A held part (with whatever hangs from it) clicked where no node or
+// surface takes it stays there, unattached: design.park = [{n, p}], p = where its bottom centre sits from the root part's
+// bottom centre (so parked parts stay still with the pin, Q247). They are drawn faint, can be picked up, copied and
+// deleted like any part, and are not the rocket: assemble, costs and launch ignore them (Rollout says they stay behind).
+function parkedInst(){const D=stackDef;if(!isV2(D)||!D.park||!D.park.length||isEmpty(D))return[];const r=rootPart();if(!r)return[];
+  const out=[];for(const e of D.park){const L=layoutDesign({v:2,root:e.n});
+    for(const q of L.inst)out.push({d:q.d,pos:[r.pos[0]+e.p[0]+q.x,0,r.pos[2]+e.p[2]+q.z],y0:r.y0+e.p[1]+q.y0,h:q.d.h,phi:q.phi,rdec:q.rdec||q.surf,
+      inst:{surf:q.surf,rdec:q.rdec},dn:q.nd,park:e,on:true})}
+  return out}
+// where the floating ghost is drawn: the held group's bottom centre in vessel coordinates (see draw: g.float)
+function floatAt(){const r=mouseRay(),w=V();if(!r||!w||!st.held)return null;const G=trial({root:true}),c=G.reduce((a,g)=>a+g.y0+g.h/2,0)/G.length,
+  T=add(r.o,mul(r.d,len(sub(w.camW,shipWorld())))),sh=isEmpty(stackDef)?0:S.parts[0].y0-S.parts[0].inst.y0;
+  return{v:[T[0],sh+T[1]-c,T[2]],G:G.map(g=>({...g,pos:[g.pos[0]+T[0],0,g.pos[2]+T[2]],y0:g.y0+T[1]-c}))}}
+function parkHeld(){const f=floatAt(),r=rootPart();if(!f||!r)return;if(collides(f.G)){note('Blocked: it would overlap a part');return}
+  snapshot();const D=design(),h=st.held;delete h.at;(D.park||(D.park=[])).push({n:h,p:[+(f.v[0]-r.pos[0]).toFixed(3),+(f.v[1]-r.y0).toFixed(3),+(f.v[2]-r.pos[2]).toFixed(3)]});
+  st.held=null;st.ghostKey='';st.parkKey='';editorChanged();note(`${name(h.k)} parked in the air: not part of the rocket until you attach it again`)}
 
 // ---- geometry: vessel frame (y along the stack, the ship's own coordinates) ↔ world ↔ screen
 const V=()=>HOOK.view;
@@ -73,7 +91,9 @@ function hitPart(p,o,d){const I=p.inst||{},sf=I.surf,sw=p.d.span??Math.max(.3,(p
     for(const t of ts){if(t<=0)continue;const y=o[1]+t*d[1];if(y<ya-1e-6||y>yb+1e-6||c+k*t*d[1]<0)continue;if(!best||t<best.t)best={t,y}}}
   return best}
 function rayHit(r){let best=null;if(!r||isEmpty(stackDef))return null;
-  for(const p of S.parts){if(!p.on)continue;const h=hitPart(p,r.o,r.d);if(h&&(!best||h.t<best.t))best={p,t:h.t,pt:add(r.o,mul(r.d,h.t))}}return best}
+  for(const p of S.parts){if(!p.on)continue;const h=hitPart(p,r.o,r.d);if(h&&(!best||h.t<best.t))best={p,t:h.t,pt:add(r.o,mul(r.d,h.t))}}
+  if(!st.held)for(const p of parkedInst()){const h=hitPart(p,r.o,r.d);if(h&&(!best||h.t<best.t))best={p,t:h.t,pt:add(r.o,mul(r.d,h.t))}}   // parked: to pick up, never to attach to
+  return best}
 
 // ---- where the held part would go. Stack nodes near the cursor win; else the surface under it; else nowhere.
 function heldNeeds(h){const k=kids(h);return{top:!k.some(c=>c.at==='u'),bot:!k.some(c=>c.at==='d')}}
@@ -127,7 +147,8 @@ let noteT=0;function note(t){st.msg=t;noteT=performance.now();const e=el('target
 function mountsHTML(){return`<div class="bmounts"><span>radial mounts</span>${SYM.map(n=>`<button data-sym="${n}" class="${st.sym===n?'on':''}">×${n}</button>`).join('')}<span class="dim">[X]</span></div>`}
 function statusHTML(){
   if(st.msg&&performance.now()-noteT<6000)return`<span class="acc">${st.msg}</span>`+(st.held?mountsHTML():'');
-  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · click a glowing node or a surface · right-click drops it`+mountsHTML();
+  if(st.held)return`holding <b>${name(st.held.k)}</b>${nodes(st.held).length>1?` +${nodes(st.held).length-1}`:''} · click a glowing node or a surface, or in the air to park it · right-click drops it`+mountsHTML();
+  const pk=parkedInst().length;if(pk&&!isEmpty(stackDef))return`<span class="warn">${pk} part${pk>1?'s':''} parked in the air</span>, not attached: click to pick ${pk>1?'them':'it'} up and attach, or Del · a launch leaves ${pk>1?'them':'it'} here`;
   return isEmpty(stackDef)?'pick a part to start: the first one placed is the root (a command pod, usually)':'pick a part below, or click one on the rocket to move it · right-click a part for its options'}
 
 // ---- per-frame: hover and ghost. Recomputed on mouse move; meshes cached by a key so they rebuild only on change.
@@ -142,18 +163,23 @@ function ghostMeshes(){const s=st.slot,key=st.held?JSON.stringify([st.held,s&&s.
   if(!st.held)return null;
   if(!s){st.ghost={float:true,G:trial({root:true})};const G=st.ghost.G;st.ghost.glow=meshOf(G,[.5,.6,.7]);st.ghost.c=G.reduce((c,g)=>c+g.y0+g.h/2,0)/G.length;return st.ghost}
   const G=trial(s),bad=collides(G);st.ghost={G,bad,solid:bad?null:meshOf(G),glow:meshOf(G,bad?[1,.15,.1]:[.2,1,.45])};s.bad=bad;return st.ghost}
+function parkMeshes(){const P=parkedInst(),key=JSON.stringify(stackDef.park||null)+'|'+P.map(q=>q.pos.concat(q.y0).map(v=>v.toFixed(3))).join();
+  if(key===st.parkKey)return st.parkM;st.parkKey=key;if(st.parkM){st.parkM.s&&st.parkM.s.free();st.parkM.g&&st.parkM.g.free()}
+  st.parkM=P.length?{s:meshOf(P),g:meshOf(P,[.35,.55,1])}:null;return st.parkM}
 function hiMesh(){const key=st.hover?String(S.parts.findIndex(p=>p.dn===st.hover))+(st.sel===st.hover):'';
-  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?S.parts.filter(p=>p.on&&p.dn===st.hover):
+  const sel=st.sel&&!st.held?S.parts.filter(p=>p.on&&p.dn===st.sel):[],hov=st.hover?[...S.parts,...parkedInst()].filter(p=>p.on&&p.dn===st.hover):
     st.hiAtom?S.parts.filter(p=>p.on&&st.hiAtom.segs.includes(p.seg)&&(st.hiAtom.kind!=='i'||p.d.kind==='engine')):[];
   const k2=key+'|'+sel.map(p=>p.i).join(',')+'|'+hov.map(p=>p.i).join(',');if(k2===st.hiKey)return st.hi;st.hiKey=k2;
   if(st.hi){st.hi.h&&st.hi.h.free();st.hi.s&&st.hi.s.free()}st.hi={h:meshOf(hov,[.5,.8,1]),s:meshOf(sel,[1,.75,.3])};return st.hi}
 // called from render() after the ship is drawn, with the mesh program bound
 function draw(drawMesh,m,Mship,pw){
   if(mode!=='editor')return;
-  const g=st.held?ghostMeshes():null,hi=hiMesh();
+  const g=st.held?ghostMeshes():null,hi=hiMesh(),pm=isEmpty(stackDef)?null:parkMeshes();
+  if(pm)drawMesh(pm.s,Mship,pw);
   if(g&&g.solid){gl.uniform1f(m.uSeam,1);drawMesh(g.solid,Mship,pw);gl.uniform1f(m.uSeam,0)}
   gl.enable(gl.BLEND);gl.blendFunc(gl.ONE,gl.ONE);gl.depthMask(false);gl.depthFunc(gl.LEQUAL);
   const pulse=.5+.5*Math.sin(performance.now()/180);
+  if(pm){gl.uniform1f(m.uGlow,.1);drawMesh(pm.g,Mship,pw)}
   if(hi.h){gl.uniform1f(m.uGlow,.22);drawMesh(hi.h,Mship,pw)}
   if(hi.s){gl.uniform1f(m.uGlow,.16+.1*pulse);drawMesh(hi.s,Mship,pw)}
   if(g&&g.glow){let M=Mship;
@@ -168,6 +194,9 @@ function overlay(o){
       const c=f>1?'#ff6b6b':f>.7?'#ffb454':'#7dffa8';o.fillStyle=c;o.beginPath();o.arc(q[0],q[1],(f>.7?3.5:2.5)*k,0,7);o.fill();
       if(f<.3||seen.some(s=>Math.hypot(s[0]-q[0],s[1]-q[1])<26*k))continue;seen.push(q);
       o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';const t=(f*100).toFixed(0)+'%';o.strokeText(t,q[0]+6*k,q[1]+4*k);o.fillText(t,q[0]+6*k,q[1]+4*k)}}
+  {const P=parkedInst(),seen=new Set();for(const q of P){if(seen.has(q.park))continue;seen.add(q.park);const G=P.filter(x=>x.park===q.park),top=Math.max(...G.map(x=>x.y0+x.h)),
+    c=proj([G.reduce((a,x)=>a+x.pos[0],0)/G.length,top+.3,G.reduce((a,x)=>a+x.pos[2],0)/G.length]);if(!c)continue;
+    o.fillStyle='rgba(127,170,255,.95)';o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';o.textAlign='center';o.strokeText('parked',c[0],c[1]);o.fillText('parked',c[0],c[1]);o.textAlign='left'}}
   if(st.held){const need=heldNeeds(st.held),s=st.slot;
     for(const n of stackSlots()){if(n.side==='u'&&!need.bot||n.side==='d'&&!need.top)continue;const q=proj(n.v);if(!q)continue;
       const on=s&&s.p===n.p&&s.at===n.side;o.strokeStyle=on?(s.bad?'#ff6b6b':'#7dffa8'):'rgba(127,209,255,.75)';o.lineWidth=(on?2.5:1.5)*k;
@@ -176,7 +205,7 @@ function overlay(o){
       const t=`${s.bad?'blocked · ':''}radial mounts ×${s.at.n} [X] · ${(s.at.a*180/Math.PI).toFixed(0)}° · ${s.at.y.toFixed(2)} m up ${name(s.p.d.key)}${s.at.dec?' · decoupler':''}`;
       o.strokeText(t,m[0]+16*k,m[1]+28*k);o.fillText(t,m[0]+16*k,m[1]+28*k)}
     else if(s&&s.bad){const m=st.mouse;o.fillStyle='#ff6b6b';o.fillText('blocked: it would overlap a part',m[0]+16*k,m[1]+28*k)}
-    else if(!s&&st.mouse){const m=st.mouse,t=`radial mounts ×${st.sym} · X changes`;o.fillStyle='rgba(127,209,255,.85)';o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';o.strokeText(t,m[0]+16*k,m[1]+28*k);o.fillText(t,m[0]+16*k,m[1]+28*k)}}
+    else if(!s&&st.mouse){const m=st.mouse,t=`click to park it here · radial mounts ×${st.sym} · X changes`;o.fillStyle='rgba(127,209,255,.85)';o.lineWidth=3*k;o.strokeStyle='rgba(0,0,0,.8)';o.strokeText(t,m[0]+16*k,m[1]+28*k);o.fillText(t,m[0]+16*k,m[1]+28*k)}}
   o.restore()}
 
 // ---- what each part does (Q248, PLAYTEST #46): one sentence, then a small spec sheet from the part's own numbers, on a
@@ -255,7 +284,7 @@ function tooltip(){let t=el('bldtip');if(!t){t=document.createElement('div');t.i
   const ps=S.parts.filter(p=>p.on&&p.dn===n),w=ps.reduce((a,p)=>{const f=certFrac(p);return f!=null&&f>(a?a.f:-1)?{f,p}:a},null);
   t.innerHTML=`<b>${name(n.k)}</b>${ps.filter(p=>!p.inst.rdec).length>1?` <span class="dim">×${ps.filter(p=>!p.inst.rdec).length}</span>`:''}`+
     (partInfo(PARTS[n.k])?`<div class="pcs">${partInfo(PARTS[n.k])}</div>`:'')+(w?`<br>joint <span class="${w.f>1?'bad':w.f>.7?'warn':'ok'}">${(w.f*100).toFixed(0)}%</span> <span class="dim">${w.p.anaKind||''}</span>`:'')+
-    `<br><span class="dim">click: pick up · right-click: options</span>`;
+    (ps.length?'':`<br><span class="warn">parked: not attached</span>`)+`<br><span class="dim">click: pick up${ps.length?' · right-click: options':' · Del: delete'}</span>`;
   const k=V()?V().W/innerWidth:1;t.style.display='block';t.style.left=(st.mouse[0]/k+14)+'px';t.style.top=(st.mouse[1]/k+14)+'px'}
 // (Q235, PLAYTEST #42) start from scratch: one undo step; the palette, presets and saved designs are untouched
 function clearDesign(){if(isEmpty(stackDef))return;snapshot();stackDef={v:2,root:null};st.held=null;st.sel=null;st.reframe=true;editorChanged();note('Cleared: pick a part to start (Ctrl+Z brings the design back)')}
@@ -389,7 +418,7 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
 #bldtip{position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:4px 8px;font-size:11.5px;display:none;z-index:5}
 #bldhelp{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);font-size:11px;color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 10px;pointer-events:none;white-space:nowrap}
 #bldhelp b{color:var(--fg);font-weight:normal}`;document.head.appendChild(css);
-  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
+  const help=document.createElement('div');help.id='bldhelp';help.innerHTML='<b>click</b> pick/place (in the air: park) · <b>right-click</b> options/drop · <b>X</b> radial mounts · <b>C</b> snap · <b>R</b> decoupler · <b>Del</b> delete · <b>Ctrl+Z</b> undo · <b>drag</b> orbit · <b>Shift+wheel</b> up/down';
   el('editor').appendChild(help);
   const cvs=el('gl'),cpos=e=>[e.clientX*cvs.width/cvs.clientWidth,e.clientY*cvs.height/cvs.clientHeight];
   addEventListener('mousedown',e=>{if(mode!=='editor'||e.target!==cvs)return;st.mouse=cpos(e);update();
@@ -401,8 +430,8 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     st.mouse=e.target===cvs?cpos(e):null;if(st.press&&Math.hypot(e.clientX-st.press.x,e.clientY-st.press.y)>5)st.press.drag=true;update()});
   addEventListener('mouseup',e=>{if(mode!=='editor')return;const p=st.press;st.press=null;if(st.pan){st.pan=false;return}
     if(!p||p.drag||e.target!==cvs)return;
-    if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part')}
-      else if(st.hover){const pp=S.parts.find(q=>q.on&&q.dn===st.hover&&!q.inst.rdec)||S.parts.find(q=>q.dn===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
+    if(p.b===0){if(st.held){const s=st.slot;if(s&&!s.bad)place(s,p.mod.shift);else if(s&&s.bad)note('Blocked: it would overlap a part');else if(!s)parkHeld()}
+      else if(st.hover){const pp=S.parts.find(q=>q.on&&q.dn===st.hover&&!q.inst.rdec)||S.parts.find(q=>q.dn===st.hover)||parkedInst().find(q=>q.dn===st.hover);if(pp)pickUp(pp,p.mod.ctrl)}
       else if(st.sel){st.sel=null;refresh()}}
     else if(p.b===2){if(st.held)drop();else if(st.hover){st.sel=st.hover;refresh()}else if(st.sel){st.sel=null;refresh()}}
     update()});
@@ -420,5 +449,5 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     else if(k==='delete'||k==='backspace'){e.preventDefault();if(st.held){const h=st.held;drop();note(`${name(h.k)} discarded (undo brings it back)`)}else if(st.hover)del(st.hover);else if(st.sel)del(st.sel)}});
   el('target').addEventListener('click',e=>{const b=e.target.closest('[data-sym]');if(!b)return;st.sym=+b.dataset.sym;st.ghostKey='';refresh()});
   palette()}
-return{aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
+return{parkedInst,proj,aimCant,ensureIds,reroot,rootPath,init,panel:changed,palette,frameCam,isEmpty,design,draw,overlay,grab,drop,cancel:drop,load:loadDesign,foot,partInfo,partSpecs,st};
 })();
