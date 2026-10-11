@@ -1,11 +1,21 @@
 # Launchpad — playtest notes
-**Version**: 0.1.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.38 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
 **Priority:** **P1** unblocks testing, or a bug you see on every flight · **P2** visible polish, contained fix ·
 **P3** larger design/structure work, needs a plan first.
 **Owner** names the session that holds that code (see `ACTIVE_WORK.md` for the worktrees).
+
+**A lens for every playtest: good mess or bad jank?** (Caio, 2026-10-11: KSP's jankiness is part of its fun; a
+too-neat system could take the fun out of flying.) The fun was never the bugs; it's **mess you caused and can recover
+from**: the rocket flips because of where the fins went, the lander tips, you run dry 200 m/s short and the rescue
+becomes the week's best mission. When something surprising happens, note which it felt like:
+- **"My fault, and I could deal with it"**: good mess. Keep it; it's where flying stays fun (D15's engine ignitions and
+  the simulator-not-revert rule add more of it).
+- **"The game did it to me"**: bad jank (random, unexplained, unrecoverable). A P1 or P2 item.
+Neatness is fine *behind* the player (MIDGAME: routines take over what's been solved); the edge (first orbits,
+docking, rescues, landings, stations) stays flown and messy. That's the difficulty ramp.
 
 ---
 

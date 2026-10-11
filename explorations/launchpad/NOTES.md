@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.49 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -9280,6 +9280,87 @@ collisions; a planted second TESTING row 12 as a repeat; today's `main` is clean
 someone has played are marked (`| ✓ 115 (robot) |`, `| ✗ 12 → P#15 |`), and the first pattern skipped them, 93 of 198
 rows; it now uses test `qa-3`'s pattern. TESTING also keeps a "Next free number" line that `qa-3` checks: bump it with your row. Not done: a pre-push hook
 (`core.hooksPath` is per clone, so every machine would have to opt in; the recipe and the suite need nothing).
+
+## Plan: record and replay a whole session (2026-10-11, wildcard session for the platform lane, QUEUE Q225; plan only)
+
+**The ask** (Caio, 2026-10-10): watch a recorded play, a person's or the robot's, at 1×; pause, scrub, share the file.
+The viewer plays; it never hands control over.
+
+**What already exists.** Flights record a tape from launch (§ "Autopilot = flight tapes"): every `advPhys`, `advRails(dt,
+warp)`, control change and discrete action (stage, abort, legs, wings, arm, bay, rover, load, switch, undock), and it
+replays **bit for bit** on the same `TAPE_V`. The ignition dice are deterministic (`igniteOK` hashes `PROG.flights`, the
+kick count and the part), and the world's daily dice come from `PROG.wseed`. Saves are versioned (`SAVE_V`, `migrateSave`).
+`?tester` already gives the page its own storage slot. The robot (`playtest.mjs`) already drives the page with semantic
+steps: `{key}`, `{hold, ms}`, `{click:'#sel'}`, `{wait}`, `{say}`, JS strings.
+
+**What a flight tape misses for a whole session** (read from the code, 2026-10-11):
+1. **The starting state:** `launchpad-program-v1` (or the tester slot), and the other keys the page reads: `launchpad-atlas`,
+   `-hud-pins`, `-modern-ui`, `-perf`, `-progtab`, `-sound`, `-volume`, `-tester-flags`, plus the saved autopilot tapes.
+2. **Everything between flights.** About 40 DOM handlers change `PROG` (contracts, facilities, the bureau, production,
+   dispatch, the tester menu), `go(screen)` and the overlays change what's on screen, and the Assembly's edits are
+   pointer drags on a canvas. None of it is recorded today, and replaying it as input would need every one of those paths
+   to be deterministic and every layout to stay put.
+3. **How each flight starts:** the design stack and site are on the tape, but not the program around it: the day
+   (`advanceDays` to a whole day before a flight from orbit), `FLEET` and other vessels, `ORB_T0`, a flight handed over
+   from a dispatch (`recTape.fromOrbit`).
+4. **The camera:** `cam` (yaw, pitch, dist, map yaw/pitch/dist, focus), `view` (flight or map), the map's selection.
+5. **Pacing:** the tape records calls, not frames. Replaying at 1× needs the wall time of each frame's batch of ops (how
+   many physics steps it ran, when), or the replay runs at the replay machine's frame rate, which is "1×" only on average.
+6. **One random number in the SIM:** a detached part's tumble (`sim/vessel.js:656`, `Math.random` in the debris spin).
+   Harmless for the tape today (debris leaves the sim), but a replay check that hashes the scene would trip on it.
+   Visual-only randomness (smoke, booms, sparks, sound in `app/`) makes a replay look slightly different, never diverge.
+
+**Recommendation: keyframes, not keystrokes.** Two ways to record:
+
+| | A. Record input, replay it | **B. Record state, replay flights (recommended)** |
+|---|---|---|
+| Between flights | every key, click, drag; replayed into the live UI | the save as it changes (a diff at each `HOOK.save`), the screen, the design stack at each edit |
+| Flights | the tape (exists) | the tape (exists), plus its starting conditions |
+| Breaks when | any UI path isn't deterministic, a layout moves, a handler changes between versions | the SIM's flight code changes (`TAPE_V`): then that flight shows its path and outcome from the snapshots, not a re-flight |
+| Cost to build | every handler audited, canvas pointer events mapped | a recorder at three hooks (`HOOK.save`, `go`, the tape) and a small JSON diff |
+
+B needs nothing new to be deterministic: only flights re-simulate, and those already do. **Inputs are still logged in
+B, but for display**: a key or a click on a `data-*` button becomes a caption or a ripple in the viewer ("pressed L",
+"accepted *Weather sat*"), and the same log exports as a **robot row** (`{key}`, `{click}` steps), so a person's session
+can become a regression test (slice R4).
+
+**The file** (JSON, gzipped with `CompressionStream` for export):
+`{v, game: {TAPE_V, SAVE_V, built}, start: {prog, store: {key: value}}, events: [{t, k, …}]}`, `t` in wall ms from the
+start. Kinds: `screen` (go), `prog` (a diff of the save: key paths set or deleted), `design` (the stack, at each
+Assembly edit, debounced), `cam` (10 Hz while it moves), `ui` (a key or a `data-*` click, display only),
+`flightStart` (stack, site, day, `ORB_T0`, the other vessels), `ops` (one frame's tape ops, at its `t`), `path` (the vessel's position and
+speed at 1 Hz, for a flight the viewer can't re-fly), `flightEnd`
+(`stateHash(S)` and the settled `PROG` hash). Size to measure in R1: one hand-flown orbit is 1 KB of tape; the save
+diffs are the unknown.
+
+**The viewer** (`?replay`, like `?tester`): opens a file, loads `start` into a slot of its own and turns `HOOK.save` off,
+so a career or the sandbox is never touched. It applies events by time; flights run `tapePlay` with each frame's recorded
+op budget; the camera follows the samples, interpolated. Controls: play/pause, 1×/4×/16×, chapters (one per screen visit
+and per flight), scrub. **Scrubbing** between flights jumps to the nearest `prog` state and applies diffs forward;
+inside a flight it re-runs the tape headless from the flight's start to `t` (measure: a 248 s orbit flight is at most
+~12,400 physics steps at `DT` 0.02 s, fewer with rails coasts; if that takes more than ~0.5 s, keep a vessel snapshot every 30 s of flight).
+
+**Checking determinism.** At each `flightEnd` the recorder stores a hash of the vessel (position, velocity, parts, fuel)
+and of the settled save; the viewer recomputes both and marks a chapter that diverged instead of playing on silently.
+A headless test (`tests/platform.mjs`): record a Sounding and an Orbiter flight in one SIM instance, serialise, load
+into a **fresh instance** (`new Function(src …)`, as the sats sections do: the "across a reload" case), replay, compare
+hashes. Seed the debris tumble from the vessel (`s.kickN`, the part index) first.
+
+**Slices** (each S unless marked):
+- **R1 recorder core** (⚙): the diff, the event log, `flightStart`/`flightEnd` with hashes, the debris seed, the
+  cross-instance test. A `TEST.record` tester flag turns it on; a download button like the log's.
+- **R2 viewer, M** (🖥): `?replay`, load a file, play/pause/speed, chapters, flights re-flown on the real renderer.
+- **R3** (🖥): scrub, the camera path, captions and click ripples from `ui` events.
+- **R4** (⚙): export a recording's `ui` steps as a `playtest.mjs` row; record the robot's own runs (`PT_RECORD`).
+
+**Defaults, for Caio to override** (one line each):
+1. Recording is **off for players**, on with the tester flag or a Settings switch; while on it keeps the whole session
+   (no ring buffer) until the tab closes or *Download*.
+2. Sharing is **a file** (download, open in `?replay`), not a link.
+3. The viewer shows **the player's camera**; a free camera is later.
+4. A recording made on an older `TAPE_V` **still plays**: flights it can't re-fly show their recorded path and outcome.
+5. **No "take over from here"** (the ask says the viewer never hands control over); the autopilot already covers that for
+   one flight.
 
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
