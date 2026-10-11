@@ -2,7 +2,7 @@
 // a classic script sharing one global scope with the others; index.html loads them in order. 'use strict';
 'use strict';
 // ============================================================ rendering (raw WebGL2)
-const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');
+const cv=document.getElementById('gl'),ov=document.getElementById('ov'),octx=ov.getContext('2d');let OV_K=1;   // OV_K: overlay pixels per 3D-view pixel (Q258)
 const gl=cv.getContext('webgl2',{antialias:true,depth:true,stencil:true,powerPreference:'high-performance'});
 if(!gl){document.body.innerHTML='<p style="padding:2em">WebGL2 is required.</p>'}
 const SUN=norm([1,0.12,0.05]),FAR=1e12,FC=2/Math.log2(FAR+1);
@@ -1425,7 +1425,7 @@ const GC={panel:'#17191c',bezel:'#2b2e33',face:'#e8e1cc',faceDim:'#c9c1a9',ink:'
 // (flow, UI slice 4b) the strip's place is #gslot, the left of the bottom cluster (gauges | throttle | navball | SAS);
 // app/hud.js shows the slot while the Ascent condition holds, so in space the cluster narrows. Scaled to the slot's width.
 function gaugeRect(){const g=document.getElementById('gslot');if(!g||g.closest('.hidden')||!g.offsetParent||getComputedStyle(g).visibility==='hidden')return null;   // the HUD hidden: no gauges
-  const r=g.getBoundingClientRect(),k=ov.width/ov.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
+  const r=g.getBoundingClientRect(),k=cv.width/cv.clientWidth;return{x:r.left*k,y:r.top*k,s:k*r.width/318}}
 function gaugeFont(px,s,w=600){return `${w} ${Math.round(px*s)}px Bahnschrift,"DIN Alternate","Arial Narrow",Arial,sans-serif`}
 function drawGauges(x0,y0,s){if(!GAUGES||!S)return;const g=octx,b=S.body,h=len(S.r)-b.R;
   // the data

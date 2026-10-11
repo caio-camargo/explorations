@@ -723,7 +723,7 @@ function baseRunProc(stack,base){const asc=(PROG.procs||{})[procKey(stack)];if(!
   return{...asc,kind:'mission',phases:[{k:'transfer',to:B.name,pass:low.pass,site:base.pf.slice()},{k:'capture',ap:low.ap,pe:low.pe},{k:'land',site:base.pf.slice()}]}}
 function baseRunQuote(base,stack){if(!base||!base.beacon)return{ok:false,why:'not a base'};const f0=BASE_FIRST[base.bodyName];
   {const a=autoAllowed('moon');if(!a.ok)return{ok:false,why:a.why}}   // MIDGAME's automation ladder (D7; the table: space's autoAllowed, Q127)
-  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!isV2(stack)&&(!Array.isArray(stack)||!stack.length))return{ok:false,why:'no design in Assembly'};   // a v2 design counts (Q164: the Probe is one)
+  if(f0&&!PROG.done[f0])return{ok:false,why:`land on ${base.bodyName} by hand first`};if(!isV2(stack)&&(!Array.isArray(stack)||!stack.length))return{ok:false,why:'no design on the design table'};   // a v2 design counts (Q164: the Probe is one)
   {const lk=partLaunchWhy(newShip(stack).parts);if(lk)return{ok:false,why:lk}}   // Q190: no late parts on a supply run either
   if(!baseRunProc(stack,base))return{ok:false,why:'this design has no ascent procedure: fly it to orbit by hand first'};
   if((PROG.dispatch||[]).some(x=>x.status==='queued'&&x.base===base.id))return{ok:false,why:'a supply run is already on its way'};
@@ -737,7 +737,7 @@ function orderBaseRun(base,stack){const q=baseRunQuote(base,stack);if(!q.ok)retu
 // the base's line in the Fleet tab: a supply run with the design in Assembly, or why not, or the one on its way
 function baseRunLine(base,stack){const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.base===base.id);
   if(D)return`<div class="sub dim">Supply run: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d</div>`;
-  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design in Assembly'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d${winNote(q.win)}, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
+  const q=baseRunQuote(base,stack);return q.ok?`<div class="sub dim"><button data-baserun="${base.id}">Supply run with ${designName(stack)||'the design on the design table'}</button> launches in ${Math.ceil(q.launch-PROG.day)} d${winNote(q.win)}, ${fmtM(q.cost)}; it lands at the beacon if it has the Δv</div>`:`<div class="sub dim">Supply run: ${q.why}</div>`}
 // the run itself (dispatchTick, launch day): physics decides; a landing within BASE_R of the beacon joins the base
 function baseRun(D,v){const base=(PROG.sats||[]).find(q=>q.id===D.base&&q.landed&&q.beacon);if(!base)return{ok:false,why:'the base is gone'};
   const proc=baseRunProc(D.stack,base);if(!proc)return{ok:false,why:'no ascent procedure'};const B=BODIES.find(b=>b.name===base.bodyName);
@@ -778,7 +778,7 @@ function orderDryRun(stack,target){const q=dryQuote(stack);if(!q.ok)return q;if(
   HOOK.save();return{...r,cost:q.cost,days:q.days}}
 function dispatchLine(c,stack){const O=dispatchOptions(c);if(!O.length&&!DISPATCH_TYPES.includes(c.type))return'';const D=(PROG.dispatch||[]).find(x=>x.status==='queued'&&x.cid===c.id);
   if(D)return`<div class="sub dim">Dispatched: ${designName(D.stack)||'our design'} on pad ${D.pad+1}, launches in ${Math.ceil(D.launch-PROG.day)} d (~${Math.round(D.est.p*100)}%)</div>`;
-  const dq=dryQuote(stack),dry=dq.ok?`<div class="sub dim"><button data-dry="${c.id}" title="the trajectory office tries our ${dq.n} stored procedure${dq.n>1?'s':''} on the design in Assembly">Try our procedures on ${designName(stack)||'the design in Assembly'}</button> ${dq.days} d, ${fmtM(dq.cost)}</div>`:'';   // Q46
+  const dq=dryQuote(stack),dry=dq.ok?`<div class="sub dim"><button data-dry="${c.id}" title="the trajectory office tries our ${dq.n} stored procedure${dq.n>1?'s':''} on the design on the design table">Try our procedures on ${designName(stack)||'the design on the design table'}</button> ${dq.days} d, ${fmtM(dq.cost)}</div>`:'';   // Q46
   if(!O.length)return`<div class="sub dim">Dispatch: no stored procedure can fly this yet (fly one to orbit by hand)</div>`+dry;
   const o=O[0],q=dispatchQuote(c,o.stack),pc=x=>Math.round(x*100);
   return`<div class="sub">Dispatch ${designName(o.stack)||'our design'}: success ~${pc(o.e.p)}% (${pc(o.e.lo)}–${pc(o.e.hi)}%), launches in ${Math.ceil(q.launch-PROG.day)} d on pad ${q.pad+1}, ${fmtM(q.cost)} `+

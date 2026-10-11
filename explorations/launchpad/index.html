@@ -50,9 +50,9 @@ table{border-collapse:collapse;width:100%}td{padding:1px 4px}td:last-child{text-
 #sas{display:grid;grid-template-columns:1fr 1fr;gap:3px;width:118px}
 #sas button{padding:2px 3px;font-size:11px}
 #sas .wide{grid-column:span 2}
-#navtxt{position:absolute;left:0;right:0;top:-22px;text-align:center;color:var(--acc)}
-body.mapv #nav,body.mapv #thr{display:none}   /* (flow, slice 4c) on the map the navball is a heading line (#navtxt, with the throttle), beside SAS */
-body.mapv #navtxt{position:static;white-space:nowrap;padding:5px 10px;background:var(--panel);border:1px solid var(--line);border-radius:4px}
+#navtxt{position:absolute;left:0;right:0;top:-22px;text-align:center;color:var(--acc);text-shadow:0 0 3px #000,0 1px 2px #000}   /* (Q273) readable on a bright sky */
+body.mapv #nav{width:130px;height:130px}body.mapv #thr{height:110px}   /* (flow, Q254; PLAYTEST #53) the navball on the map too, smaller; its heading line (#navtxt) beside it, as in slice 4c */
+body.mapv #navtxt{position:static;white-space:nowrap;padding:5px 10px;background:var(--panel);border:1px solid var(--line);border-radius:4px;text-shadow:none}
 body.paper.mapv #navtxt{color:var(--acc)}   /* a dark pill like the other panels on the paper */
 #msg{position:fixed;left:50%;top:18%;transform:translateX(-50%);font-size:18px;letter-spacing:.12em;color:#fff;text-shadow:0 0 8px #000,0 0 2px #000;pointer-events:none;transition:opacity .4s;text-align:center}
 #perf{position:fixed;right:12px;bottom:8px;color:var(--fg);font-size:11.5px;pointer-events:none;text-align:right;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:3px 8px}
@@ -63,6 +63,11 @@ body.paper.mapv #navtxt{color:var(--acc)}   /* a dark pill like the other panels
 #escm{width:min(280px,92vw)}#escm button{display:block;width:100%;margin:4px 0;text-align:left}#escm button.arm{border-color:var(--warn);color:var(--warn)}#escm label{display:block;margin-top:6px;color:var(--dim)}
 body.noperf #perf{display:none}
 /* over the notebook-era map (cream paper) the HUD's glass buttons and white text vanish: ink instead (flow) */
+/* (flow, Q273; PLAYTEST #73) flight HUD buttons and the warp readout sit on an opaque plate: the base button is light text on
+   an 8 % tint, which vanishes against a near-white sky. The notebook map's ink (body.paper, next) still wins there. */
+#hud button{background:rgba(9,15,24,.86);border-color:rgba(127,209,255,.45);color:#e6f2fb}#hud button:hover{background:rgba(30,52,74,.94)}#hud button.on{background:rgba(40,96,140,.95);color:#fff}
+#hud #bEnd.rec{background:#24603a;border-color:#7fdc9a;color:#fff;font-weight:bold}#hud #bEnd.rec:hover{background:#2f7a4a}
+#hud #warp{background:rgba(9,15,24,.86);border:1px solid rgba(127,209,255,.45);border-radius:4px;padding:0 3px;color:#c9d6e0}#hud #warp button{border:0;background:transparent}#hud #warp.on{color:var(--warn)}
 body.paper #hud button{background:#24305a;color:#f6f0de;border-color:#24305a}body.paper #hud button.on{background:#b0362a;border-color:#b0362a}body.paper #warp,body.paper #navtxt{color:#1d2a52}
 body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #tester{width:min(400px,92vw)}#tester h3{margin:10px 0 3px;font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--dim)}#tester label{display:block;margin:2px 0}
@@ -86,7 +91,9 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
   font:13px/1.4 'Courier Prime',Courier,monospace;color:var(--fg);
   background:repeating-linear-gradient(92deg,rgba(0,0,0,.06) 0 3px,transparent 3px 11px,rgba(255,255,255,.03) 11px 13px,transparent 13px 29px),linear-gradient(180deg,#6b4429,#5a371f 60%,#4c2e1a)}
 #prog button,#deb button{font:bold 12px 'Courier Prime',Courier,monospace;color:#2a2620;background:#e9dcb9;border:2px solid #2a2620;border-radius:2px;box-shadow:2px 2px 0 #2a2620;padding:2px 9px}
-#prog button:hover,#deb button:hover{background:#f6ecd0}#prog button:disabled,#deb button:disabled{opacity:.45;cursor:default}
+#prog button:hover,#deb button:hover{background:#f6ecd0}
+#prog .gc button.on{background:#1d2a44;color:#f3ead4;box-shadow:2px 2px 0 #b3262a}#prog .gc button.on::before{content:'✓ '}#prog .ms.gc.on{border-left-color:#b3262a;border-left-width:4px}   /* (flow, Q269) a chosen option, stamped */
+#prog .gsum{margin:10px 0 4px;padding:5px 10px;background:#fff7a8;box-shadow:1px 2px 4px rgba(0,0,0,.25);font-size:12.5px}#prog button:disabled,#deb button:disabled{opacity:.45;cursor:default}
 #prog .sub{color:var(--dim)}#prog .ep{color:#1d2a44;font:bold 12px 'Courier Prime',monospace;letter-spacing:.14em;text-transform:uppercase}
 #deskLH{grid-column:1/-1;margin:0 -20px;height:80px;display:flex;align-items:center;gap:16px;padding:0 26px;background:#efe6cf;border-bottom:3px double #2a2620;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 #deskLH .flag{border:1px solid #2a2620;flex:none}#deskLH .org{flex:1;min-width:0}
@@ -216,7 +223,7 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
 
 <div id="editor" class="ui">
   <div class="panel left">
-    <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">assembly · pick a part, then place it on the rocket</div>
+    <h1>LAUNCHPAD <button id="bLog" style="float:right;letter-spacing:0;font-size:11px">Logbook</button></h1><div class="sub">design table · pick a part, then place it on the rocket</div>
     <div id="hqStrip"></div>
     <h2>Parts</h2><div id="target"></div><div id="palette"></div>
     <h2>Presets</h2><div id="presets"></div>
@@ -233,13 +240,13 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="deskTray"><button id="deskTrayN" data-ptab="inbox" title="the Inbox: what needs an answer">IN</button><div id="deskTrayBox"></div></div>
   <div id="progNext" class="hidden"></div>
   <div id="deskFolder"><div id="progTabs"></div><div id="progBody"></div></div>
-  <div id="deskSide"><div id="deskWall"></div><div id="deskExits"><button id="bLog3">Logbook [F]</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">TO THE ASSEMBLY HALL ▶ [B]</button></div></div>
+  <div id="deskSide"><div id="deskWall"></div><div id="deskExits"><button id="bLog3">Logbook [F]</button><button id="bDebLast" data-go="debrief" class="hidden">Last flight</button><button id="bNet" data-go="network" class="hidden" title="the fleet and the pads">Network [N]</button><button id="bRovers" data-go="rover" title="design rovers and test-drive them at home">Rover yard</button><button id="bBuild" class="big" data-go="assembly">TO THE DESIGN TABLE ▶ [B]</button></div></div>
   <div id="program" class="hidden"></div>
 </div>
 <div id="roll" class="ui hidden"><div class="panel right" id="rollPanel">
   <h1>ROLLOUT</h1><div class="sub" id="rollDesign"></div>
   <div id="rollBody"><h2>Launch site</h2><div id="sitePick"></div><h2>Checks</h2><div id="rollChecks"></div><h2>The flight</h2><div id="rollBooks"></div><h2>In play</h2><div id="rollPlay"></div></div>
-  <div id="rollFoot"><button data-go="assembly">← Assembly [B]</button><button id="launch" class="big">LAUNCH [L]</button></div>
+  <div id="rollFoot"><button data-go="assembly">← Design table [B]</button><button id="launch" class="big">LAUNCH [L]</button></div>
 </div></div>
 <div id="net" class="hidden"><div class="hq">
   <div class="hqHead"><h1>NETWORK</h1><div id="netHead"></div><button data-go="program">← Program [P]</button></div>
@@ -249,14 +256,14 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div id="debWall"></div>
   <div id="debReport"><i class="clip" style="left:60px"></i><i class="clip" style="right:60px"></i>
     <div id="debHead"></div><div id="debBody"></div>
-    <div id="debFoot"><div id="debSig"></div><div id="debActs"><button id="bDebAgain">Fly again [A]</button><button id="bDebAsm" data-go="assembly">Assembly [B]</button><button id="bDebProg" data-go="program">To the office ▶ [P]</button></div></div>
+    <div id="debFoot"><div id="debSig"></div><div id="debActs"><button id="bDebAgain">Fly again [A]</button><button id="bDebAsm" data-go="assembly">Design table [B]</button><button id="bDebProg" data-go="program">To the office ▶ [P]</button></div></div>
     <div id="debStamp">FILED</div>
   </div>
 </div>
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
   <div id="cards" class="hidden"></div>
-  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Assembly</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
+  <div class="tr"><span id="warp" title="time warp: , and . (/ stops it)"><button data-warp="-1">◀</button><span id="warpN">1×</span><button data-warp="1">▶</button></span><button id="bMap">Map [M]</button><button id="bEnd" class="hidden" title="the flight is over: see how it went">End flight ▸ [Enter]</button><button id="bRevert">Revert</button><button id="bEditor">Design table</button><button id="bLog2">Logbook</button><button id="bHelp">Keys [H]</button><button id="bMenu" title="menu [Esc]">☰</button><button id="bAuto" class="hidden" title="replay your saved flight of this exact design">▶ Autopilot</button><button id="bProc" class="hidden" title="fly this design to orbit with the best ascent flown in it so far (it adapts: mass, staging, a different target)">▶ Procedure</button><button id="bSaveTape" title="save this flight so far as this design's autopilot">Save as autopilot</button></div>
   <div id="navwrap">
     <div id="gslot" class="hidden"></div>
     <div id="thr"><div id="thrf"></div></div>

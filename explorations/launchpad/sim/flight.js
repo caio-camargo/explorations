@@ -279,29 +279,30 @@ function dragTable(s,aoa){const A=Math.round(aoa/5)*5,key=s.parts.filter(p=>p.on
   s.chuteA=ca;s.parts.forEach((p,i)=>{p.F=saved[i][0];p.L=saved[i][1];p.Q=saved[i][2]});s.dragTab={key,tab};return tab}
 // generic fall: a point mass from (r,v,t) with drag rate per unit speed kdrag(h,sp,rho,r,t) (1/m), to the ground or never
 function fall(b,r,v,t,kdrag){
-  const mu=b.mu,top=b.R+(b.atm||0),path=[],keep=(r,t)=>path.push(toPF(b,r,t)),r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;
+  const mu=b.mu,top=b.R+(b.atm||0),path=[],pathT=[],keep=(r,t)=>{path.push(toPF(b,r,t));pathT.push(t)},r0=r,v0=v,t0=t;r=r.slice();v=v.slice();let dt0=0;   // pathT: each point's time (Q266)
   const el=elements(r,v,mu);if(el.pe>top)return null;
   if(len(r)>top+1){const c=(el.p/top-1)/el.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(el,-Math.acos(c));dt0=dt;
     for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}
   if(!b.atm&&pertNear(b,el)){const tEnd=t+2*(dt0>0?dt0:0)+600;r=r0.slice();v=v0.slice();t=t0;path.length=0;let k=0;   // perturbed: the same stepper as rails
     while(t<tEnd&&len(r)>b.R){const{lim,sp,pa,hP}=coastPlan(b,r,v,t,elements(r,v,mu),b.R),h=Math.min(Math.max(0.05,0.25*lim/sp),hP,tEnd-t);[r,v]=coastStep(b,r,v,t,h,pa);t+=h;if(++k%8===0)keep(r,t)}
-    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b}}
-  if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b};
+    if(len(r)>b.R)return null;return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b}}
+  if(!b.atm)return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b};
   let kd=0;   // drag rate (1/s) at the last evaluation: the step must stay well under its time constant, or a chute makes it ring
   const acc=(r,v)=>{const rl=len(r),h=rl-b.R,rho=density(b,h),va=sub(v,surfVel(b,r)),sp=len(va);let a=mul(r,-mu/(rl*rl*rl));kd=0;
     if(rho>0&&sp>0.1){kd=0.5*rho*sp*kdrag(h,sp,rho,r,t);a=madd(a,va,-kd)}return a};
-  for(let i=0;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<bodyTop(b)&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
+  let i=0;for(;i<40000;i++){const h=len(r)-b.R;if(h<=0||h<bodyTop(b)&&h<=groundAlt(b,toPF(b,r,t)))break;acc(r,v);const sp=len(v),dt=Math.min(clamp(h/Math.max(sp,1)/40,0.02,2),0.3/Math.max(kd,1e-9));
     const a1=acc(r,v),rm=madd(r,v,dt/2),vm=madd(v,a1,dt/2),a2=acc(rm,vm);r=madd(r,vm,dt);v=madd(v,a2,dt);t+=dt;
     if(i%8===0)keep(r,t);
     if(len(r)>top+10&&dot(r,v)>0){ // climbing out of the air: coast the vacuum arc exactly and come back in (or never)
       const e2=elements(r,v,mu);if(e2.pe>top)return null;const c=(e2.p/(top-1)-1)/e2.e;if(!(c>=-1&&c<=1))return null;const dt=timeToNu(e2,-Math.acos(c));
       for(let k=1;k<=24;k++){const[rr]=kepler(r,v,dt*k/24,mu);keep(rr,t+dt*k/24)}[r,v]=kepler(r,v,dt,mu);t+=dt}}
-  return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,b}}
+  return{t,pf:toPF(b,r,t),v:len(sub(v,surfVel(b,r))),path,pathT,b,capped:i>=40000}}   // capped: still up when the steps ran out (a slow decay), not an impact
 function predictImpact(s,sg=0){
   if(s.landed||!s.alive)return null;const b=s.body;
   const Y=qrot(s.q,[0,1,0]),va0=sub(s.v,surfVel(b,s.r)),aoa=len(va0)>1?Math.acos(clamp(dot(va0,Y)/len(va0),-1,1))*57.2958:0,tab=b.atm?dragTable(s,aoa):[0,0],m=s.mass;
   const cdA=M=>{const x=clamp(M/0.5,0,tab.length-1.001),i=Math.floor(x);return tab[i]+(tab[i+1]-tab[i])*(x-i)},pe=sg&&b===TELLUS?predErr(s):0;
-  return fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*(atmU(h)+pe):1)})}   // pe: the compute era's prediction error (economy)
+  const f=fall(b,s.r,s.v,simT,(h,sp,rho,r,t)=>{let A=cdA(sp/SND(h));if(s.chute&&s.chutePart&&s.chutePart.on&&rho>0.03)A+=Math.min(sp<250&&mainChuteOK(b,h,r,t)?600:sp<400?6:0,CHUTE_G*G0*m/(0.5*rho*sp*sp+1));return A/m*(b===TELLUS?1+sg*(atmU(h)+pe):1)});
+  return f&&f.capped?null:f}   // (flow, Q266) a slow decay that outlasts the steps isn't an impact: no X, no path round the planet   // pe: the compute era's prediction error (economy)
 // debris falls with the same simple drag stepDebris gives it (2.5 m² tumbling)
 const debrisImpact=d=>fall(d.body,d.r,d.v,simT,()=>2.5/d.mass);
 
