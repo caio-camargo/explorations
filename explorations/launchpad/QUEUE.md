@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.47 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 0.1.48 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -302,6 +302,7 @@ Worktree `launchpad-terrain` (branch `terrain`, port 8773).
 | Q105 | The pad site per school (cove, ridge, coast, steppe), if it touches terrain ([`POWERS.md`](POWERS.md)) | M1 | S | 🖥 | ready: Q231 ✓ (`cd33364`): the four sites' ground under the new complexes (Arsenal's hillside behind the terrace is a mesh hill north of z = −11 for now; see the Proposed line) |
 | Q251 | PLAYTEST **#50**: **aliasing looking down at the planet from orbit**, mountains worst: shimmering relief and normals at distance; filter or LOD the heights and normals with distance (a measured before/after, as Q19) | M1 | M | 🖥 | ready |
 | Q268 | 📝 PLAYTEST **#68**: **the sea is a featureless blue** (`tellus()` in `app/gl.js` ~159: depth colour and a shallow-shelf turquoise only). Real seas from altitude: **sunglint** (a bright smeared patch where the sun reflects), sky reflection by **Fresnel** at grazing views, **colour** varying with plankton, sediment at river mouths and latitude, **swell** and whitecaps close up, foam at coasts. Before/after stills at three heights (pad, 30 km, orbit) for Caio and the frame-time cost, then build (world owns the terrain shader; look & sound's sky for the reflection) | M1 | M | 🖥 | ready (stills first) |
+| Q270 | PLAYTEST **#70**: **a city in sight of the pad**, seen from the air on the way up. Today `makeCities` (`sim/world.js` ~294) places 32 random cities and keeps every one **160 km** from the first site, so none is ever near. Add a **support town** per launch site, 15–60 km away and **up-range or beside the corridor, never downrange** (real ones: Titusville and Cocoa Beach ~15–20 km from LC-39, Leninsk ~35 km from Baikonur's pads), sized for its era; then the random ones as now. It enters `CITIES`, so the city texture, night lights, `dropVerdict` (a stage falling short could now hit it: that's real, and a builder/rollout warning should know) and the map's city layer all get it. Check `career.mjs` and the drop tests for changes | M1 | S | 🖥 | ready |
 
 ### look & sound — always run as beats, one session each (ROADMAP § Lanes, "Beats")
 Collisions between beats: `render()`'s pass order, shared shader helpers, bloom, `views.js` numbering. Changing any of them needs an `ACTIVE_WORK.md` line.
