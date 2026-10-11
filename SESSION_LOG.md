@@ -5265,3 +5265,22 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
   file, the player's camera, old recordings still play (flights as recorded paths), no "take over from here".
 - **Files:** launchpad NOTES; QUEUE (Q225 plan ✓, R1–R4 in *Proposed*), ACTIVE_WORK. No code, no runs.
 - **Next:** R1 (⚙) is buildable now; the orchestrator ranks it.
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q275 (Q225 R1), the session recorder (v1.121)
+- **Done:** v1.121 (`355a50f`, merged to `main`): tester menu *Record this session* → gzipped JSON of the starting
+  save, save diffs, screens, designs, camera, pacing, path, keys/clicks (display only), and each flight's tape with
+  vessel hashes at both ends. `sim/record.js` (pure, `recLoad`, `recProgAt`), `app/record.js`; one-line hooks in
+  `resetShip` and the two flights from orbit; debris tumble seeded.
+- **Found:** a replay needs the page's whole load (HOME, the rivals' schedule, the board), not `Object.assign(PROG)`:
+  the fresh SIM crashed in `relOf` until `recLoad` did it. Proposed: the page's boot calls `recLoad` (one load path).
+- **Checks:** full suite 630 PASS, 0 FAIL before merging; smoke after each merge of `main`; test `platform-5`
+  (fresh-instance replay: same hashes, same settled save); in Chrome the flag, a pad flight, the 3.2 KB download, and a
+  re-fly in a fresh SIM built from `sim/*.js` matching both hashes; robot `m1` passes.
+- **Numbering:** vehicle took v1.120 and TESTING 202 the same hour; `check_numbers.mjs` reported the repeat on merge;
+  this became v1.121 and TESTING 203 (counter 204).
+- **Note:** the first page load failed in `app/gl.js` `mkProg` (a shader link) with another session's game possibly
+  on the GPU (its lock was 36 min old); a reload loaded cleanly.
+- **Files:** launchpad `sim/record.js`, `app/record.js` (new), `sim/program.js`, `sim/vessel.js`, `app/state.js`,
+  `app/screens.js`, `app/program-ui.js`, `index.html`, `test.mjs`, `tests/platform.mjs`, NOTES § v1.121, TESTING;
+  QUEUE (Q275 ✓, *Proposed*), ACTIVE_WORK.
+- **Next:** Q225 R2, the viewer (🖥, M), when the GPU is free; R4 (⚙) can go in parallel.
