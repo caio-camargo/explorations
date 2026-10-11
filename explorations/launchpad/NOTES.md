@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.51 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2149,6 +2149,44 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.118 — rivals as programs from epoch 1 (2026-10-11, economy session, QUEUE Q188; W26.1)
+
+Caio's W26.1: rivals are programs from the start, not seeded schedules. The plan is in § "Plan: rivals as programs…" →
+"Q188 amendment". This is its first slice (`sim/contracts.js`, after `RACE`).
+- **`PROG.riv`**: per rival, the next first `k`, progress `p` toward that first's work `w` (0.75–1.25, from the world's
+  seed), `got` (the days it really got there), and a spur. **`rivTick(d, R)`** runs in `econTick` before `raceTick`: the
+  rate is `speed / 150 × money × spur`, where `speed` is the old schedule's (tech × √economy × (0.6 + 1.6 × prestige
+  appetite)). `money` is the rival's **own** treasury: a resource state follows the commodity cycle (×0.5 in a bust,
+  ×1.5 in a boom), a security state its tension, the rest 1. Reaching `w` is an attempt, which succeeds with
+  0.55 + 0.35 × tech. A failure sets the rival back a third: news if it's open (≥ 0.6), a rumour 40 % of the time if not.
+  A rival that gets there after us makes a small "gets there too" line.
+- **`RIVALS` is now the forecast**, recomputed every tick: per first, the real day a rival got there, or the soonest
+  projected one (never today, so a first is lost only after an attempt has really succeeded). `raceTick`, `raceNews` and
+  the race panel read it unchanged, so its "expected around day N" now moves as budgets move.
+- **The spur:** a first we win (`missionComplete` → `rivSpur`) speeds every rival still racing for it by
+  × (1 + ½ × prestige appetite) for 365 days.
+- **`raceSchedule()`** keeps its name and callers. It rebuilds the state when it's missing (old saves), when home changed
+  or when the day went backwards (a new game), fast-forwarding to today at mean rates with no rolls. A defection keeps
+  the rivals' programs and enters the old home with the race firsts we flew for it.
+
+**Measured** (scripts in the session's scratchpad; numbers here):
+- **Pacing kept.** Over 20 worlds per home, with no player and 5-day ticks, the winning rival's day for beeper / hop /
+  orbiter is, from home 0: **82±12 / 160±12 / 240±16** (the old formula, averaged over its draws: 79±16 / 163±24 /
+  246±30); home 2: 111±21 / 197±15 / 284±26 (old 106 / 194 / 282); home 3: 82±20 / 164±22 / 243±26 (old 79 / 160 /
+  242). The old game only ever used one of those draws (`rng(4242)`): Mirtov on 83 / 176 / 245 in every world. Now
+  winners vary: from home 0 Mirtov takes 53 of 60 firsts, Asaro 5, Natovtov 2; from home 2 Dunnzar 29, Asaro 23,
+  Natovtov 8.
+- **`career.mjs 4 8`** (144 runs): how often the runner was **not first** to orbit: old schedule **19**, programs with
+  no spur 17, **with the ½ spur 27**. The full spur (× 1 + prestige) made it 11 of 18 in `career.mjs 4 3` (from 3), so
+  it was halved. The hop barely changes (4 in every variant). The beeper is always lost, because the runner never
+  rushes it, as before. `PACE=1` is unchanged (it's the player's side).
+- **Negative result worth keeping:** the seeded schedule made the race identical in every world and every save. That
+  was invisible from inside one game, and plain the moment you print it per home.
+
+Tests: `econ-21` (5 checks: forecast and worlds differ; an attempt fails then succeeds and the race is lost; the spur;
+commodity money; old save and defection). `econ-13` and `econ-15` pass unchanged. **Waiting on Caio:** W37 (spur,
+panel by openness, second-place news; defaults built).
+
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
 Caio landed a rocket and had nothing to read back: no `console.log` anywhere. Now, with `?tester`, the tester menu has a
@@ -2957,6 +2995,47 @@ claims; (3) mood eras **from tension and the date** (default) or a fixed histori
 
 **Slices (⚙, M4):** the coarse rival program state and its tick (no effect yet; a debug view) → capstone progress
 and news → claims registry for stationary slots → mood eras → commercial rivals.
+
+### Q188 amendment: programs from epoch 1 (2026-10-11, economy session; W26.1, Caio: "rivals are programs from the start")
+
+**Measured first (why the schedule has to go):** `raceSchedule()` draws from a fixed `rng(4242)`, so in every world and
+every save the same rival wins the same firsts on the same days. With this map, Mirtov (the closed superpower) takes all
+three in 4 of 5 homes, on days 83 / 176 / 245 (68 / 144 / 217 from homes 3–4); from home 2 Asaro wins on 112 / 238 / 331.
+Nothing the player or the world does moves those days. `career.mjs 4 3` race column: `211` almost everywhere (second on
+the beeper, first on the hop and the orbit), `212` / `L1L` in frugal and resource worlds.
+
+**The coarse early program** (one state per rival, `PROG.riv`, stepped in `econTick` as `rivTick(d, R)`):
+- Each rival works on the race's firsts **in order** (`k`, the next one), with **progress** `p` from 0 to 1 and the
+  **work** that first takes, `w` (drawn 0.75–1.25 when the rival starts it, from the world's seed: worlds differ now).
+- **Its rate per day** = `speed / 150 × money × spur`. `speed` is the schedule's: tech × √economy × (0.6 + 1.6 × prestige
+  appetite), so the mean pacing stays where it is. `money` follows the rival's **own** treasury, by its archetype's money
+  (the home budget's `moneyK` reads *our* opinion, so it isn't reused): commodity × (1 + 0.5 × the commodity cycle; a bust
+  stalls a resource state), military × (0.8 + 0.4 × its tension), tax and patronage 1.
+- **An attempt** when `p` reaches `w`: it succeeds with `0.55 + 0.35 × tech` (capped 0.95). A failure sets `p` back by
+  a third of `w`: the open superpower's failures are news, a closed one's only a rumour, and only sometimes.
+- **What we do moves it (the lever this slice has):** a first **we** win spurs every rival racing for it. Their budgets get
+  `× (1 + ½ × prestige appetite)` for a year (halved after measuring, v1.118), the Sputnik shock run backwards. Winning early makes the next firsts harder.
+  Sanctions, sales and the late levers stay in Q138's slices.
+- **Personalities as before:** a frugal power doesn't race (its rate is 0, and it partners), and a rising power works
+  through the beeper quietly (it copies; its beeper never counts) and then runs at 1.5×.
+- **`RIVALS` stays, as the forecast:** per first, the rival expected soonest (from `p`, `w` and its current rate), or the
+  real day it got there. The race panel, `raceNews` (announcements 30 days ahead, rumours) and `raceTick` read it
+  unchanged. A forecast moves as budgets move, which the panel's "expected around day N" now honestly shows.
+- **Saves, defections, a new game:** `raceSchedule()` (the name is kept; every caller already resets through it) rebuilds
+  `PROG.riv` when it's missing, when home changed, or when the day went backwards, and fast-forwards it to today at mean
+  rates with no rolls. A defection hands the old home's progress to the new rivals, as the schedule did.
+
+**Tuning target:** `career.mjs`'s race column stays mostly `211`, and over 20 worlds the mean day of each rival
+first is within ±15 % of the old formula's expectation, with spread between worlds (the old schedule had none). Met: v1.118.
+
+**Questions for Caio** (numbered, with defaults; silence keeps them): (1) **the spur:** a first we win speeds rivals up
+for a year (default) or no reaction; (2) **what the race panel shows:** the forecast day for an open rival, "soon" or
+nothing for a closed one (default) or exact days for all (today); (3) **the second place:** a rival that gets there
+after us makes a small news line, "Asaro also orbits" (default) or stays silent.
+
+**Slices:** (1) `PROG.riv`, `rivTick`, the forecast as `RIVALS`, the spur, news on failures, tests and the runner (⚙,
+this item) → (2) the panel shows each rival's progress by openness (with flow) → then Q138's slices from capstone
+progress on, which now extend this state instead of replacing a schedule.
 
 ## Plan: money buys capacity (2026-10-09, economy session, QUEUE Q123; nothing built)
 

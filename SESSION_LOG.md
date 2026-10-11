@@ -5265,3 +5265,21 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
   file, the player's camera, old recordings still play (flights as recorded paths), no "take over from here".
 - **Files:** launchpad NOTES; QUEUE (Q225 plan ✓, R1–R4 in *Proposed*), ACTIVE_WORK. No code, no runs.
 - **Next:** R1 (⚙) is buildable now; the orchestrator ranks it.
+
+## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.118)
+
+**Summary:** Caio's W26.1, built. Measured first: the seeded `raceSchedule` gave every world and every save the same race
+(Mirtov on days 83 / 176 / 245 from 4 of 5 homes). Now each rival is a coarse program (`PROG.riv`, `rivTick`):
+progress through the race's firsts, its own treasury (commodity cycle, military tension), attempts that can fail (news
+by openness), and a spur when we win a first (× 1 + ½ prestige appetite for a year, halved after measuring). `RIVALS`
+became the forecast, so the panel, the news and `raceTick` are unchanged. The pacing held: the mean rival days are
+within ~4 % of the old formula's expectation over 20 worlds per home, with spread between worlds. `career.mjs 4 8`: the
+runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 with no spur).
+**Files changed:** `explorations/launchpad/sim/contracts.js`, `sim/program.js` (one call in `missionComplete`),
+`tests/economy.mjs` (econ-21, 5 checks), `NOTES.md` (v1.118; the Q188 amendment in § "Plan: rivals as programs"),
+`QUEUE.md` (Q188 ✓, W37, a Proposed line), `TESTING.md` (row 200), `ACTIVE_WORK.md`.
+**Tests:** `node test.mjs` all passed, after bumping TESTING's next-free counter.
+**Next steps:** Caio answers W37 (defaults built). Q188 slice 2, the race panel by openness (with flow). Q206, the
+commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184
+(routines; W27's amendment), Q187 (plan).
+
