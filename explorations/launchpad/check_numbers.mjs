@@ -15,7 +15,8 @@ const cells = l => l.split('|').map(c => c.trim());
 // series: which file, how a numbered line looks, the key, the text that names it (so the same entry on both sides isn't a collision)
 export const SERIES = [
   { name: 'NOTES versions', file: 'NOTES.md', re: /^#{2,6} (v1\.\d+(?:\.\d+)?)(?=[\s—]|$)(.*)$/, text: m => m[2].replace(/^\s*—\s*/, '') },
-  { name: 'TESTING rows', file: 'TESTING.md', re: /^\| (\d+) \|/, text: (m, l) => cells(l)[2] },
+  { name: 'TESTING rows', file: 'TESTING.md', re: /^\| [✓~✗ ]*(\d+)(?: \(robot\))?(?: → P#\d+)? \|/,   // a played row: `✓ 12`, `~ 35 (robot)`, `✗ 12 → P#15` (qa-3's pattern)
+    text: (m, l) => cells(l)[2] },
   { name: 'PLAYTEST rows', file: 'PLAYTEST.md', re: /^\| (\d+) \|/, text: (m, l) => cells(l)[3] },
   { name: 'QUEUE items', file: 'QUEUE.md', re: /^\| (?:~~)?([QWD]\d+[a-z]?)(?:~~)? \|/, text: (m, l) => cells(l)[2] },
 ];

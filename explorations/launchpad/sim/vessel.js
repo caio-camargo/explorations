@@ -768,6 +768,7 @@ function thermal(s,dt,qStag,rho=0,sp=0){
     if(p.res.ablator>0&&p.T>=T_ABL&&net>0){const use=Math.min(p.res.ablator,net*dt/H_ABL/1000);p.res.ablator-=use;net-=use*1000*H_ABL/dt}
     p.T=Math.max(T_AMB*0.9,p.T+net*dt/cap);if(!hot||p.T/p.d.Tmax>hot.T/hot.d.Tmax)hot=p}
   s.hot=hot;
+  if(TEST.log&&hot&&!hot.heatLog&&hot.T>0.8*hot.d.Tmax){hot.heatLog=1;logEv('heat',`${hot.d.name} at ${hot.T.toFixed(0)} K, 80 % of its ${hot.d.Tmax} K limit`)}
   if(hot&&hot.T>hot.d.Tmax){HOOK.msg(`${hot.d.name} burned up (${hot.T.toFixed(0)} K)`);partLost(s,hot)}}
 function coolOnRails(s,dt){for(const p of s.parts)if(p.on)p.T=T_AMB+(p.T-T_AMB)*Math.exp(-dt/400)}
 // a destroyed part takes its branch with it; losing the root (the pod) ends the flight

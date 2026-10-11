@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.47 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.48 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,33 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
+
+Caio landed a rocket and had nothing to read back: no `console.log` anywhere. Now, with `?tester`, the tester menu has a
+**Verbose log** flag (saved with the other flags). On, a panel at the bottom left scrolls the lines, each one is mirrored
+to the console as `[launchpad] [day 29.00 · t 750.0 s] contact   touchdown on Tellus (launch pad) at 4.8 m/s, limit 12.0`,
+and **Download** saves them as text with the page, the world and terrain seeds, the day and the browser.
+- **The SIM half** (`sim/program.js`, by `TEST`): `logEv(kind, text)` keeps up to 5,000 lines in `LOG` and hands each to
+  `HOOK.log`. Off, it returns before doing anything, so it can be called anywhere. Its own calls: `stage` (each staging
+  event: groups dropped, engines lit of those asked, height, speed), `contact` (every touchdown: speed against the
+  surface's limit, and what the trees or boulders took off it), `heat` (a part passing 80 % of its `Tmax`, once per part),
+  `pay` (every `debPaid` line).
+- **The page half** (`app/testlog.js`, loaded last): it taps `HOOK.msg`, `HOOK.news` and `HOOK.save`, so every player
+  message is a line: ignition, failed ignitions, flame-out, separation, chutes, burn-ups, and **destruction with its
+  cause** (a message starting "Destroyed" or "Vessel lost" gets the kind `destroyed`). A watcher twice a second logs
+  `money` (funds before → after), `contract` (accepted, closed) and `mission` (done), so money that moves anywhere shows
+  up without a call at each site.
+- **Adding to it:** call `logEv('kind', text)` where something happens that no message says. Keep the text built only
+  where it's rare (a template string is evaluated even when the log is off) or guard with `TEST.log` as `thermal` does.
+- **Checked:** test `platform-4` (silent when off; on, a Sounding flight leaves its staging, touchdown against the limit,
+  and pay). In the page (`?tester`): the menu's checkbox turns it on and the flag survives a reload; +10 days and Set
+  funds log news, saves, the tester message and the money; a Sounding flight logs ignition → liftoff → mission pay →
+  flameout → chute → touchdown 4.8 m/s of 12.0 → landing → money → missions done, all on the console; the download's
+  header and lines read back. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** no game version in the download (the page has no version constant; a `GAME_V` would have to be bumped with
+  every `## v1.N`, which `check_numbers.mjs` could check). Part failures other than ignition don't exist yet; when they
+  do, their message is logged already.
 
 ## v1.116 — the Debrief as the flight report on the desk (2026-10-10, flow session, QUEUE Q241 R2; PLAYTEST #6)
 - **The Debrief is a room** (`ROOMS` has `debrief`): it fills the window on the same wooden desk as the Program, and
@@ -9232,7 +9259,9 @@ repeat: v1.102 and v1.103 were each taken twice within an hour on 2026-10-09, an
 **In the merge recipe** (ACTIVE_WORK § Launchpad worktrees): `git fetch` then `node check_numbers.mjs` in your worktree,
 before merging `origin/main` in; renumber anything it reports; again after the merge (the test suite does it too).
 Exit 1 on any finding. Checked: a synthetic branch off a day-old commit that also took v1.116 and Q268 is reported as two
-collisions; a planted second TESTING row 12 as a repeat; today's `main` is clean. Not done: a pre-push hook
+collisions; a planted second TESTING row 12 as a repeat; today's `main` is clean. **Fixed 2026-10-11 (v1.117's session):** TESTING rows
+someone has played are marked (`| ✓ 115 (robot) |`, `| ✗ 12 → P#15 |`), and the first pattern skipped them, 93 of 198
+rows; it now uses test `qa-3`'s pattern. TESTING also keeps a "Next free number" line that `qa-3` checks: bump it with your row. Not done: a pre-push hook
 (`core.hooksPath` is per clone, so every machine would have to opt in; the recipe and the suite need nothing).
 
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)

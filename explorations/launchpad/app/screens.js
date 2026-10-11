@@ -103,7 +103,8 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
 // ---- the tester menu (tester session; PLAYTEST #1). Only reachable with ?tester. Flags persist per browser in
 // 'launchpad-tester-flags'; the sandbox program lives in 'launchpad-program-tester'. The rules it bends are in the SIM tester block.
 const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_FUNDS)],['kh','Full know-how and certification','every part flies as if well known; flight safety signs off'],
-  ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days']];
+  ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days'],
+  ['log','Verbose log','staging, ignition, contact and touchdown speed, destruction and its cause, heating, money, contracts, saves: a panel, the console, a download (app/testlog.js)']];
 let testArm=null;
 const testEpochNow=()=>Math.min(6,...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep));
 function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mode==='flight',ep=testEpochNow(),dis=fl?' disabled':'',era=compEra(),

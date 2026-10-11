@@ -43,6 +43,7 @@ function groundNormal(b,pf){if(!b.ground)return norm(fromPF(b,pf,simT));const u=
 // the ground forgives TOUCH_MAX + its softness; boulders or trees add to the speed
 function touchdown(s){const b=s.body,pfC=toPF(b,s.r,simT),sp=len(sub(s.v,surfVel(b,s.r))),su=surfaceAt(b,pfC),hit=surfaceHit(su,pfC,b),vE=sp+hit,lim=TOUCH_MAX+su.soft;
   s.landSurface={name:su.name,id:su.id??null,hit};s.touchV=sp;s.touchHit=hit;s.restT=0;
+  logEv('contact',`touchdown on ${b.name} (${su.name}) at ${sp.toFixed(1)} m/s, limit ${lim.toFixed(1)}${hit?` (−${hit.toFixed(1)} for ${su.id===8||su.id===5||su.id===3?'trees':'boulders'})`:''}`);
   const among=hit?`, among ${su.id===8||su.id===5||su.id===3?'trees':'boulders'}`:'';
   if(vE>=lim){s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit ${b.name} (${su.name}) at ${sp.toFixed(0)} m/s${among}`);return false}
   return true}
@@ -110,6 +111,7 @@ function stage(s){
   if(ev.decouple.length)HOOK.msg(ev.radial?'Booster separation':'Stage separation');
   for(const k of ev.ignite){if(!igniteOK(s,k)){if(!ev.decouple.length){s.evIdx--;break}continue}s.segs[k].ignited=true}   // know-how: an unfamiliar engine can fail to light (a pure ignition can be retried)
   if(ev.ignite.length&&!ev.decouple.length)HOOK.msg('Ignition');
+  logEv('stage',`event ${s.evIdx}: ${ev.decouple.length} group(s) dropped, ${ev.ignite.filter(k=>s.segs[k].ignited).length} of ${ev.ignite.length} lit; ${(len(s.r)-s.body.R)/1000|0} km, ${len(sub(s.v,surfVel(s.body,s.r))).toFixed(0)} m/s`);
   spinFire(s,ev);
   if(ev.chute){s.chute=true;s.chuteA=0;HOOK.msg(s.body.atm?'Chute armed — drogue below 20 km and 400 m/s, main below 3 km':'Chute deployed (no air here)')}
   HOOK.rebuild()}

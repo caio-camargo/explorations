@@ -59,7 +59,13 @@ function advanceDays(d){if(!(d>0))return;const T0=PROG.day*DAY_S;PROG.day+=d;wor
 // then the program saves to its own slot (PROG_KEY), so a real career is never read or written. Each flag is read in one
 // place: money → testTopUp (the frame loop and testAdvance call it), kh → khUse/certOf, tools → toolOK, nofail → igniteOK,
 // fast → the stacking days in missionTick. Epochs, the date and finishing jobs are actions, not flags.
-const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false},TEST_FUNDS=1e5;
+const TEST={on:false,money:false,kh:false,tools:false,nofail:false,fast:false,log:false},TEST_FUNDS=1e5;
+// the tester's log (QUEUE Q265, PLAYTEST #65): with TEST.log on, logEv(kind, text) keeps a line (sim time, world day) in LOG
+// and hands it to HOOK.log (app/testlog.js: the panel, the console, the download). Off, it returns at once, so the SIM
+// can call it anywhere. Kinds: stage, contact, heat, pay, msg, destroyed, news, money, contract, mission, save, tester.
+const LOG=[],LOG_MAX=5000;
+function logEv(kind,text){if(!(TEST.on&&TEST.log))return;const e={t:simT,day:PROG.day||0,kind,text};LOG.push(e);
+  if(LOG.length>LOG_MAX)LOG.splice(0,LOG.length-LOG_MAX);HOOK.log(e)}
 function testTopUp(){if(TEST.on&&TEST.money&&!(PROG.funds>=TEST_FUNDS))PROG.funds=TEST_FUNDS}
 // an epoch's missions open when the earlier epochs are done: mark those done (flagged test:true) and clear any later ones
 function testEpoch(n){for(const M of MISSIONS){const d=PROG.done[M.id];
