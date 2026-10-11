@@ -736,6 +736,20 @@ ROWS[164] = {title: 'the network screen', steps: [DOCK_HELPERS, `testEpoch(3); P
 ROWS[156] = {title: 'the NEXT line in a new career', gate: true, flags: null, steps: [{click: '[data-start="agency"]'},
   `(document.getElementById('prog').innerText.match(/NEXT.*/) || ['no NEXT line'])[0]`, {shot: 'next'}]};
 
+// 200: the Assembly keeps the design where it was (Q247): deleting the parts underneath leaves the root still on screen and
+// above the plate; Clear is one click (the presets' ✕ Empty) and Ctrl+Z brings the design back (Q235); holding a part shows the
+// radial-mount count, and its chips set it (Q236)
+const PIN200 = `(()=>{ const r = S.parts.find(p => p.core && p.dn && !p.dn.at), up = r.y0 - S.cm[1] - (cam.edY || 0); const o = {root: r.d.key, onScreen: +up.toFixed(3), abovePlate: +(r.y0 + BLD.st.gap).toFixed(3), gap: +BLD.st.gap.toFixed(3), parts: S.parts.length}; (window.PIN200 = window.PIN200 || []).push(o); return o })()`;
+const DEL200 = `(()=>{ const low = S.parts.filter(p => p.core).sort((a, b) => a.y0 - b.y0)[0]; BLD.design(); BLD.st.sel = S.parts.find(p => p.i === low.i).dn; BLD.panel(); const b = [...document.querySelectorAll('.bsel button')].find(x => /^delete/.test(x.textContent)); b.click(); render(); return low.d.key })()`;
+ROWS[200] = {title: 'the Assembly: pinned design, Clear, radial mounts', steps: [`go('assembly'); PT.preset('Beeper'); HOOK.edStill = true; render(); 'ok'`, PIN200,
+  DEL200, PIN200, DEL200, PIN200, {shot: 'pinned'},
+  `PT.click('#presets button'); ({empty: BLD.isEmpty(stackDef), status: document.getElementById('target').innerText})`, {shot: 'cleared'},
+  `window.CLR200 = BLD.isEmpty(stackDef); document.dispatchEvent(new KeyboardEvent('keydown', {key: 'z', ctrlKey: true, bubbles: true})); render(); window.UNDO200 = S.parts.length`,
+  `BLD.grab('t1'); render(); document.querySelector('#target [data-sym="4"]').click(); ({sym: BLD.st.sym, chips: document.querySelectorAll('#target [data-sym]').length})`, {shot: 'mounts'}],
+  checks: {pin: `(()=>{ const P = window.PIN200 || []; return P.length === 3 && P.every(o => o.onScreen === P[0].onScreen && o.abovePlate === P[0].abovePlate) && P[2].gap > P[1].gap && P[1].gap > 0 })()`,
+    clear: `window.CLR200 === true && window.UNDO200 === 7`, sym: `BLD.st.sym`},
+  expect: {pin: v => v === true, clear: v => v === true, sym: v => v === 4}};
+
 // ---- run ---------------------------------------------------------------------------------------------------------------
 const args = ARGV.filter(a => a !== WARG);
 // watching: a pause after each step (and a longer one after a click or a key) so a person can follow; PT is re-armed after a reload
