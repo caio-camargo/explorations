@@ -10501,3 +10501,16 @@ Test `vehicle-10` (1 check; fails with the bay's gate removed). Full suite: 634 
 - **Flow (Q272):** new player strings here say "the design", none says "Assembly"; the rename has nothing new to catch.
 
 Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 checks pass; sections 16, 17, 32, flow-11 pass.
+
+## v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
+
+- **A card beside the palette** (`cardAt`, `#partcard` in `builder.js`) on hover: the name, one sentence (`PART_INFO`,
+  keyed by part, falling back to a 2.5 m part's base and then to its kind, so a new part from another lane gets its
+  kind's sentence until it has its own), and a sheet from the part's own numbers (`partSpecs`): mass (full and empty for
+  tanks), propellant, thrust and Isp, an escape tower's burn, seats and berths, turning torque, power made, stored or
+  drawn, size, heat limit (`Tmax`), price (`partPrice` plus a tank's propellant at `FUEL_PRICE`). A part not open yet says
+  why there (the old `title` tooltip is gone). The tooltip on the design (`#bldtip`) adds the sentence.
+- **Not done:** the school (no part differs by school yet), and the picture: Q238's thumbnails go at the top of this card.
+- **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
+
+Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
