@@ -5200,3 +5200,17 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
 - Flow: Q241 R2 (the Debrief as the report on the desk), R3 (the charter), R4 (mission control).
 - Look & sound: the desk's polish.
 - Vehicle: Q237 and Q238 as paperwork for R5.
+
+## 2026-10-10 late evening — Caio + Claude (launchpad flow session): Q241 R2, the Debrief as the flight report
+- **Done:** v1.116 (`1b4ad69`, merged to `main`): the Debrief is a room on the Program's desk, a typed flight report
+  (poster headline only for a crew lost, a first in the world, a vehicle lost or a beaten record; money as a ledger with
+  a double-underlined net; FILED stamp; exits Fly again / Assembly / To the office). This flight's liftoff photo and the
+  papers' cutting are pinned beside it (`deskPhotoCard`, `deskNews`, `deskClipping` now shared in `app/desk.js`).
+- **Checks:** full suite passed (and qa + flow again after merging main); test flow-10 extended; robot `desk` (now
+  shoots the report), 127 and `m1` pass, no overlapping boxes. TESTING row 198.
+- **Files:** launchpad `app/debrief.js`, `app/desk.js`, `app/screens.js`, `index.html`, `test.mjs`, `playtest.mjs`,
+  NOTES (§ v1.116, the plan's Order line), TESTING, QUEUE; ACTIVE_WORK.
+- **Housekeeping:** three stale dev servers from earlier in the session were still on port 8795; stopped.
+- **Next for flow:** Q241 R3 (the title and first run as the charter) or R4 (mission control); the new PLAYTEST items
+  in flow's lane (Q254–Q262: navball on the map, node delete, the planet ring, terminal resolution, map arcs, layers,
+  focus).
