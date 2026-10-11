@@ -394,6 +394,21 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
   const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
   if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
   return out}
+// ---- the player's designs (vehicle session, Caio 2026-10-11): PROG.designs = {saved: [{name, stack, day}], launched:
+// [{stack, day, n, name}]}. Every launch files its design in `launched` (newest first, one entry per distinct design, its
+// launch count n, at most DESIGN_LAUNCHED); `saved` holds the ones the player named. Per program, in its save. Parked
+// parts (Q246) are not part of a design that flies, so they're kept in a saved design but not in a launched one.
+const DESIGN_LAUNCHED=24;
+const designLib=()=>{const L=PROG.designs||(PROG.designs={});L.saved=L.saved||[];L.launched=L.launched||[];return L};
+const designKey=st=>{const d=JSON.parse(JSON.stringify(toV2(st)));if(d)delete d.park;const strip=n=>{if(!n)return;delete n.id;(n.c||[]).forEach(strip)};strip(d&&d.root);return JSON.stringify(d)};
+function designLabel(st,s){const k=designKey(st);for(const n in PRESETS)if(designKey(PRESETS[n])===k)return n;
+  s=s||newShip(st);const top=s.parts.filter(p=>['pod','core','bio','sci'].includes(p.d.kind)).sort((a,b)=>b.y0-a.y0)[0]||s.parts[0];
+  return `${top?top.d.name:'Design'} · ${s.parts.length} parts · ${(s.mass/1000).toFixed(1)} t`}
+function designLaunched(st,s){if(!st||Array.isArray(st)&&!st.length)return;const L=designLib(),k=designKey(st),i=L.launched.findIndex(e=>designKey(e.stack)===k),
+  st2=JSON.parse(JSON.stringify(st));if(isV2(st2))delete st2.park;
+  const e=i>=0?L.launched.splice(i,1)[0]:{stack:st2,n:0,name:designLabel(st2,s)};e.n++;e.day=PROG.day;e.stack=st2;L.launched.unshift(e);L.launched.length=Math.min(L.launched.length,DESIGN_LAUNCHED)}
+function designSave(name,st){const L=designLib(),nm=String(name||'').trim().slice(0,40)||designLabel(st),i=L.saved.findIndex(e=>e.name===nm),e={name:nm,stack:JSON.parse(JSON.stringify(st)),day:PROG.day};
+  if(i>=0)L.saved[i]=e;else L.saved.unshift(e);return e}   // the same name replaces the old one
 // a satellite's lifetime for the builder (vehicle session, Q141; MIDGAME § Satellites: lifetime is a design choice, made
 // once): the design's top stage (what's left after every decoupler) as if registered in a circular orbit alt km up, what
 // holding that orbit costs a day (space's holdRate: tides + drag), how long the Δv left after getting there pays for it

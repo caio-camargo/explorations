@@ -301,6 +301,7 @@ function panel(){
   const t3=document.createElement('div');t3.className='bgrp';bar.appendChild(t3);
   btn(t3,'↶ undo',false,()=>restore(st.undo,st.redo),'Ctrl+Z').disabled=!st.undo.length;
   btn(t3,'↷ redo',false,()=>restore(st.redo,st.undo),'Ctrl+Y').disabled=!st.redo.length;
+  btn(t3,'save design…',false,()=>{const i=el('blName');if(!i)return;i.scrollIntoView({block:'center'});i.focus()},'name it and keep it under Your designs (every launch also keeps its design under Launched)').disabled=isEmpty(stackDef);
   btn(t3,'✕ clear design',false,clearDesign,'remove every part and start from scratch (Ctrl+Z brings them back)').disabled=isEmpty(stackDef);
   if(!isEmpty(stackDef))staging(box);
   const n=st.sel;const sel=document.createElement('div');sel.className='bsel';box.appendChild(sel);
@@ -375,7 +376,19 @@ function palette(){const pal=el('palette');pal.innerHTML='';cardAt(null);
       b.onclick=()=>st.held&&st.held.k===k&&!kids(st.held).length?drop():grab(k);pal.appendChild(b)}}
   const pre=el('presets');pre.innerHTML='';
   {const b=document.createElement('button');b.textContent='✕ Empty';b.title='start from scratch: clear the design (Ctrl+Z brings it back)';b.style.margin='0 4px 4px 0';b.disabled=isEmpty(stackDef);b.onclick=clearDesign;pre.appendChild(b)}
-  for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}}
+  for(const k in PRESETS){const b=document.createElement('button');b.textContent=k;b.style.margin='0 4px 4px 0';b.onclick=()=>{snapshot();loadDesign(PRESETS[k])};pre.appendChild(b)}
+  library(pre)}
+// ---- your designs: save the one on the stand under a name; every launch files its design under "Launched" (designLaunched)
+function library(box){if(typeof designLib!=='function'||typeof PROG==='undefined')return;const L=designLib(),w=document.createElement('div');w.className='blib';box.appendChild(w);
+  const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  w.innerHTML=`<div class="pcat">Your designs</div><div class="blsave"><input id="blName" maxlength="40" placeholder="name this design" value="${esc(st.libName||'')}"><button id="blSave" ${isEmpty(stackDef)?'disabled':''}>Save</button></div>`+
+    (L.saved.length?L.saved.map((e,i)=>`<div class="blrow"><button data-lib="s${i}" title="load it (Ctrl+Z goes back)">${esc(e.name)}</button><span class="dim">day ${Math.floor(e.day||0)}</span><button data-libdel="${i}" title="forget this design">✕</button></div>`).join(''):'<div class="sub">Nothing saved yet.</div>')+
+    `<div class="pcat">Launched</div>`+(L.launched.length?L.launched.slice(0,8).map((e,i)=>`<div class="blrow"><button data-lib="l${i}" title="load it (Ctrl+Z goes back)">${esc(e.name)}</button><span class="dim">day ${Math.floor(e.day||0)}${e.n>1?` · ×${e.n}`:''}</span></div>`).join('')+(L.launched.length>8?`<div class="sub">and ${L.launched.length-8} older</div>`:''):'<div class="sub">Every launch keeps its design here.</div>');
+  const inp=w.querySelector('#blName');inp.oninput=()=>{st.libName=inp.value};inp.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter')w.querySelector('#blSave').click()};
+  w.querySelector('#blSave').onclick=()=>{if(isEmpty(stackDef))return;const e=designSave(inp.value,design());st.libName='';HOOK.save&&HOOK.save();palette();note(`Saved as “${e.name}”`)};
+  w.onclick=ev=>{const b=ev.target.closest('[data-lib],[data-libdel]');if(!b)return;
+    if(b.dataset.libdel!=null){const e=L.saved[+b.dataset.libdel];if(!e)return;L.saved.splice(+b.dataset.libdel,1);HOOK.save&&HOOK.save();palette();note(`Forgot “${e.name}”`);return}
+    const id=b.dataset.lib,e=(id[0]==='s'?L.saved:L.launched)[+id.slice(1)];if(!e)return;snapshot();loadDesign(e.stack);if(id[0]==='s')st.libName=e.name;note(`Loaded “${e.name}” (Ctrl+Z goes back)`)}}
 // light refresh (no reassembly): the toolbar, palette highlight, status line
 function refresh(){panel();palette();const t=el('target');if(t)t.innerHTML=statusHTML();update()}
 // after editorChanged has rebuilt S from the design
@@ -404,6 +417,8 @@ function frameCam(){if(!st.reframe||isEmpty(stackDef))return;st.reframe=false;
 function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw=draw;HOOK.edOverlay=overlay;
   const css=document.createElement('style');css.textContent=`
 .bmounts{display:flex;gap:2px;align-items:center;flex-wrap:wrap;margin-top:4px;color:var(--fg)}.bmounts button{padding:0 4px;font-size:11px}.bmounts button.on{background:var(--acc);color:#000}
+.blsave{display:flex;gap:4px;margin:2px 0 4px}.blsave input{flex:1;min-width:0;font:inherit;font-size:11px;background:rgba(0,0,0,.3);color:inherit;border:1px solid var(--line);padding:1px 4px}
+.blrow{display:flex;gap:4px;align-items:center;margin:2px 0}.blrow button:first-child{flex:1;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.blrow .dim{font-size:10.5px;white-space:nowrap}.blrow button[data-libdel]{padding:0 5px}
 .pcat{color:var(--acc);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;margin:8px 0 2px}
 #palette button.lock{opacity:.5}#palette button.lock span{color:var(--warn)}
 .bbar{display:flex;flex-direction:column;gap:4px;margin-bottom:6px}.bgrp{display:flex;gap:3px;flex-wrap:wrap;align-items:center}.bgrp .dim{margin-right:3px}
@@ -437,7 +452,8 @@ function init(){if(st.inited)return;st.inited=true;HOOK.edStill=true;HOOK.edDraw
     update()});
   cvs.addEventListener('contextmenu',e=>{if(mode==='editor')e.preventDefault()});
   addEventListener('wheel',e=>{if(mode!=='editor'||e.target!==cvs||!e.shiftKey)return;e.preventDefault();e.stopPropagation();
-    cam.edY=clamp((cam.edY||0)-Math.sign(e.deltaY||e.deltaX)*cam.dist*.06,-S.len,S.len)},{capture:true,passive:false});
+    const d=(e.deltaY||e.deltaX)*(e.deltaMode===1?33:e.deltaMode===2?400:1);   // pixels; one mouse notch ≈ 100
+    cam.edY=clamp((cam.edY||0)-clamp(d,-150,150)/100*cam.dist*.015,-S.len,S.len)},{capture:true,passive:false});
   addEventListener('keydown',e=>{if(mode!=='editor'||typeof atHQ!=='undefined'&&(atHQ||atDeb||atRoll||atNet)||e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;const k=e.key.toLowerCase();
     if((e.ctrlKey||e.metaKey)&&k==='z'){e.preventDefault();e.shiftKey?restore(st.redo,st.undo):restore(st.undo,st.redo);return}
     if((e.ctrlKey||e.metaKey)&&k==='y'){e.preventDefault();restore(st.redo,st.undo);return}
