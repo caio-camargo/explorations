@@ -1,5 +1,5 @@
 # SYSTEM — the star system catalog
-**Version**: 1.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
+**Version**: 1.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-09
 **Status**: **Approved by Caio 2026-10-08 as the base.** Lanes may build from it. Names are placeholders (Caio will
 revisit them), and he may revisit details at the margins; the shape, the scaling rules and the defaults below hold.
 **Purpose**: What exists in the star system, fixed on paper so each body can become its own work package
@@ -31,11 +31,11 @@ heliocentric. Tellus's Hill sphere doesn't depend on it at all (261,000 km, so S
 | Star μ (m³/s²) | Tellus's orbit | Tellus's speed | Δv from 150 km to Enyo / Hyperion |
 |---|---|---|---|
 | 3.0e17 | 10.0 Gm | 5.5 km/s | 1,416 / 1,653 |
-| **1.17e18 (default, Kerbol's)** | **15.8 Gm** | **8.6 km/s** | **1,460 / 2,025** |
+| **1.17e18 (default)** | **15.8 Gm** | **8.6 km/s** | **1,460 / 2,025** |
 | 5.0e18 | 25.6 Gm | 14.0 km/s | 1,581 / 2,930 |
 
 Escaping Tellus alone costs 1,385 m/s, so the inner planets cost about the same whatever the star. The dial mostly
-prices the outer system. Default: Kerbol's mass, which is KSP-like and puts Hyperion about where Jool is. It is not a
+prices the outer system. Default: μ 1.17e18, picked for play length: the outer planets cost a mid-game Δv, not an endgame one. It is not a
 physical star (about 1/113 of the Sun), in the same spirit as Tellus's density.
 
 ---
@@ -241,7 +241,7 @@ Names and looks stay cheap to change.
 ## Decisions (round 2, Caio, 2026-10-08)
 
 1. **Names:** the Titan/Night family stays as **placeholders**; Caio revisits naming later.
-2. **The star's mass:** Kerbol's, μ 1.17e18.
+2. **The star's mass:** μ 1.17e18 (play length; KSPISMS.md: KSP's names dropped, 2026-10-11).
 3. **Tellus's axial tilt: 23°, Earth-like.** Fixed now because the sky, the world's snow and the planet shader depend
    on it; **seasons are built at M5**, not before.
 4. **Hyperion has bright rings and a 27° tilt.**
