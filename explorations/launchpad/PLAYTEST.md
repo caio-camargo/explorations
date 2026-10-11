@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.28 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.29 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -55,6 +55,9 @@ Coding sessions pick items from here and strike them through with the version th
 | 60 | P2 | **Two arcs and two impact points on the map, one an X and one a dot**; not clear why (Caio, 2026-10-10, playing the monochrome computer era). | Probably the vacuum orbit (ends in a dot labelled *Impact*) and the drag-aware impact predictor (its own path, an X) drawn together; or a dropped stage's predicted impact. QUEUE Q260 | flow |
 | 61 | P2 | **The map needs toggles for what it displays**, or it gets too busy: cities, other planets and such (Caio, 2026-10-10). | No layer toggles today. QUEUE Q261 | flow |
 | 62 | P2 | **Centre the map on something else**, like KSP; not sure it exists yet (Caio, 2026-10-10). | It exists but is hidden: Tab in the map cycles the ship and bodies (`input.js` ~22). Make it visible, clickable, and include your other objects. QUEUE Q262 | flow |
+| 63 | P2 | **I don't know what to do after a landing.** KSP has a *Recover vessel* button; do we? (Caio, 2026-10-10, after landing a rocket) | Yes in effect: *End flight: debrief* in the toolbar, or Enter; nothing points to it once landed. QUEUE Q263 | flow |
+| 64 | P2 | **The rocket exploded a bit after landing**, not sure why (Caio, 2026-10-10, after landing a rocket) | Likely it toppled (past 60° the game destroys it, `sim/flight.js` ~87, "Toppled over on…") or the nose touched; the message flashes and is gone. QUEUE Q264 | vehicle (+ world: ground contact) |
+| 65 | P2 | **Verbose logging in tester mode** (Caio, 2026-10-10, after landing a rocket) | None today. QUEUE Q265 | platform |
 
 ## Done
 
