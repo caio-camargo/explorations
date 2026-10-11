@@ -7,7 +7,7 @@ let atHQ=false;   // the Program screen: mode stays 'editor' (the ship waits on 
 let atDeb=false,debNext='program',debShown=null,atRoll=false,atNet=false;   // atNet: the network screen (Q155)   // atRoll: the Rollout screen (slice 5), a panel beside the ship on the pad   // the Debrief screen (slice 3): a panel over the pad like Program; debNext: where you were going
 // Rooms (Q239 R0): screens that are a place of their own, not a panel over the pad. While one shows, frame() skips the 3D
 // draw (the sim still runs, so days still pass on the Program); the room covers the window. The desk itself: app/desk.js.
-const ROOMS=new Set(['program']);
+const ROOMS=new Set(['program','debrief']);
 const inRoom=()=>ROOMS.has(screenNow());
 const screenNow=()=>mode==='drive'?'rover':mode==='editor'?(atDeb?'debrief':atNet?'network':atHQ?'program':atRoll?'rollout':'assembly'):view==='map'?'map':'flight';
 function go(s){const from=screenNow();if(s===from)return;

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.45 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.46 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,31 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.116 — the Debrief as the flight report on the desk (2026-10-10, flow session, QUEUE Q241 R2; PLAYTEST #6)
+- **The Debrief is a room** (`ROOMS` has `debrief`): it fills the window on the same wooden desk as the Program, and
+  `frame()` draws no 3D behind it. The old panel over the pad is gone. `go()`, the keys (P, B, A) and the button ids
+  (`bDebProg`, `bDebAsm`, `bDebAgain`) are unchanged; their row is `#debActs` at the foot of the report.
+- **The report** (`renderDebrief`, `app/debrief.js`; it still only renders `debriefOf`'s record):
+  - A typed header line: FLIGHT REPORT · No. n, the design, the date, the time flown. A red FILED stamp.
+  - **The headline is a poster only when it's news**, in this order: a crew lost ("Crew lost", in black), a first in the
+    world (the mission's name, kicker FIRST IN THE WORLD), the vehicle lost, a beaten record (kicker NEW RECORD). Any
+    other flight gets its outcome typed ("Landed", "In orbit"). The lead line carries the outcome's detail, the crew and
+    a passenger.
+  - Two columns. Left: **money as a ledger**, losses in red, *Net for the program* ruled and double-underlined; then the
+    logbook. Right: missions (✓, "first" in red), certified by telemetry, know-how, incidents, the clean streak.
+  - The foot: "Filed by flight control" with the date and a signature, and the exits: Fly again, Assembly, **To the
+    office ▶ [P]**. The one `debNext` points to is the dark button.
+- **The wall beside it:** this flight's own photo (`deskPhoto()`, only when its flight number is this report's; a flight
+  that began in orbit says "no liftoff") and the papers' cutting from the days it flew (`deskNews` on the news since
+  `D.day0`). `app/desk.js` now shares `deskPhotoCard`, `deskNews` and `deskClipping` between the Program's wall and the
+  report's.
+- **Checks:** test `flow-10` (the Debrief is a room; its exits and wall). Robot row `desk` shoots the report after a real
+  Sounding flight (photo pinned, no overlapping boxes); row 127 (the Debrief after each way a flight ends) passes, its
+  selectors moved to `#debActs`.
+- **Not yet:** the signature is "Flight Control": there's no named staff until the roster (Q133). The mock-up's "What
+  it opens" section needs a list of what a flight unlocks, which the record doesn't keep. A long report scrolls inside
+  the paper.
 
 ## v1.115 — the Assembly as a scale model on a drafting table (2026-10-10, flow session at Caio's ask, QUEUE Q242; PLAYTEST #45)
 - **Caio's call (PLAYTEST #45, W35 (4) overridden):** the design is a scale model on a 1960s drafting table, not a real
@@ -8804,7 +8829,7 @@ for any craft other than the one you're flying.
    the pad could come later.
 3. **Mission control is its own screen**, opened after the first orbit, and the Network screen folds into it.
 4. **The Assembly moves into a hall** (a new 3D scene) with blueprint panels, rather than staying on the pad.
-5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
+5. **Order:** R0 → R1 (**built: § v1.114**, Q240) → R2 (**built: § v1.116**, Q241) → R3 → R4, then R5 once vehicle's Q237/Q238 land. R0+R1 are one M1 slice; the rest is M1 polish
    or M2 (R4).
 
 **Caio, 2026-10-10 (playtest, PLAYTEST #45): W35 closed; (4) overridden, the Assembly is a model on a desk, not a hall.**

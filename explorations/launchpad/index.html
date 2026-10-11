@@ -70,7 +70,7 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 #tester button{margin:2px 3px 2px 0}#tester button.on{border-color:var(--acc);color:var(--acc)}#tester button.arm{border-color:var(--warn);color:var(--warn)}
 #testerBadge{position:fixed;left:50%;top:4px;transform:translateX(-50%);z-index:5;font-size:10.5px;letter-spacing:.12em;color:#111;background:var(--warn);border-radius:3px;padding:1px 8px;cursor:pointer}
 #rvDes{width:310px}#rvDes h2{margin:9px 0 4px}#rvDes .ndrow button{padding:1px 6px}#rvDes option{background:#0b1220}#rvHud{right:12px;top:12px;width:250px}#rvFHud{right:12px;top:52px;width:250px}#rvFHud td:first-child{padding-right:10px}#rvHud td:first-child{padding-right:10px}
-#deb,#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
+#net{position:fixed;inset:0;background:rgba(6,10,16,.5);z-index:2;display:flex;justify-content:center;align-items:flex-start}
 .hq{margin-top:5vh;width:min(880px,96vw);max-height:90vh;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:14px 18px;backdrop-filter:blur(4px);box-shadow:0 10px 40px #000a}
 .hqHead{display:flex;gap:12px;align-items:center}.hqHead h1{margin:0}#progHead{flex:1}#progHead .ep{margin:0;font-size:12px}.hqHead button.big{width:auto;margin:0;padding:7px 16px;font-size:12px;letter-spacing:.2em}.hqHead button.big:disabled{opacity:.4;cursor:default}
 #progTabs{display:flex;gap:4px;flex-wrap:wrap;margin:12px 0 0;border-bottom:1px solid var(--line)}#progTabs button{border-radius:4px 4px 0 0;border-bottom:0;padding:4px 12px}#progTabs .n{color:var(--warn);margin-left:4px}
@@ -81,12 +81,12 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 @font-face{font-family:'Courier Prime';src:url(fonts/courier-prime.woff2) format('woff2');font-display:swap}
 @font-face{font-family:'Courier Prime';font-weight:700;src:url(fonts/courier-prime-bold.woff2) format('woff2');font-display:swap}
 @font-face{font-family:'Bebas Neue';src:url(fonts/bebas-neue.woff2) format('woff2');font-display:swap}
-#prog{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(210px,270px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:auto auto minmax(0,1fr);column-gap:22px;row-gap:12px;padding:0 20px 16px;
-  --fg:#2a2620;--dim:#6b6252;--acc:#1d4f8f;--ok:#2f6b2f;--warn:#a5521a;--bad:#b3262a;--line:#9c8f78;
+#prog{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(210px,270px) minmax(0,1fr) minmax(190px,250px);grid-template-rows:auto auto minmax(0,1fr);column-gap:22px;row-gap:12px;padding:0 20px 16px}
+#prog,#deb{--fg:#2a2620;--dim:#6b6252;--acc:#1d4f8f;--ok:#2f6b2f;--warn:#a5521a;--bad:#b3262a;--line:#9c8f78;
   font:13px/1.4 'Courier Prime',Courier,monospace;color:var(--fg);
   background:repeating-linear-gradient(92deg,rgba(0,0,0,.06) 0 3px,transparent 3px 11px,rgba(255,255,255,.03) 11px 13px,transparent 13px 29px),linear-gradient(180deg,#6b4429,#5a371f 60%,#4c2e1a)}
-#prog button{font:bold 12px 'Courier Prime',Courier,monospace;color:#2a2620;background:#e9dcb9;border:2px solid #2a2620;border-radius:2px;box-shadow:2px 2px 0 #2a2620;padding:2px 9px}
-#prog button:hover{background:#f6ecd0}#prog button:disabled{opacity:.45;cursor:default}
+#prog button,#deb button{font:bold 12px 'Courier Prime',Courier,monospace;color:#2a2620;background:#e9dcb9;border:2px solid #2a2620;border-radius:2px;box-shadow:2px 2px 0 #2a2620;padding:2px 9px}
+#prog button:hover,#deb button:hover{background:#f6ecd0}#prog button:disabled,#deb button:disabled{opacity:.45;cursor:default}
 #prog .sub{color:var(--dim)}#prog .ep{color:#1d2a44;font:bold 12px 'Courier Prime',monospace;letter-spacing:.14em;text-transform:uppercase}
 #deskLH{grid-column:1/-1;margin:0 -20px;height:80px;display:flex;align-items:center;gap:16px;padding:0 26px;background:#efe6cf;border-bottom:3px double #2a2620;box-shadow:0 3px 10px rgba(0,0,0,.4)}
 #deskLH .flag{border:1px solid #2a2620;flex:none}#deskLH .org{flex:1;min-width:0}
@@ -134,9 +134,37 @@ body.paper #msg{color:#1d2a52;text-shadow:0 0 6px #f6f0de,0 0 3px #f6f0de}
 .cal{margin-top:4px}.crow{display:flex;align-items:center;margin:3px 0}.cl{width:64px;color:var(--dim);font-size:11px}.ctr{position:relative;flex:1;height:22px;background:rgba(127,209,255,.05);border:1px solid var(--line);border-radius:3px}
 .tk{position:absolute;top:0;bottom:0;border-left:1px dashed var(--line)}.tk b{position:absolute;top:-1px;left:3px;white-space:nowrap;font:normal 9.5px ui-monospace,monospace;color:var(--dim)}.cfree{position:absolute;left:8px;top:3px;color:var(--dim);font-size:11px}
 .cbar{position:absolute;top:2px;bottom:2px;min-width:4px;background:rgba(127,209,255,.35);border:1px solid var(--acc);border-radius:2px;font-size:10.5px;line-height:16px;padding:0 4px;overflow:hidden;white-space:nowrap}.cev{position:absolute;top:4px;width:2px;height:12px;background:var(--warn)}
-#debHead{flex:1}#debHead .dt{color:var(--acc);font-size:12px}#debBody{overflow:auto;padding:4px 2px;min-height:160px;columns:2 340px;column-gap:28px}#debBody .none{color:var(--dim);padding:20px 0}
-.dsec{break-inside:avoid;margin-bottom:4px}.dh{color:var(--acc);font-size:11.5px;margin-top:10px}#debBody td:last-child{text-align:right;white-space:nowrap;padding-left:10px}.dnet td{font-weight:bold;border-top:1px solid var(--line);padding-top:2px}
-.dout{column-span:all;margin:10px 0 4px;padding:4px 10px;border-left:3px solid var(--line);font-size:14px}.dout.k-orbit,.dout.k-landed,.dout.k-away{border-left-color:var(--ok)}.dout.k-lost{border-left-color:var(--bad)}.dout.k-flying{border-left-color:var(--warn)}.dout.k-escape{border-left-color:var(--acc)}
+.dh{color:var(--acc);font-size:11.5px;margin-top:10px}   /* the Network screen's headings */
+/* ---- the Debrief as the flight report on the desk (flow session, Q241 R2; NOTES § v1.116). A room, like the Program. */
+#deb{position:fixed;inset:0;z-index:2;display:grid;grid-template-columns:minmax(200px,260px) minmax(0,720px);justify-content:center;column-gap:34px;padding:26px 24px 18px}
+#debWall{display:flex;flex-direction:column;gap:26px;padding-top:30px;min-width:0}
+#debReport{position:relative;display:flex;flex-direction:column;min-height:0;background:#f1e8d0;padding:26px 38px 16px;box-shadow:0 8px 22px rgba(0,0,0,.55);
+  background-image:repeating-linear-gradient(180deg,transparent 0 21px,rgba(60,90,140,.1) 21px 22px)}
+#debReport .clip{position:absolute;top:-14px;width:12px;height:38px;border:3px solid #9aa0a6;border-radius:7px}
+#debHead{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #2a2620;padding-bottom:5px;font-size:12px}#debHead span:last-child{text-align:right;color:var(--dim)}
+#debBody{flex:1;min-height:0;overflow:auto;padding-right:6px}
+#debBody .kick{font:bold 12px 'Courier Prime',monospace;letter-spacing:.3em;color:var(--bad);margin-top:10px}
+#debBody .hl{font:30px/1.1 'Special Elite',Courier,monospace;color:#1d2a44;margin:10px 150px 2px 0}
+#debBody .hl.poster{font:58px/.95 'Bebas Neue',Impact,sans-serif;letter-spacing:3px;color:var(--bad);margin-top:2px;text-transform:uppercase}#debBody .hl.poster.black{color:#1a1714}
+#debBody .lead{font-size:13.5px;margin:6px 0 4px}#debBody .lead .ok{color:var(--ok)}#debBody .lead .bad{color:var(--bad)}
+#debBody .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 34px}
+#debBody .dh{font:bold 12.5px 'Courier Prime',monospace;letter-spacing:.18em;text-transform:uppercase;color:#1d2a44;margin:16px 0 4px}
+#debBody .ln{display:flex;justify-content:space-between;gap:10px;line-height:22px}#debBody .ln>span:first-child{flex:1 1 auto;min-width:0}#debBody .ln>span:last-child{white-space:nowrap;text-align:right}
+#debBody .neg{color:var(--bad)}#debBody .was{color:var(--dim)}#debBody .ln.bad>span:first-child{color:var(--bad)}
+#debBody .ln.tot{font-weight:bold;border-top:1.5px solid #2a2620;margin-top:3px}#debBody .ln.tot>span:last-child{border-bottom:4px double #2a2620;line-height:20px}
+#debBody .none{color:var(--dim);padding:20px 0}
+#debFoot{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;padding-top:10px;border-top:1px solid var(--line)}
+#debSig{font-size:12px;color:var(--dim);min-width:0}#debSig .sig{display:block;font:italic 22px 'Brush Script MT','Segoe Script',cursive;color:#24508f;margin-top:2px}
+#debActs{display:flex;gap:10px;flex:none}#deb #debActs button{padding:6px 12px;white-space:nowrap}
+#deb #debActs button.big{display:inline-block;width:auto;margin:0;letter-spacing:.06em;font-size:12px;background:#2a2620;color:#f3ead4;box-shadow:2px 2px 0 #b3262a}
+#debStamp{position:absolute;right:42px;top:58px;font:bold 22px 'Special Elite',monospace;color:#b3262a;border:3px solid #b3262a;padding:2px 10px;border-radius:4px;transform:rotate(-8deg);opacity:.8;letter-spacing:2px;mix-blend-mode:multiply;pointer-events:none}
+#deb .photo{position:relative;background:#fbf8f0;padding:8px 8px 26px;box-shadow:2px 4px 10px rgba(0,0,0,.5)}
+#deb .photo img,#deb .photo .img{display:block;width:100%;aspect-ratio:3/2;filter:sepia(.5) contrast(1.05) saturate(.8)}
+#deb .photo .img{background:#cfc6b0;color:#7a7266;display:flex;align-items:center;justify-content:center;font:13px 'Special Elite',monospace}
+#deb .photo .cap{position:absolute;left:9px;right:9px;bottom:5px;font:12px 'Special Elite',monospace;color:#333;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#deb .pin{position:absolute;left:50%;top:-5px;width:12px;height:12px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#f66,#a11);box-shadow:1px 2px 2px rgba(0,0,0,.5)}
+#deb .clipn{background:#e6e1d3;color:#222;padding:7px 10px;font:11px Georgia,serif;box-shadow:2px 3px 8px rgba(0,0,0,.45)}
+#deb .clipn .pp{font:9px Georgia,serif;letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid #444;padding-bottom:2px}#deb .clipn .hd{font:bold 15px/1.15 Georgia,serif;margin-top:4px}#deb .clipn .more{margin-top:5px;color:#444}
 #progBody .nw{font-size:11.5px;margin:2px 0;padding-left:8px;border-left:2px solid transparent;color:var(--dim)}#progBody .nw.new{border-left-color:var(--acc);color:var(--fg)}
 #progNext{margin:10px 0 0;padding:5px 10px;border-left:3px solid var(--acc);background:rgba(127,209,255,.07)}#progNext b{color:var(--acc);font-weight:normal;letter-spacing:.08em}#progNext button{margin-left:6px;padding:0 8px}
 #progBody.gate{columns:1}#progBody.gate .ms{margin:8px 0}#progBody.gate .ms.gc{margin:4px 0;display:grid;grid-template-columns:230px 1fr;align-items:center;column-gap:12px}#progBody.gate .ms.gc button{text-align:left}#progBody.gate .ms.on{border-left-color:var(--acc)}#progBody.gate .gq{margin:-2px 0 6px}#progBody .none{color:var(--dim);padding:20px 0}
@@ -217,10 +245,14 @@ body.paper #cards .pin{background:none;border:none}#cards .card.fold{padding-bot
   <div class="hqHead"><h1>NETWORK</h1><div id="netHead"></div><button data-go="program">← Program [P]</button></div>
   <div id="netBody"></div>
 </div></div>
-<div id="deb" class="hidden"><div class="hq">
-  <div class="hqHead"><h1>DEBRIEF</h1><div id="debHead"></div><button id="bDebProg" data-go="program">Program [P]</button><button id="bDebAsm" data-go="assembly">Assembly [B]</button><button id="bDebAgain">Fly again [A]</button></div>
-  <div id="debBody"></div>
-</div></div>
+<div id="deb" class="hidden">
+  <div id="debWall"></div>
+  <div id="debReport"><i class="clip" style="left:60px"></i><i class="clip" style="right:60px"></i>
+    <div id="debHead"></div><div id="debBody"></div>
+    <div id="debFoot"><div id="debSig"></div><div id="debActs"><button id="bDebAgain">Fly again [A]</button><button id="bDebAsm" data-go="assembly">Assembly [B]</button><button id="bDebProg" data-go="program">To the office ▶ [P]</button></div></div>
+    <div id="debStamp">FILED</div>
+  </div>
+</div>
 <div id="hud" class="ui hidden">
   <div class="panel tl"><table id="info"></table></div>
   <div id="cards" class="hidden"></div>

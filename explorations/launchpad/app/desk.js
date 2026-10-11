@@ -35,12 +35,18 @@ function deskLayout(box,gate){
   $('deskTray').classList.toggle('hidden',gate);
   $('deskWall').innerHTML=gate?'':deskWall()}
 function deskWall(){let h='';const ph=deskPhoto();
-  h+=ph?`<div class="photo" style="transform:rotate(2deg)"><i class="pin"></i><img src="${ph.url}" alt="flight ${ph.flight}"><div class="cap">Flight ${ph.flight} · ${ph.design}</div></div>`
-    :`<div class="photo empty" style="transform:rotate(2deg)"><i class="pin"></i><div class="img">no flights yet</div><div class="cap">the first flight's photo goes here</div></div>`;
-  const H=POWERS[HOME],ours=x=>[progName(),H&&H.root,H&&H.name].some(n=>n&&x.t.includes(n));
-  const nw=NEWS.find(x=>ours(x)&&x.cls!=='warn'&&x.cls!=='bad')||NEWS.find(x=>!x.cls||x.cls==='good')||NEWS[0];   // the papers print our own news first, then the latest that isn't a warning
-  if(nw)h+=`<div class="clip" style="transform:rotate(-1.5deg)"><div class="pp">The ${POWERS[HOME]?POWERS[HOME].root:'Coastal'} Herald · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div></div>`;
+  h+=deskPhotoCard(ph,'no flights yet',"the first flight's photo goes here");
+  const nw=deskNews(NEWS);
+  if(nw)h+=deskClipping(nw);
   const firsts=RACE.filter(id=>PROG.done[id]&&raceLost(id)==null).map(id=>({M:MISSIONS.find(m=>m.id===id),at:PROG.done[id]})).filter(x=>x.M)
     .sort((a,b)=>b.at.day-a.at.day).slice(0,2);
   for(const[i,f]of firsts.entries())h+=`<div class="cert" style="transform:rotate(${i?-1:1.5}deg)"><div class="t">FIRST: ${f.M.name}</div><div class="s">awarded to ${progName()}<br>flight ${f.at.flight} · ${fmtDate(f.at.day)}</div></div>`;
   return h}
+// the pinned photo, or its empty frame; the Debrief pins the same card (Q241 R2)
+const deskPhotoCard=(ph,none,cap)=>ph?`<div class="photo" style="transform:rotate(2deg)"><i class="pin"></i><img src="${ph.url}" alt="flight ${ph.flight}"><div class="cap">Flight ${ph.flight} · ${ph.design}</div></div>`
+  :`<div class="photo empty" style="transform:rotate(2deg)"><i class="pin"></i><div class="img">${none}</div><div class="cap">${cap}</div></div>`;
+// the papers print our own news first, then the latest that isn't a warning
+function deskNews(L){const H=POWERS[HOME],ours=x=>[progName(),H&&H.root,H&&H.name].some(n=>n&&x.t.includes(n));
+  return L.find(x=>ours(x)&&x.cls!=='warn'&&x.cls!=='bad')||L.find(x=>!x.cls||x.cls==='good')||L[0]}
+const deskPaper=()=>`The ${POWERS[HOME]?POWERS[HOME].root:'Coastal'} Herald`;
+const deskClipping=(nw,cls='clip',more='')=>`<div class="${cls}" style="transform:rotate(-1.5deg)"><div class="pp">${deskPaper()} · day ${Math.floor(nw.day)+1}</div><div class="hd">${nw.t}</div>${more}</div>`;

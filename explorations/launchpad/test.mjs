@@ -4762,18 +4762,20 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     !bad.length && distinct === P.length && own && nm.includes(two[1].name) && none === '', `${bad.length} bad${bad.length ? ' (' + bad.slice(0, 3).join(', ') + ')' : ''} · ${distinct}/${P.length} distinct · resource state's own ${own} · news "${line}" → ${(nm.match(/aria-label="([^"]*)"/) || [])[1]}`);
 }
 
-// flow-10. Rooms (flow session, QUEUE Q239 R0+R1; NOTES § UI "Plan: real screens"): the Program is a room, so frame() draws
+// flow-10. Rooms (flow session, QUEUE Q239 R0+R1, Q241 R2; NOTES § UI "Plan: real screens"): the Program is a room, so frame() draws
 // no 3D behind it (and takes the liftoff photo only after a real draw); go() marks the body; the Inbox is the desk's
 // in-tray, not a folder tab, and its button (the tray's label) still answers data-ptab="inbox".
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const rooms = /const ROOMS=new Set\(\['program'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
+  const rooms = /const ROOMS=new Set\(\['program','debrief'\]\)/.test(page), gate = /if\(!inRoom\(\)\)\{adaptRes\(dtR\);render\(\);deskPhotoTick\(\)\}/.test(page);
   const bare = (page.match(/(^|[^.\w])render\(\);/gm) || []).length;   // the one draw call is the gated one
   const body = /toggle\('room',inRoom\(\)\)/.test(page), tabs = /filter\(\(\[k\]\)=>k!=='inbox'&&/.test(page);
   const tray = /<button id="deskTrayN" data-ptab="inbox"/.test(H) && /<div id="deskTrayBox">/.test(H) && /deskLayout\(box,progGate\)/.test(page);
   const fonts = ['special-elite', 'courier-prime', 'courier-prime-bold', 'bebas-neue'].every(f => H.includes(`url(fonts/${f}.woff2)`));
-  check('flow-10: the Program is a room (no 3D draw behind it, body.room), the Inbox is its in-tray, the paperwork fonts are bundled',
-    rooms && gate && bare === 1 && body && tabs && tray && fonts, `rooms ${rooms} · gated draw ${gate} · draw calls ${bare} · body ${body} · tabs ${tabs} · tray ${tray} · fonts ${fonts}`);
+  // (Q241 R2) the Debrief is the flight report on the same desk: its exits keep their ids, its wall pins this flight's photo
+  const report = /<div id="debActs"><button id="bDebAgain">/.test(H) && /id="bDebProg" data-go="program"/.test(H) && /ph&&ph\.flight===D\.flight\?ph:null/.test(page) && /deskClipping\(nw,'clipn'\)/.test(page);
+  check('flow-10: the Program and the Debrief are rooms (no 3D draw behind them, body.room), the Inbox is the in-tray, the Debrief a report with the flight photo, the paperwork fonts are bundled',
+    rooms && gate && bare === 1 && body && tabs && tray && report && fonts, `rooms ${rooms} · gated draw ${gate} · draw calls ${bare} · body ${body} · tabs ${tabs} · tray ${tray} · report ${report} · fonts ${fonts}`);
 }
 
 // space-12. The automation ladder, slice 1 (space session, QUEUE Q127): one table says what each computing era lets run

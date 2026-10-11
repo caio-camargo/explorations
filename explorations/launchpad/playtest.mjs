@@ -468,10 +468,11 @@ PT.state = () => ({screen: screenNow(), day: +PROG.day.toFixed(1), funds: +PROG.
 true`;
 // The Program as the director's desk (flow, QUEUE Q239 R1): a Sounding flown in real frames (so the liftoff photo is
 // taken by frame(), as in play), then the desk with the photo, the clipping and, after a first, a certificate.
-ROWS.desk = {title: 'the Program as a desk: photo, clipping, in-tray', gate: true, flags: null, steps: [M1_HELPERS,
+ROWS.desk = {title: 'the Program as a desk: photo, clipping, in-tray; the Debrief as the report', gate: true, flags: null, steps: [M1_HELPERS,
   {click: '[data-start="agency"]'}, {shot: 'desk_new'},
   `(async()=>{ go('assembly'); PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); await new Promise(r => setTimeout(r, 6000)); return {photo: !!localStorage.getItem('launchpad-photo'), screen: screenNow(), room: document.body.classList.contains('room')} })()`,
-  `(()=>{ PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); go('program'); go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), wall: document.getElementById('deskWall').innerText.slice(0, 300)} })()`,
+  `(()=>{ PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), photo: !!document.querySelector('#debWall img'), head: PT.text('#debHead'), boxes: PT.boxes()} })()`,
+  {shot: 'report'}, `(()=>{ go('program'); return {screen: screenNow(), room: document.body.classList.contains('room'), wall: document.getElementById('deskWall').innerText.slice(0, 300)} })()`,
   {shot: 'desk_after'}, `(()=>{ PT.click('[data-ptab="inbox"]'); return {tab: progTab, tray: document.getElementById('deskTrayBox').innerText.slice(0, 200)} })()`],
   checks: {room: `document.body.classList.contains('room')`, photo: `!!document.querySelector('#deskWall img')`, boxes: `PT.boxes()`}};
 ROWS.m1 = {title: 'new career: gate → first orbit → debrief (M1 finish line)', gate: true, flags: null, steps: [M1_HELPERS,
@@ -611,9 +612,9 @@ ROWS[98] = {title: 'the HUD in a busy flight', steps: [M1_HELPERS, ...STSTART,
 // QUEUE Q101: TESTING 127, the Debrief after each way a flight ends, reached with the real buttons (End flight ▸, the Esc
 // menu's End flight, the toolbar's Assembly), plus going back to it from the Program. Each: the screen, which exit is
 // highlighted, the outcome line and the money block.
-const DEB = tag => `(()=>{ const big = [...document.querySelectorAll('#deb .hqHead button')].filter(b => b.classList.contains('big')).map(b => b.id), body = document.getElementById('debBody').innerText;
+const DEB = tag => `(()=>{ const big = [...document.querySelectorAll('#debActs button')].filter(b => b.classList.contains('big')).map(b => b.id), body = document.getElementById('debBody').innerText;
   return {tag: '${tag}', screen: screenNow(), big, againShown: PT.vis('#bDebAgain'), head: (document.getElementById('debHead') || {}).innerText, outcome: body.split(String.fromCharCode(10)).slice(0, 2).join(' / '),
-    money: (body.match(/Money[^]*?Net for the program.*/) || [''])[0].split(String.fromCharCode(10)).join(' · ').slice(0, 300)} })()`;
+    money: (body.match(/Money[^]*?Net for the program.*/i) || [''])[0].split(String.fromCharCode(10)).join(' · ').slice(0, 300)} })()`;
 ROWS[127] = {title: 'the Debrief after each way a flight ends', flags: NOMONEY, steps: [
   `PT.preset('Sounding'); PT.launch(); S.throttle = 1; stage(S); PT.fly(() => S.thrust <= 0 && simT > 5, 200); for (let k = 0; k < 4 && !S.chute; k++) { stage(S); PT.fly(() => false, 1) } PT.fly(() => S.landed || !S.alive, 3000); PT.showUI(); ({landed: S.landed, endShown: PT.vis('#bEnd')})`,
   {click: '#bEnd'}, DEB('landed, End flight ▸'), {shot: 'landed'}, {key: 'p'}, `screenNow()`,
