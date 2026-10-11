@@ -73,3 +73,16 @@ reasons; the decision itself is in DECISIONS.
 | — | Revert and R skip the Debrief? | Yes: quick retry; the record stays under Last flight (TESTING 127) |
 | — | GROUND.md decisions | All three defaults hold: maria on the near side, G1–G2 before M3, relief in real metres |
 | — | `ocomp` for SAS modes? | **Caio decided 2026-10-08:** built into crew capsules; probes need the part, from the onboard-computer era on (→ Q34a) |
+
+## ROADMAP: Defaults for the open questions (as of ROADMAP 1.8.2)
+
+| # | Question | Default (work proceeds on this) | Why |
+|---|---|---|---|
+| W1 | nyxfind free on a Selene flight? | **Overridden by Caio 2026-10-08: not free** (only a flight launched while it is open tracks Nyx; NOTES v1.53). Was: keep it free, but raise selimp and nyxfind pay above the cheapest proven Probe | Your own missions revealing things is the design's lens; it's a one-time first, so nothing to farm. The pay gap is the real bug. |
+| W2 | Satellite lifetimes and station-keeping? | **Yes, as a fuel lifetime.** Station-keeping spends onboard propellant; at zero the satellite drifts off its slot and its service **pauses** (never dies). Reboost and servicing contracts restore it. | The tidal drift (10,750 km a month) is real physics already in the sim, and "pauses, never decays" is the rule already agreed for projects. |
+| W3 | Flights from orbit: fee and contracts? | **Pay a reduced operations fee; may complete orbit contracts accepted before that flight started** | Rewards infrastructure without letting old satellites complete new contracts retroactively. |
+| W4 | Selene firsts in the race? | **Yes**, with rival schedules for Selene firsts starting no earlier than epoch 4; re-run the v1.28 balance | The race is what gives Selene its urgency. |
+| W5 | Does the Esc menu pause? | **Yes**, in flight and on every screen | Matches KSP; nothing should happen while a menu is open. |
+| W6 | A sea-specific launch complex? | **Later** (look & sound evergreen); until then the land complex is reused on the platform | Not needed for M1. |
+| W7 | Development: variants or upgrades in place? | **Variants.** A developed part is a new palette entry (Mk2); the original stays | Tapes, routines and logbook records are tied to exact designs; upgrading in place would silently invalidate them. |
+| W8 | Hands-on rows | **No default:** needs a human. QA narrows it to the rows only feel can judge | — |
