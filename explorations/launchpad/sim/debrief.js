@@ -12,7 +12,7 @@ function debSnap(){const kh={};for(const k in PROG.kh||{})kh[k]=PROG.kh[k].use;
 // the paid items missionComplete, contractEval and stagePay add to the flight's record
 const debPaid=(R,k,l,pay,x)=>{if(R)(R.paid||(R.paid=[])).push({k,l,pay,...x});logEv('pay',`${k}: ${l}, ${pay.toFixed(1)} M`)};
 function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
-  if(!s.alive)return{k:'lost',t:'Lost',d:`destroyed${R.apex>0?` after reaching ${km(R.apex)}`:''}`};
+  if(!s.alive)return{k:'lost',t:'Lost',d:`${s.sunk?'sank at sea':'destroyed'}${R.apex>0?` after reaching ${km(R.apex)}`:''}`};
   if(s.landed)return B===TELLUS?{k:'landed',t:'Landed',d:`${R.launchPf&&isFinite(R.landDist)?`${km(R.landDist)} from the pad`:'home'}${s.water?', in the sea':''}${R.recovery?` · recovery: ${R.recovery}`:''}`}
     :{k:'away',t:`Landed on ${B.name}`,d:'stays there'};
   const el=elements(s.r,s.v,B.mu);

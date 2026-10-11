@@ -332,7 +332,7 @@ function tethysUnit(u){const m=tethysMap(),R=GROUND_STUBS.Tethys.R,b=X=>mapBil(X
   return tethysChan(u,R)>.3?'channel':'plains'}
 const TETHYS_SURF={lake:{name:'methane',mu:.1,soft:0,rough:0},dunes:{name:'organic sand',mu:.45,soft:4,rough:0},highland:{name:'icy highland rock',mu:.6,soft:-1,rough:.25},
   channel:{name:'rounded ice cobbles',mu:.55,soft:1,rough:.25},plains:{name:'damp organic sediment',mu:.5,soft:3,rough:.05}};
-const TETHYS_GROUND={gen:'tethys',top:4000,sea:0,surf:pf=>TETHYS_SURF[tethysUnit(norm(pf))],unit:u=>tethysUnit(u)};
+const TETHYS_GROUND={gen:'tethys',top:4000,sea:0,rho:450,surf:pf=>TETHYS_SURF[tethysUnit(norm(pf))],unit:u=>tethysUnit(u)};
 
 // Phoebe: a captured, dark, cratered lump (R ~20 km, g 0.049). The first irregular shape (G-lump): a low-order
 // displacement of ±15 % of R on the sphere, so its outline isn't round; craters to saturation (c 0.055) in bands down to

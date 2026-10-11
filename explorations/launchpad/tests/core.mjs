@@ -223,7 +223,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       lastV = len(sub(s.v, api.surfVel(s.body, s.r))); if (api.railsOK(s) && !s.landed) api.rails(s, 2); else api.physStep(s, api.DT); }
     const b = s.body, act = api.toPF(b, s.r, api.t), p = pred && pred.p;
     const dist = p ? gc(p.pf, act) * b.R : NaN, dt = p ? p.t - api.t : NaN;
-    const vLand = lastV;
+    const vLand = s.water && s.touchV != null ? s.touchV : lastV;   // at sea, the splash: settling afloat takes seconds (Q274)
     return { ok: !!p, dist, dt, flight: api.t - (pred ? pred.t0 : 0), v: p && p.v, vAct: s.crashSpeed ?? 'landed', dv: p ? p.v - (s.crashSpeed ?? vLand) : NaN };
   }
   const hop = compare('hopper', { stack: ['chute', 'pod', 't2', 'fins', 'kestrel'], init: s => { s.throttle = 1; api.stage(s); } },
