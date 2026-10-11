@@ -1,4 +1,4 @@
-// study_sea.mjs — the sea as a fluid (world session, Q274; NOTES § v1.118): drops each preset's returning piece (everything
+// study_sea.mjs — the sea as a fluid (world session, Q274; NOTES § v1.122): drops each preset's returning piece (everything
 // above its top decoupler, tanks empty) into the sea at 7 m/s, upright or tilted, and reports what the water does with it:
 // where it comes to rest (upright, on its side, upside down), how much of the hull stays dry, when it would sink, how
 // long it took to settle; and a too-dense test piece, which must go down.

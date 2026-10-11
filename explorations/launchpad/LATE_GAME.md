@@ -1,5 +1,5 @@
 # LATE_GAME — what a mature program is
-**Version**: 1.4.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-08
+**Version**: 1.4.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
 **Status**: **Approved by Caio 2026-10-08 as the base** (rounds 1–7). Details stay revisable at the margins; **the
 numbers in round 4's sections are placeholders, open to playability and to simplification** (Caio).
 **Purpose**: The shape of the game after Selene: where it goes, what the player does once the program is big, how far
@@ -441,6 +441,8 @@ Approved as the base.
 ---
 
 ## Version history
+- **1.4.1 (2026-10-11):** header date fixed (docs sweep). Note: W26's "rivals are programs from epoch 1" (DECISIONS)
+  extends round 7 to the whole game.
 - **1.4.0 (2026-10-09):** round 7, rivals: programs not schedules, scarce places, the world's mood in eras, no
   combat, commercial rivals.
 - **1.3.0 (2026-10-09):** round 6, asteroids: the real methods; the loop, products, era order; Lagrange points

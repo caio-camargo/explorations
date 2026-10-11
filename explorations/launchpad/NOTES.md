@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.49 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.52 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2149,7 +2149,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## v1.118 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
+## v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
 
 A splashdown used to be snapped upright with its bottom at sea level and frozen as landed: no waterline, no float, no
 motion (Caio: "a craft landing in water stays there as if on land"). Now the water holds a vessel up by its own buoyancy.
@@ -2212,7 +2212,7 @@ recover it 2 h later; a hull that floods in an hour is lost before they arrive. 
 fixes to flights that end in the sea: the pod's impact-prediction check now compares the predicted speed with the splash's
 (`s.touchV`), not the last step before it is afloat; and `fly_crewlunar.mjs` stops forcing the capsule retrograde once it's
 wet (`point` set the attitude and zeroed the spin every step, so it could never come to rest).
-**Not seen in a browser yet** (TESTING 200).
+**Not seen in a browser yet** (TESTING 204).
 
 **Not yet:**
 - **The sea is drawn flat**, so the heave shows as a craft bobbing on still water. Q268 (the sea's look) should draw the
@@ -2222,6 +2222,35 @@ wet (`point` set the attitude and zeroed the spin every step, so it could never 
 - Shallow water: the seabed doesn't hold anything up; a craft in 2 m of water floats as in deep water.
 - Flooding is by part kind, not by damage: a hard splash doesn't hole the hull.
 - Other landed vessels in the registry (not the one you fly) don't drift or sink.
+
+## v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
+
+The first slice of "Plan: record and replay a whole session": the recorder. With `?tester`, **Record this session** in
+the tester menu records keyframes, not keystrokes: the starting save, a diff of the save at each save, the screen, the
+design on the Assembly, the camera, and each flight's tape between a start and an end that carry a hash of the vessel.
+**Download recording** (in the tester menu while it records) saves gzipped JSON. The viewer is R2.
+- **`sim/record.js` (SIM, pure):** `REC`, `recStart(store, game)`, `recEv(kind, data)`, `recProg()` (the save since the
+  last keyframe, as `jdiff` ops), `recFlightStart(s, tape)` / `recFlightEnd(s, tape)`, `recStop()`, `recFile()` (a
+  flight still flying is closed in the copy, marked `open`), `recProgAt(file, t)` (the save at any time: R3's scrub),
+  `recLoad(start)`, `stateHash(s)`, `jdiff`/`jpatch`.
+- **`app/record.js`:** starts and stops with the flag, gives `REC` the clock, taps `HOOK.save`, samples at 10 Hz the
+  screen, the camera and the flight's pace (tape seconds flown), at 1 Hz the path and the design; logs keys and clicks as
+  `ui` events (display only, never replayed as input). The start's `store` is the page's other `launchpad-*` settings.
+- **Hooks in other files, one line each:** `resetShip` ends the flight in progress and opens the next; the two flights
+  from orbit in `app/program-ui.js` do the same; `recTapeNow()` (`app/state.js`) is the autopilot's played tape while it
+  flies, else the pilot's. A detached part's tumble (`sim/vessel.js`) is seeded from the time, not `Math.random`.
+- **What it found:** a replay can't start from a bare `Object.assign(PROG, save)`. The page's load also sets `HOME`
+  from the save, rebuilds the rivals' schedule and fills the offer board; without that, the fresh SIM's `missionTick`
+  crashed in `relOf`. `recLoad` does what `app/state.js` does after `migrateSave`, and the start records `HOME`.
+  **Platform:** `app/state.js` could call `recLoad` itself, so there's one load path (not done: it's the page's boot).
+- **Checked:** test `platform-5` records a Sounding flight in one SIM instance and replays it in a **fresh instance**
+  from the file: the vessel's hash at both ends and the save after it settles match exactly, the start plus every diff
+  rebuilds the final save, and `jdiff`/`jpatch` round-trip. In Chrome (`?tester`): the menu's checkbox starts it; a pad
+  flight through `resetShip` and the tape calls records flight start/end, 19 pace, 5 path and 5 save events; the
+  download is **3.2 KB gzipped** (9.9 KB JSON, the sandbox's save is 2.1 KB of it); decompressed and re-flown in a fresh
+  SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
+  already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
 
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
@@ -2779,7 +2808,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -3064,6 +3093,8 @@ is capped, not priced.
 sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -9355,6 +9386,87 @@ someone has played are marked (`| ✓ 115 (robot) |`, `| ✗ 12 → P#15 |`), an
 rows; it now uses test `qa-3`'s pattern. TESTING also keeps a "Next free number" line that `qa-3` checks: bump it with your row. Not done: a pre-push hook
 (`core.hooksPath` is per clone, so every machine would have to opt in; the recipe and the suite need nothing).
 
+## Plan: record and replay a whole session (2026-10-11, wildcard session for the platform lane, QUEUE Q225; plan only)
+
+**The ask** (Caio, 2026-10-10): watch a recorded play, a person's or the robot's, at 1×; pause, scrub, share the file.
+The viewer plays; it never hands control over.
+
+**What already exists.** Flights record a tape from launch (§ "Autopilot = flight tapes"): every `advPhys`, `advRails(dt,
+warp)`, control change and discrete action (stage, abort, legs, wings, arm, bay, rover, load, switch, undock), and it
+replays **bit for bit** on the same `TAPE_V`. The ignition dice are deterministic (`igniteOK` hashes `PROG.flights`, the
+kick count and the part), and the world's daily dice come from `PROG.wseed`. Saves are versioned (`SAVE_V`, `migrateSave`).
+`?tester` already gives the page its own storage slot. The robot (`playtest.mjs`) already drives the page with semantic
+steps: `{key}`, `{hold, ms}`, `{click:'#sel'}`, `{wait}`, `{say}`, JS strings.
+
+**What a flight tape misses for a whole session** (read from the code, 2026-10-11):
+1. **The starting state:** `launchpad-program-v1` (or the tester slot), and the other keys the page reads: `launchpad-atlas`,
+   `-hud-pins`, `-modern-ui`, `-perf`, `-progtab`, `-sound`, `-volume`, `-tester-flags`, plus the saved autopilot tapes.
+2. **Everything between flights.** About 40 DOM handlers change `PROG` (contracts, facilities, the bureau, production,
+   dispatch, the tester menu), `go(screen)` and the overlays change what's on screen, and the Assembly's edits are
+   pointer drags on a canvas. None of it is recorded today, and replaying it as input would need every one of those paths
+   to be deterministic and every layout to stay put.
+3. **How each flight starts:** the design stack and site are on the tape, but not the program around it: the day
+   (`advanceDays` to a whole day before a flight from orbit), `FLEET` and other vessels, `ORB_T0`, a flight handed over
+   from a dispatch (`recTape.fromOrbit`).
+4. **The camera:** `cam` (yaw, pitch, dist, map yaw/pitch/dist, focus), `view` (flight or map), the map's selection.
+5. **Pacing:** the tape records calls, not frames. Replaying at 1× needs the wall time of each frame's batch of ops (how
+   many physics steps it ran, when), or the replay runs at the replay machine's frame rate, which is "1×" only on average.
+6. **One random number in the SIM:** a detached part's tumble (`sim/vessel.js:656`, `Math.random` in the debris spin).
+   Harmless for the tape today (debris leaves the sim), but a replay check that hashes the scene would trip on it.
+   Visual-only randomness (smoke, booms, sparks, sound in `app/`) makes a replay look slightly different, never diverge.
+
+**Recommendation: keyframes, not keystrokes.** Two ways to record:
+
+| | A. Record input, replay it | **B. Record state, replay flights (recommended)** |
+|---|---|---|
+| Between flights | every key, click, drag; replayed into the live UI | the save as it changes (a diff at each `HOOK.save`), the screen, the design stack at each edit |
+| Flights | the tape (exists) | the tape (exists), plus its starting conditions |
+| Breaks when | any UI path isn't deterministic, a layout moves, a handler changes between versions | the SIM's flight code changes (`TAPE_V`): then that flight shows its path and outcome from the snapshots, not a re-flight |
+| Cost to build | every handler audited, canvas pointer events mapped | a recorder at three hooks (`HOOK.save`, `go`, the tape) and a small JSON diff |
+
+B needs nothing new to be deterministic: only flights re-simulate, and those already do. **Inputs are still logged in
+B, but for display**: a key or a click on a `data-*` button becomes a caption or a ripple in the viewer ("pressed L",
+"accepted *Weather sat*"), and the same log exports as a **robot row** (`{key}`, `{click}` steps), so a person's session
+can become a regression test (slice R4).
+
+**The file** (JSON, gzipped with `CompressionStream` for export):
+`{v, game: {TAPE_V, SAVE_V, built}, start: {prog, store: {key: value}}, events: [{t, k, …}]}`, `t` in wall ms from the
+start. Kinds: `screen` (go), `prog` (a diff of the save: key paths set or deleted), `design` (the stack, at each
+Assembly edit, debounced), `cam` (10 Hz while it moves), `ui` (a key or a `data-*` click, display only),
+`flightStart` (stack, site, day, `ORB_T0`, the other vessels), `ops` (one frame's tape ops, at its `t`), `path` (the vessel's position and
+speed at 1 Hz, for a flight the viewer can't re-fly), `flightEnd`
+(`stateHash(S)` and the settled `PROG` hash). Size to measure in R1: one hand-flown orbit is 1 KB of tape; the save
+diffs are the unknown.
+
+**The viewer** (`?replay`, like `?tester`): opens a file, loads `start` into a slot of its own and turns `HOOK.save` off,
+so a career or the sandbox is never touched. It applies events by time; flights run `tapePlay` with each frame's recorded
+op budget; the camera follows the samples, interpolated. Controls: play/pause, 1×/4×/16×, chapters (one per screen visit
+and per flight), scrub. **Scrubbing** between flights jumps to the nearest `prog` state and applies diffs forward;
+inside a flight it re-runs the tape headless from the flight's start to `t` (measure: a 248 s orbit flight is at most
+~12,400 physics steps at `DT` 0.02 s, fewer with rails coasts; if that takes more than ~0.5 s, keep a vessel snapshot every 30 s of flight).
+
+**Checking determinism.** At each `flightEnd` the recorder stores a hash of the vessel (position, velocity, parts, fuel)
+and of the settled save; the viewer recomputes both and marks a chapter that diverged instead of playing on silently.
+A headless test (`tests/platform.mjs`): record a Sounding and an Orbiter flight in one SIM instance, serialise, load
+into a **fresh instance** (`new Function(src …)`, as the sats sections do: the "across a reload" case), replay, compare
+hashes. Seed the debris tumble from the vessel (`s.kickN`, the part index) first.
+
+**Slices** (each S unless marked):
+- **R1 recorder core** (⚙): the diff, the event log, `flightStart`/`flightEnd` with hashes, the debris seed, the
+  cross-instance test. A `TEST.record` tester flag turns it on; a download button like the log's.
+- **R2 viewer, M** (🖥): `?replay`, load a file, play/pause/speed, chapters, flights re-flown on the real renderer.
+- **R3** (🖥): scrub, the camera path, captions and click ripples from `ui` events.
+- **R4** (⚙): export a recording's `ui` steps as a `playtest.mjs` row; record the robot's own runs (`PT_RECORD`).
+
+**Defaults, for Caio to override** (one line each):
+1. Recording is **off for players**, on with the tester flag or a Settings switch; while on it keeps the whole session
+   (no ring buffer) until the tab closes or *Download*.
+2. Sharing is **a file** (download, open in `?replay`), not a link.
+3. The viewer shows **the player's camera**; a free camera is later.
+4. A recording made on an older `TAPE_V` **still plays**: flights it can't re-fly show their recorded path and outcome.
+5. **No "take over from here"** (the ask says the viewer never hands control over); the autopilot already covers that for
+   one flight.
+
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 
 `index.html` was one 6,700-line, 780 KB script that every lane edited, so every merge conflicted inside it. Its script is
@@ -10190,6 +10302,8 @@ day"; the smoke shard after merging main.
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
 
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
+
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole
 generations: `avOf(s) = AV[min(s.av, avCap(s))]`, and `sasModeOK(s, m)` asks that generation's list. Rank 2 (target
@@ -10474,3 +10588,54 @@ bay, the arm, the station modules and the crew capsule were all buyable on the f
   for "A crew aboard".
 
 Test `vehicle-10` (1 check; fails with the bay's gate removed). Full suite: 634 checks, all pass.
+
+## v1.118 — the Assembly keeps the design still; Clear and the radial-mount count in plain sight (2026-10-11, vehicle session, QUEUE Q247, Q235, Q236; PLAYTEST #44, #42, #39)
+
+- **The design stays pinned (Q247, #44).** The editor camera looks at the CoM and the desk's base plate (and, on the pad,
+  the `LIFT`) sat under the design's lowest part, so deleting the bottom moved both and the rocket seemed to fall.
+  `BLD` now keeps a pin on the root part (`st.pin`: its id, its bottom above the design's bottom and above the CoM): after
+  an edit, `cam.edY` follows the CoM shift so the root stays still on screen, and `st.gap` keeps the plate where it was,
+  so the rest hangs above it. Building below the plate pushes the plate down (the gap never goes negative), never the
+  rocket up. A new design starts on the plate: a preset, the first part, Clear, a new root (make root). A preset's first
+  edit (array → tree, `design()`) keeps its pin. `BLD.foot()` is the plate's height in the ship's frame; `app/model-desk.js`
+  stands the desk on it (`deskFoot`) and sizes its scale on rocket + gap, so the scale doesn't jump as parts go.
+  On the pad (desk off), `S.pf` adds the gap. Undo of a delete brings the gap back to 0.
+- **Clear (Q235, #42)** had been there since v1.17: a small "clear" by undo. Caio didn't find it. Now **✕ Empty** is the
+  first button over the presets and the toolbar's reads "✕ clear design" (both `clearDesign`: one undo step, a note saying so).
+- **Radial mounts (Q236, #39):** `mountsHTML()` puts ×1 … ×8 chips (and `[X]`) under the parts list's status line while a
+  part is held; the cursor line says "radial mounts ×n · X changes" when the held part is off any node and "radial mounts ×n [X]"
+  on a surface. The toolbar group and the key help say *radial mounts* instead of *symmetry*.
+- **Flow (Q272):** new player strings here say "the design", none says "Assembly"; the rename has nothing new to catch.
+
+Robot row 200 (pin, Clear + undo, the ×4 chip; three checks). `--smoke` 567 checks pass; sections 16, 17, 32, flow-11 pass.
+
+## v1.119 — every part says what it does (2026-10-11, vehicle session, QUEUE Q248; PLAYTEST #46)
+
+- **A card beside the palette** (`cardAt`, `#partcard` in `builder.js`) on hover: the name, one sentence (`PART_INFO`,
+  keyed by part, falling back to a 2.5 m part's base and then to its kind, so a new part from another lane gets its
+  kind's sentence until it has its own), and a sheet from the part's own numbers (`partSpecs`): mass (full and empty for
+  tanks), propellant, thrust and Isp, an escape tower's burn, seats and berths, turning torque, power made, stored or
+  drawn, size, heat limit (`Tmax`), price (`partPrice` plus a tank's propellant at `FUEL_PRICE`). A part not open yet says
+  why there (the old `title` tooltip is gone). The tooltip on the design (`#bldtip`) adds the sentence.
+- **Not done:** the school (no part differs by school yet), and the picture: Q238's thumbnails go at the top of this card.
+- **Words:** the sentences are written for a newcomer (what it's for, one catch) and avoid "Assembly" (Flow's Q272).
+
+Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Isp). Sections 16, 17, 32 pass.
+
+## v1.120 — park parts in the air while building (2026-10-11, vehicle session, QUEUE Q246; PLAYTEST #43)
+
+- **Click in the air to park.** Holding a part (or a group: a part with what hangs from it), a click where no node or
+  surface takes it parks it there (`parkHeld`), unless it would overlap the rocket. The design keeps them in
+  **`design.park = [{n, p}]`**: `n` the group's node tree (as `root` is), `p` its bottom centre from the root part's bottom
+  centre, so parked parts keep still with the pin (v1.118). `parkedInst()` lays them out; they are drawn solid with a
+  faint blue glow and a *parked* label, hover and highlight as parts do, and are picked up (click), copied (Ctrl-click) or
+  deleted (Del) through the same `pickUp` / `detachNode` as the rocket's parts. They are never attach targets in this
+  slice: pick a parked group up and put it on the rocket.
+- **Inserting a part** between two others, KSP's way: pick up the lower part (it brings what hangs below it), park it, place
+  the new part, then put the parked group back under it. The first part placed stays the root.
+- **Not the rocket:** `assemble`, `stageStats`, costs and launch only read `root`, so parked parts never fly. `launchWarnings`
+  (`sim/vessel.js`) adds "N parked groups not attached to the rocket: they stay behind" to Rollout's checks; the status line
+  under PARTS says the same while any are parked. Undo and Clear cover them; deleting the root drops them.
+- **Saved designs** carry `park` as they carry the tree; a dispatch or procedure that flies a saved design ignores it.
+
+Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).

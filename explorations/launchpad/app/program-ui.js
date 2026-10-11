@@ -58,7 +58,7 @@ function takeDeviation(id){const D=(PROG.dispatch||[]).find(x=>x.id===id&&x.stat
   const day0=Math.max(PROG.day,q.epoch/DAY_S);advanceDays(day0-PROG.day);if(ORB_ABS)ORB_T0=day0*DAY_S;
   const s=vesselOf(q,q.epoch+(day0*DAY_S-q.epoch));const R=s.rec=recNew();
   Object.assign(R,{launched:true,day0,cost:0,ops:0,fromOrbit:true,dispatched:D.id,noRevert:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});
-  D.status='handed';S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
+  D.status='handed';if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;
   HOOK.msg(`${D.dev.why}: the flight is yours (no revert)`);HOOK.save()}
 function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!q||!flyable(q))return;
   if(S)missionEnd(S);FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;
@@ -66,7 +66,7 @@ function flyEntry(id){const q=(PROG.sats||[]).find(x=>x.id===id&&!x.docked);if(!
   if(ORB_ABS)ORB_T0=day0*DAY_S;
   const s=vesselOf(q,day0*DAY_S);PROG.sats.splice(PROG.sats.indexOf(q),1);
   const R=s.rec=recNew();Object.assign(R,{launched:true,day0,cost:0,ops:OPS_FIX,fromOrbit:true,crewInit:1,crewed:crewOn(s)>0,crewOK:true,cg:0,cgMax:0,ccab:290});PROG.funds-=R.ops;
-  S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
+  if(S)recFlightEnd(S,recTapeNow());S=s;recTape=tapeNew(q.stack,S.site);recTape.fromOrbit=true;recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0;go('flight');cam.dist=Math.max(18,S.len*1.6);cam.pitch=0.12;HOOK.msg(`Flying ${s.name}`);HOOK.save()}
 document.addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.fly;if(id==null)return;flyEntry(+id)});
 function stationLine(q){const st=stationOf(q);if(!st)return'';
   return ` · <b>station</b>: ${st.berths} berth${st.berths===1?'':'s'}, crew ${st.crew}${st.labs?`, ${st.labs} lab${st.labs>1?'s':''}${st.crew?'':' (idle)'}`:''}, supplies ${st.crew?`${Math.floor(st.days)} days`:`${(st.sup*1000).toFixed(0)} kg`}, ${st.ports} free port${st.ports===1?'':'s'}${q.labDays?`, ${q.labDays.toFixed(0)} lab-days so far`:''}`}

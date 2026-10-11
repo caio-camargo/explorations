@@ -84,7 +84,7 @@ function groundCheck(s){
   if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
   if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
     const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
-// ---- the sea (world session, Q274; NOTES § v1.118). Water is a fluid. Every stack line's outer profile (s.lines, the
+// ---- the sea (world session, Q274; NOTES § v1.122). Water is a fluid. Every stack line's outer profile (s.lines, the
 // aero's) is cut into slices up to SEA_DY tall; each slice is a disc sampled at SEA_N points on the ring of radius r/√2,
 // which keeps the disc's waterplane moment, so the righting moment comes out right. A point under the water pushes up
 // with ρ·g times its share of the volume (smoothed over its own vertical extent, so the force doesn't step) and drags

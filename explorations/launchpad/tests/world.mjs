@@ -324,7 +324,7 @@
     et < 1e-12 && ea < 5e-8 && !/Math\.(tan|atan)\(/.test(srcB) && lam === Math.fround(lam), `ptan ${et.toExponential(1)}, patanJ ${ea.toExponential(1)} rad`);
 }
 
-// sea-1. The sea is a fluid (world session, QUEUE Q274, PLAYTEST #74; NOTES § v1.118): a splashdown floats on its own
+// sea-1. The sea is a fluid (world session, QUEUE Q274, PLAYTEST #74; NOTES § v1.122): a splashdown floats on its own
 // buoyancy (study_sea.mjs drops every preset). The Orbiter's returning piece, dropped upright with SAS off, settles on
 // its side, partly dry; a capsule with flotation bags floats upright; a piece too dense sinks at once. Afloat, it heaves on
 // the swell, drifts, and sinks when its parts have flooded; the recovery ships must get there first. Own SIM copy.

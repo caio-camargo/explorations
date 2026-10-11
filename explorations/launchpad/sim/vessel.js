@@ -391,6 +391,8 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
     else out.push(['ok',`Δv for ${goal.name}: ${f(air)} against ${f(goal.need)} (${src})`])}
   const s=newShip(stack),who=s.parts.some(p=>p.d.crew)?'the crew':s.parts.some(p=>p.d.kind==='bio')?'the passenger':null;
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
+  const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
+  if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
   return out}
 // a satellite's lifetime for the builder (vehicle session, Q141; MIDGAME § Satellites: lifetime is a design choice, made
 // once): the design's top stage (what's left after every decoupler) as if registered in a circular orbit alt km up, what
@@ -653,7 +655,7 @@ function detach(s,list,kick,spin,asVessel){
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
   if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
   else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
-    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26
+    w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
