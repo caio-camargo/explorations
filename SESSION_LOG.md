@@ -5303,3 +5303,27 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
 - **Next:** world: Q251 aliasing from orbit (P2), Q270 a town in sight of the pad, Q268 the sea's look (now with a
   swell to draw); Q19 when the machine is quiet. Design desk: confirm the flotation-bag default.
 
+## 2026-10-11 — Caio + Claude (launchpad space session): Q257, Q214, Q198, Q213, Q200 (v1.123–v1.127)
+
+**Summary:** Took the space lane's ready items in order, worktree `launchpad-sats`, branch `sats`, merged to `main`.
+- **Q257 (P1, PLAYTEST #56), v1.123:** a revert discards the flight: `REVERT0` snapshots `PROG` at liftoff (and in
+  `flyEntry`), `missionDiscard` restores it; `revertFlight()` for the button and the R key (the key skipped the no-revert
+  check). The queue row had been marked ✓ with Q160's commit; the bug was still there.
+- **Q214, v1.124:** `shapeOf`/`vesselOf` carry the day a crew went up; the Debrief counts a rotation's days in space.
+- **Q198, v1.125:** rover readings as bits at the link's rate (`rvDrain`); satellite contract frames owed against imagery.
+  Measured: high-gain from Selene 2,481 bit/s (panorama 10 min); whip through a relay 1,000 km up 4 bit/s (4 days).
+- **Q213, v1.126:** landers' power on their site's day and night (`landPowInit`); a flown entry keeps its charge;
+  `dockCharge` on docking.
+- **Q200, v1.127:** fragments rolled during flights (`fragPass`), struck 3 s later (`fragStrike`); crewed craft warned.
+  Real odds 0.14 hits a year after a 1 t breakup at 400 km.
+- Tests moved to `tests/space.mjs` after Q68's split (sections space-20…24; section 42's send gets a minute of contact).
+  Full suite 634/634 before the last merges; smoke and the touched sections after each. Versions renumbered three times
+  as main moved (v1.118 → v1.123 for the first).
+
+**Files changed:** `sim/program.js`, `sim/space.js`, `sim/rovers.js`, `sim/debrief.js`, `app/state.js`, `app/editor.js`,
+`app/input.js`, `app/program-ui.js`, `app/rover-yard.js`, `test.mjs` (exports), `tests/space.mjs`, `tests/core.mjs`,
+NOTES, TESTING 205–209, PLAYTEST #56, QUEUE.
+
+**Next steps:** three Proposed lines (draw the fragment, tank punctures, a composite's power). Space has no `ready` items
+left besides the M5-gated ones. Caio's playtest notes for these: TESTING 205–209.
+
