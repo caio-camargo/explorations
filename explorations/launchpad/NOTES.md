@@ -10730,7 +10730,7 @@ Test `vehicle-11` (every listed part has a sentence and a sheet; engines show Is
 
 Robot row 202 (pick up, park, Rollout warning, pick up from the air, put back: 8 parts again).
 
-## v1.128 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
+## v1.129 — the player's designs; a finer Shift+wheel (2026-10-11, vehicle session, QUEUE Q306, Q305; PLAYTEST #77, #76)
 
 - **Caio's call (2026-10-11):** a design is saved by default whenever it's launched, and can be saved by hand under a name.
 - **Data** (`sim/vessel.js`): `PROG.designs = {saved: [{name, stack, day}], launched: [{stack, day, n, name}]}`, per program,
