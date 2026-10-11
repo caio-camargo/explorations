@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.30 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.31 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -59,6 +59,8 @@ Coding sessions pick items from here and strike them through with the version th
 | 64 | P2 | **The rocket exploded a bit after landing**, not sure why (Caio, 2026-10-10, after landing a rocket) | Likely it toppled (past 60° the game destroys it, `sim/flight.js` ~87, "Toppled over on…") or the nose touched; the message flashes and is gone. QUEUE Q264 | vehicle (+ world: ground contact) |
 | 65 | P2 | **Verbose logging in tester mode** (Caio, 2026-10-10, after landing a rocket) | None today. QUEUE Q265 | platform |
 | 66 | P2 | **After a retrograde burn in Tellus orbit, when the orbit would decay, a bunch of paths appeared that covered the planet** (Caio, 2026-10-10). Maybe uncertainty, but looks like a bug. | Likely the impact predictor drawing its whole fall: a slow decay is many revolutions, every one drawn. QUEUE Q266 | flow (+ space: `predictImpact`) |
+| 67 | P2 | **A splash effect at splashdown** (Caio, 2026-10-10). | None today: a sea landing only posts a news line. QUEUE Q267 | look & sound (effects) |
+| 68 | P3 | **Should the sea be a featureless blue?** (Caio, 2026-10-10) | No: from altitude a real sea shows sunglint, Fresnel sky reflection, colour changes, swell and coastal foam. The shader has depth colour only (`gl.js` ~159). Stills first. QUEUE Q268 | world (+ look & sound) |
 
 ## Done
 
