@@ -5284,7 +5284,50 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
   `app/screens.js`, `app/program-ui.js`, `index.html`, `test.mjs`, `tests/platform.mjs`, NOTES § v1.121, TESTING;
   QUEUE (Q275 ✓, *Proposed*), ACTIVE_WORK.
 - **Next:** Q225 R2, the viewer (🖥, M), when the GPU is free; R4 (⚙) can go in parallel.
-## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.122)
+
+## 2026-10-11 — Claude (launchpad world session): Q274, the sea is a fluid (v1.122)
+- **Picked:** Q274 (PLAYTEST #74, P2), the top world item that starts headless; Q19 needs a quiet machine and the GPU lock
+  was held. New worktree `C:/Users/caioa/dev/launchpad-sea`, branch `sea` (`terrain` keeps the parked Q19).
+- **Done:** v1.122 (`f0637d4`, merged to `main`, pushed). Buoyancy from each stack line's outer profile (8 points per
+  0.5 m slice on the r/√2 ring), water drag, engines as open bells, flotation bags on the pod and crew capsule (default:
+  without them the crew capsule is 1,370 kg/m³ and sinks), splash → settle → afloat on a kinematic swell with drift,
+  flooding by part kind → `sinkAt`, sinking at once when too dense, the liquid's density per body (Tethys 450),
+  recovery ships that must arrive before it sinks. Stages float on their side, capsules upright, the biocapsule apex down.
+- **Checks:** full suite 627 PASS + 3 FAIL, all three flights ending in the sea; fixed (pod impact check uses the splash
+  speed; `fly_crewlunar.mjs` stops forcing attitude once wet) and rerun: pass. After merging `main`: smoke all passed,
+  `sea-1` passes. Not seen in a browser (GPU lock held by flow): TESTING 204.
+- **Files:** launchpad `sim/flight.js`, `sim/vessel.js` (one call each in `physStep`/`syncLanded`, `float` on two parts),
+  `sim/world.js` (`recoveryOf`), `sim/ground.js` (Tethys `rho`), `sim/debrief.js` (one word), `study_sea.mjs` (new),
+  `tests/world.mjs` (`sea-1`), `tests/core.mjs`, `fly_crewlunar.mjs`, NOTES (§ v1.122), TESTING 204; QUEUE (Q274 ✓,
+  four *Proposed*), ACTIVE_WORK.
+- **Next:** world: Q251 aliasing from orbit (P2), Q270 a town in sight of the pad, Q268 the sea's look (now with a
+  swell to draw); Q19 when the machine is quiet. Design desk: confirm the flotation-bag default.
+
+## 2026-10-11 — Caio + Claude (launchpad space session): Q257, Q214, Q198, Q213, Q200 (v1.123–v1.127)
+
+**Summary:** Took the space lane's ready items in order, worktree `launchpad-sats`, branch `sats`, merged to `main`.
+- **Q257 (P1, PLAYTEST #56), v1.123:** a revert discards the flight: `REVERT0` snapshots `PROG` at liftoff (and in
+  `flyEntry`), `missionDiscard` restores it; `revertFlight()` for the button and the R key (the key skipped the no-revert
+  check). The queue row had been marked ✓ with Q160's commit; the bug was still there.
+- **Q214, v1.124:** `shapeOf`/`vesselOf` carry the day a crew went up; the Debrief counts a rotation's days in space.
+- **Q198, v1.125:** rover readings as bits at the link's rate (`rvDrain`); satellite contract frames owed against imagery.
+  Measured: high-gain from Selene 2,481 bit/s (panorama 10 min); whip through a relay 1,000 km up 4 bit/s (4 days).
+- **Q213, v1.126:** landers' power on their site's day and night (`landPowInit`); a flown entry keeps its charge;
+  `dockCharge` on docking.
+- **Q200, v1.127:** fragments rolled during flights (`fragPass`), struck 3 s later (`fragStrike`); crewed craft warned.
+  Real odds 0.14 hits a year after a 1 t breakup at 400 km.
+- Tests moved to `tests/space.mjs` after Q68's split (sections space-20…24; section 42's send gets a minute of contact).
+  Full suite 634/634 before the last merges; smoke and the touched sections after each. Versions renumbered three times
+  as main moved (v1.118 → v1.123 for the first).
+
+**Files changed:** `sim/program.js`, `sim/space.js`, `sim/rovers.js`, `sim/debrief.js`, `app/state.js`, `app/editor.js`,
+`app/input.js`, `app/program-ui.js`, `app/rover-yard.js`, `test.mjs` (exports), `tests/space.mjs`, `tests/core.mjs`,
+NOTES, TESTING 205–209, PLAYTEST #56, QUEUE.
+
+**Next steps:** three Proposed lines (draw the fragment, tank punctures, a composite's power). Space has no `ready` items
+left besides the M5-gated ones. Caio's playtest notes for these: TESTING 205–209.
+
+## 2026-10-11 — Claude (launchpad economy session): Q188, rivals as programs from epoch 1 (v1.128)
 
 **Summary:** Caio's W26.1, built. Measured first: the seeded `raceSchedule` gave every world and every save the same race
 (Mirtov on days 83 / 176 / 245 from 4 of 5 homes). Now each rival is a coarse program (`PROG.riv`, `rivTick`):
@@ -5294,8 +5337,8 @@ became the forecast, so the panel, the news and `raceTick` are unchanged. The pa
 within ~4 % of the old formula's expectation over 20 worlds per home, with spread between worlds. `career.mjs 4 8`: the
 runner wasn't first to orbit in 27 of 144 runs (19 under the old schedule, 17 with no spur).
 **Files changed:** `explorations/launchpad/sim/contracts.js`, `sim/program.js` (one call in `missionComplete`),
-`tests/economy.mjs` (econ-21, 5 checks), `NOTES.md` (v1.122; the Q188 amendment in § "Plan: rivals as programs"),
-`QUEUE.md` (Q188 ✓, W38, a Proposed line), `TESTING.md` (row 204), `ACTIVE_WORK.md`.
+`tests/economy.mjs` (econ-21, 5 checks), `NOTES.md` (v1.128; the Q188 amendment in § "Plan: rivals as programs"),
+`QUEUE.md` (Q188 ✓, W38, a Proposed line), `TESTING.md` (row 210), `ACTIVE_WORK.md`.
 **Tests:** `node test.mjs` all passed, after bumping TESTING's next-free counter.
 **Next steps:** Caio answers W38 (defaults built). Q188 slice 2, the race panel by openness (with flow). Q206, the
 commercial giant, is unblocked. Economy's other ready items: Q181 (overflight; re-plan for W23's amendment), Q184

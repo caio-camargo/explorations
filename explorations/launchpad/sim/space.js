@@ -59,8 +59,18 @@ function entryRelay(q,T,r){const rs=relayEntries().filter(p=>p!==q&&p.id!==q.id)
     const rate=Math.min(up,H.rate);if(!best||rate>best.rate)best={ok:true,st:H.st,via:p.name,viaId:p.id,rate,d}}}
   finally{ORB_T0=o;simT=t}return best}
 function satOn(q,T,r){const w=q.pw;if(!w)return true;const k=satDuty(q);if(k>=1)return true;if(!(k>0))return false;
-  const B=orbBody(q),lit=!inShadow(B,r||satAt(q,T)[0]),share=w.avg>=w.use&&w.cap<w.need?(lit?1:w.cap/w.need):lit?Math.min(1,(w.peak+w.rtg)/w.use):Math.min(1,w.rtg/w.use);
+  const lit=q.landed?landLit(q,T)>0:!inShadow(orbBody(q),r||satAt(q,T)[0]),share=w.avg>=w.use&&w.cap<w.need?(lit?1:w.cap/w.need):lit?Math.min(1,(w.peak+w.rtg)/w.use):Math.min(1,w.rtg/w.use);
   return share>=1||(T/600*0.6180339887)%1<share}   // a duty cycle spread over the hours
+// landed entries' power (space, Q213; v1.108's "not in this slice"): a lander or base keeps q.pw like a satellite, with its
+// site's night in place of the eclipse. landPowInit samples one of its body's days at its spot (Selene's is a month long:
+// locked, a night of ~2 weeks of our time scale): the cells' mean output follows the sun's height, the night is the share
+// below the horizon. satPowTick, satDuty and satOn then work unchanged. A body that doesn't turn on our rails (only
+// Tellus and the locked moons do) keeps the light it was registered in.
+function landLit(q,T){const b=landedBody(q);return b?dot(norm(q.pf),rvSunPF(b,thAbs(b,T))):1}
+function landPowInit(s,q,T){const b=s.body,P=b.lock&&b.n?2*Math.PI/b.n:DAY_S,N=48,use=powLoad(s);if(!(use>0))return;let sun=0,dark=0;
+  for(let i=0;i<N;i++){const c=landLit(q,T+i*P/N);sun+=Math.max(0,c);if(c<=0)dark++}
+  const peak=powPeak(s),rtg=powRTG(s),ecl=dark/N,cap=powCap(s)/3600;
+  q.pw={avg:peak*sun/N+rtg,use,ecl,cap,need:Math.max(0,use-rtg)*ecl*P/3600,peak,rtg,land:1};q.Ewh=Math.min(cap,(s.E??powCap(s))/3600)}
 // coverage (Q173): the share of the time a body has a path home. Tellus: a satellite in low orbit (300 km, sampled over
 // a planet-fixed grid) has a station in view; a moon: a lander or rover with a high-gain antenna on its ground (a grid,
 // over the next day) reaches home directly or through a relay, its near and far sides apart. Memoised per day.
@@ -214,6 +224,29 @@ const fragTau=b=>FRAG_TAU[b]??(FRAG_TAU[b]=BAND_W/Math.max(1e-30,-dragRates(band
 const catFrac=(M,v)=>{const L=Math.cbrt(2*CAT_E*M/(v*v)/(FRAG_RHO*Math.PI/6));return Math.min(1,Math.pow(L/FRAG_LC,-1.71))};
 // hits a day on an entry from the fragment bands (real rates)
 function fragRate(q){const F=fragBands(),c=resid(q);let s=0;for(let b=0;b<BAND_N;b++)if(c.f[b]&&F[b])s+=c.f[b]*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b));return 4*c.R*c.R*s*DAY_S}
+// debris that exists only as you pass (space, Q200; Caio 2026-10-09): during a flight in orbit the band's fragments are
+// rolled each step, the same rate as between flights (4 n R² v, R the craft's half length, scaled by the debris setting).
+// A hit is rolled FRAG_LEAD seconds ahead: s.fragIn holds the fragment on its way (size from the L^-1.71 law, a crossing
+// speed, a direction in the local horizontal) and HOOK.fragIn lets a view draw it coming. When it arrives it strikes
+// one part (by size): a fragile one (cells, antenna) is lost to any piece; anything else only to 40 J per gram, as the
+// shattering rule. Crewed craft are not struck by surprise (as between flights): a warning once a flight instead.
+// Real odds are small (a Probe stack through the thickest band after one 1 t breakup at 400 km: 0.14 hits a year): strikes
+// come with a cascade or an anti-satellite test, as they should.
+const FRAG_LEAD=3,FRAG_FRAGILE={solar:1,ant:1};
+function fragPass(s,dt,roll){const R=s.rec;if(!roll)roll=R?R.fragRng||(R.fragRng=rng((PROG.flights*7919+(PROG.wseed|0))|0)):Math.random;   // seeded per flight: replays and procedures stay repeatable
+  if(s.fragIn&&simT>=s.fragIn.at){const x=s.fragIn;s.fragIn=null;fragStrike(s,x,roll)}
+  if(s.fragIn||!s.alive||s.landed||s.body!==TELLUS)return 0;const b=Math.floor((len(s.r)-TELLUS.R-TELLUS.atm)/BAND_W);if(b<0||b>=BAND_N)return 0;
+  const F=fragBands(),K=PRESSURE_K[pressureOf('debris')]||0;if(!F[b]||!(K>0))return 0;
+  const v=Math.sqrt(TELLUS.mu/bandR(b)),Rr=Math.max(1,(s.len||2)/2),lam=4*Rr*Rr*F[b]/bandV(b)*v*K;
+  if(crewOn(s)||R&&R.crewed){if(R&&!R.fragWarn&&lam*DAY_S*YEAR_D>=CREW_WARN){R.fragWarn=1;{const y=1/(lam*YEAR_D*DAY_S);HOOK.msg(`Fragment cloud in this orbit: about one hit ${y>=1?`in ${Math.round(y)} years`:`every ${Math.max(1,Math.round(y*YEAR_D))} days`} (crewed craft are warned, not struck)`)}}return lam}
+  if(roll()>=1-Math.exp(-lam*dt))return lam;
+  const L=Math.min(0.5,FRAG_LC*Math.pow(1-roll(),-1/1.71)),up=norm(s.r),e=norm(cross(up,s.v)),a=2*Math.PI*roll(),dir=add(mul(norm(s.v),Math.cos(a)),mul(e,Math.sin(a)));
+  s.fragIn={at:simT+FRAG_LEAD,L,m:FRAG_RHO*Math.PI/6*L*L*L,vr:v*(0.3+1.4*roll()),dir};HOOK.fragIn&&HOOK.fragIn(s,s.fragIn);return lam}
+function fragStrike(s,x,roll=Math.random){const on=s.parts.filter(p=>p.on);if(!on.length||!s.alive)return null;
+  const w=on.map(p=>Math.cbrt(partMass(p))**2),W=w.reduce((a,c)=>a+c,0);let u=roll()*W,i=0;while(i<on.length-1&&(u-=w[i])>0)i++;const p=on[i];
+  const E=0.5*x.m*x.vr*x.vr,lost=FRAG_FRAGILE[p.d.kind]||E>=CAT_E*partMass(p)*1000,cm=(x.L*100).toFixed(x.L<0.1?1:0);
+  HOOK.msg(`Debris: a ${cm} cm fragment at ${(x.vr/1000).toFixed(1)} km/s struck the ${p.d.name}${lost?', which is lost':': dented, no harm done'}`);
+  if(lost)partLost(s,p);return{p,lost,E}}
 function asatTest(name,h,mass=1000){const n=breakup(h,mass);HOOK.news(`${name} tests an anti-satellite weapon at ${Math.round(h/1e3)} km: about ${Math.round(n/1e3)},000 new fragments in that band`,'bad');return n}
 function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0))return;
   for(const x of PROG.breakups||[])if(!x.frag){breakup(x.h,x.mass);x.frag=1}
@@ -475,7 +508,10 @@ function dockOK(s,B,P){if(!P||P.dl>PORT_GAP+PORT_LAT)return false;
   const va=add(s.v,cross(s.w,sub(P.Pa,s.r))),vb=add(B.v,cross(B.w,sub(P.Pb,B.r)));return len(sub(vb,va))<=PORT_V}
 // two vessels of this flight: b joins a (S, or the earlier one) as a passenger; its vessel is kept, so undocking gives it back
 function dockTryV(a,b){if(b.undockT!=null&&progT(a)-b.undockT<PORT_COOL)return false;const B=shipBody(b),P=dockPair(a,b,B);if(!dockOK(a,B,P))return false;
-  dock(a,entryOf(b),B,P);FLEET.splice(FLEET.indexOf(b),1);return true}
+  dockCharge(a,b);dock(a,entryOf(b),B,P);FLEET.splice(FLEET.indexOf(b),1);return true}
+// servicing (Q213): docked, the fuller battery tops up the emptier one, as far as it can spare (it keeps a half charge)
+function dockCharge(a,b){const ca=powCap(a),cb=powCap(b);if(!ca||!cb)return 0;const Ea=a.E??ca,Eb=b.E??cb,[from,to,Ef,Et,ct,cf]=Ea/ca>=Eb/cb?[a,b,Ea,Eb,cb,ca]:[b,a,Eb,Ea,ca,cb];
+  const x=Math.min(ct-Et,Ef-cf/2);if(!(x>1))return 0;from.E=Ef-x;to.E=Et+x;HOOK.msg(`${to.name||'the vessel'}: batteries charged to ${Math.round(100*to.E/ct)} % from ${from.name||'the vessel'}`);return x}
 // a vessel becoming a passenger: a registry-style entry (shape, own mass and centre of mass, kit, what it already carries);
 // the vessel itself rides along out of sight of the save (not enumerable), so undocking gives back a flyable vessel
 function entryOf(v){PROG.satN=(PROG.satN||0)+1;const on=v.parts.filter(p=>p.on);
@@ -642,7 +678,7 @@ const portGeom=(o,d)=>{if(d.radial){const n=[Math.cos(o.phi||0),0,Math.sin(o.phi
 // a registry shape from parts: what each part is and where, its resources (supplies persist), and whether a capsule
 // carried a real crew (dummies don't count)
 function shapeOf(on,crewed){return on.map(p=>{const o={k:p.d.key,pos:p.pos.slice(),y0:p.y0,h:p.h,i:p.i,oi:p.oi??p.i};if(p.rvOut)o.rvOut=1;if(p.phi!=null)o.phi=p.phi;if(p.tdir)o.tdir=p.tdir.slice();if(p.shell)o.shell=p.shell;
-  if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard))o.crew=p.d.crew;return o})}
+  if(p.cap&&Object.keys(p.cap).length)o.res={...p.res};if(p.d.crew&&(crewed||p.crewAboard)){o.crew=p.d.crew;o.up=p.crewUp??PROG.day}return o})}   // up: the day this crew left Tellus (Q214; a flight's PROG.day is its liftoff day)
 // a radial port's contact shape: its cylinder along the radial axis (rot carries part-local +Y onto it)
 function radialGeo(p,d){let g=HIT_GEO.get(p);if(g)return g;const n=[Math.cos(p.phi||0),0,Math.sin(p.phi||0)],q=qFromTo([0,1,0],n),B=[p.pos[0],p.y0+p.h/2,p.pos[2]],h=d.depth,pts=[];
   const ring=(r,y)=>{const m=Math.max(6,Math.ceil(6.2832*r/0.25));for(let k=0;k<m;k++){const a=k/m*6.2832;pts.push(add(B,qrot(q,[r*Math.cos(a),y,r*Math.sin(a)])))}};
@@ -675,9 +711,9 @@ const LOAD_R=2500;   // a flyable vessel this close can be switched to (it's loa
 const vstOf=s=>({ign:[...new Set(s.parts.filter(p=>s.segs[p.seg]&&s.segs[p.seg].ignited).map(p=>p.oseg??p.seg))],sas:!!s.sas,sasMode:s.sasMode,rcs:!!s.rcs,chute:!!s.chute,av:s.av,dep:s.parts.filter(p=>p.on&&p.dep).map(p=>p.i),E:s.E});   // av: its avionics (control session); dep: legs and wings deployed (vehicle, Q121); E: the battery's charge (Q131)
 const flyable=q=>!!(q&&q.stack&&q.shape&&q.shape.length&&q.shape.every(o=>o.oi!=null)&&q.shape.some(o=>PARTS[o.k]&&(PARTS[o.k].kind==='pod'||PARTS[o.k].kind==='core')));
 function vesselOf(q,T){const s=newShip(q.stack),by=new Map(q.shape.map(o=>[o.oi,o])),st=q.vst||{},ign=new Set(st.ign||[]);if(st.av!=null)s.av=st.av;   // the avionics it flew with (older entries: today's)
-  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew)p.crewAboard=o.crew;if(o.rvOut){p.rvOut=true;p.xm=0}}
+  for(const p of s.parts){const o=by.get(p.i);p.on=!!o;if(!o)continue;if(o.res)for(const k in o.res)if(k in p.res)p.res[k]=o.res[k];if(o.crew){p.crewAboard=o.crew;if(o.up!=null)p.crewUp=o.up}if(o.rvOut){p.rvOut=true;p.xm=0}}
   for(const i of st.dep||[]){const p=s.parts.find(x=>x.i===i);if(p&&p.on)p.dep=true}   // legs and wings as they were left (vehicle, Q121)
-  if(st.E!=null)s.E=st.E;   // the battery as it was left (Q131; powerStep caps it at what's still aboard)
+  if(q.pw&&q.Ewh!=null)s.E=q.Ewh*3600;else if(st.E!=null)s.E=st.E;   // the battery as it is now (Q213: between flights' drain), or as it was left (Q131); powerStep caps it
   if(q.nodes&&q.nodes.length){const N=q.nodes.filter(n=>n.T>T).map(n=>({t:n.T-T,dv:n.dv.slice(),b:n.b}));s.node=N.shift()||null;s.nodeQ=N}   // its planned burns, in this flight's time (Q49 slice 3)
   s.segs.forEach((g,k)=>{g.ignited=ign.has(k)});
   // the next staging event: the first that hasn't happened (something still there to drop, a segment not yet lit, a chute)
@@ -901,7 +937,7 @@ function landRegister(s,R){const on=s.parts.filter(p=>p.on),b=s.body,beacon=on.s
   q.shape=shapeOf(on,R.crewed&&R.crewOK);q.attached=(s.att||[]).map(a=>({e:a.e,p:a.p.slice(),q:a.q.slice(),host:a.host,hpi:a.hpi,ppi:a.ppi,kind:a.kind}));
   q.stack=s.stack?JSON.parse(JSON.stringify(s.stack)):null;q.vst=vstOf(s);
   if(s.reg){const o=s.reg;Object.assign(q,{id:o.id,name:o.name,born:o.born,labDays:o.labDays})}
-  kitSet(q);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
+  kitSet(q);landPowInit(s,q,ORB_T0+simT);PROG.sats.push(q);R.satId=q.id;HOOK.satLook&&HOOK.satLook(q.shape,on);
   const base=!beacon&&baseOfMember(q);HOOK.news(beacon?`${q.name} is set up on ${b.name}`:base?`${q.name} sets down at ${base.name}`:`${q.name} stays on ${b.name}`,'ok')}
 // the base a landed object belongs to (a beacon on the same body within BASE_R), and a base's members and state
 function baseOfMember(q){const b=landedBody(q);return b?landedUp().find(x=>x.beacon&&x.bodyName===q.bodyName&&pfDist(b,x.pf,q.pf)<=BASE_R)||null:null}
@@ -995,7 +1031,7 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
   // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
   {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
-      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const x=Math.min(q.rec,k*120*on);q.rec-=x;got+=x}}
+      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const cap=k*120*on,o=Math.min(q.owe||0,cap),x=Math.min(q.rec,cap-o);q.owe=(q.owe||0)-o;q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
      income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
@@ -1010,8 +1046,9 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
       for(const c of want){if(q.pending.includes(c.id))continue;const u=CITIES[c.p.ci].u,dd=Math.acos(clamp(dot(un,u),-1,1))*TELLUS.R;
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
-      // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first
+      // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first.
+      // One pass budget (Q198): the frames sent are owed (q.owe) and the next imagery drain pays them first
       if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;const A=satRadio(q);
         let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP*satDuty(q);
-        while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
+        while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;q.owe=(q.owe||0)+IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
         q.pendB=q.pending.length?b:0;break}}}}
