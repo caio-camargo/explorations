@@ -39,14 +39,16 @@ function deskMesh(N){if(deskMeshes.has(N))return deskMeshes.get(N);const a=[],bu
     lathe(a,[[.14,0,C.BK],[.16,.05,C.BK],[.15,.8,[.85,.85,.82]],[.21,1.25,[.85,.85,.82]],[.19,1.45,[.85,.85,.82]],[.07,1.5,[.85,.7,.6]],[.1,1.6,[.85,.7,.6]],[.1,1.7,[.85,.7,.6]],[.05,1.8,[.3,.22,.15]]].map(([r,y,c])=>[r*s,y*s,c]),[fx*k,0,fz*k],12)}
   const m={desk:makeMesh(a),bulb:makeMesh(bulb)};deskMeshes.set(N,m);
   if(deskMeshes.size>4){const[k0,m0]=deskMeshes.entries().next().value;m0.desk.free();m0.bulb.free();deskMeshes.delete(k0)}return m}
-// where the desk sits: the ship's frame, its foot at the design's bottom (the base plate is under it)
-function deskFrame(camW){const p=shipWorld(),N=deskScaleFor(S.len);
-  return{N,p,M:modelQ(S.q,sub(p,camW),[-S.cm[0],S.yBot,-S.cm[2]]),up:qrot(S.q,[0,1,0]),lamp:norm(qrot(S.q,[DESK_LAMP[0]-.05,DESK_LAMP[1],DESK_LAMP[2]-.02]))}}
+// where the desk sits: the ship's frame, its foot at the design's bottom (the base plate is under it); while parts below
+// were removed, the plate stays where it was and the design hangs above it (BLD.foot, Q247)
+const deskFoot=()=>typeof BLD!=='undefined'&&BLD.foot?BLD.foot():S.yBot;
+function deskFrame(camW){const p=shipWorld(),f=deskFoot(),N=deskScaleFor(S.len+S.yBot-f);
+  return{N,p,M:modelQ(S.q,sub(p,camW),[-S.cm[0],f,-S.cm[2]]),up:qrot(S.q,[0,1,0]),lamp:norm(qrot(S.q,[DESK_LAMP[0]-.05,DESK_LAMP[1],DESK_LAMP[2]-.02]))}}
 // the room's light: one warm lamp over the model, a dim warm room; everything is lit (no sun, no night)
 function deskLight(m,F){gl.uniform3fv(m.uSun,F.lamp);gl.uniform3fv(m.uSunCol,[2.5,2.15,1.65]);gl.uniform3fv(m.uSky,[.42,.38,.33]);gl.uniform3fv(m.uGnd,[.3,.22,.15]);gl.uniform3fv(m.uUp,F.up);
   if(m.uFlI)gl.uniform1f(m.uFlI,0)}
 function deskDraw(drawMesh,m,F){const D=deskMesh(F.N);drawMesh(D.desk,F.M,F.p);gl.uniform1f(m.uGlow,2.5);drawMesh(D.bulb,F.M,F.p);gl.uniform1f(m.uGlow,0)}
 // the model's shadow on the paper: the same projection the pad uses, onto the table plane, along the lamp
-function deskShadowM(F,camW,Mship){const gn=F.up,L=F.lamp,ln=dot(L,gn),P0=sub(madd(F.p,gn,S.yBot+0.0015*F.N),camW),d0=dot(P0,gn)/ln;
+function deskShadowM(F,camW,Mship){const gn=F.up,L=F.lamp,ln=dot(L,gn),P0=sub(madd(F.p,gn,deskFoot()+0.0015*F.N),camW),d0=dot(P0,gn)/ln;
   const Pr=[1-L[0]*gn[0]/ln,-L[1]*gn[0]/ln,-L[2]*gn[0]/ln,0, -L[0]*gn[1]/ln,1-L[1]*gn[1]/ln,-L[2]*gn[1]/ln,0, -L[0]*gn[2]/ln,-L[1]*gn[2]/ln,1-L[2]*gn[2]/ln,0, L[0]*d0,L[1]*d0,L[2]*d0,1];
   return mmul(Pr,Mship)}
