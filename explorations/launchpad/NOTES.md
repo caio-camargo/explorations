@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.46 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.47 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -9215,6 +9215,25 @@ broken balance → the default). Saving stamps `ver`, never lowering it, so an o
 re-migrate. A save from a newer game loads as it is, with a message, not a guess.
 - **To change PROG's shape:** bump `SAVE_V`, add the step to `MIGRATE`, and a fixture to test.mjs `platform-2`.
 - Checked in the page: a planted version-0 save loads as version 1 (`docked` gone, `rel` filled); the robot's `m1` passes.
+
+## Numbering: the duplicate-number check (2026-10-11, wildcard session for the platform lane, QUEUE Q160)
+
+Every lane takes "the next number" in shared files: `## v1.N` here, rows in TESTING and PLAYTEST, Q/W/D items in QUEUE.
+Two branches that do it at once merge **without a conflict** (the lines land in different places), so nothing stops the
+repeat: v1.102 and v1.103 were each taken twice within an hour on 2026-10-09, and two items were both Q228 on 2026-10-10.
+`check_numbers.mjs` finds both shapes of it:
+- **Repeats** in this tree (a number on two lines of one file): what a merge leaves. test.mjs **`platform-3`** runs this
+  half, so `--smoke` and the full suite catch it with no extra step.
+- **Collisions** with `origin/main` (or `--against <ref>`): a number both sides added since their merge base, with
+  different text. That catches it *before* the merge, while renumbering is still one line in your own branch.
+- It ends with the **next free numbers** (`next free: v1.117 · TESTING 199 · PLAYTEST #69 · Q269 · W36 · D15`), over this
+  tree and the ref together. Take yours from that line right after a `git fetch`, not from the last heading you saw.
+
+**In the merge recipe** (ACTIVE_WORK § Launchpad worktrees): `git fetch` then `node check_numbers.mjs` in your worktree,
+before merging `origin/main` in; renumber anything it reports; again after the merge (the test suite does it too).
+Exit 1 on any finding. Checked: a synthetic branch off a day-old commit that also took v1.116 and Q268 is reported as two
+collisions; a planted second TESTING row 12 as a repeat; today's `main` is clean. Not done: a pre-push hook
+(`core.hooksPath` is per clone, so every machine would have to opt in; the recipe and the suite need nothing).
 
 ## The file split (2026-10-08, platform session; ROADMAP § Platform lane, steps 3–4)
 

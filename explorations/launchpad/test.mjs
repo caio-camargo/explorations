@@ -5179,6 +5179,15 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
     fit && tight && only && skips && lamp, `scales ${picks.map(([h, n]) => `${h} m→1:${n}`).join(', ')} · fit ${fit} · tight ${tight} · assembly only ${only} · skips ${skips} · lamp ${lamp}`);
 }
 
+// platform-3. No repeated numbers (QUEUE Q160): a `## v1.N` in NOTES, a TESTING or PLAYTEST row, a Q/W/D item in QUEUE.
+// Two branches that each take the next number merge cleanly and leave it twice. `node check_numbers.mjs` also checks
+// against origin/main (a number both sides added) and prints the next free ones; this half needs no git.
+{
+  const { repeats } = await import('./check_numbers.mjs'), bad = repeats();
+  check('platform-3: no number is used twice in NOTES, TESTING, PLAYTEST or QUEUE (renumber yours: node check_numbers.mjs)', !bad.length,
+    bad.map(b => `${b.file} ${b.key} on lines ${b.lines.join(', ')}`).join('; ') || 'none repeated');
+}
+
 // ==== END OF SECTIONS (shards.mjs: new sections go above this line; everything below runs in every shard)
 function moonPos(t) { return api.moonPos(t); }
 console.log(log.slice(0, 12).join('\n'));
