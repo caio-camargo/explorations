@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.51 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,35 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.120 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
+
+The first slice of "Plan: record and replay a whole session": the recorder. With `?tester`, **Record this session** in
+the tester menu records keyframes, not keystrokes: the starting save, a diff of the save at each save, the screen, the
+design on the Assembly, the camera, and each flight's tape between a start and an end that carry a hash of the vessel.
+**Download recording** (in the tester menu while it records) saves gzipped JSON. The viewer is R2.
+- **`sim/record.js` (SIM, pure):** `REC`, `recStart(store, game)`, `recEv(kind, data)`, `recProg()` (the save since the
+  last keyframe, as `jdiff` ops), `recFlightStart(s, tape)` / `recFlightEnd(s, tape)`, `recStop()`, `recFile()` (a
+  flight still flying is closed in the copy, marked `open`), `recProgAt(file, t)` (the save at any time: R3's scrub),
+  `recLoad(start)`, `stateHash(s)`, `jdiff`/`jpatch`.
+- **`app/record.js`:** starts and stops with the flag, gives `REC` the clock, taps `HOOK.save`, samples at 10 Hz the
+  screen, the camera and the flight's pace (tape seconds flown), at 1 Hz the path and the design; logs keys and clicks as
+  `ui` events (display only, never replayed as input). The start's `store` is the page's other `launchpad-*` settings.
+- **Hooks in other files, one line each:** `resetShip` ends the flight in progress and opens the next; the two flights
+  from orbit in `app/program-ui.js` do the same; `recTapeNow()` (`app/state.js`) is the autopilot's played tape while it
+  flies, else the pilot's. A detached part's tumble (`sim/vessel.js`) is seeded from the time, not `Math.random`.
+- **What it found:** a replay can't start from a bare `Object.assign(PROG, save)`. The page's load also sets `HOME`
+  from the save, rebuilds the rivals' schedule and fills the offer board; without that, the fresh SIM's `missionTick`
+  crashed in `relOf`. `recLoad` does what `app/state.js` does after `migrateSave`, and the start records `HOME`.
+  **Platform:** `app/state.js` could call `recLoad` itself, so there's one load path (not done: it's the page's boot).
+- **Checked:** test `platform-5` records a Sounding flight in one SIM instance and replays it in a **fresh instance**
+  from the file: the vessel's hash at both ends and the save after it settles match exactly, the start plus every diff
+  rebuilds the final save, and `jdiff`/`jpatch` round-trip. In Chrome (`?tester`): the menu's checkbox starts it; a pad
+  flight through `resetShip` and the tape calls records flight start/end, 19 pace, 5 path and 5 save events; the
+  download is **3.2 KB gzipped** (9.9 KB JSON, the sandbox's save is 2.1 KB of it); decompressed and re-flown in a fresh
+  SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
+  already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
 
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 

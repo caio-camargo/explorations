@@ -65,3 +65,35 @@
     `off quiet ${offQuiet} · ${api.LOG.length} lines: ${api.LOG.slice(0, 6).map(e => e.kind + ' ' + e.text).join(' | ')}`);
   Object.assign(T, keep); api.LOG.length = 0;
 }
+
+// platform-5. The session recorder (QUEUE Q275 = Q225 R1; NOTES § "Plan: record and replay"): a Sounding flight recorded in
+// this SIM instance, serialised, then replayed in a fresh instance (the "across a reload" case) from the recording's
+// starting save: the vessel's hash at both ends and the save after the flight settles must match exactly, and the
+// save rebuilt from the start plus every diff must be the save the recorder ended on. Also: jdiff/jpatch round trips.
+{
+  const A = api, P = A.PROG, J = o => JSON.parse(JSON.stringify(o));
+  const cases = [[{ a: 1, b: [1, 2], c: { d: 1 } }, { a: 2, b: [1, 3], e: null }], [[1, 2], [1, 2, 3]], [{ x: { y: [{ z: 1 }] } }, { x: { y: [{ z: 2, w: 'q' }] } }], [{ a: 1 }, 5]];
+  const round = cases.every(([a, b]) => JSON.stringify(A.jpatch(J(a), A.jdiff(a, b))) === JSON.stringify(b));
+  // the page loads a save, then recording starts: the same here, through recLoad
+  A.recLoad({ prog: { done: {}, cert: {}, atm: {}, streak: 0, flights: 0, funds: api.FUNDS0, bailouts: 0, offers: [], active: [], cdone: 0, stand: {}, recs: {}, cycle: 0, own: null, decisions: [], kh: {}, log: {}, day: 3, wseed: 4242 } });
+  A.HOOK.news = () => {}; A.t = 0; A.REC.clock = () => A.t * 1000;
+  A.recStart({ 'launchpad-volume': '0.5' }, { built: 'test' }); A.recEv('screen', { s: 'flight' });
+  const s = A.newShip(A.PRESETS.Sounding), T = A.tapeNew(A.PRESETS.Sounding, null); A.S = s; s.throttle = 1;
+  A.recFlightStart(s, T); A.tapeStage(T, s); let armed = false, n = 0;
+  while (s.alive && !(s.rec.launched && s.landed) && n++ < 200000) { if (!armed && s.rec.launched && dot(s.v, norm(s.r)) < 0) { A.tapeStage(T, s); armed = true; } A.tapePhys(T, s); }
+  A.recFlightEnd(s, T); A.flightLeave(s); A.recProg(); A.recStop();
+  const text = JSON.stringify(A.recFile()), file = JSON.parse(text), endProg = JSON.stringify(P);
+  const fs = file.events.find(e => e.k === 'flightStart'), fe = file.events.find(e => e.k === 'flightEnd');
+  const rebuilt = JSON.stringify(A.recProgAt(file, Infinity)) === endProg;
+  // the fresh instance: its own PROG, simT, everything; only the file crosses over
+  const B = new Function(src + 'return {PROG,recLoad,newShip,tapePlay,stateHash,flightLeave,HOOK,set S(v){S=v},set t(v){simT=v}};')();
+  B.recLoad(file.start); B.HOOK.news = () => {}; B.t = fs.simT;
+  const b = B.newShip(fe.tape.stack); B.S = b; const h0 = B.stateHash(b), pl = { tape: fe.tape, i: 0, n: 0 };
+  while (B.tapePlay(pl, b, 5000));
+  const h1 = B.stateHash(b); B.flightLeave(b); const sameProg = JSON.stringify(B.PROG) === endProg;
+  check('platform-5: a recorded flight replays in a fresh SIM to the same vessel hash at both ends, and the same save after it settles; save diffs rebuild the save; jdiff/jpatch round trip',
+    round && rebuilt && h0 === fs.hash && h1 === fe.hash && sameProg && b.landed,
+    `round trips ${round} · rebuilt ${rebuilt} · start ${h0 === fs.hash} · end ${h1 === fe.hash} (${fe.tape.ops.length} ops) · save ${sameProg} · ${file.events.length} events, ${(text.length / 1024).toFixed(1)} KB`);
+  A.REC.on = false;
+}
+
