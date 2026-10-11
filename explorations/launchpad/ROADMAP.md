@@ -1,5 +1,5 @@
 # Launchpad — roadmap
-**Version**: 1.8.0 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 1.8.1 · **Author**: Caio Camargo + Claude (roadmap session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: Where the game is going, in milestones, so that [`QUEUE.md`](QUEUE.md) can always be refilled without Caio
 choosing each item. QUEUE is the short list sessions take work from; this is what refills it. NOTES keeps the design depth.
 
@@ -256,6 +256,8 @@ perf readout (NOTES § v1.1); `views.js` reference scenes for before/after.
 - **Spend the beauty where the eye is:** the rocket and its plume at launch, the horizon and atmosphere on the climb,
   the planet from orbit, the first sight of a new body. Elsewhere the style does the work (puppet heads, paperwork,
   the pencil map): stylised looks are cheap and age well.
+- **No high-end requirement** (Caio, 2026-10-11): his mid-range machine is the ceiling, not the floor. **High** is what
+  runs well on it; nothing is built for hardware above it.
 - **Two graphics settings, Low and High**, from the start of any costly effect: High may spend more, Low keeps the iGPU
   floor. Beauty never costs a player who can't run it.
 - **The desktop app** (the long-term plan) raises the ceiling: no shader translation layer (first loads, Q169), better
