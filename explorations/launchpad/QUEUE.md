@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.43 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 0.1.44 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -145,6 +145,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q261 | PLAYTEST **#61**: **toggles for what the map shows** (it gets too busy): a small layer panel (cities, other planets and Helios, moons' orbits and SOI rings, satellites and debris, ground tracks, contract targets, labels), remembered per browser; sensible defaults per era | M1 | S | 🖥 | ready |
 | Q262 | PLAYTEST **#62**: **centre the map on something else**, like KSP. It exists only as a hidden key: Tab cycles the ship and the bodies (`input.js` ~22, `cam.focus`). Make it visible (a focus picker on the map, and a click or double-click on a body to focus it, Backspace back to the ship), and add **your other objects** (registry satellites, a docking target) to what can be focused | M1 | S | 🖥 | ready |
 | Q263 | PLAYTEST **#63**: **after a landing there's no obvious next step** (Caio expected KSP's *Recover vessel*). *End flight: debrief* exists in the toolbar and Enter ends a landed flight (`screens.js` ~48, ~86), but nothing says so: when landed or splashed and still, show a clear **Recover vessel** prompt (the button renamed while landed; the Debrief already counts the recovery) | M1 | S | 🖥 | ready |
+| Q266 | PLAYTEST **#66**: after a retrograde burn in Tellus orbit, as the orbit began to decay, **paths covered the whole planet**. Likely the impact predictor: `predictImpact` (`sim/flight.js` ~298) integrates the fall through the air with `fall()`, and for a slowly decaying orbit that is many revolutions, all drawn as `impact.path` (`render.js` ~347). Draw only the last revolution before impact (or none past one revolution: "decays in N orbits, ~T"), and cap the integration. Check with Q260 (the two arcs) | M1 | S | 🖥 | ready |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
