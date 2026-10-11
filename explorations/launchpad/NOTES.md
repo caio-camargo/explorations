@@ -2734,7 +2734,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -3019,6 +3019,8 @@ is capped, not priced.
 sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -10225,6 +10227,8 @@ holding it costs 73.25 m/s a day; ~1494 m/s left there holds it 20 days, then th
 day"; the smoke shard after merging main.
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
+
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
 
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole

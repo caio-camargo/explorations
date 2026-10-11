@@ -1,5 +1,5 @@
 # UI — hierarchy and restraint
-**Version**: 0.1.1 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
+**Version**: 0.1.2 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
 **Status**: **D16 answered 2026-10-11 (Caio): defaults on all three** (§ 5). Lanes build from it.
 **Purpose**: Caio (2026-10-11): "the menus and UIs need more attention. There's a lot going on; remove unnecessary
 information, use structure to signal information hierarchy." Research, an audit of today's screens, rules every
@@ -106,7 +106,7 @@ Included's overlays; Mini Metro; Factorio's GUI rework; HighFleet and KSP2's rec
   (phase card, news held during critical phases, master caution, hidden modes), the colour code, the map's labels.
 - **The hover-term glossary** (rule 9), shared by every screen.
 
-## 5. Open (D16)
+## 5. Decided (D16: the defaults, 2026-10-11)
 
 1. **The Assembly's question:** the GO/NO-GO board answers for **the mission you picked** (default: the Program's NEXT
    card, or a contract you choose on the Assembly), or a generic "reaches low orbit" when none is picked.
