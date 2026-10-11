@@ -5254,3 +5254,14 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
 - **Files:** launchpad `test.mjs`, `shards.mjs`, `tests/*.mjs` (new), NOTES (§ Test shards); QUEUE (Q68 ✓, flag,
   *Proposed*), ACTIVE_WORK, INDEX.
 - **Next:** platform's remaining ready items: Q124 (world settings for pressures), Q38 (cheap wins), Q70/Q225 (plans).
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q225 plan, record and replay a whole session
+- **Done:** launchpad NOTES § "Plan: record and replay a whole session" (NOTES v1.21.50). What the flight tape misses
+  (the starting storage keys, ~40 handlers between flights, how a flight starts, the camera, frame pacing, one
+  `Math.random` in the SIM's debris tumble). Recommends **keyframes of the save + flight tapes** over replaying input
+  (only flights re-simulate, and those are already bit-exact); inputs logged for captions and export as a robot row.
+  File format, the `?replay` viewer, scrubbing, a cross-instance determinism test, slices R1–R4.
+- **Defaults for Caio** (silence keeps them): recording off for players (tester flag or a Settings switch), share as a
+  file, the player's camera, old recordings still play (flights as recorded paths), no "take over from here".
+- **Files:** launchpad NOTES; QUEUE (Q225 plan ✓, R1–R4 in *Proposed*), ACTIVE_WORK. No code, no runs.
+- **Next:** R1 (⚙) is buildable now; the orchestrator ranks it.
