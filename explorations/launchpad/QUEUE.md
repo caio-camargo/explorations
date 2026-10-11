@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.57 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
+**Version**: 0.1.58 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-11 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,7 +12,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **Q292 → W16: your first hour.** W16 answered: you are the player (M1's last finish line). Before you sit down: Q257 ✓ v1.123, flow's Q263/Q269/Q273, vehicle's Q264, then QA's Q292 (PLAYROUTE for the rooms, `m1` re-run) says it's ready | space, flow, vehicle (running); QA (**no session**); then **you** | **M1 done**; M2 becomes current |
+| 1 | **Q292 → W16: your first hour.** You are the player (M1's last finish line). Done for it: Q257 (v1.123), flow's first-hour fixes (v1.128: Recover vessel, toolbar plate, first-run choices, Design table), the builder fixes (v1.118). Left: **vehicle's Q264** (explodes after touchdown), then QA's Q292 (PLAYROUTE for the rooms, `m1` re-run) says it's ready | vehicle (running); QA (**no session**); then **you** | **M1 done**; M2 becomes current |
 | 2 | **Q241: the other rooms**: R4 **mission control** first (it frees five items), then R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**) | mission control's consoles (Q43, Q167, Q196, Q203, Q170) |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world (**no session**) | every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
