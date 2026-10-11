@@ -5240,3 +5240,17 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
   `sim/debrief.js`, `app/screens.js`, `index.html`, `test.mjs`, `check_numbers.mjs`, NOTES (§ v1.117, § Numbering),
   TESTING; QUEUE (Q265 ✓, two *Proposed*), ACTIVE_WORK.
 - **Next:** a `GAME_V` constant (Proposed); platform's next ready: Q68 (`test.mjs` into per-area files), Q124, Q38.
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q68, test.mjs into per-area files
+- **Done** (`d4b1612`, merged to `main`): the 171 test sections moved unchanged into `tests/core.mjs` (78 numbered +
+  `fixes-1`) and `tests/{flow,economy,vehicle,space,world,look,qa,platform}.mjs` by label. `test.mjs` = prelude +
+  `// ==== SECTIONS: tests/` + summary. `shards.mjs`: `TEST_FILES`, `parse(text, url)` collects from the files (inline
+  sections in an old `test.mjs` still run, first); `--list` shows `file:line`; `node test.mjs` always goes through it.
+- **Checks:** full run before/after: the same 629 `PASS` names (sorted), 0 `FAIL`, exit 0; `--list` same 171
+  sections; a throwaway failing section exits 1; `--smoke --jobs 4` and `--isolation --only platform` pass.
+- **Heads-up:** flow, vehicle, space and world sessions claimed work while this ran. Flagged in QUEUE § Flags and
+  ACTIVE_WORK (move a section into your lane's file on conflict). Branches `builder` (Q152) and `terrain` (Q19 WIP)
+  each carry one unmerged `test.mjs` hunk and will need that move.
+- **Files:** launchpad `test.mjs`, `shards.mjs`, `tests/*.mjs` (new), NOTES (§ Test shards); QUEUE (Q68 ✓, flag,
+  *Proposed*), ACTIVE_WORK, INDEX.
+- **Next:** platform's remaining ready items: Q124 (world settings for pressures), Q38 (cheap wins), Q70/Q225 (plans).
