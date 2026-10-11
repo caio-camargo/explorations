@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.52 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2149,6 +2149,199 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
+
+Fragments (v1.83) were a density per band that hit registered entries between flights; a flight flew through them untouched.
+- **`fragPass(s, dt)`** (`sim/space.js`, from `missionTick` each step, physics or rails): in orbit of Tellus, inside a
+  band with fragments, the same rate as between flights, λ = 4 n R² v (R the craft's half length, v the band's orbital
+  speed), scaled by the debris setting. Seeded per flight (`R.fragRng`), so tapes and procedures repeat.
+- **A hit is rolled `FRAG_LEAD` (3 s) ahead:** `s.fragIn` holds the fragment on its way (size by the L^-1.71 law from
+  1 cm, capped at 50 cm; a crossing speed 0.3–1.7 × v; a direction in the local horizontal) and **`HOOK.fragIn(s, x)`**
+  is there for a view to draw it coming (no view yet: Proposed for look & sound).
+- **`fragStrike`**: it strikes one part, chosen by size (mass^⅔). Solar cells and antennas are lost to any piece;
+  anything else only to 40 J per gram of the part (v1.83's shattering rule): a 1 cm piece at 10 km/s brings 26 kJ and
+  dents a tank, a 50 cm one (3.3 GJ) destroys even a full 32 t tank (30 cm, 0.7 GJ, doesn't). A message says which.
+- **Crewed craft are warned, not struck** (as between flights, pillar 5): one message a flight when the band passes
+  `CREW_WARN`, "about one hit in N years".
+- **The odds** (test `space-24`): after one 1 t breakup at 400 km, the Probe stack through the thickest band: **0.14
+  hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
+- **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
+
+## v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
+
+- **Landed entries** (`landPowInit`, `sim/space.js`, called by `landRegister`): a lander or base keeps `q.pw` and `q.Ewh`
+  as a satellite does, with its site's night for the eclipse. One of its body's days is sampled at its spot (48 points):
+  the cells' mean is the sun's height averaged (`landLit`), the night the share below the horizon, the battery's `need`
+  that night's load. `satPowTick`, `satDuty` and `satOn` then work unchanged (`satOn` asks `landLit` instead of the
+  orbit's shadow). Only Tellus and the locked moons turn on our rails; a lander elsewhere keeps the light it landed in.
+- **Measured** (`space-23`, the Probe set down on Selene's near-side equator): a 104 h day, night 50 %, cells 32 % of
+  peak on average (1/π, as a flat panel should); load 15 W against 12.1 W: flat after 22 days, then it works by day
+  only (50 %).
+- **What it gates:** a lander's antenna as a rover relay (`rvRelays`: skipped when silent, otherwise only while powered,
+  `on`, as orbiting relays since v1.109). Bases' crews and supplies are unchanged (LATE_GAME's dormant node is later).
+- **Flying an entry** (`vesselOf`): the battery as it is now (`q.Ewh`), not as it was registered. Before, a satellite
+  that had run flat between flights came back full when flown.
+- **Servicing** (`dockCharge`, in `dockTryV`): two vessels docking share charge: the fuller tops up the emptier, keeping
+  half its own. Undocked or flown home, the serviced one is registered with that charge (`satPowInit` reads `s.E`).
+  A message says so ("batteries charged to 100 % from …"). Docking a composite that stays together: still only the
+  host's own parts count for its power (the v1.108 limit).
+- **Tests:** `space-23` (new); `space-18`, `space-19`, 42, docking and stations unchanged.
+
+## v1.125 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
+
+v1.100 made satellite data a volume; rover readings still went home whole the moment there was contact.
+- **Readings are bits** (`sim/rovers.js`, `RV_BITS`): a spectrum 20 kbit (~1,000 channels), a panorama one survey frame
+  (`IMG_FRAME`, 1.5 Mbit). `rvDrain(data, contact, dt, by)` sends them oldest first at the contact's rate and hands each
+  finished one to `sciGot`; a part-sent reading keeps what's left in `x.b`. `rvSciSend(R, c, dt)` (the driven rover, each
+  step) and `rvFieldSci` (rovers in the field between flights, half-hour steps through `radioAt`) both use it. No rate
+  (home on Tellus): at once. Readings in older saves have no `b`: at once, as before. A crew aboard still keeps them.
+- **Measured** (test `space-22`, from Selene's near side): the high-gain dish direct to Tellus **2,481 bit/s**: a
+  panorama in **10 min**, a spectrum in 8 s. A **whip through a relay 1,000 km up: 4 bit/s** (the rover-to-relay hop
+  has no station dish; v1.109's model): a panorama **4.3 days**, a spectrum 83 min. So the dish is the imaging choice and a
+  whip rover is a spectrometer rover. If that feels harsh in play, the lever is a dish on the relay (Q217), not the bits.
+- **The message** after a reading says how long it will take ("· sending, 10 min") instead of nothing.
+- **One pass budget** (`sim/space.js`): a satellite's contract frames and its imagery shared nothing (a pass downlinked
+  both in full). Now each frame sent is owed (`q.owe`) and the next imagery drain pays it first. A frame is 1.5 Mbit,
+  about 16 s of a 300 km pass at ~95 kbit/s: imagery sales barely move (test `space-15` unchanged).
+- **Tests:** `space-22` (new); section 42 gives its send a minute of contact.
+
+## v1.124 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
+
+A crew brought home from a station read "home safe after 2.1 days": the Debrief knew only the flight that brought them
+down. Now each crewed capsule carries **the day its crew went up**:
+- **`shapeOf`** writes `o.up` beside `o.crew`: the part's `crewUp` if it has one, otherwise `PROG.day`, which during a
+  flight is that flight's liftoff day (days pass only when it settles). **`vesselOf`** reads it back as `p.crewUp`. Those
+  two are the only ways a crew goes into and comes out of the registry (flying an entry, loading one, undocking), so the
+  day survives any number of round trips.
+- **The Debrief** (`sim/debrief.js`): the earliest `crewUp` aboard (never later than this flight's `day0`) gives
+  `D.crew.before`, the days in space before this flight; the line becomes **"Crew of 2 home safe after 33 days in
+  space"**. A crew launched this flight reads as before ("…after 2.5 days"). Older saves have no `up`: as before.
+- Per capsule, not per person: crews don't move between capsules and habitats yet. The station's own `crewDays` (the
+  "people live in space" milestone) is unchanged.
+- **Test:** `space-21`: a capsule registered on day 10, flown home from day 40 for 2.5 days.
+
+## v1.123 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
+
+Caio reverted a flight and found its rocket in the registry as "Object 1". `resetShip` began with `missionEnd(S)`, so a
+revert *settled* the flight like *End flight*: the coasting vessel joined the registry, the pay and the logbook were
+written, the flight was counted. A revert now goes back to launch, as KSP's does:
+- **`REVERT0`** (`sim/program.js`): the moment a flight lifts off (`missionTick`'s launch block, before it charges the cost,
+  the ops and the site fee or passes the prep days), `JSON.stringify(PROG)` is kept with the flight's record `R`. It lives
+  beside the record, never on it: `satRegister` and the cruise entries keep `R`, and a snapshot there would nest in every
+  save. `flyEntry` (flying a registry entry) takes it before the entry leaves the registry and the ops are paid.
+- **`missionDiscard(s)`**: restores `PROG` in place from that snapshot and marks the record ended (`R.reverted`), so
+  `missionEnd` does nothing afterwards. Without a snapshot (a save loaded mid-flight) the flight is dropped unsettled:
+  nothing registered or paid, nothing given back.
+- **`revertFlight()`** (`app/state.js`): the one revert, used by the button (Esc menu) and the R key. The R key used to
+  skip the "handed over from a dispatch, no revert" check; it doesn't now. It saves after restoring.
+- **Unchanged:** a flight already settled (left for another screen, PLAYTEST #21) can't be reverted into; loading a design
+  or starting a procedure or a tape still settles the flight in progress, as before.
+- **Test:** `space-20` (`tests/space.mjs`): an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
+  liftoff state and `missionEnd` returns null after.
+- **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
+## v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
+
+A splashdown used to be snapped upright with its bottom at sea level and frozen as landed: no waterline, no float, no
+motion (Caio: "a craft landing in water stays there as if on land"). Now the water holds a vessel up by its own buoyancy.
+
+**The numbers first** (before building; `study_sea.mjs` re-measures them). The parts are dense for their size: the command
+pod is 840 kg in ~0.8 m³ of outline. With every tank empty, each preset's returning piece (everything above its top
+decoupler) against the water its hull displaces:
+
+| Piece | Mass | Hull | Density | Without bags |
+|---|---|---|---|---|
+| Probe (stage, tanks, core) | 1.75 t | 11.3 m³ | 155 kg/m³ | floats high |
+| Beeper, Passenger Orbiter, Sounding, Docking (stage + package) | 0.8–1.5 t | 3.2–5.0 m³ | 220–330 | floats |
+| Orbiter, Heavy, Asparagus, Lunar (pod + stage), Hopper (whole) | 1.2–2.7 t | 2.4–4.8 m³ | 460–570 | floats |
+| Passenger (biocapsule) | 0.55 t | 0.9 m³ | 608 | floats |
+| Sample Return, Big Lunar (pod + heat shield) | 1.1 t | 1.2–1.75 m³ | 660–900 | floats, barely (Big Lunar 12 % dry if fully loaded) |
+| **Crewed Lunar** (crew capsule + shield, tower gone) | 1.64 t | 1.2 m³ | **1,370** | **sinks** |
+
+So an honest sea sinks the crewed capsule. Real ones had flotation: Apollo's three uprighting bags at the apex. **Default:**
+the pod and the crew capsule carry **flotation bags** (`float: 1.0` m³, `PARTS.pod`, `PARTS.crew`) that inflate at
+splashdown, on top of the capsule. Caio may override (heavier bags, a separate part, or let crewed capsules sink).
+
+**How it works** (`sim/flight.js` § "the sea"; one call each in `physStep` and `syncLanded`):
+- **Buoyancy.** Each stack line's outer profile (`s.lines`, the aero's) is cut into slices up to 0.5 m tall, each slice a
+  disc sampled at 8 points on the ring of radius r/√2 (that ring keeps the disc's waterplane moment, so the righting moment
+  is right). A point under the water pushes up with ρ·g·(its share of the volume), smoothed over its own vertical extent
+  so the force doesn't step. The bags are four more points above the capsule. Cached per shape (`seaPts`).
+- **Open volumes.** An engine is an open bell: 35 % of its outline holds air (`SEA_KEEP`). Everything else is sealed.
+- **Drag.** Each wet point drags against the water: quadratic (Cd 0.5 on its volume's face) plus a linear term for the
+  waves it makes (500 N·s/m per m³), capped by its share of the mass as the ground's contact is. A capsule bobs 3–5 times.
+- **The liquid's density** is the body's: a recipe's `rho` (Tethys's methane lakes, 450 kg/m³: almost everything sinks
+  there), else sea water's 1,025.
+- **Splash** (`seaCheck`, from `groundCheck`, which now looks at the sea before the "nose hit" test: a top dipping under
+  the surface is not the nose in the ground): the touchdown verdict as before (speed against the sea's limit, 12 + 2 = 14 m/s);
+  the bags go out; the main chute is cut. The old "sideways, destroyed" rule is gone: tipping is what water does.
+- **Sinking at once:** fully under, still too dense, and deeper than its own length: "Sank — went straight to the bottom".
+- **At rest** (under 0.3 m/s and 0.05 rad/s for 2 s) the vessel is **afloat** (`afloat`): `landed`, `s.water`, and
+  `s.float` holds the rest pose, the wind's heading there, the share of the hull above water and `sinkAt`. From then on
+  it's kinematic, so it holds on rails and at warp (`seaPose`, called by `syncLanded`): it heaves on two crossing swells
+  (0.8 m, 8 s and 5.8 s; ~1.6 m peak to peak), rocks with their slope (less for a long hull), and drifts downwind at
+  0.25 m/s. Staging or lighting an engine afloat clears it and the physics takes over again.
+- **Flooding** (`sinkTime`): parts flood after `SEA_FLOOD` hours (engines at once, decouplers 2, adapters 6, tanks,
+  instruments and probe cores 24, capsules 72, others 12). `sinkAt` is when what's still dry can't hold the vessel up.
+  Then "Sank — flooded and went down", and the Debrief says "sank at sea".
+- **Recovery** (`recoveryOf`, `sim/world.js`): the ships sail at 10 m/s after an hour's notice. If the vessel sinks before
+  they arrive, it's lost (`kind: 'sank'`). Within the 200 km local reach that takes at most 6.6 h, and nothing floods
+  that fast yet, so this bites only with the recovery fleet's longer range, or a leakier part.
+- **SAS still works afloat.** The pod's wheel (10 kN·m) can hold a stage upright against a 2.5 kN·m righting moment until
+  it saturates. Physical, so it stays.
+
+**Measured** (`node study_sea.mjs [tilt] [v]`, SAS off, 7 m/s, so 9.5 m/s at the surface): every piece comes to rest in
+6–23 s. Stages lie on their side (70–88°), 54–85 % dry. The Hopper floats upright, engine down, 53 % dry, if it comes down upright; tilted 30° or more it ends on its side. Big Lunar's
+capsule floats upright, or at 24° when it hits tilted (a second stable pose of that hull, kept with the drag almost off).
+The crew capsule floats upright on its bags, 28 % dry. The biocapsule (a cone, no bags) floats **apex down**, 41 % dry:
+Apollo's "Stable 2", without the bags that righted it. A Hopper with 50 t in its tank sinks within 1 s. Sinks after: 24 h
+(stages: the tank floods and the engine can't be held up) to 72 h (capsules).
+
+**Checked:** test `sea-1` (`tests/world.mjs`): the Orbiter's piece on its side 65 % dry, the crew capsule upright, the
+overweight piece sinks; afloat it heaves 1.6 m peak to peak and drifts 0.25 m/s, sinks at `sinkAt`; ships 51 km out
+recover it 2 h later; a hull that floods in an hour is lost before they arrive. Full suite 630 PASS, 0 FAIL after two
+fixes to flights that end in the sea: the pod's impact-prediction check now compares the predicted speed with the splash's
+(`s.touchV`), not the last step before it is afloat; and `fly_crewlunar.mjs` stops forcing the capsule retrograde once it's
+wet (`point` set the attitude and zeroed the spin every step, so it could never come to rest).
+**Not seen in a browser yet** (TESTING 204).
+
+**Not yet:**
+- **The sea is drawn flat**, so the heave shows as a craft bobbing on still water. Q268 (the sea's look) should draw the
+  same swell: `SEA_SWELL`, `SEA_SWELL_T`, and the 1.37 ratio between the two in `seaPose`.
+- Q267's splash plays at `seaCheck`'s first contact (`s.wet` turns true there).
+- Debris (spent stages that fell off) still end at the sea floor with a boom: `stepDebris` doesn't float them.
+- Shallow water: the seabed doesn't hold anything up; a craft in 2 m of water floats as in deep water.
+- Flooding is by part kind, not by damage: a hard splash doesn't hole the hull.
+- Other landed vessels in the registry (not the one you fly) don't drift or sink.
+
+## v1.121 — the session recorder (2026-10-11, wildcard session for the platform lane, QUEUE Q275 = Q225 R1)
+
+The first slice of "Plan: record and replay a whole session": the recorder. With `?tester`, **Record this session** in
+the tester menu records keyframes, not keystrokes: the starting save, a diff of the save at each save, the screen, the
+design on the Assembly, the camera, and each flight's tape between a start and an end that carry a hash of the vessel.
+**Download recording** (in the tester menu while it records) saves gzipped JSON. The viewer is R2.
+- **`sim/record.js` (SIM, pure):** `REC`, `recStart(store, game)`, `recEv(kind, data)`, `recProg()` (the save since the
+  last keyframe, as `jdiff` ops), `recFlightStart(s, tape)` / `recFlightEnd(s, tape)`, `recStop()`, `recFile()` (a
+  flight still flying is closed in the copy, marked `open`), `recProgAt(file, t)` (the save at any time: R3's scrub),
+  `recLoad(start)`, `stateHash(s)`, `jdiff`/`jpatch`.
+- **`app/record.js`:** starts and stops with the flag, gives `REC` the clock, taps `HOOK.save`, samples at 10 Hz the
+  screen, the camera and the flight's pace (tape seconds flown), at 1 Hz the path and the design; logs keys and clicks as
+  `ui` events (display only, never replayed as input). The start's `store` is the page's other `launchpad-*` settings.
+- **Hooks in other files, one line each:** `resetShip` ends the flight in progress and opens the next; the two flights
+  from orbit in `app/program-ui.js` do the same; `recTapeNow()` (`app/state.js`) is the autopilot's played tape while it
+  flies, else the pilot's. A detached part's tumble (`sim/vessel.js`) is seeded from the time, not `Math.random`.
+- **What it found:** a replay can't start from a bare `Object.assign(PROG, save)`. The page's load also sets `HOME`
+  from the save, rebuilds the rivals' schedule and fills the offer board; without that, the fresh SIM's `missionTick`
+  crashed in `relOf`. `recLoad` does what `app/state.js` does after `migrateSave`, and the start records `HOME`.
+  **Platform:** `app/state.js` could call `recLoad` itself, so there's one load path (not done: it's the page's boot).
+- **Checked:** test `platform-5` records a Sounding flight in one SIM instance and replays it in a **fresh instance**
+  from the file: the vessel's hash at both ends and the save after it settles match exactly, the start plus every diff
+  rebuilds the final save, and `jdiff`/`jpatch` round-trip. In Chrome (`?tester`): the menu's checkbox starts it; a pad
+  flight through `resetShip` and the tape calls records flight start/end, 19 pace, 5 path and 5 save events; the
+  download is **3.2 KB gzipped** (9.9 KB JSON, the sandbox's save is 2.1 KB of it); decompressed and re-flown in a fresh
+  SIM the page built from `sim/*.js`, both hashes match. Robot `m1` passes (no overlapping boxes).
+- **Not yet:** the viewer (R2), scrubbing and the camera path (R3), robot rows from a recording (R4). A flight that was
+  already flying when recording started isn't recorded as a flight (its tape began before the recording); its path is.
+
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
 Caio landed a rocket and had nothing to read back: no `console.log` anywhere. Now, with `?tester`, the tester menu has a
@@ -2324,7 +2517,7 @@ and **Download** saves them as text with the page, the world and terrain seeds, 
   reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
 - Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
   shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
-- **Not yet (space):** for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+- **Not yet (space):** (done in v1.124, Q214) for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
   time; the station's `crewDays` is per station, not per person.
 
 ## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)
@@ -2705,7 +2898,7 @@ of gravity there. So:
 
 ## Plan: the system on rails (2026-10-09, space session, QUEUE Q87; plan only)
 
-From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 = Kerbol's, the year of 400 days, Tellus
+From [`SYSTEM.md`](SYSTEM.md) (approved v1.0.0: the bodies, Helios μ 1.17e18 (play length; D15.6), the year of 400 days, Tellus
 at 15.8 Gm, its Hill sphere 261,000 km, Tellus's 23° tilt with seasons built at M5) and PLAYTEST #11 (the other planets
 on the map from the start).
 
@@ -2990,6 +3183,8 @@ is capped, not priced.
 sites → the runner's capacity report; revenue items with their systems (Q110 goods, depots).
 
 ## Plan: the roster, the astronaut office, requalification, the roles' hooks, crew rotation (2026-10-09, economy session, QUEUE Q133, Q135, Q136, Q137; nothing built)
+
+> **Superseded in part (2026-10-11, DECISIONS D15.4):** ranks are replaced by qualifications earned in the simulator, time in type and seniority (CREW.md § Skill). Re-plan the rank parts with Q182.
 
 CREW.md part 2 (approved) on top of what exists. **Today:** a crew is anonymous: `R.crewed` is a capsule with crew
 (`d.crew`) once the max-q abort test is done; g, cabin and air are judged per flight (`missionTick`), a loss is
@@ -10196,6 +10391,8 @@ holding it costs 73.25 m/s a day; ~1494 m/s left there holds it 20 days, then th
 day"; the smoke shard after merging main.
 
 ## The pilot's SAS modes by rank — plan (2026-10-09, vehicle session, QUEUE Q134; CREW.md § Part 2; nothing built)
+
+> **Superseded (2026-10-11, DECISIONS D15.4):** modes come from qualifications (rendezvous, docking, landing), not rank (CREW.md § Skill); Q134 re-plans this.
 
 **The gap.** CREW.md has the pilot fly the modes the vessel's computer can't. Rank 1 gets the analog autopilot's
 modes; rank 2 adds manoeuvre and target; rank 3 adds docking and a manual landing hold. Today avionics are whole

@@ -216,11 +216,14 @@ const groundGap=s=>aglAt(s.body,s.r,simT)+s.yBot;
 // reach it: the recovery fleet's range from the launch point when built, otherwise local boats (RECOVER_LOCAL). On our
 // land or no one's, it's trucked home. On another power's land it depends on relations: friendly powers return it,
 // tense ones return it worn after long talks, hostile ones keep it. The factor scales the refurbishment refund.
-const RECOVER_LOCAL=200e3;
+// The ships take time (Q274): they sail at RECOVER_V from an hour's notice, and what sinks before they arrive is lost.
+const RECOVER_LOCAL=200e3,RECOVER_V=10,RECOVER_PREP=3600;
 function recoveryOf(s,R){if(s.body!==TELLUS||!s.landed)return{factor:1,kind:'n/a',why:''};const u=norm(s.pf);
   if(s.water){const from=R&&R.launchPf?norm(R.launchPf):(s.site||SITES[0]).u,d=Math.acos(clamp(dot(u,from),-1,1))*TELLUS.R,
       lv=typeof facLv==='function'?facLv('fleet'):0,reach=Math.max(RECOVER_LOCAL,lv?FAC.fleet.range[lv]:0);
-    return d<=reach?{factor:1,kind:'sea',why:`fished out of the sea ${(d/1e3).toFixed(0)} km out`}:{factor:0,kind:'lost',why:`came down ${(d/1e3).toFixed(0)} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
+    const sail=RECOVER_PREP+d/RECOVER_V,afloat=s.float?s.float.sinkAt-s.float.t:Infinity;
+    if(d<=reach&&afloat<sail)return{factor:0,kind:'sank',why:`sank ${(afloat/3600).toFixed(0)} h after splashdown, ${(d/1e3).toFixed(0)} km out; our ships needed ${(sail/3600).toFixed(0)} h`};
+    return d<=reach?{factor:1,kind:'sea',why:`fished out of the sea ${(d/1e3).toFixed(0)} km out, ${(sail/3600).toFixed(0)} h after splashdown`}:{factor:0,kind:'lost',why:`came down ${(d/1e3).toFixed(0)} km out at sea, beyond our ships' reach (${(reach/1e3).toFixed(0)} km): lost`}}
   const p=powerAt(u);if(!p||p.i===HOME)return{factor:1,kind:'land',why:''};
   const rel=relOf(HOME,p.i);
   if(rel>=0)return{factor:1,kind:'returned',why:`landed in ${p.name}, which sends it back`};

@@ -12,7 +12,7 @@ function debSnap(){const kh={};for(const k in PROG.kh||{})kh[k]=PROG.kh[k].use;
 // the paid items missionComplete, contractEval and stagePay add to the flight's record
 const debPaid=(R,k,l,pay,x)=>{if(R)(R.paid||(R.paid=[])).push({k,l,pay,...x});logEv('pay',`${k}: ${l}, ${pay.toFixed(1)} M`)};
 function debOutcome(s,R){const B=s.body,km=v=>fmtKm(Math.max(0,v));
-  if(!s.alive)return{k:'lost',t:'Lost',d:`destroyed${R.apex>0?` after reaching ${km(R.apex)}`:''}`};
+  if(!s.alive)return{k:'lost',t:'Lost',d:`${s.sunk?'sank at sea':'destroyed'}${R.apex>0?` after reaching ${km(R.apex)}`:''}`};
   if(s.landed)return B===TELLUS?{k:'landed',t:'Landed',d:`${R.launchPf&&isFinite(R.landDist)?`${km(R.landDist)} from the pad`:'home'}${s.water?', in the sea':''}${R.recovery?` · recovery: ${R.recovery}`:''}`}
     :{k:'away',t:`Landed on ${B.name}`,d:'stays there'};
   const el=elements(s.r,s.v,B.mu);
@@ -29,9 +29,11 @@ function debBuild(s,R,ups){const b=R.deb0,out=debOutcome(s,R),D={flight:PROG.fli
   if(b&&PROG.satN>b.satN)out.d+=' · registered in the fleet';
   if(R.bio)D.passenger={who:R.pet,ok:R.bioOK,why:R.bioWhy,tourist:!!R.tourist};
   // the crew (flow, Q191; PLAYTEST #34): people, not the test dummies flown before the escape tower is qualified. How many,
-  // how it ended for them, and the days since liftoff (a crew brought home from a station: since this flight's start)
-  if(R.crewed){const n=R.crewN||2,days=simT/DAY_S,home=s.alive&&s.landed&&s.body===TELLUS;
-    D.crew={n,ok:!!R.crewOK,home,days,line:!R.crewOK?`The crew of ${n} ${R.crewWhy||'were lost'}`:home?`Crew of ${n} home safe${days>=1?` after ${days.toFixed(days<10?1:0)} days`:''}`:`Crew of ${n} aboard, all well`}}
+  // how it ended for them, and their days in space: since this liftoff, or for a crew brought home from a station since
+  // the day they went up (crewUp, carried through the registry by shapeOf/vesselOf; space, Q214)
+  if(R.crewed){const n=R.crewN||2,d0=R.day0??PROG.day,up=Math.min(d0,...s.parts.filter(p=>p.on&&p.crewAboard&&p.crewUp!=null).map(p=>p.crewUp)),
+      before=d0-up,days=simT/DAY_S+before,home=s.alive&&s.landed&&s.body===TELLUS;
+    D.crew={n,ok:!!R.crewOK,home,days,before,line:!R.crewOK?`The crew of ${n} ${R.crewWhy||'were lost'}`:home?`Crew of ${n} home safe${days>=1?` after ${days.toFixed(days<10?1:0)} days${before>0?' in space':''}`:''}`:`Crew of ${n} aboard, all well`}}
   // money: what we know line by line; the rest is the days that passed (budget, upkeep, income, debt)
   const M=D.money,add=(l,v,k)=>{if(Math.abs(v)>=0.05)M.push({l,v,k})};
   add('Hardware',-(R.cost||0),'cost');add('Launch operations',-(R.ops||0),'cost');add('Site lease',-(R.siteFee||0),'cost');add('Sponsor covers the failed attempt',R.cover||0,'cover');

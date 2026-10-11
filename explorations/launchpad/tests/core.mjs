@@ -223,7 +223,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
       lastV = len(sub(s.v, api.surfVel(s.body, s.r))); if (api.railsOK(s) && !s.landed) api.rails(s, 2); else api.physStep(s, api.DT); }
     const b = s.body, act = api.toPF(b, s.r, api.t), p = pred && pred.p;
     const dist = p ? gc(p.pf, act) * b.R : NaN, dt = p ? p.t - api.t : NaN;
-    const vLand = lastV;
+    const vLand = s.water && s.touchV != null ? s.touchV : lastV;   // at sea, the splash: settling afloat takes seconds (Q274)
     return { ok: !!p, dist, dt, flight: api.t - (pred ? pred.t0 : 0), v: p && p.v, vAct: s.crashSpeed ?? 'landed', dv: p ? p.v - (s.crashSpeed ?? vLand) : NaN };
   }
   const hop = compare('hopper', { stack: ['chute', 'pod', 't2', 'fins', 'kestrel'], init: s => { s.throttle = 1; api.stage(s); } },
@@ -2504,7 +2504,7 @@ function qconj(q) { return [-q[0], -q[1], -q[2], q[3]]; }
   const Rn = mk(hi, kit), Rf = mk(far, kit), Rx = mk(hi, ['bat', 'sol', null, null, null, null, null, null]);
   Rn.v = [0.5, 0, 0]; const moving = D.rvSci(Rn, 'spec', 0); Rn.v = [0, 0, 0];
   const g0 = D.geoAt(B, Rn.p), okN = D.rvSci(Rn, 'spec', 0), dup = D.rvSci(Rn, 'spec', 0), none = D.rvSci(Rx, 'spec', 0);
-  const before = !!P.log.semare, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, [])), e = P.log.semare;
+  const before = !!P.log.semare, sent = D.rvSciSend(Rn, D.rvContact(Rn, 0, []), 60), e = P.log.semare;   // a minute of contact (Q198: readings are bits)
   check('the spectrometer reads the rock under a stopped rover (once per spot), and it counts when it reaches home: a near-side mare reading in the logbook',
     okN && !dup && !none && !moving && !before && sent === 1 && e && Math.abs(e.v.FeO - g0.FeO) < 4 && e.v.n === 1,
     `read ${okN}, again here ${dup}, without one ${none}, moving ${moving}; logbook before sending ${before}, after: FeO ${e ? e.v.FeO.toFixed(1) : '—'} % (truth ${g0.FeO.toFixed(1)})`);

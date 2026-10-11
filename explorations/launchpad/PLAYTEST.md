@@ -58,7 +58,7 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 53 | P2 | **The navball should show in the map view** (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
 | 54 | P2 | **Deleting a maneuver doesn't seem to work** (Caio, 2026-10-10, playing the monochrome computer era). | `program-ui.js` ~363 clears the node then promotes the next queued one (`nodeNext`); maybe it works but looks like nothing happened. QUEUE Q255 | flow |
 | 55 | P2 | **On the map, the other planets and the sun sit on a dotted line closer to Tellus than Selene**: confusing (Caio, 2026-10-10, playing the monochrome computer era). | Q175's ring (`render.js` ~336). QUEUE Q256 | flow |
-| 56 | P1 | **A reverted flight left its rocket in orbit as "Object 1"** (Caio, 2026-10-10, playing the monochrome computer era). | `resetShip` calls `missionEnd(S)`, which registers a coasting vessel. QUEUE Q257 | space |
+| 56 | P1 | ~~**A reverted flight left its rocket in orbit as "Object 1"** (Caio, 2026-10-10, playing the monochrome computer era).~~ | Done 2026-10-11 (space, v1.123, QUEUE Q257): a revert restores the program as it was at liftoff (`missionDiscard`); nothing registered, paid or logged. TESTING 205 | space |
 | 57 | P2 | **The navball needs a north**, maybe degree markings (Caio, 2026-10-10, playing the monochrome computer era). | QUEUE Q254 | flow |
 | 58 | P2 | **The monochrome-era display graphics look bad, low-res** (Caio, 2026-10-10, playing the monochrome computer era). | The vector terminal canvases (`program-ui.js` ~134), probably not at device pixels. QUEUE Q258 | flow |
 | 59 | P3 | **The Steppe rocket's texture is low-res**; not sure improving it is affordable (Caio, 2026-10-10, playing the monochrome computer era). | Measure first. QUEUE Q259 | look & sound (parts & pad) |
@@ -77,6 +77,7 @@ docking, rescues, landings, stations) stays flown and messy. That's the difficul
 | 72 | P3 | **The builder is still called the Assembly, but it's a design table now**: rename (Caio, 2026-10-11). | Since Q242 (v1.115) it's a scale model on a drafting table. Player-facing text only; the screen id stays. QUEUE Q272 | flow |
 | 73 | P2 | **The Map and End flight buttons aren't readable against a near-white sky**, at least in the first epoch (Caio, 2026-10-11). | Light text on an 8 % tint (the base `button` style). QUEUE Q273 | flow |
 | 74 | P2 | **A craft landing in water stays there as if on land**; more fundamental than the missing splash (#67) (Caio, 2026-10-11). | Confirmed: a splashdown is snapped upright with its bottom at sea level and frozen as landed (`sim/flight.js` ~79–85). Needs buoyancy, floating attitude, sinking, drift. QUEUE Q274 | world (+ vehicle: part volumes) |
+| 75 | P2 | **When a part breaks from stress there's no visual effect**; the parts just come apart (Caio, 2026-10-11). | Confirmed: a structural failure only posts a message and detaches the parts (`sim/vessel.js` ~757). QUEUE Q294 | look & sound (effects; sound) |
 
 ## Done
 
