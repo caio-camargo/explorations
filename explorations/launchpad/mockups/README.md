@@ -331,6 +331,12 @@ row; the long, narrow, dry faces are the cluster that still look alike. Soft pla
 eyes standing proud, so the soft signatures carry eye depth (sinking the eyes in the shader instead lost Mr.
 Incredible's eyes in his socket). Stills: `faces/proportion-genes.png`, `faces/signature-generator.png`,
 `faces/distinct-48px-grey.png`. 78 genes.
+**Pass 4, nose and mouth wrap the head**: the wings sit further out (about twice the bridge's width at the house
+flare; 1.8× on the house face, 2× on the deco woman, more on Mr. Incredible), flatter lobes joined to the tip with a
+tight blend, so a crease parts them, and meeting the cheek in a crease, not a fillet. The mouth wraps round the face
+twice as hard (its corners curve back seen from above). A fourth close-up view, **from above** (43° down), in Edit.
+Stills: `faces/nose-mouth-wrap.png` (house, Mr. Incredible, deco woman: nose and mouth, four views),
+`faces/from-above.png`.
 
 ## suits/ — the suit lines by school and era (QUEUE Q199, round 2 Q219, the other schools Q226 → CREW.md § "The suit brief, round 2" and "…the other five schools")
 

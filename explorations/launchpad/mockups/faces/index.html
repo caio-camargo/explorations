@@ -84,8 +84,8 @@
         <canvas class="t" id="vp" width="300" height="300" style="margin-top:8px"></canvas><div class="cap">Profile</div></div>
       <div class="thumbs"><canvas class="t" id="tq" width="48" height="48"></canvas><canvas class="t" id="tf" width="48" height="48"></canvas><canvas class="t" id="tp" width="48" height="48"></canvas><span class="note">48 px</span></div>
     </div>
-    <p class="note" style="margin:12px 0 4px">Close-up: <select id="closeOn"><option>nose</option><option>eyes</option><option>mouth</option><option>ear</option><option>cheek</option></select> (front, ¾, profile)</p>
-    <div class="thumbs"><canvas class="t" id="cf" width="250" height="250"></canvas><canvas class="t" id="cq" width="250" height="250"></canvas><canvas class="t" id="cp" width="250" height="250"></canvas></div>
+    <p class="note" style="margin:12px 0 4px">Close-up: <select id="closeOn"><option>nose</option><option>eyes</option><option>mouth</option><option>ear</option><option>cheek</option></select> (front, ¾, profile, from above)</p>
+    <div class="thumbs"><canvas class="t" id="cf" width="250" height="250"></canvas><canvas class="t" id="cq" width="250" height="250"></canvas><canvas class="t" id="cp" width="250" height="250"></canvas><canvas class="t" id="cu" width="250" height="250"></canvas></div>
     <p class="note" style="margin:12px 0 4px">DNA (copy to keep a face, paste and Apply to bring one back):</p>
     <input id="dna" spellcheck="false"><div class="btns"><button class="b" id="apply">Apply</button><button class="b" id="copy">Copy</button></div>
   </div>
@@ -281,7 +281,7 @@ function paintOf(g) { const sk = ramp(SKIN, g[IX.st]), d = g[IX.st];
   return { uSkin: sk, uFlush: sk.map((v, j) => v * [.96, .6, .68][j] * (1 + .1 * d)), uLip: sk.map((v, j) => v * [.8 + .05 * d, .47 + .2 * d, .53 + .12 * d][j] * (1 + .1 * d)),   // deeper skin: a browner, less pink lip
     uHair: pick(HAIR, g[IX.hc]), uIris: pick(IRIS, g[IX.ic]) }; }
 const P = { skin: [.9, .7, .56], hair: [.4, .2, .1], iris: [.3, .46, .62], lip: [.72, .33, .3], flush: [.86, .42, .38] };
-const ANG = { q: .62, f: 0, p: Math.PI / 2 };
+const ANG = { q: .62, f: 0, p: Math.PI / 2, u: 0 };   // u: from above, the mouth's and nose's wrap round the head
 // close-ups: a view letter plus ':' and one of these targets (head space), seen from 2.2 units
 const CLOSE = { nose: [0, -.28, .85], eyes: [0, .04, .7], mouth: [0, -.58, .75], ear: [.72, -.1, -.1], cheek: [.3, -.25, .45] };
 const glc = document.createElement('canvas'); glc.width = glc.height = 440;
@@ -330,7 +330,7 @@ float nlE(){   // the nose's length, shortened where it would reach the lip (a l
 vec3 noseTip(){   // the bridge's lower front corner (where the ridge plane meets the base plane), head space
  float k=.2+g_nt,nl=nlE(),z=(.85+g_np+.2697*(.13+nl))/(.9629-.2697*k);return vec3(0.,-.15-nl-z*k,z);}
 vec3 tipC(){vec3 c=noseTip();return c+vec3(0.,.065*g_ts,-.075*g_ts+.03*g_tr+g_tp);}
-vec3 wingC(){vec3 c=noseTip();return vec3(.1*g_aw,c.y+.07,.8);}
+vec3 wingC(){vec3 c=noseTip();return vec3(.125*g_aw,c.y+.07,.79);}   // the wings well out from the bridge (at the house flare, about twice its width)
 float noseD(vec3 p){
  vec3 n=p-vec3(0.,-.02,0.);float ridge=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_nc*(1.-g_nf)*exp(-(n.y-.06)*(n.y-.06)/.02);   // the ridge, on the forehead plane's line; a hump or a dip
  float kr=.002+.035*g_sf+.07*g_tr*smoothstep(-.02,-.26,n.y);   // the round tip softens the bridge's edges near the bottom only; the ridge above stays sharp
@@ -342,9 +342,9 @@ float noseD(vec3 p){
  float tip=sdEll(q,vec3(.09,.075,.08)*g_ts)*min(g_tw,1.);   // the tip lobule
  float d=smin(wedge,tip,.025+.03*g_tr);
  vec3 s=vec3(abs(p.x),p.y,p.z),wc=wingC();
- float wing=sdEll(s-wc,vec3(.065,.055,.07)*g_az);   // a wing, on the face
+ float wing=sdEll(s-wc,vec3(.07,.05,.058)*g_az);   // flatter than round: a lobe on the face, not a ball   // a wing, on the face
  float rim=sdCapT(s,tc+vec3(.02*g_tw,-.03*g_ts,-.01),wc+vec3(0.,-.015,.02),.026*g_ts,.035*g_az);   // the alar rim, tip to wing
- d=smin(d,smin(wing,rim,.03),.03);
+ d=smin(d,smin(wing,rim,.02),.008);   // a tight join: the wing a form of its own, a crease between it and the tip
  float fr=dot(n.yz,normalize(vec2(.28,1.)))-(.85+g_np)-g_tp*.8;   // a flat front: everything trimmed to one plane on the ridge's line (the tip's projection tilts it no further)
  d=mix(d,smax(d,fr,.008),g_nf);
  return smax(d,noseFloor()-p.y,.03);}
@@ -356,7 +356,7 @@ float mass(vec3 p){
  d=smin(d,sdEll(p-vec3(0.,-.78-g_cnh-.25*jm-.08*cz,.46+g_cnp+.12*jm+.12*cz),vec3(.34+g_cnw,.2,.3)*mix(1.,g_jm,.7)*g_cz),.16*(1.+.8*g_sf));   // the chin, forward
  float by=.24+g_bh+g_bt*abs(p.x)+g_ba*.05*exp(-pow(abs(p.x)-.3,2.)/.018)+g_as*.025*clamp(p.x*6.,-1.,1.);   // brow height, tilt, and the asymmetry: one brow higher
  d=smin(d,sdEll(p-vec3(0.,by,.55+g_bd),vec3(.6,.15,.3)),.12);   // the brow, forward
- d=smin(d,noseD(p),.05+.14*g_nr*smoothstep(-.05,.2,p.y));   // a flush root: the nose grows out of the brow, no notch
+ d=smin(d,noseD(p),(.05+.14*g_nr*smoothstep(-.05,.2,p.y))*(1.-.7*gs(vec3(abs(p.x),p.y,p.z),wingC()+vec3(.04,0.,-.03),.004)));   // (the wing meets the cheek in a crease, not a fillet)   // a flush root: the nose grows out of the brow, no notch
  return d;}
 float carve(vec3 p,float d){
  float cz=g_cz-1.,sk=1.+5.*g_sf;SKF=sk;float SH=.012*sk,SO=.07*mix(1.,sk,.5);   // planes: crisp (deco) to soft (the Pixar end)
@@ -386,7 +386,7 @@ float lidD(vec3 p){vec3 e=eyeL(p);   // the lids, over the eyeball: a thick uppe
  float lb=smax(abs(r-.14-.45*g_lk)-.45*g_lk,-min(lo-e.y,e.y-lo+.075),.005);   // the lower lid: a thinner band
  float bands=smax(min(ub,lb),abs(e.x)-w*1.04,.012);   // the bands end at the corners
  return max(min(skin,bands),-e.z-.03)*g_ez;}
-vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-PH,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.y-=g_mc*m.x*m.x/.0289;m.z+=1.1*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve; its corners turn up or down
+vec3 mouthL(vec3 p){vec3 m=p-vec3(0.,-.56-PH,0.);m.y-=g_as*.04*m.x;m.x/=g_mw;m.y-=g_mc*m.x*m.x/.0289;m.z+=2.4*m.x*m.x-g_mp;return m;}   // the mouth wraps round the face's curve; its corners turn up or down
 // the mouth as Lawrie's Atlas carves it: the skin comes down to an edge; under the upper edge a face tilts back to the slit,
 // above the lower edge another tilts back up to it. Those faces are the lips (the red), steep (Mr. Incredible: almost none) or broad.
 float mYU(float x){float c=sqrt(max(1.-x*x/.0289,0.));return .058*g_ul*c-.014*g_bw*exp(-x*x/.0012)*c;}   // the upper edge, its bow
@@ -530,7 +530,8 @@ function drawTile(cv, t, view, fov) {
   const T = C || [0, -.22 - .6 * Math.max(0, vf('ft') - 1) - .35 * Math.max(0, vf('fl') - 1) - .25 * Math.max(0, vf('jm') - 1) - .1 * Math.max(0, vf('cz') - 1), 0];   // a long or heavy lower face lowers the frame
   const W = cv.width, s = W < 100 ? W * 2 : W, a = ANG[vk], d = tg ? (tg === 'eyes' || tg === 'mouth' ? 1.6 : 2.7) : 6 * Math.max(1, vf('ft')), H = glc.height;
   gl.viewport(0, H - s, s, s); gl.scissor(0, H - s, s, s); gl.uniform2f(U('uRes'), s, s);
-  gl.uniform3f(U('uCam'), T[0] + Math.sin(a) * d, T[1] + (tg ? .25 : .32), T[2] + Math.cos(a) * d); gl.uniform3f(U('uTgt'), ...T); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
+  const el = vk === 'u' ? .75 : 0;   // the view's elevation
+  gl.uniform3f(U('uCam'), T[0] + Math.sin(a) * Math.cos(el) * d, T[1] + (tg ? .25 : .32) + Math.sin(el) * d, T[2] + Math.cos(a) * Math.cos(el) * d); gl.uniform3f(U('uTgt'), ...T); gl.uniform1f(U('uFov'), fov || (W < 100 ? .44 : .5));
   const kx = -.75 * Math.cos(a) + .3 * Math.sin(a), kz = .3 * Math.cos(a) + .75 * Math.sin(a), kl = Math.hypot(kx, .7, kz);   // the key: above and to the side of each view
   gl.uniform3f(U('uKey'), kx / kl, .7 / kl, kz / kl);
   const g = t.map((x, i) => val(i, x)); gl.uniform1fv(U('G'), g);
@@ -584,7 +585,7 @@ function syncSliders() { GENES.forEach((g, i) => { sl[i][0].value = Math.round(c
 const $ = id => document.getElementById(id);
 function editChanged() { $('dna').value = toDNA(cur); if (mode === 'edit') renderEdit(); }
 function renderEdit() { const c = ':' + $('closeOn').value;
-  render([[$('vq'), cur, 'q'], [$('cq'), cur, 'q' + c], [$('cp'), cur, 'p' + c], [$('cf'), cur, 'f' + c], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
+  render([[$('vq'), cur, 'q'], [$('cq'), cur, 'q' + c], [$('cp'), cur, 'p' + c], [$('cf'), cur, 'f' + c], [$('cu'), cur, 'u' + c], [$('vf'), cur, 'f'], [$('vp'), cur, 'p'], [$('tq'), cur, 'q'], [$('tf'), cur, 'f'], [$('tp'), cur, 'p']]); }
 if (Q.get('close')) $('closeOn').value = Q.get('close');
 $('closeOn').onchange = renderEdit;
 // presets: reference faces for checking the engine's reach (DNA strings; they shift if a gene's range changes)
