@@ -5265,3 +5265,41 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
   file, the player's camera, old recordings still play (flights as recorded paths), no "take over from here".
 - **Files:** launchpad NOTES; QUEUE (Q225 plan ✓, R1–R4 in *Proposed*), ACTIVE_WORK. No code, no runs.
 - **Next:** R1 (⚙) is buildable now; the orchestrator ranks it.
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q275 (Q225 R1), the session recorder (v1.121)
+- **Done:** v1.121 (`355a50f`, merged to `main`): tester menu *Record this session* → gzipped JSON of the starting
+  save, save diffs, screens, designs, camera, pacing, path, keys/clicks (display only), and each flight's tape with
+  vessel hashes at both ends. `sim/record.js` (pure, `recLoad`, `recProgAt`), `app/record.js`; one-line hooks in
+  `resetShip` and the two flights from orbit; debris tumble seeded.
+- **Found:** a replay needs the page's whole load (HOME, the rivals' schedule, the board), not `Object.assign(PROG)`:
+  the fresh SIM crashed in `relOf` until `recLoad` did it. Proposed: the page's boot calls `recLoad` (one load path).
+- **Checks:** full suite 630 PASS, 0 FAIL before merging; smoke after each merge of `main`; test `platform-5`
+  (fresh-instance replay: same hashes, same settled save); in Chrome the flag, a pad flight, the 3.2 KB download, and a
+  re-fly in a fresh SIM built from `sim/*.js` matching both hashes; robot `m1` passes.
+- **Numbering:** vehicle took v1.120 and TESTING 202 the same hour; `check_numbers.mjs` reported the repeat on merge;
+  this became v1.121 and TESTING 203 (counter 204).
+- **Note:** the first page load failed in `app/gl.js` `mkProg` (a shader link) with another session's game possibly
+  on the GPU (its lock was 36 min old); a reload loaded cleanly.
+- **Files:** launchpad `sim/record.js`, `app/record.js` (new), `sim/program.js`, `sim/vessel.js`, `app/state.js`,
+  `app/screens.js`, `app/program-ui.js`, `index.html`, `test.mjs`, `tests/platform.mjs`, NOTES § v1.121, TESTING;
+  QUEUE (Q275 ✓, *Proposed*), ACTIVE_WORK.
+- **Next:** Q225 R2, the viewer (🖥, M), when the GPU is free; R4 (⚙) can go in parallel.
+
+## 2026-10-11 — Claude (launchpad world session): Q274, the sea is a fluid (v1.122)
+- **Picked:** Q274 (PLAYTEST #74, P2), the top world item that starts headless; Q19 needs a quiet machine and the GPU lock
+  was held. New worktree `C:/Users/caioa/dev/launchpad-sea`, branch `sea` (`terrain` keeps the parked Q19).
+- **Done:** v1.122 (`f0637d4`, merged to `main`, pushed). Buoyancy from each stack line's outer profile (8 points per
+  0.5 m slice on the r/√2 ring), water drag, engines as open bells, flotation bags on the pod and crew capsule (default:
+  without them the crew capsule is 1,370 kg/m³ and sinks), splash → settle → afloat on a kinematic swell with drift,
+  flooding by part kind → `sinkAt`, sinking at once when too dense, the liquid's density per body (Tethys 450),
+  recovery ships that must arrive before it sinks. Stages float on their side, capsules upright, the biocapsule apex down.
+- **Checks:** full suite 627 PASS + 3 FAIL, all three flights ending in the sea; fixed (pod impact check uses the splash
+  speed; `fly_crewlunar.mjs` stops forcing attitude once wet) and rerun: pass. After merging `main`: smoke all passed,
+  `sea-1` passes. Not seen in a browser (GPU lock held by flow): TESTING 204.
+- **Files:** launchpad `sim/flight.js`, `sim/vessel.js` (one call each in `physStep`/`syncLanded`, `float` on two parts),
+  `sim/world.js` (`recoveryOf`), `sim/ground.js` (Tethys `rho`), `sim/debrief.js` (one word), `study_sea.mjs` (new),
+  `tests/world.mjs` (`sea-1`), `tests/core.mjs`, `fly_crewlunar.mjs`, NOTES (§ v1.122), TESTING 204; QUEUE (Q274 ✓,
+  four *Proposed*), ACTIVE_WORK.
+- **Next:** world: Q251 aliasing from orbit (P2), Q270 a town in sight of the pad, Q268 the sea's look (now with a
+  swell to draw); Q19 when the machine is quiet. Design desk: confirm the flotation-bag default.
+

@@ -124,11 +124,11 @@
 }
 
 // flow-7. Slice 4c, the map trims (flow session, QUEUE Q3; NOTES § UI "Slice 4 plan" 5): in the map the core stays, the
-// navball becomes a heading line (body.mapv once hid the ball and the throttle bar; since Q254, v1.120, a smaller ball shows beside the line, which carries the throttle), the gauges
+// navball becomes a heading line (body.mapv once hid the ball and the throttle bar; since Q254, v1.123, a smaller ball shows beside the line, which carries the throttle), the gauges
 // and every card but Target hide.
 {
   const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
-  const css = /body\.mapv #nav\{width:130px/.test(H) && /body\.mapv #navtxt\{position:static/.test(H);   // (Q254, v1.120) the ball shows on the map again, smaller, with its heading line
+  const css = /body\.mapv #nav\{width:130px/.test(H) && /body\.mapv #navtxt\{position:static/.test(H);   // (Q254, v1.123) the ball shows on the map again, smaller, with its heading line
   const tog = /const mv=mode==='flight'&&view==='map';[^\n]*toggle\('mapv',mv\)/.test(page), thr = /view==='map'\?`  THR /.test(page);
   const cards = /view!=='map'\|\|c\.id==='target'/.test(page), gauges = /function gaugeSlot\(\)[^\n]*view!=='map'/.test(page);
   check('flow-7: in the map the navball is a heading line with the throttle, the gauges hide and only the Target card shows',

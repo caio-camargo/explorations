@@ -1,7 +1,8 @@
 # CREW — astronauts
-**Version**: 0.2.8 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-10
-**Status**: **Part 2 (who crew are) approved by Caio 2026-10-08.** Part 1's style chosen 2026-10-09 (stylised human); suits by school and era still open (D9);
-the whole file goes to 1.0.0 when it's settled.
+**Version**: 0.3.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-08 · **Updated**: 2026-10-11
+**Status**: Part 2 (who crew are) approved 2026-10-08, skill by qualification 2026-10-11 (D15.4); Part 1 (the look)
+decided: the carved puppet (D17.6), suits for all seven schools (D9, D13; building as Q229). Decisions: [`DECISIONS.md`](DECISIONS.md) § Crew.
+The file goes to 1.0.0 when the head is built.
 **Purpose**: Who flies: what an astronaut is in play, how crew touch the systems already built, and how they look.
 
 **What exists** (cite, don't redo): a crew is two seats in a capsule (`d.crew`), flying once the escape tower is
@@ -124,13 +125,10 @@ crew tell the era's history).
 
 **Faces are built by an engine**, not one by one: [`FACES.md`](FACES.md) (D12).
 
-**Decided (Caio, 2026-10-09, W19): (c) stylised human** (1960s illustration, Thunderbirds, Tintin; mock-up
-`mockups/crew/`). Not a retread of KSP's cartoon crew, not realistic either: the stylisation is what allows the lighter
-tone (pillar 7). Human proportions with simple forms, flat colour bands and ink outlines; faces readable small.
-
-**The puppet direction (D11; Caio's favourite 2026-10-10, mock-ups in progress):** if it wins, "stylised human" here
-means **carved, lacquered puppet heads lit like sculpture** (Thunderbirds, art deco relief), replacing the flat colour
-and ink outlines above, and `app/crew-look.js` (slice 1) follows. Two rules either way:
+**The look: stylised humans as carved puppets** (W19, then D17.6, 2026-10-11). Not KSP's cartoon crew, not realistic:
+**carved, lacquered puppet heads lit like sculpture** (Thunderbirds played straight, art deco relief), human proportions,
+heads a little big for the body. Lit 3D like the rest of the game; no flat colour or ink outlines (that was the
+round-1 ligne-claire option, archived). `app/crew-look.js` follows. The rules:
 - **Faces don't age with the eras.** The people are the game's lens (Tintin stayed Tintin); suits, screens and hardware
   carry pillar 8. No lane "modernises" the faces.
 - **A varied roster is a pass/fail check** before any head is approved: every skin tone and the six schools' name
@@ -138,26 +136,10 @@ and ink outlines above, and `app/crew-look.js` (slice 1) follows. Two rules eith
   shows it doesn't happen here.
 - Crew mostly **stand and sit** (the hatch, portraits); a walkout is a cut or a short pose, never a long walk cycle.
 
-**Suits by school and by era (Caio's idea, 2026-10-09; design open, D9).** Each hardware school (POWERS.md) dresses its
-crew in its own suit line, and the line changes with the epochs, as real suits did: Cape from Mercury's silver to
-Apollo's white to the Shuttle's orange launch suit to today's sleek one; Steppe from the SK-1 to Sokol, with Orlan
-for spacewalks. Draft: three launch-suit generations per school (early pressure suit, the launch-and-entry suit, the
-modern one), plus a spacewalk or surface suit once EVA exists; look only, like everything a school touches.
-
-| School | Early | Middle | Late | Spacewalk / surface |
-|---|---|---|---|---|
-| **Cape** | Mercury's aluminised silver | Apollo's white layers, blue fittings | sleek white-and-black tailored | bulky white with a backpack (EMU) |
-| **Steppe** | orange coverall over a pressure suit, lettered white helmet (SK-1) | Sokol: white, blue connectors, soft hood | a refined Sokol | Orlan: rigid torso, rear entry |
-| **Arsenal** | olive military flight gear, bare metal fittings | white with red panels | white and red, armoured joints | Feitian-like |
-| **Coastal** | Hermes's unflown suits: tidy white, a pastel band | the same with mission patches | slim blue-grey | rounded and modular |
-| **Mountain** | slim saffron-and-white | Gaganyaan-like | lightweight, a light visor | compact |
-| **Isle** | none (no crewed early era) | black carbon tones | black and white, dark visor | utilitarian, rental-grade |
-
-Generations: early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene. **Decided (Caio, 2026-10-09): the defaults**:
-(1) three generations, not each school's compute eras; (2) a spacewalk suit per school, not one shared; (3) a role
-stripe on the shoulder (§ The roles) so crew read apart small. Then a look session mocks up Cape and Steppe across the
-three eras in the Q72 scene, and Caio picks.
-**Status (2026-10-09):** draft; Caio accepted the defaults on (1)–(3).
+**Suits by school and by era** (D9, D13): each school dresses its crew in its own suit line, changing with the eras:
+three launch-suit generations (early ≈ the first flights, middle ≈ the Selene era, late ≈ after Selene) plus a
+spacewalk or surface suit, and a role stripe round the upper arms. The suits are in the two briefs below. (D9's first
+one-line table is archived in [`archive/crew-suits-table-2026-10-09.md`](archive/crew-suits-table-2026-10-09.md).)
 
 ### The suit brief, round 2 (Caio, 2026-10-10: round 1 was "too samey across epochs and for the two schools")
 
@@ -270,8 +252,8 @@ vs racing decals).
 3. **A mock-up round for these five schools** in the same scene as Q219 (Q219's page grows a school picker), with
    the checks widened: a silhouette row per era (seven figures, six in the early era) and the 48 px row (default: yes).
 
-**Shared, so they read as one crew:** the stylised-human proportions (W19), flat colour with ink outlines, the role
-stripe round the upper arms (D9 3).
+**Shared, so they read as one crew:** the carved-puppet proportions and finish (D17.6), the role stripe round the upper
+arms (D9 3).
 
 **Checks before Caio sees them:**
 1. **Silhouette:** all eight as black fills in a row; each must be nameable without colour.
@@ -293,6 +275,9 @@ stripe round the upper arms (D9 3).
 ---
 
 ## Version history
+- **0.3.0 (2026-10-11):** the docs sweep: Part 1 rewritten to the carved puppet (D17.6); the first suits table archived;
+  status header brought up to date. 0.2.6–0.2.8 (10-10/11): FACES pointer, the five-school suit briefs (D13), skill by
+  qualification (D15.4).
 - **0.2.5 (2026-10-10):** the puppet direction (D11): faces constant across eras, a varied roster as a pass/fail check,
   no walk cycles.
 - **0.2.4 (2026-10-10):** the suit brief, round 2 (construction per school, silhouette per era, colour rules, a

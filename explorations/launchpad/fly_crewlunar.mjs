@@ -120,7 +120,7 @@ export function crewLunar(api, say = () => {}) {
   while (s.alive && s.evIdx < s.events.length && s.parts.some(p => p.on && p.d.kind === 'engine')) { log('staging: drop the return stage'); api.stage(s); }
   while (s.alive && s.evIdx < s.events.length) api.stage(s);   // arm the chute
   { let k = 0, inAir = false, passes = []; while (s.alive && !s.landed && k++ < 3e6) { const h = len(s.r) - TELLUS.R; if (h < TELLUS.atm && !inAir) { inAir = true; passes.push({ t: api.t, min: h }); } if (inAir) { passes[passes.length - 1].min = Math.min(passes[passes.length - 1].min, h); if (h > TELLUS.atm) inAir = false; }
-      if (api.railsOK(s)) api.advRails(s, 10, 100); else { point(mul(sub(s.v, api.surfVel(TELLUS, s.r)), -1)); phys(); } }
+      if (api.railsOK(s)) api.advRails(s, 10, 100); else { if (!s.wet) point(mul(sub(s.v, api.surfVel(TELLUS, s.r)), -1)); phys(); } }   // in the water, let it float (Q274)
     R.passes = passes.map(p => p.min); log('atmosphere passes:', passes.map(p => (p.t / 3600).toFixed(1) + ' h down to ' + (p.min / 1e3).toFixed(0) + ' km').join('; '));
     const Rc = s.rec; Object.assign(R, { home: s.landed && s.alive && s.body === TELLUS, touch: s.touchV || s.crashSpeed || 0, crewed: Rc.crewed, crewOK: Rc.crewOK, g: Rc.cgMax, cabin: Rc.ccab, days: api.t / 86400, done: !!P.done.crewland }); log(s.landed ? 'HOME' : 'LOST', 'touchdown', (s.touchV || s.crashSpeed || 0).toFixed(1), 'm/s; crew', Rc.crewOK ? 'OK' : 'NOT OK', '; peak', Rc.cgMax.toFixed(1), 'g; cabin max', Rc.ccab.toFixed(0), 'K; flight', (api.t / 86400).toFixed(1), 'days; crewland done:', !!P.done.crewland); }
 

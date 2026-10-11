@@ -323,3 +323,34 @@
   check('ground-9: crater cells use ptan (≤1e-12) and patanJ (≤5e-8 rad), not Math.tan/atan; λ is a float32',
     et < 1e-12 && ea < 5e-8 && !/Math\.(tan|atan)\(/.test(srcB) && lam === Math.fround(lam), `ptan ${et.toExponential(1)}, patanJ ${ea.toExponential(1)} rad`);
 }
+
+// sea-1. The sea is a fluid (world session, QUEUE Q274, PLAYTEST #74; NOTES § v1.122): a splashdown floats on its own
+// buoyancy (study_sea.mjs drops every preset). The Orbiter's returning piece, dropped upright with SAS off, settles on
+// its side, partly dry; a capsule with flotation bags floats upright; a piece too dense sinks at once. Afloat, it heaves on
+// the swell, drifts, and sinks when its parts have flooded; the recovery ships must get there first. Own SIM copy.
+{
+  const G = new Function(src + 'return {PRESETS,TELLUS,newShip,detach,geom,physStep,seaAt,seaPts,siteFrame,surfVel,qFromBasis,HOOK,recoveryOf,syncLanded,setT:t=>{simT=t},getT:()=>simT,DT};')();
+  const T = G.TELLUS; G.HOOK.msg = () => {}; G.HOOK.boom = () => {}; G.HOOK.rebuild = () => {}; G.HOOK.debris = () => {};
+  let u = null; for (let a = 0; a < 6.28 && !u; a += 0.01) { const c = norm([Math.cos(a), 0.05, Math.sin(a)]); if (G.seaAt(T, mul(c, T.R)) && G.seaAt(T, mul(norm(add(c, [0.003, 0, 0.003])), T.R)) && G.seaAt(T, mul(norm(add(c, [-0.003, 0, -0.003])), T.R))) u = c; }
+  const drop = (st, heavy) => { G.setT(0); const s = G.newShip(st);
+    const dec = s.parts.filter(p => p.on && p.d.kind === 'dec' && !p.pos[0] && !p.pos[2]).sort((a, b) => b.y0 - a.y0)[0];
+    if (dec) G.detach(s, s.parts.filter(p => p.on && p.y0 <= dec.y0 + 1e-6), [0, 0, 0], 0);
+    for (const p of s.parts) if (p.on && p.res.fuel != null) p.res.fuel = heavy && p.d.kind === 'tank' ? 50 : 0; G.geom(s);
+    const f = G.siteFrame(u); s.landed = false; s.chute = false; s.sas = false; s.q = G.qFromBasis(norm(cross(f.up, f.n)), f.up, f.n);
+    s.r = mul(u, T.R - s.yBot + 2); s.v = add(G.surfVel(T, s.r), mul(f.up, -7)); s.w = [0, T.rot, 0];
+    let t = 0; for (; t < 120 && s.alive && !s.landed; t += G.DT) G.physStep(s, G.DT); return { s, t }; };
+  const o = drop(G.PRESETS.Orbiter), F = o.s.float, c = drop(['chute', 'crew', 'shield']), h = drop(G.PRESETS.Hopper, true);
+  check('sea-1: the Orbiter\'s capsule and stage float on their side, 30–90 % dry; a crew capsule with its bags upright; a piece too dense sinks',
+    o.s.landed && o.s.water && F && F.tilt > 1.2 && F.dry > .3 && F.dry < .9 && c.s.landed && c.s.float.tilt < .2 && !h.s.alive && h.s.sunk && h.t < 5,
+    `Orbiter afloat after ${o.t.toFixed(1)} s at ${(F.tilt * 57.3).toFixed(0)}°, ${(F.dry * 100).toFixed(0)} % dry; crew capsule ${(c.s.float.tilt * 57.3).toFixed(0)}°; overweight Hopper sank after ${h.t.toFixed(1)} s`);
+  // afloat: heave within the swell, a drift of ~0.25 m/s, and the sinking at sinkAt
+  const s = o.s, r0 = len(s.pf); let lo = Infinity, hi = -Infinity;
+  for (let t = 30; t <= 90; t += 0.5) { G.setT(F.t + t); G.syncLanded(s); lo = Math.min(lo, len(s.pf) - r0); hi = Math.max(hi, len(s.pf) - r0); }
+  const drift = Math.acos(Math.min(1, dot(norm(s.pf), norm(F.pf)))) * T.R / (G.getT() - F.t);
+  const at = k => ({ launchPf: mul(norm(add(norm(s.pf), [0, k, 0])), T.R) }), sailNear = G.recoveryOf(s, at(0.04)), leak = { ...F };
+  s.float = { ...F, sinkAt: F.t + 3600 }; const sailLate = G.recoveryOf(s, at(0.04)); s.float = leak;   // a hull that floods in an hour, 50 km out
+  G.setT(F.sinkAt + 1); G.syncLanded(s);
+  check('sea-1: afloat it heaves 0.8–2 m peak to peak on the swell and drifts ~0.25 m/s; it sinks when flooded; ships that arrive after that find nothing',
+    hi - lo > 0.8 && hi - lo < 2 && drift > 0.2 && drift < 0.3 && !s.alive && s.sunk && sailNear.kind === 'sea' && sailNear.factor === 1 && sailLate.kind === 'sank' && sailLate.factor === 0,
+    `heave ${(hi - lo).toFixed(2)} m peak to peak, drift ${drift.toFixed(2)} m/s, sinks ${((F.sinkAt - F.t) / 3600).toFixed(0)} h in; ${sailNear.why}; a leaky one ${sailLate.why}`);
+}

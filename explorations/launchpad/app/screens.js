@@ -104,6 +104,7 @@ addEventListener('keydown',e=>{if(e.repeat||e.ctrlKey||e.metaKey||e.altKey||e.ta
 // 'launchpad-tester-flags'; the sandbox program lives in 'launchpad-program-tester'. The rules it bends are in the SIM tester block.
 const TEST_FLAGS=[['money','Infinite money','funds never drop below '+fmtM(TEST_FUNDS)],['kh','Full know-how and certification','every part flies as if well known; flight safety signs off'],
   ['tools','All tools','impact prediction, maneuver planning, encounter forecasts'],['nofail','No ignition failures',''],['fast','Instant stacking','launches take no preparation days'],
+  ['record','Record this session','keyframes of the save, the tape of every flight, the camera, keys and clicks: a file to replay (app/record.js; NOTES § Plan: record and replay)'],
   ['log','Verbose log','staging, ignition, contact and touchdown speed, destruction and its cause, heating, money, contracts, saves: a panel, the console, a download (app/testlog.js)']];
 let testArm=null;
 const testEpochNow=()=>Math.min(6,...MISSIONS.filter(m=>!PROG.done[m.id]).map(m=>m.ep));
@@ -130,7 +131,7 @@ function renderTester(){const el=$('tester');if(!el||!TEST.on)return;const fl=mo
     +`<h3>Go to body</h3><div>${BODY_CAT.map(b=>`<button data-test-body="${b.name}"${dis}>${b.name}</button>`).join('')}</div><div class="sub">SYSTEM.md's bodies drawn alone, placeholder looks (Q79). Esc comes back.</div>`
     +`<h3>Jobs</h3>${act('jobs','Finish every job in progress now')}`
     +`<h3>Sandbox</h3>${act('copy','Copy my career into the sandbox','Click again: the sandbox is replaced')}${act('fresh','Fresh sandbox','Click again: the sandbox is wiped')}<br>`
-    +`${act('leave','Leave tester mode')}`}
+    +`${act('leave','Leave tester mode')}`+(typeof recMenu==='function'?recMenu():'')}
 function testDone(){testTopUp();HOOK.save();renderProgram();renderTester();if(screenNow()==='assembly')editorChanged()}
 function testSaveFlags(){try{const f={};for(const[x]of TEST_FLAGS)f[x]=TEST[x];localStorage.setItem('launchpad-tester-flags',JSON.stringify(f))}catch(x){}}
 document.addEventListener('change',e=>{const d=e.target.dataset||{};if(!TEST.on)return;

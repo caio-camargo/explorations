@@ -68,6 +68,10 @@ When a task matches a playbook's trigger, Claude should:
 3. Check output against the quality checklist
 4. Note any improvements or lessons for the playbook in `LESSONS_LEARNED.md`
 
+## Playbooks in this workspace
+
+- [`project-review.md`](project-review.md) — a whole-project review for launchpad (milestones, pillars, design debt, doc health), run at each milestone's end
+
 ## Example Playbooks
 
 Create files here as needed. Some project-type examples:

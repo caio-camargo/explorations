@@ -17,7 +17,7 @@ function checkSOI(s){const b=s.body;
 // deflection at Earth gravity on every body, ζ 0.6) and drags with Coulomb friction (μ from the surface). Tipping,
 // sliding and bouncing follow from those forces, which also load the joints like any other force. The speed verdict
 // (surfaces, boulders) happens at the first touch; a vessel at rest for C_REST s is landed, pinned in the attitude it
-// came to rest in; tilting past C_TOPPLE while touching is toppling. The sea keeps the old splashdown.
+// came to rest in; tilting past C_TOPPLE while touching is toppling. The sea is its own section below (Q274).
 const C_DEFL=0.02,C_ZETA=0.6,C_REST=0.5,C_TOPPLE=1.05,C_GREF=9.81;
 // Landing legs (vehicle session, Q31): a deployed leg is one point, at its foot; a stowed one lies on the skin and is none.
 // The lowest point counts the feet too, so with legs down (their feet a metre below the rims) the stack stands on its feet.
@@ -71,19 +71,12 @@ function groundContact(s,dt){const b=s.body;
       Fw=add(Fw,Ft)}
     const fb=qrot(qi,Fw);addF(fp.p,fb[0],fb[1],fb[2],fp.pt[0],fp.pt[1],fp.pt[2])}
   if(any)s.touchT=simT}
-// after each step: the nose in the ground, toppling, coming to rest; and splashdowns, which keep the old rule
+// after each step: the nose in the ground, toppling, coming to rest; and splashdowns (seaCheck)
 function groundCheck(s){
   const b=s.body,Y=qrot(s.q,[0,1,0]);if(s.landed||!s.alive||len(s.r)-b.R>bodyTop(b)+s.len)return;   // well above the highest ground: nothing to hit
   const pT=madd(s.r,Y,s.yTop),hT=len(pT)-groundR(b,toPF(b,pT,simT)),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),pf0=toPF(b,s.r,simT);
+  if(seaAt(b,pf0)){seaCheck(s);return}   // the sea: a fluid since Q274 (seaForces pushes; seaCheck judges the splash, the rest and a sinking)
   if(hT<0){const sp=len(sub(s.v,surfVel(b,s.r)));s.alive=false;s.crashSpeed=sp;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — the nose hit ${b.name} at ${sp.toFixed(0)} m/s`);return}
-  // the sea: a splashdown floats upright, as before
-  if(seaAt(b,pf0)){const pB=madd(s.r,Y,s.yBot);if(len(pB)>b.R)return;
-    if(!touchdown(s))return;
-    if(tilt<0.6){const X=norm(sub(qrot(s.q,[1,0,0]),mul(up,dot(qrot(s.q,[1,0,0]),up)))),q=qFromBasis(X,up,cross(X,up));
-      s.landed=true;s.water=true;s.r=mul(up,b.R-s.yBot);s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),q);syncLanded(s);s.landedAt=simT;
-      HOOK.msg(`Landed on ${b.name} (sea) at ${s.touchV.toFixed(1)} m/s`)}
-    else{s.alive=false;s.crashSpeed=s.touchV;HOOK.boom(b,s.r,simT,3);HOOK.msg(`Destroyed — hit the sea at ${s.touchV.toFixed(0)} m/s, sideways`)}
-    return}
   if(!s.inContact)return;
   if(tilt>C_TOPPLE){const su=s.landSurface||{name:'the ground'},sl=terrainSlope(b,pf0);s.alive=false;s.crashSpeed=len(sub(s.v,surfVel(b,s.r)));HOOK.boom(b,s.r,simT,2);
     HOOK.msg(`Toppled over on ${sl>0.03?`a ${(sl*57.3).toFixed(0)}° slope of `:''}${su.name}`);return}
@@ -91,6 +84,71 @@ function groundCheck(s){
   if(vr<0.15&&wr<0.03&&!(s.thrust>0)){s.restT=(s.restT||0)+DT}else s.restT=0;   // not while the engines push (a slow liftoff is not a landing)
   if(s.restT>=C_REST){s.landed=true;s.inContact=false;s.water=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);syncLanded(s);s.landedAt=simT;
     const ls=s.landSurface||{name:'?',hit:0};HOOK.msg(`Landed on ${b.name} (${ls.name}) at ${s.touchV.toFixed(1)} m/s${ls.hit?`, among ${ls.id===8||ls.id===5||ls.id===3?'trees':'boulders'} (like ${(s.touchV+ls.hit).toFixed(1)} m/s)`:''}${tilt>0.05?`, leaning ${(tilt*57.3).toFixed(0)}°`:''}`)}}
+// ---- the sea (world session, Q274; NOTES § v1.122). Water is a fluid. Every stack line's outer profile (s.lines, the
+// aero's) is cut into slices up to SEA_DY tall; each slice is a disc sampled at SEA_N points on the ring of radius r/√2,
+// which keeps the disc's waterplane moment, so the righting moment comes out right. A point under the water pushes up
+// with ρ·g times its share of the volume (smoothed over its own vertical extent, so the force doesn't step) and drags
+// against the water: quadratic, plus a linear term standing for the waves it makes, capped like the ground's contact.
+// An engine is an open bell: SEA_KEEP of its outline holds air. A capsule's flotation bags (d.float m³ on top, Apollo's
+// uprighting bags) inflate at splashdown. At rest the vessel is afloat: landed, s.water, riding a kinematic swell and
+// drifting with the wind (seaPose), until its parts flood one by one (SEA_FLOOD hours): sinkAt is when what stays dry
+// can no longer hold it up. Sinking while still moving (too dense even fully under) is judged at once. The liquid's
+// density is the body's (a recipe's rho: Tethys's methane, 450 kg/m³), else sea water's.
+const RHO_SEA=1025,SEA_DY=0.5,SEA_N=8,SEA_CD=0.5,SEA_LIN=500,SEA_REST=2,SEA_SWELL=0.8,SEA_SWELL_T=8,SEA_DRIFT=0.25;
+const SEA_KEEP={engine:0.35},SEA_FLOOD={engine:0,dec:2,adapt:6,tank:24,pod:72,bio:72,sci:24,core:24};   // hours; others 12
+const seaFloodH=p=>SEA_FLOOD[p.d.kind]??12,seaRho=b=>b.ground&&b.ground.rho||RHO_SEA;
+// the sample points, cached per shape: {pts:[{p,b,V,dy,w}], V (whole hull, m³), byPart (m³ per part)}
+function seaPts(s){if(s.seaP&&s.seaP.lines===s.lines&&s.seaP.bags===!!s.bags)return s.seaP;const pts=[],byPart=new Map();let V=0;
+  const put=(p,v)=>{byPart.set(p,(byPart.get(p)||0)+v);V+=v};
+  for(const ln of s.lines)for(const e of ln.E){const dy=e.y1-e.y0;if(dy<=1e-6)continue;const k=SEA_KEEP[e.p.d.kind]??1,n=Math.ceil(dy/SEA_DY),h=dy/n;
+    for(let i=0;i<n;i++){const ra=e.r0+(e.r1-e.r0)*i/n,rb=e.r0+(e.r1-e.r0)*(i+1)/n,v=Math.PI/3*h*(ra*ra+ra*rb+rb*rb)*k,rm=(ra+rb)/2,y=e.y0+h*(i+.5);
+      if(v<=0)continue;put(e.p,v);for(let j=0;j<SEA_N;j++){const a=(j+.5)/SEA_N*2*Math.PI;pts.push({p:e.p,b:[ln.ox+rm*Math.SQRT1_2*Math.cos(a),y,ln.oz+rm*Math.SQRT1_2*Math.sin(a)],V:v/SEA_N,dy:h,w:rm})}}}
+  if(s.bags)for(const p of s.parts)if(p.on&&p.d.float){const r=p.d.r*0.7,y=p.y0+p.h+0.35;put(p,p.d.float);
+    for(let j=0;j<4;j++){const a=j*Math.PI/2;pts.push({p,b:[p.pos[0]+r*Math.cos(a),y,p.pos[2]+r*Math.sin(a)],V:p.d.float/4,dy:0.7,w:0.4})}}
+  s.seaP={lines:s.lines,bags:!!s.bags,pts,V,byPart};return s.seaP}
+// in the step, before integrating: buoyancy and the water's drag on every point under the (flat) sea
+function seaForces(s,dt){const b=s.body;s.seaSub=0;if(!s.landed&&s.float)s.float=null;
+  if(s.landed||!s.alive||!b.ground||b.ground.sea==null)return;
+  const h=len(s.r)-b.R-b.ground.sea;if(h>s.len+5||!seaAt(b,toPF(b,s.r,simT)))return;
+  const qi=qconj(s.q),up=qrot(qi,norm(s.r)),g=b.mu/dot(s.r,s.r),c=s.cm,P=seaPts(s),vB=qrot(qi,sub(s.v,surfVel(b,s.r))),wB=qrot(qi,s.w),
+    ca=Math.abs(up[1]),sa=Math.sqrt(Math.max(0,1-ca*ca)),rho=seaRho(b),cap=0.3*s.mass/Math.max(1,s.seaN||1)/dt;let V=0,n=0;
+  for(const pt of P.pts){const rx=pt.b[0]-c[0],ry=pt.b[1]-c[1],rz=pt.b[2]-c[2],z=h+rx*up[0]+ry*up[1]+rz*up[2],e=0.5*(pt.dy*ca+pt.w*sa)+0.02,f=clamp(0.5-z/(2*e),0,1);
+    if(f<=0)continue;const v=pt.V*f;V+=v;n++;const Fb=rho*g*v;
+    const vx=vB[0]+wB[1]*rz-wB[2]*ry,vy=vB[1]+wB[2]*rx-wB[0]*rz,vz=vB[2]+wB[0]*ry-wB[1]*rx,sp=Math.hypot(vx,vy,vz),kd=Math.min(cap,0.5*rho*SEA_CD*Math.cbrt(v*v)*sp+SEA_LIN*v);
+    addF(pt.p,up[0]*Fb-kd*vx,up[1]*Fb-kd*vy,up[2]*Fb-kd*vz,pt.b[0],pt.b[1],pt.b[2])}
+  s.seaSub=V;s.seaN=n}
+// after the step, over the sea: the splash (the touchdown verdict, bags out, the main chute cut), then rest or sinking
+function seaCheck(s){const b=s.body;
+  if(!(s.seaSub>0))return;
+  if(!s.wet){if(!touchdown(s))return;s.wet=true;s.restT=0;
+    if(s.parts.some(p=>p.on&&p.d.float)){s.bags=true;s.seaP=null}
+    if(s.chute){s.chute=false;s.chuteA=0}
+    const P=seaPts(s);logEv('contact',`splashdown at ${s.touchV.toFixed(1)} m/s; the hull holds up ${(P.V*seaRho(b)/1000).toFixed(2)} t, the vessel is ${(s.mass/1000).toFixed(2)} t`);
+    HOOK.msg(`Splashdown at ${s.touchV.toFixed(1)} m/s`);return}
+  if(s.seaSub>=0.97*seaPts(s).V&&seaRho(b)*s.seaSub<s.mass&&len(s.r)-b.R-b.ground.sea<-s.len){seaSink(s,'went straight to the bottom');return}
+  const vr=len(sub(s.v,surfVel(b,s.r))),wr=len(sub(s.w,[0,bodyOmega(b),0]));
+  if(vr<0.3&&wr<0.05&&!(s.thrust>0))s.restT=(s.restT||0)+DT;else s.restT=0;
+  if(s.restT>=SEA_REST)afloat(s)}
+function seaSink(s,how){s.alive=false;s.sunk=true;s.crashSpeed=0;s.float=null;logEv('contact',`sank: ${how}`);HOOK.msg(`Sank — ${how}`)}
+// how long after coming to rest the parts that stay dry longest can no longer hold the vessel up (s), or Infinity
+function sinkTime(s){const P=seaPts(s),ps=[...P.byPart.entries()].map(([p,v])=>({v,h:seaFloodH(p)})).sort((a,b)=>a.h-b.h);let V=P.V;
+  for(const x of ps){V-=x.v;if(seaRho(s.body)*V<s.mass)return x.h*3600}return Infinity}
+function afloat(s){const b=s.body,Y=qrot(s.q,[0,1,0]),up=norm(s.r),tilt=Math.acos(clamp(dot(Y,up),-1,1)),T=sinkTime(s),P=seaPts(s);
+  s.landed=true;s.water=true;s.inContact=false;s.wet=false;s.pf=toPF(b,s.r,simT);s.qLocal=qmul(qconj(qBody(b,simT)),s.q);
+  const az=(Math.sin(s.pf[0]*1e-3+s.pf[2]*7e-4)*0.5+0.5)*2*Math.PI;   // the wind's heading here, steady per spot (tapes replay)
+  s.float={pf:s.pf.slice(),q:s.qLocal.slice(),t:simT,az,sinkAt:simT+T,dry:1-s.seaSub/P.V,tilt};s.landedAt=simT;syncLanded(s);
+  const att=tilt<0.35?'upright':tilt>2.8?'upside down':`on its side (${(tilt*57.3).toFixed(0)}°)`;
+  logEv('contact',`afloat ${att}, ${(s.float.dry*100).toFixed(0)} % of the hull above the water; ${isFinite(T)?`floods in ${(T/3600).toFixed(0)} h`:'stays afloat'}`);
+  HOOK.msg(`Afloat on ${b.name}'s sea, ${att}, splashdown ${s.touchV.toFixed(1)} m/s${isFinite(T)?` — sinks in ~${(T/3600).toFixed(0)} h`:''}`)}
+// the afloat pose: the rest pose, heaving on two crossing swells, rocking with their slope (less for a long hull) and
+// drifting downwind; it sinks at sinkAt. Called from syncLanded, so it holds on rails and at warp.
+function seaPose(s){const F=s.float,b=s.body,t=simT-F.t;if(simT>=F.sinkAt){seaSink(s,'flooded and went down');return}
+  const ramp=Math.min(1,t/20),w1=2*Math.PI/SEA_SWELL_T,w2=w1*1.37,k=w1*w1/9.81,A=SEA_SWELL*ramp,rock=Math.min(1,8/Math.max(s.len,1));
+  const u0=norm(F.pf),f=siteFrame(u0),dir=add(mul(f.e,Math.sin(F.az)),mul(f.n,Math.cos(F.az)));
+  const heave=A*(0.6*Math.sin(w1*t)+0.4*Math.sin(w2*t+1.3)),u=norm(add(u0,mul(dir,SEA_DRIFT*t/b.R)));
+  s.pf=mul(u,len(F.pf)+heave);
+  const pe=A*k*rock*0.6*Math.cos(w1*t),pn=A*k*rock*0.4*Math.cos(w2*t+1.3);   // the wave slopes: rocking about the local north and east
+  s.qLocal=qmul(qmul(qaxis(f.n,pe),qaxis(f.e,pn)),F.q)}
 // ---- abort (bodies session): the escape tower pulls the crew capsule off a failing rocket. Everything below the capsule
 // is dropped, the tower burns for its 3 s, then it's jettisoned and the chute armed. On a nominal flight the tower goes at
 // the first staging above 30 km.

@@ -8,12 +8,12 @@ const R0=0.625;   // the 1.25 m class radius; every part carries its own radius 
 const PARTS={
   cone:{name:'Nose cone',kind:'cone',m:0.12,h:1.6,cm:.35,C:600,T:400,B:150,prof:[[.625,0],[.6,.3],[.5,.75],[.3,1.25],[0,1.6]]},
   chute:{name:'Parachute',kind:'chute',m:0.1,h:0.42,C:300,T:400,B:150,prof:[[.3,0],[.3,.22],[.16,.38],[0,.42]]},
-  pod:{name:'Command pod',kind:'pod',m:0.84,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  pod:{name:'Command pod',kind:'pod',float:1.0,m:0.84,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   // crew (bodies session, epoch 4): a pod with two people and 10 days of life support; an escape tower (solid motor, 150 kN
   // for 3 s) that pulls it off a failing rocket. Until the tower is qualified (the max-q abort), the capsule flies dummies.
   // ins: the crew cabin lags the skin by an hour (insulated and cooled), where the animal capsule lags it by 10 min: on the
   // way up the bare capsule's skin reaches ~520 K, which would cook a 10-min cabin (387 K) but warms this one by ~20 K.
-  crew:{name:'Crew capsule',kind:'pod',crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
+  crew:{name:'Crew capsule',kind:'pod',float:1.0,crew:2,ins:3600,m:1.4,h:1.2,cm:.25,torque:10000,hmax:100000,C:900,T:600,B:200,prof:[[.625,0],[.625,.06],[.34,1.0],[.3,1.06],[.3,1.2]]},
   les:{name:'Escape tower',kind:'les',m:0.6,h:2.1,cm:.6,thrust:150,burn:3,C:900,T:500,B:200,prof:[[.18,0],[.18,1.3],[.26,1.42],[.26,1.6],[.1,1.9],[0,2.1]]},
   t1:{name:'Tank 1 t',kind:'tank',wet:1,dry:0.11,h:1.1},
   t2:{name:'Tank 2 t',kind:'tank',wet:2,dry:0.22,h:2.0},
@@ -391,6 +391,8 @@ function launchWarnings(stack,aims=flightAims()){const out=[],st=stageStats(stac
     else out.push(['ok',`Δv for ${goal.name}: ${f(air)} against ${f(goal.need)} (${src})`])}
   const s=newShip(stack),who=s.parts.some(p=>p.d.crew)?'the crew':s.parts.some(p=>p.d.kind==='bio')?'the passenger':null;
   if(who&&!s.parts.some(p=>p.d.kind==='chute'))out.push(['warn',`No parachute: ${who} can't come home`]);
+  const pk=isV2(stack)&&stack.park?stack.park.length:0;   // parts parked in the air in the builder (Q246) don't fly
+  if(pk)out.push(['warn',`${pk} parked group${pk>1?'s':''} not attached to the rocket: ${pk>1?'they stay':'it stays'} behind`]);
   return out}
 // a satellite's lifetime for the builder (vehicle session, Q141; MIDGAME § Satellites: lifetime is a design choice, made
 // once): the design's top stage (what's left after every decoupler) as if registered in a circular orbit alt km up, what
@@ -456,7 +458,7 @@ function rebuildShape(s){
   for(const p of ps)if(p!==s.root&&p.parent&&p.parent.on)order.push(p);
   order.sort((a,b)=>dist(b)-dist(a));s.order=order}
 function activeEngines(s){return s.parts.filter(p=>p.on&&p.d.kind==='engine'&&s.segs[p.seg].ignited&&groupFuel(s,s.grp[p.i])>1e-9)}
-function syncLanded(s){s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
+function syncLanded(s){if(s.float)seaPose(s);s.r=fromPF(s.body,s.pf,simT);s.q=qmul(qBody(s.body,simT),s.qLocal);s.v=surfVel(s.body,s.r);s.w=[0,0,0]}
 function localFrame(r){const up=norm(r);let n=sub([0,1,0],mul(up,up[1]));if(len(n)<1e-9)n=[1,0,0];n=norm(n);return{up,n,e:cross(n,up)}}
 // speeds against the surface low in the air, or near an airless body's ground (it turns: Selene's equator moves at 6 m/s)
 function speedRef(s){const b=s.body,h=len(s.r)-b.R;return(b.atm?h<b.atm*0.5:h<0.03*b.R)?{srf:true,v:sub(s.v,surfVel(b,s.r))}:{srf:false,v:s.v}}
@@ -653,7 +655,7 @@ function detach(s,list,kick,spin,asVessel){
   const off=qrot(s.q,sub(dc,c0)),vd=add(add(s.v,cross(s.w,off)),qrot(s.q,kick));
   if(asVessel||list.some(isCommand)){s.v=madd(s.v,qrot(s.q,kick),-dm*1000/s.mass);vesselFrom(s,list,add(s.r,off),vd,s.w)}   // a command part aboard: a vessel of its own
   else{junkNote(s,list,add(s.r,off),add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),dm,dc);HOOK.debris({body:s.body,r:add(s.r,off),v:add(add(s.v,cross(s.w,off)),qrot(s.q,kick)),q:s.q.slice(),
-    w:add(s.w,[(Math.random()-.5)*spin,(Math.random()-.5)*spin,(Math.random()-.5)*spin]),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26
+    w:add(s.w,(R=>[(R()-.5)*spin,(R()-.5)*spin,(R()-.5)*spin])(rng((simT*1000|0)+list.length*7919))),parts:list,cm:dc,mass:dm*1000,t:0})}   // junkNote: space Q26; the tumble is seeded so a replay looks the same (Q275)
   s.r=add(s.r,qrot(s.q,sub(s.cm,c0)));
   if(s.landed)s.landed=false;
   HOOK.rebuild()}
@@ -742,6 +744,7 @@ function physStep(s,dt){
   if(s.rcs){const alR=qrot(qi,ctrlAccel(s,true)),ex=steer>0?[0,0,0]:rest;   // with nothing else to steer, RCS also covers what the wheels didn't give
     rcsStep(s,dt,[(alR[0]-alC[0])*s.I[0]+ex[0],(alR[1]-alC[1])*s.I[1]+ex[1],(alR[2]-alC[2])*s.I[2]+ex[2]])}else{s.rcsFire=0;s.rcsShots=null}
   groundContact(s,dt);   // the ground pushes back through the contact points (terrain session)
+  seaForces(s,dt);   // and the sea holds it up (world session, Q274)
   let F=[0,0,0],L=[0,0,0];for(const p of s.parts)if(p.on){F=add(F,p.F);L=add(L,p.L)}
   if(s.lesT>0){const les=s.parts.find(p=>p.on&&p.d.kind==='les');if(les){F=add(F,[0,les.d.thrust*1000,0]);s.lesT-=dt;if(s.lesT<=0)s.lesJet=true}else s.lesT=0}   // the escape tower, on the axis
   const tau=sub(L,cross(s.cm,F)),aNg=mul(F,1/s.mass);
