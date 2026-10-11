@@ -28,7 +28,7 @@ addEventListener('keydown',e=>{
   else if(k==='v'&&S.alive&&rcsJets(S)){S.rcs=!S.rcs;renderSAS();HOOK.msg(S.rcs?'RCS on':'RCS off')}
   else if(k==='n')nodeAtApoapsis();
   else if(k==='delete'&&S.node)nodeDelSel();   // the selected node (Q255)
-  else if(k==='r'&&(!S.alive||S.landed&&simT>5)){resetShip();go('flight');HOOK.msg('Reverted to launch')}});
+  else if(k==='r'&&(!S.alive||S.landed&&simT>5))revertFlight()});
 addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
 addEventListener('blur',()=>keys.clear());
 addEventListener('beforeunload',e=>{if(mode==='flight'&&S&&S.alive&&!S.landed){e.preventDefault();e.returnValue=''}});

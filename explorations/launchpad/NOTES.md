@@ -2149,7 +2149,7 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
-## v1.123 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
+## v1.128 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
 - **Q273 (PLAYTEST #73), the toolbar on a bright sky:** flight HUD buttons and the warp readout sit on an opaque dark
   plate (`#hud button`, `#hud #warp`); the navball's heading line has a dark text shadow. The notebook map's ink
   (`body.paper`) still wins there.
@@ -2186,6 +2186,97 @@ Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (
 - **Checks:** test `flow-12` (`tests/flow.mjs`). Probes: the delete, Recover vessel, the arcs at 61 km and 137 km
   periapsis, the terminal map, an ascent on the map. Robot `m1`, 127, `desk`.
 
+
+## v1.127 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
+
+Fragments (v1.83) were a density per band that hit registered entries between flights; a flight flew through them untouched.
+- **`fragPass(s, dt)`** (`sim/space.js`, from `missionTick` each step, physics or rails): in orbit of Tellus, inside a
+  band with fragments, the same rate as between flights, λ = 4 n R² v (R the craft's half length, v the band's orbital
+  speed), scaled by the debris setting. Seeded per flight (`R.fragRng`), so tapes and procedures repeat.
+- **A hit is rolled `FRAG_LEAD` (3 s) ahead:** `s.fragIn` holds the fragment on its way (size by the L^-1.71 law from
+  1 cm, capped at 50 cm; a crossing speed 0.3–1.7 × v; a direction in the local horizontal) and **`HOOK.fragIn(s, x)`**
+  is there for a view to draw it coming (no view yet: Proposed for look & sound).
+- **`fragStrike`**: it strikes one part, chosen by size (mass^⅔). Solar cells and antennas are lost to any piece;
+  anything else only to 40 J per gram of the part (v1.83's shattering rule): a 1 cm piece at 10 km/s brings 26 kJ and
+  dents a tank, a 50 cm one (3.3 GJ) destroys even a full 32 t tank (30 cm, 0.7 GJ, doesn't). A message says which.
+- **Crewed craft are warned, not struck** (as between flights, pillar 5): one message a flight when the band passes
+  `CREW_WARN`, "about one hit in N years".
+- **The odds** (test `space-24`): after one 1 t breakup at 400 km, the Probe stack through the thickest band: **0.14
+  hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
+- **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
+
+## v1.126 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
+
+- **Landed entries** (`landPowInit`, `sim/space.js`, called by `landRegister`): a lander or base keeps `q.pw` and `q.Ewh`
+  as a satellite does, with its site's night for the eclipse. One of its body's days is sampled at its spot (48 points):
+  the cells' mean is the sun's height averaged (`landLit`), the night the share below the horizon, the battery's `need`
+  that night's load. `satPowTick`, `satDuty` and `satOn` then work unchanged (`satOn` asks `landLit` instead of the
+  orbit's shadow). Only Tellus and the locked moons turn on our rails; a lander elsewhere keeps the light it landed in.
+- **Measured** (`space-23`, the Probe set down on Selene's near-side equator): a 104 h day, night 50 %, cells 32 % of
+  peak on average (1/π, as a flat panel should); load 15 W against 12.1 W: flat after 22 days, then it works by day
+  only (50 %).
+- **What it gates:** a lander's antenna as a rover relay (`rvRelays`: skipped when silent, otherwise only while powered,
+  `on`, as orbiting relays since v1.109). Bases' crews and supplies are unchanged (LATE_GAME's dormant node is later).
+- **Flying an entry** (`vesselOf`): the battery as it is now (`q.Ewh`), not as it was registered. Before, a satellite
+  that had run flat between flights came back full when flown.
+- **Servicing** (`dockCharge`, in `dockTryV`): two vessels docking share charge: the fuller tops up the emptier, keeping
+  half its own. Undocked or flown home, the serviced one is registered with that charge (`satPowInit` reads `s.E`).
+  A message says so ("batteries charged to 100 % from …"). Docking a composite that stays together: still only the
+  host's own parts count for its power (the v1.108 limit).
+- **Tests:** `space-23` (new); `space-18`, `space-19`, 42, docking and stations unchanged.
+
+## v1.125 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
+
+v1.100 made satellite data a volume; rover readings still went home whole the moment there was contact.
+- **Readings are bits** (`sim/rovers.js`, `RV_BITS`): a spectrum 20 kbit (~1,000 channels), a panorama one survey frame
+  (`IMG_FRAME`, 1.5 Mbit). `rvDrain(data, contact, dt, by)` sends them oldest first at the contact's rate and hands each
+  finished one to `sciGot`; a part-sent reading keeps what's left in `x.b`. `rvSciSend(R, c, dt)` (the driven rover, each
+  step) and `rvFieldSci` (rovers in the field between flights, half-hour steps through `radioAt`) both use it. No rate
+  (home on Tellus): at once. Readings in older saves have no `b`: at once, as before. A crew aboard still keeps them.
+- **Measured** (test `space-22`, from Selene's near side): the high-gain dish direct to Tellus **2,481 bit/s**: a
+  panorama in **10 min**, a spectrum in 8 s. A **whip through a relay 1,000 km up: 4 bit/s** (the rover-to-relay hop
+  has no station dish; v1.109's model): a panorama **4.3 days**, a spectrum 83 min. So the dish is the imaging choice and a
+  whip rover is a spectrometer rover. If that feels harsh in play, the lever is a dish on the relay (Q217), not the bits.
+- **The message** after a reading says how long it will take ("· sending, 10 min") instead of nothing.
+- **One pass budget** (`sim/space.js`): a satellite's contract frames and its imagery shared nothing (a pass downlinked
+  both in full). Now each frame sent is owed (`q.owe`) and the next imagery drain pays it first. A frame is 1.5 Mbit,
+  about 16 s of a 300 km pass at ~95 kbit/s: imagery sales barely move (test `space-15` unchanged).
+- **Tests:** `space-22` (new); section 42 gives its send a minute of contact.
+
+## v1.124 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
+
+A crew brought home from a station read "home safe after 2.1 days": the Debrief knew only the flight that brought them
+down. Now each crewed capsule carries **the day its crew went up**:
+- **`shapeOf`** writes `o.up` beside `o.crew`: the part's `crewUp` if it has one, otherwise `PROG.day`, which during a
+  flight is that flight's liftoff day (days pass only when it settles). **`vesselOf`** reads it back as `p.crewUp`. Those
+  two are the only ways a crew goes into and comes out of the registry (flying an entry, loading one, undocking), so the
+  day survives any number of round trips.
+- **The Debrief** (`sim/debrief.js`): the earliest `crewUp` aboard (never later than this flight's `day0`) gives
+  `D.crew.before`, the days in space before this flight; the line becomes **"Crew of 2 home safe after 33 days in
+  space"**. A crew launched this flight reads as before ("…after 2.5 days"). Older saves have no `up`: as before.
+- Per capsule, not per person: crews don't move between capsules and habitats yet. The station's own `crewDays` (the
+  "people live in space" milestone) is unchanged.
+- **Test:** `space-21`: a capsule registered on day 10, flown home from day 40 for 2.5 days.
+
+## v1.123 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
+
+Caio reverted a flight and found its rocket in the registry as "Object 1". `resetShip` began with `missionEnd(S)`, so a
+revert *settled* the flight like *End flight*: the coasting vessel joined the registry, the pay and the logbook were
+written, the flight was counted. A revert now goes back to launch, as KSP's does:
+- **`REVERT0`** (`sim/program.js`): the moment a flight lifts off (`missionTick`'s launch block, before it charges the cost,
+  the ops and the site fee or passes the prep days), `JSON.stringify(PROG)` is kept with the flight's record `R`. It lives
+  beside the record, never on it: `satRegister` and the cruise entries keep `R`, and a snapshot there would nest in every
+  save. `flyEntry` (flying a registry entry) takes it before the entry leaves the registry and the ops are paid.
+- **`missionDiscard(s)`**: restores `PROG` in place from that snapshot and marks the record ended (`R.reverted`), so
+  `missionEnd` does nothing afterwards. Without a snapshot (a save loaded mid-flight) the flight is dropped unsettled:
+  nothing registered or paid, nothing given back.
+- **`revertFlight()`** (`app/state.js`): the one revert, used by the button (Esc menu) and the R key. The R key used to
+  skip the "handed over from a dispatch, no revert" check; it doesn't now. It saves after restoring.
+- **Unchanged:** a flight already settled (left for another screen, PLAYTEST #21) can't be reverted into; loading a design
+  or starting a procedure or a tape still settles the flight in progress, as before.
+- **Test:** `space-20` (`tests/space.mjs`): an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
+  liftoff state and `missionEnd` returns null after.
+- **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
 ## v1.122 — the sea is a fluid (2026-10-11, world session, QUEUE Q274; PLAYTEST #74)
 
 A splashdown used to be snapped upright with its bottom at sea level and frozen as landed: no waterline, no float, no
@@ -2464,7 +2555,7 @@ and **Download** saves them as text with the page, the world and terrain seeds, 
   reason for a loss (`R.crewWhy`). The record has `D.crew = {n, ok, home, days, line}` (`sim/debrief.js`).
 - Test `flow-6` (1 check: home after 2.5 days, lost, aboard, dummies with no line). Robot row 65 (the crew rotation)
   shows "Crew of 2 home safe". One run of row 65 lost the capsule 12 s in; the next passed, so it looks like a flake.
-- **Not yet (space):** for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
+- **Not yet (space):** (done in v1.124, Q214) for a rotation, the days the crew spent aboard the station. The Debrief only knows this flight's
   time; the station's `crewDays` is per station, not per person.
 
 ## v1.106 — the gauges are the instrument panel (2026-10-09, flow session, QUEUE Q3, UI slice 4b; closes PLAYTEST #9)

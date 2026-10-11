@@ -590,3 +590,111 @@
       && n11 && /can't reach it at its burn/.test(n11.flag) && n11.share > 0 && n11.share < 0.3 && NL.length === 3,
     `Selene far side: alone ${c0.far}, one relay ${c1.far.toFixed(2)}, flat ${cFlat.far}; hop: ${via ? `${via.L.via} at ${via.L.rate.toFixed(0)} bit/s` : 'none'}, flat relay ${viaOff && viaOff.ok}; links: ${NL.map(x => `${x.name} ${(x.share * 100).toFixed(0)}% ${x.flag}`).join('; ')}`);
 }
+
+// space-20. A revert discards the flight (space session, QUEUE Q257; PLAYTEST #56): the program is back as it was at
+// liftoff (no registry entry, no pay, no flight counted, the launch's cost and days given back), and nothing settles it after.
+{
+  const P = api.PROG, saved = JSON.stringify(P);
+  api.t = 0; const s = api.newShip(api.PRESETS.Orbiter); api.S = s; s.throttle = 1; const pre = JSON.stringify(P), sat0 = (P.sats || []).length;
+  api.stage(s); for (let k = 0; k < 40 / api.DT && s.alive; k++) api.advPhys(s);
+  const spent = JSON.stringify(P) !== pre, gone = api.missionDiscard(s), later = api.missionEnd(s);
+  check('space Q257 #56: a revert discards the flight: the program as it was at liftoff, nothing registered, paid or counted',
+    s.rec.launched && spent && gone && s.rec.ended && later === null && JSON.stringify(P) === pre && (P.sats || []).length === sat0,
+    `launched ${s.rec.launched}, changed in flight ${spent}, discarded ${gone}, settled after ${later !== null}, program restored ${JSON.stringify(P) === pre}`);
+  for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+}
+
+// space-21. A rotation's days in space in the Debrief (space session, QUEUE Q214; PLAYTEST #34's follow-up): a crew
+// registered aboard keeps the day it went up (shapeOf's `up`), through the registry and back (vesselOf's `crewUp`), so a
+// crew brought home from a station counts its days since then, not only this flight's.
+{
+  const P = api.PROG, saved = JSON.stringify(P); api.HOOK.news = () => {}; api.HOOK.msg = () => {};
+  const stack = ['chute', 'crew', 't2'], s0 = api.newShip(stack); P.day = 10;
+  const a = api.TELLUS.R + 300e3, q = { stack, shape: api.shapeOf(s0.parts.filter(p => p.on), true), epoch: 0, r: [a, 0, 0], v: [0, Math.sqrt(api.TELLUS.mu / a), 0], qo: [0, 0, 0, 1] }, cap = q.shape.find(o => o.crew);
+  P.day = 40; const v = api.vesselOf(q, 40 * api.DAY_S), carried = v.parts.find(p => p.crewAboard);
+  const again = api.shapeOf(v.parts.filter(p => p.on), true).find(o => o.crew);   // registered again: still the day they went up
+  Object.assign(v.rec, { launched: true, day0: 40, crewed: true, crewOK: true, crewN: 2 }); api.S = v; v.landed = true; v.alive = true; api.t = 2.5 * api.DAY_S;
+  const D = api.debriefOf(v, v.rec, []);
+  const f = api.newShip(stack); Object.assign(f.rec, { launched: true, day0: 40, crewed: true, crewOK: true, crewN: 2 }); f.landed = true; f.alive = true;
+  const Df = api.debriefOf(f, f.rec, []);   // a fresh crew: this flight's days only, as flow-6
+  api.t = 0; for (const k of Object.keys(P)) delete P[k]; Object.assign(P, JSON.parse(saved));
+  check('space Q214: a crew brought home from a station counts its days since it went up; a fresh crew only this flight',
+    cap && cap.up === 10 && carried && carried.crewUp === 10 && again && again.up === 10 && D.crew && D.crew.before === 30
+      && /^Crew of 2 home safe after 33 days in space$/.test(D.crew.line) && Df.crew && /^Crew of 2 home safe after 2\.5 days$/.test(Df.crew.line),
+    `went up day ${cap && cap.up}, carried ${carried && carried.crewUp}, re-registered ${again && again.up}; "${D.crew && D.crew.line}" · fresh "${Df.crew && Df.crew.line}"`);
+}
+
+// space-22. Rover science as volumes (space session, QUEUE Q198): a reading is bits (RV_BITS) and goes home at the
+// contact's rate, oldest first; an older save's reading (no `b`) goes at once. Own sim instance. Prints the send times.
+{
+  const D = new Function(src + 'return {geoAt,rvNew,rvSciSend,rvContact,RV_BITS,SELENE,TELLUS,PROG,HOOK,bodyPos,linkRate,P_ROVER,P_RADIO,G_WHIP,G_RVHG,G_STATION,selSci};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
+  const u = [-1, 0, 0], R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots: ['spec', 'cam', 'ant', 'bat', 'sol', null, null, null] }, B, mul(u, B.R), [0, 1, 0], {});
+  R.name = 'Vol'; const c = D.rvContact(R, 0, []), S = D.selSci(), n0 = S.panos.length, s0 = (S.spec.mare || []).length + (S.spec.high || []).length;
+  const spec = () => ({ k: 'spec', unit: 'mare', T: 0, pf: R.p.slice(), FeO: 15, TiO2: 3, Al2O3: 10, b: D.RV_BITS.spec });
+  R.data = [{ k: 'pano', q: 1, el: 10, unit: 'mare', T: 0, b: D.RV_BITS.pano }, spec()];
+  const tPano = D.RV_BITS.pano / c.rate, early = D.rvSciSend(R, c, 0.9 * tPano), mid = R.data.length;
+  const done = D.rvSciSend(R, c, 0.2 * tPano), got = S.panos.length - n0;
+  const old = { k: 'spec', unit: 'mare', T: 0, pf: R.p.slice(), FeO: 15, TiO2: 3, Al2O3: 10 }; R.data = [old]; const instant = D.rvSciSend(R, c, 0);
+  const dSel = len(D.bodyPos(B, 0)), whip = Math.min(D.linkRate(D.P_ROVER, D.G_WHIP, D.G_WHIP, 1000e3), D.linkRate(D.P_RADIO, D.G_WHIP, D.G_STATION, dSel));
+  check('space Q198: rover readings go home at the link\'s rate, oldest first: a panorama on the high-gain dish in minutes, not at once; old readings at once',
+    c.ok && c.rate > 0 && early === 0 && mid === 2 && done === 2 && got === 1 && instant === 1 && tPano > 60 && tPano < 3600,
+    `high-gain from the near side ${c.rate.toFixed(0)} bit/s: panorama ${(tPano / 60).toFixed(1)} min, spectrum ${(D.RV_BITS.spec / c.rate).toFixed(0)} s; `
+    + `a whip through a relay 1,000 km up: ${whip.toFixed(0)} bit/s, panorama ${(D.RV_BITS.pano / whip / 3600).toFixed(1)} h, spectrum ${(D.RV_BITS.spec / whip / 60).toFixed(1)} min`);
+}
+
+// space-23. Landed entries' power and recharging by servicing (space session, QUEUE Q213): a lander on Selene keeps a
+// battery through its site's day and night (landPowInit); flat, it works only by day, and a relay it carries with it;
+// flying an entry gives it the charge it has now; docking tops up the emptier battery from the fuller one. Own instance.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,landPowInit,landLit,satOn,satDuty,satPowTick,dockCharge,powCap,powPeak,vesselOf,SELENE,TELLUS,PROG,HOOK,DAY_S};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; const B = D.SELENE, P = D.PROG; P.sats = [];
+  const s = D.newShip(D.PRESETS.Probe); Object.assign(s, { body: B, landed: true, alive: true });
+  const q = { landed: true, bodyName: B.name, pf: [-B.R, 0, 0] }; D.landPowInit(s, q, 0); P.sats.push(q);
+  const w = q.pw, Pd = 2 * Math.PI / B.n, mean = w ? (w.avg - w.rtg) / w.peak : 0;
+  // when is it day there? sample the next lunar day for a noon and a midnight
+  let noon = 0, mid = 0, cn = -2, cm = 2; for (let i = 0; i < 96; i++) { const T = i * Pd / 96, c = D.landLit(q, T); if (c > cn) { cn = c; noon = T; } if (c < cm) { cm = c; mid = T; } }
+  const full = D.satDuty(q); let days = 0; while (q.Ewh > 0 && days < 60) { D.satPowTick(1); days++; }
+  const flat = D.satDuty(q), onNoon = D.satOn(q, noon), onMid = D.satOn(q, mid);
+  // flying it: the charge it has now (flat), not what it was registered with
+  const a = 6.9e6, o = { stack: s.stack, shape: [], vst: { E: D.powCap(s) }, pw: { avg: 1, use: 2, ecl: .3, cap: 1, need: 1, peak: 1, rtg: 0 }, Ewh: 0, epoch: 0, r: [a, 0, 0], v: [0, 7.6e3, 0], qo: [0, 0, 0, 1] };
+  o.shape = s.parts.filter(p => p.on).map(p => ({ k: p.d.key, pos: p.pos.slice(), y0: p.y0, h: p.h, i: p.i, oi: p.i }));
+  const v = D.vesselOf(o, 0), flown = v.E;
+  // servicing: a full visitor docks with the flat satellite
+  const vis = D.newShip(D.PRESETS.Probe); vis.E = D.powCap(vis); v.E = 0; const moved = D.dockCharge(vis, v);
+  check('space Q213: a Selene lander runs on its site\'s day and night, flat it works by day only; a flown entry keeps its charge; docking recharges it',
+    w && Math.abs(w.ecl - 0.5) < 0.06 && Math.abs(mean - 1 / Math.PI) < 0.03 && full === 1 && days < 60 && flat > 0 && flat < 1 && onNoon && !onMid
+      && flown === 0 && moved > 0 && v.E === moved && vis.E >= D.powCap(vis) / 2 - 1,
+    `Selene day ${(Pd / 3600).toFixed(0)} h: night ${(w.ecl * 100).toFixed(0)} %, cells give ${(mean * 100).toFixed(0)} % of peak on average; load ${w.use} W vs ${w.avg.toFixed(1)} W; `
+    + `flat after ${days} days, then ${(flat * 100).toFixed(0)} % (noon ${onNoon}, midnight ${onMid}); flown with ${flown} J; docking moved ${(moved / 3600).toFixed(0)} Wh`);
+}
+
+// space-24. Debris that exists only as you pass (space session, QUEUE Q200): in orbit, a flight rolls the band's
+// fragments each step; a hit is scheduled FRAG_LEAD seconds ahead (s.fragIn, HOOK.fragIn) and strikes one part when it
+// arrives: cells or an antenna are lost to any piece, the rest only to 40 J/g. Crewed craft get a warning, not a hit.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,fragPass,fragStrike,breakup,fragBands,partMass,TELLUS,PROG,HOOK,BAND_W,DAY_S,YEAR_D,FRAG_LEAD,get t(){return simT},set t(v){simT=v}};')();
+  const msgs = [], seen = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.news = () => {}; D.HOOK.boom = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.fragIn = (s, x) => seen.push(x);
+  const P = D.PROG, T = D.TELLUS; P.pressures = { debris: 'real' }; P.frag = null;
+  const orbit = (s, h) => { const r = T.R + h; Object.assign(s, { body: T, landed: false, alive: true, r: [r, 0, 0], v: [0, 0, Math.sqrt(T.mu / r)] }); s.rec.launched = true; return s; };
+  // the real odds: one 1 t breakup at 400 km, a Probe flying through the thickest band
+  D.breakup(400e3, 1000); const s = orbit(D.newShip(D.PRESETS.Probe), 400e3), lam = D.fragPass(s, 0, () => 1), perYear = lam * D.DAY_S * D.YEAR_D;
+  // a hit, forced: the roll says yes, then size, angle, speed
+  const seq = [0, 0.99, 0.25, 0.5]; let k = 0; D.t = 100; D.fragPass(s, 1, () => seq[k++] ?? 0.5); const x = s.fragIn, coming = !!x && seen.length === 1 && x.at === 100 + D.FRAG_LEAD;
+  D.t = 100 + D.FRAG_LEAD - 0.5; D.fragPass(s, 0.5, () => 1); const notYet = !!s.fragIn;
+  // when it arrives: aim the roll at the cells, then at the heaviest part (the full 32 t tank: 1.3 GJ to shatter, so a
+  // 30 cm piece at 10 km/s, 0.7 GJ, isn't enough; 50 cm is)
+  const on = s.parts.filter(p => p.on), w = on.map(p => Math.cbrt(D.partMass(p)) ** 2), W = w.reduce((a, c) => a + c, 0), at = i => (w.slice(0, i).reduce((a, c) => a + c, 0) + w[i] / 2) / W;
+  const iSol = on.findIndex(p => p.d.kind === 'solar'), iBig = w.indexOf(Math.max(...w));
+  D.t = 100 + D.FRAG_LEAD; D.fragPass(s, 0.5, () => at(iSol)); const solLost = !on[iSol].on, landed = !s.fragIn;
+  const dent = D.fragStrike(s, { L: 0.01, m: 1000 * Math.PI / 6 * 1e-6, vr: 10e3 }, () => at(iBig)), bigOK = on[iBig].on && dent && !dent.lost;
+  const huge = D.fragStrike(s, { L: 0.5, m: 1000 * Math.PI / 6 * 0.125, vr: 10e3 }, () => at(iBig)), bigLost = huge && huge.lost && !on[iBig].on;
+  // crewed: no strike, one warning (the band thickened so the warning applies)
+  P.frag[Math.floor(400e3 / D.BAND_W) - 2] *= 1e4; const c = orbit(D.newShip(D.PRESETS.Probe), 400e3); c.rec.crewed = true; const m0 = msgs.length;
+  D.fragPass(c, 1, () => 0); D.fragPass(c, 1, () => 0); const warned = msgs.length - m0 === 1 && !c.fragIn;
+  D.t = 0; P.frag = null; P.pressures = {};
+  check('space Q200: fragments rolled as you pass: seen coming, they strike a part when they arrive (cells to any piece, the rest to 40 J/g); crewed craft are warned',
+    perYear > 0 && coming && notYet && solLost && landed && bigOK && bigLost && warned,
+    `real odds after a 1 t breakup at 400 km: ${perYear.toExponential(1)} hits a year for the Probe; forced: a ${(x.L * 100).toFixed(0)} cm piece at ${(x.vr / 1e3).toFixed(1)} km/s, `
+    + `cells lost ${solLost}, 1 cm on the ${on[iBig].d.name} dents (${(dent.E / 1e3).toFixed(0)} kJ), 50 cm destroys it (${(huge.E / 1e9).toFixed(1)} GJ); crewed: "${msgs[m0] || ''}" · ${JSON.stringify({ coming, notYet, solLost, landed, bigOK, bigLost, warned })}`);
+}

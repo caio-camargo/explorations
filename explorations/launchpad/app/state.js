@@ -151,6 +151,8 @@ function settleDrops(){for(let i=pendingDrops.length-1;i>=0;i--){const d=pending
   else if(v.kind==='near')HOOK.news(`${stg} lands ${(v.dist/1000-v.city.rad/1000).toFixed(0)} km outside ${v.city.name}; mayor "would like a word"`,'warn');
   else if(v.kind==='sea')HOOK.news(`${stg} splashes down safely at sea`,'ok');
   else if(v.kind==='land')HOOK.news(`${stg} lands in open country, ${(v.dist/1000).toFixed(0)} km from ${v.city.name}`,'ok')}}
+function revertFlight(){if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}
+  if(S)missionDiscard(S);resetShip();HOOK.save();go('flight');HOOK.msg('Reverted to launch')}   // the flight is discarded, not settled (Q257)
 // the tape of the flight in progress: the autopilot's played part while it flies, else the pilot's (Q275, the recorder)
 const recTapeNow=()=>player?tapeCut(player):recTape;
 function resetShip(){if(S){recFlightEnd(S,recTapeNow());missionEnd(S)}FLEET.length=0;heard.clear();impSpread=null;warpTo=null;player=null;impact=null;pendingDrops.length=0;smoke.length=0;simT=0;debris.forEach(d=>d.mesh.free());debris.length=0;booms.length=0;S=newShip(stackDef);recTape=tapeNew(stackDef,S.site);recFlightStart(S,recTape);HOOK.rebuild();warpIdx=0;physAcc=0}
