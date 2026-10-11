@@ -2149,6 +2149,24 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.122 — debris that exists only as you pass (2026-10-11, space session, QUEUE Q200; Caio 2026-10-09)
+
+Fragments (v1.83) were a density per band that hit registered entries between flights; a flight flew through them untouched.
+- **`fragPass(s, dt)`** (`sim/space.js`, from `missionTick` each step, physics or rails): in orbit of Tellus, inside a
+  band with fragments, the same rate as between flights, λ = 4 n R² v (R the craft's half length, v the band's orbital
+  speed), scaled by the debris setting. Seeded per flight (`R.fragRng`), so tapes and procedures repeat.
+- **A hit is rolled `FRAG_LEAD` (3 s) ahead:** `s.fragIn` holds the fragment on its way (size by the L^-1.71 law from
+  1 cm, capped at 50 cm; a crossing speed 0.3–1.7 × v; a direction in the local horizontal) and **`HOOK.fragIn(s, x)`**
+  is there for a view to draw it coming (no view yet: Proposed for look & sound).
+- **`fragStrike`**: it strikes one part, chosen by size (mass^⅔). Solar cells and antennas are lost to any piece;
+  anything else only to 40 J per gram of the part (v1.83's shattering rule): a 1 cm piece at 10 km/s brings 26 kJ and
+  dents a tank, a 50 cm one (3.3 GJ) destroys even a full 32 t tank (30 cm, 0.7 GJ, doesn't). A message says which.
+- **Crewed craft are warned, not struck** (as between flights, pillar 5): one message a flight when the band passes
+  `CREW_WARN`, "about one hit in N years".
+- **The odds** (test `space-24`): after one 1 t breakup at 400 km, the Probe stack through the thickest band: **0.14
+  hits a year**, about one in 70,000 flight-hours. Strikes come with a cascade or an anti-satellite test, as they should.
+- **Not yet:** a hit that punctures a tank (a leak) or damages instead of breaking; the fragment drawn (HOOK.fragIn).
+
 ## v1.121 — landers' power; a flown satellite keeps its charge; docking recharges (2026-10-11, space session, QUEUE Q213; v1.108's "Not in this slice")
 
 - **Landed entries** (`landPowInit`, `sim/space.js`, called by `landRegister`): a lander or base keeps `q.pw` and `q.Ewh`

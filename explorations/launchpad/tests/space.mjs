@@ -668,3 +668,33 @@
     `Selene day ${(Pd / 3600).toFixed(0)} h: night ${(w.ecl * 100).toFixed(0)} %, cells give ${(mean * 100).toFixed(0)} % of peak on average; load ${w.use} W vs ${w.avg.toFixed(1)} W; `
     + `flat after ${days} days, then ${(flat * 100).toFixed(0)} % (noon ${onNoon}, midnight ${onMid}); flown with ${flown} J; docking moved ${(moved / 3600).toFixed(0)} Wh`);
 }
+
+// space-24. Debris that exists only as you pass (space session, QUEUE Q200): in orbit, a flight rolls the band's
+// fragments each step; a hit is scheduled FRAG_LEAD seconds ahead (s.fragIn, HOOK.fragIn) and strikes one part when it
+// arrives: cells or an antenna are lost to any piece, the rest only to 40 J/g. Crewed craft get a warning, not a hit.
+{
+  const D = new Function(src + 'return {newShip,PRESETS,fragPass,fragStrike,breakup,fragBands,partMass,TELLUS,PROG,HOOK,BAND_W,DAY_S,YEAR_D,FRAG_LEAD,get t(){return simT},set t(v){simT=v}};')();
+  const msgs = [], seen = []; D.HOOK.msg = m => msgs.push(m); D.HOOK.news = () => {}; D.HOOK.boom = () => {}; D.HOOK.rebuild = () => {}; D.HOOK.fragIn = (s, x) => seen.push(x);
+  const P = D.PROG, T = D.TELLUS; P.pressures = { debris: 'real' }; P.frag = null;
+  const orbit = (s, h) => { const r = T.R + h; Object.assign(s, { body: T, landed: false, alive: true, r: [r, 0, 0], v: [0, 0, Math.sqrt(T.mu / r)] }); s.rec.launched = true; return s; };
+  // the real odds: one 1 t breakup at 400 km, a Probe flying through the thickest band
+  D.breakup(400e3, 1000); const s = orbit(D.newShip(D.PRESETS.Probe), 400e3), lam = D.fragPass(s, 0, () => 1), perYear = lam * D.DAY_S * D.YEAR_D;
+  // a hit, forced: the roll says yes, then size, angle, speed
+  const seq = [0, 0.99, 0.25, 0.5]; let k = 0; D.t = 100; D.fragPass(s, 1, () => seq[k++] ?? 0.5); const x = s.fragIn, coming = !!x && seen.length === 1 && x.at === 100 + D.FRAG_LEAD;
+  D.t = 100 + D.FRAG_LEAD - 0.5; D.fragPass(s, 0.5, () => 1); const notYet = !!s.fragIn;
+  // when it arrives: aim the roll at the cells, then at the heaviest part (the full 32 t tank: 1.3 GJ to shatter, so a
+  // 30 cm piece at 10 km/s, 0.7 GJ, isn't enough; 50 cm is)
+  const on = s.parts.filter(p => p.on), w = on.map(p => Math.cbrt(D.partMass(p)) ** 2), W = w.reduce((a, c) => a + c, 0), at = i => (w.slice(0, i).reduce((a, c) => a + c, 0) + w[i] / 2) / W;
+  const iSol = on.findIndex(p => p.d.kind === 'solar'), iBig = w.indexOf(Math.max(...w));
+  D.t = 100 + D.FRAG_LEAD; D.fragPass(s, 0.5, () => at(iSol)); const solLost = !on[iSol].on, landed = !s.fragIn;
+  const dent = D.fragStrike(s, { L: 0.01, m: 1000 * Math.PI / 6 * 1e-6, vr: 10e3 }, () => at(iBig)), bigOK = on[iBig].on && dent && !dent.lost;
+  const huge = D.fragStrike(s, { L: 0.5, m: 1000 * Math.PI / 6 * 0.125, vr: 10e3 }, () => at(iBig)), bigLost = huge && huge.lost && !on[iBig].on;
+  // crewed: no strike, one warning (the band thickened so the warning applies)
+  P.frag[Math.floor(400e3 / D.BAND_W) - 2] *= 1e4; const c = orbit(D.newShip(D.PRESETS.Probe), 400e3); c.rec.crewed = true; const m0 = msgs.length;
+  D.fragPass(c, 1, () => 0); D.fragPass(c, 1, () => 0); const warned = msgs.length - m0 === 1 && !c.fragIn;
+  D.t = 0; P.frag = null; P.pressures = {};
+  check('space Q200: fragments rolled as you pass: seen coming, they strike a part when they arrive (cells to any piece, the rest to 40 J/g); crewed craft are warned',
+    perYear > 0 && coming && notYet && solLost && landed && bigOK && bigLost && warned,
+    `real odds after a 1 t breakup at 400 km: ${perYear.toExponential(1)} hits a year for the Probe; forced: a ${(x.L * 100).toFixed(0)} cm piece at ${(x.vr / 1e3).toFixed(1)} km/s, `
+    + `cells lost ${solLost}, 1 cm on the ${on[iBig].d.name} dents (${(dent.E / 1e3).toFixed(0)} kJ), 50 cm destroys it (${(huge.E / 1e9).toFixed(1)} GJ); crewed: "${msgs[m0] || ''}" · ${JSON.stringify({ coming, notYet, solLost, landed, bigOK, bigLost, warned })}`);
+}

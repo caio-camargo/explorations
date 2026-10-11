@@ -224,6 +224,29 @@ const fragTau=b=>FRAG_TAU[b]??(FRAG_TAU[b]=BAND_W/Math.max(1e-30,-dragRates(band
 const catFrac=(M,v)=>{const L=Math.cbrt(2*CAT_E*M/(v*v)/(FRAG_RHO*Math.PI/6));return Math.min(1,Math.pow(L/FRAG_LC,-1.71))};
 // hits a day on an entry from the fragment bands (real rates)
 function fragRate(q){const F=fragBands(),c=resid(q);let s=0;for(let b=0;b<BAND_N;b++)if(c.f[b]&&F[b])s+=c.f[b]*F[b]/bandV(b)*Math.sqrt(TELLUS.mu/bandR(b));return 4*c.R*c.R*s*DAY_S}
+// debris that exists only as you pass (space, Q200; Caio 2026-10-09): during a flight in orbit the band's fragments are
+// rolled each step, the same rate as between flights (4 n R² v, R the craft's half length, scaled by the debris setting).
+// A hit is rolled FRAG_LEAD seconds ahead: s.fragIn holds the fragment on its way (size from the L^-1.71 law, a crossing
+// speed, a direction in the local horizontal) and HOOK.fragIn lets a view draw it coming. When it arrives it strikes
+// one part (by size): a fragile one (cells, antenna) is lost to any piece; anything else only to 40 J per gram, as the
+// shattering rule. Crewed craft are not struck by surprise (as between flights): a warning once a flight instead.
+// Real odds are small (a Probe stack through the thickest band after one 1 t breakup at 400 km: 0.14 hits a year): strikes
+// come with a cascade or an anti-satellite test, as they should.
+const FRAG_LEAD=3,FRAG_FRAGILE={solar:1,ant:1};
+function fragPass(s,dt,roll){const R=s.rec;if(!roll)roll=R?R.fragRng||(R.fragRng=rng((PROG.flights*7919+(PROG.wseed|0))|0)):Math.random;   // seeded per flight: replays and procedures stay repeatable
+  if(s.fragIn&&simT>=s.fragIn.at){const x=s.fragIn;s.fragIn=null;fragStrike(s,x,roll)}
+  if(s.fragIn||!s.alive||s.landed||s.body!==TELLUS)return 0;const b=Math.floor((len(s.r)-TELLUS.R-TELLUS.atm)/BAND_W);if(b<0||b>=BAND_N)return 0;
+  const F=fragBands(),K=PRESSURE_K[pressureOf('debris')]||0;if(!F[b]||!(K>0))return 0;
+  const v=Math.sqrt(TELLUS.mu/bandR(b)),Rr=Math.max(1,(s.len||2)/2),lam=4*Rr*Rr*F[b]/bandV(b)*v*K;
+  if(crewOn(s)||R&&R.crewed){if(R&&!R.fragWarn&&lam*DAY_S*YEAR_D>=CREW_WARN){R.fragWarn=1;{const y=1/(lam*YEAR_D*DAY_S);HOOK.msg(`Fragment cloud in this orbit: about one hit ${y>=1?`in ${Math.round(y)} years`:`every ${Math.max(1,Math.round(y*YEAR_D))} days`} (crewed craft are warned, not struck)`)}}return lam}
+  if(roll()>=1-Math.exp(-lam*dt))return lam;
+  const L=Math.min(0.5,FRAG_LC*Math.pow(1-roll(),-1/1.71)),up=norm(s.r),e=norm(cross(up,s.v)),a=2*Math.PI*roll(),dir=add(mul(norm(s.v),Math.cos(a)),mul(e,Math.sin(a)));
+  s.fragIn={at:simT+FRAG_LEAD,L,m:FRAG_RHO*Math.PI/6*L*L*L,vr:v*(0.3+1.4*roll()),dir};HOOK.fragIn&&HOOK.fragIn(s,s.fragIn);return lam}
+function fragStrike(s,x,roll=Math.random){const on=s.parts.filter(p=>p.on);if(!on.length||!s.alive)return null;
+  const w=on.map(p=>Math.cbrt(partMass(p))**2),W=w.reduce((a,c)=>a+c,0);let u=roll()*W,i=0;while(i<on.length-1&&(u-=w[i])>0)i++;const p=on[i];
+  const E=0.5*x.m*x.vr*x.vr,lost=FRAG_FRAGILE[p.d.kind]||E>=CAT_E*partMass(p)*1000,cm=(x.L*100).toFixed(x.L<0.1?1:0);
+  HOOK.msg(`Debris: a ${cm} cm fragment at ${(x.vr/1000).toFixed(1)} km/s struck the ${p.d.name}${lost?', which is lost':': dented, no harm done'}`);
+  if(lost)partLost(s,p);return{p,lost,E}}
 function asatTest(name,h,mass=1000){const n=breakup(h,mass);HOOK.news(`${name} tests an anti-satellite weapon at ${Math.round(h/1e3)} km: about ${Math.round(n/1e3)},000 new fragments in that band`,'bad');return n}
 function fragTick(T0,T1,roll){const F=fragBands(),days=(T1-T0)/DAY_S;if(!(days>0))return;
   for(const x of PROG.breakups||[])if(!x.frag){breakup(x.h,x.mass);x.frag=1}
