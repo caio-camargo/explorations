@@ -204,3 +204,22 @@
   check('flow-11: the Assembly is a scale model on a desk (a kit scale under 45 cm; no sky, pads or cities there; lamp light and its shadow); only the Assembly',
     fit && tight && only && skips && lamp, `scales ${picks.map(([h, n]) => `${h} m→1:${n}`).join(', ')} · fit ${fit} · tight ${tight} · assembly only ${only} · skips ${skips} · lamp ${lamp}`);
 }
+
+// flow-12. Small playtest fixes (flow session, 2026-10-11; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254,
+// Q258): the node panel's Delete reaches the delete (its 'del' used to match the Δv nudges) and deletes the selected node;
+// a landed vessel at home is recovered; the map draws one arc and one impact (the leg stops at the top of the air) and a
+// slow decay that outlasts the fall's steps is no impact; the planets' ring sits outside the moons; the player reads
+// "Design table"; the overlay is drawn at device pixels; flight HUD buttons sit on an opaque plate.
+{
+  const H = html.replace(/\r\n/g, '\n'), page = H.slice(H.indexOf('// ==== SIM END'));
+  const del = /if\(\/\^d\[012\]\[\+-\]\$\/\.test\(a\)\)/.test(page) && /else if\(a==='del'\)nodeDelSel\(\)/.test(page) && /k==='delete'&&S\.node\)nodeDelSel\(\)/.test(page) && /else S\.nodeQ\.splice\(k-1,1\)/.test(page);
+  const rec = /const debRecover=\(\)=>!!\(S&&S\.alive&&S\.landed&&S\.body===TELLUS\)/.test(page) && /'Recover vessel ▸ \[Enter\]'/.test(page);
+  const arcs = /fallIn=k===0&&!dash&&pt\.b\.atm&&impact/.test(page) && /if\(fallIn&&t>=simT&&rl<top&&up\)/.test(page) && /return f&&f\.capped\?null:f\}/.test(H) && /capped:i>=40000/.test(H) && /if\(T&&T\[i\]<t0\)continue/.test(page);
+  const ring = /rr=moons<2\.5\*cam\.mDist\?Math\.max\(cam\.mDist\*\.3,moons\)/.test(page) && /not to scale/.test(page);
+  const named = /assembly:'Design table'/.test(page) && /<button id="bEditor">Design table<\/button>/.test(H) && !/>Assembly \[B\]</.test(H) && /TO THE DESIGN TABLE/.test(H);
+  const crisp = /octx\.setTransform\(OV_K,0,0,ov\.height\/H,0,0\)/.test(page) && /shadowBlur=6\*k\*OV_K/.test(page);
+  const plate = /#hud button\{background:rgba\(9,15,24,\.86\)/.test(H);
+  const nav = /body\.mapv #nav\{width:130px/.test(H) && /\['N',f\.n,'#ff4a3a'\]/.test(page);
+  check('flow-12: small fixes: node Delete, Recover vessel, one arc and one impact, no decay round the planet, the planets ring, Design table, crisp overlay, toolbar plate, navball on the map',
+    del && rec && arcs && ring && named && crisp && plate && nav, `delete ${del} · recover ${rec} · arcs ${arcs} · ring ${ring} · named ${named} · crisp ${crisp} · plate ${plate} · navball ${nav}`);
+}

@@ -1,5 +1,5 @@
 # Launchpad — a lean rocket/orbit sandbox
-**Version**: v1.21.49 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
+**Version**: v1.21.50 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-06 · **Status**: prototype, playable
 **Purpose**: See how small a KSP-like core can be when it's built for leanness from the start.
 
 [Run it](index.html) (WebGL2, any modern browser). Headless checks: `node test.mjs`.
@@ -2148,6 +2148,43 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   wait for its window (`kind 'window'`, the pad held). **Flow:** `.cbar.window` has no style yet, and
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
+
+## v1.118 — small playtest fixes: the toolbar, Recover vessel, node delete, the map's arcs, the Design table (2026-10-11, flow session; QUEUE Q273, Q263, Q255, Q260, Q266, Q256, Q272, Q269, Q254, Q258)
+- **Q273 (PLAYTEST #73), the toolbar on a bright sky:** flight HUD buttons and the warp readout sit on an opaque dark
+  plate (`#hud button`, `#hud #warp`); the navball's heading line has a dark text shadow. The notebook map's ink
+  (`body.paper`) still wins there.
+- **Q263 (#63), Recover vessel:** landed or splashed at home and still, *End flight ▸* reads **Recover vessel ▸ [Enter]**
+  in green (`debRecover()`, `debEndBtn` in `app/debrief.js`), and the Esc menu says the same. Landed on a moon, it stays
+  *End flight*. The Debrief already counts the recovery.
+- **Q255 (#54), deleting a node:** the cause was in the node panel's click handler: any action starting with `d` was
+  read as a Δv nudge (`d0+`…), so the **Delete** button's `del` never reached the delete. Only the Del key worked. Now
+  the nudges match `/^d[012][+-]$/`, and Delete (button or key, `nodeDelSel()`) removes **the selected node** (it used
+  to drop the active one whichever was selected) and says which went and how many are left.
+- **Q260 (#60), two arcs and two impacts:** Tellus's legs are numeric paths, so the predicted orbit was drawn whole
+  through the air beside the impact predictor's path, with its own *Impact in* label. Now, with the predictor on, the
+  current leg stops where it **enters the air from above** (climbing through the air, the arc and apoapsis still show;
+  falling inside it, only the predictor's path does), and the leg drops its Pe/Impact labels. The conic branch (other
+  bodies) does the same. The spread marks are circles labelled *spread ±N km*, not more X's; a dropped stage's mark
+  says *<stage> falls*.
+- **Q266 (#66), paths round the planet:** `fall()` keeps each point's time (`pathT`) and flags a run that used up its
+  40,000 steps still in the air (`capped`). `predictImpact` treats a capped run as **no impact** (it used to give the
+  last point as one). When there is an impact, the map draws **only its last revolution**, and the label says *after ~N
+  orbits*. `debrisImpact` is unchanged.
+- **Q256 (#55), the planets' ring:** it sits outside the moons' orbits whenever they're in view (1.25 × the farthest
+  moon's apoapsis), and a label says *the planets: direction only, not to scale*. Zoomed in close it's the old compass.
+- **Q272 (#72), the Design table:** every name a player reads (buttons, keys, the Esc menu, the screen name, the desk's
+  exit **TO THE DESIGN TABLE ▶ [B]**, the Debrief, the supply-run and dry-run lines), PLAYROUTE and the TESTING steps.
+  The screen id stays `assembly`, and the pads' assembly halls keep their name.
+- **Q269 (#69), first-run choices:** the chosen archetype is a dark ticked button with a red bar (the desk's paper
+  buttons had flattened `.on`), and a note above the start options says what's chosen and that picking a start begins the
+  career. Decisions (`data-dk`) answer on the click, so they need no selected state.
+- **Q254 (#53, #57), the navball:** shown on the map too (130 px, beside its heading line). Pitch marks every 10° (30°
+  and 60° stronger), heading marks every 30° (the quarters stronger), and **N** in red with E, S, W on the horizon.
+- **Q258 (#58), the terminal looked low-res:** the overlay canvas (labels, the era maps, the gauges) had the 3D view's
+  adaptive resolution and was upscaled. It is now sized at device pixels (up to 2×), and drawing stays in the 3D view's
+  pixels through a transform (`OV_K`). The glow's `shadowBlur` is scaled by hand, since it ignores the transform.
+- **Checks:** test `flow-12` (`tests/flow.mjs`). Probes: the delete, Recover vessel, the arcs at 61 km and 137 km
+  periapsis, the terminal map, an ascent on the map. Robot `m1`, 127, `desk`.
 
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
