@@ -51,6 +51,7 @@ the feedback I paste into PLAYTEST items.*
 
 ## Flags (read before merging)
 
+- **`test.mjs` IS SPLIT (Q68, 2026-10-11): test sections now live in `explorations/launchpad/tests/<lane>.mjs`.** Merge `main` before adding a test. `test.mjs` keeps only the prelude (`api`, `check`, `LEO`…) and the summary; add your section **at the end of your lane's file** (`core`, `flow`, `economy`, `vehicle`, `space`, `world`, `look`, `qa`, `platform`). Same commands, same labels. **A branch that added a section to `test.mjs`:** on merging `main`, keep `main`'s `test.mjs` and move your section into your lane's file (one left inline still runs, first). NOTES § "Test shards".
 - **The file split landed** (`00e3e31`): the script is now `sim/*.js` and `app/*.js`. **Every branch: merge `main` before
   your next edit**; a branch cut before the split re-applies its changes into the new files (NOTES § "The file split").
 - **Fixes landed** (`ae3d4aa`). **Flow:** the toolbar `.tr` is now absolute top-right (fixes' call; revert if you own it differently).
@@ -413,7 +414,7 @@ Worktree `launchpad-platform` (branch `platform`, port 8801).
 | Q124 | **World settings for pressures** (debris, solar storms, later ones: off / light / real, chosen at world creation, saved with the world) — LATE_GAME.md § Events | M2 | S | ⚙ | ready (debris Q146–Q147 and Q57 ✓; with Q148) |
 | Q58 | 📝 The split plan: modules (`sim/*.js` first, then render, ui, builder), how test.mjs loads the same files, a mechanical split script, a freeze window (Caio picks it) | M1 | M | 📝 | ✓ with Q59 |
 | Q59 | The split, on the plan, in the freeze window (one commit, the full suite as the oracle) | M1 | M | ⚙ | ✓ `00e3e31` (21 classic scripts in `sim/`, `app/`; NOTES § "The file split". **Everyone: merge `main` before your next edit**) |
-| Q68 | `test.mjs` into per-area files (`tests/*.mjs`, same runner and shards): every lane appends to it, the next conflict hotspot (NOTES § "The file split") | M1 | M | ⚙ | → wildcard (platform overflow) 2026-10-11 |
+| Q68 | `test.mjs` into per-area files (`tests/*.mjs`, same runner and shards): every lane appends to it, the next conflict hotspot (NOTES § "The file split") | M1 | M | ⚙ | ✓ `d4b1612` (`tests/<lane>.mjs`, 171 sections; `shards.mjs` splices them; NOTES § "Test shards") |
 | Q69 | Split `app/gl.js` (1,532 lines) by what it draws: setup, shaders, meshes, planet/sky, plume, pad | — | M | ⚙ | after Q20 (effects is in the shaders) |
 | Q70 | 📝 ES modules, one area at a time, once an area's cross-file names are few (ROADMAP § Platform step 4) | — | L | 📝 | ready (plan only) |
 | Q38 | Cheap wins: world generation in a worker and cached, typed arrays in hot loops | — | M | ⚙ | ready |
@@ -521,3 +522,4 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - every lane — `logEv('kind', text)` (v1.117) where something happens that no `HOOK.msg` says: part failures when they exist, docking, rover events — Q265
 - **UI declutter pass** (D16, UI.md § 3–4), on today's layout before the rooms: the Program's NEXT card as read 1 and offers as one line each; the Assembly's GO/NO-GO board; the flight's dark cockpit (a phase card, news held during ascent, burns and landing, the master caution, unavailable hold modes hidden, Ap/Pe hidden when landed, the help bar behind `?`); the colour code (red, amber, green reserved); the map's label declutter and days instead of TU. Each screen passes UI.md's three checks (squint, five seconds, inventory). Flow; Q239 and Q53 then build to UI.md.
 - **Hover-term glossary** (D16, UI.md rule 9): Δv, TWR, max-q, apoapsis, know-how and the rest as hover terms, one level deep, shared by every screen; the explanatory sub-lines go. Flow.
+- platform — `--isolation` could run each lane file alone too (`--only` by file), and `--list` could group by file — Q68
