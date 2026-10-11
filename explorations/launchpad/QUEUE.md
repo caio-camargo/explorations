@@ -1,5 +1,5 @@
 # Launchpad — work queue
-**Version**: 0.1.54 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
+**Version**: 0.1.55 · **Author**: Caio Camargo + Claude (orchestrator session) · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: live
 **Purpose**: So that every launchpad session always has a next thing to do, without Caio having to decide it each time.
 Kept by the **orchestrator session**, which refreshes it about every 30 minutes (pull, read claims and the log, strike
 done items, add follow-ups, push). Sources: NOTES "Next"/"Not yet" lines, [`PLAYTEST.md`](PLAYTEST.md), [`TESTING.md`](TESTING.md),
@@ -12,7 +12,7 @@ lanes, evergreen work); the long tail stays in NOTES.
 
 | # | Item | Who | What it frees |
 |---|---|---|---|
-| 1 | **W16: Caio plays the first hour** (2026-10-11: no outside player; Caio is the player): M1's last finish line. Everything before it is ✓ (robot `m1`, overlaps, pacing, Q216, Q221, Q208); `node playtest.mjs --watch m1` (Q224) shows the route first | **you** (find the player) | **M1 done**; M2 becomes current |
+| 1 | **Q292 → W16: your first hour.** W16 answered: you are the player (M1's last finish line). Before you sit down: Q257 (space, P1), flow's Q263/Q269/Q273, vehicle's Q264, then QA's Q292 (PLAYROUTE for the rooms, `m1` re-run) says it's ready | space, flow, vehicle (running); QA (**no session**); then **you** | **M1 done**; M2 becomes current |
 | 2 | **Q241: the other rooms**: R4 **mission control** first (it frees five items), then R3 the charter, R5 the desk room. Done: R2 the report (v1.116), Q240 the Program desk (v1.114), Q242 the model on the desk (v1.115) | flow (**idle**) | mission control's consoles (Q43, Q167, Q196, Q203, Q170) |
 | 3 | **Q19: the first load takes 86–88 s** on Windows (71 s linking the sky shader); fix built on branch `terrain`, needs its timing A/B on a **quiet machine** and the merge | world (**no session**) | every player's first visit |
 | 4 | **Your picks**: **W29** bodies round 2 (`mockups/bodies/`); **W31** the crew's head (round 5 is the face lab's house head); **W33** the face lab (breed ~10 generations, paste your picks). W14 has a default (the 1965 mix), so Q53 can start | you | Q80–Q85; the head build; F2–F5 |
@@ -156,6 +156,7 @@ Worktree `launchpad-ui` (branch `ui`, port 8795).
 | Q281 | **Our own navball and node look** (D15 3, KSPISMS.md): own glyphs and palette, not KSP's (yellow-green prograde, blue node, green/purple/cyan handles); the ball as the era's flight director (an 8-ball early). With Q254 (north, degree marks) and W14's instrument panel | M1 | M | 🖥 | ready |
 | Q286 | **UI declutter pass** (D16, UI.md § 3–4) on today's layout, before the rooms: the Program's NEXT card as read 1 and offers one line each; the Assembly's GO/NO-GO board; the flight's dark cockpit (see the Proposed line for the full list) | M1 | M | 🖥 | ready |
 | Q287 | **Hover-term glossary** (D16, UI.md rule 9): Δv, TWR, max-q, apoapsis, know-how and the rest as hover terms, one level deep, shared by every screen; the explanatory sub-lines go | M1 | S | 🖥 | ready |
+| Q293 | **Losses explained** (REVIEW § 3 gap 1): the Debrief stores a loss's cause (from the crash message; with vehicle's Q264) and shows it; every line of money named (the "days passing" lump split: budget, debt, refunds); with economy | M1 | S | 🖥 | ready |
 
 ### economy — program, contracts, money (resume from [`HANDOFF-economy.md`](HANDOFF-economy.md))
 Worktree `launchpad-economy` (branch `economy`, port 8774).
@@ -204,7 +205,7 @@ Worktree `launchpad-economy` (branch `economy`, port 8774).
 | Q96 | 📝 Overflight politics: launching over a neighbour (`site.downrange.over`) costs opinion or needs consent. Check it against ROADMAP § Pillars first | M2 | M | 📝 | ✓ plan `660a522` (NOTES § "Plan: overflight politics"; W item for Caio) |
 | Q110 | 📝 **Goods on routines** (propellant, supplies, crew, hardware), outposts' self-sufficiency and exports, capstones and records for epochs 6–10 ([`LATE_GAME.md`](LATE_GAME.md)) | M4 | L | 📝 | ✓ plan `9dcbbd9` (NOTES § "Plan: goods on routines…"; W item) |
 | Q282 | 📝 **The simulator replaces revert** (D15 5, CREW.md 0.2.8 § Skill): any mission flown in the simulator, free, no news, revert at will; real flights can't be reverted; simulator time trains crew qualifications. Plan with flow (the screen) and space (Q257's discard path stays for the simulator) | M2 | L | 📝 | ready (plan first) |
-| Q283 | 📝 **Crew skill by qualification** (D15 4, CREW.md 0.2.8 § Skill): revise the roster plan's slices (Q133, Q135–Q137, NOTES § "Plan: the roster…") for titles by era and school, qualifications from the simulator, time in type | M3 | S | 📝 | ready (plan revision) |
+| Q283 | 📝 **Crew skill by qualification** (D15 4, CREW.md 0.2.8 § Skill): revise the roster plan's slices (Q133, Q135–Q137, NOTES § "Plan: the roster…") for titles by era and school, qualifications from the simulator, time in type; also Q134 and Q182, and **named crew in the Debrief and the memorial** (REVIEW-2026-10-11 § 3 gap 2) | M3 | S | 📝 | ready (plan revision) |
 ### vehicle — parts, construction screen, attitude, aero, heating, nodes (was builder + control)
 Worktrees `launchpad-builder` (branch `builder`, port 8772), `launchpad-control` (branch `control`, port 8796).
 | # | Item | M | Size | Load | State |
@@ -410,6 +411,7 @@ Worktrees `launchpad-playtest` (branch `playtest`, port 8799), `launchpad-tester
 | Q132 | TESTING rows 139, 140, 142 are each used twice: renumber. And a robot career past year 7 wanting target/docking SAS on a probe now needs an `ocomp` (v1.68) | — | S | 📝 | ✓ effects 2026-10-09: rows renumbered (162/163 → 165/166); the `ocomp` half needs nothing today: `avCap` (sim/power.js) waives the computer under `TEST.tools` (the robot's docking rows) or with crew, and `career.mjs` sets no SAS mode. A future robot career flying target/dock SAS on an uncrewed probe must add an `ocomp` |
 | Q106 | A tester view that cycles the six schools on one rocket, for screenshots | M1 | S | 🖥 | picker ✓ (tester → Hardware school; TESTING 179); the four unbuilt schools light up by themselves after Q102 steps 6–7 |
 | Q224 | **Watch the robot play** (Caio 2026-10-10): `node playtest.mjs --watch m1` opens a visible Chrome and paces the run for a person: flights at real speed (warp in coasts), a caption for what the robot is doing, a mark where it clicks, a pause between steps | M1 | S | 🖥 | ✓ QA 2026-10-10 (`node playtest.mjs --watch[=speed] m1`; NOTES § "Watching the robot play") |
+| Q292 | **Ready Caio's first hour** (REVIEW-2026-10-11 § 5 step 1; W16 now: Caio plays it): refresh PLAYROUTE sitting 1 for the rooms (Program desk, the report, the *Design table* rename); after P1 #56 (Q257) and the first-hour P2s #63, #64, #69, #73 (flow's Q263, Q269, Q273; vehicle's Q264) land, re-run `node playtest.mjs m1` and tell Caio it's ready | M1 | S | 📝→🖥 | ready (**top**; the re-run waits on those fixes) |
 | Q232 | Robot shots for TESTING **192** (the four schools: views 123–126 through `shot.mjs`) and **193** (suits by school and generation); judge what a shot can, leave `~` for the rest (rule 5 for Q228, Q229) | M1 | S | 🖥 | ready |
 | Q233 | **M2's finish line as a robot run, written first** (like Q55 for M1): a robot career reaches a weather + TV network that earns over time, with one routine resupply, using only "advance to next event"; it fails until M2 lands, and the failures list what's missing | M2 | M | 🖥🖥 | ready |
 | Q291 | Q225 **R4**: a recording's key/click steps exported as a `playtest.mjs` row; `PT_RECORD` records the robot's runs | M2 | S | ⚙ | after Q275 |
@@ -545,6 +547,6 @@ The desk drafts by interviewing Caio; once he approves a catalog, the orchestrat
 - ✓ ranked as Q289 (orchestrator 2026-10-11): platform — Q225 **R2** viewer (🖥, M): `?replay`, own slot, saves off; play/pause/speed, chapters, flights re-flown with each frame's op budget — after R1
 - ✓ ranked as Q290 (orchestrator 2026-10-11): platform — Q225 **R3** (🖥, S): scrub (diffs forward; in flight, re-run the tape headless), the camera path, captions and click ripples — after R2
 - ✓ ranked as Q291 (orchestrator 2026-10-11): QA / platform — Q225 **R4** (⚙, S): a recording's key/click steps exported as a `playtest.mjs` row; `PT_RECORD` records the robot's runs — after R1
-- **Ready Caio's first hour** (REVIEW-2026-10-11 § 5 step 1): refresh PLAYROUTE sitting 1 for the rooms (Program desk, report, rename); fix P1 #56 (Q257) and the first-hour P2s #63, #64, #69, #73 first; re-run `playtest.mjs m1` after the rooms. Then W16 (Caio plays). QA + flow; top.
-- **Losses explained** (REVIEW § 3 gap 1): the Debrief stores a loss's cause (from the crash message) and shows it; every line of money named (the "days passing" lump split: budget, debt, refunds). Flow + economy.
-- **The roster, rewritten for qualifications** (REVIEW § 3 gap 2; CREW 0.2.8 § Skill): Q133–Q137 and Q134/Q182 to qualifications, simulator training and time in type; named crew in the Debrief and the memorial. Economy + flow; plan first.
+- ✓ ranked as Q292 (orchestrator 2026-10-11): **Ready Caio's first hour** (REVIEW-2026-10-11 § 5 step 1): refresh PLAYROUTE sitting 1 for the rooms (Program desk, report, rename); fix P1 #56 (Q257) and the first-hour P2s #63, #64, #69, #73 first; re-run `playtest.mjs m1` after the rooms. Then W16 (Caio plays). QA + flow; top.
+- ✓ ranked as Q293 (orchestrator 2026-10-11): **Losses explained** (REVIEW § 3 gap 1): the Debrief stores a loss's cause (from the crash message) and shows it; every line of money named (the "days passing" lump split: budget, debt, refunds). Flow + economy.
+- ✓ ranked as Q283 (merged) (orchestrator 2026-10-11): **The roster, rewritten for qualifications** (REVIEW § 3 gap 2; CREW 0.2.8 § Skill): Q133–Q137 and Q134/Q182 to qualifications, simulator training and time in type; named crew in the Debrief and the memorial. Economy + flow; plan first.
