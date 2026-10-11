@@ -23,7 +23,7 @@
 
 Launchpad coding sessions each work in their own git worktree (outside Google Drive), on their own branch, and merge
 into `main` when a slice is done. The main clone (`C:/Users/caioa/dev/explorations`, see the move note below) stays on
-`main` for planning and docs. **Merging:** merge `origin/main` into your branch in your worktree and test there; then in
+`main` for planning and docs. **Merging:** `git fetch`, then `node check_numbers.mjs` in `explorations/launchpad/` (renumber anything it reports: a version, TESTING/PLAYTEST row or Q/W/D item `origin/main` also took; QUEUE Q160), merge `origin/main` into your branch in your worktree and test there; then in
 the main clone `git pull --ff-only`, `git merge --ff-only <branch>`, `git push origin main` (refused push = `main`
 moved on the other machine: pull and repeat). Not every folder below exists on every machine; `git worktree list` in
 the main clone shows this machine's.
@@ -135,9 +135,9 @@ then removes them from the Drive folder.
 
 | Operator | Started | Scope | Files at risk |
 |----------|---------|-------|---------------|
+> Cleared 2026-10-11: wildcard session, **Q160 `check_numbers.mjs`** on `main` (pushed). **Everyone:** after `git fetch`, `node check_numbers.mjs` in `explorations/launchpad/` prints the next free version / TESTING / PLAYTEST / Q/W/D and fails on a number `origin/main` also took; it's now in the merge recipe above, and test `platform-3` fails on any repeat.
 > Cleared 2026-10-10: QA session, **Q224 `playtest.mjs --watch`** on `main` (pushed). **Everyone writing robot rows:** `PT.fly` and `PT.ascent` now run through `PT.loop`; headless they return as before, but under `--watch` they return a promise, so a step using their value should `await` them inside an async IIFE (m1 and 147 do). `{say: '…'}` is a new step type (a caption when watching, ignored otherwise). Also Q221 (`PT_URL` query joins with `&`) and Q208 (row 147 passes both ascents). Q225, record/replay, filed for platform as a plan item.
 > Cleared 2026-10-10: vehicle session, **v1.113 gates for late parts (Q190)** on `main` (`eeef51b`, pushed; not live). **Everyone:** `partOpen(k)` / `partLaunchWhy(parts)` (`sim/program.js`, by `rvPartOpen`): docking ports, claw, hab, legs and solar wing open with "The beeper"; crew capsule and escape tower with the passenger orbit; bay and arm with "A station"; lab with "A crew aboard"; beacon with the Selene landing; onboard computer and RTG with the onboard-computer era. LAUNCH, Rollout, `dispatchQuote` and `baseRunQuote` refuse a design carrying a locked part; the palette shows it dimmed with 🔒. Off before a program starts and with tester tools. **A new part that should wait:** add it to `PART_GATE` (or give it `era`).
-| Claude (wildcard, platform overflow) | 2026-10-11 | Launchpad **Q160** duplicate-number check (`check_numbers.mjs`, in the merge recipe). Worktree `launchpad-platform`, branch `platform`. ⚙ only | `explorations/launchpad/check_numbers.mjs` (new), launchpad NOTES § merge recipe / a v1.N section, `ACTIVE_WORK.md` merge note |
 | Caio + Claude (look & sound, heads → faces) | 2026-10-10 | Launchpad **Q220 puppet rounds 4–5**, then **D12 face lab F0–F1** (FACES.md § 4: round 5's head as genes, sliders, DNA, breeding grid). Worktree `launchpad-visuals`, branch `visuals`. | `explorations/launchpad/mockups/heads/`, `mockups/faces/` (new), `mockups/README.md` § heads/faces, `FACES.md` (status lines). Reads `intake/` (never commits it: copyrighted refs, public repo) |
 > Cleared 2026-10-10: look & sound, **Q220 round 3 for (b) puppet**: `mockups/heads/deco3.html` (block-built deco head; cut × eyes grid, finishes, sculpted expressions), stills `output/launchpad/mockups/heads/round3-*.png`; still W31.
 > Cleared 2026-10-10: look & sound, **Q220 round 2 for (b) puppet, art deco**: `mockups/heads/deco.html` (six treatments of one face), stills `output/launchpad/mockups/heads/deco-*.png`; still W31.

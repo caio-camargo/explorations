@@ -5214,3 +5214,15 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
 - **Next for flow:** Q241 R3 (the title and first run as the charter) or R4 (mission control); the new PLAYTEST items
   in flow's lane (Q254–Q262: navball on the map, node delete, the planet ring, terminal resolution, map arcs, layers,
   focus).
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q160, the duplicate-number check
+- **Done:** `explorations/launchpad/check_numbers.mjs` (`64de8bc`, merged to `main`): fails on a repeated `## v1.N`
+  (NOTES), TESTING or PLAYTEST row, or Q/W/D item (QUEUE) in the tree, and on a number both this tree and `origin/main`
+  added since their merge base (`--against <ref>`, `none`); prints the next free numbers. Test `platform-3` runs the
+  in-tree half. Added to ACTIVE_WORK's merge recipe and a QUEUE flag. NOTES § "Numbering" (NOTES v1.21.47).
+- **Checks:** full suite 628 PASS, 0 FAIL; smoke after merging `main`. A synthetic branch that also took v1.116 and
+  Q268 → two collisions, exit 1; a planted second TESTING row → a repeat; today's `main` clean.
+- **Files:** launchpad `check_numbers.mjs` (new), `test.mjs`, NOTES; QUEUE (Q160 ✓, flag, two *Proposed*), ACTIVE_WORK.
+- **Note:** the playtest intake session committed in the main clone while my QUEUE flag edit was uncommitted there, so it
+  rode along in `466111b` (correct text, wrong commit). Proposed: stage own paths only in the shared clone.
+- **Next:** optional pre-push hook (Proposed); platform's next ready items: Q265 tester logging, Q68 test.mjs split.
