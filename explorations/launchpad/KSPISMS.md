@@ -1,6 +1,6 @@
 # KSPISMS — what the game inherited from KSP, and what to do about it
 **Version**: 0.1.0 · **Author**: Caio Camargo + Claude (design desk) · **Created**: 2026-10-11 · **Updated**: 2026-10-11
-**Status**: draft; the open calls are **D15** in [`QUEUE.md`](QUEUE.md).
+**Status**: **D15 answered 2026-10-11 (Caio): yes on all six.** Build items in QUEUE *Proposed*; 4 written into CREW.md 0.2.8, 6 (Kerbol) into SYSTEM.md 1.1.1.
 **Purpose**: Caio learned the genre from Kerbal Space Program and asked (2026-10-11) that nothing idiosyncratic to KSP
 come in unexamined. An audit of the docs and code (21 checks), sorted into what stays and what to change. Re-run the
 checks when a big system is designed (crew, science, new UI).
