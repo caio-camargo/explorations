@@ -2149,6 +2149,26 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.118 — a revert discards the flight (2026-10-11, space session, QUEUE Q257; PLAYTEST #56)
+
+Caio reverted a flight and found its rocket in the registry as "Object 1". `resetShip` began with `missionEnd(S)`, so a
+revert *settled* the flight like *End flight*: the coasting vessel joined the registry, the pay and the logbook were
+written, the flight was counted. A revert now goes back to launch, as KSP's does:
+- **`REVERT0`** (`sim/program.js`): the moment a flight lifts off (`missionTick`'s launch block, before it charges the cost,
+  the ops and the site fee or passes the prep days), `JSON.stringify(PROG)` is kept with the flight's record `R`. It lives
+  beside the record, never on it: `satRegister` and the cruise entries keep `R`, and a snapshot there would nest in every
+  save. `flyEntry` (flying a registry entry) takes it before the entry leaves the registry and the ops are paid.
+- **`missionDiscard(s)`**: restores `PROG` in place from that snapshot and marks the record ended (`R.reverted`), so
+  `missionEnd` does nothing afterwards. Without a snapshot (a save loaded mid-flight) the flight is dropped unsettled:
+  nothing registered or paid, nothing given back.
+- **`revertFlight()`** (`app/state.js`): the one revert, used by the button (Esc menu) and the R key. The R key used to
+  skip the "handed over from a dispatch, no revert" check; it doesn't now. It saves after restoring.
+- **Unchanged:** a flight already settled (left for another screen, PLAYTEST #21) can't be reverted into; loading a design
+  or starting a procedure or a tape still settles the flight in progress, as before.
+- **Test:** `space Q257 #56` in `fixes-1`: an Orbiter 40 s into its climb, discarded: the program is byte-identical to its
+  liftoff state and `missionEnd` returns null after.
+- **Next:** D15 (5) replaces revert with a simulator for real flights; this is the revert that simulator will wrap.
+
 ## v1.117 — the tester's verbose log (2026-10-11, wildcard session for the platform lane, QUEUE Q265; PLAYTEST #65)
 
 Caio landed a rocket and had nothing to read back: no `console.log` anywhere. Now, with `?tester`, the tester menu has a

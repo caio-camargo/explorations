@@ -122,7 +122,7 @@ function renderSites(){const el=$('sitePick');if(!el)return;const cur=curSite(),
   // the one-line summary pinned above LAUNCH (PLAYTEST #20): the full picker above scrolls with the panel
   const sl=$('siteLine');if(sl)sl.innerHTML=`${a.ok&&fz.ok?'':'<span style="color:#ff8a7a">⛔</span> '}${cur.name} · ${fmtLat(cur.lat)} · ${siteWeather(cur,(PROG.day||0)*DAY_S).word}${downrangeWarning(cur)?' · <span style="color:#ffc46b">downrange warning</span>':''}`;sl&&(sl.title=a.ok?fz.ok?'':fz.why:a.why)}
 $('bEditor').onclick=()=>go('assembly');
-$('bRevert').onclick=()=>{if(S&&S.rec&&S.rec.noRevert){HOOK.msg('No revert: this flight was handed over from a dispatch');return}resetShip();go('flight');HOOK.msg('Reverted to launch')};
+$('bRevert').onclick=revertFlight;
 $('bMap').onclick=()=>toggleMap();
 $('bHelp').onclick=()=>toggleHelp();$('bMenu').onclick=()=>ovToggle('escm');
 const SASM=[['stab','Stability'],['pro','Prograde'],['retro','Retro'],['normal','Normal'],['anti','Anti-nrm'],['radout','Rad out'],['radin','Rad in'],['node','Maneuver'],['tgt','Target'],['antitgt','Anti-tgt'],['rpro','Rel pro'],['rretro','Rel ret'],['dock','Docking']];
