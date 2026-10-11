@@ -995,7 +995,7 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
   // Since Q172 the sale is per bit received: the camera fills the recorder, each pass drains it at the link's rate.
   {const GS0=stationsAll(),T1=PROG.day*DAY_S;for(const q of sats){if(!q.ant)continue;let n=0,N=0,rs=0,got=0;const A=satRadio(q),on=satDuty(q);q.rec=q.rec||0;   // on: the share of the time it has power (Q27)
     for(let t=Math.max(T1-d*DAY_S,q.epoch);t<T1;t+=120){const[r]=satAt(q,t),pf=rotY(r,-absTh(t));N++;q.rec=Math.min(REC_CAP,q.rec+CAM_BPS*120*on);
-      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const x=Math.min(q.rec,k*120*on);q.rec-=x;got+=x}}
+      const st=GS0.find(st=>gsSees(st,pf));if(st){n++;const k=linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))));rs+=k;const cap=k*120*on,o=Math.min(q.owe||0,cap),x=Math.min(q.rec,cap-o);q.owe=(q.owe||0)-o;q.rec-=x;got+=x}}
     if(N){q.contact=n/N;q.rate=n?rs/n:0;q.got=(q.got||0)+got;   // the mean rate while in contact (Q171); bits home, all time
      income(IMG_RATE*got/(CAM_BPS*DAY_S)*(1+0.3*(PROG.cycle||0))*(typeof satQual==='function'?satQual(q):1));if(N>=60&&q.contact>0)logNote(null,'contact',q.contact*100,q.name)}}}
   // disasters: the world asks for pictures (a short, well-paid offer, if anyone up there can take them)
@@ -1010,8 +1010,9 @@ function satTick(d,R){satPowTick(d);stationTick(d);const sats=satsUp().filter(q=
       for(const c of want){if(q.pending.includes(c.id))continue;const u=CITIES[c.p.ci].u,dd=Math.acos(clamp(dot(un,u),-1,1))*TELLUS.R;
         if(Math.atan2(dd,alt)>SAT_FOV)continue;const slant=Math.hypot(dd,alt);
         if(slant*SAT_IFOV>c.p.res||sunUp(u,t)<SUN_MIN||cloudAt(u,t)>CLEAR)continue;q.pending.push(c.id)}
-      // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first
+      // a contract's picture is a frame: a pass downlinks as many as its rate allows in the step (Q172), oldest first.
+      // One pass budget (Q198): the frames sent are owed (q.owe) and the next imagery drain pays them first
       if(q.ant&&q.pending.length)for(const st of GS){if(!gsSees(st,pf))continue;const A=satRadio(q);
         let b=(q.pendB||0)+linkRate(A.P,A.G,G_STATION,len(sub(pf,mul(st.u,TELLUS.R))))*SAT_STEP*satDuty(q);
-        while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
+        while(q.pending.length&&b>=IMG_FRAME){b-=IMG_FRAME;q.owe=(q.owe||0)+IMG_FRAME;const c=want.find(x=>x.id===q.pending.shift());if(c){imageDone(c,q,st,t);want.splice(want.indexOf(c),1)}}
         q.pendB=q.pending.length?b:0;break}}}}

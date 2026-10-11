@@ -294,23 +294,34 @@ function rvSci(R,k,T){const why=rvSciWhy(R,k);if(why){HOOK.msg(`${k==='spec'?'Sp
   const P=selSci(),g=geoAt(R.body,R.p),r=rng(9001+P.seq++);R.data=R.data||[];
   if(k==='spec'){if((R.reads||[]).some(p=>len(sub(p,R.p))<SPEC_NEAR)){HOOK.msg('Spectrometer: already read here (drive on 30 m)');return false}
     (R.reads=R.reads||[]).push(R.p.slice());const x={k,unit:g.unit,T,pf:R.p.slice()};for(const c in SPEC_SD)x[c]=Math.max(0,g[c]+SPEC_SD[c]*gauss(r));
-    R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
+    x.b=RV_BITS.spec;R.data.push(x);HOOK.msg(`Spectrometer: ${GEO_NAME[g.unit]} here, FeO ${x.FeO.toFixed(1)} %${rvSciSent(R)}`);return true}
   if(k==='pano'){const el=Math.asin(clamp(dot(norm(R.p),rvSunPF(R.body,thAbs(R.body,T))),-1,1))*180/Math.PI;if(el<=0){HOOK.msg('Panorama: too dark (the sun is down)');return false}
-    const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
+    const q=panoQ(el);R.data.push({k,q,el,unit:g.unit,T,b:RV_BITS.pano});HOOK.msg(`Panorama taken, sun ${el.toFixed(0)}° up: ${q>.8?'long shadows, the relief stands out':q>.5?'fair':'flat light'} (${(q*100).toFixed(0)} %)${rvSciSent(R)}`);return true}
   if(k==='seis'){R.seisLeft=(R.seisLeft??SEIS_PACK*rvItems(R,'seis'))-1;const st={id:P.seis.length+1,bodyName:R.body.name,pf:mul(norm(R.p),R.body.R),T,buf:[]};st.name=`Seismometer ${st.id}`;
     P.seis.push(st);HOOK.msg(`${st.name} set out (${R.seisLeft} left on board)`);return true}}
 const panoQ=el=>el<3?.4*el/3:el<=20?1:Math.max(.3,1-.7*(el-20)/70);
-const rvSciSent=R=>R.contact&&R.contact.ok&&R.contact.via!=='crew'?'':' · waits for contact';
+// data as a volume (space, Q198; Q172's rule for rovers): a reading is bits (RV_BITS: a spectrum of ~1,000 channels; a
+// panorama, one survey frame) and goes home at the contact's rate, oldest first. From Selene a whip through a relay sends
+// a spectrum in minutes and a panorama in hours; the high-gain dish, in seconds and minutes. Older saves' readings have
+// no `b`: they go at once, as before. A crew aboard keeps them (they come home with it).
+const RV_BITS={spec:2e4,pano:IMG_FRAME};
+const rvWait=R=>(R.data||[]).reduce((a,x)=>a+(x.b||0),0);
+const rvSciSent=R=>{const c=R.contact;if(!c||!c.ok||c.via==='crew')return' · waits for contact';const r=c.rate;return r?` · sending, ${fmtDur(rvWait(R)/r)}`:''};
+const fmtDur=s=>s<90?`${Math.max(1,Math.round(s))} s`:s<5400?`${Math.round(s/60)} min`:`${(s/3600).toFixed(1)} h`;
+// drain dt seconds of the contact's rate into the queue; the readings completed go home. (c.rate absent: home, no limit)
+function rvDrain(data,c,dt,by){if(!data||!data.length||!c||!c.ok||c.via==='crew')return 0;let b=c.rate?c.rate*dt:Infinity,n=0;
+  while(data.length&&b>=(data[0].b||0)){b-=data[0].b||0;const x=data.shift();delete x.b;sciGot(x,by);n++}
+  if(data.length&&b>0)data[0].b-=b;return n}
 // results reaching home: into the program's science and the logbook
 function sciGot(x,by){const P=selSci();
   if(x.k==='spec'){const L=P.spec[x.unit];L.push({FeO:x.FeO,TiO2:x.TiO2,Al2O3:x.Al2O3,far:!!(x.pf&&x.pf[0]>0)});/* far: Selene's far side, planet-fixed +X (economy's contracts) */const n=L.length,m=c=>L.reduce((a,y)=>a+y[c],0)/n,sd=n>1?Math.sqrt(L.reduce((a,y)=>a+(y.FeO-m('FeO'))**2,0)/(n-1)):SPEC_SD.FeO;
     logNote(null,x.unit==='mare'?'semare':'sehigh',{FeO:m('FeO'),TiO2:m('TiO2'),Al2O3:m('Al2O3'),se:sd/Math.sqrt(n),n},by)}
   if(x.k==='pano'){P.panos.push({q:x.q,el:x.el,unit:x.unit});logNote(null,'sepano',{q:x.q,el:x.el,unit:x.unit},by)}}
-function rvSciSend(R,c){if(!R.data||!R.data.length||!c||!c.ok||c.via==='crew')return 0;const n=R.data.length;for(const x of R.data)sciGot(x,R.name);R.data=[];
-  HOOK.msg(`${n} result${n>1?'s':''} from ${R.name} received at home`);return n}
+function rvSciSend(R,c,dt=0){const n=rvDrain(R.data,c,dt,R.name);if(n)HOOK.msg(`${n} result${n>1?'s':''} from ${R.name} received at home`);return n}
 // contact for something on the ground (a field rover, a station) at program time T: R3's rules, relays where they are then
 function rvFieldSci(T0,T1){for(const e of PROG.rvOut||[]){if(e.dead||!e.data||!e.data.length)continue;const b=BODIES.find(x=>x.name===e.bodyName)||TELLUS,hg=rvPow(e.d).hg;
-  for(let T=T0;T<T1;T+=1800)if(radioAt(b,e.p,hg,Math.min(T+1800,T1)).ok){for(const x of e.data)sciGot(x,e.name);HOOK.news(`${e.name} on ${e.bodyName}: ${e.data.length} result${e.data.length>1?'s':''} received`,'ok');e.data=[];break}}}
+  let n=0;for(let T=T0;T<T1&&e.data.length;T+=1800){const dt=Math.min(1800,T1-T);n+=rvDrain(e.data,radioAt(b,e.p,hg,T+dt),dt,e.name)}
+  if(n)HOOK.news(`${e.name} on ${e.bodyName}: ${n} result${n>1?'s':''} received`,'ok')}}
 function radioAt(b,pf,hg,T){const o=ORB_T0;ORB_T0=T;const c=rvContact({body:b,p:pf,pw:{hg,sol:0,rtg:0},remote:true},0,rvRelays([]));ORB_T0=o;return c}
 // ---- the seismic network. Deep moonquakes (QUAKE_DAY a day, 40–60 % of the way out) happen between flights. Each
 // station records the P wave and, unless its straight path crossed the liquid core (SEL_CORE, hidden), the S wave.

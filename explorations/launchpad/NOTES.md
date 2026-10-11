@@ -2149,6 +2149,24 @@ MIDGAME § Windows, decision 3. In `sim/program.js` beside the dispatch code:
   `app/network.js`'s fallback still builds one bar.
 Tests: `econ-20` (2 checks: light and any; plane), one check added to `econ-7` (the supply run's quote lands in daylight).
 
+## v1.120 — rover science as volumes; one pass budget for a satellite (2026-10-11, space session, QUEUE Q198; v1.100's "Not in this slice")
+
+v1.100 made satellite data a volume; rover readings still went home whole the moment there was contact.
+- **Readings are bits** (`sim/rovers.js`, `RV_BITS`): a spectrum 20 kbit (~1,000 channels), a panorama one survey frame
+  (`IMG_FRAME`, 1.5 Mbit). `rvDrain(data, contact, dt, by)` sends them oldest first at the contact's rate and hands each
+  finished one to `sciGot`; a part-sent reading keeps what's left in `x.b`. `rvSciSend(R, c, dt)` (the driven rover, each
+  step) and `rvFieldSci` (rovers in the field between flights, half-hour steps through `radioAt`) both use it. No rate
+  (home on Tellus): at once. Readings in older saves have no `b`: at once, as before. A crew aboard still keeps them.
+- **Measured** (test `space-22`, from Selene's near side): the high-gain dish direct to Tellus **2,481 bit/s**: a
+  panorama in **10 min**, a spectrum in 8 s. A **whip through a relay 1,000 km up: 4 bit/s** (the rover-to-relay hop
+  has no station dish; v1.109's model): a panorama **4.3 days**, a spectrum 83 min. So the dish is the imaging choice and a
+  whip rover is a spectrometer rover. If that feels harsh in play, the lever is a dish on the relay (Q217), not the bits.
+- **The message** after a reading says how long it will take ("· sending, 10 min") instead of nothing.
+- **One pass budget** (`sim/space.js`): a satellite's contract frames and its imagery shared nothing (a pass downlinked
+  both in full). Now each frame sent is owed (`q.owe`) and the next imagery drain pays it first. A frame is 1.5 Mbit,
+  about 16 s of a 300 km pass at ~95 kbit/s: imagery sales barely move (test `space-15` unchanged).
+- **Tests:** `space-22` (new); section 42 gives its send a minute of contact.
+
 ## v1.119 — a rotation's days in space in the Debrief (2026-10-11, space session, QUEUE Q214; v1.107's "Not yet")
 
 A crew brought home from a station read "home safe after 2.1 days": the Debrief knew only the flight that brought them

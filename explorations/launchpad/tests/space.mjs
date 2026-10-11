@@ -623,3 +623,22 @@
       && /^Crew of 2 home safe after 33 days in space$/.test(D.crew.line) && Df.crew && /^Crew of 2 home safe after 2\.5 days$/.test(Df.crew.line),
     `went up day ${cap && cap.up}, carried ${carried && carried.crewUp}, re-registered ${again && again.up}; "${D.crew && D.crew.line}" · fresh "${Df.crew && Df.crew.line}"`);
 }
+
+// space-22. Rover science as volumes (space session, QUEUE Q198): a reading is bits (RV_BITS) and goes home at the
+// contact's rate, oldest first; an older save's reading (no `b`) goes at once. Own sim instance. Prints the send times.
+{
+  const D = new Function(src + 'return {geoAt,rvNew,rvSciSend,rvContact,RV_BITS,SELENE,TELLUS,PROG,HOOK,bodyPos,linkRate,P_ROVER,P_RADIO,G_WHIP,G_RVHG,G_STATION,selSci};')();
+  D.HOOK.news = () => {}; D.HOOK.msg = () => {}; const B = D.SELENE, P = D.PROG; P.day = 0; P.sats = []; P.log = {};
+  const u = [-1, 0, 0], R = D.rvNew({ name: 'x', ch: 'l', wh: 'm', n: 6, spr: 'S', slots: ['spec', 'cam', 'ant', 'bat', 'sol', null, null, null] }, B, mul(u, B.R), [0, 1, 0], {});
+  R.name = 'Vol'; const c = D.rvContact(R, 0, []), S = D.selSci(), n0 = S.panos.length, s0 = (S.spec.mare || []).length + (S.spec.high || []).length;
+  const spec = () => ({ k: 'spec', unit: 'mare', T: 0, pf: R.p.slice(), FeO: 15, TiO2: 3, Al2O3: 10, b: D.RV_BITS.spec });
+  R.data = [{ k: 'pano', q: 1, el: 10, unit: 'mare', T: 0, b: D.RV_BITS.pano }, spec()];
+  const tPano = D.RV_BITS.pano / c.rate, early = D.rvSciSend(R, c, 0.9 * tPano), mid = R.data.length;
+  const done = D.rvSciSend(R, c, 0.2 * tPano), got = S.panos.length - n0;
+  const old = { k: 'spec', unit: 'mare', T: 0, pf: R.p.slice(), FeO: 15, TiO2: 3, Al2O3: 10 }; R.data = [old]; const instant = D.rvSciSend(R, c, 0);
+  const dSel = len(D.bodyPos(B, 0)), whip = Math.min(D.linkRate(D.P_ROVER, D.G_WHIP, D.G_WHIP, 1000e3), D.linkRate(D.P_RADIO, D.G_WHIP, D.G_STATION, dSel));
+  check('space Q198: rover readings go home at the link\'s rate, oldest first: a panorama on the high-gain dish in minutes, not at once; old readings at once',
+    c.ok && c.rate > 0 && early === 0 && mid === 2 && done === 2 && got === 1 && instant === 1 && tPano > 60 && tPano < 3600,
+    `high-gain from the near side ${c.rate.toFixed(0)} bit/s: panorama ${(tPano / 60).toFixed(1)} min, spectrum ${(D.RV_BITS.spec / c.rate).toFixed(0)} s; `
+    + `a whip through a relay 1,000 km up: ${whip.toFixed(0)} bit/s, panorama ${(D.RV_BITS.pano / whip / 3600).toFixed(1)} h, spectrum ${(D.RV_BITS.spec / whip / 60).toFixed(1)} min`);
+}
