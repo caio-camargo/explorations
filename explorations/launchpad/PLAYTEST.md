@@ -1,5 +1,5 @@
 # Launchpad — playtest notes
-**Version**: 0.1.36 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
+**Version**: 0.1.37 · **Author**: Caio Camargo + Claude · **Created**: 2026-10-08 · **Updated**: 2026-10-10 · **Status**: running list
 **Purpose**: Caio's observations from playing, roughly prioritised. Not a design doc: each item is a symptom plus a lead.
 Coding sessions pick items from here and strike them through with the version that fixed them.
 
@@ -66,6 +66,7 @@ Coding sessions pick items from here and strike them through with the version th
 | 71 | P2 | **A stress and a heat indicator mid-flight**, at least past a threshold; needs brainstorming (Caio, 2026-10-11). | Both are computed already (the hottest part, the most loaded joint) but shown only as text in the *Ascent* card while ascending. Options and a default in QUEUE W36; plan Q271 | flow (+ look & sound) |
 | 72 | P3 | **The builder is still called the Assembly, but it's a design table now**: rename (Caio, 2026-10-11). | Since Q242 (v1.115) it's a scale model on a drafting table. Player-facing text only; the screen id stays. QUEUE Q272 | flow |
 | 73 | P2 | **The Map and End flight buttons aren't readable against a near-white sky**, at least in the first epoch (Caio, 2026-10-11). | Light text on an 8 % tint (the base `button` style). QUEUE Q273 | flow |
+| 74 | P2 | **A craft landing in water stays there as if on land**; more fundamental than the missing splash (#67) (Caio, 2026-10-11). | Confirmed: a splashdown is snapped upright with its bottom at sea level and frozen as landed (`sim/flight.js` ~79–85). Needs buoyancy, floating attitude, sinking, drift. QUEUE Q274 | world (+ vehicle: part volumes) |
 
 ## Done
 
