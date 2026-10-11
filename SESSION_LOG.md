@@ -5226,3 +5226,17 @@ on both, and the new robot row `desk` passes (photo taken in real frames, no ove
 - **Note:** the playtest intake session committed in the main clone while my QUEUE flag edit was uncommitted there, so it
   rode along in `466111b` (correct text, wrong commit). Proposed: stage own paths only in the shared clone.
 - **Next:** optional pre-push hook (Proposed); platform's next ready items: Q265 tester logging, Q68 test.mjs split.
+
+## 2026-10-11 — Claude (wildcard session, platform overflow): Q265, the tester's verbose log (v1.117)
+- **Done:** v1.117 (`37db0e3`, merged to `main`): with `?tester`, *Verbose log* in the tester menu. `logEv(kind, text)`
+  in the SIM (staging events, every touchdown against its limit, a part passing 80 % of `Tmax`, every pay line);
+  `app/testlog.js` taps `HOOK.msg/news/save` (destruction gets its cause from the message) and watches funds,
+  contracts and missions; a scrolling panel, the console (`[launchpad] …`), and a text download with the seeds.
+- **Checks:** full suite 629 PASS, 0 FAIL; new test `platform-4`; in Chrome (`?tester`) the checkbox, the reload, a
+  Sounding flight's lines, the console and the download's text; robot `m1` passes (no overlapping boxes). TESTING 199.
+- **Fix to Q160:** `check_numbers.mjs` skipped played TESTING rows (`✓ 12`, `~ 35 (robot)`): 93 of 198. Now on `qa-3`'s
+  pattern; TESTING's "Next free number" bumped to 200.
+- **Files:** launchpad `app/testlog.js` (new), `sim/program.js`, `sim/core.js`, `sim/flight.js`, `sim/vessel.js`,
+  `sim/debrief.js`, `app/screens.js`, `index.html`, `test.mjs`, `check_numbers.mjs`, NOTES (§ v1.117, § Numbering),
+  TESTING; QUEUE (Q265 ✓, two *Proposed*), ACTIVE_WORK.
+- **Next:** a `GAME_V` constant (Proposed); platform's next ready: Q68 (`test.mjs` into per-area files), Q124, Q38.
